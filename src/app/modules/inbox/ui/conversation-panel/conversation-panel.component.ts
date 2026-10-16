@@ -7,12 +7,17 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { FileApiService, buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { CommentComposerComponent, ComposerUploader } from '../../../../shared/ui/comment-composer/comment-composer.component';
+import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { HostSlashCommand, MentionCandidate } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { InboxApiService } from '../../data-access/inbox-api.service';
-import { ConversationMessageDto, ConversationParticipantDto, InboxActionDto, InboxItemRef } from '../../models/inbox.dto';
+import {
+  ConversationMessageDto, ConversationParticipantDto, InboxActionDto, InboxItemDto, InboxItemRef, InboxKindDescriptorDto
+} from '../../models/inbox.dto';
 import { ConversationStore } from '../../state/conversation.store';
+import { inboxReference, inboxStatusLabel, inboxStatusTone, inboxTitle, inboxTypeMeta } from '../../utils/inbox-item.util';
+import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
 
 const ADD_COMMAND = 'add';
 const CONVERSATION_ATTACHMENT = 'conversation_attachment';
@@ -20,6 +25,12 @@ const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const TAG_LABELS: Record<string, string> = {
   info_request: 'Info requested', info_response: 'Info provided', justification: 'Justification'
+};
+const MENU_ICONS = {
+  add: 'M15 20a6 6 0 0 0-12 0M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M16 11h6',
+  members: 'M16 20a4 4 0 0 0-8 0M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM21 19a3 3 0 0 0-3-3M3 19a3 3 0 0 1 3-3',
+  export: 'M12 3v12M7 10l5 5 5-5M5 21h14',
+  leave: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11'
 };
 
 function saveBlob(blob: Blob, fileName: string): void {
@@ -53,39 +64,57 @@ interface DayGroup {
   messages: ConversationMessageDto[];
 }
 
-/** The live group chat of one inbox item: members (+ add), messages (by day, own on the right, system
- *  lines centred, unread divider, load older), and a composer with @mentions, add-and-tag and the item's
- *  actions in its "/" menu. */
+interface FailedSend {
+  html: string;
+  mentions: string[];
+  attachmentFileIds: string[];
+}
+
+/** The chat of one ticket (inbox item), WhatsApp-style: a header with the ticket and a ⋯ menu (add member,
+ *  members, export, leave), messages anchored to the bottom (latest first in view; scrolling up loads older
+ *  ones), and a composer with @mentions, add-and-tag and the item's actions in its "/" menu. Each ticket keeps
+ *  its own unsent draft. */
 @Component({
   selector: 'app-conversation-panel',
   standalone: true,
-  imports: [DatePipe, AvatarComponent, CommentComposerComponent, PeoplePickerComponent],
+  imports: [DatePipe, AvatarComponent, CommentComposerComponent, DropdownMenuComponent, InboxTypeIconComponent, PeoplePickerComponent],
   providers: [ConversationStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="conv" data-testid="conversation-panel" aria-label="Conversation">
       <header class="conv__header">
-        <div class="conv__label">Conversation</div>
-        <button type="button" class="conv__members" data-testid="conversation-members" [attr.title]="membersTooltip()"
-          [attr.aria-expanded]="membersOpen()" aria-label="People in this conversation" (click)="membersOpen.set(!membersOpen())">
-          @for (p of visibleMembers(); track p.employeeId) {
-            <app-avatar class="conv__member" [userName]="p.name" [avatarUrl]="avatarUrl(p.avatarFileId)" size="xs" />
-          }
-          @if (extraMembers() > 0) { <span class="conv__more">+{{ extraMembers() }}</span> }
+        <button type="button" class="conv__icon-btn conv__back" data-testid="conversation-back" aria-label="Back to tickets" (click)="back.emit()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        @if (canExport()) {
-          <button type="button" class="conv__add-btn" data-testid="conversation-export" [disabled]="exporting()" (click)="exportBundle()">Export</button>
+        @if (item(); as it) {
+          <app-inbox-type-icon class="conv__type" [icon]="meta().icon" [tone]="meta().tone" />
+          <div class="conv__heading">
+            <h2 class="conv__title" data-testid="conversation-title">{{ title() }}</h2>
+            <span class="conv__ref" data-testid="conversation-ref">{{ reference() }}</span>
+          </div>
+          <span data-testid="conversation-status" [class]="'conv__pill conv__pill--' + statusTone()">{{ statusText() }}</span>
+        } @else {
+          <div class="conv__heading"><h2 class="conv__title">Conversation</h2></div>
         }
-        @if (!store.removed()) {
-          <button type="button" class="conv__add-btn" data-testid="conversation-add-member" (click)="toggleAdd()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><path d="M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /><path d="M19 8v6M16 11h6" /></svg>
-            Add
+        <button type="button" class="conv__icon-btn conv__details-toggle" [class.conv__details-toggle--always]="!detailsVisible()"
+          data-testid="conversation-toggle-details" [attr.aria-pressed]="detailsVisible()"
+          [attr.aria-label]="detailsVisible() ? 'Hide ticket details' : 'Show ticket details'"
+          [attr.title]="detailsVisible() ? 'Hide ticket details' : 'Show ticket details'" (click)="toggleDetails.emit()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
+        </button>
+        <app-dropdown-menu [items]="menu()" ariaLabel="Conversation actions" (selected)="onMenu($event)">
+          <button menu-trigger type="button" class="conv__icon-btn" data-testid="conversation-menu" aria-label="Conversation actions">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
           </button>
-        }
+        </app-dropdown-menu>
       </header>
 
       @if (membersOpen()) {
-        <div class="conv__people" data-testid="conversation-people" role="list">
+        <div class="conv__panel" data-testid="conversation-people" role="list" aria-label="People in this conversation">
+          <div class="conv__panel-head">
+            <span>Members · {{ store.participants().length }}</span>
+            <button type="button" class="conv__link" (click)="membersOpen.set(false)">Close</button>
+          </div>
           @for (p of store.participants(); track p.employeeId) {
             <div class="conv__person" role="listitem" data-testid="conversation-participant" [attr.data-employee-id]="p.employeeId">
               <app-avatar [userName]="p.name" [avatarUrl]="avatarUrl(p.avatarFileId)" size="xs" />
@@ -97,23 +126,19 @@ interface DayGroup {
               }
             </div>
           }
-          @if (canLeave()) {
-            @if (leaveConfirm()) {
-              <div class="conv__person conv__person--confirm">
-                <span>Leave this conversation? You will stop seeing it.</span>
-                <button type="button" class="conv__link" (click)="leaveConfirm.set(false)">Cancel</button>
-                <button type="button" class="conv__link conv__link--danger" data-testid="conversation-leave-confirm" (click)="leave()">Leave</button>
-              </div>
-            } @else {
-              <button type="button" class="conv__link conv__link--danger" data-testid="conversation-leave" (click)="leaveConfirm.set(true)">Leave conversation</button>
-            }
+          @if (leaveConfirm()) {
+            <div class="conv__person conv__person--confirm">
+              <span>Leave this conversation? You will stop seeing it.</span>
+              <button type="button" class="conv__link" (click)="leaveConfirm.set(false)">Cancel</button>
+              <button type="button" class="conv__link conv__link--danger" data-testid="conversation-leave-confirm" (click)="leave()">Leave</button>
+            </div>
           }
         </div>
       }
-      @if (exportError()) { <p class="conv__error" role="alert">{{ exportError() }}</p> }
 
       @if (addOpen()) {
-        <div class="conv__add" data-testid="conversation-add-panel">
+        <div class="conv__panel" data-testid="conversation-add-panel">
+          <div class="conv__panel-head"><span>Add member</span></div>
           <app-people-picker
             [options]="candidateOptions()"
             [selectedIds]="chosen()"
@@ -121,27 +146,25 @@ interface DayGroup {
             (searchChange)="searchPeople($event)"
             (toggled)="toggleCandidate($event)"
           />
-          <div class="conv__add-actions">
+          <div class="conv__panel-actions">
             <button type="button" class="conv__btn" (click)="toggleAdd()">Cancel</button>
             <button type="button" class="conv__btn conv__btn--primary" data-testid="conversation-add-confirm"
               [disabled]="chosen().length === 0" (click)="confirmAdd()">Add {{ chosen().length || '' }}</button>
           </div>
         </div>
       }
-
-      @if (store.loading() && store.messages().length === 0) {
-        <p class="conv__muted">Loading conversation…</p>
-      } @else if (store.error()) {
-        <p class="conv__error" role="alert">{{ store.error() }}</p>
-      }
+      @if (exportError()) { <p class="conv__error" role="alert">{{ exportError() }}</p> }
 
       <div #scroller class="conv__messages" data-testid="conversation-messages" (scroll)="onScroll()">
-        @if (store.hasMore()) {
-          <button type="button" class="conv__older" data-testid="conversation-load-older" [disabled]="store.olderLoading()" (click)="loadOlder()">
-            {{ store.olderLoading() ? 'Loading…' : 'Load older messages' }}
-          </button>
+        <div class="conv__spacer"></div>
+        @if (store.olderLoading()) {
+          <p class="conv__muted" data-testid="conversation-older-loading" aria-live="polite">Loading older messages…</p>
         }
-        @if (!store.loading() && store.messages().length === 0) {
+        @if (store.loading() && store.messages().length === 0) {
+          <p class="conv__muted">Loading conversation…</p>
+        } @else if (store.error()) {
+          <p class="conv__error" role="alert">{{ store.error() }}</p>
+        } @else if (store.messages().length === 0) {
           <p class="conv__muted">No messages yet. Start the conversation.</p>
         }
         @for (group of days(); track group.key) {
@@ -155,143 +178,183 @@ interface DayGroup {
                 <span [innerHTML]="m.bodyHtml"></span> · <time>{{ m.createdAt | date: 'h:mm a' }}</time>
               </div>
             } @else {
-              <div class="msg" [class.msg--own]="m.authorEmployeeId === me()" [class.msg--justification]="m.tag === 'justification' && !m.isDeleted"
+              @let own = m.authorEmployeeId === me();
+              <div class="msg" [class.msg--own]="own" [class.msg--justification]="m.tag === 'justification' && !m.isDeleted"
                 [attr.data-message-id]="m.id">
-                @if (m.authorEmployeeId !== me()) {
-                  <app-avatar class="msg__avatar" [userName]="m.authorName" [avatarUrl]="avatarUrl(m.authorAvatarFileId)" size="xs" />
-                }
-                <div class="msg__bubble">
-                  @if (m.authorEmployeeId !== me()) { <div class="msg__author">{{ m.authorName }}</div> }
-                  @if (m.tag && !m.isDeleted) { <div class="msg__tag" data-testid="message-tag">{{ tagLabel(m.tag) }}</div> }
-                  @if (m.isDeleted) {
-                    <div class="msg__body msg__body--deleted">Message deleted</div>
-                  } @else if (editingId() === m.id) {
-                    <app-comment-composer
-                      [attr.data-testid]="'message-editor-' + m.id"
-                      [initialContent]="m.bodyHtml"
-                      [attachments]="false"
-                      [collapsible]="false"
-                      [showCancel]="true"
-                      submitLabel="Save"
-                      [enterToSend]="true"
-                      [mentionCandidates]="mentionCandidates()"
-                      (submitted)="saveEdit(m.id, $event)"
-                      (cancelled)="editingId.set(null)"
-                    />
-                  } @else {
-                    <div class="msg__body" [innerHTML]="body(m)"></div>
-                  }
-                  @if (!m.isDeleted && m.attachments?.length) {
-                    <div class="msg__files">
-                      @for (a of m.attachments; track a.id) {
-                        <button type="button" class="msg__file" [attr.data-testid]="'attachment-' + a.id" (click)="download(a.id, a.fileName)">
-                          {{ a.fileName }} <span class="msg__file-size">{{ size(a.sizeBytes) }}</span>
-                        </button>
-                      }
-                    </div>
-                  }
-                  <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}@if (m.editedAt && !m.isDeleted) { <span> (edited)</span> }</time>
-                </div>
-                @if (m.authorEmployeeId === me() && !m.isDeleted && !store.removed() && editingId() !== m.id) {
-                  <div class="msg__menu" data-testid="message-menu">
-                    <button type="button" class="conv__link" [attr.data-testid]="'message-edit-' + m.id" aria-label="Edit message" (click)="editingId.set(m.id)">Edit</button>
-                    <button type="button" class="conv__link conv__link--danger" [attr.data-testid]="'message-delete-' + m.id" aria-label="Delete message"
-                      (click)="deleteMessage(m.id)">Delete</button>
+                <app-avatar class="msg__avatar" [userName]="own ? 'You' : m.authorName" [avatarUrl]="avatarUrl(m.authorAvatarFileId)" size="sm" />
+                <div class="msg__content">
+                  <div class="msg__meta">
+                    <span class="msg__author">{{ own ? 'You' : m.authorName }}</span>
+                    <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}@if (m.editedAt && !m.isDeleted) { <span> (edited)</span> }</time>
+                    @if (own && !m.isDeleted && !store.removed() && editingId() !== m.id) {
+                      <span class="msg__menu" data-testid="message-menu">
+                        <button type="button" class="conv__link" [attr.data-testid]="'message-edit-' + m.id" aria-label="Edit message" (click)="editingId.set(m.id)">Edit</button>
+                        <button type="button" class="conv__link conv__link--danger" [attr.data-testid]="'message-delete-' + m.id" aria-label="Delete message"
+                          (click)="deleteMessage(m.id)">Delete</button>
+                      </span>
+                    }
                   </div>
-                }
+                  <div class="msg__bubble">
+                    @if (m.tag && !m.isDeleted) { <div class="msg__tag" data-testid="message-tag">{{ tagLabel(m.tag) }}</div> }
+                    @if (m.isDeleted) {
+                      <div class="msg__body msg__body--deleted">Message deleted</div>
+                    } @else if (editingId() === m.id) {
+                      <app-comment-composer
+                        [attr.data-testid]="'message-editor-' + m.id"
+                        [initialContent]="m.bodyHtml"
+                        [attachments]="false"
+                        [collapsible]="false"
+                        [showCancel]="true"
+                        submitLabel="Save"
+                        [enterToSend]="true"
+                        [mentionCandidates]="mentionCandidates()"
+                        (submitted)="saveEdit(m.id, $event)"
+                        (cancelled)="editingId.set(null)"
+                      />
+                    } @else {
+                      <div class="msg__body" [innerHTML]="body(m)"></div>
+                    }
+                    @if (!m.isDeleted && m.attachments?.length) {
+                      <div class="msg__files">
+                        @for (a of m.attachments; track a.id) {
+                          <button type="button" class="msg__file" [attr.data-testid]="'attachment-' + a.id" [attr.aria-label]="'Download ' + a.fileName"
+                            (click)="download(a.id, a.fileName)">
+                            <svg class="msg__file-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
+                            <span class="msg__file-text">
+                              <span class="msg__file-name">{{ a.fileName }}</span>
+                              <span class="msg__file-size">{{ size(a.sizeBytes) }}</span>
+                            </span>
+                            <svg class="msg__file-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
               </div>
             }
           }
         }
       </div>
 
-      @if (store.sendError()) { <p class="conv__error" role="alert" data-testid="conversation-send-error">{{ store.sendError() }}</p> }
-
-      @if (store.removed()) {
-        <p class="conv__muted conv__removed" role="status" data-testid="conversation-removed">You were removed from this conversation.</p>
-      } @else {
-        @if (isSubject()) {
-          <label class="conv__justify">
-            <input type="checkbox" data-testid="conversation-justification" [checked]="justification()"
-              (change)="justification.set($any($event.target).checked)" />
-            Mark as justification
-          </label>
+      <footer class="conv__footer">
+        @if (store.sendError()) {
+          <p class="conv__error" role="alert" data-testid="conversation-send-error">
+            {{ store.sendError() }}
+            @if (failed()) {
+              <button type="button" class="conv__link" data-testid="conversation-retry" [disabled]="store.sending()" (click)="retry()">Retry</button>
+            }
+          </p>
         }
-        <app-comment-composer
-          #composer
-          class="conv__composer"
-          [collapsible]="false"
-          submitLabel="Send"
-          placeholder="Write a message, @ to mention."
-          [attachments]="true"
-          [uploader]="uploader"
-          [enterToSend]="true"
-          [mentionCandidates]="mentionCandidates()"
-          [allowAddAndTag]="true"
-          [mentionSearch]="mentionSearch"
-          [extraSlashCommands]="slashCommands()"
-          (submitted)="send($event.content, $event.mentions, $event.attachmentFileIds)"
-          (slashCommand)="onSlashCommand($event)"
-          (addAndTag)="addAndTag($event)"
-        />
-      }
+        @if (store.removed()) {
+          <p class="conv__muted conv__removed" role="status" data-testid="conversation-removed">You were removed from this conversation.</p>
+        } @else {
+          @if (isSubject()) {
+            <label class="conv__justify">
+              <input type="checkbox" data-testid="conversation-justification" [checked]="justification()"
+                (change)="justification.set($any($event.target).checked)" />
+              Mark as justification
+            </label>
+          }
+          <!-- Switching tickets empties the composer and loads that ticket's own draft, so text never leaks across. -->
+          <app-comment-composer
+            #composer
+            class="conv__composer"
+            [initialContent]="draftFor(refKey())"
+            [collapsible]="false"
+            [submitLabel]="store.sending() ? 'Sending…' : 'Send'"
+            placeholder="Type a message…"
+            [attachments]="true"
+            [uploader]="uploader"
+            [enterToSend]="true"
+            [mentionCandidates]="mentionCandidates()"
+            [allowAddAndTag]="true"
+            [mentionSearch]="mentionSearch"
+            [extraSlashCommands]="slashCommands()"
+            (submitted)="send($event.content, $event.mentions, $event.attachmentFileIds)"
+            (slashCommand)="onSlashCommand($event)"
+            (addAndTag)="addAndTag($event)"
+          />
+        }
+      </footer>
     </section>
   `,
   styles: [`
-    :host { display: block; }
-    .conv { display: flex; flex-direction: column; gap: 10px; }
-    .conv__header { display: flex; align-items: center; gap: 10px; }
-    .conv__label { color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-    .conv__members { display: flex; flex: 1; align-items: center; justify-content: flex-end; }
-    .conv__member { margin-left: -6px; border-radius: 999px; box-shadow: 0 0 0 2px var(--color-surface); }
-    .conv__more { margin-left: 4px; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
-    .conv__add-btn, .conv__btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .conv__add-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    :host { display: block; height: 100%; min-height: 0; }
+    .conv { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+    .conv__header { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--color-border); }
+    .conv__type { width: 36px; height: 36px; border-radius: 10px; }
+    .conv__heading { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
+    .conv__title { margin: 0; overflow: hidden; color: var(--color-text-primary); font-size: 14px; font-weight: 650; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+    .conv__ref { overflow: hidden; color: var(--color-text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .conv__pill { --tone: var(--color-accent); flex: 0 0 auto; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 600; }
+    .conv__pill--neutral { --tone: var(--color-text-secondary); }
+    .conv__icon-btn { display: inline-flex; width: 30px; height: 30px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+    .conv__icon-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .conv__icon-btn:focus-visible, .conv__link:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .conv__icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .conv__back { display: none; }
+    .conv__details-toggle { display: none; }
+    .conv__details-toggle--always { display: inline-flex; }
+    .conv__panel { display: flex; flex-direction: column; gap: 6px; margin: 10px 16px 0; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
+    .conv__panel-head { display: flex; align-items: center; justify-content: space-between; color: var(--color-text-secondary); font-size: 12px; font-weight: 650; }
+    .conv__panel-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .conv__btn { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
     .conv__btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .conv__btn:disabled { opacity: .5; cursor: default; }
-    .conv__add { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--color-border); border-radius: 10px; }
-    .conv__add-actions { display: flex; justify-content: flex-end; gap: 8px; }
-    .conv__messages { display: flex; max-height: 360px; min-height: 120px; flex-direction: column; gap: 6px; overflow-y: auto; padding: 8px 2px; }
-    .conv__older { align-self: center; padding: 3px 10px; border: 0; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font: inherit; font-size: 11px; cursor: pointer; }
-    .conv__day, .conv__unread { display: flex; align-items: center; gap: 8px; margin: 6px 0; color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
-    .conv__day::before, .conv__day::after, .conv__unread::before, .conv__unread::after { content: ''; flex: 1; height: 1px; background: var(--color-border); }
-    .conv__unread { color: var(--color-danger); }
-    .conv__unread::before, .conv__unread::after { background: color-mix(in srgb, var(--color-danger) 40%, transparent); }
-    .conv__muted { margin: 0; color: var(--color-text-secondary); font-size: 12px; text-align: center; }
-    .conv__error { margin: 0; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--color-danger) 8%, transparent); color: var(--color-danger); font-size: 12px; }
-    .msg { display: flex; align-items: flex-end; gap: 6px; max-width: 88%; }
-    .msg--own { align-self: flex-end; flex-direction: row-reverse; }
-    .msg--system { align-self: center; max-width: 100%; color: var(--color-text-secondary); font-size: 11px; text-align: center; }
-    .msg__avatar { flex: 0 0 auto; }
-    .msg__bubble { min-width: 0; padding: 7px 10px; border-radius: 12px 12px 12px 4px; background: var(--color-surface-secondary); font-size: 13px; }
-    .msg--own .msg__bubble { border-radius: 12px 12px 4px 12px; background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface)); }
-    .msg__author { margin-bottom: 2px; color: var(--color-text-secondary); font-size: 11px; font-weight: 650; }
-    .msg__body { overflow-wrap: anywhere; line-height: 1.45; }
-    .msg__body ::ng-deep p, .msg__body ::ng-deep div { margin: 0; }
-    .msg__body ::ng-deep .mention { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent); font-weight: 600; }
-    .msg__body ::ng-deep .mention--me { background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
-    .msg__time { display: block; margin-top: 2px; color: var(--color-text-secondary); font-size: 10px; text-align: right; }
-    .conv__members { padding: 0; border: 0; background: none; cursor: pointer; }
-    .conv__people { display: flex; flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--color-border); border-radius: 10px; }
-    .conv__person { display: flex; align-items: center; gap: 8px; padding: 4px 2px; font-size: 12px; }
+    .conv__person { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
     .conv__person--confirm { flex-wrap: wrap; color: var(--color-text-secondary); }
     .conv__person-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .conv__role { padding: 1px 8px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
     .conv__link { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
     .conv__link--danger { color: var(--color-danger); }
-    .conv__link:focus-visible, .conv__members:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .conv__removed { padding: 8px; border: 1px dashed var(--color-border); border-radius: 8px; }
-    .conv__justify { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 12px; }
-    .msg { position: relative; }
-    .msg__menu { display: flex; gap: 8px; align-self: center; opacity: 0; transition: opacity .1s; }
-    .msg:hover .msg__menu, .msg:focus-within .msg__menu { opacity: 1; }
+    .conv__messages { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; overflow-y: auto; padding: 16px; }
+    /* Pushes a short conversation to the bottom, like a messenger: the latest message sits above the composer. */
+    .conv__spacer { flex: 1 0 0; }
+    .conv__day, .conv__unread { display: flex; align-items: center; gap: 10px; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+    .conv__day::before, .conv__day::after, .conv__unread::before, .conv__unread::after { content: ''; flex: 1; height: 1px; background: var(--color-border); }
+    .conv__unread { color: var(--color-danger); }
+    .conv__unread::before, .conv__unread::after { background: color-mix(in srgb, var(--color-danger) 40%, transparent); }
+    .conv__muted { margin: 0; color: var(--color-text-secondary); font-size: 12px; text-align: center; }
+    .conv__error { display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--color-danger) 8%, transparent); color: var(--color-danger); font-size: 12px; }
+    .msg { position: relative; display: flex; max-width: 82%; align-items: flex-start; gap: 10px; }
+    .msg--own { align-self: flex-end; flex-direction: row-reverse; }
+    .msg--system { align-self: center; max-width: 100%; padding: 4px 12px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 12px; text-align: center; }
+    .msg__avatar { flex: 0 0 auto; }
+    .msg__content { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+    .msg--own .msg__content { align-items: flex-end; }
+    .msg__meta { display: flex; align-items: baseline; gap: 8px; }
+    .msg__author { color: var(--color-text-primary); font-size: 13px; font-weight: 650; }
+    .msg__time { color: var(--color-text-secondary); font-size: 11px; }
+    .msg__bubble { min-width: 0; padding: 9px 12px; border-radius: 4px 12px 12px 12px; background: var(--color-surface-secondary); color: var(--color-text-primary); font-size: 13px; }
+    .msg--own .msg__bubble { border-radius: 12px 4px 12px 12px; background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); }
+    .msg__body { overflow-wrap: anywhere; line-height: 1.5; }
+    .msg__body ::ng-deep p, .msg__body ::ng-deep div { margin: 0; }
+    .msg__body ::ng-deep .mention { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent); font-weight: 600; }
+    .msg__body ::ng-deep .mention--me { background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .msg__body--deleted { color: var(--color-text-secondary); font-style: italic; }
+    .msg__menu { display: inline-flex; gap: 8px; opacity: 0; transition: opacity .1s; }
+    .msg:hover .msg__menu, .msg:focus-within .msg__menu { opacity: 1; }
     .msg__tag { margin-bottom: 2px; color: var(--color-accent); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
     .msg--justification .msg__bubble { border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 55%, transparent); background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface)); }
     .msg--justification .msg__tag { color: var(--color-warning, #d97706); }
-    .msg__files { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-    .msg__file { padding: 2px 8px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 11px; cursor: pointer; }
-    .msg__file-size { color: var(--color-text-secondary); }
+    .msg__files { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .msg__file { display: flex; min-width: 220px; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
+    .msg__file:hover { border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border)); }
+    .msg__file-icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .msg__file-text { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+    .msg__file-name { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .msg__file-size { color: var(--color-text-secondary); font-size: 11px; }
+    .conv__footer { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--color-border); }
+    .conv__removed { padding: 8px; border: 1px dashed var(--color-border); border-radius: 8px; }
+    .conv__justify { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 12px; }
+    /* Narrow screens: the chat is its own screen with a back button; the details open as a drawer. */
+    @media (max-width: 1023px) {
+      .conv__back, .conv__details-toggle { display: inline-flex; }
+      .conv__type { display: none; }
+      .conv__header { gap: 6px; padding: 10px 12px; }
+      .msg { max-width: 92%; }
+    }
   `]
 })
 export class ConversationPanelComponent implements AfterViewChecked {
@@ -301,12 +364,21 @@ export class ConversationPanelComponent implements AfterViewChecked {
 
   /** The inbox item whose conversation this is. */
   itemRef = input.required<InboxItemRef>();
+  /** The item itself, for the header (title, reference, status); null while it loads. */
+  item = input<InboxItemDto | null>(null);
+  /** The item's kind from the registry, for the type icon. */
+  descriptor = input<InboxKindDescriptorDto | null>(null);
+  /** Whether the ticket details panel is showing; the header offers to show it when it is not. */
+  detailsVisible = input(true);
   /** The item's available actions, offered in the composer's "/" menu. */
   actions = input<readonly InboxActionDto[]>([]);
   /** A "/" action was picked: the host runs it exactly like its action-bar button. */
   action = output<string>();
   /** The item's requester (InboxItem.requestedBy), for the role badge. */
   requesterId = input<string | null>(null);
+  toggleDetails = output<void>();
+  /** Narrow screens: back to the ticket list. */
+  back = output<void>();
 
   private readonly files = inject(FileApiService);
   private readonly inboxApi = inject(InboxApiService);
@@ -324,6 +396,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
   protected readonly justification = signal(false);
   protected readonly exporting = signal(false);
   protected readonly exportError = signal<string | null>(null);
+  /** The last message that failed to send, kept so it can be retried as it was. */
+  protected readonly failed = signal<FailedSend | null>(null);
 
   private readonly myRow = computed(() => this.store.participants().find((p) => p.employeeId === this.me()) ?? null);
   protected readonly isSubject = computed(() => !!this.me() && this.me() === this.store.subjectEmployeeId());
@@ -344,18 +418,33 @@ export class ConversationPanelComponent implements AfterViewChecked {
   protected readonly addOpen = signal(false);
   protected readonly chosen = signal<string[]>([]);
   protected readonly searchResults = signal<PeoplePickerOption[]>([]);
+  protected readonly refKey = computed(() => { const r = this.itemRef(); return `${r.source}:${r.kind}:${r.id}`; });
+  /** Unsent text per ticket. */
+  private readonly drafts = new Map<string, string>();
+  private openKey: string | null = null;
   private stickToBottom = true;
   private lastMessageCount = 0;
+  private filling = false;
+
+  protected readonly meta = computed(() => this.item()
+    ? inboxTypeMeta(this.item()!, this.descriptor())
+    : { label: '', tone: 'neutral' as const, icon: 'task' });
+  protected readonly title = computed(() => this.item() ? inboxTitle(this.item()!) : '');
+  protected readonly reference = computed(() => this.item() ? inboxReference(this.item()!) : '');
+  protected readonly statusText = computed(() => this.item() ? inboxStatusLabel(this.item()!) : '');
+  protected readonly statusTone = computed(() => this.item() ? inboxStatusTone(this.item()!) : 'neutral');
+  protected readonly menu = computed<MenuItem[]>(() => [
+    ...(this.store.removed() ? [] : [{ id: 'add', label: 'Add member', iconPath: MENU_ICONS.add }]),
+    { id: 'members', label: `Members (${this.store.participants().length})`, iconPath: MENU_ICONS.members },
+    ...(this.canExport() ? [{ id: 'export', label: this.exporting() ? 'Exporting…' : 'Export', iconPath: MENU_ICONS.export, disabled: this.exporting() }] : []),
+    ...(this.canLeave() ? [{ id: 'leave', label: 'Leave conversation', iconPath: MENU_ICONS.leave, danger: true, dividerBefore: true }] : [])
+  ]);
 
   protected readonly unreadFromId = computed(() => {
     const id = this.store.unreadFromId();
     const message = this.store.messages().find((m) => m.id === id);
     return message && message.authorEmployeeId !== this.me() ? id : null;
   });
-  protected readonly visibleMembers = computed(() => this.store.participants().slice(0, 5));
-  protected readonly extraMembers = computed(() => Math.max(0, this.store.participants().length - 5));
-  protected readonly membersTooltip = computed(() => this.store.participants()
-    .map((p) => (p.joinReason === 'added' ? `${p.name} (added)` : p.name)).join(', '));
   protected readonly mentionCandidates = computed<MentionCandidate[]>(() => this.store.participants()
     .filter((p) => p.employeeId !== this.me())
     .map((p) => ({ id: p.employeeId, name: p.name, avatarUrl: this.avatarUrl(p.avatarFileId) })));
@@ -394,20 +483,40 @@ export class ConversationPanelComponent implements AfterViewChecked {
   constructor() {
     effect(() => {
       const ref = this.itemRef();
+      const key = this.refKey();
       untracked(() => {
+        // Keep what was typed for the ticket being left; its composer is swapped for the next ticket's.
+        if (this.openKey && this.openKey !== key) {
+          this.drafts.set(this.openKey, this.composer()?.editorHtml() ?? '');
+          this.composer()?.clear();
+        }
+        this.openKey = key;
         this.stickToBottom = true;
+        this.lastMessageCount = 0;
+        this.failed.set(null);
+        this.membersOpen.set(false);
+        this.addOpen.set(false);
+        this.leaveConfirm.set(false);
+        this.editingId.set(null);
         void this.store.open(ref);
       });
     });
   }
 
   ngAfterViewChecked(): void {
-    // Follow new messages only when the reader is already at the bottom.
+    // A new ticket opens at its latest message; later, follow new messages only when the reader is at the bottom.
     const count = this.store.messages().length;
     if (count !== this.lastMessageCount) {
       const grewAtEnd = count > this.lastMessageCount;
       this.lastMessageCount = count;
       if (grewAtEnd && this.stickToBottom) this.scrollToBottom();
+    }
+    // Too few messages to scroll: fetch older ones until the view fills (there is no scroll to trigger it).
+    const el = this.scroller()?.nativeElement;
+    if (el && !this.filling && this.store.hasMore() && !this.store.loading() && !this.store.olderLoading()
+      && el.scrollHeight <= el.clientHeight + 1) {
+      this.filling = true;
+      setTimeout(() => void this.loadOlder().finally(() => (this.filling = false)));
     }
   }
 
@@ -415,16 +524,21 @@ export class ConversationPanelComponent implements AfterViewChecked {
     const el = this.scroller()?.nativeElement;
     if (!el) return;
     this.stickToBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-    if (el.scrollTop === 0 && this.store.hasMore()) void this.loadOlder();
+    if (el.scrollTop < 40 && this.store.hasMore()) void this.loadOlder();
   }
 
   protected async loadOlder(): Promise<void> {
+    if (this.store.olderLoading()) return;
     const el = this.scroller()?.nativeElement;
-    const before = el ? el.scrollHeight : 0;
+    const before = el ? el.scrollHeight - el.scrollTop : 0;
     this.stickToBottom = false;
     await this.store.loadOlder();
     // Keep the reader's place after older messages are prepended.
     queueMicrotask(() => { if (el) el.scrollTop = el.scrollHeight - before; });
+  }
+
+  protected draftFor(key: string): string {
+    return this.drafts.get(key) ?? '';
   }
 
   protected body(message: ConversationMessageDto): string {
@@ -437,8 +551,23 @@ export class ConversationPanelComponent implements AfterViewChecked {
 
   protected async send(html: string, mentions: string[], attachmentFileIds: string[] = []): Promise<void> {
     this.stickToBottom = true;
+    const key = this.refKey();
+    this.drafts.delete(key);
     const tag = this.isSubject() && this.justification() ? 'justification' : null;
-    if (await this.store.send(html, mentions, attachmentFileIds, tag)) this.justification.set(false);
+    const ok = await this.store.send(html, mentions, attachmentFileIds, tag);
+    // Only the ticket it was written in may keep (and retry) a failed message.
+    if (this.refKey() !== key) return;
+    if (ok) {
+      this.justification.set(false);
+      this.failed.set(null);
+    } else {
+      this.failed.set({ html, mentions, attachmentFileIds });
+    }
+  }
+
+  protected retry(): void {
+    const failed = this.failed();
+    if (failed) void this.send(failed.html, failed.mentions, failed.attachmentFileIds);
   }
 
   protected role(p: ConversationParticipantDto): string {
@@ -462,6 +591,20 @@ export class ConversationPanelComponent implements AfterViewChecked {
   protected async leave(): Promise<void> {
     this.leaveConfirm.set(false);
     if (await this.store.leave()) this.membersOpen.set(false);
+  }
+
+  protected onMenu(id: string): void {
+    if (id === 'add') {
+      if (!this.addOpen()) this.toggleAdd();
+    } else if (id === 'members') {
+      this.membersOpen.set(true);
+      this.leaveConfirm.set(false);
+    } else if (id === 'export') {
+      this.exportBundle();
+    } else if (id === 'leave') {
+      this.membersOpen.set(true);
+      this.leaveConfirm.set(true);
+    }
   }
 
   protected tagLabel(tag: string): string {
@@ -552,6 +695,6 @@ export class ConversationPanelComponent implements AfterViewChecked {
     const yesterday = new Date(today.getTime() - 86_400_000);
     if (date.toDateString() === today.toDateString()) return 'Today';
     if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
 }

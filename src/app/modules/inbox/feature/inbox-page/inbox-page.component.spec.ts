@@ -83,13 +83,15 @@ describe('InboxPageComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, store: TestBed.inject(InboxStore) };
   }
 
-  it('lists requests and alerts with project, type, status and the unread-chat dot', async () => {
+  it('lists tickets with type and source chips, status and the unread-chat dot; no ticket open yet', async () => {
     const { el } = await render();
     const rows = Array.from(el.querySelectorAll('[data-testid="inbox-row"]')) as HTMLElement[];
 
+    expect(el.querySelector('[data-testid="inbox-chat-empty"]')?.textContent).toContain('Select a ticket');
+    expect(el.querySelector('[data-testid="inbox-workspace"]')?.classList).not.toContain('inbox__workspace--details');
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('Update task details');
-    expect(rows[0].textContent).toContain('Apollo');
+    expect(rows[0].querySelector('.inbox__source')?.textContent).toBe('Work');
     expect(rows[0].querySelector('[data-testid="inbox-row-unread"]')).not.toBeNull();
     expect(rows[1].textContent).toContain('Task past its due date');
     expect(rows[1].querySelector('[data-testid="inbox-status"]')?.textContent).toContain('Open');
@@ -204,11 +206,13 @@ describe('InboxPageComponent', () => {
     expect(notifications.error).toHaveBeenCalledWith('Only the approver can decide.');
   });
 
-  it('shows the item conversation inside the card; a "/" action runs like its button', async () => {
+  it('opens the ticket conversation in the middle column, beside its details; a "/" action runs like its button', async () => {
     params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
     const { fixture, el } = await render();
 
-    expect(el.querySelector('[data-testid="inbox-card"] [data-testid="conversation-panel"]')).not.toBeNull();
+    expect(el.querySelector('.inbox__chat [data-testid="conversation-panel"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="inbox-card"] [data-testid="conversation-panel"]')).toBeNull();
+    expect(el.querySelector('.inbox__details [data-testid="inbox-card"]')).not.toBeNull();
     expect(conversations['open']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' });
 
     const panel = fixture.debugElement.query((d) => d.name === 'app-conversation-panel').componentInstance;
@@ -223,8 +227,36 @@ describe('InboxPageComponent', () => {
     params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
     const { el } = await render();
 
-    expect(el.querySelector('[data-testid="inbox-card"] [data-testid="conversation-panel"]')).not.toBeNull();
+    expect(el.querySelector('.inbox__chat [data-testid="conversation-panel"]')).not.toBeNull();
     expect(conversations['open']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' });
+  });
+
+  it('hides the ticket details (the chat takes the space), remembers it, and shows them again', async () => {
+    localStorage.removeItem('inbox.detailsHidden');
+    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
+    const { fixture, el } = await render();
+    const workspace = () => el.querySelector('[data-testid="inbox-workspace"]')!;
+    expect(workspace().classList).toContain('inbox__workspace--details');
+
+    (el.querySelector('[data-testid="inbox-card-hide"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(workspace().classList).not.toContain('inbox__workspace--details');
+    expect(localStorage.getItem('inbox.detailsHidden')).toBe('1');
+    expect(el.querySelector('.inbox__chat [data-testid="conversation-panel"]')).not.toBeNull();
+
+    (el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(workspace().classList).toContain('inbox__workspace--details');
+    expect(localStorage.getItem('inbox.detailsHidden')).toBe('0');
+  });
+
+  it('sorts the list on the server and keeps the order in the URL', async () => {
+    const { fixture } = await render();
+    (fixture.componentInstance as unknown as { onSort(id: string): void }).onSort('oldest');
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(api['list']).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'oldest' }));
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { sort: 'oldest' }, replaceUrl: true }));
   });
 
   it('opens the item target with its query params', async () => {

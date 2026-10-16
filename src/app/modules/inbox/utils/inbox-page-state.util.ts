@@ -1,4 +1,4 @@
-import { InboxCapability, InboxCategory, InboxCountsDto, InboxItemDto, InboxKindDescriptorDto, InboxQuery, hasCapability } from '../models/inbox.dto';
+import { InboxCapability, InboxCategory, InboxCountsDto, InboxItemDto, InboxKindDescriptorDto, InboxQuery, InboxSort, hasCapability } from '../models/inbox.dto';
 import { requestedOnFrom } from './inbox-item.util';
 
 export type InboxTab = 'all' | InboxCategory | 'history';
@@ -10,6 +10,7 @@ export interface InboxPageState {
   tab: InboxTab;
   direction: InboxDirectionChoice;
   search: string;
+  sort: InboxSort;
   /** Filter-bar values by key (source, kind, status, project, employee, department, requestedOn, provider fields…). */
   filters: Record<string, string[]>;
 }
@@ -17,7 +18,8 @@ export interface InboxPageState {
 const TAB_PARAM: Record<InboxTab, string> = { all: 'all', request: 'requests', alert: 'alerts', history: 'history' };
 const PARAM_TAB: Record<string, InboxTab> = { all: 'all', requests: 'request', alerts: 'alert', history: 'history', request: 'request', alert: 'alert' };
 const DIRECTIONS = new Set<InboxDirectionChoice>(['all', 'received', 'sent', 'about']);
-const RESERVED = new Set(['tab', 'dir', 'q']);
+const SORTS = new Set<InboxSort>(['latest', 'newest', 'oldest']);
+const RESERVED = new Set(['tab', 'dir', 'q', 'sort']);
 /** Filter keys that are InboxQuery fields; every other key is a source facet (kind, employee, department, module…). */
 const QUERY_KEYS = new Set(['project', 'source', 'type', 'status', 'requestedBy']);
 
@@ -32,6 +34,7 @@ export function pageStateFromParams(params: Record<string, string | undefined>):
     tab: PARAM_TAB[params['tab'] ?? ''] ?? 'all',
     direction: DIRECTIONS.has(direction) ? direction : 'all',
     search: params['q'] ?? '',
+    sort: SORTS.has(params['sort'] as InboxSort) ? params['sort'] as InboxSort : 'latest',
     filters
   };
 }
@@ -42,6 +45,7 @@ export function pageStateToParams(state: InboxPageState): Record<string, string>
   if (state.tab !== 'all') params['tab'] = TAB_PARAM[state.tab];
   if (state.direction !== 'all') params['dir'] = state.direction;
   if (state.search.trim()) params['q'] = state.search;
+  if (state.sort !== 'latest') params['sort'] = state.sort;
   for (const [key, values] of Object.entries(state.filters)) {
     if (values.length === 0 || (key === 'requestedOn' && values[0] === 'any')) continue;
     params[key] = values.join(',');
@@ -55,7 +59,8 @@ export function pageStateToQuery(state: InboxPageState, myEmployeeId: string | n
     category: state.tab === 'request' || state.tab === 'alert' ? [state.tab] : [],
     direction: state.direction === 'all' ? [] : state.direction === 'about' ? ['info'] : [state.direction],
     project: [], source: [], type: [], status: [], requestedBy: [],
-    search: state.search
+    search: state.search,
+    sort: state.sort
   };
   const facets: Record<string, string[]> = {};
   for (const [key, selected] of Object.entries(state.filters)) {

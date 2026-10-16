@@ -164,7 +164,11 @@ export interface InboxQuery {
   facets?: Record<string, string[]>;
   page?: number;
   pageSize?: number;
+  /** "latest" (pending first, then latest activity - the server default), "newest" or "oldest" (by creation). */
+  sort?: InboxSort;
 }
+
+export type InboxSort = 'latest' | 'newest' | 'oldest';
 
 export interface InboxActionBody {
   comment?: string | null;

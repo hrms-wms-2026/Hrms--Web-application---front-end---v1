@@ -41,14 +41,31 @@ describe('InboxItemCardComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, actions };
   }
 
-  it('shows the header, steps, explanation and change set', () => {
-    const { el } = render(detail());
+  it('shows the summary, status, steps and change set; the explanation opens from its collapsed header', () => {
+    const { fixture, el } = render(detail());
 
     expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Update task details');
     expect(el.querySelector('[data-testid="inbox-card-status"]')?.textContent).toContain('Pending');
     expect(el.querySelectorAll('[data-testid="inbox-step"]')).toHaveLength(2);
-    expect(el.querySelector('[data-testid="inbox-card-explanation"]')?.textContent).toContain('Typo in the title');
     expect(el.querySelector('[data-testid="inbox-change-set"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="inbox-card-explanation"]')).toBeNull();
+
+    (el.querySelector('[data-testid="inbox-card-explanation-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="inbox-card-explanation"]')?.textContent).toContain('Typo in the title');
+  });
+
+  it('says when there is no explanation, and Hide asks the page to collapse the panel', () => {
+    const { fixture, el } = render(detail({ explanation: null }));
+    const hidden = vi.fn();
+    fixture.componentInstance.hide.subscribe(hidden);
+
+    (el.querySelector('[data-testid="inbox-card-explanation-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('No explanation was given for this ticket.');
+
+    (el.querySelector('[data-testid="inbox-card-hide"]') as HTMLButtonElement).click();
+    expect(hidden).toHaveBeenCalled();
   });
 
   it('shows a loading state and an error', () => {

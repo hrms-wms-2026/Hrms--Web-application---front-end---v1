@@ -90,6 +90,11 @@ export function inboxTitle(item: InboxItemDto): string {
   return ACTION_TITLES[item.actionType] ?? 'Request';
 }
 
+/** A short, stable ticket reference built from the item's own id ("#ATT-1A2B3C4D"); not a separate number. */
+export function inboxReference(item: Pick<InboxItemDto, 'source' | 'id'>): string {
+  return `#${item.source.slice(0, 3).toUpperCase()}-${item.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+}
+
 export function inboxSubtitle(item: InboxItemDto): string {
   if (!isWorkActionType(item)) return item.subtitle ?? '';
   return item.subtitle ? `${item.title} · ${item.subtitle}` : item.title;

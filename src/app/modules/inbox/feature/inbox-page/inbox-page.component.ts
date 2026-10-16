@@ -13,9 +13,9 @@ import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
-import { TabOption } from '../../../../shared/ui/tabs/tabs.component';
+import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../../work/ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
-import { InboxCapability, InboxHistoryEntryDto, InboxItemDto, InboxItemRef, InboxTargetDto, sameRef } from '../../models/inbox.dto';
+import { InboxCapability, InboxHistoryEntryDto, InboxItemDto, InboxItemRef, InboxSort, InboxTargetDto, sameRef } from '../../models/inbox.dto';
 import { InboxKindsStore } from '../../state/inbox-kinds.store';
 import { InboxStore } from '../../state/inbox.store';
 import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../../ui/inbox-action-dialogs/inbox-outcome-dialog.component';
@@ -47,15 +47,23 @@ import {
   tabCounts
 } from '../../utils/inbox-page-state.util';
 
-const COLUMNS: readonly DataTableColumn[] = [
-  { key: 'title', label: 'Title' },
-  { key: 'project', label: 'Project', width: '15%' },
-  { key: 'type', label: 'Type', width: '140px' },
-  { key: 'requestedBy', label: 'Requested by', width: '17%' },
-  { key: 'requestedTo', label: 'Requested to', width: '15%' },
-  { key: 'status', label: 'Status', width: '104px' },
-  { key: 'actions', label: 'Actions', width: '52px', interactive: true, align: 'end', hideLabel: true }
+const SORT_OPTIONS: readonly { id: InboxSort; label: string; short: string }[] = [
+  { id: 'latest', label: 'Latest activity', short: 'Latest' },
+  { id: 'newest', label: 'Newest first', short: 'Newest' },
+  { id: 'oldest', label: 'Oldest first', short: 'Oldest' }
 ];
+const CHECK_ICON = 'M20 6 9 17l-5-5';
+/** Whether the ticket details panel is collapsed - a per-viewer preference. */
+const DETAILS_HIDDEN_KEY = 'inbox.detailsHidden';
+const NARROW_QUERY = '(max-width: 1023px)';
+
+function readDetailsHidden(): boolean {
+  try {
+    return localStorage.getItem(DETAILS_HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 const DIRECTION_OPTIONS: readonly TabOption[] = [
   { value: 'all', label: 'All' }, { value: 'received', label: 'Received' }, { value: 'sent', label: 'Sent' }, { value: 'about', label: 'About me' }
@@ -74,13 +82,14 @@ function withCount(label: string, n: number): string {
   return n > 0 ? `${label} (${n > 99 ? '99+' : n})` : label;
 }
 
-/** Every request and alert involving the user, across projects and modules, with the selected item's card. */
+/** The Inbox as a ticket workspace: the ticket list (tabs, direction, sort, filters), the selected ticket's own
+ *  conversation, and its details panel (collapsible) with the actions - across projects and modules. */
 @Component({
   selector: 'app-inbox-page',
   standalone: true,
   imports: [
     DatePipe, AvatarComponent, BulkActionBarComponent, BulkActionResultModalComponent, DataTableComponent, DataTableCellDirective,
-    DropdownMenuComponent, FilterBarComponent, BreadcrumbHeaderComponent, ApprovalDelegateModalComponent, ConversationPanelComponent,
+    DropdownMenuComponent, FilterBarComponent, BreadcrumbHeaderComponent, TabsComponent, ApprovalDelegateModalComponent, ConversationPanelComponent,
     InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent, InboxTypeIconComponent, TaskAssigneeAvatarFilterComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -118,201 +127,202 @@ function withCount(label: string, n: number): string {
             }
           </div>
         </div>
-        <nav class="inbox__tabs" role="tablist" aria-label="Category">
-          @for (tab of tabs(); track tab.value) {
-            <button type="button" role="tab" class="inbox__tab" [class.inbox__tab--active]="tab.value === state().tab"
-              [attr.aria-selected]="tab.value === state().tab" [attr.data-testid]="'inbox-tab-' + tab.value" (click)="onTab(tab.value)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                @switch (tab.value) {
-                  @case ('all') { <path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /> }
-                  @case ('request') { <rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /> }
-                  @case ('alert') { <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /> }
-                  @case ('history') { <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /> }
-                }
-              </svg>
-              {{ tab.label }}
-            </button>
-          }
-        </nav>
       </header>
 
-      @if (state().tab !== 'history') {
-        <div class="inbox__toolbar-row">
-          <div class="inbox__segment" role="radiogroup" aria-label="Direction">
-            @for (option of directionOptions; track option.value) {
-              <button type="button" role="radio" class="inbox__segment-btn" [class.inbox__segment-btn--active]="state().direction === option.value"
-                [attr.aria-checked]="state().direction === option.value" [attr.data-testid]="'inbox-direction-' + option.value"
-                (click)="onDirection(option.value)">{{ option.label }}</button>
-            }
-          </div>
-        </div>
-      }
-
-      <div class="inbox__body" [class.inbox__body--with-card]="store.selectedRef() !== null">
-        <div class="inbox__main">
-          @if (state().tab === 'history') {
-            @if (store.historyLoading() && store.history().length === 0) {
-              <p class="inbox__state" aria-live="polite">Loading your history…</p>
-            } @else if (store.historyError()) {
-              <div class="inbox__state inbox__state--error" role="alert">
-                <span>{{ store.historyError() }}</span>
-                <button type="button" (click)="store.loadHistory()">Try again</button>
-              </div>
-            } @else if (store.history().length === 0) {
-              <p class="inbox__state">Decisions you take show up here.</p>
-            } @else {
-              <ul class="inbox__history" data-testid="inbox-history">
-                @for (entry of store.history(); track entry.journalId) {
-                  <li class="inbox__history-row" data-testid="inbox-history-row">
-                    <button type="button" class="inbox__history-main" [disabled]="!entry.item" (click)="openHistory(entry)">
-                      <span class="inbox__title"><span class="inbox__ellipsis">{{ entry.title }}</span></span>
-                      <span class="inbox__secondary">Decided {{ entry.actionLabel }} · {{ entry.decidedAt | date: 'MMM d, y h:mm a' }}</span>
-                      @if (entry.comment) { <span class="inbox__secondary inbox__ellipsis">“{{ entry.comment }}”</span> }
-                    </button>
-                    @if (entry.isReverted) {
-                      <span class="inbox__pill inbox__pill--neutral">Undone</span>
-                    } @else if (canUndo(entry)) {
-                      <button type="button" class="inbox__chip" data-testid="inbox-history-revert" [disabled]="store.busy()"
-                        (click)="undoFromHistory(entry)">Undo · until {{ entry.revertableUntil | date: 'h:mm a' }}</button>
-                    }
-                  </li>
+      <div class="inbox__workspace" data-testid="inbox-workspace"
+        [class.inbox__workspace--open]="store.selectedRef() !== null"
+        [class.inbox__workspace--details]="detailsShown()"
+        [class.inbox__workspace--drawer]="narrow() && detailsShown()">
+        <section class="inbox__panel inbox__list" aria-label="Tickets">
+          <app-tabs class="inbox__tabs" ariaLabel="Category" [tabs]="tabs()" [value]="state().tab" (valueChange)="onTab($event)" />
+          @if (state().tab !== 'history') {
+            <div class="inbox__list-tools">
+              <div class="inbox__segment" role="radiogroup" aria-label="Direction">
+                @for (option of directionOptions; track option.value) {
+                  <button type="button" role="radio" class="inbox__segment-btn" [class.inbox__segment-btn--active]="state().direction === option.value"
+                    [attr.aria-checked]="state().direction === option.value" [attr.data-testid]="'inbox-direction-' + option.value"
+                    (click)="onDirection(option.value)">{{ option.label }}</button>
                 }
-              </ul>
-              @if (historyPageCount() > 1) {
-                <nav class="inbox__pager" aria-label="History pages">
-                  <button type="button" [disabled]="historyPage() <= 1" (click)="store.loadHistory({ page: historyPage() - 1 })">Previous</button>
-                  <span>Page {{ historyPage() }} of {{ historyPageCount() }}</span>
-                  <button type="button" [disabled]="historyPage() >= historyPageCount()" (click)="store.loadHistory({ page: historyPage() + 1 })">Next</button>
+              </div>
+              <app-dropdown-menu [items]="sortMenu()" ariaLabel="Sort tickets" (selected)="onSort($event)">
+                <button menu-trigger type="button" class="inbox__sort" data-testid="inbox-sort">
+                  Sort: <strong>{{ sortLabel() }}</strong>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                </button>
+              </app-dropdown-menu>
+            </div>
+          }
+
+          <div class="inbox__list-body">
+            @if (state().tab === 'history') {
+              @if (store.historyLoading() && store.history().length === 0) {
+                <p class="inbox__state" aria-live="polite">Loading your history…</p>
+              } @else if (store.historyError()) {
+                <div class="inbox__state inbox__state--error" role="alert">
+                  <span>{{ store.historyError() }}</span>
+                  <button type="button" (click)="store.loadHistory()">Try again</button>
+                </div>
+              } @else if (store.history().length === 0) {
+                <p class="inbox__state">Decisions you take show up here.</p>
+              } @else {
+                <ul class="inbox__history" data-testid="inbox-history">
+                  @for (entry of store.history(); track entry.journalId) {
+                    <li class="inbox__history-row" data-testid="inbox-history-row">
+                      <button type="button" class="inbox__history-main" [disabled]="!entry.item" (click)="openHistory(entry)">
+                        <span class="inbox__title"><span class="inbox__ellipsis">{{ entry.title }}</span></span>
+                        <span class="inbox__secondary">Decided {{ entry.actionLabel }} · {{ entry.decidedAt | date: 'MMM d, y h:mm a' }}</span>
+                        @if (entry.comment) { <span class="inbox__secondary inbox__ellipsis">“{{ entry.comment }}”</span> }
+                      </button>
+                      @if (entry.isReverted) {
+                        <span class="inbox__pill inbox__pill--neutral">Undone</span>
+                      } @else if (canUndo(entry)) {
+                        <button type="button" class="inbox__chip" data-testid="inbox-history-revert" [disabled]="store.busy()"
+                          (click)="undoFromHistory(entry)">Undo · until {{ entry.revertableUntil | date: 'h:mm a' }}</button>
+                      }
+                    </li>
+                  }
+                </ul>
+                @if (historyPageCount() > 1) {
+                  <nav class="inbox__pager" aria-label="History pages">
+                    <button type="button" [disabled]="historyPage() <= 1" (click)="store.loadHistory({ page: historyPage() - 1 })">Previous</button>
+                    <span>Page {{ historyPage() }} of {{ historyPageCount() }}</span>
+                    <button type="button" [disabled]="historyPage() >= historyPageCount()" (click)="store.loadHistory({ page: historyPage() + 1 })">Next</button>
+                  </nav>
+                }
+              }
+            } @else if (store.loading() && store.items().length === 0) {
+              <p class="inbox__state" aria-live="polite" data-testid="inbox-loading">Loading your inbox…</p>
+            } @else if (store.error() && store.items().length === 0) {
+              <div class="inbox__state inbox__state--error" role="alert" data-testid="inbox-error">
+                <span>{{ store.error() }}</span>
+                <button type="button" (click)="store.load()">Try again</button>
+              </div>
+            } @else if (state().tab === 'alert' && grouped()) {
+              @if (groups().length === 0) { <p class="inbox__state">{{ emptyMessage() }}</p> }
+              @for (group of groups(); track group.key) {
+                <section class="inbox__group" data-testid="inbox-group">
+                  <button type="button" class="inbox__group-header" data-testid="inbox-group-header"
+                    [attr.aria-expanded]="!collapsed().has(group.key)" (click)="toggleGroup(group.key)">
+                    <span class="inbox__group-caret" aria-hidden="true">{{ collapsed().has(group.key) ? '▸' : '▾' }}</span>
+                    <app-avatar [userName]="group.name" size="xs" />
+                    <span>{{ group.name }} · {{ group.items.length }}</span>
+                  </button>
+                  @if (!collapsed().has(group.key)) {
+                    <ul class="inbox__group-list">
+                      @for (row of group.items; track trackItem(row)) {
+                        <li>
+                          <button type="button" class="inbox__group-row" data-testid="inbox-row" [class.inbox__group-row--active]="activeRowId() === trackItem(row)"
+                            (click)="open(refOf(row))">
+                            <app-inbox-type-icon [icon]="meta(row).icon" [tone]="meta(row).tone" />
+                            <span class="inbox__ticket-text">
+                              <span class="inbox__ellipsis inbox__title">{{ title(row) }}</span>
+                              <span class="inbox__secondary inbox__ellipsis">{{ subtitle(row) }}</span>
+                            </span>
+                            <span data-testid="inbox-status" [class]="'inbox__pill inbox__pill--' + tone(row)">{{ status(row) }}</span>
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </section>
+              }
+            } @else {
+              @if (selectedItems().length > 0) {
+                <app-bulk-action-bar [count]="selectedItems().length" noun="item" [actions]="bulkBarActions()"
+                  (action)="onBulkAction($event)" (cleared)="selectedIds.set(emptySelection)" />
+              }
+              <app-data-table
+                data-testid="inbox-table"
+                [columns]="columns()"
+                [rows]="store.items()"
+                [trackBy]="trackItem"
+                [rowTestId]="rowTestId"
+                [activeRowId]="activeRowId()"
+                [busyRowId]="busyRowId()"
+                [rowFocusable]="true"
+                [emptyMessage]="emptyMessage()"
+                [selectable]="selectable()"
+                [selectedIds]="selectedIds()"
+                [isRowSelectable]="isSelectable"
+                (rowSelectionChanged)="onRowSelection($event)"
+                (selectAllChanged)="onSelectAll($event)"
+                (rowClicked)="open(refOf($event))"
+              >
+                <ng-template appDataTableCell="ticket" let-item>
+                  <div class="inbox__ticket">
+                    <app-inbox-type-icon [icon]="meta(item).icon" [tone]="meta(item).tone" />
+                    <div class="inbox__ticket-text">
+                      <span class="inbox__title">
+                        <span class="inbox__ellipsis">{{ title(item) }}</span>
+                        @if (item.unreadMessages > 0) {
+                          <span class="inbox__unread" data-testid="inbox-row-unread" [attr.aria-label]="item.unreadMessages + ' unread messages'"></span>
+                        }
+                      </span>
+                      @if (subtitle(item)) { <span class="inbox__secondary inbox__ellipsis">{{ subtitle(item) }}</span> }
+                      <span class="inbox__chips">
+                        <span [class]="'inbox__pill inbox__pill--sm inbox__pill--' + meta(item).tone">{{ meta(item).label }}</span>
+                        <span class="inbox__source">{{ sourceLabel(item) }}</span>
+                      </span>
+                    </div>
+                  </div>
+                </ng-template>
+                <ng-template appDataTableCell="person" let-item>
+                  <span class="inbox__person">
+                    @if (item.requestedBy) { <app-avatar [userName]="item.requestedBy.name" size="sm" /> }
+                    <span class="inbox__person-text">
+                      <span class="inbox__ellipsis">{{ item.requestedBy?.name ?? '—' }}</span>
+                      <span class="inbox__secondary inbox__ellipsis">{{ item.createdAt | date: 'MMM d, y' }}</span>
+                    </span>
+                  </span>
+                </ng-template>
+                <ng-template appDataTableCell="status" let-item>
+                  <span data-testid="inbox-status" [class]="'inbox__pill inbox__pill--' + tone(item)">{{ status(item) }}</span>
+                </ng-template>
+                <ng-template appDataTableCell="actions" let-item>
+                  <app-dropdown-menu [items]="menuFor(item)" ariaLabel="Item actions" (selected)="onRowMenu(item, $event)">
+                    <button menu-trigger type="button" class="inbox__kebab" data-testid="inbox-row-menu" aria-label="Item actions">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+                    </button>
+                  </app-dropdown-menu>
+                </ng-template>
+              </app-data-table>
+
+              @if (pageCount() > 1) {
+                <nav class="inbox__pager" aria-label="Pages">
+                  <button type="button" data-testid="inbox-prev" [disabled]="page() <= 1" (click)="store.setPage(page() - 1)">Previous</button>
+                  <span>Page {{ page() }} of {{ pageCount() }}</span>
+                  <button type="button" data-testid="inbox-next" [disabled]="page() >= pageCount()" (click)="store.setPage(page() + 1)">Next</button>
                 </nav>
               }
             }
-          } @else if (store.loading() && store.items().length === 0) {
-            <p class="inbox__state" aria-live="polite" data-testid="inbox-loading">Loading your inbox…</p>
-          } @else if (store.error() && store.items().length === 0) {
-            <div class="inbox__state inbox__state--error" role="alert" data-testid="inbox-error">
-              <span>{{ store.error() }}</span>
-              <button type="button" (click)="store.load()">Try again</button>
-            </div>
-          } @else if (state().tab === 'alert' && grouped()) {
-            @if (groups().length === 0) { <p class="inbox__state">{{ emptyMessage() }}</p> }
-            @for (group of groups(); track group.key) {
-              <section class="inbox__group" data-testid="inbox-group">
-                <button type="button" class="inbox__group-header" data-testid="inbox-group-header"
-                  [attr.aria-expanded]="!collapsed().has(group.key)" (click)="toggleGroup(group.key)">
-                  <span class="inbox__group-caret" aria-hidden="true">{{ collapsed().has(group.key) ? '▸' : '▾' }}</span>
-                  <app-avatar [userName]="group.name" size="xs" />
-                  <span>{{ group.name }} · {{ group.items.length }}</span>
-                </button>
-                @if (!collapsed().has(group.key)) {
-                  <ul class="inbox__group-list">
-                    @for (row of group.items; track trackItem(row)) {
-                      <li>
-                        <button type="button" class="inbox__group-row" data-testid="inbox-row" [class.inbox__group-row--active]="activeRowId() === trackItem(row)"
-                          (click)="open(refOf(row))">
-                          <app-inbox-type-icon [icon]="meta(row).icon" [tone]="meta(row).tone" />
-                          <span class="inbox__title-text">
-                            <span class="inbox__ellipsis inbox__title">{{ title(row) }}</span>
-                            <span class="inbox__secondary inbox__ellipsis">{{ subtitle(row) }}</span>
-                          </span>
-                          <span data-testid="inbox-status" [class]="'inbox__pill inbox__pill--' + tone(row)">{{ status(row) }}</span>
-                        </button>
-                      </li>
-                    }
-                  </ul>
-                }
-              </section>
-            }
-          } @else {
-            @if (selectedItems().length > 0) {
-              <app-bulk-action-bar [count]="selectedItems().length" noun="item" [actions]="bulkBarActions()"
-                (action)="onBulkAction($event)" (cleared)="selectedIds.set(emptySelection)" />
-            }
-            <app-data-table
-              data-testid="inbox-table"
-              [columns]="columns"
-              [rows]="store.items()"
-              [trackBy]="trackItem"
-              [rowTestId]="rowTestId"
-              [activeRowId]="activeRowId()"
-              [activeRowAppearance]="'solid'"
-              [busyRowId]="busyRowId()"
-              [rowFocusable]="true"
-              [emptyMessage]="emptyMessage()"
-              [selectable]="selectable()"
-              [selectedIds]="selectedIds()"
-              [isRowSelectable]="isSelectable"
-              (rowSelectionChanged)="onRowSelection($event)"
-              (selectAllChanged)="onSelectAll($event)"
-              (rowClicked)="open(refOf($event))"
-            >
-              <ng-template appDataTableCell="title" let-item>
-                <div class="inbox__title-cell">
-                  <app-inbox-type-icon [icon]="meta(item).icon" [tone]="meta(item).tone" />
-                  <div class="inbox__title-text">
-                    <span class="inbox__title">
-                      <span class="inbox__ellipsis">{{ title(item) }}</span>
-                      @if (item.unreadMessages > 0) {
-                        <span class="inbox__unread" data-testid="inbox-row-unread" [attr.aria-label]="item.unreadMessages + ' unread messages'"></span>
-                      }
-                    </span>
-                    <span class="inbox__secondary inbox__ellipsis">{{ subtitle(item) }}</span>
-                  </div>
-                </div>
-              </ng-template>
-              <ng-template appDataTableCell="project" let-item>
-                <span class="inbox__ellipsis">{{ item.contextName ?? '—' }}</span>
-              </ng-template>
-              <ng-template appDataTableCell="type" let-item>
-                <span [class]="'inbox__pill inbox__pill--' + meta(item).tone">{{ meta(item).label }}</span>
-              </ng-template>
-              <ng-template appDataTableCell="requestedBy" let-item>
-                @if (item.requestedBy) {
-                  <span class="inbox__person">
-                    <app-avatar [userName]="item.requestedBy.name" size="sm" />
-                    <span class="inbox__person-text">
-                      <span class="inbox__ellipsis">{{ item.requestedBy.name }}</span>
-                      <span class="inbox__secondary inbox__ellipsis">{{ item.createdAt | date: 'MMM d, y · h:mm a' }}</span>
-                    </span>
-                  </span>
-                } @else {
-                  <span class="inbox__secondary">{{ item.createdAt | date: 'MMM d, y · h:mm a' }}</span>
-                }
-              </ng-template>
-              <ng-template appDataTableCell="requestedTo" let-item>
-                @if (item.requestedTo) {
-                  <span class="inbox__person">
-                    <app-avatar [userName]="item.requestedTo.name" size="sm" />
-                    <span class="inbox__ellipsis">{{ item.requestedTo.name }}</span>
-                  </span>
-                } @else {
-                  <span class="inbox__secondary">—</span>
-                }
-              </ng-template>
-              <ng-template appDataTableCell="status" let-item>
-                <span data-testid="inbox-status" [class]="'inbox__pill inbox__pill--' + tone(item)">{{ status(item) }}</span>
-              </ng-template>
-              <ng-template appDataTableCell="actions" let-item>
-                <app-dropdown-menu [items]="menuFor(item)" ariaLabel="Item actions" (selected)="onRowMenu(item, $event)">
-                  <button menu-trigger type="button" class="inbox__kebab" data-testid="inbox-row-menu" aria-label="Item actions">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
-                  </button>
-                </app-dropdown-menu>
-              </ng-template>
-            </app-data-table>
+          </div>
+        </section>
 
-            @if (pageCount() > 1) {
-              <nav class="inbox__pager" aria-label="Pages">
-                <button type="button" data-testid="inbox-prev" [disabled]="page() <= 1" (click)="store.setPage(page() - 1)">Previous</button>
-                <span>Page {{ page() }} of {{ pageCount() }}</span>
-                <button type="button" data-testid="inbox-next" [disabled]="page() >= pageCount()" (click)="store.setPage(page() + 1)">Next</button>
-              </nav>
-            }
+        <section class="inbox__panel inbox__chat" aria-label="Ticket conversation">
+          @if (store.selectedRef(); as ref) {
+            <app-conversation-panel
+              [itemRef]="ref"
+              [item]="selectedItem()"
+              [descriptor]="selectedItem() ? kinds.descriptor(selectedItem()!.source, selectedItem()!.kind) : null"
+              [detailsVisible]="detailsShown()"
+              [actions]="store.detail()?.item?.availableActions ?? []"
+              [requesterId]="store.detail()?.item?.requestedBy?.id ?? null"
+              (action)="card()?.runAction($event)"
+              (toggleDetails)="toggleDetails()"
+              (back)="close()"
+            />
+          } @else {
+            <div class="inbox__chat-empty" data-testid="inbox-chat-empty">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12Z" /></svg>
+              <p class="inbox__chat-empty-title">Select a ticket</p>
+              <p>Its conversation and details open here.</p>
+            </div>
           }
-        </div>
+        </section>
 
         @if (store.selectedRef() !== null) {
-          <div class="inbox__scrim" aria-hidden="true" (click)="close()"></div>
-          <div class="inbox__card">
+          <div class="inbox__scrim" aria-hidden="true" (click)="toggleDetails()"></div>
+          <aside class="inbox__panel inbox__details">
             <app-inbox-item-card
               #card
               [detail]="store.detail()"
@@ -322,57 +332,41 @@ function withCount(label: string, n: number): string {
               [actionError]="store.actionError()"
               [actionErrorInline]="store.actionErrorInline()"
               [descriptor]="store.detail() ? kinds.descriptor(store.detail()!.item.source, store.detail()!.item.kind) : null"
-              (closed)="close()"
+              (hide)="toggleDetails()"
               (action)="onCardAction($event)"
               (openTarget)="openTarget($event)"
-            >
-              <!-- Shown even when the detail fails: the chat has its own access check and error. -->
-              @if (!store.detailLoading() || store.detail()) {
-                <app-conversation-panel
-                  inboxConversation
-                  [itemRef]="store.selectedRef()!"
-                  [actions]="store.detail()?.item?.availableActions ?? []"
-                  [requesterId]="store.detail()?.item?.requestedBy?.id ?? null"
-                  (action)="card.runAction($event)"
-                />
-              }
-            </app-inbox-item-card>
-          </div>
+            />
+          </aside>
         }
       </div>
-
-      <app-inbox-comment-dialog
-        [open]="bulkPending()?.needsComment === true && bulkPending()?.key !== 'resolve'"
-        [title]="(bulkPending()?.label ?? '') + ' ' + selectedItems().length + ' items?'"
-        [confirmLabel]="bulkPending()?.label ?? ''"
-        (confirmed)="runBulk(bulkPending()!.key, $event, null)"
-        (closed)="bulkPending.set(null)"
-      />
-      <app-inbox-outcome-dialog
-        [open]="bulkPending()?.key === 'resolve'"
-        [title]="'Resolve ' + selectedItems().length + ' alerts'"
-        [outcomes]="bulkPending()?.outcomes ?? []"
-        (confirmed)="onBulkOutcome($event)"
-        (closed)="bulkPending.set(null)"
-      />
-      <app-bulk-action-result-modal [result]="bulkResult()" [names]="bulkNames()" noun="item" [showApprovals]="false"
-        (closed)="bulkResult.set(null)" />
-      <app-approval-delegate-modal [open]="delegateOpen()" (closed)="delegateOpen.set(false)" />
     </div>
+
+    <!-- Overlays sit outside the flex column so they add no gap below the workspace. -->
+    <app-inbox-comment-dialog
+      [open]="bulkPending()?.needsComment === true && bulkPending()?.key !== 'resolve'"
+      [title]="(bulkPending()?.label ?? '') + ' ' + selectedItems().length + ' items?'"
+      [confirmLabel]="bulkPending()?.label ?? ''"
+      (confirmed)="runBulk(bulkPending()!.key, $event, null)"
+      (closed)="bulkPending.set(null)"
+    />
+    <app-inbox-outcome-dialog
+      [open]="bulkPending()?.key === 'resolve'"
+      [title]="'Resolve ' + selectedItems().length + ' alerts'"
+      [outcomes]="bulkPending()?.outcomes ?? []"
+      (confirmed)="onBulkOutcome($event)"
+      (closed)="bulkPending.set(null)"
+    />
+    <app-bulk-action-result-modal [result]="bulkResult()" [names]="bulkNames()" noun="item" [showApprovals]="false"
+      (closed)="bulkResult.set(null)" />
+    <app-approval-delegate-modal [open]="delegateOpen()" (closed)="delegateOpen.set(false)" />
   `,
   styles: [`
-    :host { display: block; }
-    .inbox { display: flex; flex-direction: column; gap: 8px; }
-    /* Same sticky header as Work (global .work-page-header); the tab bar sits on its bottom border like the project sub-menu. */
-    .inbox__page-header { padding-bottom: 0 !important; margin-bottom: 0 !important; }
-    .inbox__header-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; min-height: 36px; margin-bottom: 0.375rem; }
+    :host { display: block; height: 100%; min-height: 0; }
+    .inbox { display: flex; height: 100%; min-height: 0; flex-direction: column; gap: 12px; }
+    /* Same sticky header as Work (global .work-page-header). */
+    .inbox__page-header { margin-bottom: 0 !important; }
+    .inbox__header-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; min-height: 36px; }
     .inbox__header-row app-breadcrumb-header { display: inline-flex; flex-shrink: 0; align-items: center; }
-    .inbox__tabs { display: flex; width: 100%; gap: 4px; overflow-x: auto; scrollbar-width: none; }
-    .inbox__tabs::-webkit-scrollbar { display: none; }
-    .inbox__tab { display: flex; align-items: center; gap: 6px; margin-bottom: -1px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--color-text-secondary); font: inherit; font-size: 14px; line-height: 20px; white-space: nowrap; cursor: pointer; transition: color 150ms ease; }
-    .inbox__tab:hover { color: var(--color-text-primary); }
-    .inbox__tab:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: -2px; }
-    .inbox__tab--active { border-bottom-color: var(--color-focus-ring); color: var(--color-text-primary); font-weight: 600; }
     .inbox__header-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
     .inbox__icon-btn { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-secondary); cursor: pointer; }
     .inbox__icon-btn:hover { border-color: var(--color-accent); color: var(--color-text-primary); }
@@ -380,45 +374,62 @@ function withCount(label: string, n: number): string {
     .inbox__icon-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
     .inbox__search-close { display: inline-flex; width: 20px; height: 20px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: none; color: var(--color-text-secondary); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
     .inbox__search-close:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    .inbox__toolbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .inbox__segment { display: inline-flex; box-sizing: border-box; height: 30px; align-items: center; padding: 2px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-secondary); }
-    .inbox__segment-btn { height: 24px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .inbox__segment-btn--active { background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
-    .inbox__segment-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
     .inbox__search { display: inline-flex; width: 320px; max-width: 100%; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
     .inbox__search:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
     .inbox__search svg { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 2; stroke-linecap: round; }
     .inbox__search input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; outline: none; }
-    .inbox__body { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 16px; }
-    .inbox__body--with-card { grid-template-columns: minmax(0, 1fr) 26rem; }
-    .inbox__main { display: flex; min-width: 0; flex-direction: column; gap: 12px; }
-    .inbox__card { position: sticky; top: 16px; height: calc(100vh - 140px); min-height: 420px; min-width: 0; }
+    .inbox__tool-btn { height: 30px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .inbox__tool-btn:hover { border-color: var(--color-accent); }
+    .inbox__tool-btn[aria-pressed="true"] { border-color: var(--color-accent); color: var(--color-accent); }
+    .inbox__tool-btn:focus-visible, .inbox__chip:focus-visible, .inbox__group-header:focus-visible, .inbox__sort:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+
+    /* The workspace: ticket list | conversation | ticket details, filling the rest of the page. */
+    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(400px, 40fr) minmax(0, 60fr); gap: 12px; }
+    .inbox__workspace--details { grid-template-columns: minmax(400px, 40fr) minmax(320px, 36fr) minmax(300px, 24fr); }
+    .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+    .inbox__details { display: none; }
+    .inbox__workspace--details .inbox__details { display: flex; }
     .inbox__scrim { display: none; }
-    .inbox__state { display: flex; align-items: center; gap: 8px; margin: 0; padding: 24px 0; color: var(--color-text-secondary); font-size: 13px; }
+
+    .inbox__tabs { padding: 6px 12px 0; }
+    .inbox__list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 4px; }
+    .inbox__segment { display: inline-flex; box-sizing: border-box; height: 30px; align-items: center; padding: 2px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-secondary); }
+    .inbox__segment-btn { height: 24px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .inbox__segment-btn--active { background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+    .inbox__segment-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+    .inbox__sort { display: inline-flex; height: 30px; align-items: center; gap: 4px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 12px; cursor: pointer; }
+    .inbox__sort strong { color: var(--color-text-primary); font-weight: 600; }
+    .inbox__sort:hover { background: var(--color-surface-secondary); }
+    .inbox__sort svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .inbox__list-body { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 8px; overflow-y: auto; padding: 4px 8px 8px; }
+    /* Compact cells for the narrow list (beats the table's own encapsulated padding). */
+    .inbox__list-body ::ng-deep table.data-table th { padding: 8px; }
+    .inbox__list-body ::ng-deep table.data-table td { padding: 8px; }
+
+    .inbox__state { display: flex; align-items: center; gap: 8px; margin: 0; padding: 24px 8px; color: var(--color-text-secondary); font-size: 13px; }
     .inbox__state--error { color: var(--color-danger); }
     .inbox__state button { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-weight: 650; text-decoration: underline; cursor: pointer; }
-    .inbox__title-cell { display: flex; min-width: 0; align-items: center; gap: 11px; }
-    .inbox__title-text, .inbox__person-text { display: flex; min-width: 0; flex-direction: column; }
+    .inbox__ticket { display: flex; min-width: 0; align-items: flex-start; gap: 10px; }
+    .inbox__ticket-text, .inbox__person-text { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
     .inbox__title { display: flex; min-width: 0; align-items: center; gap: 8px; font-weight: 600; }
     .inbox__unread { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 999px; background: var(--color-accent); }
     .inbox__ellipsis { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .inbox__secondary { color: var(--color-text-secondary); font-size: 12px; }
+    .inbox__chips { display: flex; min-width: 0; align-items: center; gap: 6px; margin-top: 2px; }
+    .inbox__source { overflow: hidden; color: var(--color-text-secondary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
     .inbox__person { display: flex; min-width: 0; align-items: center; gap: 8px; }
     .inbox__person app-avatar { flex: 0 0 auto; }
     .inbox__pill { --tone: var(--color-accent); display: inline-block; max-width: 100%; overflow: hidden; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .inbox__pill--sm { padding: 1px 8px; font-size: 11px; }
     .inbox__pill--neutral { --tone: var(--color-text-secondary); }
     .inbox__pill--warning { --tone: var(--color-warning, #d97706); }
     .inbox__pill--danger { --tone: var(--color-danger); }
-    .inbox__kebab { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+    .inbox__kebab { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
     .inbox__kebab:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .inbox__kebab svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
     .inbox__pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; color: var(--color-text-secondary); font-size: 12px; }
     .inbox__pager button { padding: 5px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; cursor: pointer; }
     .inbox__pager button:disabled { opacity: .5; cursor: default; }
-    .inbox__tool-btn { height: 30px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
-    .inbox__tool-btn:hover { border-color: var(--color-accent); }
-    .inbox__tool-btn[aria-pressed="true"] { border-color: var(--color-accent); color: var(--color-accent); }
-    .inbox__tool-btn:focus-visible, .inbox__chip:focus-visible, .inbox__group-header:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .inbox__history { display: flex; flex-direction: column; margin: 0; padding: 0; border: 1px solid var(--color-border); border-radius: 12px; list-style: none; }
     .inbox__history-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--color-border); }
     .inbox__history-row:last-child { border-bottom: 0; }
@@ -433,16 +444,21 @@ function withCount(label: string, n: number): string {
     .inbox__group-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 11px; padding: 9px 14px; border: 0; border-top: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
     .inbox__group-row:hover { background: var(--color-surface-secondary); }
     .inbox__group-row--active { background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); }
-    .inbox__group-row .inbox__title-text { flex: 1; }
-    :host ::ng-deep tr.data-table__row--active-solid .inbox__secondary { color: color-mix(in srgb, var(--color-accent-contrast, #fff) 80%, transparent); }
-    :host ::ng-deep tr.data-table__row--active-solid .inbox__pill { background: color-mix(in srgb, var(--color-accent-contrast, #fff) 20%, transparent); color: var(--color-accent-contrast, #fff); }
-    :host ::ng-deep tr.data-table__row--active-solid .inbox__unread { background: var(--color-accent-contrast, #fff); }
-    :host ::ng-deep tr.data-table__row--active-solid .inbox__kebab { color: var(--color-accent-contrast, #fff); }
-    /* Narrow screens: the card covers the page, with a close (back) button in its header. */
+
+    .inbox__chat-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 24px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
+    .inbox__chat-empty svg { width: 36px; height: 36px; margin-bottom: 6px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .inbox__chat-empty p { margin: 0; }
+    .inbox__chat-empty-title { color: var(--color-text-primary); font-size: 14px; font-weight: 650; }
+
+    /* Narrow screens, messenger-style: the list, then the chat (with a back button), then the details as a drawer. */
     @media (max-width: 1023px) {
-      .inbox__body--with-card { grid-template-columns: minmax(0, 1fr); }
-      .inbox__scrim { position: fixed; inset: 0; z-index: 1000; display: block; background: color-mix(in srgb, var(--color-text-primary) 35%, transparent); }
-      .inbox__card { position: fixed; inset: 0; z-index: 1001; width: 100vw; height: auto; min-height: 0; padding: 8px; }
+      .inbox__workspace, .inbox__workspace--details { grid-template-columns: minmax(0, 1fr); }
+      .inbox__chat { display: none; }
+      .inbox__workspace--open .inbox__list { display: none; }
+      .inbox__workspace--open .inbox__chat { display: flex; }
+      .inbox__workspace--details .inbox__details { display: none; }
+      .inbox__workspace--drawer .inbox__scrim { position: fixed; inset: 0; z-index: 1000; display: block; background: color-mix(in srgb, var(--color-text-primary) 35%, transparent); }
+      .inbox__workspace--drawer .inbox__details { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; display: flex; width: min(420px, 100vw); border-radius: 0; }
     }
   `]
 })
@@ -456,7 +472,12 @@ export class InboxPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   readonly card = viewChild<InboxItemCardComponent>('card');
 
-  protected readonly columns = COLUMNS;
+  protected readonly columns = computed<DataTableColumn[]>(() => [
+    { key: 'ticket', label: `Tickets (${this.store.total()})` },
+    { key: 'person', label: 'Requested by', width: '120px', hideLabel: true },
+    { key: 'status', label: 'Status', width: '92px', hideLabel: true },
+    { key: 'actions', label: 'Actions', width: '36px', interactive: true, align: 'end', hideLabel: true }
+  ]);
   protected readonly directionOptions = DIRECTION_OPTIONS;
   protected readonly trackItem = (item: InboxItemDto): string => `${item.source}:${item.kind}:${item.id}`;
   protected readonly rowTestId = (): string => 'inbox-row';
@@ -466,7 +487,7 @@ export class InboxPageComponent implements OnInit {
   protected readonly canDelegate = inject(PermissionService).hasPermission(LEAVE_APPROVE);
 
   /** Tab, direction, search and filters - mirrored in the URL query string. */
-  protected readonly state = signal<InboxPageState>({ tab: 'all', direction: 'all', search: '', filters: {} });
+  protected readonly state = signal<InboxPageState>({ tab: 'all', direction: 'all', search: '', sort: 'latest', filters: {} });
   protected readonly search = signal('');
   protected readonly searchExpanded = signal(false);
   protected readonly myEmployeeId = computed(() => this.auth.employeeId?.() ?? '');
@@ -486,6 +507,25 @@ export class InboxPageComponent implements OnInit {
   protected readonly bulkResult = signal<BulkResultSummary | null>(null);
   protected readonly bulkNames = signal<ReadonlyMap<string, string>>(new Map());
   protected readonly delegateOpen = signal(false);
+  private readonly media = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(NARROW_QUERY) : null;
+  /** Below 1024px the workspace is one screen at a time (list, chat, details drawer). */
+  protected readonly narrow = signal(this.media?.matches ?? false);
+  protected readonly detailsHidden = signal(readDetailsHidden());
+  protected readonly drawerOpen = signal(false);
+  protected readonly detailsShown = computed(() =>
+    this.store.selectedRef() !== null && (this.narrow() ? this.drawerOpen() : !this.detailsHidden()));
+  /** The open ticket for the chat header: the loaded detail when it is this ticket, else its list row. */
+  protected readonly selectedItem = computed(() => {
+    const ref = this.store.selectedRef();
+    if (!ref) return null;
+    const detail = this.store.detail()?.item;
+    return detail && sameRef(detail, ref) ? detail : this.store.items().find((i) => sameRef(i, ref)) ?? null;
+  });
+  private readonly sourceLabels = computed(() =>
+    new Map((this.store.filterFields().find((f) => f.key === 'source')?.options ?? []).map((o) => [o.value, o.label])));
+  protected readonly sortMenu = computed<MenuItem[]>(() =>
+    SORT_OPTIONS.map((o) => ({ id: o.id, label: o.label, iconPath: o.id === this.state().sort ? CHECK_ICON : undefined })));
+  protected readonly sortLabel = computed(() => SORT_OPTIONS.find((o) => o.id === this.state().sort)?.short ?? 'Latest');
   private readonly searchChanges = new Subject<string>();
 
   protected readonly filterValues = computed(() => ({ requestedOn: ['any'], ...this.state().filters }));
@@ -550,6 +590,9 @@ export class InboxPageComponent implements OnInit {
     void this.store.loadFilters();
     void this.store.loadCounts();
     void this.kinds.ensureLoaded();
+    const onMedia = (event: MediaQueryListEvent) => this.narrow.set(event.matches);
+    this.media?.addEventListener?.('change', onMedia);
+    this.destroyRef.onDestroy(() => this.media?.removeEventListener?.('change', onMedia));
 
     this.searchChanges.pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe((search) => this.applyState({ search }));
@@ -588,6 +631,9 @@ export class InboxPageComponent implements OnInit {
   protected subtitle(item: InboxItemDto): string { return inboxSubtitle(item); }
   protected status(item: InboxItemDto): string { return inboxStatusLabel(item); }
   protected tone(item: InboxItemDto): string { return inboxStatusTone(item); }
+  protected sourceLabel(item: InboxItemDto): string {
+    return this.sourceLabels().get(item.source) ?? item.source.charAt(0).toUpperCase() + item.source.slice(1);
+  }
 
   protected menuFor(item: InboxItemDto): MenuItem[] {
     const detail = this.store.detail();
@@ -600,7 +646,27 @@ export class InboxPageComponent implements OnInit {
   }
 
   close(): void {
+    this.drawerOpen.set(false);
     void this.router.navigate(['/inbox'], { queryParamsHandling: 'preserve' });
+  }
+
+  /** Hide/show the ticket details: a remembered preference on wide screens, a drawer on narrow ones. */
+  protected toggleDetails(): void {
+    if (this.narrow()) {
+      this.drawerOpen.update((open) => !open);
+      return;
+    }
+    const hidden = !this.detailsHidden();
+    this.detailsHidden.set(hidden);
+    try {
+      localStorage.setItem(DETAILS_HIDDEN_KEY, hidden ? '1' : '0');
+    } catch {
+      // Storage can be unavailable (private mode); the panel still toggles for this visit.
+    }
+  }
+
+  protected onSort(id: string): void {
+    this.applyState({ sort: id as InboxSort });
   }
 
   protected onTab(value: string): void {

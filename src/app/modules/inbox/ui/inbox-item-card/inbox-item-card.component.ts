@@ -1,4 +1,4 @@
-import { DatePipe, KeyValuePipe, NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
+import { DatePipe, KeyValuePipe, NgComponentOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
@@ -31,51 +31,43 @@ export interface InboxCardAction {
 /** "Open" is navigation, not a server action - it is the card's target link. */
 const NAVIGATION_ACTIONS = new Set(['open_target']);
 
-/** The detail card of one inbox item: header, request steps, explanation (the kind's detail renderer, or the
- *  summary + change set / alert message), the action bar, and a slot for the item's conversation. Built only from
- *  the item's AvailableActions and the kind descriptor; each action key opens its standard dialog. */
+/** The Ticket details panel of one inbox item: summary, details, steps, additional information (the kind's detail
+ *  renderer), changes, a collapsible explanation and the action bar at the bottom. Built only from the item's
+ *  AvailableActions and the kind descriptor, so a viewer without a decision sees no buttons and nothing editable;
+ *  each action key opens its standard dialog. */
 @Component({
   selector: 'app-inbox-item-card',
   standalone: true,
   imports: [
-    DatePipe, KeyValuePipe, NgComponentOutlet, NgTemplateOutlet, AvatarComponent, ConfirmModalComponent, InboxChangeSetComponent,
+    DatePipe, KeyValuePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent, InboxChangeSetComponent,
     InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxForwardDialogComponent, InboxOutcomeDialogComponent,
     InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent, LeaveCancelConfirmDialogComponent
   ],
   host: { class: 'block h-full min-w-0' },
   template: `
-    <ng-template #conversation><ng-content select="[inboxConversation]" /></ng-template>
-    <aside class="card" data-testid="inbox-card" aria-label="Item details">
+    <aside class="card" data-testid="inbox-card" aria-label="Ticket details">
+      <header class="card__top">
+        <h2 class="card__heading">Ticket details</h2>
+        <button type="button" class="card__hide" data-testid="inbox-card-hide" aria-label="Hide ticket details" (click)="hide.emit()">
+          Hide
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+      </header>
       @if (loading() && !detail()) {
         <p class="card__muted">Loading…</p>
       } @else if (!detail()) {
-        <div class="card__scroll">
-          <div class="card__header card__header--bare">
-            <button type="button" class="card__close" data-testid="inbox-card-close" aria-label="Close details" (click)="closed.emit()">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-            </button>
-          </div>
-          @if (error()) { <p class="card__error" role="alert">{{ error() }}</p> }
-          <!-- The conversation has its own access check, so it is still offered without the detail. -->
-          @if (!loading()) { <ng-container [ngTemplateOutlet]="conversation" /> }
-        </div>
+        @if (error()) { <p class="card__error card__error--pad" role="alert">{{ error() }}</p> }
       } @else {
         @let d = detail()!;
         @let item = d.item;
         <div class="card__scroll">
-          <div class="card__header">
+          <div [class]="'card__summary card__summary--' + meta().tone">
             <app-inbox-type-icon class="card__type-tile" [icon]="meta().icon" [tone]="meta().tone" />
-            <div class="card__heading">
+            <div class="card__summary-text">
               <div class="card__eyebrow">{{ eyebrow() }}</div>
-              <h2 class="card__title" data-testid="inbox-card-title">{{ title() }}</h2>
-              <p class="card__subtitle">{{ subtitle() }}</p>
-              <span data-testid="inbox-card-status" [class]="'card__pill card__pill--' + statusTone()">
-                <span class="card__pill-dot" aria-hidden="true"></span>{{ statusText() }}
-              </span>
+              <h3 class="card__title" data-testid="inbox-card-title">{{ title() }}</h3>
+              @if (subtitle()) { <p class="card__subtitle">{{ subtitle() }}</p> }
             </div>
-            <button type="button" class="card__close" data-testid="inbox-card-close" aria-label="Close details" (click)="closed.emit()">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-            </button>
           </div>
 
           @if (error()) { <p class="card__error" role="alert">{{ error() }}</p> }
@@ -83,51 +75,50 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             <app-inbox-revert-banner [until]="until" [busy]="busy()" (undo)="revertOpen.set(true)" />
           }
 
-          <section class="card__section">
-            <div class="card__label">Details</div>
-            <div class="card__box">
-              <div class="card__row"><span class="card__key">Project</span><span class="card__value">{{ item.contextName ?? '—' }}</span></div>
-              @if (item.requestedBy) {
-                <div class="card__row"><span class="card__key">Requested by</span>
-                  <span class="card__value card__person"><app-avatar [userName]="item.requestedBy.name" size="xs" /><span class="truncate">{{ item.requestedBy.name }}</span></span></div>
-              }
-              @if (item.requestedTo) {
-                <div class="card__row"><span class="card__key">{{ item.kind === 'invitation' ? 'Invitee' : 'Requested to' }}</span>
-                  <span class="card__value card__person"><app-avatar [userName]="item.requestedTo.name" size="xs" /><span class="truncate">{{ item.requestedTo.name }}</span></span></div>
-              }
-              <div class="card__row"><span class="card__key">{{ alert() ? 'Detected' : 'Requested on' }}</span><span class="card__value">{{ item.createdAt | date: 'MMM d, y h:mm a' }}</span></div>
-              @if (item.severity) {
-                <div class="card__row"><span class="card__key">Severity</span><span class="card__value card__capitalize">{{ item.severity }}</span></div>
-              }
-            </div>
-            @if (d.target; as target) {
-              <button type="button" class="card__link" data-testid="inbox-card-open-target" (click)="openTarget.emit(target)">
-                {{ target.label }}
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" /></svg>
-              </button>
+          <dl class="card__rows">
+            <div class="card__row"><dt>Status</dt>
+              <dd><span data-testid="inbox-card-status" [class]="'card__pill card__pill--' + statusTone()">{{ statusText() }}</span></dd></div>
+            <div class="card__row"><dt>Type</dt><dd><span [class]="'card__pill card__pill--' + meta().tone">{{ meta().label }}</span></dd></div>
+            <div class="card__row"><dt>Project</dt><dd>{{ item.contextName ?? '—' }}</dd></div>
+            @if (item.requestedBy) {
+              <div class="card__row"><dt>Requested by</dt>
+                <dd class="card__person"><app-avatar [userName]="item.requestedBy.name" size="xs" /><span class="truncate">{{ item.requestedBy.name }}</span></dd></div>
             }
-          </section>
+            @if (item.requestedTo) {
+              <div class="card__row"><dt>{{ item.kind === 'invitation' ? 'Invitee' : 'Requested to' }}</dt>
+                <dd class="card__person"><app-avatar [userName]="item.requestedTo.name" size="xs" /><span class="truncate">{{ item.requestedTo.name }}</span></dd></div>
+            }
+            <div class="card__row"><dt>{{ alert() ? 'Detected' : 'Requested on' }}</dt><dd>{{ item.createdAt | date: 'MMM d, y h:mm a' }}</dd></div>
+            @if (item.severity) {
+              <div class="card__row"><dt>Severity</dt>
+                <dd><span [class]="'card__pill card__capitalize card__pill--' + severityTone()">{{ item.severity }}</span></dd></div>
+            }
+          </dl>
+          @if (d.target; as target) {
+            <button type="button" class="card__link" data-testid="inbox-card-open-target" (click)="openTarget.emit(target)">
+              {{ target.label }}
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" /></svg>
+            </button>
+          }
 
           <section class="card__section">
-            <div class="card__label">{{ alert() ? 'Alert steps' : 'Request steps' }}</div>
+            <h4 class="card__label">{{ alert() ? 'Alert steps' : 'Request steps' }}</h4>
             <app-inbox-steps [steps]="d.steps" />
           </section>
 
           @if (renderer(); as r) {
             <section class="card__section" data-testid="inbox-card-renderer">
+              <h4 class="card__label">Additional information</h4>
               <ng-container *ngComponentOutlet="r; inputs: { extra: extra(), detail: d }" />
             </section>
-          } @else if (d.explanation || d.explanationDetails) {
+          } @else if (d.explanationDetails; as details) {
             <section class="card__section">
-              <div class="card__label">{{ alert() ? 'What happened' : 'Reason / note' }}</div>
-              @if (d.explanation) { <p class="card__note" data-testid="inbox-card-explanation">{{ d.explanation }}</p> }
-              @if (d.explanationDetails; as details) {
-                <div class="card__box mt-2" data-testid="inbox-card-details">
-                  @for (entry of details | keyvalue; track entry.key) {
-                    <div class="card__row"><span class="card__key">{{ humanize(entry.key) }}</span><span class="card__value">{{ entry.value }}</span></div>
-                  }
-                </div>
-              }
+              <h4 class="card__label">Additional information</h4>
+              <dl class="card__rows" data-testid="inbox-card-details">
+                @for (entry of details | keyvalue; track entry.key) {
+                  <div class="card__row"><dt>{{ humanize(entry.key) }}</dt><dd>{{ entry.value }}</dd></div>
+                }
+              </dl>
             </section>
           }
 
@@ -136,12 +127,25 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           }
           @if (d.changeSet.length > 0) {
             <section class="card__section">
-              <div class="card__label">Changes</div>
+              <h4 class="card__label">Changes</h4>
               <app-inbox-change-set [changes]="d.changeSet" [editable]="canEdit()" [errors]="editErrors()" (editsChange)="edits.set($event)" />
             </section>
           }
 
-          <ng-container [ngTemplateOutlet]="conversation" />
+          <section class="card__explain">
+            <button type="button" class="card__explain-toggle" data-testid="inbox-card-explanation-toggle"
+              [attr.aria-expanded]="explanationOpen()" (click)="explanationOpen.set(!explanationOpen())">
+              Explanation
+              <svg [class.card__chevron--open]="explanationOpen()" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            @if (explanationOpen()) {
+              @if (d.explanation) {
+                <p class="card__note" data-testid="inbox-card-explanation">{{ d.explanation }}</p>
+              } @else {
+                <p class="card__note card__note--empty">No explanation was given for this ticket.</p>
+              }
+            }
+          </section>
         </div>
 
         @if (actionError() && !actionErrorInline()) {
@@ -151,7 +155,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           <footer class="card__footer" data-testid="inbox-card-footer">
             @for (a of actions(); track a.key) {
               <button type="button" [class]="'card__btn card__btn--' + a.tone" [attr.data-testid]="'inbox-action-' + a.key"
-                [disabled]="busy()" (click)="onAction(a)">{{ a.label }}</button>
+                [attr.title]="a.label" [disabled]="busy()" (click)="onAction(a)">{{ a.label }}</button>
             }
           </footer>
         }
@@ -213,43 +217,54 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
     </aside>
   `,
   styles: [`
-    .card { position: relative; display: flex; height: 100%; overflow: hidden; flex-direction: column; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .05); }
-    .card__scroll { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 20px; overflow-x: hidden; overflow-y: auto; padding: 20px; }
-    .card__header { display: flex; align-items: flex-start; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--color-border); }
-    .card__header--bare { justify-content: flex-end; padding-bottom: 0; border-bottom: 0; }
-    .card__type-tile { width: 40px; height: 40px; border-radius: 11px; }
-    .card__heading { min-width: 0; flex: 1; }
-    .card__eyebrow { margin-bottom: 3px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-    .card__title { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
-    .card__subtitle { margin: 3px 0 8px; color: var(--color-text-secondary); font-size: 12px; overflow-wrap: anywhere; }
-    .card__close { display: inline-flex; flex: 0 0 auto; width: 28px; height: 28px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
-    .card__close:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    @media (min-width: 1024px) { .card__close { display: none; } }
-    .card__close svg, .card__link svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .card__muted { margin: 0; padding: 24px 20px; color: var(--color-text-secondary); font-size: 13px; }
+    .card { position: relative; display: flex; height: 100%; overflow: hidden; flex-direction: column; color: var(--color-text-primary); }
+    .card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--color-border); }
+    .card__heading { margin: 0; font-size: 14px; font-weight: 650; }
+    .card__hide { display: inline-flex; align-items: center; gap: 2px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .card__hide:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .card__hide svg, .card__link svg, .card__explain-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .card__scroll { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 18px; overflow-x: hidden; overflow-y: auto; padding: 16px 18px; }
+    .card__summary { --tone: var(--color-accent); display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 8%, var(--color-surface)); }
+    .card__summary--neutral { --tone: var(--color-text-secondary); }
+    .card__summary--warning { --tone: var(--color-warning, #d97706); }
+    .card__summary--danger { --tone: var(--color-danger); }
+    .card__type-tile { width: 36px; height: 36px; border-radius: 10px; }
+    .card__summary-text { min-width: 0; flex: 1; }
+    .card__eyebrow { margin-bottom: 2px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .card__title { margin: 0; font-size: 14px; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+    .card__subtitle { margin: 3px 0 0; color: var(--color-text-secondary); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+    .card__muted { margin: 0; padding: 24px 18px; color: var(--color-text-secondary); font-size: 13px; }
     .card__error { margin: 0; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--color-danger) 8%, transparent); color: var(--color-danger); font-size: 12px; }
-    .card__error--footer { margin: 0 20px 8px; }
-    .card__label { margin-bottom: 8px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-    .card__box { display: flex; flex-direction: column; padding: 2px 12px; border: 1px solid var(--color-border); border-radius: 12px; font-size: 12px; }
-    .card__row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent); }
-    .card__row:last-child { border-bottom: 0; }
-    .card__key { flex: 0 0 auto; color: var(--color-text-secondary); font-weight: 500; }
-    .card__value { min-width: 0; overflow: hidden; font-weight: 600; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+    .card__error--pad { margin: 16px 18px; }
+    .card__error--footer { margin: 0 18px 8px; }
+    .card__section { display: flex; flex-direction: column; }
+    .card__label { margin: 0 0 10px; color: var(--color-text-primary); font-size: 13px; font-weight: 650; }
+    .card__rows { display: flex; flex-direction: column; gap: 10px; margin: 0; font-size: 13px; }
+    .card__row { display: grid; min-width: 0; grid-template-columns: minmax(96px, 40%) minmax(0, 1fr); align-items: center; gap: 12px; }
+    .card__row dt { color: var(--color-text-secondary); }
+    .card__row dd { min-width: 0; margin: 0; overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
     .card__capitalize { text-transform: capitalize; }
-    .card__person { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
-    .card__link { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .card__note { margin: 0; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 12px; background: color-mix(in srgb, var(--color-surface-secondary) 30%, transparent); color: var(--color-text-secondary); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .card__footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
-    .card__btn { flex: 1 1 0; min-width: 96px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .card__btn:hover:not(:disabled) { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .card__person { display: inline-flex; align-items: center; gap: 6px; }
+    .card__link { display: inline-flex; align-self: flex-start; align-items: center; gap: 4px; margin-top: -8px; padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .card__explain { border: 1px solid var(--color-border); border-radius: 10px; }
+    .card__explain-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; background: none; color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+    .card__explain-toggle svg { transition: transform 150ms ease; }
+    .card__chevron--open { transform: rotate(180deg); }
+    .card__explain-toggle:focus-visible, .card__hide:focus-visible, .card__link:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .card__note { margin: 0; padding: 0 12px 12px; color: var(--color-text-secondary); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .card__note--empty { font-style: italic; }
+    .card__footer { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
+    .card__btn { flex: 1 1 auto; min-width: 84px; max-width: 100%; height: 34px; padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .card__btn:hover:not(:disabled) { background: var(--color-surface-secondary); }
     .card__btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
-    .card__btn--primary:hover:not(:disabled) { background: var(--color-accent); color: var(--color-accent-contrast, #fff); filter: brightness(.95); }
-    .card__btn--danger { color: var(--color-danger); }
+    .card__btn--primary:hover:not(:disabled) { background: var(--color-accent); filter: brightness(.95); }
+    .card__btn--danger { border-color: color-mix(in srgb, var(--color-danger) 35%, var(--color-border)); color: var(--color-danger); }
     .card__btn:disabled { opacity: .55; cursor: default; }
     .card__btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .card__pill { --tone: var(--color-accent); display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 500; }
-    .card__pill-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
-    .card__pill--neutral { --tone: var(--color-text-secondary); background: var(--color-surface-secondary); }
+    .card__pill { --tone: var(--color-accent); display: inline-flex; max-width: 100%; align-items: center; padding: 2px 10px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .card__pill--neutral { --tone: var(--color-text-secondary); }
+    .card__pill--warning { --tone: var(--color-warning, #d97706); }
+    .card__pill--danger { --tone: var(--color-danger); }
   `]
 })
 export class InboxItemCardComponent {
@@ -263,7 +278,8 @@ export class InboxItemCardComponent {
   /** The item's kind from the registry (GET /inbox/kinds); null while unknown. */
   descriptor = input<InboxKindDescriptorDto | null>(null);
 
-  closed = output<void>();
+  /** The Hide button: the page collapses the details panel (the chat takes the space). */
+  hide = output<void>();
   action = output<InboxCardAction>();
   openTarget = output<InboxTargetDto>();
 
@@ -273,6 +289,8 @@ export class InboxItemCardComponent {
   protected readonly editErrors = signal<Record<string, string>>({});
   protected readonly commentAction = signal<InboxActionDto | null>(null);
   protected readonly revertOpen = signal(false);
+  /** The explanation starts collapsed and stays as the reader left it across tickets. */
+  protected readonly explanationOpen = signal(false);
   protected readonly dialog = signal<{ kind: 'outcome' | 'escalate' | 'forward' | 'leave-cancel'; action: InboxActionDto } | null>(null);
 
   protected readonly item = computed(() => this.detail()?.item ?? null);
@@ -289,6 +307,10 @@ export class InboxItemCardComponent {
   protected readonly subtitle = computed(() => this.item() ? inboxSubtitle(this.item()!) : '');
   protected readonly statusText = computed(() => this.item() ? inboxStatusLabel(this.item()!) : '');
   protected readonly statusTone = computed(() => this.item() ? inboxStatusTone(this.item()!) : 'neutral');
+  protected readonly severityTone = computed(() => {
+    const severity = this.item()?.severity?.toLowerCase();
+    return severity === 'high' || severity === 'critical' ? 'danger' : severity === 'medium' ? 'warning' : 'neutral';
+  });
   /** The revert window's end when the item offers a timed undo (shown as the banner, not a button). */
   protected readonly revertUntil = computed(() =>
     this.item()?.availableActions.find((a) => a.key === 'revert')?.meta?.['revertableUntil'] ?? null);

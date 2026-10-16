@@ -236,6 +236,12 @@ export class CommentComposerComponent {
     this.cancelled.emit();
   }
 
+  /** Empties the editor, mentions and attachments - e.g. when the host switches to another thread; the editor
+   *  then takes the next `initialContent`. */
+  clear(): void {
+    this.resetEditor();
+  }
+
   /** Inserts a mention chip where the user typed "@..." (used after an add-and-tag completes). */
   insertMention(person: MentionCandidate): void {
     this.editor()?.insertMention(person);

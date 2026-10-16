@@ -163,10 +163,12 @@ export const ConversationStore = signalStore(
         patchState(store, { olderLoading: true });
         try {
           const page = await firstValueFrom(api.messages(id, oldest.createdAt));
+          // Another ticket may have been opened meanwhile: its conversation must not get these messages.
+          if (store.conversationId() !== id) return;
           appendMessages(page.items);
           patchState(store, { hasMore: page.hasMore, olderLoading: false });
         } catch {
-          patchState(store, { olderLoading: false });
+          if (store.conversationId() === id) patchState(store, { olderLoading: false });
         }
       },
       /** True when posted. Mentions must be participant ids (add-and-tag adds them first). */
@@ -178,11 +180,14 @@ export const ConversationStore = signalStore(
         patchState(store, { sending: true, sendError: null });
         try {
           const message = await firstValueFrom(api.post(id, bodyHtml, [...mentionEmployeeIds], [...attachmentFileIds], tag));
-          appendMessages([message]);
-          patchState(store, { sending: false });
+          // Posted to its own ticket; only shown if that ticket is still the open one.
+          if (store.conversationId() === id) {
+            appendMessages([message]);
+            patchState(store, { sending: false });
+          }
           return true;
         } catch (err) {
-          patchState(store, { sending: false, sendError: extractError(err, 'Could not send the message.') });
+          if (store.conversationId() === id) patchState(store, { sending: false, sendError: extractError(err, 'Could not send the message.') });
           return false;
         }
       },
@@ -220,10 +225,10 @@ export const ConversationStore = signalStore(
         if (!id || employeeIds.length === 0) return [];
         try {
           const addedRows = await firstValueFrom(api.addParticipants(id, [...employeeIds]));
-          addParticipantRows(addedRows);
+          if (store.conversationId() === id) addParticipantRows(addedRows);
           return addedRows;
         } catch (err) {
-          patchState(store, { sendError: extractError(err, 'Could not add them to the conversation.') });
+          if (store.conversationId() === id) patchState(store, { sendError: extractError(err, 'Could not add them to the conversation.') });
           return [];
         }
       },

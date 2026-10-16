@@ -88,5 +88,6 @@ function toParams(query: InboxQuery): HttpParams {
   if (search) params = params.set('search', search);
   if (query.page) params = params.set('page', String(query.page));
   if (query.pageSize) params = params.set('pageSize', String(query.pageSize));
+  if (query.sort && query.sort !== 'latest') params = params.set('sort', query.sort);
   return params;
 }

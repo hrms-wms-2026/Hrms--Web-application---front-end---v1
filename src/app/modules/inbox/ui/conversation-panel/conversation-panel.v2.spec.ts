@@ -97,12 +97,16 @@ describe('ConversationPanelComponent (FS3)', () => {
     const q = (id: string) => el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
     const msg = (id: string) => el.querySelector(`[data-message-id="${id}"]`) as HTMLElement;
     const settle = async () => { fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges(); };
-    return { fixture, el, q, msg, settle };
+    const panel = fixture.componentInstance as unknown as { menu(): { id: string }[]; onMenu(id: string): void };
+    /** Picks an entry of the header's ⋯ menu. */
+    const menu = (id: string) => panel.onMenu(id);
+    const menuIds = () => panel.menu().map((i) => i.id);
+    return { fixture, el, q, msg, settle, menu, menuIds };
   }
 
   it('the participants popover shows each role; Remove shows for added members to base members', async () => {
-    const { q, settle, el } = await render(null);
-    q('conversation-members')!.click();
+    const { q, settle, el, menu } = await render(null);
+    menu('members');
     await settle();
 
     const rows = Array.from(el.querySelectorAll('[data-testid="conversation-participant"]')) as HTMLElement[];
@@ -120,8 +124,8 @@ describe('ConversationPanelComponent (FS3)', () => {
 
   it('labels the requester; an added member may remove whom they added, and can leave', async () => {
     me = 'sam';
-    const { q, settle, el } = await render('mgr');
-    q('conversation-members')!.click();
+    const { q, settle, el, menu, menuIds } = await render('mgr');
+    menu('members');
     await settle();
 
     expect(el.querySelector('[data-employee-id="mgr"] [data-testid="participant-role"]')?.textContent).toContain('Requester');
@@ -129,7 +133,8 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(q('participant-remove-pat')).toBeNull();
     expect(q('participant-remove-sam')).toBeNull();
 
-    q('conversation-leave')!.click();
+    expect(menuIds()).toContain('leave');
+    menu('leave');
     await settle();
     q('conversation-leave-confirm')!.click();
     await settle();
@@ -210,10 +215,11 @@ describe('ConversationPanelComponent (FS3)', () => {
   });
 
   it('export is offered to deciders and viewers, not to the subject or an added member', async () => {
-    const { q, settle } = await render();
+    const { settle, menu, menuIds } = await render();
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 
-    q('conversation-export')!.click();
+    expect(menuIds()).toContain('export');
+    menu('export');
     await settle();
     expect(inboxApi.exportItem).toHaveBeenCalledWith(REF);
     click.mockRestore();
@@ -236,16 +242,16 @@ describe('ConversationPanelComponent (FS3)', () => {
 
   it('says so when the server refuses the export', async () => {
     inboxApi.exportItem.mockReturnValueOnce(throwError(() => ({ status: 403 })));
-    const { q, settle, el } = await render();
+    const { settle, el, menu } = await render();
 
-    q('conversation-export')!.click();
+    menu('export');
     await settle();
 
     expect(el.textContent).toContain('You cannot export this conversation.');
   });
 
-  it('the subject sees no export button', async () => {
+  it('the subject is not offered Export in the menu', async () => {
     me = 'pat';
-    expect((await render()).q('conversation-export')).toBeNull();
+    expect((await render()).menuIds()).not.toContain('export');
   });
 });

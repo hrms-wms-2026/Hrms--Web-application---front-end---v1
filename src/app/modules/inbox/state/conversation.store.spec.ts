@@ -125,6 +125,22 @@ describe('ConversationStore', () => {
     expect(store.messages().filter((m) => m.id === 'm9')).toHaveLength(1);
   });
 
+  it('a message still sending when another ticket opens never shows in that ticket', async () => {
+    await store.open(REF);
+    const reply = new Subject<ReturnType<typeof message>>();
+    api['post'].mockReturnValueOnce(reply.asObservable());
+    const sending = store.send('<p>for ticket one</p>', []);
+
+    api['open'].mockReturnValueOnce(of({ ...conversation(), id: 'c2', messages: [] }));
+    await store.open({ ...REF, id: 'other' });
+    reply.next(message('m9', '2026-10-13T09:09:00Z'));
+    reply.complete();
+
+    expect(await sending).toBe(true);
+    expect(store.conversationId()).toBe('c2');
+    expect(store.messages().map((m) => m.id)).toEqual([]);
+  });
+
   it('a failed send keeps the error and returns false', async () => {
     await store.open(REF);
     api['post'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'You can only mention people in this conversation.' } })));

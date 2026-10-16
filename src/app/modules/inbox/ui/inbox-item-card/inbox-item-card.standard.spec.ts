@@ -156,11 +156,12 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
 
     const { el } = render(withExtra, { descriptor }, { 'leave-request': TestRendererComponent });
     expect(el.querySelector('[data-testid="test-renderer"]')?.textContent).toContain('12h');
-    expect(el.querySelector('[data-testid="inbox-card-explanation"]')).toBeNull();
+    expect(el.querySelector('[data-testid="inbox-card-renderer"]')?.textContent).toContain('Additional information');
 
     TestBed.resetTestingModule();
     const fallback = render(withExtra, { descriptor: { ...descriptor, detailRenderer: 'unknown' } }).el;
-    expect(fallback.querySelector('[data-testid="inbox-card-explanation"]')).not.toBeNull();
+    expect(fallback.querySelector('[data-testid="inbox-card-renderer"]')).toBeNull();
+    expect(fallback.querySelector('[data-testid="inbox-card-explanation-toggle"]')).not.toBeNull();
   });
 
   // ---- FL: leave ---------------------------------------------------------------------------------

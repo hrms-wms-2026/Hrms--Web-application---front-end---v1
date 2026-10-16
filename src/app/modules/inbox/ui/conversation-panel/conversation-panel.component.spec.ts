@@ -75,13 +75,60 @@ describe('ConversationPanelComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('opens the item conversation and lists members with base vs added in the tooltip', async () => {
-    const { el } = await render();
+  it('opens the item conversation; the ⋯ menu offers Add member and Members, which lists base vs added people', async () => {
+    const { fixture, el } = await render();
+    const panel = fixture.componentInstance as unknown as { menu(): { id: string; label: string }[]; onMenu(id: string): void };
 
     expect(api['open']).toHaveBeenCalledWith(REF);
-    const members = el.querySelector('[data-testid="conversation-members"]') as HTMLElement;
-    expect(members.getAttribute('title')).toContain('Priya (added)');
-    expect(members.getAttribute('title')).toContain('Anu');
+    expect(panel.menu().map((i) => i.id)).toEqual(['add', 'members', 'export']);
+    expect(panel.menu()[1].label).toBe('Members (3)');
+    panel.onMenu('members');
+    fixture.detectChanges();
+    const roles = Array.from(el.querySelectorAll('[data-testid="conversation-participant"]')).map((p) => p.textContent);
+    expect(roles.some((r) => r?.includes('Priya') && r.includes('Added'))).toBe(true);
+    expect(roles.some((r) => r?.includes('Anu'))).toBe(true);
+  });
+
+  it('shows the ticket in the header: title, reference and status; the details toggle shows when details are hidden', async () => {
+    const { fixture, el } = await render();
+    fixture.componentRef.setInput('item', {
+      source: 'work', kind: 'approval', id: 'a1b2c3d4-0000-0000-0000-000000000000', category: 'request', actionType: 'task.edit',
+      title: 'Audit events', subtitle: null, status: 'pending', direction: 'received', severity: null, contextType: 'project',
+      contextId: 'p1', contextName: 'Apollo', requestedBy: null, requestedTo: null, createdAt: '2026-10-13T09:00:00Z',
+      updatedAt: '2026-10-13T09:00:00Z', availableActions: [], unreadMessages: 0, isPending: true, facets: {}
+    });
+    fixture.componentRef.setInput('detailsVisible', false);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="conversation-ref"]')?.textContent).toBe('#WOR-A1B2C3D4');
+    expect(el.querySelector('[data-testid="conversation-status"]')?.textContent).toBe('Pending');
+    const toggle = el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement;
+    expect(toggle.classList).toContain('conv__details-toggle--always');
+    const emitted = vi.fn();
+    fixture.componentInstance.toggleDetails.subscribe(emitted);
+    toggle.click();
+    expect(emitted).toHaveBeenCalled();
+  });
+
+  it('keeps an unsent draft per ticket and never carries it into another ticket', async () => {
+    const { fixture } = await render();
+    const panel = fixture.componentInstance as unknown as {
+      composer(): { editorHtml: { (): string; set(v: string): void } } | undefined; draftFor(key: string): string;
+    };
+    panel.composer()!.editorHtml.set('<p>half written</p>');
+
+    fixture.componentRef.setInput('itemRef', { ...REF, id: 'other' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(panel.draftFor('work:approval:other')).toBe('');
+    expect(panel.draftFor(`${REF.source}:${REF.kind}:${REF.id}`)).toBe('<p>half written</p>');
+    expect(panel.composer()!.editorHtml()).toBe('');
+
+    fixture.componentRef.setInput('itemRef', REF);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(panel.composer()!.editorHtml()).toBe('<p>half written</p>');
   });
 
   it('groups by day, right-aligns own messages, centres system messages and marks the unread divider', async () => {
@@ -137,10 +184,11 @@ describe('ConversationPanelComponent', () => {
     expect(insert).toHaveBeenCalledWith({ id: 'e7', name: 'Chen Li' });
   });
 
-  it('adds members picked in the add panel', async () => {
+  it('adds members picked in the add panel (⋯ → Add member)', async () => {
     const { fixture, el } = await render();
-    (el.querySelector('[data-testid="conversation-add-member"]') as HTMLButtonElement).click();
+    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
     fixture.detectChanges();
+    expect(el.querySelector('[data-testid="conversation-add-panel"]')).not.toBeNull();
     const panel = fixture.componentInstance as unknown as { toggleCandidate(id: string): void; confirmAdd(): Promise<void> };
 
     panel.toggleCandidate('e7');
@@ -150,8 +198,9 @@ describe('ConversationPanelComponent', () => {
   });
 
   it('finds people to add through the conversation people lookup, leaving out current members', async () => {
-    const { fixture, el } = await render();
-    (el.querySelector('[data-testid="conversation-add-member"]') as HTMLButtonElement).click();
+    const { fixture } = await render();
+    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
+
     fixture.detectChanges();
     const panel = fixture.componentInstance as unknown as {
       candidateOptions(): { id: string; name: string }[];
@@ -168,8 +217,8 @@ describe('ConversationPanelComponent', () => {
 
   it('keeps the add panel usable when the people lookup fails', async () => {
     api['searchPeople'].mockReturnValue(throwError(() => new Error('boom')));
-    const { fixture, el } = await render();
-    (el.querySelector('[data-testid="conversation-add-member"]') as HTMLButtonElement).click();
+    const { fixture } = await render();
+    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
     fixture.detectChanges();
     const panel = fixture.componentInstance as unknown as {
       candidateOptions(): unknown[];
@@ -182,9 +231,10 @@ describe('ConversationPanelComponent', () => {
     expect(found).toEqual([]);
   });
 
-  it('loads older messages', async () => {
+  it('loads older messages when scrolled to the top (no button)', async () => {
     const { fixture, el } = await render();
-    (el.querySelector('[data-testid="conversation-load-older"]') as HTMLButtonElement).click();
+    expect(el.querySelector('[data-testid="conversation-load-older"]')).toBeNull();
+    el.querySelector('[data-testid="conversation-messages"]')!.dispatchEvent(new Event('scroll'));
     await fixture.whenStable();
     expect(api['messages']).toHaveBeenCalledWith('c1', '2026-10-12T09:00:00Z');
   });
