@@ -123,8 +123,30 @@ describe('InboxPageComponent', () => {
     expect(typeof last.from).toBe('string');
   });
 
-  it('debounces the search box', async () => {
+  function withTabInUrl(previousNavigation: object | null): void {
+    const query = convertToParamMap({ tab: 'requests' });
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: params.asObservable(), snapshot: { queryParamMap: query } } });
+    Object.assign(router, { lastSuccessfulNavigation: signal({ previousNavigation }) });
+  }
+
+  it('opens the first tab on a browser refresh, dropping the saved tab from the URL', async () => {
+    withTabInUrl(null);
     const { el } = await render();
+    expect(el.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('All');
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: {}, replaceUrl: true }));
+  });
+
+  it('keeps the linked tab on an in-app navigation', async () => {
+    withTabInUrl({});
+    const { el } = await render();
+    expect(el.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Requests');
+  });
+
+  it('debounces the search box', async () => {
+    const { fixture, el } = await render();
+    expect(el.querySelector('[data-testid="inbox-search"]')).toBeNull();
+    (el.querySelector('[data-testid="inbox-search-toggle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
     const input = el.querySelector('[data-testid="inbox-search"]') as HTMLInputElement;
     api['list'].mockClear();
 
