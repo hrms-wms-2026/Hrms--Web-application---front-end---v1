@@ -115,7 +115,7 @@ function withCount(label: string, n: number): string {
                 </button>
               }
               <app-task-assignee-avatar-filter [members]="people()" [currentEmployeeId]="myEmployeeId()"
-                [selected]="state().filters['requestedBy'] ?? []" (selectionChanged)="onFilterChanged({ key: 'requestedBy', values: $event })" />
+                [selected]="requestedByFilter()" (selectionChanged)="onFilterChanged({ key: 'requestedBy', values: $event })" />
             }
             <app-filter-bar [fields]="filterFields()" [values]="filterValues()" panelAlign="right" (fieldChanged)="onFilterChanged($event)" />
             @if (state().tab === 'alert') {
@@ -490,6 +490,11 @@ export class InboxPageComponent implements OnInit {
   protected readonly state = signal<InboxPageState>({ tab: 'all', direction: 'all', search: '', sort: 'latest', filters: {} });
   protected readonly search = signal('');
   protected readonly searchExpanded = signal(false);
+  /** The avatar stack's selection: the requestedBy filter, which is absent until someone is picked. */
+  protected readonly requestedByFilter = computed(() => {
+    const filters: Record<string, string[] | undefined> = this.state().filters;
+    return filters['requestedBy'] ?? [];
+  });
   protected readonly myEmployeeId = computed(() => this.auth.employeeId?.() ?? '');
   /** Everyone the inbox can be narrowed to (Work's requestedBy + other sources' employee facets), for the avatar stack. */
   protected readonly people = computed<TaskAssigneeAvatarMember[]>(() => {
