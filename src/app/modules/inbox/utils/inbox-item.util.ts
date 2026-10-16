@@ -119,7 +119,7 @@ const MENU_ACTIONS = new Set(['approve', 'cancel', 'accept_invitation']);
 export function inboxMenuItems(item: InboxItemDto, canOpenTarget: boolean): MenuItem[] {
   const menu: MenuItem[] = [{ id: 'view', label: 'View details' }];
   for (const action of item.availableActions) {
-    if (MENU_ACTIONS.has(action.key)) menu.push({ id: `action:${action.key}`, label: action.label, danger: action.tone === 'danger' });
+    if (MENU_ACTIONS.has(action.key) && !action.needsComment && !action.needsPayload) menu.push({ id: `action:${action.key}`, label: action.label, danger: action.tone === 'danger' });
   }
   if (canOpenTarget) menu.push({ id: 'open', label: isAlert(item) ? 'Open target' : 'Open' });
   menu.push({ id: 'copy', label: 'Copy link' });

@@ -62,6 +62,18 @@ describe('inbox item util', () => {
     expect(inboxMenuItems(item(), false).map((m) => m.id)).toEqual(['view', 'copy']);
   });
 
+  it('leaves actions that need a comment or an edited payload to the card dialogs (e.g. the leave full/partial cancel)', () => {
+    const menu = inboxMenuItems(item({
+      source: 'leave', kind: 'request',
+      availableActions: [
+        { key: 'approve', label: 'Approve', tone: 'primary', needsComment: false, needsPayload: true },
+        { key: 'cancel', label: 'Cancel request', tone: 'danger', needsComment: true, needsPayload: false }
+      ]
+    }), true);
+
+    expect(menu.map((m) => m.id)).toEqual(['view', 'open', 'copy']);
+  });
+
   it('turns provider filter fields into filter-bar fields with icons', () => {
     const fields: InboxFilterFieldDto[] = [
       { key: 'project', label: 'Project', multi: true, options: [{ value: 'p1', label: 'Apollo' }] },

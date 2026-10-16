@@ -34,6 +34,16 @@ describe('InboxRevertBannerComponent', () => {
     expect(banner()).toBeNull();
   });
 
+  it('announces the deadline once and keeps the ticking countdown out of the live region', () => {
+    const { el } = render('2026-10-15T10:42:00Z');
+
+    const live = Array.from(el.querySelectorAll('[role="status"], [aria-live]:not([aria-live="off"])'));
+    expect(live.length).toBe(1);
+    expect(live[0].textContent).toContain('Undo — available until');
+    expect(live.some((node) => node.querySelector('.irb__count') || node.classList.contains('irb__count'))).toBe(false);
+    expect(el.querySelector('.irb__count')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('is not shown for a deadline already past', () => {
     expect(render('2026-10-15T10:00:00Z').banner()).toBeNull();
   });

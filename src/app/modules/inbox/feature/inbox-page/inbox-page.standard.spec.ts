@@ -41,6 +41,7 @@ describe('InboxPageComponent (FS2)', () => {
   let api: Record<string, ReturnType<typeof vi.fn>>;
   let router: { navigate: ReturnType<typeof vi.fn> };
   let queryParams: Record<string, string>;
+  let queryParamMap$: BehaviorSubject<ParamMap>;
   let permissions: string[];
 
   beforeEach(() => {
@@ -78,10 +79,14 @@ describe('InboxPageComponent (FS2)', () => {
         { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => true } },
         {
           provide: ActivatedRoute,
-          useFactory: () => ({
-            paramMap: new BehaviorSubject<ParamMap>(convertToParamMap({})).asObservable(),
-            snapshot: { queryParamMap: convertToParamMap(queryParams) }
-          })
+          useFactory: () => {
+            queryParamMap$ = new BehaviorSubject<ParamMap>(convertToParamMap(queryParams));
+            return {
+              paramMap: new BehaviorSubject<ParamMap>(convertToParamMap({})).asObservable(),
+              queryParamMap: queryParamMap$.asObservable(),
+              snapshot: { queryParamMap: convertToParamMap(queryParams) }
+            };
+          }
         },
         { provide: Router, useValue: router },
         { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } }
@@ -114,6 +119,24 @@ describe('InboxPageComponent (FS2)', () => {
       category: ['alert'], direction: ['received'], search: 'pat', source: ['attendance'], facets: { kind: ['alert'], employee: ['e1'] }
     });
     expect(tab('Alerts').getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('follows an in-app navigation that changes the query string (nav "Inbox", bell, renderer links)', async () => {
+    queryParams = { tab: 'alerts', source: 'leave' };
+    const { tab, settle } = await render();
+    const listsBefore = api['list'].mock.calls.length;
+
+    queryParamMap$.next(convertToParamMap({}));
+    await settle();
+
+    expect(tab('All').getAttribute('aria-selected')).toBe('true');
+    expect(api['list'].mock.calls.length).toBeGreaterThan(listsBefore);
+    expect(lastQuery()).toMatchObject({ category: [], source: [] });
+
+    const listsNow = api['list'].mock.calls.length;
+    queryParamMap$.next(convertToParamMap({})); // the page's own URL write echoes back: no reload
+    await settle();
+    expect(api['list'].mock.calls.length).toBe(listsNow);
   });
 
   it('writes every change back to the URL without adding history entries', async () => {

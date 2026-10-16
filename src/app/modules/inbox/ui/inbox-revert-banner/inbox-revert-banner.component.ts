@@ -7,9 +7,10 @@ import { Component, DestroyRef, computed, inject, input, output, signal } from '
   standalone: true,
   template: `
     @if (remainingMs() > 0) {
-      <div class="irb" data-testid="inbox-revert-banner" role="status">
-        <span class="irb__text">Undo — available until {{ untilLabel() }}</span>
-        <span class="irb__count" aria-label="Time left">{{ countdown() }}</span>
+      <div class="irb" data-testid="inbox-revert-banner">
+        <!-- Only the static deadline is announced; the per-second countdown is visual (screen readers would read every tick). -->
+        <span class="irb__text" role="status">Undo — available until {{ untilLabel() }}</span>
+        <span class="irb__count" aria-hidden="true">{{ countdown() }}</span>
         <button type="button" class="irb__btn" data-testid="inbox-revert-undo" [disabled]="busy()" (click)="undo.emit()">Undo</button>
       </div>
     }

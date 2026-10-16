@@ -62,6 +62,11 @@ const DIRECTION_OPTIONS: readonly TabOption[] = [
 
 const LEAVE_APPROVE = 'leave:approve';
 
+function sameParams(a: Record<string, string>, b: Record<string, string>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
+}
+
 function withCount(label: string, n: number): string {
   return n > 0 ? `${label} (${n > 99 ? '99+' : n})` : label;
 }
@@ -483,6 +488,19 @@ export class InboxPageComponent implements OnInit {
 
     this.searchChanges.pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe((search) => this.applyState({ search }));
+
+    // The component is reused across /inbox navigations (nav item, bell, renderer links), so follow the query string
+    // whenever it no longer matches the page state; the page's own URL writes echo back equal and are ignored.
+    this.route.queryParamMap?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((map) => {
+      const params: Record<string, string> = {};
+      for (const key of map.keys) params[key] = map.get(key) ?? '';
+      const next = pageStateFromParams(params);
+      if (sameParams(pageStateToParams(next), pageStateToParams(this.state()))) return;
+      this.selectedIds.set(this.emptySelection);
+      this.state.set(next);
+      this.search.set(next.search);
+      void this.loadForState();
+    });
 
     // The URL is the source of truth for the selection, so back/forward and deep links work.
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
