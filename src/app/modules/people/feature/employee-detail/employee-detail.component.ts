@@ -147,9 +147,20 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
                   class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
                   data-testid="employee-role-context"
                 >
-                  <span class="font-semibold text-[var(--color-text-primary)]">
-                    {{ employee.jobInformation.positionName || 'Unassigned Position' }}
-                  </span>
+                  @if (!employee.jobInformation.positionName && employee.jobInformation.pendingPositionName) {
+                    <span class="font-semibold text-[var(--color-text-primary)]">
+                      {{ employee.jobInformation.pendingPositionName }}
+                    </span>
+                    <span
+                      class="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
+                      title="The seat is reserved. The position becomes active once they accept the invitation."
+                      data-testid="employee-pending-position"
+                    >Starts when invite is accepted</span>
+                  } @else {
+                    <span class="font-semibold text-[var(--color-text-primary)]">
+                      {{ employee.jobInformation.positionName || 'Unassigned Position' }}
+                    </span>
+                  }
                   <span class="h-1 w-1 rounded-full bg-[var(--color-text-secondary)] opacity-60" aria-hidden="true"></span>
                   <span class="text-[var(--color-text-secondary)]">
                     {{ employee.jobInformation.departmentName || 'No department' }}

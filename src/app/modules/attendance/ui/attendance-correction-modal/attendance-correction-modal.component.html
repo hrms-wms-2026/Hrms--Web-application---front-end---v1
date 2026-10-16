@@ -167,8 +167,8 @@
       </app-button>
       <app-button
         type="submit"
-        [loading]="!!(store.correctionActionLoading?.() ?? false)"
-        [disabled]="!!(store.correctionActionLoading?.() ?? false) || (correctionPreviewReady() && !!store.correctionPreview?.()?.approvalRequired && !store.correctionPreview?.()?.approver)"
+        [loading]="store.correctionActionLoading()"
+        [disabled]="store.correctionActionLoading() || (correctionPreviewReady() && !!store.correctionPreview()?.approvalRequired && !store.correctionPreview()?.approver)"
       >
         {{ correctionPreviewReady() ? 'Submit request' : 'Continue' }}
       </app-button>

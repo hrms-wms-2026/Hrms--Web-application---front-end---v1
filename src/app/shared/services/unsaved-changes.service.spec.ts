@@ -44,6 +44,21 @@ describe('UnsavedChangesService', () => {
     expect(h.saveDraft).toHaveBeenCalledTimes(2);
   });
 
+  it('save failure shows the form-provided reason when there is one', async () => {
+    const h = handle({
+      saveDraft: vi.fn().mockResolvedValue(false),
+      saveDraftError: () => 'An employee with this work email already exists in this company.'
+    });
+    service.register(h);
+    void service.requestClose(h);
+    service.choose('save');
+    await new Promise<void>((resolve) => setTimeout(resolve));
+    expect(service.prompt()?.error).toBe(
+      'Could not save the draft: An employee with this work email already exists in this company.'
+    );
+    service.choose('keep');
+  });
+
   it('requestClose() without a handle uses the latest registration; unregister removes it', async () => {
     const unregister = service.register(handle({ isDirty: () => false }));
     expect(service.hasDirtyForm()).toBe(false);

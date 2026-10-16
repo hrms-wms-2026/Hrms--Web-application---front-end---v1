@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, effect, inject, input, output, signal } from '@angular/core';
+import { LEGACY_INTERN_EMPLOYMENT_TYPE, SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import { EmployeeDetailJobInformation, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
@@ -16,13 +17,7 @@ import {
   normalizeEmployeeNumber
 } from '../../utils/employee-number.utils';
 
-/** Same 4 values as add-employee-wizard.component.ts's EMPLOYMENT_TYPE_OPTIONS. */
-const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'intern', label: 'Intern' }
-];
+
 
 @Component({
   selector: 'app-employee-job-info',
@@ -65,7 +60,7 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
             <app-custom-select
               label="Employment Type"
               placeholder="Select employment type"
-              [options]="employmentTypeOptions"
+              [options]="employmentTypeOptions()"
               [value]="form.controls.employmentTypeCode.value"
               [error]="submitAttempted() && form.controls.employmentTypeCode.invalid ? 'Employment type is required.' : ''"
               (valueChange)="form.controls.employmentTypeCode.setValue($event)"
@@ -143,7 +138,13 @@ export class EmployeeJobInfoComponent implements OnDestroy {
   private readonly peopleApi = inject(PeopleApiService);
   private readonly workModeStore = inject(WorkModeStore);
 
-  readonly employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS;
+  /** The selectable types, plus the retired "Intern" only for an employee who already has it -
+   *  so their value still shows instead of a blank field. */
+  readonly employmentTypeOptions = computed<readonly SelectOption[]>(() =>
+    this.jobInformation().employmentTypeCode === LEGACY_INTERN_EMPLOYMENT_TYPE.value
+      ? [...SELECTABLE_EMPLOYMENT_TYPE_OPTIONS, LEGACY_INTERN_EMPLOYMENT_TYPE]
+      : SELECTABLE_EMPLOYMENT_TYPE_OPTIONS
+  );
   readonly employeeNumberMaxLength = EMPLOYEE_NUMBER_MAX_LENGTH;
 
   readonly isEditing = signal(false);

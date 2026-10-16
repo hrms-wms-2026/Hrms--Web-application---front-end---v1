@@ -241,7 +241,7 @@
 app-position-template-drawer {
   flex-shrink: 0;
   width: 300px;
-  height: calc(100vh - 115px);
+  height: calc(100vh - 115px - var(--bottom-tray-offset, 0px));
   align-self: stretch;
   border-left: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   background: var(--color-surface);
@@ -255,23 +255,18 @@ app-position-template-drawer {
   padding: 1.75rem 2rem;
   border-radius: 0;
   background-color: var(--color-surface);
-  background-image: radial-gradient(color-mix(in srgb, var(--color-text-secondary) 18%, transparent) 1px, transparent 1px);
-  background-size: 20px 20px;
   border: none;
   box-shadow: none;
-  height: calc(100vh - 115px);
-  min-height: calc(100vh - 115px);
-  overflow: auto;
+  height: calc(100vh - 115px - var(--bottom-tray-offset, 0px));
+  min-height: calc(100vh - 115px - var(--bottom-tray-offset, 0px));
+  /* Panning moves the tree with a transform; the canvas itself never scrolls, so the grid and
+     minimap layers stay pinned to it. */
+  overflow: hidden;
   overscroll-behavior: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   position: relative;
+  isolation: isolate;
   cursor: grab;
   touch-action: none;
-}
-
-.pm-tree-container::-webkit-scrollbar {
-  display: none;
 }
 
 .pm-tree-container--panning {
@@ -314,6 +309,8 @@ app-position-template-drawer {
 }
 
 .pm-tree-list-wrapper {
+  /* Offset parent for the minimap's card measurements. */
+  position: relative;
   transform-origin: top center;
   transition: transform 0.15s ease-out;
   width: 100%;
@@ -326,62 +323,11 @@ app-position-template-drawer {
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* Separate top-level trees (several positions without a parent) stack with room between. */
+  gap: 3rem;
   width: 100%;
 }
 
-.pm-zoom-controls {
-  position: sticky;
-  bottom: 0.25rem;
-  align-self: flex-end;
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 9999px;
-  padding: 0.25rem 0.375rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  z-index: 10;
-}
-
-.pm-zoom-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: none;
-  background: var(--color-surface-secondary);
-  color: var(--color-text-primary);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.pm-zoom-btn:hover:not(:disabled) {
-  background: var(--color-border);
-  color: var(--color-accent);
-}
-
-.pm-zoom-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.pm-zoom-reset {
-  border: none;
-  background: transparent;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 0 0.35rem;
-}
-
-.pm-zoom-reset:hover {
-  color: var(--color-accent);
-}
 
 
 .pm-footer-note {
@@ -433,5 +379,98 @@ app-position-template-drawer {
   .pm-footer-note {
     align-items: flex-start;
   }
+}
+
+/* Positions | People switch inside the chart header */
+.pm-chart-switch {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 9px;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.pm-chart-switch__btn {
+  padding: 0.25rem 0.75rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.pm-chart-switch__btn--active {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.pm-chart-switch__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+.pm-selection-toolbar {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.5rem 0.75rem 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent) 5%, var(--color-surface));
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.06);
+}
+
+.pm-selection-summary,
+.pm-selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.pm-selection-summary {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+}
+
+.pm-selection-summary span + span::before {
+  content: '·';
+  margin-right: 0.625rem;
+  color: var(--color-border);
+}
+
+.pm-selection-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.pm-selection-btn {
+  height: 30px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  background: var(--color-accent);
+  color: white;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.pm-selection-btn:disabled { opacity: 0.6; cursor: wait; }
+.pm-selection-btn--secondary { border-color: var(--color-border); background: var(--color-surface); color: var(--color-text-primary); }
+.pm-manager-prompt { font-size: 0.75rem; font-weight: 600; color: var(--color-accent); }
+
+@media (max-width: 760px) {
+  .pm-selection-toolbar { align-items: flex-start; flex-direction: column; }
+  .pm-selection-summary { flex-wrap: wrap; }
 }
 

@@ -76,6 +76,17 @@ export interface EmployeeAppUsageItem {
   readonly lastUsedAt: string;
 }
 
+export interface MeetingApplicationComplianceItem {
+  readonly eventId: string;
+  readonly title: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly requiredSeconds: number;
+  readonly meetingApplicationSeconds: number;
+  readonly usagePercentage: number;
+  readonly isCompliant: boolean;
+}
+
 /** Mirrors EmployeeAppUsageResponse (Plan 4B). */
 export interface EmployeeAppUsageResponse {
   readonly from: string;
@@ -83,6 +94,7 @@ export interface EmployeeAppUsageResponse {
   readonly applicationTrackingEnabled: boolean;
   readonly totalMinutes: number;
   readonly apps: readonly EmployeeAppUsageItem[];
+  readonly meetingCompliance?: readonly MeetingApplicationComplianceItem[];
 }
 
 export interface EmployeeIdlePeriod {

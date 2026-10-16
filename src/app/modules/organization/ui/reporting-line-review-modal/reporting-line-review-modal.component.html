@@ -1,0 +1,85 @@
+<div class="rlm-backdrop" (click)="cancelled.emit()">
+  <section
+    class="rlm-modal ui-scroll-open"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="reporting-move-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="rlm-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="hierarchy" aria-hidden="true"></span>
+      <div class="rlm-heading">
+        <h2 id="reporting-move-title">Review reporting change</h2>
+        <p>Only the checked people move. Anyone left unchecked under them stays with the nearest manager who is not moving.</p>
+      </div>
+      <button type="button" class="rlm-close" aria-label="Close" [disabled]="saving()" (click)="cancelled.emit()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg>
+      </button>
+    </header>
+
+    <div class="rlm-body">
+      <div class="rlm-summary" aria-label="Change impact">
+        <span><strong>{{ impact().directRelationshipsChanged }}</strong> manager {{ impact().directRelationshipsChanged === 1 ? 'change' : 'changes' }}</span>
+        <span class="rlm-summary__divider" aria-hidden="true"></span>
+        <span><strong>{{ impact().totalEmployeesAffected }}</strong> people affected</span>
+        <span class="rlm-summary__divider" aria-hidden="true"></span>
+        <span><strong>{{ impact().preservedRelationships }}</strong> relationships preserved</span>
+      </div>
+
+      <div class="rlm-change-list">
+        @for (change of impact().changes; track change.employee.employeeId) {
+          <article class="rlm-change">
+            <div class="rlm-person">
+              <span class="rlm-avatar">
+                @if (avatarUrl(change.employee.employeeId); as avatarUrl) {
+                  <img
+                    [src]="avatarUrl"
+                    [alt]="change.employee.name"
+                    (error)="markAvatarFailed(change.employee.employeeId)"
+                  />
+                } @else {
+                  {{ initials(change.employee.name) }}
+                }
+              </span>
+              <div><strong>{{ change.employee.name }}</strong><span>{{ change.employee.positionName }}</span></div>
+            </div>
+            <div class="rlm-route" aria-label="Manager change">
+              <div>
+                <span class="rlm-label">Current manager</span>
+                <strong>{{ change.currentManager?.name || 'Top of organisation' }}</strong>
+              </div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              <div>
+                <span class="rlm-label">New manager</span>
+                <strong>{{ change.newManager.name }}</strong>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+
+      <div class="rlm-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <span>Checked people keep reporting to whoever above them is also checked. Positions, departments, and access are not changed.</span>
+      </div>
+
+      <label class="rlm-reason">
+        <span>Reason <small>Optional · recorded in employee history</small></span>
+        <textarea
+          rows="2"
+          maxlength="500"
+          placeholder="Add context for this reporting change"
+          [value]="reason()"
+          [disabled]="saving()"
+          (input)="reason.set($any($event.target).value)"
+        ></textarea>
+        <small>{{ reason().length }}/500</small>
+      </label>
+    </div>
+
+    <footer class="rlm-footer">
+      <app-button type="button" variant="secondary" [disabled]="saving()" (click)="cancelled.emit()">Cancel</app-button>
+      <app-button type="button" [loading]="saving()" [disabled]="saving()" (click)="confirm()">Confirm reporting change</app-button>
+    </footer>
+  </section>
+</div>

@@ -32,10 +32,10 @@
 
 @if (selectedRequestTab() === 'corrections') {
   <div id="my-requests-panel-corrections" role="tabpanel" aria-labelledby="my-requests-tab-corrections" tabindex="0">
-    @if (store.myCorrectionsLoading?.()) { <p class="access-note">Loading…</p> }
-    @if (store.myCorrectionsError?.()) {
-      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError?.() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections?.()">Try again</app-button></div>
-    } @else if ((store.myCorrections?.() ?? []).length === 0) {
+    @if (store.myCorrectionsLoading()) { <p class="access-note">Loading…</p> }
+    @if (store.myCorrectionsError()) {
+      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections()">Try again</app-button></div>
+    } @else if (store.myCorrections().length === 0) {
       <div class="empty-state-box">
         <div class="empty-state-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">

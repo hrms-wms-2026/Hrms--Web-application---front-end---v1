@@ -1,8 +1,8 @@
+import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  HostListener,
   ViewChild,
   computed,
   inject,
@@ -13,16 +13,23 @@ import {
 import { SelectOption } from '../select/select.component';
 import { nextUniqueId } from '../../utils/unique-id';
 
+/** Below the trigger first, flipping above when there isn't room - same as app-date-picker. */
+const MENU_POSITIONS: ConnectionPositionPair[] = [
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -4 }
+];
+
 @Component({
   selector: 'app-custom-select',
   standalone: true,
+  imports: [OverlayModule],
   template: `
     <div class="custom-select" [class.custom-select--disabled]="disabled()">
       @if (label()) {
         <label [id]="labelId" class="custom-select__label">{{ label() }}</label>
       }
 
-      <div class="custom-select__control">
+      <div class="custom-select__control" cdkOverlayOrigin #menuOrigin="cdkOverlayOrigin">
         <button
           #triggerBtn
           type="button"
@@ -67,7 +74,21 @@ import { nextUniqueId } from '../../utils/unique-id';
           <span [id]="errorId()" class="custom-select__error" role="alert">{{ error() }}</span>
         }
 
-        @if (isOpen()) {
+        <!-- Rendered in the CDK overlay container (like app-date-picker) so a scrolling parent,
+             e.g. a modal body with overflow:auto, can never clip the open list. -->
+        <ng-template
+          cdkConnectedOverlay
+          [cdkConnectedOverlayOrigin]="menuOrigin"
+          [cdkConnectedOverlayOpen]="isOpen()"
+          [cdkConnectedOverlayPositions]="menuPositions"
+          [cdkConnectedOverlayWidth]="menuWidth()"
+          [cdkConnectedOverlayPush]="true"
+          [cdkConnectedOverlayViewportMargin]="8"
+          [cdkConnectedOverlayHasBackdrop]="true"
+          cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+          (backdropClick)="close()"
+          (detach)="close()"
+        >
           <div
             class="custom-select__menu"
             tabindex="-1"
@@ -175,7 +196,7 @@ import { nextUniqueId } from '../../utils/unique-id';
               }
             </div>
           </div>
-        }
+        </ng-template>
       </div>
     </div>
   `,
@@ -280,11 +301,8 @@ import { nextUniqueId } from '../../utils/unique-id';
     }
 
     .custom-select__menu {
-      position: absolute;
-      top: calc(100% + 4px);
-      left: 0;
-      right: 0;
-      z-index: 60;
+      width: 100%;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -497,6 +515,9 @@ export class CustomSelectComponent {
   @ViewChild('triggerBtn') triggerBtnRef?: ElementRef<HTMLButtonElement>;
 
   readonly isOpen = signal(false);
+  readonly menuPositions = MENU_POSITIONS;
+  /** Trigger width captured on open, so the overlay list lines up with the field. */
+  readonly menuWidth = signal<number | string>('auto');
   readonly activeIndex = signal(-1);
   readonly searchQuery = signal('');
 
@@ -555,6 +576,9 @@ export class CustomSelectComponent {
     if (this.disabled()) return;
     event.stopPropagation();
     const nextOpen = !this.isOpen();
+    if (nextOpen) {
+      this.captureMenuWidth();
+    }
     this.isOpen.set(nextOpen);
     if (nextOpen) {
       this.searchQuery.set('');
@@ -633,6 +657,7 @@ export class CustomSelectComponent {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       if (!this.isOpen()) {
+        this.captureMenuWidth();
         this.isOpen.set(true);
         this.searchQuery.set('');
         const idx = this.parsedOptions().findIndex((opt) => opt.value === this.value());
@@ -675,12 +700,10 @@ export class CustomSelectComponent {
     }
   }
 
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen()) return;
-    if (!this.elementRef.nativeElement.contains(event.target as Node)) {
-      this.close();
-    }
+  private captureMenuWidth(): void {
+    const control = this.elementRef.nativeElement.querySelector('.custom-select__control') as HTMLElement | null;
+    const width = control?.getBoundingClientRect().width ?? 0;
+    this.menuWidth.set(width > 0 ? width : 'auto');
   }
 }
 
