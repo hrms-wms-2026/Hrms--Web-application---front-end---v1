@@ -75,6 +75,40 @@ describe('CommentComposerComponent', () => {
     expect(submitted).toHaveBeenCalledWith({ content: '<p>hi</p>', attachmentFileIds: [], mentions: [] });
   });
 
+  it('chat variant: the emoji button opens the picker and puts the picked emoji into the message', async () => {
+    fixture.componentRef.setInput('variant', 'chat');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    (el.querySelector('[data-testid="composer-emoji"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const picker = el.querySelector('[data-testid="composer-emoji-picker"]')!;
+    (picker.querySelector('.ep-emoji') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+
+    expect(component.editorHtml()).toContain('😀');
+    expect(el.querySelector('[data-testid="composer-emoji-picker"]')).toBeNull();
+  });
+
+  it('chat variant: + hands the picked files to the host uploader and shows them as pills', async () => {
+    const upload = vi.fn(() => of({ fileId: 'up1', originalFileName: 'notes.pdf', fileSizeBytes: 20 }));
+    fixture.componentRef.setInput('variant', 'chat');
+    fixture.componentRef.setInput('uploader', { upload });
+    fixture.detectChanges();
+    const input = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="composer-attach"] input[type="file"]') as HTMLInputElement;
+    const file = new File(['x'], 'notes.pdf');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+    input.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(upload).toHaveBeenCalledWith(file);
+    expect(component.attachedFiles()).toEqual([{ fileId: 'up1', name: 'notes.pdf', sizeBytes: 20 }]);
+    expect((fixture.nativeElement as HTMLElement).querySelector('.tal-pill')?.textContent).toContain('notes.pdf');
+  });
+
   it('keeps the default comment layout (Attach file row and text button) unless the chat variant is asked for', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.cc-chat')).toBeNull();

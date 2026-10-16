@@ -238,6 +238,7 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(files.upload).toHaveBeenCalledWith(file, 'conversation_attachment');
     expect(uploaded).toEqual({ fileId: 'f1', originalFileName: 'a.pdf', fileSizeBytes: 10 });
     expect([uploader.maxFiles, uploader.maxBytes]).toEqual([5, 25 * 1024 * 1024]);
+    expect((uploader as unknown as { accept: string }).accept).toBe('.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip');
   });
 
   it('says so when the server refuses the export', async () => {

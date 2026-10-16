@@ -825,6 +825,34 @@ export class RichTextEditorComponent {
     sel?.addRange(range);
   }
 
+  /** Inserts plain text (e.g. an emoji) at the caret, or at the end when the caret is not in the editor. */
+  insertText(text: string): void {
+    if (this.readOnly() || !text) return;
+    if (this.activateOnClick() && !this.editorActive()) {
+      this.editorActive.set(true);
+      setTimeout(() => this.insertText(text));
+      return;
+    }
+    const el = this.contentEditor()?.nativeElement;
+    if (!el) return;
+    const sel = window.getSelection();
+    let range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+    if (!range || !el.contains(range.commonAncestorContainer)) {
+      range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+    }
+    range.deleteContents();
+    const node = document.createTextNode(text);
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    el.focus();
+    this.onEditorInput();
+  }
+
   closePopovers(): void {
     this.showLinkPopover.set(false);
     this.showTextColorPopover.set(false);

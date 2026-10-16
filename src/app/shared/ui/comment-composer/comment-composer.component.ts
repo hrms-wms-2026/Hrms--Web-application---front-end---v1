@@ -1,6 +1,7 @@
 import { Component, HostListener, inject, input, output, signal, viewChild } from '@angular/core';
 import { Observable, firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../../modules/work/data-access/task-api.service';
+import { EmojiPickerComponent } from '../../../modules/work/ui/emoji-picker/emoji-picker.component';
 import { TaskAttachmentListComponent, AttachmentPill } from '../../../modules/work/ui/task-attachment-list/task-attachment-list.component';
 import { HostSlashCommand, MentionCandidate, RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
@@ -9,12 +10,14 @@ export interface ComposerUploader {
   upload(file: File): Observable<{ fileId: string; originalFileName: string; fileSizeBytes: number }>;
   maxFiles?: number;
   maxBytes?: number;
+  /** File types the server takes (an <input accept> value), so the picker offers only those. */
+  accept?: string;
 }
 
 @Component({
   selector: 'app-comment-composer',
   standalone: true,
-  imports: [TaskAttachmentListComponent, RichTextEditorComponent],
+  imports: [EmojiPickerComponent, TaskAttachmentListComponent, RichTextEditorComponent],
   template: `
     @if (collapsible() && !isExpanded()) {
       <div class="cc-collapsed-box" (click)="expand()" role="button" tabindex="0" (keydown.enter)="expand()" (keydown.space)="expand()" aria-label="Add a comment">
@@ -58,14 +61,26 @@ export interface ComposerUploader {
         }
 
         @if (variant() === 'chat') {
-          <!-- Messenger style: attach (+) on the left, a round send arrow on the right. -->
+          <!-- Messenger style: attach (+) and emoji on the left, a round send arrow on the right. -->
           <div class="cc-chat__bar">
             @if (attachments()) {
               <label class="cc-chat__icon-btn" title="Attach files" data-testid="composer-attach">
-                <input type="file" multiple class="cc-chat__file" aria-label="Attach files" (change)="onChatFiles($event)" />
+                <input type="file" multiple class="cc-chat__file" aria-label="Attach files" [attr.accept]="uploader()?.accept ?? null"
+                  (change)="onChatFiles($event)" />
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
               </label>
             }
+            <div class="cc-chat__emoji">
+              <!-- mousedown is cancelled so the caret stays in the message while picking. -->
+              <button type="button" class="cc-chat__icon-btn" data-testid="composer-emoji" title="Emoji" aria-label="Insert emoji"
+                aria-haspopup="dialog" [attr.aria-expanded]="emojiOpen()" (mousedown)="$event.preventDefault()" (click)="emojiOpen.set(!emojiOpen())">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4 4 0 0 0 7 0" /><path d="M9 9.5h.01M15 9.5h.01" /></svg>
+              </button>
+              @if (emojiOpen()) {
+                <div class="cc-chat__backdrop" aria-hidden="true" (click)="emojiOpen.set(false)"></div>
+                <app-emoji-picker class="cc-chat__emoji-panel" data-testid="composer-emoji-picker" (emojiSelected)="insertEmoji($event)" />
+              }
+            </div>
             <button type="button" class="cc-chat__send" data-testid="composer-send" [disabled]="isEditorEmpty()"
               [attr.aria-label]="submitLabel()" [title]="submitLabel()" (click)="submit()">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
@@ -135,6 +150,9 @@ export interface ComposerUploader {
     .cc-chat__icon-btn { position: relative; background: transparent; color: var(--color-text-primary); }
     .cc-chat__icon-btn:hover { background: var(--color-surface-secondary); }
     .cc-chat__icon-btn:focus-within, .cc-chat__send:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .cc-chat__emoji { position: relative; display: inline-flex; }
+    .cc-chat__backdrop { position: fixed; inset: 0; z-index: 40; }
+    .cc-chat__emoji-panel { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 41; }
     .cc-chat__file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     .cc-chat__send { margin-left: auto; background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .cc-chat__send:hover:not(:disabled) { filter: brightness(.95); }
@@ -180,6 +198,8 @@ export class CommentComposerComponent {
   addAndTag = output<MentionCandidate>();
 
   isExpanded = signal(false);
+  /** The chat variant's emoji picker. */
+  emojiOpen = signal(false);
   editorHtml = signal('');
   mentions = signal<string[]>([]);
   attachedFiles = signal<AttachmentPill[]>([]);
@@ -285,6 +305,12 @@ export class CommentComposerComponent {
    *  then takes the next `initialContent`. */
   clear(): void {
     this.resetEditor();
+  }
+
+  /** Puts the picked emoji at the caret and closes the picker. */
+  insertEmoji(emoji: string): void {
+    this.editor()?.insertText(emoji);
+    this.emojiOpen.set(false);
   }
 
   /** Inserts a mention chip where the user typed "@..." (used after an add-and-tag completes). */

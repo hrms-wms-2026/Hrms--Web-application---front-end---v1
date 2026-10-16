@@ -23,6 +23,8 @@ const ADD_COMMAND = 'add';
 const CONVERSATION_ATTACHMENT = 'conversation_attachment';
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+/** What the server takes for conversation_attachment (UploadPurposeCatalog). */
+const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip';
 const TAG_LABELS: Record<string, string> = {
   info_request: 'Info requested', info_response: 'Info provided', justification: 'Justification'
 };
@@ -389,7 +391,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
     upload: (file: File) => this.files.upload(file, CONVERSATION_ATTACHMENT).pipe(
       map((f) => ({ fileId: f.fileId, originalFileName: f.originalFileName, fileSizeBytes: f.fileSizeBytes }))),
     maxFiles: MAX_ATTACHMENTS,
-    maxBytes: MAX_ATTACHMENT_BYTES
+    maxBytes: MAX_ATTACHMENT_BYTES,
+    accept: ATTACHMENT_ACCEPT
   };
   protected readonly membersOpen = signal(false);
   protected readonly leaveConfirm = signal(false);
