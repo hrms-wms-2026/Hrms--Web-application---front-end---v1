@@ -1,3 +1,4 @@
+import { SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -28,15 +29,10 @@ import { ActiveHolder } from '../../models/onboarding-draft.model';
 
 export type BulkIssueResolverAction = BulkOnboardingIssueAction | 'choose_manager';
 
-const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'intern', label: 'Intern' }
-];
+const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = SELECTABLE_EMPLOYMENT_TYPE_OPTIONS;
 
 function availableSeats(position: PositionListItemResponse): number {
-  const assigned = position.assignedCount ?? position.currentOccupancy ?? 0;
+  const assigned = (position.assignedCount ?? position.currentOccupancy ?? 0) + (position.reservedCount ?? 0);
   return Math.max(0, position.maxOccupancy - assigned);
 }
 

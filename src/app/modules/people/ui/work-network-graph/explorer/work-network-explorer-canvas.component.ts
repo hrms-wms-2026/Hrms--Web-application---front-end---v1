@@ -1,5 +1,13 @@
 import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { Simulation } from 'd3-force';
+import { CanvasGridComponent } from '../../../../../shared/ui/canvas-grid/canvas-grid.component';
+import {
+  CanvasBox,
+  CanvasMinimapComponent,
+  CanvasMinimapItem,
+  CanvasMinimapLink,
+  CanvasPoint
+} from '../../../../../shared/ui/canvas-minimap/canvas-minimap.component';
 import { ProjectApiService } from '../../../../work/data-access/project-api.service';
 import { EmployeeDirectoryStore } from '../../../../work/state/employee-directory.store';
 import { EmployeeWorkGraphResponse, WorkGraphNode } from '../../../models/work-graph.model';
@@ -23,9 +31,9 @@ import {
   tasksByParent
 } from './explorer-layout';
 
-interface Point { readonly x: number; readonly y: number; }
+type Point = CanvasPoint;
+type Box = CanvasBox;
 interface Camera extends Point { readonly scale: number; }
-interface Box { readonly x: number; readonly y: number; readonly width: number; readonly height: number; }
 
 interface RenderedCard {
   readonly key: string;
@@ -56,7 +64,9 @@ const TWEEN_LAYOUT_MS = 650;
 @Component({
   selector: 'app-work-network-explorer-canvas',
   standalone: true,
+  imports: [CanvasGridComponent, CanvasMinimapComponent],
   template: `
+    <app-canvas-grid />
     <svg
       #svg
       class="wgx-svg"
@@ -71,9 +81,6 @@ const TWEEN_LAYOUT_MS = 650;
       (wheel)="onWheel($event)"
     >
       <defs>
-        <pattern id="wgx-dots" width="24" height="24" patternUnits="userSpaceOnUse">
-          <circle cx="1.2" cy="1.2" r="1.2" class="wgx-dot" />
-        </pattern>
         <radialGradient id="wgx-employee" cx="35%" cy="30%" r="75%">
           <stop offset="0%" stop-color="#3b82f6" /><stop offset="100%" stop-color="#1d4ed8" />
         </radialGradient>
@@ -87,7 +94,6 @@ const TWEEN_LAYOUT_MS = 650;
           <stop offset="0%" stop-color="#60a5fa" /><stop offset="100%" stop-color="#a78bfa" />
         </linearGradient>
       </defs>
-      <rect class="wgx-grid" x="-6000" y="-6000" width="12000" height="12000" />
 
       <g [attr.transform]="cameraTransform()">
         @for (link of links(); track link.source.id + link.target.id) {
@@ -211,38 +217,24 @@ const TWEEN_LAYOUT_MS = 650;
       </g>
     </svg>
 
-    <div class="wgx-minimap" aria-label="Minimap">
-      <svg
-        class="wgx-minimap__map"
-        [attr.viewBox]="worldBox().x + ' ' + worldBox().y + ' ' + worldBox().width + ' ' + worldBox().height"
-        preserveAspectRatio="xMidYMid meet"
-        (pointerdown)="onMinimapPointer($event)"
-      >
-        @for (link of links(); track link.source.id + link.target.id) {
-          <line class="wgx-mini-link" [attr.x1]="link.source.x" [attr.y1]="link.source.y" [attr.x2]="link.target.x" [attr.y2]="link.target.y" />
-        }
-        @for (node of visibleNodes(); track node.id) {
-          <circle [class]="'wgx-mini-node wgx-mini-node--' + node.data.kind" [attr.cx]="node.x" [attr.cy]="node.y" [attr.r]="node.radius * 0.9" />
-        }
-        @if (visibleBox(); as v) {
-          <rect class="wgx-mini-view" [attr.x]="v.x" [attr.y]="v.y" [attr.width]="v.width" [attr.height]="v.height" />
-        }
-      </svg>
-      <div class="wgx-minimap__buttons">
-        <button type="button" aria-label="Zoom in" title="Zoom in" (click)="zoomIn()">+</button>
-        <button type="button" aria-label="Zoom out" title="Zoom out" (click)="zoomOut()">−</button>
-        <button type="button" aria-label="Fit network to view" title="Fit to screen" (click)="fit()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-        </button>
-      </div>
-    </div>
+    <app-canvas-minimap
+      label="Work network overview"
+      [world]="worldBox()"
+      [items]="miniItems()"
+      [links]="miniLinks()"
+      [viewport]="visibleBox()"
+      [canZoomIn]="camera().scale < maxZoom"
+      [canZoomOut]="camera().scale > minZoom"
+      (navigate)="centerOnPoint($event)"
+      (zoomIn)="zoomIn()"
+      (zoomOut)="zoomOut()"
+      (fit)="fit()"
+    />
   `,
   styles: [`
-    :host { position: relative; display: block; width: 100%; height: 100%; min-height: 0; overflow: hidden; }
+    :host { position: relative; isolation: isolate; display: block; width: 100%; height: 100%; min-height: 0; overflow: hidden; }
     .wgx-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; cursor: grab; }
     .wgx-svg:active { cursor: grabbing; }
-    .wgx-grid { fill: url(#wgx-dots); }
-    .wgx-dot { fill: color-mix(in srgb, var(--color-text-secondary) 22%, transparent); }
 
     .wgx-link { fill: none; stroke-linecap: round; transition: opacity 180ms, stroke-width 180ms; }
     .wgx-link--works_on { stroke: url(#wgx-works-on); stroke-width: 2.4; opacity: 0.75; }
@@ -295,25 +287,6 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-tone--not-started { fill: #94a3b8; }
     .wgx-tone--overdue { fill: #ef4444; }
 
-    .wgx-minimap {
-      position: absolute; left: 1rem; bottom: 1rem; display: flex; gap: 0.25rem;
-      padding: 0.375rem; border-radius: 0.75rem; border: 1px solid var(--color-border);
-      background: var(--color-surface); box-shadow: 0 6px 18px rgb(15 23 42 / 0.08);
-    }
-    .wgx-minimap__map { width: 9.5rem; height: 6rem; border-radius: 0.5rem; background: #f8fafc; cursor: pointer; }
-    .wgx-minimap__buttons { display: flex; flex-direction: column; gap: 0.125rem; }
-    .wgx-minimap__buttons button {
-      display: flex; width: 1.75rem; height: 1.75rem; align-items: center; justify-content: center;
-      border: 0; border-radius: 0.375rem; background: transparent; color: var(--color-text-secondary);
-      font-size: 1rem; cursor: pointer;
-    }
-    .wgx-minimap__buttons button:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    .wgx-minimap__buttons svg { width: 0.95rem; height: 0.95rem; }
-    .wgx-mini-link { stroke: #c7d2fe; stroke-width: 6; }
-    .wgx-mini-node--employee, .wgx-mini-node--project { fill: #2563eb; }
-    .wgx-mini-node--module { fill: #8b5cf6; }
-    .wgx-mini-view { fill: rgb(37 99 235 / 0.08); stroke: #2563eb; stroke-width: 6; }
-
     @keyframes wgx-pop { from { opacity: 0; transform: scale(0.6); } }
     @keyframes wgx-card-in { from { opacity: 0; } }
     @keyframes wgx-fade { from { opacity: 0; } }
@@ -341,6 +314,8 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
 
   readonly cardW = CARD_WIDTH;
   readonly cardH = CARD_HEIGHT;
+  readonly minZoom = MIN_ZOOM;
+  readonly maxZoom = MAX_ZOOM;
 
   readonly hovered = signal<string | null>(null);
   /** Image URLs that failed to load (no access, deleted file): those nodes keep the placeholder. */
@@ -420,6 +395,20 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
 
   /** Bounding box of everything drawn (minimap world). */
   readonly worldBox = computed<Box>(() => this.boundsOf(this.visibleNodes(), this.cards()));
+
+  readonly miniItems = computed<CanvasMinimapItem[]>(() =>
+    this.visibleNodes().map((n) => ({
+      shape: 'circle',
+      x: n.x ?? 0,
+      y: n.y ?? 0,
+      r: n.radius * 0.9,
+      tone: n.data.kind === 'module' ? 'secondary' : 'primary'
+    }))
+  );
+
+  readonly miniLinks = computed<CanvasMinimapLink[]>(() =>
+    this.links().map((l) => ({ x1: l.source.x ?? 0, y1: l.source.y ?? 0, x2: l.target.x ?? 0, y2: l.target.y ?? 0 }))
+  );
 
   /** The part of the world currently on screen, for the minimap's viewport rectangle. */
   readonly visibleBox = computed<Box | null>(() => {
@@ -534,7 +523,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
 
   startPan(event: PointerEvent): void {
     const target = event.target as Element;
-    if (target !== event.currentTarget && !target.classList.contains('wgx-grid')) return;
+    if (target !== event.currentTarget) return;
     (event.currentTarget as Element).setPointerCapture?.(event.pointerId);
     this.pan = { startClient: { x: event.clientX, y: event.clientY }, startCamera: this.camera(), moved: false, pointerId: event.pointerId };
   }
@@ -567,14 +556,8 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
     this.zoomBy(event.deltaY < 0 ? 1.12 : 1 / 1.12, anchor ?? undefined);
   }
 
-  onMinimapPointer(event: PointerEvent): void {
-    const map = event.currentTarget as SVGSVGElement;
-    const ctm = map.getScreenCTM?.();
-    if (!ctm) return;
-    const pt = map.createSVGPoint();
-    pt.x = event.clientX;
-    pt.y = event.clientY;
-    const world = pt.matrixTransform(ctm.inverse());
+  /** Minimap click/drag: keeps the zoom and moves the camera so `world` sits in the middle. */
+  centerOnPoint(world: Point): void {
     const vb = this.parseBox(this.baseViewBox());
     const scale = this.camera().scale;
     this.camera.set({ scale, x: vb.x + vb.width / 2 - world.x * scale, y: vb.y + vb.height / 2 - world.y * scale });

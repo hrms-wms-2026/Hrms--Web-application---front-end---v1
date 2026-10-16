@@ -46,6 +46,8 @@ export interface EmployeeListItemResponse {
   readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
   readonly workModeLabel?: string | null;
   readonly avatarFileId?: string | null;
+  /** Position/manager come from a reserved (planned) seat of a still-pending invite. */
+  readonly positionPending?: boolean;
 }
 
 /**
@@ -168,6 +170,8 @@ export interface EmployeeDetailJobInformation {
   readonly workModeId: string | null;
   /** Absent on an API built before the field was added. */
   readonly reportingManagerId?: string | null;
+  /** Position reserved by a still-pending onboarding invite; becomes positionName once accepted. */
+  readonly pendingPositionName?: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {

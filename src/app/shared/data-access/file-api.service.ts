@@ -31,6 +31,11 @@ export class FileApiService {
     return this.http.post<UploadedFile>(this.base, formData);
   }
 
+  /** Fetches the file through HttpClient (so auth interceptors apply) for download/preview. */
+  download(fileId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/${fileId}`, { responseType: 'blob' });
+  }
+
   delete(fileId: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${fileId}`);
   }

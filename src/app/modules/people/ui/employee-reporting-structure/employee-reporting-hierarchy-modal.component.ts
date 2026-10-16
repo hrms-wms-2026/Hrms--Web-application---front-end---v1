@@ -16,11 +16,19 @@ import {
   viewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { CanvasGridComponent } from '../../../../shared/ui/canvas-grid/canvas-grid.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { PositionTreeNodeResponse } from '../../../organization/models/position.model';
-import { PositionTreeNodeComponent } from '../../../organization/ui/position-tree-node/position-tree-node.component';
+import {
+  POSITION_CARD_HEIGHT,
+  POSITION_CARD_WIDTH,
+  PositionTreeNodeComponent,
+  positionChildren,
+  positionKey
+} from '../../../organization/ui/position-tree-node/position-tree-node.component';
+import { TidyTreeComponent } from '../../../../shared/ui/tidy-tree/tidy-tree.component';
 import { buildReportingBranch } from './reporting-branch';
 
 type HierarchyState = 'idle' | 'loading' | 'ready' | 'not_found' | 'forbidden' | 'error';
@@ -38,56 +46,72 @@ const DEFAULT_ZOOM = 0.8;
 @Component({
   selector: 'app-employee-reporting-hierarchy-modal',
   standalone: true,
-  imports: [ModalComponent, ErrorStateComponent, PositionTreeNodeComponent],
+  imports: [CanvasGridComponent, ModalComponent, ErrorStateComponent, PositionTreeNodeComponent, TidyTreeComponent],
   template: `
     <app-modal [open]="open()" [title]="'Reporting structure · ' + employeeName()" customMaxWidth="max-w-none" panelClass="flex h-[calc(100vh-2rem)] flex-col !p-5" (closed)="closed.emit()">
-      <div class="rh-canvas" #canvas data-testid="reporting-hierarchy">
-        @switch (state()) {
-          @case ('loading') {
-            <p class="rh-message" data-testid="reporting-hierarchy-loading">Loading the reporting structure…</p>
-          }
-          @case ('error') {
-            <div class="rh-message">
-              <app-error-state message="Could not load the reporting structure." [retryable]="true" (retry)="load()" />
-            </div>
-          }
-          @case ('forbidden') {
-            <p class="rh-message" data-testid="reporting-hierarchy-forbidden">You need access to the organization structure to see the full reporting structure.</p>
-          }
-          @case ('not_found') {
-            <p class="rh-message" data-testid="reporting-hierarchy-empty">This employee has no position in the organization structure yet.</p>
-          }
-          @case ('ready') {
-            @if (branch(); as root) {
-              <div class="rh-tree" [style.transform]="'scale(' + zoom() + ')'">
-                <app-position-tree-node [node]="root" [isRoot]="true" [highlightPositionId]="positionId()" />
+      <div class="rh-canvas" data-testid="reporting-hierarchy">
+        <app-canvas-grid [spacing]="20" />
+        <div class="rh-scroll" #canvas>
+          @switch (state()) {
+            @case ('loading') {
+              <p class="rh-message" data-testid="reporting-hierarchy-loading">Loading the reporting structure…</p>
+            }
+            @case ('error') {
+              <div class="rh-message">
+                <app-error-state message="Could not load the reporting structure." [retryable]="true" (retry)="load()" />
               </div>
             }
+            @case ('forbidden') {
+              <p class="rh-message" data-testid="reporting-hierarchy-forbidden">You need access to the organization structure to see the full reporting structure.</p>
+            }
+            @case ('not_found') {
+              <p class="rh-message" data-testid="reporting-hierarchy-empty">This employee has no position in the organization structure yet.</p>
+            }
+            @case ('ready') {
+              @if (branch(); as root) {
+                <div class="rh-tree" [style.transform]="'scale(' + zoom() + ')'">
+                  <app-tidy-tree
+                    label="Reporting structure"
+                    [root]="root"
+                    [childrenOf]="positionChildren"
+                    [keyOf]="positionKey"
+                    [nodeWidth]="cardWidth"
+                    [nodeHeight]="cardHeight"
+                  >
+                    <ng-template let-node let-depth="depth">
+                      <app-position-tree-node [node]="node" [level]="depth" [isRoot]="depth === 0" [highlightPositionId]="positionId()" />
+                    </ng-template>
+                  </app-tidy-tree>
+                </div>
+              }
+            }
           }
-        }
 
-        @if (state() === 'ready') {
-          <div class="rh-zoom" role="toolbar" aria-label="Zoom controls">
-            <button type="button" class="rh-zoom-btn" aria-label="Zoom out" [disabled]="zoom() <= minZoom" (click)="zoomBy(-step)">−</button>
-            <button type="button" class="rh-zoom-reset" title="Reset zoom" (click)="zoom.set(defaultZoom)">{{ zoomLabel() }}%</button>
-            <button type="button" class="rh-zoom-btn" aria-label="Zoom in" [disabled]="zoom() >= maxZoom" (click)="zoomBy(step)">+</button>
-          </div>
-        }
+          @if (state() === 'ready') {
+            <div class="rh-zoom" role="toolbar" aria-label="Zoom controls">
+              <button type="button" class="rh-zoom-btn" aria-label="Zoom out" [disabled]="zoom() <= minZoom" (click)="zoomBy(-step)">−</button>
+              <button type="button" class="rh-zoom-reset" title="Reset zoom" (click)="zoom.set(defaultZoom)">{{ zoomLabel() }}%</button>
+              <button type="button" class="rh-zoom-btn" aria-label="Zoom in" [disabled]="zoom() >= maxZoom" (click)="zoomBy(step)">+</button>
+            </div>
+          }
+        </div>
       </div>
     </app-modal>
   `,
   styles: [`
     .rh-canvas {
       position: relative;
+      isolation: isolate;
+      display: flex;
       flex: 1 1 auto;
       min-height: 0;
-      overflow: auto;
+      overflow: hidden;
       border-radius: 0.75rem;
       border: 1px solid var(--color-border);
       background-color: var(--color-surface);
-      background-image: radial-gradient(color-mix(in srgb, var(--color-text-secondary) 18%, transparent) 1px, transparent 1px);
-      background-size: 20px 20px;
     }
+    /* The grid stays put behind the scroller, like a fixed background. */
+    .rh-scroll { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; }
     .rh-tree {
       display: flex;
       justify-content: center;
@@ -127,6 +151,10 @@ export class EmployeeReportingHierarchyModalComponent {
   readonly employeeName = input('');
   readonly closed = output<void>();
 
+  readonly cardWidth = POSITION_CARD_WIDTH;
+  readonly cardHeight = POSITION_CARD_HEIGHT;
+  readonly positionChildren = positionChildren;
+  readonly positionKey = positionKey;
   readonly minZoom = MIN_ZOOM;
   readonly maxZoom = MAX_ZOOM;
   readonly step = ZOOM_STEP;

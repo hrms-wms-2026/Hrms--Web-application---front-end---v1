@@ -46,6 +46,27 @@
     @if (activeSubTab() === 'job') {
       <app-job-info-panel [jobInformation]="profile.jobInformation" />
     }
+    @if (activeSubTab() === 'documents') {
+      <app-documents-panel
+        [documents]="store.documents()"
+        [loading]="store.documentsLoading()"
+        [loadError]="store.documentsError()"
+        [actionError]="uploadType() ? null : store.documentError()"
+        (uploadRequested)="openUpload($event)"
+        (rowAction)="onDocumentAction($event.action, $event.document)"
+        (deleteRequested)="store.deleteDocument($event)"
+        (retry)="store.loadDocuments()"
+      />
+      @if (uploadType(); as type) {
+        <app-document-upload-panel
+          [initialType]="type"
+          [uploading]="store.uploadingDocument()"
+          [error]="store.documentError()"
+          (submitted)="onUploadDocument($event)"
+          (closed)="closeUpload()"
+        />
+      }
+    }
     @if (activeSubTab() === 'payroll') {
       <app-payroll-panel [payroll]="profile.payroll" [saving]="store.saving()" (save)="onSavePayroll($event)" />
     }

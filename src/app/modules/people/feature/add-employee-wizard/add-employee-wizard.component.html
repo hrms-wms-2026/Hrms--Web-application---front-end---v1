@@ -13,8 +13,8 @@
       <div class="add-emp-modal-header-top">
         <span class="ui-popup-icon" data-icon="user-plus" aria-hidden="true"></span>
         <div>
-          <h2 id="modal-add-emp-title" class="add-emp-modal-title">Add New Employee</h2>
-          <p class="add-emp-modal-subtitle">Enter employee information to start their onboarding journey.</p>
+          <h2 id="modal-add-emp-title" class="add-emp-modal-title">Add employee</h2>
+          <p class="add-emp-modal-subtitle">Create a new employee record and set up their place in your organisation.</p>
         </div>
         <button
           type="button"
@@ -31,64 +31,35 @@
       </div>
 
       <!-- Stepper Nav Bar -->
-      <div class="add-emp-stepper-bar" role="tablist" aria-label="Onboarding wizard steps">
-        <button
-          type="button"
-          class="add-emp-step-tab"
-          [class.add-emp-step-tab--active]="stepIndex() === 0"
-          [class.add-emp-step-tab--completed]="stepIndex() > 0"
-          (click)="jumpToStep(0)"
-          role="tab"
-          [attr.aria-selected]="stepIndex() === 0"
-        >
-          <span class="add-emp-step-num">
-            @if (stepIndex() > 0) {
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            } @else {
-              1
+      <ol class="add-emp-stepper" aria-label="Add employee steps">
+        @for (step of stepOrder; track step; let i = $index; let last = $last) {
+          <li
+            class="add-emp-stepper__item"
+            [class.add-emp-stepper__item--active]="stepIndex() === i"
+            [class.add-emp-stepper__item--completed]="stepIndex() > i"
+          >
+            <button
+              type="button"
+              class="add-emp-stepper__btn"
+              (click)="jumpToStep(i)"
+              [disabled]="!canJumpToStep(i) && stepIndex() !== i"
+              [attr.aria-current]="stepIndex() === i ? 'step' : null"
+            >
+              <span class="add-emp-stepper__dot">
+                @if (stepIndex() > i) {
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                } @else {
+                  {{ i + 1 }}
+                }
+              </span>
+              <span class="add-emp-stepper__label">{{ stepLabels[step] }}</span>
+            </button>
+            @if (!last) {
+              <span class="add-emp-stepper__line" [class.add-emp-stepper__line--completed]="stepIndex() > i" aria-hidden="true"></span>
             }
-          </span>
-          <span class="add-emp-step-title">Details</span>
-        </button>
-
-        <div class="add-emp-step-divider" [class.add-emp-step-divider--completed]="stepIndex() > 0"></div>
-
-        <button
-          type="button"
-          class="add-emp-step-tab"
-          [class.add-emp-step-tab--active]="stepIndex() === 1"
-          [class.add-emp-step-tab--completed]="stepIndex() > 1"
-          (click)="jumpToStep(1)"
-          [disabled]="!canJumpToStep(1)"
-          role="tab"
-          [attr.aria-selected]="stepIndex() === 1"
-        >
-          <span class="add-emp-step-num">
-            @if (stepIndex() > 1) {
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            } @else {
-              2
-            }
-          </span>
-          <span class="add-emp-step-title">Checklist</span>
-        </button>
-
-        <div class="add-emp-step-divider" [class.add-emp-step-divider--completed]="stepIndex() > 1"></div>
-
-        <button
-          type="button"
-          class="add-emp-step-tab"
-          [class.add-emp-step-tab--active]="stepIndex() === 2"
-          [class.add-emp-step-tab--completed]="stepIndex() > 2"
-          (click)="jumpToStep(2)"
-          [disabled]="!canJumpToStep(2)"
-          role="tab"
-          [attr.aria-selected]="stepIndex() === 2"
-        >
-          <span class="add-emp-step-num">3</span>
-          <span class="add-emp-step-title">Review & Submit</span>
-        </button>
-      </div>
+          </li>
+        }
+      </ol>
     </div>
 
     <!-- Modal Body (Scrollable) -->
@@ -119,186 +90,616 @@
         <div class="add-emp-step-content">
           @switch (store.step()) {
             @case ('employee_details') {
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-                <app-input
-                  label="First name"
-                  [value]="form.controls.firstName.value || ''"
-                  (valueChange)="form.controls.firstName.setValue($event)"
-                  [error]="submitAttempted() && form.controls.firstName.invalid ? 'First name is required.' : ''"
-                />
+              <div class="aw-identity">
+                <section class="aw-identity__details" aria-labelledby="aw-identity-title">
+                  <h3 id="aw-identity-title" class="aw-identity__title">Employee details</h3>
+                  <p class="aw-identity__sub">Enter the basic information for the new employee.</p>
 
-                <app-input
-                  label="Last name"
-                  [value]="form.controls.lastName.value || ''"
-                  (valueChange)="form.controls.lastName.setValue($event)"
-                  [error]="submitAttempted() && form.controls.lastName.invalid ? 'Last name is required.' : ''"
-                />
+                  <div class="aw-identity__grid">
+                    <div class="aw-field">
+                      <label class="aw-field__label" for="aw-first-name">First name</label>
+                      <div class="aw-ctl" [class.aw-ctl--error]="submitAttempted() && form.controls.firstName.invalid">
+                        <span class="aw-ctl__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </span>
+                        <input
+                          id="aw-first-name"
+                          class="aw-ctl__input"
+                          type="text"
+                          maxlength="100"
+                          autocomplete="off"
+                          [value]="form.controls.firstName.value || ''"
+                          (input)="form.controls.firstName.setValue($any($event.target).value)"
+                          [attr.aria-invalid]="submitAttempted() && form.controls.firstName.invalid ? true : null"
+                        />
+                      </div>
+                      @if (submitAttempted() && form.controls.firstName.invalid) {
+                        <p class="aw-field__error">First name is required.</p>
+                      }
+                    </div>
 
-                <app-input
-                  label="Work email"
-                  type="email"
-                  [value]="form.controls.workEmail.value || ''"
-                  (valueChange)="form.controls.workEmail.setValue($event)"
-                  [error]="submitAttempted() && form.controls.workEmail.invalid ? 'A valid work email is required (max 254 chars).' : ''"
-                />
+                    <div class="aw-field">
+                      <label class="aw-field__label" for="aw-last-name">Last name</label>
+                      <div class="aw-ctl" [class.aw-ctl--error]="submitAttempted() && form.controls.lastName.invalid">
+                        <span class="aw-ctl__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </span>
+                        <input
+                          id="aw-last-name"
+                          class="aw-ctl__input"
+                          type="text"
+                          maxlength="100"
+                          autocomplete="off"
+                          [value]="form.controls.lastName.value || ''"
+                          (input)="form.controls.lastName.setValue($any($event.target).value)"
+                          [attr.aria-invalid]="submitAttempted() && form.controls.lastName.invalid ? true : null"
+                        />
+                      </div>
+                      @if (submitAttempted() && form.controls.lastName.invalid) {
+                        <p class="aw-field__error">Last name is required.</p>
+                      }
+                    </div>
 
-                @if (store.loadingWorkModes()) {
-                  <div class="md:col-span-1">
-                    <app-loader label="Loading work modes…" />
+                    <div class="aw-field">
+                      <label class="aw-field__label" for="aw-employee-number">Employee number</label>
+                      <div class="aw-ctl aw-ctl--divided" [class.aw-ctl--error]="employeeNumberStatus() === 'bad' || !!employeeNumberInlineError()">
+                        <span class="aw-ctl__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>
+                        </span>
+                        <input
+                          id="aw-employee-number"
+                          class="aw-ctl__input"
+                          type="text"
+                          autocomplete="off"
+                          [attr.maxlength]="20"
+                          [value]="form.controls.employeeNumber.value || ''"
+                          (input)="onEmployeeNumberChange($any($event.target).value)"
+                          [attr.aria-invalid]="employeeNumberStatus() === 'bad' ? true : null"
+                          aria-describedby="aw-employee-number-status"
+                        />
+                        <!-- Availability lives inside the field: tick = free, cross = taken/invalid. -->
+                        <span
+                          id="aw-employee-number-status"
+                          class="aw-ctl__status"
+                          [class.aw-ctl__status--ok]="employeeNumberStatus() === 'ok'"
+                          [class.aw-ctl__status--bad]="employeeNumberStatus() === 'bad'"
+                          [attr.title]="employeeNumberStatusLabel()"
+                          [attr.aria-label]="employeeNumberStatusLabel()"
+                          role="status"
+                        >
+                          @switch (employeeNumberStatus()) {
+                            @case ('ok') {
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                            }
+                            @case ('bad') {
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            }
+                            @case ('checking') {
+                              <span class="aw-ctl__spinner" aria-hidden="true"></span>
+                            }
+                          }
+                        </span>
+                      </div>
+                      @if (employeeNumberInlineError()) {
+                        <p class="aw-field__error">{{ employeeNumberInlineError() }}</p>
+                      }
+                    </div>
+
+                    <div class="aw-field">
+                      <label class="aw-field__label" for="aw-work-email">Work email</label>
+                      <div class="aw-ctl aw-ctl--divided" [class.aw-ctl--error]="submitAttempted() && form.controls.workEmail.invalid">
+                        <span class="aw-ctl__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                        </span>
+                        <input
+                          id="aw-work-email"
+                          class="aw-ctl__input"
+                          type="email"
+                          autocomplete="off"
+                          [value]="form.controls.workEmail.value || ''"
+                          (input)="form.controls.workEmail.setValue($any($event.target).value)"
+                          [attr.aria-invalid]="submitAttempted() && form.controls.workEmail.invalid ? true : null"
+                        />
+                      </div>
+                      @if (submitAttempted() && form.controls.workEmail.invalid) {
+                        <p class="aw-field__error">A valid work email is required (max 254 chars).</p>
+                      }
+                    </div>
+
+                    <div class="aw-field">
+                      <span class="aw-field__label">Department</span>
+                      @if (store.loadingDepartments()) {
+                        <app-loader label="Loading departments…" />
+                      } @else if (store.departments().length === 0) {
+                        <p class="aw-field__error">No departments configured. Set them up under Organization before adding employees.</p>
+                      } @else {
+                        <div class="aw-ctl aw-ctl--divided aw-ctl--host" [class.aw-ctl--error]="submitAttempted() && form.controls.departmentId.invalid">
+                          <span class="aw-ctl__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1"/></svg>
+                          </span>
+                          <app-custom-select
+                            class="aw-ctl__select"
+                            placeholder="Select a department"
+                            [options]="store.departments()"
+                            [value]="form.controls.departmentId.value"
+                            (valueChange)="onDepartmentChange($event)"
+                          />
+                        </div>
+                        @if (submitAttempted() && form.controls.departmentId.invalid) {
+                          <p class="aw-field__error">Department is required.</p>
+                        }
+                      }
+                    </div>
+
+                    <div class="aw-field">
+                      <span class="aw-field__label">Position</span>
+                      @if (form.controls.departmentId.value && store.loadingPositions()) {
+                        <app-loader label="Loading positions…" />
+                      } @else {
+                        <div class="aw-ctl aw-ctl--divided aw-ctl--host" [class.aw-ctl--error]="!!positionFieldError()">
+                          <span class="aw-ctl__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>
+                          </span>
+                          <app-custom-select
+                            class="aw-ctl__select"
+                            [placeholder]="!form.controls.departmentId.value ? 'Select a department first' : store.positions().length === 0 ? 'No active positions in department' : 'Select a position'"
+                            [options]="store.positions()"
+                            [disabled]="!form.controls.departmentId.value || store.positions().length === 0"
+                            [value]="form.controls.positionId.value"
+                            (valueChange)="onPositionChange($event)"
+                          />
+                        </div>
+                        @if (positionFieldError()) {
+                          <p class="aw-field__error">{{ positionFieldError() }}</p>
+                        }
+                      }
+                    </div>
+
+                    <div class="aw-field">
+                      <span class="aw-field__label" id="aw-employment-type-label">Employment type</span>
+                      <div class="aw-chips" role="radiogroup" aria-labelledby="aw-employment-type-label">
+                        @for (type of employmentTypeOptions; track type.value) {
+                          <button
+                            type="button"
+                            role="radio"
+                            class="aw-chip"
+                            [class.aw-chip--active]="form.controls.employmentType.value === type.value"
+                            [attr.aria-checked]="form.controls.employmentType.value === type.value"
+                            (click)="form.controls.employmentType.setValue(type.value)"
+                          >{{ type.label }}</button>
+                        }
+                      </div>
+                      @if (submitAttempted() && form.controls.employmentType.invalid) {
+                        <p class="aw-field__error">Employment type is required.</p>
+                      }
+                    </div>
+
+                    <div class="aw-field">
+                      <span class="aw-field__label">Start date</span>
+                      <div class="aw-ctl aw-ctl--divided aw-ctl--host" [class.aw-ctl--error]="submitAttempted() && form.controls.startDate.invalid">
+                        <span class="aw-ctl__icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+                        </span>
+                        <app-date-picker
+                          class="aw-ctl__select"
+                          placeholder="YYYY-MM-DD"
+                          ariaLabel="Start date"
+                          [value]="form.controls.startDate.value || ''"
+                          (valueChange)="form.controls.startDate.setValue($event)"
+                        />
+                      </div>
+                      @if (submitAttempted() && form.controls.startDate.invalid) {
+                        <p class="aw-field__error">Start date is required.</p>
+                      }
+                    </div>
                   </div>
-                } @else if (store.workModesError()) {
-                  <div class="md:col-span-1 rounded-lg border border-[var(--color-border)] p-3 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
-                    <span>{{ store.workModesError() }}</span>
-                    <app-button variant="secondary" size="sm" (pressed)="retryLoadWorkModes()">Retry</app-button>
-                  </div>
-                } @else if (store.workModes().length === 0) {
-                  <div class="md:col-span-1">
-                    <app-empty-state
-                      title="No work modes configured"
-                      description="Work modes are not configured. Contact an administrator."
+                </section>
+
+                <aside class="aw-photo" aria-labelledby="aw-photo-title">
+                  <h3 id="aw-photo-title" class="aw-identity__title">Profile photo</h3>
+                  <p class="aw-identity__sub">Upload a photo to help identify the employee.</p>
+
+                  <div class="aw-photo__frame">
+                    <button
+                      type="button"
+                      class="aw-photo__circle"
+                      [class.aw-photo__circle--empty]="!avatarPreviewUrl()"
+                      [disabled]="avatarUploading()"
+                      (click)="avatarInput.click()"
+                      [attr.aria-label]="avatarPreviewUrl() ? 'Change profile photo' : 'Upload profile photo'"
+                    >
+                      @if (avatarPreviewUrl(); as previewUrl) {
+                        <img [src]="previewUrl" alt="" (error)="onAvatarPreviewError()" />
+                      } @else if (store.avatarFileId()) {
+                        <span class="aw-photo__placeholder">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 7"/></svg>
+                          <span>Photo attached</span>
+                        </span>
+                      } @else {
+                        <span class="aw-photo__placeholder">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          <span>Add photo</span>
+                        </span>
+                      }
+                      @if (avatarUploading()) {
+                        <span class="aw-photo__busy"><app-loader label="" /></span>
+                      }
+                    </button>
+                    <button
+                      type="button"
+                      class="aw-photo__edit"
+                      [disabled]="avatarUploading()"
+                      (click)="avatarInput.click()"
+                      [attr.aria-label]="store.avatarFileId() ? 'Change profile photo' : 'Upload profile photo'"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    </button>
+                    <input
+                      #avatarInput
+                      type="file"
+                      class="sr-only"
+                      accept="image/png,image/jpeg,image/webp"
+                      (change)="onAvatarSelected($event)"
+                      tabindex="-1"
+                      aria-hidden="true"
                     />
                   </div>
-                } @else {
-                  <div class="flex flex-col gap-1.5">
-                    <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
-                      Work mode <span class="text-red-500">*</span>
-                    </label>
-                    <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Work mode selection">
-                      @for (mode of workModeOptions(); track mode.value) {
+
+                  <p class="aw-photo__caption">JPG, PNG or WEBP. Max 5MB.</p>
+                  @if (avatarError()) {
+                    <p class="aw-field__error text-center">{{ avatarError() }}</p>
+                  }
+                  @if (store.avatarFileId() && !avatarUploading()) {
+                    <button type="button" class="aw-link aw-photo__remove" (click)="removeAvatar()">Remove photo</button>
+                  }
+                </aside>
+              </div>
+            }
+            @case ('reporting') {
+              <div class="aw-split">
+                <section class="aw-card aw-mgr">
+                  <!-- Recommended: holders of the position this one reports to -->
+                  <header class="aw-mgr__head">
+                    <span class="aw-mgr__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><path d="M8 11.5a4 4 0 0 1 8 0"/><circle cx="6" cy="15" r="2"/><circle cx="18" cy="15" r="2"/><path d="M3 21a3 3 0 0 1 6 0M15 21a3 3 0 0 1 6 0"/></svg>
+                    </span>
+                    <div>
+                      <h3 class="aw-card__title">Recommended reporting managers</h3>
+                      <p class="aw-card__sub">
+                        @if (reportsToPositionName()) {
+                          {{ reportsToPositionName() }} · Direct reporting position
+                        } @else {
+                          From the position hierarchy
+                        }
+                      </p>
+                    </div>
+                  </header>
+
+                  @if (store.loadingActiveHolders()) {
+                    <app-loader label="Loading reporting options…" />
+                  } @else if (!reportsToPositionId() && store.activeHolders().length === 0) {
+                    <p class="aw-muted aw-mgr__empty">{{ selectedPositionLabel() }} sits at the top of the hierarchy, so there's no recommended manager. Choose someone below if this employee should still report to someone.</p>
+                  } @else if (store.activeHolders().length === 0) {
+                    <p class="aw-muted aw-mgr__empty"><strong>{{ reportsToPositionName() || 'The reporting position' }}</strong> is vacant right now. Choose someone below, or continue and the manager is filled in once someone holds that position.</p>
+                  } @else {
+                    <div class="aw-mgr__list" role="radiogroup" aria-label="Recommended reporting managers">
+                      @for (holder of store.activeHolders(); track holder.employeeId; let first = $first) {
                         <button
                           type="button"
                           role="radio"
-                          [attr.aria-checked]="form.controls.workModeId.value === mode.value"
-                          class="work-mode-chip"
-                          [class.work-mode-chip--active]="form.controls.workModeId.value === mode.value"
-                          (click)="onWorkModeChange(mode.value)"
+                          class="aw-mgr__row"
+                          [class.aw-mgr__row--active]="store.effectiveManagerId() === holder.employeeId"
+                          [attr.aria-checked]="store.effectiveManagerId() === holder.employeeId"
+                          (click)="store.setReportsToEmployeeId(holder.employeeId)"
                         >
-                          <span>{{ mode.label }}</span>
+                          <span class="aw-radio" [class.aw-radio--on]="store.effectiveManagerId() === holder.employeeId" aria-hidden="true"></span>
+                          <span class="aw-avatar">{{ initialsOf(holder.firstName, holder.lastName) }}</span>
+                          <span class="aw-holder__body">
+                            <span class="aw-holder__name">{{ holder.firstName }} {{ holder.lastName }}</span>
+                            <span class="aw-holder__meta">{{ joinMeta(reportsToPositionName(), holder.departmentName) }}</span>
+                          </span>
+                          @if (first && store.activeHolders().length > 1) {
+                            <span class="aw-pill">Default</span>
+                          }
                         </button>
                       }
                     </div>
-                    @if (submitAttempted() && form.controls.workModeId.invalid) {
-                      <p class="text-xs text-red-500 mt-0.5">Work mode is required.</p>
+                  }
+
+                  <!-- Anyone else in the company: a one-off manager for this employee only -->
+                  <div class="aw-mgr__divider"></div>
+                  <header class="aw-mgr__head">
+                    <span class="aw-mgr__icon aw-mgr__icon--plain" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    </span>
+                    <div>
+                      <h3 class="aw-card__title">Choose someone else</h3>
+                      <p class="aw-card__sub">Search any employee, including other departments or positions.</p>
+                    </div>
+                  </header>
+
+                  <div class="aw-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    <input
+                      type="text"
+                      placeholder="Search by name, position or department…"
+                      aria-label="Search for a reporting manager"
+                      [value]="managerSearch()"
+                      (input)="onManagerSearch($any($event.target).value)"
+                    />
+                    @if (managerSearch()) {
+                      <button type="button" class="aw-search__clear" (click)="onManagerSearch('')" aria-label="Clear search">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6" stroke="var(--color-surface)" stroke-width="2" stroke-linecap="round"/></svg>
+                      </button>
                     }
                   </div>
-                }
 
-          @if (store.loadingDepartments()) {
-            <div class="md:col-span-1">
-              <app-loader label="Loading departments…" />
-            </div>
-          } @else if (store.departments().length === 0) {
-            <div class="md:col-span-2">
-              <app-empty-state
-                title="No departments configured"
-                description="This company has no departments yet. Set up departments under Organization before adding employees."
-              />
-            </div>
-          } @else {
-            <app-custom-select
-              label="Department"
-              placeholder="Select a department"
-              [options]="store.departments()"
-              [value]="form.controls.departmentId.value"
-              [error]="submitAttempted() && form.controls.departmentId.invalid ? 'Department is required.' : ''"
-              (valueChange)="onDepartmentChange($event)"
-            />
-          }
+                  <div class="aw-mgr__list" role="radiogroup" aria-label="Other reporting managers">
+                    @if (customManagerCard(); as custom) {
+                      @if (!managerSearchHits().includes(custom.employeeId)) {
+                        <button type="button" role="radio" class="aw-mgr__row aw-mgr__row--active" aria-checked="true">
+                          <span class="aw-radio aw-radio--on" aria-hidden="true"></span>
+                          <span class="aw-avatar">{{ initialsOf(custom.firstName, custom.lastName) }}</span>
+                          <span class="aw-holder__body">
+                            <span class="aw-holder__name">{{ custom.firstName }} {{ custom.lastName }}</span>
+                            <span class="aw-holder__meta">{{ joinMeta(custom.positionName, custom.departmentName) }}</span>
+                          </span>
+                        </button>
+                      }
+                    }
+                    @if (store.searchingManagers()) {
+                      <p class="aw-muted aw-mgr__empty">Searching…</p>
+                    } @else if (managerSearch().trim().length >= 2) {
+                      @for (candidate of otherCandidates(); track candidate.employeeId) {
+                        <button
+                          type="button"
+                          role="radio"
+                          class="aw-mgr__row"
+                          [class.aw-mgr__row--active]="store.effectiveManagerId() === candidate.employeeId"
+                          [attr.aria-checked]="store.effectiveManagerId() === candidate.employeeId"
+                          (click)="store.pickCustomManager(candidate)"
+                        >
+                          <span class="aw-radio" [class.aw-radio--on]="store.effectiveManagerId() === candidate.employeeId" aria-hidden="true"></span>
+                          <span class="aw-avatar">{{ initialsOf(candidate.firstName, candidate.lastName) }}</span>
+                          <span class="aw-holder__body">
+                            <span class="aw-holder__name">{{ candidate.firstName }} {{ candidate.lastName }}</span>
+                            <span class="aw-holder__meta">{{ joinMeta(candidate.positionName, candidate.departmentName) }}</span>
+                          </span>
+                        </button>
+                      } @empty {
+                        <p class="aw-muted aw-mgr__empty">No one matches “{{ managerSearch().trim() }}”.</p>
+                      }
+                    }
+                  </div>
 
-          @if (!form.controls.departmentId.value) {
-            <app-custom-select
-              label="Position"
-              placeholder="Select a department first"
-              [options]="[]"
-              [disabled]="true"
-            />
-          } @else if (store.loadingPositions()) {
-            <div class="md:col-span-1">
-              <app-loader label="Loading positions…" />
-            </div>
-          } @else if (store.positions().length === 0) {
-            <app-custom-select
-              label="Position"
-              placeholder="No active positions in department"
-              [options]="[]"
-              [disabled]="true"
-              [error]="submitAttempted() ? 'Position is required (none available in selected department).' : ''"
-            />
-          } @else {
-            <app-custom-select
-              label="Position"
-              placeholder="Select a position"
-              [options]="store.positions()"
-              [value]="form.controls.positionId.value"
-              [error]="positionFieldError()"
-              (valueChange)="onPositionChange($event)"
-            />
-          }
+                  @if (reportingAttempted() && store.needsReportsToPick() && !store.selectedReportsToEmployeeId()) {
+                    <p class="text-xs text-red-500 mt-2">Select who this employee reports to.</p>
+                  }
+                </section>
 
-          @if (store.loadingActiveHolders()) {
-            <div class="md:col-span-2">
-              <app-loader label="Loading reporting options…" />
-            </div>
-          } @else if (store.needsReportsToPick()) {
-            <div class="md:col-span-2 flex flex-col gap-1">
-              <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
-                Reports to <span class="text-red-500">*</span>
-              </label>
-              <p class="text-xs text-[var(--color-text-secondary)]">
-                More than one person holds the reporting position — choose who this employee reports to.
-              </p>
-              <app-reports-to-picker
-                [holders]="store.activeHolders()"
-                [selectedEmployeeId]="store.selectedReportsToEmployeeId()"
-                (selectedEmployeeIdChange)="store.setReportsToEmployeeId($event)"
-              />
-              @if (submitAttempted() && !store.selectedReportsToEmployeeId()) {
-                <p class="text-xs text-red-500 mt-0.5">Select who this employee reports to.</p>
-              }
-            </div>
-          }
+                <section class="aw-card">
+                  <header class="aw-mgr__head">
+                    <span class="aw-mgr__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </span>
+                    <div>
+                      <h3 class="aw-card__title">Reporting preview</h3>
+                      <p class="aw-card__sub">This shows how the employee will appear in the reporting structure.</p>
+                    </div>
+                  </header>
 
-          <div class="flex flex-col gap-1">
-            <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
-              Employment type <span class="text-red-500">*</span>
-            </label>
-            <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Employment type selection">
-              @for (type of employmentTypeOptions; track type.value) {
-                <button
-                  type="button"
-                  role="radio"
-                  [attr.aria-checked]="form.controls.employmentType.value === type.value"
-                  class="work-mode-chip"
-                  [class.work-mode-chip--active]="form.controls.employmentType.value === type.value"
-                  (click)="form.controls.employmentType.setValue(type.value)"
-                >
-                  <span>{{ type.label }}</span>
-                </button>
-              }
-            </div>
-            @if (submitAttempted() && form.controls.employmentType.invalid) {
-              <p class="text-xs text-red-500 mt-0.5">Employment type is required.</p>
+                  @if (store.loadingReportingChain()) {
+                    <app-loader label="Loading reporting structure…" />
+                  } @else {
+                    <ol class="aw-line">
+                      @for (node of store.reportingChain(); track $index; let last = $last) {
+                        <li class="aw-line__node" [class.aw-line__node--manager]="last" [class.aw-line__node--vacant]="node.kind === 'vacant'">
+                          <span class="aw-avatar aw-avatar--sm">
+                            @if (node.kind === 'vacant') { – } @else { {{ initialsOf(node.firstName, node.lastName) }} }
+                          </span>
+                          <span class="aw-tree__body">
+                            <span class="aw-tree__name">{{ node.kind === 'vacant' ? (node.positionName + ' (vacant)') : node.firstName + ' ' + node.lastName }}</span>
+                            <span class="aw-tree__meta">{{ joinMeta(node.kind === 'vacant' ? null : node.positionName, node.departmentName) }}</span>
+                          </span>
+                          @if (last) {
+                            <span class="aw-pill aw-pill--accent">Selected manager</span>
+                          }
+                        </li>
+                      }
+                      <li class="aw-line__node aw-line__node--new">
+                        <span class="aw-avatar aw-avatar--sm aw-avatar--green">{{ employeeInitials() }}</span>
+                        <span class="aw-tree__body">
+                          <span class="aw-tree__name">{{ newEmployeeDisplayName() }}</span>
+                          <span class="aw-tree__meta">{{ joinMeta(selectedEmploymentTypeLabel() !== '—' ? selectedEmploymentTypeLabel() : null, selectedDepartmentLabel() !== '—' ? selectedDepartmentLabel() : null) }}</span>
+                        </span>
+                        <span class="aw-pill aw-pill--green">New employee</span>
+                      </li>
+                    </ol>
+                  }
+
+                  @if (isOutsideHierarchy() && selectedManagerSummary(); as manager) {
+                    <div class="aw-notice aw-notice--blue mt-4" role="note">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                      <span>
+                        <strong>You have selected a reporting manager outside the position hierarchy.</strong>
+                        This employee will report to {{ manager.name }}@if (manager.meta) { ({{ manager.meta }})} instead of the recommended manager from the position hierarchy. Only this employee's reporting line changes.
+                      </span>
+                    </div>
+                  } @else {
+                    <div class="aw-notice aw-notice--info mt-4" role="note">
+                      <span>Reporting relationships do not grant project access.</span>
+                    </div>
+                  }
+                </section>
+              </div>
             }
-          </div>
+            @case ('work_setup') {
+              <div class="aw-split aw-split--wide-left">
+                <div class="flex flex-col gap-4">
+                  <section class="aw-card">
+                    <header class="aw-card__head">
+                      <div>
+                        <h3 class="aw-card__title">Work arrangement</h3>
+                        <p class="aw-card__sub">Choose where this employee will primarily work.</p>
+                      </div>
+                    </header>
 
-          <app-date-picker
-            label="Start date"
-            placeholder="YYYY-MM-DD"
-            [value]="form.controls.startDate.value || ''"
-            (valueChange)="form.controls.startDate.setValue($event)"
-            [error]="submitAttempted() && form.controls.startDate.invalid ? 'Start date is required.' : ''"
-          />
+                    @if (store.loadingWorkModes()) {
+                      <app-loader label="Loading work modes…" />
+                    } @else if (store.workModesError()) {
+                      <div class="rounded-lg border border-[var(--color-border)] p-3 text-sm text-[var(--color-text-primary)] flex items-center justify-between">
+                        <span>{{ store.workModesError() }}</span>
+                        <app-button variant="secondary" size="sm" (pressed)="retryLoadWorkModes()">Retry</app-button>
+                      </div>
+                    } @else if (store.workModes().length === 0) {
+                      <app-empty-state
+                        title="No work modes configured"
+                        description="Work modes are not configured. Contact an administrator."
+                      />
+                    } @else {
+                      <div class="aw-mode-grid" role="radiogroup" aria-label="Work arrangement">
+                        @for (mode of store.workModes(); track mode.id) {
+                          <button
+                            type="button"
+                            role="radio"
+                            class="aw-mode"
+                            [class.aw-mode--active]="form.controls.workModeId.value === mode.id"
+                            [attr.aria-checked]="form.controls.workModeId.value === mode.id"
+                            (click)="onWorkModeChange(mode.id)"
+                          >
+                            <span class="aw-mode__icon" aria-hidden="true">
+                              @switch (workModeKind(mode)) {
+                                @case ('daily') {
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg>
+                                }
+                                @case ('self') {
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></svg>
+                                }
+                                @default {
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1"/></svg>
+                                }
+                              }
+                            </span>
+                            <span class="aw-mode__body">
+                              <span class="aw-mode__name">{{ mode.label }}</span>
+                              <span class="aw-mode__sub">{{ workModeDescription(mode) }}</span>
+                            </span>
+                            <span class="aw-radio" [class.aw-radio--on]="form.controls.workModeId.value === mode.id" aria-hidden="true"></span>
+                          </button>
+                        }
+                      </div>
+                      @if (workSetupAttempted() && form.controls.workModeId.invalid) {
+                        <p class="text-xs text-red-500 mt-2">Work arrangement is required.</p>
+                      }
+                    }
+                  </section>
 
-          <app-input
-            label="Employee number"
-            [maxlength]="20"
-            [value]="form.controls.employeeNumber.value || ''"
-            (valueChange)="onEmployeeNumberChange($event)"
-            [error]="employeeNumberFieldError()"
-            [hint]="employeeNumberFieldHint()"
-          />
-        </div>
-      }
+                  @if (form.controls.workModeId.value) {
+                    <section class="aw-card">
+                      <header class="aw-card__head">
+                        <div>
+                          <h3 class="aw-card__title">Clock-in evidence</h3>
+                          <p class="aw-card__sub">Defaults come from {{ selectedWorkModeLabel() }}. Changes here apply to this employee only.</p>
+                        </div>
+                      </header>
+
+                      @if (store.loadingClockInDefaults()) {
+                        <app-loader label="Loading clock-in defaults…" />
+                      } @else {
+                        <div class="aw-evidence">
+                          <div class="aw-evidence__row">
+                            <span class="aw-evidence__icon" aria-hidden="true">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                            </span>
+                            <span class="aw-evidence__body">
+                              <span class="aw-evidence__name">
+                                Camera photo
+                                @if (store.effectivePhotoRequired()) { <span class="aw-pill aw-pill--danger">Required</span> }
+                              </span>
+                              <span class="aw-evidence__sub">
+                                @if (store.photoRequiredOverride() !== null) {
+                                  Changed for this employee ·
+                                  <button type="button" class="aw-link" (click)="store.setPhotoRequiredOverride(!!store.clockInDefaults()?.photoRequired)">Use default</button>
+                                } @else {
+                                  A new photo at every clock-in · work mode default
+                                }
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              role="switch"
+                              class="aw-switch"
+                              [class.aw-switch--on]="store.effectivePhotoRequired()"
+                              [attr.aria-checked]="store.effectivePhotoRequired()"
+                              aria-label="Require a camera photo at clock-in"
+                              (click)="store.setPhotoRequiredOverride(!store.effectivePhotoRequired())"
+                            ><span class="aw-switch__knob"></span></button>
+                          </div>
+
+                          <div class="aw-evidence__row">
+                            <span class="aw-evidence__icon aw-evidence__icon--green" aria-hidden="true">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                            </span>
+                            <span class="aw-evidence__body">
+                              <span class="aw-evidence__name">Location capture</span>
+                              <span class="aw-evidence__sub">
+                                @if (store.locationCaptureOverride() !== null) {
+                                  Changed for this employee ·
+                                  <button type="button" class="aw-link" (click)="store.setLocationCaptureOverride(!!store.clockInDefaults()?.locationCapture)">Use default</button>
+                                } @else {
+                                  Checks where they clock in from · organisation default
+                                }
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              role="switch"
+                              class="aw-switch"
+                              [class.aw-switch--on]="store.effectiveLocationCapture()"
+                              [attr.aria-checked]="store.effectiveLocationCapture()"
+                              aria-label="Capture location at clock-in"
+                              (click)="store.setLocationCaptureOverride(!store.effectiveLocationCapture())"
+                            ><span class="aw-switch__knob"></span></button>
+                          </div>
+                        </div>
+                      }
+                    </section>
+                  }
+                </div>
+
+                <aside class="aw-card aw-summary">
+                  <header class="aw-card__head">
+                    <div>
+                      <h3 class="aw-card__title">Setup summary</h3>
+                      <p class="aw-card__sub">A quick overview of this employee's setup.</p>
+                    </div>
+                  </header>
+                  <div class="aw-summary__who">
+                    <span class="aw-avatar aw-avatar--lg aw-avatar--accent">{{ employeeInitials() }}</span>
+                    <div class="min-w-0">
+                      <p class="aw-summary__name">{{ newEmployeeDisplayName() }}</p>
+                      @if (reviewEmployeeNumber()) { <p class="aw-summary__meta">{{ reviewEmployeeNumber() }}</p> }
+                      <p class="aw-summary__role">{{ selectedPositionLabel() }}</p>
+                      <p class="aw-summary__meta">{{ selectedDepartmentLabel() }}</p>
+                    </div>
+                  </div>
+                  <dl class="aw-summary__rows">
+                    <div><dt>Work arrangement</dt><dd><span class="aw-pill aw-pill--accent">{{ selectedWorkModeLabel() }}</span></dd></div>
+                    <div><dt>Clock-in photo</dt><dd><span class="aw-pill" [class.aw-pill--on]="store.effectivePhotoRequired()">{{ store.effectivePhotoRequired() ? 'Enabled' : 'Off' }}</span></dd></div>
+                    <div><dt>Location capture</dt><dd><span class="aw-pill" [class.aw-pill--on]="store.effectiveLocationCapture()">{{ store.effectiveLocationCapture() ? 'Enabled' : 'Off' }}</span></dd></div>
+                    <div>
+                      <dt>Reports to</dt>
+                      <dd class="text-right">
+                        {{ selectedReportingManagerName() }}
+                        @if (reportsToPositionName() && selectedReportingManagerName() !== '—') {
+                          <span class="aw-summary__meta block">{{ reportsToPositionName() }}</span>
+                        }
+                      </dd>
+                    </div>
+                  </dl>
+                </aside>
+              </div>
+            }
 
       @case ('checklist_template') {
         <div class="max-w-6xl">
@@ -623,17 +1024,33 @@
                 <dt>Position</dt>
                 <dd>{{ selectedPositionLabel() }}</dd>
               </div>
-              @if (selectedReportingManagerName() !== '—') {
-                <div class="add-emp-review-field">
-                  <dt>Reports to</dt>
-                  <dd>
-                    {{ selectedReportingManagerName() }}
-                    @if (selectedReportingManagerPositionName() !== '—') {
-                      <span class="add-emp-review-muted"> ({{ selectedReportingManagerPositionName() }})</span>
-                    }
-                  </dd>
-                </div>
-              }
+              <div class="add-emp-review-field">
+                <dt>Reports to</dt>
+                <dd>
+                  {{ selectedReportingManagerName() }}
+                  @if (selectedReportingManagerPositionName() !== '—') {
+                    <span class="add-emp-review-muted"> ({{ selectedReportingManagerPositionName() }})</span>
+                  }
+                </dd>
+              </div>
+              <div class="add-emp-review-field">
+                <dt>Clock-in photo</dt>
+                <dd>
+                  {{ store.effectivePhotoRequired() ? 'Required' : 'Not required' }}
+                  @if (store.photoRequiredOverride() !== null) {
+                    <span class="add-emp-review-muted"> (this employee only)</span>
+                  }
+                </dd>
+              </div>
+              <div class="add-emp-review-field">
+                <dt>Location capture</dt>
+                <dd>
+                  {{ store.effectiveLocationCapture() ? 'On' : 'Off' }}
+                  @if (store.locationCaptureOverride() !== null) {
+                    <span class="add-emp-review-muted"> (this employee only)</span>
+                  }
+                </dd>
+              </div>
               <div class="add-emp-review-field">
                 <dt>Employment type</dt>
                 <dd>{{ selectedEmploymentTypeLabel() }}</dd>
@@ -673,18 +1090,21 @@
     <!-- Modal Sticky Footer -->
     @if (hasCompany() && !store.resuming() && !resumedDraftIsFinalized()) {
       <div class="add-emp-modal-footer">
-        <div class="flex items-center gap-2">
-          <app-button variant="secondary" type="button" (pressed)="onCancel()">Cancel</app-button>
-          @if (stepIndex() > 0) {
-            <app-button variant="secondary" type="button" (pressed)="goToPreviousStep()">Back</app-button>
-          }
-        </div>
+        <button type="button" class="aw-link aw-link--cancel" (click)="onCancel()">Cancel</button>
         <div class="flex items-center gap-2">
           <app-button variant="secondary" type="button" [loading]="store.saving()" (pressed)="onSaveDraft()">
             Save Draft
           </app-button>
+          @if (stepIndex() > 0) {
+            <app-button variant="secondary" type="button" (pressed)="goToPreviousStep()">Back</app-button>
+          }
           @if (stepIndex() < stepOrder.length - 1) {
-            <app-button variant="primary" type="button" (pressed)="goToNextStep()">Continue</app-button>
+            <app-button variant="primary" type="button" (pressed)="goToNextStep()">
+              <span class="inline-flex items-center gap-1.5">
+                Continue
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
+            </app-button>
           }
           @if (stepIndex() === stepOrder.length - 1) {
             <app-button

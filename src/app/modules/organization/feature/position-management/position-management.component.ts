@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -18,9 +18,32 @@ import {
   PositionTemplatePackPositionResponse,
   PositionTemplatePreset,
   PositionTreeNodeResponse,
+  ReportingLineMoveImpact,
+  ReportingLineMoveRequest,
   SetPositionAccessRequest
 } from '../../models/position.model';
-import { PositionTreeNodeComponent, ReparentPositionEvent, TemplateDropOnPositionEvent } from '../../ui/position-tree-node/position-tree-node.component';
+import {
+  POSITION_CARD_HEIGHT,
+  POSITION_CARD_WIDTH,
+  PositionTreeNodeComponent,
+  ReparentPositionEvent,
+  TemplateDropOnPositionEvent,
+  positionChildren,
+  positionKey
+} from '../../ui/position-tree-node/position-tree-node.component';
+import {
+  PEOPLE_CARD_HEIGHT,
+  PEOPLE_CARD_WIDTH,
+  PeopleCardDragEvent,
+  PeopleCardSelectionEvent,
+  PeopleChartNodeComponent
+} from '../../ui/people-chart-node/people-chart-node.component';
+import { TidyTreeComponent } from '../../../../shared/ui/tidy-tree/tidy-tree.component';
+import { ReportingLineReviewModalComponent } from '../../ui/reporting-line-review-modal/reporting-line-review-modal.component';
+import { PositionApiService } from '../../data-access/position-api.service';
+import { PeopleChartTreeNode, PositionPeopleChartNode } from '../../models/position.model';
+import { firstValueFrom } from 'rxjs';
+import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { PositionListTableComponent } from '../../ui/position-list-table/position-list-table.component';
 import { PositionFormModalComponent, PositionFormSubmitValue } from '../../ui/position-form-modal/position-form-modal.component';
 import { PositionArchiveModalComponent } from '../../ui/position-archive-modal/position-archive-modal.component';
@@ -29,6 +52,8 @@ import { PositionAccessModalComponent } from '../../ui/position-access-modal/pos
 import { PositionTemplateDrawerComponent, TemplatePositionSelectedEvent } from '../../ui/position-template-drawer/position-template-drawer.component';
 
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { CanvasGridComponent } from '../../../../shared/ui/canvas-grid/canvas-grid.component';
+import { CanvasBox, CanvasMinimapComponent, CanvasMinimapItem, CanvasPoint } from '../../../../shared/ui/canvas-minimap/canvas-minimap.component';
 
 @Component({
   selector: 'app-position-management',
@@ -41,12 +66,17 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
     EmptyStateComponent,
     ErrorStateComponent,
     PositionTreeNodeComponent,
+    PeopleChartNodeComponent,
     PositionListTableComponent,
     PositionFormModalComponent,
     PositionArchiveModalComponent,
     PositionCoverageModalComponent,
     PositionAccessModalComponent,
-    PositionTemplateDrawerComponent
+    PositionTemplateDrawerComponent,
+    ReportingLineReviewModalComponent,
+    CanvasGridComponent,
+    CanvasMinimapComponent,
+    TidyTreeComponent
   ],
   templateUrl: './position-management.component.html',
   styleUrl: './position-management.component.css',
@@ -58,6 +88,132 @@ export class PositionManagementComponent {
 
   readonly legalEntityStore = inject(LegalEntityStore);
   readonly positionStore = inject(PositionStore);
+  private readonly positionApi = inject(PositionApiService);
+
+  /** Tree view sub-mode: the position structure editor, or one card per person holding it. */
+  readonly chartMode = signal<'positions' | 'people'>('positions');
+  readonly peopleNodes = signal<readonly PositionPeopleChartNode[] | null>(null);
+  readonly peopleLoading = signal(false);
+  readonly peopleError = signal<string | null>(null);
+  readonly selectedPeopleIds = signal<ReadonlySet<string>>(new Set<string>());
+  readonly draggingPeople = signal(false);
+  readonly choosingReportingManager = signal(false);
+  readonly reportingMovePreview = signal<ReportingLineMoveImpact | null>(null);
+  readonly reportingMoveRequest = signal<ReportingLineMoveRequest | null>(null);
+  readonly reportingMovePreviewLoading = signal(false);
+  readonly reportingMoveSaving = signal(false);
+  private peopleRequestKey: string | null = null;
+  private selectionAnchorEmployeeId: string | null = null;
+
+  /** Flat nodes (parentId links) -> forest; people first by position then name, vacant last. */
+  readonly peopleTree = computed<readonly PeopleChartTreeNode[]>(() => {
+    const nodes = this.peopleNodes() ?? [];
+    const childrenOf = new Map<string | null, PositionPeopleChartNode[]>();
+    for (const node of nodes) {
+      const key = node.parentId && nodes.some((n) => n.id === node.parentId) ? node.parentId : null;
+      const list = childrenOf.get(key) ?? [];
+      list.push(node);
+      childrenOf.set(key, list);
+    }
+    const order = (a: PositionPeopleChartNode, b: PositionPeopleChartNode): number =>
+      (a.kind === b.kind ? 0 : a.kind === 'vacant' ? 1 : -1) ||
+      a.positionName.localeCompare(b.positionName) ||
+      `${a.firstName ?? ''} ${a.lastName ?? ''}`.localeCompare(`${b.firstName ?? ''} ${b.lastName ?? ''}`);
+    const build = (parentId: string | null): PeopleChartTreeNode[] =>
+      (childrenOf.get(parentId) ?? [])
+        .slice()
+        .sort(order)
+        .map((node) => ({ ...node, children: build(node.id) }));
+    return build(null);
+  });
+
+  readonly peopleFlatOrder = computed<readonly PeopleChartTreeNode[]>(() => {
+    const result: PeopleChartTreeNode[] = [];
+    const visit = (nodes: readonly PeopleChartTreeNode[]): void => {
+      for (const node of nodes) {
+        if (node.kind === 'person' && !node.isPending && node.employeeId) result.push(node);
+        visit(node.children);
+      }
+    };
+    visit(this.peopleTree());
+    return result;
+  });
+
+  readonly selectedBranchRootIds = computed<ReadonlySet<string>>(() => {
+    const selected = this.selectedPeopleIds();
+    const nodesById = new Map(this.peopleFlatOrder().map((node) => [node.employeeId!, node]));
+    const roots = new Set<string>();
+    for (const node of this.peopleFlatOrder()) {
+      if (!node.employeeId || !selected.has(node.employeeId)) continue;
+      const seen = new Set<string>();
+      let parentEmployeeId = node.parentId?.startsWith('e:') ? node.parentId.slice(2) : null;
+      let hasSelectedAncestor = false;
+      while (parentEmployeeId && !seen.has(parentEmployeeId)) {
+        if (selected.has(parentEmployeeId)) {
+          hasSelectedAncestor = true;
+          break;
+        }
+        seen.add(parentEmployeeId);
+        const parent = nodesById.get(parentEmployeeId);
+        parentEmployeeId = parent?.parentId?.startsWith('e:') ? parent.parentId.slice(2) : null;
+      }
+      if (!hasSelectedAncestor) roots.add(node.employeeId);
+    }
+    return roots;
+  });
+
+  /**
+   * Direct reports by manager, following person-to-person lines only ("e:" parents) - the same
+   * structure the move endpoint works on. A vacant seat breaks the line, so people under it are
+   * never pulled into a selection.
+   */
+  private readonly directReportIds = computed<ReadonlyMap<string, readonly string[]>>(() => {
+    const map = new Map<string, string[]>();
+    for (const node of this.peopleFlatOrder()) {
+      const managerId = node.parentId?.startsWith('e:') ? node.parentId.slice(2) : null;
+      if (!managerId) continue;
+      map.set(managerId, [...(map.get(managerId) ?? []), node.employeeId!]);
+    }
+    return map;
+  });
+
+  /** The person plus everyone who reports to them, directly or further down. */
+  private withReports(employeeIds: Iterable<string>): Set<string> {
+    const result = new Set<string>();
+    const pending = [...employeeIds];
+    while (pending.length > 0) {
+      const id = pending.pop()!;
+      if (result.has(id)) continue;
+      result.add(id);
+      pending.push(...(this.directReportIds().get(id) ?? []));
+    }
+    return result;
+  }
+
+  /** Unchecked people reporting to someone who is checked: they stay, with the nearest manager not moving. */
+  readonly stayingPeopleIds = computed<ReadonlySet<string>>(() => {
+    const selected = this.selectedPeopleIds();
+    const staying = new Set<string>();
+    for (const [managerId, reports] of this.directReportIds()) {
+      if (!selected.has(managerId)) continue;
+      for (const id of reports) if (!selected.has(id)) staying.add(id);
+    }
+    return staying;
+  });
+
+  /** Everyone whose manager changes or who moves with their team: the checked people plus those staying behind. */
+  readonly affectedPeopleIds = computed<ReadonlySet<string>>(
+    () => new Set([...this.selectedPeopleIds(), ...this.stayingPeopleIds()])
+  );
+
+  readonly peopleSelectionActive = computed(() => this.selectedPeopleIds().size > 0);
+  readonly peopleAvatarFileIds = computed<ReadonlyMap<string, string | null>>(() =>
+    new Map(
+      (this.peopleNodes() ?? [])
+        .filter((node): node is PositionPeopleChartNode & { employeeId: string } => !!node.employeeId)
+        .map((node) => [node.employeeId, node.avatarFileId] as const)
+    )
+  );
   readonly departmentStore = inject(DepartmentStore);
   readonly roleStore = inject(RoleStore);
 
@@ -118,6 +274,24 @@ export class PositionManagementComponent {
     return map;
   });
 
+  // ── Chart layout (app-tidy-tree) ─────────────────────────────────────────
+  readonly positionCardWidth = POSITION_CARD_WIDTH;
+  readonly positionCardHeight = POSITION_CARD_HEIGHT;
+  readonly positionChildren = positionChildren;
+  readonly positionKey = positionKey;
+  readonly peopleCardWidth = PEOPLE_CARD_WIDTH;
+  readonly peopleCardHeight = PEOPLE_CARD_HEIGHT;
+  readonly peopleChildren = (node: PeopleChartTreeNode): readonly PeopleChartTreeNode[] => node.children;
+  readonly peopleKey = (node: PeopleChartTreeNode): string => node.id;
+  /** A one-off manager draws the line into the card dashed amber. */
+  readonly isCustomReportingLine = (node: PeopleChartTreeNode): boolean => node.reportingLine === 'custom';
+
+  /** The hover card's "Reports to" line: the person above, or null under a vacant seat / at the top. */
+  peopleManagerName(parent: PeopleChartTreeNode | null): string | null {
+    if (!parent || parent.kind !== 'person') return null;
+    return `${parent.firstName ?? ''} ${parent.lastName ?? ''}`.trim();
+  }
+
   readonly treeZoom = signal(0.7);
   readonly treePanX = signal(0);
   readonly treePanY = signal(0);
@@ -148,6 +322,110 @@ export class PositionManagementComponent {
     this.treePanY.set(0);
   }
 
+  // ── Minimap ──────────────────────────────────────────────────────────────
+  // World coordinates are the tree wrapper's own, untransformed layout (offsets, which ignore the
+  // CSS transform). Cards are measured only when the tree DOM or canvas size changes - never while
+  // panning or zooming; the viewport rectangle is derived from pan/zoom arithmetically.
+
+  static readonly MIN_ZOOM = 0.4;
+  static readonly MAX_ZOOM = 1.5;
+  private static readonly FIT_PADDING = 48;
+
+  private readonly treeCanvas = viewChild<ElementRef<HTMLElement>>('treeCanvas');
+  private readonly treeWrapper = viewChild<ElementRef<HTMLElement>>('treeWrapper');
+  /** Card rectangles in world coordinates. */
+  readonly miniCards = signal<readonly CanvasBox[]>([]);
+  /** Canvas size, and the wrapper's untransformed offset + width inside it. */
+  private readonly canvasLayout = signal({ width: 0, height: 0, left: 0, top: 0, wrapperWidth: 0 });
+
+  readonly miniItems = computed<CanvasMinimapItem[]>(() =>
+    this.miniCards().map((c) => ({ shape: 'rect', x: c.x, y: c.y, width: c.width, height: c.height }))
+  );
+
+  readonly miniWorld = computed<CanvasBox>(() => {
+    const cards = this.miniCards();
+    if (cards.length === 0) return { x: 0, y: 0, width: 1, height: 1 };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const c of cards) {
+      minX = Math.min(minX, c.x);
+      minY = Math.min(minY, c.y);
+      maxX = Math.max(maxX, c.x + c.width);
+      maxY = Math.max(maxY, c.y + c.height);
+    }
+    const pad = PositionManagementComponent.FIT_PADDING;
+    return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
+  });
+
+  /** What the canvas shows, mapped back through `translate(pan) scale(zoom)` around top-centre. */
+  readonly miniViewport = computed<CanvasBox | null>(() => {
+    const l = this.canvasLayout();
+    if (l.width === 0) return null;
+    const z = this.treeZoom();
+    const originX = l.wrapperWidth / 2;
+    return {
+      x: (-l.left - originX - this.treePanX()) / z + originX,
+      y: (-l.top - this.treePanY()) / z,
+      width: l.width / z,
+      height: l.height / z
+    };
+  });
+
+  /** Minimap click/drag: pans (keeping the zoom) so `world` sits in the middle of the canvas. */
+  centerTreeOn(world: CanvasPoint): void {
+    const l = this.canvasLayout();
+    const z = this.treeZoom();
+    const originX = l.wrapperWidth / 2;
+    this.treePanX.set(l.width / 2 - l.left - originX - z * (world.x - originX));
+    this.treePanY.set(l.height / 2 - l.top - z * world.y);
+  }
+
+  /** Zooms and pans so the whole chart fits the canvas (within the zoom limits). */
+  fitTree(): void {
+    this.measureTree();
+    const l = this.canvasLayout();
+    if (this.miniCards().length === 0 || l.width === 0) {
+      this.resetZoom();
+      return;
+    }
+    const world = this.miniWorld();
+    const fitted = Math.min(l.width / world.width, (l.height - l.top) / world.height);
+    const z = Math.min(PositionManagementComponent.MAX_ZOOM, Math.max(PositionManagementComponent.MIN_ZOOM, Math.floor(fitted * 100) / 100));
+    this.treeZoom.set(z);
+    // Centre horizontally; keep the top of the chart just under the header.
+    const originX = l.wrapperWidth / 2;
+    const centreX = world.x + world.width / 2;
+    this.treePanX.set(l.width / 2 - l.left - originX - z * (centreX - originX));
+    this.treePanY.set(fitted >= z ? -z * world.y : l.height / 2 - l.top - z * (world.y + world.height / 2));
+  }
+
+  private measureTree(): void {
+    const canvas = this.treeCanvas()?.nativeElement;
+    const wrapper = this.treeWrapper()?.nativeElement;
+    if (!canvas || !wrapper) {
+      this.miniCards.set([]);
+      return;
+    }
+    this.canvasLayout.set({
+      width: canvas.clientWidth,
+      height: canvas.clientHeight,
+      left: wrapper.offsetLeft,
+      top: wrapper.offsetTop,
+      wrapperWidth: wrapper.offsetWidth
+    });
+    const cards: CanvasBox[] = [];
+    wrapper.querySelectorAll<HTMLElement>('.ptn-node-card, .pcn-card').forEach((card) => {
+      let x = 0, y = 0;
+      let el: HTMLElement | null = card;
+      while (el && el !== wrapper) {
+        x += el.offsetLeft;
+        y += el.offsetTop;
+        el = el.offsetParent as HTMLElement | null;
+      }
+      cards.push({ x, y, width: card.offsetWidth, height: card.offsetHeight });
+    });
+    this.miniCards.set(cards);
+  }
+
   // Smaller than the +/- button step (0.1) so a single wheel fling doesn't blow through the whole zoom range at once.
   private static readonly WHEEL_ZOOM_STEP = 0.02;
 
@@ -167,13 +445,18 @@ export class PositionManagementComponent {
     if (
       !target ||
       target.closest('.ptn-node-card') ||
+      target.closest('.pcn-card') ||
       target.closest('.ptn-drop-target-box') ||
-      target.closest('.pm-zoom-controls') ||
+      target.closest('app-canvas-minimap') ||
       target.closest('button') ||
       target.closest('input') ||
       target.closest('select')
     ) {
       return;
+    }
+
+    if (this.chartMode() === 'people' && this.peopleSelectionActive() && !this.choosingReportingManager()) {
+      this.clearPeopleSelection();
     }
 
     this.isPanning.set(true);
@@ -239,6 +522,221 @@ export class PositionManagementComponent {
         this.departmentStore.load(le.id);
       }
     });
+
+    // People data follows the company and every reload of the position structure while the
+    // People chart is active. The Positions chart does not need person-level reporting data.
+    effect(() => {
+      const le = this.selectedLegalEntity();
+      this.positionStore.treeData();
+      if (le && this.hasReadAccess() && this.positionStore.viewMode() === 'tree' && this.chartMode() === 'people') {
+        void this.loadPeopleChart(le.id);
+      }
+    });
+
+    // Minimap: re-measure the cards when the rendered tree changes (data, chart mode, expand /
+    // collapse) or the canvas is resized. Batched to one measurement per frame.
+    effect((onCleanup) => {
+      const canvas = this.treeCanvas()?.nativeElement;
+      const wrapper = this.treeWrapper()?.nativeElement;
+      if (!canvas || !wrapper) {
+        this.miniCards.set([]);
+        return;
+      }
+      let frame: number | null = null;
+      const schedule = () => {
+        if (frame !== null) return;
+        frame = requestAnimationFrame(() => {
+          frame = null;
+          this.measureTree();
+        });
+      };
+      schedule();
+      const mutations = new MutationObserver(schedule);
+      mutations.observe(wrapper, { childList: true, subtree: true });
+      const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
+      resize?.observe(canvas);
+      onCleanup(() => {
+        mutations.disconnect();
+        resize?.disconnect();
+        if (frame !== null) cancelAnimationFrame(frame);
+      });
+    });
+  }
+
+  setChartMode(mode: 'positions' | 'people'): void {
+    this.chartMode.set(mode);
+    if (mode !== 'people') this.clearPeopleSelection();
+  }
+
+  async loadPeopleChart(legalEntityId: string): Promise<void> {
+    this.peopleRequestKey = legalEntityId;
+    this.peopleLoading.set(true);
+    this.peopleError.set(null);
+    try {
+      const nodes = await firstValueFrom(this.positionApi.getPeopleChart(legalEntityId));
+      if (this.peopleRequestKey === legalEntityId) {
+        this.peopleNodes.set(nodes);
+      }
+    } catch (err: unknown) {
+      if (this.peopleRequestKey === legalEntityId) {
+        this.peopleError.set(toSafeErrorMessage(err, 'Could not load the people chart.'));
+      }
+    } finally {
+      if (this.peopleRequestKey === legalEntityId) {
+        this.peopleLoading.set(false);
+      }
+    }
+  }
+
+  onPeopleSelected(event: PeopleCardSelectionEvent): void {
+    if (!this.hasManageAccess() || !event.node.employeeId || event.node.isPending) return;
+
+    const employeeId = event.node.employeeId;
+    const current = this.selectedPeopleIds();
+    const additive = event.ctrlKey || event.metaKey;
+
+    // Checking someone checks everyone below them; unchecking does the same in reverse. Untick
+    // individual reports afterwards to leave them where they are - only checked people move.
+    if (event.shiftKey && this.selectionAnchorEmployeeId) {
+      const order = this.peopleFlatOrder().map((node) => node.employeeId!);
+      const anchorIndex = order.indexOf(this.selectionAnchorEmployeeId);
+      const currentIndex = order.indexOf(employeeId);
+      if (anchorIndex >= 0 && currentIndex >= 0) {
+        const range = this.withReports(order.slice(Math.min(anchorIndex, currentIndex), Math.max(anchorIndex, currentIndex) + 1));
+        this.selectedPeopleIds.set(new Set(additive ? [...current, ...range] : range));
+        return;
+      }
+    }
+
+    // The checkbox always toggles; a plain click on the card starts a new selection.
+    if (additive || event.fromCheckbox) {
+      const next = new Set(current);
+      const branch = this.withReports([employeeId]);
+      if (next.has(employeeId)) for (const id of branch) next.delete(id);
+      else for (const id of branch) next.add(id);
+      this.selectedPeopleIds.set(next);
+    } else {
+      this.selectedPeopleIds.set(this.withReports([employeeId]));
+    }
+    this.selectionAnchorEmployeeId = employeeId;
+  }
+
+  clearPeopleSelection(): void {
+    this.selectedPeopleIds.set(new Set<string>());
+    this.selectionAnchorEmployeeId = null;
+    this.draggingPeople.set(false);
+    this.choosingReportingManager.set(false);
+  }
+
+  beginManagerSelection(): void {
+    if (!this.hasManageAccess() || !this.peopleSelectionActive()) return;
+    this.choosingReportingManager.set(true);
+  }
+
+  cancelManagerSelection(): void {
+    this.choosingReportingManager.set(false);
+  }
+
+  onPeopleDragStarted({ node, event }: PeopleCardDragEvent): void {
+    if (!this.hasManageAccess() || !node.employeeId) {
+      event.preventDefault();
+      return;
+    }
+    if (!this.selectedPeopleIds().has(node.employeeId)) {
+      // Dragging an unchecked manager takes their whole team, like checking them would.
+      this.selectedPeopleIds.set(this.withReports([node.employeeId]));
+      this.selectionAnchorEmployeeId = node.employeeId;
+    }
+    this.draggingPeople.set(true);
+    this.choosingReportingManager.set(false);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData(
+        'application/x-onevo-reporting-branches',
+        JSON.stringify([...this.selectedPeopleIds()])
+      );
+    }
+  }
+
+  onPeopleDragEnded(): void {
+    this.draggingPeople.set(false);
+  }
+
+  onPeopleDropped({ node }: PeopleCardDragEvent): void {
+    this.draggingPeople.set(false);
+    if (node.employeeId) void this.previewReportingMove(node.employeeId);
+  }
+
+  onReportingManagerChosen(node: PeopleChartTreeNode): void {
+    if (!node.employeeId) return;
+    void this.previewReportingMove(node.employeeId);
+  }
+
+  private async previewReportingMove(newManagerEmployeeId: string): Promise<void> {
+    const legalEntity = this.selectedLegalEntity();
+    if (!legalEntity || !this.hasManageAccess() || this.selectedPeopleIds().size === 0) return;
+    if (this.selectedPeopleIds().has(newManagerEmployeeId)) {
+      this.notificationService.error('Choose a manager who is not one of the people being moved.');
+      return;
+    }
+
+    const request: ReportingLineMoveRequest = {
+      selectedEmployeeIds: [...this.selectedPeopleIds()],
+      newManagerEmployeeId
+    };
+    this.choosingReportingManager.set(false);
+    this.reportingMovePreviewLoading.set(true);
+    try {
+      const impact = await firstValueFrom(this.positionApi.previewReportingLineMove(legalEntity.id, request));
+      this.reportingMoveRequest.set(request);
+      this.reportingMovePreview.set(impact);
+    } catch (err: unknown) {
+      this.notificationService.error(toSafeErrorMessage(err, 'Could not validate this reporting change.'));
+    } finally {
+      this.reportingMovePreviewLoading.set(false);
+    }
+  }
+
+  closeReportingMoveReview(): void {
+    if (this.reportingMoveSaving()) return;
+    this.reportingMovePreview.set(null);
+    this.reportingMoveRequest.set(null);
+  }
+
+  async confirmReportingMove(reason: string | null): Promise<void> {
+    const legalEntity = this.selectedLegalEntity();
+    const request = this.reportingMoveRequest();
+    if (!legalEntity || !request || this.reportingMoveSaving()) return;
+
+    this.reportingMoveSaving.set(true);
+    try {
+      const impact = await firstValueFrom(this.positionApi.moveReportingLines(
+        legalEntity.id,
+        { ...request, reason }
+      ));
+      this.notificationService.success(
+        `${impact.directRelationshipsChanged} reporting ${impact.directRelationshipsChanged === 1 ? 'line' : 'lines'} updated. Internal team relationships were preserved.`
+      );
+      this.reportingMovePreview.set(null);
+      this.reportingMoveRequest.set(null);
+      this.clearPeopleSelection();
+      await this.loadPeopleChart(legalEntity.id);
+    } catch (err: unknown) {
+      this.notificationService.error(toSafeErrorMessage(err, 'Could not update the reporting lines.'));
+    } finally {
+      this.reportingMoveSaving.set(false);
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.reportingMovePreview() && !this.reportingMoveSaving()) {
+      this.closeReportingMoveReview();
+    } else if (this.choosingReportingManager()) {
+      this.cancelManagerSelection();
+    } else if (this.peopleSelectionActive()) {
+      this.clearPeopleSelection();
+    }
   }
 
   onDepartmentFilterChange(deptId: string): void {

@@ -40,6 +40,32 @@ import { formatClock, formatDurationCompact } from '../../utils/employee-work-ac
             </li>
           }
         </ul>
+        @if ((d.meetingCompliance?.length ?? 0) > 0) {
+          <div class="mt-5 border-t border-slate-100 pt-4">
+            <h3 class="text-xs font-bold uppercase tracking-wide text-slate-500">Assigned meeting compliance</h3>
+            <ul class="mt-3 space-y-3">
+              @for (meeting of d.meetingCompliance ?? []; track meeting.eventId) {
+                <li class="rounded-xl border border-slate-100 p-3">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-semibold text-slate-900" [title]="meeting.title">{{ meeting.title }}</p>
+                      <p class="mt-1 text-[11px] text-slate-500">
+                        Meeting app active {{ percentage(meeting.usagePercentage) }}% · minimum 50%
+                      </p>
+                    </div>
+                    <span
+                      class="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold"
+                      [class.bg-emerald-100]="meeting.isCompliant"
+                      [class.text-emerald-700]="meeting.isCompliant"
+                      [class.bg-amber-100]="!meeting.isCompliant"
+                      [class.text-amber-800]="!meeting.isCompliant"
+                    >{{ meeting.isCompliant ? 'Compliant' : 'Not detected' }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        }
       }
     </app-widget-card>
   `,
@@ -74,5 +100,9 @@ export class AppUsageWidgetComponent {
 
   clock(iso: string): string {
     return formatClock(iso);
+  }
+
+  percentage(value: number): number {
+    return Math.max(0, Math.min(100, Math.round(value)));
   }
 }
