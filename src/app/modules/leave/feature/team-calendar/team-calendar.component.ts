@@ -1,5 +1,8 @@
 /** Quiet Operations Desk: Screen 7's month view - who's off, colour by type, click for detail. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { CommonModule } from '@angular/common';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -21,7 +24,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 @Component({
   selector: 'app-team-calendar',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent, NewLeaveRequestWizardComponent, LeaveHolidayModalComponent],
+  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent, NewLeaveRequestWizardComponent, LeaveHolidayModalComponent],
   templateUrl: './team-calendar.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './team-calendar.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -74,6 +77,13 @@ export class TeamCalendarComponent {
       for (const absence of day.absences) people.add(absence.employeeId);
     }
     return { people: people.size, days };
+  });
+  readonly monthKpiTiles = computed<readonly KpiTile[]>(() => {
+    const s = this.monthStats();
+    return [
+      { label: 'People off', value: s.people, icon: 'users' },
+      { label: 'Days with leave', value: s.days, icon: 'clock', tone: 'warning' }
+    ];
   });
 
   constructor() {
