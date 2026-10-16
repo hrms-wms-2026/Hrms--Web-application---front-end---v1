@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import {
-  AfterViewChecked, ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output, signal, untracked, viewChild
+  AfterViewChecked, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal, untracked,
+  viewChild
 } from '@angular/core';
 import { Observable, catchError, map, of } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
@@ -9,12 +10,14 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { CommentComposerComponent, ComposerUploader } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
+import { EmojiPickerComponent } from '../../../work/ui/emoji-picker/emoji-picker.component';
 import { HostSlashCommand, MentionCandidate } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { InboxApiService } from '../../data-access/inbox-api.service';
 import {
   ConversationMessageDto, ConversationParticipantDto, InboxActionDto, InboxItemDto, InboxItemRef, InboxKindDescriptorDto
 } from '../../models/inbox.dto';
+import { RealtimeConversationReaction } from '../../../../core/realtime/inbox-realtime.models';
 import { ConversationStore } from '../../state/conversation.store';
 import { inboxReference, inboxStatusLabel, inboxStatusTone, inboxTitle, inboxTypeMeta } from '../../utils/inbox-item.util';
 import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
@@ -23,6 +26,9 @@ const ADD_COMMAND = 'add';
 const CONVERSATION_ATTACHMENT = 'conversation_attachment';
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+/** The author may edit or delete a message for this long after sending it (the server enforces it too). */
+const EDIT_WINDOW_MS = 30 * 60 * 1000;
+const CLOCK_TICK_MS = 30 * 1000;
 /** What the server takes for conversation_attachment (UploadPurposeCatalog). */
 const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip';
 const TAG_LABELS: Record<string, string> = {
@@ -79,7 +85,9 @@ interface FailedSend {
 @Component({
   selector: 'app-conversation-panel',
   standalone: true,
-  imports: [DatePipe, AvatarComponent, CommentComposerComponent, DropdownMenuComponent, InboxTypeIconComponent, PeoplePickerComponent],
+  imports: [
+    DatePipe, AvatarComponent, CommentComposerComponent, DropdownMenuComponent, EmojiPickerComponent, InboxTypeIconComponent, PeoplePickerComponent
+  ],
   providers: [ConversationStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -188,11 +196,24 @@ interface FailedSend {
                   <div class="msg__meta">
                     <span class="msg__author">{{ own ? 'You' : m.authorName }}</span>
                     <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}@if (m.editedAt && !m.isDeleted) { <span> (edited)</span> }</time>
-                    @if (own && !m.isDeleted && !store.removed() && editingId() !== m.id) {
-                      <span class="msg__menu" data-testid="message-menu">
-                        <button type="button" class="conv__link" [attr.data-testid]="'message-edit-' + m.id" aria-label="Edit message" (click)="editingId.set(m.id)">Edit</button>
-                        <button type="button" class="conv__link conv__link--danger" [attr.data-testid]="'message-delete-' + m.id" aria-label="Delete message"
-                          (click)="deleteMessage(m.id)">Delete</button>
+                    @if (!m.isDeleted && !store.removed() && editingId() !== m.id) {
+                      <span class="msg__menu" [class.msg__menu--open]="reactPickerFor() === m.id" data-testid="message-menu">
+                        <span class="msg__react">
+                          <button type="button" class="msg__react-btn" [attr.data-testid]="'message-react-' + m.id" aria-label="React to message"
+                            title="React" aria-haspopup="dialog" [attr.aria-expanded]="reactPickerFor() === m.id" (click)="toggleReactPicker(m.id)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4 4 0 0 0 7 0" /><path d="M9 9.5h.01M15 9.5h.01" /></svg>
+                          </button>
+                          @if (reactPickerFor() === m.id) {
+                            <div class="msg__react-backdrop" aria-hidden="true" (click)="reactPickerFor.set(null)"></div>
+                            <app-emoji-picker class="msg__react-picker" [class.msg__react-picker--own]="own"
+                              [attr.data-testid]="'message-react-picker-' + m.id" (emojiSelected)="react(m, $event)" />
+                          }
+                        </span>
+                        @if (own && canChange(m)) {
+                          <button type="button" class="conv__link" [attr.data-testid]="'message-edit-' + m.id" aria-label="Edit message" (click)="editingId.set(m.id)">Edit</button>
+                          <button type="button" class="conv__link conv__link--danger" [attr.data-testid]="'message-delete-' + m.id" aria-label="Delete message"
+                            (click)="deleteMessage(m.id)">Delete</button>
+                        }
                       </span>
                     }
                   </div>
@@ -232,6 +253,17 @@ interface FailedSend {
                       </div>
                     }
                   </div>
+                  @if (!m.isDeleted && m.reactions?.length) {
+                    <div class="msg__reactions" [attr.data-testid]="'message-reactions-' + m.id">
+                      @for (r of m.reactions; track r.emoji) {
+                        <button type="button" class="msg__reaction" [class.msg__reaction--mine]="isMine(r)" [attr.aria-pressed]="isMine(r)"
+                          [attr.title]="reactorNames(r)" [attr.data-testid]="'reaction-' + m.id + '-' + r.emoji" [disabled]="store.removed()"
+                          (click)="react(m, r.emoji)">
+                          <span class="msg__reaction-emoji">{{ r.emoji }}</span><span>{{ r.employeeIds.length }}</span>
+                        </button>
+                      }
+                    </div>
+                  }
                 </div>
               </div>
             }
@@ -336,8 +368,23 @@ interface FailedSend {
     .msg__body ::ng-deep .mention { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent); font-weight: 600; }
     .msg__body ::ng-deep .mention--me { background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .msg__body--deleted { color: var(--color-text-secondary); font-style: italic; }
-    .msg__menu { display: inline-flex; gap: 8px; opacity: 0; transition: opacity .1s; }
-    .msg:hover .msg__menu, .msg:focus-within .msg__menu { opacity: 1; }
+    .msg__menu { display: inline-flex; align-items: center; gap: 8px; opacity: 0; transition: opacity .1s; }
+    .msg:hover .msg__menu, .msg:focus-within .msg__menu, .msg__menu--open { opacity: 1; }
+    .msg__react { position: relative; display: inline-flex; }
+    .msg__react-btn { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+    .msg__react-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .msg__react-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+    .msg__react-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .msg__react-backdrop { position: fixed; inset: 0; z-index: 40; }
+    .msg__react-picker { position: absolute; top: calc(100% + 4px); left: 0; z-index: 41; }
+    .msg__react-picker--own { right: 0; left: auto; }
+    .msg__reactions { display: flex; flex-wrap: wrap; gap: 4px; }
+    .msg__reaction { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 12px; cursor: pointer; }
+    .msg__reaction:hover:not(:disabled) { border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border)); }
+    .msg__reaction:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+    .msg__reaction:disabled { cursor: default; }
+    .msg__reaction--mine { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); color: var(--color-accent); font-weight: 600; }
+    .msg__reaction-emoji { font-size: 14px; line-height: 1; }
     .msg__tag { margin-bottom: 2px; color: var(--color-accent); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
     .msg--justification .msg__bubble { border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 55%, transparent); background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface)); }
     .msg--justification .msg__tag { color: var(--color-warning, #d97706); }
@@ -395,6 +442,10 @@ export class ConversationPanelComponent implements AfterViewChecked {
     accept: ATTACHMENT_ACCEPT
   };
   protected readonly membersOpen = signal(false);
+  /** The message whose emoji picker is open. */
+  protected readonly reactPickerFor = signal<string | null>(null);
+  /** Ticks so Edit/Delete disappear once a message's 30 minutes are over. */
+  private readonly now = signal(Date.now());
   protected readonly leaveConfirm = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly justification = signal(false);
@@ -449,6 +500,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
     const message = this.store.messages().find((m) => m.id === id);
     return message && message.authorEmployeeId !== this.me() ? id : null;
   });
+  private readonly names = computed(() => new Map(this.store.participants().map((p) => [p.employeeId, p.name])));
   protected readonly mentionCandidates = computed<MentionCandidate[]>(() => this.store.participants()
     .filter((p) => p.employeeId !== this.me())
     .map((p) => ({ id: p.employeeId, name: p.name, avatarUrl: this.avatarUrl(p.avatarFileId) })));
@@ -485,6 +537,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
       catchError(() => of([])));
 
   constructor() {
+    const tick = setInterval(() => this.now.set(Date.now()), CLOCK_TICK_MS);
+    inject(DestroyRef).onDestroy(() => clearInterval(tick));
     effect(() => {
       const ref = this.itemRef();
       const key = this.refKey();
@@ -502,6 +556,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
         this.addOpen.set(false);
         this.leaveConfirm.set(false);
         this.editingId.set(null);
+        this.reactPickerFor.set(null);
         void this.store.open(ref);
       });
     });
@@ -609,6 +664,32 @@ export class ConversationPanelComponent implements AfterViewChecked {
       this.membersOpen.set(true);
       this.leaveConfirm.set(true);
     }
+  }
+
+  /** The author may still edit or delete: within 30 minutes of sending (the server checks it too). */
+  protected canChange(message: ConversationMessageDto): boolean {
+    return this.now() - new Date(message.createdAt).getTime() <= EDIT_WINDOW_MS;
+  }
+
+  protected isMine(reaction: RealtimeConversationReaction): boolean {
+    const me = this.me();
+    return !!me && reaction.employeeIds.includes(me);
+  }
+
+  protected reactorNames(reaction: RealtimeConversationReaction): string {
+    return reaction.employeeIds.map((id) => (id === this.me() ? 'You' : this.names().get(id) ?? 'A teammate')).join(', ');
+  }
+
+  protected toggleReactPicker(messageId: string): void {
+    this.reactPickerFor.update((open) => (open === messageId ? null : messageId));
+  }
+
+  /** One reaction per person: the same emoji again removes it, another one replaces it. */
+  protected async react(message: ConversationMessageDto, emoji: string): Promise<void> {
+    this.reactPickerFor.set(null);
+    const me = this.me();
+    const mine = message.reactions?.find((r) => !!me && r.employeeIds.includes(me))?.emoji ?? null;
+    await this.store.react(message.id, mine === emoji ? null : emoji);
   }
 
   protected tagLabel(tag: string): string {

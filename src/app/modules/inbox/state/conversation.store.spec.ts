@@ -203,6 +203,24 @@ describe('ConversationStore', () => {
       expect(store.sendError()).toBe('Only the author can delete.');
     });
 
+    it('sets, replaces and removes the caller\'s reaction; the 30-minute refusal is reported', async () => {
+      api['react'] = vi.fn((_: string, id: string, emoji: string) => of(message(id, '2026-10-13T09:02:00Z', { reactions: [{ emoji, employeeIds: ['me'] }] })));
+      api['unreact'] = vi.fn((_: string, id: string) => of(message(id, '2026-10-13T09:02:00Z', { reactions: [] })));
+      await store.open(REF);
+
+      expect(await store.react('m2', '👍')).toBe(true);
+      expect(api['react']).toHaveBeenCalledWith('c1', 'm2', '👍');
+      expect(store.messages().find((m) => m.id === 'm2')?.reactions).toEqual([{ emoji: '👍', employeeIds: ['me'] }]);
+
+      expect(await store.react('m2', null)).toBe(true);
+      expect(api['unreact']).toHaveBeenCalledWith('c1', 'm2');
+      expect(store.messages().find((m) => m.id === 'm2')?.reactions).toEqual([]);
+
+      api['edit'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'A message can only be changed within 30 minutes of sending it.' } })));
+      expect(await store.editMessage('m2', '<p>late</p>', [])).toBe(false);
+      expect(store.sendError()).toBe('A message can only be changed within 30 minutes of sending it.');
+    });
+
     it('removes an added member, and leaving marks the caller removed', async () => {
       api['open'].mockReturnValue(of(conversation({ participants: [participant('e1'), participant('me', 'added'), participant('e7', 'added')] })));
       await store.open(REF);

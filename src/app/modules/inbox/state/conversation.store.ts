@@ -195,6 +195,12 @@ export const ConversationStore = signalStore(
         return run(async (id) => replaceMessage(await firstValueFrom(api.edit(id, messageId, bodyHtml, [...mentionEmployeeIds]))),
           'Could not edit the message.');
       },
+      /** Sets (or, with null, removes) the caller's one reaction on a message. */
+      react(messageId: string, emoji: string | null): Promise<boolean> {
+        return run(async (id) => replaceMessage(await firstValueFrom(emoji
+          ? api.react(id, messageId, emoji)
+          : api.unreact(id, messageId))), 'Could not react to the message.');
+      },
       deleteMessage(messageId: string): Promise<boolean> {
         return run(async (id) => {
           await firstValueFrom(api.deleteMessage(id, messageId));

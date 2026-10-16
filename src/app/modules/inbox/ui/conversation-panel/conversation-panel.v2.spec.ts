@@ -59,6 +59,8 @@ describe('ConversationPanelComponent (FS3)', () => {
       post: vi.fn((_: string, html: string) => of(message('new', { authorEmployeeId: me, bodyHtml: html }))),
       edit: vi.fn((_: string, id: string, html: string) => of(message(id, { authorEmployeeId: me, bodyHtml: html, editedAt: '2026-10-13T10:00:00Z' }))),
       deleteMessage: vi.fn(() => of(undefined)),
+      react: vi.fn((_: string, id: string, emoji: string) => of(message(id, { reactions: [{ emoji, employeeIds: [me] }] }))),
+      unreact: vi.fn((_: string, id: string) => of(message(id, { reactions: [] }))),
       removeParticipant: vi.fn(() => of(undefined)),
       leave: vi.fn(() => of(undefined)),
       attachment: vi.fn(() => of(new Blob(['x'])))
@@ -84,7 +86,12 @@ describe('ConversationPanelComponent (FS3)', () => {
     });
     URL.createObjectURL = vi.fn(() => 'blob:x');
     URL.revokeObjectURL = vi.fn();
+    // A fixed clock, 10 minutes after the fixture messages were sent (inside the 30-minute edit window).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-13T09:10:00Z'));
   });
+
+  afterEach(() => vi.useRealTimers());
 
   async function render(requesterId: string | null = 'pat') {
     const fixture = TestBed.createComponent(ConversationPanelComponent);
@@ -152,10 +159,12 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(msg('why').classList.contains('msg--justification')).toBe(true);
   });
 
-  it('the author edits inline with the composer and deletes; others get no menu', async () => {
+  it('the author edits inline with the composer and deletes; others can only react', async () => {
     const { msg, q, settle, fixture } = await render();
 
-    expect(msg('edited').querySelector('[data-testid="message-menu"]')).toBeNull();
+    expect(msg('edited').querySelector('[data-testid="message-react-edited"]')).not.toBeNull();
+    expect(msg('edited').querySelector('[data-testid="message-edit-edited"]')).toBeNull();
+    expect(msg('edited').querySelector('[data-testid="message-delete-edited"]')).toBeNull();
     expect(msg('gone').querySelector('[data-testid="message-menu"]')).toBeNull();
     q('message-edit-own')!.click();
     await settle();
@@ -172,6 +181,64 @@ describe('ConversationPanelComponent (FS3)', () => {
     await settle();
     expect(api['deleteMessage']).toHaveBeenCalledWith('c1', 'own');
     expect(msg('own').textContent).toContain('Message deleted');
+  });
+
+  it('after 30 minutes the author can no longer edit or delete, only react', async () => {
+    vi.setSystemTime(new Date('2026-10-13T09:31:00Z'));
+    const { msg } = await render();
+
+    expect(msg('own').querySelector('[data-testid="message-edit-own"]')).toBeNull();
+    expect(msg('own').querySelector('[data-testid="message-delete-own"]')).toBeNull();
+    expect(msg('own').querySelector('[data-testid="message-react-own"]')).not.toBeNull();
+  });
+
+  /** jsdom's selector engine does not match emoji in attribute selectors, so chips are found by comparing the attribute. */
+  function chip(root: HTMLElement, messageId: string, emoji: string): HTMLElement | undefined {
+    return Array.from(root.querySelectorAll<HTMLElement>('.msg__reaction')).find((b) => b.dataset['testid'] === `reaction-${messageId}-${emoji}`);
+  }
+
+  it('shows each emoji with its count, marks your own, and names who reacted', async () => {
+    conv.messages = [message('m1', { authorEmployeeId: 'pat', authorName: 'Pat', reactions: [
+      { emoji: '👍', employeeIds: ['mgr', 'pat'] }, { emoji: '😂', employeeIds: ['sam'] }
+    ] })];
+    const { el } = await render();
+
+    const thumbs = chip(el, 'm1', '👍')!;
+    expect(thumbs.textContent).toContain('2');
+    expect(thumbs.classList).toContain('msg__reaction--mine');
+    expect(thumbs.getAttribute('title')).toBe('You, Pat');
+    expect(chip(el, 'm1', '😂')!.classList).not.toContain('msg__reaction--mine');
+  });
+
+  it('one reaction per person: tapping your emoji removes it, another emoji replaces it', async () => {
+    conv.messages = [message('m1', { authorEmployeeId: 'pat', authorName: 'Pat', reactions: [
+      { emoji: '👍', employeeIds: ['mgr'] }, { emoji: '😂', employeeIds: ['sam'] }
+    ] })];
+    const { el, settle } = await render();
+
+    chip(el, 'm1', '😂')!.click();
+    await settle();
+    expect(api['react']).toHaveBeenCalledWith('c1', 'm1', '😂');
+
+    conv.messages = [message('m2', { authorEmployeeId: 'pat', reactions: [{ emoji: '👍', employeeIds: ['mgr'] }] })];
+    const second = await render();
+    chip(second.el, 'm2', '👍')!.click();
+    await second.settle();
+    expect(api['unreact']).toHaveBeenCalledWith('c1', 'm2');
+  });
+
+  it('the react button opens the emoji picker and the picked emoji is your reaction', async () => {
+    const { q, settle, el } = await render();
+
+    q('message-react-edited')!.click();
+    await settle();
+    const picker = q('message-react-picker-edited')!;
+    (picker.querySelector('.ep-emoji') as HTMLButtonElement).click();
+    await settle();
+
+    expect(api['react']).toHaveBeenCalledWith('c1', 'edited', '😀');
+    expect(el.querySelector('[data-testid="message-react-picker-edited"]')).toBeNull();
+    expect(chip(el, 'edited', '😀')?.textContent).toContain('1');
   });
 
   it('a live removal of the caller switches the panel off', async () => {

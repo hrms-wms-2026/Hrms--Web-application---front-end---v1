@@ -42,6 +42,16 @@ export class ConversationsApiService {
     return this.http.put<ConversationMessageDto>(`${this.base}/${conversationId}/messages/${messageId}`, { bodyHtml, mentionEmployeeIds });
   }
 
+  /** Sets the caller's one reaction on a message (replacing an earlier one); returns the updated message. */
+  react(conversationId: string, messageId: string, emoji: string): Observable<ConversationMessageDto> {
+    return this.http.put<ConversationMessageDto>(`${this.base}/${conversationId}/messages/${messageId}/reaction`, { emoji });
+  }
+
+  /** Removes the caller's reaction; returns the updated message. */
+  unreact(conversationId: string, messageId: string): Observable<ConversationMessageDto> {
+    return this.http.delete<ConversationMessageDto>(`${this.base}/${conversationId}/messages/${messageId}/reaction`);
+  }
+
   deleteMessage(conversationId: string, messageId: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${conversationId}/messages/${messageId}`);
   }

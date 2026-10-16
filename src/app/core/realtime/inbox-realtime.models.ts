@@ -23,6 +23,13 @@ export interface RealtimeConversationMessage {
   /** A deleted message keeps its place with an empty body ("Message deleted"). */
   isDeleted?: boolean;
   attachments?: RealtimeConversationAttachment[] | null;
+  /** One reaction per person; grouped by emoji, first used first. */
+  reactions?: RealtimeConversationReaction[] | null;
+}
+
+export interface RealtimeConversationReaction {
+  emoji: string;
+  employeeIds: string[];
 }
 
 export interface RealtimeConversationAttachment {
