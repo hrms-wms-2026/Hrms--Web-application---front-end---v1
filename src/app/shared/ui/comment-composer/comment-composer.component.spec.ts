@@ -52,6 +52,36 @@ describe('CommentComposerComponent', () => {
     expect(component.mentions()).toEqual([]);
   });
 
+  it('chat variant: a + attach button and a round send button instead of the text actions', () => {
+    fixture.componentRef.setInput('variant', 'chat');
+    fixture.componentRef.setInput('submitLabel', 'Send');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const send = el.querySelector('[data-testid="composer-send"]') as HTMLButtonElement;
+
+    expect(el.querySelector('.cc-chat')).not.toBeNull();
+    expect(el.querySelector('.cc-submit-btn')).toBeNull();
+    expect(el.querySelector('.tal-action-row')).toBeNull();
+    expect(el.querySelector('[data-testid="composer-attach"] input[type="file"]')).not.toBeNull();
+    expect(send.getAttribute('aria-label')).toBe('Send');
+    expect(send.disabled).toBe(true);
+
+    const submitted = vi.fn();
+    component.submitted.subscribe(submitted);
+    component.editorHtml.set('<p>hi</p>');
+    fixture.detectChanges();
+    expect(send.disabled).toBe(false);
+    send.click();
+    expect(submitted).toHaveBeenCalledWith({ content: '<p>hi</p>', attachmentFileIds: [], mentions: [] });
+  });
+
+  it('keeps the default comment layout (Attach file row and text button) unless the chat variant is asked for', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.cc-chat')).toBeNull();
+    expect(el.querySelector('.tal-action-row')).not.toBeNull();
+    expect(el.querySelector('.cc-submit-btn')).not.toBeNull();
+  });
+
   it('hides the attachment list and the editor attach command when attachments is false', () => {
     fixture.componentRef.setInput('attachments', false);
     fixture.detectChanges();

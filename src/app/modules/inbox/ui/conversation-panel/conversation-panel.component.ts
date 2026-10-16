@@ -260,6 +260,7 @@ interface FailedSend {
           <app-comment-composer
             #composer
             class="conv__composer"
+            variant="chat"
             [initialContent]="draftFor(refKey())"
             [collapsible]="false"
             [submitLabel]="store.sending() ? 'Sending…' : 'Send'"
