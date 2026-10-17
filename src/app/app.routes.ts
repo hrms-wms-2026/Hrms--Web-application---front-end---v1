@@ -3,7 +3,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { redirectIfAuthenticatedGuard } from './core/guards/redirect-if-authenticated.guard';
-import { PermissionService } from './core/auth/state/permission.service';
+import { MANAGES_PEOPLE, PermissionService } from './core/auth/state/permission.service';
 import { canAccessNavItem } from './layouts/main-layout/nav/nav-access';
 import { NAV_ITEMS } from './layouts/main-layout/nav/nav-items.config';
 
@@ -76,7 +76,7 @@ export const routes: Routes = [
       {
         path: 'people',
         canActivate: [permissionGuard],
-        data: { permissions: ['employees:read', 'employees:write'], modules: ['core_hr'] },
+        data: { permissions: [MANAGES_PEOPLE, 'employees:write', 'employees:offboard'], modules: ['core_hr'] },
         loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
       },
       {
@@ -123,7 +123,7 @@ export const routes: Routes = [
                 (module) => module.GeneralSettingsComponent
               ),
             canActivate: [permissionGuard],
-            data: { title: 'General Settings', permissions: ['legal_entity:update'] }
+            data: { title: 'General Settings', permissions: ['legal_entity:read', 'legal_entity:update'] }
           },
           {
             path: 'roles',
@@ -133,6 +133,13 @@ export const routes: Routes = [
               ),
             canActivate: [permissionGuard],
             data: { title: 'Roles & Permissions', permissions: ['roles:read'] }
+          },
+          {
+            path: 'users',
+            loadComponent: () =>
+              import('./modules/settings/feature/users/users.component').then((m) => m.UsersComponent),
+            canActivate: [permissionGuard],
+            data: { title: 'Users', permissions: ['users:read', 'users:manage'] }
           },
           {
             path: 'notifications',

@@ -14,6 +14,7 @@
         [saveError]="store.saveError()"
         (save)="onSavePersonalInformation($event)"
         (avatarSelected)="onAvatarSelected($event)"
+        (avatarRemoved)="store.removeAvatar()"
         (cancelled)="cancelled.emit()"
       />
     }

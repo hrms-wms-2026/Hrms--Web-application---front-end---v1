@@ -470,7 +470,7 @@
 }
 
 .form-label,
-.target-field ::ng-deep .custom-select__label {
+.target-field ::ng-deep .app-select__label {
   display: flex;
   align-items: center;
   height: 18px;
@@ -491,14 +491,14 @@
   margin-left: 0.35rem;
 }
 
-.target-field ::ng-deep .custom-select {
+.target-field ::ng-deep .app-select {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   width: 100%;
 }
 
-.target-field ::ng-deep .custom-select__trigger {
+.target-field ::ng-deep .app-select__trigger {
   min-height: 36px;
   height: 36px;
   box-sizing: border-box;
@@ -509,7 +509,7 @@
   line-height: 1.25;
 }
 
-.target-field ::ng-deep .custom-select__display {
+.target-field ::ng-deep .app-select__value {
   font-size: 0.8125rem;
   line-height: 1.25;
 }

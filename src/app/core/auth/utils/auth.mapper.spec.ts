@@ -22,6 +22,7 @@ describe('toCurrentUserViewModel', () => {
       employeeId: null,
       permissions: ['integrations:manage'],
       activeModules: ['integrations', 'work_management'],
+      managesPeople: false,
       authenticated: true,
       legalAcceptanceRequired: false,
       pendingLegalDocuments: [],

@@ -46,6 +46,8 @@ export interface EmployeeListItemResponse {
   readonly avatarFileId?: string | null;
   /** Position/manager come from a reserved (planned) seat of a still-pending invite. */
   readonly positionPending?: boolean;
+  /** Their tray app is connected right now. */
+  readonly isOnline?: boolean;
 }
 
 /**
@@ -148,6 +150,10 @@ export interface EmployeeDetailResponse {
   readonly invitationExpiresAt: string | null;
   readonly trayAppAccessEnabled: boolean;
   readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
+  /** Their tray app is connected right now. */
+  readonly isOnline?: boolean;
+  /** You added this employee, or hold users:manage, and their invitation is still open. */
+  readonly canManageInvitation?: boolean;
 }
 
 export interface EmployeeDetailJobInformation {

@@ -8,7 +8,6 @@ import { EmployeeDetailResponse } from '../../models/employee.model';
 import { EmployeeWorkGraphResponse } from '../../models/work-graph.model';
 import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
-import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { EmployeeEmploymentTabComponent } from './employment-tab.component';
 
 describe('EmployeeEmploymentTabComponent', () => {
@@ -67,27 +66,28 @@ describe('EmployeeEmploymentTabComponent', () => {
     pageSize: 3
   };
 
-  const treeNode = (id: string, name: string, children: any[] = []) => ({
-    id, legalEntityId: 'le-1', departmentId: null, name, code: null, positionType: 'unique', maxOccupancy: 1,
-    reportsToPositionId: null, isActive: true, childCount: children.length, children
+  const person = (id: string, fullName: string, managerId: string | null, positionName: string) => ({
+    id, fullName, positionName, departmentName: 'Engineering', avatarFileId: null, status: 'active',
+    reportingManagerId: managerId, reportingManagerName: null
   });
-  let positionApi: { listTree: ReturnType<typeof vi.fn> };
+  const everyonePage = {
+    items: [
+      person('ceo', 'Chief Person', null, 'Chief Executive Officer'),
+      person('mgr-1', 'Grace Hopper', 'ceo', 'Team Lead'),
+      person('emp-1', 'Ada Lovelace', 'mgr-1', 'Software Engineer'),
+      person('peer', 'Peer Person', 'mgr-1', 'Other Engineer'),
+      person('ops', 'Ops Person', 'ceo', 'Operations'),
+      person('r-1', 'Alan Turing', 'emp-1', 'Junior Engineer'),
+      person('r-2', 'Intern Person', 'r-1', 'Intern')
+    ],
+    totalCount: 7,
+    page: 1,
+    pageSize: 100
+  };
+  const listEmployeesMock = () =>
+    vi.fn((params: { managerId?: string }) => of(params.managerId ? reportsPage : everyonePage));
 
-  beforeEach(() => {
-    positionApi = {
-      listTree: vi.fn().mockReturnValue(of([
-        treeNode('pos-ceo', 'Chief Executive Officer', [
-          treeNode('pos-lead', 'Team Lead', [
-            treeNode('pos-1', 'Software Engineer', [treeNode('pos-junior', 'Junior Engineer', [treeNode('pos-intern', 'Intern')])]),
-            treeNode('pos-other', 'Other Engineer')
-          ]),
-          treeNode('pos-ops', 'Operations')
-        ])
-      ]))
-    };
-  });
-
-  function setup(getWorkGraph: ReturnType<typeof vi.fn>, listEmployees = vi.fn().mockReturnValue(of(reportsPage))) {
+  function setup(getWorkGraph: ReturnType<typeof vi.fn>, listEmployees: ReturnType<typeof vi.fn> = listEmployeesMock()) {
     // EmployeeJobInfoComponent injects the root WorkModeStore (-> HttpClient), which this spec
     // does not provide; stub it exactly as employee-detail.component.spec.ts does.
     const workModeStoreStub = {
@@ -100,7 +100,6 @@ describe('EmployeeEmploymentTabComponent', () => {
       providers: [
         { provide: PeopleApiService, useValue: { getWorkGraph, listEmployees } },
         { provide: WorkModeStore, useValue: workModeStoreStub },
-        { provide: PositionApiService, useValue: positionApi },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn(), ensureLoaded: vi.fn().mockResolvedValue(undefined), seed: vi.fn() } }
       ]
     });
@@ -231,24 +230,24 @@ describe('EmployeeEmploymentTabComponent', () => {
     expect(getWorkGraph).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the full reporting structure: the chain above and every level below, nothing beside it', () => {
-    const { fixture } = setup(vi.fn().mockReturnValue(of(fullGraph)));
+  it('opens the reporting structure by people: managers above and every report below, nothing beside it', () => {
+    const { fixture, listEmployees } = setup(vi.fn().mockReturnValue(of(fullGraph)));
     fixture.detectChanges();
-    expect(positionApi.listTree).not.toHaveBeenCalled();
+    expect(listEmployees).toHaveBeenCalledTimes(1);
 
     (document.querySelector('[data-testid="reporting-structure-card"]') as HTMLElement).click();
     fixture.detectChanges();
 
-    expect(positionApi.listTree).toHaveBeenCalledWith('le-1');
+    expect(listEmployees).toHaveBeenCalledWith({ page: 1, pageSize: 100 });
     const tree = document.querySelector('[data-testid="reporting-hierarchy"]') as HTMLElement;
     const text = tree.textContent ?? '';
-    expect(text).toContain('Chief Executive Officer');
-    expect(text).toContain('Team Lead');
-    expect(text).toContain('Junior Engineer');
-    expect(text).toContain('Intern');
-    expect(text).not.toContain('Other Engineer');
-    expect(text).not.toContain('Operations');
-    expect(tree.querySelector('.ptn-node-card--highlight')?.textContent).toContain('Software Engineer');
+    expect(text).toContain('Chief Person');
+    expect(text).toContain('Grace Hopper');
+    expect(text).toContain('Alan Turing');
+    expect(text).toContain('Intern Person');
+    expect(text).not.toContain('Peer Person');
+    expect(text).not.toContain('Ops Person');
+    expect(tree.querySelector('.rh-card--self')?.textContent).toContain('Ada Lovelace');
   });
 
   it('opens the full work network from a click anywhere on the card, and closing it does not reopen it', () => {

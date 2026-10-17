@@ -111,7 +111,8 @@ export const RoleStore = signalStore(
     },
 
     async loadRoleDetail(id: string): Promise<RoleDetailResponse | null> {
-      patchState(store, { detailLoading: true, actionError: null });
+      // Drop the previous role's detail so nothing renders it as this role's.
+      patchState(store, { selectedRoleDetail: null, detailLoading: true, actionError: null });
       try {
         const detail = await firstValueFrom(api.getRole(id));
         patchState(store, { selectedRoleDetail: detail, detailLoading: false });

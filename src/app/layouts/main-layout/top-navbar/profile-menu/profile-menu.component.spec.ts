@@ -57,6 +57,24 @@ describe('ProfileMenuComponent', () => {
     expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeFalsy();
   });
 
+  it('shows the online badge while the browser is connected and hides it when it goes offline', async () => {
+    const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    const { fixture } = await setup();
+    const badge = () => fixture.nativeElement.querySelector('[data-testid="profile-online-badge"]');
+    expect(badge()).toBeTruthy();
+
+    onLine.mockReturnValue(false);
+    window.dispatchEvent(new Event('offline'));
+    fixture.detectChanges();
+    expect(badge()).toBeNull();
+
+    onLine.mockReturnValue(true);
+    window.dispatchEvent(new Event('online'));
+    fixture.detectChanges();
+    expect(badge()).toBeTruthy();
+    onLine.mockRestore();
+  });
+
   it('keeps the closed profile trigger flat and the avatar-to-chevron spacing compact', async () => {
     const { fixture } = await setup();
     const trigger = fixture.nativeElement.querySelector('.profile-menu-trigger') as HTMLButtonElement;

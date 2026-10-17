@@ -104,6 +104,16 @@ export interface ChecklistTaskFormValue {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChecklistBuilderComponent implements OnInit {
+  readonly taskCategoryOptions: readonly SelectOption[] = [
+    { value: '', label: 'No category' },
+    { value: 'asset_return', label: 'Asset Return' },
+    { value: 'access_removal', label: 'Access Removal' },
+    { value: 'document_handover', label: 'Document Handover' },
+    { value: 'final_settlement', label: 'Final Settlement' },
+    { value: 'knowledge_handover', label: 'Knowledge Handover' },
+    { value: 'other', label: 'Other' }
+  ];
+
   readonly open = input<boolean>(true);
   readonly templateIdInput = input<string | null>(null, { alias: 'templateId' });
 

@@ -20,7 +20,7 @@ import {
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarEventAttendanceComponent } from '../calendar-event-attendance/calendar-event-attendance.component';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
-import { ListboxSelectComponent } from '../../../../shared/ui/listbox-select/listbox-select.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { timezoneDisplayLabel } from '../../../../shared/utils/timezone-label.util';
 
 /** Curated set of IANA zones for the "times entered in" picker. The organizer's own
@@ -107,7 +107,7 @@ interface AddedPerson {
   imports: [
     CommonModule, ReactiveFormsModule, RouterLink, ButtonComponent,
     ModalComponent, DatePickerComponent, DateRangePickerComponent, TimePickerComponent, AvatarComponent, AvatarStackComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
-    ListboxSelectComponent, CalendarEventAttendanceComponent
+    SelectComponent, CalendarEventAttendanceComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   styles: [`
@@ -168,7 +168,16 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   @Input() conflicts: readonly CalendarConflict[] = [];
   @Input() checkingConflicts = false;
   @Input() myTimezone = 'UTC';
-  @Input() eligibleNominees: readonly EligibleNominee[] = [];
+  @Input() set eligibleNominees(value: readonly EligibleNominee[]) {
+    this._eligibleNominees = value;
+    this.nomineeOptions = value.map((n) => ({ value: n.employeeId, label: n.employeeName }));
+  }
+  get eligibleNominees(): readonly EligibleNominee[] {
+    return this._eligibleNominees;
+  }
+  private _eligibleNominees: readonly EligibleNominee[] = [];
+  /** Options for the nominee dropdown, rebuilt only when the input changes. */
+  nomineeOptions: readonly SelectOption[] = [];
   /** Whether the organizer has an active Microsoft connection that can host a Teams meeting. */
   @Input() hasTeamsCapableConnection = false;
   /** Whether the organizer has an active Zoom connection that can host a Zoom meeting. */
@@ -209,8 +218,8 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   /** Timezone and Repeat read as plain text ("Asia/Colombo (GMT+05:30) · Does not repeat") until clicked,
    * which swaps that one in for its dropdown, already open. */
   readonly inlineEditor = signal<'timezone' | 'repeat' | null>(null);
-  @ViewChild('timezoneSelect') private timezoneSelect?: ListboxSelectComponent;
-  @ViewChild('repeatSelect') private repeatSelect?: ListboxSelectComponent;
+  @ViewChild('timezoneSelect') private timezoneSelect?: SelectComponent;
+  @ViewChild('repeatSelect') private repeatSelect?: SelectComponent;
   /** The user chose "Paste a meeting link" - shows the free-text link field even while it's still empty. */
   readonly manualMeetingLink = signal(false);
   readonly participantIds = signal<readonly string[]>([]);

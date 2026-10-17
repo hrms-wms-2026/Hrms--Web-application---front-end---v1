@@ -60,23 +60,13 @@
           @if (pattern.measuresRecalculated) {
             <p class="evidence-note" data-testid="measures-recalculated">These figures were recalculated now and may differ from when the alert was raised.</p>
           }
-          <div class="evidence-table-wrap">
-            <table class="evidence-table">
-              <caption class="sr-only">Daily activity and attendance, {{ shortDate(pattern.from) }} to {{ shortDate(pattern.to) }}</caption>
-              <thead><tr><th scope="col">Day</th><th scope="col">Activity score</th><th scope="col">Active</th><th scope="col">Worked</th><th scope="col">Attendance</th></tr></thead>
-              <tbody>
-                @for (day of pattern.days; track day.date) {
-                  <tr [class.evidence-table__rule]="day.inRule">
-                    <th scope="row">{{ shortDate(day.date) }}@if (day.inRule) { <span class="rule-mark" title="A day the rule checked">●</span> }</th>
-                    <td>{{ patternValue(day.activityScore, 'score') }}</td>
-                    <td>{{ patternValue(day.activeMinutes, 'minutes') }}</td>
-                    <td>{{ patternValue(day.workedMinutes, 'minutes') }}</td>
-                    <td>{{ statusLabel(day.attendanceStatus) }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+          <app-data-table class="evidence-table" [columns]="patternColumns" [rows]="pattern.days" [trackBy]="trackByDate" [rowClass]="patternRowClass" [caption]="'Daily activity and attendance, ' + shortDate(pattern.from) + ' to ' + shortDate(pattern.to)">
+            <ng-template appDataTableCell="day" let-day>{{ shortDate(day.date) }}@if (day.inRule) { <span class="rule-mark" title="A day the rule checked">●</span> }</ng-template>
+            <ng-template appDataTableCell="score" let-day>{{ patternValue(day.activityScore, 'score') }}</ng-template>
+            <ng-template appDataTableCell="active" let-day>{{ patternValue(day.activeMinutes, 'minutes') }}</ng-template>
+            <ng-template appDataTableCell="worked" let-day>{{ patternValue(day.workedMinutes, 'minutes') }}</ng-template>
+            <ng-template appDataTableCell="attendance" let-day>{{ statusLabel(day.attendanceStatus) }}</ng-template>
+          </app-data-table>
           <p class="evidence-note">● marks the days the rule looked at. "Worked" is from the attendance record.</p>
         </div>
       }

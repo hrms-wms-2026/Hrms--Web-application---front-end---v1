@@ -938,7 +938,8 @@ describe('PositionManagementComponent - System Access Flow', () => {
     });
   });
 
-  describe('Position Hierarchy Zoom', () => {
+  describe('Position Hierarchy canvas (app-pan-zoom-canvas)', () => {
+    // Pan, zoom, wheel, minimap and fit behaviour is covered by pan-zoom-canvas.component.spec.ts.
     const mockTreeNode = {
       id: 'pos-root-1',
       legalEntityId: 'le-123',
@@ -953,223 +954,40 @@ describe('PositionManagementComponent - System Access Flow', () => {
       children: []
     };
 
-    it('onTreeWheel zooms in on wheel-up (negative deltaY) and out on wheel-down (positive deltaY), in small steps', async () => {
+    it('draws the hierarchy inside the shared pan/zoom canvas, with the title in the fixed overlay', async () => {
       const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      expect(comp.treeZoom()).toBe(0.7);
-
-      comp.onTreeWheel({ deltaY: -100, preventDefault: () => {} } as WheelEvent);
-      expect(comp.treeZoom()).toBeCloseTo(0.72);
-
-      comp.onTreeWheel({ deltaY: 100, preventDefault: () => {} } as WheelEvent);
-      expect(comp.treeZoom()).toBeCloseTo(0.7);
-    });
-
-    it('a single wheel tick is smaller than a +/- button click, so a quick scroll does not jump straight to the min/max', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-
-      comp.onTreeWheel({ deltaY: -100, preventDefault: () => {} } as WheelEvent);
-      const wheelStep = comp.treeZoom() - 0.7;
-
-      comp.resetZoom();
-      comp.zoomIn();
-      const buttonStep = comp.treeZoom() - 0.7;
-
-      expect(wheelStep).toBeGreaterThan(0);
-      expect(wheelStep).toBeLessThan(buttonStep);
-    });
-
-    it('onTreeWheel calls preventDefault so the wheel event does not scroll the page', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      const preventDefault = vi.fn();
-
-      comp.onTreeWheel({ deltaY: -100, preventDefault } as unknown as WheelEvent);
-
-      expect(preventDefault).toHaveBeenCalled();
-    });
-
-    it('wheel zoom clamps at the same min/max range as the plus/minus controls', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-
-      for (let i = 0; i < 60; i++) {
-        comp.onTreeWheel({ deltaY: -100, preventDefault: () => {} } as WheelEvent);
-      }
-      expect(comp.treeZoom()).toBe(1.5);
-
-      for (let i = 0; i < 80; i++) {
-        comp.onTreeWheel({ deltaY: 100, preventDefault: () => {} } as WheelEvent);
-      }
-      expect(comp.treeZoom()).toBe(0.4);
-    });
-
-    it('plus/minus zoom methods still work and clamp at the documented min/max', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-
-      comp.zoomIn();
-      expect(comp.treeZoom()).toBe(0.8);
-      comp.zoomOut();
-      expect(comp.treeZoom()).toBe(0.7);
-
-      for (let i = 0; i < 20; i++) comp.zoomIn();
-      expect(comp.treeZoom()).toBe(1.5);
-
-      for (let i = 0; i < 30; i++) comp.zoomOut();
-      expect(comp.treeZoom()).toBe(0.4);
-
-      comp.resetZoom();
-      expect(comp.treeZoom()).toBe(0.7);
-    });
-
-    it('binds the wheel handler on the tree canvas and the minimap +/- buttons change the zoom', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
       vi.spyOn(positionStore, 'treeData').mockReturnValue([mockTreeNode]);
       fixture.detectChanges();
 
-      const canvas = fixture.nativeElement.querySelector('.pm-tree-container');
+      const canvas: HTMLElement = fixture.nativeElement.querySelector('app-pan-zoom-canvas.pm-tree-container');
       expect(canvas).not.toBeNull();
+      expect(canvas.querySelector('[canvasOverlay] .pm-tree-title')?.textContent).toContain('Position hierarchy');
+      expect(canvas.querySelector('.pzc-world app-tidy-tree')).not.toBeNull();
+      expect(canvas.querySelector('app-canvas-grid')).not.toBeNull();
+    });
 
-      const wheelSpy = vi.spyOn(comp, 'onTreeWheel');
-      canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, cancelable: true }));
-      expect(wheelSpy).toHaveBeenCalled();
-      expect(comp.treeZoom()).toBeCloseTo(0.72);
-
-      comp.resetZoom();
+    it('shows the empty state in the fixed overlay, not inside the zoomed chart', async () => {
+      const fixture = await setup(['org:read', 'org:manage']);
       fixture.detectChanges();
 
-      const minimap: HTMLElement = fixture.nativeElement.querySelector('.pm-tree-container app-canvas-minimap');
-      expect(minimap).not.toBeNull();
-
-      const zoomInBtn: HTMLButtonElement = minimap.querySelector('button[aria-label="Zoom in"]')!;
-      zoomInBtn.click();
-      fixture.detectChanges();
-      expect(comp.treeZoom()).toBe(0.8);
-
-      const zoomOutBtn: HTMLButtonElement = minimap.querySelector('button[aria-label="Zoom out"]')!;
-      zoomOutBtn.click();
-      fixture.detectChanges();
-      expect(comp.treeZoom()).toBe(0.7);
+      const canvas: HTMLElement = fixture.nativeElement.querySelector('app-pan-zoom-canvas');
+      expect(canvas.querySelector('[canvasOverlay] app-empty-state')).not.toBeNull();
+      expect(canvas.querySelector('.pzc-world app-empty-state')).toBeNull();
     });
 
-    it('renders the shared dot grid behind the hierarchy canvas', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      vi.spyOn(positionStore, 'treeData').mockReturnValue([mockTreeNode]);
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('.pm-tree-container > app-canvas-grid')).not.toBeNull();
-    });
-
-    it('minimap navigation pans so the clicked world point lands in the canvas centre', async () => {
+    it('a press on empty canvas clears the people selection (unless choosing a manager)', async () => {
       const fixture = await setup(['org:read', 'org:manage']);
       const comp = fixture.componentInstance;
-      // Canvas 1000x600, wrapper at (32, 80), 936 wide - origin x = 468.
-      (comp as unknown as { canvasLayout: { set(v: object): void } }).canvasLayout.set({
-        width: 1000, height: 600, left: 32, top: 80, wrapperWidth: 936
-      });
+      comp.setChartMode('people');
+      comp.selectedPeopleIds.set(new Set(['a']));
 
-      comp.centerTreeOn({ x: 468, y: 200 });
+      comp.choosingReportingManager.set(true);
+      comp.onCanvasBackgroundPressed();
+      expect(comp.selectedPeopleIds().size).toBe(1);
 
-      // x: 500 - 32 - 468 - 0.7 * 0 = 0; y: 300 - 80 - 0.7 * 200 = 80
-      expect(comp.treePanX()).toBeCloseTo(0);
-      expect(comp.treePanY()).toBeCloseTo(80);
-      // The viewport rectangle is centred on the same point.
-      const v = comp.miniViewport()!;
-      expect(v.x + v.width / 2).toBeCloseTo(468);
-      expect(v.y + v.height / 2).toBeCloseTo(200);
-    });
-  });
-
-  describe('Position Hierarchy Canvas Panning', () => {
-    function createPointerEvent(type: string, target: HTMLElement, clientX = 0, clientY = 0, button = 0): PointerEvent {
-      return {
-        type,
-        pointerId: 1,
-        clientX,
-        clientY,
-        button,
-        target,
-        currentTarget: target,
-        bubbles: true,
-        cancelable: true,
-        preventDefault: () => {}
-      } as unknown as PointerEvent;
-    }
-
-    it('pointerdown on empty hierarchy canvas starts panning and pointermove updates pan offset', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      const canvas = document.createElement('div');
-      canvas.className = 'pm-tree-container';
-
-      expect(comp.isPanning()).toBe(false);
-      expect(comp.treePanX()).toBe(0);
-      expect(comp.treePanY()).toBe(0);
-
-      comp.onCanvasPointerDown(createPointerEvent('pointerdown', canvas, 100, 200));
-
-      expect(comp.isPanning()).toBe(true);
-
-      comp.onCanvasPointerMove(createPointerEvent('pointermove', canvas, 150, 230));
-
-      expect(comp.treePanX()).toBe(50);
-      expect(comp.treePanY()).toBe(30);
-      expect(comp.treeTransform()).toContain('translate(50px, 30px)');
-
-      comp.onCanvasPointerUp(createPointerEvent('pointerup', canvas, 150, 230));
-
-      expect(comp.isPanning()).toBe(false);
-    });
-
-    it('pointercancel ends panning', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      const canvas = document.createElement('div');
-
-      comp.onCanvasPointerDown(createPointerEvent('pointerdown', canvas, 100, 100));
-      expect(comp.isPanning()).toBe(true);
-
-      comp.onCanvasPointerCancel(createPointerEvent('pointercancel', canvas, 120, 120));
-      expect(comp.isPanning()).toBe(false);
-    });
-
-    it('pointerdown on a position card does not start panning', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-
-      const card = document.createElement('div');
-      card.className = 'ptn-node-card';
-
-      comp.onCanvasPointerDown(createPointerEvent('pointerdown', card, 100, 100));
-
-      expect(comp.isPanning()).toBe(false);
-      expect(comp.treePanX()).toBe(0);
-      expect(comp.treePanY()).toBe(0);
-    });
-
-    it('resetZoom resets both zoom factor to 0.7 and pan offsets to 0', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      const canvas = document.createElement('div');
-
-      comp.zoomIn();
-      comp.onCanvasPointerDown(createPointerEvent('pointerdown', canvas, 100, 100));
-      comp.onCanvasPointerMove(createPointerEvent('pointermove', canvas, 200, 250));
-      comp.onCanvasPointerUp(createPointerEvent('pointerup', canvas, 200, 250));
-
-      expect(comp.treeZoom()).toBe(0.8);
-      expect(comp.treePanX()).toBe(100);
-      expect(comp.treePanY()).toBe(150);
-
-      comp.resetZoom();
-
-      expect(comp.treeZoom()).toBe(0.7);
-      expect(comp.treePanX()).toBe(0);
-      expect(comp.treePanY()).toBe(0);
-      expect(comp.treeTransform()).toContain('translate(0px, 0px) scale(0.7)');
+      comp.choosingReportingManager.set(false);
+      comp.onCanvasBackgroundPressed();
+      expect(comp.selectedPeopleIds().size).toBe(0);
     });
   });
 

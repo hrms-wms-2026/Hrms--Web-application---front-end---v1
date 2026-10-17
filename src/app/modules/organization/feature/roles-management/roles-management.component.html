@@ -79,8 +79,7 @@
     <app-role-list-table
       [roles]="filteredRoles()"
       [canManage]="hasManageAccess()"
-      (editRole)="openEditModal($event)"
-      (managePermissions)="openPermissionsModal($event)"
+      (openRole)="openRoleModal($event)"
       (archiveRole)="openArchiveModal($event)"
     />
 
@@ -92,22 +91,12 @@
 @if (formModalOpen()) {
   <app-role-form-modal
     [role]="editingRole()"
-    [groupedCatalog]="roleStore.groupedCatalog()"
-    [loading]="roleStore.saving()"
-    (save)="onSaveRole($event)"
-    (cancel)="closeFormModal()"
-  />
-}
-
-@if (permsModalOpen() && managingPermsRole()) {
-  <app-role-permissions-modal
-    [role]="managingPermsRole()!"
     [roleDetail]="roleStore.selectedRoleDetail()"
     [groupedCatalog]="roleStore.groupedCatalog()"
-    [loading]="roleStore.detailLoading()"
+    [loading]="!!editingRole() && roleStore.detailLoading()"
     [saving]="roleStore.saving()"
-    (savePermissions)="onSavePermissions($event)"
-    (cancel)="closePermissionsModal()"
+    (save)="onSaveRole($event)"
+    (cancel)="closeFormModal()"
   />
 }
 

@@ -12,7 +12,10 @@ import { GeneralSettingsComponent } from './general-settings.component';
 describe('GeneralSettingsComponent', () => {
   let httpMock: HttpTestingController;
   let legalEntityStore: InstanceType<typeof LegalEntityStore>;
-  let permissionService: { hasPermission: (p: string) => boolean };
+  let permissionService: {
+    hasPermission: (p: string) => boolean;
+    hasAnyPermission: (ps: readonly string[]) => boolean;
+  };
 
   beforeEach(() => localStorage.removeItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY));
   afterEach(() => localStorage.removeItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY));
@@ -51,9 +54,11 @@ describe('GeneralSettingsComponent', () => {
     officeLongitude: null
   });
 
-  async function setup(hasPermission: boolean) {
+  /** true = every permission, false = none, or the exact permission codes the user holds. */
+  async function setup(granted: boolean | readonly string[]) {
     TestBed.resetTestingModule();
-    permissionService = { hasPermission: () => hasPermission };
+    const has = (p: string) => (typeof granted === 'boolean' ? granted : granted.includes(p));
+    permissionService = { hasPermission: has, hasAnyPermission: (ps) => ps.some(has) };
 
     await TestBed.configureTestingModule({
       imports: [GeneralSettingsComponent],
@@ -71,8 +76,10 @@ describe('GeneralSettingsComponent', () => {
 
   /** Loads the company list (awaited, so selectedLegalEntityId is populated), creates the
    * component, and flushes company-a's general-settings GET so the form is populated. */
-  async function setupWithLoadedSettings(): Promise<ComponentFixture<GeneralSettingsComponent>> {
-    await setup(true);
+  async function setupWithLoadedSettings(
+    granted: boolean | readonly string[] = true
+  ): Promise<ComponentFixture<GeneralSettingsComponent>> {
+    await setup(granted);
     const loadCompaniesPromise = legalEntityStore.loadCompanies();
     httpMock.expectOne(`${environment.apiUrl}/session/companies`).flush(companies);
     await loadCompaniesPromise;
@@ -96,6 +103,39 @@ describe('GeneralSettingsComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain("You don't have access to this.");
     httpMock.expectNone(() => true);
+  });
+
+  it('opens view-only with legal_entity:read alone: fields locked, no Save bar, no logo actions', async () => {
+    const fixture = await setupWithLoadedSettings(['legal_entity:read']);
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(fixture.componentInstance.form.controls.name.value).toBe('Company A');
+    expect(el.textContent).toContain('You have view-only access to these settings.');
+    expect(el.querySelector<HTMLFieldSetElement>('.gs-readonly-fieldset')!.disabled).toBe(true);
+    expect(el.querySelector('.gs-sticky-save')).toBeNull();
+    expect(el.querySelector('.gs-logo-actions')).toBeNull();
+
+    await fixture.componentInstance.onSubmit();
+    httpMock.expectNone(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`);
+  });
+
+  it('flips Status between Active and Inactive each time the status pill is clicked', async () => {
+    const fixture = await setupWithLoadedSettings();
+    const el = fixture.nativeElement as HTMLElement;
+    const toggle = el.querySelector<HTMLButtonElement>('.gs-status-toggle')!;
+    expect(el.querySelector('app-select[label="Status"]')).toBeNull();
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(toggle.textContent).toContain('Active');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.form.controls.status.value).toBe('inactive');
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    expect(toggle.textContent).toContain('Inactive');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.form.controls.status.value).toBe('active');
   });
 
   it('shows "select a company" empty state when nothing is selected', async () => {
@@ -249,68 +289,81 @@ describe('GeneralSettingsComponent', () => {
     expect(legalEntityStore.companies().find((c) => c.id === 'company-a')?.name).toBe('Company A Renamed');
   });
 
-  it('shows the placeholder icon and disabled-looking hint when no logo is set, and uploads a selected file', async () => {
-    const fixture = await setupWithLoadedSettings();
+  async function uploadLogoThroughDialog(fixture: ComponentFixture<GeneralSettingsComponent>): Promise<void> {
+    const framed = new File(['bytes'], 'logo.png', { type: 'image/png' });
+    const pending = fixture.componentInstance.onLogoSaved(framed);
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiUrl}/files`)
+      .flush({ fileId: 'file-1', originalFileName: 'logo.png', fileSizeBytes: 5, contentType: 'image/png' });
+    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ fileId: 'file-1' });
+    req.flush({ legalEntityId: 'company-a', logoFileId: 'file-1' });
+    await pending;
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
 
-    const fileInput: HTMLInputElement = fixture.nativeElement.querySelector('input[type="file"]');
-    expect(fileInput).toBeTruthy();
+  it('opens the file picker from the logo tile when no logo is set, then frames the picked file in the Change logo popup', async () => {
+    const fixture = await setupWithLoadedSettings();
     expect(fixture.nativeElement.querySelector('.gs-logo-preview img')).toBeFalsy();
+
+    const fileInput: HTMLInputElement = fixture.nativeElement.querySelector('.gs-logo-input');
+    const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => undefined);
+    fixture.nativeElement.querySelector('.gs-logo-preview--editable').click();
+    expect(clickSpy).toHaveBeenCalled();
 
     const file = new File(['bytes'], 'logo.png', { type: 'image/png' });
     Object.defineProperty(fileInput, 'files', { value: [file] });
     fileInput.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
-    expect(req.request.method).toBe('PUT');
-    req.flush({ legalEntityId: 'company-a', logoFileId: 'file-1' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const img: HTMLImageElement = fixture.nativeElement.querySelector('.gs-logo-preview img');
-    expect(img).toBeTruthy();
-    expect(img.src).toContain(`${environment.apiUrl}/org/legal-entities/company-a/logo?v=file-1`);
-    expect(fixture.nativeElement.querySelector('.gs-logo-remove-btn')).toBeTruthy();
-  });
-
-  it('rejects an oversized file client-side without calling the API', async () => {
-    const fixture = await setupWithLoadedSettings();
-    const notification = TestBed.inject(NotificationService);
-    vi.spyOn(notification, 'error');
-
-    const fileInput: HTMLInputElement = fixture.nativeElement.querySelector('input[type="file"]');
-    const oversized = new File([new Uint8Array(6 * 1024 * 1024)], 'big.png', { type: 'image/png' });
-    Object.defineProperty(fileInput, 'files', { value: [oversized] });
-    fileInput.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-
-    expect(notification.error).toHaveBeenCalled();
+    expect(fixture.componentInstance.logoDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.pickedLogo()).toBe(file);
     httpMock.expectNone(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
   });
 
-  it('removes the logo when the Remove button is clicked', async () => {
+  it('uploads the framed logo when the popup saves', async () => {
     const fixture = await setupWithLoadedSettings();
-    const fileInput: HTMLInputElement = fixture.nativeElement.querySelector('input[type="file"]');
-    const file = new File(['bytes'], 'logo.png', { type: 'image/png' });
-    Object.defineProperty(fileInput, 'files', { value: [file] });
-    fileInput.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`).flush({ legalEntityId: 'company-a', logoFileId: 'file-1' });
-    await fixture.whenStable();
-    fixture.detectChanges();
+    fixture.componentInstance.logoDialogOpen.set(true);
 
-    const removeBtn: HTMLButtonElement = fixture.nativeElement.querySelector('.gs-logo-remove-btn');
-    removeBtn.click();
+    await uploadLogoThroughDialog(fixture);
+
+    expect(fixture.componentInstance.logoDialogOpen()).toBe(false);
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('.gs-logo-preview img');
+    expect(img).toBeTruthy();
+    expect(img.src).toContain(`${environment.apiUrl}/files/file-1`);
+  });
+
+  it('opens the Change logo popup instead of the picker when a logo exists', async () => {
+    const fixture = await setupWithLoadedSettings();
+    await uploadLogoThroughDialog(fixture);
+
+    const fileInput: HTMLInputElement = fixture.nativeElement.querySelector('.gs-logo-input');
+    const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => undefined);
+    fixture.componentInstance.onLogoClick(fileInput);
+
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.logoDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.pickedLogo()).toBeNull();
+  });
+
+  it('removes the logo when the popup removes it', async () => {
+    const fixture = await setupWithLoadedSettings();
+    await uploadLogoThroughDialog(fixture);
+
+    const pending = fixture.componentInstance.onLogoRemoved();
     fixture.detectChanges();
 
     const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
+    await pending;
     await fixture.whenStable();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.gs-logo-preview img')).toBeFalsy();
   });
+
 
   it('populates workStartTime and workEndTime from settings into the form', async () => {
     await setup(true);

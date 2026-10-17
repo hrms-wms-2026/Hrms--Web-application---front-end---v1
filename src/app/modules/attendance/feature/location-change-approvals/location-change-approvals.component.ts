@@ -7,16 +7,27 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { LocationChangeRequestResponse, locationChangeStatusLabel } from '../../models/location-change-request.model';
 import { LocationChangeRequestsStore } from '../../state/location-change-requests.store';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 
 @Component({
   selector: 'app-location-change-approvals',
   standalone: true,
-  imports: [DecimalPipe, FormsModule, ButtonComponent, BreadcrumbHeaderComponent, ModalComponent],
+  imports: [DataTableComponent, DataTableCellDirective, DecimalPipe, FormsModule, ButtonComponent, BreadcrumbHeaderComponent, ModalComponent],
   templateUrl: './location-change-approvals.component.html',
   styleUrl: './location-change-approvals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LocationChangeApprovalsComponent implements OnInit {
+  protected readonly columns: readonly DataTableColumn[] = [
+    { key: 'requester', label: 'Requester' },
+    { key: 'location', label: 'Requested location', interactive: true },
+    { key: 'reason', label: 'Reason', wrap: true },
+    { key: 'requested', label: 'Requested' },
+    { key: 'status', label: 'Status' },
+    { key: 'action', label: 'Action', interactive: true, shrink: true }
+  ];
+  protected readonly trackById = (request: { id: string }): string => request.id;
+
   readonly store = inject(LocationChangeRequestsStore);
   private readonly route = inject(ActivatedRoute);
   readonly embedded = input(false);

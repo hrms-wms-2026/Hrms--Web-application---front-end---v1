@@ -13,7 +13,6 @@ h2 { font-size: .9375rem; font-weight: 650; }
 .status-pill[data-status='Escalated'] { background: color-mix(in srgb, var(--color-danger-subtle) 70%, var(--color-surface)); color: var(--color-danger-text); }
 .filters { display: flex; flex-wrap: wrap; gap: .75rem; }
 .filter-field { display: flex; flex-direction: column; gap: .3rem; min-width: 12rem; color: var(--color-text-secondary); font-size: .6875rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.filter-field select { border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: .8125rem; font-weight: 500; letter-spacing: normal; text-transform: none; padding: .5rem .6rem; }
 .alert-list { display: flex; flex-direction: column; gap: .75rem; }
 .alert-item { display: flex; flex-direction: column; gap: .75rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--color-surface-secondary) 25%, var(--color-surface)); }
 .alert-item--highlighted { border-color: var(--color-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 25%, transparent); }

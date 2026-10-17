@@ -5,6 +5,7 @@ import { CalendarEventModalComponent } from '../../ui/calendar-event-modal/calen
 import { ObjectiveTimelineBarComponent } from '../../ui/objective-timeline-bar/objective-timeline-bar.component';
 import { ModuleTreeRowComponent } from '../../ui/module-tree-row/module-tree-row.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
 import {
   CalendarDateChange,
@@ -31,7 +32,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
 @Component({
   selector: 'app-project-calendar',
   standalone: true,
-  imports: [NgTemplateOutlet, ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, MilestoneExplanationPanelComponent, DataTableComponent, DataTableCellDirective, ButtonComponent],
+  imports: [NgTemplateOutlet, ObjectiveTimelineBarComponent, ModuleTreeRowComponent, CalendarEventModalComponent, MilestoneExplanationPanelComponent, DataTableComponent, DataTableCellDirective, ButtonComponent, SelectComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="project-calendar__toolbar">
@@ -72,11 +73,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
             <button type="button" role="tab" data-testid="view-toggle-list" [attr.aria-selected]="viewMode() === 'list'" (click)="viewMode.set('list')">List</button>
             <button type="button" role="tab" data-testid="view-toggle-timeline" [attr.aria-selected]="viewMode() === 'timeline'" (click)="viewMode.set('timeline')">Timeline</button>
           </div>
-          <select class="project-calendar__granularity" aria-label="Zoom granularity" data-testid="granularity-select" [value]="granularity()" (change)="setGranularity($any($event.target).value)">
-            <option value="week">Week</option>
-            <option value="month">Month</option>
-            <option value="quarter">Quarter</option>
-          </select>
+          <app-select class="project-calendar__granularity" ariaLabel="Zoom granularity" data-testid="granularity-select" [options]="granularityOptions" [value]="granularity()" (valueChange)="setGranularity($any($event))" />
           <div class="project-calendar__month-nav" data-testid="calendar-month-nav">
             <button type="button" class="project-calendar__month-step" aria-label="Previous month" (click)="scrollMonth(-1)">‹</button>
             <span data-testid="calendar-range-label">{{ rangeLabel() }}</span>
@@ -187,6 +184,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
               [rows]="milestoneListRows()"
               [trackBy]="trackMilestoneRow"
               emptyMessage="No active milestones yet."
+              [rowClickable]="true"
               (rowClicked)="openMilestonePanel($event.eventId)"
             >
               <ng-template appDataTableCell="name" let-row>
@@ -263,7 +261,7 @@ interface MilestoneMarker { objectiveId: string; eventId: string; name: string; 
     @media (max-width: 900px) { .project-calendar__layout { grid-template-columns: minmax(0, 1fr); } }
     .project-calendar__page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 14px; }
     .project-calendar__controls { display: flex; align-items: center; gap: 10px; }
-    .project-calendar__granularity { height: 32px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 12px; cursor: pointer; }
+    .project-calendar__granularity { width: 8.5rem; }
     .project-calendar__main { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
     .project-calendar__view-toggle { height: 32px; padding: 2px; border-radius: 8px; }
     .project-calendar__view-toggle button { height: 26px; padding: 0 14px; font-size: 12px; }
@@ -407,6 +405,11 @@ export class ProjectCalendarComponent implements OnInit, AfterViewInit, OnDestro
     return `${month(this.timelineStart())} – ${month(this.timelineEnd())}`;
   });
   readonly granularity = signal<'week' | 'month' | 'quarter'>('month');
+  readonly granularityOptions: readonly SelectOption[] = [
+    { value: 'week', label: 'Week' },
+    { value: 'month', label: 'Month' },
+    { value: 'quarter', label: 'Quarter' }
+  ];
   readonly statusLegend = [
     { label: 'On Track', color: '#16A34A' }, { label: 'At Risk', color: '#EF4444' },
     { label: 'Upcoming', color: '#F59E0B' }, { label: 'Completed', color: '#2563EB' },
