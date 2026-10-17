@@ -8,11 +8,12 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { PendingAccessGrantRequestResponse } from '../../models/access-grant-request.model';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 
 @Component({
   selector: 'app-approvals-list',
   standalone: true,
-  imports: [DatePipe, BreadcrumbHeaderComponent, ButtonComponent, ErrorStateComponent, LoaderComponent],
+  imports: [DatePipe, DataTableComponent, DataTableCellDirective, BreadcrumbHeaderComponent, ButtonComponent, ErrorStateComponent, LoaderComponent],
   template: `
     <header class="al-page-header">
       <div class="al-header-row">
@@ -27,75 +28,67 @@ import { PendingAccessGrantRequestResponse } from '../../models/access-grant-req
     } @else if (requests().length === 0) {
       <p class="mt-6 text-sm text-[var(--color-text-secondary)]">No pending approvals.</p>
     } @else {
-      <div class="mt-6 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-        <table class="w-full text-left text-sm">
-          <thead class="bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
-            <tr>
-              <th class="px-4 py-3 font-medium">Employee</th>
-              <th class="px-4 py-3 font-medium">Position</th>
-              <th class="px-4 py-3 font-medium">Reason</th>
-              <th class="px-4 py-3 font-medium">Requested by</th>
-              <th class="px-4 py-3 font-medium">Requested at</th>
-              <th class="px-4 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (request of requests(); track request.id) {
-              <tr class="border-t border-[var(--color-border)]">
-                <td class="px-4 py-3">{{ displayName(request) }}</td>
-                <td class="px-4 py-3">{{ request.targetPositionName }}</td>
-                <td class="px-4 py-3">{{ request.changeReason || '—' }}</td>
-                <td class="px-4 py-3">{{ request.requestedByName }}</td>
-                <td class="px-4 py-3">{{ request.requestedAt | date: 'medium' }}</td>
-                <td class="px-4 py-3">
-                  <div class="flex flex-col gap-2">
-                    <div class="flex gap-2">
-                      <app-button
-                        [loading]="actingId() === request.id"
-                        [disabled]="actingId() === request.id"
-                        (pressed)="approve(request.id)"
-                      >
-                        Approve
-                      </app-button>
-                      <app-button
-                        variant="secondary"
-                        [disabled]="actingId() === request.id"
-                        (pressed)="rejectingId.set(request.id)"
-                      >
-                        Reject
-                      </app-button>
-                    </div>
-                    @if (rejectingId() === request.id) {
-                      <div class="flex flex-col gap-2">
-                        <textarea
-                          class="rounded-md border border-[var(--color-border)] p-2 text-sm"
-                          rows="2"
-                          placeholder="Decision note"
-                          [value]="rejectNote()"
-                          (input)="rejectNote.set($any($event.target).value)"
-                        ></textarea>
-                        <app-button
-                          variant="secondary"
-                          [loading]="actingId() === request.id"
-                          [disabled]="actingId() === request.id"
-                          (pressed)="reject(request.id)"
-                        >
-                          Confirm reject
-                        </app-button>
-                      </div>
-                    }
-                  </div>
-                </td>
-              </tr>
+      <app-data-table class="mt-6 block" [columns]="columns" [rows]="requests()" [trackBy]="trackById" caption="Pending position change approvals">
+        <ng-template appDataTableCell="employee" let-request>{{ displayName(request) }}</ng-template>
+        <ng-template appDataTableCell="position" let-request>{{ request.targetPositionName }}</ng-template>
+        <ng-template appDataTableCell="reason" let-request>{{ request.changeReason || '—' }}</ng-template>
+        <ng-template appDataTableCell="requestedBy" let-request>{{ request.requestedByName }}</ng-template>
+        <ng-template appDataTableCell="requestedAt" let-request>{{ request.requestedAt | date: 'medium' }}</ng-template>
+        <ng-template appDataTableCell="actions" let-request>
+          <div class="flex flex-col gap-2">
+            <div class="flex gap-2">
+              <app-button
+                [loading]="actingId() === request.id"
+                [disabled]="actingId() === request.id"
+                (pressed)="approve(request.id)"
+              >
+                Approve
+              </app-button>
+              <app-button
+                variant="secondary"
+                [disabled]="actingId() === request.id"
+                (pressed)="rejectingId.set(request.id)"
+              >
+                Reject
+              </app-button>
+            </div>
+            @if (rejectingId() === request.id) {
+              <div class="flex flex-col gap-2">
+                <textarea
+                  class="rounded-md border border-[var(--color-border)] p-2 text-sm"
+                  rows="2"
+                  placeholder="Decision note"
+                  [value]="rejectNote()"
+                  (input)="rejectNote.set($any($event.target).value)"
+                ></textarea>
+                <app-button
+                  variant="secondary"
+                  [loading]="actingId() === request.id"
+                  [disabled]="actingId() === request.id"
+                  (pressed)="reject(request.id)"
+                >
+                  Confirm reject
+                </app-button>
+              </div>
             }
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </ng-template>
+      </app-data-table>
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ApprovalsListComponent {
+  protected readonly columns: readonly DataTableColumn[] = [
+    { key: 'employee', label: 'Employee' },
+    { key: 'position', label: 'Position' },
+    { key: 'reason', label: 'Reason', wrap: true },
+    { key: 'requestedBy', label: 'Requested by' },
+    { key: 'requestedAt', label: 'Requested at' },
+    { key: 'actions', label: 'Actions', interactive: true, shrink: true }
+  ];
+  protected readonly trackById = (request: { id: string }): string => request.id;
+
   private readonly api = inject(PeopleApiService);
   private readonly notifications = inject(NotificationService);
 

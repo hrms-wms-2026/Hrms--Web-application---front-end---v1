@@ -20,12 +20,8 @@
 .evidence-measure { display: flex; flex-direction: column; gap: .15rem; min-width: 9rem; padding: .5rem .65rem; border-radius: 8px; background: var(--color-surface-secondary); }
 .evidence-measure span { color: var(--color-text-secondary); font-size: .7rem; line-height: 1.3; }
 .evidence-measure strong { color: var(--color-text-primary); font-size: .95rem; font-variant-numeric: tabular-nums; }
-.evidence-table-wrap { overflow-x: auto; }
-.evidence-table { width: 100%; border-collapse: collapse; font-size: .78rem; font-variant-numeric: tabular-nums; }
-.evidence-table th, .evidence-table td { padding: .35rem .5rem; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent); text-align: left; color: var(--color-text-primary); white-space: nowrap; }
-.evidence-table thead th { color: var(--color-text-secondary); font-size: .6875rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.evidence-table tbody th { font-weight: 600; }
-.evidence-table__rule { background: color-mix(in srgb, var(--color-warning-subtle) 45%, transparent); }
+
+:host ::ng-deep tr.evidence-table__rule td { background: color-mix(in srgb, var(--color-warning-subtle) 45%, var(--color-surface)); }
 .rule-mark { margin-left: .3rem; color: var(--color-warning-text); font-size: .6rem; }
 .device-bar { position: relative; height: .75rem; border-radius: 999px; background: var(--color-surface-secondary); overflow: hidden; }
 .device-bar__run { position: absolute; top: 0; bottom: 0; }
@@ -37,7 +33,7 @@
 .device-legend i { display: inline-block; width: .6rem; height: .6rem; border-radius: 2px; }
 .evidence-warning { margin: 0; padding: .45rem .6rem; border-radius: 6px; background: color-mix(in srgb, var(--color-warning-subtle) 60%, var(--color-surface)); color: var(--color-warning-text); font-size: .78rem; }
 .evidence-note { margin: 0; color: var(--color-text-secondary); font-size: .72rem; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
 .evidence-empty { margin: 0; color: var(--color-text-secondary); font-size: .8125rem; }
 .evidence-error { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .6rem .8rem; border-radius: 8px; background: color-mix(in srgb, var(--color-danger-subtle) 55%, var(--color-surface)); color: var(--color-danger-text); font-size: .8125rem; }
 .evidence-error p { margin: 0; }

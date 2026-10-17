@@ -20,12 +20,36 @@
   box-shadow: 0 0 0 1px var(--color-border), 0 4px 12px -6px rgba(0, 0, 0, 0.18);
 }
 
+/* The whole circle is one button (add or change photo). */
 .pif-avatar-wrap {
   position: relative;
   flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  cursor: pointer;
 }
 
-/* Round pencil badge over the avatar's bottom-right edge; the whole badge is the file picker. */
+.pif-avatar-wrap:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+.pif-avatar-wrap:hover .pif-avatar ::ng-deep .avatar {
+  filter: brightness(0.94);
+}
+
+.pif-avatar-wrap:hover .pif-avatar-edit {
+  background: var(--color-surface-secondary);
+  color: var(--color-accent);
+}
+
+.pif-photo-input {
+  display: none;
+}
+
+/* Round pencil badge over the avatar's bottom-right edge (decoration; the circle button handles clicks). */
 .pif-avatar-edit {
   position: absolute;
   right: 0.25rem;
@@ -39,30 +63,12 @@
   background: var(--color-surface);
   color: var(--color-text-primary);
   box-shadow: 0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.pif-avatar-edit:hover {
-  background: var(--color-surface-secondary);
-  color: var(--color-accent);
-}
-
-.pif-avatar-edit:focus-within {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
 }
 
 .pif-avatar-edit svg {
   width: 1rem;
   height: 1rem;
-}
-
-.pif-avatar-edit input[type='file'] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
 }
 
 @media (max-width: 768px) {

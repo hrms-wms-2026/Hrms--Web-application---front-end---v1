@@ -49,7 +49,10 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       [isRowSelectable]="isRowSelectableFn"
       selectAllTestId="task-table-select-all"
       [selectTestId]="selectTestId"
+      [rowClickable]="true"
       (rowClicked)="viewed.emit($event)"
+      [sortBy]="sortBy()"
+      [sortDir]="sortDirection()"
       (sortRequested)="onSortRequested($event)"
       (rowSelectionChanged)="selectionChanged.emit({ taskId: $event.row.id, selected: $event.selected })"
       (selectAllChanged)="selectAllChanged.emit({ taskIds: selectableTaskIds(), selected: $event })"
@@ -527,8 +530,8 @@ export class TaskTableComponent {
     return openBy !== null && openBy !== this.currentEmployeeId();
   }
 
-  private readonly sortBy = signal<SortKey>('title');
-  private readonly sortDirection = signal<'asc' | 'desc'>('asc');
+  protected readonly sortBy = signal<SortKey>('title');
+  protected readonly sortDirection = signal<'asc' | 'desc'>('asc');
 
   readonly sortedTasks = computed(() => {
     const key = this.sortBy();

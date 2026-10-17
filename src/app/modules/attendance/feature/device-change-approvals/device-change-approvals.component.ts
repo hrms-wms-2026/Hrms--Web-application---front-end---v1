@@ -6,16 +6,26 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DeviceChangeRequestResponse, deviceChangeStatusLabel } from '../../models/device-change-request.model';
 import { DeviceChangeRequestsStore } from '../../state/device-change-requests.store';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 
 @Component({
   selector: 'app-device-change-approvals',
   standalone: true,
-  imports: [FormsModule, ButtonComponent, BreadcrumbHeaderComponent, ModalComponent],
+  imports: [DataTableComponent, DataTableCellDirective, FormsModule, ButtonComponent, BreadcrumbHeaderComponent, ModalComponent],
   templateUrl: './device-change-approvals.component.html',
   styleUrl: './device-change-approvals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DeviceChangeApprovalsComponent implements OnInit {
+  protected readonly columns: readonly DataTableColumn[] = [
+    { key: 'requester', label: 'Requester' },
+    { key: 'device', label: 'New device' },
+    { key: 'requested', label: 'Requested' },
+    { key: 'status', label: 'Status' },
+    { key: 'action', label: 'Action', interactive: true, shrink: true }
+  ];
+  protected readonly trackById = (request: { id: string }): string => request.id;
+
   readonly store = inject(DeviceChangeRequestsStore);
   private readonly route = inject(ActivatedRoute);
   readonly embedded = input(false);

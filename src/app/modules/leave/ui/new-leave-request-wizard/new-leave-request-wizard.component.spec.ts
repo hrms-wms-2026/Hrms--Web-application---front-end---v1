@@ -1,3 +1,4 @@
+import { openSelect } from '../../../../shared/ui/select/select.testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -29,7 +30,8 @@ describe('NewLeaveRequestWizardComponent', () => {
 
   it('shows remaining hours next to each leave type option', () => {
     fixture.detectChanges();
-    const options: HTMLOptionElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="leave-type-select"] option'));
+    const host = fixture.nativeElement.querySelector('[data-testid="leave-type-select"]') as HTMLElement;
+    const options = openSelect(host, () => fixture.detectChanges());
     expect(options.some((o) => o.textContent?.includes('Annual Leave') && o.textContent?.includes('120 hours remaining'))).toBe(true);
   });
 

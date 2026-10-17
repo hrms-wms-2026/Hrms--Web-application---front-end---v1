@@ -27,6 +27,7 @@ describe('ProfileStore', () => {
   let apiMock: {
     getMyProfile: ReturnType<typeof vi.fn>;
     linkAvatar: ReturnType<typeof vi.fn>;
+    removeAvatar: ReturnType<typeof vi.fn>;
     listDocuments: ReturnType<typeof vi.fn>;
     addDocument: ReturnType<typeof vi.fn>;
     deleteDocument: ReturnType<typeof vi.fn>;
@@ -34,7 +35,7 @@ describe('ProfileStore', () => {
   let fileApiMock: { upload: ReturnType<typeof vi.fn>; download: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    apiMock = { getMyProfile: vi.fn(), linkAvatar: vi.fn(), listDocuments: vi.fn(), addDocument: vi.fn(), deleteDocument: vi.fn() };
+    apiMock = { getMyProfile: vi.fn(), linkAvatar: vi.fn(), removeAvatar: vi.fn(), listDocuments: vi.fn(), addDocument: vi.fn(), deleteDocument: vi.fn() };
     fileApiMock = { upload: vi.fn(), download: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
@@ -86,6 +87,25 @@ describe('ProfileStore', () => {
     expect(apiMock.linkAvatar).toHaveBeenCalledWith('new-file-id');
     expect(apiMock.getMyProfile).toHaveBeenCalledTimes(2);
     expect(store.profile()?.personalInformation.avatarFileId).toBe('new-file-id');
+    expect(store.saving()).toBe(false);
+  });
+
+  it('removes the avatar then refetches the profile', async () => {
+    const withAvatar = {
+      ...sampleProfile,
+      personalInformation: { ...sampleProfile.personalInformation, avatarFileId: 'old-file-id' }
+    };
+    apiMock.getMyProfile.mockReturnValueOnce(of(withAvatar));
+    await store.loadProfile();
+
+    apiMock.removeAvatar.mockReturnValue(of(undefined));
+    apiMock.getMyProfile.mockReturnValueOnce(of(sampleProfile));
+
+    const result = await store.removeAvatar();
+
+    expect(result).toBe(true);
+    expect(apiMock.removeAvatar).toHaveBeenCalled();
+    expect(store.profile()?.personalInformation.avatarFileId).toBeNull();
     expect(store.saving()).toBe(false);
   });
 

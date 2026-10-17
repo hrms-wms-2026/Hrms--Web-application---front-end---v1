@@ -15,8 +15,8 @@ type ReportsState = 'loading' | 'ready' | 'forbidden' | 'error';
 
 /**
  * Reporting Structure: the manager, this employee, and how many people report to them. Clicking
- * the card opens the full reporting structure (positions above up to the top, and everything
- * below), drawn like Org → Positions. The direct-report count comes from the visibility-scoped
+ * the card opens the full reporting structure by people (managers up to the top, and everyone
+ * reporting below), drawn on the same canvas as Org → Positions. The direct-report count comes from the visibility-scoped
  * employee list, so it counts the reports the viewer can see; without access to that list the
  * reports row is left out.
  */
@@ -139,9 +139,12 @@ type ReportsState = 'loading' | 'ready' | 'forbidden' | 'error';
 
     <app-employee-reporting-hierarchy-modal
       [open]="hierarchyOpen()"
-      [legalEntityId]="legalEntityId()"
-      [positionId]="positionId()"
+      [employeeId]="employeeId()"
       [employeeName]="employeeName()"
+      [positionName]="positionName()"
+      [departmentName]="departmentName()"
+      [managerId]="managerId()"
+      [managerName]="managerName()"
       (closed)="hierarchyOpen.set(false)"
     />
   `,
@@ -168,8 +171,8 @@ export class EmployeeReportingStructureComponent {
   readonly loadedAt = signal<Date | null>(null);
   readonly refreshing = signal(false);
 
-  /** The full structure needs the employee's position; without one there is nothing to draw. */
-  readonly canOpen = computed(() => !!this.positionId() && !!this.legalEntityId());
+  /** The full structure is drawn from reporting managers, so every employee has one to show. */
+  readonly canOpen = computed(() => !!this.employeeId());
   readonly reportsLabel = computed(() =>
     this.reportsState() === 'ready' ? `Direct Reports (${this.total()})` : 'Direct Reports'
   );

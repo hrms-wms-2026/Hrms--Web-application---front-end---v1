@@ -3,7 +3,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  ElementRef,
   Injector,
   afterNextRender,
   computed,
@@ -16,42 +15,41 @@ import {
   viewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CanvasGridComponent } from '../../../../shared/ui/canvas-grid/canvas-grid.component';
+import { EMPTY, Observable, expand, reduce } from 'rxjs';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
-import { PositionApiService } from '../../../organization/data-access/position-api.service';
-import { PositionTreeNodeResponse } from '../../../organization/models/position.model';
-import {
-  POSITION_CARD_HEIGHT,
-  POSITION_CARD_WIDTH,
-  PositionTreeNodeComponent,
-  positionChildren,
-  positionKey
-} from '../../../organization/ui/position-tree-node/position-tree-node.component';
+import { PanZoomCanvasComponent } from '../../../../shared/ui/pan-zoom-canvas/pan-zoom-canvas.component';
 import { TidyTreeComponent } from '../../../../shared/ui/tidy-tree/tidy-tree.component';
-import { buildReportingBranch } from './reporting-branch';
+import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeeListItemResponse, EmployeeListPageResponse } from '../../models/employee.model';
+import { PersonTreeNode, buildPeopleBranch, personChildren, personKey } from './people-branch';
 
-type HierarchyState = 'idle' | 'loading' | 'ready' | 'not_found' | 'forbidden' | 'error';
+type HierarchyState = 'idle' | 'loading' | 'ready' | 'forbidden' | 'error';
 
-const MIN_ZOOM = 0.4;
-const MAX_ZOOM = 1.5;
-const ZOOM_STEP = 0.1;
-const DEFAULT_ZOOM = 0.8;
+/** The backend caps the employee list at 100 rows a page. */
+export const PEOPLE_PAGE_SIZE = 100;
+/** Stop paging after this many pages (10,000 people) so a huge tenant cannot loop forever. */
+const MAX_PAGES = 100;
+
+export const PERSON_CARD_WIDTH = 240;
+export const PERSON_CARD_HEIGHT = 72;
 
 /**
- * An employee's reporting structure drawn like Org → Positions: the positions above theirs up to
- * the top, then theirs (highlighted) with every position below it. Read-only. The position tree is
- * fetched the first time the dialog opens and reused after that.
+ * An employee's reporting structure by people: their reporting managers up to the top, then the
+ * employee (highlighted) with everyone who reports to them, and their reports below. Read-only, on
+ * the same pan/zoom canvas (grid, minimap, fit) as the Positions page. Built from the
+ * visibility-scoped employee list, fetched the first time the dialog opens and reused after that.
  */
 @Component({
   selector: 'app-employee-reporting-hierarchy-modal',
   standalone: true,
-  imports: [CanvasGridComponent, ModalComponent, ErrorStateComponent, PositionTreeNodeComponent, TidyTreeComponent],
+  imports: [AvatarComponent, ModalComponent, ErrorStateComponent, PanZoomCanvasComponent, TidyTreeComponent],
   template: `
     <app-modal [open]="open()" [title]="'Reporting structure · ' + employeeName()" customMaxWidth="max-w-none" panelClass="flex h-[calc(100vh-2rem)] flex-col !p-5" (closed)="closed.emit()">
-      <div class="rh-canvas" data-testid="reporting-hierarchy">
-        <app-canvas-grid [spacing]="20" />
-        <div class="rh-scroll" #canvas>
+      <app-pan-zoom-canvas class="rh-canvas" data-testid="reporting-hierarchy" label="Reporting structure" [initialZoom]="0.8">
+        <div canvasOverlay>
           @switch (state()) {
             @case ('loading') {
               <p class="rh-message" data-testid="reporting-hierarchy-loading">Loading the reporting structure…</p>
@@ -62,162 +60,193 @@ const DEFAULT_ZOOM = 0.8;
               </div>
             }
             @case ('forbidden') {
-              <p class="rh-message" data-testid="reporting-hierarchy-forbidden">You need access to the organization structure to see the full reporting structure.</p>
+              <p class="rh-message" data-testid="reporting-hierarchy-forbidden">You need access to the employee list to see the full reporting structure.</p>
             }
-            @case ('not_found') {
-              <p class="rh-message" data-testid="reporting-hierarchy-empty">This employee has no position in the organization structure yet.</p>
-            }
-            @case ('ready') {
-              @if (branch(); as root) {
-                <div class="rh-tree" [style.transform]="'scale(' + zoom() + ')'">
-                  <app-tidy-tree
-                    label="Reporting structure"
-                    [root]="root"
-                    [childrenOf]="positionChildren"
-                    [keyOf]="positionKey"
-                    [nodeWidth]="cardWidth"
-                    [nodeHeight]="cardHeight"
-                  >
-                    <ng-template let-node let-depth="depth">
-                      <app-position-tree-node [node]="node" [level]="depth" [isRoot]="depth === 0" [highlightPositionId]="positionId()" />
-                    </ng-template>
-                  </app-tidy-tree>
-                </div>
-              }
-            }
-          }
-
-          @if (state() === 'ready') {
-            <div class="rh-zoom" role="toolbar" aria-label="Zoom controls">
-              <button type="button" class="rh-zoom-btn" aria-label="Zoom out" [disabled]="zoom() <= minZoom" (click)="zoomBy(-step)">−</button>
-              <button type="button" class="rh-zoom-reset" title="Reset zoom" (click)="zoom.set(defaultZoom)">{{ zoomLabel() }}%</button>
-              <button type="button" class="rh-zoom-btn" aria-label="Zoom in" [disabled]="zoom() >= maxZoom" (click)="zoomBy(step)">+</button>
-            </div>
           }
         </div>
-      </div>
+        @if (state() === 'ready') {
+          @if (branch(); as root) {
+            <div class="rh-tree">
+              <app-tidy-tree
+                label="Reporting structure"
+                [root]="root"
+                [childrenOf]="personChildren"
+                [keyOf]="personKey"
+                [nodeWidth]="cardWidth"
+                [nodeHeight]="cardHeight"
+                [dashedLink]="isPlaceholder"
+              >
+                <ng-template let-node>
+                  <div
+                    class="rh-card"
+                    data-testid="reporting-person"
+                    [class.rh-card--self]="node.id === employeeId()"
+                    [class.rh-card--placeholder]="node.placeholder"
+                  >
+                    <app-avatar size="md" [avatarUrl]="avatarUrl(node)" [userName]="node.name" />
+                    <div class="rh-card-text">
+                      <p class="rh-card-name" [title]="node.name">{{ node.name }}</p>
+                      <p class="rh-card-sub" [title]="subtitle(node)">{{ subtitle(node) }}</p>
+                    </div>
+                    @if (node.id === employeeId()) {
+                      <span class="rh-card-badge">This employee</span>
+                    } @else if (node.children.length && !node.placeholder) {
+                      <span class="rh-card-count" [title]="node.children.length + ' direct reports'">{{ node.children.length }}</span>
+                    }
+                  </div>
+                </ng-template>
+              </app-tidy-tree>
+            </div>
+          }
+        }
+      </app-pan-zoom-canvas>
     </app-modal>
   `,
   styles: [`
     .rh-canvas {
-      position: relative;
-      isolation: isolate;
-      display: flex;
       flex: 1 1 auto;
       min-height: 0;
-      overflow: hidden;
+      padding: 2rem;
       border-radius: 0.75rem;
       border: 1px solid var(--color-border);
       background-color: var(--color-surface);
     }
-    /* The grid stays put behind the scroller, like a fixed background. */
-    .rh-scroll { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; }
-    .rh-tree {
-      display: flex;
-      justify-content: center;
-      min-width: max-content;
-      padding: 2rem;
-      transform-origin: top center;
-      transition: transform 0.15s ease-out;
-    }
+    .rh-tree { display: flex; justify-content: center; }
     .rh-message { padding: 3rem 1.5rem; text-align: center; font-size: 0.875rem; color: var(--color-text-secondary); }
-    .rh-zoom {
-      position: sticky; left: calc(100% - 9.5rem); bottom: 1rem;
-      display: inline-flex; align-items: center; gap: 0.25rem;
-      margin: 0 1rem 1rem 0; padding: 0.25rem;
-      border-radius: 9999px; border: 1px solid var(--color-border);
-      background: var(--color-surface); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    .rh-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 240px;
+      height: 72px;
+      padding: 0.75rem 0.875rem;
+      border-radius: 10px;
+      background: var(--color-surface);
+      border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
-    .rh-zoom-btn, .rh-zoom-reset {
-      height: 2rem; border: 0; border-radius: 9999px; background: transparent;
-      color: var(--color-text-primary); cursor: pointer; font-weight: 600;
+    .rh-card--self {
+      border: 2px solid var(--color-sidebar-active-bg, #2563eb);
+      background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 7%, var(--color-surface));
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.15);
     }
-    .rh-zoom-btn { width: 2rem; font-size: 1rem; }
-    .rh-zoom-btn:disabled { opacity: 0.4; cursor: default; }
-    .rh-zoom-reset { padding: 0 0.5rem; font-size: 0.75rem; }
-    .rh-zoom-btn:hover:not(:disabled), .rh-zoom-reset:hover { background: var(--color-surface-secondary); }
+    .rh-card--placeholder { border-style: dashed; opacity: 0.75; }
+    .rh-card-text { min-width: 0; flex: 1 1 auto; }
+    .rh-card-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; font-weight: 600; color: var(--color-text-primary); }
+    .rh-card-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6875rem; color: var(--color-text-secondary); }
+    .rh-card-badge {
+      position: absolute;
+      top: -0.55rem;
+      right: 0.75rem;
+      border-radius: 9999px;
+      padding: 0.0625rem 0.5rem;
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--color-sidebar-active-bg, #2563eb);
+    }
+    .rh-card-count {
+      flex-shrink: 0;
+      min-width: 1.5rem;
+      border-radius: 9999px;
+      padding: 0.0625rem 0.4rem;
+      text-align: center;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--color-sidebar-active-bg, #2563eb);
+      background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 10%, transparent);
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmployeeReportingHierarchyModalComponent {
-  private readonly positionsApi = inject(PositionApiService);
+  private readonly api = inject(PeopleApiService);
+  private readonly fileApi = inject(FileApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
-  private readonly canvas = viewChild<ElementRef<HTMLElement>>('canvas');
+  private readonly canvas = viewChild(PanZoomCanvasComponent);
 
   readonly open = input(false);
-  readonly legalEntityId = input<string | null>(null);
-  readonly positionId = input<string | null>(null);
+  readonly employeeId = input.required<string>();
   readonly employeeName = input('');
+  readonly positionName = input<string | null>(null);
+  readonly departmentName = input<string | null>(null);
+  readonly managerId = input<string | null>(null);
+  readonly managerName = input<string | null>(null);
   readonly closed = output<void>();
 
-  readonly cardWidth = POSITION_CARD_WIDTH;
-  readonly cardHeight = POSITION_CARD_HEIGHT;
-  readonly positionChildren = positionChildren;
-  readonly positionKey = positionKey;
-  readonly minZoom = MIN_ZOOM;
-  readonly maxZoom = MAX_ZOOM;
-  readonly step = ZOOM_STEP;
-  readonly defaultZoom = DEFAULT_ZOOM;
+  readonly cardWidth = PERSON_CARD_WIDTH;
+  readonly cardHeight = PERSON_CARD_HEIGHT;
+  readonly personChildren = personChildren;
+  readonly personKey = personKey;
+  readonly isPlaceholder = (node: PersonTreeNode): boolean => node.placeholder;
 
   readonly state = signal<HierarchyState>('idle');
-  readonly zoom = signal(DEFAULT_ZOOM);
-  readonly zoomLabel = computed(() => Math.round(this.zoom() * 100));
-  private readonly tree = signal<readonly PositionTreeNodeResponse[] | null>(null);
+  private readonly employees = signal<readonly EmployeeListItemResponse[] | null>(null);
   readonly branch = computed(() => {
-    const tree = this.tree();
-    const positionId = this.positionId();
-    return tree && positionId ? buildReportingBranch(tree, positionId) : null;
+    const employees = this.employees();
+    if (!employees) return null;
+    return buildPeopleBranch(employees, {
+      id: this.employeeId(),
+      name: this.employeeName(),
+      positionName: this.positionName(),
+      departmentName: this.departmentName(),
+      managerId: this.managerId(),
+      managerName: this.managerName()
+    });
   });
-  /** The legal entity the cached tree belongs to. */
-  private loadedFor: string | null = null;
 
   constructor() {
     effect(() => {
       if (!this.open()) return;
       untracked(() => {
-        const entity = this.legalEntityId();
-        if (this.state() === 'idle' || this.loadedFor !== entity) this.load();
+        if (this.state() === 'idle') this.load();
         else this.centreOnEmployee();
       });
     });
   }
 
-  zoomBy(delta: number): void {
-    const next = Math.round((this.zoom() + delta) * 10) / 10;
-    this.zoom.set(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next)));
-  }
-
   load(): void {
-    const entity = this.legalEntityId();
-    if (!entity || !this.positionId()) {
-      this.state.set('not_found');
-      return;
-    }
     this.state.set('loading');
-    this.positionsApi
-      .listTree(entity)
+    this.fetchAll()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (tree) => {
-          if (entity !== this.legalEntityId()) return;
-          this.loadedFor = entity;
-          this.tree.set(tree);
-          this.state.set(this.branch() ? 'ready' : 'not_found');
+        next: (employees) => {
+          this.employees.set(employees);
+          this.state.set('ready');
           this.centreOnEmployee();
         },
         error: (err: unknown) => {
-          if (entity !== this.legalEntityId()) return;
           this.state.set(err instanceof HttpErrorResponse && err.status === 403 ? 'forbidden' : 'error');
         }
       });
   }
 
-  /** Wide trees overflow sideways; bring the employee's own card into view. */
+  avatarUrl(node: PersonTreeNode): string | null {
+    return node.avatarFileId ? this.fileApi.getFileUrl(node.avatarFileId) : null;
+  }
+
+  subtitle(node: PersonTreeNode): string {
+    if (node.placeholder) return 'Reporting manager';
+    const parts = [node.positionName, node.departmentName].filter((p): p is string => !!p);
+    return parts.length ? parts.join(' · ') : 'No position';
+  }
+
+  /** Every employee the viewer can see, page by page. */
+  private fetchAll(): Observable<readonly EmployeeListItemResponse[]> {
+    const page = (n: number): Observable<EmployeeListPageResponse> =>
+      this.api.listEmployees({ page: n, pageSize: PEOPLE_PAGE_SIZE });
+    return page(1).pipe(
+      expand((res) =>
+        res.page < MAX_PAGES && res.page * PEOPLE_PAGE_SIZE < res.totalCount && res.items.length > 0 ? page(res.page + 1) : EMPTY
+      ),
+      reduce<EmployeeListPageResponse, EmployeeListItemResponse[]>((all, res) => all.concat(res.items), [])
+    );
+  }
+
+  /** Show the whole structure; if it is too big for that, centre on the employee's own card. */
   private centreOnEmployee(): void {
-    afterNextRender(() => {
-      const card = this.canvas()?.nativeElement.querySelector('.ptn-node-card--highlight');
-      card?.scrollIntoView?.({ block: 'center', inline: 'center' });
-    }, { injector: this.injector });
+    afterNextRender(() => this.canvas()?.fitAndReveal('.rh-card--self'), { injector: this.injector });
   }
 }

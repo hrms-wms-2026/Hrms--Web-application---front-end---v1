@@ -1,3 +1,4 @@
+import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -482,8 +483,9 @@ describe('ClockInPolicyFormComponent', () => {
     const component = fixture.componentInstance;
     component.addLateRule();
     fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-    const options = Array.from(el.querySelectorAll('select option')).map((o) => o.textContent?.trim());
+    const options = fixture.debugElement
+      .queryAll(By.directive(SelectComponent))
+      .flatMap((select) => (select.componentInstance as SelectComponent).options().map((o) => o.label));
     expect(options).toContain('Annual Leave');
     expect(options).toContain('Sick Leave');
     expect(options).not.toContain('Casual Leave');

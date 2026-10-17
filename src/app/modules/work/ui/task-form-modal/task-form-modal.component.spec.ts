@@ -961,15 +961,22 @@ describe('TaskFormModalComponent - create mode', () => {
   });
 
   it('renders Due Date chip with consistent tfm-chip styling and label', async () => {
-    await build();
-    const chipBtn = fixture.nativeElement.querySelector('[data-testid="tfm-due-date-chip"]') as HTMLButtonElement | null;
-    expect(chipBtn).toBeTruthy();
-    expect(chipBtn?.classList.contains('tfm-chip')).toBe(true);
-    expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Due date');
+    // Pin the clock so the due date is not 'Today'/'Yesterday'/'Tomorrow'.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-01T09:00:00'));
+    try {
+      await build();
+      const chipBtn = fixture.nativeElement.querySelector('[data-testid="tfm-due-date-chip"]') as HTMLButtonElement | null;
+      expect(chipBtn).toBeTruthy();
+      expect(chipBtn?.classList.contains('tfm-chip')).toBe(true);
+      expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Due date');
 
-    fixture.componentInstance.dueDate.set('2026-10-15');
-    fixture.detectChanges();
-    expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Oct 15');
+      fixture.componentInstance.dueDate.set('2026-10-15');
+      fixture.detectChanges();
+      expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Oct 15');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('displays More fields section by default and allows toggling to hide or show', async () => {

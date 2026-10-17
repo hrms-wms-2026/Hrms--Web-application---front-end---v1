@@ -12,20 +12,14 @@
     </div>
 
     <div class="filters">
-      <label class="filter-field">
+      <div class="filter-field">
         <span>Status</span>
-        <select data-testid="alerts-status-filter" [ngModel]="store.statusFilter() ?? ''" (ngModelChange)="onStatusFilter($event)" name="statusFilter">
-          <option value="">All statuses</option>
-          @for (option of statusOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }
-        </select>
-      </label>
-      <label class="filter-field">
+        <app-select data-testid="alerts-status-filter" ariaLabel="Status" [options]="statusSelectOptions" [value]="store.statusFilter() ?? ''" (valueChange)="onStatusFilter($event)" />
+      </div>
+      <div class="filter-field">
         <span>Type</span>
-        <select data-testid="alerts-type-filter" [ngModel]="store.typeFilter() ?? ''" (ngModelChange)="onTypeFilter($event)" name="typeFilter">
-          <option value="">All types</option>
-          @for (option of typeOptions; track option[0]) { <option [value]="option[0]">{{ option[1] }}</option> }
-        </select>
-      </label>
+        <app-select data-testid="alerts-type-filter" ariaLabel="Type" [options]="typeSelectOptions" [value]="store.typeFilter() ?? ''" (valueChange)="onTypeFilter($event)" />
+      </div>
     </div>
 
     @if (store.loading() && store.items().length === 0) {

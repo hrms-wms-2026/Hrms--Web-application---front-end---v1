@@ -10,7 +10,9 @@
   >
     <div class="profile-avatar-wrapper">
       <app-avatar [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" size="sm" />
-      <span class="profile-online-badge" title="Online"></span>
+      @if (isOnline()) {
+        <span class="profile-online-badge" data-testid="profile-online-badge" title="Online"></span>
+      }
     </div>
 
     <svg

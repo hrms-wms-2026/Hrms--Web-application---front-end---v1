@@ -7,7 +7,7 @@
 @if (!hasAccess()) {
   <app-empty-state
     title="You don't have access to this."
-    description="Viewing and editing General Settings requires the legal_entity:update permission."
+    description="Viewing General Settings requires the legal_entity:read or legal_entity:update permission."
   />
 } @else if (!selectedLegalEntity()) {
   <app-empty-state title="Select a company to edit General Settings." />
@@ -21,6 +21,15 @@
 
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="gs-form">
 
+      @if (!canEdit()) {
+        <p class="gs-readonly-notice" role="status">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          You have view-only access to these settings.
+        </p>
+      }
+
+      <!-- A disabled fieldset locks every native control inside it for view-only users. -->
+      <fieldset class="gs-readonly-fieldset" [disabled]="!canEdit()">
       <section class="gs-sections-container">
         <!-- Section 1: Company identity -->
         <div class="gs-section-row">
@@ -30,25 +39,44 @@
           </div>
           <div class="gs-section-content">
             <div class="gs-logo-row">
-              <div class="gs-logo-preview" aria-label="Company logo preview">
-                <app-company-logo-tile [name]="selectedLegalEntity()!.name" [logoUrl]="logoUrl()" size="lg" />
-              </div>
-              <div class="gs-logo-meta">
-                <div class="gs-logo-actions">
-                  <label class="gs-logo-btn" [class.gs-logo-btn--busy]="uploadingLogo()">
-                    <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" [disabled]="uploadingLogo() || removingLogo()" />
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-                    {{ uploadingLogo() ? 'Uploading…' : 'Change logo' }}
-                  </label>
-                  @if (logoUrl()) {
-                    <button type="button" class="gs-logo-remove-btn" [disabled]="uploadingLogo() || removingLogo()" (click)="onRemoveLogo()">
-                      {{ removingLogo() ? 'Removing…' : 'Remove' }}
-                    </button>
-                  }
+              @if (canEdit()) {
+                <!-- The tile is the trigger: no logo yet opens the file picker, an existing logo opens
+                     the Change logo popup (frame, change or remove). The pencil badge is decoration. -->
+                <button
+                  type="button"
+                  class="gs-logo-preview gs-logo-preview--editable"
+                  [class.gs-logo-preview--busy]="logoBusy()"
+                  [attr.aria-label]="logoUrl() ? 'Change logo' : 'Add logo'"
+                  [title]="uploadingLogo() ? 'Uploading…' : removingLogo() ? 'Removing…' : logoUrl() ? 'Change logo' : 'Add logo'"
+                  [disabled]="logoBusy()"
+                  (click)="onLogoClick(logoInput)"
+                >
+                  <app-company-logo-tile [name]="selectedLegalEntity()!.name" [logoUrl]="logoUrl()" size="lg" />
+                  <span class="gs-logo-edit" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 20h9"/>
+                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                    </svg>
+                  </span>
+                </button>
+                <input #logoInput type="file" class="gs-logo-input" [accept]="logoAccept" tabindex="-1" aria-hidden="true" (change)="onLogoFileSelected($event)" />
+                @if (logoDialogOpen()) {
+                  <app-change-photo-dialog
+                    title="Change logo"
+                    shape="square"
+                    fileName="logo"
+                    [initialFile]="pickedLogo()"
+                    [existingUrl]="logoUrl()"
+                    (saved)="onLogoSaved($event)"
+                    (removed)="onLogoRemoved()"
+                    (closed)="closeLogoDialog()"
+                  />
+                }
+              } @else {
+                <div class="gs-logo-preview" aria-label="Company logo preview">
+                  <app-company-logo-tile [name]="selectedLegalEntity()!.name" [logoUrl]="logoUrl()" size="lg" />
                 </div>
-                <span class="gs-logo-hint">PNG, JPG or WebP · Max 2MB</span>
-              </div>
-            </div>
+              }
 
             <div class="gs-field-grid gs-field-grid--3 gs-identity-fields">
               <app-input label="Company name" [value]="form.controls.name.value" (valueChange)="form.controls.name.setValue($event)"
@@ -57,7 +85,24 @@
               <app-input label="Company code" [value]="form.controls.companyCode.value" (valueChange)="form.controls.companyCode.setValue($event)"
                 (blurred)="form.controls.companyCode.markAsTouched()"
                 [error]="form.controls.companyCode.touched && form.controls.companyCode.invalid ? 'Required (max 20 chars).' : ''" />
-              <app-select label="Status" [options]="STATUS_OPTIONS" [value]="form.controls.status.value" (valueChange)="form.controls.status.setValue($any($event))" />
+              <!-- Status is a two-state toggle: clicking flips Active <-> Inactive. -->
+              <div class="gs-status-field">
+                <span class="gs-status-label" id="gs-status-label">Status</span>
+                <button
+                  type="button"
+                  class="gs-status-toggle"
+                  [class.gs-status-toggle--inactive]="form.controls.status.value !== 'active'"
+                  role="switch"
+                  aria-labelledby="gs-status-label"
+                  [attr.aria-checked]="form.controls.status.value === 'active'"
+                  [title]="form.controls.status.value === 'active' ? 'Click to mark inactive' : 'Click to mark active'"
+                  (click)="toggleStatus()"
+                >
+                  <span class="gs-status-toggle__text">{{ form.controls.status.value === 'active' ? 'Active' : 'Inactive' }}</span>
+                  <span class="gs-status-toggle__switch" aria-hidden="true"><span class="gs-status-toggle__knob"></span></span>
+                </button>
+              </div>
+            </div>
             </div>
           </div>
         </div>
@@ -105,7 +150,7 @@
                 [value]="form.controls.currencyCode.value"
                 (valueChange)="form.controls.currencyCode.setValue($event); form.controls.currencyCode.markAsTouched()"
                 [error]="form.controls.currencyCode.touched && form.controls.currencyCode.invalid ? 'Required.' : ''" />
-              <app-listbox-select label="Time zone" [options]="TIMEZONE_OPTIONS" placeholder="Select a timezone"
+              <app-select label="Time zone" [options]="TIMEZONE_OPTIONS" placeholder="Select a timezone"
                 [searchable]="true" searchPlaceholder="Search timezones"
                 [value]="form.controls.timezone.value"
                 (valueChange)="form.controls.timezone.setValue($event); form.controls.timezone.markAsTouched()"
@@ -206,6 +251,7 @@
               [longitude]="form.controls.officeLongitude.value"
               (locationChange)="onOfficeLocationChange($event)"
               (locationCleared)="onOfficeLocationCleared()"
+              [disabled]="!canEdit()"
             />
             @if (form.errors?.['officeLocation']) {
               <p class="gs-field-error" role="alert">Set both an office latitude and longitude, or leave both blank.</p>
@@ -213,11 +259,13 @@
           </div>
         </div>
       </section>
+      </fieldset>
 
     </form>
   }
 
-  <!-- Sticky Save bar — always visible -->
+  <!-- Sticky Save bar — always visible to editors; hidden for view-only access -->
+  @if (canEdit()) {
   <div class="gs-sticky-save" role="region" aria-label="Save settings">
     <p class="gs-sticky-save__hint">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -225,5 +273,6 @@
     </p>
     <app-button type="button" (click)="onSubmit()" [loading]="submitting()" [disabled]="submitting()">Save changes</app-button>
   </div>
+  }
 
 }

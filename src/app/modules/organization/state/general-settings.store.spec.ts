@@ -278,7 +278,7 @@ describe('GeneralSettingsStore', () => {
     expect(store.settings()?.workEndTime).toBeNull();
   });
 
-  it('uploadLogo() PUTs multipart and patches logoFileId on success', async () => {
+  it('uploadLogo() uploads the file, links it, and patches logoFileId on success', async () => {
     const loadPromise = store.load('company-a');
     httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/general-settings`).flush(settingsA);
     await loadPromise;
@@ -286,6 +286,8 @@ describe('GeneralSettingsStore', () => {
     const file = new File(['bytes'], 'logo.png', { type: 'image/png' });
     const uploadPromise = store.uploadLogo('company-a', file);
 
+    httpMock.expectOne(`${environment.apiUrl}/files`)
+      .flush({ fileId: 'file-1', originalFileName: 'logo.png', fileSizeBytes: 5, contentType: 'image/png' });
     const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
     expect(req.request.method).toBe('PUT');
     req.flush({ legalEntityId: 'company-a', logoFileId: 'file-1' });
@@ -305,8 +307,9 @@ describe('GeneralSettingsStore', () => {
     const uploadPromise = store.uploadLogo('company-a', file);
 
     httpMock
-      .expectOne(`${environment.apiUrl}/org/legal-entities/company-a/logo`)
+      .expectOne(`${environment.apiUrl}/files`)
       .flush({ detail: 'File exceeds the 5 MB limit.' }, { status: 400, statusText: 'Bad Request' });
+    httpMock.expectNone(`${environment.apiUrl}/org/legal-entities/company-a/logo`);
 
     const ok = await uploadPromise;
     expect(ok).toBe(false);

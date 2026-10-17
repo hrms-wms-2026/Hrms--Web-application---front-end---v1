@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnChanges, computed, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnChanges, computed, inject, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PersonalInformation, UpdatePersonalInformationRequest } from '../../models/profile.model';
 import { ProfileValidators } from '../../utils/profile-validators';
@@ -9,11 +9,12 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { TIMEZONE_OPTIONS } from '../../../organization/utils/general-settings-options';
+import { ChangePhotoDialogComponent, PHOTO_ACCEPT } from '../../../../shared/ui/change-photo-dialog/change-photo-dialog.component';
 
 @Component({
   selector: 'app-personal-info-form',
   standalone: true,
-  imports: [ReactiveFormsModule, InputComponent, SelectComponent, ButtonComponent, AvatarComponent, DatePickerComponent],
+  imports: [ReactiveFormsModule, InputComponent, SelectComponent, ButtonComponent, AvatarComponent, DatePickerComponent, ChangePhotoDialogComponent],
   templateUrl: './personal-info-form.component.html',
   styleUrls: ['./personal-info-form.component.css', '../profile-panel.shared.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -24,9 +25,14 @@ export class PersonalInfoFormComponent implements OnChanges {
   readonly saveError = input<string | null>(null);
   readonly save = output<UpdatePersonalInformationRequest>();
   readonly avatarSelected = output<File>();
+  readonly avatarRemoved = output<void>();
   readonly cancelled = output<void>();
 
   private readonly fileApi = inject(FileApiService);
+
+  readonly photoAccept = PHOTO_ACCEPT;
+  readonly photoDialogOpen = signal(false);
+  readonly pickedPhoto = signal<File | null>(null);
 
   readonly avatarUrl = computed(() => {
     const fileId = this.personalInformation().avatarFileId;
@@ -108,12 +114,39 @@ export class PersonalInfoFormComponent implements OnChanges {
     });
   }
 
+  onAvatarClick(photoInput: HTMLInputElement): void {
+    if (this.avatarUrl()) {
+      this.pickedPhoto.set(null);
+      this.photoDialogOpen.set(true);
+    } else {
+      photoInput.click();
+    }
+  }
+
+  /** A freshly picked photo opens the Change photo popup so it can be framed before saving. */
   onAvatarFileSelected(event: Event): void {
     const fileInput = event.target as HTMLInputElement;
     const file = fileInput.files?.[0];
+    fileInput.value = '';
     if (file) {
-      this.avatarSelected.emit(file);
+      this.pickedPhoto.set(file);
+      this.photoDialogOpen.set(true);
     }
+  }
+
+  onPhotoSaved(file: File): void {
+    this.avatarSelected.emit(file);
+    this.closePhotoDialog();
+  }
+
+  onPhotoRemoved(): void {
+    this.avatarRemoved.emit();
+    this.closePhotoDialog();
+  }
+
+  closePhotoDialog(): void {
+    this.photoDialogOpen.set(false);
+    this.pickedPhoto.set(null);
   }
 
   isPhoneValid(): boolean {

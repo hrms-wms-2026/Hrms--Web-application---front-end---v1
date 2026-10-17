@@ -1587,19 +1587,19 @@
   align-items: center;
 }
 
-.aw-ctl--host ::ng-deep .custom-select,
-.aw-ctl--host ::ng-deep .custom-select__control,
+.aw-ctl--host ::ng-deep .app-select,
+.aw-ctl--host ::ng-deep .app-select__control,
 .aw-ctl--host ::ng-deep .dp-container,
 .aw-ctl--host ::ng-deep .dp-input-wrapper {
   height: 100%;
 }
 
-.aw-ctl--host ::ng-deep app-custom-select,
+.aw-ctl--host ::ng-deep app-select,
 .aw-ctl--host ::ng-deep app-date-picker {
   height: 100%;
 }
 
-.aw-ctl--host ::ng-deep .custom-select__trigger,
+.aw-ctl--host ::ng-deep .app-select__trigger,
 .aw-ctl--host ::ng-deep .dp-input {
   height: 100%;
   border: none !important;
@@ -1610,7 +1610,7 @@
   font-size: 0.9375rem;
 }
 
-.aw-ctl--host ::ng-deep .custom-select__trigger:focus-visible,
+.aw-ctl--host ::ng-deep .app-select__trigger:focus-visible,
 .aw-ctl--host ::ng-deep .dp-input:focus-visible {
   outline: none;
 }

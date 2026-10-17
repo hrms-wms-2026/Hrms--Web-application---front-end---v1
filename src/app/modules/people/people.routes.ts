@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { MANAGES_PEOPLE } from '../../core/auth/state/permission.service';
 import { permissionGuard } from '../../core/guards/permission.guard';
 import { unsavedChangesGuard } from '../../core/guards/unsaved-changes.guard';
 
@@ -18,7 +19,7 @@ export const PEOPLE_ROUTES: Routes = [
           import('./feature/employee-list/employee-list.component').then((m) => m.EmployeeListComponent),
         canActivate: [permissionGuard],
         canDeactivate: [unsavedChangesGuard],
-        data: { title: 'Employees', permissions: ['employees:read'] }
+        data: { title: 'Employees', permissions: [MANAGES_PEOPLE, 'employees:write'] }
       },
       {
         path: 'new',
@@ -32,7 +33,7 @@ export const PEOPLE_ROUTES: Routes = [
         loadComponent: () =>
           import('./feature/employee-detail/employee-detail.component').then((m) => m.EmployeeDetailComponent),
         canActivate: [permissionGuard],
-        data: { title: 'Employee Detail', permissions: ['employees:read'] }
+        data: { title: 'Employee Detail', permissions: [MANAGES_PEOPLE, 'employees:write'] }
       },
       {
         path: ':id/offboarding',
@@ -48,7 +49,7 @@ export const PEOPLE_ROUTES: Routes = [
     loadComponent: () =>
       import('./feature/offboarding/offboarding-overview.component').then((m) => m.OffboardingOverviewComponent),
     canActivate: [permissionGuard],
-    data: { title: 'Offboarding', permissions: ['employees:read'] }
+    data: { title: 'Offboarding', permissions: ['employees:offboard', 'employees:write'] }
   },
   {
     path: 'checklists',
@@ -60,7 +61,7 @@ export const PEOPLE_ROUTES: Routes = [
             (m) => m.ChecklistTemplatesComponent
           ),
         canActivate: [permissionGuard],
-        data: { title: 'Checklists', permissions: ['employees:read'] }
+        data: { title: 'Checklists', permissions: ['employees:write'] }
       },
       {
         path: 'new',
@@ -86,6 +87,6 @@ export const PEOPLE_ROUTES: Routes = [
     loadComponent: () =>
       import('./feature/offboarding/offboarding-approvals.component').then((m) => m.OffboardingApprovalsComponent),
     canActivate: [permissionGuard],
-    data: { title: 'Offboarding Approvals', permissions: ['employees:read'] }
+    data: { title: 'Offboarding Approvals', permissions: ['employees:write'] }
   }
 ];

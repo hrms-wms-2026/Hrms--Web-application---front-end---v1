@@ -5,6 +5,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
@@ -35,7 +36,7 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
 
 /**
  * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity, key
- * facts, Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
+ * facts, Transfer/Promote/Offboarding actions, resend/revoke invitation), today's attendance strip, and
  * four tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
  * Work Network, job journey; mounted on first visit), Work & Activity (task summary,
  * needs-attention, delivery, recorded activity, application usage, work pattern) and Personal
@@ -48,6 +49,7 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
     BreadcrumbHeaderComponent,
     AvatarComponent,
     ButtonComponent,
+    ConfirmModalComponent,
     ErrorStateComponent,
     LoaderComponent,
     ChangePositionModalComponent,
@@ -92,11 +94,13 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
                   size="xl"
                   shape="circle"
                 />
-                <span
-                  class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-white"
-                  [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
-                  [class.bg-red-500]="employee.jobInformation.status.toLowerCase() !== 'active'"
-                ></span>
+                @if (employee.isOnline) {
+                  <span
+                    class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-white bg-green-500"
+                    data-testid="employee-online-dot"
+                    title="Online"
+                  ></span>
+                }
               </div>
 
               <div class="min-w-0">
@@ -204,9 +208,15 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
                 </svg>
               </button>
             }
-            @if (employee.invitationStatus === 'expired') {
-              <app-button variant="secondary" [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
+            <!-- Only the person who added this employee, or users:manage, gets canManageInvitation. -->
+            @if (employee.canManageInvitation && employee.invitationStatus === 'expired') {
+              <app-button variant="secondary" [loading]="resending()" [disabled]="resending() || revoking()" (pressed)="resendInvitation(employee.id)">
                 Resend invitation
+              </app-button>
+            }
+            @if (employee.canManageInvitation && (employee.invitationStatus === 'pending' || employee.invitationStatus === 'expired')) {
+              <app-button variant="secondary" data-testid="revoke-invitation" [disabled]="resending() || revoking()" (pressed)="revokeConfirmOpen.set(true)">
+                Revoke invitation
               </app-button>
             }
           </div>
@@ -281,6 +291,17 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
           (pendingApproval)="onPositionPendingApproval()"
         />
       }
+
+      <app-confirm-modal
+        [open]="revokeConfirmOpen()"
+        title="Revoke invitation?"
+        [message]="'The invitation link sent to ' + employee.personalInformation.email + ' will stop working and the reserved position is released.'"
+        confirmLabel="Revoke"
+        cancelLabel="Cancel"
+        [loading]="revoking()"
+        (confirmed)="revokeInvitation(employee.id)"
+        (cancelled)="revokeConfirmOpen.set(false)"
+      />
     }
   `,
   styles: [`
@@ -346,6 +367,8 @@ export class EmployeeDetailComponent {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly resending = signal(false);
+  readonly revoking = signal(false);
+  readonly revokeConfirmOpen = signal(false);
   readonly savingJobDetails = signal(false);
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
@@ -463,6 +486,22 @@ export class EmployeeDetailComponent {
       error: (err) => {
         this.resending.set(false);
         this.notifications.error(toSafeErrorMessage(err, 'Could not resend the invitation.'));
+      }
+    });
+  }
+
+  revokeInvitation(employeeId: string): void {
+    this.revoking.set(true);
+    this.api.revokeInvitation(employeeId).subscribe({
+      next: () => {
+        this.revoking.set(false);
+        this.revokeConfirmOpen.set(false);
+        this.notifications.success('Invitation revoked.');
+        this.load();
+      },
+      error: (err) => {
+        this.revoking.set(false);
+        this.notifications.error(toSafeErrorMessage(err, 'Could not revoke the invitation.'));
       }
     });
   }
