@@ -1,10 +1,7 @@
 <section class="to-page">
   <header class="to-header">
-    <div>
-      <p class="to-kicker">TIME OFF</p>
-      <h1 class="to-title">Leave Policies</h1>
-      <p class="to-subtitle">Who gets which leave, and the rules that apply.</p>
-    </div>
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" currentLabel="Leave Policies" icon="time-off" />
+    <h1 class="to-sr-only">Leave Policies</h1>
     @if (hasManageAccess()) {
       <div class="to-header-actions">
         <app-button (click)="openWizard()">+ New policy</app-button>
@@ -12,7 +9,7 @@
     }
   </header>
   @if (policyStore.loading() && !policyStore.items().length) {
-    <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    <div class="to-loading"><app-loader /></div>
   } @else if (policyStore.loadError()) {
     <app-error-state [message]="policyStore.loadError()!" [retryable]="true" (retry)="loadInitialData()" />
   } @else if (!policyStore.items().length) {
@@ -24,11 +21,7 @@
       </app-empty-state>
     </div>
   } @else {
-    <section class="to-metrics" aria-label="Policy totals">
-      <article class="to-metric"><p class="to-metric__label">Policies</p><p class="to-metric__value">{{ policySummary().total }}</p></article>
-      <article class="to-metric"><p class="to-metric__label">Active</p><p class="to-metric__value">{{ policySummary().active }}</p></article>
-      <article class="to-metric"><p class="to-metric__label">Companies</p><p class="to-metric__value">{{ policySummary().entities }}</p></article>
-    </section>
+    <app-kpi-tiles ariaLabel="Policy totals" [tiles]="policyKpiTiles()" />
     <div class="to-workspace" [class.to-workspace--detail]="detailOpen()">
       <div class="to-table-card">
         <app-leave-policy-list-table [policies]="policyStore.items()" [canManage]="hasManageAccess()" (viewPolicy)="viewPolicy($event)" (clonePolicy)="openClone($event)" />

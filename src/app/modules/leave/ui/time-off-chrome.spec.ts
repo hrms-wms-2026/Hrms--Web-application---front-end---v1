@@ -16,12 +16,16 @@ describe('Time Off visual chrome', () => {
   const featureDir = join(__dirname, '../feature');
   const templates = walkHtml(featureDir);
 
-  it('feature pages use shared to-page chrome', () => {
+  it('feature pages use shared to-page chrome, shared header and shared KPI tiles', () => {
     const pages = templates.filter((path) => !path.includes('time-off-shell') && !path.includes('team-balances'));
     for (const file of pages) {
       const html = readFileSync(file, 'utf8');
       expect(html, file).toContain('to-page');
-      expect(html, file).toContain('to-kicker');
+      expect(html, file).toContain('<app-breadcrumb-header');
+      expect(html, file).not.toContain('to-kicker');
+      expect(html, file).not.toContain('to-metric');
+      // Compact header bar like the rest of the app: no big visible title block.
+      expect(html, file).not.toContain('to-title');
     }
   });
 

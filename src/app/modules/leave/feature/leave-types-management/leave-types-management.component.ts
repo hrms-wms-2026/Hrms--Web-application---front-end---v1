@@ -1,5 +1,8 @@
 /** Quiet Operations Desk: an HR administration canvas centred on policy clarity. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -15,7 +18,7 @@ import { LeaveTypeFormModalComponent, LeaveTypeFormValue } from '../../ui/leave-
 @Component({
   selector: 'app-leave-types-management',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, ModalComponent, LeaveTypeListTableComponent, LeaveTypeFormModalComponent],
+  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, ModalComponent, LeaveTypeListTableComponent, LeaveTypeFormModalComponent],
   templateUrl: './leave-types-management.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './leave-types-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -32,6 +35,14 @@ export class LeaveTypesManagementComponent {
       active: items.filter((item) => item.isActive).length,
       paid: items.filter((item) => item.isPaid).length
     };
+  });
+  readonly typeKpiTiles = computed<readonly KpiTile[]>(() => {
+    const s = this.typeSummary();
+    return [
+      { label: 'Types', value: s.total, icon: 'layers' },
+      { label: 'Active', value: s.active, icon: 'check-circle', tone: 'success' },
+      { label: 'Paid', value: s.paid, icon: 'clipboard-list' }
+    ];
   });
   readonly formModalOpen = signal(false);
   readonly editingType = signal<LeaveTypeResponse | null>(null);

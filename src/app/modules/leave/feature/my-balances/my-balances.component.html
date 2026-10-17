@@ -1,11 +1,8 @@
 <!-- Quiet Operations Desk: one Balances workspace with a MY / TEAM switch instead of two nav items. -->
 <section class="to-page">
   <header class="to-header">
-    <div>
-      <p class="to-kicker">TIME OFF</p>
-      <h1 class="to-title">Balances</h1>
-      <p class="to-subtitle">{{ pageSubtitle() }}</p>
-    </div>
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" currentLabel="Balances" icon="time-off" />
+    <h1 class="to-sr-only">Balances</h1>
     <div class="to-header-actions">
       @if (canShowViewToggle()) {
         <div class="to-view-toggle" role="group" aria-label="Balances view" data-testid="balances-view-toggle">
@@ -52,7 +49,7 @@
 
   @if (viewMode() === 'my') {
     @if (store.myLoading()) {
-      <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+      <div class="to-loading"><app-loader /></div>
     } @else if (store.myError()) {
       <app-error-state [message]="store.myError()!" [retryable]="true" (retry)="store.loadMy(store.year())" />
     } @else if (store.my().length === 0) {
@@ -60,23 +57,7 @@
         <app-empty-state title="No leave balances yet" description="Balances appear once HR generates entitlements for this year." />
       </div>
     } @else {
-      <section class="to-metrics" aria-label="Balance totals">
-        <article class="to-metric">
-          <p class="to-metric__label">Remaining</p>
-          <p class="to-metric__value" data-testid="summary-remaining">{{ formatHours(mySummary().remaining) }}</p>
-          <p class="to-metric__hint">across {{ mySummary().types }} leave {{ mySummary().types === 1 ? 'type' : 'types' }}</p>
-        </article>
-        <article class="to-metric">
-          <p class="to-metric__label">Pending</p>
-          <p class="to-metric__value">{{ formatHours(mySummary().pending) }}</p>
-          <p class="to-metric__hint">awaiting approval</p>
-        </article>
-        <article class="to-metric">
-          <p class="to-metric__label">Used</p>
-          <p class="to-metric__value">{{ formatHours(mySummary().used) }}</p>
-          <p class="to-metric__hint">of {{ formatHours(mySummary().entitled) }} entitled</p>
-        </article>
-      </section>
+      <app-kpi-tiles ariaLabel="Balance totals" [tiles]="myKpiTiles()" />
 
       @if (expiringCarryForward().length > 0) {
         <aside class="to-banner" role="status">
@@ -130,7 +111,7 @@
         <p>Requests you have submitted this year.</p>
       </div>
       @if (requestStore.myRequestsLoading()) {
-        <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+        <div class="to-loading"><app-loader /></div>
       } @else if (requestStore.myRequestsError()) {
         <app-error-state [message]="requestStore.myRequestsError()!" [retryable]="true" (retry)="requestStore.loadMine()" />
       } @else if (requestStore.myRequests().length === 0) {
@@ -141,7 +122,7 @@
     </section>
   } @else {
     @if (store.teamLoading()) {
-      <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+      <div class="to-loading"><app-loader /></div>
     } @else if (store.teamError()) {
       <app-error-state [message]="store.teamError()!" [retryable]="true" (retry)="store.loadTeam(store.year())" />
     } @else if (store.team().length === 0) {

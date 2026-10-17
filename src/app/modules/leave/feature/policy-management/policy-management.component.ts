@@ -1,5 +1,8 @@
 /** Quiet Operations Desk: policy administration combines a ledger, read-only review panel, and guided creation. */
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { CommonModule } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -21,7 +24,7 @@ import { LeavePolicyListTableComponent } from '../../ui/leave-policy-list-table/
 import { LeavePolicyDetailPanelComponent } from '../../ui/leave-policy-detail-panel/leave-policy-detail-panel.component';
 import { LeavePolicyFormWizardComponent } from '../../ui/leave-policy-form-wizard/leave-policy-form-wizard.component';
 
-@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrls: ['../../ui/time-off-chrome.css', './policy-management.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrls: ['../../ui/time-off-chrome.css', './policy-management.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
 export class PolicyManagementComponent implements OnInit {
   private readonly permissionService = inject(PermissionService); private readonly notificationService = inject(NotificationService); private readonly legalEntityApi = inject(LegalEntityApiService);
   private readonly generalSettingsStore = inject(GeneralSettingsStore);
@@ -31,6 +34,14 @@ export class PolicyManagementComponent implements OnInit {
     const items = this.policyStore.items();
     const entities = new Set(items.flatMap((policy) => policy.legalEntities.map((entity) => entity.legalEntityId)));
     return { total: items.length, active: items.filter((policy) => policy.isActive).length, entities: entities.size };
+  });
+  readonly policyKpiTiles = computed<readonly KpiTile[]>(() => {
+    const s = this.policySummary();
+    return [
+      { label: 'Policies', value: s.total, icon: 'clipboard-list' },
+      { label: 'Active', value: s.active, icon: 'check-circle', tone: 'success' },
+      { label: 'Companies', value: s.entities, icon: 'layers' }
+    ];
   });
   readonly legalEntities = signal<readonly LegalEntityListItem[]>([]); readonly wizardOpen = signal(false); readonly detailOpen = signal(false); readonly latestDraft = signal<LeavePolicyFormDraft | null>(null); readonly replaceConfirmOpen = signal(false); readonly cloneSource = signal<LeavePolicyListItemResponse | null>(null); readonly cloneName = signal(''); readonly cloneEffectiveFrom = signal(''); readonly cloneLegalEntityIds = signal<readonly string[]>([]);
   ngOnInit(): void { if (this.hasManageAccess()) void this.loadInitialData(); }

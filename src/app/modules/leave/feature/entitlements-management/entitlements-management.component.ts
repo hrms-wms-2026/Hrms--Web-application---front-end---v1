@@ -1,5 +1,8 @@
 /** Quiet Operations Desk: HR's home for entitlement bookkeeping and the organization-wide balance ledger. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { CommonModule } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -33,7 +36,7 @@ type Tab = 'entitlements' | 'all-balances' | 'audit';
 @Component({
   selector: 'app-entitlements-management',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './entitlements-management.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './entitlements-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -61,6 +64,15 @@ export class EntitlementsManagementComponent {
   readonly yearOptions: SelectOption[] = yearOptions();
   readonly selectedYear = computed(() => String(this.entitlementStore.year()));
   readonly entitlementSummary = computed(() => summarizeEntitlements(this.entitlementStore.items()));
+  readonly entitlementKpiTiles = computed<readonly KpiTile[]>(() => {
+    const s = this.entitlementSummary();
+    return [
+      { label: 'Employees', value: s.employees, icon: 'users' },
+      { label: 'Lines', value: s.lines, icon: 'clipboard-list' },
+      { label: 'Remaining hours', value: this.formatHours(s.remaining), icon: 'check-circle', tone: 'success' },
+      { label: 'Over-utilized', value: s.overUtilized, icon: 'alert-triangle', tone: s.overUtilized > 0 ? 'danger' : 'neutral' }
+    ];
+  });
   private allBalancesLoaded = false;
   private auditLoaded = false;
 
