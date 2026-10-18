@@ -234,8 +234,9 @@ export class CalendarPageComponent {
         const created = await this.store.createEvent(submission.create);
         ok = !!created;
         if (created && submission.meetingProvider) {
-          // A failed link keeps the event; the store's actionError explains what happened (P1-5).
-          await this.store.createMeeting(created.id, submission.meetingProvider);
+          // The event was created with this meeting pending, so its invites were held back for the link: a failed
+          // link keeps the event and sends them without one; the store's actionError explains what happened (P1-5).
+          await this.store.createMeeting(created.id, submission.meetingProvider, true);
         }
         if (created) await this.reloadEvents();
       } else {

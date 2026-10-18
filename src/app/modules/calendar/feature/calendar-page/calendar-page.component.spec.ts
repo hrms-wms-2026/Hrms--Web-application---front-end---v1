@@ -80,6 +80,16 @@ describe('CalendarPageComponent - create submission', () => {
     expect(store.createMeeting).toHaveBeenCalledTimes(1);
   });
 
+  it('a meeting created right after its event says the invites were held back for the link', async () => {
+    const page = setup();
+    store.createEvent.mockResolvedValue(createdEvent());
+    store.createMeeting.mockResolvedValue(true);
+
+    await page.onSave({ create: createRequest(), meetingProvider: 'zoom' });
+
+    expect(store.createMeeting).toHaveBeenCalledWith(createdEvent().id, 'zoom', true);
+  });
+
   it('keeps the form busy for the whole create + meeting chain, not just the event POST', async () => {
     const page = setup();
     let releaseMeeting!: () => void;

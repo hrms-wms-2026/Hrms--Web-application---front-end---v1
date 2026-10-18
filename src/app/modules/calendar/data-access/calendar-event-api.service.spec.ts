@@ -99,6 +99,13 @@ describe('CalendarEventApiService', () => {
     req.flush({ joinUrl: 'https://us05web.zoom.us/j/123' });
   });
 
+  it('createMeeting tells the API when the event invites are held back for the link', () => {
+    service.createMeeting('event-1', 'microsoft_teams', true).subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);
+    expect(req.request.body).toEqual({ provider: 'microsoft_teams', invitesHeldBack: true });
+    req.flush({ joinUrl: 'https://teams.microsoft.com/l/1' });
+  });
+
   it('removeMeeting deletes {eventId}/meeting', () => {
     service.removeMeeting('event-1').subscribe();
     const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);
