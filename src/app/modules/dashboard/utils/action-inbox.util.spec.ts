@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ActionItem, TeamActionItemsResponse } from '../models/my-team-action-items.model';
 import { LedWorkProgressResponse } from '../models/my-team-led-progress.model';
-import { buildActionInbox, filterInbox, inboxAgeClass, inboxCounts } from './action-inbox.util';
+import { buildActionInbox, filterInbox, inboxAgeClass, inboxCounts, isExceptionSource } from './action-inbox.util';
 
 const NOW = new Date('2026-10-08T12:00:00Z');
 const daysAgo = (d: number): string => new Date(NOW.getTime() - d * 86_400_000).toISOString();
@@ -113,5 +113,20 @@ describe('filters and tones', () => {
     expect(inboxAgeClass(fresh)).toBe('text-slate-400');
     expect(inboxAgeClass(soon)).toContain('text-amber-600');
     expect(inboxAgeClass(late)).toContain('text-rose-600');
+  });
+});
+
+describe('calendar meeting exceptions (FC)', () => {
+  it('count and list as exceptions alongside monitoring ones', () => {
+    const data = actionItems([
+      { sourceKey: 'calendar.meeting_exception', pendingCount: 2, topItems: [item('calendar.meeting_exception', 'm1', 1, { exceptionStatus: 'Open' })] },
+      { sourceKey: 'leave.approval', pendingCount: 1, topItems: [item('leave.approval', 'l1', 1)] }
+    ]);
+
+    expect(isExceptionSource('calendar.meeting_exception')).toBe(true);
+    expect(isExceptionSource('monitoring.exception')).toBe(true);
+    expect(isExceptionSource('leave.approval')).toBe(false);
+    expect(buildActionInbox(data, null, NOW).find((i) => i.entityId === 'm1')?.kind).toBe('exception');
+    expect(inboxCounts(data, null, buildActionInbox(data, null, NOW))).toMatchObject({ approval: 1, exception: 2 });
   });
 });

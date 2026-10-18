@@ -21,7 +21,7 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { SelectOption } from '../../../../shared/ui/select/select.component';
 import { TaskApiService } from '../../../work/data-access/task-api.service';
-import { RichTextEditorComponent } from '../../../work/ui/rich-text-editor/rich-text-editor.component';
+import { RichTextEditorComponent } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import {
   AttachmentPill,
   TaskAttachmentListComponent

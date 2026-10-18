@@ -32,13 +32,15 @@ export interface AttachmentPill {
       </div>
     }
 
-    <label class="tal-action-row" title="Attach file">
-      <input type="file" multiple class="tal-file-input" (change)="onFilesSelected($event)" />
-      <span class="tal-action-icon">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
-      </span>
-      <span>Attach file</span>
-    </label>
+    @if (showAttachAction()) {
+      <label class="tal-action-row" title="Attach file">
+        <input type="file" multiple class="tal-file-input" (change)="onFilesSelected($event)" />
+        <span class="tal-action-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+        </span>
+        <span>Attach file</span>
+      </label>
+    }
   `,
   styles: [`
     :host { display: block; width: 100%; margin: 0; padding: 0; }
@@ -97,6 +99,8 @@ export interface AttachmentPill {
 })
 export class TaskAttachmentListComponent {
   files = input.required<AttachmentPill[]>();
+  /** Off when the host has its own attach control (e.g. the chat composer's + button): only the pills show. */
+  showAttachAction = input(true);
   fileSelected = output<FileList>();
   removed = output<string>();
   downloadRequested = output<AttachmentPill>();

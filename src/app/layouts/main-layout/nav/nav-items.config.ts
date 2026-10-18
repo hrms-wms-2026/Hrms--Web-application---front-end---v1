@@ -4,6 +4,9 @@ import { NavItem } from './nav-item.model';
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', path: '/dashboard' },
   { id: 'work', label: 'Work', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
+  // Requests, alerts and investigations from every module (Work, Leave, Attendance, Monitoring, Calendar):
+  // shown to every employee - each source decides what the caller sees.
+  { id: 'inbox', label: 'Inbox', icon: 'inbox', path: '/inbox' },
   {
     id: 'people', label: 'People', icon: 'people', path: '/people', requiredModules: ['core_hr'],
     children: [
@@ -21,7 +24,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'time-off-entitlements', label: 'Entitlements', path: '/time-off/entitlements', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
       { id: 'time-off-types', label: 'Leave Types', path: '/time-off/types', requiredModules: ['leave'], requiredPermissions: ['leave:read'] },
       { id: 'time-off-policies', label: 'Leave Policies', path: '/time-off/policies', requiredModules: ['leave'], requiredPermissions: ['leave:manage'] },
-      { id: 'time-off-team-approvals', label: 'Pending Approvals', path: '/time-off/team-approvals', requiredModules: ['leave'], requiredPermissions: ['leave:approve'] },
       { id: 'time-off-all-requests', label: 'All Requests', path: '/time-off/all', requiredModules: ['leave'], requiredPermissions: ['leave:read'] }
     ]
   },
@@ -64,13 +66,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
         exact: true,
         requiredModules: ['time_attendance'],
         requiredPermissions: ['attendance:read-own', 'attendance:write-own']
-      },
-      {
-        id: 'time-attendance-alerts',
-        label: 'Alerts',
-        path: '/attendance/alerts',
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:approve', 'employees:write', 'exceptions:view']
       },
       {
         id: 'time-attendance-monitoring',

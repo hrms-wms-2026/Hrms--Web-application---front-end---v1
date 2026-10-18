@@ -2,17 +2,17 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, ou
 import { Router } from '@angular/router';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { AttendanceDetailDrawerComponent } from '../../../attendance/feature/time-tracking/attendance-detail-drawer/attendance-detail-drawer.component';
-import { ExceptionEvidencePanelComponent } from '../../../attendance/feature/exception-alerts/exception-evidence-panel/exception-evidence-panel.component';
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
 import { SignalDrilldownStore } from '../../state/signal-drilldown.store';
 import { taskBoardUrl } from '../../utils/signal-item-links';
 
-/** Opens a selected signal item in its existing attendance, exception, or task detail UI. */
+/** Opens a selected signal item in its existing attendance or task detail UI; an exception case opens in the Inbox,
+ *  where it is reviewed. */
 @Component({
   selector: 'app-signal-item-detail',
   standalone: true,
-  imports: [AttendanceDetailDrawerComponent, ExceptionEvidencePanelComponent, ModalComponent, TaskFormModalComponent],
+  imports: [AttendanceDetailDrawerComponent, ModalComponent, TaskFormModalComponent],
   template: `
     @if (selected(); as s) {
       @switch (s.item.kind) {
@@ -21,11 +21,6 @@ import { taskBoardUrl } from '../../utils/signal-item-links';
         }
         @case ('monitoring_alert') {
           <app-attendance-detail-drawer [selection]="daySelection()" [displayTimezone]="s.timezone ?? 'UTC'" (closed)="close()" />
-        }
-        @case ('exception_case') {
-          <app-modal [open]="true" [title]="s.item.title" size="lg" (closed)="close()">
-            <app-exception-evidence-panel [alertId]="s.item.id" />
-          </app-modal>
         }
         @case ('task') {
           @if (taskState() === 'ready') {
@@ -64,6 +59,15 @@ export class SignalItemDetailComponent {
   });
 
   constructor() {
+    effect(() => {
+      const selected = this.selected();
+      if (selected?.item.kind !== 'exception_case') return;
+      const id = selected.item.id;
+      untracked(() => {
+        this.close();
+        void this.router.navigate(['/inbox', 'monitoring', 'exception_case', id]);
+      });
+    });
     effect(() => {
       const selected = this.selected();
       if (selected?.item.kind !== 'task' || !selected.item.projectId) return;

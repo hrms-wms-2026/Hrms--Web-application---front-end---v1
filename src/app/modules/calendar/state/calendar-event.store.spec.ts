@@ -186,6 +186,14 @@ describe('CalendarEventStore', () => {
     expect(store.events().find((e) => e.id === 'e5')?.meetingLink).toBe('https://teams.microsoft.com/l/meetup-join/abc');
   });
 
+  it('createMeeting passes "invites held back" through for a meeting added to a just-created event', async () => {
+    const work = store.createMeeting('e9', 'microsoft_teams', true);
+    const req = http.expectOne(`${environment.apiUrl}/calendar/e9/meeting`);
+    expect(req.request.body).toEqual({ provider: 'microsoft_teams', invitesHeldBack: true });
+    req.flush({ joinUrl: 'https://teams/x' });
+    expect(await work).toBe(true);
+  });
+
   it('createMeeting passes the provider through to the API and updates the event link', async () => {
     const load = store.loadEvents('2026-09-01T00:00:00Z', '2026-09-30T00:00:00Z');
     http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).flush({ events: [makeEvent({ id: 'e1' })] });

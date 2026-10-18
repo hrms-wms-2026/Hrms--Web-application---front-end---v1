@@ -113,6 +113,12 @@ export class EmployeeDirectoryTableComponent {
     void this.router.navigate(['/people/employees', employee.id]);
   }
 
+  /** The employee's open attendance alerts, reviewed in the Inbox. */
+  protected openAlerts(employee: EmployeeListItemResponse, event: Event): void {
+    event.stopPropagation();
+    void this.router.navigate(['/inbox'], { queryParams: { tab: 'alerts', employee: employee.id } });
+  }
+
   protected onMenuSelected(employee: EmployeeListItemResponse, actionId: string): void {
     this.rowAction.emit({ employee, actionId });
   }

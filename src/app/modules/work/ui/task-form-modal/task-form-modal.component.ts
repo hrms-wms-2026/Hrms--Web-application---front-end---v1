@@ -20,7 +20,7 @@ import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { TaskHistoryFeedComponent } from '../task-history-feed/task-history-feed.component';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskAttachmentListComponent, AttachmentPill } from '../task-attachment-list/task-attachment-list.component';
-import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+import { RichTextEditorComponent } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';

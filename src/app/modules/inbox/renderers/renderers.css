@@ -1,0 +1,22 @@
+/* Shared look of the inbox detail renderers (matches the item card's sections). */
+.rnd { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.rnd__label { margin-top: 4px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.rnd__box { display: flex; flex-direction: column; padding: 2px 12px; border: 1px solid var(--color-border); border-radius: 12px; }
+.rnd__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent); }
+.rnd__row:last-child { border-bottom: 0; }
+.rnd__key { color: var(--color-text-secondary); font-weight: 500; }
+.rnd__value { font-weight: 600; text-align: right; }
+.rnd__list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 8px 12px 8px 26px; border: 1px solid var(--color-border); border-radius: 12px; }
+.rnd__list--warn { border-color: color-mix(in srgb, var(--color-warning, #d97706) 45%, var(--color-border)); background: color-mix(in srgb, var(--color-warning, #d97706) 6%, transparent); }
+.rnd__note { margin: 0; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-text-secondary); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rnd__muted { margin: 0; color: var(--color-text-secondary); }
+.rnd__badge { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
+
+/* attendance-correction: the day as two bars on one time axis */
+.tl { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 12px; }
+.tl__row { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 8px; }
+.tl__name { color: var(--color-text-secondary); font-weight: 600; }
+.tl__track { position: relative; height: 22px; border-radius: 6px; background: var(--color-surface-secondary); overflow: hidden; }
+.tl__work { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--color-accent) 55%, transparent); }
+.tl__break { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, var(--color-surface), var(--color-surface) 3px, var(--color-surface-secondary) 3px, var(--color-surface-secondary) 6px); }
+.tl__label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; text-shadow: 0 0 2px var(--color-surface); }

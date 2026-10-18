@@ -18,7 +18,7 @@ import { WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { ProfileStore } from '../../../profile/state/profile.store';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
@@ -31,7 +31,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
@@ -62,7 +62,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
           [selected]="assigneeFilter()"
           (selectionChanged)="setAssigneeFilter($event)"
         />
-        <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
+        <app-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="goToCreate()">Create work item</app-button>
         }
@@ -264,7 +264,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     { value: 'high', label: 'High' },
     { value: 'critical', label: 'Critical' }
   ];
-  protected readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
+  protected readonly filterFields = computed<FilterFieldConfig[]>(() => [
     { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
     { key: 'sprint', label: 'Sprint', icon: 'sprint', kind: 'single', options: this.sprintOptions(), defaultValues: ['all'] },
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },

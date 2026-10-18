@@ -21,7 +21,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
@@ -43,7 +43,7 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent, ConfirmModalComponent, BulkActionResultModalComponent, WorkDropdownComponent, TaskAssigneeDropdownComponent, DatePickerComponent, OverlayModule],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent, ConfirmModalComponent, BulkActionResultModalComponent, WorkDropdownComponent, TaskAssigneeDropdownComponent, DatePickerComponent, OverlayModule],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
@@ -74,7 +74,7 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
           [selected]="assigneeFilter()"
           (selectionChanged)="setAssigneeFilter($event)"
         />
-        <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
+        <app-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="secondary" (pressed)="openCreateTask()">Create work item</app-button>
         }
@@ -496,7 +496,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     { value: 'high', label: 'High' },
     { value: 'critical', label: 'Critical' }
   ];
-  protected readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
+  protected readonly filterFields = computed<FilterFieldConfig[]>(() => [
     { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
     { key: 'assignee', label: 'Assignee', icon: 'people', kind: 'multi', options: this.assigneeFilterOptions() },

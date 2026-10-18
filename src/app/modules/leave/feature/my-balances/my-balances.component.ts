@@ -20,7 +20,7 @@ import { RespondLeaveInformationRequest } from '../../models/leave-approval.mode
 import { CancelLeaveRequestRequest, LeaveRequestListItemResponse, LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-table/leave-balance-list-table.component';
-import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
+import { LeaveCancelConfirmDialogComponent } from '../../../../shared/ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import { LeaveRespondInfoDialogComponent } from '../../ui/leave-respond-info-dialog/leave-respond-info-dialog.component';
 import { LeaveRequestHistoryTableComponent } from '../../ui/leave-request-history-table/leave-request-history-table.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';

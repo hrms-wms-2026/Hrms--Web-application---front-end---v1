@@ -24,7 +24,8 @@ import {
   filterInbox,
   inboxAgeClass,
   inboxCounts,
-  inboxTagClass
+  inboxTagClass,
+  isExceptionSource
 } from '../../utils/action-inbox.util';
 import { actionCenterRailVisible } from '../../utils/my-team-widget-visibility.util';
 
@@ -107,8 +108,8 @@ export class ActionCenterCardComponent implements OnInit {
     const counts = this.counts();
     const sources = this.store.data()?.sources ?? [];
     const chips: FilterChip[] = [{ key: 'all', label: 'All', count: counts.all }];
-    if (sources.some((s) => s.sourceKey !== 'monitoring.exception')) chips.push({ key: 'approval', label: 'Approvals', count: counts.approval });
-    if (sources.some((s) => s.sourceKey === 'monitoring.exception')) chips.push({ key: 'exception', label: 'Exceptions', count: counts.exception });
+    if (sources.some((s) => !isExceptionSource(s.sourceKey))) chips.push({ key: 'approval', label: 'Approvals', count: counts.approval });
+    if (sources.some((s) => isExceptionSource(s.sourceKey))) chips.push({ key: 'exception', label: 'Exceptions', count: counts.exception });
     if (this.ledProgressStore.data() && this.capabilitiesStore.capabilities()?.leadsWork) {
       chips.push({ key: 'overdue', label: 'Overdue', count: counts.overdue });
     }

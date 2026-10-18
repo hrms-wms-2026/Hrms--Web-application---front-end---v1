@@ -171,10 +171,10 @@ export const CalendarEventStore = signalStore(
         patchState(store, { hasTeamsCapableConnection: false, hasZoomCapableConnection: false });
       }
     },
-    async createMeeting(eventId: string, provider: MeetingProvider): Promise<boolean> {
+    async createMeeting(eventId: string, provider: MeetingProvider, invitesHeldBack = false): Promise<boolean> {
       patchState(store, { meetingActionSaving: true, actionError: null });
       try {
-        const response = await firstValueFrom(api.createMeeting(eventId, provider));
+        const response = await firstValueFrom(api.createMeeting(eventId, provider, invitesHeldBack));
         patchState(store, {
           meetingActionSaving: false,
           events: store.events().map((e) => (e.id === eventId ? { ...e, meetingLink: response.joinUrl } : e))

@@ -75,6 +75,11 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/work/work.routes').then((module) => module.WORK_ROUTES)
       },
       {
+        path: 'inbox',
+        canActivate: [permissionGuard],
+        loadChildren: () => import('./modules/inbox/inbox.routes').then((module) => module.INBOX_ROUTES)
+      },
+      {
         path: 'people',
         canActivate: [permissionGuard],
         data: { permissions: [MANAGES_PEOPLE, 'employees:write', 'employees:offboard'], modules: ['core_hr'] },
