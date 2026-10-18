@@ -26,6 +26,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
+import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectionPositionPair } from '@angular/cdk/overlay';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -40,7 +41,9 @@ import { ChecklistAssignee } from '../../models/checklist-template.model';
 import {
   ChecklistTaskAssignmentType,
   ChecklistTaskOwnerType,
+  ChecklistTaskPriority,
   ChecklistTemplateScopeLevel,
+  ChecklistTemplateTaskAttachment,
   ChecklistTemplateTaskRequest,
   ChecklistTemplateType,
   CreateChecklistTemplateRequest,
@@ -48,6 +51,9 @@ import {
 } from '../../models/checklist-template.model';
 import { ChecklistTaskCategory } from '../../models/offboarding.model';
 import { ChecklistTemplateStore } from '../../state/checklist-template.store';
+import { ChecklistTaskDetailDialogComponent } from '../../ui/checklist-task-detail-dialog/checklist-task-detail-dialog.component';
+import { TaskApiService } from '../../../work/data-access/task-api.service';
+import { AttachmentPill } from '../../../work/ui/task-attachment-list/task-attachment-list.component';
 
 const TASK_PLACEHOLDERS: readonly string[] = [
   'Collect signed contract',
@@ -83,6 +89,11 @@ export interface ChecklistTaskFormValue {
   isBypassable: boolean;
   bypassPenaltyDescription: string;
   category: ChecklistTaskCategory | '';
+  description?: string;
+  priority?: ChecklistTaskPriority;
+  attachments?: AttachmentPill[];
+  /** Attachments uploaded in this builder session, not yet saved on the template. */
+  pendingFileIds?: string[];
 }
 
 @Component({
@@ -97,7 +108,10 @@ export interface ChecklistTaskFormValue {
     SelectComponent,
     CdkDropList,
     CdkDrag,
-    CdkDragHandle
+    CdkDragHandle,
+    CdkConnectedOverlay,
+    CdkOverlayOrigin,
+    ChecklistTaskDetailDialogComponent
   ],
   templateUrl: './checklist-builder.component.html',
   styleUrl: './checklist-builder.component.css',
@@ -132,6 +146,7 @@ export class ChecklistBuilderComponent implements OnInit {
   private readonly peopleApi = inject(PeopleApiService);
   private readonly permissionService = inject(PermissionService);
   private readonly notificationService = inject(NotificationService);
+  private readonly taskApi = inject(TaskApiService);
 
   readonly canWrite = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly selectedCompany = this.legalEntityStore.selectedLegalEntity;
@@ -140,6 +155,13 @@ export class ChecklistBuilderComponent implements OnInit {
   readonly initialLoading = signal(false);
   readonly loadError = signal<string | null>(null);
   readonly submitAttempted = signal(false);
+  readonly pickerPositions: ConnectionPositionPair[] = [
+    { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
+    { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 },
+    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 6 },
+    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -6 }
+  ];
+  readonly openTaskDetailIndex = signal<number | null>(null);
   readonly openAssignmentPickerIndex = signal<number | null>(null);
   readonly openPositionPickerIndex = signal<number | null>(null);
   readonly openEmployeePickerIndex = signal<number | null>(null);
@@ -298,7 +320,10 @@ export class ChecklistBuilderComponent implements OnInit {
             isRequired: t.isRequired,
             isBypassable: t.isBypassable,
             bypassPenaltyDescription: t.bypassPenaltyDescription ?? '',
-            category: t.category ?? ''
+            category: t.category ?? '',
+            description: t.description ?? '',
+            priority: t.priority ?? 'medium',
+            attachments: t.attachments ?? []
           })
         );
       } else {
@@ -395,6 +420,7 @@ export class ChecklistBuilderComponent implements OnInit {
     existing?: Omit<Partial<ChecklistTemplateTaskRequest>, 'category'> & {
       ownerType?: ChecklistTaskOwnerType;
       category?: ChecklistTaskCategory | '' | null;
+      attachments?: ChecklistTemplateTaskAttachment[] | null;
     }
   ): void {
     let assignmentType: ChecklistTaskAssignmentType = 'unassigned';
@@ -424,7 +450,15 @@ export class ChecklistBuilderComponent implements OnInit {
       isRequired: [existing?.isRequired ?? true],
       isBypassable: [existing?.isBypassable ?? false],
       bypassPenaltyDescription: [existing?.bypassPenaltyDescription ?? ''],
-      category: [existing?.category ?? '']
+      category: [existing?.category ?? ''],
+      description: [existing?.description ?? ''],
+      priority: [(existing?.priority ?? 'medium') as ChecklistTaskPriority],
+      attachments: [
+        (existing?.attachments ?? []).map(
+          (file): AttachmentPill => ({ fileId: file.fileId, name: file.fileName, sizeBytes: file.fileSizeBytes })
+        )
+      ],
+      pendingFileIds: [[] as string[]]
     });
 
     this.tasksArray.push(taskForm);
@@ -433,6 +467,9 @@ export class ChecklistBuilderComponent implements OnInit {
 
   removeTask(index: number): void {
     if (this.tasksArray.length > 1) {
+      for (const fileId of (this.tasksArray.at(index).value as Partial<ChecklistTaskFormValue>).pendingFileIds ?? []) {
+        firstValueFrom(this.taskApi.deletePendingFile(fileId)).catch(() => undefined);
+      }
       this.tasksArray.removeAt(index);
       this.cdr.markForCheck();
     } else {
@@ -440,21 +477,37 @@ export class ChecklistBuilderComponent implements OnInit {
     }
   }
 
-  moveTaskUp(index: number): void {
-    if (index > 0) {
-      const task = this.tasksArray.at(index);
-      this.tasksArray.removeAt(index);
-      this.tasksArray.insert(index - 1, task);
-      this.cdr.markForCheck();
-    }
+  openTaskDetail(index: number): void {
+    this.closeTaskPickers();
+    this.openTaskDetailIndex.set(index);
   }
 
-  moveTaskDown(index: number): void {
-    if (index < this.tasksArray.length - 1) {
-      const task = this.tasksArray.at(index);
-      this.tasksArray.removeAt(index);
-      this.tasksArray.insert(index + 1, task);
-      this.cdr.markForCheck();
+  closeTaskDetail(): void {
+    this.openTaskDetailIndex.set(null);
+    this.cdr.markForCheck();
+  }
+
+  /** One-line "who does it" summary for the task detail popup. */
+  assigneeSummary(taskGroup: FormGroup): string {
+    const type = taskGroup.get('assignmentType')?.value as ChecklistTaskAssignmentType;
+    if (type === 'employee') return 'New employee';
+    if (type !== 'company_position') return '';
+    const position = this.assignmentPositionLabel(taskGroup);
+    const hasEmployee = !!(taskGroup.value.selectedAssigneeUserId || taskGroup.value.originalAssignedToId);
+    return hasEmployee ? `${position} · ${this.assignmentEmployeeLabel(taskGroup)}` : position;
+  }
+
+  taskHasDetails(taskGroup: FormGroup): boolean {
+    const value = taskGroup.value as Partial<ChecklistTaskFormValue>;
+    return !!(value.description?.trim() || (value.attachments?.length ?? 0) > 0);
+  }
+
+  /** Attachments uploaded while building but never saved: delete them so they don't linger. */
+  private discardPendingUploads(): void {
+    for (const grp of this.tasksArray.controls) {
+      for (const fileId of (grp.value as Partial<ChecklistTaskFormValue>).pendingFileIds ?? []) {
+        firstValueFrom(this.taskApi.deletePendingFile(fileId)).catch(() => undefined);
+      }
     }
   }
 
@@ -497,15 +550,20 @@ export class ChecklistBuilderComponent implements OnInit {
 
   cancel(): void {
     this.closeTaskPickers();
+    this.openTaskDetailIndex.set(null);
+    this.discardPendingUploads();
     this.closed.emit();
     void this.router.navigate(['/people/checklists']);
   }
 
   onBackdrop(event?: MouseEvent): void {
+    // The task detail popup sits above the builder; it handles its own dismissal.
+    if (this.openTaskDetailIndex() !== null) return;
     this.cancel();
   }
 
   onEscape(): void {
+    if (this.openTaskDetailIndex() !== null) return;
     this.cancel();
   }
 
@@ -605,6 +663,7 @@ export class ChecklistBuilderComponent implements OnInit {
         isBypassable: !!value.isBypassable,
         bypassPenaltyDescription: value.bypassPenaltyDescription || null,
         category: (value.category || null) as ChecklistTaskCategory | null,
+        ...this.taskDetailsPayload(value),
       };
     }
 
@@ -624,6 +683,7 @@ export class ChecklistBuilderComponent implements OnInit {
         isBypassable: !!value.isBypassable,
         bypassPenaltyDescription: value.bypassPenaltyDescription || null,
         category: (value.category || null) as ChecklistTaskCategory | null,
+        ...this.taskDetailsPayload(value),
       };
     }
 
@@ -638,6 +698,18 @@ export class ChecklistBuilderComponent implements OnInit {
       isBypassable: !!value.isBypassable,
       bypassPenaltyDescription: value.bypassPenaltyDescription || null,
       category: (value.category || null) as ChecklistTaskCategory | null,
+      ...this.taskDetailsPayload(value),
+    };
+  }
+
+  private taskDetailsPayload(
+    value: ChecklistTaskFormValue
+  ): Pick<ChecklistTemplateTaskRequest, 'description' | 'priority' | 'attachmentFileIds'> {
+    const description = value.description?.trim() ? value.description : null;
+    return {
+      description,
+      priority: value.priority || 'medium',
+      attachmentFileIds: (value.attachments ?? []).map((file) => file.fileId)
     };
   }
 
@@ -668,6 +740,14 @@ export class ChecklistBuilderComponent implements OnInit {
     this.openEmployeePickerIndex.set(null);
     this.positionSearch.set('');
     this.employeeSearch.set('');
+  }
+
+  isTaskPickerOpen(index: number): boolean {
+    return (
+      this.openAssignmentPickerIndex() === index ||
+      this.openPositionPickerIndex() === index ||
+      (this.openEmployeePickerIndex() === index && !!this.tasksArray.at(index)?.value.assigneePositionId)
+    );
   }
 
   closeTaskPickers(): void {

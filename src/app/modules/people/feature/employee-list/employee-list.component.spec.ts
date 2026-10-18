@@ -358,7 +358,11 @@ describe('EmployeeListComponent', () => {
     fixture.detectChanges();
     expect(q('[data-testid="menu-item-promote"]')).not.toBeNull();
     q('[data-testid="menu-item-offboard"]')!.click();
-    expect(router.navigate).toHaveBeenCalledWith(['/people/employees', 'other', 'offboarding']);
+    fixture.detectChanges();
+    // Offboard opens the Start Offboarding popup on this page rather than navigating away.
+    expect(router.navigate).not.toHaveBeenCalledWith(['/people/offboarding', 'other']);
+    expect(fixture.componentInstance.rowOffboard()?.id).toBe('other');
+    expect(q('app-start-offboarding-modal [role="dialog"]')).not.toBeNull();
   });
 
   it('bulk result shows the summary, reloads and clears the selection', async () => {

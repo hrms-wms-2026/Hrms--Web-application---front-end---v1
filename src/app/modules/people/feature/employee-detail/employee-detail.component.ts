@@ -15,6 +15,7 @@ import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.s
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
+import { StartOffboardingModalComponent } from '../../ui/start-offboarding-modal/start-offboarding-modal.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
@@ -53,6 +54,7 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
     ErrorStateComponent,
     LoaderComponent,
     ChangePositionModalComponent,
+    StartOffboardingModalComponent,
     PopoverComponent,
     EmployeeEmploymentTabComponent,
     EmployeePersonalTabComponent,
@@ -292,6 +294,14 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
         />
       }
 
+      <app-start-offboarding-modal
+        [open]="startOffboardingOpen()"
+        [employeeId]="employee.id"
+        [employeeName]="employee.personalInformation.firstName + ' ' + employee.personalInformation.lastName"
+        (started)="openOffboarding($event)"
+        (closed)="startOffboardingOpen.set(false)"
+      />
+
       <app-confirm-modal
         [open]="revokeConfirmOpen()"
         title="Revoke invitation?"
@@ -372,6 +382,7 @@ export class EmployeeDetailComponent {
   readonly savingJobDetails = signal(false);
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
+  readonly startOffboardingOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
   readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
     { id: 'overview', label: 'Overview' },
@@ -518,9 +529,19 @@ export class EmployeeDetailComponent {
     this.changePositionOpen.set(true);
   }
 
+  /** An open (or finished) offboarding opens its page; otherwise the Start Offboarding popup asks for the exit details first. */
   navigateToOffboarding(employeeId: string): void {
     this.changePositionMenuOpen.set(false);
-    void this.router.navigate(['/people/employees', employeeId, 'offboarding']);
+    const status = this.offboardingStatus();
+    if (status && status !== 'cancelled') {
+      this.openOffboarding(employeeId);
+    } else {
+      this.startOffboardingOpen.set(true);
+    }
+  }
+
+  openOffboarding(employeeId: string): void {
+    void this.router.navigate(['/people/offboarding', employeeId]);
   }
 
   onPositionPendingApproval(): void {

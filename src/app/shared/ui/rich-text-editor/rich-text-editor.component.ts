@@ -259,6 +259,7 @@ export interface SlashMenuCoords {
                       }
                     </div>
 
+                    @if (allowImages()) {
                     <input #imageFileInput type="file" accept="image/png,image/jpeg,image/webp" class="tfm-image-input-hidden" (change)="onImageFileSelected($event)" />
                     <button
                       type="button"
@@ -269,6 +270,7 @@ export interface SlashMenuCoords {
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
                     </button>
+                    }
                   </div>
                 </div>
 
@@ -591,6 +593,8 @@ export class RichTextEditorComponent {
   ariaLabel = input<string>('Description');
   imageUploadPurpose = input<Extract<PendingUploadPurpose, 'task_description_image' | 'comment_description_image'>>('task_description_image');
   allowAttachments = input<boolean>(true);
+  /** Off where uploaded inline images can't be linked to an owner (e.g. checklist templates). */
+  allowImages = input<boolean>(true);
   compact = input<boolean>(false);
   /** Removes the editor chrome while preserving the toolbar and editable content. */
   borderless = input<boolean>(true);
@@ -672,7 +676,9 @@ export class RichTextEditorComponent {
       keywords: [cmd.id],
       icon: cmd.icon
     }));
-    const builtIn = this.allowAttachments() ? ALL_SLASH_COMMANDS : ALL_SLASH_COMMANDS.filter((cmd) => cmd.id !== 'attach');
+    const builtIn = ALL_SLASH_COMMANDS.filter(
+      (cmd) => (this.allowAttachments() || cmd.id !== 'attach') && (this.allowImages() || cmd.id !== 'image')
+    );
     return [...host, ...builtIn];
   });
   showSlashMenu = signal(false);
