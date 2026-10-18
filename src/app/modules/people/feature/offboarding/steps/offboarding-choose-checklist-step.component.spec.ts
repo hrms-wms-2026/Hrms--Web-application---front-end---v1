@@ -32,4 +32,13 @@ describe('OffboardingChooseChecklistStepComponent', () => {
     await fixture.componentInstance.confirm();
     expect(selectChecklistSpy).toHaveBeenCalledWith('emp-1', 'tpl-1');
   });
+
+  it('can continue without a checklist', async () => {
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const skip = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('[data-testid="skip-checklist"] button');
+    skip?.click();
+    await fixture.whenStable();
+    expect(selectChecklistSpy).toHaveBeenCalledWith('emp-1', null);
+  });
 });

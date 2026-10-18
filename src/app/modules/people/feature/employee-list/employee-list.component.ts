@@ -18,6 +18,7 @@ import { PeopleStore } from '../../state/people.store';
 import { BulkActionResultModalComponent } from '../../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
 import { BulkEmploymentTypeModalComponent } from '../../ui/bulk-employee-actions/bulk-employment-type-modal.component';
 import { BulkStartOffboardingModalComponent } from '../../ui/bulk-employee-actions/bulk-start-offboarding-modal.component';
+import { StartOffboardingModalComponent } from '../../ui/start-offboarding-modal/start-offboarding-modal.component';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
 import { EmployeeColumnPickerComponent } from '../../ui/employee-column-picker/employee-column-picker.component';
 import { EmployeeDirectoryTableComponent } from '../../ui/employee-directory-table/employee-directory-table.component';
@@ -52,6 +53,7 @@ const TERMINAL_STATUSES = ['resigned', 'terminated'];
     ChangePositionModalComponent,
     BulkEmploymentTypeModalComponent,
     BulkStartOffboardingModalComponent,
+    StartOffboardingModalComponent,
     BulkActionResultModalComponent,
     BulkActionBarComponent,
     AddEmployeeWizardComponent
@@ -130,6 +132,7 @@ export class EmployeeListComponent {
   readonly bulkPositionReason = signal<'Promotion' | 'Transfer' | null>(null);
   readonly bulkEmploymentTypeOpen = signal(false);
   readonly bulkOffboardOpen = signal(false);
+  readonly rowOffboard = signal<EmployeeListItemResponse | null>(null);
   readonly bulkResult = signal<{ title: string; result: BulkEmployeeActionResponse } | null>(null);
   readonly resultNames = computed(() => new Map([...this.rowCache().values()].map((r) => [r.id, r.fullName] as const)));
   readonly rowPositionChange = signal<{ employee: EmployeeListItemResponse; reason: 'Promotion' | 'Transfer' } | null>(null);
@@ -290,10 +293,14 @@ export class EmployeeListComponent {
 
   onRowAction(event: { employee: EmployeeListItemResponse; actionId: string }): void {
     if (event.actionId === 'offboard') {
-      void this.router.navigate(['/people/employees', event.employee.id, 'offboarding']);
+      this.rowOffboard.set(event.employee);
       return;
     }
     this.rowPositionChange.set({ employee: event.employee, reason: event.actionId === 'promote' ? 'Promotion' : 'Transfer' });
+  }
+
+  openOffboarding(employeeId: string): void {
+    void this.router.navigate(['/people/offboarding', employeeId]);
   }
 
   private exportSelected(): void {

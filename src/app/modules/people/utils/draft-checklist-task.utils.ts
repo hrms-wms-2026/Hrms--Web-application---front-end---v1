@@ -1,4 +1,9 @@
-import { ChecklistTemplateTaskResponse, DraftChecklistTask } from '../models/checklist-template.model';
+import {
+  ChecklistTaskPriority,
+  ChecklistTemplateTaskResponse,
+  DraftChecklistTask,
+  DraftChecklistTaskDetails
+} from '../models/checklist-template.model';
 
 interface IsoDateParts {
   readonly y: number;
@@ -66,7 +71,40 @@ function draftTaskFromTemplateTask(task: ChecklistTemplateTaskResponse): DraftCh
     assigneePositionId: isEmployee ? null : (task.assigneePositionId ?? null),
     selectedAssigneeUserId: isEmployee ? null : (task.assignedToId ?? null),
     dueDays: task.dueOffsetDays,
-    isRequired: task.isRequired
+    isRequired: task.isRequired,
+    details: detailsFromTemplateTask(task)
+  };
+}
+
+function detailsFromTemplateTask(task: ChecklistTemplateTaskResponse): DraftChecklistTaskDetails | undefined {
+  const attachmentFileIds = (task.attachments ?? []).map((file) => file.fileId);
+  if (!task.description && !task.priority && attachmentFileIds.length === 0) {
+    return undefined;
+  }
+  return { description: task.description ?? null, priority: task.priority ?? null, attachmentFileIds };
+}
+
+const PRIORITIES: readonly ChecklistTaskPriority[] = ['low', 'medium', 'high', 'critical'];
+
+function detailsFromEditedJson(item: Record<string, unknown>): DraftChecklistTaskDetails | undefined {
+  const description = typeof item['description'] === 'string' ? (item['description'] as string) : null;
+  const priority = PRIORITIES.find((p) => p === item['priority']) ?? null;
+  const rawIds = item['attachmentFileIds'];
+  const attachmentFileIds = Array.isArray(rawIds) ? rawIds.filter((id): id is string => typeof id === 'string') : [];
+  if (!description && !priority && attachmentFileIds.length === 0) {
+    return undefined;
+  }
+  return { description, priority, attachmentFileIds };
+}
+
+function detailsPayload(details: DraftChecklistTaskDetails | undefined): Record<string, unknown> {
+  if (!details) {
+    return {};
+  }
+  return {
+    description: details.description,
+    priority: details.priority,
+    attachmentFileIds: [...details.attachmentFileIds]
   };
 }
 
@@ -87,7 +125,8 @@ export function serializeDraftTasksToEditedTasksJson(tasks: readonly DraftCheckl
       title: task.title.trim(),
       dueDate: addDaysToIsoDate(startDateIso, task.dueDays),
       sequence: index + 1,
-      isRequired: task.isRequired
+      isRequired: task.isRequired,
+      ...detailsPayload(task.details)
     };
     if (task.assignee === 'employee') {
       return { ...base, ownerType: 'employee' };
@@ -124,7 +163,8 @@ export function parseEditedTasksJsonToDraftTasks(json: string, startDateIso: str
         assigneePositionId: isEmployee ? null : assigneePositionId,
         selectedAssigneeUserId: isEmployee ? null : assignedToId,
         dueDays: diffDaysBetweenIsoDates(startDateIso, dueDate),
-        isRequired: item['isRequired'] === true
+        isRequired: item['isRequired'] === true,
+        details: detailsFromEditedJson(item)
       };
     });
   } catch {

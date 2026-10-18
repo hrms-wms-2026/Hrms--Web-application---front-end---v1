@@ -26,6 +26,13 @@ export class ChecklistApiService {
     return this.http.get<ChecklistTemplateDetailResponse>(`${environment.apiUrl}/people/checklist-templates/${id}`);
   }
 
+  /** An attachment already saved on one of the template's tasks. */
+  downloadTemplateFile(templateId: string, fileId: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/people/checklist-templates/${templateId}/files/${fileId}`, {
+      responseType: 'blob'
+    });
+  }
+
   createChecklistTemplate(payload: CreateChecklistTemplateRequest): Observable<ChecklistTemplateDetailResponse> {
     const headers = { 'Idempotency-Key': crypto.randomUUID() };
     return this.http.post<ChecklistTemplateDetailResponse>(

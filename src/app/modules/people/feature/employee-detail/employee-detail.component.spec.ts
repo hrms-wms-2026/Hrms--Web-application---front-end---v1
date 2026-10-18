@@ -465,7 +465,7 @@ describe('EmployeeDetailComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Promotion');
   });
 
-  it('enables the Offboarding menu item and navigates to the wizard on click', () => {
+  it('with no offboarding yet, the Offboarding menu item opens the Start Offboarding popup instead of navigating', () => {
     const { fixture } = setup(detailFixture, {}, true, 'emp-99');
     fixture.detectChanges();
     fixture.componentInstance.changePositionMenuOpen.set(true);
@@ -479,7 +479,9 @@ describe('EmployeeDetailComponent', () => {
     button.click();
     fixture.detectChanges();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/people/employees', expect.any(String), 'offboarding']);
+    expect(navigateSpy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.startOffboardingOpen()).toBe(true);
+    expect(fixture.nativeElement.querySelector('app-start-offboarding-modal [role="dialog"]')).not.toBeNull();
   });
 
   it('opens the modal with changeReason=Promotion when Promotion is clicked', () => {

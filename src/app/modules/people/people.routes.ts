@@ -36,20 +36,31 @@ export const PEOPLE_ROUTES: Routes = [
         data: { title: 'Employee Detail', permissions: [MANAGES_PEOPLE, 'employees:write'] }
       },
       {
+        // Old address of an employee's offboarding; it lives under Offboarding so that sidebar item stays active.
         path: ':id/offboarding',
+        redirectTo: (route) => `/people/offboarding/${route.params['id']}`,
+        pathMatch: 'full'
+      }
+    ]
+  },
+  {
+    path: 'offboarding',
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./feature/offboarding/offboarding-overview.component').then((m) => m.OffboardingOverviewComponent),
+        canActivate: [permissionGuard],
+        data: { title: 'Offboarding', permissions: ['employees:offboard', 'employees:write'] }
+      },
+      {
+        path: ':id',
         loadComponent: () =>
           import('./feature/offboarding/offboarding-wizard.component').then((m) => m.OffboardingWizardComponent),
         canActivate: [permissionGuard],
         data: { title: 'Offboard Employee', permissions: ['employees:offboard'] }
       }
     ]
-  },
-  {
-    path: 'offboarding',
-    loadComponent: () =>
-      import('./feature/offboarding/offboarding-overview.component').then((m) => m.OffboardingOverviewComponent),
-    canActivate: [permissionGuard],
-    data: { title: 'Offboarding', permissions: ['employees:offboard', 'employees:write'] }
   },
   {
     path: 'checklists',

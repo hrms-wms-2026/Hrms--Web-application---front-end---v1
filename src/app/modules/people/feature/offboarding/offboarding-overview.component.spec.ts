@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { OffboardingApiService } from '../../data-access/offboarding-api.service';
+import { StartOffboardingModalComponent } from '../../ui/start-offboarding-modal/start-offboarding-modal.component';
 import { OffboardingOverviewComponent } from './offboarding-overview.component';
 
 describe('OffboardingOverviewComponent', () => {
@@ -40,11 +42,26 @@ describe('OffboardingOverviewComponent', () => {
     return { fixture, router, startOffboardingSpy };
   }
 
-  it('does not list the caller among their own covered employees (self-exclusion is the backend\'s job, but the UI trusts the response as-is)', async () => {
+  it('lists only employees whose offboarding is still open, not the whole reporting line', async () => {
     const { fixture } = await setup(true);
     const compiled: HTMLElement = fixture.nativeElement;
-    expect(compiled.textContent).toContain('Ada Lovelace');
-    expect(compiled.textContent).toContain('Grace Hopper');
+    expect(compiled.querySelector('[data-testid="offboarding-row-emp-2"]')?.textContent).toContain('Grace Hopper');
+    expect(compiled.querySelector('[data-testid="offboarding-row-emp-1"]')).toBeNull();
+  });
+
+  it('shows totals through the shared KPI tiles', async () => {
+    const { fixture } = await setup(true);
+    const compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.querySelectorAll('app-kpi-tiles [data-testid="kpi-tile"]').length).toBe(3);
+    expect(compiled.querySelector('[data-testid="kpi-in-progress"]')?.textContent?.trim()).toBe('1');
+    expect(compiled.querySelector('[data-testid="kpi-covered"]')?.textContent?.trim()).toBe('2');
+  });
+
+  it('shows an empty state when nobody is being offboarded', async () => {
+    const { fixture } = await setup(true, { getOffboardingOverview: () => of([overviewItems[0]]) } as Partial<OffboardingApiService>);
+    const compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.textContent).toContain('No offboardings in progress');
+    expect(compiled.textContent).not.toContain('Ada Lovelace');
   });
 
   it('shows the top-level Start Offboarding button when the caller holds employees:offboard', async () => {
@@ -59,38 +76,41 @@ describe('OffboardingOverviewComponent', () => {
     expect(compiled.textContent).not.toContain('+ Start Offboarding');
   });
 
-  it('no per-row Start Offboarding button exists for a startable employee - only the top-level one', async () => {
+  it('an in-progress row offers Continue', async () => {
     const { fixture } = await setup(true);
     const compiled: HTMLElement = fixture.nativeElement;
-    // Ada (canStartOffboarding: true) gets no per-row action at all now - starting only
-    // happens through the top-level picker. Grace (in_progress) still legitimately gets a
-    // "Continue" button to resume her existing offboarding - that's unrelated and expected.
-    const adaRow = Array.from(compiled.querySelectorAll('.rounded-lg')).find((el) => el.textContent?.includes('Ada Lovelace'));
-    expect(adaRow?.querySelector('button')).toBeNull();
-    expect(compiled.textContent).toContain('Continue');
+    expect(compiled.querySelector('[data-testid="offboarding-row-emp-2"]')?.textContent).toContain('Continue');
   });
 
-  it('opening the form restricts the employee picker to startable coverage employees only', async () => {
-    const { fixture } = await setup(true);
+  it('Start Offboarding opens a popup on the same page whose picker offers only startable employees', async () => {
+    const { fixture, router } = await setup(true);
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const compiled: HTMLElement = fixture.nativeElement;
+    expect(compiled.querySelector('[role="dialog"]')).toBeNull();
     fixture.componentInstance.openForm();
     fixture.detectChanges();
+    expect(compiled.querySelector('[role="dialog"]')?.textContent).toContain('Start offboarding');
+    expect(navigateSpy).not.toHaveBeenCalled();
     expect(fixture.componentInstance.employeeOptions()).toEqual([{ value: 'emp-1', label: 'Ada Lovelace' }]);
   });
 
-  it('submit calls OffboardingWizardStore.startOffboarding for the picked employee and navigates on success', async () => {
+  it('starting from the popup opens that employee\'s offboarding', async () => {
     const { fixture, router, startOffboardingSpy } = await setup(true);
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     fixture.componentInstance.openForm();
-    fixture.componentInstance.form.patchValue({ employeeId: 'emp-1', lastWorkingDate: '2026-12-01' });
-    await fixture.componentInstance.submit();
+    fixture.detectChanges();
+    const modal = fixture.debugElement.query(By.directive(StartOffboardingModalComponent)).componentInstance as StartOffboardingModalComponent;
+    modal.form.patchValue({ employeeId: 'emp-1', lastWorkingDate: '2026-12-01' });
+    await modal.submit();
     expect(startOffboardingSpy).toHaveBeenCalledWith('emp-1', expect.objectContaining({ lastWorkingDate: '2026-12-01', reason: 'resignation' }));
-    expect(navigateSpy).toHaveBeenCalledWith(['/people/employees', 'emp-1', 'offboarding']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/offboarding', 'emp-1']);
+    expect(fixture.componentInstance.formOpen()).toBe(false);
   });
 
   it('viewOffboarding navigates to the wizard route for that employee', async () => {
     const { fixture, router } = await setup(true);
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     fixture.componentInstance.viewOffboarding('emp-2');
-    expect(navigateSpy).toHaveBeenCalledWith(['/people/employees', 'emp-2', 'offboarding']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/people/offboarding', 'emp-2']);
   });
 });
