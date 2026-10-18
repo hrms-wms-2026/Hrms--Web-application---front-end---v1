@@ -1,3 +1,4 @@
+import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
@@ -143,8 +144,12 @@ export const routes: Routes = [
           },
           {
             path: 'notifications',
-            loadComponent: loadPlaceholder,
+            loadComponent: () =>
+              import('./modules/settings/feature/notification-settings/notification-settings.component').then(
+                (m) => m.NotificationSettingsComponent
+              ),
             canActivate: [permissionGuard],
+            canDeactivate: [unsavedChangesGuard],
             data: { title: 'Notification Settings', permissions: ['notifications:manage'] }
           },
           {
