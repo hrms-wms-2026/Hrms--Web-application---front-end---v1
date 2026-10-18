@@ -90,6 +90,7 @@ const APPROVAL_COLUMNS: readonly DataTableColumn[] = [
             [busyRowId]="busyId()"
             [rowFocusable]="true"
             [emptyMessage]="store.items().length === 0 ? 'No approval requests in this project yet.' : 'No requests match these filters.'"
+            [rowClickable]="true"
             (rowClicked)="onSelect($event)"
           >
             <ng-template appDataTableCell="title" let-item>

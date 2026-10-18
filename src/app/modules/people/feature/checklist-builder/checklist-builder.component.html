@@ -567,20 +567,12 @@
                   />
                 </div>
                 <div class="w-full sm:w-56">
-                  <select
-                    class="cb-assigned-field__select"
-                    [attr.aria-label]="'Category for task ' + (idx + 1)"
+                  <app-select
+                    [ariaLabel]="'Category for task ' + (idx + 1)"
+                    [options]="taskCategoryOptions"
                     [value]="taskGroup.value.category || ''"
-                    (change)="taskGroup.get('category')?.setValue($any($event.target).value)"
-                  >
-                    <option value="">No category</option>
-                    <option value="asset_return">Asset Return</option>
-                    <option value="access_removal">Access Removal</option>
-                    <option value="document_handover">Document Handover</option>
-                    <option value="final_settlement">Final Settlement</option>
-                    <option value="knowledge_handover">Knowledge Handover</option>
-                    <option value="other">Other</option>
-                  </select>
+                    (valueChange)="taskGroup.get('category')?.setValue($event)"
+                  />
                 </div>
               </div>
             }

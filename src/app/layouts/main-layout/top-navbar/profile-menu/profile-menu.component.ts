@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -28,7 +28,23 @@ export class ProfileMenuComponent {
   readonly email = input<string | null | undefined>(undefined);
 
   readonly isOpen = signal(false);
+  /**
+   * Viewing the app is what makes someone online (the backend counts web-app requests), so the
+   * badge only drops when this browser loses its connection.
+   */
+  readonly isOnline = signal(typeof navigator === 'undefined' ? true : navigator.onLine);
   readonly isPreferencesOpen = signal(false);
+
+  constructor() {
+    if (typeof window === 'undefined') return;
+    const sync = () => this.isOnline.set(navigator.onLine);
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    inject(DestroyRef).onDestroy(() => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    });
+  }
   readonly activeMode = signal<'appearance' | 'profile'>('appearance');
   readonly activeProfileSubTab = signal<ProfileSubTabId>('personal');
 

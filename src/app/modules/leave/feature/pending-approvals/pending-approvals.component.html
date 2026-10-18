@@ -1,10 +1,7 @@
 <section class="to-page">
   <header class="to-header">
-    <div>
-      <p class="to-kicker">TIME OFF</p>
-      <h1 class="to-title">Pending Approvals</h1>
-      <p class="to-subtitle">Requests waiting on your decision.</p>
-    </div>
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" currentLabel="Pending Approvals" icon="time-off" />
+    <h1 class="to-sr-only">Pending Approvals</h1>
     <div class="to-header-actions">
       @if (canApprove()) {
         <app-button variant="secondary" data-testid="cover-approvals" (click)="openCover()">Cover my approvals</app-button>
@@ -16,6 +13,9 @@
     <button type="button" role="tab" class="to-tab" data-testid="tab-history" [attr.aria-selected]="tab() === 'history'" (click)="setTab('history')">History</button>
   </div>
   @if (tab() === 'waiting') {
+    @if (!store.pendingLoading() && !store.pendingError() && store.pending().length > 0) {
+      <app-kpi-tiles ariaLabel="Approval totals" [tiles]="approvalKpiTiles()" />
+    }
     @if (selectedIds().size > 0) {
       <div class="to-bulk">
         <span>{{ selectedIds().size }} selected</span>
@@ -30,7 +30,7 @@
       <app-date-picker placeholder="To" [value]="store.pendingFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
     </div>
     @if (store.pendingLoading()) {
-      <div class="to-loading" aria-busy="true" aria-label="Loading pending approvals"><span></span><span></span><span></span></div>
+      <div class="to-loading"><app-loader /></div>
     } @else if (store.pendingError()) {
       <app-error-state [message]="store.pendingError()!" [retryable]="true" (retry)="store.loadPending()" />
     } @else if (store.pending().length === 0) {
@@ -38,10 +38,6 @@
         <app-empty-state title="No pending leave requests" description="You’re all caught up. New requests will show here." />
       </div>
     } @else {
-      <section class="to-metrics" aria-label="Approval totals">
-        <article class="to-metric"><p class="to-metric__label">Waiting</p><p class="to-metric__value">{{ store.pending().length }}</p></article>
-        <article class="to-metric"><p class="to-metric__label">Selected</p><p class="to-metric__value">{{ selectedIds().size }}</p></article>
-      </section>
       <div class="to-table-card">
         <app-leave-pending-approvals-table [rows]="store.pending()" [selectedIds]="selectedIds()" (rowClicked)="onRowClicked($event)" (selectionChanged)="onSelectionChanged($event)" />
       </div>
@@ -52,7 +48,7 @@
       <app-date-picker placeholder="To" [value]="store.historyFilter().toDate ?? ''" (valueChange)="onHistoryToChange($event)" />
     </div>
     @if (store.historyLoading()) {
-      <div class="to-loading" aria-busy="true" aria-label="Loading approval history"><span></span><span></span><span></span></div>
+      <div class="to-loading"><app-loader /></div>
     } @else if (store.historyError()) {
       <app-error-state [message]="store.historyError()!" [retryable]="true" (retry)="store.loadHistory()" />
     } @else if (store.history().length === 0) {

@@ -81,6 +81,19 @@ export const ProfileStore = signalStore(
       }
     },
 
+    async removeAvatar(): Promise<boolean> {
+      patchState(store, { saving: true, saveError: null });
+      try {
+        await firstValueFrom(api.removeAvatar());
+        await this.loadProfile();
+        patchState(store, { saving: false });
+        return true;
+      } catch (err) {
+        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to remove photo.') });
+        return false;
+      }
+    },
+
     async addEmergencyContact(payload: UpsertEmergencyContactRequest): Promise<boolean> {
       patchState(store, { saving: true, saveError: null });
       try {

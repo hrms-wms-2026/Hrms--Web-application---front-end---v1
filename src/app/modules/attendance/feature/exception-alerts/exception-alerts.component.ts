@@ -5,6 +5,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { ExceptionEvidencePanelComponent } from './exception-evidence-panel/exception-evidence-panel.component';
 import {
   EXCEPTION_ALERT_STATUS_LABELS,
@@ -33,7 +34,7 @@ const ACTION_SUCCESS: Record<ExceptionAlertAction, string> = {
 @Component({
   selector: 'app-exception-alerts',
   standalone: true,
-  imports: [FormsModule, BreadcrumbHeaderComponent, ButtonComponent, ModalComponent, ExceptionEvidencePanelComponent],
+  imports: [FormsModule, BreadcrumbHeaderComponent, ButtonComponent, ModalComponent, ExceptionEvidencePanelComponent, SelectComponent],
   templateUrl: './exception-alerts.component.html',
   styleUrl: './exception-alerts.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -45,6 +46,14 @@ export class ExceptionAlertsComponent implements OnInit {
 
   readonly statusOptions = Object.entries(EXCEPTION_ALERT_STATUS_LABELS) as [ExceptionAlertStatus, string][];
   readonly typeOptions = Object.entries(EXCEPTION_ALERT_TYPE_LABELS) as [ExceptionAlertType, string][];
+  readonly statusSelectOptions: readonly SelectOption[] = [
+    { value: '', label: 'All statuses' },
+    ...this.statusOptions.map(([value, label]) => ({ value, label }))
+  ];
+  readonly typeSelectOptions: readonly SelectOption[] = [
+    { value: '', label: 'All types' },
+    ...this.typeOptions.map(([value, label]) => ({ value, label }))
+  ];
   readonly canAcknowledge = canAcknowledge;
   readonly canResolve = canResolve;
   readonly canEscalate = canEscalate;

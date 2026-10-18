@@ -1,26 +1,4 @@
-.lpa-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
-.lpa-table th {
-  text-align: left;
-  padding: 0.68rem 0.75rem;
-  background: var(--color-surface-secondary);
-  color: var(--color-text-secondary);
-  font-weight: 750;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  border-bottom: 1px solid var(--color-border);
-}
-.lpa-table td {
-  padding: 0.78rem 0.75rem;
-  color: var(--color-text-primary);
-  border-bottom: 1px solid var(--color-border);
-  vertical-align: middle;
-}
-.lpa-table tbody tr { cursor: pointer; }
-.lpa-table tbody tr:hover { background: var(--color-surface-secondary); }
-.lpa-table tbody tr:last-child td { border-bottom: 0; }
-.lpa-table input[type="checkbox"] { accent-color: var(--color-accent); width: 0.95rem; height: 0.95rem; }
+/* Table shell comes from shared app-data-table; only cell content is styled here. */
 .lpa-person { display: flex; align-items: center; gap: 0.6rem; }
 .lpa-avatar {
   display: grid;

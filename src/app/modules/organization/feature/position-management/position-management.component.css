@@ -259,20 +259,14 @@ app-position-template-drawer {
   box-shadow: none;
   height: calc(100vh - 115px - var(--bottom-tray-offset, 0px));
   min-height: calc(100vh - 115px - var(--bottom-tray-offset, 0px));
-  /* Panning moves the tree with a transform; the canvas itself never scrolls, so the grid and
-     minimap layers stay pinned to it. */
-  overflow: hidden;
-  overscroll-behavior: contain;
-  position: relative;
-  isolation: isolate;
-  cursor: grab;
-  touch-action: none;
+  /* Grid, panning, zoom and minimap come from app-pan-zoom-canvas (this element's host). */
 }
 
-.pm-tree-container--panning {
-  cursor: grabbing;
-  user-select: none;
-  -webkit-user-select: none;
+/* The fixed layer above the chart: title, toolbar and empty/error states. */
+.pm-canvas-chrome {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .pm-tree-container--drop-active {
@@ -306,17 +300,6 @@ app-position-template-drawer {
   font-size: 0.9375rem;
   font-weight: 700;
   color: var(--color-text-primary);
-}
-
-.pm-tree-list-wrapper {
-  /* Offset parent for the minimap's card measurements. */
-  position: relative;
-  transform-origin: top center;
-  transition: transform 0.15s ease-out;
-  width: 100%;
-  will-change: transform;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .pm-tree-list {

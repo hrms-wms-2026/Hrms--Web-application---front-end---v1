@@ -1,20 +1,4 @@
-.lba-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.lba-table th {
-  text-align: left;
-  padding: 0.55rem 0.7rem;
-  color: var(--color-text-secondary);
-  font-weight: 750;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  border-bottom: 1px solid var(--color-border);
-}
-.lba-table td {
-  padding: 0.68rem 0.7rem;
-  color: var(--color-text-primary);
-  border-bottom: 1px solid var(--color-border);
-}
-.lba-table tbody tr:last-child td { border-bottom: 0; }
+/* Table shell comes from shared app-data-table; only cell content is styled here. */
 .lba-muted { color: var(--color-text-secondary); font-size: 0.74rem; }
 .lba-change-type {
   display: inline-block;
@@ -38,4 +22,3 @@
   cursor: pointer;
 }
 .lba-load-more:disabled { opacity: 0.5; cursor: not-allowed; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

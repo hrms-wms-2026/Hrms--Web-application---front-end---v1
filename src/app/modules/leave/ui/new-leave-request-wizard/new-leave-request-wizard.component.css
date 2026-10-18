@@ -8,7 +8,7 @@
   text-transform: uppercase;
 }
 .nlw-field { display: flex; flex-direction: column; gap: 0.3rem; color: var(--color-text-secondary); font-size: 0.8rem; }
-.nlw-field select, .nlw-field textarea {
+.nlw-field textarea {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.5rem 0.65rem;
@@ -16,8 +16,7 @@
   color: var(--color-text-primary);
   font: inherit;
 }
-.nlw-field select:focus, .nlw-field textarea:focus { outline: 2px solid var(--color-focus-ring); border-color: var(--color-accent); }
-.nlw-zero-balance { color: var(--color-text-secondary); }
+.nlw-field textarea:focus { outline: 2px solid var(--color-focus-ring); border-color: var(--color-accent); }
 .nlw-picker-trigger {
   text-align: left;
   border: 1px dashed var(--color-border);

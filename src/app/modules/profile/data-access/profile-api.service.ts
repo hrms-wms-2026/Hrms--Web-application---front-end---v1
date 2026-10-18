@@ -30,6 +30,10 @@ export class ProfileApiService {
     return this.http.put<{ avatarFileId: string | null }>(`${this.base}/avatar`, { fileId });
   }
 
+  removeAvatar(): Observable<void> {
+    return this.http.delete<void>(`${this.base}/avatar`);
+  }
+
   listDocuments(): Observable<EmployeeDocument[]> {
     return this.http.get<EmployeeDocument[]>(`${this.base}/documents`);
   }

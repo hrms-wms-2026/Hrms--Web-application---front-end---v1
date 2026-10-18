@@ -1,10 +1,25 @@
 /** Quiet Operations Desk: HR's org-wide read-only ledger of every leave request. */
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 import { LeaveRequestAllListItemResponse } from '../../models/leave-approval.model';
 
-@Component({ selector: 'app-leave-request-all-table', standalone: true, imports: [CommonModule], templateUrl: './leave-request-all-table.component.html', styleUrl: './leave-request-all-table.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-leave-request-all-table', standalone: true, imports: [CommonModule, DataTableComponent, DataTableCellDirective], templateUrl: './leave-request-all-table.component.html', styleUrl: './leave-request-all-table.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeaveRequestAllTableComponent {
+  protected readonly columns: readonly DataTableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'department', label: 'Department' },
+    { key: 'type', label: 'Type' },
+    { key: 'from', label: 'From' },
+    { key: 'to', label: 'To' },
+    { key: 'hours', label: 'Hours' },
+    { key: 'approver', label: 'Approver' },
+    { key: 'status', label: 'Status' },
+    { key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' as const }
+  ];
+  protected readonly trackByRequest = (row: LeaveRequestAllListItemResponse): string => row.requestId;
+  protected readonly rowTestId = (): string => 'all-request-row';
+
   @Input({ required: true }) rows: readonly LeaveRequestAllListItemResponse[] = [];
   @Output() rowClicked = new EventEmitter<string>();
   @Output() cancelRequested = new EventEmitter<LeaveRequestAllListItemResponse>();

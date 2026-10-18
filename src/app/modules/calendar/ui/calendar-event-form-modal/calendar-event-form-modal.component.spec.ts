@@ -684,7 +684,7 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
     const repeat = fixture.nativeElement.querySelector('[data-testid="calendar-form-repeat"]');
     expect(repeat).not.toBeNull();
-    expect(repeat.tagName.toLowerCase()).toBe('app-listbox-select');
+    expect(repeat.tagName.toLowerCase()).toBe('app-select');
     expect(repeat.querySelector('select')).toBeNull();
   });
 

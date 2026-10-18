@@ -93,4 +93,74 @@ describe('PersonalInfoFormComponent', () => {
 
     expect(fixture.nativeElement.querySelector('.avatar__image')).toBeNull();
   });
+
+  it('opens the file picker when the photo circle is clicked and there is no photo', async () => {
+    await TestBed.configureTestingModule({
+      imports: [PersonalInfoFormComponent, ReactiveFormsModule],
+      providers: [fileApiMockProvider]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(PersonalInfoFormComponent);
+    fixture.componentRef.setInput('personalInformation', samplePersonalInfo);
+    fixture.detectChanges();
+
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('.pif-photo-input');
+    const clickSpy = vi.spyOn(input, 'click').mockImplementation(() => undefined);
+    fixture.nativeElement.querySelector('.pif-avatar-wrap').click();
+
+    expect(clickSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.photoDialogOpen()).toBe(false);
+  });
+
+  it('opens the Change photo popup when the photo circle is clicked and a photo exists', async () => {
+    await TestBed.configureTestingModule({
+      imports: [PersonalInfoFormComponent, ReactiveFormsModule],
+      providers: [fileApiMockProvider]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(PersonalInfoFormComponent);
+    fixture.componentRef.setInput('personalInformation', { ...samplePersonalInfo, avatarFileId: 'file-9' });
+    fixture.detectChanges();
+
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('.pif-photo-input');
+    const clickSpy = vi.spyOn(input, 'click').mockImplementation(() => undefined);
+    fixture.componentInstance.onAvatarClick(input);
+
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.photoDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.pickedPhoto()).toBeNull();
+  });
+
+  it('opens the Change photo popup with the picked file after choosing a photo', async () => {
+    await TestBed.configureTestingModule({
+      imports: [PersonalInfoFormComponent, ReactiveFormsModule],
+      providers: [fileApiMockProvider]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(PersonalInfoFormComponent);
+    fixture.componentRef.setInput('personalInformation', samplePersonalInfo);
+    fixture.detectChanges();
+
+    const file = new File(['x'], 'me.png', { type: 'image/png' });
+    fixture.componentInstance.onAvatarFileSelected({ target: { files: [file], value: 'me.png' } } as unknown as Event);
+
+    expect(fixture.componentInstance.photoDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.pickedPhoto()).toBe(file);
+  });
+
+  it('emits avatarSelected and closes the popup when the framed photo is saved', async () => {
+    await TestBed.configureTestingModule({
+      imports: [PersonalInfoFormComponent, ReactiveFormsModule],
+      providers: [fileApiMockProvider]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(PersonalInfoFormComponent);
+    fixture.componentRef.setInput('personalInformation', samplePersonalInfo);
+    fixture.detectChanges();
+    const emitted: File[] = [];
+    fixture.componentInstance.avatarSelected.subscribe((f) => emitted.push(f));
+    fixture.componentInstance.photoDialogOpen.set(true);
+
+    const file = new File(['x'], 'avatar.jpg', { type: 'image/jpeg' });
+    fixture.componentInstance.onPhotoSaved(file);
+
+    expect(emitted).toEqual([file]);
+    expect(fixture.componentInstance.photoDialogOpen()).toBe(false);
+  });
 });

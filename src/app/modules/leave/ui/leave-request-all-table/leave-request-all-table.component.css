@@ -1,24 +1,4 @@
-.lra-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.lra-table th {
-  text-align: left;
-  padding: 0.68rem 0.75rem;
-  background: var(--color-surface-secondary);
-  color: var(--color-text-secondary);
-  font-weight: 750;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  border-bottom: 1px solid var(--color-border);
-}
-.lra-table td {
-  padding: 0.78rem 0.75rem;
-  color: var(--color-text-primary);
-  border-bottom: 1px solid var(--color-border);
-  vertical-align: middle;
-}
-.lra-table tbody tr { cursor: pointer; }
-.lra-table tbody tr:hover { background: var(--color-surface-secondary); }
-.lra-table tbody tr:last-child td { border-bottom: 0; }
+/* Table shell comes from shared app-data-table; only cell content is styled here. */
 .lra-person { display: flex; align-items: center; gap: 0.6rem; }
 .lra-avatar {
   display: grid;
@@ -49,4 +29,3 @@
   cursor: pointer;
 }
 .lra-cancel:hover { border-color: var(--color-danger); background: var(--color-danger-subtle); }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

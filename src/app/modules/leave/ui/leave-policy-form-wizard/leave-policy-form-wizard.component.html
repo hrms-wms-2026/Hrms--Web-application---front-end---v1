@@ -60,32 +60,15 @@
           <p class="lpw-hint">Days and carry-forward start from each leave type. Change a value only if this policy is different.</p>
           <div class="lpw-fields">
             <div class="lpw-two">
-              <label>Accrual method
-                <select [value]="draft().accrualMethod" (change)="setValue('accrualMethod', $any($event.target).value)">
-                  <option value="annual">Annual</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="daily">Daily</option>
-                </select>
-              </label>
-              <label>Accrual starts
-                <select [value]="draft().accrualStart" (change)="setValue('accrualStart', $any($event.target).value)">
-                  <option value="immediately">Immediately</option>
-                  <option value="after_probation">After probation</option>
-                  <option value="after_n_months">After N months</option>
-                </select>
-              </label>
+              <app-select label="Accrual method" [options]="accrualMethodOptions" [value]="draft().accrualMethod" (valueChange)="setValue('accrualMethod', $event)" />
+              <app-select label="Accrual starts" [options]="accrualStartOptions" [value]="draft().accrualStart" (valueChange)="setValue('accrualStart', $event)" />
             </div>
             @if (draft().accrualStart === 'after_n_months') {
               <label>Months before accrual begins <em>*</em>
                 <input type="number" min="1" [value]="draft().accrualAfterNMonths ?? ''" (input)="setNullableNumber('accrualAfterNMonths', $any($event.target).value)" />
               </label>
             }
-            <label>Proration method
-              <select [value]="draft().prorationMethod" (change)="setValue('prorationMethod', $any($event.target).value)">
-                <option value="calendar_days">Calendar days</option>
-                <option value="working_days">Working days</option>
-              </select>
-            </label>
+            <app-select label="Proration method" [options]="prorationMethodOptions" [value]="draft().prorationMethod" (valueChange)="setValue('prorationMethod', $event)" />
           </div>
 
           <div class="lpw-rule-list">
@@ -95,14 +78,7 @@
                   <strong>{{ leaveTypeFor(rule.leaveTypeId)?.name || 'Leave type' }}</strong>
                   <button type="button" (click)="removeRule(index)">Remove</button>
                 </div>
-                <label>Leave type
-                  <select [value]="rule.leaveTypeId" (change)="updateRule(index, 'leaveTypeId', $any($event.target).value)">
-                    <option value="">Select leave type</option>
-                    @for (type of activeLeaveTypes(); track type.id) {
-                      <option [value]="type.id">{{ type.name }} ({{ type.code }})</option>
-                    }
-                  </select>
-                </label>
+                <app-select label="Leave type" [options]="leaveTypeOptions" [value]="rule.leaveTypeId" (valueChange)="updateRule(index, 'leaveTypeId', $event)" />
                 <div class="lpw-two">
                   <label>Annual days
                     <input type="number" min="0.5" [value]="rule.annualEntitlementDays" (input)="updateRule(index, 'annualEntitlementDays', $any($event.target).value)" />
@@ -155,13 +131,7 @@
                 <input type="number" min="0" max="100" [value]="draft().maxTeamAbsencePercent ?? ''" (input)="setNullableNumber('maxTeamAbsencePercent', $any($event.target).value)" />
               </label>
             </div>
-            <label>Approval mode
-              <select [value]="draft().approvalMode" (change)="setValue('approvalMode', $any($event.target).value)">
-                <option value="any_one">Any one approver</option>
-                <option value="all_must_approve">All must approve</option>
-                <option value="in_order">In order</option>
-              </select>
-            </label>
+            <app-select label="Approval mode" [options]="approvalModeOptions" [value]="draft().approvalMode" (valueChange)="setValue('approvalMode', $event)" />
           </div>
 
           <h3 class="lpw-subhead">Blackout dates <span>Optional</span></h3>

@@ -56,10 +56,9 @@
           <input type="search" placeholder="Search documents..." aria-label="Search documents" [value]="search()" (input)="onSearch($event)" />
         </label>
         <div class="dp-filter">
-          <app-custom-select
+          <app-select [vacancyBadges]="true"
             [options]="typeOptions"
             [value]="typeFilter()"
-            [searchable]="false"
             (valueChange)="onTypeFilter($event)"
           />
         </div>
@@ -70,99 +69,97 @@
       <p class="dp-error" role="alert">{{ actionError() }}</p>
     }
 
-    <div class="dp-table" role="table" aria-label="Uploaded documents">
-      <div class="dp-row dp-row--head" role="row">
-        <span role="columnheader">Name</span>
-        <span role="columnheader">Type</span>
-        <span role="columnheader">Uploaded on</span>
-        <span role="columnheader">Size</span>
-        <span role="columnheader" class="dp-col-actions">Actions</span>
+    @if (loadError()) {
+      <div class="dp-empty">
+        {{ loadError() }}
+        <button type="button" class="dp-link" (click)="retry.emit()">Retry</button>
       </div>
-
-      @if (loading() && documents().length === 0) {
-        <div class="dp-empty">Loading documents…</div>
-      } @else if (loadError()) {
-        <div class="dp-empty">
-          {{ loadError() }}
-          <button type="button" class="dp-link" (click)="retry.emit()">Retry</button>
-        </div>
-      } @else if (documents().length === 0) {
-        <div class="dp-empty">
-          No documents yet.
-          <button type="button" class="dp-link" (click)="uploadRequested.emit('cv')">Upload your first document</button>
-        </div>
-      } @else if (filtered().length === 0) {
-        <div class="dp-empty">No documents match your search.</div>
-      } @else {
-        @for (doc of filtered(); track doc.id) {
-          <!-- The whole row opens the document; the action icons stop propagation. -->
-          <div
-            class="dp-row"
-            role="row"
-            [class.dp-row--clickable]="pendingDeleteId() !== doc.id"
-            [attr.tabindex]="pendingDeleteId() === doc.id ? null : 0"
-            [attr.aria-label]="pendingDeleteId() === doc.id ? null : 'View ' + doc.name"
-            [attr.data-testid]="'doc-row-' + doc.id"
-            (click)="pendingDeleteId() !== doc.id && rowAction.emit({ action: 'view', document: doc })"
-            (keydown.enter)="pendingDeleteId() !== doc.id && rowAction.emit({ action: 'view', document: doc })"
-          >
-            @if (pendingDeleteId() === doc.id) {
-              <span class="dp-confirm" role="cell">
-                Delete <strong>{{ displayName(doc) }}</strong>? This can't be undone.
-              </span>
-              <span class="dp-confirm__actions" role="cell">
-                <button type="button" class="dp-btn" (click)="$event.stopPropagation(); pendingDeleteId.set(null)">Cancel</button>
-                <button type="button" class="dp-btn dp-btn--danger" data-testid="doc-confirm-delete" (click)="$event.stopPropagation(); confirmDelete(doc.id)">
-                  Delete
-                </button>
-              </span>
-            } @else {
-              <span class="dp-name" role="cell">
-                <span class="dp-file" [attr.data-kind]="fileKind(doc)" aria-hidden="true">
-                  @switch (fileKind(doc)) {
-                    @case ('pdf') { PDF }
-                    @case ('image') {
-                      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" /><circle cx="9.5" cy="9.5" r="1.5" /><path d="m20 15-4-4-8 9" /></svg>
-                    }
-                    @case ('word') {
-                      <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M9 12h6M9 16h6" /></svg>
-                    }
-                    @default {
-                      <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /></svg>
-                    }
-                  }
-                </span>
-                <span class="dp-name__text" [title]="doc.fileName">{{ displayName(doc) }}</span>
-              </span>
-              <span role="cell"><span class="dp-chip" [attr.data-type]="doc.documentType">{{ typeLabel(doc.documentType) }}</span></span>
-              <span class="dp-muted" role="cell">{{ doc.uploadedAt | date: 'yyyy-MM-dd' }}</span>
-              <span class="dp-muted" role="cell">{{ fileSize(doc.fileSizeBytes) }}</span>
-              <span class="dp-col-actions dp-icons" role="cell">
-                <button
-                  type="button"
-                  class="dp-icon-btn"
-                  title="Download"
-                  [attr.aria-label]="'Download ' + doc.name"
-                  data-testid="doc-download"
-                  (click)="$event.stopPropagation(); rowAction.emit({ action: 'download', document: doc })"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>
-                </button>
-                <button
-                  type="button"
-                  class="dp-icon-btn dp-icon-btn--danger"
-                  title="Delete"
-                  [attr.aria-label]="'Delete ' + doc.name"
-                  data-testid="doc-delete"
-                  (click)="$event.stopPropagation(); pendingDeleteId.set(doc.id)"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
-                </button>
-              </span>
+    } @else if (!loading() && documents().length === 0) {
+      <div class="dp-empty">
+        No documents yet.
+        <button type="button" class="dp-link" (click)="uploadRequested.emit('cv')">Upload your first document</button>
+      </div>
+    } @else {
+      <!-- The whole row opens the document; the action icons stop propagation. -->
+      <app-data-table
+        [columns]="columns"
+        [rows]="filtered()"
+        [trackBy]="trackById"
+        [rowTestId]="rowTestId"
+        caption="Uploaded documents"
+        loadingLabel="Loading documents"
+        [loading]="loading() && documents().length === 0"
+        emptyMessage="No documents match your search."
+        [rowFocusable]="true"
+        [rowClass]="rowClass"
+        (rowClicked)="openDocument($event)"
+      >
+        <ng-template appDataTableCell="name" let-doc>
+          @if (pendingDeleteId() === doc.id) {
+            <span class="dp-confirm">Delete <strong>{{ displayName(doc) }}</strong>? This can't be undone.</span>
+          } @else {
+            <span class="dp-name">
+          <span class="dp-file" [attr.data-kind]="fileKind(doc)" aria-hidden="true">
+            @switch (fileKind(doc)) {
+              @case ('pdf') { PDF }
+              @case ('image') {
+                <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" /><circle cx="9.5" cy="9.5" r="1.5" /><path d="m20 15-4-4-8 9" /></svg>
+              }
+              @case ('word') {
+                <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M9 12h6M9 16h6" /></svg>
+              }
+              @default {
+                <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /></svg>
+              }
             }
-          </div>
-        }
-      }
-    </div>
+          </span>
+              <span class="dp-name__text" [title]="doc.fileName">{{ displayName(doc) }}</span>
+            </span>
+          }
+        </ng-template>
+        <ng-template appDataTableCell="type" let-doc>
+          @if (pendingDeleteId() !== doc.id) { <span class="dp-chip" [attr.data-type]="doc.documentType">{{ typeLabel(doc.documentType) }}</span> }
+        </ng-template>
+        <ng-template appDataTableCell="uploaded" let-doc>
+          @if (pendingDeleteId() !== doc.id) { <span class="dp-muted">{{ doc.uploadedAt | date: 'yyyy-MM-dd' }}</span> }
+        </ng-template>
+        <ng-template appDataTableCell="size" let-doc>
+          @if (pendingDeleteId() !== doc.id) { <span class="dp-muted">{{ fileSize(doc.fileSizeBytes) }}</span> }
+        </ng-template>
+        <ng-template appDataTableCell="actions" let-doc>
+          @if (pendingDeleteId() === doc.id) {
+            <span class="dp-confirm__actions">
+              <button type="button" class="dp-btn" (click)="pendingDeleteId.set(null)">Cancel</button>
+              <button type="button" class="dp-btn dp-btn--danger" data-testid="doc-confirm-delete" (click)="confirmDelete(doc.id)">
+                Delete
+              </button>
+            </span>
+          } @else {
+            <span class="dp-icons">
+          <button
+            type="button"
+            class="dp-icon-btn"
+            title="Download"
+            [attr.aria-label]="'Download ' + doc.name"
+            data-testid="doc-download"
+            (click)="$event.stopPropagation(); rowAction.emit({ action: 'download', document: doc })"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>
+          </button>
+          <button
+            type="button"
+            class="dp-icon-btn dp-icon-btn--danger"
+            title="Delete"
+            [attr.aria-label]="'Delete ' + doc.name"
+            data-testid="doc-delete"
+            (click)="$event.stopPropagation(); pendingDeleteId.set(doc.id)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+          </button>
+            </span>
+          }
+        </ng-template>
+      </app-data-table>
+    }
   </div>
 </section>

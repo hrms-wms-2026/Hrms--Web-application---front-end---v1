@@ -130,22 +130,17 @@
         <!-- TREE VIEW -->
         @if (positionStore.viewMode() === 'tree') {
 
-          <div
-            #treeCanvas
+          <app-pan-zoom-canvas
             class="pm-tree-container"
-            [class.pm-tree-container--panning]="isPanning()"
             [class.pm-tree-container--drop-active]="canvasDragOver()"
-            (pointerdown)="onCanvasPointerDown($event)"
-            (pointermove)="onCanvasPointerMove($event)"
-            (pointerup)="onCanvasPointerUp($event)"
-            (pointercancel)="onCanvasPointerCancel($event)"
-            (wheel)="onTreeWheel($event)"
+            [label]="chartMode() === 'people' ? 'People hierarchy' : 'Position hierarchy'"
+            (backgroundPointerDown)="onCanvasBackgroundPressed()"
             (dragover)="onCanvasDragOver($event)"
             (dragleave)="onCanvasDragLeave()"
             (drop)="onCanvasDrop($event)"
           >
-            <app-canvas-grid />
-
+            <!-- Fixed layer: title, selection toolbar, drop hint and empty/error states. -->
+            <div canvasOverlay class="pm-canvas-chrome">
             <div class="pm-tree-header">
               <span class="pm-tree-title">{{ chartMode() === 'people' ? 'People hierarchy' : 'Position hierarchy' }}</span>
               <div class="pm-chart-switch" role="tablist" aria-label="Chart view">
@@ -206,8 +201,18 @@
                 <app-error-state [message]="peopleError()!" [retryable]="true" (retry)="loadPeopleChart(selectedLegalEntity()!.id)" />
               } @else if (peopleTree().length === 0) {
                 <app-empty-state title="No positions yet." description="Create positions and assign people to see who reports to whom." />
-              } @else {
-                <div #treeWrapper class="pm-tree-list-wrapper" [style.transform]="treeTransform()">
+              }
+            } @else if (positionStore.treeData().length === 0) {
+              <app-empty-state
+                title="No positions found"
+                description="Create your first position to start building reporting lines."
+              />
+            }
+            </div>
+
+            <!-- Pannable content: the chart itself. -->
+            @if (chartMode() === 'people') {
+              @if (peopleChartReady()) {
                   <div class="pm-tree-list">
                     @for (root of peopleTree(); track root.id) {
                       <app-tidy-tree
@@ -241,11 +246,8 @@
                       </app-tidy-tree>
                     }
                   </div>
-                </div>
-                <ng-container *ngTemplateOutlet="zoomControls" />
               }
             } @else if (positionStore.treeData().length > 0) {
-              <div #treeWrapper class="pm-tree-list-wrapper" [style.transform]="treeTransform()">
                 <div class="pm-tree-list">
                   @for (root of positionStore.treeData(); track root.id) {
                     <app-tidy-tree
@@ -276,17 +278,8 @@
                     </app-tidy-tree>
                   }
                 </div>
-              </div>
-
-              <ng-container *ngTemplateOutlet="zoomControls" />
-            } @else {
-              <app-empty-state
-                title="No positions found"
-                description="Create your first position to start building reporting lines."
-              />
             }
-
-          </div>
+          </app-pan-zoom-canvas>
 
 
         } @else {
@@ -402,19 +395,3 @@
     (cancelled)="closeReportingMoveReview()"
   />
 }
-
-<ng-template #zoomControls>
-  <!-- Overview map with zoom in / out / fit (bottom left), shared with the Work Network canvas -->
-  <app-canvas-minimap
-    [label]="chartMode() === 'people' ? 'People hierarchy overview' : 'Position hierarchy overview'"
-    [world]="miniWorld()"
-    [items]="miniItems()"
-    [viewport]="miniViewport()"
-    [canZoomIn]="treeZoom() < 1.5"
-    [canZoomOut]="treeZoom() > 0.4"
-    (navigate)="centerTreeOn($event)"
-    (zoomIn)="zoomIn()"
-    (zoomOut)="zoomOut()"
-    (fit)="fitTree()"
-  />
-</ng-template>

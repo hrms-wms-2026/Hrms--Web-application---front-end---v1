@@ -1,26 +1,29 @@
-<table class="lpa-table">
-  <caption class="sr-only">Pending leave approvals</caption>
-  <thead>
-    <tr><th></th><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Hours</th><th>Status</th></tr>
-  </thead>
-  <tbody>
-    @for (row of rows; track row.requestId) {
-      <tr data-testid="approval-row" (click)="rowClicked.emit(row.requestId)">
-        <td (click)="$event.stopPropagation()">
-          <input type="checkbox" data-testid="approval-select" [checked]="selectedIds.has(row.requestId)" [attr.aria-label]="'Select request from ' + row.employeeName" (click)="onCheckboxClick($event, row.requestId)" />
-        </td>
-        <td>
-          <div class="lpa-person">
-            <span class="lpa-avatar" aria-hidden="true">{{ initials(row.employeeName) }}</span>
-            <span>{{ row.employeeName }}</span>
-          </div>
-        </td>
-        <td>{{ row.leaveTypeName }}</td>
-        <td>{{ row.startAt | date:'yyyy-MM-dd HH:mm' }}</td>
-        <td>{{ row.endAt | date:'yyyy-MM-dd HH:mm' }}</td>
-        <td>{{ row.totalHours.toFixed(2) }}</td>
-        <td><span class="lpa-status" [class.lpa-status-info]="row.status === 'information_requested'">{{ statusLabel(row.status) }}</span></td>
-      </tr>
-    }
-  </tbody>
-</table>
+<app-data-table
+  [columns]="columns"
+  [rows]="rows"
+  [trackBy]="trackByRequest"
+  [rowTestId]="rowTestId"
+  caption="Pending leave approvals"
+  [rowClickable]="true"
+  [selectable]="true"
+  [selectedIds]="selectedIds"
+  selectAllTestId="approval-select-all"
+  selectAllAriaLabel="Select all pending requests"
+  [selectTestId]="selectTestId"
+  [selectAriaLabel]="selectAriaLabel"
+  (rowClicked)="rowClicked.emit($event.requestId)"
+  (rowSelectionChanged)="onRowSelection($event.row.requestId, $event.selected)"
+  (selectAllChanged)="onSelectAll($event)"
+>
+  <ng-template appDataTableCell="name" let-row>
+    <div class="lpa-person">
+      <span class="lpa-avatar" aria-hidden="true">{{ initials(row.employeeName) }}</span>
+      <span>{{ row.employeeName }}</span>
+    </div>
+  </ng-template>
+  <ng-template appDataTableCell="type" let-row>{{ row.leaveTypeName }}</ng-template>
+  <ng-template appDataTableCell="from" let-row>{{ row.startAt | date:'yyyy-MM-dd HH:mm' }}</ng-template>
+  <ng-template appDataTableCell="to" let-row>{{ row.endAt | date:'yyyy-MM-dd HH:mm' }}</ng-template>
+  <ng-template appDataTableCell="hours" let-row>{{ row.totalHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="status" let-row><span class="lpa-status" [class.lpa-status-info]="row.status === 'information_requested'">{{ statusLabel(row.status) }}</span></ng-template>
+</app-data-table>

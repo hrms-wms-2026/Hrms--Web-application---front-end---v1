@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { TimePickerComponent } from '../../../../shared/ui/time-picker/time-picker.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { EmployeePickerComponent } from '../../../work/ui/employee-picker/employee-picker.component';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveRequestResponse, LeaveUploadedDocument, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
@@ -26,7 +27,7 @@ function emptyDraft(): LeaveRequestDraft {
 @Component({
   selector: 'app-new-leave-request-wizard',
   standalone: true,
-  imports: [CommonModule, ModalComponent, DatePickerComponent, TimePickerComponent, EmployeePickerComponent],
+  imports: [CommonModule, ModalComponent, DatePickerComponent, TimePickerComponent, EmployeePickerComponent, SelectComponent],
   templateUrl: './new-leave-request-wizard.component.html',
   styleUrl: './new-leave-request-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -65,6 +66,21 @@ export class NewLeaveRequestWizardComponent {
   readonly activeLeaveTypes = computed(() => (this.leaveTypes as LeaveTypeResponse[]).filter((type) => type.isActive));
   readonly workWindowMissing = computed(() => !this.workStartTime || !this.workEndTime);
   readonly reasonMaxLength = 2000;
+
+  /** Leave type dropdown options with each type's remaining balance; rebuilt when the inputs change. */
+  leaveTypeOptions: readonly SelectOption[] = [];
+
+  ngOnChanges(): void {
+    this.leaveTypeOptions = [
+      { value: '', label: 'Select a leave type' },
+      ...this.leaveTypes
+        .filter((type) => type.isActive)
+        .map((type) => {
+          const remaining = this.remainingHoursFor(type.id);
+          return { value: type.id, label: remaining === null ? type.name : `${type.name} - ${remaining} hours remaining` };
+        })
+    ];
+  }
 
   ngOnInit(): void {
     if (!this.initialStartDate && !this.initialEndDate) return;

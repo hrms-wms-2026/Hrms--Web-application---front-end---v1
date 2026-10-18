@@ -11,6 +11,7 @@ import {
   faceOutcomeLabel,
   faceReasonLabel
 } from '../../../models/exception-alert.model';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../../shared/ui/data-table/data-table.component';
 
 /**
  * Flow 09 "validate the issue": the day's clock-in/out and, for identity cases, the photo that
@@ -20,12 +21,22 @@ import {
 @Component({
   selector: 'app-exception-evidence-panel',
   standalone: true,
-  imports: [ButtonComponent],
+  imports: [DataTableComponent, DataTableCellDirective, ButtonComponent],
   templateUrl: './exception-evidence-panel.component.html',
   styleUrl: './exception-evidence-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ExceptionEvidencePanelComponent implements OnInit {
+  protected readonly patternColumns: readonly DataTableColumn[] = [
+    { key: 'day', label: 'Day' },
+    { key: 'score', label: 'Activity score' },
+    { key: 'active', label: 'Active' },
+    { key: 'worked', label: 'Worked' },
+    { key: 'attendance', label: 'Attendance' }
+  ];
+  protected readonly trackByDate = (day: { date: string }): string => day.date;
+  protected readonly patternRowClass = (day: { inRule: boolean }): string => (day.inRule ? 'evidence-table__rule' : '');
+
   private readonly api = inject(ExceptionAlertsApiService);
 
   readonly alertId = input.required<string>();

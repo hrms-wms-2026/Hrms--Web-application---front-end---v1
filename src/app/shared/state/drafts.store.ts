@@ -43,7 +43,7 @@ export const DraftsStore = signalStore(
         const id = ++requestId;
         const [tasks, employees] = await Promise.allSettled([
           firstValueFrom(taskDrafts.list()),
-          permissions.hasPermission('employees:read')
+          permissions.hasPermission('employees:write')
             ? firstValueFrom(peopleApi.listDrafts({ mine: true, page: 1, pageSize: 50 }))
             : Promise.resolve({ items: [] as DraftListItemResponse[] })
         ]);

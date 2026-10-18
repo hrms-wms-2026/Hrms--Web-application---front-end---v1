@@ -1,5 +1,8 @@
 /** Quiet Operations Desk: Screen 6/8's queue - one place for a manager or HR to clear pending leave. */
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -22,7 +25,7 @@ import { LeaveApprovalHistoryTableComponent } from '../../ui/leave-approval-hist
 @Component({
   selector: 'app-pending-approvals',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, SelectComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, LeaveApprovalDelegateModalComponent, LeaveApprovalHistoryTableComponent],
+  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, SelectComponent, LeavePendingApprovalsTableComponent, LeaveApprovalDetailSheetComponent, LeaveApprovalDelegateModalComponent, LeaveApprovalHistoryTableComponent],
   templateUrl: './pending-approvals.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './pending-approvals.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -44,6 +47,10 @@ export class PendingApprovalsComponent implements OnInit {
   readonly tab = signal<'waiting' | 'history'>('waiting');
   readonly detailOpen = signal(false);
   readonly selectedIds = signal<Set<string>>(new Set());
+  readonly approvalKpiTiles = computed<readonly KpiTile[]>(() => [
+    { label: 'Waiting', value: this.store.pending().length, icon: 'clock', tone: 'warning' },
+    { label: 'Selected', value: this.selectedIds().size, icon: 'check-circle' }
+  ]);
   readonly bulkRejectOpen = signal(false);
   readonly bulkRejectReason = signal('');
   readonly coverOpen = signal(false);

@@ -45,25 +45,16 @@
         <p class="empty-copy">You have not submitted any attendance correction requests.</p>
       </div>
     } @else {
-      <div class="table-scroll">
-        <table class="attendance-table corrections-table">
-          <thead><tr><th scope="col">Date</th><th scope="col">Change</th><th scope="col">Status</th><th scope="col">Reason</th><th scope="col">Review</th><th scope="col">Actions</th></tr></thead>
-          <tbody>
-            @for (request of store.myCorrections(); track request.id) {
-              <tr>
-                <td>{{ formatDate(request.workDate) }}<span class="table-secondary">Requested</span></td>
-                <td><span class="table-primary">{{ correctionTypeLabel(request.correctionType) }}</span><span class="table-secondary">{{ correctionSummary(request) }}</span></td>
-                <td><span class="status-pill status-pill--compact">{{ correctionStatusLabel(request.status) }}</span></td>
-                <td>{{ request.reason }}</td>
-                <td><span class="table-secondary">{{ request.reviewComment || (request.reviewedAt ? 'Reviewed ' + formatDateTime(request.reviewedAt, request.timezone) : 'Not reviewed') }}</span></td>
-                <td>
-                  @if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="correctionActionIsLoading('cancel')" (click)="cancelCorrection(request.id)">Cancel request</button> }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+      <app-data-table class="corrections-table" minWidth="900px" [columns]="correctionColumns" [rows]="store.myCorrections()" [trackBy]="trackById" caption="My attendance corrections">
+        <ng-template appDataTableCell="date" let-request>{{ formatDate(request.workDate) }}<span class="table-secondary">Requested</span></ng-template>
+        <ng-template appDataTableCell="change" let-request><span class="table-primary">{{ correctionTypeLabel(request.correctionType) }}</span><span class="table-secondary">{{ correctionSummary(request) }}</span></ng-template>
+        <ng-template appDataTableCell="status" let-request><span class="status-pill status-pill--compact">{{ correctionStatusLabel(request.status) }}</span></ng-template>
+        <ng-template appDataTableCell="reason" let-request>{{ request.reason }}</ng-template>
+        <ng-template appDataTableCell="review" let-request><span class="table-secondary">{{ request.reviewComment || (request.reviewedAt ? 'Reviewed ' + formatDateTime(request.reviewedAt, request.timezone) : 'Not reviewed') }}</span></ng-template>
+        <ng-template appDataTableCell="actions" let-request>
+          @if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="correctionActionIsLoading('cancel')" (click)="cancelCorrection(request.id)">Cancel request</button> }
+        </ng-template>
+      </app-data-table>
       @if (store.myCorrectionsTotalCount() > store.myCorrectionsPageSize()) {
         <div class="tt-pagination">
           <span class="tt-pagination-info">
@@ -93,25 +84,16 @@
         <p class="empty-copy">You have not submitted any work-area change requests.</p>
       </div>
     } @else {
-      <div class="table-scroll">
-        <table class="attendance-table work-area-requests-table">
-          <thead><tr><th scope="col">Date</th><th scope="col">Change</th><th scope="col">Status</th><th scope="col">Reason</th><th scope="col">Sent to</th><th scope="col">Requested</th><th scope="col">Review</th><th scope="col">Actions</th></tr></thead>
-          <tbody>
-            @for (request of store.myWorkAreaRequests(); track request.id) {
-              <tr>
-                <td>{{ formatWorkAreaDate(request.date, request.timezone) }}</td>
-                <td><span class="table-primary">{{ workAreaLabel(request.currentExpectedWorkArea) }} → {{ workAreaLabel(request.requestedWorkArea) }}</span></td>
-                <td><span class="status-pill status-pill--compact">{{ workAreaChangeStatusLabel(request.status) }}</span></td>
-                <td>{{ request.reason }}</td>
-                <td>{{ request.receiver?.displayName || '—' }}@if (request.receiver?.positionName) { <span class="table-secondary">{{ request.receiver?.positionName }}</span> }</td>
-                <td>{{ formatDateTime(request.requestedAt, request.timezone) }}</td>
-                <td><span class="table-secondary">@if (request.reviewerDisplayName) { {{ request.reviewerDisplayName }} } @if (request.reviewedAt) { · {{ formatDateTime(request.reviewedAt, request.timezone) }} } @if (request.reviewComment) { <span class="table-note">{{ request.reviewComment }}</span> } @if (!request.reviewerDisplayName && !request.reviewedAt && !request.reviewComment) { Not reviewed }</span></td>
-                <td>@if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="store.workAreaActionLoading()" (click)="requestCancelWorkArea(request.id)">Cancel request</button> }</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+      <app-data-table minWidth="1080px" [columns]="workAreaColumns" [rows]="store.myWorkAreaRequests()" [trackBy]="trackById" caption="My work-area requests">
+        <ng-template appDataTableCell="date" let-request>{{ formatWorkAreaDate(request.date, request.timezone) }}</ng-template>
+        <ng-template appDataTableCell="change" let-request><span class="table-primary">{{ workAreaLabel(request.currentExpectedWorkArea) }} → {{ workAreaLabel(request.requestedWorkArea) }}</span></ng-template>
+        <ng-template appDataTableCell="status" let-request><span class="status-pill status-pill--compact">{{ workAreaChangeStatusLabel(request.status) }}</span></ng-template>
+        <ng-template appDataTableCell="reason" let-request>{{ request.reason }}</ng-template>
+        <ng-template appDataTableCell="sentTo" let-request>{{ request.receiver?.displayName || '—' }}@if (request.receiver?.positionName) { <span class="table-secondary">{{ request.receiver?.positionName }}</span> }</ng-template>
+        <ng-template appDataTableCell="requested" let-request>{{ formatDateTime(request.requestedAt, request.timezone) }}</ng-template>
+        <ng-template appDataTableCell="review" let-request><span class="table-secondary">@if (request.reviewerDisplayName) { {{ request.reviewerDisplayName }} } @if (request.reviewedAt) { · {{ formatDateTime(request.reviewedAt, request.timezone) }} } @if (request.reviewComment) { <span class="table-note">{{ request.reviewComment }}</span> } @if (!request.reviewerDisplayName && !request.reviewedAt && !request.reviewComment) { Not reviewed }</span></ng-template>
+        <ng-template appDataTableCell="actions" let-request>@if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="store.workAreaActionLoading()" (click)="requestCancelWorkArea(request.id)">Cancel request</button> }</ng-template>
+      </app-data-table>
       @if (store.myWorkAreaRequestsTotalCount() > store.myWorkAreaRequestsPageSize()) {
         <div class="tt-pagination"><span class="tt-pagination-info">Page {{ store.myWorkAreaRequestsPage() }} of {{ Math.ceil(store.myWorkAreaRequestsTotalCount() / store.myWorkAreaRequestsPageSize()) }}</span><div class="tt-pagination-buttons"><app-button type="button" variant="secondary" [disabled]="(store.myWorkAreaRequestsPage()) <= 1 || !!store.myWorkAreaRequestsLoading()" (pressed)="goToWorkAreaRequestsPage((store.myWorkAreaRequestsPage()) - 1)">Previous</app-button><app-button type="button" variant="secondary" [disabled]="(store.myWorkAreaRequestsPage()) * store.myWorkAreaRequestsPageSize() >= store.myWorkAreaRequestsTotalCount() || !!store.myWorkAreaRequestsLoading()" (pressed)="goToWorkAreaRequestsPage((store.myWorkAreaRequestsPage()) + 1)">Next</app-button></div></div>
       }

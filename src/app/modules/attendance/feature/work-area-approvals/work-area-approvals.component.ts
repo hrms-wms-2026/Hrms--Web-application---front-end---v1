@@ -10,16 +10,28 @@ import {
   workAreaLabel
 } from '../../models/work-area-change-request.model';
 import { TimeTrackingStore } from '../../state/time-tracking.store';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 
 @Component({
   selector: 'app-work-area-approvals',
   standalone: true,
-  imports: [FormsModule, ButtonComponent, BreadcrumbHeaderComponent, ModalComponent],
+  imports: [DataTableComponent, DataTableCellDirective, FormsModule, ButtonComponent, BreadcrumbHeaderComponent, ModalComponent],
   templateUrl: './work-area-approvals.component.html',
   styleUrl: './work-area-approvals.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorkAreaApprovalsComponent implements OnInit {
+  protected readonly columns: readonly DataTableColumn[] = [
+    { key: 'requester', label: 'Requester' },
+    { key: 'date', label: 'Date' },
+    { key: 'change', label: 'Change' },
+    { key: 'reason', label: 'Reason', wrap: true },
+    { key: 'requested', label: 'Requested' },
+    { key: 'status', label: 'Status' },
+    { key: 'action', label: 'Action', interactive: true, shrink: true }
+  ];
+  protected readonly trackById = (request: { id: string }): string => request.id;
+
   readonly store = inject(TimeTrackingStore);
   private readonly route = inject(ActivatedRoute);
   readonly embedded = input(false);

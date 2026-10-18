@@ -12,19 +12,15 @@
     </div>
 
     <div class="correction-form-grid">
-      <label class="form-field">
+      <div class="form-field">
         <span>Correction type</span>
-        <select
-          [ngModel]="type()"
-          (ngModelChange)="type.set($event); correctionPreviewReady.set(false)"
-          name="correctionType"
-        >
-          <option value="clock_in">Clock-in time</option>
-          <option value="clock_out">Clock-out time</option>
-          <option value="break">Break time</option>
-          <option value="full_day">Full day</option>
-        </select>
-      </label>
+        <app-select
+          ariaLabel="Correction type"
+          [options]="correctionTypeOptions"
+          [value]="type()"
+          (valueChange)="type.set($any($event)); correctionPreviewReady.set(false)"
+        />
+      </div>
 
       <label class="form-field">
         <span>Work date</span>

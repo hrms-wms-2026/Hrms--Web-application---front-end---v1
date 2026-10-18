@@ -16,11 +16,14 @@ import { ChecklistTemplateStore } from '../../state/checklist-template.store';
 import { ChecklistBuilderComponent } from '../checklist-builder/checklist-builder.component';
 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 
 @Component({
   selector: 'app-checklist-templates',
   standalone: true,
   imports: [
+    DataTableComponent,
+    DataTableCellDirective,
     BreadcrumbHeaderComponent,
     ButtonComponent,
     EmptyStateComponent,
@@ -33,6 +36,17 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChecklistTemplatesComponent {
+  protected readonly templateColumns = computed<DataTableColumn[]>(() => [
+    { key: 'name', label: 'Template Name' },
+    { key: 'type', label: 'Type' },
+    { key: 'applicability', label: 'Applicability' },
+    { key: 'tasks', label: 'Tasks' },
+    { key: 'status', label: 'Status' },
+    ...(this.canManage() ? [{ key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' as const }] : [])
+  ]);
+  protected readonly trackById = (template: { id: string }): string => template.id;
+  protected readonly isArchived = (template: { isActive: boolean }): boolean => !template.isActive;
+
   readonly store = inject(ChecklistTemplateStore);
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly permissionService = inject(PermissionService);

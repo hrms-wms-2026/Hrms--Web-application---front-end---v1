@@ -39,4 +39,11 @@ describe('ProfileApiService', () => {
     expect(req.request.body).toEqual({ fileId: 'file-id' });
     req.flush({ avatarFileId: 'file-id' });
   });
+
+  it('removeAvatar DELETEs /employees/me/avatar', () => {
+    service.removeAvatar().subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/employees/me/avatar`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
 });
