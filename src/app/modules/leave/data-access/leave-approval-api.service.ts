@@ -4,19 +4,11 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   ApproveLeaveRequestRequest,
-  BulkApproveLeaveRequestsRequest,
-  BulkRejectLeaveRequestsRequest,
   ChangeLeaveDecisionRequest,
-  CreateLeaveApprovalDelegateRequest,
   ForwardLeaveRequestRequest,
-  LeaveApprovalBulkResultResponse,
-  LeaveApprovalDelegateResponse,
   LeaveApprovalDecisionResponse,
   LeaveApprovalDetailResponse,
-  LeaveApprovalHistoryFilter,
-  LeaveApprovalHistoryItemResponse,
   LeaveApprovalListFilter,
-  LeavePendingApprovalListItemResponse,
   LeaveRequestAllListFilter,
   LeaveRequestAllListItemResponse,
   RejectLeaveRequestRequest,
@@ -29,11 +21,6 @@ import { CancelLeaveRequestRequest, CancelLeaveRequestResponse } from '../models
 @Injectable({ providedIn: 'root' })
 export class LeaveApprovalApiService {
   private readonly http = inject(HttpClient);
-
-  listPending(filter: LeaveApprovalListFilter): Observable<LeavePendingApprovalListItemResponse[]> {
-    return this.http.get<LeavePendingApprovalListItemResponse[]>(
-      `${environment.apiUrl}/leave/requests/pending-approvals`, { params: this.toParams(filter) });
-  }
 
   listAll(filter: LeaveRequestAllListFilter): Observable<LeaveRequestAllListItemResponse[]> {
     let params = this.toParams(filter);
@@ -70,39 +57,12 @@ export class LeaveApprovalApiService {
     return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/change-decision`, payload);
   }
 
-  listHistory(filter: LeaveApprovalHistoryFilter): Observable<LeaveApprovalHistoryItemResponse[]> {
-    let params = new HttpParams();
-    if (filter.fromDate) params = params.set('fromDate', filter.fromDate);
-    if (filter.toDate) params = params.set('toDate', filter.toDate);
-    return this.http.get<LeaveApprovalHistoryItemResponse[]>(`${environment.apiUrl}/leave/requests/approval-history`, { params });
-  }
-
   respondInfo(requestId: string, payload: RespondLeaveInformationRequest): Observable<LeaveApprovalDecisionResponse> {
     return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/respond-info`, payload);
   }
 
-  bulkApprove(payload: BulkApproveLeaveRequestsRequest): Observable<LeaveApprovalBulkResultResponse> {
-    return this.http.post<LeaveApprovalBulkResultResponse>(`${environment.apiUrl}/leave/requests/bulk-approve`, payload);
-  }
-
-  bulkReject(payload: BulkRejectLeaveRequestsRequest): Observable<LeaveApprovalBulkResultResponse> {
-    return this.http.post<LeaveApprovalBulkResultResponse>(`${environment.apiUrl}/leave/requests/bulk-reject`, payload);
-  }
-
   cancel(requestId: string, payload: CancelLeaveRequestRequest): Observable<CancelLeaveRequestResponse> {
     return this.http.post<CancelLeaveRequestResponse>(`${environment.apiUrl}/leave/requests/${requestId}/cancel`, payload);
-  }
-
-  listDelegates(): Observable<LeaveApprovalDelegateResponse[]> {
-    return this.http.get<LeaveApprovalDelegateResponse[]>(`${environment.apiUrl}/leave/approval-delegates`);
-  }
-
-  createDelegate(payload: CreateLeaveApprovalDelegateRequest): Observable<LeaveApprovalDelegateResponse> {
-    return this.http.post<LeaveApprovalDelegateResponse>(`${environment.apiUrl}/leave/approval-delegates`, payload);
-  }
-
-  deleteDelegate(id: string): Observable<void> {
-    return this.http.delete<void>(`${environment.apiUrl}/leave/approval-delegates/${id}`);
   }
 
   private toParams(filter: LeaveApprovalListFilter): HttpParams {

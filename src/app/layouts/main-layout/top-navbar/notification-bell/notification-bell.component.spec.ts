@@ -197,7 +197,7 @@ describe('NotificationBellComponent', () => {
     );
   });
 
-  it('navigates to Approvals for objective_change_request', async () => {
+  it('sends an objective_change_request that resolves to the old Approvals tab to the Inbox', async () => {
     const item = {
       id: 'n2',
       templateCode: 'x',
@@ -240,10 +240,10 @@ describe('NotificationBellComponent', () => {
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
 
-    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'approvals'], {});
+    expect(navigate).toHaveBeenCalledWith(['/inbox']);
   });
 
-  it('navigates an attendance correction approval notification to the approval inbox with its request id', async () => {
+  it('navigates an attendance correction approval notification to the request in the Inbox', async () => {
     const item = {
       id: 'n3', templateCode: 'attendance_correction_request_created', title: 'Correction request', body: 'Please review',
       relatedEntityType: 'attendance_correction', relatedEntityId: 'c1', isRead: false, readAt: null, createdAt: new Date(),
@@ -265,13 +265,10 @@ describe('NotificationBellComponent', () => {
     fixture.detectChanges();
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
-    expect(navigate).toHaveBeenCalledWith(
-      ['/attendance/time-tracking'],
-      { queryParams: { view: 'team', type: 'corrections', requestId: 'c1' } }
-    );
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'attendance', 'correction', 'c1']);
   });
 
-  it('navigates a Work Area approval notification to the Work Area approval inbox with its request id', async () => {
+  it('navigates a Work Area approval notification to the request in the Inbox', async () => {
     const item = {
       id: 'n-work-area', templateCode: 'work_area_change_request_created', title: 'Work-area request', body: 'Please review',
       relatedEntityType: 'work_area_change_request', relatedEntityId: 'wa-1', isRead: false, readAt: null, createdAt: new Date(),
@@ -293,10 +290,7 @@ describe('NotificationBellComponent', () => {
     fixture.detectChanges();
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
-    expect(navigate).toHaveBeenCalledWith(
-      ['/attendance/time-tracking'],
-      { queryParams: { view: 'team', type: 'work-area', requestId: 'wa-1' } }
-    );
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'attendance', 'work_mode_change', 'wa-1']);
   });
 
   it('opens my attendance history for a non-navigable requester correction notification', async () => {

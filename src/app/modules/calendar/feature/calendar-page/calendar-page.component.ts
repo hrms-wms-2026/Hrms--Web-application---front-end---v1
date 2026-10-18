@@ -234,7 +234,8 @@ export class CalendarPageComponent {
         const created = await this.store.createEvent(submission.create);
         ok = !!created;
         if (created && submission.meetingProvider) {
-          await this.store.createMeeting(created.id, submission.meetingProvider);
+          // The event was created with this meeting pending, so its invites wait for the link.
+          await this.store.createMeeting(created.id, submission.meetingProvider, true);
         }
         if (created) await this.reloadEvents();
       } else {

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { provideRouter } from '@angular/router';
 import { TreeExplanationPanelComponent } from './tree-explanation-panel.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
@@ -36,6 +37,7 @@ describe('TreeExplanationPanelComponent', () => {
     TestBed.configureTestingModule({
       imports: [TreeExplanationPanelComponent],
       providers: [
+        provideRouter([]),
         { provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'Ada Lovelace', avatarFileId: null })) } }
       ]
     });
@@ -70,6 +72,31 @@ describe('TreeExplanationPanelComponent', () => {
 
     expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts"]').classList).toContain('opacity-50');
     expect(fixture.nativeElement.querySelector('[data-testid="panel-alerts-muted"]')).not.toBeNull();
+  });
+
+  it('links each alert to its item in the Inbox', () => {
+    setup(objective);
+    fixture.componentRef.setInput('alerts', [{
+      id: 'a1', targetType: 'module', targetId: 'o1', targetTitle: 'Design', ruleCode: 'module_over_capacity',
+      subjectEmployeeId: null, message: 'Over capacity.', firstDetectedAt: '2026-09-29T00:00:00Z'
+    }]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-alert-inbox-link"]').getAttribute('href')).toBe('/inbox/work/monitor_alert/a1');
+  });
+
+  it('offers "Request more hours" on an open module (even when not its owner) and emits allocationRequested', () => {
+    setup({ ...objective, isOwner: false });
+    const requested: MilestoneTreeNode[] = [];
+    fixture.componentInstance.allocationRequested.subscribe((n) => requested.push(n));
+
+    (fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]') as HTMLButtonElement).click();
+
+    expect(requested.map((n) => n.id)).toEqual(['o1']);
+    setup({ ...objective, isAchieved: true });
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]')).toBeNull();
+    setup(sprint);
+    expect(fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]')).toBeNull();
   });
 
   it('renders objective fields and hides actions when the caller is not the owner', () => {

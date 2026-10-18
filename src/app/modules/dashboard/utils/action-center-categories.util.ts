@@ -9,6 +9,7 @@ export const ACTION_CENTER_CATEGORY_LABEL: Record<string, string> = {
   'attendance.location': 'Location changes',
   'attendance.device_change': 'Device changes',
   'monitoring.exception': 'Exceptions',
+  'calendar.meeting_exception': 'Meeting exceptions',
   'work.task_creation': 'Task creation requests',
   'work.task_edit': 'Task edit requests',
   'work.objective_change': 'Objective changes',

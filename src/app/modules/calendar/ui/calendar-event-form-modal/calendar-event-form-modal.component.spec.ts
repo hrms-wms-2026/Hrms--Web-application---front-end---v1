@@ -918,7 +918,7 @@ describe('CalendarEventFormModalComponent', () => {
 
   it('shows the Attendance section for a past event with an auto-generated Teams meeting', () => {
     fixture.componentRef.setInput('event', {
-      ...editingEvent, endDate: '2020-01-01T10:00:00Z', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc'
+      ...editingEvent, isOrganizer: true, endDate: '2020-01-01T10:00:00Z', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc'
     });
     fixture.detectChanges();
 
@@ -934,8 +934,17 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).toBeNull();
   });
 
-  it('hides the Attendance section for a past event with no meeting attached', () => {
-    fixture.componentRef.setInput('event', { ...editingEvent, endDate: '2020-01-01T10:00:00Z' });
+  it('shows the Attendance section for a past event with no meeting attached too - it may still have raised incidents', () => {
+    fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true, endDate: '2020-01-01T10:00:00Z' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).not.toBeNull();
+  });
+
+  it('hides the Attendance section from a participant who is not the organizer - the backend refuses them', () => {
+    fixture.componentRef.setInput('event', {
+      ...editingEvent, isOrganizer: false, endDate: '2020-01-01T10:00:00Z', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc'
+    });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).toBeNull();

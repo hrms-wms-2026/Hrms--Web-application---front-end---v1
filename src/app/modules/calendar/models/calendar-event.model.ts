@@ -145,7 +145,18 @@ export interface MeetingAttendeeResponse {
   durationSeconds: number | null;
 }
 
+/** An incident the meeting raised for a participant (organizer view; rule and occurrence only). */
+export interface MeetingIncidentResponse {
+  employeeName: string;
+  rule: string;
+  occurrenceStart: string;
+  /** Detected from the desktop agent rather than the provider's attendance report. */
+  estimated: boolean;
+}
+
 export interface MeetingAttendanceResponse {
   available: boolean;
   attendees: readonly MeetingAttendeeResponse[];
+  /** Filled for the organizer only. */
+  incidents?: readonly MeetingIncidentResponse[];
 }

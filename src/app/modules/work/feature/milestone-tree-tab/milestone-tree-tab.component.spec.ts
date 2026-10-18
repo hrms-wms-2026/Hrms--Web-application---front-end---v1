@@ -166,7 +166,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(memberFilter).not.toBeNull();
     expect(searchToggle.compareDocumentPosition(memberFilter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(memberFilter.querySelector('img')?.getAttribute('src')).toBe('/cached/avatar-1');
-    expect(toolbar.host.querySelector('app-task-filter-bar')).not.toBeNull();
+    expect(toolbar.host.querySelector('app-filter-bar')).not.toBeNull();
     expect(toolbar.host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
 
     (memberFilter.querySelector('.taaf__avatar') as HTMLButtonElement).click();
@@ -233,7 +233,7 @@ describe('MilestoneTreeTabComponent', () => {
       const toolbar = renderToolbar();
       expect(fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"]')).toBeNull();
       expect(fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]')).toBeNull();
-      expect(toolbar.host.querySelector('app-task-filter-bar')).not.toBeNull();
+      expect(toolbar.host.querySelector('app-filter-bar')).not.toBeNull();
       expect(toolbar.host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
       toolbar.view.destroy();
     });
@@ -448,6 +448,24 @@ describe('MilestoneTreeTabComponent', () => {
 
     expect(fixture.componentInstance.createModalOpen()).toBe(true);
     expect(fixture.componentInstance.createModalParentId()).toBe('o1');
+  });
+
+  it('"Request more hours" in the panel opens the allocation request for that module; sending it reloads the tree', async () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.allocationNode()?.id).toBe('o1');
+    expect(fixture.nativeElement.querySelector('[data-testid="allocation-request-modal"]')).not.toBeNull();
+
+    const loadsBefore = storeStub.loadProjectTree.mock.calls.length;
+    await fixture.componentInstance.onAllocationSubmitted();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.allocationNode()).toBeNull();
+    expect(storeStub.loadProjectTree.mock.calls.length).toBe(loadsBefore + 1);
   });
 
   it('reloads the tree and closes the modal after a successful create', async () => {
