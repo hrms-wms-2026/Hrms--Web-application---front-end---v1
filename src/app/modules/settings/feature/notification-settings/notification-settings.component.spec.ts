@@ -6,6 +6,7 @@ import { NotificationSettingsComponent } from './notification-settings.component
 import { NotificationSettingsApiService } from '../../data-access/notification-settings-api.service';
 import { NotificationSetting } from '../../models/notification-setting.model';
 import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
+import { unsavedChangesGuard } from '../../../../core/guards/unsaved-changes.guard';
 
 function setting(overrides: Partial<NotificationSetting> = {}): NotificationSetting {
   return {
@@ -129,6 +130,19 @@ describe('NotificationSettingsComponent', () => {
     expect(fixture.componentInstance.isDirty()).toBe(true);
     expect(unsaved.hasDirtyForm()).toBe(true);
     expect(button('save-work_approval_requested').disabled).toBe(false);
+  });
+
+  it('makes the route guard prompt for a dirty row, and Discard clears the edits', async () => {
+    const unsaved = TestBed.inject(UnsavedChangesService);
+    toggle('work_approval_requested', 'email').click();
+    fixture.detectChanges();
+
+    const leaving = TestBed.runInInjectionContext(() => unsavedChangesGuard(null as never, null as never, null as never, null as never)) as Promise<boolean>;
+
+    expect(unsaved.prompt()).not.toBeNull();
+    unsaved.choose('discard');
+    expect(await leaving).toBe(true);
+    expect(fixture.componentInstance.isDirty()).toBe(false);
   });
 
   it('keeps edits and asks to reload when the save conflicts', async () => {
