@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -52,8 +52,7 @@ import { PositionAccessModalComponent } from '../../ui/position-access-modal/pos
 import { PositionTemplateDrawerComponent, TemplatePositionSelectedEvent } from '../../ui/position-template-drawer/position-template-drawer.component';
 
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
-import { CanvasGridComponent } from '../../../../shared/ui/canvas-grid/canvas-grid.component';
-import { CanvasBox, CanvasMinimapComponent, CanvasMinimapItem, CanvasPoint } from '../../../../shared/ui/canvas-minimap/canvas-minimap.component';
+import { PanZoomCanvasComponent } from '../../../../shared/ui/pan-zoom-canvas/pan-zoom-canvas.component';
 
 @Component({
   selector: 'app-position-management',
@@ -74,8 +73,7 @@ import { CanvasBox, CanvasMinimapComponent, CanvasMinimapItem, CanvasPoint } fro
     PositionAccessModalComponent,
     PositionTemplateDrawerComponent,
     ReportingLineReviewModalComponent,
-    CanvasGridComponent,
-    CanvasMinimapComponent,
+    PanZoomCanvasComponent,
     TidyTreeComponent
   ],
   templateUrl: './position-management.component.html',
@@ -292,225 +290,16 @@ export class PositionManagementComponent {
     return `${parent.firstName ?? ''} ${parent.lastName ?? ''}`.trim();
   }
 
-  readonly treeZoom = signal(0.7);
-  readonly treePanX = signal(0);
-  readonly treePanY = signal(0);
-  readonly isPanning = signal(false);
-
-  private startPointerX = 0;
-  private startPointerY = 0;
-  private initialPanX = 0;
-  private initialPanY = 0;
-  private activePointerId: number | null = null;
-
-  readonly zoomPercentage = computed(() => Math.round(this.treeZoom() * 100));
-  readonly treeTransform = computed(
-    () => `translate(${this.treePanX()}px, ${this.treePanY()}px) scale(${this.treeZoom()})`
+  /** The People chart has data to draw (not loading, failed or empty). */
+  readonly peopleChartReady = computed(
+    () => !(this.peopleLoading() && !this.peopleNodes()) && !this.peopleError() && this.peopleTree().length > 0
   );
 
-  zoomIn(): void {
-    this.treeZoom.update((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10));
-  }
-
-  zoomOut(): void {
-    this.treeZoom.update((z) => Math.max(0.4, Math.round((z - 0.1) * 10) / 10));
-  }
-
-  resetZoom(): void {
-    this.treeZoom.set(0.7);
-    this.treePanX.set(0);
-    this.treePanY.set(0);
-  }
-
-  // ── Minimap ──────────────────────────────────────────────────────────────
-  // World coordinates are the tree wrapper's own, untransformed layout (offsets, which ignore the
-  // CSS transform). Cards are measured only when the tree DOM or canvas size changes - never while
-  // panning or zooming; the viewport rectangle is derived from pan/zoom arithmetically.
-
-  static readonly MIN_ZOOM = 0.4;
-  static readonly MAX_ZOOM = 1.5;
-  private static readonly FIT_PADDING = 48;
-
-  private readonly treeCanvas = viewChild<ElementRef<HTMLElement>>('treeCanvas');
-  private readonly treeWrapper = viewChild<ElementRef<HTMLElement>>('treeWrapper');
-  /** Card rectangles in world coordinates. */
-  readonly miniCards = signal<readonly CanvasBox[]>([]);
-  /** Canvas size, and the wrapper's untransformed offset + width inside it. */
-  private readonly canvasLayout = signal({ width: 0, height: 0, left: 0, top: 0, wrapperWidth: 0 });
-
-  readonly miniItems = computed<CanvasMinimapItem[]>(() =>
-    this.miniCards().map((c) => ({ shape: 'rect', x: c.x, y: c.y, width: c.width, height: c.height }))
-  );
-
-  readonly miniWorld = computed<CanvasBox>(() => {
-    const cards = this.miniCards();
-    if (cards.length === 0) return { x: 0, y: 0, width: 1, height: 1 };
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const c of cards) {
-      minX = Math.min(minX, c.x);
-      minY = Math.min(minY, c.y);
-      maxX = Math.max(maxX, c.x + c.width);
-      maxY = Math.max(maxY, c.y + c.height);
-    }
-    const pad = PositionManagementComponent.FIT_PADDING;
-    return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
-  });
-
-  /** What the canvas shows, mapped back through `translate(pan) scale(zoom)` around top-centre. */
-  readonly miniViewport = computed<CanvasBox | null>(() => {
-    const l = this.canvasLayout();
-    if (l.width === 0) return null;
-    const z = this.treeZoom();
-    const originX = l.wrapperWidth / 2;
-    return {
-      x: (-l.left - originX - this.treePanX()) / z + originX,
-      y: (-l.top - this.treePanY()) / z,
-      width: l.width / z,
-      height: l.height / z
-    };
-  });
-
-  /** Minimap click/drag: pans (keeping the zoom) so `world` sits in the middle of the canvas. */
-  centerTreeOn(world: CanvasPoint): void {
-    const l = this.canvasLayout();
-    const z = this.treeZoom();
-    const originX = l.wrapperWidth / 2;
-    this.treePanX.set(l.width / 2 - l.left - originX - z * (world.x - originX));
-    this.treePanY.set(l.height / 2 - l.top - z * world.y);
-  }
-
-  /** Zooms and pans so the whole chart fits the canvas (within the zoom limits). */
-  fitTree(): void {
-    this.measureTree();
-    const l = this.canvasLayout();
-    if (this.miniCards().length === 0 || l.width === 0) {
-      this.resetZoom();
-      return;
-    }
-    const world = this.miniWorld();
-    const fitted = Math.min(l.width / world.width, (l.height - l.top) / world.height);
-    const z = Math.min(PositionManagementComponent.MAX_ZOOM, Math.max(PositionManagementComponent.MIN_ZOOM, Math.floor(fitted * 100) / 100));
-    this.treeZoom.set(z);
-    // Centre horizontally; keep the top of the chart just under the header.
-    const originX = l.wrapperWidth / 2;
-    const centreX = world.x + world.width / 2;
-    this.treePanX.set(l.width / 2 - l.left - originX - z * (centreX - originX));
-    this.treePanY.set(fitted >= z ? -z * world.y : l.height / 2 - l.top - z * (world.y + world.height / 2));
-  }
-
-  private measureTree(): void {
-    const canvas = this.treeCanvas()?.nativeElement;
-    const wrapper = this.treeWrapper()?.nativeElement;
-    if (!canvas || !wrapper) {
-      this.miniCards.set([]);
-      return;
-    }
-    this.canvasLayout.set({
-      width: canvas.clientWidth,
-      height: canvas.clientHeight,
-      left: wrapper.offsetLeft,
-      top: wrapper.offsetTop,
-      wrapperWidth: wrapper.offsetWidth
-    });
-    const cards: CanvasBox[] = [];
-    wrapper.querySelectorAll<HTMLElement>('.ptn-node-card, .pcn-card').forEach((card) => {
-      let x = 0, y = 0;
-      let el: HTMLElement | null = card;
-      while (el && el !== wrapper) {
-        x += el.offsetLeft;
-        y += el.offsetTop;
-        el = el.offsetParent as HTMLElement | null;
-      }
-      cards.push({ x, y, width: card.offsetWidth, height: card.offsetHeight });
-    });
-    this.miniCards.set(cards);
-  }
-
-  // Smaller than the +/- button step (0.1) so a single wheel fling doesn't blow through the whole zoom range at once.
-  private static readonly WHEEL_ZOOM_STEP = 0.02;
-
-  onTreeWheel(event: WheelEvent): void {
-    event.preventDefault();
-    if (event.deltaY < 0) {
-      this.treeZoom.update((z) => Math.min(1.5, Math.round((z + PositionManagementComponent.WHEEL_ZOOM_STEP) * 100) / 100));
-    } else if (event.deltaY > 0) {
-      this.treeZoom.update((z) => Math.max(0.4, Math.round((z - PositionManagementComponent.WHEEL_ZOOM_STEP) * 100) / 100));
-    }
-  }
-
-  onCanvasPointerDown(event: PointerEvent): void {
-    if (event.button !== 0) return;
-
-    const target = event.target as HTMLElement | null;
-    if (
-      !target ||
-      target.closest('.ptn-node-card') ||
-      target.closest('.pcn-card') ||
-      target.closest('.ptn-drop-target-box') ||
-      target.closest('app-canvas-minimap') ||
-      target.closest('button') ||
-      target.closest('input') ||
-      target.closest('select')
-    ) {
-      return;
-    }
-
+  /** A press on empty chart space (pan/zoom live in app-pan-zoom-canvas) clears the people selection. */
+  onCanvasBackgroundPressed(): void {
     if (this.chartMode() === 'people' && this.peopleSelectionActive() && !this.choosingReportingManager()) {
       this.clearPeopleSelection();
     }
-
-    this.isPanning.set(true);
-    this.startPointerX = event.clientX;
-    this.startPointerY = event.clientY;
-    this.initialPanX = this.treePanX();
-    this.initialPanY = this.treePanY();
-    this.activePointerId = event.pointerId;
-
-    const container = event.currentTarget as HTMLElement;
-    if (container && typeof container.setPointerCapture === 'function') {
-      try {
-        container.setPointerCapture(event.pointerId);
-      } catch {
-        // Safe catch for synthetic test events
-      }
-    }
-  }
-
-  onCanvasPointerMove(event: PointerEvent): void {
-    if (!this.isPanning() || (this.activePointerId !== null && this.activePointerId !== event.pointerId)) {
-      return;
-    }
-
-    const dx = event.clientX - this.startPointerX;
-    const dy = event.clientY - this.startPointerY;
-    this.treePanX.set(this.initialPanX + dx);
-    this.treePanY.set(this.initialPanY + dy);
-  }
-
-  onCanvasPointerUp(event: PointerEvent): void {
-    this.endPanning(event);
-  }
-
-  onCanvasPointerCancel(event: PointerEvent): void {
-    this.endPanning(event);
-  }
-
-  private endPanning(event: PointerEvent): void {
-    if (!this.isPanning()) return;
-
-    this.isPanning.set(false);
-
-    const container = event.currentTarget as HTMLElement;
-    if (container && typeof container.releasePointerCapture === 'function') {
-      try {
-        if (this.activePointerId !== null && container.hasPointerCapture?.(this.activePointerId)) {
-          container.releasePointerCapture(this.activePointerId);
-        }
-      } catch {
-        // Safe catch for synthetic test events
-      }
-    }
-    this.activePointerId = null;
   }
 
 
@@ -531,35 +320,6 @@ export class PositionManagementComponent {
       if (le && this.hasReadAccess() && this.positionStore.viewMode() === 'tree' && this.chartMode() === 'people') {
         void this.loadPeopleChart(le.id);
       }
-    });
-
-    // Minimap: re-measure the cards when the rendered tree changes (data, chart mode, expand /
-    // collapse) or the canvas is resized. Batched to one measurement per frame.
-    effect((onCleanup) => {
-      const canvas = this.treeCanvas()?.nativeElement;
-      const wrapper = this.treeWrapper()?.nativeElement;
-      if (!canvas || !wrapper) {
-        this.miniCards.set([]);
-        return;
-      }
-      let frame: number | null = null;
-      const schedule = () => {
-        if (frame !== null) return;
-        frame = requestAnimationFrame(() => {
-          frame = null;
-          this.measureTree();
-        });
-      };
-      schedule();
-      const mutations = new MutationObserver(schedule);
-      mutations.observe(wrapper, { childList: true, subtree: true });
-      const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
-      resize?.observe(canvas);
-      onCleanup(() => {
-        mutations.disconnect();
-        resize?.disconnect();
-        if (frame !== null) cancelAnimationFrame(frame);
-      });
     });
   }
 

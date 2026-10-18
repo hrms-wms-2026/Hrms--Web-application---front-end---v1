@@ -59,6 +59,7 @@ describe('EmployeeDetailComponent', () => {
     const apiStub = {
       getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
       resendInvitation: vi.fn().mockReturnValue(of({ expiresAt: '2026-08-25T00:00:00Z' })),
+      revokeInvitation: vi.fn().mockReturnValue(of(undefined)),
       changePosition: vi.fn().mockReturnValue(of({ pendingApproval: false })),
       getJobJourney: vi.fn().mockReturnValue(of([])),
       getWorkGraph: vi.fn().mockReturnValue(of({ nodes: [], links: [], hiddenTaskCount: 0 })),
@@ -582,10 +583,40 @@ describe('EmployeeDetailComponent', () => {
   });
 
   it('shows the resend button only when the invitation expired unaccepted', () => {
-    const { fixture } = setup({ ...detailFixture, invitationStatus: 'expired' });
+    const { fixture } = setup({ ...detailFixture, invitationStatus: 'expired', canManageInvitation: true });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Resend invitation');
+  });
+
+  it('hides resend and revoke from someone who neither added the employee nor holds users:manage', () => {
+    const { fixture } = setup({ ...detailFixture, invitationStatus: 'expired', canManageInvitation: false });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Resend invitation');
+    expect(fixture.nativeElement.textContent).not.toContain('Revoke invitation');
+  });
+
+  it('offers revoke on a still-pending invitation', () => {
+    const { fixture } = setup({ ...detailFixture, invitationStatus: 'pending', canManageInvitation: true });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="revoke-invitation"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Resend invitation');
+  });
+
+  it('revokes the invitation, shows a success toast, and reloads the employee', async () => {
+    const { fixture, apiStub, notificationsStub } = setup({ ...detailFixture, invitationStatus: 'pending', canManageInvitation: true });
+    fixture.detectChanges();
+
+    fixture.componentInstance.revokeConfirmOpen.set(true);
+    fixture.componentInstance.revokeInvitation('emp-1');
+    await fixture.whenStable();
+
+    expect(apiStub.revokeInvitation).toHaveBeenCalledWith('emp-1');
+    expect(notificationsStub.success).toHaveBeenCalledWith('Invitation revoked.');
+    expect(fixture.componentInstance.revokeConfirmOpen()).toBe(false);
+    expect(apiStub.getEmployeeDetail).toHaveBeenCalledTimes(2);
   });
 
   it('resends the invitation, shows a success toast, and reloads the employee', async () => {

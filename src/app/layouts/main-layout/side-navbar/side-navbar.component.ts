@@ -27,9 +27,8 @@ export class SideNavbarComponent {
 
   readonly selectedCompany = this.legalEntityStore.selectedLegalEntity;
 
-  // Same URL construction as GeneralSettingsComponent.logoUrl() - the only real
-  // logo-serving route is GET /api/v1/org/legal-entities/{id}/logo (confirmed against
-  // HRMS-Backend-v1's LegalEntitiesController; there is no generic /api/v1/files/{id} route).
+  // Same URL construction as GeneralSettingsComponent.logoUrl(): the logo is served by the
+  // shared GET /api/v1/files/{logoFileId} route.
   readonly companyLogoUrl = computed(() => {
     const company = this.selectedCompany();
     return company?.logoFileId ? this.legalEntityApi.getLogoUrl(company.id, company.logoFileId) : null;

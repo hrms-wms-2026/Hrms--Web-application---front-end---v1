@@ -1727,6 +1727,11 @@ describe('AddEmployeeWizardComponent', () => {
     flushEmployeeNumberAvailabilityRequests();
   });
 
+  it('defaults the start date to today', async () => {
+    await setupWithCompany();
+    expect(fixture.componentInstance.form.controls.startDate.value).toBe(todayDateOnly());
+  });
+
   it('Save draft works with only a company and a first name', async () => {
     await setupWithCompany();
     fixture.componentInstance.form.patchValue({ firstName: 'Jane' });
@@ -1742,7 +1747,7 @@ describe('AddEmployeeWizardComponent', () => {
         lastName: null,
         workEmail: null,
         employmentType: null,
-        startDate: null,
+        startDate: todayDateOnly(),
         workModeId: null,
         editedTasksJson: null
       })
@@ -1835,3 +1840,9 @@ describe('AddEmployeeWizardComponent', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 });
+
+function todayDateOnly(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}

@@ -1,6 +1,7 @@
 import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { InboxFilterOptionDto } from '../../models/inbox.dto';
 import { INBOX_DIALOG_STYLES } from './inbox-dialog.styles';
 
@@ -27,7 +28,7 @@ const OUTCOME_HINTS: Record<string, string> = {
 @Component({
   selector: 'app-inbox-outcome-dialog',
   standalone: true,
-  imports: [ModalComponent, ButtonComponent],
+  imports: [ModalComponent, ButtonComponent, SelectComponent],
   template: `
     <app-modal [open]="open()" [title]="title()" (closed)="closed.emit()">
       <div class="idlg" data-testid="inbox-outcome-dialog">
@@ -39,12 +40,8 @@ const OUTCOME_HINTS: Record<string, string> = {
         </div>
         @if (outcome(); as o) { <p class="idlg__hint">{{ hint(o) }}</p> }
         @if (outcome() === convert) {
-          <label class="idlg__label" for="inbox-outcome-leave-type">Leave type</label>
-          <select id="inbox-outcome-leave-type" class="idlg__input" data-testid="inbox-outcome-leave-type"
-            [value]="leaveTypeId() ?? ''" (change)="leaveTypeId.set($any($event.target).value || null)">
-            <option value="">Choose a leave type</option>
-            @for (t of leaveTypes(); track t.value) { <option [value]="t.value">{{ t.label }}</option> }
-          </select>
+          <app-select data-testid="inbox-outcome-leave-type" label="Leave type" placeholder="Choose a leave type"
+            [options]="leaveTypes()" [value]="leaveTypeId() ?? ''" (valueChange)="leaveTypeId.set($event || null)" />
           @if (leaveHint()) { <p class="idlg__hint" data-testid="inbox-outcome-leave-hint">{{ leaveHint() }}</p> }
         }
         <textarea class="idlg__input" data-testid="inbox-outcome-note" rows="3" maxlength="4000" placeholder="Note (optional)"

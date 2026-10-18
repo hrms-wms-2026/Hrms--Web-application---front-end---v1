@@ -7,7 +7,15 @@
     <section class="pf-section pif-photo-section">
       <h3 class="pf-section__title">Profile photo</h3>
       <div class="pf-avatar-row">
-        <div class="pif-avatar-wrap">
+        <!-- The whole circle is the trigger: no photo yet opens the file picker, an existing photo
+             opens the Change photo popup. The pencil badge is decoration inside the same button. -->
+        <button
+          type="button"
+          class="pif-avatar-wrap"
+          [attr.aria-label]="avatarUrl() ? 'Change photo' : 'Add photo'"
+          [title]="avatarUrl() ? 'Change photo' : 'Add photo'"
+          (click)="onAvatarClick(photoInput)"
+        >
           <app-avatar
             class="pif-avatar"
             [avatarUrl]="avatarUrl()"
@@ -15,16 +23,27 @@
             [email]="personalInformation().email"
             size="xl"
           />
-          <label class="pif-avatar-edit" title="Change photo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <span class="pif-avatar-edit" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 20h9"/>
               <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
             </svg>
-            <input type="file" accept="image/*" aria-label="Change photo" (change)="onAvatarFileSelected($event)" />
-          </label>
-        </div>
+          </span>
+        </button>
+        <input #photoInput type="file" class="pif-photo-input" [accept]="photoAccept" tabindex="-1" aria-hidden="true" (change)="onAvatarFileSelected($event)" />
       </div>
     </section>
+
+    @if (photoDialogOpen()) {
+      <app-change-photo-dialog
+        [initialFile]="pickedPhoto()"
+        [existingUrl]="avatarUrl()"
+        fileName="avatar"
+        (saved)="onPhotoSaved($event)"
+        (removed)="onPhotoRemoved()"
+        (closed)="closePhotoDialog()"
+      />
+    }
 
     <section class="pf-section">
       <h3 class="pf-section__title">Basic details</h3>

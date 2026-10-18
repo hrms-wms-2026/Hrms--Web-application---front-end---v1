@@ -12,17 +12,10 @@
     }
 
     @if (step() === 1) {
-      <label class="nlw-field">
+      <div class="nlw-field">
         <span>Leave Type</span>
-        <select data-testid="leave-type-select" [value]="draft().leaveTypeId" (change)="onLeaveTypeChange($any($event.target).value)">
-          <option value="">Select a leave type</option>
-          @for (type of activeLeaveTypes(); track type.id) {
-            <option [value]="type.id" [class.nlw-zero-balance]="remainingHoursFor(type.id) === 0">
-              {{ type.name }}@if (remainingHoursFor(type.id) !== null) { - {{ remainingHoursFor(type.id) }} hours remaining}
-            </option>
-          }
-        </select>
-      </label>
+        <app-select data-testid="leave-type-select" ariaLabel="Leave type" [options]="leaveTypeOptions" [value]="draft().leaveTypeId" (valueChange)="onLeaveTypeChange($event)" />
+      </div>
       @if (draft().leaveTypeId && remainingHoursFor(draft().leaveTypeId) !== null) {
         <p class="nlw-hint" data-testid="type-balance">You have <strong>{{ formatHours(remainingHoursFor(draft().leaveTypeId)!) }}</strong> hours of {{ selectedLeaveTypeName() }} left.</p>
       }

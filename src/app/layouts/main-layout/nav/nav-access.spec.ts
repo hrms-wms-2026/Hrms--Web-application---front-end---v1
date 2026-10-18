@@ -1,3 +1,4 @@
+import { MANAGES_PEOPLE } from '../../../core/auth/state/permission.service';
 import { canAccessNavItem, NavAccessChecker } from './nav-access';
 import { NavItem } from './nav-item.model';
 import { NAV_ITEMS } from './nav-items.config';
@@ -169,10 +170,11 @@ describe('canAccessNavItem', () => {
       const people = NAV_ITEMS.find((item) => item.id === 'people')!;
 
       // Regression: the "Employees" child used to declare no requiredPermissions at all, so
-      // any user with core_hr enabled saw "People" even without employees:read/write - matching
+      // any user with core_hr enabled saw "People" even without managing anyone or employees:write - matching
       // the /people route guard's actual gate (app.routes.ts) closes that gap.
       expect(canAccessNavItem(people, checker([], ['core_hr']))).toBe(false);
-      expect(canAccessNavItem(people, checker(['employees:read'], ['core_hr']))).toBe(true);
+      // Managing people is a relationship, surfaced as the MANAGES_PEOPLE capability token.
+      expect(canAccessNavItem(people, checker([MANAGES_PEOPLE], ['core_hr']))).toBe(true);
       expect(canAccessNavItem(people, checker(['employees:write'], ['core_hr']))).toBe(true);
       // A user who only has roles:manage still sees People, via the Approvals child.
       expect(canAccessNavItem(people, checker(['roles:manage'], ['core_hr']))).toBe(true);
@@ -200,6 +202,16 @@ describe('canAccessNavItem', () => {
     expect(canAccessNavItem(clockIn, checker(['attendance:read'], []))).toBe(false);
     expect(canAccessNavItem(clockIn, checker([], ['time_attendance']))).toBe(false);
     expect(canAccessNavItem(clockIn, checker(['org:manage'], ['time_attendance']))).toBe(false);
+  });
+
+  it('settings-users needs users:read or users:manage - adding employees alone does not reveal it', () => {
+    const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
+    const users = settings.children!.find((item) => item.id === 'settings-users')!;
+
+    expect(users.path).toBe('/settings/users');
+    expect(canAccessNavItem(users, checker(['users:read'], []))).toBe(true);
+    expect(canAccessNavItem(users, checker(['users:manage'], []))).toBe(true);
+    expect(canAccessNavItem(users, checker(['employees:write'], ['core_hr']))).toBe(false);
   });
 
 });

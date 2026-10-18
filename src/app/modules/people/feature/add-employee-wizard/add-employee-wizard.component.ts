@@ -11,8 +11,7 @@ import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-pick
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
-import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
-import { SelectOption } from '../../../../shared/ui/select/select.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
@@ -79,7 +78,7 @@ const IDENTITY_CONTROLS = [
     EmptyStateComponent,
     InputComponent,
     LoaderComponent,
-    CustomSelectComponent
+    SelectComponent
   ],
   templateUrl: './add-employee-wizard.component.html',
   styleUrl: './add-employee-wizard.component.css',
@@ -206,7 +205,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     departmentId: ['', Validators.required],
     positionId: ['', Validators.required],
     employmentType: ['', Validators.required],
-    startDate: ['', Validators.required],
+    startDate: [todayDateOnly(), Validators.required],
     employeeNumber: ['', [Validators.required, Validators.maxLength(EMPLOYEE_NUMBER_MAX_LENGTH)]],
     workModeId: ['', Validators.required]
   });
@@ -590,6 +589,10 @@ export class AddEmployeeWizardComponent implements OnDestroy {
         this.syncFormToStore(value);
       }
     });
+    if (!routeDraftId) {
+      // Push the defaults (e.g. today's start date) into the store so a draft saved untouched keeps them.
+      this.syncFormToStore(this.form.getRawValue());
+    }
 
     this.markClean();
     const unregisterGuard = this.unsaved.register(this.guardHandle);
@@ -706,7 +709,7 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       departmentId: this.store.departmentId() ?? '',
       positionId: this.store.positionId() ?? '',
       employmentType: formValue.employmentType,
-      startDate: formValue.startDate,
+      startDate: formValue.startDate || todayDateOnly(),
       employeeNumber: formValue.employeeNumber,
       workModeId: formValue.workModeId ?? ''
     });
@@ -1299,4 +1302,11 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       ? 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)]'
       : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
   }
+}
+
+/** Today's date (browser-local) as YYYY-MM-DD - the default start date for a new employee. */
+function todayDateOnly(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }

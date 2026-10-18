@@ -1,5 +1,7 @@
 /** Quiet Operations Desk: Screen 6's HR-wide filterable ledger, counts + status filter chips. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -18,7 +20,7 @@ import { decisionMessage, LeaveApprovalDecisionRequest, LeaveApprovalDetailSheet
 @Component({
   selector: 'app-requests-list',
   standalone: true,
-  imports: [CommonModule, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
   templateUrl: './requests-list.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './requests-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush

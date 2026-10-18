@@ -7,6 +7,7 @@ import {
   faceOutcomeLabel,
   faceReasonLabel
 } from '../../models/exception-evidence.model';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../data-table/data-table.component';
 
 /**
  * Flow 09 "validate the issue": the day's clock-in/out and, for identity cases, the photo that raised the case, that
@@ -17,12 +18,24 @@ import {
 @Component({
   selector: 'app-exception-evidence-panel',
   standalone: true,
+  imports: [DataTableComponent, DataTableCellDirective],
   templateUrl: './exception-evidence-panel.component.html',
   styleUrl: './exception-evidence-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ExceptionEvidencePanelComponent {
   readonly evidence = input<ExceptionEvidenceResponse | null>(null);
+
+  /** The pattern days read through the app's shared table. */
+  protected readonly patternColumns: readonly DataTableColumn[] = [
+    { key: 'day', label: 'Day' },
+    { key: 'score', label: 'Activity score' },
+    { key: 'active', label: 'Active' },
+    { key: 'worked', label: 'Worked' },
+    { key: 'attendance', label: 'Attendance' }
+  ];
+  protected readonly trackByDate = (day: { date: string }): string => day.date;
+  protected readonly patternRowClass = (day: { inRule: boolean }): string => (day.inRule ? 'evidence-table__rule' : '');
 
   /** The evidence with any section the server left out (monitoring-only data for some viewers) read as empty. */
   readonly safe = computed<ExceptionEvidenceResponse | null>(() => {

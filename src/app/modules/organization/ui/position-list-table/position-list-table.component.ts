@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 import { PositionListItemResponse } from '../../models/position.model';
 import { PositionOccupancyDisplay, resolvePositionOccupancy } from '../../utils/position-occupancy';
 import { PositionSeatPreviewComponent } from '../position-seat-preview/position-seat-preview.component';
@@ -7,14 +7,36 @@ import { PositionSeatPreviewComponent } from '../position-seat-preview/position-
 @Component({
   selector: 'app-position-list-table',
   standalone: true,
-  imports: [CommonModule, PositionSeatPreviewComponent],
+  imports: [DataTableComponent, DataTableCellDirective, PositionSeatPreviewComponent],
   templateUrl: './position-list-table.component.html',
   styleUrl: './position-list-table.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PositionListTableComponent {
   @Input({ required: true }) positions: readonly PositionListItemResponse[] = [];
-  @Input() canManage = false;
+  @Input() set canManage(value: boolean) {
+    this._canManage = value;
+    this.columns = value ? [...PositionListTableComponent.baseColumns, PositionListTableComponent.actionsColumn] : PositionListTableComponent.baseColumns;
+  }
+  get canManage(): boolean {
+    return this._canManage;
+  }
+  private _canManage = false;
+
+  private static readonly baseColumns: readonly DataTableColumn[] = [
+    { key: 'name', label: 'Position name' },
+    { key: 'code', label: 'Code' },
+    { key: 'department', label: 'Department' },
+    { key: 'reportsTo', label: 'Reports to' },
+    { key: 'type', label: 'Type' },
+    { key: 'capacity', label: 'Capacity' },
+    { key: 'status', label: 'Status' }
+  ];
+  private static readonly actionsColumn: DataTableColumn = { key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' };
+
+  protected columns: readonly DataTableColumn[] = PositionListTableComponent.baseColumns;
+  protected readonly trackById = (pos: PositionListItemResponse): string => pos.id;
+  protected readonly isArchived = (pos: PositionListItemResponse): boolean => !pos.isActive;
   @Input() canConfigureAccess = false;
   @Input() departmentNameMap: Record<string, string> = {};
   @Input() positionNameMap: Record<string, string> = {};

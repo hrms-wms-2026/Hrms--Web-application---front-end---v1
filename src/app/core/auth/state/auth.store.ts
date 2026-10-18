@@ -15,6 +15,7 @@ type AuthState = {
   employeeId: string | null;
   permissions: string[];
   activeModules: string[];
+  managesPeople: boolean;
   legalAcceptanceRequired: boolean;
   pendingLegalDocuments: LegalDocumentDto[];
   workspaceSlug: string | null;
@@ -30,6 +31,7 @@ const initialState: AuthState = {
   employeeId: null,
   permissions: [],
   activeModules: [],
+  managesPeople: false,
   legalAcceptanceRequired: false,
   pendingLegalDocuments: [],
   workspaceSlug: null,
@@ -71,6 +73,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -103,6 +106,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -136,6 +140,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -163,6 +168,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -193,6 +199,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,

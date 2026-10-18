@@ -13,6 +13,8 @@ export interface AuthResponseDto {
   expires_at: string | null;
   continue_url: string | null;
   workspace: WorkspaceDto | null;
+  /** True when the user's position covers other employees; employee visibility is relationship-based. */
+  manages_people?: boolean;
   /**
    * Present only on the "every gate cleared, but this response is still on the base host" outcome
    * (TenantSessionExchangeResponseDto server-side). authenticated is false and continue_url points

@@ -1,5 +1,8 @@
 /** Quiet Operations Desk: personal and team leave positions on one Balances surface. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -28,7 +31,7 @@ export type BalanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-my-balances',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveBalanceListTableComponent, LeaveCancelConfirmDialogComponent, LeaveRespondInfoDialogComponent, LeaveRequestHistoryTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveBalanceListTableComponent, LeaveCancelConfirmDialogComponent, LeaveRespondInfoDialogComponent, LeaveRequestHistoryTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './my-balances.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './my-balances.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -55,13 +58,15 @@ export class MyBalancesComponent {
   readonly canShowTeamView = computed(() => this.permissionService.hasPermission('leave:read-team'));
   readonly canShowViewToggle = computed(() => this.canShowMyView() && this.canShowTeamView());
 
-  readonly pageSubtitle = computed(() =>
-    this.viewMode() === 'team'
-      ? 'Leave positions for your direct and indirect reports.'
-      : 'Your leave entitlement and remaining hours for the selected year.'
-  );
-
   readonly mySummary = computed(() => summarizeBalances(this.store.my()));
+  readonly myKpiTiles = computed<readonly KpiTile[]>(() => {
+    const s = this.mySummary();
+    return [
+      { label: 'Remaining', value: this.formatHours(s.remaining), hint: `across ${s.types} leave ${s.types === 1 ? 'type' : 'types'}`, icon: 'check-circle', tone: 'success', testId: 'summary-remaining' },
+      { label: 'Pending', value: this.formatHours(s.pending), hint: 'awaiting approval', icon: 'clock', tone: 'warning' },
+      { label: 'Used', value: this.formatHours(s.used), hint: `of ${this.formatHours(s.entitled)} entitled`, icon: 'layers' }
+    ];
+  });
   readonly expiringCarryForward = computed(() =>
     this.store.my().filter((balance) => balance.carriedForwardHours > 0 && !!balance.carryForwardExpiresOn)
   );

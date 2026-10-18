@@ -82,12 +82,22 @@ describe('InboxChangeSetComponent field kinds (FS1)', () => {
     fixture.componentInstance.editsChange.subscribe((e) => edits.push(e));
     const el = fixture.nativeElement as HTMLElement;
     const q = <T extends HTMLElement>(id: string) => el.querySelector(`[data-testid="${id}"]`) as T;
-    const set = (target: HTMLInputElement | HTMLSelectElement, value: string) => {
+    const set = (target: HTMLInputElement, value: string) => {
       target.value = value;
-      target.dispatchEvent(new Event(target instanceof HTMLSelectElement ? 'change' : 'input'));
+      target.dispatchEvent(new Event('input'));
       fixture.detectChanges();
     };
-    return { fixture, el, q, set, edits };
+    // The shared dropdown opens a CDK overlay panel of option buttons, not <option> children.
+    const openOptions = (id: string) => {
+      (q(id).querySelector('[data-testid="select-trigger"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      return Array.from(document.querySelectorAll('[data-testid="select-panel"] [data-testid="select-option"]')) as HTMLButtonElement[];
+    };
+    const pick = (options: HTMLButtonElement[], label: string) => {
+      options.find((option) => option.textContent?.trim() === label)!.click();
+      fixture.detectChanges();
+    };
+    return { fixture, el, q, set, openOptions, pick, edits };
   }
 
   it('edits a datetime in local time and sends it as an ISO instant', () => {
@@ -110,13 +120,17 @@ describe('InboxChangeSetComponent field kinds (FS1)', () => {
   });
 
   it('a select or employee row offers its options and shows the chosen label read-only', () => {
-    const { q, set, edits } = render();
-    const select = q<HTMLSelectElement>('inbox-edit-workModeId');
+    const { openOptions, pick, edits } = render();
 
-    expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['Office', 'Remote']);
-    set(select, 'wm1');
+    const workModes = openOptions('inbox-edit-workModeId');
+    expect(workModes.map((o) => o.textContent?.trim())).toEqual(['Office', 'Remote']);
+    pick(workModes, 'Office');
     expect(edits.at(-1)).toEqual({ workModeId: 'wm1' });
-    expect(Array.from(q<HTMLSelectElement>('inbox-edit-assigneeId').options).map((o) => o.value)).toEqual(['e1', 'e2']);
+
+    const assignees = openOptions('inbox-edit-assigneeId');
+    expect(assignees.map((o) => o.textContent?.trim())).toEqual(['Anu', 'Bala']);
+    pick(assignees, 'Bala');
+    expect(edits.at(-1)).toEqual({ workModeId: 'wm1', assigneeId: 'e2' });
 
     TestBed.resetTestingModule();
     const readOnly = render(KINDS.map((c) => ({ ...c, editable: false }))).el;

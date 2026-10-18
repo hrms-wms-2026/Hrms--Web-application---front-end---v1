@@ -63,11 +63,12 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
     click('inbox-action-resolve');
     expect(q('inbox-outcome-dialog')).not.toBeNull();
     click('inbox-outcome-convert_to_leave');
-    const select = q('inbox-outcome-leave-type') as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.value)).toEqual(['', 'lt1']);
+    (q('inbox-outcome-leave-type')?.querySelector('[data-testid="select-trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const options = Array.from(document.querySelectorAll('[data-testid="select-panel"] [data-testid="select-option"]')) as HTMLButtonElement[];
+    expect(options.map((option) => option.textContent?.trim())).toEqual(['Annual leave']);
     expect(q('inbox-outcome-leave-hint')?.textContent).toContain('balance');
-    select.value = 'lt1';
-    select.dispatchEvent(new Event('change'));
+    options[0].click();
     fixture.detectChanges();
     click('inbox-outcome-confirm');
 

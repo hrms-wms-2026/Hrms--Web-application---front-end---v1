@@ -17,12 +17,12 @@ class BlankComponent {}
 
 const inboxBadge = signal('');
 
-function setup(permissions: string[], activeModules: string[]) {
+function setup(permissions: string[], activeModules: string[], managesPeople = false) {
   TestBed.configureTestingModule({
     imports: [SideNavbarComponent],
     providers: [
       provideRouter([{ path: '**', component: BlankComponent }]),
-      { provide: AuthStore, useValue: { permissions: () => permissions, activeModules: () => activeModules } },
+      { provide: AuthStore, useValue: { permissions: () => permissions, activeModules: () => activeModules, managesPeople: () => managesPeople } },
       { provide: InboxStore, useValue: { badgeLabel: inboxBadge } }
     ]
   });
@@ -41,17 +41,18 @@ describe('SideNavbarComponent', () => {
   it('shows Calendar/Time Off/Attendance when their modules and self-service access are active, but not People without an employees permission', () => {
     // Regression: "People" used to show from core_hr alone, because its "Employees" child had
     // no permission gate of its own - self-service attendance/leave access is not an employees
-    // permission, and the real /people route guard requires employees:read or employees:write,
+    // permission, and the real /people route guard requires managing people or employees:write,
     // so People must stay hidden for this user even though core_hr is active.
     const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'Inbox', 'Calendar', 'Time Off', 'Attendance']);
   });
 
-  it('shows People once the user also holds employees:read, alongside self-service access', () => {
+  it('shows People once the user manages people (relationship, no permission), alongside self-service access', () => {
     const fixture = setup(
-      ['attendance:read-own', 'leave:read-own', 'employees:read'],
-      ['core_hr', 'calendar', 'leave', 'time_attendance']
+      ['attendance:read-own', 'leave:read-own'],
+      ['core_hr', 'calendar', 'leave', 'time_attendance'],
+      true
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'Inbox', 'People', 'Calendar', 'Time Off', 'Attendance']);
@@ -192,7 +193,7 @@ describe('SideNavbarComponent', () => {
 
     const img: HTMLImageElement = fixture.nativeElement.querySelector('.company-logo-tile__img');
     expect(img).toBeTruthy();
-    expect(img.src).toBe(`${environment.apiUrl}/org/legal-entities/co-1/logo?v=file-9`);
+    expect(img.src).toBe(`${environment.apiUrl}/files/file-9`);
   });
 
   it('resolves the same logo URL as General Settings (LegalEntityApiService.getLogoUrl) for the same company/logo id', () => {

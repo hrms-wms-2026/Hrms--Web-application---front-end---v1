@@ -1,31 +1,5 @@
-:host { display: block; }
-.lpl-wrap { overflow: auto; }
-.lpl-table {
-  width: 100%;
-  min-width: 980px;
-  border-collapse: collapse;
-  color: var(--color-text-primary);
-}
-.lpl-table th {
-  padding: 0.72rem 0.82rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-secondary);
-  color: var(--color-text-secondary);
-  font-size: 0.66rem;
-  font-weight: 750;
-  letter-spacing: 0.07em;
-  text-align: left;
-  text-transform: uppercase;
-}
-.lpl-table td {
-  padding: 0.82rem;
-  border-bottom: 1px solid var(--color-border);
-  font-size: 0.78rem;
-  vertical-align: middle;
-}
-.lpl-table tbody tr:last-child td { border-bottom: 0; }
-.lpl-table tbody tr:hover { background: var(--color-surface-secondary); }
-.lpl-table strong { display: block; font-size: 0.82rem; }
+/* Table shell comes from shared app-data-table; only cell content is styled here. */
+strong { display: block; font-size: 0.82rem; }
 .lpl-meta {
   display: block;
   margin-top: 0.2rem;
@@ -60,7 +34,7 @@
 }
 .lpl-status--inactive { color: var(--color-text-secondary); }
 .lpl-status--inactive i { background: var(--color-text-secondary); box-shadow: 0 0 0 3px var(--color-surface-secondary); }
-.lpl-actions-heading, .lpl-actions { width: 4.5rem; text-align: right; }
+.lpl-actions { display: inline-flex; gap: 2px; }
 .lpl-actions button {
   width: 1.9rem;
   height: 1.9rem;
@@ -78,4 +52,3 @@
   color: var(--color-accent);
   outline: 0;
 }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

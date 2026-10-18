@@ -1,5 +1,6 @@
 import { Component, effect, input, output, signal } from '@angular/core';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { InboxChangeDto } from '../../models/inbox.dto';
 
 /** One break of a "breaks" row, as the API takes it. */
@@ -87,7 +88,7 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
 @Component({
   selector: 'app-inbox-change-set',
   standalone: true,
-  imports: [DatePickerComponent],
+  imports: [DatePickerComponent, SelectComponent],
   template: `
     <div class="ics" data-testid="inbox-change-set">
       @for (c of changes(); track c.field) {
@@ -112,10 +113,8 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
                       [value]="editValue(c)" (input)="setEdit(c, $any($event.target).value)" />
                   }
                   @case ('priority') {
-                    <select class="ics__input" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
-                      [value]="editValue(c)" (change)="setEdit(c, $any($event.target).value)">
-                      @for (p of priorities; track p) { <option [value]="p" [selected]="p === editValue(c)">{{ capitalize(p) }}</option> }
-                    </select>
+                    <app-select class="ics__select" [attr.data-testid]="'inbox-edit-' + c.field" [ariaLabel]="c.label"
+                      [options]="priorityOptions" [value]="editValue(c)" [searchable]="false" (valueChange)="setEdit(c, $event)" />
                   }
                   @case ('longtext') {
                     <textarea class="ics__input ics__textarea" rows="3" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
@@ -138,10 +137,8 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
                   }
                   @default {
                     @if (c.kind === 'select' || (c.kind === 'employee' && c.options?.length)) {
-                      <select class="ics__input" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
-                        [value]="editValue(c)" (change)="setEdit(c, $any($event.target).value)">
-                        @for (o of c.options ?? []; track o.value) { <option [value]="o.value" [selected]="o.value === editValue(c)">{{ o.label }}</option> }
-                      </select>
+                      <app-select class="ics__select" [attr.data-testid]="'inbox-edit-' + c.field" [ariaLabel]="c.label"
+                        [options]="c.options ?? []" [value]="editValue(c)" (valueChange)="setEdit(c, $event)" />
                     } @else {
                       <span class="ics__input-wrap">
                         <input class="ics__input ics__input--bare" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
@@ -183,6 +180,9 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
     .ics__input-wrap { display: flex; height: 32px; width: 100%; min-width: 0; align-items: center; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
     .ics__input-wrap:focus-within, .ics__input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
     .ics__input { width: 100%; min-width: 0; height: 32px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 12px; outline: none; }
+    /* The shared dropdown, sized like the inline inputs beside it. */
+    .ics__select { width: 100%; min-width: 0; }
+    .ics__select ::ng-deep .app-select__trigger { height: 32px; padding: 6px 8px; border-radius: 8px; font-size: 12px; }
     .ics__input--bare { height: auto; border: 0; background: transparent; box-shadow: none !important; }
     .ics__textarea { height: auto; min-height: 64px; resize: vertical; }
     .ics__suffix { padding-right: 8px; color: var(--color-text-secondary); font-size: 12px; }
@@ -201,6 +201,8 @@ export class InboxChangeSetComponent {
   editsChange = output<Record<string, string>>();
 
   protected readonly priorities = PRIORITIES;
+  /** The app's shared dropdown takes options, not <option> children. */
+  protected readonly priorityOptions: readonly SelectOption[] = PRIORITIES.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }));
   protected readonly localValue = toLocalInput;
   protected readonly fromLocal = fromLocalInput;
   private readonly edits = signal<Record<string, string>>({});

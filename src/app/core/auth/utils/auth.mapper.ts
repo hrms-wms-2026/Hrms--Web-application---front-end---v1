@@ -7,6 +7,7 @@ export function toCurrentUserViewModel(dto: AuthResponseDto): CurrentUserViewMod
     employeeId: dto.user.employeeId ?? null,
     permissions: dto.permissions,
     activeModules: dto.active_modules,
+    managesPeople: dto.manages_people ?? false,
     authenticated: dto.authenticated,
     legalAcceptanceRequired: dto.legal_acceptance_required,
     pendingLegalDocuments: dto.pending_legal_documents ?? [],

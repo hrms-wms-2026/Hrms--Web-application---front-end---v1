@@ -108,7 +108,7 @@
 
       <span aria-hidden="true">&middot;</span>
       @if (inlineEditor() === 'timezone') {
-        <app-listbox-select
+        <app-select
           #timezoneSelect
           class="w-72"
           data-testid="calendar-form-timezone"
@@ -128,7 +128,7 @@
 
       <span aria-hidden="true">&middot;</span>
       @if (inlineEditor() === 'repeat') {
-        <app-listbox-select
+        <app-select
           #repeatSelect
           class="w-44"
           data-testid="calendar-form-repeat"
@@ -333,16 +333,13 @@
 
             @if (nomineePickerOpen()) {
               <div class="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2">
-                <select
+                <app-select
                   data-testid="calendar-form-nominee-select"
-                  class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm"
+                  ariaLabel="Nominee"
+                  [options]="nomineeOptions"
                   [value]="selectedNomineeId()"
-                  (change)="setSelectedNomineeId($any($event.target).value)"
-                >
-                  @for (nominee of eligibleNominees; track nominee.employeeId) {
-                    <option [value]="nominee.employeeId">{{ nominee.employeeName }}</option>
-                  }
-                </select>
+                  (valueChange)="setSelectedNomineeId($event)"
+                />
                 <div class="flex justify-end gap-2">
                   <app-button type="button" variant="secondary" (click)="cancelNomineePicker()">Cancel</app-button>
                   <app-button type="button" data-testid="calendar-form-submit-nominate" [disabled]="!selectedNomineeId()" (click)="submitNomineeNomination()">Submit</app-button>

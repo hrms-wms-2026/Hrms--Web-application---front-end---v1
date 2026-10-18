@@ -1,12 +1,13 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../../shared/ui/data-table/data-table.component';
 import { AttendanceHistoryRow } from '../../../models/time-tracking.model';
 import { formatDate, formatDateTime, formatMinutes, statusLabel } from '../../../utils/attendance-formatters';
 
 @Component({
   selector: 'app-attendance-history-list',
   standalone: true,
-  imports: [ButtonComponent],
+  imports: [ButtonComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './attendance-history-list.component.html',
   styleUrl: './attendance-history-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -29,6 +30,18 @@ export class AttendanceHistoryListComponent {
   readonly rowSelected = output<AttendanceHistoryRow>();
 
   readonly Math = Math;
+
+  protected readonly columns = computed<DataTableColumn[]>(() => [
+    ...(this.showEmployeeColumn() ? [{ key: 'employee', label: 'Employee' }] : []),
+    { key: 'date', label: 'Date' },
+    { key: 'clockIn', label: 'Clock in' },
+    { key: 'clockOut', label: 'Clock out' },
+    { key: 'break', label: 'Break' },
+    { key: 'status', label: 'Status' }
+  ]);
+  protected readonly trackByRecord = (row: AttendanceHistoryRow): string => row.attendanceRecordId;
+  /** Only rows with viewable details get the shared table's clickable (pointer + hover) styling. */
+  protected readonly rowClass = (row: AttendanceHistoryRow): string => (row.canViewDetails ? 'data-table__row--clickable' : '');
 
   readonly formatDate = formatDate;
   readonly formatDateTime = formatDateTime;

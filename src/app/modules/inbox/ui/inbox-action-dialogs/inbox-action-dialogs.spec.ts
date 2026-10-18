@@ -13,12 +13,20 @@ function render<T>(component: Type<T>, inputs: Record<string, unknown>) {
   const button = (id: string) => (q(id)?.querySelector('button') ?? q(id)) as HTMLButtonElement;
   const click = (id: string) => { button(id).click(); fixture.detectChanges(); };
   const type = (id: string, value: string) => {
-    const el = q(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const el = q(id) as HTMLInputElement | HTMLTextAreaElement;
     el.value = value;
-    el.dispatchEvent(new Event(el instanceof HTMLSelectElement ? 'change' : 'input'));
+    el.dispatchEvent(new Event('input'));
     fixture.detectChanges();
   };
-  return { fixture, q, button, click, type, instance: fixture.componentInstance };
+  // The shared dropdown opens a CDK overlay panel of option buttons, not <option> children.
+  const pick = (id: string, label: string) => {
+    (q(id)?.querySelector('[data-testid="select-trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const options = Array.from(document.querySelectorAll('[data-testid="select-panel"] [data-testid="select-option"]')) as HTMLButtonElement[];
+    options.find((option) => option.textContent?.trim() === label)!.click();
+    fixture.detectChanges();
+  };
+  return { fixture, q, button, click, type, pick, instance: fixture.componentInstance };
 }
 
 afterEach(() => TestBed.resetTestingModule());
@@ -44,7 +52,7 @@ describe('InboxOutcomeDialogComponent', () => {
   });
 
   it('convert to leave needs a leave type from the given options', () => {
-    const { q, button, click, type, instance } = render(InboxOutcomeDialogComponent, {
+    const { q, button, click, pick, instance } = render(InboxOutcomeDialogComponent, {
       outcomes: ['excused', 'confirmed', 'convert_to_leave'],
       leaveTypes: [{ value: 'lt1', label: 'Annual leave' }, { value: 'lt2', label: 'Sick leave' }]
     });
@@ -55,7 +63,7 @@ describe('InboxOutcomeDialogComponent', () => {
     click('inbox-outcome-convert_to_leave');
     expect(q('inbox-outcome-leave-type')).not.toBeNull();
     expect(button('inbox-outcome-confirm').disabled).toBe(true);
-    type('inbox-outcome-leave-type', 'lt2');
+    pick('inbox-outcome-leave-type', 'Sick leave');
     click('inbox-outcome-confirm');
 
     expect(sent).toEqual([{ outcome: 'convert_to_leave', comment: null, leaveTypeId: 'lt2' }]);

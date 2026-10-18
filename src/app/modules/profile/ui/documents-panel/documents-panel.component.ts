@@ -8,8 +8,8 @@ import {
   formatFileSize
 } from '../../models/employee-document.config';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
-import { SelectOption } from '../../../../shared/ui/select/select.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 
 export type DocumentRowAction = 'view' | 'download';
 
@@ -17,7 +17,7 @@ export type DocumentRowAction = 'view' | 'download';
 @Component({
   selector: 'app-documents-panel',
   standalone: true,
-  imports: [DatePipe, ButtonComponent, CustomSelectComponent],
+  imports: [DatePipe, ButtonComponent, SelectComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './documents-panel.component.html',
   styleUrls: ['../profile-panel.shared.css', './documents-panel.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -42,6 +42,18 @@ export class DocumentsPanelComponent {
   readonly search = signal('');
   readonly typeFilter = signal<EmployeeDocumentType | 'all'>('all');
   readonly pendingDeleteId = signal<string | null>(null);
+
+  protected readonly columns: readonly DataTableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'type', label: 'Type' },
+    { key: 'uploaded', label: 'Uploaded on' },
+    { key: 'size', label: 'Size' },
+    { key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' }
+  ];
+  protected readonly trackById = (doc: { id: string }): string => doc.id;
+  protected readonly rowTestId = (doc: { id: string }): string => 'doc-row-' + doc.id;
+  /** Rows waiting on a delete confirmation can't be opened, so only the others get the clickable styling. */
+  protected readonly rowClass = (doc: { id: string }): string => (this.pendingDeleteId() === doc.id ? '' : 'data-table__row--clickable');
 
   readonly filtered = computed(() => {
     const term = this.search().trim().toLowerCase();
@@ -71,6 +83,10 @@ export class DocumentsPanelComponent {
 
   onTypeFilter(value: string): void {
     this.typeFilter.set(value as EmployeeDocumentType | 'all');
+  }
+
+  openDocument(doc: EmployeeDocument): void {
+    if (this.pendingDeleteId() !== doc.id) this.rowAction.emit({ action: 'view', document: doc });
   }
 
   confirmDelete(id: string): void {

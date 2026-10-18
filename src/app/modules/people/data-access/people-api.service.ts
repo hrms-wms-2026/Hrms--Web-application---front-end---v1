@@ -67,7 +67,7 @@ import {
 
 /**
  * Targets HRMS-Backend-v1 EmployeesController (GET /api/v1/employees, GET /api/v1/employees/{id},
- * POST /api/v1/employees/{id}/resend-invitation),
+ * POST /api/v1/employees/{id}/resend-invitation, POST /api/v1/employees/{id}/revoke-invitation),
  * OnboardingDraftsController (GET/POST/PUT /api/v1/onboarding/drafts, POST /api/v1/onboarding/drafts/{id}/finalize),
  * WorkModesController (GET /api/v1/work-modes?legalEntityId={id}), and AccessGrantRequestsController
  * (POST /api/v1/onboarding/access-grant-requests/{id}/approve-and-send-invite, POST /api/v1/onboarding/access-grant-requests/{id}/reject).
@@ -99,6 +99,10 @@ export class PeopleApiService {
 
   resendInvitation(id: string): Observable<ResendInvitationResponse> {
     return this.http.post<ResendInvitationResponse>(`${environment.apiUrl}/employees/${id}/resend-invitation`, {});
+  }
+
+  revokeInvitation(id: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/employees/${id}/revoke-invitation`, {});
   }
 
   setTrayAppAccess(id: string, enabled: boolean): Observable<void> {

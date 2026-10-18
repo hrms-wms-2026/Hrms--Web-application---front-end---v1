@@ -7,8 +7,7 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
-import { SelectOption } from '../../../../shared/ui/select/select.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import {
   EMPLOYEE_NUMBER_INVALID_FORMAT_MESSAGE,
   EMPLOYEE_NUMBER_IN_USE_MESSAGE,
@@ -22,7 +21,7 @@ import {
 @Component({
   selector: 'app-employee-job-info',
   standalone: true,
-  imports: [ReactiveFormsModule, InputComponent, ButtonComponent, CustomSelectComponent],
+  imports: [ReactiveFormsModule, InputComponent, ButtonComponent, SelectComponent],
   host: { class: 'block h-full' },
   template: `
     <section class="flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs" data-testid="current-assignment-card">
@@ -57,7 +56,7 @@ import {
               [error]="employeeNumberFieldError()"
               [hint]="employeeNumberFieldHint()"
             />
-            <app-custom-select
+            <app-select [vacancyBadges]="true"
               label="Employment Type"
               placeholder="Select employment type"
               [options]="employmentTypeOptions()"
@@ -65,7 +64,7 @@ import {
               [error]="submitAttempted() && form.controls.employmentTypeCode.invalid ? 'Employment type is required.' : ''"
               (valueChange)="form.controls.employmentTypeCode.setValue($event)"
             />
-            <app-custom-select
+            <app-select [vacancyBadges]="true"
               label="Work Mode"
               placeholder="Select a work mode"
               [options]="workModeOptions()"

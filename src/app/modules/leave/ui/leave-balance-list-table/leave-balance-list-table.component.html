@@ -1,2 +1,15 @@
 <!-- Quiet Operations Desk: precise number columns make leave positions easy to audit. -->
-<div class="lbt-wrap"><table class="lbt-table"><caption class="sr-only">Leave balances</caption><thead><tr>@if (showEmployeeColumn) { <th data-testid="balance-employee-column">Employee</th> }@if (showDepartmentColumn) { <th>Department</th> }@if (showLegalEntityColumn) { <th>Legal Entity</th> }<th>Leave type</th><th>Entitled hours</th><th>Carried forward hours</th><th>Used hours</th><th>Pending hours</th><th>Remaining hours</th><th>Carry-forward expires</th></tr></thead><tbody>@for (balance of balances; track balance.employeeId + balance.leaveTypeId) { <tr data-testid="balance-row">@if (showEmployeeColumn) { <td><strong>{{ balance.employeeName }}</strong><span class="lbt-muted">{{ balance.employeeNumber }}</span></td> }@if (showDepartmentColumn) { <td>{{ balance.departmentName ?? '—' }}</td> }@if (showLegalEntityColumn) { <td>{{ balance.legalEntityName ?? '—' }}</td> }<td><strong>{{ balance.leaveTypeName }}</strong><span class="lbt-muted">{{ balance.leaveTypeCode }}</span></td><td>{{ balance.entitledHours.toFixed(2) }}</td><td>{{ balance.carriedForwardHours.toFixed(2) }}</td><td>{{ balance.usedHours.toFixed(2) }}</td><td>{{ balance.pendingHours.toFixed(2) }}</td><td>@if (balance.isNegative) { <span data-testid="balance-remaining-negative" class="lbt-negative">{{ balance.remainingHours.toFixed(2) }}</span> } @else { <span data-testid="balance-remaining">{{ balance.remainingHours.toFixed(2) }}</span> }</td><td>{{ balance.carryForwardExpiresOn ?? '—' }}</td></tr> }</tbody></table></div>
+<app-data-table [columns]="columns" [rows]="balances" [trackBy]="trackBalance" [rowTestId]="rowTestId" caption="Leave balances">
+  <ng-template appDataTableCell="employee" let-balance><strong>{{ balance.employeeName }}</strong><span class="lbt-muted">{{ balance.employeeNumber }}</span></ng-template>
+  <ng-template appDataTableCell="department" let-balance>{{ balance.departmentName ?? '—' }}</ng-template>
+  <ng-template appDataTableCell="legalEntity" let-balance>{{ balance.legalEntityName ?? '—' }}</ng-template>
+  <ng-template appDataTableCell="leaveType" let-balance><strong>{{ balance.leaveTypeName }}</strong><span class="lbt-muted">{{ balance.leaveTypeCode }}</span></ng-template>
+  <ng-template appDataTableCell="entitled" let-balance>{{ balance.entitledHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="carried" let-balance>{{ balance.carriedForwardHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="used" let-balance>{{ balance.usedHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="pending" let-balance>{{ balance.pendingHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="remaining" let-balance>
+    @if (balance.isNegative) { <span data-testid="balance-remaining-negative" class="lbt-negative">{{ balance.remainingHours.toFixed(2) }}</span> } @else { <span data-testid="balance-remaining">{{ balance.remainingHours.toFixed(2) }}</span> }
+  </ng-template>
+  <ng-template appDataTableCell="expires" let-balance>{{ balance.carryForwardExpiresOn ?? '—' }}</ng-template>
+</app-data-table>

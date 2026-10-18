@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
 import { CreateLeavePolicyBlackoutPeriodRequest, CreateLeavePolicyTypeRuleRequest, LeavePolicyFormDraft } from '../../models/leave-policy.model';
@@ -14,13 +15,45 @@ import { createEmptyLeavePolicyFormDraft, validateLeavePolicyFormDraft } from '.
   selector: 'app-leave-policy-form-wizard',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, FormsModule, EmptyStateComponent, ProgressBarComponent, DatePickerComponent],
+  imports: [CommonModule, FormsModule, EmptyStateComponent, ProgressBarComponent, DatePickerComponent, SelectComponent],
   templateUrl: './leave-policy-form-wizard.component.html',
   styleUrl: './leave-policy-form-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LeavePolicyFormWizardComponent {
-  @Input() leaveTypes: readonly LeaveTypeResponse[] = [];
+  @Input() set leaveTypes(value: readonly LeaveTypeResponse[]) {
+    this._leaveTypes = value;
+    this.leaveTypeOptions = [
+      { value: '', label: 'Select leave type' },
+      ...value.filter((type) => type.isActive).map((type) => ({ value: type.id, label: `${type.name} (${type.code})` }))
+    ];
+  }
+  get leaveTypes(): readonly LeaveTypeResponse[] {
+    return this._leaveTypes;
+  }
+  private _leaveTypes: readonly LeaveTypeResponse[] = [];
+  /** Active leave types for the rule dropdowns, rebuilt only when the input changes. */
+  leaveTypeOptions: readonly SelectOption[] = [{ value: '', label: 'Select leave type' }];
+
+  readonly accrualMethodOptions: readonly SelectOption[] = [
+    { value: 'annual', label: 'Annual' },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'daily', label: 'Daily' }
+  ];
+  readonly accrualStartOptions: readonly SelectOption[] = [
+    { value: 'immediately', label: 'Immediately' },
+    { value: 'after_probation', label: 'After probation' },
+    { value: 'after_n_months', label: 'After N months' }
+  ];
+  readonly prorationMethodOptions: readonly SelectOption[] = [
+    { value: 'calendar_days', label: 'Calendar days' },
+    { value: 'working_days', label: 'Working days' }
+  ];
+  readonly approvalModeOptions: readonly SelectOption[] = [
+    { value: 'any_one', label: 'Any one approver' },
+    { value: 'all_must_approve', label: 'All must approve' },
+    { value: 'in_order', label: 'In order' }
+  ];
   @Input() legalEntities: readonly LegalEntityListItem[] = [];
   @Input() saving = false;
   @Output() save = new EventEmitter<LeavePolicyFormDraft>();

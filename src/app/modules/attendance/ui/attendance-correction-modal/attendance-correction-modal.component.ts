@@ -13,6 +13,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { NotificationService } from '../../../../core/services/notification.service';
 import {
   AttendanceCorrectionBreakRequest,
@@ -34,7 +35,7 @@ export type CorrectionBreakDraft = { start: string; end: string };
 @Component({
   selector: 'app-attendance-correction-modal',
   standalone: true,
-  imports: [ButtonComponent, FormsModule, ModalComponent],
+  imports: [ButtonComponent, FormsModule, ModalComponent, SelectComponent],
   templateUrl: './attendance-correction-modal.component.html',
   styleUrl: './attendance-correction-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

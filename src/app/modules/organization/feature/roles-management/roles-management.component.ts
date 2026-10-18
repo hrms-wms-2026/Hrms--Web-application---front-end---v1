@@ -6,10 +6,9 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { RoleStore } from '../../state/role.store';
-import { RoleDetailResponse, RoleSummaryResponse } from '../../models/role.model';
+import { RoleSummaryResponse } from '../../models/role.model';
 import { RoleListTableComponent } from '../../ui/role-list-table/role-list-table.component';
 import { RoleFormModalComponent, RoleFormSubmitValue } from '../../ui/role-form-modal/role-form-modal.component';
-import { RolePermissionsModalComponent } from '../../ui/role-permissions-modal/role-permissions-modal.component';
 import { RoleArchiveModalComponent } from '../../ui/role-archive-modal/role-archive-modal.component';
 
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
@@ -25,7 +24,6 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
     ErrorStateComponent,
     RoleListTableComponent,
     RoleFormModalComponent,
-    RolePermissionsModalComponent,
     RoleArchiveModalComponent
   ],
   templateUrl: './roles-management.component.html',
@@ -53,10 +51,7 @@ export class RolesManagementComponent {
 
   // Modals
   readonly formModalOpen = signal(false);
-  readonly editingRole = signal<RoleSummaryResponse | RoleDetailResponse | null>(null);
-
-  readonly permsModalOpen = signal(false);
-  readonly managingPermsRole = signal<RoleSummaryResponse | null>(null);
+  readonly editingRole = signal<RoleSummaryResponse | null>(null);
 
   readonly archiveModalOpen = signal(false);
   readonly archivingRole = signal<RoleSummaryResponse | null>(null);
@@ -89,17 +84,11 @@ export class RolesManagementComponent {
     this.formModalOpen.set(true);
   }
 
-  openEditModal(role: RoleSummaryResponse): void {
-    if (!this.hasManageAccess()) {
-      this.notificationService.error("You don't have permission to edit roles.");
-      return;
-    }
-    if (role.isSystem) {
-      this.notificationService.error('System roles cannot be edited.');
-      return;
-    }
+  /** Row click / action icon: edit a custom role, or view a system role read-only. */
+  async openRoleModal(role: RoleSummaryResponse): Promise<void> {
     this.editingRole.set(role);
     this.formModalOpen.set(true);
+    await this.roleStore.loadRoleDetail(role.id);
   }
 
   closeFormModal(): void {
@@ -112,12 +101,17 @@ export class RolesManagementComponent {
     let success = false;
 
     if (editing) {
+      if (!this.hasManageAccess() || editing.isSystem) {
+        this.notificationService.error("You don't have permission to edit this role.");
+        return;
+      }
       success = await this.roleStore.updateRole(editing.id, {
         name: val.name,
         description: val.description
       });
-      if (success && val.selectedPermissionIds.length > 0) {
-        await this.roleStore.assignPermissions(editing.id, { permissionIds: val.selectedPermissionIds });
+      // Always send the full selection - an empty list is a real "remove every permission".
+      if (success) {
+        success = await this.roleStore.assignPermissions(editing.id, { permissionIds: val.selectedPermissionIds });
       }
       if (success) {
         this.notificationService.success(`Role '${val.name}' updated successfully.`);
@@ -137,39 +131,6 @@ export class RolesManagementComponent {
       this.closeFormModal();
     } else {
       this.notificationService.error(this.roleStore.actionError() ?? 'Failed to save role.');
-    }
-  }
-
-  async openPermissionsModal(role: RoleSummaryResponse): Promise<void> {
-    this.managingPermsRole.set(role);
-    this.permsModalOpen.set(true);
-    await this.roleStore.loadRoleDetail(role.id);
-  }
-
-  closePermissionsModal(): void {
-    this.permsModalOpen.set(false);
-    this.managingPermsRole.set(null);
-  }
-
-  async onSavePermissions(permissionIds: string[]): Promise<void> {
-    if (!this.hasManageAccess()) {
-      this.notificationService.error("You don't have permission to manage role permissions.");
-      return;
-    }
-    const role = this.managingPermsRole();
-    if (!role) return;
-
-    if (role.isSystem) {
-      this.notificationService.error('System role permissions cannot be modified.');
-      return;
-    }
-
-    const success = await this.roleStore.assignPermissions(role.id, { permissionIds });
-    if (success) {
-      this.notificationService.success(`Permissions for role '${role.name}' updated successfully.`);
-      this.closePermissionsModal();
-    } else {
-      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to update role permissions.');
     }
   }
 

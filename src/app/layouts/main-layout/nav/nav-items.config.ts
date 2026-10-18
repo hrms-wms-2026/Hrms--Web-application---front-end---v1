@@ -1,3 +1,4 @@
+import { MANAGES_PEOPLE } from '../../../core/auth/state/permission.service';
 import { NavItem } from './nav-item.model';
 
 export const NAV_ITEMS: readonly NavItem[] = [
@@ -9,9 +10,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
   {
     id: 'people', label: 'People', icon: 'people', path: '/people', requiredModules: ['core_hr'],
     children: [
-      { id: 'people-employees', label: 'Employees', path: '/people/employees', requiredModules: ['core_hr'], requiredPermissions: ['employees:read', 'employees:write'] },
-      { id: 'people-checklists', label: 'Checklists', path: '/people/checklists', requiredModules: ['core_hr'], requiredPermissions: ['employees:read'] },
-      { id: 'people-offboarding', label: 'Offboarding', path: '/people/offboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:read'] },
+      { id: 'people-employees', label: 'Employees', path: '/people/employees', requiredModules: ['core_hr'], requiredPermissions: [MANAGES_PEOPLE, 'employees:write'] },
+      { id: 'people-checklists', label: 'Checklists', path: '/people/checklists', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
+      { id: 'people-offboarding', label: 'Offboarding', path: '/people/offboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:offboard', 'employees:write'] },
       { id: 'people-approvals', label: 'Approvals', path: '/people/approvals', requiredModules: ['core_hr'], requiredPermissions: ['roles:manage'] }
     ]
   },
@@ -85,8 +86,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
   {
     id: 'settings', label: 'Settings', icon: 'settings', path: '/settings',
     children: [
-      { id: 'settings-general', label: 'General Settings', path: '/settings/general', requiredPermissions: ['legal_entity:update'] },
+      { id: 'settings-general', label: 'General Settings', path: '/settings/general', requiredPermissions: ['legal_entity:read', 'legal_entity:update'] },
       { id: 'settings-roles', label: 'Roles & Permissions', path: '/settings/roles', requiredPermissions: ['roles:read', 'roles:manage'] },
+      { id: 'settings-users', label: 'Users', path: '/settings/users', requiredPermissions: ['users:read', 'users:manage'] },
       { id: 'settings-notifications', label: 'Notification Settings', path: '/settings/notifications', requiredPermissions: ['notifications:manage'] },
       { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
       { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },

@@ -1,27 +1,17 @@
-<table class="lrh-table">
-  <caption class="sr-only">Leave request history</caption>
-  <thead>
-    <tr><th>Type</th><th>From</th><th>To</th><th>Hours</th><th>Status</th><th>Approved By</th><th>Submitted On</th><th>Actions</th></tr>
-  </thead>
-  <tbody>
-    @for (request of requests; track request.id) {
-      <tr data-testid="request-row">
-        <td>{{ request.leaveTypeName }}</td>
-        <td>{{ request.startAt | date:'yyyy-MM-dd HH:mm' }}</td>
-        <td>{{ request.endAt | date:'yyyy-MM-dd HH:mm' }}</td>
-        <td>{{ request.totalHours.toFixed(2) }}h</td>
-        <td><span data-testid="request-status" class="lrh-status" [class]="'lrh-status-' + request.status">{{ statusLabel(request.status) }}</span></td>
-        <td data-testid="approved-by">{{ request.approvedByName || '—' }}</td>
-        <td>{{ request.createdAt | slice:0:10 }}</td>
-        <td>
-          @if (canReply(request)) {
-            <button type="button" data-testid="reply-request" class="lrh-reply" aria-label="Reply to information request" (click)="replyRequested.emit(request)">Reply</button>
-          }
-          @if (canCancel(request)) {
-            <button type="button" data-testid="cancel-request" class="lrh-cancel" (click)="cancelRequested.emit(request)">Cancel</button>
-          }
-        </td>
-      </tr>
+<app-data-table [columns]="columns" [rows]="requests" [trackBy]="trackById" [rowTestId]="rowTestId" caption="Leave request history">
+  <ng-template appDataTableCell="type" let-request>{{ request.leaveTypeName }}</ng-template>
+  <ng-template appDataTableCell="from" let-request>{{ request.startAt | date:'yyyy-MM-dd HH:mm' }}</ng-template>
+  <ng-template appDataTableCell="to" let-request>{{ request.endAt | date:'yyyy-MM-dd HH:mm' }}</ng-template>
+  <ng-template appDataTableCell="hours" let-request>{{ request.totalHours.toFixed(2) }}h</ng-template>
+  <ng-template appDataTableCell="status" let-request><span data-testid="request-status" class="lrh-status" [class]="'lrh-status-' + request.status">{{ statusLabel(request.status) }}</span></ng-template>
+  <ng-template appDataTableCell="approvedBy" let-request><span data-testid="approved-by">{{ request.approvedByName || '—' }}</span></ng-template>
+  <ng-template appDataTableCell="submitted" let-request>{{ request.createdAt | slice:0:10 }}</ng-template>
+  <ng-template appDataTableCell="actions" let-request>
+    @if (canReply(request)) {
+      <button type="button" data-testid="reply-request" class="lrh-reply" aria-label="Reply to information request" (click)="replyRequested.emit(request)">Reply</button>
     }
-  </tbody>
-</table>
+    @if (canCancel(request)) {
+      <button type="button" data-testid="cancel-request" class="lrh-cancel" (click)="cancelRequested.emit(request)">Cancel</button>
+    }
+  </ng-template>
+</app-data-table>
