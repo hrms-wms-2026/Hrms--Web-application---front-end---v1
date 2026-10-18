@@ -1,0 +1,147 @@
+<header class="ns-page-header">
+  <app-breadcrumb-header parentLabel="Settings" currentLabel="Notification Settings" icon="settings" />
+</header>
+
+<p class="ns-intro">
+  Choose how each notification reaches people. Wording is managed by ONEVO; you decide the channels, template and
+  recipients. Changes apply to notifications sent after you save.
+</p>
+
+@if (store.loading()) {
+  <div class="ns-skeleton" aria-busy="true" aria-label="Loading notification settings"></div>
+} @else if (store.error(); as message) {
+  <app-error-state [message]="message" [retryable]="true" (retry)="reload()" />
+} @else if (store.settings().length === 0) {
+  <app-empty-state title="No notifications to configure yet." />
+} @else {
+  <div class="ns-toolbar">
+    <label class="ns-search">
+      <span class="ns-visually-hidden">Search notifications</span>
+      <input
+        type="search"
+        placeholder="Search notifications"
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+      />
+    </label>
+  </div>
+
+  @if (groups().length === 0) {
+    <app-empty-state title="No notifications match your search." />
+  }
+
+  @for (group of groups(); track group.module) {
+    <section class="ns-group" [attr.aria-labelledby]="'ns-group-' + group.module">
+      <h2 class="ns-group-title" [id]="'ns-group-' + group.module">{{ group.label }}</h2>
+
+      @for (s of group.settings; track s.eventKey) {
+        <div class="ns-row" [class.ns-row--dirty]="isRowDirty(s)">
+          <div class="ns-row-main">
+            <div class="ns-event">
+              <span class="ns-event-name">{{ s.displayName }}</span>
+              @if (!s.configurable) {
+                <span class="ns-badge ns-badge--muted">Uses built-in delivery for now</span>
+              } @else if (s.isOverridden) {
+                <span class="ns-badge ns-badge--accent">Customized</span>
+              } @else {
+                <span class="ns-badge">Default</span>
+              }
+              @if (isRowDirty(s)) {
+                <span class="ns-badge ns-badge--warning">Unsaved</span>
+              }
+            </div>
+
+            <div class="ns-channels" role="group" [attr.aria-label]="s.displayName + ' channels'">
+              @for (channel of channels; track channel) {
+                <label class="ns-toggle" [class.ns-toggle--locked]="isLocked(s, channel)" [attr.title]="toggleTitle(s, channel)">
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    [attr.data-testid]="'toggle-' + s.eventKey + '-' + channel"
+                    [checked]="isEnabled(s, channel)"
+                    [disabled]="isLocked(s, channel)"
+                    (change)="toggle(s, channel)"
+                  />
+                  <span>{{ channelLabels[channel] }}</span>
+                  @if (isRequired(s, channel)) {
+                    <span class="ns-required">Required</span>
+                  }
+                </label>
+              }
+            </div>
+          </div>
+
+          @if (s.configurable) {
+            <div class="ns-row-options">
+              @if (s.templates.length > 0) {
+                <label class="ns-field">
+                  <span>Template</span>
+                  <select
+                    [attr.data-testid]="'template-' + s.eventKey"
+                    [value]="selectedTemplate(s)"
+                    (change)="setTemplate(s, $any($event.target).value)"
+                  >
+                    @for (t of s.templates; track t.id) {
+                      <option [value]="t.id" [selected]="t.id === selectedTemplate(s)">{{ t.name }}</option>
+                    }
+                  </select>
+                </label>
+              }
+              @if (s.recipientRules.length > 1) {
+                <label class="ns-field">
+                  <span>Recipients</span>
+                  <select [value]="row(s).recipientRule" (change)="setRecipientRule(s, $any($event.target).value)">
+                    @for (rule of s.recipientRules; track rule) {
+                      <option [value]="rule" [selected]="rule === row(s).recipientRule">{{ recipientLabel(rule) }}</option>
+                    }
+                  </select>
+                </label>
+              }
+
+              <div class="ns-row-actions">
+                @if (isRowDirty(s)) {
+                  <app-button variant="secondary" size="sm" (pressed)="discard(s)">Discard</app-button>
+                }
+                @if (s.isOverridden) {
+                  <app-button
+                    [attr.data-testid]="'reset-' + s.eventKey"
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="store.savingKey() === s.eventKey"
+                    (pressed)="reset(s)"
+                  >
+                    Reset to default
+                  </app-button>
+                }
+                <app-button
+                  [attr.data-testid]="'save-' + s.eventKey"
+                  size="sm"
+                  [loading]="store.savingKey() === s.eventKey"
+                  [disabled]="!isRowDirty(s) || store.savingKey() === s.eventKey"
+                  (pressed)="save(s)"
+                >
+                  Save
+                </app-button>
+              </div>
+            </div>
+          }
+
+          @if (store.conflicts()[s.eventKey]; as conflict) {
+            <div class="ns-alert ns-alert--warning" role="alert">
+              {{ conflict }}
+              <button type="button" class="ns-link" (click)="reload()">Reload</button>
+            </div>
+          }
+          @if (store.rowErrors()[s.eventKey]; as rowError) {
+            <div class="ns-alert ns-alert--danger" role="alert">{{ rowError }}</div>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <p class="ns-note">
+    Email goes to each recipient's account email address. Tray notifications need the ONEVO tray app signed in on
+    their computer; tray alerts that are not collected within 24 hours expire.
+  </p>
+}
