@@ -1,4 +1,5 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
+import { SILENT_HTTP_ERRORS } from '../../../core/interceptors/error.interceptor';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -74,13 +75,14 @@ export class InboxApiService {
   /** A person's alerts or requests created in [from, to) (ISO), newest first - the ticket details' Past cases. */
   personCases(employeeId: string, category: InboxCategory, from: string, to: string): Observable<InboxPersonCaseDto[]> {
     const params = new HttpParams().set('category', category).set('from', from).set('to', to);
-    return this.http.get<InboxPersonCaseDto[]>(`${this.base}/people/${encodeURIComponent(employeeId)}/cases`, { params });
+    // A person the caller can't see (403) just hides the section: no error banner.
+    return this.http.get<InboxPersonCaseDto[]>(`${this.base}/people/${encodeURIComponent(employeeId)}/cases`, { params, context: silent() });
   }
 
   /** Months of `year` (grouped at the viewer's UTC offset) that hold the person's history, plus their hire date. */
   personCaseMonths(employeeId: string, category: InboxCategory, year: number, offsetMinutes: number): Observable<InboxPersonCaseMonthsDto> {
     const params = new HttpParams().set('category', category).set('year', String(year)).set('offsetMinutes', String(offsetMinutes));
-    return this.http.get<InboxPersonCaseMonthsDto>(`${this.base}/people/${encodeURIComponent(employeeId)}/cases/months`, { params });
+    return this.http.get<InboxPersonCaseMonthsDto>(`${this.base}/people/${encodeURIComponent(employeeId)}/cases/months`, { params, context: silent() });
   }
 }
 
@@ -105,4 +107,8 @@ function toParams(query: InboxQuery): HttpParams {
   if (query.pageSize) params = params.set('pageSize', String(query.pageSize));
   if (query.sort && query.sort !== 'latest') params = params.set('sort', query.sort);
   return params;
+}
+
+function silent(): HttpContext {
+  return new HttpContext().set(SILENT_HTTP_ERRORS, true);
 }

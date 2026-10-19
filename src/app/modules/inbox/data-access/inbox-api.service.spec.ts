@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { environment } from '../../../../environments/environment';
 import { InboxApiService } from './inbox-api.service';
+import { SILENT_HTTP_ERRORS } from '../../../core/interceptors/error.interceptor';
 import { ConversationsApiService } from './conversations-api.service';
 
 describe('Inbox data-access', () => {
@@ -28,11 +29,13 @@ describe('Inbox data-access', () => {
     expect(cases.request.params.get('category')).toBe('alert');
     expect(cases.request.params.get('from')).toBe('2026-10-01T00:00:00.000Z');
     expect(cases.request.params.get('to')).toBe('2026-11-01T00:00:00.000Z');
+    expect(cases.request.context.get(SILENT_HTTP_ERRORS)).toBe(true);
     cases.flush([]);
     const months = http.expectOne((r) => r.url === `${base}/inbox/people/e1/cases/months`);
     expect(months.request.params.get('category')).toBe('request');
     expect(months.request.params.get('year')).toBe('2026');
     expect(months.request.params.get('offsetMinutes')).toBe('330');
+    expect(months.request.context.get(SILENT_HTTP_ERRORS)).toBe(true);
     months.flush({ hireDate: null, months: [] });
   });
 
