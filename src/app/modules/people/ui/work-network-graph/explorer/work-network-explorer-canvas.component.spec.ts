@@ -114,6 +114,20 @@ describe('WorkNetworkExplorerCanvasComponent', () => {
     expect(node(el, 'module:a').getAttribute('class')).not.toContain('wgx-node--module-contributor');
   });
 
+  it('draws the default (root) module in its own colour and every other module in the neutral one', () => {
+    const el = setup(projectGraph, { rootId: 'module:root', neutralModuleFill: true });
+
+    expect(node(el, 'module:root').getAttribute('class')).toContain('wgx-node--module-default');
+    expect(node(el, 'module:root').getAttribute('class')).not.toContain('wgx-node--module-neutral');
+    expect(node(el, 'module:a').getAttribute('class')).toContain('wgx-node--module-neutral');
+  });
+
+  it('never uses the default-module colour without neutralModuleFill, even with a rootId', () => {
+    const el = setup(projectGraph, { rootId: 'module:root' });
+
+    expect(node(el, 'module:root').getAttribute('class')).not.toContain('wgx-node--module-default');
+  });
+
   describe('sprints and task status dots', () => {
     const sprintGraph: EmployeeWorkGraphResponse = {
       nodes: [
@@ -176,6 +190,76 @@ describe('WorkNetworkExplorerCanvasComponent', () => {
 
       expect(dot(el, 'doing')).toContain('wgx-tone--progress');
       expect(dot(el, 'doing')).not.toContain('wgx-dot--');
+    });
+  });
+
+  describe('revealSprintsOnHover', () => {
+    const graph: EmployeeWorkGraphResponse = {
+      nodes: [
+        { id: 'module:root', kind: 'module', label: 'Portal', projectId: 'p1', objectiveId: 'root', stats: stats(10, 5) },
+        { id: 'module:a', kind: 'module', label: 'Connectivity', projectId: 'p1', objectiveId: 'a', stats: stats(10, 5) },
+        { id: 'module:b', kind: 'module', label: 'Marketing', projectId: 'p1', objectiveId: 'b', stats: stats(10, 5) },
+        { id: 'sprint:s1', kind: 'sprint', label: 'Sprint 7', status: 'active', projectId: 'p1' },
+        { id: 'sprint:s2', kind: 'sprint', label: 'Sprint 8', status: 'draft', projectId: 'p1' },
+        { id: 'sprint:s3', kind: 'sprint', label: 'Sprint 9', status: 'active', projectId: 'p1' },
+        { id: 'task:t1', kind: 'task', label: 'Pair', status: 'active', projectId: 'p1', objectiveId: 'a', taskId: 't1' }
+      ],
+      links: [
+        { source: 'module:root', target: 'module:a', kind: 'contains' },
+        { source: 'module:root', target: 'module:b', kind: 'contains' },
+        { source: 'module:a', target: 'sprint:s1', kind: 'contains' },
+        { source: 'module:a', target: 'sprint:s2', kind: 'contains' },
+        { source: 'module:b', target: 'sprint:s3', kind: 'contains' },
+        { source: 'sprint:s1', target: 'task:t1', kind: 'has_task' }
+      ],
+      hiddenTaskCount: 0
+    };
+    const shown = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('[data-node-id^="sprint:"]')).map((n) => n.getAttribute('data-node-id')).sort();
+    const hover = (el: HTMLElement, id: string) => {
+      node(el, id).dispatchEvent(new Event('pointerenter'));
+      lastFixture.detectChanges();
+    };
+
+    it('draws no sprint until a module is hovered', () => {
+      const el = setup(graph, { rootId: 'module:root', revealSprintsOnHover: true });
+
+      expect(shown(el)).toEqual([]);
+    });
+
+    it('shows only the hovered module sprints', () => {
+      const el = setup(graph, { rootId: 'module:root', revealSprintsOnHover: true });
+      hover(el, 'module:a');
+
+      expect(shown(el)).toEqual(['sprint:s1', 'sprint:s2']);
+    });
+
+    it('keeps the sibling sprints and reveals the sprint tasks while one of them is hovered', () => {
+      const el = setup(graph, { rootId: 'module:root', revealSprintsOnHover: true });
+      hover(el, 'module:a');
+      hover(el, 'sprint:s1');
+
+      expect(shown(el)).toEqual(['sprint:s1', 'sprint:s2']);
+      expect(el.querySelector('[data-task-id="task:t1"]')).not.toBeNull();
+    });
+
+    it('keeps the locked module sprints on screen', () => {
+      const el = setup(graph, { rootId: 'module:root', revealSprintsOnHover: true, locked: 'module:b' });
+
+      expect(shown(el)).toEqual(['sprint:s3']);
+    });
+
+    it('hides the links into hidden sprints', () => {
+      const el = setup(graph, { rootId: 'module:root', revealSprintsOnHover: true });
+
+      // Two module links stay; the three module -> sprint links are hidden with their sprints.
+      expect(el.querySelectorAll('.wgx-link')).toHaveLength(2);
+    });
+
+    it('draws every sprint when revealSprintsOnHover is left off', () => {
+      const el = setup(graph, { rootId: 'module:root' });
+
+      expect(shown(el)).toEqual(['sprint:s1', 'sprint:s2', 'sprint:s3']);
     });
   });
 });

@@ -141,6 +141,13 @@ describe('ProjectNetworkViewComponent', () => {
     const withGraph = (alerts: MonitorAlertDto[]) =>
       setup(alerts, { getWorkGraph: vi.fn().mockReturnValue(of(sprintGraph)) } as never);
 
+    it('hides sprints until their module is hovered', () => {
+      const { el } = withGraph([]);
+
+      expect(el.querySelector('[data-node-id="sprint:s1"]')).toBeNull();
+      expect(el.querySelector('[data-node-id="module:oa"]')).not.toBeNull();
+    });
+
     it('reddens the sprint circle for a sprint alert', () => {
       const { cmp } = withGraph([alert('sprint', 's1')]);
 
@@ -159,7 +166,7 @@ describe('ProjectNetworkViewComponent', () => {
 
       expect(labels).not.toContain('In progress');
       expect(labels).not.toContain('Not started');
-      expect(labels).toEqual(['Module', 'Sprint', 'Task', 'Completed', 'Has an alert']);
+      expect(labels).toEqual(['Default module', 'Module', 'Sprint', 'Task', 'Completed', 'Has an alert']);
     });
   });
 

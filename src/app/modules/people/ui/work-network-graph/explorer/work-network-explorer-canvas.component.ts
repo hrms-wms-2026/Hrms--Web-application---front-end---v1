@@ -277,9 +277,12 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-code { fill: #fff; font-size: 14px; font-weight: 700; pointer-events: none; }
     .wgx-node--employee .wgx-code { font-size: 20px; }
     .wgx-node--module-member .wgx-code, .wgx-node--module-contributor .wgx-code { fill: #7c3aed; }
-    /* Project mode: modules are not viewer-relative, so one blue fill for all of them. */
-    .wgx-node--module-neutral { color: #2563eb; }
-    .wgx-node--module-neutral .wgx-core { fill: url(#wgx-project); }
+    /* Project mode: modules are not viewer-relative - one purple fill for all of them, and blue for
+       the project's default (root) module. */
+    .wgx-node--module-neutral { color: #8b5cf6; }
+    .wgx-node--module-neutral .wgx-core { fill: url(#wgx-module); }
+    .wgx-node--module-default { color: #2563eb; }
+    .wgx-node--module-default .wgx-core { fill: url(#wgx-project); }
     /* Project mode sprints (purple): active = empty, draft = filled, complete/achieved = gray. */
     .wgx-node--sprint-active, .wgx-node--sprint-draft { color: #8b5cf6; }
     .wgx-node--sprint-active .wgx-core { fill: #fff; stroke: #8b5cf6; stroke-width: 3; }
@@ -352,6 +355,8 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   readonly neutralModuleFill = input(false);
   /** 'status': task card dots show light-blue empty / filled / gray-done instead of the tone colour. */
   readonly taskDotStyle = input<'tone' | 'status'>('tone');
+  /** Sprints stay hidden until their module is hovered or locked (project graph only). */
+  readonly revealSprintsOnHover = input(false);
 
   readonly nodeClicked = output<WorkGraphNode>();
   readonly taskClicked = output<WorkGraphNode>();
@@ -385,13 +390,50 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
     return node ? node.id.replace(/^employee:/, '') : null;
   });
 
+  /** Project mode: each sprint's parent modules, from the graph's module -> sprint links. */
+  private readonly sprintParents = computed(() => {
+    const parents = new Map<string, Set<string>>();
+    for (const link of this.graph().links) {
+      if (link.kind !== 'contains' || !link.target.startsWith('sprint:')) continue;
+      parents.set(link.target, (parents.get(link.target) ?? new Set()).add(link.source));
+    }
+    return parents;
+  });
+
+  /**
+   * With revealSprintsOnHover, the sprints on screen: those of the module that is hovered or locked,
+   * or the siblings of a sprint that is (so moving from a module onto one of its sprints keeps the
+   * rest). Null means "no filtering" - every sprint is drawn, as it always was.
+   */
+  private readonly openSprints = computed<ReadonlySet<string> | null>(() => {
+    if (!this.revealSprintsOnHover()) return null;
+    const parents = this.sprintParents();
+    const modules = new Set<string>();
+    for (const id of [this.locked(), this.previewed()]) {
+      if (!id) continue;
+      if (id.startsWith('sprint:')) parents.get(id)?.forEach((m) => modules.add(m));
+      else modules.add(id);
+    }
+    const open = new Set<string>();
+    for (const [sprintId, sprintModules] of parents) {
+      if ([...sprintModules].some((m) => modules.has(m))) open.add(sprintId);
+    }
+    return open;
+  });
+
+  private isHiddenSprint(node: ExplorerNode, open: ReadonlySet<string> | null): boolean {
+    return open !== null && node.data.kind === 'sprint' && !open.has(node.id);
+  }
+
   readonly visibleNodes = computed(() => {
     this.version();
-    return this.layout.nodes.filter((n) => !n.spacer);
+    const open = this.openSprints();
+    return this.layout.nodes.filter((n) => !n.spacer && !this.isHiddenSprint(n, open));
   });
   readonly links = computed(() => {
     this.version();
-    return this.layout.links;
+    const open = this.openSprints();
+    return this.layout.links.filter((l) => !this.isHiddenSprint(l.source, open) && !this.isHiddenSprint(l.target, open));
   });
 
   /** Locked parent wins; otherwise whatever is being previewed. */
@@ -637,7 +679,9 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
     }
     if (node.data.kind !== 'module') return node.data.kind;
     if (node.data.role) return `module-${node.data.role}`;
-    return this.neutralModuleFill() ? 'module-neutral' : 'module-contributor';
+    if (!this.neutralModuleFill()) return 'module-contributor';
+    // Project mode: the pinned root is the project's default module and gets its own colour.
+    return node.isRoot ? 'module-default' : 'module-neutral';
   }
 
   hasAlert(node: ExplorerNode): boolean {

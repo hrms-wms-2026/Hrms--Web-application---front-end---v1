@@ -103,6 +103,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
           [alertNodeIds]="alertNodeIds()"
           [neutralModuleFill]="neutralModuleFill()"
           [taskDotStyle]="taskDotStyle()"
+          [revealSprintsOnHover]="revealSprintsOnHover()"
           (nodeClicked)="toggleLock($event)"
           (taskClicked)="navigate.emit($event)"
           (backgroundClicked)="locked.set(null)"
@@ -184,7 +185,8 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
     .wge-key--not-started { background: #94a3b8; }
     .wge-key--overdue { background: #ef4444; }
     /* Project-mode legend swatches; only used when a legend with these keys is passed in. */
-    .wge-key--module { background: #2563eb; }
+    .wge-key--default-module { background: #2563eb; }
+    .wge-key--module { background: #8b5cf6; }
     .wge-key--sprint { background: #8b5cf6; }
     .wge-key--task { background: #38bdf8; }
     .wge-key--done { background: #cbd5e1; }
@@ -217,6 +219,7 @@ export class WorkNetworkExplorerComponent {
   /** Forwarded to the detail panel: no employee node, no project node, no role word. */
   readonly projectMode = input(false);
   readonly taskDotStyle = input<'tone' | 'status'>('tone');
+  readonly revealSprintsOnHover = input(false);
 
   readonly closed = output<void>();
   /** A project, module or task to open in Work Management. */

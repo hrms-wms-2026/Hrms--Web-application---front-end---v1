@@ -15,6 +15,7 @@ const EMPTY_GRAPH: ProjectWorkGraphDto = { nodes: [], links: [], hiddenTaskCount
 
 /** No status rows: a circle's fill already says not started / started / completed. */
 const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
+  { key: 'default-module', label: 'Default module' },
   { key: 'module', label: 'Module' },
   { key: 'sprint', label: 'Sprint' },
   { key: 'task', label: 'Task' },
@@ -53,11 +54,12 @@ const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
         [showProgressRing]="true"
         [neutralModuleFill]="true"
         taskDotStyle="status"
+        [revealSprintsOnHover]="true"
         [alertNodeIds]="alertNodeIds()"
         [showClose]="false"
         [legend]="legend"
         heading="Project Network"
-        description="Modules and tasks of this project. Hover a module to preview its tasks, click it to explore. Drag to move, scroll to zoom."
+        description="Modules, sprints and tasks of this project. Hover a module to see its sprints and tasks, hover a sprint for its tasks, click to explore. Drag to move, scroll to zoom."
         (navigate)="openRequested.emit($event)"
       />
     }
