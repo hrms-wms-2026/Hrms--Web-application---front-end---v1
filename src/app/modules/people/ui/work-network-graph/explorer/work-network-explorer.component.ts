@@ -120,6 +120,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
           [graph]="graph()"
           [selected]="node"
           [code]="codes().get(node.id) ?? ''"
+          [projectMode]="projectMode()"
           (closed)="locked.set(null)"
           (open)="navigate.emit($event)"
           (taskClicked)="navigate.emit($event)"
@@ -206,6 +207,8 @@ export class WorkNetworkExplorerComponent {
   readonly showProgressRing = input(false);
   readonly alertNodeIds = input<ReadonlySet<string>>(new Set<string>());
   readonly neutralModuleFill = input(false);
+  /** Forwarded to the detail panel: no employee node, no project node, no role word. */
+  readonly projectMode = input(false);
 
   readonly closed = output<void>();
   /** A project, module or task to open in Work Management. */
