@@ -151,9 +151,8 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(text).toContain('No activity checks for this day.');
     expect(text).toContain('1h');
     expect(text).not.toContain('Active time');
-    expect(text).toContain('Activity score');
-    expect(text).toContain('91');
-    expect(text).toContain('/ 100');
+    expect(text).not.toContain('Activity score');
+    expect(text).not.toContain('/ 100');
     expect(text).toContain('Location check-ins');
     expect(text).toContain('Colombo Office');
   });

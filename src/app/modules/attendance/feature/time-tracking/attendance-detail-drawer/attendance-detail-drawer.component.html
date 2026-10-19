@@ -123,13 +123,6 @@
         </div>
         <p class="section-sub">Screenshots from idle-time checks</p>
 
-        @if (detail.dailyActivity; as activity) {
-          <p class="activity-score">
-            <span>Activity score</span>
-            <strong>{{ activity.activityScore }}<span class="activity-score-scale"> / 100</span></strong>
-          </p>
-        }
-
         @if (activityChecks().length > 0) {
           <div class="shot-strip shot-strip--wrap">
             @for (check of activityChecks(); track check.id) {
