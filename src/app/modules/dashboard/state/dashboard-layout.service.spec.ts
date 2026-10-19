@@ -40,23 +40,25 @@ describe('DashboardLayoutService', () => {
     return TestBed.inject(DashboardLayoutService);
   }
 
-  it('starts from the default layout: Notifications and Wellbeing unticked, no team cards', () => {
+  it('starts from the default layout: Action Center kept, Team Status and Team Progress left to My Team', () => {
     const service = setup();
     expect(service.resolved().top).toEqual([]);
-    expect(service.resolved().columns).toEqual([['todayAtAGlance', 'todaysSchedule'], ['myTasks'], ['quickActions']]);
+    expect(service.resolved().columns).toEqual([['todayAtAGlance', 'todaysSchedule'], ['actionCenter', 'myTasks'], ['quickActions']]);
     expect(service.resolved().bottom).toEqual(['workPattern']);
   });
 
-  it('keeps the team cards off the home dashboard, even for a team lead - they live on My Team', () => {
-    for (const c of [caps(), caps({ isAvailable: false })]) {
-      TestBed.resetTestingModule();
-      const service = setup(c);
-      const shown = [...service.resolved().top, ...service.resolved().columns.flat(), ...service.resolved().bottom];
-      expect(shown).not.toContain('teamStatus');
-      expect(shown).not.toContain('actionCenter');
-      expect(shown).not.toContain('teamProgress');
-      expect(service.customizeGroups().map((g) => g.id)).toEqual(['day']);
-    }
+  it('keeps Team Status and Team Progress off the home dashboard, even for a team lead', () => {
+    const service = setup(caps());
+    const shown = [...service.resolved().top, ...service.resolved().columns.flat(), ...service.resolved().bottom];
+    expect(shown).not.toContain('teamStatus');
+    expect(shown).not.toContain('teamProgress');
+    expect(service.customizeGroups().find((g) => g.id === 'team')!.keys).toEqual(['actionCenter']);
+  });
+
+  it('shows no My Team cards or My Team group to a viewer without My Team', () => {
+    const service = setup(caps({ isAvailable: false }));
+    expect(service.resolved().columns.flat()).not.toContain('actionCenter');
+    expect(service.customizeGroups().map((g) => g.id)).toEqual(['day']);
   });
 
   it('waits for capabilities before Customize can start', () => {
@@ -109,8 +111,8 @@ describe('DashboardLayoutService', () => {
   it('moves with ↑ / ↓ across columns', () => {
     const service = setup();
     service.startEditing();
-    service.step('myTasks', -1);
-    expect(service.resolved().columns[0].at(-1)).toBe('myTasks');
+    service.step('actionCenter', -1);
+    expect(service.resolved().columns[0].at(-1)).toBe('actionCenter');
   });
 
   it('shows the full default on first login, ignoring leftover unscoped or old My Team data', () => {
@@ -118,7 +120,7 @@ describe('DashboardLayoutService', () => {
     localStorage.setItem('onexso.my_team_widget_order:emp-1', JSON.stringify(['teamProgress', 'actionCenter']));
     const service = setup();
     expect(service.layout()).toBe(DEFAULT_DASHBOARD_LAYOUT);
-    expect(service.resolved().columns.map((c) => c[0])).toEqual(['todayAtAGlance', 'myTasks', 'quickActions']);
+    expect(service.resolved().columns.map((c) => c[0])).toEqual(['todayAtAGlance', 'actionCenter', 'quickActions']);
   });
 
   it('prefers a saved dashboard layout and falls back to the default on bad data', () => {
