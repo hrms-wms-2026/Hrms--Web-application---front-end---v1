@@ -6,6 +6,22 @@ import { WorkNetworkExplorerCanvasComponent } from './work-network-explorer-canv
 
 const FOCUS_MS = 1800;
 
+/** One row of the footer legend. `key` is the `wge-key--*` modifier that colours the swatch. */
+export interface ExplorerLegendItem {
+  readonly key: string;
+  readonly label: string;
+}
+
+/** What the footer shows when `legend` is left alone: the employee Work Network's own legend. */
+const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
+  { key: 'project', label: 'Project' },
+  { key: 'owner', label: 'Module you own' },
+  { key: 'member', label: 'Module member' },
+  { key: 'progress', label: 'In progress' },
+  { key: 'not-started', label: 'Not started' },
+  { key: 'overdue', label: 'Overdue' }
+];
+
 /**
  * The full-screen Work Network: three levels of exploration.
  *  1. Overview - employee, projects, modules; tasks hidden.
@@ -20,8 +36,8 @@ const FOCUS_MS = 1800;
   template: `
     <header class="wge-head">
       <div class="wge-title">
-        <h2 id="work-network-dialog-title">Work Network</h2>
-        <p>Projects, modules and tasks. Hover a module to preview its tasks, click it to explore. Drag to move, scroll to zoom.</p>
+        <h2 id="work-network-dialog-title">{{ heading() }}</h2>
+        <p>{{ description() }}</p>
       </div>
 
       <div class="wge-actions">
@@ -67,10 +83,12 @@ const FOCUS_MS = 1800;
         <button type="button" class="wge-btn" aria-label="Zoom in" title="Zoom in" (click)="canvas()?.zoomIn()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M16 16l5 5"/></svg>
         </button>
+        @if (showClose()) {
         <span class="wge-divider" aria-hidden="true"></span>
         <button type="button" class="wge-btn" aria-label="Close full work network" title="Close" (click)="closed.emit()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
+        }
       </div>
     </header>
 
@@ -80,6 +98,10 @@ const FOCUS_MS = 1800;
           [graph]="graph()"
           [locked]="locked()"
           [focusId]="focusId()"
+          [rootId]="rootId()"
+          [showProgressRing]="showProgressRing()"
+          [alertNodeIds]="alertNodeIds()"
+          [neutralModuleFill]="neutralModuleFill()"
           (nodeClicked)="toggleLock($event)"
           (taskClicked)="navigate.emit($event)"
           (backgroundClicked)="locked.set(null)"
@@ -108,12 +130,9 @@ const FOCUS_MS = 1800;
 
     <footer class="wge-foot">
       <ul class="wge-legend" aria-label="Legend">
-        <li><span class="wge-key wge-key--project"></span>Project</li>
-        <li><span class="wge-key wge-key--owner"></span>Module you own</li>
-        <li><span class="wge-key wge-key--member"></span>Module member</li>
-        <li><span class="wge-key wge-key--progress"></span>In progress</li>
-        <li><span class="wge-key wge-key--not-started"></span>Not started</li>
-        <li><span class="wge-key wge-key--overdue"></span>Overdue</li>
+        @for (item of legendItems(); track item.key) {
+          <li><span [class]="'wge-key wge-key--' + item.key"></span>{{ item.label }}</li>
+        }
       </ul>
       <p class="wge-meta">
         {{ counts().nodes }} nodes shown · {{ counts().tasks }} open tasks
@@ -173,6 +192,21 @@ const FOCUS_MS = 1800;
 })
 export class WorkNetworkExplorerComponent {
   readonly graph = input.required<EmployeeWorkGraphResponse>();
+  /**
+   * Project-mode chrome and canvas pass-throughs. Every one defaults to the employee Work
+   * Network's own behaviour, so that view passes none of them and is unchanged.
+   */
+  readonly heading = input('Work Network');
+  readonly description = input(
+    'Projects, modules and tasks. Hover a module to preview its tasks, click it to explore. Drag to move, scroll to zoom.'
+  );
+  readonly showClose = input(true);
+  readonly legend = input<readonly ExplorerLegendItem[] | null>(null);
+  readonly rootId = input<string | null>(null);
+  readonly showProgressRing = input(false);
+  readonly alertNodeIds = input<ReadonlySet<string>>(new Set<string>());
+  readonly neutralModuleFill = input(false);
+
   readonly closed = output<void>();
   /** A project, module or task to open in Work Management. */
   readonly navigate = output<WorkGraphNode>();
@@ -185,8 +219,11 @@ export class WorkNetworkExplorerComponent {
   readonly focusId = signal<string | null>(null);
   private focusTimer: ReturnType<typeof setTimeout> | null = null;
 
+  readonly legendItems = computed<readonly ExplorerLegendItem[]>(() => this.legend() ?? EMPLOYEE_LEGEND);
   readonly hits = computed(() => searchGraph(this.graph(), this.query()));
-  readonly codes = computed(() => new Map(buildExplorerLayout(this.graph()).nodes.map((n) => [n.id, n.code] as const)));
+  readonly codes = computed(() =>
+    new Map(buildExplorerLayout(this.graph(), this.rootId() ?? undefined).nodes.map((n) => [n.id, n.code] as const))
+  );
   readonly selectedNode = computed(() => {
     const id = this.locked();
     return id ? this.graph().nodes.find((n) => n.id === id) ?? null : null;

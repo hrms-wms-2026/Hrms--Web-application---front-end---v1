@@ -262,4 +262,39 @@ describe('WorkNetworkExplorerComponent', () => {
       expect(canvasOf(fixture).camera().scale).toBeCloseTo(fitted.scale, 5);
     });
   });
+
+  describe('project-mode chrome', () => {
+    it('renders the Work Network heading, the close button and the employee legend when no new inputs are passed', () => {
+      const { el } = setup();
+
+      expect(el.querySelector('h2')!.textContent).toBe('Work Network');
+      expect(el.querySelector('[aria-label="Close full work network"]')).not.toBeNull();
+      const legend = Array.from(el.querySelectorAll('.wge-legend li')).map((li) => li.textContent!.trim());
+      expect(legend).toEqual(['Project', 'Module you own', 'Module member', 'In progress', 'Not started', 'Overdue']);
+    });
+
+    it('renders the given heading and hides the close button when showClose is false', () => {
+      const { fixture, el } = setup();
+      fixture.componentRef.setInput('heading', 'Project Network');
+      fixture.componentRef.setInput('description', 'Modules and tasks of this project.');
+      fixture.componentRef.setInput('showClose', false);
+      fixture.detectChanges();
+
+      expect(el.querySelector('h2')!.textContent).toBe('Project Network');
+      expect(el.querySelector('.wge-title p')!.textContent).toContain('Modules and tasks of this project.');
+      expect(el.querySelector('[aria-label="Close full work network"]')).toBeNull();
+    });
+
+    it('renders the given legend items instead of the default legend', () => {
+      const { fixture, el } = setup();
+      fixture.componentRef.setInput('legend', [
+        { key: 'module', label: 'Module' },
+        { key: 'overdue', label: 'Needs attention' }
+      ]);
+      fixture.detectChanges();
+
+      const legend = Array.from(el.querySelectorAll('.wge-legend li')).map((li) => li.textContent!.trim());
+      expect(legend).toEqual(['Module', 'Needs attention']);
+    });
+  });
 });
