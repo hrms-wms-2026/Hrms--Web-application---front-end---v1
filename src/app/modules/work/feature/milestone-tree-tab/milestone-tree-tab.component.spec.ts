@@ -1121,6 +1121,21 @@ describe('MilestoneTreeTabComponent', () => {
       expect(host.textContent).toContain('Create module');
     });
 
+    it('paints the selected mode with the accent background and the other with the secondary text colour', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+      const network = host.querySelector('[data-testid="tree-view-switch-network"]')!;
+      const tree = host.querySelector('[data-testid="tree-view-switch-tree"]')!;
+
+      // The exact Tailwind class names - a backslash-escaped binding adds a class no rule matches.
+      expect(network.classList.contains('bg-[var(--color-accent)]')).toBe(true);
+      expect(network.classList.contains('text-white')).toBe(true);
+      expect(tree.classList.contains('text-[var(--color-text-secondary)]')).toBe(true);
+      expect(tree.classList.contains('bg-[var(--color-accent)]')).toBe(false);
+    });
+
     it('keeps the explanation card column mounted in tree mode', () => {
       setup('o1');
       fixture.detectChanges();

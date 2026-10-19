@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { ProjectMonitorStore } from '../../state/project-monitor.store';
 import { ProjectApiService } from '../../data-access/project-api.service';
@@ -72,6 +72,49 @@ describe('ProjectNetworkViewComponent', () => {
     const { cmp } = setup([alert('module', 'gone'), alert('sprint', 's1'), alert('task', 'nope')]);
 
     expect([...cmp.alertNodeIds()]).toEqual([]);
+  });
+
+  it('ignores alerts inside an achieved module, as the tree fades them and leaves them uncounted', () => {
+    const { cmp } = setup([{ ...alert('module', 'oa'), inAchievedModule: true }]);
+
+    expect([...cmp.alertNodeIds()]).toEqual([]);
+  });
+
+  it('re-fetches the graph when reloadKey changes, so edits made from the network view show up', () => {
+    const { fixture, apiStub } = setup();
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(1);
+
+    fixture.componentRef.setInput('reloadKey', {});
+    fixture.detectChanges();
+
+    expect(apiStub.getWorkGraph).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the latest response when an earlier request resolves after a later one', () => {
+    const first = new Subject<ProjectWorkGraphDto>();
+    const second = new Subject<ProjectWorkGraphDto>();
+    const getWorkGraph = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second);
+    const { fixture, cmp } = setup([], { getWorkGraph } as never);
+
+    fixture.componentRef.setInput('reloadKey', {});
+    fixture.detectChanges();
+    second.next(graph);
+    first.next({ nodes: [], links: [], hiddenTaskCount: 0 });
+
+    expect(cmp.graph()).toBe(graph);
+  });
+
+  it('waits for the root module to be in the graph before drawing, so a project switch never pins a stale root', () => {
+    const { fixture, el } = setup();
+    fixture.componentRef.setInput('rootObjectiveId', 'other-project-root');
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-work-network-explorer')).toBeNull();
+
+    fixture.componentRef.setInput('rootObjectiveId', 'root');
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-node-id="module:root"]')).not.toBeNull();
   });
 
   it('shows the loader while the request is in flight and an error state on failure', () => {

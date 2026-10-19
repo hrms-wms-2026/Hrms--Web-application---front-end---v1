@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { WorkGraphNode } from '../../../people/models/work-graph.model';
 import {
   ExplorerLegendItem,
@@ -36,6 +37,10 @@ const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
       <app-loader label="Loading network…" />
     } @else if (error()) {
       <app-error-state [message]="error()!" [retryable]="true" (retry)="load()" />
+    } @else if (!hasRoot()) {
+      <!-- The graph is from another project than the root id (mid project switch): wait, so the
+           explorer is only ever created with a root it can pin. -->
+      <app-loader label="Loading network…" />
     } @else {
       <app-work-network-explorer
         [graph]="graph()"
@@ -64,6 +69,12 @@ export class ProjectNetworkViewComponent {
   readonly projectId = input.required<string>();
   /** The project's root (default) objective; its node is pinned at the centre of the canvas. */
   readonly rootObjectiveId = input.required<string>();
+  /**
+   * Any value that changes when the project's tree is reloaded (the tree tab passes the tree
+   * object itself). A change re-fetches the graph, so a module created while the network is
+   * showing appears in it.
+   */
+  readonly reloadKey = input<unknown>(null);
 
   /** A module or task the viewer asked to open in Work Management. */
   readonly openRequested = output<WorkGraphNode>();
@@ -74,12 +85,14 @@ export class ProjectNetworkViewComponent {
   readonly error = signal<string | null>(null);
 
   readonly rootNodeId = computed(() => `module:${this.rootObjectiveId()}`);
+  readonly hasRoot = computed(() => this.graph().nodes.some((n) => n.id === this.rootNodeId()));
 
   /**
    * Module node ids to draw in the alert colour. A module alert maps straight to its node; a task
    * alert rolls up to the module that owns the task. An alert whose target is not in the graph -
    * a sprint, which the network does not draw, or anything the viewer cannot see - is dropped,
-   * rather than reddening a circle at random.
+   * rather than reddening a circle at random. An alert inside an achieved module is skipped too:
+   * the tree draws it faded and leaves it out of the count, and the two views share one screen.
    */
   readonly alertNodeIds = computed<ReadonlySet<string>>(() => {
     const nodes = this.graph().nodes;
@@ -89,6 +102,7 @@ export class ProjectNetworkViewComponent {
     );
     const ids = new Set<string>();
     for (const alert of this.monitor.alerts()) {
+      if (alert.inAchievedModule) continue;
       const candidate =
         alert.targetType === 'module' ? `module:${alert.targetId}`
           : alert.targetType === 'task' ? moduleOfTask.get(alert.targetId)
@@ -98,17 +112,23 @@ export class ProjectNetworkViewComponent {
     return ids;
   });
 
+  /** The request in flight; a new load cancels it, so responses can never land out of order. */
+  private request: Subscription | null = null;
+
   constructor() {
     effect(() => {
       this.projectId();
-      this.load();
+      this.reloadKey();
+      untracked(() => this.load());
     });
+    inject(DestroyRef).onDestroy(() => this.request?.unsubscribe());
   }
 
   load(): void {
+    this.request?.unsubscribe();
     this.loading.set(true);
     this.error.set(null);
-    this.api.getWorkGraph(this.projectId()).subscribe({
+    this.request = this.api.getWorkGraph(this.projectId()).subscribe({
       next: (graph) => {
         this.graph.set(graph);
         this.loading.set(false);

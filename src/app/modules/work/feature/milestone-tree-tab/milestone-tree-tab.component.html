@@ -6,8 +6,8 @@
       <button type="button" [attr.data-testid]="'tree-view-switch-' + mode" [attr.aria-pressed]="viewMode() === mode"
         [title]="mode === 'tree' ? 'Module list' : 'Network diagram'"
         class="inline-flex h-[26px] items-center gap-1.5 rounded-[6px] px-2 text-[13px] font-medium transition-colors"
-        [class.bg-\[var\(--color-accent\)\]]="viewMode() === mode" [class.text-white]="viewMode() === mode"
-        [class.text-\[var\(--color-text-secondary\)\]]="viewMode() !== mode" (click)="viewMode.set($any(mode))">
+        [class.bg-[var(--color-accent)]]="viewMode() === mode" [class.text-white]="viewMode() === mode"
+        [class.text-[var(--color-text-secondary)]]="viewMode() !== mode" (click)="viewMode.set($any(mode))">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           @if (mode === 'tree') {
@@ -91,7 +91,7 @@
     class="w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-h-[220px]">
     @if (viewMode() === 'network') {
     @if (renderedTree(); as tree) {
-    <app-project-network-view [projectId]="projectId()" [rootObjectiveId]="tree.id"
+    <app-project-network-view [projectId]="projectId()" [rootObjectiveId]="tree.id" [reloadKey]="tree"
       (openRequested)="onNetworkNodeOpened($event)" />
     } @else {
     <app-empty-state title="No modules" description="This project has no modules to draw yet" />
