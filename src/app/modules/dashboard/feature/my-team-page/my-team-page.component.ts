@@ -4,16 +4,16 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { MyTeamWidgetKey } from '../../models/my-team-widget-key.model';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { allowedWidgetKeys } from '../../utils/my-team-widget-visibility.util';
-import { ActionCenterCardComponent } from '../action-center-card/action-center-card.component';
 import { QuickActionsCardComponent } from '../quick-actions-card/quick-actions-card.component';
 import { TeamProgressCardComponent } from '../team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../team-status-card/team-status-card.component';
 
 /**
  * The My Team dashboard (/dashboard/my-team), reached from Quick Actions -> My Team. A separate page
- * from the personal dashboard: it holds the team cards - Action Center, Team Status, Team Progress -
- * plus Quick Actions, whose middle action links back to My Work. Each team card shows only when the
- * viewer's capabilities allow it (My Team spec §6); the backend still authorizes every section.
+ * from the personal dashboard: it holds the team cards - Team Status and Team Progress - plus Quick
+ * Actions, whose middle action links back to My Work. Action Center stays on the My Work dashboard.
+ * Each team card shows only when the viewer's capabilities allow it (My Team spec §6); the backend
+ * still authorizes every section.
  */
 @Component({
   selector: 'app-my-team-page',
@@ -22,7 +22,6 @@ import { TeamStatusCardComponent } from '../team-status-card/team-status-card.co
     LoaderComponent,
     EmptyStateComponent,
     QuickActionsCardComponent,
-    ActionCenterCardComponent,
     TeamStatusCardComponent,
     TeamProgressCardComponent
   ],
@@ -35,9 +34,10 @@ export class MyTeamPageComponent implements OnInit {
   protected readonly loaded = this.capabilitiesStore.loaded;
   protected readonly error = this.capabilitiesStore.error;
 
+  /** The team cards this page can show - Action Center is left out, it lives on My Work. */
   private readonly allowed = computed<ReadonlySet<MyTeamWidgetKey>>(() => {
     const caps = this.capabilitiesStore.capabilities();
-    return new Set(caps?.isAvailable ? allowedWidgetKeys(caps) : []);
+    return new Set((caps?.isAvailable ? allowedWidgetKeys(caps) : []).filter((key) => key !== 'actionCenter'));
   });
 
   protected readonly hasTeamCards = computed(() => this.allowed().size > 0);
