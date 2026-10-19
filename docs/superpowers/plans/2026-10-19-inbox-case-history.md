@@ -20,7 +20,7 @@
 - **Muted rows:** cancelled requests only (`status === 'cancelled'`). Every alert counts, Escalated included, and it stays live.
 - **Red dot:** a month with at least one item about the person that is not a cancelled request and is not the current ticket.
 - **Full view months:** from the hire month through the current month. Any other month is disabled.
-- **Section hidden** when the caller is the subject person (`detail.item.direction === 'info'` and subject id === the session employee id).
+- **Section hidden** when the caller is the subject person (`personCaseSubjectId(item)` === the session employee id).
 - **Empty month:** the compact block shows exactly `No other cases this month`.
 - **Frontend:** zero build/test warnings (`CLAUDE.md`). Specs mock HTTP and use a fixed clock.
 - **Endpoint path:** the endpoint path differs from the spec's `history`, because `GET inbox/history` already exists (the caller's decision journal). These endpoints use `people/{employeeId}/cases` instead.
