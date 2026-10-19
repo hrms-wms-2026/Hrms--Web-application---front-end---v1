@@ -1,5 +1,27 @@
 <ng-template #toolbarTpl>
   <div class="flex flex-wrap items-center justify-end gap-2">
+    <div class="inline-flex h-[30px] items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5"
+      role="group" aria-label="Tree view mode">
+      @for (mode of ['tree', 'network']; track mode) {
+      <button type="button" [attr.data-testid]="'tree-view-switch-' + mode" [attr.aria-pressed]="viewMode() === mode"
+        [title]="mode === 'tree' ? 'Module list' : 'Network diagram'"
+        class="inline-flex h-[26px] items-center gap-1.5 rounded-[6px] px-2 text-[13px] font-medium transition-colors"
+        [class.bg-\[var\(--color-accent\)\]]="viewMode() === mode" [class.text-white]="viewMode() === mode"
+        [class.text-\[var\(--color-text-secondary\)\]]="viewMode() !== mode" (click)="viewMode.set($any(mode))">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          @if (mode === 'tree') {
+          <path d="M3 6h3m0 0h15M6 6v12m0-6h15M6 18h15" />
+          } @else {
+          <circle cx="5" cy="6" r="2" /><circle cx="19" cy="6" r="2" /><circle cx="12" cy="18" r="2" />
+          <path d="M5 8v4h14V8M12 12v4" />
+          }
+        </svg>
+        {{ mode === 'tree' ? 'Tree' : 'Network' }}
+      </button>
+      }
+    </div>
+    @if (viewMode() === 'tree') {
     @if (searchExpanded()) {
     <div class="relative flex h-[30px] w-80 items-center" data-testid="tree-search">
       <svg class="pointer-events-none absolute left-2.5 text-[var(--color-text-secondary)]" viewBox="0 0 24 24"
@@ -47,6 +69,7 @@
       </svg>
       {{ allExpanded() ? 'Collapse all' : 'Expand all' }}
     </button>
+    }
     @if (canCreateModule()) {
     <app-button variant="primary" (pressed)="onCreateModuleRequested()">Create module</app-button>
     }
@@ -62,9 +85,18 @@
     (click)="dismissCreateAssetWarning()">&#x2715;</button>
 </div>
 }
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+<div class="grid grid-cols-1 gap-4 lg:items-start"
+  [class.lg:grid-cols-[minmax(0,1fr)_24rem]]="viewMode() === 'tree'">
   <div
     class="w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-h-[220px]">
+    @if (viewMode() === 'network') {
+    @if (renderedTree(); as tree) {
+    <app-project-network-view [projectId]="projectId()" [rootObjectiveId]="tree.id"
+      (openRequested)="onNetworkNodeOpened($event)" />
+    } @else {
+    <app-empty-state title="No modules" description="This project has no modules to draw yet" />
+    }
+    } @else {
     @if (store.subtreeLoading()) {
     <app-loader label="Loading tree…" />
     } @else if (store.subtreeError()) {
@@ -107,7 +139,9 @@
       (deleteSprintRequested)="onDeleteRequested($event)" />
     }
     }
+    }
   </div>
+  @if (viewMode() === 'tree') {
   <div class="lg:sticky lg:top-4">
     @if (selectedNode(); as node) {
     <app-tree-explanation-panel [node]="node" [alerts]="monitor.alertsFor(node.id)" (editRequested)="onEditRequested($event)"
@@ -120,6 +154,7 @@
     <app-empty-state title="No selection" description="Select a module, sprint, or task to see its details" />
     }
   </div>
+  }
 </div>
 
 <app-sub-module-form [projectId]="projectId()" mode="edit" [open]="settingsOpen()" [initialValue]="settingsInitialValue()"

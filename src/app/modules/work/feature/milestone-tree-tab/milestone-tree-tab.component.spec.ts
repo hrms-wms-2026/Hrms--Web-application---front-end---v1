@@ -1071,4 +1071,61 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.taskModalPrefillModule()).toBe('o1');
     expect(fixture.componentInstance.taskModalPrefillSprint()).toBe('');
   });
+
+  describe('view switch', () => {
+    const el = () => fixture.nativeElement as HTMLElement;
+    // The switch lives in the toolbar template, which the page shell renders, not this component.
+    const toolbar = () => renderToolbar().host;
+    const switchTo = (mode: 'tree' | 'network') => {
+      toolbar().querySelector<HTMLButtonElement>(`[data-testid="tree-view-switch-${mode}"]`)!.click();
+      fixture.detectChanges();
+    };
+
+    it('renders the tree list and not the network view by default', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      expect(el().querySelector('app-milestone-tree-node')).not.toBeNull();
+      expect(el().querySelector('app-project-network-view')).toBeNull();
+    });
+
+    it('renders the network view and not the tree list after the switch is clicked', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      expect(fixture.componentInstance.viewMode()).toBe('network');
+      expect(el().querySelector('app-project-network-view')).not.toBeNull();
+      expect(el().querySelector('app-milestone-tree-node')).toBeNull();
+    });
+
+    it('hides tree search, the owner filter, the highlight filter bar and Expand all in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+
+      expect(host.querySelector('[data-testid="tree-search-toggle"]')).toBeNull();
+      expect(host.querySelector('app-task-assignee-avatar-filter')).toBeNull();
+      expect(host.querySelector('app-filter-bar')).toBeNull();
+      expect(host.querySelector('[data-testid="expand-all-toggle"]')).toBeNull();
+    });
+
+    it('keeps Create module and the switch itself visible in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+
+      expect(host.querySelector('[data-testid="tree-view-switch-tree"]')).not.toBeNull();
+      expect(host.textContent).toContain('Create module');
+    });
+
+    it('keeps the explanation card column mounted in tree mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      expect(el().querySelector('app-tree-explanation-panel, app-empty-state')).not.toBeNull();
+    });
+  });
 });

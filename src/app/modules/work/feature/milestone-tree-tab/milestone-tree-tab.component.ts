@@ -22,6 +22,8 @@ import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/s
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { ProjectNetworkViewComponent } from '../project-network-view/project-network-view.component';
+import { WorkGraphNode } from '../../../people/models/work-graph.model';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
@@ -76,7 +78,7 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
     MilestoneTreeNodeComponent, FilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent,
-    TaskAssigneeAvatarFilterComponent, AllocationRequestModalComponent
+    TaskAssigneeAvatarFilterComponent, AllocationRequestModalComponent, ProjectNetworkViewComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
@@ -125,6 +127,12 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   private expandSeq = 0;
   private readonly taskStatusOptions = signal<WorkDropdownOption[]>([]);
   private readonly categoryOptions = signal<WorkDropdownOption[]>([]);
+
+  /**
+   * Which view fills the tree area. The explanation card, the tabs and everything else on the page
+   * are untouched by this: only the list itself gives way to the network canvas.
+   */
+  readonly viewMode = signal<'tree' | 'network'>('tree');
 
   renderedTree = computed(() => this.store.selectedSubtree());
 
@@ -312,6 +320,16 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
 
   onNodeSelected(node: MilestoneTreeNode): void {
     this.selectedNodeId.set(node.id);
+  }
+
+  /**
+   * "Open in Work Management" from the network's detail panel: come back to the tree with that
+   * module (or the task's module) selected, so the explanation card explains what was clicked.
+   */
+  onNetworkNodeOpened(node: WorkGraphNode): void {
+    const id = node.objectiveId ?? null;
+    this.viewMode.set('tree');
+    if (id) this.selectedNodeId.set(id);
   }
 
   async retryTree(): Promise<void> {
