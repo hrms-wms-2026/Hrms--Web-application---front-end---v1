@@ -20,6 +20,8 @@ export interface ExplorerNode extends SimulationNodeDatum {
   readonly code: string;
   /** True for invisible spacer nodes that push neighbours away from expanded task cards. */
   readonly spacer?: boolean;
+  /** True for the node pinned at the centre by `rootId`; absent in the employee-rooted graph. */
+  readonly isRoot?: boolean;
 }
 
 export interface ExplorerLink {
@@ -45,11 +47,13 @@ export function initialsOf(name: string): string {
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1]![0] : '')).toUpperCase() || 'EM';
 }
 
-function radiusOf(node: WorkGraphNode): number {
+function radiusOf(node: WorkGraphNode, isRoot = false): number {
+  if (isRoot) return 38;
   return node.kind === 'employee' ? 38 : node.kind === 'project' ? 30 : 21;
 }
 
-function collideOf(node: WorkGraphNode): number {
+function collideOf(node: WorkGraphNode, isRoot = false): number {
+  if (isRoot) return 96;
   return node.kind === 'employee' ? 96 : node.kind === 'project' ? 84 : 62;
 }
 
@@ -57,8 +61,14 @@ function collideOf(node: WorkGraphNode): number {
  * Employee, projects and modules only - tasks are never part of the force layout, they are drawn as
  * cards next to whichever module is revealed. Modules hang off their project (owner/member is shown
  * by the module's fill, not by an extra line to the employee), which keeps the picture readable.
+ *
+ * `rootId` names a node other than the employee to pin at the centre - the project-rooted graph
+ * Work Management draws has no employee node, and its root is a module. The pinned node takes the
+ * centre's radius and collision, and the links leaving it take the long `works_on` distance, so it
+ * reads as the centre rather than as one more module. Omit `rootId` and nothing changes: the
+ * employee node is pinned, every size and distance is what it was.
  */
-export function buildExplorerLayout(graph: EmployeeWorkGraphResponse): ExplorerLayout {
+export function buildExplorerLayout(graph: EmployeeWorkGraphResponse, rootId?: string): ExplorerLayout {
   const projectCodes = new Map<string, string>();
   const moduleCounters = new Map<string, number>();
   const nodes: ExplorerNode[] = [];
@@ -76,13 +86,15 @@ export function buildExplorerLayout(graph: EmployeeWorkGraphResponse): ExplorerL
       moduleCounters.set(key, next);
       code = `M${next}`;
     }
+    const isRoot = rootId !== undefined && data.id === rootId;
     nodes.push({
       id: data.id,
       data,
-      radius: radiusOf(data),
-      collide: collideOf(data),
+      radius: radiusOf(data, isRoot),
+      collide: collideOf(data, isRoot),
       code,
-      ...(data.kind === 'employee' ? { x: 0, y: 0, fx: 0, fy: 0 } : {})
+      ...(isRoot ? { isRoot: true } : {}),
+      ...(isRoot || data.kind === 'employee' ? { x: 0, y: 0, fx: 0, fy: 0 } : {})
     });
   }
 
@@ -92,12 +104,14 @@ export function buildExplorerLayout(graph: EmployeeWorkGraphResponse): ExplorerL
     if (link.kind !== 'works_on' && link.kind !== 'contains') continue;
     const source = byId.get(link.source);
     const target = byId.get(link.target);
-    if (source && target) links.push({ source, target, kind: link.kind });
+    // Links leaving the pinned root get the long distance, so its children sit clear of it.
+    const kind = source?.isRoot ? 'works_on' : link.kind;
+    if (source && target) links.push({ source, target, kind });
   }
-  // A module whose project is not in the graph still needs an anchor: tie it to the employee.
-  const employee = nodes.find((n) => n.data.kind === 'employee');
+  // A module whose project is not in the graph still needs an anchor: tie it to the centre.
+  const employee = nodes.find((n) => (rootId !== undefined ? n.isRoot : n.data.kind === 'employee'));
   for (const node of nodes) {
-    if (node.data.kind !== 'module' || !employee) continue;
+    if (node.data.kind !== 'module' || !employee || node === employee) continue;
     if (!links.some((l) => l.target === node)) links.push({ source: employee, target: node, kind: 'works_on' });
   }
   return { nodes, links };

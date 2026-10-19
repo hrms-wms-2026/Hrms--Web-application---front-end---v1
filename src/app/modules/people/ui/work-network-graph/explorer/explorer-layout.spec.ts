@@ -83,4 +83,54 @@ describe('explorer-layout', () => {
     expect(searchGraph(graph, 'a').map((h) => h.kindLabel)[0]).toBe('Project');
     expect(searchGraph(graph, '   ')).toEqual([]);
   });
+
+  describe('rootId', () => {
+    const projectGraph: EmployeeWorkGraphResponse = {
+      nodes: [
+        { id: 'module:root', kind: 'module', label: 'Portal', projectId: 'p1', objectiveId: 'root' },
+        { id: 'module:kid', kind: 'module', label: 'Connectivity', projectId: 'p1', objectiveId: 'kid' }
+      ],
+      links: [{ source: 'module:root', target: 'module:kid', kind: 'contains' }],
+      hiddenTaskCount: 0
+    };
+
+    it('pins the node named by rootId at the origin', () => {
+      const layout = buildExplorerLayout(projectGraph, 'module:root');
+      const root = layout.nodes.find((n) => n.id === 'module:root')!;
+      expect(root.fx).toBe(0);
+      expect(root.fy).toBe(0);
+      expect(root.isRoot).toBe(true);
+    });
+
+    it('gives the root the centre radius and collision, and its links the long distance', () => {
+      const layout = buildExplorerLayout(projectGraph, 'module:root');
+      const root = layout.nodes.find((n) => n.id === 'module:root')!;
+      const kid = layout.nodes.find((n) => n.id === 'module:kid')!;
+      expect(root.radius).toBe(38);
+      expect(root.collide).toBe(96);
+      expect(kid.radius).toBe(21);
+      expect(layout.links[0].kind).toBe('works_on');
+    });
+
+    it('is unchanged when rootId is omitted: the employee node is still the pinned centre', () => {
+      const layout = buildExplorerLayout(graph);
+      const employee = layout.nodes.find((n) => n.id === 'employee:e1')!;
+      expect(employee.fx).toBe(0);
+      expect(employee.fy).toBe(0);
+      expect(employee.radius).toBe(38);
+      expect(employee.isRoot).toBeUndefined();
+      expect(layout.nodes.find((n) => n.id === 'module:a')!.radius).toBe(21);
+      expect(layout.links.map((l) => l.kind)).toEqual(['works_on', 'works_on', 'contains', 'contains', 'contains']);
+    });
+
+    it('lays out a graph of one node and no links', () => {
+      const layout = buildExplorerLayout(
+        { nodes: [projectGraph.nodes[0]], links: [], hiddenTaskCount: 0 },
+        'module:root'
+      );
+      expect(layout.nodes).toHaveLength(1);
+      expect(layout.links).toHaveLength(0);
+      expect(() => settleExplorerLayout(layout)).not.toThrow();
+    });
+  });
 });
