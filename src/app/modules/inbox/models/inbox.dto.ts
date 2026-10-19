@@ -198,6 +198,23 @@ export interface InboxHistoryEntryDto {
   item: InboxItemDto | null;
 }
 
+/** A row of a person's case history (ticket details "Past cases"). canOpen = false: listed for accountability, not clickable. */
+export interface InboxPersonCaseDto {
+  item: InboxItemDto;
+  canOpen: boolean;
+}
+
+/** A month (1-12) of the requested year that holds history; cancelled requests are not counted. */
+export interface InboxPersonCaseMonthDto {
+  month: number;
+  count: number;
+}
+
+export interface InboxPersonCaseMonthsDto {
+  hireDate: string | null;
+  months: InboxPersonCaseMonthDto[];
+}
+
 export interface InboxHistoryPageDto {
   items: InboxHistoryEntryDto[];
   total: number;

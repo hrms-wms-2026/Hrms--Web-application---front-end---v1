@@ -20,6 +20,22 @@ describe('Inbox data-access', () => {
 
   afterEach(() => http.verify());
 
+  it('reads a person\'s cases for a month and the months that hold history', () => {
+    inbox.personCases('e1', 'alert', '2026-10-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z').subscribe();
+    inbox.personCaseMonths('e1', 'request', 2026, 330).subscribe();
+
+    const cases = http.expectOne((r) => r.url === `${base}/inbox/people/e1/cases`);
+    expect(cases.request.params.get('category')).toBe('alert');
+    expect(cases.request.params.get('from')).toBe('2026-10-01T00:00:00.000Z');
+    expect(cases.request.params.get('to')).toBe('2026-11-01T00:00:00.000Z');
+    cases.flush([]);
+    const months = http.expectOne((r) => r.url === `${base}/inbox/people/e1/cases/months`);
+    expect(months.request.params.get('category')).toBe('request');
+    expect(months.request.params.get('year')).toBe('2026');
+    expect(months.request.params.get('offsetMinutes')).toBe('330');
+    months.flush({ hireDate: null, months: [] });
+  });
+
   it('lists with repeated keys for multi-value filters and facet=key:value', () => {
     inbox.list({ category: ['request'], status: ['pending', 'open'], project: ['p1'], facets: { module: ['m1', 'm2'] }, search: ' budget ', page: 2, pageSize: 10 }).subscribe();
 

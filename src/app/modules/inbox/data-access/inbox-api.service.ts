@@ -14,7 +14,10 @@ import {
   InboxItemDetailDto,
   InboxItemRef,
   InboxKindDescriptorDto,
+  InboxCategory,
   InboxPageDto,
+  InboxPersonCaseDto,
+  InboxPersonCaseMonthsDto,
   InboxQuery
 } from '../models/inbox.dto';
 
@@ -66,6 +69,18 @@ export class InboxApiService {
 
   bulk(request: InboxBulkRequestDto): Observable<InboxBulkResultDto> {
     return this.http.post<InboxBulkResultDto>(`${this.base}/bulk`, request);
+  }
+
+  /** A person's alerts or requests created in [from, to) (ISO), newest first - the ticket details' Past cases. */
+  personCases(employeeId: string, category: InboxCategory, from: string, to: string): Observable<InboxPersonCaseDto[]> {
+    const params = new HttpParams().set('category', category).set('from', from).set('to', to);
+    return this.http.get<InboxPersonCaseDto[]>(`${this.base}/people/${encodeURIComponent(employeeId)}/cases`, { params });
+  }
+
+  /** Months of `year` (grouped at the viewer's UTC offset) that hold the person's history, plus their hire date. */
+  personCaseMonths(employeeId: string, category: InboxCategory, year: number, offsetMinutes: number): Observable<InboxPersonCaseMonthsDto> {
+    const params = new HttpParams().set('category', category).set('year', String(year)).set('offsetMinutes', String(offsetMinutes));
+    return this.http.get<InboxPersonCaseMonthsDto>(`${this.base}/people/${encodeURIComponent(employeeId)}/cases/months`, { params });
   }
 }
 
