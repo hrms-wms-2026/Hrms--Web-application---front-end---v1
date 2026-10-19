@@ -9,6 +9,7 @@ import {
   InboxCapability,
   InboxItemDetailDto,
   InboxKindDescriptorDto,
+  InboxItemRef,
   InboxTargetDto,
   hasCapability
 } from '../../models/inbox.dto';
@@ -21,6 +22,7 @@ import { InboxCommentDialogComponent } from '../inbox-comment-dialog/inbox-comme
 import { InboxRevertBannerComponent } from '../inbox-revert-banner/inbox-revert-banner.component';
 import { InboxStepsComponent } from '../inbox-steps/inbox-steps.component';
 import { TicketParticipantsComponent } from '../ticket-participants/ticket-participants.component';
+import { PersonCasesSectionComponent } from '../person-cases/person-cases-section.component';
 import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
 
 export interface InboxCardAction {
@@ -39,7 +41,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
   selector: 'app-inbox-item-card',
   standalone: true,
   imports: [
-    DatePipe, KeyValuePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent, TicketParticipantsComponent,
+    DatePipe, KeyValuePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent, TicketParticipantsComponent, PersonCasesSectionComponent,
     InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxOutcomeDialogComponent,
     InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent, LeaveCancelConfirmDialogComponent
   ],
@@ -124,6 +126,8 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           @if (actionError() && actionErrorInline()) {
             <p class="card__error" role="alert" data-testid="inbox-card-inline-error">{{ actionError() }}</p>
           }
+
+          <app-person-cases-section (open)="openCase.emit($event)" />
 
           <app-ticket-participants [requesterId]="item.requestedBy?.id ?? null" />
 
@@ -255,6 +259,8 @@ export class InboxItemCardComponent {
   hide = output<void>();
   action = output<InboxCardAction>();
   openTarget = output<InboxTargetDto>();
+  /** A row in Past cases was clicked (only rows the caller can open emit). */
+  openCase = output<InboxItemRef>();
 
   private readonly renderers = inject(InboxDetailRendererRegistry);
 
