@@ -162,4 +162,16 @@ describe('ProjectNetworkViewComponent', () => {
       expect(labels).toEqual(['Module', 'Sprint', 'Task', 'Completed', 'Has an alert']);
     });
   });
+
+  it('keeps the explorer on screen while a reload is in flight', () => {
+    const pending = new Subject<ProjectWorkGraphDto>();
+    const getWorkGraph = vi.fn().mockReturnValueOnce(of(graph)).mockReturnValueOnce(pending);
+    const { fixture, el } = setup([], { getWorkGraph } as never);
+
+    fixture.componentRef.setInput('reloadKey', 'module-added');
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-work-network-explorer')).not.toBeNull();
+    expect(el.querySelector('app-loader')).toBeNull();
+  });
 });

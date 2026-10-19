@@ -92,7 +92,7 @@ function formatDate(value: string | null | undefined): string {
               }
             </dl>
 
-            @if (node.kind === 'module') {
+            @if (node.kind === 'module' || node.kind === 'sprint') {
               <section class="wgp-section">
                 <div class="wgp-section-head">
                   <h4>{{ tasksHeading() }}</h4>
@@ -110,7 +110,7 @@ function formatDate(value: string | null | undefined): string {
             }
           }
           @case ('tasks') {
-            @if (node.kind === 'module') {
+            @if (node.kind === 'module' || node.kind === 'sprint') {
               <p class="wgp-note">{{ tasksNote() }}</p>
               <ng-container *ngTemplateOutlet="taskList; context: { $implicit: myTasks() }" />
             } @else {
@@ -135,12 +135,15 @@ function formatDate(value: string | null | undefined): string {
         }
       </div>
 
+      <!-- Sprints (project graph only) have no Work Management page of their own to open. -->
+      @if (node.kind !== 'sprint') {
       <footer class="wgp-foot">
         <button type="button" class="wgp-primary" data-testid="panel-open" (click)="open.emit(node)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
           Open {{ node.kind === 'module' ? 'module' : 'project' }} in Work Management
         </button>
       </footer>
+      }
     </aside>
 
     <ng-template #taskList let-tasks>

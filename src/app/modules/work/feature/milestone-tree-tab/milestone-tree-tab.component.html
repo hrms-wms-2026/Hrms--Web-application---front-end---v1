@@ -91,7 +91,7 @@
     class="w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-h-[220px]">
     @if (viewMode() === 'network') {
     @if (renderedTree(); as tree) {
-    <app-project-network-view [projectId]="projectId()" [rootObjectiveId]="tree.id" [reloadKey]="tree"
+    <app-project-network-view [projectId]="projectId()" [rootObjectiveId]="tree.id" [reloadKey]="networkReloadKey()"
       (openRequested)="onNetworkNodeOpened($event)" />
     } @else {
     <app-empty-state title="No modules" description="This project has no modules to draw yet" />

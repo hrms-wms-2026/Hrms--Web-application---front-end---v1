@@ -27,7 +27,7 @@ import { WorkGraphNode } from '../../../people/models/work-graph.model';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
-import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../utils/project.mapper';
+import { findTreeNode, isLeafObjective, collectObjectiveOptions, moduleStructureKey } from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProjectMonitorStore } from '../../state/project-monitor.store';
@@ -135,6 +135,11 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   readonly viewMode = signal<'tree' | 'network'>('tree');
 
   renderedTree = computed(() => this.store.selectedSubtree());
+  /** Reloads the network only when modules are added or removed - see moduleStructureKey. */
+  readonly networkReloadKey = computed(() => {
+    const tree = this.renderedTree();
+    return tree ? moduleStructureKey(tree) : '';
+  });
 
   readonly filterFields = computed<FilterFieldConfig[]>(() => {
     const tree = this.store.selectedSubtree();

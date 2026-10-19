@@ -96,4 +96,39 @@ describe('WorkNetworkDetailPanelComponent', () => {
 
     expect(kind(el)).toBe('Sprint • Protocol Adapters');
   });
+
+  describe('sprint selected in project mode', () => {
+    const sprint: WorkGraphNode = { id: 'sprint:s1', kind: 'sprint', label: 'Sprint 7', status: 'active', projectId: 'p1' };
+    const task: WorkGraphNode = {
+      id: 'task:t1', kind: 'task', label: 'Pair over BLE', sublabel: 'HIP-1', status: 'active',
+      projectId: 'p1', objectiveId: 'o1', taskId: 't1'
+    };
+    const graph: EmployeeWorkGraphResponse = {
+      ...projectGraph,
+      nodes: [...projectGraph.nodes, sprint, task],
+      links: [
+        ...projectGraph.links,
+        { source: 'module:m1', target: 'sprint:s1', kind: 'contains' },
+        { source: 'sprint:s1', target: 'task:t1', kind: 'has_task' }
+      ]
+    };
+
+    it('lists the sprint tasks, not the project modules, on the overview and the tasks tab', () => {
+      const { fixture, el } = setup(graph, sprint, true);
+
+      expect(el.textContent).toContain('Pair over BLE');
+      expect(el.querySelector('.wgp-section-head h4')!.textContent).not.toBe('Modules');
+
+      el.querySelector<HTMLButtonElement>('[data-testid="panel-tab-tasks"]')!.click();
+      fixture.detectChanges();
+      expect(el.textContent).toContain('Pair over BLE');
+      expect(el.textContent).not.toContain('Hardware integration portal');
+    });
+
+    it('offers no open-in-Work-Management button for a sprint', () => {
+      const { el } = setup(graph, sprint, true);
+
+      expect(el.querySelector('[data-testid="panel-open"]')).toBeNull();
+    });
+  });
 });

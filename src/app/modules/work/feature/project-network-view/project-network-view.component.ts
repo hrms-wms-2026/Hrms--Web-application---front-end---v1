@@ -35,7 +35,9 @@ const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
   standalone: true,
   imports: [WorkNetworkExplorerComponent, LoaderComponent, ErrorStateComponent],
   template: `
-    @if (loading()) {
+    <!-- The loader only covers the first load: a refetch keeps the drawn network (and its zoom,
+         pan and locked node) on screen until the new graph arrives. -->
+    @if (loading() && graph().nodes.length === 0) {
       <app-loader label="Loading network…" />
     } @else if (error()) {
       <app-error-state [message]="error()!" [retryable]="true" (retry)="load()" />
