@@ -11,10 +11,10 @@ import { DashboardCustomizePanelComponent } from '../dashboard-customize-panel/d
 /**
  * Employee dashboard content area for the authenticated dashboard route - a customizable layout.
  *
- * Default (DEFAULT_DASHBOARD_LAYOUT): Good morning + Today's Schedule, Action Center + My Tasks,
- * Quick Actions + Team Progress, then Work Pattern full-width; Team Status, Notifications and
- * Wellbeing start unticked. The My Team cards exist only for viewers with My Team capabilities
- * (My Team spec §5, AC-1).
+ * Default (DEFAULT_DASHBOARD_LAYOUT): Good morning + Today's Schedule, My Tasks, Quick Actions, then
+ * Work Pattern full-width; Notifications and Wellbeing start unticked. The team cards (Action
+ * Center, Team Status, Team Progress) are not shown here - they live on the separate My Team
+ * dashboard, reached from Quick Actions -> My Team.
  *
  * "Customize" (top right) switches to edit mode: every card becomes a small tile that can be
  * dragged anywhere - any column, or the full-width rows at the top and bottom - and the side list

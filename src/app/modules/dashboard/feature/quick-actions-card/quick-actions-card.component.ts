@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 
@@ -11,6 +11,10 @@ import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store
 })
 export class QuickActionsCardComponent implements OnInit {
   private readonly store = inject(TimeTrackingStore);
+
+  /** Which dashboard the card sits on: the middle action links to the other one - My Team on the
+   * personal dashboard, My Work on the My Team dashboard. */
+  readonly onTeamDashboard = input(false);
 
   protected readonly today = this.store.today;
   protected readonly actionLoading = this.store.actionLoading;

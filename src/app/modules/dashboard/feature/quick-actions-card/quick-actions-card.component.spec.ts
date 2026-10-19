@@ -26,7 +26,7 @@ function makeToday(overrides: Partial<AttendanceTodayResponse> = {}): Attendance
 describe('QuickActionsCardComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function setup(today: AttendanceTodayResponse | null): Promise<{
+  async function setup(today: AttendanceTodayResponse | null, onTeamDashboard = false): Promise<{
     fixture: ComponentFixture<QuickActionsCardComponent>;
     loadToday: ReturnType<typeof vi.fn>;
     startBreak: ReturnType<typeof vi.fn>;
@@ -50,6 +50,7 @@ describe('QuickActionsCardComponent', () => {
     }).compileComponents();
 
     const fixture = TestBed.createComponent(QuickActionsCardComponent);
+    fixture.componentRef.setInput('onTeamDashboard', onTeamDashboard);
     fixture.detectChanges();
     return { fixture, loadToday, startBreak, endBreak };
   }
@@ -84,9 +85,20 @@ describe('QuickActionsCardComponent', () => {
     expect(button.disabled).toBe(true);
   });
 
-  it('links My Insights and Activity Timeline to their dashboard routes', async () => {
+  it('links My Team and Activity Timeline to their dashboard routes', async () => {
     const { fixture } = await setup(makeToday());
-    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-insights"]').getAttribute('href')).toBe('/dashboard/insights');
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-my-team"]').getAttribute('href')).toBe('/dashboard/my-team');
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-my-work"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-activity-timeline"]').getAttribute('href')).toBe(
+      '/dashboard/activity-timeline'
+    );
+  });
+
+  it('links back to My Work on the My Team dashboard, keeping Start Break and Activity Timeline', async () => {
+    const { fixture } = await setup(makeToday(), true);
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-my-work"]').getAttribute('href')).toBe('/dashboard');
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-my-team"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-break"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-activity-timeline"]').getAttribute('href')).toBe(
       '/dashboard/activity-timeline'
     );

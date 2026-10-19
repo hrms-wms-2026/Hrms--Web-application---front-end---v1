@@ -13,7 +13,6 @@ import {
   stepDashboardCard,
   toggleDashboardCard
 } from '../utils/dashboard-layout.util';
-import { allowedWidgetKeys } from '../utils/my-team-widget-visibility.util';
 import { MyTeamCapabilitiesStore } from './my-team-capabilities.store';
 
 const STORAGE_KEY_PREFIX = 'onexso.dashboard_layout';
@@ -80,15 +79,12 @@ export class DashboardLayoutService {
   /** Capabilities decide whether the My Team cards exist for this viewer; Customize waits for them. */
   readonly ready = computed(() => this.capabilitiesStore.loaded());
 
-  /** Cards this viewer may have at all: every My Day card, plus the My Team cards their
-   * capabilities allow. */
-  readonly allowed = computed<ReadonlySet<DashboardCardKey>>(() => {
-    const caps = this.capabilitiesStore.capabilities();
-    const team = caps?.isAvailable ? allowedWidgetKeys(caps) : [];
-    const keys = ALL_DASHBOARD_CARD_KEYS.filter((key) => DASHBOARD_CARD_META[key].group === 'day');
-    keys.push(...(team as DashboardCardKey[]));
-    return new Set(keys);
-  });
+  /** Cards this viewer may have here: the My Day cards only. The team cards (Team Status, Action
+   * Center, Team Progress) live on the separate My Team dashboard (/dashboard/my-team). Their keys
+   * stay in the layout model, so layouts saved before the split still load. */
+  readonly allowed = computed<ReadonlySet<DashboardCardKey>>(
+    () => new Set(ALL_DASHBOARD_CARD_KEYS.filter((key) => DASHBOARD_CARD_META[key].group === 'day'))
+  );
 
   /** The layout on screen: the draft while customizing, the saved one otherwise. */
   readonly layout = computed(() => (this.editing() ? this.draft() : this.saved()));
