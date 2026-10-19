@@ -72,12 +72,12 @@ describe('MyTeamPageComponent', () => {
     expect(loadCapabilities).toHaveBeenCalledOnce();
   });
 
-  it('shows a lead Quick Actions plus Team Status and Team Progress - not Action Center, which stays on My Work', async () => {
+  it('shows a lead Quick Actions plus the team cards: Action Center, Team Status and Team Progress', async () => {
     const { fixture } = await setup(TEAM_CAPS);
     expect(el(fixture, 'app-quick-actions-card')).toBeTruthy();
-    expect(el(fixture, '[data-testid="my-team-main"] #my-team-widget-teamStatus')).toBeTruthy();
-    expect(el(fixture, '[data-testid="my-team-side"] #my-team-widget-teamProgress')).toBeTruthy();
-    expect(el(fixture, 'app-action-center-card')).toBeNull();
+    expect(el(fixture, '#my-team-widget-actionCenter')).toBeTruthy();
+    expect(el(fixture, '#my-team-widget-teamStatus')).toBeTruthy();
+    expect(el(fixture, '#my-team-widget-teamProgress')).toBeTruthy();
     expect(el(fixture, 'app-my-tasks-card')).toBeNull();
   });
 
@@ -87,30 +87,24 @@ describe('MyTeamPageComponent', () => {
     expect(el(fixture, '[data-testid="quick-action-my-team"]')).toBeNull();
   });
 
-  it('moves Team Progress into the wide column when Team Status is not allowed', async () => {
-    const { fixture } = await setup({ ...TEAM_CAPS, canViewPeopleStatus: false });
-    expect(el(fixture, '#my-team-widget-teamStatus')).toBeNull();
-    expect(el(fixture, '[data-testid="my-team-main"] #my-team-widget-teamProgress')).toBeTruthy();
-    expect(fixture.nativeElement.querySelectorAll('app-team-progress-card').length).toBe(1);
-  });
-
-  it('shows the empty state to an approver-only viewer, whose only card (Action Center) lives on My Work', async () => {
+  it('shows only the team cards the capabilities allow', async () => {
     const { fixture } = await setup({ ...TEAM_CAPS, canViewPeopleStatus: false, leadsWork: false });
-    expect(el(fixture, '[data-testid="my-team-empty"]')).toBeTruthy();
-    expect(el(fixture, 'app-action-center-card')).toBeNull();
+    expect(el(fixture, '#my-team-widget-actionCenter')).toBeTruthy();
+    expect(el(fixture, '#my-team-widget-teamStatus')).toBeNull();
+    expect(el(fixture, '#my-team-widget-teamProgress')).toBeNull();
   });
 
   it('shows an empty state, but keeps Quick Actions, for a viewer without a team', async () => {
     const { fixture } = await setup({ ...TEAM_CAPS, isAvailable: false });
     expect(el(fixture, '[data-testid="my-team-empty"]')).toBeTruthy();
     expect(el(fixture, 'app-quick-actions-card')).toBeTruthy();
-    expect(el(fixture, 'app-team-status-card, app-team-progress-card')).toBeNull();
+    expect(el(fixture, 'app-action-center-card, app-team-status-card, app-team-progress-card')).toBeNull();
   });
 
   it('shows a loader until capabilities arrive', async () => {
     const { fixture } = await setup(null, { loaded: false });
     expect(el(fixture, 'app-loader')).toBeTruthy();
-    expect(el(fixture, 'app-team-status-card')).toBeNull();
+    expect(el(fixture, 'app-action-center-card')).toBeNull();
   });
 
   it('offers a retry when capabilities fail to load', async () => {

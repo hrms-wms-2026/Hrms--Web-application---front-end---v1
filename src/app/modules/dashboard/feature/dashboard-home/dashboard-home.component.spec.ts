@@ -133,14 +133,14 @@ describe('DashboardHomeComponent', () => {
   };
 
   describe('layout', () => {
-    it('shows a manager the default layout: Action Center kept, Team Status and Team Progress left to My Team', async () => {
+    it('shows a manager the default layout with no team cards - those live on the My Team dashboard', async () => {
       const fixture = await setup(TEAM_CAPS);
       expect(fixture.nativeElement.querySelector('app-team-kpi-strip')).toBeNull();
       expect(columnTags(fixture, 'col0')).toEqual(['app-today-at-a-glance-card', 'app-todays-schedule-card']);
-      expect(columnTags(fixture, 'col1')).toEqual(['app-action-center-card', 'app-my-tasks-card']);
+      expect(columnTags(fixture, 'col1')).toEqual(['app-my-tasks-card']);
       expect(columnTags(fixture, 'col2')).toEqual(['app-quick-actions-card']);
       expect(q(fixture, 'dashboard-band-bottom-workPattern')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('app-team-status-card, app-team-progress-card')).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-team-status-card, app-action-center-card, app-team-progress-card')).toBeNull();
       expect(q(fixture, 'quick-action-my-team')!.getAttribute('href')).toBe('/dashboard/my-team');
     });
 
@@ -175,11 +175,11 @@ describe('DashboardHomeComponent', () => {
       click(fixture, 'dashboard-customize');
       expect(q(fixture, 'dashboard-edit-bar')).toBeTruthy();
       expect(q(fixture, 'customize-panel')).toBeTruthy();
-      expect(q(fixture, 'dashboard-tile-actionCenter')).toBeTruthy();
-      expect(q(fixture, 'dashboard-tile-teamStatus')).toBeNull();
+      expect(q(fixture, 'dashboard-tile-myTasks')).toBeTruthy();
+      expect(q(fixture, 'dashboard-tile-actionCenter')).toBeNull();
       expect(q(fixture, 'customize-toggle-teamStatus')).toBeNull();
       expect(fixture.nativeElement.querySelector('app-my-tasks-card')).toBeNull();
-      expect(q(fixture, 'customize-group-team')).toBeTruthy();
+      expect(q(fixture, 'customize-group-team')).toBeNull();
     });
 
     it('leaves the My Team group out of the list for a viewer without My Team', async () => {
@@ -217,9 +217,9 @@ describe('DashboardHomeComponent', () => {
       fixture.detectChanges();
       expect(q(fixture, 'dashboard-edit-col0')!.querySelector('[data-testid^="dashboard-tile-"]')!.getAttribute('data-testid')).toBe('dashboard-tile-quickActions');
 
-      click(fixture, 'customize-up-actionCenter');
+      click(fixture, 'customize-up-myTasks');
       const col0Tiles = Array.from(q(fixture, 'dashboard-edit-col0')!.querySelectorAll('.dashboard-tile')).map((t) => t.getAttribute('data-testid'));
-      expect(col0Tiles.at(-1)).toBe('dashboard-tile-actionCenter');
+      expect(col0Tiles.at(-1)).toBe('dashboard-tile-myTasks');
 
       click(fixture, 'dashboard-done');
       expect(columnTags(fixture, 'col0')[0]).toBe('app-quick-actions-card');
