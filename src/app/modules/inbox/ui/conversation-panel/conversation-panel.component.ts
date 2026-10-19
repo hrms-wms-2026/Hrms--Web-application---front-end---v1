@@ -8,19 +8,19 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { FileApiService, buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { CommentComposerComponent, ComposerUploader } from '../../../../shared/ui/comment-composer/comment-composer.component';
-import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { EmojiPickerComponent } from '../../../work/ui/emoji-picker/emoji-picker.component';
 import { HostSlashCommand, MentionCandidate } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
-import { InboxApiService } from '../../data-access/inbox-api.service';
 import {
-  ConversationMessageDto, ConversationParticipantDto, InboxActionDto, InboxItemDto, InboxItemRef, InboxKindDescriptorDto
+  ConversationMessageDto, ConversationParticipantDto, InboxActionDto, InboxChangeDto, InboxItemDto, InboxItemRef, InboxKindDescriptorDto
 } from '../../models/inbox.dto';
 import { RealtimeConversationReaction } from '../../../../core/realtime/inbox-realtime.models';
 import { ConversationStore } from '../../state/conversation.store';
-import { inboxReference, inboxStatusLabel, inboxStatusTone, inboxTitle, inboxTypeMeta } from '../../utils/inbox-item.util';
-import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
+import { ExceptionEvidenceResponse } from '../../../../shared/models/exception-evidence.model';
+import { FaceEvidenceCardComponent } from '../face-evidence-card/face-evidence-card.component';
+import { InboxChangeSetComponent } from '../inbox-change-set/inbox-change-set.component';
+import { LeaveRequestSummaryComponent } from '../leave-request-summary/leave-request-summary.component';
 
 const ADD_COMMAND = 'add';
 const CONVERSATION_ATTACHMENT = 'conversation_attachment';
@@ -32,13 +32,7 @@ const CLOCK_TICK_MS = 30 * 1000;
 /** What the server takes for conversation_attachment (UploadPurposeCatalog). */
 const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip';
 const TAG_LABELS: Record<string, string> = {
-  info_request: 'Info requested', info_response: 'Info provided', justification: 'Justification'
-};
-const MENU_ICONS = {
-  add: 'M15 20a6 6 0 0 0-12 0M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M16 11h6',
-  members: 'M16 20a4 4 0 0 0-8 0M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM21 19a3 3 0 0 0-3-3M3 19a3 3 0 0 1 3-3',
-  export: 'M12 3v12M7 10l5 5 5-5M5 21h14',
-  leave: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11'
+  justification: 'Justification'
 };
 
 function saveBlob(blob: Blob, fileName: string): void {
@@ -76,9 +70,15 @@ interface FailedSend {
   html: string;
   mentions: string[];
   attachmentFileIds: string[];
+  replyToId: string | null;
 }
 
-/** The chat of one ticket (inbox item), WhatsApp-style: a header with the ticket and a ⋯ menu (add member,
+/** How long a quoted message stays highlighted after jumping to it. */
+const JUMP_HIGHLIGHT_MS = 1200;
+const QUOTE_LENGTH = 120;
+
+/** The chat of one ticket (inbox item), WhatsApp-style (its ConversationStore is provided by the host page, which shares
+ *  it with the ticket details): a header with the ticket and a ⋯ menu (add member,
  *  members, export, leave), messages anchored to the bottom (latest first in view; scrolling up loads older
  *  ones), and a composer with @mentions, add-and-tag and the item's actions in its "/" menu. Each ticket keeps
  *  its own unsent draft. */
@@ -86,65 +86,24 @@ interface FailedSend {
   selector: 'app-conversation-panel',
   standalone: true,
   imports: [
-    DatePipe, AvatarComponent, CommentComposerComponent, DropdownMenuComponent, EmojiPickerComponent, InboxTypeIconComponent, PeoplePickerComponent
+    DatePipe, AvatarComponent, CommentComposerComponent, EmojiPickerComponent, FaceEvidenceCardComponent, InboxChangeSetComponent, LeaveRequestSummaryComponent,
+    PeoplePickerComponent
   ],
-  providers: [ConversationStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="conv" data-testid="conversation-panel" aria-label="Conversation">
-      <header class="conv__header">
+      <!-- No header: the ticket's title and status are in the list and the details. Only what has no other home stays. -->
+      <div class="conv__float">
         <button type="button" class="conv__icon-btn conv__back" data-testid="conversation-back" aria-label="Back to tickets" (click)="back.emit()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        @if (item(); as it) {
-          <app-inbox-type-icon class="conv__type" [icon]="meta().icon" [tone]="meta().tone" />
-          <div class="conv__heading">
-            <h2 class="conv__title" data-testid="conversation-title">{{ title() }}</h2>
-            <span class="conv__ref" data-testid="conversation-ref">{{ reference() }}</span>
-          </div>
-          <span data-testid="conversation-status" [class]="'conv__pill conv__pill--' + statusTone()">{{ statusText() }}</span>
-        } @else {
-          <div class="conv__heading"><h2 class="conv__title">Conversation</h2></div>
-        }
         <button type="button" class="conv__icon-btn conv__details-toggle" [class.conv__details-toggle--always]="!detailsVisible()"
           data-testid="conversation-toggle-details" [attr.aria-pressed]="detailsVisible()"
           [attr.aria-label]="detailsVisible() ? 'Hide ticket details' : 'Show ticket details'"
           [attr.title]="detailsVisible() ? 'Hide ticket details' : 'Show ticket details'" (click)="toggleDetails.emit()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
         </button>
-        <app-dropdown-menu [items]="menu()" ariaLabel="Conversation actions" (selected)="onMenu($event)">
-          <button menu-trigger type="button" class="conv__icon-btn" data-testid="conversation-menu" aria-label="Conversation actions">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
-          </button>
-        </app-dropdown-menu>
-      </header>
-
-      @if (membersOpen()) {
-        <div class="conv__panel" data-testid="conversation-people" role="list" aria-label="People in this conversation">
-          <div class="conv__panel-head">
-            <span>Members · {{ store.participants().length }}</span>
-            <button type="button" class="conv__link" (click)="membersOpen.set(false)">Close</button>
-          </div>
-          @for (p of store.participants(); track p.employeeId) {
-            <div class="conv__person" role="listitem" data-testid="conversation-participant" [attr.data-employee-id]="p.employeeId">
-              <app-avatar [userName]="p.name" [avatarUrl]="avatarUrl(p.avatarFileId)" size="xs" />
-              <span class="conv__person-name">{{ p.name }}{{ p.employeeId === me() ? ' (you)' : '' }}</span>
-              <span class="conv__role" data-testid="participant-role">{{ role(p) }}</span>
-              @if (canRemove(p)) {
-                <button type="button" class="conv__link" [attr.data-testid]="'participant-remove-' + p.employeeId"
-                  [attr.aria-label]="'Remove ' + p.name" (click)="remove(p.employeeId)">Remove</button>
-              }
-            </div>
-          }
-          @if (leaveConfirm()) {
-            <div class="conv__person conv__person--confirm">
-              <span>Leave this conversation? You will stop seeing it.</span>
-              <button type="button" class="conv__link" (click)="leaveConfirm.set(false)">Cancel</button>
-              <button type="button" class="conv__link conv__link--danger" data-testid="conversation-leave-confirm" (click)="leave()">Leave</button>
-            </div>
-          }
-        </div>
-      }
+      </div>
 
       @if (addOpen()) {
         <div class="conv__panel" data-testid="conversation-add-panel">
@@ -163,9 +122,8 @@ interface FailedSend {
           </div>
         </div>
       }
-      @if (exportError()) { <p class="conv__error" role="alert">{{ exportError() }}</p> }
 
-      <div #scroller class="conv__messages" data-testid="conversation-messages" (scroll)="onScroll()">
+      <div #scroller class="conv__messages scroll-fade" data-testid="conversation-messages" (scroll)="onScroll()">
         <div class="conv__spacer"></div>
         @if (store.olderLoading()) {
           <p class="conv__muted" data-testid="conversation-older-loading" aria-live="polite">Loading older messages…</p>
@@ -174,7 +132,7 @@ interface FailedSend {
           <p class="conv__muted">Loading conversation…</p>
         } @else if (store.error()) {
           <p class="conv__error" role="alert">{{ store.error() }}</p>
-        } @else if (store.messages().length === 0) {
+        } @else if (days().length === 0) {
           <p class="conv__muted">No messages yet. Start the conversation.</p>
         }
         @for (group of days(); track group.key) {
@@ -183,14 +141,48 @@ interface FailedSend {
             @if (m.id === unreadFromId()) {
               <div class="conv__unread" data-testid="conversation-unread-divider"><span>New</span></div>
             }
-            @if (m.kind === 'system') {
+            @if (m.kind === 'evidence') {
+              @if (hasEvidence()) {
+                <div class="msg msg--evidence" [class.msg--highlight]="highlightedId() === m.id" [attr.data-message-id]="m.id" data-testid="message-evidence">
+                  <span class="msg__bot" [class.msg__bot--changes]="!faceEvidence()" aria-hidden="true">
+                    @if (faceEvidence()) {
+                      <svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="11" r="3" /><path d="M8 17a4 4 0 0 1 8 0" /></svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24"><path d="M9 5h10M9 12h10M9 19h10M5 5h.01M5 12h.01M5 19h.01" /></svg>
+                    }
+                  </span>
+                  <div class="msg__content">
+                    <div class="msg__meta">
+                      <span class="msg__author">{{ evidenceLabel() }}</span>
+                      <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}</time>
+                      @if (canReply(m)) {
+                        <span class="msg__menu">
+                          <button type="button" class="conv__link" [attr.data-testid]="'message-reply-' + m.id" [attr.aria-label]="'Reply to the ' + evidenceLabel().toLowerCase()" (click)="startReply(m)">Reply</button>
+                        </span>
+                      }
+                    </div>
+                    <div class="msg__bubble">
+                      @if (faceEvidence(); as ev) {
+                        <app-face-evidence-card [evidence]="ev" />
+                      } @else if (item()?.source === 'leave') {
+                        <app-leave-request-summary [changes]="changes()" [editable]="changesEditable()" [errors]="changeErrors()"
+                          (editsChange)="changesEdited.emit($event)" />
+                      } @else {
+                        <app-inbox-change-set data-testid="message-changes" [changes]="changes()" [editable]="changesEditable()" [errors]="changeErrors()"
+                          (editsChange)="changesEdited.emit($event)" />
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            } @else if (m.kind === 'system') {
               <div class="msg msg--system" [attr.data-message-id]="m.id">
                 <span [innerHTML]="m.bodyHtml"></span> · <time>{{ m.createdAt | date: 'h:mm a' }}</time>
               </div>
             } @else {
               @let own = m.authorEmployeeId === me();
               <div class="msg" [class.msg--own]="own" [class.msg--justification]="m.tag === 'justification' && !m.isDeleted"
-                [attr.data-message-id]="m.id">
+                [class.msg--highlight]="highlightedId() === m.id" [attr.data-message-id]="m.id">
                 <app-avatar class="msg__avatar" [userName]="own ? 'You' : m.authorName" [avatarUrl]="avatarUrl(m.authorAvatarFileId)" size="sm" />
                 <div class="msg__content">
                   <div class="msg__meta">
@@ -198,6 +190,9 @@ interface FailedSend {
                     <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}@if (m.editedAt && !m.isDeleted) { <span> (edited)</span> }</time>
                     @if (!m.isDeleted && !store.removed() && editingId() !== m.id) {
                       <span class="msg__menu" [class.msg__menu--open]="reactPickerFor() === m.id" data-testid="message-menu">
+                        @if (canReply(m)) {
+                          <button type="button" class="conv__link" [attr.data-testid]="'message-reply-' + m.id" aria-label="Reply to message" (click)="startReply(m)">Reply</button>
+                        }
                         <span class="msg__react">
                           <button type="button" class="msg__react-btn" [attr.data-testid]="'message-react-' + m.id" aria-label="React to message"
                             title="React" aria-haspopup="dialog" [attr.aria-expanded]="reactPickerFor() === m.id" (click)="toggleReactPicker(m.id)">
@@ -218,6 +213,13 @@ interface FailedSend {
                     }
                   </div>
                   <div class="msg__bubble">
+                    @if (m.replyTo && !m.isDeleted) {
+                      <button type="button" class="msg__quote" data-testid="message-quote" [attr.aria-label]="'Go to the message from ' + quoteAuthor(m.replyTo)"
+                        (click)="jumpTo(m.replyTo.id)">
+                        <span class="msg__quote-author">{{ quoteAuthor(m.replyTo) }}</span>
+                        <span class="msg__quote-text">{{ quoteText(m.replyTo) }}</span>
+                      </button>
+                    }
                     @if (m.tag && !m.isDeleted) { <div class="msg__tag" data-testid="message-tag">{{ tagLabel(m.tag) }}</div> }
                     @if (m.isDeleted) {
                       <div class="msg__body msg__body--deleted">Message deleted</div>
@@ -290,6 +292,16 @@ interface FailedSend {
               Mark as justification
             </label>
           }
+          @if (replyingTo(); as r) {
+            <div class="conv__replying" data-testid="conversation-replying">
+              <svg class="conv__replying-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+              <span class="conv__replying-text"><strong>Replying to {{ quoteAuthor(r) }}</strong> {{ replyingText(r) }}</span>
+              <button type="button" class="conv__icon-btn conv__replying-close" data-testid="conversation-reply-cancel" aria-label="Cancel reply"
+                (click)="replyingTo.set(null)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+          }
           <!-- Switching tickets empties the composer and loads that ticket's own draft, so text never leaks across. -->
           <app-comment-composer
             #composer
@@ -317,17 +329,16 @@ interface FailedSend {
   styles: [`
     :host { display: block; height: 100%; min-height: 0; }
     .conv { display: flex; height: 100%; min-height: 0; flex-direction: column; }
-    .conv__header { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--color-border); }
-    .conv__type { width: 36px; height: 36px; border-radius: 10px; }
-    .conv__heading { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
-    .conv__title { margin: 0; overflow: hidden; color: var(--color-text-primary); font-size: 14px; font-weight: 650; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
-    .conv__ref { overflow: hidden; color: var(--color-text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-    .conv__pill { --tone: var(--color-accent); flex: 0 0 auto; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 600; }
-    .conv__pill--neutral { --tone: var(--color-text-secondary); }
     .conv__icon-btn { display: inline-flex; width: 30px; height: 30px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
     .conv__icon-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .conv__icon-btn:focus-visible, .conv__link:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .conv__icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .conv { position: relative; }
+    /* The two controls that had no other home float over the chat, and only show when they are needed. */
+    .conv__float { position: absolute; top: 8px; right: 8px; left: 8px; z-index: 2; display: flex; justify-content: space-between; pointer-events: none; }
+    .conv__float .conv__icon-btn { pointer-events: auto; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 8%); }
+    .conv__details-toggle { margin-left: auto; }
+    .conv:has(.conv__details-toggle--always) .conv__messages { padding-top: 48px; }
     .conv__back { display: none; }
     .conv__details-toggle { display: none; }
     .conv__details-toggle--always { display: inline-flex; }
@@ -337,10 +348,6 @@ interface FailedSend {
     .conv__btn { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
     .conv__btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .conv__btn:disabled { opacity: .5; cursor: default; }
-    .conv__person { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
-    .conv__person--confirm { flex-wrap: wrap; color: var(--color-text-secondary); }
-    .conv__person-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .conv__role { padding: 1px 8px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; }
     .conv__link { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
     .conv__link--danger { color: var(--color-danger); }
     .conv__messages { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; overflow-y: auto; padding: 16px; }
@@ -385,6 +392,26 @@ interface FailedSend {
     .msg__reaction:disabled { cursor: default; }
     .msg__reaction--mine { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); color: var(--color-accent); font-weight: 600; }
     .msg__reaction-emoji { font-size: 14px; line-height: 1; }
+    .msg--highlight .msg__bubble { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 55%, transparent); transition: box-shadow .2s; }
+    .msg__bot { display: inline-flex; width: 32px; height: 32px; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 50%;
+      background: color-mix(in srgb, var(--color-danger) 12%, var(--color-surface)); color: var(--color-danger); }
+    .msg__bot svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .msg__bot--changes { background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); }
+    .msg--evidence .msg__bubble { padding: 8px; background: color-mix(in srgb, var(--color-surface-secondary) 45%, var(--color-surface)); }
+    .msg--evidence .msg__content { min-width: 0; flex: 1; }
+    .msg__quote { position: relative; display: flex; width: 100%; min-width: 0; flex-direction: column; gap: 1px; margin-bottom: 6px;
+      padding: 5px 8px 5px 14px; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
+      color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
+    .msg__quote::before { content: ''; position: absolute; top: 6px; bottom: 6px; left: 6px; width: 3px; border-radius: 2px; background: var(--color-accent); }
+    .msg__quote:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+    .msg__quote-author { color: var(--color-accent); font-size: 11px; font-weight: 700; }
+    .msg__quote-text { overflow: hidden; color: var(--color-text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .conv__replying { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border-radius: 10px;
+      background: var(--color-surface-secondary); font-size: 12px; }
+    .conv__replying-icon { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: var(--color-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .conv__replying-text { min-width: 0; flex: 1; overflow: hidden; color: var(--color-text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+    .conv__replying-text strong { margin-right: 4px; color: var(--color-text-primary); font-weight: 650; }
+    .conv__replying-close { width: 24px; height: 24px; }
     .msg__tag { margin-bottom: 2px; color: var(--color-accent); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
     .msg--justification .msg__bubble { border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 55%, transparent); background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface)); }
     .msg--justification .msg__tag { color: var(--color-warning, #d97706); }
@@ -401,8 +428,7 @@ interface FailedSend {
     /* Narrow screens: the chat is its own screen with a back button; the details open as a drawer. */
     @media (max-width: 1023px) {
       .conv__back, .conv__details-toggle { display: inline-flex; }
-      .conv__type { display: none; }
-      .conv__header { gap: 6px; padding: 10px 12px; }
+      .conv__messages { padding-top: 48px; }
       .msg { max-width: 92%; }
     }
   `]
@@ -420,6 +446,16 @@ export class ConversationPanelComponent implements AfterViewChecked {
   descriptor = input<InboxKindDescriptorDto | null>(null);
   /** Whether the ticket details panel is showing; the header offers to show it when it is not. */
   detailsVisible = input(true);
+  /** An identity alert's face evidence: fills its "evidence" message (people can reply to it). Null for viewers without it. */
+  faceEvidence = input<ExceptionEvidenceResponse | null>(null);
+  /** A request's requested changes: fill its "evidence" message instead (the approver can edit them there). */
+  changes = input<readonly InboxChangeDto[]>([]);
+  /** The approver may edit the changes before approving. */
+  changesEditable = input(false);
+  /** Per-field problems found on approve. */
+  changeErrors = input<Record<string, string>>({});
+  /** The approver's edits to the changes; the host keeps them for approve. */
+  changesEdited = output<Record<string, string>>();
   /** The item's available actions, offered in the composer's "/" menu. */
   actions = input<readonly InboxActionDto[]>([]);
   /** A "/" action was picked: the host runs it exactly like its action-bar button. */
@@ -431,7 +467,6 @@ export class ConversationPanelComponent implements AfterViewChecked {
   back = output<void>();
 
   private readonly files = inject(FileApiService);
-  private readonly inboxApi = inject(InboxApiService);
 
   /** Chat attachments upload as conversation_attachment: at most 5 per message, 25 MB each. */
   protected readonly uploader: ComposerUploader = {
@@ -441,30 +476,20 @@ export class ConversationPanelComponent implements AfterViewChecked {
     maxBytes: MAX_ATTACHMENT_BYTES,
     accept: ATTACHMENT_ACCEPT
   };
-  protected readonly membersOpen = signal(false);
   /** The message whose emoji picker is open. */
   protected readonly reactPickerFor = signal<string | null>(null);
   /** Ticks so Edit/Delete disappear once a message's 30 minutes are over. */
   private readonly now = signal(Date.now());
-  protected readonly leaveConfirm = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly justification = signal(false);
-  protected readonly exporting = signal(false);
-  protected readonly exportError = signal<string | null>(null);
   /** The last message that failed to send, kept so it can be retried as it was. */
   protected readonly failed = signal<FailedSend | null>(null);
+  /** The message the next send answers (WhatsApp/Teams-style reply); cleared on send and on switching tickets. */
+  protected readonly replyingTo = signal<ConversationMessageDto | null>(null);
+  /** The message briefly highlighted after jumping to it from a quote. */
+  protected readonly highlightedId = signal<string | null>(null);
 
-  private readonly myRow = computed(() => this.store.participants().find((p) => p.employeeId === this.me()) ?? null);
   protected readonly isSubject = computed(() => !!this.me() && this.me() === this.store.subjectEmployeeId());
-  protected readonly canLeave = computed(() => this.myRow()?.joinReason === 'added');
-  /** Deciders (base members who are neither the subject nor the requester) and viewers (e.g. HR after an escalation);
-   *  the server checks again and refuses anyone else. */
-  protected readonly canExport = computed(() => {
-    const row = this.myRow();
-    if (!row) return false;
-    if (row.joinReason === 'viewer') return true;
-    return row.joinReason === 'base' && row.employeeId !== this.store.subjectEmployeeId() && row.employeeId !== this.requesterId();
-  });
 
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
   private readonly composer = viewChild<CommentComposerComponent>('composer');
@@ -481,19 +506,6 @@ export class ConversationPanelComponent implements AfterViewChecked {
   private lastMessageCount = 0;
   private filling = false;
 
-  protected readonly meta = computed(() => this.item()
-    ? inboxTypeMeta(this.item()!, this.descriptor())
-    : { label: '', tone: 'neutral' as const, icon: 'task' });
-  protected readonly title = computed(() => this.item() ? inboxTitle(this.item()!) : '');
-  protected readonly reference = computed(() => this.item() ? inboxReference(this.item()!) : '');
-  protected readonly statusText = computed(() => this.item() ? inboxStatusLabel(this.item()!) : '');
-  protected readonly statusTone = computed(() => this.item() ? inboxStatusTone(this.item()!) : 'neutral');
-  protected readonly menu = computed<MenuItem[]>(() => [
-    ...(this.store.removed() ? [] : [{ id: 'add', label: 'Add member', iconPath: MENU_ICONS.add }]),
-    { id: 'members', label: `Members (${this.store.participants().length})`, iconPath: MENU_ICONS.members },
-    ...(this.canExport() ? [{ id: 'export', label: this.exporting() ? 'Exporting…' : 'Export', iconPath: MENU_ICONS.export, disabled: this.exporting() }] : []),
-    ...(this.canLeave() ? [{ id: 'leave', label: 'Leave conversation', iconPath: MENU_ICONS.leave, danger: true, dividerBefore: true }] : [])
-  ]);
 
   protected readonly unreadFromId = computed(() => {
     const id = this.store.unreadFromId();
@@ -516,7 +528,10 @@ export class ConversationPanelComponent implements AfterViewChecked {
 
   protected readonly days = computed<DayGroup[]>(() => {
     const groups: DayGroup[] = [];
+    const evidence = this.hasEvidence();
     for (const m of this.store.messages()) {
+      // The evidence marker is empty: it shows only for viewers who receive the item's evidence.
+      if (m.kind === 'evidence' && !evidence) continue;
       const date = new Date(m.createdAt);
       const key = date.toDateString();
       let group = groups[groups.length - 1];
@@ -552,11 +567,10 @@ export class ConversationPanelComponent implements AfterViewChecked {
         this.stickToBottom = true;
         this.lastMessageCount = 0;
         this.failed.set(null);
-        this.membersOpen.set(false);
         this.addOpen.set(false);
-        this.leaveConfirm.set(false);
         this.editingId.set(null);
         this.reactPickerFor.set(null);
+        this.replyingTo.set(null);
         void this.store.open(ref);
       });
     });
@@ -608,63 +622,85 @@ export class ConversationPanelComponent implements AfterViewChecked {
     return fileId ? buildFileUrl(fileId) : null;
   }
 
-  protected async send(html: string, mentions: string[], attachmentFileIds: string[] = []): Promise<void> {
+  protected async send(
+    html: string, mentions: string[], attachmentFileIds: string[] = [], replyToId: string | null = this.replyingTo()?.id ?? null
+  ): Promise<void> {
     this.stickToBottom = true;
     const key = this.refKey();
     this.drafts.delete(key);
     const tag = this.isSubject() && this.justification() ? 'justification' : null;
-    const ok = await this.store.send(html, mentions, attachmentFileIds, tag);
+    this.replyingTo.set(null);
+    const ok = await this.store.send(html, mentions, attachmentFileIds, tag, replyToId);
     // Only the ticket it was written in may keep (and retry) a failed message.
     if (this.refKey() !== key) return;
     if (ok) {
       this.justification.set(false);
       this.failed.set(null);
     } else {
-      this.failed.set({ html, mentions, attachmentFileIds });
+      this.failed.set({ html, mentions, attachmentFileIds, replyToId });
     }
   }
 
   protected retry(): void {
     const failed = this.failed();
-    if (failed) void this.send(failed.html, failed.mentions, failed.attachmentFileIds);
+    if (failed) void this.send(failed.html, failed.mentions, failed.attachmentFileIds, failed.replyToId);
   }
 
-  protected role(p: ConversationParticipantDto): string {
-    if (p.joinReason === 'viewer') return 'Viewer';
-    if (p.joinReason === 'added') return 'Added';
-    if (p.employeeId === this.store.subjectEmployeeId()) return 'Subject';
-    if (p.employeeId === this.requesterId()) return 'Requester';
-    return 'Approver';
+  /** The ticket's evidence message has something to show this viewer: face checks, or a request's changes. */
+  protected readonly hasEvidence = computed(() => !!this.faceEvidence() || this.changes().length > 0);
+  /** What the evidence message is called (its author line and reply quotes). */
+  protected readonly evidenceLabel = computed(() => (this.faceEvidence() ? 'Face checks' : 'Requested changes'));
+  /** One line for a quote of the evidence message. */
+  private readonly evidenceLine = computed(() => {
+    if (this.faceEvidence()) return 'Photo and clock-in tries';
+    if (this.item()?.source === 'leave') return this.changes().find((c) => c.field === 'leave_type')?.after ?? 'Leave';
+    return this.changes().map((c) => c.label).join(', ');
+  });
+
+  /** Text messages can be answered, and the evidence message when this viewer can see it. */
+  protected canReply(message: ConversationMessageDto): boolean {
+    if (message.isDeleted || this.store.removed()) return false;
+    return message.kind === 'text' || (message.kind === 'evidence' && this.hasEvidence());
   }
 
-  /** Added members can be removed by any base member and by whoever added them. */
-  protected canRemove(p: ConversationParticipantDto): boolean {
-    if (p.joinReason !== 'added' || p.employeeId === this.me() || this.store.removed()) return false;
-    return this.myRow()?.joinReason === 'base' || p.addedByEmployeeId === this.me();
+  protected startReply(message: ConversationMessageDto): void {
+    this.replyingTo.set(message);
+    this.composer()?.expand();
   }
 
-  protected async remove(employeeId: string): Promise<void> {
-    await this.store.removeParticipant(employeeId);
+  /** Who a quote is from: "You", the author, or "Face checks" for the evidence card. */
+  protected quoteAuthor(quote: { kind: string; authorEmployeeId: string | null; authorName: string | null }): string {
+    if (quote.kind === 'evidence') return this.evidenceLabel();
+    if (quote.authorEmployeeId && quote.authorEmployeeId === this.me()) return 'You';
+    return quote.authorName ?? 'A teammate';
   }
 
-  protected async leave(): Promise<void> {
-    this.leaveConfirm.set(false);
-    if (await this.store.leave()) this.membersOpen.set(false);
+  /** One line of the quoted message, from a reply's preview. */
+  protected quoteText(quote: { kind: string; excerpt: string; isDeleted: boolean }): string {
+    if (quote.isDeleted) return 'Message deleted';
+    if (quote.kind === 'evidence') return this.evidenceLine();
+    return quote.excerpt || 'Attachment';
   }
 
-  protected onMenu(id: string): void {
-    if (id === 'add') {
-      if (!this.addOpen()) this.toggleAdd();
-    } else if (id === 'members') {
-      this.membersOpen.set(true);
-      this.leaveConfirm.set(false);
-    } else if (id === 'export') {
-      this.exportBundle();
-    } else if (id === 'leave') {
-      this.membersOpen.set(true);
-      this.leaveConfirm.set(true);
-    }
+  /** One line of the message being answered, for the bar above the composer. */
+  protected replyingText(message: ConversationMessageDto): string {
+    if (message.kind === 'evidence') return this.evidenceLine();
+    const text = (new DOMParser().parseFromString(message.bodyHtml, 'text/html').body.textContent ?? '').replace(/\s+/g, ' ').trim();
+    if (!text) return message.attachments?.length ? 'Attachment' : '';
+    return text.length > QUOTE_LENGTH ? text.slice(0, QUOTE_LENGTH - 1).trimEnd() + '…' : text;
   }
+
+  /** Scrolls to the quoted message (when it is loaded) and highlights it for a moment. */
+  protected jumpTo(messageId: string): void {
+    const target = Array.from(this.scroller()?.nativeElement.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])
+      .find((el) => el.dataset['messageId'] === messageId);
+    if (!target) return;
+    this.stickToBottom = false;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    this.highlightedId.set(messageId);
+    setTimeout(() => { if (this.highlightedId() === messageId) this.highlightedId.set(null); }, JUMP_HIGHLIGHT_MS);
+  }
+
 
   /** The author may still edit or delete: within 30 minutes of sending (the server checks it too). */
   protected canChange(message: ConversationMessageDto): boolean {
@@ -715,22 +751,6 @@ export class ConversationPanelComponent implements AfterViewChecked {
     this.conversations.attachment(conversationId, attachmentId).subscribe({
       next: (blob) => saveBlob(blob, fileName),
       error: () => this.store.markSendError('You can no longer download this file.')
-    });
-  }
-
-  protected exportBundle(): void {
-    this.exporting.set(true);
-    this.exportError.set(null);
-    const ref = this.itemRef();
-    this.inboxApi.exportItem(ref).subscribe({
-      next: (blob) => {
-        this.exporting.set(false);
-        saveBlob(blob, `inbox-${ref.source}-${ref.kind}-${ref.id}.html`);
-      },
-      error: () => {
-        this.exporting.set(false);
-        this.exportError.set('You cannot export this conversation.');
-      }
     });
   }
 

@@ -1,5 +1,6 @@
 import { InboxFilterFieldDto, InboxItemDto } from '../models/inbox.dto';
 import {
+  inboxIconTone,
   inboxMenuItems,
   inboxStatusLabel,
   inboxStatusTone,
@@ -45,8 +46,21 @@ describe('inbox item util', () => {
     expect(inboxStatusLabel(item({ status: 'stale' }))).toBe('Outdated');
     expect(inboxStatusLabel(item({ category: 'alert', status: 'open' }))).toBe('Open');
     expect(inboxStatusLabel(item({ category: 'alert', status: 'resolved' }))).toBe('Resolved');
-    expect(inboxStatusTone(item())).toBe('accent');
-    expect(inboxStatusTone(item({ status: 'approved', isPending: false }))).toBe('neutral');
+  });
+
+  it('colours live tickets by state and finished ones gray', () => {
+    expect(inboxStatusTone(item())).toBe('warning');
+    expect(inboxStatusTone(item({ status: 'in_progress' }))).toBe('info');
+    expect(inboxStatusTone(item({ category: 'alert', status: 'open', severity: 'medium' }))).toBe('accent');
+    expect(inboxStatusTone(item({ category: 'alert', status: 'open', severity: 'critical' }))).toBe('danger');
+    expect(inboxStatusTone(item({ category: 'alert', status: 'acknowledged' }))).toBe('info');
+    for (const status of ['approved', 'rejected', 'cancelled', 'resolved']) {
+      expect(inboxStatusTone(item({ status, isPending: false }))).toBe('neutral');
+    }
+    const alert = item({ category: 'alert', status: 'open', severity: 'medium' });
+    expect(inboxIconTone(alert, inboxTypeMeta(alert))).toBe('warning');
+    expect(inboxIconTone(item(), inboxTypeMeta(item()))).toBe('warning');
+    expect(inboxIconTone(item({ status: 'approved', isPending: false }), inboxTypeMeta(item()))).toBe('neutral');
   });
 
   it('builds the row menu from the item actions; reject is never a one-click menu entry', () => {
@@ -111,7 +125,7 @@ describe('inbox item util for non-WM kinds (FS1)', () => {
   });
 
   it('humanizes statuses it has no label for instead of calling them outdated', () => {
-    expect(inboxStatusLabel({ ...leave, status: 'info_requested' })).toBe('Info requested');
+    expect(inboxStatusLabel({ ...leave, status: 'on_hold' })).toBe('On hold');
     expect(inboxStatusLabel({ ...leave, status: 'approved' })).toBe('Approved');
     expect(inboxStatusLabel({ ...leave, category: 'alert', status: 'excused' })).toBe('Excused');
     expect(inboxStatusLabel({ ...leave, category: 'alert', status: 'acknowledged' })).toBe('Acknowledged');

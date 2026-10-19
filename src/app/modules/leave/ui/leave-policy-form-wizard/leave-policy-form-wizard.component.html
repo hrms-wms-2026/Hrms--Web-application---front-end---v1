@@ -1,6 +1,6 @@
 <div class="lpw-backdrop" (click)="cancel.emit()">
   <section class="lpw-modal ui-scroll-open" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Create leave policy">
-    <aside class="lpw-steps">
+    <aside class="lpw-steps scroll-fade">
       <div class="lpw-brand">
         <p>CREATE POLICY</p>
         <h2>Leave policy</h2>
@@ -31,7 +31,7 @@
         <button type="button" class="lpw-close" (click)="cancel.emit()" aria-label="Close policy builder">×</button>
       </header>
 
-      <main>
+      <main class="scroll-fade">
         @if (step() === 1) {
           <div class="lpw-fields">
             <label>Policy name <em>*</em>

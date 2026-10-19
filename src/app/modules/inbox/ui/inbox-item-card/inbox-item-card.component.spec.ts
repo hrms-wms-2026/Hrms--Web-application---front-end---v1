@@ -41,28 +41,29 @@ describe('InboxItemCardComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, actions };
   }
 
-  it('shows the summary, status, steps and change set; the explanation opens from its collapsed header', () => {
-    const { fixture, el } = render(detail());
+  it('shows the summary, status and steps; the change set lives in the chat, not here', () => {
+    const { el } = render(detail());
 
     expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Update task details');
     expect(el.querySelector('[data-testid="inbox-card-status"]')?.textContent).toContain('Pending');
     expect(el.querySelectorAll('[data-testid="inbox-step"]')).toHaveLength(2);
-    expect(el.querySelector('[data-testid="inbox-change-set"]')).not.toBeNull();
-    expect(el.querySelector('[data-testid="inbox-card-explanation"]')).toBeNull();
-
-    (el.querySelector('[data-testid="inbox-card-explanation-toggle"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(el.querySelector('[data-testid="inbox-card-explanation"]')?.textContent).toContain('Typo in the title');
+    expect(el.querySelector('[data-testid="inbox-change-set"]')).toBeNull();
+    expect(el.textContent).not.toContain('Explanation');
   });
 
-  it('says when there is no explanation, and Hide asks the page to collapse the panel', () => {
-    const { fixture, el } = render(detail({ explanation: null }));
+  it('shows the Project row only for a project ticket', () => {
+    expect(render(detail()).el.querySelector('[data-testid="inbox-card-project"]')?.textContent).toContain('Apollo');
+    TestBed.resetTestingModule();
+
+    const leave = render(detail({}, { contextType: 'legal_entity', contextId: 'le1', contextName: null })).el;
+    expect(leave.querySelector('[data-testid="inbox-card-project"]')).toBeNull();
+    expect(leave.textContent).not.toContain('Project');
+  });
+
+  it('Hide asks the page to collapse the panel', () => {
+    const { fixture, el } = render(detail());
     const hidden = vi.fn();
     fixture.componentInstance.hide.subscribe(hidden);
-
-    (el.querySelector('[data-testid="inbox-card-explanation-toggle"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(el.textContent).toContain('No explanation was given for this ticket.');
 
     (el.querySelector('[data-testid="inbox-card-hide"]') as HTMLButtonElement).click();
     expect(hidden).toHaveBeenCalled();
@@ -76,9 +77,9 @@ describe('InboxItemCardComponent', () => {
 
   it('renders one button per available action and approves with the approver edits', () => {
     const { fixture, el, actions } = render(detail({}, { availableActions: [APPROVE, REJECT] }));
-    const input = el.querySelector('[data-testid="inbox-edit-title"]') as HTMLInputElement;
-    input.value = 'Newer';
-    input.dispatchEvent(new Event('input'));
+    // The chat's changes message reports the edits to the card.
+    expect(fixture.componentInstance.canEdit()).toBe(true);
+    fixture.componentInstance.setEdits({ title: 'Newer' });
     fixture.detectChanges();
 
     (el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).click();
@@ -89,8 +90,8 @@ describe('InboxItemCardComponent', () => {
   });
 
   it('does not offer editing when the item has no editable payload', () => {
-    const { el } = render(detail({ editablePayloadJson: null }, { availableActions: [APPROVE] }));
-    expect(el.querySelector('[data-testid="inbox-edit-title"]')).toBeNull();
+    const { fixture } = render(detail({ editablePayloadJson: null }, { availableActions: [APPROVE] }));
+    expect(fixture.componentInstance.canEdit()).toBe(false);
   });
 
   it('asks for a comment before a comment action and sends it', () => {

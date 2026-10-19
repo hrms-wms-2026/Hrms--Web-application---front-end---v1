@@ -13,9 +13,14 @@ import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
-import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
+import { TabOption } from '../../../../shared/ui/tabs/tabs.component';
 import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../../work/ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
-import { InboxCapability, InboxHistoryEntryDto, InboxItemDto, InboxItemRef, InboxSort, InboxTargetDto, sameRef } from '../../models/inbox.dto';
+import {
+  InboxCapability, InboxHistoryEntryDto, InboxItemDetailDto, InboxItemDto, InboxItemRef, InboxSort, InboxTargetDto, sameRef
+} from '../../models/inbox.dto';
+import { ExceptionEvidenceResponse } from '../../../../shared/models/exception-evidence.model';
+import { parseExtra } from '../../renderers/inbox-detail-renderers';
+import { ConversationStore } from '../../state/conversation.store';
 import { InboxKindsStore } from '../../state/inbox-kinds.store';
 import { InboxStore } from '../../state/inbox.store';
 import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../../ui/inbox-action-dialogs/inbox-outcome-dialog.component';
@@ -27,11 +32,12 @@ import { InboxTypeIconComponent } from '../../ui/inbox-type-icon/inbox-type-icon
 import {
   inboxMenuItems,
   inboxStatusLabel,
+  inboxIconTone,
   inboxStatusTone,
-  inboxSubtitle,
   inboxTitle,
   inboxTypeMeta,
   requestedOnFrom,
+  CATEGORY_FIELD,
   toFilterFields
 } from '../../utils/inbox-item.util';
 import {
@@ -43,8 +49,7 @@ import {
   groupByEmployee,
   pageStateFromParams,
   pageStateToParams,
-  pageStateToQuery,
-  tabCounts
+  pageStateToQuery
 } from '../../utils/inbox-page-state.util';
 
 const SORT_OPTIONS: readonly { id: InboxSort; label: string; short: string }[] = [
@@ -78,20 +83,28 @@ function sameParams(a: Record<string, string>, b: Record<string, string>): boole
   return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
 }
 
-function withCount(label: string, n: number): string {
-  return n > 0 ? `${label} (${n > 99 ? '99+' : n})` : label;
-}
-
 /** The Inbox as a ticket workspace: the ticket list (tabs, direction, sort, filters), the selected ticket's own
  *  conversation, and its details panel (collapsible) with the actions - across projects and modules. */
+/** The open ticket's face evidence, or null. Only that ticket's own detail counts: while switching tickets the previous
+ *  one's detail is still loaded, and its photos must never show in the new ticket's chat. */
+export function faceEvidenceFor(
+  detail: InboxItemDetailDto | null, selected: InboxItemRef | null, rendererOf: (source: string, kind: string) => string | null
+): ExceptionEvidenceResponse | null {
+  if (!detail || !selected || !sameRef(detail.item, selected)) return null;
+  if (rendererOf(detail.item.source, detail.item.kind) !== 'exception-evidence') return null;
+  return parseExtra(detail.extraJson) as ExceptionEvidenceResponse | null;
+}
+
 @Component({
   selector: 'app-inbox-page',
   standalone: true,
   imports: [
     DatePipe, AvatarComponent, BulkActionBarComponent, BulkActionResultModalComponent, DataTableComponent, DataTableCellDirective,
-    DropdownMenuComponent, FilterBarComponent, BreadcrumbHeaderComponent, TabsComponent, ApprovalDelegateModalComponent, ConversationPanelComponent,
+    DropdownMenuComponent, FilterBarComponent, BreadcrumbHeaderComponent, ApprovalDelegateModalComponent, ConversationPanelComponent,
     InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent, InboxTypeIconComponent, TaskAssigneeAvatarFilterComponent
   ],
+  // The open ticket's chat: shared by the conversation panel and the ticket details (its Participants section).
+  providers: [ConversationStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="inbox">
@@ -122,6 +135,8 @@ function withCount(label: string, n: number): string {
               <button type="button" class="inbox__tool-btn" data-testid="inbox-group-toggle" [attr.aria-pressed]="grouped()"
                 (click)="grouped.set(!grouped())">{{ grouped() ? 'Ungroup' : 'Group by employee' }}</button>
             }
+            <button type="button" class="inbox__tool-btn" data-testid="inbox-history-toggle"
+              [attr.aria-pressed]="state().tab === 'history'" (click)="toggleHistory()">History</button>
             @if (canDelegate) {
               <button type="button" class="inbox__tool-btn" data-testid="inbox-delegate" (click)="delegateOpen.set(true)">Delegate my approvals</button>
             }
@@ -134,7 +149,6 @@ function withCount(label: string, n: number): string {
         [class.inbox__workspace--details]="detailsShown()"
         [class.inbox__workspace--drawer]="narrow() && detailsShown()">
         <section class="inbox__panel inbox__list" aria-label="Tickets">
-          <app-tabs class="inbox__tabs" ariaLabel="Category" [tabs]="tabs()" [value]="state().tab" (valueChange)="onTab($event)" />
           @if (state().tab !== 'history') {
             <div class="inbox__list-tools">
               <div class="inbox__segment" role="radiogroup" aria-label="Direction">
@@ -153,7 +167,7 @@ function withCount(label: string, n: number): string {
             </div>
           }
 
-          <div class="inbox__list-body">
+          <div class="inbox__list-body scroll-fade">
             @if (state().tab === 'history') {
               @if (store.historyLoading() && store.history().length === 0) {
                 <p class="inbox__state" aria-live="polite">Loading your history…</p>
@@ -213,10 +227,9 @@ function withCount(label: string, n: number): string {
                         <li>
                           <button type="button" class="inbox__group-row" data-testid="inbox-row" [class.inbox__group-row--active]="activeRowId() === trackItem(row)"
                             (click)="open(refOf(row))">
-                            <app-inbox-type-icon [icon]="meta(row).icon" [tone]="meta(row).tone" />
+                            <app-inbox-type-icon [icon]="meta(row).icon" [tone]="iconTone(row)" />
                             <span class="inbox__ticket-text">
                               <span class="inbox__ellipsis inbox__title">{{ title(row) }}</span>
-                              <span class="inbox__secondary inbox__ellipsis">{{ subtitle(row) }}</span>
                             </span>
                             <span data-testid="inbox-status" [class]="'inbox__pill inbox__pill--' + tone(row)">{{ status(row) }}</span>
                           </button>
@@ -237,6 +250,7 @@ function withCount(label: string, n: number): string {
                 [rows]="store.items()"
                 [trackBy]="trackItem"
                 [rowTestId]="rowTestId"
+                [rowClass]="rowClass"
                 [activeRowId]="activeRowId()"
                 [busyRowId]="busyRowId()"
                 [rowFocusable]="true"
@@ -250,7 +264,7 @@ function withCount(label: string, n: number): string {
               >
                 <ng-template appDataTableCell="ticket" let-item>
                   <div class="inbox__ticket">
-                    <app-inbox-type-icon [icon]="meta(item).icon" [tone]="meta(item).tone" />
+                    <app-inbox-type-icon [icon]="meta(item).icon" [tone]="iconTone(item)" />
                     <div class="inbox__ticket-text">
                       <span class="inbox__title">
                         <span class="inbox__ellipsis">{{ title(item) }}</span>
@@ -258,10 +272,8 @@ function withCount(label: string, n: number): string {
                           <span class="inbox__unread" data-testid="inbox-row-unread" [attr.aria-label]="item.unreadMessages + ' unread messages'"></span>
                         }
                       </span>
-                      @if (subtitle(item)) { <span class="inbox__secondary inbox__ellipsis">{{ subtitle(item) }}</span> }
                       <span class="inbox__chips">
                         <span [class]="'inbox__pill inbox__pill--sm inbox__pill--' + meta(item).tone">{{ meta(item).label }}</span>
-                        <span class="inbox__source">{{ sourceLabel(item) }}</span>
                       </span>
                     </div>
                   </div>
@@ -305,6 +317,11 @@ function withCount(label: string, n: number): string {
               [item]="selectedItem()"
               [descriptor]="selectedItem() ? kinds.descriptor(selectedItem()!.source, selectedItem()!.kind) : null"
               [detailsVisible]="detailsShown()"
+              [faceEvidence]="faceEvidence()"
+              [changes]="openChanges()"
+              [changesEditable]="card()?.canEdit() ?? false"
+              [changeErrors]="card()?.editErrors() ?? {}"
+              (changesEdited)="card()?.setEdits($event)"
               [actions]="store.detail()?.item?.availableActions ?? []"
               [requesterId]="store.detail()?.item?.requestedBy?.id ?? null"
               (action)="card()?.runAction($event)"
@@ -384,14 +401,15 @@ function withCount(label: string, n: number): string {
     .inbox__tool-btn:focus-visible, .inbox__chip:focus-visible, .inbox__group-header:focus-visible, .inbox__sort:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 
     /* The workspace: ticket list | conversation | ticket details, filling the rest of the page. */
-    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(400px, 40fr) minmax(0, 60fr); gap: 12px; }
-    .inbox__workspace--details { grid-template-columns: minmax(400px, 40fr) minmax(320px, 36fr) minmax(300px, 24fr); }
-    .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+    /* One surface split by lines, not three separate cards. */
+    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(400px, 40fr) minmax(0, 60fr); background: var(--color-surface); }
+    .inbox__workspace--details { grid-template-columns: minmax(360px, 36fr) minmax(320px, 36fr) minmax(340px, 28fr); }
+    .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--color-surface); }
+    .inbox__chat, .inbox__details { border-left: 1px solid var(--color-border); }
     .inbox__details { display: none; }
     .inbox__workspace--details .inbox__details { display: flex; }
     .inbox__scrim { display: none; }
 
-    .inbox__tabs { padding: 6px 12px 0; }
     .inbox__list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 4px; }
     .inbox__segment { display: inline-flex; box-sizing: border-box; height: 30px; align-items: center; padding: 2px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-secondary); }
     .inbox__segment-btn { height: 24px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -401,10 +419,25 @@ function withCount(label: string, n: number): string {
     .inbox__sort strong { color: var(--color-text-primary); font-weight: 600; }
     .inbox__sort:hover { background: var(--color-surface-secondary); }
     .inbox__sort svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .inbox__list-body { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 8px; overflow-y: auto; padding: 4px 8px 8px; }
+    .inbox__list-body { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 8px; overflow-y: auto; padding: 4px 8px 16px; }
     /* Compact cells for the narrow list (beats the table's own encapsulated padding). */
     .inbox__list-body ::ng-deep table.data-table th { padding: 8px; }
     .inbox__list-body ::ng-deep table.data-table td { padding: 8px; }
+    /* The ticket list is a list of cards, not a table: no column header, no gray table backdrop. */
+    .inbox__list-body ::ng-deep table.data-table thead { display: none; }
+    .inbox__list-body ::ng-deep .data-table__scroll { padding: 0; border-radius: 0; background: transparent; }
+    /* Each ticket card is tinted by its status: live states in their colour, finished ones gray. */
+    .inbox__list-body ::ng-deep tr.inbox__row { --row-tone: var(--color-accent); }
+    .inbox__list-body ::ng-deep tr.inbox__row--warning { --row-tone: var(--color-warning, #d97706); }
+    .inbox__list-body ::ng-deep tr.inbox__row--danger { --row-tone: var(--color-danger); }
+    .inbox__list-body ::ng-deep tr.inbox__row--info { --row-tone: var(--color-purple, #7c3aed); }
+    .inbox__list-body ::ng-deep tr.inbox__row--neutral { --row-tone: var(--color-text-secondary); }
+    /* Borderless cards: the tint alone separates them; hover and the open ticket deepen the tint instead. */
+    .inbox__list-body ::ng-deep tr.inbox__row td,
+    .inbox__list-body ::ng-deep tr.inbox__row:hover td,
+    .inbox__list-body ::ng-deep tr.inbox__row:focus-within td { background: color-mix(in srgb, var(--row-tone) 6%, var(--color-surface)); border-color: transparent; }
+    .inbox__list-body ::ng-deep tr.inbox__row:hover td { background: color-mix(in srgb, var(--row-tone) 10%, var(--color-surface)); }
+    .inbox__list-body ::ng-deep tr.inbox__row.data-table__row--active td { background: color-mix(in srgb, var(--row-tone) 14%, var(--color-surface)); }
 
     .inbox__state { display: flex; align-items: center; gap: 8px; margin: 0; padding: 24px 8px; color: var(--color-text-secondary); font-size: 13px; }
     .inbox__state--error { color: var(--color-danger); }
@@ -416,7 +449,6 @@ function withCount(label: string, n: number): string {
     .inbox__ellipsis { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .inbox__secondary { color: var(--color-text-secondary); font-size: 12px; }
     .inbox__chips { display: flex; min-width: 0; align-items: center; gap: 6px; margin-top: 2px; }
-    .inbox__source { overflow: hidden; color: var(--color-text-secondary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
     .inbox__person { display: flex; min-width: 0; align-items: center; gap: 8px; }
     .inbox__person app-avatar { flex: 0 0 auto; }
     .inbox__pill { --tone: var(--color-accent); display: inline-block; max-width: 100%; overflow: hidden; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -424,6 +456,7 @@ function withCount(label: string, n: number): string {
     .inbox__pill--neutral { --tone: var(--color-text-secondary); }
     .inbox__pill--warning { --tone: var(--color-warning, #d97706); }
     .inbox__pill--danger { --tone: var(--color-danger); }
+    .inbox__pill--info { --tone: var(--color-purple, #7c3aed); }
     .inbox__kebab { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
     .inbox__kebab:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .inbox__kebab svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -433,7 +466,7 @@ function withCount(label: string, n: number): string {
     .inbox__history { display: flex; flex-direction: column; margin: 0; padding: 0; border: 1px solid var(--color-border); border-radius: 12px; list-style: none; }
     .inbox__history-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--color-border); }
     .inbox__history-row:last-child { border-bottom: 0; }
-    .inbox__history-main { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; padding: 0; border: 0; background: none; color: var(--color-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+        .inbox__history-main { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; padding: 0; border: 0; background: none; color: var(--color-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
     .inbox__history-main:disabled { cursor: default; }
     .inbox__chip { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--color-accent); border-radius: 999px; background: var(--color-surface); color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
     .inbox__chip:disabled { opacity: .55; cursor: default; }
@@ -454,6 +487,7 @@ function withCount(label: string, n: number): string {
     @media (max-width: 1023px) {
       .inbox__workspace, .inbox__workspace--details { grid-template-columns: minmax(0, 1fr); }
       .inbox__chat { display: none; }
+      .inbox__workspace .inbox__chat { border-left: 0; }
       .inbox__workspace--open .inbox__list { display: none; }
       .inbox__workspace--open .inbox__chat { display: flex; }
       .inbox__workspace--details .inbox__details { display: none; }
@@ -526,15 +560,21 @@ export class InboxPageComponent implements OnInit {
     const detail = this.store.detail()?.item;
     return detail && sameRef(detail, ref) ? detail : this.store.items().find((i) => sameRef(i, ref)) ?? null;
   });
-  private readonly sourceLabels = computed(() =>
-    new Map((this.store.filterFields().find((f) => f.key === 'source')?.options ?? []).map((o) => [o.value, o.label])));
   protected readonly sortMenu = computed<MenuItem[]>(() =>
     SORT_OPTIONS.map((o) => ({ id: o.id, label: o.label, iconPath: o.id === this.state().sort ? CHECK_ICON : undefined })));
   protected readonly sortLabel = computed(() => SORT_OPTIONS.find((o) => o.id === this.state().sort)?.short ?? 'Latest');
   private readonly searchChanges = new Subject<string>();
 
-  protected readonly filterValues = computed(() => ({ requestedOn: ['any'], ...this.state().filters }));
+  protected readonly filterValues = computed(() => {
+    const tab = this.state().tab;
+    return { requestedOn: ['any'], ...this.state().filters, category: [tab === 'request' || tab === 'alert' ? tab : 'all'] };
+  });
+  /** The Category field (requests/alerts) leads the bar on the list; History has its own filters only. */
   protected readonly filterFields = computed<FilterFieldConfig[]>(() => {
+    const fields = this.serverFilterFields();
+    return this.state().tab === 'history' ? fields : [CATEGORY_FIELD, ...fields];
+  });
+  private readonly serverFilterFields = computed<FilterFieldConfig[]>(() => {
     const fields = toFilterFields(this.store.filterFields());
     if (fields.some((f) => f.key === 'kind')) return fields;
     // The kind filter comes from the registry; same-named kinds of different sources share one option.
@@ -543,15 +583,6 @@ export class InboxPageComponent implements OnInit {
     if (options.size === 0) return fields;
     const kind: FilterFieldConfig = { key: 'kind', label: 'Kind', icon: 'type', kind: 'multi', options: [...options].map(([value, label]) => ({ value, label })) };
     return [...fields.slice(0, -1), kind, fields[fields.length - 1]];
-  });
-  protected readonly tabs = computed<TabOption[]>(() => {
-    const n = tabCounts(this.store.counts(), this.kinds.kinds());
-    return [
-      { value: 'all', label: withCount('All', n.all) },
-      { value: 'request', label: withCount('Requests', n.request) },
-      { value: 'alert', label: withCount('Alerts', n.alert) },
-      { value: 'history', label: 'History' }
-    ];
   });
   protected readonly currentTabLabel = computed(() => TAB_LABELS[this.state().tab]);
   protected readonly activeRowId = computed(() => {
@@ -570,6 +601,16 @@ export class InboxPageComponent implements OnInit {
   protected readonly selectable = computed(() => this.store.items().some(this.isSelectable));
   /** Selected rows still on the page (a refresh drops the ones that left). */
   protected readonly selectedItems = computed(() => this.store.items().filter((i) => this.selectedIds().has(this.trackItem(i))));
+  /** An identity alert's face evidence, shown as a message in its conversation rather than in the details panel. */
+  protected readonly faceEvidence = computed(() => faceEvidenceFor(
+    this.store.detail(), this.store.selectedRef(),
+    (source, kind) => this.kinds.descriptor(source, kind)?.detailRenderer ?? null));
+  /** The open ticket's requested changes, shown as a message in its conversation (never another ticket's). */
+  protected readonly openChanges = computed(() => {
+    const detail = this.store.detail();
+    const ref = this.store.selectedRef();
+    return detail && ref && sameRef(detail.item, ref) ? detail.changeSet : [];
+  });
   private readonly bulkChoices = computed(() => bulkActionsFor(this.selectedItems(), (s, k) => this.kinds.descriptor(s, k)));
   protected readonly bulkBarActions = computed<BulkAction[]>(() => {
     const choices = this.bulkChoices();
@@ -633,12 +674,10 @@ export class InboxPageComponent implements OnInit {
 
   protected meta(item: InboxItemDto) { return inboxTypeMeta(item, this.kinds.descriptor(item.source, item.kind)); }
   protected title(item: InboxItemDto): string { return inboxTitle(item); }
-  protected subtitle(item: InboxItemDto): string { return inboxSubtitle(item); }
   protected status(item: InboxItemDto): string { return inboxStatusLabel(item); }
   protected tone(item: InboxItemDto): string { return inboxStatusTone(item); }
-  protected sourceLabel(item: InboxItemDto): string {
-    return this.sourceLabels().get(item.source) ?? item.source.charAt(0).toUpperCase() + item.source.slice(1);
-  }
+  protected iconTone(item: InboxItemDto) { return inboxIconTone(item, this.meta(item)); }
+  protected readonly rowClass = (item: InboxItemDto): string => 'inbox__row inbox__row--' + inboxStatusTone(item);
 
   protected menuFor(item: InboxItemDto): MenuItem[] {
     const detail = this.store.detail();
@@ -674,9 +713,11 @@ export class InboxPageComponent implements OnInit {
     this.applyState({ sort: id as InboxSort });
   }
 
-  protected onTab(value: string): void {
+
+  /** History is a separate view of the decisions taken; the button toggles between it and the ticket list. */
+  protected toggleHistory(): void {
     this.selectedIds.set(this.emptySelection);
-    this.applyState({ tab: value as InboxTab });
+    this.applyState({ tab: this.state().tab === 'history' ? 'all' : 'history' });
   }
 
   protected onDirection(value: string): void {
@@ -694,6 +735,11 @@ export class InboxPageComponent implements OnInit {
   }
 
   protected onFilterChanged(event: { key: string; values: string[] }): void {
+    if (event.key === 'category') {
+      this.selectedIds.set(this.emptySelection);
+      this.applyState({ tab: (event.values[0] ?? 'all') as InboxTab });
+      return;
+    }
     this.applyState({ filters: { ...this.state().filters, [event.key]: event.values } });
   }
 

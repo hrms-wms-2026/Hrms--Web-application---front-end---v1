@@ -6,14 +6,11 @@ import { LeaveApprovalApiService } from '../data-access/leave-approval-api.servi
 import {
   ApproveLeaveRequestRequest,
   ChangeLeaveDecisionRequest,
-  ForwardLeaveRequestRequest,
   LeaveApprovalDecisionResponse,
   LeaveApprovalDetailResponse,
   LeaveRequestAllListFilter,
   LeaveRequestAllListItemResponse,
-  RejectLeaveRequestRequest,
-  RequestLeaveInformationRequest,
-  RespondLeaveInformationRequest
+  RejectLeaveRequestRequest
 } from '../models/leave-approval.model';
 import { CancelLeaveRequestRequest, CancelLeaveRequestResponse } from '../models/leave-request.model';
 
@@ -82,25 +79,8 @@ export const LeaveApprovalStore = signalStore(
     async reject(requestId: string, payload: RejectLeaveRequestRequest): Promise<LeaveApprovalDecisionResponse | null> {
       return this.decide(() => api.reject(requestId, payload), requestId);
     },
-    async requestInfo(requestId: string, payload: RequestLeaveInformationRequest): Promise<LeaveApprovalDecisionResponse | null> {
-      return this.decide(() => api.requestInfo(requestId, payload), requestId);
-    },
     async changeDecision(requestId: string, payload: ChangeLeaveDecisionRequest): Promise<LeaveApprovalDecisionResponse | null> {
       return this.decide(() => api.changeDecision(requestId, payload), requestId);
-    },
-    async forward(requestId: string, payload: ForwardLeaveRequestRequest): Promise<LeaveApprovalDecisionResponse | null> {
-      return this.decide(() => api.forward(requestId, payload), requestId);
-    },
-    async respondInfo(requestId: string, payload: RespondLeaveInformationRequest): Promise<LeaveApprovalDecisionResponse | null> {
-      patchState(store, { deciding: true, decideError: null });
-      try {
-        const result = await firstValueFrom(api.respondInfo(requestId, payload));
-        patchState(store, { deciding: false });
-        return result;
-      } catch (err) {
-        patchState(store, { deciding: false, decideError: toSafeErrorMessage(err, 'Failed to send this reply.') });
-        return null;
-      }
     },
     async decide(
       call: () => ReturnType<LeaveApprovalApiService['approve']>,

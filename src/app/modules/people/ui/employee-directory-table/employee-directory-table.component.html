@@ -28,9 +28,13 @@
       <div class="emp-avatar-wrapper"
         [class.emp-avatar-wrapper--warning]="issue?.tone === 'critical'"
         [class.emp-avatar-wrapper--caution]="issue?.tone === 'warning'"
-        [attr.role]="issue ? 'img' : null"
+        [class.emp-avatar-wrapper--alerts]="!!issue?.alertCount"
+        [attr.role]="issue?.alertCount ? 'button' : issue ? 'img' : null"
         [attr.tabindex]="issue ? 0 : null"
-        [attr.aria-label]="issue?.label ?? null">
+        [attr.aria-label]="issue ? (issue.alertCount ? issue.label + ' - open in Inbox' : issue.label) : null"
+        [attr.data-testid]="issue?.alertCount ? 'employee-open-alerts' : null"
+        (click)="issue?.alertCount && openAlerts(employee, $event)"
+        (keydown.enter)="issue?.alertCount && openAlerts(employee, $event)">
         <app-avatar
           class="emp-avatar"
           [avatarUrl]="directory.get(employee.id)?.avatarUrl ?? null"
@@ -49,11 +53,6 @@
         <span class="edt__name" [title]="employee.fullName">{{ employee.fullName }}</span>
         @if (breakOverageLabel(employee); as breakLabel) {
           <span class="emp-break-overage-marker emp-attention--critical" [attr.title]="breakLabel">{{ breakLabel }}</span>
-        }
-        @if (employee.attendanceSummary?.openAlertCount; as alertCount) {
-          <button type="button" class="emp-open-alerts" data-testid="employee-open-alerts" (click)="openAlerts(employee, $event)">
-            {{ alertCount }} open {{ alertCount === 1 ? 'alert' : 'alerts' }}
-          </button>
         }
       </div>
     </div>

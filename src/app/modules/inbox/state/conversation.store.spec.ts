@@ -121,7 +121,7 @@ describe('ConversationStore', () => {
     created.next({ conversationId: 'c1', message: message('m9', '2026-10-13T09:09:00Z') });
 
     expect(ok).toBe(true);
-    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null);
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null, null);
     expect(store.messages().filter((m) => m.id === 'm9')).toHaveLength(1);
   });
 
@@ -186,7 +186,7 @@ describe('ConversationStore', () => {
       await store.send('<p>doc</p>', [], ['f1'], 'justification');
 
       expect(store.subjectEmployeeId()).toBe('e1');
-      expect(api['post']).toHaveBeenCalledWith('c1', '<p>doc</p>', [], ['f1'], 'justification');
+      expect(api['post']).toHaveBeenCalledWith('c1', '<p>doc</p>', [], ['f1'], 'justification', null);
     });
 
     it('edits and deletes a message in place; a failure keeps the message and reports', async () => {

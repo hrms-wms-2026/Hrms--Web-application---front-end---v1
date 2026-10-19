@@ -64,7 +64,8 @@ export const ConversationStore = signalStore(
     /** First message the user had not read when the chat opened (null = all read). */
     unreadFromId: computed(() => {
       const since = store.openedLastReadAt();
-      const first = store.messages().find((m) => since === null || m.createdAt > since);
+      // The evidence card is not a message anyone sent: it never counts as unread.
+      const first = store.messages().find((m) => m.kind !== 'evidence' && (since === null || m.createdAt > since));
       return first?.id ?? null;
     }),
     participantIds: computed(() => store.participants().map((p) => p.employeeId))
@@ -173,13 +174,14 @@ export const ConversationStore = signalStore(
       },
       /** True when posted. Mentions must be participant ids (add-and-tag adds them first). */
       async send(
-        bodyHtml: string, mentionEmployeeIds: readonly string[], attachmentFileIds: readonly string[] = [], tag: string | null = null
+        bodyHtml: string, mentionEmployeeIds: readonly string[], attachmentFileIds: readonly string[] = [], tag: string | null = null,
+        replyToMessageId: string | null = null
       ): Promise<boolean> {
         const id = store.conversationId();
         if (!id || store.removed()) return false;
         patchState(store, { sending: true, sendError: null });
         try {
-          const message = await firstValueFrom(api.post(id, bodyHtml, [...mentionEmployeeIds], [...attachmentFileIds], tag));
+          const message = await firstValueFrom(api.post(id, bodyHtml, [...mentionEmployeeIds], [...attachmentFileIds], tag, replyToMessageId));
           // Posted to its own ticket; only shown if that ticket is still the open one.
           if (store.conversationId() === id) {
             appendMessages([message]);

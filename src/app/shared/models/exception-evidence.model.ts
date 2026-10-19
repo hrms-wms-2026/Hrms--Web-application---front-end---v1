@@ -104,6 +104,10 @@ export interface FaceCheckEvidence {
   readonly outcome: string;
   readonly failureReason: string | null;
   readonly similarityScore: number | null;
+  /** Short-lived signed URL of the photo taken at this try (failed tries keep theirs). */
+  readonly photoUrl?: string | null;
+  /** A photo was kept but couldn't be served right now. */
+  readonly photoUnavailable?: boolean;
 }
 
 export interface CheckInScanEvidence {

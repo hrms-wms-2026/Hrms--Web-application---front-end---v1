@@ -59,7 +59,7 @@
     } @else {
       <!-- TABLE VIEW -->
       @if (viewMode() === 'table') {
-        <div class="h-full overflow-y-auto pb-4">
+        <div class="h-full overflow-y-auto pb-4 scroll-fade">
           <app-project-table-view
             [projects]="store.filteredProjects()"
             [categories]="categoryStore.categories()"
@@ -101,7 +101,7 @@
 
       <!-- CARD VIEW (Grid) -->
       @else if (viewMode() === 'card') {
-        <div class="h-full overflow-y-auto pb-4">
+        <div class="h-full overflow-y-auto pb-4 scroll-fade">
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="project-grid">
             @for (project of store.filteredProjects(); track project.id) {
               <app-project-card

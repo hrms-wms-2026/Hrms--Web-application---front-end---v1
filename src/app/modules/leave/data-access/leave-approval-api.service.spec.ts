@@ -19,7 +19,7 @@ describe('LeaveApprovalApiService', () => {
     requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
     leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12',
     totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Trip',
-    approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: true, forwardTo: null, canChangeDecision: false
+    approvers: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: true, canChangeDecision: false
   };
 
   beforeEach(() => {
@@ -58,20 +58,6 @@ describe('LeaveApprovalApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/reject`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ reason: 'No cover available' });
-    req.flush(decision);
-  });
-
-  it('requests information', () => {
-    service.requestInfo('req-1', { question: 'Can you share dates?' }).subscribe((res) => expect(res).toEqual(decision));
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/request-info`);
-    expect(req.request.method).toBe('POST');
-    req.flush(decision);
-  });
-
-  it('responds to an information request', () => {
-    service.respondInfo('req-1', { message: 'Sure, see attached', fileRecordIds: [] }).subscribe((res) => expect(res).toEqual(decision));
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/respond-info`);
-    expect(req.request.method).toBe('POST');
     req.flush(decision);
   });
 

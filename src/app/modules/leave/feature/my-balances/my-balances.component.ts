@@ -13,15 +13,12 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
-import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveRequestStore } from '../../state/leave-request.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
-import { RespondLeaveInformationRequest } from '../../models/leave-approval.model';
 import { CancelLeaveRequestRequest, LeaveRequestListItemResponse, LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveBalanceListTableComponent } from '../../ui/leave-balance-list-table/leave-balance-list-table.component';
 import { LeaveCancelConfirmDialogComponent } from '../../../../shared/ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
-import { LeaveRespondInfoDialogComponent } from '../../ui/leave-respond-info-dialog/leave-respond-info-dialog.component';
 import { LeaveRequestHistoryTableComponent } from '../../ui/leave-request-history-table/leave-request-history-table.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
 import { balancesToCsv, downloadCsv } from '../../utils/leave-balance-csv';
@@ -31,7 +28,7 @@ export type BalanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-my-balances',
   standalone: true,
-  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveBalanceListTableComponent, LeaveCancelConfirmDialogComponent, LeaveRespondInfoDialogComponent, LeaveRequestHistoryTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveBalanceListTableComponent, LeaveCancelConfirmDialogComponent, LeaveRequestHistoryTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './my-balances.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './my-balances.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -39,7 +36,6 @@ export type BalanceViewMode = 'my' | 'team';
 export class MyBalancesComponent {
   readonly store = inject(LeaveBalanceStore);
   readonly requestStore = inject(LeaveRequestStore);
-  readonly approvalStore = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
   private readonly permissionService = inject(PermissionService);
   private readonly notificationService = inject(NotificationService);
@@ -51,7 +47,6 @@ export class MyBalancesComponent {
   readonly wizardOpen = signal(false);
   readonly uploadedDocuments = signal<LeaveUploadedDocument[]>([]);
   readonly cancelTarget = signal<LeaveRequestListItemResponse | null>(null);
-  readonly replyTarget = signal<LeaveRequestListItemResponse | null>(null);
   readonly viewMode = signal<BalanceViewMode>('my');
 
   readonly canShowMyView = computed(() => this.permissionService.hasAnyPermission(['leave:read-own']));
@@ -149,27 +144,6 @@ export class MyBalancesComponent {
 
   onCancelRequested(request: LeaveRequestListItemResponse): void {
     this.cancelTarget.set(request);
-  }
-
-  onReplyRequested(request: LeaveRequestListItemResponse): void {
-    this.replyTarget.set(request);
-  }
-
-  closeReplyDialog(): void {
-    this.replyTarget.set(null);
-  }
-
-  async onConfirmReply(payload: RespondLeaveInformationRequest): Promise<void> {
-    const target = this.replyTarget();
-    if (!target) return;
-    const result = await this.approvalStore.respondInfo(target.id, payload);
-    if (result) {
-      this.notificationService.success('Reply sent to your manager.');
-      this.closeReplyDialog();
-      void this.requestStore.loadMine();
-    } else {
-      this.notificationService.error(this.approvalStore.decideError() ?? 'Failed to send this reply.');
-    }
   }
 
   closeCancelDialog(): void {

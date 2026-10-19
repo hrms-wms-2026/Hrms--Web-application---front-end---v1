@@ -48,7 +48,7 @@ function formatDate(value: string | null | undefined): string {
         }
       </nav>
 
-      <div class="wgp-body">
+      <div class="wgp-body scroll-fade">
         @switch (tab()) {
           @case ('overview') {
             @if (node.stats; as s) {

@@ -27,13 +27,16 @@ export class ConversationsApiService {
     return this.http.get<ConversationMessagesPageDto>(`${this.base}/${conversationId}/messages`, { params });
   }
 
-  /** `attachmentFileIds`: files uploaded with purpose conversation_attachment (max 5); `tag`: "justification" (subject only). */
+  /** `attachmentFileIds`: files uploaded with purpose conversation_attachment (max 5); `tag`: "justification" (subject only);
+   *  `replyToMessageId`: a message of this conversation the new one answers. */
   post(
-    conversationId: string, bodyHtml: string, mentionEmployeeIds: string[], attachmentFileIds: string[] = [], tag: string | null = null
+    conversationId: string, bodyHtml: string, mentionEmployeeIds: string[], attachmentFileIds: string[] = [], tag: string | null = null,
+    replyToMessageId: string | null = null
   ): Observable<ConversationMessageDto> {
     const body: Record<string, unknown> = { bodyHtml, mentionEmployeeIds };
     if (attachmentFileIds.length > 0) body['attachmentFileIds'] = attachmentFileIds;
     if (tag) body['tag'] = tag;
+    if (replyToMessageId) body['replyToMessageId'] = replyToMessageId;
     return this.http.post<ConversationMessageDto>(`${this.base}/${conversationId}/messages`, body);
   }
 

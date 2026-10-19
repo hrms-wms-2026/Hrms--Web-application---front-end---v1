@@ -24,4 +24,8 @@ export interface NavItem {
   children?: readonly NavItem[];
   /** Match only the exact path when applying the shared submenu active state. */
   exact?: boolean;
+  /** Other URL areas this rail item owns (e.g. Org also owns /people), so their pages keep it active. */
+  alsoMatches?: readonly string[];
+  /** Sub-sidebar entries only: the titled group this entry is listed under (consecutive entries share a title). */
+  section?: string;
 }

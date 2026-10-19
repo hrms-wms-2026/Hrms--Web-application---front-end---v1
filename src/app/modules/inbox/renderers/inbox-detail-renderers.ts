@@ -7,7 +7,6 @@ import {
   WorkModeChangeRendererComponent
 } from './attendance-renderers';
 import { ExceptionEvidenceRendererComponent } from './exception-evidence-renderer.component';
-import { LeaveRequestRendererComponent } from './leave-request-renderer.component';
 import { MeetingExceptionRendererComponent } from './meeting-exception-renderer.component';
 
 /**
@@ -22,7 +21,6 @@ export const INBOX_DETAIL_RENDERERS = new InjectionToken<Record<string, Type<unk
 });
 
 export const DEFAULT_INBOX_DETAIL_RENDERERS: Record<string, Type<unknown>> = {
-  'leave-request': LeaveRequestRendererComponent,
   'attendance-correction': AttendanceCorrectionRendererComponent,
   'work-mode-change': WorkModeChangeRendererComponent,
   'location-change': LocationChangeRendererComponent,

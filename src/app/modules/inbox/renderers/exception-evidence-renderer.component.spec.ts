@@ -39,20 +39,18 @@ describe('ExceptionEvidenceRendererComponent', () => {
     expect(DEFAULT_INBOX_DETAIL_RENDERERS['exception-evidence']).toBe(ExceptionEvidenceRendererComponent);
   });
 
-  it('shows the reason, the facts and the evidence panel for a reviewer', () => {
+  it('shows only the evidence panel for a reviewer - no reason or facts box', () => {
     const evidence = { exceptionId: 'x1', type: 'IdentityAnomaly', workDate: '2026-10-13', timezone: 'UTC', faceChecks: [], checkInScans: [] };
     const { el, panel } = render(evidence);
 
-    expect(el.querySelector('[data-testid="exception-reason"]')?.textContent).toContain('did not match');
-    expect(el.querySelector('[data-testid="exception-facts"]')?.textContent).toContain('13 Oct 2026');
-    expect(el.querySelector('[data-testid="exception-type"]')?.textContent).toContain('Identity check');
     expect(panel?.evidence()).toEqual(evidence);
+    expect(el.textContent).not.toContain('did not match');
+    expect(el.textContent).not.toContain('13 Oct 2026');
   });
 
-  it('shows the employee it is about only the facts - no evidence panel', () => {
-    const { el, panel } = render(null);
+  it('shows the employee it is about no evidence panel', () => {
+    const { panel } = render(null);
 
     expect(panel).toBeUndefined();
-    expect(el.querySelector('[data-testid="exception-reason"]')).not.toBeNull();
   });
 });

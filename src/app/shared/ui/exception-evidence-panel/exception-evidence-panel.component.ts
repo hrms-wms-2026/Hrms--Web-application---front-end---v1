@@ -1,19 +1,54 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import {
   DeviceActivityEvidence,
   DeviceActivityState,
   ExceptionEvidenceResponse,
-  PatternMeasure,
-  faceOutcomeLabel,
-  faceReasonLabel
+  PatternMeasure
 } from '../../models/exception-evidence.model';
 import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../data-table/data-table.component';
 
+/** Attendance record statuses (AttendanceRecord.Status* on the server) in plain words. */
+const ATTENDANCE_STATUS_LABELS: Record<string, string | undefined> = {
+  normal: 'No issues',
+  on_time: 'On time',
+  late: 'Late',
+  active: 'Still clocked in',
+  clocked_out: 'Clocked out',
+  on_break: 'On break',
+  over_break: 'Break ran over',
+  short_hours: 'Short hours',
+  missing_clock_out: 'Forgot to clock out',
+  not_clocked_in: 'Did not clock in',
+  off_day: 'Day off',
+  non_working_day: 'Non-working day',
+  worked_on_non_working_day: 'Worked on a non-working day',
+  on_time_off: 'On leave',
+  worked_during_time_off: 'Worked while on leave',
+  no_schedule: 'No work schedule',
+  policy_not_configured: 'No attendance policy'
+};
+
+/** Statuses that are not worth a reviewer's attention: the Attendance line is left out for these. */
+const UNREMARKABLE_STATUSES = new Set(['normal', 'on_time', 'active', 'clocked_out']);
+
+const SEGMENT_LABELS: Record<string, string | undefined> = { active: 'Working', idle: 'Idle', offline: 'Off' };
+
+/** A time of day in the evidence's own timezone. */
+export function evidenceTime(value: string | null, timezone: string): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  try {
+    return new Intl.DateTimeFormat(undefined, { timeStyle: 'short', timeZone: timezone }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(date);
+  }
+}
+
 /**
- * Flow 09 "validate the issue": the day's clock-in/out and, for identity cases, the photo that raised the case, that
- * day's face checks and check-in scans, device activity and the multi-day pattern. Presentational: the host loads the
- * evidence (the Inbox exception renderer passes the item's evidence) - the photo URL is signed for a few minutes, so
- * an expired link asks the reviewer to reopen the item.
+ * Flow 09 "validate the issue", the short version for the ticket details: the day's clock-in/out, when the computer
+ * was on, a working/idle/off bar and, for multi-day alerts, the pattern. The face photo and clock-in attempts are
+ * shown in the conversation instead (FaceEvidenceCardComponent).
  */
 @Component({
   selector: 'app-exception-evidence-panel',
@@ -44,35 +79,25 @@ export class ExceptionEvidencePanelComponent {
     return {
       ...ev,
       attendance: ev.attendance ?? null,
-      identity: ev.identity ? { ...ev.identity, reasons: ev.identity.reasons ?? [] } : null,
-      faceChecks: ev.faceChecks ?? [],
-      checkInScans: ev.checkInScans ?? [],
       deviceActivity: ev.deviceActivity ? { ...ev.deviceActivity, segments: ev.deviceActivity.segments ?? [] } : null,
       pattern: ev.pattern ? { ...ev.pattern, days: ev.pattern.days ?? [], measures: ev.pattern.measures ?? [] } : null,
       activityHidden: !!ev.activityHidden
     };
   });
 
-  readonly photoFailed = signal(false);
+  readonly formatTime = evidenceTime;
 
-  readonly reasonLabel = faceReasonLabel;
-  readonly outcomeLabel = faceOutcomeLabel;
-
-  constructor() {
-    // A different case starts with a fresh photo.
-    effect(() => {
-      this.evidence();
-      this.photoFailed.set(false);
-    });
+  /** "9:20 AM – 4:40 PM" while the desktop app saw the computer, or null when it reported nothing. */
+  computerOn(ev: ExceptionEvidenceResponse): string | null {
+    const activity = ev.deviceActivity;
+    if (ev.activityHidden || !activity?.firstSeenAt || !activity.lastSeenAt) return null;
+    return `${evidenceTime(activity.firstSeenAt, ev.timezone)} – ${evidenceTime(activity.lastSeenAt, ev.timezone)}`;
   }
 
-  hasAnything(evidence: ExceptionEvidenceResponse): boolean {
-    return !!evidence.attendance
-      || !!evidence.identity
-      || evidence.faceChecks.length > 0
-      || evidence.checkInScans.length > 0
-      || (evidence.deviceActivity?.segments.length ?? 0) > 0
-      || (evidence.pattern?.days.some((d) => d.activityScore !== null || d.workedMinutes !== null) ?? false);
+  /** The attendance status only when it says something is off (late, forgot to clock out, ...). */
+  attendanceIssue(ev: ExceptionEvidenceResponse): string | null {
+    const status = ev.attendance?.status;
+    return status && !UNREMARKABLE_STATUSES.has(status) ? this.attendanceLabel(status) : null;
   }
 
   /** Position of each run on the bar, as a share of first-seen → last-seen. */
@@ -89,7 +114,7 @@ export class ExceptionEvidencePanelComponent {
           left: ((start - from) / span) * 100,
           width: Math.max(((end - start) / span) * 100, 0.4),
           state: segment.state,
-          label: `${segment.state} ${this.formatTime(segment.start, timezone)}–${this.formatTime(segment.end, timezone)}`
+          label: `${SEGMENT_LABELS[segment.state] ?? segment.state} ${evidenceTime(segment.start, timezone)}–${evidenceTime(segment.end, timezone)}`
         };
       });
   }
@@ -115,8 +140,13 @@ export class ExceptionEvidencePanelComponent {
     return unit === 'minutes' ? this.duration(value) : `${Math.round(value)}`;
   }
 
-  statusLabel(status: string | null): string {
-    return status ? status.replace(/_/g, ' ') : '—';
+  /** The attendance record's status in plain words. */
+  attendanceLabel(status: string | null): string {
+    if (!status) return '—';
+    const known = ATTENDANCE_STATUS_LABELS[status];
+    if (known) return known;
+    const words = status.replace(/_/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
   }
 
   shortDate(value: string): string {
@@ -124,38 +154,6 @@ export class ExceptionEvidencePanelComponent {
     return Number.isNaN(date.getTime())
       ? value
       : new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
-  }
-
-  photoMessage(unavailable: boolean): string {
-    if (this.photoFailed()) return 'Photo link expired - reopen evidence';
-    return unavailable ? 'Photo unavailable right now - try again' : 'No photo kept';
-  }
-
-  sourceLabel(source: string | null): string {
-    return source === 'face_check_override'
-      ? 'Clock-in/out face check failed and was let through'
-      : source === 'check_in_scan'
-        ? 'Check-in photo did not match'
-        : 'Identity check';
-  }
-
-  purposeLabel(purpose: string | null): string {
-    return purpose === 'clock_out' ? 'Clock-out' : purpose === 'clock_in' ? 'Clock-in' : '—';
-  }
-
-  score(value: number | null): string {
-    return value === null || value === undefined ? '—' : `${value.toFixed(1)}%`;
-  }
-
-  formatTime(value: string | null, timezone: string): string {
-    if (!value) return '—';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '—';
-    try {
-      return new Intl.DateTimeFormat(undefined, { timeStyle: 'short', timeZone: timezone }).format(date);
-    } catch {
-      return new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(date);
-    }
   }
 
   formatDate(value: string): string {

@@ -14,7 +14,7 @@ const CURATED_EMOJI = [
   standalone: true,
   template: `
     <div class="ep-popover" role="dialog" (click)="$event.stopPropagation()">
-      <div class="ep-grid">
+      <div class="ep-grid scroll-fade">
         @for (emoji of emojis; track emoji) {
           <button type="button" class="ep-emoji" (mousedown)="$event.preventDefault()" (click)="emojiSelected.emit(emoji)">{{ emoji }}</button>
         }

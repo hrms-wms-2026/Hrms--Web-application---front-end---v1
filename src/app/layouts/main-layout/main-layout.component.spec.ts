@@ -35,7 +35,10 @@ const fileApiStub = {
 class BlankRouteComponent {}
 
 function authStoreWith(permissions: string[], activeModules: string[]) {
-  return { email: () => 'asha@onevo.test', authenticated: () => true, permissions: () => permissions, activeModules: () => activeModules };
+  return {
+    email: () => 'asha@onevo.test', authenticated: () => true, permissions: () => permissions, activeModules: () => activeModules,
+    managesPeople: () => false
+  };
 }
 
 describe('MainLayoutComponent', () => {
@@ -188,6 +191,41 @@ describe('MainLayoutComponent', () => {
       (el) => (el as HTMLElement).textContent
     );
     expect(subLinks).toEqual(['Departments', 'Positions']);
+    // The People section is filtered out entirely (no core_hr), so only the Organization title shows.
+    const titles = Array.from(fixture.nativeElement.querySelectorAll('app-sub-sidebar .sub-sidebar__section-title')).map(
+      (el) => (el as HTMLElement).textContent
+    );
+    expect(titles).toEqual(['Organization']);
+  });
+
+  it('renders Org with an Organization and a People section when the user has both', async () => {
+    await TestBed.configureTestingModule({
+      imports: [MainLayoutComponent],
+      providers: [
+        provideRouter([{ path: '**', component: BlankRouteComponent }]),
+        { provide: AuthStore, useValue: authStoreWith(['org:read', 'employees:write'], ['org_structure', 'core_hr']) },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(MainLayoutComponent);
+    const router = TestBed.inject(Router);
+    fixture.detectChanges();
+
+    await router.navigateByUrl('/people/employees');
+    fixture.detectChanges();
+
+    const sections = Array.from(fixture.nativeElement.querySelectorAll('app-sub-sidebar .sub-sidebar__section')).map((section) => ({
+      title: (section as HTMLElement).querySelector('.sub-sidebar__section-title')?.textContent,
+      links: Array.from((section as HTMLElement).querySelectorAll('a')).map((a) => a.textContent)
+    }));
+    expect(sections).toEqual([
+      { title: 'Organization', links: ['Departments', 'Positions'] },
+      { title: 'People', links: ['Employees', 'Checklists', 'Offboarding'] }
+    ]);
+    expect(fixture.nativeElement.querySelector('app-sub-sidebar .sub-sidebar__heading')?.textContent).toBe('Org');
   });
 
   it('renders no sub-sidebar when the active item has no permitted children', async () => {

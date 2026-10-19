@@ -1,4 +1,4 @@
-import { InboxCapability, InboxCategory, InboxCountsDto, InboxItemDto, InboxKindDescriptorDto, InboxQuery, InboxSort, hasCapability } from '../models/inbox.dto';
+import { InboxCapability, InboxCategory, InboxItemDto, InboxKindDescriptorDto, InboxQuery, InboxSort, hasCapability } from '../models/inbox.dto';
 import { requestedOnFrom } from './inbox-item.util';
 
 export type InboxTab = 'all' | InboxCategory | 'history';
@@ -72,19 +72,6 @@ export function pageStateToQuery(state: InboxPageState, myEmployeeId: string | n
   return { ...query, facets, from: requestedOnFrom(state.filters['requestedOn']?.[0], now) };
 }
 
-/** Tab badges: what needs the caller, split by the kind's category; the totals when byKind is not sent. */
-export function tabCounts(counts: InboxCountsDto, kinds: readonly InboxKindDescriptorDto[]): { all: number; request: number; alert: number } {
-  if (!counts.byKind) return { all: counts.pendingReceived + counts.openAlerts, request: counts.pendingReceived, alert: counts.openAlerts };
-  let request = 0;
-  let alert = 0;
-  for (const [key, n] of Object.entries(counts.byKind)) {
-    const [source, kind] = key.split(':');
-    const category = kinds.find((k) => k.source === source && k.kind === kind)?.category;
-    if (category === 'alert') alert += n;
-    else request += n;
-  }
-  return { all: request + alert, request, alert };
-}
 
 export const INBOX_BULK_ACTIONS = ['approve', 'reject', 'resolve'] as const;
 const BULK_LABELS: Record<string, string> = { approve: 'Approve', reject: 'Reject', resolve: 'Resolve' };

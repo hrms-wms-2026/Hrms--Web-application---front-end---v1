@@ -42,7 +42,7 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
               <input type="text" placeholder="Search…" [value]="search()" (input)="search.set($any($event.target).value)" />
             </div>
-            <div class="bh-switcher__list">
+            <div class="bh-switcher__list scroll-fade">
               @for (item of filteredSwitcherItems(); track item.id) {
                 <button
                   type="button"

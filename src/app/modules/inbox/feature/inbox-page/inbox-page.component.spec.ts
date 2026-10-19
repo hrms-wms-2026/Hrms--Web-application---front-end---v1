@@ -83,7 +83,7 @@ describe('InboxPageComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, store: TestBed.inject(InboxStore) };
   }
 
-  it('lists tickets with type and source chips, status and the unread-chat dot; no ticket open yet', async () => {
+  it('lists tickets with the type chip (no subtitle or source), status and the unread-chat dot; no ticket open yet', async () => {
     const { el } = await render();
     const rows = Array.from(el.querySelectorAll('[data-testid="inbox-row"]')) as HTMLElement[];
 
@@ -91,16 +91,17 @@ describe('InboxPageComponent', () => {
     expect(el.querySelector('[data-testid="inbox-workspace"]')?.classList).not.toContain('inbox__workspace--details');
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('Update task details');
-    expect(rows[0].querySelector('.inbox__source')?.textContent).toBe('Work');
+    expect(rows[0].querySelector('.inbox__source')).toBeNull();
     expect(rows[0].querySelector('[data-testid="inbox-row-unread"]')).not.toBeNull();
     expect(rows[1].textContent).toContain('Task past its due date');
     expect(rows[1].querySelector('[data-testid="inbox-status"]')?.textContent).toContain('Open');
   });
 
-  it('switches category with the tabs and direction with the segment', async () => {
+  it('switches category with the Category filter and direction with the segment', async () => {
     const { fixture, el } = await render();
+    const page = fixture.componentInstance as unknown as { onFilterChanged(e: { key: string; values: string[] }): void };
 
-    (Array.from(el.querySelectorAll('[role="tab"]')).find((t) => t.textContent?.includes('Alerts')) as HTMLElement).click();
+    page.onFilterChanged({ key: 'category', values: ['alert'] });
     await vi.advanceTimersByTimeAsync(0);
     expect(api['list']).toHaveBeenLastCalledWith(expect.objectContaining({ category: ['alert'], page: 1 }));
 
@@ -125,6 +126,9 @@ describe('InboxPageComponent', () => {
     expect(typeof last.from).toBe('string');
   });
 
+  const tabOf = (fixture: { componentInstance: unknown }) =>
+    (fixture.componentInstance as { state(): { tab: string } }).state().tab;
+
   function withTabInUrl(previousNavigation: object | null): void {
     const query = convertToParamMap({ tab: 'requests' });
     TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: params.asObservable(), snapshot: { queryParamMap: query } } });
@@ -133,15 +137,15 @@ describe('InboxPageComponent', () => {
 
   it('opens the first tab on a browser refresh, dropping the saved tab from the URL', async () => {
     withTabInUrl(null);
-    const { el } = await render();
-    expect(el.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('All');
+    const { fixture } = await render();
+    expect(tabOf(fixture)).toBe('all');
     expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: {}, replaceUrl: true }));
   });
 
   it('keeps the linked tab on an in-app navigation', async () => {
     withTabInUrl({});
-    const { el } = await render();
-    expect(el.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Requests');
+    const { fixture } = await render();
+    expect(tabOf(fixture)).toBe('request');
   });
 
   it('debounces the search box', async () => {

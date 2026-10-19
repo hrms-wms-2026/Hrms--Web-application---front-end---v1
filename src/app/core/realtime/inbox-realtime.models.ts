@@ -12,12 +12,13 @@ export interface RealtimeConversationMessage {
   authorEmployeeId: string | null;
   authorName: string | null;
   authorAvatarFileId: string | null;
-  kind: 'text' | 'system';
+  /** "evidence": an empty marker where the item's evidence (an identity case's face checks) sits in the chat. */
+  kind: 'text' | 'system' | 'evidence';
   bodyHtml: string;
   systemEventJson: string | null;
   mentionEmployeeIds: string[];
   createdAt: string;
-  /** null | "info_request" | "info_response" | "justification". */
+  /** null | "justification". */
   tag?: string | null;
   editedAt?: string | null;
   /** A deleted message keeps its place with an empty body ("Message deleted"). */
@@ -25,6 +26,18 @@ export interface RealtimeConversationMessage {
   attachments?: RealtimeConversationAttachment[] | null;
   /** One reaction per person; grouped by emoji, first used first. */
   reactions?: RealtimeConversationReaction[] | null;
+  /** The message this one replies to, as it is now. */
+  replyTo?: RealtimeConversationReplyPreview | null;
+}
+
+/** A reply's quote: plain text, cut short; empty for a deleted message and for an evidence marker. */
+export interface RealtimeConversationReplyPreview {
+  id: string;
+  authorEmployeeId: string | null;
+  authorName: string | null;
+  kind: 'text' | 'system' | 'evidence';
+  excerpt: string;
+  isDeleted: boolean;
 }
 
 export interface RealtimeConversationReaction {

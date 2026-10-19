@@ -4,7 +4,7 @@
   } @else if (loading && !detail) {
     <p class="lad-muted">Loading...</p>
   } @else if (detail) {
-    <div class="lad-body">
+    <div class="lad-body scroll-fade">
       <header class="lad-hero">
         <span class="lad-avatar" aria-hidden="true">{{ initials(detail.employeeName) }}</span>
         <div class="lad-hero__text">
@@ -68,23 +68,6 @@
         </ol>
       </section>
 
-      @if (detail.infoMessages.length > 0) {
-        <section class="lad-section">
-          <h4>Conversation</h4>
-          <div class="lad-chat">
-            @for (message of detail.infoMessages; track message.createdAt) {
-              <div class="lad-msg" [class.lad-msg--employee]="isFromEmployee(message)">
-                <div class="lad-msg__meta">
-                  <strong>{{ senderName(message) }}</strong>
-                  <time>{{ message.createdAt | date:'yyyy-MM-dd HH:mm' }}</time>
-                </div>
-                <p class="lad-msg__text">{{ message.message }}</p>
-              </div>
-            }
-          </div>
-        </section>
-      }
-
       <section class="lad-section">
         <h4>Checks</h4>
         @if (hasNoChecks()) {
@@ -144,21 +127,6 @@
               <div class="lad-buttons">
                 <button type="button" data-testid="action-approve" class="lad-primary" (click)="openAction('approve')">Approve</button>
                 <button type="button" class="lad-danger" (click)="openAction('reject')">Reject</button>
-                <button type="button" class="lad-secondary" (click)="openAction('request-info')">Ask a question</button>
-                @if (detail.forwardTo; as forwardTo) {
-                  <button type="button" data-testid="action-forward" class="lad-secondary lad-push" (click)="openAction('forward')">Send to {{ forwardTo.name }}</button>
-                }
-              </div>
-            }
-
-            @if (activeAction() === 'forward' && detail.forwardTo) {
-              <div class="lad-action-panel">
-                <p class="lad-muted">{{ detail.forwardTo.name }} will decide this request instead of you. It leaves your queue and stays in your History.</p>
-                <label>Note for {{ detail.forwardTo.name }} (optional)<textarea rows="2" maxlength="2000" [value]="forwardNote()" (input)="forwardNote.set($any($event.target).value)"></textarea></label>
-                <div class="lad-action-buttons">
-                  <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
-                  <button type="button" class="lad-primary" data-testid="confirm-forward" [disabled]="deciding" (click)="onSubmitForward()">{{ deciding ? 'Sending...' : 'Send to ' + detail.forwardTo.name }}</button>
-                </div>
               </div>
             }
 
@@ -182,15 +150,6 @@
               </div>
             }
 
-            @if (activeAction() === 'request-info') {
-              <div class="lad-action-panel">
-                <label>Question for {{ detail.employeeName }} (required)<textarea rows="2" [value]="infoQuestion()" (input)="infoQuestion.set($any($event.target).value)"></textarea></label>
-                <div class="lad-action-buttons">
-                  <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
-                  <button type="button" class="lad-primary" [disabled]="deciding || !infoQuestion().trim()" (click)="onSubmitRequestInfo()">{{ deciding ? 'Sending...' : 'Send question' }}</button>
-                </div>
-              </div>
-            }
           </div>
         }
       </footer>

@@ -10,6 +10,7 @@ import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { ConversationDto, ConversationMessageDto } from '../../models/inbox.dto';
 import { ConversationPanelComponent, decorateMentions } from './conversation-panel.component';
+import { ConversationStore } from '../../state/conversation.store';
 import { InboxStore } from '../../state/inbox.store';
 
 const ME = 'e1';
@@ -56,6 +57,7 @@ describe('ConversationPanelComponent', () => {
     TestBed.configureTestingModule({
       imports: [ConversationPanelComponent],
       providers: [
+        ConversationStore,
         { provide: ConversationsApiService, useValue: api },
         { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), participantAdded$: new Subject(), reconnected$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
         { provide: AuthStore, useValue: { employeeId: () => ME } },
@@ -75,38 +77,26 @@ describe('ConversationPanelComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('opens the item conversation; the ⋯ menu offers Add member and Members, which lists base vs added people', async () => {
-    const { fixture, el } = await render();
-    const panel = fixture.componentInstance as unknown as { menu(): { id: string; label: string }[]; onMenu(id: string): void };
+  it('opens the item conversation without a header: no title, reference, status or menu', async () => {
+    const { el } = await render();
 
     expect(api['open']).toHaveBeenCalledWith(REF);
-    expect(panel.menu().map((i) => i.id)).toEqual(['add', 'members', 'export']);
-    expect(panel.menu()[1].label).toBe('Members (3)');
-    panel.onMenu('members');
-    fixture.detectChanges();
-    const roles = Array.from(el.querySelectorAll('[data-testid="conversation-participant"]')).map((p) => p.textContent);
-    expect(roles.some((r) => r?.includes('Priya') && r.includes('Added'))).toBe(true);
-    expect(roles.some((r) => r?.includes('Anu'))).toBe(true);
+    expect(el.querySelector('header')).toBeNull();
+    expect(el.querySelector('[data-testid="conversation-ref"]')).toBeNull();
+    expect(el.querySelector('[data-testid="conversation-menu"]')).toBeNull();
   });
 
-  it('shows the ticket in the header: title, reference and status; the details toggle shows when details are hidden', async () => {
+  it('floats only the details toggle when the details are hidden', async () => {
     const { fixture, el } = await render();
-    fixture.componentRef.setInput('item', {
-      source: 'work', kind: 'approval', id: 'a1b2c3d4-0000-0000-0000-000000000000', category: 'request', actionType: 'task.edit',
-      title: 'Audit events', subtitle: null, status: 'pending', direction: 'received', severity: null, contextType: 'project',
-      contextId: 'p1', contextName: 'Apollo', requestedBy: null, requestedTo: null, createdAt: '2026-10-13T09:00:00Z',
-      updatedAt: '2026-10-13T09:00:00Z', availableActions: [], unreadMessages: 0, isPending: true, facets: {}
-    });
+    const toggle = () => el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement;
+    expect(toggle().classList).not.toContain('conv__details-toggle--always');
+
     fixture.componentRef.setInput('detailsVisible', false);
     fixture.detectChanges();
-
-    expect(el.querySelector('[data-testid="conversation-ref"]')?.textContent).toBe('#WOR-A1B2C3D4');
-    expect(el.querySelector('[data-testid="conversation-status"]')?.textContent).toBe('Pending');
-    const toggle = el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement;
-    expect(toggle.classList).toContain('conv__details-toggle--always');
+    expect(toggle().classList).toContain('conv__details-toggle--always');
     const emitted = vi.fn();
     fixture.componentInstance.toggleDetails.subscribe(emitted);
-    toggle.click();
+    toggle().click();
     expect(emitted).toHaveBeenCalled();
   });
 
@@ -154,7 +144,7 @@ describe('ConversationPanelComponent', () => {
     composer.submitted.emit({ content: '<p>hi</p>', attachmentFileIds: [], mentions: ['e2'] });
     await fixture.whenStable();
 
-    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null);
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null, null);
   });
 
   it('offers the item actions and /add in the composer slash menu', async () => {
@@ -184,9 +174,9 @@ describe('ConversationPanelComponent', () => {
     expect(insert).toHaveBeenCalledWith({ id: 'e7', name: 'Chen Li' });
   });
 
-  it('adds members picked in the add panel (⋯ → Add member)', async () => {
+  it('adds members picked in the add panel (/add)', async () => {
     const { fixture, el } = await render();
-    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
+    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
     fixture.detectChanges();
     expect(el.querySelector('[data-testid="conversation-add-panel"]')).not.toBeNull();
     const panel = fixture.componentInstance as unknown as { toggleCandidate(id: string): void; confirmAdd(): Promise<void> };
@@ -199,7 +189,7 @@ describe('ConversationPanelComponent', () => {
 
   it('finds people to add through the conversation people lookup, leaving out current members', async () => {
     const { fixture } = await render();
-    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
+    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
 
     fixture.detectChanges();
     const panel = fixture.componentInstance as unknown as {
@@ -218,7 +208,7 @@ describe('ConversationPanelComponent', () => {
   it('keeps the add panel usable when the people lookup fails', async () => {
     api['searchPeople'].mockReturnValue(throwError(() => new Error('boom')));
     const { fixture } = await render();
-    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
+    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
     fixture.detectChanges();
     const panel = fixture.componentInstance as unknown as {
       candidateOptions(): unknown[];

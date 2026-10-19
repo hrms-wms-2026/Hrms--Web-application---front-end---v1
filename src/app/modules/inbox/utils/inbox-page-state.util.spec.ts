@@ -6,8 +6,7 @@ import {
   groupByEmployee,
   pageStateFromParams,
   pageStateToParams,
-  pageStateToQuery,
-  tabCounts
+  pageStateToQuery
 } from './inbox-page-state.util';
 
 function item(id: string, extra: Partial<InboxItemDto> = {}): InboxItemDto {
@@ -30,12 +29,6 @@ const action = (key: string, meta?: Record<string, string>) =>
   ({ key, label: key, tone: 'primary' as const, needsComment: key === 'reject', needsPayload: false, meta });
 
 describe('inbox page state', () => {
-  it('counts the tabs from byKind using the kind registry, falling back to the totals', () => {
-    const counts = { pendingReceived: 5, unreadMessages: 0, openAlerts: 21, byKind: { 'leave:request': 3, 'work:approval': 2, 'attendance:alert': 21 } };
-    expect(tabCounts(counts, KINDS)).toEqual({ all: 26, request: 5, alert: 21 });
-    expect(tabCounts({ pendingReceived: 4, unreadMessages: 0, openAlerts: 2 }, [])).toEqual({ all: 6, request: 4, alert: 2 });
-  });
-
   it('reads and writes the URL: tab, direction, search and every filter, so a reload or a shared link restores it', () => {
     const state = pageStateFromParams({ tab: 'alerts', dir: 'about', q: 'pat', sort: 'oldest', source: 'attendance', kind: 'alert', employee: 'e1,e2', requestedOn: '30' });
 

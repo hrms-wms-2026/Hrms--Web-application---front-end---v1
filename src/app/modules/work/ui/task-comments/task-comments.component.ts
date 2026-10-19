@@ -177,7 +177,7 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
                 >
                   <div class="tc-popover" role="dialog" [attr.aria-label]="'People who reacted with ' + r.emoji" data-testid="reactors-popover" (click)="$event.stopPropagation()">
                     <div class="tc-popover-title">{{ r.emoji }} Reactions · {{ r.count }}</div>
-                    <div class="tc-popover-list">
+                    <div class="tc-popover-list scroll-fade">
                       @for (person of reactorsFor(comment, r.emoji); track person.employeeId) {
                         <div class="tc-popover-option" [class.tc-popover-option--selected]="person.employeeId === currentEmployeeId()" data-testid="reactor-row">
                           <app-employee-avatar [employeeId]="person.employeeId" />

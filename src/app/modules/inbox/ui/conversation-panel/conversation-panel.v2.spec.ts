@@ -10,6 +10,7 @@ import { ConversationsApiService } from '../../data-access/conversations-api.ser
 import { InboxApiService } from '../../data-access/inbox-api.service';
 import { ConversationDto, ConversationMessageDto, ConversationParticipantDto } from '../../models/inbox.dto';
 import { InboxStore } from '../../state/inbox.store';
+import { ConversationStore } from '../../state/conversation.store';
 import { ConversationPanelComponent } from './conversation-panel.component';
 
 /** FS3: roles, remove/leave, edit/delete, realtime removal, attachments, tags, export. */
@@ -46,7 +47,6 @@ describe('ConversationPanelComponent (FS3)', () => {
         message('own', { authorEmployeeId: 'mgr' }),
         message('edited', { authorEmployeeId: 'pat', authorName: 'Pat', editedAt: '2026-10-13T09:30:00Z' }),
         message('gone', { authorEmployeeId: 'pat', authorName: 'Pat', isDeleted: true, bodyHtml: '' }),
-        message('ask', { tag: 'info_request' }),
         message('why', { authorEmployeeId: 'pat', authorName: 'Pat', tag: 'justification' }),
         message('file', { attachments: [{ id: 'att1', fileName: 'note.pdf', contentType: 'application/pdf', sizeBytes: 2048 }] })
       ],
@@ -70,6 +70,7 @@ describe('ConversationPanelComponent (FS3)', () => {
     TestBed.configureTestingModule({
       imports: [ConversationPanelComponent],
       providers: [
+        ConversationStore,
         { provide: ConversationsApiService, useValue: api },
         { provide: InboxApiService, useValue: inboxApi },
         { provide: FileApiService, useValue: { upload: vi.fn() } },
@@ -104,58 +105,14 @@ describe('ConversationPanelComponent (FS3)', () => {
     const q = (id: string) => el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
     const msg = (id: string) => el.querySelector(`[data-message-id="${id}"]`) as HTMLElement;
     const settle = async () => { fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges(); };
-    const panel = fixture.componentInstance as unknown as { menu(): { id: string }[]; onMenu(id: string): void };
-    /** Picks an entry of the header's ⋯ menu. */
-    const menu = (id: string) => panel.onMenu(id);
-    const menuIds = () => panel.menu().map((i) => i.id);
-    return { fixture, el, q, msg, settle, menu, menuIds };
+    return { fixture, el, q, msg, settle };
   }
-
-  it('the participants popover shows each role; Remove shows for added members to base members', async () => {
-    const { q, settle, el, menu } = await render(null);
-    menu('members');
-    await settle();
-
-    const rows = Array.from(el.querySelectorAll('[data-testid="conversation-participant"]')) as HTMLElement[];
-    expect(rows.map((r) => r.querySelector('[data-testid="participant-role"]')?.textContent?.trim()))
-      .toEqual(['Subject', 'Approver', 'Viewer', 'Added', 'Added']);
-    expect(q('participant-remove-sam')).not.toBeNull();
-    expect(q('participant-remove-lee')).not.toBeNull();
-    expect(q('participant-remove-pat')).toBeNull();
-    expect(q('participant-remove-hr')).toBeNull();
-
-    q('participant-remove-sam')!.click();
-    await settle();
-    expect(api['removeParticipant']).toHaveBeenCalledWith('c1', 'sam');
-  });
-
-  it('labels the requester; an added member may remove whom they added, and can leave', async () => {
-    me = 'sam';
-    const { q, settle, el, menu, menuIds } = await render('mgr');
-    menu('members');
-    await settle();
-
-    expect(el.querySelector('[data-employee-id="mgr"] [data-testid="participant-role"]')?.textContent).toContain('Requester');
-    expect(q('participant-remove-lee')).not.toBeNull();
-    expect(q('participant-remove-pat')).toBeNull();
-    expect(q('participant-remove-sam')).toBeNull();
-
-    expect(menuIds()).toContain('leave');
-    menu('leave');
-    await settle();
-    q('conversation-leave-confirm')!.click();
-    await settle();
-    expect(api['leave']).toHaveBeenCalledWith('c1');
-    expect(q('conversation-removed')?.textContent).toContain('You were removed from this conversation');
-    expect(el.querySelector('app-comment-composer')).toBeNull();
-  });
 
   it('shows (edited), the deleted placeholder, tag labels and the justification card', async () => {
     const { msg } = await render();
 
     expect(msg('edited').textContent).toContain('(edited)');
     expect(msg('gone').textContent).toContain('Message deleted');
-    expect(msg('ask').querySelector('[data-testid="message-tag"]')?.textContent).toContain('Info requested');
     expect(msg('why').classList.contains('msg--justification')).toBe(true);
   });
 
@@ -278,18 +235,7 @@ describe('ConversationPanelComponent (FS3)', () => {
       .send('<p>I was at the clinic</p>', [], ['f1']);
     await settle();
 
-    expect(api['post']).toHaveBeenCalledWith('c1', '<p>I was at the clinic</p>', [], ['f1'], 'justification');
-  });
-
-  it('export is offered to deciders and viewers, not to the subject or an added member', async () => {
-    const { settle, menu, menuIds } = await render();
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
-
-    expect(menuIds()).toContain('export');
-    menu('export');
-    await settle();
-    expect(inboxApi.exportItem).toHaveBeenCalledWith(REF);
-    click.mockRestore();
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>I was at the clinic</p>', [], ['f1'], 'justification', null);
   });
 
   it('uploads chat attachments as conversation_attachment, at most 5 and 25 MB each', async () => {
@@ -308,18 +254,120 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect((uploader as unknown as { accept: string }).accept).toBe('.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip');
   });
 
-  it('says so when the server refuses the export', async () => {
-    inboxApi.exportItem.mockReturnValueOnce(throwError(() => ({ status: 403 })));
-    const { settle, el, menu } = await render();
-
-    menu('export');
+  it('replies to a message like a messenger: Reply shows a bar over the composer, the send carries the quoted id', async () => {
+    const { fixture, q, settle } = await render();
+    q('message-reply-edited')!.click();
     await settle();
 
-    expect(el.textContent).toContain('You cannot export this conversation.');
+    expect(q('conversation-replying')!.textContent).toContain('Replying to Pat');
+    expect(q('conversation-replying')!.textContent).toContain('edited');
+
+    await (fixture.componentInstance as unknown as { send(html: string, mentions: string[], files: string[]): Promise<void> })
+      .send('<p>thanks</p>', [], []);
+    await settle();
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>thanks</p>', [], [], null, 'edited');
+    expect(q('conversation-replying')).toBeNull();
   });
 
-  it('the subject is not offered Export in the menu', async () => {
-    me = 'pat';
-    expect((await render()).menuIds()).not.toContain('export');
+  it('cancels a reply, and offers no Reply on deleted messages', async () => {
+    const { q, settle } = await render();
+    expect(q('message-reply-gone')).toBeNull();
+
+    q('message-reply-own')!.click();
+    await settle();
+    q('conversation-reply-cancel')!.click();
+    await settle();
+    expect(q('conversation-replying')).toBeNull();
+  });
+
+  it('shows the quote on a reply and jumps to the quoted message', async () => {
+    conv.messages = [
+      ...conv.messages,
+      message('re', { authorEmployeeId: 'pat', authorName: 'Pat', replyTo: {
+        id: 'own', authorEmployeeId: 'mgr', authorName: 'Maya', kind: 'text', excerpt: 'own', isDeleted: false } }),
+      message('re-gone', { replyTo: { id: 'gone', authorEmployeeId: 'pat', authorName: 'Pat', kind: 'text', excerpt: '', isDeleted: true } })
+    ];
+    const { msg, settle } = await render();
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+
+    const quote = msg('re').querySelector('[data-testid="message-quote"]') as HTMLButtonElement;
+    expect(quote.textContent).toContain('You');
+    expect(quote.textContent).toContain('own');
+    expect(msg('re-gone').querySelector('[data-testid="message-quote"]')!.textContent).toContain('Message deleted');
+
+    quote.click();
+    await settle();
+    expect(scroll).toHaveBeenCalled();
+    expect(msg('own').classList).toContain('msg--highlight');
+  });
+
+  it('the evidence message shows the face checks to reviewers, who can reply to it; others never see it', async () => {
+    conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '', createdAt: '2026-10-13T08:00:00Z' }), ...conv.messages];
+    const evidence = {
+      exceptionId: 'x', type: 'IdentityAnomaly', workDate: '2026-10-13', timezone: 'UTC', attendance: null, identity: null,
+      faceChecks: [{ id: 'f1', at: '2026-10-13T08:58:00Z', purpose: 'clock_in', outcome: 'failed', failureReason: null, similarityScore: 61 }],
+      checkInScans: [], deviceActivity: null, pattern: null, activityHidden: false
+    };
+
+    const reviewer = await render();
+    reviewer.fixture.componentRef.setInput('faceEvidence', evidence);
+    await reviewer.settle();
+    expect(reviewer.msg('ev').querySelector('app-face-evidence-card')).not.toBeNull();
+    reviewer.q('message-reply-ev')!.click();
+    await reviewer.settle();
+    expect(reviewer.q('conversation-replying')!.textContent).toContain('Replying to Face checks');
+  });
+
+  it('a request’s evidence message shows its requested changes, editable by the approver, and can be replied to', async () => {
+    conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '', createdAt: '2026-10-13T08:00:00Z' }), ...conv.messages];
+    const changes = [
+      { field: 'startAt', label: 'From', before: null, after: '2026-10-29T09:00:00.000Z', kind: 'datetime', editable: true, applied: null },
+      { field: 'leaveType', label: 'Leave type', before: null, after: 'Sick Leave', kind: 'text', editable: false, applied: null }
+    ];
+    const { fixture, msg, q, settle } = await render();
+    fixture.componentRef.setInput('changes', changes);
+    fixture.componentRef.setInput('changesEditable', true);
+    const edited: Record<string, string>[] = [];
+    fixture.componentInstance.changesEdited.subscribe((e) => edited.push(e));
+    await settle();
+
+    const ev = msg('ev');
+    expect(ev.textContent).toContain('Requested changes');
+    const input = ev.querySelector('[data-testid="inbox-edit-startAt"]') as HTMLInputElement;
+    input.value = '2026-10-30T09:00';
+    input.dispatchEvent(new Event('input'));
+    await settle();
+    expect(edited.at(-1)).toEqual({ startAt: new Date('2026-10-30T09:00').toISOString() });
+
+    q('message-reply-ev')!.click();
+    await settle();
+    expect(q('conversation-replying')!.textContent).toContain('Replying to Requested changes');
+    expect(q('conversation-replying')!.textContent).toContain('From, Leave type');
+  });
+
+  it('a leave request shows as the compact leave card, not current/requested rows', async () => {
+    conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '', createdAt: '2026-10-13T08:00:00Z' }), ...conv.messages];
+    const { fixture, msg, settle } = await render();
+    fixture.componentRef.setInput('item', {
+      source: 'leave', kind: 'request', id: 'a1', category: 'request', actionType: 'sick', title: 'Sick Leave - Sam', subtitle: null,
+      status: 'pending', direction: 'received', severity: null, contextType: 'legal_entity', contextId: null, contextName: null,
+      requestedBy: null, requestedTo: null, createdAt: '2026-10-13T08:00:00Z', updatedAt: '2026-10-13T08:00:00Z',
+      availableActions: [], unreadMessages: 0, isPending: true, facets: {}
+    });
+    fixture.componentRef.setInput('changes', [
+      { field: 'leave_type', label: 'Leave type', before: null, after: 'Sick Leave', kind: 'text', editable: false, applied: null }
+    ]);
+    await settle();
+
+    expect(msg('ev').querySelector('app-leave-request-summary')).not.toBeNull();
+    expect(msg('ev').querySelector('app-inbox-change-set')).toBeNull();
+  });
+
+  it('hides the empty evidence message from someone without the evidence', async () => {
+    conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '' })];
+    const { msg, el } = await render();
+    expect(msg('ev')).toBeNull();
+    expect(el.textContent).toContain('No messages yet');
   });
 });

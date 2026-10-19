@@ -62,10 +62,9 @@ export interface LeaveRequestListItemResponse {
   totalHours: number;
   paidHours: number;
   unpaidHours: number;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   noticePeriodMissed: boolean;
   approvedByName: string | null;
-  infoQuestion: string | null;
   createdAt: string;
   updatedAt: string | null;
 }

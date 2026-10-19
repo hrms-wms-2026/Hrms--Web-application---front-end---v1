@@ -24,7 +24,7 @@ export interface InboxActionDto {
   tone: InboxActionTone;
   needsComment: boolean;
   needsPayload: boolean;
-  /** Per-action extras for the dialogs: "revertableUntil" (ISO), "outcomes" (comma list), "forwardTo", "escalateTo". */
+  /** Per-action extras for the dialogs: "revertableUntil" (ISO), "outcomes" (comma list), "escalateTo". */
   meta?: Record<string, string> | null;
 }
 
@@ -129,8 +129,6 @@ export const InboxCapability = {
   Escalate: 16,
   Resolve: 32,
   Cancel: 64,
-  Forward: 128,
-  RequestInfo: 256,
   SubjectParticipates: 512
 } as const;
 export type InboxCapabilityFlag = (typeof InboxCapability)[keyof typeof InboxCapability];

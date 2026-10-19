@@ -103,9 +103,15 @@ describe('InboxPageComponent (FS2)', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const q = (id: string) => el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
-    const tab = (label: string) => Array.from(el.querySelectorAll('[role="tab"]')).find((t) => t.textContent?.includes(label)) as HTMLElement;
+    const page = fixture.componentInstance as unknown as {
+      state(): { tab: string };
+      filterFields(): { key: string }[];
+      onFilterChanged(e: { key: string; values: string[] }): void;
+    };
+    const tab = () => page.state().tab;
+    const category = (value: string) => page.onFilterChanged({ key: 'category', values: [value] });
     const settle = async () => { await vi.advanceTimersByTimeAsync(0); fixture.detectChanges(); };
-    return { fixture, el, q, tab, settle };
+    return { fixture, el, q, page, tab, category, settle };
   }
 
   const lastQuery = () => api['list'].mock.calls.at(-1)![0];
@@ -118,7 +124,7 @@ describe('InboxPageComponent (FS2)', () => {
     expect(lastQuery()).toMatchObject({
       category: ['alert'], direction: ['received'], search: 'pat', source: ['attendance'], facets: { kind: ['alert'], employee: ['e1'] }
     });
-    expect(tab('Alerts').getAttribute('aria-selected')).toBe('true');
+    expect(tab()).toBe('alert');
   });
 
   it('follows an in-app navigation that changes the query string (nav "Inbox", bell, renderer links)', async () => {
@@ -129,7 +135,7 @@ describe('InboxPageComponent (FS2)', () => {
     queryParamMap$.next(convertToParamMap({}));
     await settle();
 
-    expect(tab('All').getAttribute('aria-selected')).toBe('true');
+    expect(tab()).toBe('all');
     expect(api['list'].mock.calls.length).toBeGreaterThan(listsBefore);
     expect(lastQuery()).toMatchObject({ category: [], source: [] });
 
@@ -140,9 +146,9 @@ describe('InboxPageComponent (FS2)', () => {
   });
 
   it('writes every change back to the URL without adding history entries', async () => {
-    const { tab, settle, q } = await render();
+    const { category, settle, q } = await render();
 
-    tab('Alerts').click();
+    category('alert');
     await settle();
     expect(lastUrl()).toEqual(expect.objectContaining({ queryParams: { tab: 'alerts' }, replaceUrl: true }));
 
@@ -151,13 +157,18 @@ describe('InboxPageComponent (FS2)', () => {
     expect(lastUrl()!.queryParams).toEqual({ tab: 'alerts', dir: 'received' });
   });
 
-  it('labels the tabs with what needs the caller per category', async () => {
-    const { tab } = await render();
+  it('picks requests or alerts from the Category filter, and opens History from its own button', async () => {
+    const { page, q, tab, settle } = await render();
 
-    expect(tab('All').textContent).toContain('24');
-    expect(tab('Requests').textContent).toContain('3');
-    expect(tab('Alerts').textContent).toContain('21');
-    expect(tab('History')).toBeTruthy();
+    expect(page.filterFields()[0].key).toBe('category');
+    q('inbox-history-toggle')!.click();
+    await settle();
+    expect(tab()).toBe('history');
+    expect(page.filterFields().some((f) => f.key === 'category')).toBe(false);
+
+    q('inbox-history-toggle')!.click();
+    await settle();
+    expect(tab()).toBe('all');
   });
 
   it('About me lists info items about the caller', async () => {
@@ -170,9 +181,9 @@ describe('InboxPageComponent (FS2)', () => {
   });
 
   it('History lists the decisions taken, with an undo chip inside the window', async () => {
-    const { tab, settle, q, el } = await render();
+    const { settle, q, el } = await render();
 
-    tab('History').click();
+    q('inbox-history-toggle')!.click();
     await settle();
 
     expect(api['history']).toHaveBeenCalled();

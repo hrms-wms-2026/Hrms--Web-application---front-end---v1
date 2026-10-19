@@ -222,7 +222,7 @@
               <div class="px-1.5 pt-0.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
                 Added &middot; {{ addedPeople().length }}
               </div>
-              <div class="flex max-h-36 flex-col gap-0.5 overflow-y-auto" data-testid="calendar-form-participant-list">
+              <div class="flex max-h-36 flex-col gap-0.5 overflow-y-auto scroll-fade" data-testid="calendar-form-participant-list">
                 @for (person of addedPeople(); track person.key) {
                   <div class="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm" [attr.data-testid]="addedRowTestId(person)">
                     <app-avatar [userName]="person.name" size="xs" />
@@ -530,7 +530,7 @@
           </svg>
           Attendance
         </div>
-        <div class="max-h-48 overflow-y-auto">
+        <div class="max-h-48 overflow-y-auto scroll-fade">
           <app-calendar-event-attendance [eventId]="event!.id" />
         </div>
       </div>

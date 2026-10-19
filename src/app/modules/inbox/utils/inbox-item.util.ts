@@ -2,7 +2,7 @@ import { FilterFieldConfig, FilterFieldIcon } from '../../../shared/ui/filter-ba
 import { MenuItem } from '../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { InboxFilterFieldDto, InboxItemDto, InboxKindDescriptorDto } from '../models/inbox.dto';
 
-export type InboxTone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral';
+export type InboxTone = 'accent' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 export interface InboxTypeMeta {
   label: string;
@@ -113,9 +113,23 @@ export function inboxStatusLabel(item: InboxItemDto): string {
   }
 }
 
-/** Theme colour + gray only: anything still needing attention uses the accent, finished states are gray. */
+/**
+ * Live tickets are coloured by state: open alerts accent (danger when high/critical or escalated), pending requests
+ * amber, anything in progress purple. Finished tickets (resolved, approved, rejected, cancelled…) are gray.
+ */
 export function inboxStatusTone(item: InboxItemDto): InboxTone {
-  return item.isPending ? 'accent' : 'neutral';
+  if (!item.isPending) return 'neutral';
+  if (isAlert(item)) {
+    if (item.status === 'escalated' || item.severity === 'high' || item.severity === 'critical') return 'danger';
+    return item.status === 'open' ? 'accent' : 'info';
+  }
+  return item.status === 'pending' ? 'warning' : 'info';
+}
+
+/** The row's type icon: alerts keep their severity colour while live, requests follow the status, finished rows are gray. */
+export function inboxIconTone(item: InboxItemDto, meta: InboxTypeMeta): InboxTone {
+  if (!item.isPending) return 'neutral';
+  return isAlert(item) ? meta.tone : inboxStatusTone(item);
 }
 
 /** Actions that need a dialog (a comment, an edited payload) or confirmation run from the card, not the row menu. */
@@ -135,8 +149,14 @@ const FIELD_ICONS: Record<string, FilterFieldIcon> = {
   project: 'category', source: 'category', type: 'type', status: 'status', requestedBy: 'people', module: 'module'
 };
 
-/** Category and direction are the page's tabs/segment, so they are not in the filter bar. */
+/** Direction is the page's segment; category is the page's own Category field below, so neither comes from the server list. */
 const NOT_IN_BAR = new Set(['category', 'direction']);
+
+/** Requests vs alerts: drives the page's tab state (not a server facet), so the list keeps its per-category behaviour. */
+export const CATEGORY_FIELD: FilterFieldConfig = {
+  key: 'category', label: 'Category', icon: 'category', kind: 'single', defaultValues: ['all'],
+  options: [{ value: 'all', label: 'All' }, { value: 'request', label: 'Requests' }, { value: 'alert', label: 'Alerts' }]
+};
 
 export const REQUESTED_ON_FIELD: FilterFieldConfig = {
   key: 'requestedOn', label: 'Requested on', icon: 'calendar', kind: 'single', defaultValues: ['any'],

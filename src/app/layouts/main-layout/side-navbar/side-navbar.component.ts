@@ -4,6 +4,7 @@ import { LegalEntityApiService } from '../../../modules/organization/data-access
 import { LegalEntityStore } from '../../../modules/organization/state/legal-entity.store';
 import { CompanyLogoTileComponent } from '../../../shared/ui/company-logo-tile/company-logo-tile.component';
 import { InboxStore } from '../../../modules/inbox/state/inbox.store';
+import { NavItem } from '../nav/nav-item.model';
 import { NavigationStateService } from '../nav/navigation-state.service';
 import { NavIconComponent } from './nav-icon.component';
 
@@ -23,6 +24,7 @@ export class SideNavbarComponent {
   readonly inboxBadge = inject(InboxStore).badgeLabel;
 
   readonly visibleItems = this.navState.visibleItems;
+  readonly entryPath = (item: NavItem): string => this.navState.entryPath(item);
   readonly activeItem = this.navState.activeItem;
 
   readonly selectedCompany = this.legalEntityStore.selectedLegalEntity;

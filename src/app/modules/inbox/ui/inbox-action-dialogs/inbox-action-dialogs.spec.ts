@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { Type } from '@angular/core';
 import { InboxEscalateDialogComponent } from './inbox-escalate-dialog.component';
-import { InboxForwardDialogComponent } from './inbox-forward-dialog.component';
 import { InboxOutcomeDialogComponent, InboxOutcomeChoice } from './inbox-outcome-dialog.component';
 
 function render<T>(component: Type<T>, inputs: Record<string, unknown>) {
@@ -91,18 +90,5 @@ describe('InboxEscalateDialogComponent', () => {
     click('inbox-escalate-confirm');
 
     expect(sent).toEqual(['No reply in 3 days']);
-  });
-});
-
-describe('InboxForwardDialogComponent', () => {
-  it('names the recipient and sends an optional note', () => {
-    const { q, click, instance } = render(InboxForwardDialogComponent, { recipient: 'Anu Perera' });
-    const sent: (string | null)[] = [];
-    instance.confirmed.subscribe((c) => sent.push(c));
-
-    expect(q('inbox-forward-dialog')?.textContent).toContain('Send to Anu Perera');
-    click('inbox-forward-confirm');
-
-    expect(sent).toEqual([null]);
   });
 });

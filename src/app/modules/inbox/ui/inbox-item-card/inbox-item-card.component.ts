@@ -15,12 +15,12 @@ import {
 import { InboxDetailRendererRegistry, parseExtra } from '../../renderers/inbox-detail-renderers';
 import { inboxStatusLabel, inboxStatusTone, inboxSubtitle, inboxTitle, inboxTypeMeta, isAlert, isWorkActionType } from '../../utils/inbox-item.util';
 import { InboxEscalateDialogComponent } from '../inbox-action-dialogs/inbox-escalate-dialog.component';
-import { InboxForwardDialogComponent } from '../inbox-action-dialogs/inbox-forward-dialog.component';
 import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../inbox-action-dialogs/inbox-outcome-dialog.component';
-import { InboxChangeSetComponent, buildEditedPayload, validateEdits } from '../inbox-change-set/inbox-change-set.component';
+import { buildEditedPayload, validateEdits } from '../inbox-change-set/inbox-change-set.component';
 import { InboxCommentDialogComponent } from '../inbox-comment-dialog/inbox-comment-dialog.component';
 import { InboxRevertBannerComponent } from '../inbox-revert-banner/inbox-revert-banner.component';
 import { InboxStepsComponent } from '../inbox-steps/inbox-steps.component';
+import { TicketParticipantsComponent } from '../ticket-participants/ticket-participants.component';
 import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
 
 export interface InboxCardAction {
@@ -39,8 +39,8 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
   selector: 'app-inbox-item-card',
   standalone: true,
   imports: [
-    DatePipe, KeyValuePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent, InboxChangeSetComponent,
-    InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxForwardDialogComponent, InboxOutcomeDialogComponent,
+    DatePipe, KeyValuePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent, TicketParticipantsComponent,
+    InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxOutcomeDialogComponent,
     InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent, LeaveCancelConfirmDialogComponent
   ],
   host: { class: 'block h-full min-w-0' },
@@ -60,7 +60,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
       } @else {
         @let d = detail()!;
         @let item = d.item;
-        <div class="card__scroll">
+        <div class="card__scroll scroll-fade">
           <div [class]="'card__summary card__summary--' + meta().tone">
             <app-inbox-type-icon class="card__type-tile" [icon]="meta().icon" [tone]="meta().tone" />
             <div class="card__summary-text">
@@ -79,7 +79,9 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             <div class="card__row"><dt>Status</dt>
               <dd><span data-testid="inbox-card-status" [class]="'card__pill card__pill--' + statusTone()">{{ statusText() }}</span></dd></div>
             <div class="card__row"><dt>Type</dt><dd><span [class]="'card__pill card__pill--' + meta().tone">{{ meta().label }}</span></dd></div>
-            <div class="card__row"><dt>Project</dt><dd>{{ item.contextName ?? '—' }}</dd></div>
+            @if (item.contextType === 'project') {
+              <div class="card__row"><dt>Project</dt><dd data-testid="inbox-card-project">{{ item.contextName ?? '—' }}</dd></div>
+            }
             @if (item.requestedBy) {
               <div class="card__row"><dt>Requested by</dt>
                 <dd class="card__person"><app-avatar [userName]="item.requestedBy.name" size="xs" /><span class="truncate">{{ item.requestedBy.name }}</span></dd></div>
@@ -101,14 +103,11 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             </button>
           }
 
-          <section class="card__section">
-            <h4 class="card__label">{{ alert() ? 'Alert steps' : 'Request steps' }}</h4>
-            <app-inbox-steps [steps]="d.steps" />
-          </section>
-
-          @if (renderer(); as r) {
+          @if (descriptor()?.detailRenderer === 'leave-request') {
+            <!-- Leave: dates, hours and reason already show in the conversation card. -->
+          } @else if (renderer(); as r) {
             <section class="card__section" data-testid="inbox-card-renderer">
-              <h4 class="card__label">Additional information</h4>
+              @if (descriptor()?.detailRenderer !== 'exception-evidence') { <h4 class="card__label">Additional information</h4> }
               <ng-container *ngComponentOutlet="r; inputs: { extra: extra(), detail: d }" />
             </section>
           } @else if (d.explanationDetails; as details) {
@@ -125,26 +124,12 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           @if (actionError() && actionErrorInline()) {
             <p class="card__error" role="alert" data-testid="inbox-card-inline-error">{{ actionError() }}</p>
           }
-          @if (d.changeSet.length > 0) {
-            <section class="card__section">
-              <h4 class="card__label">Changes</h4>
-              <app-inbox-change-set [changes]="d.changeSet" [editable]="canEdit()" [errors]="editErrors()" (editsChange)="edits.set($event)" />
-            </section>
-          }
 
-          <section class="card__explain">
-            <button type="button" class="card__explain-toggle" data-testid="inbox-card-explanation-toggle"
-              [attr.aria-expanded]="explanationOpen()" (click)="explanationOpen.set(!explanationOpen())">
-              Explanation
-              <svg [class.card__chevron--open]="explanationOpen()" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-            </button>
-            @if (explanationOpen()) {
-              @if (d.explanation) {
-                <p class="card__note" data-testid="inbox-card-explanation">{{ d.explanation }}</p>
-              } @else {
-                <p class="card__note card__note--empty">No explanation was given for this ticket.</p>
-              }
-            }
+          <app-ticket-participants [requesterId]="item.requestedBy?.id ?? null" />
+
+          <section class="card__section" data-testid="inbox-card-steps">
+            <h4 class="card__label">{{ alert() ? 'Alert steps' : 'Request steps' }}</h4>
+            <app-inbox-steps [steps]="d.steps" />
           </section>
         </div>
 
@@ -199,12 +184,6 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
           (confirmed)="onDialogComment($event)"
           (closed)="dialog.set(null)"
         />
-        <app-inbox-forward-dialog
-          [open]="dialog()?.kind === 'forward'"
-          [recipient]="dialog()?.action?.meta?.['forwardTo'] ?? 'your manager'"
-          (confirmed)="onDialogComment($event)"
-          (closed)="dialog.set(null)"
-        />
         <app-confirm-modal
           [open]="revertOpen()"
           title="Revert this decision?"
@@ -222,7 +201,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
     .card__heading { margin: 0; font-size: 14px; font-weight: 650; }
     .card__hide { display: inline-flex; align-items: center; gap: 2px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
     .card__hide:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    .card__hide svg, .card__link svg, .card__explain-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .card__hide svg, .card__link svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .card__scroll { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 18px; overflow-x: hidden; overflow-y: auto; padding: 16px 18px; }
     .card__summary { --tone: var(--color-accent); display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--tone) 8%, var(--color-surface)); }
     .card__summary--neutral { --tone: var(--color-text-secondary); }
@@ -246,13 +225,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
     .card__capitalize { text-transform: capitalize; }
     .card__person { display: inline-flex; align-items: center; gap: 6px; }
     .card__link { display: inline-flex; align-self: flex-start; align-items: center; gap: 4px; margin-top: -8px; padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .card__explain { border: 1px solid var(--color-border); border-radius: 10px; }
-    .card__explain-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 10px 12px; border: 0; background: none; color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
-    .card__explain-toggle svg { transition: transform 150ms ease; }
-    .card__chevron--open { transform: rotate(180deg); }
-    .card__explain-toggle:focus-visible, .card__hide:focus-visible, .card__link:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .card__note { margin: 0; padding: 0 12px 12px; color: var(--color-text-secondary); font-size: 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .card__note--empty { font-style: italic; }
+    .card__hide:focus-visible, .card__link:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .card__footer { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--color-border); background: var(--color-surface); }
     .card__btn { flex: 1 1 auto; min-width: 84px; max-width: 100%; height: 34px; padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
     .card__btn:hover:not(:disabled) { background: var(--color-surface-secondary); }
@@ -285,13 +258,14 @@ export class InboxItemCardComponent {
 
   private readonly renderers = inject(InboxDetailRendererRegistry);
 
+  /** The approver's edits to the requested changes - made in the chat's "Requested changes" message (setEdits). */
   protected readonly edits = signal<Record<string, string>>({});
-  protected readonly editErrors = signal<Record<string, string>>({});
+  /** Per-field problems found on approve; the chat's changes message shows them. */
+  readonly editErrors = signal<Record<string, string>>({});
   protected readonly commentAction = signal<InboxActionDto | null>(null);
   protected readonly revertOpen = signal(false);
   /** The explanation starts collapsed and stays as the reader left it across tickets. */
-  protected readonly explanationOpen = signal(false);
-  protected readonly dialog = signal<{ kind: 'outcome' | 'escalate' | 'forward' | 'leave-cancel'; action: InboxActionDto } | null>(null);
+  protected readonly dialog = signal<{ kind: 'outcome' | 'escalate' | 'leave-cancel'; action: InboxActionDto } | null>(null);
 
   protected readonly item = computed(() => this.detail()?.item ?? null);
   protected readonly alert = computed(() => !!this.item() && isAlert(this.item()!));
@@ -319,7 +293,7 @@ export class InboxItemCardComponent {
     .filter((a) => !NAVIGATION_ACTIONS.has(a.key) && !(a.key === 'revert' && this.revertUntil()))
     .sort((a, b) => Number(a.tone === 'primary') - Number(b.tone === 'primary')));
   /** Edit-before-approve: an approve action, editable rows, and a kind that takes edits (payload or capability). */
-  protected readonly canEdit = computed(() => {
+  readonly canEdit = computed(() => {
     const d = this.detail();
     return !!d && this.actions().some((a) => a.key === 'approve') && d.changeSet.some((c) => c.editable)
       && (!!d.editablePayloadJson || hasCapability(this.descriptor(), InboxCapability.EditBeforeApprove));
@@ -354,6 +328,11 @@ export class InboxItemCardComponent {
   }
 
   /** Runs an action by key - used by the buttons and by the conversation's "/" commands. */
+  /** The chat's changes message reports the approver's edits here; approve sends them. */
+  setEdits(edits: Record<string, string>): void {
+    this.edits.set(edits);
+  }
+
   runAction(key: string): void {
     const action = this.actions().find((a) => a.key === key);
     if (action) this.onAction(action);
@@ -370,10 +349,6 @@ export class InboxItemCardComponent {
     }
     if (action.key === 'escalate') {
       this.dialog.set({ kind: 'escalate', action });
-      return;
-    }
-    if (action.key === 'forward') {
-      this.dialog.set({ kind: 'forward', action });
       return;
     }
     if (action.needsComment) {
@@ -417,7 +392,7 @@ export class InboxItemCardComponent {
     if (action) this.action.emit({ key: action.key, body: { comment: choice.reason, effectiveDate: choice.effectiveDate } });
   }
 
-  /** Escalate / forward: the dialog's note is the action comment. */
+  /** Escalate: the dialog's note is the action comment. */
   protected onDialogComment(comment: string | null): void {
     const action = this.dialog()?.action;
     this.dialog.set(null);
