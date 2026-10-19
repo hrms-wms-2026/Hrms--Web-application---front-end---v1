@@ -21,7 +21,8 @@
       </button>
       }
     </div>
-    @if (viewMode() === 'tree') {
+    <!-- Every control stays put across Tree / Network: the header must not change or re-render
+         with the view. They act on the tree; the network has its own search. -->
     @if (searchExpanded()) {
     <div class="relative flex h-[30px] w-80 items-center" data-testid="tree-search">
       <svg class="pointer-events-none absolute left-2.5 text-[var(--color-text-secondary)]" viewBox="0 0 24 24"
@@ -69,7 +70,6 @@
       </svg>
       {{ allExpanded() ? 'Collapse all' : 'Expand all' }}
     </button>
-    }
     @if (canCreateModule()) {
     <app-button variant="primary" (pressed)="onCreateModuleRequested()">Create module</app-button>
     }

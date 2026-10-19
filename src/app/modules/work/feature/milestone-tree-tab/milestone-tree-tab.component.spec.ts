@@ -1099,16 +1099,17 @@ describe('MilestoneTreeTabComponent', () => {
       expect(el().querySelector('app-milestone-tree-node')).toBeNull();
     });
 
-    it('hides tree search, the owner filter, the highlight filter bar and Expand all in network mode', () => {
+    it('keeps tree search, the owner filter, the highlight filter bar and Expand all visible in network mode', () => {
       setup('o1');
       fixture.detectChanges();
       switchTo('network');
       const host = toolbar();
 
-      expect(host.querySelector('[data-testid="tree-search-toggle"]')).toBeNull();
-      expect(host.querySelector('app-task-assignee-avatar-filter')).toBeNull();
-      expect(host.querySelector('app-filter-bar')).toBeNull();
-      expect(host.querySelector('[data-testid="expand-all-toggle"]')).toBeNull();
+      // The header must not change when the view does (spec Revision 1).
+      expect(host.querySelector('[data-testid="tree-search-toggle"]')).not.toBeNull();
+      expect(host.querySelector('app-task-assignee-avatar-filter')).not.toBeNull();
+      expect(host.querySelector('app-filter-bar')).not.toBeNull();
+      expect(host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
     });
 
     it('keeps Create module and the switch itself visible in network mode', () => {
