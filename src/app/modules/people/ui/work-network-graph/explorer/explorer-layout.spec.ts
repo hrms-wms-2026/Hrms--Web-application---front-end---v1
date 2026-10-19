@@ -1,5 +1,5 @@
 import { EmployeeWorkGraphResponse } from '../../../models/work-graph.model';
-import { buildExplorerLayout, placeCards, progressPercent, searchGraph, settleExplorerLayout, taskTone, tasksByParent } from './explorer-layout';
+import { buildExplorerLayout, placeCards, progressPercent, searchGraph, settleExplorerLayout, taskStatusDot, taskTone, tasksByParent } from './explorer-layout';
 
 describe('explorer-layout', () => {
   const graph: EmployeeWorkGraphResponse = {
@@ -131,6 +131,34 @@ describe('explorer-layout', () => {
       expect(layout.nodes).toHaveLength(1);
       expect(layout.links).toHaveLength(0);
       expect(() => settleExplorerLayout(layout)).not.toThrow();
+    });
+  });
+
+  describe('sprints and task status dots', () => {
+    it('codes sprint nodes S1, S2 in graph order', () => {
+      const layout = buildExplorerLayout({
+        nodes: [
+          { id: 'module:root', kind: 'module', label: 'Portal', projectId: 'p1', objectiveId: 'root' },
+          { id: 'sprint:a', kind: 'sprint', label: 'Sprint A', status: 'active', projectId: 'p1' },
+          { id: 'sprint:b', kind: 'sprint', label: 'Sprint B', status: 'draft', projectId: 'p1' }
+        ],
+        links: [
+          { source: 'module:root', target: 'sprint:a', kind: 'contains' },
+          { source: 'module:root', target: 'sprint:b', kind: 'contains' }
+        ],
+        hiddenTaskCount: 0
+      }, 'module:root');
+
+      expect(layout.nodes.find((n) => n.id === 'sprint:a')!.code).toBe('S1');
+      expect(layout.nodes.find((n) => n.id === 'sprint:b')!.code).toBe('S2');
+    });
+
+    it('maps a task status to an empty, filled or done dot', () => {
+      const task = (status: 'not_started' | 'active' | 'done') =>
+        ({ id: 't', kind: 'task', label: 't', status } as const);
+      expect(taskStatusDot(task('not_started'))).toBe('empty');
+      expect(taskStatusDot(task('active'))).toBe('filled');
+      expect(taskStatusDot(task('done'))).toBe('done');
     });
   });
 });

@@ -43,6 +43,8 @@ describe('WorkNetworkExplorerCanvasComponent', () => {
     seed: vi.fn()
   };
 
+  let lastFixture: { detectChanges(): void };
+
   function setup(graph: EmployeeWorkGraphResponse, inputs: Record<string, unknown> = {}) {
     TestBed.configureTestingModule({
       imports: [WorkNetworkExplorerCanvasComponent],
@@ -53,6 +55,7 @@ describe('WorkNetworkExplorerCanvasComponent', () => {
     fixture.componentRef.setInput('animated', false);
     for (const [key, value] of Object.entries(inputs)) fixture.componentRef.setInput(key, value);
     fixture.detectChanges();
+    lastFixture = fixture;
     return fixture.nativeElement as HTMLElement;
   }
 
@@ -109,5 +112,70 @@ describe('WorkNetworkExplorerCanvasComponent', () => {
 
     expect(node(el, 'module:a').getAttribute('class')).toContain('wgx-node--module-neutral');
     expect(node(el, 'module:a').getAttribute('class')).not.toContain('wgx-node--module-contributor');
+  });
+
+  describe('sprints and task status dots', () => {
+    const sprintGraph: EmployeeWorkGraphResponse = {
+      nodes: [
+        { id: 'module:root', kind: 'module', label: 'Portal', projectId: 'p1', objectiveId: 'root', stats: stats(10, 5) },
+        { id: 'sprint:active', kind: 'sprint', label: 'Sprint 7', status: 'active', projectId: 'p1' },
+        { id: 'sprint:draft', kind: 'sprint', label: 'Sprint 8', status: 'draft', projectId: 'p1' },
+        { id: 'sprint:complete', kind: 'sprint', label: 'Sprint 6', status: 'complete', projectId: 'p1' },
+        { id: 'sprint:achieved', kind: 'sprint', label: 'Sprint 5', status: 'achieved', projectId: 'p1' },
+        { id: 'task:todo', kind: 'task', label: 'Todo', status: 'not_started', projectId: 'p1', objectiveId: 'root', taskId: 'todo' },
+        { id: 'task:doing', kind: 'task', label: 'Doing', status: 'active', projectId: 'p1', objectiveId: 'root', taskId: 'doing' },
+        { id: 'task:shipped', kind: 'task', label: 'Shipped', status: 'done', projectId: 'p1', objectiveId: 'root', taskId: 'shipped' }
+      ],
+      links: [
+        { source: 'module:root', target: 'sprint:active', kind: 'contains' },
+        { source: 'module:root', target: 'sprint:draft', kind: 'contains' },
+        { source: 'module:root', target: 'sprint:complete', kind: 'contains' },
+        { source: 'module:root', target: 'sprint:achieved', kind: 'contains' },
+        { source: 'sprint:active', target: 'task:todo', kind: 'has_task' },
+        { source: 'sprint:active', target: 'task:doing', kind: 'has_task' },
+        { source: 'sprint:active', target: 'task:shipped', kind: 'has_task' }
+      ],
+      hiddenTaskCount: 0
+    };
+    const cls = (el: HTMLElement, id: string) => node(el, id).getAttribute('class') ?? '';
+    const dot = (el: HTMLElement, taskId: string) =>
+      el.querySelector(`[data-task-id="task:${taskId}"] .wgx-card__dot`)!.getAttribute('class') ?? '';
+
+    it('classes each sprint by status: active, draft, and complete or achieved as done', () => {
+      const el = setup(sprintGraph, { rootId: 'module:root' });
+
+      expect(cls(el, 'sprint:active')).toContain('wgx-node--sprint-active');
+      expect(cls(el, 'sprint:draft')).toContain('wgx-node--sprint-draft');
+      expect(cls(el, 'sprint:complete')).toContain('wgx-node--sprint-done');
+      expect(cls(el, 'sprint:achieved')).toContain('wgx-node--sprint-done');
+    });
+
+    it('reveals a sprint task cards when the sprint is hovered', () => {
+      const el = setup(sprintGraph, { rootId: 'module:root' });
+      node(el, 'sprint:active').dispatchEvent(new Event('pointerenter'));
+      lastFixture.detectChanges();
+
+      const ids = Array.from(el.querySelectorAll('[data-task-id]')).map((c) => c.getAttribute('data-task-id'));
+      expect(ids.sort()).toEqual(['task:doing', 'task:shipped', 'task:todo']);
+    });
+
+    it('draws empty, filled and done status dots when taskDotStyle is status', () => {
+      const el = setup(sprintGraph, { rootId: 'module:root', taskDotStyle: 'status' });
+      node(el, 'sprint:active').dispatchEvent(new Event('pointerenter'));
+      lastFixture.detectChanges();
+
+      expect(dot(el, 'todo')).toContain('wgx-dot--empty');
+      expect(dot(el, 'doing')).toContain('wgx-dot--filled');
+      expect(dot(el, 'shipped')).toContain('wgx-dot--done');
+    });
+
+    it('keeps the tone dots when taskDotStyle is left at its default', () => {
+      const el = setup(sprintGraph, { rootId: 'module:root' });
+      node(el, 'sprint:active').dispatchEvent(new Event('pointerenter'));
+      lastFixture.detectChanges();
+
+      expect(dot(el, 'doing')).toContain('wgx-tone--progress');
+      expect(dot(el, 'doing')).not.toContain('wgx-dot--');
+    });
   });
 });

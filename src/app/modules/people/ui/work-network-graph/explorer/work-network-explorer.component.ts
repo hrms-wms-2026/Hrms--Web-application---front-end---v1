@@ -102,6 +102,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
           [showProgressRing]="showProgressRing()"
           [alertNodeIds]="alertNodeIds()"
           [neutralModuleFill]="neutralModuleFill()"
+          [taskDotStyle]="taskDotStyle()"
           (nodeClicked)="toggleLock($event)"
           (taskClicked)="navigate.emit($event)"
           (backgroundClicked)="locked.set(null)"
@@ -182,6 +183,12 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
     .wge-key--progress { background: #2563eb; outline: 2px solid #bfdbfe; }
     .wge-key--not-started { background: #94a3b8; }
     .wge-key--overdue { background: #ef4444; }
+    /* Project-mode legend swatches; only used when a legend with these keys is passed in. */
+    .wge-key--module { background: #2563eb; }
+    .wge-key--sprint { background: #8b5cf6; }
+    .wge-key--task { background: #38bdf8; }
+    .wge-key--done { background: #cbd5e1; }
+    .wge-key--alert { background: #ef4444; }
     .wge-meta { margin: 0; font-size: 0.72rem; color: var(--color-text-secondary); white-space: nowrap; }
     @media (max-width: 900px) {
       .wge-title p, .wge-btn--text, .wge-legend { display: none; }
@@ -209,6 +216,7 @@ export class WorkNetworkExplorerComponent {
   readonly neutralModuleFill = input(false);
   /** Forwarded to the detail panel: no employee node, no project node, no role word. */
   readonly projectMode = input(false);
+  readonly taskDotStyle = input<'tone' | 'status'>('tone');
 
   readonly closed = output<void>();
   /** A project, module or task to open in Work Management. */
@@ -253,7 +261,7 @@ export class WorkNetworkExplorerComponent {
   }
 
   toggleLock(node: WorkGraphNode): void {
-    if (node.kind !== 'module' && node.kind !== 'project') return;
+    if (node.kind !== 'module' && node.kind !== 'project' && node.kind !== 'sprint') return;
     this.locked.set(this.locked() === node.id ? null : node.id);
   }
 

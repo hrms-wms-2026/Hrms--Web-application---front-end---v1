@@ -297,4 +297,22 @@ describe('WorkNetworkExplorerComponent', () => {
       expect(legend).toEqual(['Module', 'Needs attention']);
     });
   });
+
+  describe('sprints', () => {
+    it('locks a sprint on click and opens its details', () => {
+      const { fixture, el } = setup();
+      fixture.componentRef.setInput('graph', {
+        ...graph,
+        nodes: [...graph.nodes, { id: 'sprint:s1', kind: 'sprint', label: 'Sprint 7', status: 'active', projectId: 'p1' }],
+        links: [...graph.links, { source: 'module:m1', target: 'sprint:s1', kind: 'contains' }]
+      });
+      fixture.detectChanges();
+
+      fixture.componentInstance.toggleLock({ id: 'sprint:s1', kind: 'sprint', label: 'Sprint 7', status: 'active', projectId: 'p1' });
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.locked()).toBe('sprint:s1');
+      expect(panel(el)).not.toBeNull();
+    });
+  });
 });

@@ -27,6 +27,7 @@ import {
   progressPercent,
   settleExplorerLayout,
   shorten,
+  taskStatusDot,
   taskTone,
   tasksByParent
 } from './explorer-layout';
@@ -218,7 +219,7 @@ const TWEEN_LAYOUT_MS = 650;
             <rect class="wgx-card__box" [attr.width]="cardW" [attr.height]="cardH" rx="9" />
             @if (card.task; as task) {
               <title>{{ task.label }}</title>
-              <circle [class]="'wgx-card__dot wgx-tone--' + card.tone" cx="16" [attr.cy]="cardH / 2" r="5" />
+              <circle [class]="cardDotClass(card)" cx="16" [attr.cy]="cardH / 2" r="5" />
               <text class="wgx-card__title" x="30" y="17">{{ short(task.label, 22) }}</text>
               <text class="wgx-card__code" x="30" y="32">{{ task.sublabel }}</text>
             } @else {
@@ -276,9 +277,20 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-code { fill: #fff; font-size: 14px; font-weight: 700; pointer-events: none; }
     .wgx-node--employee .wgx-code { font-size: 20px; }
     .wgx-node--module-member .wgx-code, .wgx-node--module-contributor .wgx-code { fill: #7c3aed; }
-    /* Project mode: modules are not viewer-relative, so one fill for all of them. */
-    .wgx-node--module-neutral { color: #8b5cf6; }
-    .wgx-node--module-neutral .wgx-core { fill: url(#wgx-module); }
+    /* Project mode: modules are not viewer-relative, so one blue fill for all of them. */
+    .wgx-node--module-neutral { color: #2563eb; }
+    .wgx-node--module-neutral .wgx-core { fill: url(#wgx-project); }
+    /* Project mode sprints (purple): active = empty, draft = filled, complete/achieved = gray. */
+    .wgx-node--sprint-active, .wgx-node--sprint-draft { color: #8b5cf6; }
+    .wgx-node--sprint-active .wgx-core { fill: #fff; stroke: #8b5cf6; stroke-width: 3; }
+    .wgx-node--sprint-active .wgx-code { fill: #7c3aed; }
+    .wgx-node--sprint-draft .wgx-core { fill: url(#wgx-module); }
+    .wgx-node--sprint-done { color: #94a3b8; }
+    .wgx-node--sprint-done .wgx-core { fill: #cbd5e1; }
+    /* Project mode task status dots (light blue): not started = empty, started = filled, done = gray. */
+    .wgx-dot--empty { fill: #fff; stroke: #38bdf8; stroke-width: 2; }
+    .wgx-dot--filled { fill: #38bdf8; }
+    .wgx-dot--done { fill: #cbd5e1; }
     /* A module the project monitor raised an alert on - the tree's red dot, as a whole circle. */
     .wgx-node--alert .wgx-core { fill: #ef4444; stroke: #b91c1c; stroke-width: 2; stroke-dasharray: none; }
     .wgx-node--alert .wgx-code { fill: #fff; }
@@ -338,6 +350,8 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   readonly alertNodeIds = input<ReadonlySet<string>>(new Set<string>());
   /** Modules with no viewer-relative role draw in one neutral fill instead of the contributor one. */
   readonly neutralModuleFill = input(false);
+  /** 'status': task card dots show light-blue empty / filled / gray-done instead of the tone colour. */
+  readonly taskDotStyle = input<'tone' | 'status'>('tone');
 
   readonly nodeClicked = output<WorkGraphNode>();
   readonly taskClicked = output<WorkGraphNode>();
@@ -525,7 +539,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   onNodeEnter(node: ExplorerNode): void {
     this.hovered.set(node.id);
     this.clearPreviewTimer();
-    if (node.data.kind === 'module' || node.data.kind === 'project') this.previewed.set(node.id);
+    if (node.data.kind === 'module' || node.data.kind === 'project' || node.data.kind === 'sprint') this.previewed.set(node.id);
     else this.previewed.set(null);
   }
 
@@ -617,6 +631,10 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   }
 
   kindClass(node: ExplorerNode): string {
+    if (node.data.kind === 'sprint') {
+      const status = node.data.status;
+      return `sprint-${status === 'active' ? 'active' : status === 'draft' ? 'draft' : 'done'}`;
+    }
     if (node.data.kind !== 'module') return node.data.kind;
     if (node.data.role) return `module-${node.data.role}`;
     return this.neutralModuleFill() ? 'module-neutral' : 'module-contributor';
@@ -701,8 +719,18 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   }
 
   moduleSummary(node: ExplorerNode): string {
+    if (node.data.kind === 'sprint') {
+      const count = tasksByParent(this.graph()).get(node.id)?.length ?? 0;
+      return `${count} task${count === 1 ? '' : 's'}`;
+    }
     const total = node.data.stats?.totalTasks ?? 0;
     return `${total} task${total === 1 ? '' : 's'} in module`;
+  }
+
+  /** Tone dot (employee view) or, with taskDotStyle 'status', the light-blue empty/filled/done dot. */
+  cardDotClass(card: RenderedCard): string {
+    if (this.taskDotStyle() === 'status' && card.task) return `wgx-card__dot wgx-dot--${taskStatusDot(card.task)}`;
+    return 'wgx-card__dot wgx-tone--' + card.tone;
   }
 
   progressOf(node: ExplorerNode): number {

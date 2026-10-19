@@ -71,6 +71,7 @@ function collideOf(node: WorkGraphNode, isRoot = false): number {
 export function buildExplorerLayout(graph: EmployeeWorkGraphResponse, rootId?: string): ExplorerLayout {
   const projectCodes = new Map<string, string>();
   const moduleCounters = new Map<string, number>();
+  let sprintCount = 0;
   const nodes: ExplorerNode[] = [];
 
   for (const data of graph.nodes) {
@@ -80,6 +81,8 @@ export function buildExplorerLayout(graph: EmployeeWorkGraphResponse, rootId?: s
     else if (data.kind === 'project') {
       code = `P${projectCodes.size + 1}`;
       projectCodes.set(data.id, code);
+    } else if (data.kind === 'sprint') {
+      code = `S${++sprintCount}`;
     } else {
       const key = data.projectId ?? '';
       const next = (moduleCounters.get(key) ?? 0) + 1;
@@ -192,6 +195,13 @@ export function taskTone(task: WorkGraphNode): TaskTone {
   return task.status === 'active' ? 'progress' : 'not-started';
 }
 
+/** Project-graph status dot: not started = empty, started = filled, completed = done (gray). */
+export type TaskStatusDot = 'empty' | 'filled' | 'done';
+
+export function taskStatusDot(task: WorkGraphNode): TaskStatusDot {
+  return task.status === 'done' ? 'done' : task.status === 'active' ? 'filled' : 'empty';
+}
+
 export const TASK_TONE_LABELS: Record<TaskTone, string> = {
   progress: 'In progress',
   'not-started': 'Not started',
@@ -207,13 +217,17 @@ export interface SearchHit {
 export function searchGraph(graph: EmployeeWorkGraphResponse, query: string, limit = 8): SearchHit[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const order = { project: 0, module: 1, task: 2, employee: 3 } as const;
+  // Sprints (project graph only) sort between modules and tasks; the other kinds keep their order.
+  const order = { project: 0, module: 1, sprint: 2, task: 3, employee: 4 } as const;
   return graph.nodes
     .filter((n) => n.kind !== 'employee')
     .filter((n) => n.label.toLowerCase().includes(q) || (n.sublabel ?? '').toLowerCase().includes(q))
     .sort((a, b) => order[a.kind] - order[b.kind] || a.label.localeCompare(b.label))
     .slice(0, limit)
-    .map((node) => ({ node, kindLabel: node.kind === 'project' ? 'Project' : node.kind === 'module' ? 'Module' : 'Task' }));
+    .map((node) => ({
+      node,
+      kindLabel: node.kind === 'project' ? 'Project' : node.kind === 'module' ? 'Module' : node.kind === 'sprint' ? 'Sprint' : 'Task'
+    }));
 }
 
 export function shorten(label: string, max: number): string {
