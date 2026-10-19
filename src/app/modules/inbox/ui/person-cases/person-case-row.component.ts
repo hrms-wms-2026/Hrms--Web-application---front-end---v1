@@ -19,7 +19,7 @@ export function personCaseLabel(item: InboxItemDto): string {
   template: `
     @let row = case();
     <button type="button" class="pcr" [class.pcr--muted]="muted()" [class.pcr--locked]="!row.canOpen"
-            [attr.aria-disabled]="row.canOpen ? null : 'true'" [attr.tabindex]="row.canOpen ? null : -1"
+            [disabled]="!row.canOpen"
             [title]="row.canOpen ? '' : 'You can\\'t open this case'" (click)="onClick()">
       <app-inbox-type-icon class="pcr__icon" [icon]="meta().icon" [tone]="iconTone()" />
       <span class="pcr__type" data-testid="pcr-type">{{ label() }}</span>
@@ -32,7 +32,7 @@ export function personCaseLabel(item: InboxItemDto): string {
     .pcr { display: grid; width: 100%; min-width: 0; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 6px 8px; border: 0; border-radius: 8px; background: none; color: var(--color-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
     .pcr:hover:not(.pcr--locked) { background: var(--color-surface-hover, color-mix(in srgb, var(--color-text-primary) 5%, transparent)); }
     .pcr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
-    .pcr--locked { cursor: default; }
+    .pcr--locked { color: var(--color-text-primary); cursor: default; }
     .pcr--muted { opacity: .55; }
     .pcr__icon { --iti-size: 26px; }
     .pcr__type { overflow: hidden; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }

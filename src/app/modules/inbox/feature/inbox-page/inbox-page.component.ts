@@ -1,5 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { InboxPersonCasesStore } from '../../state/inbox-person-cases.store';
+import { PersonCasesViewComponent } from '../../ui/person-cases/person-cases-view.component';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, debounceTime, skip } from 'rxjs';
@@ -101,10 +103,12 @@ export function faceEvidenceFor(
   imports: [
     DatePipe, AvatarComponent, BulkActionBarComponent, BulkActionResultModalComponent, DataTableComponent, DataTableCellDirective,
     DropdownMenuComponent, FilterBarComponent, BreadcrumbHeaderComponent, ApprovalDelegateModalComponent, ConversationPanelComponent,
-    InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent, InboxTypeIconComponent, TaskAssigneeAvatarFilterComponent
+    InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent, InboxTypeIconComponent, TaskAssigneeAvatarFilterComponent,
+    PersonCasesViewComponent
   ],
   // The open ticket's chat: shared by the conversation panel and the ticket details (its Participants section).
-  providers: [ConversationStore],
+  // The open ticket's person history: the details' Past cases and the View all pane.
+  providers: [ConversationStore, InboxPersonCasesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="inbox">
@@ -340,19 +344,24 @@ export function faceEvidenceFor(
         @if (store.selectedRef() !== null) {
           <div class="inbox__scrim" aria-hidden="true" (click)="toggleDetails()"></div>
           <aside class="inbox__panel inbox__details">
-            <app-inbox-item-card
-              #card
-              [detail]="store.detail()"
-              [loading]="store.detailLoading()"
-              [error]="store.detailError()"
-              [busy]="store.busy()"
-              [actionError]="store.actionError()"
-              [actionErrorInline]="store.actionErrorInline()"
-              [descriptor]="store.detail() ? kinds.descriptor(store.detail()!.item.source, store.detail()!.item.kind) : null"
-              (hide)="toggleDetails()"
-              (action)="onCardAction($event)"
-              (openTarget)="openTarget($event)"
-            />
+            @if (personCases.viewOpen()) {
+              <app-person-cases-view (open)="open($event)" />
+            } @else {
+              <app-inbox-item-card
+                #card
+                [detail]="store.detail()"
+                [loading]="store.detailLoading()"
+                [error]="store.detailError()"
+                [busy]="store.busy()"
+                [actionError]="store.actionError()"
+                [actionErrorInline]="store.actionErrorInline()"
+                [descriptor]="store.detail() ? kinds.descriptor(store.detail()!.item.source, store.detail()!.item.kind) : null"
+                (hide)="toggleDetails()"
+                (action)="onCardAction($event)"
+                (openTarget)="openTarget($event)"
+                (openCase)="open($event)"
+              />
+            }
           </aside>
         }
       </div>
@@ -499,6 +508,7 @@ export function faceEvidenceFor(
 export class InboxPageComponent implements OnInit {
   protected readonly store = inject(InboxStore);
   protected readonly kinds = inject(InboxKindsStore);
+  protected readonly personCases = inject(InboxPersonCasesStore);
   private readonly auth = inject(AuthStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -617,6 +627,19 @@ export class InboxPageComponent implements OnInit {
     if (choices.length === 0)
       return [{ id: 'none', label: 'No common action', placement: 'primary', disabled: true, disabledReason: 'The selected items share no action.' }];
     return choices.map((c) => ({ id: c.key, label: c.label, placement: 'primary', danger: c.key === 'reject' }));
+  });
+
+  /** The open ticket once its own detail has loaded; equal while the same ticket refreshes, so a realtime refresh keeps
+   *  the history (and an open View all) instead of reloading it. */
+  private readonly openTicket = computed(() => {
+    const detail = this.store.detail();
+    const ref = this.store.selectedRef();
+    return detail && ref && sameRef(detail.item, ref) ? detail.item : null;
+  }, { equal: (a, b) => a === b || (!!a && !!b && sameRef(a, b)) });
+
+  private readonly loadPersonCases = effect(() => {
+    const ticket = this.openTicket();
+    untracked(() => void this.personCases.load(ticket, this.auth.employeeId?.() ?? null));
   });
 
   ngOnInit(): void {

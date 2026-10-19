@@ -19,7 +19,7 @@ const rows = (n: number): InboxPersonCaseDto[] =>
   Array.from({ length: n }, (_, i) => ({ item: item({ id: `r${i}`, createdAt: `2026-10-0${(i % 9) + 1}T09:00:00` }), canOpen: true }));
 
 describe('PersonCasesSectionComponent', () => {
-  async function render(cases: InboxPersonCaseDto[], current: InboxItemDto = item(), self = 'me') {
+  async function render(cases: InboxPersonCaseDto[], current: InboxItemDto = item(), self = 'me', shown: InboxItemDto = current) {
     const api = { personCases: vi.fn(() => of(cases)), personCaseMonths: vi.fn(() => of({ hireDate: null, months: [] })) };
     TestBed.configureTestingModule({
       imports: [PersonCasesSectionComponent],
@@ -28,6 +28,7 @@ describe('PersonCasesSectionComponent', () => {
     const store = TestBed.inject(InboxPersonCasesStore);
     await store.load(current, self);
     const fixture = TestBed.createComponent(PersonCasesSectionComponent);
+    fixture.componentRef.setInput('item', shown);
     fixture.detectChanges();
     return { el: fixture.nativeElement as HTMLElement, store };
   }
@@ -47,6 +48,12 @@ describe('PersonCasesSectionComponent', () => {
 
     expect(el.querySelector('[data-testid="pcs-empty"]')!.textContent!.trim()).toBe('No other cases this month');
     expect(el.querySelector('[data-testid="pcs-view-all"]')!.textContent!.trim()).toBe('View history');
+  });
+
+  it('renders nothing while the store still holds another ticket’s history', async () => {
+    const { el } = await render(rows(3), item({ id: 'previous' }), 'me', item({ id: 'now-open' }));
+
+    expect(el.querySelector('[data-testid="person-cases"]')).toBeNull();
   });
 
   it('renders nothing when hidden', async () => {

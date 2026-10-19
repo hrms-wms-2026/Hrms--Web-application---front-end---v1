@@ -44,7 +44,9 @@ describe('InboxPageComponent', () => {
       counts: vi.fn(() => of({ pendingReceived: 1, unreadMessages: 2, openAlerts: 1 })),
       detail: vi.fn(() => of({ item: item('a1', { availableActions: [{ key: 'approve', label: 'Approve', tone: 'primary', needsComment: false, needsPayload: false }] }), steps: [], summary: null, changeSet: [], explanation: null, explanationDetails: null, target: { route: ['/work', 'p1', 'board'], label: 'Open task', queryParams: { taskId: 't1' } }, editablePayloadJson: null })),
       runAction: vi.fn(() => of({ affectedEmployeeIds: [], message: null })),
-      kinds: vi.fn(() => of([]))
+      kinds: vi.fn(() => of([])),
+      personCases: vi.fn(() => of([])),
+      personCaseMonths: vi.fn(() => of({ hireDate: null, months: [] }))
     };
     params = new BehaviorSubject(convertToParamMap({}));
     router = { navigate: vi.fn(() => Promise.resolve(true)) };
@@ -185,6 +187,35 @@ describe('InboxPageComponent', () => {
     fixture.detectChanges();
     expect(store.selectedRef()).toBeNull();
     expect(el.querySelector('[data-testid="inbox-card"]')).toBeNull();
+  });
+
+  it('View all swaps the details card for the person’s history; opening another ticket returns to the card', async () => {
+    const exception = (id: string) => item(id, {
+      source: 'monitoring', kind: 'case', category: 'alert', actionType: 'IdentityAnomaly', status: 'open', severity: 'high',
+      requestedBy: { id: 'e7', name: 'Bala' }, createdAt: '2026-10-13T08:00:00'
+    });
+    api['detail'].mockImplementation((ref: { id: string }) =>
+      of({ item: exception(ref.id), steps: [], summary: null, changeSet: [], explanation: null, explanationDetails: null, target: null, editablePayloadJson: null }));
+    api['personCases'].mockReturnValue(of(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((id) => ({ item: exception(id), canOpen: true }))));
+    const { fixture, el } = await render();
+
+    params.next(convertToParamMap({ source: 'monitoring', kind: 'case', id: 'm1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(api['personCases']).toHaveBeenCalledWith('e7', 'alert', expect.any(String), expect.any(String));
+    (el.querySelector('[data-testid="pcs-view-all"]') as HTMLButtonElement).click();
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="inbox-card"]')).toBeNull();
+    expect(el.querySelector('[data-testid="person-cases-view"]')).not.toBeNull();
+
+    (el.querySelector('app-person-case-row button') as HTMLButtonElement).click();
+    expect(router.navigate).toHaveBeenCalledWith(['/inbox', 'monitoring', 'case', 'p1'], { queryParamsHandling: 'preserve' });
+    params.next(convertToParamMap({ source: 'monitoring', kind: 'case', id: 'p1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="person-cases-view"]')).toBeNull();
+    expect(el.querySelector('[data-testid="inbox-card"]')).not.toBeNull();
   });
 
   it('runs a card action through the store and confirms it', async () => {

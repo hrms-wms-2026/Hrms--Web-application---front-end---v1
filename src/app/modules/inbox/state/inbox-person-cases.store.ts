@@ -27,6 +27,8 @@ interface PersonCasesState {
   readonly monthCases: readonly InboxPersonCaseDto[];
   readonly monthLoading: boolean;
   readonly dots: ReadonlySet<number>;
+  /** The year `dots` belong to (the month grid may browse a year other than the one shown). */
+  readonly dotsYear: number;
   readonly hireDate: string | null;
 }
 
@@ -41,6 +43,7 @@ const initialState: PersonCasesState = {
   monthCases: [],
   monthLoading: false,
   dots: new Set<number>(),
+  dotsYear: 0,
   hireDate: null
 };
 
@@ -70,7 +73,7 @@ export const InboxPersonCasesStore = signalStore(
     async function fetchDots(current: InboxItemDto, year: number, mine: number): Promise<void> {
       const result = await firstValueFrom(api.personCaseMonths(personCaseSubjectId(current)!, current.category, year, localOffsetMinutes()));
       if (mine !== ticket) return;
-      patchState(store, { dots: redDotMonths(result.months, year, current), hireDate: result.hireDate });
+      patchState(store, { dots: redDotMonths(result.months, year, current), dotsYear: year, hireDate: result.hireDate });
     }
 
     function fail(mine: number): void {
@@ -108,6 +111,18 @@ export const InboxPersonCasesStore = signalStore(
         }
       },
 
+      /** The month grid moved to another year: load that year's red dots; the shown month stays. */
+      async browseYear(year: number): Promise<void> {
+        const current = store.current();
+        if (!current || store.hidden() || year === store.dotsYear()) return;
+        const mine = ticket;
+        try {
+          await fetchDots(current, year, mine);
+        } catch {
+          fail(mine);
+        }
+      },
+
       closeView(): void {
         patchState(store, { viewOpen: false });
       },
@@ -117,7 +132,7 @@ export const InboxPersonCasesStore = signalStore(
         if (!current || store.hidden()) return;
         const mine = ticket;
         const request = ++monthRequest;
-        const yearChanged = year !== store.year();
+        const yearChanged = year !== store.dotsYear();
         patchState(store, { year, month, monthLoading: true });
         try {
           const [rows] = await Promise.all([

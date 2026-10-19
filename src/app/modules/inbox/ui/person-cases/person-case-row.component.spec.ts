@@ -62,6 +62,6 @@ describe('PersonCaseRowComponent', () => {
     locked.fixture.componentInstance.open.subscribe((ref) => none.push(ref));
     (locked.el.querySelector('.pcr') as HTMLElement).click();
     expect(none).toEqual([]);
-    expect(locked.el.querySelector('.pcr')!.getAttribute('aria-disabled')).toBe('true');
+    expect((locked.el.querySelector('.pcr') as HTMLButtonElement).disabled).toBe(true);
   });
 });

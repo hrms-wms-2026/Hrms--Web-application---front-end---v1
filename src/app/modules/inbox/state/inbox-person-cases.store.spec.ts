@@ -105,6 +105,19 @@ describe('InboxPersonCasesStore', () => {
     expect([store.year(), store.month()]).toEqual([2025, 12]);
   });
 
+  it('browses the dots of another year without changing the shown month', async () => {
+    await store.load(item(), 'me');
+    await store.openView();
+    api.personCaseMonths.mockReturnValue(of({ hireDate: null, months: [{ month: 7, count: 2 }] }));
+
+    await store.browseYear(2025);
+
+    expect(api.personCaseMonths).toHaveBeenLastCalledWith('e1', 'alert', 2025, expect.any(Number));
+    expect(store.dotsYear()).toBe(2025);
+    expect([...store.dots()]).toEqual([7]);
+    expect([store.year(), store.month()]).toEqual([2026, 10]);
+  });
+
   it('closes the view back to the details', async () => {
     await store.load(item(), 'me');
     await store.openView();

@@ -1,5 +1,5 @@
-import { Component, inject, output } from '@angular/core';
-import { InboxItemRef } from '../../models/inbox.dto';
+import { Component, computed, inject, input, output } from '@angular/core';
+import { InboxItemDto, InboxItemRef, sameRef } from '../../models/inbox.dto';
 import { InboxPersonCasesStore } from '../../state/inbox-person-cases.store';
 import { PersonCaseRowComponent } from './person-case-row.component';
 
@@ -9,7 +9,7 @@ import { PersonCaseRowComponent } from './person-case-row.component';
   standalone: true,
   imports: [PersonCaseRowComponent],
   template: `
-    @if (store && !store.hidden()) {
+    @if (store && shown()) {
       <section class="pcs" data-testid="person-cases">
         <h4 class="pcs__label">Past cases</h4>
         @if (store.compactLoading()) {
@@ -37,5 +37,13 @@ import { PersonCaseRowComponent } from './person-case-row.component';
 export class PersonCasesSectionComponent {
   /** Provided by the inbox page; absent elsewhere (the card's own specs), where the section simply doesn't render. */
   protected readonly store = inject(InboxPersonCasesStore, { optional: true });
+  /** The ticket the card is showing; rows render only while the store holds this ticket's history (never the last one's). */
+  item = input.required<InboxItemDto>();
   open = output<InboxItemRef>();
+
+  protected readonly shown = computed(() => {
+    const store = this.store;
+    const current = store?.current();
+    return !!store && !store.hidden() && !!current && sameRef(current, this.item());
+  });
 }

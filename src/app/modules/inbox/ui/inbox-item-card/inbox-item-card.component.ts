@@ -127,7 +127,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             <p class="card__error" role="alert" data-testid="inbox-card-inline-error">{{ actionError() }}</p>
           }
 
-          <app-person-cases-section (open)="openCase.emit($event)" />
+          <app-person-cases-section [item]="item" (open)="openCase.emit($event)" />
 
           <app-ticket-participants [requesterId]="item.requestedBy?.id ?? null" />
 
