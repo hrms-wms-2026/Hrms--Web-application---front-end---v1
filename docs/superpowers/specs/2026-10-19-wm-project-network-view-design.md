@@ -201,3 +201,49 @@ employee view with no new inputs and asserts the old output.
 - Whether the network view shows the same empty/loading states as the tree, and its behaviour on a
   project whose root module has no children.
 - Test layout in both repos, following the per-handler / per-component convention.
+
+## Revision 1 (2026-10-19, after the first browser look)
+
+The user reviewed the first build and changed four things. Where this section and the text above
+disagree, this section wins.
+
+**Header stays put.** Switching Tree / Network must not change or re-render anything in the page
+header: breadcrumb, switch, tree search, avatar filter, Highlight, Expand all, Create module, tabs.
+Only the area under the header swaps. This reverses the earlier decision to hide the toolbar tools
+in network mode. They stay visible; in network mode they still act on the tree only (the explorer
+has its own search). Wiring them into the graph is a separate feature, not part of this.
+
+**Sprints are drawn, always.** Purple circles, always visible, hanging off a module the way the
+Tree tab shows them: a module's sprints are the sprints that contain that module's tasks (the rule
+of `GetContainingObjectiveTasksAsync`), so one sprint can hang off several modules. Fill by status,
+as the user specified it:
+- Active: empty (white fill, purple outline)
+- Draft: filled purple
+- Complete / Achieved: gray
+
+The user's rule for sprints is the opposite of the task rule below. That was pointed out and the
+user kept it.
+
+**Tasks appear on hover only.** Tasks stay out of the force layout, as before: hovering (or
+clicking) a module or a sprint reveals its tasks. A task in a sprint hangs off that sprint; a task
+in no sprint hangs off its module. The task's status dot is light blue:
+- Not started: empty
+- Started (active): filled
+- Completed: gray
+
+So completed tasks are now part of the graph. Because they show only on hover, the task cap is
+raised from 60 to 200, and the drawn set is ordered active, then not started, then completed.
+
+**Modules are blue.** Project-mode modules use one blue fill instead of the purple neutral fill.
+
+**No status legend rows.** The footer legend drops "In progress" and "Not started"; the circle fill
+carries status. The legend shows Module, Sprint, Task, Completed, Has an alert.
+
+**Alerts, revised.** With sprints drawn, an alert on a sprint reddens that sprint's circle, and a
+task alert reddens the circle the task hangs off (its sprint, else its module). Alerts inside an
+achieved module are still skipped.
+
+**Model change in the teammate's file.** `work-graph.model.ts` gains a `sprint` node kind, a
+`done` task status and the sprint status values. These are type-only, additive union members that
+the employee graph never produces, so the employee view is unaffected. The no-edit rule for that
+file in the sections above is lifted for exactly this.

@@ -462,3 +462,63 @@ Expected: PASS, no warnings.
 ```bash
 git commit -am "feat(wm): switch the project Tree tab between tree and network views"
 ```
+
+---
+
+# Revision 1 tasks (spec "Revision 1")
+
+Same branch, same constraints. Every edit under `modules/people/` stays additive and opt-in; the
+employee view must render as before and no pre-existing people/ spec is edited.
+
+## Task 11: Backend — sprint nodes, completed tasks, larger cap
+
+**Repo:** HRMS-Backend-v1
+**Files:** `ProjectWorkGraph/Queries/GetProjectWorkGraph/GetProjectWorkGraphQueryHandler.cs`,
+`EmployeeWorkGraph/DTOs/Responses/EmployeeWorkGraphResponse.cs` (add `WorkGraphNodeKinds.Sprint = "sprint"`),
+test `GetProjectWorkGraphQueryHandlerTests.cs`.
+**Interfaces:** consumes `ISprintRepository.GetByProjectAsync`. Produces `sprint:{id}` nodes
+(`Kind` "sprint", `Label` = name, `Status` = sprint status), `contains` links module → sprint,
+`has_task` links sprint → task for tasks in a sprint. `MaxTaskNodes = 200`.
+
+Tests (RED first):
+- `Handle_AddsSprintNodes_ForSprintsContainingViewableTasks_WithTheirStatus`
+- `Handle_LinksModuleToSprint_ForEachModuleWithTasksInIt` (one sprint, two modules → two links)
+- `Handle_HangsATaskInASprintOffTheSprint_AndOtherTasksOffTheModule`
+- `Handle_IncludesCompletedTasks_WithDoneStatus`
+- `Handle_OrdersDrawnTasks_ActiveThenNotStartedThenDone_BeforeCapping`
+- `Handle_DoesNotDeriveSprintsFromPrivateTasksTheCallerCannotSee`
+- existing cap tests use `MaxTaskNodes` and keep passing at 200.
+
+## Task 12: Frontend — header stays fixed
+
+`milestone-tree-tab.component.html`: drop the `@if (viewMode() === 'tree')` around tree search,
+avatar filter, filter bar and Expand all. Spec: replace "hides … in network mode" with
+"keeps tree search, the owner filter, the highlight filter bar and Expand all visible in network mode".
+
+## Task 13: Frontend — model, layout and canvas for sprints and status dots
+
+- `people/models/work-graph.model.ts`: `WorkGraphNodeKind` += `'sprint'`; `WorkGraphTaskStatus` += `'done'`;
+  `export type WorkGraphSprintStatus = 'draft' | 'active' | 'complete' | 'achieved'`; `status` accepts both.
+- `explorer-layout.ts`: sprint nodes get code `S1..Sn`; `taskStatusDot(task): 'empty' | 'filled' | 'done'`.
+- canvas: hover preview and lock also for `sprint`; `kindClass` → `sprint-<draft|active|done>` (complete
+  and achieved map to `done`); `.wgx-node--module-neutral` becomes blue; new input
+  `taskDotStyle = input<'tone' | 'status'>('tone')` — `'status'` draws the light-blue empty/filled/gray dot;
+  sprint label line reads "N tasks".
+- wrapper: `toggleLock` accepts `sprint`; pass `taskDotStyle`; legend key CSS for `module-blue`, `sprint`,
+  `task`, `done`, `alert`.
+
+Tests: layout codes S1; canvas sprint classes per status; module-neutral is blue class; dot style
+`'status'` gives empty/filled/done classes and default `'tone'` is unchanged; hover on a sprint
+reveals its tasks; wrapper locks a sprint.
+
+## Task 14: Frontend — detail panel and WM view
+
+- panel (project mode): kind line `Sprint • <parent module>` for a sprint.
+- `project-network-view`: legend Module / Sprint / Task / Completed / Has an alert; `taskDotStyle="status"`;
+  alerts: sprint alert → `sprint:{id}`; task alert → the source of the task's `has_task` link.
+
+Tests: sprint alert lights the sprint; task-in-sprint alert lights the sprint; achieved-module alert still
+skipped; legend has no "In progress"/"Not started".
+
+Verification for the revision: full FE suite + `npm run check:warnings`; BE unit + architecture
+(artifacts path inside the repo).
