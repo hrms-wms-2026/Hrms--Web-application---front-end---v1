@@ -123,4 +123,43 @@ describe('ProjectNetworkViewComponent', () => {
     expect(el.querySelector('app-error-state')).not.toBeNull();
     expect(el.querySelector('app-work-network-explorer')).toBeNull();
   });
+
+  describe('sprints', () => {
+    const sprintGraph: ProjectWorkGraphDto = {
+      nodes: [
+        ...graph.nodes,
+        { id: 'sprint:s1', kind: 'sprint', label: 'Sprint 7', status: 'active', projectId: 'p1' },
+        { id: 'task:t2', kind: 'task', label: 'In sprint', status: 'active', projectId: 'p1', objectiveId: 'oa', taskId: 't2' }
+      ],
+      links: [
+        ...graph.links,
+        { source: 'module:oa', target: 'sprint:s1', kind: 'contains' },
+        { source: 'sprint:s1', target: 'task:t2', kind: 'has_task' }
+      ],
+      hiddenTaskCount: 0
+    };
+    const withGraph = (alerts: MonitorAlertDto[]) =>
+      setup(alerts, { getWorkGraph: vi.fn().mockReturnValue(of(sprintGraph)) } as never);
+
+    it('reddens the sprint circle for a sprint alert', () => {
+      const { cmp } = withGraph([alert('sprint', 's1')]);
+
+      expect([...cmp.alertNodeIds()]).toEqual(['sprint:s1']);
+    });
+
+    it('reddens the sprint, not the module, for an alert on a task inside that sprint', () => {
+      const { cmp } = withGraph([alert('task', 't2')]);
+
+      expect([...cmp.alertNodeIds()]).toEqual(['sprint:s1']);
+    });
+
+    it('shows no In progress or Not started rows in the legend', () => {
+      const { cmp } = withGraph([]);
+      const labels = cmp.legend.map((item) => item.label);
+
+      expect(labels).not.toContain('In progress');
+      expect(labels).not.toContain('Not started');
+      expect(labels).toEqual(['Module', 'Sprint', 'Task', 'Completed', 'Has an alert']);
+    });
+  });
 });

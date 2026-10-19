@@ -84,4 +84,16 @@ describe('WorkNetworkDetailPanelComponent', () => {
     expect(kind(el)).toBe('Module');
     expect(el.textContent).not.toContain('Employee');
   });
+
+  it('names a sprint and the module it hangs off when projectMode is true', () => {
+    const sprint: WorkGraphNode = { id: 'sprint:s1', kind: 'sprint', label: 'Sprint 7', status: 'active', projectId: 'p1' };
+    const graph: EmployeeWorkGraphResponse = {
+      ...projectGraph,
+      nodes: [...projectGraph.nodes, sprint],
+      links: [...projectGraph.links, { source: 'module:m1', target: 'sprint:s1', kind: 'contains' }]
+    };
+    const { el } = setup(graph, sprint, true);
+
+    expect(kind(el)).toBe('Sprint • Protocol Adapters');
+  });
 });

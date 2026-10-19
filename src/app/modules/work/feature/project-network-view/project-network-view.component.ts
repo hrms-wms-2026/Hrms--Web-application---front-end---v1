@@ -13,11 +13,13 @@ import { ProjectMonitorStore } from '../../state/project-monitor.store';
 
 const EMPTY_GRAPH: ProjectWorkGraphDto = { nodes: [], links: [], hiddenTaskCount: 0 };
 
+/** No status rows: a circle's fill already says not started / started / completed. */
 const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
-  { key: 'owner', label: 'Module' },
-  { key: 'overdue', label: 'Has an alert' },
-  { key: 'progress', label: 'In progress' },
-  { key: 'not-started', label: 'Not started' }
+  { key: 'module', label: 'Module' },
+  { key: 'sprint', label: 'Sprint' },
+  { key: 'task', label: 'Task' },
+  { key: 'done', label: 'Completed' },
+  { key: 'alert', label: 'Has an alert' }
 ];
 
 /**
@@ -48,6 +50,7 @@ const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
         [projectMode]="true"
         [showProgressRing]="true"
         [neutralModuleFill]="true"
+        taskDotStyle="status"
         [alertNodeIds]="alertNodeIds()"
         [showClose]="false"
         [legend]="legend"
@@ -88,26 +91,27 @@ export class ProjectNetworkViewComponent {
   readonly hasRoot = computed(() => this.graph().nodes.some((n) => n.id === this.rootNodeId()));
 
   /**
-   * Module node ids to draw in the alert colour. A module alert maps straight to its node; a task
-   * alert rolls up to the module that owns the task. An alert whose target is not in the graph -
-   * a sprint, which the network does not draw, or anything the viewer cannot see - is dropped,
-   * rather than reddening a circle at random. An alert inside an achieved module is skipped too:
-   * the tree draws it faded and leaves it out of the count, and the two views share one screen.
+   * Circle node ids to draw in the alert colour. Module and sprint alerts map straight to their
+   * node. Tasks are only shown on hover, so a task alert reddens the circle the task hangs off -
+   * its sprint, or its module when it is in no sprint. An alert whose target is not in the graph
+   * (anything the viewer cannot see, or a task past the cap) is dropped rather than reddening a
+   * circle at random. An alert inside an achieved module is skipped too: the tree draws it faded
+   * and leaves it out of the count, and the two views share one screen.
    */
   readonly alertNodeIds = computed<ReadonlySet<string>>(() => {
-    const nodes = this.graph().nodes;
-    const moduleIds = new Set(nodes.filter((n) => n.kind === 'module').map((n) => n.id));
-    const moduleOfTask = new Map(
-      nodes.filter((n) => n.kind === 'task' && n.taskId && n.objectiveId).map((n) => [n.taskId!, `module:${n.objectiveId}`] as const)
+    const { nodes, links } = this.graph();
+    const circleIds = new Set(nodes.filter((n) => n.kind === 'module' || n.kind === 'sprint').map((n) => n.id));
+    const parentOfTask = new Map(
+      links.filter((l) => l.kind === 'has_task').map((l) => [l.target, l.source] as const)
     );
     const ids = new Set<string>();
     for (const alert of this.monitor.alerts()) {
       if (alert.inAchievedModule) continue;
       const candidate =
         alert.targetType === 'module' ? `module:${alert.targetId}`
-          : alert.targetType === 'task' ? moduleOfTask.get(alert.targetId)
-            : undefined;
-      if (candidate && moduleIds.has(candidate)) ids.add(candidate);
+          : alert.targetType === 'sprint' ? `sprint:${alert.targetId}`
+            : parentOfTask.get(`task:${alert.targetId}`);
+      if (candidate && circleIds.has(candidate)) ids.add(candidate);
     }
     return ids;
   });

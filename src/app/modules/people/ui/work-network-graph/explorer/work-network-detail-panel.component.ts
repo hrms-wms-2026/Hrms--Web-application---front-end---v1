@@ -299,7 +299,8 @@ export class WorkNetworkDetailPanelComponent {
     if (node.kind === 'project') return `Project${node.sublabel ? ' • ' + node.sublabel : ''}`;
     if (this.projectMode()) {
       const parent = this.parentModule();
-      return parent ? `Module • ${parent.label}` : 'Module';
+      const kind = node.kind === 'sprint' ? 'Sprint' : 'Module';
+      return parent ? `${kind} • ${parent.label}` : kind;
     }
     const role = node.role === 'owner' ? 'You own' : node.role === 'member' ? 'Member' : 'Contributor';
     return `Module • ${this.projectNode()?.label ?? ''} • ${role}`;
