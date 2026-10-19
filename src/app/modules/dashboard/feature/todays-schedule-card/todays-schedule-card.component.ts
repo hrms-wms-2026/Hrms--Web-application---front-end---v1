@@ -5,18 +5,22 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse } from '../../../calendar/models/calendar-event.model';
 
-const MAX_AGENDA_ITEMS = 4;
-const FALLBACK_DOT_COLORS: readonly string[] = [
-  'var(--color-accent)',
-  'var(--color-text-primary)',
-  'var(--color-warning)',
-  'var(--color-success)'
-];
+const MAX_AGENDA_ITEMS = 5;
+
+export type ScheduleItemStatus = 'completed' | 'inProgress' | 'upcoming';
+
+const STATUS_META: Record<ScheduleItemStatus, { label: string; chip: string; dot: string }> = {
+  completed: { label: 'Completed', chip: 'bg-emerald-50 text-emerald-700', dot: '#10b981' },
+  inProgress: { label: 'In Progress', chip: 'bg-blue-50 text-blue-700', dot: '#2563eb' },
+  upcoming: { label: 'Upcoming', chip: 'bg-slate-100 text-slate-600', dot: '#94a3b8' }
+};
 
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
   imports: [RouterLink],
+  // A size container: the row layout follows the card's own width (Small / Large on the grid).
+  host: { class: '@container block' },
   templateUrl: './todays-schedule-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -31,18 +35,8 @@ export class TodaysScheduleCardComponent implements OnInit {
     const now = Date.now();
     return [...this.rawEvents()]
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-      .map((event) => ({ event, isUpcoming: new Date(event.startDate).getTime() >= now }))
+      .map((event) => ({ event, status: scheduleItemStatus(event, now) }))
       .slice(0, MAX_AGENDA_ITEMS);
-  });
-
-  protected readonly nextUp = computed(
-    () => this.agendaItems().find((item) => item.isUpcoming)?.event ?? (this.agendaItems()[0]?.event ?? null)
-  );
-
-  protected readonly remainingItems = computed(() => {
-    const next = this.nextUp();
-    if (!next) return this.agendaItems();
-    return this.agendaItems().filter((item) => item.event.id !== next.id);
   });
 
   ngOnInit(): void {
@@ -112,8 +106,21 @@ export class TodaysScheduleCardComponent implements OnInit {
     return `${start} – ${end}`;
   }
 
-  protected dotColor(event: CalendarEventResponse, index = 0): string {
-    return event.color || FALLBACK_DOT_COLORS[index % FALLBACK_DOT_COLORS.length];
+  protected statusLabel(status: ScheduleItemStatus): string {
+    return STATUS_META[status].label;
+  }
+
+  protected statusChipClass(status: ScheduleItemStatus): string {
+    return STATUS_META[status].chip;
+  }
+
+  protected statusDotColor(status: ScheduleItemStatus): string {
+    return STATUS_META[status].dot;
+  }
+
+  /** Second line of a row: the description, else the place, else the time range. */
+  protected subtitle(event: CalendarEventResponse): string {
+    return event.description?.trim() || this.getPhysicalLocation(event) || this.timeRangeLabel(event);
   }
 
   private loadTodaysEvents(timezone: string): void {
@@ -132,6 +139,17 @@ export class TodaysScheduleCardComponent implements OnInit {
       }
     });
   }
+}
+
+/** Completed once it has ended, In Progress while it runs, Upcoming before it starts. All-day
+ * events count as In Progress for the whole day. */
+export function scheduleItemStatus(event: CalendarEventResponse, now: number): ScheduleItemStatus {
+  if (event.isAllDay) return 'inProgress';
+  const start = new Date(event.startDate).getTime();
+  const end = new Date(event.endDate).getTime();
+  if (end <= now && end > start) return 'completed';
+  if (start <= now && now < end) return 'inProgress';
+  return start > now ? 'upcoming' : 'completed';
 }
 
 function formatEventTimeLabel(iso: string, isAllDay: boolean): string {

@@ -5,11 +5,14 @@ import {
   DASHBOARD_CARD_META,
   DEFAULT_DASHBOARD_LAYOUT,
   DashboardCardKey,
+  DashboardCardSize,
   DashboardLayout,
   DashboardZoneId,
   moveDashboardCard,
   resolveDashboardLayout,
+  dashboardCardSize,
   sanitizeDashboardLayout,
+  setDashboardCardSize,
   stepDashboardCard,
   toggleDashboardCard
 } from '../utils/dashboard-layout.util';
@@ -136,6 +139,15 @@ export class DashboardLayoutService {
 
   toggle(key: DashboardCardKey): void {
     if (this.editing()) this.draft.update((layout) => toggleDashboardCard(layout, key));
+  }
+
+  sizeOf(key: DashboardCardKey): DashboardCardSize {
+    return dashboardCardSize(this.layout(), key);
+  }
+
+  /** Small (1 grid column) / Large (2 columns), from the Customize tiles. */
+  setSize(key: DashboardCardKey, size: DashboardCardSize): void {
+    if (this.editing()) this.draft.update((layout) => setDashboardCardSize(layout, key, size));
   }
 
   /** A drag-and-drop: `toIndex` is the position among the cards shown in that zone. */

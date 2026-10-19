@@ -39,5 +39,6 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Employee Detail — Tabbed Redesign (5 phases; shell/header/tabs) | Phases 1-2 implemented, Phases 3-5 pending | `next/2026-09-30-employee-detail-tabs.md` | 2026-09-30 |
 | Employee Detail — Work & Activity tab (7 real-data cards, no mocks; 7 tasks) | pending | `next/2026-09-30-employee-work-activity-tab.md` | 2026-09-30 |
 | Employee Overview — Ranked Signals, Month Bounds, Compare Month (3 parts) | pending | `next/2026-09-30-employee-overview-signals-frontend/` | 2026-09-30 |
+| Dashboard — 4-column grid, Small/Large cards | implemented | `next/2026-10-19-dashboard-four-column-grid.md` | 2026-10-19 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.

@@ -26,6 +26,8 @@ const STATUS_LABELS: Record<string, string> = {
   selector: 'app-today-at-a-glance-card',
   standalone: true,
   imports: [RouterLink, DashboardGreetingComponent],
+  // A size container: the layout inside follows the card's own width (Small / Large on the grid).
+  host: { class: '@container block' },
   templateUrl: './today-at-a-glance-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

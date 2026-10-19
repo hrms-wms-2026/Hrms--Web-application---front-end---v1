@@ -11,6 +11,7 @@ import { MyTeamDeepLinkService } from '../../data-access/my-team-deep-link.servi
 import { MyTeamLedProgressApiService } from '../../data-access/my-team-led-progress-api.service';
 import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.service';
 import { MyTeamCapabilitiesResponse } from '../../models/my-team-capabilities.model';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { MyTeamPageComponent } from './my-team-page.component';
 
@@ -41,6 +42,7 @@ describe('MyTeamPageComponent', () => {
         provideRouter([]),
         { provide: TimeTrackingStore, useValue: timeTracking },
         { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev'), employeeId: signal(null) } },
+        { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
         {
           provide: MyTeamCapabilitiesStore,
           useValue: {

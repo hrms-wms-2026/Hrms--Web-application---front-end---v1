@@ -2,6 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { describe, expect, it, vi } from 'vitest';
+import { ProjectApiService } from '../../../work/data-access/project-api.service';
+import { of } from 'rxjs';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { AttendanceTodayResponse } from '../../../attendance/models/time-tracking.model';
 import { QuickActionsCardComponent } from './quick-actions-card.component';
@@ -26,7 +29,7 @@ function makeToday(overrides: Partial<AttendanceTodayResponse> = {}): Attendance
 describe('QuickActionsCardComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function setup(today: AttendanceTodayResponse | null, onTeamDashboard = false): Promise<{
+  async function setup(today: AttendanceTodayResponse | null, onTeamDashboard = false, canAccess = true): Promise<{
     fixture: ComponentFixture<QuickActionsCardComponent>;
     loadToday: ReturnType<typeof vi.fn>;
     startBreak: ReturnType<typeof vi.fn>;
@@ -46,7 +49,12 @@ describe('QuickActionsCardComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [QuickActionsCardComponent],
-      providers: [provideRouter([]), { provide: TimeTrackingStore, useValue: storeStub }]
+      providers: [
+        provideRouter([]),
+        { provide: TimeTrackingStore, useValue: storeStub },
+        { provide: PermissionService, useValue: { hasAnyModule: () => canAccess, hasAnyPermission: () => canAccess } },
+        { provide: ProjectApiService, useValue: { listMine: () => of({ items: [], pageNumber: 1, pageSize: 100, totalCount: 0, totalPages: 0, hasNext: false, hasPrevious: false }) } }
+      ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(QuickActionsCardComponent);
@@ -102,5 +110,32 @@ describe('QuickActionsCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-activity-timeline"]').getAttribute('href')).toBe(
       '/dashboard/activity-timeline'
     );
+  });
+
+  it('links Create Ticket to the Inbox and Settings to settings', async () => {
+    const { fixture } = await setup(makeToday());
+    const href = (id: string): string | null =>
+      fixture.nativeElement.querySelector(`[data-testid="quick-action-${id}"]`)?.getAttribute('href') ?? null;
+    expect(href('create-ticket')).toBe('/inbox');
+    expect(href('settings')).toBe('/settings');
+  });
+
+  it('opens the Create Task popup over the page (attached to body), once, until it closes', async () => {
+    const { fixture } = await setup(makeToday());
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="quick-action-create-task"]');
+    button.click();
+    button.click();
+    fixture.detectChanges();
+    expect(document.querySelectorAll('.cdk-overlay-container app-quick-create-task').length).toBe(1);
+    expect(fixture.nativeElement.querySelector('app-quick-create-task')).toBeNull();
+    fixture.destroy();
+    expect(document.querySelector('.cdk-overlay-container app-quick-create-task')).toBeNull();
+  });
+
+  it('hides Create Task and Settings from a viewer who cannot open Work or any settings page', async () => {
+    const { fixture } = await setup(makeToday(), false, false);
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-create-ticket"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-create-task"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-settings"]')).toBeNull();
   });
 });
