@@ -117,6 +117,7 @@ const TWEEN_LAYOUT_MS = 650;
             [class.wgx-node--dim]="isDimmed(node)"
             [class.wgx-node--locked]="locked() === node.id"
             [class.wgx-node--focus]="focusId() === node.id"
+            [class.wgx-node--alert]="hasAlert(node)"
             [attr.data-node-id]="node.id"
             [attr.transform]="'translate(' + node.x + ',' + node.y + ')'"
             [style.animation-delay.ms]="enterDelay(node)"
@@ -134,6 +135,17 @@ const TWEEN_LAYOUT_MS = 650;
             <title>{{ node.data.label }}</title>
             <g class="wgx-node__body">
               <circle class="wgx-halo" [attr.r]="node.radius + 9" />
+              @if (showProgressRing() && node.data.kind === 'module') {
+                <circle class="wgx-ring-track" [attr.r]="ringRadius(node)" />
+                <circle
+                  class="wgx-ring-fill"
+                  [attr.r]="ringRadius(node)"
+                  [attr.stroke-dasharray]="ringDash(node)"
+                  transform="rotate(-90)"
+                >
+                  <title>{{ progressOf(node) }}% of allocated hours completed</title>
+                </circle>
+              }
               <circle class="wgx-core" [attr.r]="node.radius" />
               @if (imageOf(node); as src) {
                 <!-- Photo / project logo; the coloured circle and code underneath stay as the placeholder. -->
@@ -264,6 +276,14 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-code { fill: #fff; font-size: 14px; font-weight: 700; pointer-events: none; }
     .wgx-node--employee .wgx-code { font-size: 20px; }
     .wgx-node--module-member .wgx-code, .wgx-node--module-contributor .wgx-code { fill: #7c3aed; }
+    /* Project mode: modules are not viewer-relative, so one fill for all of them. */
+    .wgx-node--module-neutral { color: #8b5cf6; }
+    .wgx-node--module-neutral .wgx-core { fill: url(#wgx-module); }
+    /* A module the project monitor raised an alert on - the tree's red dot, as a whole circle. */
+    .wgx-node--alert .wgx-core { fill: #ef4444; stroke: #b91c1c; stroke-width: 2; stroke-dasharray: none; }
+    .wgx-node--alert .wgx-code { fill: #fff; }
+    .wgx-ring-track { fill: none; stroke: #e2e8f0; stroke-width: 4; }
+    .wgx-ring-fill { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; }
     .wgx-icon path { fill: rgb(255 255 255 / 0.9); }
     .wgx-photo { pointer-events: none; }
     .wgx-badge circle { fill: #fff; stroke: #c7d2fe; stroke-width: 1; }
@@ -307,6 +327,17 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   /** A node to highlight briefly (search result). */
   readonly focusId = input<string | null>(null);
   readonly animated = input(true);
+  /**
+   * Project mode. All four default to the employee-rooted behaviour, so the employee Work Network
+   * passes none of them and renders exactly as it did before they existed.
+   */
+  readonly rootId = input<string | null>(null);
+  /** Draws each module's completed/allocated share as a ring on the circle's outline. */
+  readonly showProgressRing = input(false);
+  /** Nodes whose circle is drawn in the alert colour (the red dots of the Work Management tree). */
+  readonly alertNodeIds = input<ReadonlySet<string>>(new Set<string>());
+  /** Modules with no viewer-relative role draw in one neutral fill instead of the contributor one. */
+  readonly neutralModuleFill = input(false);
 
   readonly nodeClicked = output<WorkGraphNode>();
   readonly taskClicked = output<WorkGraphNode>();
@@ -465,7 +496,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   relayout(): void {
     this.stopSimulation();
     this.cancelTween();
-    const fresh = settleExplorerLayout(buildExplorerLayout(this.graph()), 320);
+    const fresh = settleExplorerLayout(buildExplorerLayout(this.graph(), this.rootId() ?? undefined), 320);
     const targets = fresh.nodes.map((n) => ({ node: n, x: n.x ?? 0, y: n.y ?? 0 }));
     this.layout = fresh;
     this.animateCamera(this.fitCamera(this.boundsOf(fresh.nodes, [])));
@@ -586,7 +617,25 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   }
 
   kindClass(node: ExplorerNode): string {
-    return node.data.kind === 'module' ? `module-${node.data.role ?? 'contributor'}` : node.data.kind;
+    if (node.data.kind !== 'module') return node.data.kind;
+    if (node.data.role) return `module-${node.data.role}`;
+    return this.neutralModuleFill() ? 'module-neutral' : 'module-contributor';
+  }
+
+  hasAlert(node: ExplorerNode): boolean {
+    return this.alertNodeIds().has(node.id);
+  }
+
+  /** Circumference of the ring, and the completed arc inside it. */
+  ringRadius(node: ExplorerNode): number {
+    return node.radius + 5;
+  }
+
+  /** "<arc> <rest>": progressPercent already returns 0 for a module with no allocated hours. */
+  ringDash(node: ExplorerNode): string {
+    const circumference = 2 * Math.PI * this.ringRadius(node);
+    const drawn = (circumference * this.progressOf(node)) / 100;
+    return `${drawn} ${circumference - drawn}`;
   }
 
   isDimmed(node: ExplorerNode): boolean {
@@ -681,7 +730,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   private rebuild(graph: EmployeeWorkGraphResponse): void {
     this.stopSimulation();
     this.cancelTween();
-    this.layout = settleExplorerLayout(buildExplorerLayout(graph), 320);
+    this.layout = settleExplorerLayout(buildExplorerLayout(graph, this.rootId() ?? undefined), 320);
     this.version.update((v) => v + 1);
     // The view box is set once per graph; Fit / zoom / pan only ever move the camera inside it.
     this.baseViewBox.set(this.boxToViewBox(this.boundsOf(this.visibleNodes(), [])));
