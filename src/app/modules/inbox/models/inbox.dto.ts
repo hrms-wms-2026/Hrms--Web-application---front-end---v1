@@ -90,6 +90,8 @@ export interface InboxItemDetailDto {
   editablePayloadJson: string | null;
   /** The payload of the kind's detail renderer (descriptor `detailRenderer`); null for the default view. */
   extraJson?: string | null;
+  /** Plain fact rows shown under the standard ones (e.g. what a late clock-in cost); absent for most kinds. */
+  facts?: InboxFactDto[] | null;
 }
 
 export interface InboxFilterOptionDto {
@@ -196,6 +198,11 @@ export interface InboxHistoryEntryDto {
   revertableUntil: string | null;
   title: string;
   item: InboxItemDto | null;
+}
+
+export interface InboxFactDto {
+  label: string;
+  value: string;
 }
 
 /** A row of a person's case history (ticket details "Past cases"). canOpen = false: listed for accountability, not clickable. */

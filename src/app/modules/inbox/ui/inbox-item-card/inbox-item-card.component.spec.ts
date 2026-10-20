@@ -128,6 +128,17 @@ describe('InboxItemCardComponent', () => {
     expect((el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('renders detail facts as plain rows', () => {
+    const { el } = render(detail({ changeSet: [], editablePayloadJson: null, explanation: null, explanationDetails: null,
+      facts: [{ label: 'Late by', value: '30 min' }, { label: 'Deducted', value: '0.5 h from Annual Leave' }] },
+      { category: 'alert', kind: 'alert', status: 'open', direction: 'received' }));
+
+    const rows = Array.from(el.querySelectorAll('[data-testid="inbox-card-fact"]'))
+      .map((r) => `${r.querySelector('dt')!.textContent!.trim()} ${r.querySelector('dd')!.textContent!.trim()}`);
+    expect(rows).toEqual(['Late by 30 min', 'Deducted 0.5 h from Annual Leave']);
+    expect(el.textContent).not.toContain('Additional information');
+  });
+
   it('shows an alert without an Additional information block and no decision buttons', () => {
     const { el } = render(detail(
       { changeSet: [], editablePayloadJson: null, explanation: 'Over capacity by 40h', explanationDetails: { allocatedHours: '100', requiredHours: '140' } },

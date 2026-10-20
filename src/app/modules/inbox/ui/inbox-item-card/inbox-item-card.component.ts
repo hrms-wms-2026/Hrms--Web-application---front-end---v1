@@ -96,6 +96,9 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
               <div class="card__row"><dt>Severity</dt>
                 <dd><span [class]="'card__pill card__capitalize card__pill--' + severityTone()">{{ item.severity }}</span></dd></div>
             }
+            @for (fact of d.facts ?? []; track fact.label) {
+              <div class="card__row" data-testid="inbox-card-fact"><dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd></div>
+            }
           </dl>
           @if (d.target; as target) {
             <button type="button" class="card__link" data-testid="inbox-card-open-target" (click)="openTarget.emit(target)">
