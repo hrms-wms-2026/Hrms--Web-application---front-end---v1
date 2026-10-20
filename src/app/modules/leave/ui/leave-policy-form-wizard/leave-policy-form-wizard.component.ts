@@ -20,6 +20,7 @@ import {
   LeavePolicyBlackout,
   LeavePolicyDetail,
   LeavePolicyRules,
+  LeavePolicyTargetKind,
   LeavePolicyVersion
 } from '../../models/leave-policy.model';
 import { LeavePolicyEdit } from '../../state/leave-policy.store';
@@ -27,7 +28,7 @@ import { LeavePolicyEdit } from '../../state/leave-policy.store';
 export interface LeavePolicyWizardEntity { readonly id: string; readonly name: string; }
 export interface LeavePolicyWizardEdit { readonly policyId: string; readonly edit: LeavePolicyEdit; }
 
-const KIND_LABELS: Record<string, string> = { legal_entity: 'company', department: 'department', position: 'position', employee: 'employee' };
+const KIND_LABELS: Readonly<Record<LeavePolicyTargetKind, string>> = { legal_entity: 'company', department: 'department', position: 'position', employee: 'employee' };
 
 function localToday(): string {
   const now = new Date();
@@ -108,6 +109,7 @@ export class LeavePolicyFormWizardComponent {
   // Edit
   readonly applyFrom = signal(this.today);
   private baseRules: LeavePolicyRules | null = null;
+  private prefilled = false;
   private baseTargets = '';
   /** The targets the shown conflicts were found for; a Replace only applies to exactly these. */
   private readonly submittedTargets = signal<string | null>(null);
@@ -140,7 +142,7 @@ export class LeavePolicyFormWizardComponent {
   });
   readonly canSubmit = computed(() => !this.saving() && !this.applyFromError());
   readonly conflictLines = computed(() => this.conflictsAreCurrent() ? this.conflicts().map((c) =>
-    `${c.targetName} ${KIND_LABELS[c.targetKind] ?? ''} already uses '${c.existingPolicyName}' for ${this.leaveTypeName()}.`) : []);
+    `${c.targetName} ${KIND_LABELS[c.targetKind]} already uses '${c.existingPolicyName}' for ${this.leaveTypeName()}.`) : []);
   private readonly conflictsAreCurrent = computed(() =>
     this.submittedTargets() !== null && this.submittedTargets() === this.targetKey(this.targets()));
 
@@ -150,9 +152,13 @@ export class LeavePolicyFormWizardComponent {
       if (entities.length === 1 && !untracked(() => this.isEdit()))
         untracked(() => this.companyIds.set([entities[0].id]));
     });
+    // Prefill once per opening: a later policy input (e.g. a reload) must not overwrite what was typed.
     effect(() => {
       const policy = this.policy();
-      if (policy) untracked(() => this.prefill(policy));
+      if (policy && !untracked(() => this.prefilled)) {
+        this.prefilled = true;
+        untracked(() => this.prefill(policy));
+      }
     });
   }
 
@@ -329,6 +335,8 @@ export class LeavePolicyFormWizardComponent {
       if (max != null && min != null && max < min) errors.push('The longest request cannot be shorter than the shortest.');
       if (team != null && (team < 1 || team > 100)) errors.push('Team absence must be between 1 and 100 percent.');
       if (this.minimumNoticeDays() < 0) errors.push('Notice cannot be negative.');
+      if (this.blackouts().some((b) => !!b.startDate !== !!b.endDate))
+        errors.push('Each blackout needs a start and an end date.');
       if (this.blackouts().some((b) => b.startDate && b.endDate && b.endDate < b.startDate))
         errors.push('A blackout period cannot end before it starts.');
     }

@@ -61,4 +61,16 @@ describe('PolicyManagementComponent', () => {
     await fixture.componentInstance.onCreate({ leaveTypeId: 't', name: 'x', description: null, rules: {} as never, assignments: [], replaceConflicts: false });
     expect(fixture.componentInstance.wizardMode()).toBe('create');
   });
+
+  it('does not open Edit for a policy that is not the one being viewed yet', async () => {
+    const { fixture, policy } = setup();
+    policy.selectedPolicy.set({ id: 'p-old' } as never);
+    void fixture.componentInstance.viewPolicy({ id: 'p-new' } as never);
+    fixture.componentInstance.openEdit();
+    expect(fixture.componentInstance.wizardMode()).toBeNull();
+    expect(fixture.componentInstance.viewedPolicy()).toBeNull();
+    policy.selectedPolicy.set({ id: 'p-new' } as never);
+    fixture.componentInstance.openEdit();
+    expect(fixture.componentInstance.wizardMode()).toBe('edit');
+  });
 });

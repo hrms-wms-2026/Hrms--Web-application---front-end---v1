@@ -30,7 +30,7 @@
         <div class="lpm-detail">
           <button type="button" (click)="closeDetail()" aria-label="Close policy detail">×</button>
           <app-leave-policy-detail-panel
-            [policy]="policyStore.selectedPolicy()"
+            [policy]="viewedPolicy()"
             [canManage]="hasManageAccess()"
             (edit)="openEdit()"
             (deleteVersion)="onDeleteVersion($event)"
@@ -48,7 +48,7 @@
     [legalEntities]="legalEntities()"
     [departmentOptions]="departmentOptions()"
     [positionOptions]="positionOptions()"
-    [policy]="mode === 'edit' ? policyStore.selectedPolicy() : null"
+    [policy]="mode === 'edit' ? viewedPolicy() : null"
     [conflicts]="policyStore.conflicts()"
     [saving]="policyStore.saving()"
     (create)="onCreate($event)"

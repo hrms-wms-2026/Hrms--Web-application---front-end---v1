@@ -229,4 +229,26 @@ describe('LeavePolicyFormWizardComponent', () => {
     w.confirmReplace();
     expect(emit).toHaveBeenCalledTimes(1);
   });
+
+  it('edit: prefills once, so a later policy input does not overwrite what was typed', () => {
+    const fixture = create();
+    fixture.componentRef.setInput('policy', detail([version()]));
+    fixture.detectChanges();
+    const w = fixture.componentInstance;
+    w.amountHours.set(15);
+    fixture.componentRef.setInput('policy', { ...detail([version({ amountHours: 99 })]), id: 'p2' });
+    fixture.detectChanges();
+    expect(w.amountHours()).toBe(15);
+  });
+
+  it('a blackout with only one date is an error, not silently dropped', () => {
+    const w = create().componentInstance;
+    const emit = vi.spyOn(w.create, 'emit');
+    fillValidCreate(w);
+    w.addBlackout();
+    w.updateBlackout(0, 'startDate', '2026-12-20');
+    w.submit();
+    expect(emit).not.toHaveBeenCalled();
+    expect(w.validationErrors()).toContain('Each blackout needs a start and an end date.');
+  });
 });

@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { EmployeeLeavePolicyApiService } from '../../../leave/data-access/employee-leave-policy-api.service';
@@ -27,7 +27,7 @@ describe('EmployeeLeavePoliciesComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: EmployeeLeavePolicyApiService, useValue: api },
-        { provide: LeavePolicyApiService, useValue: { list: () => of(policies) } },
+        { provide: LeavePolicyApiService, useValue: { list: vi.fn(() => of(policies)) } },
         { provide: PermissionService, useValue: { hasAnyPermission: () => canChange, hasPermission: () => canChange } },
         { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } }
       ]
@@ -80,5 +80,28 @@ describe('EmployeeLeavePoliciesComponent', () => {
     c.askReset(rows[1]);
     await c.confirmReset();
     expect(api.reset).toHaveBeenCalledWith('e1', 't-sick');
+  });
+
+  it('ignores a late answer for the previous employee', async () => {
+    const slow = new Subject<EmployeeLeavePolicyRow[]>();
+    const fixture = await render(true);
+    api.list.mockImplementation((id: string) => id === 'e-old' ? slow : of([rows[2]]));
+    fixture.componentRef.setInput('employeeId', 'e-old');
+    fixture.detectChanges();
+    fixture.componentRef.setInput('employeeId', 'e-new');
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    slow.next(rows);
+    slow.complete();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fixture.componentInstance.rows().map((r) => r.leaveTypeId)).toEqual(['t-casual']);
+  });
+
+  it('fetches the policy list each time the dialog opens', async () => {
+    const fixture = await render(true);
+    const policyApi = TestBed.inject(LeavePolicyApiService) as unknown as { list: ReturnType<typeof vi.fn> };
+    await fixture.componentInstance.openChange(rows[0]);
+    await fixture.componentInstance.openChange(rows[0]);
+    expect(policyApi.list).toHaveBeenCalledTimes(2);
   });
 });

@@ -58,6 +58,12 @@ export class PolicyManagementComponent implements OnInit {
   readonly detailOpen = signal(false);
   readonly cloneSource = signal<LeavePolicyListItem | null>(null);
   readonly cloneName = signal('');
+  /** The policy the user clicked; the panel and Edit only use the loaded policy once it is this one. */
+  private readonly viewingId = signal<string | null>(null);
+  readonly viewedPolicy = computed(() => {
+    const selected = this.policyStore.selectedPolicy();
+    return selected && selected.id === this.viewingId() ? selected : null;
+  });
 
   readonly policyKpiTiles = computed<readonly KpiTile[]>(() => {
     const items = this.policyStore.items();
@@ -98,11 +104,16 @@ export class PolicyManagementComponent implements OnInit {
   }
 
   openCreate(): void { this.policyStore.clearConflicts(); this.wizardMode.set('create'); }
-  openEdit(): void { this.policyStore.clearConflicts(); this.wizardMode.set('edit'); }
+  openEdit(): void {
+    if (!this.viewedPolicy()) return;
+    this.policyStore.clearConflicts();
+    this.wizardMode.set('edit');
+  }
   closeWizard(): void { this.wizardMode.set(null); this.policyStore.clearConflicts(); }
 
   async viewPolicy(policy: LeavePolicyListItem): Promise<void> {
     this.detailOpen.set(true);
+    this.viewingId.set(policy.id);
     await this.policyStore.loadPolicy(policy.id);
   }
   closeDetail(): void { this.detailOpen.set(false); }
@@ -130,7 +141,7 @@ export class PolicyManagementComponent implements OnInit {
   }
 
   async onDeleteVersion(versionId: string): Promise<void> {
-    const policy = this.policyStore.selectedPolicy();
+    const policy = this.viewedPolicy();
     if (!policy) return;
     const outcome = await this.policyStore.deleteVersion(policy.id, versionId);
     if (outcome === 'saved') this.notificationService.success('Scheduled change cancelled.');
@@ -138,7 +149,7 @@ export class PolicyManagementComponent implements OnInit {
   }
 
   async onSetActive(isActive: boolean): Promise<void> {
-    const policy = this.policyStore.selectedPolicy();
+    const policy = this.viewedPolicy();
     if (!policy) return;
     const outcome = await this.policyStore.setActive(policy.id, isActive);
     if (outcome === 'saved') {

@@ -40,6 +40,8 @@ export class EmployeeLeavePoliciesComponent {
   readonly saving = signal(false);
   readonly resetRow = signal<EmployeeLeavePolicyRow | null>(null);
   private readonly policies = signal<readonly LeavePolicyListItem[]>([]);
+  /** Only the newest load may write rows, so a slow answer for a previous employee is dropped. */
+  private loadSeq = 0;
 
   readonly policyOptions = computed<readonly SelectOption[]>(() => {
     const row = this.changeRow();
@@ -65,26 +67,27 @@ export class EmployeeLeavePoliciesComponent {
   }
 
   async load(id = this.employeeId()): Promise<void> {
+    const seq = ++this.loadSeq;
     this.loading.set(true);
     this.loadError.set('');
     try {
-      this.rows.set(await firstValueFrom(this.api.list(id)));
+      const rows = await firstValueFrom(this.api.list(id));
+      if (seq === this.loadSeq) this.rows.set(rows);
     } catch (err) {
-      this.loadError.set(toSafeErrorMessage(err, 'Could not load leave policies.'));
+      if (seq === this.loadSeq) this.loadError.set(toSafeErrorMessage(err, 'Could not load leave policies.'));
     } finally {
-      this.loading.set(false);
+      if (seq === this.loadSeq) this.loading.set(false);
     }
   }
 
   async openChange(row: EmployeeLeavePolicyRow): Promise<void> {
     this.changeRow.set(row);
     this.selectedPolicyId.set(row.policyId ?? '');
-    if (!this.policies().length) {
-      try {
-        this.policies.set(await firstValueFrom(this.policyApi.list(false)));
-      } catch (err) {
-        this.notifications.error(toSafeErrorMessage(err, 'Could not load leave policies.'));
-      }
+    // Fetched on every open so policies created since the page loaded are offered.
+    try {
+      this.policies.set(await firstValueFrom(this.policyApi.list(false)));
+    } catch (err) {
+      this.notifications.error(toSafeErrorMessage(err, 'Could not load leave policies.'));
     }
   }
 
