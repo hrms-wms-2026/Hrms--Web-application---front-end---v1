@@ -3,6 +3,7 @@ import {
   PERSON_CASE_SOURCES,
   isMutedPersonCase,
   localMonthBounds,
+  personCaseMonthOf,
   orderPersonCases,
   personCaseSubjectId,
   redDotMonths
@@ -37,6 +38,19 @@ describe('person case helpers', () => {
     expect([start.getFullYear(), start.getMonth(), start.getDate(), start.getHours()]).toEqual([2026, 9, 1, 0]);
     expect([end.getFullYear(), end.getMonth(), end.getDate(), end.getHours()]).toEqual([2026, 10, 1, 0]);
     expect(new Date(localMonthBounds(2026, 12).to).getFullYear()).toBe(2027);
+  });
+
+  it('places an attendance alert in its work day’s month, other tickets in their created month', () => {
+    const late = item({ source: 'attendance', kind: 'alert', createdAt: '2026-10-17T17:35:00Z', facets: { work_date: ['2026-09-25'] } });
+
+    expect(personCaseMonthOf(late)).toEqual({ year: 2026, month: 9 });
+    expect(personCaseMonthOf(item({ createdAt: '2026-10-10T09:00:00' }))).toEqual({ year: 2026, month: 10 });
+  });
+
+  it('red dots subtract the current attendance alert from its work-day month', () => {
+    const late = item({ source: 'attendance', kind: 'alert', createdAt: '2026-10-17T17:35:00Z', facets: { work_date: ['2026-09-25'] } });
+
+    expect([...redDotMonths([{ month: 9, count: 1 }, { month: 10, count: 1 }], 2026, late)]).toEqual([10]);
   });
 
   it('drops the current ticket and puts the same type first, newest first in each group', () => {

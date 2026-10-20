@@ -19,6 +19,14 @@ export function localYearMonth(iso: string): { year: number; month: number } {
   return { year: date.getFullYear(), month: date.getMonth() + 1 };
 }
 
+/** The month a ticket belongs to in the history: an attendance alert is about its work day (it is often detected
+ *  days later, in a batch), every other ticket about when it was raised - the same dates the server buckets by. */
+export function personCaseMonthOf(item: InboxItemDto): { year: number; month: number } {
+  const workDate = item.source === 'attendance' && item.kind === 'alert' ? item.facets['work_date']?.[0] : undefined;
+  const day = workDate ? /^(\d{4})-(\d{2})-\d{2}$/.exec(workDate) : null;
+  return day ? { year: Number(day[1]), month: Number(day[2]) } : localYearMonth(item.createdAt);
+}
+
 /** Minutes east of UTC, as the server expects (Date#getTimezoneOffset is west-positive). */
 export function localOffsetMinutes(at: Date = new Date()): number {
   return -at.getTimezoneOffset();
@@ -49,7 +57,7 @@ export function isMutedPersonCase(item: InboxItemDto): boolean {
 
 /** Months of `year` that hold history other than the current ticket itself. */
 export function redDotMonths(months: InboxPersonCaseMonthDto[], year: number, current: InboxItemDto): Set<number> {
-  const at = localYearMonth(current.createdAt);
+  const at = personCaseMonthOf(current);
   const countsCurrent = at.year === year && !isMutedPersonCase(current);
   return new Set(months
     .filter((m) => m.count - (countsCurrent && m.month === at.month ? 1 : 0) > 0)

@@ -7,7 +7,7 @@ import {
   PERSON_CASE_SOURCES,
   localMonthBounds,
   localOffsetMinutes,
-  localYearMonth,
+  personCaseMonthOf,
   orderPersonCases,
   personCaseSubjectId,
   redDotMonths
@@ -88,7 +88,7 @@ export const InboxPersonCasesStore = signalStore(
         patchState(store, { ...initialState, current, hidden });
         if (hidden) return;
 
-        const { year, month } = localYearMonth(current.createdAt);
+        const { year, month } = personCaseMonthOf(current);
         patchState(store, { compactLoading: true, year, month });
         try {
           const rows = await fetchMonth(current, year, month);
@@ -101,7 +101,7 @@ export const InboxPersonCasesStore = signalStore(
       async openView(): Promise<void> {
         const current = store.current();
         if (!current || store.hidden()) return;
-        const { year, month } = localYearMonth(current.createdAt);
+        const { year, month } = personCaseMonthOf(current);
         patchState(store, { viewOpen: true, year, month, monthCases: store.compact(), monthLoading: false });
         const mine = ticket;
         try {
