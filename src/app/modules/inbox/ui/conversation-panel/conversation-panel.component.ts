@@ -3,7 +3,8 @@ import {
   AfterViewChecked, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal, untracked,
   viewChild
 } from '@angular/core';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, catchError, firstValueFrom, map, of } from 'rxjs';
+import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { FileApiService, buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
@@ -11,18 +12,17 @@ import { CommentComposerComponent, ComposerUploader } from '../../../../shared/u
 import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { EmojiPickerComponent } from '../../../work/ui/emoji-picker/emoji-picker.component';
 import { HostSlashCommand, MentionCandidate } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
+import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
-import {
-  ConversationMessageDto, ConversationParticipantDto, InboxActionDto, InboxChangeDto, InboxItemDto, InboxItemRef, InboxKindDescriptorDto
-} from '../../models/inbox.dto';
+import { ConversationMessageDto, InboxItemRef, sameRef } from '../../models/inbox.dto';
+import { ChatSystemEvent, InboxChatRowDto, caseRefOf, parseSystemEvent } from '../../models/inbox-chat.dto';
 import { RealtimeConversationReaction } from '../../../../core/realtime/inbox-realtime.models';
 import { ConversationStore } from '../../state/conversation.store';
-import { ExceptionEvidenceResponse } from '../../../../shared/models/exception-evidence.model';
-import { FaceEvidenceCardComponent } from '../face-evidence-card/face-evidence-card.component';
-import { InboxChangeSetComponent } from '../inbox-change-set/inbox-change-set.component';
-import { LeaveRequestSummaryComponent } from '../leave-request-summary/leave-request-summary.component';
+import { CaseCardAction, CaseCardComponent } from '../case-card/case-card.component';
 
 const ADD_COMMAND = 'add';
+const RENAME_COMMAND = 'rename';
+const MEMBERS_COMMAND = 'members';
 const CONVERSATION_ATTACHMENT = 'conversation_attachment';
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
@@ -77,33 +77,84 @@ interface FailedSend {
 const JUMP_HIGHLIGHT_MS = 1200;
 const QUOTE_LENGTH = 120;
 
-/** The chat of one ticket (inbox item), WhatsApp-style (its ConversationStore is provided by the host page, which shares
- *  it with the ticket details): a header with the ticket and a ⋯ menu (add member,
- *  members, export, leave), messages anchored to the bottom (latest first in view; scrolling up loads older
- *  ones), and a composer with @mentions, add-and-tag and the item's actions in its "/" menu. Each ticket keeps
- *  its own unsent draft. */
+/** One chat of the inbox - a 1-on-1 chat, a named group or a case's group - WhatsApp-style (its ConversationStore is
+ *  provided by the host page, which shares it with the details panel): a header with who it is with, messages anchored
+ *  to the bottom (scrolling up loads older ones) where requests and alerts sit as case cards with their actions and a
+ *  "resolved" line when closed, and a composer with @mentions and add-and-tag. Each chat keeps its own unsent draft. */
 @Component({
   selector: 'app-conversation-panel',
   standalone: true,
   imports: [
-    DatePipe, AvatarComponent, CommentComposerComponent, EmojiPickerComponent, FaceEvidenceCardComponent, InboxChangeSetComponent, LeaveRequestSummaryComponent,
-    PeoplePickerComponent
+    DatePipe, AvatarComponent, CaseCardComponent, CommentComposerComponent, DropdownMenuComponent, EmojiPickerComponent, PeoplePickerComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="conv" data-testid="conversation-panel" aria-label="Conversation">
-      <!-- No header: the ticket's title and status are in the list and the details. Only what has no other home stays. -->
-      <div class="conv__float">
-        <button type="button" class="conv__icon-btn conv__back" data-testid="conversation-back" aria-label="Back to tickets" (click)="back.emit()">
+      <header class="conv__head" data-testid="conversation-header">
+        <button type="button" class="conv__icon-btn conv__back" data-testid="conversation-back" aria-label="Back to chats" (click)="back.emit()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <button type="button" class="conv__icon-btn conv__details-toggle" [class.conv__details-toggle--always]="!detailsVisible()"
-          data-testid="conversation-toggle-details" [attr.aria-pressed]="detailsVisible()"
-          [attr.aria-label]="detailsVisible() ? 'Hide ticket details' : 'Show ticket details'"
-          [attr.title]="detailsVisible() ? 'Hide ticket details' : 'Show ticket details'" (click)="toggleDetails.emit()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
-        </button>
-      </div>
+        @if (chat(); as c) {
+          @if (c.type === 'direct') {
+            <app-avatar [userName]="c.title" [avatarUrl]="avatarUrl(c.avatarFileId)" size="sm" />
+          } @else {
+            <span class="conv__group-icon" [class.conv__group-icon--case]="c.type === 'case'" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M16 20a4 4 0 0 0-8 0" /><circle cx="12" cy="11" r="3" /><path d="M21 19a3 3 0 0 0-4-2.8M3 19a3 3 0 0 1 4-2.8" /><circle cx="18" cy="9" r="2" /><circle cx="6" cy="9" r="2" /></svg>
+            </span>
+          }
+          <div class="conv__who">
+            <span class="conv__name" data-testid="conversation-title">{{ c.title }}</span>
+            <span class="conv__meta">{{ headerMeta() }}</span>
+          </div>
+        } @else {
+          <div class="conv__who"><span class="conv__name">{{ store.title() }}</span></div>
+        }
+        <div class="conv__head-tools">
+          <button type="button" class="conv__icon-btn" data-testid="conversation-add" [attr.aria-label]="addLabel()" [attr.title]="addLabel()"
+            [disabled]="store.removed()" (click)="onSlashCommand('add')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><circle cx="9" cy="8" r="4" /><path d="M19 8v6M16 11h6" /></svg>
+          </button>
+          @if (menuItems().length > 0) {
+            <app-dropdown-menu [items]="menuItems()" ariaLabel="Chat options" (selected)="onSlashCommand($event)">
+              <button menu-trigger type="button" class="conv__icon-btn" data-testid="conversation-menu" aria-label="Chat options">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+              </button>
+            </app-dropdown-menu>
+          }
+          <button type="button" class="conv__icon-btn" data-testid="conversation-toggle-details" [attr.aria-pressed]="detailsVisible()"
+            [attr.aria-label]="detailsVisible() ? 'Hide details' : 'Show details'" [attr.title]="detailsVisible() ? 'Hide details' : 'Show details'"
+            (click)="toggleDetails.emit()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
+          </button>
+        </div>
+      </header>
+
+      @if (renameOpen()) {
+        <div class="conv__panel" data-testid="conversation-rename-panel">
+          <div class="conv__panel-head"><span>Group name</span></div>
+          <input class="conv__input" data-testid="conversation-rename-input" maxlength="80" aria-label="Group name" [value]="renameText()"
+            (input)="renameText.set($any($event.target).value)" (keydown.enter)="confirmRename()" />
+          <div class="conv__panel-actions">
+            <button type="button" class="conv__btn" (click)="renameOpen.set(false)">Cancel</button>
+            <button type="button" class="conv__btn conv__btn--primary" data-testid="conversation-rename-confirm"
+              [disabled]="!renameText().trim()" (click)="confirmRename()">Save</button>
+          </div>
+        </div>
+      }
+
+      @if (membersOpen()) {
+        <div class="conv__panel" data-testid="conversation-members-panel">
+          <div class="conv__panel-head">
+            <span>Members · {{ store.participants().length }}</span>
+            <button type="button" class="conv__link" (click)="membersOpen.set(false)">Close</button>
+          </div>
+          <ul class="conv__members">
+            @for (p of store.participants(); track p.employeeId) {
+              <li><app-avatar [userName]="p.name" [avatarUrl]="avatarUrl(p.avatarFileId)" size="xs" /> {{ p.employeeId === me() ? 'You' : p.name }}</li>
+            }
+          </ul>
+        </div>
+      }
 
       @if (addOpen()) {
         <div class="conv__panel" data-testid="conversation-add-panel">
@@ -141,44 +192,34 @@ const QUOTE_LENGTH = 120;
             @if (m.id === unreadFromId()) {
               <div class="conv__unread" data-testid="conversation-unread-divider"><span>New</span></div>
             }
-            @if (m.kind === 'evidence') {
-              @if (hasEvidence()) {
-                <div class="msg msg--evidence" [class.msg--highlight]="highlightedId() === m.id" [attr.data-message-id]="m.id" data-testid="message-evidence">
-                  <span class="msg__bot" [class.msg__bot--changes]="!faceEvidence()" aria-hidden="true">
-                    @if (faceEvidence()) {
-                      <svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="11" r="3" /><path d="M8 17a4 4 0 0 1 8 0" /></svg>
-                    } @else {
-                      <svg viewBox="0 0 24 24"><path d="M9 5h10M9 12h10M9 19h10M5 5h.01M5 12h.01M5 19h.01" /></svg>
-                    }
-                  </span>
-                  <div class="msg__content">
-                    <div class="msg__meta">
-                      <span class="msg__author">{{ evidenceLabel() }}</span>
-                      <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}</time>
-                      @if (canReply(m)) {
-                        <span class="msg__menu">
-                          <button type="button" class="conv__link" [attr.data-testid]="'message-reply-' + m.id" [attr.aria-label]="'Reply to the ' + evidenceLabel().toLowerCase()" (click)="startReply(m)">Reply</button>
-                        </span>
-                      }
-                    </div>
-                    <div class="msg__bubble">
-                      @if (faceEvidence(); as ev) {
-                        <app-face-evidence-card [evidence]="ev" />
-                      } @else if (item()?.source === 'leave') {
-                        <app-leave-request-summary [changes]="changes()" [editable]="changesEditable()" [errors]="changeErrors()"
-                          (editsChange)="changesEdited.emit($event)" />
-                      } @else {
-                        <app-inbox-change-set data-testid="message-changes" [changes]="changes()" [editable]="changesEditable()" [errors]="changeErrors()"
-                          (editsChange)="changesEdited.emit($event)" />
-                      }
-                    </div>
-                  </div>
+            @if (m.kind === 'case') {
+              @let caseRef = caseOf(m);
+              @if (caseRef) {
+                <div class="msg msg--case" [class.msg--highlight]="highlightedId() === m.id" [attr.data-message-id]="m.id" data-testid="message-case">
+                  <app-case-card [ref]="caseRef" [title]="caseRef.title" [resolved]="resolvedKeys().has(keyOf(caseRef))"
+                    [selected]="isSelected(caseRef)" [editable]="caseEditable()" [errors]="caseErrors()" [busy]="caseBusy()" [version]="caseVersion()"
+                    (open)="openCase.emit($event)" (action)="caseAction.emit($event)" (editsChange)="caseEdits.emit($event)" />
                 </div>
               }
             } @else if (m.kind === 'system') {
-              <div class="msg msg--system" [attr.data-message-id]="m.id">
-                <span [innerHTML]="m.bodyHtml"></span> · <time>{{ m.createdAt | date: 'h:mm a' }}</time>
-              </div>
+              @let event = eventOf(m);
+              @if (event && event.type === 'case_resolved') {
+                <div class="conv__resolved" data-testid="message-case-resolved" [attr.data-message-id]="m.id">
+                  <span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+                    {{ resolvedLabel(event) }} · {{ m.createdAt | date: 'MMM d, y' }}
+                  </span>
+                </div>
+              } @else if (event && event.type === 'case_moved' && event.conversationId) {
+                <div class="msg msg--system" [attr.data-message-id]="m.id" data-testid="message-case-moved">
+                  <span [innerHTML]="m.bodyHtml"></span> ·
+                  <button type="button" class="conv__link" (click)="openGroup(event)">Open group</button>
+                </div>
+              } @else {
+                <div class="msg msg--system" [class.msg--escalation]="isEscalation(event)" [attr.data-message-id]="m.id">
+                  <span [innerHTML]="m.bodyHtml"></span> · <time>{{ m.createdAt | date: 'h:mm a' }}</time>
+                </div>
+              }
             } @else {
               @let own = m.authorEmployeeId === me();
               <div class="msg" [class.msg--own]="own" [class.msg--justification]="m.tag === 'justification' && !m.isDeleted"
@@ -315,7 +356,7 @@ const QUOTE_LENGTH = 120;
             [uploader]="uploader"
             [enterToSend]="true"
             [mentionCandidates]="mentionCandidates()"
-            [allowAddAndTag]="true"
+            [allowAddAndTag]="!isDirect()"
             [mentionSearch]="mentionSearch"
             [extraSlashCommands]="slashCommands()"
             (submitted)="send($event.content, $event.mentions, $event.attachmentFileIds)"
@@ -333,15 +374,29 @@ const QUOTE_LENGTH = 120;
     .conv__icon-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .conv__icon-btn:focus-visible, .conv__link:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .conv__icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .conv { position: relative; }
-    /* The two controls that had no other home float over the chat, and only show when they are needed. */
-    .conv__float { position: absolute; top: 8px; right: 8px; left: 8px; z-index: 2; display: flex; justify-content: space-between; pointer-events: none; }
-    .conv__float .conv__icon-btn { pointer-events: auto; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 1px 3px rgb(0 0 0 / 8%); }
-    .conv__details-toggle { margin-left: auto; }
-    .conv:has(.conv__details-toggle--always) .conv__messages { padding-top: 48px; }
+    .conv__head { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--color-border); }
+    .conv__head app-avatar { flex: 0 0 auto; }
+    .conv__who { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+    .conv__name { overflow: hidden; color: var(--color-text-primary); font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .conv__meta { overflow: hidden; color: var(--color-text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .conv__head-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
+    .conv__icon-btn:disabled { opacity: .45; cursor: default; }
+    .conv__group-icon { display: inline-flex; width: 32px; height: 32px; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 50%;
+      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); }
+    .conv__group-icon--case { background: color-mix(in srgb, var(--color-warning, #d97706) 14%, var(--color-surface)); color: var(--color-warning, #d97706); }
+    .conv__group-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .conv__back { display: none; }
-    .conv__details-toggle { display: none; }
-    .conv__details-toggle--always { display: inline-flex; }
+    .conv__input { height: 32px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; }
+    .conv__input:focus { border-color: var(--color-accent); outline: none; }
+    .conv__members { display: flex; max-height: 180px; flex-direction: column; gap: 6px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 13px; }
+    .conv__members li { display: flex; align-items: center; gap: 8px; }
+    .msg--case { max-width: 100%; }
+    .msg--escalation { background: color-mix(in srgb, var(--color-warning, #d97706) 12%, var(--color-surface)); color: var(--color-warning, #b45309); font-weight: 600; }
+    /* "Case resolved · date": a divider across the chat, like the day lines. */
+    .conv__resolved { display: flex; align-items: center; gap: 10px; color: var(--color-success, #16a34a); font-size: 12px; font-weight: 650; }
+    .conv__resolved::before, .conv__resolved::after { content: ''; flex: 1; height: 1px; background: color-mix(in srgb, var(--color-success, #16a34a) 35%, transparent); }
+    .conv__resolved span { display: inline-flex; align-items: center; gap: 6px; }
+    .conv__resolved svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
     .conv__panel { display: flex; flex-direction: column; gap: 6px; margin: 10px 16px 0; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
     .conv__panel-head { display: flex; align-items: center; justify-content: space-between; color: var(--color-text-secondary); font-size: 12px; font-weight: 650; }
     .conv__panel-actions { display: flex; justify-content: flex-end; gap: 8px; }
@@ -427,8 +482,7 @@ const QUOTE_LENGTH = 120;
     .conv__justify { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 12px; }
     /* Narrow screens: the chat is its own screen with a back button; the details open as a drawer. */
     @media (max-width: 1023px) {
-      .conv__back, .conv__details-toggle { display: inline-flex; }
-      .conv__messages { padding-top: 48px; }
+      .conv__back { display: inline-flex; }
       .msg { max-width: 92%; }
     }
   `]
@@ -438,33 +492,34 @@ export class ConversationPanelComponent implements AfterViewChecked {
   private readonly auth = inject(AuthStore);
   private readonly conversations = inject(ConversationsApiService);
 
-  /** The inbox item whose conversation this is. */
+  /** The chat's subject: ("direct", "direct", pairId), ("group", "group", id) or a case group's item. */
   itemRef = input.required<InboxItemRef>();
-  /** The item itself, for the header (title, reference, status); null while it loads. */
-  item = input<InboxItemDto | null>(null);
-  /** The item's kind from the registry, for the type icon. */
-  descriptor = input<InboxKindDescriptorDto | null>(null);
-  /** Whether the ticket details panel is showing; the header offers to show it when it is not. */
+  /** Its row in the chat list, for the header; null until the list has it. */
+  chat = input<InboxChatRowDto | null>(null);
+  /** Whether the details panel is showing. */
   detailsVisible = input(true);
-  /** An identity alert's face evidence: fills its "evidence" message (people can reply to it). Null for viewers without it. */
-  faceEvidence = input<ExceptionEvidenceResponse | null>(null);
-  /** A request's requested changes: fill its "evidence" message instead (the approver can edit them there). */
-  changes = input<readonly InboxChangeDto[]>([]);
-  /** The approver may edit the changes before approving. */
-  changesEditable = input(false);
-  /** Per-field problems found on approve. */
-  changeErrors = input<Record<string, string>>({});
-  /** The approver's edits to the changes; the host keeps them for approve. */
-  changesEdited = output<Record<string, string>>();
-  /** The item's available actions, offered in the composer's "/" menu. */
-  actions = input<readonly InboxActionDto[]>([]);
-  /** A "/" action was picked: the host runs it exactly like its action-bar button. */
-  action = output<string>();
-  /** The item's requester (InboxItem.requestedBy), for the role badge. */
-  requesterId = input<string | null>(null);
+  /** The case open in the details panel: its card is highlighted and the approver may edit its changes there. */
+  selectedCase = input<InboxItemRef | null>(null);
+  caseEditable = input(false);
+  caseErrors = input<Record<string, string>>({});
+  caseBusy = input(false);
+  /** Bumped after an action, so the cards reload their status. */
+  caseVersion = input(0);
+  /** A case card was opened: the host shows its details. */
+  openCase = output<InboxItemRef>();
+  /** A case card's action button: the host runs it exactly like the details panel's button. */
+  caseAction = output<CaseCardAction>();
+  caseEdits = output<Record<string, string>>();
+  /** "Add people" in a 1-on-1 chat: the host starts a group with both people instead. */
+  startGroup = output<void>();
+  /** "Open group" on a case that moved to its group. */
+  openChat = output<InboxItemRef>();
+  /** The group was renamed (the host reloads the list). */
+  renamed = output<string>();
   toggleDetails = output<void>();
-  /** Narrow screens: back to the ticket list. */
+  /** Narrow screens: back to the chat list. */
   back = output<void>();
+  private readonly chatsApi = inject(InboxChatsApiService);
 
   private readonly files = inject(FileApiService);
 
@@ -516,22 +571,49 @@ export class ConversationPanelComponent implements AfterViewChecked {
   protected readonly mentionCandidates = computed<MentionCandidate[]>(() => this.store.participants()
     .filter((p) => p.employeeId !== this.me())
     .map((p) => ({ id: p.employeeId, name: p.name, avatarUrl: this.avatarUrl(p.avatarFileId) })));
+  protected readonly isDirect = computed(() => this.itemRef().source === 'direct');
+  protected readonly addLabel = computed(() => (this.isDirect() ? 'Start a group with more people' : 'Add people'));
   protected readonly slashCommands = computed<HostSlashCommand[]>(() => [
-    ...this.actions().filter((a) => a.key !== 'open_target')
-      .map((a) => ({ id: a.key, label: a.label, category: 'ACTIONS', icon: a.tone === 'danger' ? '✕' : '✓', description: 'Run on this item' })),
-    { id: ADD_COMMAND, label: 'Add people', category: 'ACTIONS', icon: '+', description: 'Add someone to this conversation' }
+    { id: ADD_COMMAND, label: this.isDirect() ? 'Start a group' : 'Add people', category: 'ACTIONS', icon: '+',
+      description: this.isDirect() ? 'Start a group with this person and others' : 'Add someone to this conversation' }
   ]);
+  protected readonly menuItems = computed<MenuItem[]>(() => {
+    if (this.isDirect()) return [];
+    const items: MenuItem[] = [{ id: MEMBERS_COMMAND, label: 'Members' }];
+    if (this.itemRef().source === 'group') items.push({ id: RENAME_COMMAND, label: 'Rename group' });
+    return items;
+  });
+  /** "Last active …" is not tracked: a 1-on-1 chat says nothing; a group says how many are in it. */
+  protected readonly headerMeta = computed(() => {
+    const chat = this.chat();
+    if (!chat) return '';
+    if (chat.type === 'direct') return 'Direct message';
+    const count = this.store.participants().length || chat.memberCount;
+    return `${chat.type === 'case' ? 'Case group' : 'Group'} · ${count} ${count === 1 ? 'member' : 'members'}`;
+  });
+  protected readonly renameOpen = signal(false);
+  protected readonly renameText = signal('');
+  protected readonly membersOpen = signal(false);
   protected readonly candidateOptions = computed(() => {
     const members = new Set(this.store.participantIds());
     return this.searchResults().filter((p) => !members.has(p.id));
   });
+  /** Cases with a "resolved" line in this chat: their cards show from the message alone. */
+  protected readonly resolvedKeys = computed(() => {
+    const keys = new Set<string>();
+    for (const m of this.store.messages()) {
+      if (m.kind !== 'system') continue;
+      const event = parseSystemEvent(m.systemEventJson);
+      if (event?.type === 'case_resolved' && event.source && event.kind && event.id) keys.add(`${event.source}:${event.kind}:${event.id}`);
+    }
+    return keys;
+  });
 
   protected readonly days = computed<DayGroup[]>(() => {
     const groups: DayGroup[] = [];
-    const evidence = this.hasEvidence();
     for (const m of this.store.messages()) {
-      // The evidence marker is empty: it shows only for viewers who receive the item's evidence.
-      if (m.kind === 'evidence' && !evidence) continue;
+      // The old per-ticket evidence marker has no place in a chat: case cards carry the evidence now.
+      if (m.kind === 'evidence') continue;
       const date = new Date(m.createdAt);
       const key = date.toDateString();
       let group = groups[groups.length - 1];
@@ -571,6 +653,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
         this.editingId.set(null);
         this.reactPickerFor.set(null);
         this.replyingTo.set(null);
+        this.renameOpen.set(false);
+        this.membersOpen.set(false);
         void this.store.open(ref);
       });
     });
@@ -646,21 +730,58 @@ export class ConversationPanelComponent implements AfterViewChecked {
     if (failed) void this.send(failed.html, failed.mentions, failed.attachmentFileIds, failed.replyToId);
   }
 
-  /** The ticket's evidence message has something to show this viewer: face checks, or a request's changes. */
-  protected readonly hasEvidence = computed(() => !!this.faceEvidence() || this.changes().length > 0);
-  /** What the evidence message is called (its author line and reply quotes). */
-  protected readonly evidenceLabel = computed(() => (this.faceEvidence() ? 'Face checks' : 'Requested changes'));
-  /** One line for a quote of the evidence message. */
-  private readonly evidenceLine = computed(() => {
-    if (this.faceEvidence()) return 'Photo and clock-in tries';
-    if (this.item()?.source === 'leave') return this.changes().find((c) => c.field === 'leave_type')?.after ?? 'Leave';
-    return this.changes().map((c) => c.label).join(', ');
-  });
+  /** Evidence markers of the old per-ticket chats are hidden; a quote of one reads as the case's evidence. */
+  private readonly evidenceLabel = (): string => 'Evidence';
+  private readonly evidenceLine = (): string => 'Case evidence';
 
-  /** Text messages can be answered, and the evidence message when this viewer can see it. */
+  protected caseOf(message: ConversationMessageDto): (InboxItemRef & { title: string }) | null {
+    return caseRefOf(message.systemEventJson);
+  }
+
+  protected eventOf(message: ConversationMessageDto): ChatSystemEvent | null {
+    return parseSystemEvent(message.systemEventJson);
+  }
+
+  protected keyOf(ref: InboxItemRef): string {
+    return `${ref.source}:${ref.kind}:${ref.id}`;
+  }
+
+  protected isSelected(ref: InboxItemRef): boolean {
+    return sameRef(ref, this.selectedCase());
+  }
+
+  protected isEscalation(event: ChatSystemEvent | null): boolean {
+    return event?.type === 'escalated' || event?.type === 'next_approver';
+  }
+
+  /** "Case resolved" for alerts and cases; "Request approved" / "Request rejected" / ... for requests. */
+  protected resolvedLabel(event: ChatSystemEvent): string {
+    if (event.category !== 'request') return 'Case resolved';
+    const status = (event.status ?? 'closed').replace(/_/g, ' ').toLowerCase();
+    return `Request ${status}`;
+  }
+
+  protected openGroup(event: ChatSystemEvent): void {
+    if (event.source && event.kind && event.id) this.openChat.emit({ source: event.source, kind: event.kind, id: event.id });
+  }
+
+  protected async confirmRename(): Promise<void> {
+    const name = this.renameText().trim();
+    const id = this.store.conversationId();
+    if (!name || !id) return;
+    try {
+      await firstValueFrom(this.chatsApi.renameGroup(id, name));
+      this.renameOpen.set(false);
+      this.renamed.emit(name);
+    } catch {
+      this.store.markSendError('Could not rename the group.');
+    }
+  }
+
+  /** Text messages can be answered. */
   protected canReply(message: ConversationMessageDto): boolean {
     if (message.isDeleted || this.store.removed()) return false;
-    return message.kind === 'text' || (message.kind === 'evidence' && this.hasEvidence());
+    return message.kind === 'text';
   }
 
   protected startReply(message: ConversationMessageDto): void {
@@ -756,10 +877,15 @@ export class ConversationPanelComponent implements AfterViewChecked {
 
   protected onSlashCommand(id: string): void {
     if (id === ADD_COMMAND) {
-      if (!this.addOpen()) this.toggleAdd();
-      return;
+      // A 1-on-1 chat stays between two people: adding someone starts a group.
+      if (this.isDirect()) this.startGroup.emit();
+      else if (!this.addOpen()) this.toggleAdd();
+    } else if (id === RENAME_COMMAND) {
+      this.renameText.set(this.chat()?.title ?? '');
+      this.renameOpen.set(true);
+    } else if (id === MEMBERS_COMMAND) {
+      this.membersOpen.update((open) => !open);
     }
-    this.action.emit(id);
   }
 
   protected async addAndTag(person: MentionCandidate): Promise<void> {

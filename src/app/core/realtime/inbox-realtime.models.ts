@@ -12,8 +12,9 @@ export interface RealtimeConversationMessage {
   authorEmployeeId: string | null;
   authorName: string | null;
   authorAvatarFileId: string | null;
-  /** "evidence": an empty marker where the item's evidence (an identity case's face checks) sits in the chat. */
-  kind: 'text' | 'system' | 'evidence';
+  /** "evidence": an empty marker where the item's evidence (an identity case's face checks) sits in the chat.
+   *  "case": a request or alert posted into a people chat; systemEventJson holds its reference. */
+  kind: 'text' | 'system' | 'evidence' | 'case';
   bodyHtml: string;
   systemEventJson: string | null;
   mentionEmployeeIds: string[];
@@ -35,7 +36,7 @@ export interface RealtimeConversationReplyPreview {
   id: string;
   authorEmployeeId: string | null;
   authorName: string | null;
-  kind: 'text' | 'system' | 'evidence';
+  kind: 'text' | 'system' | 'evidence' | 'case';
   excerpt: string;
   isDeleted: boolean;
 }

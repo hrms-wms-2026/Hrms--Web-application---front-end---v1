@@ -1,4 +1,6 @@
-import { Component, computed, inject, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePipe } from '@angular/common';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { InboxItemRef } from '../../models/inbox.dto';
@@ -6,21 +8,18 @@ import { InboxPersonCasesStore } from '../../state/inbox-person-cases.store';
 import { PersonCaseMonthGridComponent, personCaseMonthBounds } from './person-case-month-grid.component';
 import { PersonCaseRowComponent } from './person-case-row.component';
 
-/** View all: the details pane becomes the person's history, one month at a time, with Back to the ticket's details. */
+/** A person's cases one month at a time, across every type - the details panel of a 1-on-1 chat. */
 @Component({
   selector: 'app-person-cases-view',
   standalone: true,
-  imports: [DatePipe, PopoverComponent, PersonCaseMonthGridComponent, PersonCaseRowComponent],
+  imports: [AvatarComponent, DatePipe, PopoverComponent, PersonCaseMonthGridComponent, PersonCaseRowComponent],
   template: `
     <section class="pcv" data-testid="person-cases-view">
       <header class="pcv__head">
-        <button type="button" class="pcv__back" data-testid="pcv-back" (click)="store.closeView()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
-          Back
-        </button>
+        <app-avatar [userName]="store.personName()" [avatarUrl]="avatarUrl()" size="md" />
         <div class="pcv__who">
-          <span class="pcv__person" data-testid="pcv-person">{{ store.current()?.requestedBy?.name }}</span>
-          <span class="pcv__category" data-testid="pcv-category">{{ store.current()?.category === 'request' ? 'Requests' : 'Alerts' }}</span>
+          <span class="pcv__person" data-testid="pcv-person">{{ store.personName() }}</span>
+          <span class="pcv__category" data-testid="pcv-category">Requests and alerts</span>
         </div>
       </header>
 
@@ -54,7 +53,7 @@ import { PersonCaseRowComponent } from './person-case-row.component';
           @for (row of store.monthCases(); track row.item.source + row.item.kind + row.item.id) {
             <app-person-case-row [case]="row" (open)="open.emit($event)" />
           } @empty {
-            <p class="pcv__quiet" data-testid="pcv-empty">No other cases this month</p>
+            <p class="pcv__quiet" data-testid="pcv-empty">No cases this month</p>
           }
         }
       </div>
@@ -64,9 +63,6 @@ import { PersonCaseRowComponent } from './person-case-row.component';
     :host { display: flex; min-height: 0; flex: 1; flex-direction: column; }
     .pcv { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 12px; padding: 16px; }
     .pcv__head { display: flex; align-items: center; gap: 12px; }
-    .pcv__back { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px 4px 4px; border: 0; border-radius: 8px; background: none; color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .pcv__back:hover { background: color-mix(in srgb, var(--color-text-primary) 6%, transparent); }
-    .pcv__back svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .pcv__who { display: flex; min-width: 0; flex-direction: column; }
     .pcv__person { overflow: hidden; font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
     .pcv__category { color: var(--color-text-secondary); font-size: 12px; }
@@ -82,7 +78,11 @@ import { PersonCaseRowComponent } from './person-case-row.component';
 })
 export class PersonCasesViewComponent {
   protected readonly store = inject(InboxPersonCasesStore);
+  /** The person's photo, when the chat list has it. */
+  avatarFileId = input<string | null>(null);
   open = output<InboxItemRef>();
+
+  protected readonly avatarUrl = computed(() => (this.avatarFileId() ? buildFileUrl(this.avatarFileId()!) : null));
 
   protected readonly today = new Date();
   protected readonly gridOpen = signal(false);

@@ -8,7 +8,10 @@ import { MessageCreatedEvent } from '../../../../core/realtime/inbox-realtime.mo
 import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
+import { InboxApiService } from '../../data-access/inbox-api.service';
+import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { ConversationDto, ConversationMessageDto } from '../../models/inbox.dto';
+import { InboxKindsStore } from '../../state/inbox-kinds.store';
 import { ConversationPanelComponent, decorateMentions } from './conversation-panel.component';
 import { ConversationStore } from '../../state/conversation.store';
 import { InboxStore } from '../../state/inbox.store';
@@ -59,45 +62,78 @@ describe('ConversationPanelComponent', () => {
       providers: [
         ConversationStore,
         { provide: ConversationsApiService, useValue: api },
-        { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), participantAdded$: new Subject(), reconnected$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
+        { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), inboxChanged$: new Subject(), participantAdded$: new Subject(), reconnected$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
         { provide: AuthStore, useValue: { employeeId: () => ME } },
         { provide: InboxStore, useValue: { loadCounts: vi.fn(() => Promise.resolve()) } },
-        { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } }
+        { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } },
+        { provide: InboxChatsApiService, useValue: { renameGroup: vi.fn(() => of(undefined)) } },
+        { provide: InboxApiService, useValue: { detail: vi.fn(() => throwError(() => new Error('not used'))) } },
+        { provide: InboxKindsStore, useValue: { descriptor: () => null } }
       ]
     });
   });
 
-  async function render(actions = [{ key: 'approve', label: 'Approve', tone: 'primary' as const, needsComment: false, needsPayload: false }]) {
+  async function render(ref: { source: string; kind: string; id: string } = REF) {
     const fixture = TestBed.createComponent(ConversationPanelComponent);
-    fixture.componentRef.setInput('itemRef', REF);
-    fixture.componentRef.setInput('actions', actions);
+    fixture.componentRef.setInput('itemRef', ref);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('opens the item conversation without a header: no title, reference, status or menu', async () => {
-    const { el } = await render();
+  it('opens the chat under a header with its name and the details toggle', async () => {
+    const { fixture, el } = await render();
+    fixture.componentRef.setInput('chat', {
+      conversationId: 'c1', source: 'group', kind: 'group', subjectId: 'g1', type: 'group', title: 'Payroll review', otherEmployeeId: null,
+      avatarFileId: null, memberCount: 3, preview: null, lastMessageAt: null, unread: 0, pending: [], caseItem: null
+    });
+    fixture.detectChanges();
 
     expect(api['open']).toHaveBeenCalledWith(REF);
-    expect(el.querySelector('header')).toBeNull();
-    expect(el.querySelector('[data-testid="conversation-ref"]')).toBeNull();
+    expect(el.querySelector('[data-testid="conversation-title"]')!.textContent).toContain('Payroll review');
+    expect(el.querySelector('[data-testid="conversation-header"]')!.textContent).toContain('3 members');
+    const emitted = vi.fn();
+    fixture.componentInstance.toggleDetails.subscribe(emitted);
+    (el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement).click();
+    expect(emitted).toHaveBeenCalled();
+  });
+
+  it('in a 1-on-1 chat, adding people starts a group instead of adding to the chat', async () => {
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const started = vi.fn();
+    fixture.componentInstance.startGroup.subscribe(started);
+
+    (el.querySelector('[data-testid="conversation-add"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(started).toHaveBeenCalled();
+    expect(el.querySelector('[data-testid="conversation-add-panel"]')).toBeNull();
     expect(el.querySelector('[data-testid="conversation-menu"]')).toBeNull();
   });
 
-  it('floats only the details toggle when the details are hidden', async () => {
-    const { fixture, el } = await render();
-    const toggle = () => el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement;
-    expect(toggle().classList).not.toContain('conv__details-toggle--always');
+  it('shows a case card, its "resolved" line with the date, and a link to the group a case moved to', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Annual leave - Priya',
+          systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Annual leave - Priya"}' }),
+        message('done', '2026-10-12T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'Request approved',
+          systemEventJson: '{"type":"case_resolved","source":"leave","kind":"request","id":"l1","status":"approved","category":"request"}' }),
+        message('moved', '2026-10-13T08:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'Continued in a group: Face check',
+          systemEventJson: '{"type":"case_moved","conversationId":"g9","source":"monitoring","kind":"exception_case","id":"x1"}' })
+      ]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const opened: unknown[] = [];
+    fixture.componentInstance.openChat.subscribe((r) => opened.push(r));
 
-    fixture.componentRef.setInput('detailsVisible', false);
-    fixture.detectChanges();
-    expect(toggle().classList).toContain('conv__details-toggle--always');
-    const emitted = vi.fn();
-    fixture.componentInstance.toggleDetails.subscribe(emitted);
-    toggle().click();
-    expect(emitted).toHaveBeenCalled();
+    const card = el.querySelector('[data-testid="message-case"] app-case-card')!;
+    expect(card.textContent).toContain('Annual leave - Priya');
+    expect(card.textContent).toContain('Closed');
+    expect(el.querySelector('[data-testid="message-case-resolved"]')!.textContent).toContain('Request approved · Oct 12, 2026');
+    (el.querySelector('[data-testid="message-case-moved"] button') as HTMLButtonElement).click();
+    expect(opened).toEqual([{ source: 'monitoring', kind: 'exception_case', id: 'x1' }]);
   });
 
   it('keeps an unsent draft per ticket and never carries it into another ticket', async () => {
@@ -147,18 +183,14 @@ describe('ConversationPanelComponent', () => {
     expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null, null);
   });
 
-  it('offers the item actions and /add in the composer slash menu', async () => {
+  it('offers /add in the composer slash menu', async () => {
     const { fixture } = await render();
     const composer = fixture.debugElement.query(By.directive(CommentComposerComponent)).componentInstance as CommentComposerComponent;
-    const actions: string[] = [];
-    fixture.componentInstance.action.subscribe((k) => actions.push(k));
 
-    expect(composer.extraSlashCommands().map((c) => c.id)).toEqual(['approve', 'add']);
-    composer.slashCommand.emit('approve');
+    expect(composer.extraSlashCommands().map((c) => c.id)).toEqual(['add']);
     composer.slashCommand.emit('add');
     fixture.detectChanges();
 
-    expect(actions).toEqual(['approve']);
     expect(fixture.nativeElement.querySelector('[data-testid="conversation-add-panel"]')).not.toBeNull();
   });
 

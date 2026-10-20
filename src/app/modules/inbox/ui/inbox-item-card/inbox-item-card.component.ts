@@ -21,8 +21,6 @@ import { buildEditedPayload, validateEdits } from '../inbox-change-set/inbox-cha
 import { InboxCommentDialogComponent } from '../inbox-comment-dialog/inbox-comment-dialog.component';
 import { InboxRevertBannerComponent } from '../inbox-revert-banner/inbox-revert-banner.component';
 import { InboxStepsComponent } from '../inbox-steps/inbox-steps.component';
-import { TicketParticipantsComponent } from '../ticket-participants/ticket-participants.component';
-import { PersonCasesSectionComponent } from '../person-cases/person-cases-section.component';
 import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
 
 export interface InboxCardAction {
@@ -40,7 +38,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
   selector: 'app-inbox-item-card',
   standalone: true,
   imports: [
-    DatePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent, TicketParticipantsComponent, PersonCasesSectionComponent,
+    DatePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent,
     InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxOutcomeDialogComponent,
     InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent, LeaveCancelConfirmDialogComponent
   ],
@@ -124,9 +122,7 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             <p class="card__error" role="alert" data-testid="inbox-card-inline-error">{{ actionError() }}</p>
           }
 
-          <app-person-cases-section [item]="item" (open)="openCase.emit($event)" />
 
-          <app-ticket-participants [requesterId]="item.requestedBy?.id ?? null" />
 
           <section class="card__section" data-testid="inbox-card-steps">
             <h4 class="card__label">{{ alert() ? 'Alert steps' : 'Request steps' }}</h4>

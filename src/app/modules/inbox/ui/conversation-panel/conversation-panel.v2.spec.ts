@@ -8,6 +8,7 @@ import { FileApiService } from '../../../../shared/data-access/file-api.service'
 import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { InboxApiService } from '../../data-access/inbox-api.service';
+import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { ConversationDto, ConversationMessageDto, ConversationParticipantDto } from '../../models/inbox.dto';
 import { InboxStore } from '../../state/inbox.store';
 import { ConversationStore } from '../../state/conversation.store';
@@ -73,6 +74,7 @@ describe('ConversationPanelComponent (FS3)', () => {
         ConversationStore,
         { provide: ConversationsApiService, useValue: api },
         { provide: InboxApiService, useValue: inboxApi },
+        { provide: InboxChatsApiService, useValue: { renameGroup: vi.fn(() => of(undefined)) } },
         { provide: FileApiService, useValue: { upload: vi.fn() } },
         {
           provide: InboxRealtimeService, useValue: {
@@ -94,10 +96,9 @@ describe('ConversationPanelComponent (FS3)', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  async function render(requesterId: string | null = 'pat') {
+  async function render() {
     const fixture = TestBed.createComponent(ConversationPanelComponent);
     fixture.componentRef.setInput('itemRef', REF);
-    fixture.componentRef.setInput('requesterId', requesterId);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -302,69 +303,7 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(msg('own').classList).toContain('msg--highlight');
   });
 
-  it('the evidence message shows the face checks to reviewers, who can reply to it; others never see it', async () => {
-    conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '', createdAt: '2026-10-13T08:00:00Z' }), ...conv.messages];
-    const evidence = {
-      exceptionId: 'x', type: 'IdentityAnomaly', workDate: '2026-10-13', timezone: 'UTC', attendance: null, identity: null,
-      faceChecks: [{ id: 'f1', at: '2026-10-13T08:58:00Z', purpose: 'clock_in', outcome: 'failed', failureReason: null, similarityScore: 61 }],
-      checkInScans: [], deviceActivity: null, pattern: null, activityHidden: false
-    };
-
-    const reviewer = await render();
-    reviewer.fixture.componentRef.setInput('faceEvidence', evidence);
-    await reviewer.settle();
-    expect(reviewer.msg('ev').querySelector('app-face-evidence-card')).not.toBeNull();
-    reviewer.q('message-reply-ev')!.click();
-    await reviewer.settle();
-    expect(reviewer.q('conversation-replying')!.textContent).toContain('Replying to Face checks');
-  });
-
-  it('a request’s evidence message shows its requested changes, editable by the approver, and can be replied to', async () => {
-    conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '', createdAt: '2026-10-13T08:00:00Z' }), ...conv.messages];
-    const changes = [
-      { field: 'startAt', label: 'From', before: null, after: '2026-10-29T09:00:00.000Z', kind: 'datetime', editable: true, applied: null },
-      { field: 'leaveType', label: 'Leave type', before: null, after: 'Sick Leave', kind: 'text', editable: false, applied: null }
-    ];
-    const { fixture, msg, q, settle } = await render();
-    fixture.componentRef.setInput('changes', changes);
-    fixture.componentRef.setInput('changesEditable', true);
-    const edited: Record<string, string>[] = [];
-    fixture.componentInstance.changesEdited.subscribe((e) => edited.push(e));
-    await settle();
-
-    const ev = msg('ev');
-    expect(ev.textContent).toContain('Requested changes');
-    const input = ev.querySelector('[data-testid="inbox-edit-startAt"]') as HTMLInputElement;
-    input.value = '2026-10-30T09:00';
-    input.dispatchEvent(new Event('input'));
-    await settle();
-    expect(edited.at(-1)).toEqual({ startAt: new Date('2026-10-30T09:00').toISOString() });
-
-    q('message-reply-ev')!.click();
-    await settle();
-    expect(q('conversation-replying')!.textContent).toContain('Replying to Requested changes');
-    expect(q('conversation-replying')!.textContent).toContain('From, Leave type');
-  });
-
-  it('a leave request shows as the compact leave card, not current/requested rows', async () => {
-    conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '', createdAt: '2026-10-13T08:00:00Z' }), ...conv.messages];
-    const { fixture, msg, settle } = await render();
-    fixture.componentRef.setInput('item', {
-      source: 'leave', kind: 'request', id: 'a1', category: 'request', actionType: 'sick', title: 'Sick Leave - Sam', subtitle: null,
-      status: 'pending', direction: 'received', severity: null, contextType: 'legal_entity', contextId: null, contextName: null,
-      requestedBy: null, requestedTo: null, createdAt: '2026-10-13T08:00:00Z', updatedAt: '2026-10-13T08:00:00Z',
-      availableActions: [], unreadMessages: 0, isPending: true, facets: {}
-    });
-    fixture.componentRef.setInput('changes', [
-      { field: 'leave_type', label: 'Leave type', before: null, after: 'Sick Leave', kind: 'text', editable: false, applied: null }
-    ]);
-    await settle();
-
-    expect(msg('ev').querySelector('app-leave-request-summary')).not.toBeNull();
-    expect(msg('ev').querySelector('app-inbox-change-set')).toBeNull();
-  });
-
-  it('hides the empty evidence message from someone without the evidence', async () => {
+  it('hides the evidence markers of the old per-ticket chats', async () => {
     conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '' })];
     const { msg, el } = await render();
     expect(msg('ev')).toBeNull();

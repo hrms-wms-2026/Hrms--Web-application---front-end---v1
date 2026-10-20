@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { InboxApiService } from '../../data-access/inbox-api.service';
-import { InboxItemDto, InboxPersonCaseDto } from '../../models/inbox.dto';
+import { InboxCategory, InboxItemDto, InboxPersonCaseDto } from '../../models/inbox.dto';
 import { InboxPersonCasesStore } from '../../state/inbox-person-cases.store';
 import { localMonthBounds } from '../../utils/person-cases.util';
 import { PersonCasesViewComponent } from './person-cases-view.component';
@@ -20,9 +20,10 @@ describe('PersonCasesViewComponent', () => {
   beforeEach(() => vi.useFakeTimers({ now: new Date(2026, 9, 19, 10) }));
   afterEach(() => vi.useRealTimers());
 
-  async function render(cases: InboxPersonCaseDto[] = []) {
+  /** `alerts` come back for the alert category; requests are always empty. */
+  async function render(alerts: InboxPersonCaseDto[] = []) {
     const api = {
-      personCases: vi.fn(() => of(cases)),
+      personCases: vi.fn((_: string, category: InboxCategory) => of(category === 'alert' ? alerts : [])),
       personCaseMonths: vi.fn(() => of({ hireDate: '2025-06-01', months: [{ month: 4, count: 1 }] }))
     };
     TestBed.configureTestingModule({
@@ -30,8 +31,7 @@ describe('PersonCasesViewComponent', () => {
       providers: [InboxPersonCasesStore, { provide: InboxApiService, useValue: api }]
     });
     const store = TestBed.inject(InboxPersonCasesStore);
-    await store.load(item(), 'me');
-    await store.openView();
+    await store.load('e1', 'Bala', 'me');
     const fixture = TestBed.createComponent(PersonCasesViewComponent);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
@@ -39,24 +39,16 @@ describe('PersonCasesViewComponent', () => {
     return { fixture, el, store, api, q };
   }
 
-  it('heads the view with Back, the person, the category and the month', async () => {
+  it('heads the view with the person and this month - every type, no Back', async () => {
     const { q } = await render();
 
-    expect(q('pcv-back')).not.toBeNull();
+    expect(q('pcv-back')).toBeNull();
     expect(q('pcv-person').textContent!.trim()).toBe('Bala');
-    expect(q('pcv-category').textContent!.trim()).toBe('Alerts');
+    expect(q('pcv-category').textContent!.trim()).toBe('Requests and alerts');
     expect(q('pcv-month').textContent!.trim()).toBe('October 2026');
   });
 
-  it('Back closes the view', async () => {
-    const { q, store } = await render();
-
-    q('pcv-back').click();
-
-    expect(store.viewOpen()).toBe(false);
-  });
-
-  it('the previous arrow loads September; next is disabled in the current month', async () => {
+  it('the previous arrow loads September for both kinds; next is disabled in the current month', async () => {
     const { q, api } = await render();
 
     expect(q('pcv-next').disabled).toBe(true);
@@ -64,10 +56,11 @@ describe('PersonCasesViewComponent', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     const { from, to } = localMonthBounds(2026, 9);
-    expect(api.personCases).toHaveBeenLastCalledWith('e1', 'alert', from, to);
+    expect(api.personCases).toHaveBeenCalledWith('e1', 'alert', from, to);
+    expect(api.personCases).toHaveBeenCalledWith('e1', 'request', from, to);
   });
 
-  it('the month label opens the grid with red dots, and a pick loads that month', async () => {
+  it('the month label opens the grid with dots, and a pick loads that month', async () => {
     const { fixture, el, q, store } = await render();
 
     q('pcv-month').click();
@@ -89,6 +82,6 @@ describe('PersonCasesViewComponent', () => {
 
     TestBed.resetTestingModule();
     const empty = await render([]);
-    expect(empty.q('pcv-empty').textContent!.trim()).toBe('No other cases this month');
+    expect(empty.q('pcv-empty').textContent!.trim()).toBe('No cases this month');
   });
 });

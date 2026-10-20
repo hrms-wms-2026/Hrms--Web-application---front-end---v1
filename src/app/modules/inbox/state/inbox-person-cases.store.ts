@@ -1,27 +1,17 @@
-import { computed, inject } from '@angular/core';
-import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { inject } from '@angular/core';
+import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { InboxApiService } from '../data-access/inbox-api.service';
-import { InboxItemDto, InboxPersonCaseDto } from '../models/inbox.dto';
-import {
-  PERSON_CASE_SOURCES,
-  localMonthBounds,
-  localOffsetMinutes,
-  personCaseMonthOf,
-  orderPersonCases,
-  personCaseSubjectId,
-  redDotMonths
-} from '../utils/person-cases.util';
+import { InboxCategory, InboxPersonCaseDto, InboxPersonCaseMonthDto } from '../models/inbox.dto';
+import { localMonthBounds, localOffsetMinutes } from '../utils/person-cases.util';
 
-/** Rows the ticket details panel shows before "View all". */
-export const PERSON_CASES_COMPACT_LIMIT = 5;
+/** Both kinds of history: a person's requests and the alerts about them, together. */
+const CATEGORIES: readonly InboxCategory[] = ['request', 'alert'];
 
 interface PersonCasesState {
-  readonly current: InboxItemDto | null;
+  readonly personId: string | null;
+  readonly personName: string;
   readonly hidden: boolean;
-  readonly compact: readonly InboxPersonCaseDto[];
-  readonly compactLoading: boolean;
-  readonly viewOpen: boolean;
   readonly year: number;
   readonly month: number;
   readonly monthCases: readonly InboxPersonCaseDto[];
@@ -33,11 +23,9 @@ interface PersonCasesState {
 }
 
 const initialState: PersonCasesState = {
-  current: null,
+  personId: null,
+  personName: '',
   hidden: true,
-  compact: [],
-  compactLoading: false,
-  viewOpen: false,
   year: 0,
   month: 0,
   monthCases: [],
@@ -47,99 +35,89 @@ const initialState: PersonCasesState = {
   hireDate: null
 };
 
+/** Newest first. */
+function newestFirst(rows: InboxPersonCaseDto[]): InboxPersonCaseDto[] {
+  return [...rows].sort((a, b) => Date.parse(b.item.createdAt) - Date.parse(a.item.createdAt));
+}
+
+/** Months that hold any history, requests and alerts added together. */
+export function monthsWithHistory(lists: readonly (readonly InboxPersonCaseMonthDto[])[]): Set<number> {
+  const counts = new Map<number, number>();
+  for (const list of lists) for (const m of list) counts.set(m.month, (counts.get(m.month) ?? 0) + m.count);
+  return new Set([...counts].filter(([, count]) => count > 0).map(([month]) => month));
+}
+
 /**
- * The open ticket's "Past cases": the subject's other alerts (or requests) from the ticket's month, and the full
- * month-by-month view behind View all. Provided by the inbox page, one per page. Any failure (403 included: the caller
- * can't see the person) hides the section rather than showing an error.
+ * One person's cases, month by month, across every type (leave, attendance, face checks, exceptions, ...) - the details
+ * panel of their 1-on-1 chat. Provided by the inbox page. Any failure (403 included: the caller can't see the person)
+ * hides it rather than showing an error.
  */
 export const InboxPersonCasesStore = signalStore(
   withState(initialState),
-  withComputed((store) => ({
-    compactRows: computed(() => store.compact().slice(0, PERSON_CASES_COMPACT_LIMIT)),
-    moreCount: computed(() => store.compact().length > PERSON_CASES_COMPACT_LIMIT ? store.compact().length : 0)
-  })),
   withMethods((store) => {
     const api = inject(InboxApiService);
-    // Bumped on every load: responses for an older ticket (or an older month) are dropped.
-    let ticket = 0;
+    // Bumped on every load: responses for an older person (or an older month) are dropped.
+    let person = 0;
     let monthRequest = 0;
 
-    async function fetchMonth(current: InboxItemDto, year: number, month: number): Promise<InboxPersonCaseDto[]> {
+    async function fetchMonth(personId: string, year: number, month: number): Promise<InboxPersonCaseDto[]> {
       const { from, to } = localMonthBounds(year, month);
-      const rows = await firstValueFrom(api.personCases(personCaseSubjectId(current)!, current.category, from, to));
-      return orderPersonCases(rows, current);
+      const lists = await Promise.all(CATEGORIES.map((c) => firstValueFrom(api.personCases(personId, c, from, to))));
+      return newestFirst(lists.flat());
     }
 
-    async function fetchDots(current: InboxItemDto, year: number, mine: number): Promise<void> {
-      const result = await firstValueFrom(api.personCaseMonths(personCaseSubjectId(current)!, current.category, year, localOffsetMinutes()));
-      if (mine !== ticket) return;
-      patchState(store, { dots: redDotMonths(result.months, year, current), dotsYear: year, hireDate: result.hireDate });
+    async function fetchDots(personId: string, year: number, mine: number): Promise<void> {
+      const results = await Promise.all(CATEGORIES.map((c) => firstValueFrom(api.personCaseMonths(personId, c, year, localOffsetMinutes()))));
+      if (mine !== person) return;
+      patchState(store, { dots: monthsWithHistory(results.map((r) => r.months)), dotsYear: year, hireDate: results[0]?.hireDate ?? null });
     }
 
     function fail(mine: number): void {
-      if (mine === ticket) patchState(store, { hidden: true, viewOpen: false, compactLoading: false, monthLoading: false });
+      if (mine === person) patchState(store, { hidden: true, monthLoading: false });
     }
 
     return {
-      async load(current: InboxItemDto | null, selfEmployeeId: string | null): Promise<void> {
-        const mine = ++ticket;
-        const subject = current ? personCaseSubjectId(current) : null;
-        const hidden = !current || !PERSON_CASE_SOURCES.has(current.source) || !subject || subject === selfEmployeeId;
-        patchState(store, { ...initialState, current, hidden });
+      /** Shows this month of the person's history; hidden for the caller themself and for nobody. */
+      async load(personId: string | null, personName: string, selfEmployeeId: string | null, today: Date = new Date()): Promise<void> {
+        const mine = ++person;
+        const hidden = !personId || personId === selfEmployeeId;
+        const year = today.getFullYear();
+        const month = today.getMonth() + 1;
+        patchState(store, { ...initialState, personId, personName, hidden, year, month, monthLoading: !hidden });
         if (hidden) return;
-
-        const { year, month } = personCaseMonthOf(current);
-        patchState(store, { compactLoading: true, year, month });
         try {
-          const rows = await fetchMonth(current, year, month);
-          if (mine === ticket) patchState(store, { compact: rows, compactLoading: false });
+          const [rows] = await Promise.all([fetchMonth(personId!, year, month), fetchDots(personId!, year, mine)]);
+          if (mine === person) patchState(store, { monthCases: rows, monthLoading: false });
         } catch {
           fail(mine);
         }
       },
 
-      async openView(): Promise<void> {
-        const current = store.current();
-        if (!current || store.hidden()) return;
-        const { year, month } = personCaseMonthOf(current);
-        patchState(store, { viewOpen: true, year, month, monthCases: store.compact(), monthLoading: false });
-        const mine = ticket;
-        try {
-          await fetchDots(current, year, mine);
-        } catch {
-          fail(mine);
-        }
-      },
-
-      /** The month grid moved to another year: load that year's red dots; the shown month stays. */
+      /** The month grid moved to another year: load that year's dots; the shown month stays. */
       async browseYear(year: number): Promise<void> {
-        const current = store.current();
-        if (!current || store.hidden() || year === store.dotsYear()) return;
-        const mine = ticket;
+        const personId = store.personId();
+        if (!personId || store.hidden() || year === store.dotsYear()) return;
+        const mine = person;
         try {
-          await fetchDots(current, year, mine);
+          await fetchDots(personId, year, mine);
         } catch {
           fail(mine);
         }
-      },
-
-      closeView(): void {
-        patchState(store, { viewOpen: false });
       },
 
       async goToMonth(year: number, month: number): Promise<void> {
-        const current = store.current();
-        if (!current || store.hidden()) return;
-        const mine = ticket;
+        const personId = store.personId();
+        if (!personId || store.hidden()) return;
+        const mine = person;
         const request = ++monthRequest;
         const yearChanged = year !== store.dotsYear();
         patchState(store, { year, month, monthLoading: true });
         try {
           const [rows] = await Promise.all([
-            fetchMonth(current, year, month),
-            yearChanged ? fetchDots(current, year, mine) : Promise.resolve()
+            fetchMonth(personId, year, month),
+            yearChanged ? fetchDots(personId, year, mine) : Promise.resolve()
           ]);
-          if (mine === ticket && request === monthRequest) patchState(store, { monthCases: rows, monthLoading: false });
+          if (mine === person && request === monthRequest) patchState(store, { monthCases: rows, monthLoading: false });
         } catch {
           fail(mine);
         }
