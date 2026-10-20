@@ -4,34 +4,60 @@ import {
   DEFAULT_DASHBOARD_LAYOUT,
   DashboardCardKey,
   DashboardLayout,
+  dashboardCardSize,
   moveDashboardCard,
   resolveDashboardLayout,
   sanitizeDashboardLayout,
+  setDashboardCardSize,
   stepDashboardCard,
   toggleDashboardCard
 } from './dashboard-layout.util';
 
 const ALL = new Set<DashboardCardKey>(ALL_DASHBOARD_CARD_KEYS);
-/** A layout with every card ticked and My Team heading the columns, for the move / step rules. */
+/** A layout with every card ticked, for the move / step rules. */
 const LAYOUT: DashboardLayout = {
-  version: 1,
+  version: 2,
   top: [],
-  columns: [
-    ['teamStatus', 'todayAtAGlance', 'todaysSchedule'],
-    ['actionCenter', 'myTasks', 'notifications'],
-    ['teamProgress', 'quickActions', 'wellbeing']
+  grid: [
+    'teamStatus',
+    'todayAtAGlance',
+    'todaysSchedule',
+    'todayTotalTime',
+    'activeProjects',
+    'actionCenter',
+    'myTasks',
+    'notifications',
+    'teamProgress',
+    'quickActions',
+    'wellbeing'
   ],
   bottom: ['workPattern'],
-  hidden: []
+  hidden: [],
+  sizes: {}
 };
-const allKeys = (layout: DashboardLayout): DashboardCardKey[] =>
-  [...layout.top, ...layout.columns.flat(), ...layout.bottom].sort();
+const allKeys = (layout: DashboardLayout): DashboardCardKey[] => [...layout.top, ...layout.grid, ...layout.bottom].sort();
 
 describe('default layout', () => {
-  it("shows Good morning, Today's Schedule, Action Center, My Tasks, Quick Actions, Team Progress and Work Pattern", () => {
+  it('fills 4-column rows: Good morning (S), Action Center (L), Quick Actions (S); Schedule (L), Total time (S), Active projects (S)', () => {
     const shown = resolveDashboardLayout(DEFAULT_DASHBOARD_LAYOUT, ALL);
     expect(shown.top).toEqual([]);
-    expect(shown.columns).toEqual([['todayAtAGlance', 'todaysSchedule'], ['actionCenter', 'myTasks'], ['quickActions', 'teamProgress']]);
+    expect(shown.grid.slice(0, 7)).toEqual([
+      'todayAtAGlance',
+      'actionCenter',
+      'quickActions',
+      'todaysSchedule',
+      'todayTotalTime',
+      'activeProjects',
+      'myTasks'
+    ]);
+    expect(shown.grid.slice(0, 6).map((key) => dashboardCardSize(DEFAULT_DASHBOARD_LAYOUT, key))).toEqual([
+      'small',
+      'large',
+      'small',
+      'large',
+      'small',
+      'small'
+    ]);
     expect(shown.bottom).toEqual(['workPattern']);
     expect(DEFAULT_DASHBOARD_LAYOUT.hidden).toEqual(['teamStatus', 'notifications', 'wellbeing']);
     expect(allKeys(DEFAULT_DASHBOARD_LAYOUT)).toEqual([...ALL_DASHBOARD_CARD_KEYS].sort());
@@ -39,25 +65,28 @@ describe('default layout', () => {
 });
 
 describe('sanitizeDashboardLayout', () => {
-  it('falls back to the default for anything that is not a v1 layout', () => {
+  it('falls back to the default for anything that is not a v2 layout, including v1 column layouts', () => {
     expect(sanitizeDashboardLayout(null)).toBe(DEFAULT_DASHBOARD_LAYOUT);
-    expect(sanitizeDashboardLayout({ version: 2 })).toBe(DEFAULT_DASHBOARD_LAYOUT);
+    expect(sanitizeDashboardLayout({ version: 1, top: [], columns: [[], [], []], bottom: [], hidden: [] })).toBe(DEFAULT_DASHBOARD_LAYOUT);
     expect(sanitizeDashboardLayout('nope')).toBe(DEFAULT_DASHBOARD_LAYOUT);
   });
 
-  it('drops unknown keys and duplicates, keeps cards wherever they were put, and re-homes missing ones', () => {
+  it('drops unknown keys, duplicates and bad sizes, keeps cards wherever they were put, and re-homes missing ones', () => {
     const layout = sanitizeDashboardLayout({
-      version: 1,
+      version: 2,
       top: ['myTasks', 'bogus'],
-      columns: [['workPattern', 'wellbeing'], ['wellbeing', 'notifications'], []],
+      grid: ['workPattern', 'wellbeing', 'wellbeing'],
       bottom: [],
-      hidden: ['notifications', 'notifications', 'bogus']
+      hidden: ['notifications', 'notifications', 'bogus'],
+      sizes: { quickActions: 'large', myTasks: 'huge', bogus: 'small' }
     });
     expect(layout.top).toEqual(['myTasks']);
-    expect(layout.columns[0]).toEqual(['todayAtAGlance', 'todaysSchedule', 'workPattern', 'wellbeing', 'teamStatus']);
-    expect(layout.columns[1]).not.toContain('wellbeing');
-    expect(layout.bottom).not.toContain('workPattern');
+    expect(layout.grid[0]).toBe('todayAtAGlance');
+    expect(layout.grid.indexOf('workPattern')).toBeLessThan(layout.grid.indexOf('wellbeing'));
+    expect(layout.grid).toContain('activeProjects');
+    expect(layout.bottom).toEqual([]);
     expect(layout.hidden).toEqual(['notifications']);
+    expect(layout.sizes).toEqual({ quickActions: 'large' });
     expect(allKeys(layout)).toEqual([...ALL_DASHBOARD_CARD_KEYS].sort());
   });
 });
@@ -67,10 +96,9 @@ describe('resolveDashboardLayout', () => {
     const layout = toggleDashboardCard(LAYOUT, 'wellbeing');
     const dayOnly = new Set(ALL_DASHBOARD_CARD_KEYS.filter((k) => !['teamStatus', 'actionCenter', 'teamProgress'].includes(k)));
     const resolved = resolveDashboardLayout(layout, dayOnly);
-    expect(resolved.top).toEqual([]);
-    expect(resolved.columns).toEqual([['todayAtAGlance', 'todaysSchedule'], ['myTasks', 'notifications'], ['quickActions']]);
-    expect(layout.columns[0]).toContain('teamStatus');
-    expect(resolveDashboardLayout(layout, dayOnly, true).columns[2]).toEqual(['quickActions', 'wellbeing']);
+    expect(resolved.grid).toEqual(['todayAtAGlance', 'todaysSchedule', 'todayTotalTime', 'activeProjects', 'myTasks', 'notifications', 'quickActions']);
+    expect(layout.grid).toContain('teamStatus');
+    expect(resolveDashboardLayout(layout, dayOnly, true).grid.at(-1)).toBe('wellbeing');
   });
 });
 
@@ -80,60 +108,57 @@ describe('toggleDashboardCard', () => {
     expect(off.hidden).toEqual(['myTasks']);
     const on = toggleDashboardCard(off, 'myTasks');
     expect(on.hidden).toEqual([]);
-    expect(on.columns[1]).toEqual(LAYOUT.columns[1]);
+    expect(on.grid).toEqual(LAYOUT.grid);
+  });
+});
+
+describe('setDashboardCardSize', () => {
+  it('stores only sizes that differ from the default', () => {
+    const large = setDashboardCardSize(LAYOUT, 'quickActions', 'large');
+    expect(dashboardCardSize(large, 'quickActions')).toBe('large');
+    expect(large.sizes).toEqual({ quickActions: 'large' });
+    const back = setDashboardCardSize(large, 'quickActions', 'small');
+    expect(back.sizes).toEqual({});
+    expect(dashboardCardSize(back, 'actionCenter')).toBe('large');
   });
 });
 
 describe('moveDashboardCard', () => {
-  it('moves a card into another column at the dropped position', () => {
-    const moved = moveDashboardCard(LAYOUT, 'wellbeing', 'col0', 1);
-    expect(moved.columns[0]).toEqual(['teamStatus', 'wellbeing', 'todayAtAGlance', 'todaysSchedule']);
-    expect(moved.columns[2]).toEqual(['teamProgress', 'quickActions']);
-  });
-
-  it('reorders within a column', () => {
-    const moved = moveDashboardCard(LAYOUT, 'teamStatus', 'col0', 2);
-    expect(moved.columns[0]).toEqual(['todayAtAGlance', 'todaysSchedule', 'teamStatus']);
+  it('reorders within the grid at the dropped position', () => {
+    const moved = moveDashboardCard(LAYOUT, 'wellbeing', 'grid', 1);
+    expect(moved.grid.slice(0, 3)).toEqual(['teamStatus', 'wellbeing', 'todayAtAGlance']);
+    expect(moved.grid).toHaveLength(LAYOUT.grid.length);
   });
 
   it('counts the drop position among visible cards only, keeping invisible ones in place', () => {
     const notTeam = (k: DashboardCardKey) => k !== 'teamStatus';
-    const moved = moveDashboardCard(LAYOUT, 'myTasks', 'col0', 0, notTeam);
-    expect(moved.columns[0]).toEqual(['teamStatus', 'myTasks', 'todayAtAGlance', 'todaysSchedule']);
+    const moved = moveDashboardCard(LAYOUT, 'myTasks', 'grid', 0, notTeam);
+    expect(moved.grid.slice(0, 3)).toEqual(['teamStatus', 'myTasks', 'todayAtAGlance']);
   });
 
-  it('puts any card anywhere: a full-width card into a column, a column card into a full-width row', () => {
-    const intoColumn = moveDashboardCard(LAYOUT, 'workPattern', 'col1', 0);
-    expect(intoColumn.columns[1][0]).toBe('workPattern');
-    expect(intoColumn.bottom).toEqual([]);
+  it('puts any card anywhere: a full-width card into the grid, a grid card into a full-width row', () => {
+    const intoGrid = moveDashboardCard(LAYOUT, 'workPattern', 'grid', 0);
+    expect(intoGrid.grid[0]).toBe('workPattern');
+    expect(intoGrid.bottom).toEqual([]);
     const intoRow = moveDashboardCard(LAYOUT, 'myTasks', 'top', 0);
     expect(intoRow.top).toEqual(['myTasks']);
-    expect(intoRow.columns[1]).not.toContain('myTasks');
-    expect(moveDashboardCard(LAYOUT, 'workPattern', 'top', 0).top).toEqual(['workPattern']);
+    expect(intoRow.grid).not.toContain('myTasks');
   });
 });
 
 describe('stepDashboardCard', () => {
-  it('moves up and down within a column', () => {
+  it('moves forward and back in reading order within the grid', () => {
     const down = stepDashboardCard(LAYOUT, 'teamStatus', 1);
-    expect(down.columns[0]).toEqual(['todayAtAGlance', 'teamStatus', 'todaysSchedule']);
-    expect(stepDashboardCard(down, 'teamStatus', -1).columns[0]).toEqual(LAYOUT.columns[0]);
+    expect(down.grid.slice(0, 2)).toEqual(['todayAtAGlance', 'teamStatus']);
+    expect(stepDashboardCard(down, 'teamStatus', -1).grid).toEqual(LAYOUT.grid);
   });
 
-  it('crosses into the neighbouring column at the ends, as the stacked phone layout reads', () => {
-    const up = stepDashboardCard(LAYOUT, 'actionCenter', -1);
-    expect(up.columns[0]).toEqual(['teamStatus', 'todayAtAGlance', 'todaysSchedule', 'actionCenter']);
-    const down = stepDashboardCard(LAYOUT, 'notifications', 1);
-    expect(down.columns[2][0]).toBe('notifications');
-    expect(stepDashboardCard(LAYOUT, 'teamStatus', -1).top).toEqual(['teamStatus']);
-  });
-
-  it('walks every zone in one sequence: top row, columns 1-3, bottom row', () => {
+  it('walks every zone in one sequence: top row, grid, bottom row', () => {
     const up = stepDashboardCard(LAYOUT, 'teamStatus', -1);
     expect(up.top).toEqual(['teamStatus']);
     const back = stepDashboardCard(up, 'teamStatus', 1);
     expect(back.top).toEqual([]);
-    expect(back.columns[0][0]).toBe('teamStatus');
+    expect(back.grid[0]).toBe('teamStatus');
     const intoBottom = stepDashboardCard(LAYOUT, 'wellbeing', 1);
     expect(intoBottom.bottom).toEqual(['wellbeing', 'workPattern']);
     expect(stepDashboardCard(LAYOUT, 'workPattern', 1)).toBe(LAYOUT);

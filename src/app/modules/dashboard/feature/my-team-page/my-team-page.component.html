@@ -1,0 +1,37 @@
+<div class="flex flex-col gap-3" data-testid="my-team-page">
+  <div class="grid grid-cols-1 gap-3 xl:grid-cols-3 xl:items-start">
+    <div class="flex flex-col gap-3 xl:col-span-2" data-testid="my-team-main">
+      @if (!loaded()) {
+        <div class="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white">
+          <app-loader label="Loading your team" />
+        </div>
+      } @else if (hasTeamCards()) {
+        @if (shows('teamStatus')) {
+          <app-team-status-card id="my-team-widget-teamStatus" class="block scroll-mt-4" />
+        } @else {
+          <!-- No Team Status for this viewer: Team Progress takes the wide column instead. -->
+          <app-team-progress-card id="my-team-widget-teamProgress" class="block scroll-mt-4" />
+        }
+      } @else if (error()) {
+        <app-empty-state title="Couldn't load your team" [description]="error() ?? ''">
+          <button type="button" class="mt-2 text-sm font-semibold text-blue-600 hover:underline" data-testid="my-team-retry" (click)="retry()">
+            Try again
+          </button>
+        </app-empty-state>
+      } @else {
+        <app-empty-state
+          data-testid="my-team-empty"
+          title="No team to show yet"
+          description="Team cards appear here once you lead a team or lead work."
+        />
+      }
+    </div>
+
+    <div class="flex flex-col gap-3" data-testid="my-team-side">
+      <app-quick-actions-card [onTeamDashboard]="true" />
+      @if (loaded() && shows('teamStatus') && shows('teamProgress')) {
+        <app-team-progress-card id="my-team-widget-teamProgress" class="block scroll-mt-4" />
+      }
+    </div>
+  </div>
+</div>

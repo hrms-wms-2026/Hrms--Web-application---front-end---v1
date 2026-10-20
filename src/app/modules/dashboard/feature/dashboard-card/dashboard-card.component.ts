@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { DashboardCardKey } from '../../utils/dashboard-layout.util';
+import { ActiveProjectsCardComponent } from '../active-projects-card/active-projects-card.component';
 import { ActionCenterCardComponent } from '../action-center-card/action-center-card.component';
 import { DashboardNotificationsCardComponent } from '../dashboard-notifications-card/dashboard-notifications-card.component';
 import { MyTasksCardComponent } from '../my-tasks-card/my-tasks-card.component';
@@ -7,6 +8,7 @@ import { QuickActionsCardComponent } from '../quick-actions-card/quick-actions-c
 import { TeamProgressCardComponent } from '../team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../team-status-card/team-status-card.component';
 import { TodayAtAGlanceCardComponent } from '../today-at-a-glance-card/today-at-a-glance-card.component';
+import { TodayTotalTimeCardComponent } from '../today-total-time-card/today-total-time-card.component';
 import { TodaysScheduleCardComponent } from '../todays-schedule-card/todays-schedule-card.component';
 import { WellbeingCarouselCardComponent } from '../wellbeing-carousel-card/wellbeing-carousel-card.component';
 import { WorkPatternCardComponent } from '../work-pattern-card/work-pattern-card.component';
@@ -19,6 +21,8 @@ import { WorkPatternCardComponent } from '../work-pattern-card/work-pattern-card
   imports: [
     TodayAtAGlanceCardComponent,
     TodaysScheduleCardComponent,
+    TodayTotalTimeCardComponent,
+    ActiveProjectsCardComponent,
     MyTasksCardComponent,
     DashboardNotificationsCardComponent,
     QuickActionsCardComponent,
@@ -32,6 +36,8 @@ import { WorkPatternCardComponent } from '../work-pattern-card/work-pattern-card
     @switch (key()) {
       @case ('todayAtAGlance') { <app-today-at-a-glance-card /> }
       @case ('todaysSchedule') { <app-todays-schedule-card /> }
+      @case ('todayTotalTime') { <app-today-total-time-card /> }
+      @case ('activeProjects') { <app-active-projects-card /> }
       @case ('myTasks') { <app-my-tasks-card /> }
       @case ('notifications') { <app-dashboard-notifications-card /> }
       @case ('quickActions') { <app-quick-actions-card /> }

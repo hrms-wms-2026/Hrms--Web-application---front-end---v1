@@ -1,3 +1,15 @@
+/* Wide screens: every grid row is half the visible dashboard area, so the first two rows - 6 cards
+   by default - fill the screen exactly, and cards stretch to their row and scroll inside.
+   --dashboard-viewport-h is the scroll area's height without its padding, measured by the component
+   (DashboardHomeComponent.trackViewportHeight); 0.75rem is the gap between the two rows. Short
+   screens keep a usable minimum and scroll. */
+@media (min-width: 80rem) {
+  .dashboard-grid {
+    align-items: stretch;
+    grid-auto-rows: max(20rem, calc((var(--dashboard-viewport-h, 100svh) - 0.75rem) / 2));
+  }
+}
+
 .dashboard-edit-btn {
   border-radius: 8px;
   border: 1px solid #e2e8f0;
@@ -43,6 +55,64 @@
 
 .dashboard-drop-zone--band {
   min-height: 3.5rem;
+}
+
+/* The grid in Customize mirrors the live one: 4 columns (2 on narrower screens), Large tiles span 2. */
+.dashboard-drop-zone--grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+@media (min-width: 80rem) {
+  .dashboard-drop-zone--grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dashboard-tile--large {
+  grid-column: span 2;
+}
+
+.dashboard-drop-zone--grid .dashboard-drop-hint {
+  grid-column: 1 / -1;
+}
+
+.dashboard-size {
+  display: inline-flex;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.dashboard-size__btn {
+  width: 22px;
+  height: 22px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-size__btn + .dashboard-size__btn {
+  border-left: 1px solid #e2e8f0;
+}
+
+.dashboard-size__btn:hover {
+  background: #f1f5f9;
+}
+
+.dashboard-size__btn--active,
+.dashboard-size__btn--active:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.dashboard-size__btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
 }
 
 .dashboard-drop-zone.cdk-drop-list-dragging,

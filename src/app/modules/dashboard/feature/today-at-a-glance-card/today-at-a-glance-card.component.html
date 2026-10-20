@@ -43,7 +43,7 @@
 
       @if (today(); as data) {
         <!-- Status Cards (On Break & Worked Time) -->
-        <div class="mt-4 grid grid-cols-2 gap-2.5">
+        <div class="mt-3 grid grid-cols-1 gap-2.5 @xs:grid-cols-2">
           <!-- Attendance Status Box -->
           <div class="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-white/90 p-3 shadow-xs backdrop-blur-xs">
             @if (data.attendanceStatus === 'clocked_in' || data.attendanceStatus === 'on_break') {
@@ -90,7 +90,7 @@
           </div>
         </div>
       } @else if (loading()) {
-        <div class="mt-4 grid grid-cols-2 gap-2.5 animate-pulse" data-testid="today-at-a-glance-skeleton">
+        <div class="mt-3 grid grid-cols-1 gap-2.5 @xs:grid-cols-2 animate-pulse" data-testid="today-at-a-glance-skeleton">
           <div class="h-16 rounded-xl bg-slate-100"></div>
           <div class="h-16 rounded-xl bg-slate-100"></div>
         </div>
@@ -141,7 +141,7 @@
           </div>
 
           <!-- Activity Legends with colored dots -->
-          <div class="mt-2.5 flex items-center justify-between gap-1 pt-1 text-[10px] font-medium text-slate-600">
+          <div class="mt-2.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1 text-[10px] font-medium text-slate-600">
             <span class="inline-flex items-center gap-1">
               <span class="h-2 w-2 rounded-full" [style.background-color]="segmentColor('working')"></span> Working
             </span>

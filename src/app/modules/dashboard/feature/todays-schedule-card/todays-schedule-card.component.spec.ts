@@ -59,25 +59,27 @@ describe('TodaysScheduleCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="todays-schedule-empty"]')).not.toBeNull();
   });
 
-  it('highlights the nearest upcoming event as Next up', async () => {
-    const now = new Date();
-    const soon = new Date(now.getTime() + 30 * 60_000).toISOString();
-    const later = new Date(now.getTime() + 90 * 60_000).toISOString();
-    const past = new Date(now.getTime() - 60 * 60_000).toISOString();
-
+  it('lists events in time order with Completed / In Progress / Upcoming chips', async () => {
+    const at = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString();
     const { fixture } = await setup({
       events: [
-        event({ id: 'past', title: 'Past standup', startDate: past, endDate: past }),
-        event({ id: 'later', title: 'Later review', startDate: later, endDate: later }),
-        event({ id: 'soon', title: 'Soon sync', startDate: soon, endDate: soon })
+        event({ id: 'later', title: 'Later review', startDate: at(90), endDate: at(120), description: 'Review PR' }),
+        event({ id: 'past', title: 'Past standup', startDate: at(-120), endDate: at(-90) }),
+        event({ id: 'now', title: 'Running sync', startDate: at(-10), endDate: at(20) })
       ]
     });
 
-    const nextUp: HTMLElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-next-up"]');
-    expect(nextUp.textContent).toContain('Soon sync');
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="todays-schedule-item"]'));
+    expect(rows.map((r) => r.dataset['status'])).toEqual(['completed', 'inProgress', 'upcoming']);
+    expect(rows.map((r) => r.querySelector('[data-testid="todays-schedule-status"]')!.textContent!.trim())).toEqual([
+      'Completed',
+      'In Progress',
+      'Upcoming'
+    ]);
+    expect(rows[2].textContent).toContain('Review PR');
   });
 
-  it('limits the agenda list to 4 items', async () => {
+  it('limits the agenda list to 5 items', async () => {
     const now = new Date();
     const events = Array.from({ length: 6 }, (_, i) =>
       event({
@@ -90,7 +92,7 @@ describe('TodaysScheduleCardComponent', () => {
 
     const { fixture } = await setup({ events });
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="todays-schedule-item"]');
-    expect(rows.length).toBeLessThanOrEqual(4);
+    expect(rows.length).toBe(5);
   });
 
   it('falls back to an empty list when the request fails', async () => {
@@ -98,13 +100,13 @@ describe('TodaysScheduleCardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No events scheduled today');
   });
 
-  it('links "View schedule" to /calendar', async () => {
+  it('links "View Calendar" to /calendar', async () => {
     const { fixture } = await setup();
     const link: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-view-link"]');
     expect(link.getAttribute('href')).toBe('/calendar');
   });
 
-  it('renders Start Meeting button when user is the organizer of the next event with a meeting link', async () => {
+  it('renders Start Meeting button when user is the organizer of an event with a meeting link', async () => {
     const now = new Date();
     const soon = new Date(now.getTime() + 30 * 60_000).toISOString();
     const { fixture } = await setup({
@@ -120,13 +122,14 @@ describe('TodaysScheduleCardComponent', () => {
       ]
     });
 
-    const btn: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-next-meeting-btn"]');
+    const btn: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-meeting-btn"]');
     expect(btn).not.toBeNull();
-    expect(btn.textContent).toContain('Start Zoom Meeting');
+    expect(btn.textContent!.trim()).toBe('Start');
+    expect(btn.title).toBe('Start Zoom Meeting');
     expect(btn.getAttribute('href')).toBe('https://us05web.zoom.us/j/81793600600');
   });
 
-  it('renders Join Meeting button when user is a participant of the next event with a meeting link', async () => {
+  it('renders Join Meeting button when user is a participant of an event with a meeting link', async () => {
     const now = new Date();
     const soon = new Date(now.getTime() + 30 * 60_000).toISOString();
     const { fixture } = await setup({
@@ -142,9 +145,10 @@ describe('TodaysScheduleCardComponent', () => {
       ]
     });
 
-    const btn: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-next-meeting-btn"]');
+    const btn: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-meeting-btn"]');
     expect(btn).not.toBeNull();
-    expect(btn.textContent).toContain('Join Teams Meeting');
+    expect(btn.textContent!.trim()).toBe('Join');
+    expect(btn.title).toBe('Join Teams Meeting');
     expect(btn.getAttribute('href')).toBe('https://teams.microsoft.com/l/meetup-join/123');
   });
 });
