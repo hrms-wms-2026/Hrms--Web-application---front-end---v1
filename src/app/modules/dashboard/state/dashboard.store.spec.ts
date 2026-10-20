@@ -274,6 +274,38 @@ describe('DashboardStore', () => {
     expect(notifications.error).not.toHaveBeenCalledWith('Could not save the dashboard.');
   });
 
+  it('keeps the saved layout on screen while reloading and after a failed reload', async () => {
+    const { store, api } = await loaded();
+    api.saveLayout.mockReturnValue(of({ layoutVersion: 4 }));
+    store.startEditing();
+    store.move('i-b', 0, 3);
+    const savedLayout = store.draft().map(w => ({ id: w.instanceId, layout: w.layout }));
+    const gate = new Subject<DashboardBootstrap>();
+    api.bootstrap.mockReturnValue(gate);
+    const pending = store.save();
+    await Promise.resolve();
+    await Promise.resolve();
+    const snapshot = () => store.widgets().map(w => ({ id: w.instanceId, layout: w.layout }));
+    expect(store.editing()).toBe(false);
+    expect(snapshot()).toEqual(savedLayout);
+    gate.error(new HttpErrorResponse({ status: 500 }));
+    await pending;
+    expect(snapshot()).toEqual(savedLayout);
+    expect(store.bootstrap()?.layoutVersion).toBe(4);
+  });
+
+  it('a stale refresh failure does not set error after a newer refresh succeeded', async () => {
+    const { store, api } = await loaded();
+    const slow = new Subject<DashboardBootstrap>();
+    api.bootstrap.mockReturnValueOnce(slow).mockReturnValueOnce(of(bootstrapOf([widget('m', 'a', 0, 0, 4, 2)], 5, 'mobile')));
+    const first = store.setBreakpoint('tablet');
+    await store.setBreakpoint('mobile');
+    slow.error(new HttpErrorResponse({ status: 500 }));
+    await first;
+    expect(store.error()).toBeNull();
+    expect(store.bootstrap()?.grid.breakpoint).toBe('mobile');
+  });
+
   it('load failure sets error', async () => {
     const { store, api } = setup();
     api.listMine.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));

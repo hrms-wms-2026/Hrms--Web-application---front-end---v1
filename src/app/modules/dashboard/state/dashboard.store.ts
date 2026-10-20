@@ -171,7 +171,10 @@ export class DashboardStore {
         mutated = true;
       }
       const items = draft.map(d => ({ instanceId: realIds.get(d.instanceId) ?? d.instanceId, ...d.layout }));
-      await firstValueFrom(this.api.saveLayout(id, bp, version, items));
+      const put = await firstValueFrom(this.api.saveLayout(id, bp, version, items));
+      // Show the saved layout right away; the reload below only refreshes data and server-side details.
+      const committed = draft.map(d => ({ ...d, instanceId: realIds.get(d.instanceId) ?? d.instanceId }));
+      this.bootstrap.update(b => (b ? { ...b, layoutVersion: put.layoutVersion, widgets: committed } : b));
       this.exitEditing();
       await this.reloadAfterSuccess('Saved, but could not reload the dashboard.');
     } catch (err) {
@@ -248,10 +251,17 @@ export class DashboardStore {
     const token = ++this.refreshSeq;
     const id = this.dashboardId!;
     const bp = this.currentBreakpoint;
-    const [boot, available] = await Promise.all([
-      firstValueFrom(this.api.bootstrap(id, bp)),
-      firstValueFrom(this.api.available(id, bp))
-    ]);
+    let boot: DashboardBootstrap;
+    let available: AvailableWidget[];
+    try {
+      [boot, available] = await Promise.all([
+        firstValueFrom(this.api.bootstrap(id, bp)),
+        firstValueFrom(this.api.available(id, bp))
+      ]);
+    } catch (err) {
+      if (token !== this.refreshSeq) return; // a newer refresh superseded this one; its failure is irrelevant
+      throw err;
+    }
     if (token !== this.refreshSeq) return;
     this.bootstrap.set(boot);
     this.serverAvailable.set(available);
