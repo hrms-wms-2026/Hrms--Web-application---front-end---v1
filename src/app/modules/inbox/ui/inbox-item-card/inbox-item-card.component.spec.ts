@@ -128,15 +128,31 @@ describe('InboxItemCardComponent', () => {
     expect((el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('shows an alert explanation with its details and no decision buttons', () => {
+  it('shows an alert without an Additional information block and no decision buttons', () => {
     const { el } = render(detail(
       { changeSet: [], editablePayloadJson: null, explanation: 'Over capacity by 40h', explanationDetails: { allocatedHours: '100', requiredHours: '140' } },
       { category: 'alert', kind: 'monitor_alert', actionType: 'monitor.module_over_capacity', status: 'open', direction: 'info', severity: 'high',
         availableActions: [{ key: 'open_target', label: 'Open', tone: 'neutral', needsComment: false, needsPayload: false }] }));
 
     expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Module over capacity');
-    expect(el.querySelector('[data-testid="inbox-card-details"]')?.textContent).toContain('140');
+    expect(el.querySelector('[data-testid="inbox-card-details"]')).toBeNull();
+    expect(el.textContent).not.toContain('Additional information');
     expect(el.querySelector('[data-testid^="inbox-action-"]')).toBeNull();
+  });
+
+  it('renders no per-kind Additional information block; only the exception evidence keeps its slot', () => {
+    const descriptor = (detailRenderer: string) =>
+      ({ source: 'attendance', kind: 'alert', label: 'Attendance alert', category: 'alert', capabilities: 0, detailRenderer });
+    const alert = detail({ changeSet: [], editablePayloadJson: null, explanation: null, explanationDetails: null },
+      { category: 'alert', kind: 'alert', status: 'open', direction: 'received' });
+
+    const attendance = render(alert, { descriptor: descriptor('attendance-alert') }).el;
+    expect(attendance.querySelector('[data-testid="inbox-card-renderer"]')).toBeNull();
+    expect(attendance.textContent).not.toContain('Additional information');
+
+    TestBed.resetTestingModule();
+    const evidence = render(alert, { descriptor: descriptor('exception-evidence') }).el;
+    expect(evidence.querySelector('[data-testid="inbox-card-renderer"]')).not.toBeNull();
   });
 
   it('shows the action error', () => {

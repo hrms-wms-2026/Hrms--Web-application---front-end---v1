@@ -132,24 +132,26 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
     expect(el.querySelector('[data-testid="inbox-card-action-error"]')).toBeNull();
   });
 
-  it('renders the kind detail renderer with the parsed extra payload, else the default view', () => {
+  it('passes the parsed extra payload to the exception evidence; no other kind renders an Additional information block', () => {
     @Component({ selector: 'app-test-renderer', standalone: true, template: `<p data-testid="test-renderer">{{ extra()?.['balance'] }}</p>` })
     class TestRendererComponent {
       extra = input<Record<string, unknown> | null>(null);
       detail = input<InboxItemDetailDto | null>(null);
     }
     const descriptor: InboxKindDescriptorDto = {
-      source: 'leave', kind: 'request', label: 'Leave request', category: 'request', capabilities: 0, detailRenderer: 'attendance-correction'
+      source: 'monitoring', kind: 'exception_case', label: 'Exception case', category: 'alert', capabilities: 0, detailRenderer: 'exception-evidence'
     };
     const withExtra = detail({ extraJson: '{"balance":"12h"}' });
+    const renderers = { 'exception-evidence': TestRendererComponent, 'attendance-correction': TestRendererComponent };
 
-    const { el } = render(withExtra, { descriptor }, { 'attendance-correction': TestRendererComponent });
+    const { el } = render(withExtra, { descriptor }, renderers);
     expect(el.querySelector('[data-testid="test-renderer"]')?.textContent).toContain('12h');
-    expect(el.querySelector('[data-testid="inbox-card-renderer"]')?.textContent).toContain('Additional information');
+    expect(el.textContent).not.toContain('Additional information');
 
     TestBed.resetTestingModule();
-    const fallback = render(withExtra, { descriptor: { ...descriptor, detailRenderer: 'unknown' } }).el;
-    expect(fallback.querySelector('[data-testid="inbox-card-renderer"]')).toBeNull();
+    const correction = render(withExtra, { descriptor: { ...descriptor, detailRenderer: 'attendance-correction' } }, renderers).el;
+    expect(correction.querySelector('[data-testid="inbox-card-renderer"]')).toBeNull();
+    expect(correction.textContent).not.toContain('Additional information');
   });
 
   // ---- FL: leave ---------------------------------------------------------------------------------

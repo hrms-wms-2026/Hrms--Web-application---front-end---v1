@@ -1,4 +1,4 @@
-import { DatePipe, KeyValuePipe, NgComponentOutlet } from '@angular/common';
+import { DatePipe, NgComponentOutlet } from '@angular/common';
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
@@ -33,15 +33,14 @@ export interface InboxCardAction {
 /** "Open" is navigation, not a server action - it is the card's target link. */
 const NAVIGATION_ACTIONS = new Set(['open_target']);
 
-/** The Ticket details panel of one inbox item: summary, details, steps, additional information (the kind's detail
- *  renderer), changes, a collapsible explanation and the action bar at the bottom. Built only from the item's
+/** The Ticket details panel of one inbox item: summary, details, steps, a monitoring exception's evidence, changes, a collapsible explanation and the action bar at the bottom. Built only from the item's
  *  AvailableActions and the kind descriptor, so a viewer without a decision sees no buttons and nothing editable;
  *  each action key opens its standard dialog. */
 @Component({
   selector: 'app-inbox-item-card',
   standalone: true,
   imports: [
-    DatePipe, KeyValuePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent, TicketParticipantsComponent, PersonCasesSectionComponent,
+    DatePipe, NgComponentOutlet, AvatarComponent, ConfirmModalComponent, TicketParticipantsComponent, PersonCasesSectionComponent,
     InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxOutcomeDialogComponent,
     InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent, LeaveCancelConfirmDialogComponent
   ],
@@ -105,21 +104,11 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
             </button>
           }
 
-          @if (descriptor()?.detailRenderer === 'leave-request') {
-            <!-- Leave: dates, hours and reason already show in the conversation card. -->
-          } @else if (renderer(); as r) {
+          <!-- No "Additional information" block on any ticket: the facts above and the conversation carry it. Only a
+               monitoring exception keeps its activity evidence here (no heading). -->
+          @if (evidenceRenderer(); as r) {
             <section class="card__section" data-testid="inbox-card-renderer">
-              @if (descriptor()?.detailRenderer !== 'exception-evidence') { <h4 class="card__label">Additional information</h4> }
               <ng-container *ngComponentOutlet="r; inputs: { extra: extra(), detail: d }" />
-            </section>
-          } @else if (d.explanationDetails; as details) {
-            <section class="card__section">
-              <h4 class="card__label">Additional information</h4>
-              <dl class="card__rows" data-testid="inbox-card-details">
-                @for (entry of details | keyvalue; track entry.key) {
-                  <div class="card__row"><dt>{{ humanize(entry.key) }}</dt><dd>{{ entry.value }}</dd></div>
-                }
-              </dl>
             </section>
           }
 
@@ -304,7 +293,9 @@ export class InboxItemCardComponent {
     return !!d && this.actions().some((a) => a.key === 'approve') && d.changeSet.some((c) => c.editable)
       && (!!d.editablePayloadJson || hasCapability(this.descriptor(), InboxCapability.EditBeforeApprove));
   });
-  protected readonly renderer = computed(() => this.renderers.resolve(this.descriptor()?.detailRenderer));
+  protected readonly evidenceRenderer = computed(() => this.descriptor()?.detailRenderer === 'exception-evidence'
+    ? this.renderers.resolve('exception-evidence')
+    : null);
   protected readonly extra = computed(() => parseExtra(this.detail()?.extraJson));
   protected readonly outcomes = computed(() => this.dialog()?.action.key === 'change_decision'
     ? ['approve', 'reject']
@@ -408,10 +399,5 @@ export class InboxItemCardComponent {
   protected onRevertConfirmed(): void {
     this.revertOpen.set(false);
     this.action.emit({ key: 'revert', body: {} });
-  }
-
-  protected humanize(key: string): string {
-    const words = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toLowerCase();
-    return words.charAt(0).toUpperCase() + words.slice(1);
   }
 }
