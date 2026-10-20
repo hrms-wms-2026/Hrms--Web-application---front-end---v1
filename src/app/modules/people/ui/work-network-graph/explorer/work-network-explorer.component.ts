@@ -34,6 +34,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
   standalone: true,
   imports: [WorkNetworkExplorerCanvasComponent, WorkNetworkDetailPanelComponent],
   template: `
+    @if (showHeader()) {
     <header class="wge-head">
       <div class="wge-title">
         <h2 id="work-network-dialog-title">{{ heading() }}</h2>
@@ -91,6 +92,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
         }
       </div>
     </header>
+    }
 
     <div class="wge-body">
       <div class="wge-stage">
@@ -222,6 +224,8 @@ export class WorkNetworkExplorerComponent {
   readonly revealSprintsOnHover = input(false);
   /** False hides the built-in details panel, for a host that shows its own card via lockChanged. */
   readonly showDetailPanel = input(true);
+  /** False drops the header (title, search, fit/reset/zoom); the minimap keeps zoom controls. */
+  readonly showHeader = input(true);
 
   readonly closed = output<void>();
   /** A project, module or task to open in Work Management. */

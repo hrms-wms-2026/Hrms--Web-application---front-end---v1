@@ -58,9 +58,8 @@ const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
         [alertNodeIds]="alertNodeIds()"
         [showClose]="false"
         [showDetailPanel]="false"
+        [showHeader]="false"
         [legend]="legend"
-        heading="Project Network"
-        description="Modules, sprints and tasks of this project. Hover a module to see its sprints and tasks, hover a sprint for its tasks, click to explore. Drag to move, scroll to zoom."
         (lockChanged)="onLockChanged($event)"
         (navigate)="nodeSelected.emit($event)"
       />

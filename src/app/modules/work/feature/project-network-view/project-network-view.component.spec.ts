@@ -182,6 +182,15 @@ describe('ProjectNetworkViewComponent', () => {
     expect(el.querySelector('[data-testid="work-network-panel"]')).toBeNull();
   });
 
+  it('drops the explorer header: no title, search or fit/reset/zoom buttons', () => {
+    const { el } = setup();
+
+    expect(el.querySelector('.wge-head')).toBeNull();
+    expect(el.querySelector('[data-testid="work-network-search"]')).toBeNull();
+    expect(el.querySelector('[data-testid="work-network-fit"]')).toBeNull();
+    expect(el.querySelector('[data-testid="work-network-reset"]')).toBeNull();
+  });
+
   it('does not emit when a click releases the selection', () => {
     const { fixture, el, cmp } = setup();
     const selected: string[] = [];
