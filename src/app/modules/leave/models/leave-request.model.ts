@@ -42,6 +42,7 @@ export interface LeaveRequestResponse {
   totalHours: number;
   paidHours: number;
   unpaidHours: number;
+  exceedsBalanceByHours?: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   noticePeriodMissed: boolean;
   submittedOnBehalfOfBy: string | null;
@@ -62,6 +63,7 @@ export interface LeaveRequestListItemResponse {
   totalHours: number;
   paidHours: number;
   unpaidHours: number;
+  exceedsBalanceByHours?: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   noticePeriodMissed: boolean;
   approvedByName: string | null;

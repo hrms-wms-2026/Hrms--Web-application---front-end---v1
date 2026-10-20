@@ -85,7 +85,7 @@
       </label>
       @if (selectedLeaveType()?.requiresDocument) {
         <p class="nlw-muted" data-testid="document-note">
-          A supporting document is required when this leave is {{ selectedLeaveType()?.documentRequiredAfterDays ?? 1 }} days or longer.
+          @if (selectedLeaveType()?.documentRequiredAfterHours; as hours) { A supporting document is required when this leave is longer than {{ hours }} hours. } @else { A supporting document is required for this leave. }
         </p>
         <label class="nlw-field">
           <span>Supporting document</span>

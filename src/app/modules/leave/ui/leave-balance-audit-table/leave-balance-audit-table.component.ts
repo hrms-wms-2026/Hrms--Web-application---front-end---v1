@@ -27,6 +27,7 @@ export class LeaveBalanceAuditTableComponent {
   }
 
   changeTypeLabel(changeType: string): string {
+    if (changeType === 'accrual') return 'Credit';
     return changeType.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 }

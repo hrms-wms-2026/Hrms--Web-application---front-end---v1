@@ -52,3 +52,6 @@ strong { display: block; font-size: 0.82rem; }
   color: var(--color-accent);
   outline: 0;
 }
+.lpl-type { display: inline-flex; align-items: center; gap: 8px; }
+.lpl-type i { width: 10px; height: 10px; border-radius: 999px; }
+.lpl-muted { color: var(--color-text-secondary); }

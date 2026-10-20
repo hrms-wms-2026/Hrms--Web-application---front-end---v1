@@ -3,10 +3,6 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
 import { CommonModule } from '@angular/common';
 import { LeaveCalendarAbsenceResponse, LeaveCalendarDayResponse } from '../../models/leave-calendar.model';
 
-const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
-  annual: '#1e5eff',
-  sick: '#c98a1f'
-};
 const OTHER_COLOR = '#6b5b95';
 const DOW_INDEX: Record<string, number> = {
   Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6
@@ -19,7 +15,7 @@ export class LeaveCalendarGridComponent {
   readonly weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
   colorFor(absence: LeaveCalendarAbsenceResponse): string {
-    return absence.typeColorHex ?? CATEGORY_FALLBACK_COLORS[absence.leaveTypeCategory] ?? OTHER_COLOR;
+    return absence.typeColorHex ?? OTHER_COLOR;
   }
 
   leadingPads(): readonly number[] {

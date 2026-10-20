@@ -23,7 +23,7 @@
     <app-error-state [message]="store.loadError()!" [retryable]="true" (retry)="store.load()" />
   } @else if (store.items().length === 0) {
     <div class="to-empty">
-      <app-empty-state title="No leave types yet" description="Create the first category so employees can request time off.">
+      <app-empty-state title="No leave types yet" description="Create the first kind of leave, then give it a policy so employees can request it.">
         @if (hasManageAccess()) {
           <app-button (click)="openCreateModal()">+ New leave type</app-button>
         }

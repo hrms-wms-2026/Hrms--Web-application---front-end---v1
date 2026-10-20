@@ -4,19 +4,19 @@
     <h1 class="to-sr-only">Leave Policies</h1>
     @if (hasManageAccess()) {
       <div class="to-header-actions">
-        <app-button (click)="openWizard()">+ New policy</app-button>
+        <app-button (click)="openCreate()">+ New policy</app-button>
       </div>
     }
   </header>
   @if (policyStore.loading() && !policyStore.items().length) {
     <div class="to-loading"><app-loader /></div>
-  } @else if (policyStore.loadError()) {
+  } @else if (policyStore.loadError() && !policyStore.items().length) {
     <app-error-state [message]="policyStore.loadError()!" [retryable]="true" (retry)="loadInitialData()" />
   } @else if (!policyStore.items().length) {
     <div class="to-empty">
-      <app-empty-state title="No leave policies yet" description="Create a policy to assign leave types to each company.">
+      <app-empty-state title="No leave policies yet" description="Create a policy for a leave type and assign it to the company, departments or positions.">
         @if (hasManageAccess()) {
-          <app-button (click)="openWizard()">+ New policy</app-button>
+          <app-button (click)="openCreate()">+ New policy</app-button>
         }
       </app-empty-state>
     </div>
@@ -29,34 +29,41 @@
       @if (detailOpen()) {
         <div class="lpm-detail">
           <button type="button" (click)="closeDetail()" aria-label="Close policy detail">×</button>
-          <app-leave-policy-detail-panel [policy]="policyStore.selectedPolicy()" />
+          <app-leave-policy-detail-panel
+            [policy]="policyStore.selectedPolicy()"
+            [canManage]="hasManageAccess()"
+            (edit)="openEdit()"
+            (deleteVersion)="onDeleteVersion($event)"
+            (setActive)="onSetActive($event)"
+          />
         </div>
       }
     </div>
   }
 </section>
-@if (wizardOpen()) { <app-leave-policy-form-wizard [leaveTypes]="leaveTypeStore.items()" [legalEntities]="legalEntities()" [saving]="policyStore.saving()" (save)="onSavePolicy($event)" (cancel)="closeWizard()" /> }
-<app-modal [open]="cloneSource() !== null" title="Clone leave policy" (closed)="closeClone()">
-  <p class="to-subtitle">Copy {{ cloneSource()?.name }}. Choose a name, start date, and companies.</p>
+
+@if (wizardMode(); as mode) {
+  <app-leave-policy-form-wizard
+    [leaveTypes]="leaveTypeStore.items()"
+    [legalEntities]="legalEntities()"
+    [departmentOptions]="departmentOptions()"
+    [positionOptions]="positionOptions()"
+    [policy]="mode === 'edit' ? policyStore.selectedPolicy() : null"
+    [conflicts]="policyStore.conflicts()"
+    [saving]="policyStore.saving()"
+    (create)="onCreate($event)"
+    (saveEdit)="onSaveEdit($event)"
+    (cancel)="closeWizard()"
+  />
+}
+
+<app-modal [open]="cloneSource() !== null" title="Copy leave policy" (closed)="closeClone()">
+  <p class="to-subtitle">Copies the rules in force today into a new {{ cloneSource()?.leaveTypeName }} policy. The copy is not assigned to anyone.</p>
   <div class="lpm-clone-fields">
     <app-input label="Name *" [value]="cloneName()" (valueChange)="cloneName.set($event)" />
-    <app-date-picker label="Effective from *" [value]="cloneEffectiveFrom()" (valueChange)="cloneEffectiveFrom.set($event)" />
-    <fieldset>
-      <legend>Legal entities *</legend>
-      @for (entity of legalEntities(); track entity.id) {
-        <label class="to-filter"><input type="checkbox" [checked]="cloneLegalEntityIds().includes(entity.id)" (change)="toggleCloneEntity(entity.id, $any($event.target).checked)" />{{ entity.name }}</label>
-      }
-    </fieldset>
   </div>
   <div class="to-modal-actions">
     <app-button variant="secondary" (click)="closeClone()">Cancel</app-button>
-    <app-button [loading]="policyStore.saving()" (click)="submitClone()">Clone policy</app-button>
-  </div>
-</app-modal>
-<app-modal [open]="replaceConfirmOpen()" title="Replace an existing assignment?" (closed)="cancelReplacement()">
-  <p>{{ policyStore.replacementConfirmationMessage() || 'One or more selected companies already have an active policy.' }}</p>
-  <div class="to-modal-actions">
-    <app-button variant="secondary" (click)="cancelReplacement()">Cancel</app-button>
-    <app-button [loading]="policyStore.saving()" (click)="confirmReplacement()">Replace and continue</app-button>
+    <app-button [loading]="policyStore.saving()" [disabled]="!cloneName().trim()" (click)="submitClone()">Copy policy</app-button>
   </div>
 </app-modal>

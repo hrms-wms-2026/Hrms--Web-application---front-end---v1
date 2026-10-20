@@ -3,7 +3,7 @@
     <article class="ltt-card" [class.ltt-card--inactive]="!type.isActive">
       <header class="ltt-head">
         <div>
-          <h2>{{ type.name }}</h2>
+          <h2><i class="ltt-dot" [style.background]="type.color" aria-hidden="true"></i>{{ type.name }}</h2>
           <p class="ltt-code">{{ type.code }}</p>
         </div>
         <div class="ltt-head-actions">
@@ -24,18 +24,16 @@
         </div>
       </header>
       <p class="ltt-days">
-        <span>{{ type.defaultDaysPerYear }}</span>
-        <small>days / year</small>
+        <span>{{ type.policyCount }}</span>
+        <small>{{ type.policyCount === 1 ? 'policy' : 'policies' }}</small>
       </p>
       @if (type.description) {
         <p class="ltt-desc">{{ type.description }}</p>
       }
       <div class="ltt-chips">
-        <span>{{ type.category }}</span>
         <span [class.ltt-chip--muted]="!type.isPaid">{{ type.isPaid ? 'Paid' : 'Unpaid' }}</span>
-        @if (type.requiresApproval) { <span>Approval</span> }
+        @if (type.applicableGender !== 'all') { <span>{{ type.applicableGender === 'female' ? 'Women only' : 'Men only' }}</span> }
         @if (type.requiresDocument) { <span>Document</span> }
-        @if (type.carryForwardAllowed) { <span>Carry-forward</span> }
       </div>
     </article>
   }

@@ -59,3 +59,13 @@
 .lpw-primary:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:850px){.lpw-backdrop{align-items:end;padding:.5rem}.lpw-modal{grid-template-columns:1fr;height:min(94vh,860px);border-radius:12px 12px 8px 8px}.lpw-steps{padding:.75rem 1rem;border-right:0;border-bottom:1px solid var(--color-border)}.lpw-brand{display:none}.lpw-steps ol{display:flex}.lpw-steps button{padding:.35rem .5rem;border-left:0;border-bottom:2px solid transparent}.lpw-steps button b{display:none}.lpw-steps .is-active button{border-bottom-color:var(--color-accent);border-left:0}.lpw-rail-note{display:none}.lpw-content header,.lpw-content main,.lpw-content footer{padding-right:1rem;padding-left:1rem}.lpw-blackout{grid-template-columns:1fr 1fr}.lpw-blackout label:last-of-type{grid-column:1/-1}.lpw-entity-list{grid-template-columns:1fr}}
 @media(max-width:520px){.lpw-two,.lpw-blackout{grid-template-columns:1fr}.lpw-content footer{flex-wrap:wrap}.lpw-footer-spacer{display:none}.lpw-secondary{margin-left:auto}}
+
+/* "Gives [8] hours every [month]" */
+.lpw-sentence { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+.lpw-sentence-num { width: 96px; }
+.lpw-sentence app-select { min-width: 140px; }
+.lpw-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.lpw-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--color-border); border-radius: 999px; font-size: 12px; font-weight: 600; }
+.lpw-chip button { width: 18px; height: 18px; border: 0; border-radius: 999px; background: transparent; color: var(--color-text-secondary); cursor: pointer; line-height: 1; }
+.lpw-chip button:hover { background: var(--color-border); }
+.lpw-apply { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-border); }
