@@ -187,4 +187,46 @@ describe('LeavePolicyFormWizardComponent', () => {
     expect(w.applyFrom()).toBe('2026-11-01');
     expect(w.scheduledNote()).toContain('1 Nov 2026');
   });
+
+  it('edit: a version already starting today moves Apply from to tomorrow and blocks today', () => {
+    const fixture = create();
+    fixture.componentRef.setInput('policy', detail([version({ effectiveFrom: '2026-10-20' })]));
+    fixture.detectChanges();
+    const w = fixture.componentInstance;
+    expect(w.applyFrom()).toBe('2026-10-21');
+    w.applyFrom.set('2026-10-20');
+    expect(w.canSubmit()).toBe(false);
+  });
+
+  it('Replace is ignored once the targets changed after the conflicts were shown', () => {
+    const fixture = create();
+    const w = fixture.componentInstance;
+    const emit = vi.spyOn(w.create, 'emit');
+    fillValidCreate(w);
+    w.addDepartment('d-sales');
+    w.submit();
+    fixture.componentRef.setInput('conflicts', [{
+      targetKind: 'department', targetId: 'd-sales', targetName: 'Sales', existingPolicyId: 'p9', existingPolicyName: 'Annual - sales'
+    }]);
+    fixture.detectChanges();
+    w.addDepartment('d-eng');
+    fixture.detectChanges();
+    expect(w.conflictLines()).toEqual([]);
+    w.confirmReplace();
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it('Replace still validates the form', () => {
+    const fixture = create();
+    const w = fixture.componentInstance;
+    const emit = vi.spyOn(w.create, 'emit');
+    fillValidCreate(w);
+    w.submit();
+    fixture.componentRef.setInput('conflicts', [{
+      targetKind: 'legal_entity', targetId: 'le1', targetName: 'Dapi Technologies', existingPolicyId: 'p9', existingPolicyName: 'Annual - company'
+    }]);
+    w.amountHours.set(0);
+    w.confirmReplace();
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
 });

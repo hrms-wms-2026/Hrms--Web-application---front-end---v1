@@ -64,4 +64,20 @@ describe('LeavePolicyStore', () => {
     expect(await saving).toBe('failed');
     expect(store.actionError()).toBeTruthy();
   });
+
+  it('reloads the policy after a failed edit so partly saved changes show', async () => {
+    const saving = store.saveEdit('p1', {
+      details: null,
+      version: { applyFrom: '2026-10-20', rules: sampleRules() },
+      assignments: [{ targetKind: 'legal_entity', targetId: 'le1' }],
+      replaceConflicts: false
+    });
+    http.expectOne(`${base}/p1/assignments`).flush({});
+    await flush();
+    http.expectOne(`${base}/p1/versions`).flush({ detail: 'A version already starts on that date.' }, { status: 400, statusText: 'Bad Request' });
+    await flush();
+    http.expectOne(`${base}?includeInactive=true`).flush([]);
+    http.expectOne(`${base}/p1`).flush({ id: 'p1' });
+    expect(await saving).toBe('failed');
+  });
 });

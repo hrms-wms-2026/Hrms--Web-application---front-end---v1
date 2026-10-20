@@ -35,6 +35,13 @@ function localToday(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+function nextDay(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const next = new Date(y, m - 1, d + 1);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+}
+
 function displayDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -102,7 +109,8 @@ export class LeavePolicyFormWizardComponent {
   readonly applyFrom = signal(this.today);
   private baseRules: LeavePolicyRules | null = null;
   private baseTargets = '';
-  private lastSubmit: (() => void) | null = null;
+  /** The targets the shown conflicts were found for; a Replace only applies to exactly these. */
+  private readonly submittedTargets = signal<string | null>(null);
 
   readonly isEdit = computed(() => this.policy() !== null);
   readonly singleCompany = computed(() => this.legalEntities().length === 1);
@@ -118,11 +126,23 @@ export class LeavePolicyFormWizardComponent {
     const scheduled = this.scheduledVersion();
     return scheduled ? `Editing the change scheduled for ${displayDate(scheduled.effectiveFrom)}.` : '';
   });
-  readonly applyFromError = computed(() =>
-    this.isEdit() && (!this.applyFrom() || this.applyFrom() < this.today) ? 'Changes can apply from today or later.' : '');
+  /** A version that already started today is in force and cannot be replaced, so the earliest
+   * new version is then tomorrow. */
+  readonly minApplyFrom = computed(() =>
+    this.policy()?.versions.some((v) => v.effectiveFrom === this.today) ? nextDay(this.today) : this.today);
+  readonly applyFromError = computed(() => {
+    if (!this.isEdit()) return '';
+    if (!this.applyFrom() || this.applyFrom() < this.minApplyFrom())
+      return this.minApplyFrom() === this.today
+        ? 'Changes can apply from today or later.'
+        : 'A version already started today. Changes can apply from tomorrow.';
+    return '';
+  });
   readonly canSubmit = computed(() => !this.saving() && !this.applyFromError());
-  readonly conflictLines = computed(() => this.conflicts().map((c) =>
-    `${c.targetName} ${KIND_LABELS[c.targetKind] ?? ''} already uses '${c.existingPolicyName}' for ${this.leaveTypeName()}.`));
+  readonly conflictLines = computed(() => this.conflictsAreCurrent() ? this.conflicts().map((c) =>
+    `${c.targetName} ${KIND_LABELS[c.targetKind] ?? ''} already uses '${c.existingPolicyName}' for ${this.leaveTypeName()}.`) : []);
+  private readonly conflictsAreCurrent = computed(() =>
+    this.submittedTargets() !== null && this.submittedTargets() === this.targetKey(this.targets()));
 
   constructor() {
     effect(() => {
@@ -170,18 +190,26 @@ export class LeavePolicyFormWizardComponent {
   }
 
   submit(): void {
-    const errors = [1, 2, 3].flatMap((s) => this.errorsForStep(s));
-    this.validationErrors.set(errors);
-    if (errors.length || !this.canSubmit()) return;
+    if (!this.validateAll()) return;
+    this.submittedTargets.set(this.targetKey(this.targets()));
     const policy = this.policy();
-    this.lastSubmit = policy ? () => this.emitEdit(policy, false) : () => this.emitCreate(false);
-    this.lastSubmit();
+    if (policy) this.emitEdit(policy, false);
+    else this.emitCreate(false);
   }
 
+  /** Resends with replaceConflicts only for the targets whose conflicts are on screen, after the
+   * same checks as a normal save. */
   confirmReplace(): void {
+    if (!this.conflictsAreCurrent() || !this.validateAll()) return;
     const policy = this.policy();
     if (policy) this.emitEdit(policy, true);
     else this.emitCreate(true);
+  }
+
+  private validateAll(): boolean {
+    const errors = [1, 2, 3].flatMap((s) => this.errorsForStep(s));
+    this.validationErrors.set(errors);
+    return !errors.length && this.canSubmit();
   }
 
   rules(): LeavePolicyRules {
@@ -238,7 +266,10 @@ export class LeavePolicyFormWizardComponent {
     });
   }
 
-  private defaultApplyFrom(): string { return this.scheduledVersion()?.effectiveFrom ?? this.today; }
+  private defaultApplyFrom(): string {
+    const preferred = this.scheduledVersion()?.effectiveFrom ?? this.today;
+    return preferred < this.minApplyFrom() ? this.minApplyFrom() : preferred;
+  }
 
   private targetKey(targets: readonly LeavePolicyAssignmentTarget[]): string {
     return targets.map((t) => `${t.targetKind}:${t.targetId}`).sort().join('|');

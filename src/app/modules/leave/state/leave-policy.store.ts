@@ -92,7 +92,9 @@ export const LeavePolicyStore = signalStore(
           if (edit.details) await firstValueFrom(api.updateDetails(policyId, edit.details));
           if (edit.version) await firstValueFrom(api.addVersion(policyId, edit.version));
         }, 'Failed to save leave policy.');
-        if (outcome === 'saved') await Promise.all([loadPolicies(), loadPolicy(policyId)]);
+        // A failure part-way (e.g. the version is rejected after assignments were saved) still
+        // reloads, so the screen shows what was saved. A conflict stops before anything is written.
+        if (outcome !== 'conflicts') await Promise.all([loadPolicies(), loadPolicy(policyId)]);
         return outcome;
       },
       async deleteVersion(policyId: string, versionId: string): Promise<LeavePolicySaveOutcome> {
