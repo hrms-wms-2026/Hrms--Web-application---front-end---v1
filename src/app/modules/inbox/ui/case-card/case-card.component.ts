@@ -54,7 +54,7 @@ const CARD_HIDDEN_ACTIONS = new Set(['open_target', 'revert']);
         }
       </button>
 
-      @if (!resolved()) {
+      @if (!resolved() || detail()) {
         @if (loading() && !detail()) {
           <p class="cc__quiet">Loading…</p>
         } @else if (error()) {
@@ -173,7 +173,7 @@ export class CaseCardComponent {
     // The case changed somewhere (decided, escalated): refresh its status and actions.
     inject(InboxRealtimeService).inboxChanged$
       .pipe(filter((e) => sameRef(e.item, this.ref())), takeUntilDestroyed())
-      .subscribe(() => { if (!this.resolved()) void this.load(this.ref()); });
+      .subscribe(() => void this.load(this.ref()));
     inject(DestroyRef).onDestroy(() => this.request++);
   }
 
