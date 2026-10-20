@@ -108,7 +108,7 @@ describe('NotificationSettingsComponent', () => {
   });
 
   it('only offers published templates for the event', () => {
-    const select = el.querySelector<HTMLSelectElement>('[data-testid="template-work_approval_requested"]')!;
+    const select = el.querySelector<HTMLSelectElement>('[data-testid="template-work_approval_requested"] select')!;
     const labels = Array.from(select.options).map((o) => o.textContent?.trim());
     expect(labels).toEqual(['Default', 'Friendly']);
 

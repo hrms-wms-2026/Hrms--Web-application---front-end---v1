@@ -2,145 +2,163 @@
   <app-breadcrumb-header parentLabel="Settings" currentLabel="Notification Settings" icon="settings" />
 </header>
 
-<p class="ns-intro">
+<p class="mb-4 max-w-4xl text-sm text-[var(--color-text-secondary)]">
   Choose how each notification reaches people. Wording is managed by ONEVO; you decide the channels, template and
   recipients. Changes apply to notifications sent after you save.
 </p>
 
 @if (store.loading()) {
-  <div class="ns-skeleton" aria-busy="true" aria-label="Loading notification settings"></div>
+  <div class="h-64 rounded-xl bg-[var(--color-surface-secondary)]" aria-busy="true" aria-label="Loading notification settings"></div>
 } @else if (store.error(); as message) {
   <app-error-state [message]="message" [retryable]="true" (retry)="reload()" />
 } @else if (store.settings().length === 0) {
   <app-empty-state title="No notifications to configure yet." />
 } @else {
-  <div class="ns-toolbar">
-    <label class="ns-search">
-      <span class="ns-visually-hidden">Search notifications</span>
-      <input
-        type="search"
-        placeholder="Search notifications"
-        [value]="search()"
-        (input)="search.set($any($event.target).value)"
-      />
-    </label>
+  <div class="mb-4 max-w-sm">
+    <app-input
+      type="search"
+      label="Search"
+      placeholder="Search notifications"
+      [value]="search()"
+      (valueChange)="search.set($event)"
+    />
   </div>
 
   @if (groups().length === 0) {
     <app-empty-state title="No notifications match your search." />
   }
 
-  @for (group of groups(); track group.module) {
-    <section class="ns-group" [attr.aria-labelledby]="'ns-group-' + group.module">
-      <h2 class="ns-group-title" [id]="'ns-group-' + group.module">{{ group.label }}</h2>
-
-      @for (s of group.settings; track s.eventKey) {
-        <div class="ns-row" [class.ns-row--dirty]="isRowDirty(s)">
-          <div class="ns-row-main">
-            <div class="ns-event">
-              <span class="ns-event-name">{{ s.displayName }}</span>
-              @if (!s.configurable) {
-                <span class="ns-badge ns-badge--muted">Uses built-in delivery for now</span>
-              } @else if (s.isOverridden) {
-                <span class="ns-badge ns-badge--accent">Customized</span>
-              } @else {
-                <span class="ns-badge">Default</span>
-              }
-              @if (isRowDirty(s)) {
-                <span class="ns-badge ns-badge--warning">Unsaved</span>
-              }
-            </div>
-
-            <div class="ns-channels" role="group" [attr.aria-label]="s.displayName + ' channels'">
-              @for (channel of channels; track channel) {
-                <label class="ns-toggle" [class.ns-toggle--locked]="isLocked(s, channel)" [attr.title]="toggleTitle(s, channel)">
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    [attr.data-testid]="'toggle-' + s.eventKey + '-' + channel"
-                    [checked]="isEnabled(s, channel)"
-                    [disabled]="isLocked(s, channel)"
-                    (change)="toggle(s, channel)"
-                  />
-                  <span>{{ channelLabels[channel] }}</span>
-                  @if (isRequired(s, channel)) {
-                    <span class="ns-required">Required</span>
+  <div class="flex flex-col gap-4">
+    @for (group of groups(); track group.module) {
+      <app-card [title]="group.label">
+        <div class="flex flex-col divide-y divide-[var(--color-border)]">
+          @for (s of group.settings; track s.eventKey) {
+            <div class="flex flex-col gap-3 py-3 first:pt-0 last:pb-0" [class.ns-row--dirty]="isRowDirty(s)">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <span class="break-words text-sm font-medium text-[var(--color-text-primary)]">{{ s.displayName }}</span>
+                  @if (!s.configurable) {
+                    <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs italic text-[var(--color-text-secondary)]">Uses built-in delivery for now</span>
+                  } @else if (s.isOverridden) {
+                    <span class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">Customized</span>
+                  } @else {
+                    <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)]">Default</span>
                   }
-                </label>
-              }
-            </div>
-          </div>
+                  @if (isRowDirty(s)) {
+                    <span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">Unsaved</span>
+                  }
+                </div>
 
-          @if (s.configurable) {
-            <div class="ns-row-options">
-              @if (s.templates.length > 0) {
-                <label class="ns-field">
-                  <span>Template</span>
-                  <select
-                    [attr.data-testid]="'template-' + s.eventKey"
-                    [value]="selectedTemplate(s)"
-                    (change)="setTemplate(s, $any($event.target).value)"
-                  >
-                    @for (t of s.templates; track t.id) {
-                      <option [value]="t.id" [selected]="t.id === selectedTemplate(s)">{{ t.name }}</option>
-                    }
-                  </select>
-                </label>
-              }
-              @if (s.recipientRules.length > 1) {
-                <label class="ns-field">
-                  <span>Recipients</span>
-                  <select [value]="row(s).recipientRule" (change)="setRecipientRule(s, $any($event.target).value)">
-                    @for (rule of s.recipientRules; track rule) {
-                      <option [value]="rule" [selected]="rule === row(s).recipientRule">{{ recipientLabel(rule) }}</option>
-                    }
-                  </select>
-                </label>
-              }
-
-              <div class="ns-row-actions">
-                @if (isRowDirty(s)) {
-                  <app-button variant="secondary" size="sm" (pressed)="discard(s)">Discard</app-button>
-                }
-                @if (s.isOverridden) {
-                  <app-button
-                    [attr.data-testid]="'reset-' + s.eventKey"
-                    variant="secondary"
-                    size="sm"
-                    [disabled]="store.savingKey() === s.eventKey"
-                    (pressed)="reset(s)"
-                  >
-                    Reset to default
-                  </app-button>
-                }
-                <app-button
-                  [attr.data-testid]="'save-' + s.eventKey"
-                  size="sm"
-                  [loading]="store.savingKey() === s.eventKey"
-                  [disabled]="!isRowDirty(s) || store.savingKey() === s.eventKey"
-                  (pressed)="save(s)"
-                >
-                  Save
-                </app-button>
+                <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="s.displayName + ' channels'">
+                  @for (channel of channels; track channel) {
+                    <!-- Same toggle switch as Settings > Clock-in Policy > Work Modes -->
+                    <label
+                      class="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-all select-none"
+                      [class.cursor-pointer]="!isLocked(s, channel)"
+                      [class.cursor-not-allowed]="isLocked(s, channel)"
+                      [class.opacity-60]="isLocked(s, channel) && !isEnabled(s, channel)"
+                      [class.border-blue-500]="isEnabled(s, channel)"
+                      [class.bg-blue-50/50]="isEnabled(s, channel)"
+                      [class.border-[var(--color-border)]]="!isEnabled(s, channel)"
+                      [class.bg-[var(--color-surface)]]="!isEnabled(s, channel)"
+                      [attr.title]="toggleTitle(s, channel)"
+                    >
+                      <span
+                        [class.font-semibold]="isEnabled(s, channel)"
+                        [class.text-[var(--color-text-primary)]]="isEnabled(s, channel)"
+                        [class.text-[var(--color-text-secondary)]]="!isEnabled(s, channel)"
+                      >{{ channelLabels[channel] }}</span>
+                      @if (isRequired(s, channel)) {
+                        <span class="text-[0.7rem] uppercase tracking-wide text-[var(--color-text-secondary)]">Required</span>
+                      }
+                      <span class="relative inline-flex shrink-0 items-center">
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          class="sr-only peer"
+                          [attr.data-testid]="'toggle-' + s.eventKey + '-' + channel"
+                          [checked]="isEnabled(s, channel)"
+                          [disabled]="isLocked(s, channel)"
+                          (change)="toggle(s, channel)"
+                        />
+                        <span class="h-4 w-7 rounded-full bg-slate-200 transition-colors after:absolute after:start-[2px] after:top-[2px] after:h-3 after:w-3 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-3 peer-checked:after:border-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-focus-ring)]"></span>
+                      </span>
+                    </label>
+                  }
+                </div>
               </div>
-            </div>
-          }
 
-          @if (store.conflicts()[s.eventKey]; as conflict) {
-            <div class="ns-alert ns-alert--warning" role="alert">
-              {{ conflict }}
-              <button type="button" class="ns-link" (click)="reload()">Reload</button>
+              @if (s.configurable) {
+                <div class="flex flex-wrap items-end justify-between gap-3">
+                  <div class="flex flex-wrap gap-3">
+                    @if (s.templates.length > 0) {
+                      <div class="w-64 max-w-full">
+                        <app-select
+                          [attr.data-testid]="'template-' + s.eventKey"
+                          label="Template"
+                          [options]="templateOptions(s)"
+                          [value]="selectedTemplate(s)"
+                          (valueChange)="setTemplate(s, $event)"
+                        />
+                      </div>
+                    }
+                    @if (s.recipientRules.length > 1) {
+                      <div class="w-56 max-w-full">
+                        <app-select
+                          label="Recipients"
+                          [options]="recipientOptions(s)"
+                          [value]="row(s).recipientRule"
+                          (valueChange)="setRecipientRule(s, $event)"
+                        />
+                      </div>
+                    }
+                  </div>
+
+                  <div class="ml-auto flex gap-2">
+                    @if (isRowDirty(s)) {
+                      <app-button variant="secondary" size="sm" (pressed)="discard(s)">Discard</app-button>
+                    }
+                    @if (s.isOverridden) {
+                      <app-button
+                        [attr.data-testid]="'reset-' + s.eventKey"
+                        variant="secondary"
+                        size="sm"
+                        [disabled]="store.savingKey() === s.eventKey"
+                        (pressed)="reset(s)"
+                      >
+                        Reset to default
+                      </app-button>
+                    }
+                    <app-button
+                      [attr.data-testid]="'save-' + s.eventKey"
+                      size="sm"
+                      [loading]="store.savingKey() === s.eventKey"
+                      [disabled]="!isRowDirty(s) || store.savingKey() === s.eventKey"
+                      (pressed)="save(s)"
+                    >
+                      Save
+                    </app-button>
+                  </div>
+                </div>
+              }
+
+              @if (store.conflicts()[s.eventKey]; as conflict) {
+                <div class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800" role="alert">
+                  {{ conflict }}
+                  <button type="button" class="ml-2 font-semibold underline" (click)="reload()">Reload</button>
+                </div>
+              }
+              @if (store.rowErrors()[s.eventKey]; as rowError) {
+                <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-[var(--color-danger-text)]" role="alert">{{ rowError }}</div>
+              }
             </div>
-          }
-          @if (store.rowErrors()[s.eventKey]; as rowError) {
-            <div class="ns-alert ns-alert--danger" role="alert">{{ rowError }}</div>
           }
         </div>
-      }
-    </section>
-  }
+      </app-card>
+    }
+  </div>
 
-  <p class="ns-note">
+  <p class="mt-4 max-w-4xl text-sm text-[var(--color-text-secondary)]">
     Email goes to each recipient's account email address. Tray notifications need the ONEVO tray app signed in on
     their computer; tray alerts that are not collected within 24 hours expire.
   </p>
