@@ -57,10 +57,12 @@ const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
         [revealSprintsOnHover]="true"
         [alertNodeIds]="alertNodeIds()"
         [showClose]="false"
+        [showDetailPanel]="false"
         [legend]="legend"
         heading="Project Network"
         description="Modules, sprints and tasks of this project. Hover a module to see its sprints and tasks, hover a sprint for its tasks, click to explore. Drag to move, scroll to zoom."
-        (navigate)="openRequested.emit($event)"
+        (lockChanged)="onLockChanged($event)"
+        (navigate)="nodeSelected.emit($event)"
       />
     }
   `,
@@ -83,8 +85,12 @@ export class ProjectNetworkViewComponent {
    */
   readonly reloadKey = input<unknown>(null);
 
-  /** A module or task the viewer asked to open in Work Management. */
-  readonly openRequested = output<WorkGraphNode>();
+  /**
+   * A module, sprint or task the viewer clicked. The tree tab shows it in its own explanation
+   * card, so the explorer's built-in panel is off. Releasing the lock is not emitted: the card
+   * keeps showing the last selection.
+   */
+  readonly nodeSelected = output<WorkGraphNode>();
 
   readonly legend = PROJECT_LEGEND;
   readonly graph = signal<ProjectWorkGraphDto>(EMPTY_GRAPH);
@@ -130,6 +136,10 @@ export class ProjectNetworkViewComponent {
       untracked(() => this.load());
     });
     inject(DestroyRef).onDestroy(() => this.request?.unsubscribe());
+  }
+
+  onLockChanged(node: WorkGraphNode | null): void {
+    if (node) this.nodeSelected.emit(node);
   }
 
   load(): void {

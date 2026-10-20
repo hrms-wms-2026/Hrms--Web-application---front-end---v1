@@ -106,7 +106,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
           [revealSprintsOnHover]="revealSprintsOnHover()"
           (nodeClicked)="toggleLock($event)"
           (taskClicked)="navigate.emit($event)"
-          (backgroundClicked)="locked.set(null)"
+          (backgroundClicked)="setLocked(null)"
         />
 
         <ul class="wge-counts" aria-label="Network contents">
@@ -116,14 +116,14 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
         </ul>
       </div>
 
-      @if (selectedNode(); as node) {
+      @if (showDetailPanel() && selectedNode(); as node) {
         <app-work-network-detail-panel
           class="wge-panel"
           [graph]="graph()"
           [selected]="node"
           [code]="codes().get(node.id) ?? ''"
           [projectMode]="projectMode()"
-          (closed)="locked.set(null)"
+          (closed)="setLocked(null)"
           (open)="navigate.emit($event)"
           (taskClicked)="navigate.emit($event)"
           (selectModule)="lockAndCentre($event.id)"
@@ -220,10 +220,14 @@ export class WorkNetworkExplorerComponent {
   readonly projectMode = input(false);
   readonly taskDotStyle = input<'tone' | 'status'>('tone');
   readonly revealSprintsOnHover = input(false);
+  /** False hides the built-in details panel, for a host that shows its own card via lockChanged. */
+  readonly showDetailPanel = input(true);
 
   readonly closed = output<void>();
   /** A project, module or task to open in Work Management. */
   readonly navigate = output<WorkGraphNode>();
+  /** The node the selection locked on, or null when it was released. */
+  readonly lockChanged = output<WorkGraphNode | null>();
 
   readonly canvas = viewChild(WorkNetworkExplorerCanvasComponent);
 
@@ -257,7 +261,7 @@ export class WorkNetworkExplorerComponent {
       return true;
     }
     if (this.locked()) {
-      this.locked.set(null);
+      this.setLocked(null);
       return true;
     }
     return false;
@@ -265,18 +269,24 @@ export class WorkNetworkExplorerComponent {
 
   toggleLock(node: WorkGraphNode): void {
     if (node.kind !== 'module' && node.kind !== 'project' && node.kind !== 'sprint') return;
-    this.locked.set(this.locked() === node.id ? null : node.id);
+    this.setLocked(this.locked() === node.id ? null : node.id);
+  }
+
+  setLocked(id: string | null): void {
+    if (this.locked() === id) return;
+    this.locked.set(id);
+    this.lockChanged.emit(this.selectedNode());
   }
 
   lockAndCentre(id: string): void {
-    this.locked.set(id);
+    this.setLocked(id);
     this.canvas()?.centerOn(id);
     this.flash(id);
   }
 
   /** Back to the opening view: nothing selected, search cleared, layout replayed and fitted. */
   reset(): void {
-    this.locked.set(null);
+    this.setLocked(null);
     this.query.set('');
     this.focusId.set(null);
     this.canvas()?.relayout();

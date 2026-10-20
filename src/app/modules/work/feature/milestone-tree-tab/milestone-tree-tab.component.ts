@@ -328,13 +328,20 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * "Open in Work Management" from the network's detail panel: come back to the tree with that
-   * module (or the task's module) selected, so the explanation card explains what was clicked.
+   * A module, sprint or task clicked in the network: the explanation card beside it shows that
+   * node, the same card the tree list uses. Graph ids are "<kind>:<id>"; tree ids are the bare id.
+   * Sprints and tasks are lazy-loaded into the tree, so one that is not there yet pulls the whole
+   * tree in first (falling back to its module if it still cannot be found).
    */
-  onNetworkNodeOpened(node: WorkGraphNode): void {
-    const id = node.objectiveId ?? null;
-    this.viewMode.set('tree');
-    if (id) this.selectedNodeId.set(id);
+  async onNetworkNodeSelected(node: WorkGraphNode): Promise<void> {
+    const id = node.id.slice(node.id.indexOf(':') + 1);
+    const inTree = () => {
+      const tree = this.store.selectedSubtree();
+      return tree ? findTreeNode(tree, id) !== null : false;
+    };
+    if (!inTree() && node.kind !== 'module') await this.loadWholeTree();
+    if (inTree()) this.selectedNodeId.set(id);
+    else if (node.objectiveId) this.selectedNodeId.set(node.objectiveId);
   }
 
   async retryTree(): Promise<void> {

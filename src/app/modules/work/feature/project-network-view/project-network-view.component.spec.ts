@@ -170,6 +170,32 @@ describe('ProjectNetworkViewComponent', () => {
     });
   });
 
+  it('emits a clicked module as nodeSelected instead of opening the explorer\'s own details panel', () => {
+    const { fixture, el, cmp } = setup();
+    const selected: string[] = [];
+    cmp.nodeSelected.subscribe((node) => selected.push(node.id));
+
+    el.querySelector('[data-node-id="module:oa"]')!.dispatchEvent(new Event('click'));
+    fixture.detectChanges();
+
+    expect(selected).toEqual(['module:oa']);
+    expect(el.querySelector('[data-testid="work-network-panel"]')).toBeNull();
+  });
+
+  it('does not emit when a click releases the selection', () => {
+    const { fixture, el, cmp } = setup();
+    const selected: string[] = [];
+    cmp.nodeSelected.subscribe((node) => selected.push(node.id));
+    const oa = el.querySelector('[data-node-id="module:oa"]')!;
+
+    oa.dispatchEvent(new Event('click'));
+    fixture.detectChanges();
+    oa.dispatchEvent(new Event('click'));
+    fixture.detectChanges();
+
+    expect(selected).toEqual(['module:oa']);
+  });
+
   it('keeps the explorer on screen while a reload is in flight', () => {
     const pending = new Subject<ProjectWorkGraphDto>();
     const getWorkGraph = vi.fn().mockReturnValueOnce(of(graph)).mockReturnValueOnce(pending);

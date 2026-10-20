@@ -1143,5 +1143,27 @@ describe('MilestoneTreeTabComponent', () => {
 
       expect(el().querySelector('app-tree-explanation-panel, app-empty-state')).not.toBeNull();
     });
+
+    it('keeps the same explanation card beside the network in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      expect(el().querySelector('app-tree-explanation-panel')).not.toBeNull();
+      expect(el().querySelector('[data-testid="tree-explanation-panel"]')?.textContent).toContain('Root');
+    });
+
+    it('shows a module clicked in the network in the explanation card, staying in network mode', async () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      await fixture.componentInstance.onNetworkNodeSelected({ id: 'module:o3', kind: 'module', label: 'Other', objectiveId: 'o3' });
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.viewMode()).toBe('network');
+      expect(fixture.componentInstance.selectedNodeId()).toBe('o3');
+      expect(el().querySelector('[data-testid="tree-explanation-panel"]')?.textContent).toContain('Other');
+    });
   });
 });
