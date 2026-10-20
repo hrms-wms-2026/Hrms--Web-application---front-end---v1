@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DashboardLayoutApiService } from '../data-access/dashboard-layout-api.service';
@@ -234,6 +234,44 @@ describe('DashboardStore', () => {
     expect(api.reset).toHaveBeenCalledWith('dash-1', 3);
     expect(api.bootstrap).toHaveBeenCalledTimes(2);
     expect(store.editing()).toBe(false);
+  });
+
+  it('keeps the latest refresh when overlapping ones resolve out of order', async () => {
+    const { store, api } = await loaded();
+    const slow = new Subject<DashboardBootstrap>();
+    api.bootstrap.mockReturnValueOnce(slow).mockReturnValueOnce(of(bootstrapOf([widget('m', 'a', 0, 0, 4, 2)], 5, 'mobile')));
+    const first = store.setBreakpoint('tablet');
+    const second = store.setBreakpoint('mobile');
+    await second;
+    slow.next(bootstrapOf([widget('t', 'a', 0, 0, 6, 2)], 4, 'tablet'));
+    slow.complete();
+    await first;
+    expect(store.bootstrap()?.grid.breakpoint).toBe('mobile');
+    expect(store.widgets()[0].instanceId).toBe('m');
+  });
+
+  it('double reset sends only one reset call', async () => {
+    const { store, api } = await loaded();
+    const gate = new Subject<{ layoutVersion: number }>();
+    api.reset.mockReturnValue(gate);
+    const a = store.resetToDefault();
+    const b = store.resetToDefault();
+    gate.next({ layoutVersion: 4 });
+    gate.complete();
+    await Promise.all([a, b]);
+    expect(api.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it('save succeeds but trailing reload fails: exits editing, no save-failure toast', async () => {
+    const { store, api, notifications } = await loaded();
+    api.saveLayout.mockReturnValue(of({ layoutVersion: 4 }));
+    store.startEditing();
+    store.move('i-b', 0, 3);
+    api.bootstrap.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+    await store.save();
+    expect(store.editing()).toBe(false);
+    expect(notifications.error).toHaveBeenCalledWith('Saved, but could not reload the dashboard.');
+    expect(notifications.error).not.toHaveBeenCalledWith('Could not save the dashboard.');
   });
 
   it('load failure sets error', async () => {

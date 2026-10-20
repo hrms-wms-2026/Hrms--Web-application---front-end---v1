@@ -38,6 +38,7 @@ export class DashboardStore {
 
   private dashboardId: string | null = null;
   private currentBreakpoint: Breakpoint = 'desktop';
+  private refreshSeq = 0;
 
   readonly bootstrap = signal<DashboardBootstrap | null>(null);
   readonly editing = signal(false);
@@ -171,10 +172,10 @@ export class DashboardStore {
       }
       const items = draft.map(d => ({ instanceId: realIds.get(d.instanceId) ?? d.instanceId, ...d.layout }));
       await firstValueFrom(this.api.saveLayout(id, bp, version, items));
-      await this.refresh();
       this.exitEditing();
+      await this.reloadAfterSuccess('Saved, but could not reload the dashboard.');
     } catch (err) {
-      if (err instanceof HttpErrorResponse && readLayoutProblem(err).status === 409) {
+      if (this.isConflict(err)) {
         this.notifications.warning(CONFLICT_MESSAGE);
         this.exitEditing();
         await this.safeRefresh();
@@ -195,15 +196,15 @@ export class DashboardStore {
 
   async resetToDefault(): Promise<void> {
     const boot = this.bootstrap();
-    if (!boot || !this.dashboardId) return;
+    if (!boot || !this.dashboardId || this.saving()) return;
     this.saving.set(true);
     this.error.set(null);
     try {
       await firstValueFrom(this.api.reset(this.dashboardId, boot.layoutVersion));
-      await this.refresh();
       this.exitEditing();
+      await this.reloadAfterSuccess('Reset, but could not reload the dashboard.');
     } catch (err) {
-      if (err instanceof HttpErrorResponse && err.status === 409) {
+      if (this.isConflict(err)) {
         this.notifications.warning(CONFLICT_MESSAGE);
         this.exitEditing();
         await this.safeRefresh();
@@ -228,13 +229,30 @@ export class DashboardStore {
     }
   }
 
+  private isConflict(err: unknown): boolean {
+    return err instanceof HttpErrorResponse && readLayoutProblem(err).status === 409;
+  }
+
+  /** The server change already succeeded; a reload failure is reported on its own, not as a save failure. */
+  private async reloadAfterSuccess(message: string): Promise<void> {
+    try {
+      await this.refresh();
+    } catch {
+      this.error.set(message);
+      this.notifications.error(message);
+    }
+  }
+
+  /** Only the most recently started refresh may apply its result; older, slower ones are discarded. */
   private async refresh(): Promise<void> {
+    const token = ++this.refreshSeq;
     const id = this.dashboardId!;
     const bp = this.currentBreakpoint;
     const [boot, available] = await Promise.all([
       firstValueFrom(this.api.bootstrap(id, bp)),
       firstValueFrom(this.api.available(id, bp))
     ]);
+    if (token !== this.refreshSeq) return;
     this.bootstrap.set(boot);
     this.serverAvailable.set(available);
   }
