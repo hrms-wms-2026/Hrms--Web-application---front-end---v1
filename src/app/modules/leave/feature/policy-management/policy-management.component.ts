@@ -28,7 +28,17 @@ import {
   LeavePolicyWizardEntity
 } from '../../ui/leave-policy-form-wizard/leave-policy-form-wizard.component';
 
-const PAGE_SIZE = 500;
+/** The org list endpoints accept at most 100 per page. */
+const PAGE_SIZE = 100;
+
+async function loadAll<T>(page: (n: number) => Promise<{ readonly items: readonly T[] }>): Promise<T[]> {
+  const all: T[] = [];
+  for (let n = 1; ; n++) {
+    const { items } = await page(n);
+    all.push(...items);
+    if (items.length < PAGE_SIZE) return all;
+  }
+}
 
 @Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrls: ['../../ui/time-off-chrome.css', './policy-management.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
 export class PolicyManagementComponent implements OnInit {
@@ -71,13 +81,13 @@ export class PolicyManagementComponent implements OnInit {
       const several = entities.length > 1;
       const perEntity = await Promise.all(entities.map(async (e) => {
         const [departments, positions] = await Promise.all([
-          firstValueFrom(this.departmentApi.listFlat(e.id, { pageSize: PAGE_SIZE })),
-          firstValueFrom(this.positionApi.listFlat(e.id, { pageSize: PAGE_SIZE }))
+          loadAll((page) => firstValueFrom(this.departmentApi.listFlat(e.id, { page, pageSize: PAGE_SIZE }))),
+          loadAll((page) => firstValueFrom(this.positionApi.listFlat(e.id, { page, pageSize: PAGE_SIZE })))
         ]);
         const suffix = several ? ` · ${e.name}` : '';
         return {
-          departments: departments.items.map((d) => ({ value: d.id, label: `${d.name}${suffix}` })),
-          positions: positions.items.map((p) => ({ value: p.id, label: `${p.name}${suffix}` }))
+          departments: departments.map((d) => ({ value: d.id, label: `${d.name}${suffix}` })),
+          positions: positions.map((p) => ({ value: p.id, label: `${p.name}${suffix}` }))
         };
       }));
       this.departmentOptions.set(perEntity.flatMap((x) => x.departments));

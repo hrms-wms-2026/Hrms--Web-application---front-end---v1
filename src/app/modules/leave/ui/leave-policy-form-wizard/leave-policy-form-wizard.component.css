@@ -62,8 +62,9 @@
 
 /* "Gives [8] hours every [month]" */
 .lpw-sentence { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
-.lpw-sentence-num { width: 96px; }
-.lpw-sentence app-select { min-width: 140px; }
+.lpw-fields .lpw-sentence .lpw-sentence-num { width: 96px; flex: 0 0 96px; }
+.lpw-fields .lpw-sentence > span { display: inline; width: auto; margin: 0; }
+.lpw-fields .lpw-sentence app-select { flex: 0 0 150px; }
 .lpw-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .lpw-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--color-border); border-radius: 999px; font-size: 12px; font-weight: 600; }
 .lpw-chip button { width: 18px; height: 18px; border: 0; border-radius: 999px; background: transparent; color: var(--color-text-secondary); cursor: pointer; line-height: 1; }

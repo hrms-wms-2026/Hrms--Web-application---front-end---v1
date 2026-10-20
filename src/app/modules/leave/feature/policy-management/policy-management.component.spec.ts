@@ -11,6 +11,7 @@ import { LeavePolicyStore } from '../../state/leave-policy.store';
 import { PolicyManagementComponent } from './policy-management.component';
 
 describe('PolicyManagementComponent', () => {
+  const departmentList = vi.fn(() => of({ items: [{ id: 'd1', name: 'Sales' }] }));
   function setup() {
     const policy = {
       items: signal([]), selectedPolicy: signal(null), loading: signal(false), loadError: signal(null),
@@ -24,7 +25,7 @@ describe('PolicyManagementComponent', () => {
         { provide: PermissionService, useValue: { hasPermission: () => true } },
         { provide: NotificationService, useValue: { error: vi.fn(), success: vi.fn() } },
         { provide: LegalEntityApiService, useValue: { getLegalEntities: () => of([{ id: 'le1', name: 'Dapi Technologies' }]) } },
-        { provide: DepartmentApiService, useValue: { listFlat: () => of({ items: [{ id: 'd1', name: 'Sales' }] }) } },
+        { provide: DepartmentApiService, useValue: { listFlat: departmentList } },
         { provide: PositionApiService, useValue: { listFlat: () => of({ items: [{ id: 'p1', name: 'Developer' }] }) } },
         { provide: LeavePolicyStore, useValue: policy },
         { provide: LeaveTypeStore, useValue: { items: signal([]), load: async () => {} } }
@@ -41,6 +42,8 @@ describe('PolicyManagementComponent', () => {
     expect(fixture.componentInstance.legalEntities()).toEqual([{ id: 'le1', name: 'Dapi Technologies' }]);
     expect(fixture.componentInstance.departmentOptions()).toEqual([{ value: 'd1', label: 'Sales' }]);
     expect(fixture.componentInstance.positionOptions()).toEqual([{ value: 'p1', label: 'Developer' }]);
+    // The org list endpoints reject page sizes above 100.
+    expect(departmentList).toHaveBeenCalledWith('le1', { page: 1, pageSize: 100 });
   });
 
   it('closes the wizard without saving when an edit changed nothing', async () => {
