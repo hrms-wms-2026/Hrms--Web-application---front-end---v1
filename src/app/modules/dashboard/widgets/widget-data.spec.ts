@@ -40,6 +40,15 @@ describe('widget-data', () => {
     expect(widgetData).toHaveBeenCalledTimes(2);
   });
 
+  it('refresh_response_with_error_status_keeps_a_non_null_error', () => {
+    const subject = new Subject<WidgetDataResponse>();
+    const ctx = configure(() => subject);
+    ctx.refresh();
+    subject.next({ instanceId: 'i1', status: 'error', fetchedAt: null, payload: null });
+    expect(ctx.state().status).toBe('error');
+    expect(ctx.state().error).not.toBeNull();
+  });
+
   it('refresh_aborts_on_destroy', () => {
     const subject = new Subject<WidgetDataResponse>();
     const ctx = configure(() => subject);

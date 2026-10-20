@@ -19,7 +19,9 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
   template: `
     <div class="relative h-full w-full" [class.select-none]="editing()" data-testid="widget-frame">
       <div
-        class="h-full w-full overflow-hidden rounded-2xl [&>*]:block [&>*]:h-full"
+        class="h-full w-full [&>*]:block [&>*]:h-full"
+        [class.overflow-auto]="!overflowVisible()"
+        [class.overflow-visible]="overflowVisible()"
         [class.ring-1]="editing()"
         [class.ring-slate-300]="editing()"
         [attr.inert]="editing() ? '' : null"
@@ -76,9 +78,22 @@ export class WidgetFrameComponent {
     return WIDGET_REGISTRY[w.widgetKey] ?? null;
   });
 
+  protected readonly overflowVisible = computed(() => this.entry()?.overflowVisible === true);
+
+  private boundId: string | null = null;
+  private boundState: unknown = null;
+  private boundData: unknown = null;
+
   constructor() {
     effect(() => {
       const w = this.widget();
+      // Layout-only changes (move/resize) replace the widget object; only re-seed when the seed itself changed.
+      if (w.instanceId === this.boundId && w.dataState === this.boundState && w.data === this.boundData) {
+        return;
+      }
+      this.boundId = w.instanceId;
+      this.boundState = w.dataState;
+      this.boundData = w.data;
       this.dataStore.bind({ instanceId: w.instanceId, state: w.dataState, data: w.data });
     });
   }

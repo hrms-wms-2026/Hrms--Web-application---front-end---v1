@@ -54,7 +54,7 @@ export class WidgetDataStore implements WidgetDataContext {
     this._state.update((s) => ({ ...s, status: 'loading' }));
     const sub = this.api.widgetData(this.id).subscribe({
       next: (res) => {
-        this._state.set({ status: res.status, fetchedAt: res.fetchedAt, error: null });
+        this._state.set({ status: res.status, fetchedAt: res.fetchedAt, error: res.status === 'error' ? 'REFRESH_FAILED' : null });
         this._data.set(res.payload);
       },
       error: () => {

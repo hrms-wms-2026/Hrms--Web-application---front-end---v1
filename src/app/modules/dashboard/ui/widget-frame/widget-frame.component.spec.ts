@@ -2,8 +2,9 @@ import { Component, input } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
-import { BootstrapWidget } from '../../models/dashboard-layout.model';
-import { injectWidgetData } from '../../widgets/widget-data';
+import { Subject } from 'rxjs';
+import { BootstrapWidget, WidgetDataResponse } from '../../models/dashboard-layout.model';
+import { injectWidgetData, WIDGET_DATA } from '../../widgets/widget-data';
 import { WIDGET_REGISTRY } from '../../widgets/widget-registry';
 import { WidgetFrameComponent } from './widget-frame.component';
 
@@ -70,6 +71,54 @@ describe('WidgetFrameComponent', () => {
     expect(el.querySelector('[data-resize-handle]')).toBeNull();
     expect(el.querySelector('[data-testid="widget-edit-overlay"]')).toBeNull();
     expect(el.querySelector('button[aria-label^="Remove"]')).toBeNull();
+  });
+
+  it('view_mode_wrapper_does_not_clip_and_flagged_card_is_overflow_visible', () => {
+    registry['fake'] = { component: FakeCardComponent };
+    let el = setup(widget(), false).nativeElement as HTMLElement;
+    const wrapper = el.querySelector('[data-testid="widget-frame"] > div') as HTMLElement;
+    expect(wrapper.className).not.toContain('overflow-hidden');
+    expect(wrapper.className).toContain('overflow-auto');
+    TestBed.resetTestingModule();
+    registry['fake'] = { component: FakeCardComponent, overflowVisible: true };
+    el = setup(widget(), false).nativeElement as HTMLElement;
+    const flagged = el.querySelector('[data-testid="widget-frame"] > div') as HTMLElement;
+    expect(flagged.className).toContain('overflow-visible');
+    expect(flagged.className).not.toContain('overflow-auto');
+  });
+
+  it('layout_only_change_keeps_refreshed_data_and_new_instance_reseeds', () => {
+    registry['fake'] = { component: FakeCardComponent };
+    const pending = new Subject<WidgetDataResponse>();
+    const widgetData = vi.fn().mockReturnValue(pending);
+    TestBed.configureTestingModule({ providers: [{ provide: DashboardLayoutApiService, useValue: { widgetData } }] });
+    const fixture = TestBed.createComponent(WidgetFrameComponent);
+    const w = widget();
+    fixture.componentRef.setInput('widget', w);
+    fixture.detectChanges();
+    const btn = () => (fixture.nativeElement as HTMLElement).querySelector('[data-testid="fake-btn"]')?.textContent;
+    expect(btn()).toBe('false-seed');
+
+    // A refresh is in flight, then the grid moves the widget (new object, same dataState/data).
+    const ctx = fixture.debugElement.injector.get(WIDGET_DATA);
+    ctx.refresh();
+    fixture.componentRef.setInput('widget', { ...w, layout: { x: 3, y: 1, w: 3, h: 2 } });
+    fixture.detectChanges();
+    expect(pending.observed).toBe(true);
+    pending.next({ instanceId: 'w1', status: 'success', fetchedAt: 'now', payload: 'fresh' });
+    pending.complete();
+    fixture.detectChanges();
+    expect(btn()).toBe('false-fresh');
+
+    // Another move after the refresh still keeps the refreshed data.
+    fixture.componentRef.setInput('widget', { ...w, layout: { x: 0, y: 4, w: 3, h: 2 } });
+    fixture.detectChanges();
+    expect(btn()).toBe('false-fresh');
+
+    // A different instance is re-seeded.
+    fixture.componentRef.setInput('widget', { ...w, instanceId: 'w2', data: 'other' });
+    fixture.detectChanges();
+    expect(btn()).toBe('false-other');
   });
 
   it('edit_mode_blocks_card_clicks_and_shows_remove', () => {

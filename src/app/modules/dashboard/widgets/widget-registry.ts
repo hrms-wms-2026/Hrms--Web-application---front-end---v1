@@ -15,6 +15,8 @@ import { WorkPatternCardComponent } from '../feature/work-pattern-card/work-patt
 export interface WidgetRegistryEntry {
   component: Type<unknown>;
   inputs?: Record<string, unknown>;
+  /** Card renders an in-place (non-CDK-overlay) dropdown that the frame must not clip. */
+  overflowVisible?: boolean;
 }
 
 /** widgetKey (as stored by the backend registry) to the card component that renders it. */
@@ -27,7 +29,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
   notifications: { component: DashboardNotificationsCardComponent },
   'quick-actions': { component: QuickActionsCardComponent },
   wellbeing: { component: WellbeingCarouselCardComponent },
-  'work-pattern': { component: WorkPatternCardComponent },
+  'work-pattern': { component: WorkPatternCardComponent, overflowVisible: true },
   'action-center': { component: ActionCenterCardComponent },
   'team-status': { component: TeamStatusCardComponent },
   'team-progress': { component: TeamProgressCardComponent },
