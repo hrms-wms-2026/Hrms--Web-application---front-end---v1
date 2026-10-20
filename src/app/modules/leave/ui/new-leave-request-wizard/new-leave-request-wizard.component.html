@@ -57,6 +57,9 @@
             <strong>{{ formatHours(previewResult.balanceImpact.remainingAfterSubmitHours) }}</strong>
           </div>
         </div>
+        @if ((previewResult.exceedsBalanceByHours ?? 0) > 0) {
+          <p class="nlw-warning" data-testid="over-balance">This is {{ hoursLabel(previewResult.exceedsBalanceByHours ?? 0) }} more than your balance. If approved, your balance goes negative.</p>
+        }
         @if (!previewResult.noticePeriodMissed && previewResult.conflictSnapshot.warnings.length === 0 && previewResult.conflictSnapshot.calendarConflicts.length === 0) {
           <p class="nlw-ok" data-testid="no-warnings">No policy warnings or calendar conflicts.</p>
         }

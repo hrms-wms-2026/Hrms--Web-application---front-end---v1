@@ -205,4 +205,28 @@ describe('NewLeaveRequestWizardComponent', () => {
     expect(review.textContent).toContain('2026-10-07 (Wed)');
     expect((fixture.nativeElement.querySelector('[data-testid="review-approver"]') as HTMLElement).textContent).toContain('Mathusanth Kumaran');
   });
+
+  function overBalancePreview(exceeds: number): LeaveRequestResponse {
+    return {
+      totalHours: 40, paidHours: 40, unpaidHours: 0, noticePeriodMissed: false, exceedsBalanceByHours: exceeds,
+      balanceImpact: { currentRemainingHours: 16, pendingAfterSubmitHours: 40, remainingAfterSubmitHours: -24 },
+      approvers: [], conflictSnapshot: { warnings: [], calendarConflicts: [], teamAbsencePercent: null }
+    } as unknown as LeaveRequestResponse;
+  }
+
+  it('warns, but still allows submitting, when the request is more than the balance', () => {
+    fixture.componentRef.setInput('previewResult', overBalancePreview(24));
+    fixture.componentInstance.step.set(3);
+    fixture.detectChanges();
+    const warning = fixture.nativeElement.querySelector('[data-testid="over-balance"]') as HTMLElement;
+    expect(warning.textContent).toContain('This is 24 h more than your balance. If approved, your balance goes negative.');
+    expect(fixture.componentInstance.canLeaveStep(3)).toBe(true);
+  });
+
+  it('shows no over-balance warning when the request fits', () => {
+    fixture.componentRef.setInput('previewResult', overBalancePreview(0));
+    fixture.componentInstance.step.set(3);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="over-balance"]')).toBeNull();
+  });
 });
