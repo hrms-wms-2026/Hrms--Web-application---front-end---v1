@@ -20,7 +20,7 @@ import { ActionCenterCardComponent } from './action-center-card.component';
 const DAY = 86_400_000;
 
 const EMPTY_LED_PROGRESS: LedWorkProgressResponse = {
-  totals: { total: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0 },
+  hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0,
   projects: [], overdueTasks: [], overdueTotal: 0
 };
 

@@ -35,7 +35,7 @@ function overdueTask(overrides: Partial<LedOverdueTask> = {}): LedOverdueTask {
 
 function ledProgress(overdueTasks: LedOverdueTask[]): LedWorkProgressResponse {
   return {
-    totals: { total: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: overdueTasks.length },
+    hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0,
     projects: [], overdueTasks, overdueTotal: overdueTasks.length
   };
 }
