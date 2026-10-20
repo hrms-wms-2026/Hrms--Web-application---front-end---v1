@@ -39,6 +39,8 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
                 <span class="obs-toggle-text">Required</span>
               </label>
             </div>
+          } @empty {
+            <p class="obs-step-subtitle">This checklist has no tasks to review.</p>
           }
         </div>
         <div class="obs-actions">

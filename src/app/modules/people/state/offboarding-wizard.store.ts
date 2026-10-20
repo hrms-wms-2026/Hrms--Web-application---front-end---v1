@@ -15,7 +15,33 @@ import {
 } from '../models/offboarding.model';
 
 export type OffboardingWizardStep =
-  | 'start' | 'choose_checklist' | 'review_tasks' | 'track_exit_work' | 'complete_or_bypass' | 'complete_exit';
+  | 'choose_checklist' | 'review_tasks' | 'track_exit_work' | 'complete_or_bypass' | 'complete_exit';
+
+/** Every wizard step in order. */
+export const ALL_OFFBOARDING_STEPS: readonly OffboardingWizardStep[] =
+  ['choose_checklist', 'review_tasks', 'track_exit_work', 'complete_or_bypass', 'complete_exit'];
+
+/** Steps that only work on checklist tasks - pointless when the offboarding went ahead without a checklist. */
+const CHECKLIST_ONLY_STEPS: ReadonlySet<OffboardingWizardStep> = new Set(['review_tasks', 'complete_or_bypass']);
+
+/** True once the offboarding has moved past checklist selection without picking a template. */
+export function offboardingSkippedChecklist(record: OffboardingRecordResponse | null): boolean {
+  return !!record && record.status !== 'initiated' && !record.checklistTemplateId;
+}
+
+/** The steps this offboarding actually goes through. */
+export function offboardingStepsFor(record: OffboardingRecordResponse | null): readonly OffboardingWizardStep[] {
+  return offboardingSkippedChecklist(record)
+    ? ALL_OFFBOARDING_STEPS.filter((step) => !CHECKLIST_ONLY_STEPS.has(step))
+    : ALL_OFFBOARDING_STEPS;
+}
+
+/** A checklist-only step resolves to the next step this offboarding does have. */
+function resolveStep(step: OffboardingWizardStep, record: OffboardingRecordResponse | null): OffboardingWizardStep {
+  const steps = offboardingStepsFor(record);
+  if (steps.includes(step)) return step;
+  return ALL_OFFBOARDING_STEPS.slice(ALL_OFFBOARDING_STEPS.indexOf(step)).find((s) => steps.includes(s)) ?? step;
+}
 
 export interface OffboardingWizardState {
   readonly employeeId: string | null;
@@ -31,7 +57,7 @@ export interface OffboardingWizardState {
 
 const initialState: OffboardingWizardState = {
   employeeId: null, record: null, checklistMatches: [], tasks: [], myPendingBypassRequests: [],
-  step: 'start', loading: false, saving: false, error: null
+  step: 'choose_checklist', loading: false, saving: false, error: null
 };
 
 export const OffboardingWizardStore = signalStore(
@@ -43,7 +69,7 @@ export const OffboardingWizardStore = signalStore(
     },
 
     goToStep(step: OffboardingWizardStep): void {
-      patchState(store, { step });
+      patchState(store, { step: resolveStep(step, store.record()) });
     },
 
     async loadOffboarding(employeeId: string): Promise<void> {
@@ -52,7 +78,7 @@ export const OffboardingWizardStore = signalStore(
         const record = await firstValueFrom(api.getOffboarding(employeeId));
         patchState(store, { record, loading: false });
         if (record) {
-          patchState(store, { step: record.status === 'initiated' ? 'choose_checklist' : 'review_tasks' });
+          patchState(store, { step: resolveStep(record.status === 'initiated' ? 'choose_checklist' : 'review_tasks', record) });
           if (record.status !== 'initiated') {
             await this.loadTasks(employeeId);
           }
@@ -88,13 +114,13 @@ export const OffboardingWizardStore = signalStore(
       }
     },
 
-    async selectChecklist(employeeId: string, templateId: string): Promise<boolean> {
+    async selectChecklist(employeeId: string, templateId: string | null): Promise<boolean> {
       patchState(store, { saving: true, error: null });
       try {
         await firstValueFrom(api.selectChecklist(employeeId, templateId));
         patchState(store, { saving: false });
         await this.loadOffboarding(employeeId);
-        patchState(store, { step: 'review_tasks' });
+        patchState(store, { step: resolveStep('review_tasks', store.record()) });
         return true;
       } catch (err: unknown) {
         const message = toSafeErrorMessage(err, 'Failed to select checklist.');

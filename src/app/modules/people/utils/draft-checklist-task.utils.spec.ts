@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createDraftTasksFromTemplate,
+  parseEditedTasksJsonToDraftTasks,
   serializeDraftTasksToEditedTasksJson,
   validateDraftTasks
 } from './draft-checklist-task.utils';
@@ -55,5 +56,35 @@ describe('draft-checklist-task.utils', () => {
     expect(validateDraftTasks(draft).join(' ')).toContain('Select a position');
     const withPosition = [{ ...draft[0], assigneePositionId: 'pos-hr' }];
     expect(validateDraftTasks(withPosition).join(' ')).toContain('Select who should complete this task');
+  });
+
+  it('carries template task description, priority and attachments through EditedTasksJson', () => {
+    const draft = createDraftTasksFromTemplate([
+      task({
+        title: 'Read handbook',
+        ownerType: 'employee',
+        description: '<p>Chapter 2</p>',
+        priority: 'high',
+        attachments: [{ fileId: 'file-1', fileName: 'handbook.pdf', fileSizeBytes: 100, contentType: 'application/pdf' }]
+      })
+    ]);
+
+    const json = serializeDraftTasksToEditedTasksJson(draft, '2026-11-02');
+    expect(JSON.parse(json)[0]).toMatchObject({
+      description: '<p>Chapter 2</p>',
+      priority: 'high',
+      attachmentFileIds: ['file-1']
+    });
+
+    const resumed = parseEditedTasksJsonToDraftTasks(json, '2026-11-02');
+    expect(resumed?.[0].details).toEqual({ description: '<p>Chapter 2</p>', priority: 'high', attachmentFileIds: ['file-1'] });
+  });
+
+  it('omits detail keys for template tasks without details', () => {
+    const json = serializeDraftTasksToEditedTasksJson(
+      createDraftTasksFromTemplate([task({ title: 'Sign NDA', ownerType: 'employee' })]),
+      '2026-11-02'
+    );
+    expect(JSON.parse(json)[0]).not.toHaveProperty('description');
   });
 });
