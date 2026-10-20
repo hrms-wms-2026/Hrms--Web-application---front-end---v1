@@ -128,6 +128,20 @@ describe('InboxItemCardComponent', () => {
     expect((el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('dates an attendance alert by its Day (date only); other alerts keep Detected with the time', () => {
+    const attendance = render(detail({ changeSet: [], editablePayloadJson: null, explanation: null, explanationDetails: null },
+      { source: 'attendance', kind: 'alert', category: 'alert', status: 'open', direction: 'received', createdAt: '2026-10-12T12:00:00Z' })).el;
+    const dateRow = (el: HTMLElement) => el.querySelector('[data-testid="inbox-card-date"]')!;
+
+    expect(dateRow(attendance).querySelector('dt')!.textContent!.trim()).toBe('Day');
+    expect(dateRow(attendance).querySelector('dd')!.textContent!.trim()).toBe('Oct 12, 2026');
+
+    TestBed.resetTestingModule();
+    const monitoring = render(detail({ changeSet: [], editablePayloadJson: null, explanation: null, explanationDetails: null },
+      { source: 'monitoring', kind: 'case', category: 'alert', status: 'open', direction: 'received' })).el;
+    expect(dateRow(monitoring).querySelector('dt')!.textContent!.trim()).toBe('Detected');
+  });
+
   it('renders detail facts as plain rows', () => {
     const { el } = render(detail({ changeSet: [], editablePayloadJson: null, explanation: null, explanationDetails: null,
       facts: [{ label: 'Late by', value: '30 min' }, { label: 'Deducted', value: '0.5 h from Annual Leave' }] },

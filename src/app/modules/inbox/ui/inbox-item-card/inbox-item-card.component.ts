@@ -91,7 +91,12 @@ const NAVIGATION_ACTIONS = new Set(['open_target']);
               <div class="card__row"><dt>{{ item.kind === 'invitation' ? 'Invitee' : 'Requested to' }}</dt>
                 <dd class="card__person"><app-avatar [userName]="item.requestedTo.name" size="xs" /><span class="truncate">{{ item.requestedTo.name }}</span></dd></div>
             }
-            <div class="card__row"><dt>{{ alert() ? 'Detected' : 'Requested on' }}</dt><dd>{{ item.createdAt | date: 'MMM d, y h:mm a' }}</dd></div>
+            <!-- An attendance alert is about a work day (its Detected time is in the steps); other tickets show when they were raised. -->
+            @if (item.source === 'attendance' && item.kind === 'alert') {
+              <div class="card__row" data-testid="inbox-card-date"><dt>Day</dt><dd>{{ item.createdAt | date: 'MMM d, y' }}</dd></div>
+            } @else {
+              <div class="card__row" data-testid="inbox-card-date"><dt>{{ alert() ? 'Detected' : 'Requested on' }}</dt><dd>{{ item.createdAt | date: 'MMM d, y h:mm a' }}</dd></div>
+            }
             @if (item.severity) {
               <div class="card__row"><dt>Severity</dt>
                 <dd><span [class]="'card__pill card__capitalize card__pill--' + severityTone()">{{ item.severity }}</span></dd></div>
