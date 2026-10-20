@@ -1,0 +1,89 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { of, throwError } from 'rxjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ProjectApiService } from '../../../work/data-access/project-api.service';
+import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
+import { ActiveProjectsCardComponent } from './active-projects-card.component';
+
+function project(id: string, overrides: Partial<ProjectListItemDto> = {}): ProjectListItemDto {
+  return {
+    id,
+    name: `Project ${id}`,
+    color: null,
+    isActive: true,
+    isAchieved: false,
+    allocatedHours: 10,
+    completedHours: 5,
+    ...overrides
+  } as ProjectListItemDto;
+}
+
+function page(items: ProjectListItemDto[]): PagedResultDto<ProjectListItemDto> {
+  return { items, pageNumber: 1, pageSize: 100, totalCount: items.length, totalPages: 1, hasNext: false, hasPrevious: false };
+}
+
+describe('ActiveProjectsCardComponent', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  async function setup(listMine: ReturnType<typeof vi.fn>): Promise<ComponentFixture<ActiveProjectsCardComponent>> {
+    await TestBed.configureTestingModule({
+      imports: [ActiveProjectsCardComponent],
+      providers: [provideRouter([]), { provide: ProjectApiService, useValue: { listMine } }]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ActiveProjectsCardComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  const q = (fixture: ComponentFixture<unknown>, id: string): HTMLElement | null =>
+    (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
+
+  it('counts only active, not-achieved projects and previews the first four', async () => {
+    const listMine = vi
+      .fn()
+      .mockReturnValue(
+        of(page([project('1'), project('2', { isAchieved: true }), project('3', { isActive: false }), project('4'), project('5'), project('6'), project('7')]))
+      );
+    const fixture = await setup(listMine);
+    expect(listMine).toHaveBeenCalledWith(1, 100);
+    expect(q(fixture, 'active-projects-count')?.textContent?.trim()).toBe('5');
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="active-projects-item"]').length).toBe(4);
+    expect(q(fixture, 'active-projects-more')?.textContent?.trim()).toBe('+1 more');
+  });
+
+  it('shows a letter tile, hours done of allocated and the percentage', async () => {
+    const fixture = await setup(
+      vi.fn().mockReturnValue(of(page([project('1', { name: 'portal Revamp', allocatedHours: 20, completedHours: 12, color: '#123456' })])))
+    );
+    const item = q(fixture, 'active-projects-item')!;
+    expect(item.textContent).toContain('P');
+    expect(q(fixture, 'active-projects-hours')?.textContent?.trim()).toBe('12h / 20h');
+    expect(q(fixture, 'active-projects-percent')?.textContent?.trim()).toBe('60%');
+  });
+
+  it('shows 0% rather than NaN when a project has no allocated hours', async () => {
+    const fixture = await setup(vi.fn().mockReturnValue(of(page([project('1', { allocatedHours: 0, completedHours: 3 })]))));
+    expect(q(fixture, 'active-projects-percent')?.textContent?.trim()).toBe('0%');
+    expect(fixture.nativeElement.textContent).not.toContain('NaN');
+  });
+
+  it('shows an empty state with no active projects', async () => {
+    const fixture = await setup(vi.fn().mockReturnValue(of(page([project('1', { isAchieved: true })]))));
+    expect(q(fixture, 'active-projects-count')?.textContent?.trim()).toBe('0');
+    expect(q(fixture, 'active-projects-empty')).not.toBeNull();
+  });
+
+  it('shows an error with retry when the request fails', async () => {
+    const listMine = vi
+      .fn()
+      .mockReturnValueOnce(throwError(() => new Error('boom')))
+      .mockReturnValue(of(page([project('1')])));
+    const fixture = await setup(listMine);
+    const error = q(fixture, 'active-projects-error');
+    expect(error).not.toBeNull();
+    error?.querySelector('button')?.click();
+    fixture.detectChanges();
+    expect(q(fixture, 'active-projects-count')?.textContent?.trim()).toBe('1');
+  });
+});

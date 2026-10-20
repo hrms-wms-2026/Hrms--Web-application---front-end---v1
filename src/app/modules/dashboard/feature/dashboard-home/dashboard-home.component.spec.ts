@@ -12,6 +12,7 @@ import { ActivityTimelineApiService } from '../../data-access/activity-timeline-
 import { FocusStatusApiService } from '../../data-access/focus-status-api.service';
 import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
 import { WorkPatternApiService } from '../../data-access/work-pattern-api.service';
+import { ProjectApiService } from '../../../work/data-access/project-api.service';
 import { ActionCenterDecisionService } from '../../data-access/action-center-decision.service';
 import { MyTeamActionItemsApiService } from '../../data-access/my-team-action-items-api.service';
 import { MyTeamDeepLinkService } from '../../data-access/my-team-deep-link.service';
@@ -20,6 +21,7 @@ import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.servi
 import { MyTeamCapabilitiesResponse } from '../../models/my-team-capabilities.model';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { DashboardLayoutService } from '../../state/dashboard-layout.service';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { DashboardHomeComponent } from './dashboard-home.component';
 
@@ -78,6 +80,7 @@ describe('DashboardHomeComponent', () => {
           }
         },
         { provide: NotificationNavigationService, useValue: { navigate: () => Promise.resolve() } },
+        { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
         {
           provide: MyTeamCapabilitiesStore,
           useValue: { capabilities: signal(caps), loaded: signal(true), ensureLoaded: () => Promise.resolve() }
@@ -86,7 +89,11 @@ describe('DashboardHomeComponent', () => {
         { provide: MyTeamActionItemsApiService, useValue: { getActionItems: () => of({ legalEntityId: 'le-1', sources: [] }) } },
         { provide: MyTeamLedProgressApiService, useValue: { getLedProgress: () => of(EMPTY_LED) } },
         { provide: MyTeamDeepLinkService, useValue: { navigate: () => Promise.resolve() } },
-        { provide: ActionCenterDecisionService, useValue: { decide: () => Promise.resolve() } }
+        { provide: ActionCenterDecisionService, useValue: { decide: () => Promise.resolve() } },
+        {
+          provide: ProjectApiService,
+          useValue: { listMine: () => of({ items: [], pageNumber: 1, pageSize: 100, totalCount: 0, totalPages: 0, hasNext: false, hasPrevious: false }) }
+        }
       ]
     }).compileComponents();
 
@@ -119,8 +126,20 @@ describe('DashboardHomeComponent', () => {
 
   const q = (fixture: { nativeElement: HTMLElement }, testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
-  const columnTags = (fixture: { nativeElement: HTMLElement }, zone: string): string[] =>
-    Array.from(q(fixture, `dashboard-column-${zone}`)!.querySelectorAll(':scope > app-dashboard-card > *')).map((el) => el.tagName.toLowerCase());
+  /** The live grid's cards in order, as `tag:size`. */
+  const gridCards = (fixture: { nativeElement: HTMLElement }): string[] =>
+    Array.from(q(fixture, 'dashboard-grid')!.querySelectorAll(':scope > app-dashboard-grid-item')).map(
+      (item) => `${item.querySelector(':scope > app-dashboard-card > *')!.tagName.toLowerCase()}:${item.getAttribute('data-size')}`
+    );
+  const DEFAULT_GRID = [
+    'app-today-at-a-glance-card:small',
+    'app-action-center-card:large',
+    'app-quick-actions-card:small',
+    'app-todays-schedule-card:large',
+    'app-today-total-time-card:small',
+    'app-active-projects-card:small',
+    'app-my-tasks-card:large'
+  ];
   // "Customize" now renders in the top navbar (outside this component), so it's not in `fixture`'s
   // DOM - trigger it the way the navbar button would, via the shared PageToolbarService action.
   const click = (fixture: { nativeElement: HTMLElement; detectChanges: () => void }, testId: string): void => {
@@ -133,38 +152,42 @@ describe('DashboardHomeComponent', () => {
   };
 
   describe('layout', () => {
-    it('shows a manager the default layout: Team Status, Notifications and Wellbeing left off, no KPI tiles', async () => {
+    it('shows a manager the default layout: Action Center kept, Team Status and Team Progress left to My Team', async () => {
       const fixture = await setup(TEAM_CAPS);
       expect(fixture.nativeElement.querySelector('app-team-kpi-strip')).toBeNull();
-      expect(columnTags(fixture, 'col0')).toEqual(['app-today-at-a-glance-card', 'app-todays-schedule-card']);
-      expect(columnTags(fixture, 'col1')).toEqual(['app-action-center-card', 'app-my-tasks-card']);
-      expect(columnTags(fixture, 'col2')).toEqual(['app-quick-actions-card', 'app-team-progress-card']);
+      expect(gridCards(fixture)).toEqual(DEFAULT_GRID);
       expect(q(fixture, 'dashboard-band-bottom-workPattern')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('#my-team-widget-teamStatus')).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-team-status-card, app-team-progress-card')).toBeNull();
+      expect(q(fixture, 'quick-action-my-team')!.getAttribute('href')).toBe('/dashboard/my-team');
     });
 
     it('shows no My Team cards to a viewer without My Team (AC-1)', async () => {
       const fixture = await setup({ ...TEAM_CAPS, isAvailable: false });
       expect(fixture.nativeElement.querySelector('app-team-status-card, app-action-center-card, app-team-progress-card')).toBeNull();
-      expect(columnTags(fixture, 'col0')).toEqual(['app-today-at-a-glance-card', 'app-todays-schedule-card']);
+      expect(gridCards(fixture).slice(0, 3)).toEqual(['app-today-at-a-glance-card:small', 'app-quick-actions-card:small', 'app-todays-schedule-card:large']);
     });
 
     it('renders a saved layout', async () => {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({
-        version: 1,
-        top: [],
-        columns: [
-          ['myTasks', 'teamStatus', 'todayAtAGlance'],
-          ['wellbeing', 'actionCenter', 'todaysSchedule'],
-          ['quickActions', 'teamProgress', 'notifications']
-        ],
+        version: 2,
+        top: ['quickActions'],
+        grid: ['myTasks', 'teamStatus', 'todayAtAGlance', 'wellbeing', 'actionCenter', 'todaysSchedule', 'teamProgress', 'notifications', 'todayTotalTime', 'activeProjects'],
         bottom: ['workPattern'],
-        hidden: ['todayAtAGlance']
+        hidden: ['todayAtAGlance', 'notifications', 'todayTotalTime', 'activeProjects'],
+        sizes: { myTasks: 'small', wellbeing: 'large' }
       }));
       const fixture = await setup({ ...TEAM_CAPS, isAvailable: false });
-      expect(columnTags(fixture, 'col0')).toEqual(['app-my-tasks-card']);
-      expect(columnTags(fixture, 'col1')).toEqual(['app-wellbeing-carousel-card', 'app-todays-schedule-card']);
+      expect(gridCards(fixture)).toEqual(['app-my-tasks-card:small', 'app-wellbeing-carousel-card:large', 'app-todays-schedule-card:large']);
+      expect(q(fixture, 'dashboard-band-top-quickActions')).toBeTruthy();
       expect(fixture.nativeElement.querySelector('app-today-at-a-glance-card')).toBeNull();
+    });
+
+    it('treats a saved v1 (3-column) layout as the default', async () => {
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify({
+        version: 1, top: [], columns: [['myTasks'], ['wellbeing'], ['quickActions']], bottom: ['workPattern'], hidden: ['todayAtAGlance']
+      }));
+      const fixture = await setup(TEAM_CAPS);
+      expect(gridCards(fixture)).toEqual(DEFAULT_GRID);
     });
   });
 
@@ -176,7 +199,7 @@ describe('DashboardHomeComponent', () => {
       expect(q(fixture, 'customize-panel')).toBeTruthy();
       expect(q(fixture, 'dashboard-tile-actionCenter')).toBeTruthy();
       expect(q(fixture, 'dashboard-tile-teamStatus')).toBeNull();
-      expect((q(fixture, 'customize-toggle-teamStatus') as HTMLInputElement).checked).toBe(false);
+      expect(q(fixture, 'customize-toggle-teamStatus')).toBeNull();
       expect(fixture.nativeElement.querySelector('app-my-tasks-card')).toBeNull();
       expect(q(fixture, 'customize-group-team')).toBeTruthy();
     });
@@ -208,20 +231,35 @@ describe('DashboardHomeComponent', () => {
       expect(q(fixture, 'dashboard-tile-myTasks')).toBeTruthy();
     });
 
-    it('moves a card into another column by drop, and by the ↑ / ↓ buttons', async () => {
+    it('moves a card in the grid by drop, and by the ↑ / ↓ buttons', async () => {
       const fixture = await setup(TEAM_CAPS);
       click(fixture, 'dashboard-customize');
+      const tiles = (): (string | null)[] =>
+        Array.from(q(fixture, 'dashboard-edit-grid')!.querySelectorAll('.dashboard-tile')).map((t) => t.getAttribute('data-testid'));
       const layout = TestBed.inject(DashboardLayoutService);
-      layout.drop('quickActions', 'col0', 0);
+      layout.drop('quickActions', 'grid', 0);
       fixture.detectChanges();
-      expect(q(fixture, 'dashboard-edit-col0')!.querySelector('[data-testid^="dashboard-tile-"]')!.getAttribute('data-testid')).toBe('dashboard-tile-quickActions');
+      expect(tiles()[0]).toBe('dashboard-tile-quickActions');
 
       click(fixture, 'customize-up-actionCenter');
-      const col0Tiles = Array.from(q(fixture, 'dashboard-edit-col0')!.querySelectorAll('.dashboard-tile')).map((t) => t.getAttribute('data-testid'));
-      expect(col0Tiles.at(-1)).toBe('dashboard-tile-actionCenter');
+      expect(tiles().slice(0, 3)).toEqual(['dashboard-tile-quickActions', 'dashboard-tile-actionCenter', 'dashboard-tile-todayAtAGlance']);
 
       click(fixture, 'dashboard-done');
-      expect(columnTags(fixture, 'col0')[0]).toBe('app-quick-actions-card');
+      expect(gridCards(fixture)[0]).toBe('app-quick-actions-card:small');
+    });
+
+    it('switches a grid card between Small and Large and saves it on Done', async () => {
+      const fixture = await setup(TEAM_CAPS);
+      click(fixture, 'dashboard-customize');
+      expect(q(fixture, 'dashboard-tile-quickActions')!.classList).not.toContain('dashboard-tile--large');
+      expect(q(fixture, 'dashboard-tile-size-small-quickActions')!.getAttribute('aria-pressed')).toBe('true');
+      click(fixture, 'dashboard-tile-size-large-quickActions');
+      expect(q(fixture, 'dashboard-tile-quickActions')!.classList).toContain('dashboard-tile--large');
+      expect(q(fixture, 'dashboard-tile-size-small-workPattern')).toBeNull();
+
+      click(fixture, 'dashboard-done');
+      expect(gridCards(fixture)[2]).toBe('app-quick-actions-card:large');
+      expect(JSON.parse(localStorage.getItem(LAYOUT_KEY)!).sizes).toEqual({ quickActions: 'large' });
     });
 
     it('drops the draft on Cancel and on Esc', async () => {
@@ -242,13 +280,13 @@ describe('DashboardHomeComponent', () => {
 
     it('Reset puts the default back, saved on Done', async () => {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify({
-        version: 1, top: [], columns: [['myTasks'], ['wellbeing'], ['quickActions']], bottom: ['workPattern'], hidden: ['todayAtAGlance']
+        version: 2, top: [], grid: ['myTasks', 'wellbeing', 'quickActions'], bottom: ['workPattern'], hidden: ['todayAtAGlance'], sizes: { myTasks: 'small' }
       }));
       const fixture = await setup(TEAM_CAPS);
       click(fixture, 'dashboard-customize');
       click(fixture, 'dashboard-reset');
       click(fixture, 'dashboard-done');
-      expect(columnTags(fixture, 'col0')).toEqual(['app-today-at-a-glance-card', 'app-todays-schedule-card']);
+      expect(gridCards(fixture)).toEqual(DEFAULT_GRID);
     });
   });
 });

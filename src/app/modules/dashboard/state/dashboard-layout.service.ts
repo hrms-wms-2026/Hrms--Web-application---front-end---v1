@@ -5,11 +5,14 @@ import {
   DASHBOARD_CARD_META,
   DEFAULT_DASHBOARD_LAYOUT,
   DashboardCardKey,
+  DashboardCardSize,
   DashboardLayout,
   DashboardZoneId,
   moveDashboardCard,
   resolveDashboardLayout,
+  dashboardCardSize,
   sanitizeDashboardLayout,
+  setDashboardCardSize,
   stepDashboardCard,
   toggleDashboardCard
 } from '../utils/dashboard-layout.util';
@@ -80,13 +83,15 @@ export class DashboardLayoutService {
   /** Capabilities decide whether the My Team cards exist for this viewer; Customize waits for them. */
   readonly ready = computed(() => this.capabilitiesStore.loaded());
 
-  /** Cards this viewer may have at all: every My Day card, plus the My Team cards their
-   * capabilities allow. */
+  /** Cards this viewer may have here: every My Day card, plus Action Center when their capabilities
+   * allow it - it shows on both dashboards. Team Status and Team Progress live only on the separate
+   * My Team dashboard (/dashboard/my-team); their keys stay in the layout model, so layouts saved
+   * before the split still load. */
   readonly allowed = computed<ReadonlySet<DashboardCardKey>>(() => {
     const caps = this.capabilitiesStore.capabilities();
     const team = caps?.isAvailable ? allowedWidgetKeys(caps) : [];
-    const keys = ALL_DASHBOARD_CARD_KEYS.filter((key) => DASHBOARD_CARD_META[key].group === 'day');
-    keys.push(...(team as DashboardCardKey[]));
+    const keys: DashboardCardKey[] = ALL_DASHBOARD_CARD_KEYS.filter((key) => DASHBOARD_CARD_META[key].group === 'day');
+    if (team.includes('actionCenter')) keys.push('actionCenter');
     return new Set(keys);
   });
 
@@ -134,6 +139,15 @@ export class DashboardLayoutService {
 
   toggle(key: DashboardCardKey): void {
     if (this.editing()) this.draft.update((layout) => toggleDashboardCard(layout, key));
+  }
+
+  sizeOf(key: DashboardCardKey): DashboardCardSize {
+    return dashboardCardSize(this.layout(), key);
+  }
+
+  /** Small (1 grid column) / Large (2 columns), from the Customize tiles. */
+  setSize(key: DashboardCardKey, size: DashboardCardSize): void {
+    if (this.editing()) this.draft.update((layout) => setDashboardCardSize(layout, key, size));
   }
 
   /** A drag-and-drop: `toIndex` is the position among the cards shown in that zone. */

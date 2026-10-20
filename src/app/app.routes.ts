@@ -62,6 +62,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'dashboard/my-team',
+        loadComponent: () =>
+          import('./modules/dashboard/feature/my-team-page/my-team-page.component').then(
+            (module) => module.MyTeamPageComponent
+          )
+      },
+      {
         path: 'dashboard/activity-timeline',
         loadComponent: () =>
           import('./modules/dashboard/feature/activity-timeline-page/activity-timeline-page.component').then(
