@@ -560,6 +560,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
   private stickToBottom = true;
   private lastMessageCount = 0;
   private filling = false;
+  private growthObserver: MutationObserver | null = null;
+  private readonly destroyRef = inject(DestroyRef);
 
 
   protected readonly unreadFromId = computed(() => {
@@ -661,7 +663,14 @@ export class ConversationPanelComponent implements AfterViewChecked {
   }
 
   ngAfterViewChecked(): void {
-    // A new ticket opens at its latest message; later, follow new messages only when the reader is at the bottom.
+    // Case cards fill in after their details load and grow taller: a reader at the bottom stays at the bottom.
+    const scrollEl = this.scroller()?.nativeElement;
+    if (scrollEl && !this.growthObserver && typeof MutationObserver !== 'undefined') {
+      this.growthObserver = new MutationObserver(() => { if (this.stickToBottom) this.scrollToBottom(); });
+      this.growthObserver.observe(scrollEl, { childList: true, subtree: true });
+      this.destroyRef.onDestroy(() => this.growthObserver?.disconnect());
+    }
+    // A new chat opens at its latest message; later, follow new messages only when the reader is at the bottom.
     const count = this.store.messages().length;
     if (count !== this.lastMessageCount) {
       const grewAtEnd = count > this.lastMessageCount;
