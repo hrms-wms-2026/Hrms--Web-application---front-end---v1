@@ -6,7 +6,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'work', label: 'Work', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
   // Requests, alerts and investigations from every module (Work, Leave, Attendance, Monitoring, Calendar):
   // shown to every employee - each source decides what the caller sees.
-  { id: 'inbox', label: 'Inbox', icon: 'inbox', path: '/inbox' },
+  // Its sub-sidebar is the chat list (people, groups), not child links.
+  { id: 'inbox', label: 'Inbox', icon: 'inbox', path: '/inbox', customSubSidebar: 'inbox' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar', path: '/calendar', requiredModules: ['calendar'] },
   {
     id: 'time-off', label: 'Time Off', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],

@@ -9,6 +9,7 @@ import { PermissionService } from '../../core/auth/state/permission.service';
 import { NavigationStateService } from './nav/navigation-state.service';
 import { SideNavbarComponent } from './side-navbar/side-navbar.component';
 import { SubSidebarComponent } from './sub-sidebar/sub-sidebar.component';
+import { InboxChatSidebarComponent } from '@modules/inbox/ui/chat-sidebar/inbox-chat-sidebar.component';
 import { TopNavbarComponent } from './top-navbar/top-navbar.component';
 import { ProfileStore } from '@modules/profile/state/profile.store';
 import { FileApiService } from '../../shared/data-access/file-api.service';
@@ -22,7 +23,7 @@ import { DraftModalHostComponent } from './draft-modal-host/draft-modal-host.com
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, ToastHostComponent, MobileBottomNavComponent, DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
+  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, InboxChatSidebarComponent, ToastHostComponent, MobileBottomNavComponent, DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

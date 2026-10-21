@@ -85,37 +85,15 @@ describe('InboxPageComponent', () => {
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    return { fixture, el, rows: () => Array.from(el.querySelectorAll('[data-testid="chat-row"]')) as HTMLElement[] };
+    return { fixture, el };
   }
 
-  it('lists people and groups, with unread and pending badges; no chat open yet', async () => {
-    const { el, rows } = await render();
+  it('shows the empty state and leaves the chat list to the sub-sidebar on wide screens', async () => {
+    const { el } = await render();
 
     expect(el.querySelector('[data-testid="inbox-chat-empty"]')!.textContent).toContain('Select a chat');
-    expect(rows().map((r) => r.textContent)).toEqual([
-      expect.stringContaining('Person c1'), expect.stringContaining('Person c2'), expect.stringContaining('Payroll review')
-    ]);
-    expect(rows()[0].textContent).toContain('2');
-    expect(rows()[1].textContent).toContain('1 pending');
-  });
-
-  it('Pending narrows the list to chats with something waiting on the user', async () => {
-    const { fixture, el, rows } = await render();
-
-    (el.querySelector('[data-testid="chat-filter-pending"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(rows()).toHaveLength(1);
-    expect(rows()[0].textContent).toContain('Person c2');
-    expect(el.querySelector('[data-testid="chat-check-c2"]')).not.toBeNull();
-  });
-
-  it('opening a row navigates to its chat', async () => {
-    const { rows } = await render();
-
-    rows()[2].click();
-
-    expect(router.navigate).toHaveBeenCalledWith(['/inbox', 'group', 'group', 'g3']);
+    expect(el.querySelector('app-inbox-chat-sidebar')).toBeNull();
+    expect(chatsApi['list']).toHaveBeenCalled();
   });
 
   it('a link to a request opens the 1-on-1 chat that carries it, with the case selected', async () => {

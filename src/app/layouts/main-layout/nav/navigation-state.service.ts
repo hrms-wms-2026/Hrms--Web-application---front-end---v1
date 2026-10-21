@@ -54,7 +54,10 @@ export class NavigationStateService {
 
   readonly isSubSidebarCollapsed = signal<boolean>(this.loadInitialCollapsedState());
 
-  readonly hasSubSidebar = computed(() => this.activeChildren().length > 0);
+  readonly hasSubSidebar = computed(() => this.activeChildren().length > 0 || !!this.activeItem()?.customSubSidebar);
+
+  /** The active module's own sub-sidebar, when it renders one instead of child links. */
+  readonly customSubSidebar = computed(() => this.activeItem()?.customSubSidebar ?? null);
 
   readonly hasVisibleSubSidebar = computed(() => this.hasSubSidebar() && !this.isSubSidebarCollapsed());
 

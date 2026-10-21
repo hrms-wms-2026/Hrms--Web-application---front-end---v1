@@ -13,7 +13,7 @@ import { BulkActionResultModalComponent, BulkResultSummary } from '../../../../s
 import { PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { InboxChatRowDto, chatRef, isPeopleChatSource } from '../../models/inbox-chat.dto';
-import { ConversationPersonDto, InboxHistoryEntryDto, InboxItemDetailDto, InboxItemRef, InboxTargetDto, sameRef } from '../../models/inbox.dto';
+import { InboxHistoryEntryDto, InboxItemDetailDto, InboxItemRef, InboxTargetDto, sameRef } from '../../models/inbox.dto';
 import { parseExtra } from '../../renderers/inbox-detail-renderers';
 import { ConversationStore } from '../../state/conversation.store';
 import { InboxChatsStore } from '../../state/inbox-chats.store';
@@ -22,7 +22,8 @@ import { InboxPersonCasesStore } from '../../state/inbox-person-cases.store';
 import { InboxStore } from '../../state/inbox.store';
 import { ApprovalDelegateModalComponent } from '../../ui/approval-delegate-modal/approval-delegate-modal.component';
 import { CaseCardAction } from '../../ui/case-card/case-card.component';
-import { ChatListComponent, ChatListFilter, pendingMatching } from '../../ui/chat-list/chat-list.component';
+import { pendingMatching } from '../../ui/chat-list/chat-list.component';
+import { InboxChatSidebarComponent } from '../../ui/chat-sidebar/inbox-chat-sidebar.component';
 import { ConversationPanelComponent } from '../../ui/conversation-panel/conversation-panel.component';
 import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../../ui/inbox-action-dialogs/inbox-outcome-dialog.component';
 import { InboxCommentDialogComponent } from '../../ui/inbox-comment-dialog/inbox-comment-dialog.component';
@@ -80,11 +81,11 @@ export function faceEvidenceFor(
   standalone: true,
   imports: [
     DatePipe, BreadcrumbHeaderComponent, BulkActionBarComponent, BulkActionResultModalComponent, ApprovalDelegateModalComponent,
-    ChatListComponent, ConversationPanelComponent, InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent,
+    InboxChatSidebarComponent, ConversationPanelComponent, InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent,
     NewGroupDialogComponent, PersonCasesViewComponent
   ],
   // The open chat: shared by the conversation panel and the details. The open person's history: the details panel.
-  providers: [ConversationStore, InboxChatsStore, InboxPersonCasesStore],
+  providers: [ConversationStore, InboxPersonCasesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="inbox">
@@ -101,11 +102,23 @@ export function faceEvidenceFor(
         </div>
       </header>
 
+      @if (chats.selectedIds().size > 0) {
+        <app-bulk-action-bar class="inbox__bulk" [count]="selectedPending().length" noun="item" [actions]="bulkBarActions()"
+          (action)="onBulkAction($event)" (cleared)="chats.setSelection(noChats)" />
+      }
+
       <div class="inbox__workspace" data-testid="inbox-workspace"
-        [class.inbox__workspace--open]="chatRefValue() !== null"
+        [class.inbox__workspace--open]="chatRefValue() !== null || history()"
         [class.inbox__workspace--details]="detailsShown()"
         [class.inbox__workspace--drawer]="narrow() && detailsShown()">
-        <section class="inbox__panel inbox__list" aria-label="Chats">
+        <!-- The chat list lives in the app's sub-sidebar; phones have none, so it shows here until a chat opens. -->
+        @if (narrow() && chatRefValue() === null && !history()) {
+          <section class="inbox__panel inbox__list" aria-label="Chats">
+            <app-inbox-chat-sidebar [embedded]="true" />
+          </section>
+        }
+
+        <section class="inbox__panel inbox__chat" aria-label="Conversation">
           @if (history()) {
             <div class="inbox__history-body scroll-fade">
               @if (store.historyLoading() && store.history().length === 0) {
@@ -137,32 +150,7 @@ export function faceEvidenceFor(
                 </ul>
               }
             </div>
-          } @else {
-            @if (selectedChats().size > 0) {
-              <app-bulk-action-bar [count]="selectedPending().length" noun="item" [actions]="bulkBarActions()"
-                (action)="onBulkAction($event)" (cleared)="selectedChats.set(noChats)" />
-            }
-            <app-chat-list
-              [rows]="chats.rows()"
-              [loading]="chats.loading()"
-              [error]="chats.error()"
-              [activeId]="activeRow()?.conversationId ?? null"
-              [filter]="filter()"
-              [kind]="kindFilter()"
-              [kindLabels]="kindLabels()"
-              [selectedIds]="selectedChats()"
-              (openRow)="openChat(chatRef($event))"
-              (openPerson)="openPerson($event)"
-              (newGroup)="openNewGroup(null)"
-              (filterChange)="setFilter($event)"
-              (kindChange)="kindFilter.set($event); selectedChats.set(noChats)"
-              (selectionChange)="selectedChats.set($event)"
-            />
-          }
-        </section>
-
-        <section class="inbox__panel inbox__chat" aria-label="Conversation">
-          @if (chatRefValue(); as ref) {
+          } @else if (chatRefValue(); as ref) {
             <app-conversation-panel
               [itemRef]="ref"
               [chat]="activeRow()"
@@ -281,10 +269,11 @@ export function faceEvidenceFor(
     .inbox__tool-btn:focus-visible, .inbox__chip:focus-visible, .inbox__back:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 
     /* One surface split by lines, not three separate cards: chats | conversation | details. */
-    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(300px, 32fr) minmax(0, 68fr); background: var(--color-surface); }
-    .inbox__workspace--details { grid-template-columns: minmax(280px, 28fr) minmax(360px, 44fr) minmax(320px, 28fr); }
+    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr); background: var(--color-surface); }
+    .inbox__workspace--details { grid-template-columns: minmax(360px, 62fr) minmax(320px, 38fr); }
+    .inbox__list { border-right: 0; }
     .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--color-surface); }
-    .inbox__chat, .inbox__details { border-left: 1px solid var(--color-border); }
+    .inbox__details { border-left: 1px solid var(--color-border); }
     .inbox__details { display: none; }
     .inbox__workspace--details .inbox__details { display: flex; }
     .inbox__scrim { display: none; }
@@ -321,8 +310,6 @@ export function faceEvidenceFor(
     @media (max-width: 1023px) {
       .inbox__workspace, .inbox__workspace--details { grid-template-columns: minmax(0, 1fr); }
       .inbox__chat { display: none; }
-      .inbox__workspace .inbox__chat { border-left: 0; }
-      .inbox__workspace--open .inbox__list { display: none; }
       .inbox__workspace--open .inbox__chat { display: flex; }
       .inbox__workspace--details .inbox__details { display: none; }
       .inbox__workspace--drawer .inbox__scrim { position: fixed; inset: 0; z-index: 1000; display: block; background: color-mix(in srgb, var(--color-text-primary) 35%, transparent); }
@@ -355,11 +342,7 @@ export class InboxPageComponent implements OnInit {
   /** A link to a case the user has no chat for. */
   protected readonly resolveError = signal<string | null>(null);
   /** A 1-on-1 chat just started from the search: shown in the header until the list has it. */
-  private readonly startedChat = signal<InboxChatRowDto | null>(null);
   protected readonly history = signal(false);
-  protected readonly filter = signal<ChatListFilter>('all');
-  protected readonly kindFilter = signal<string | null>(null);
-  protected readonly selectedChats = signal<ReadonlySet<string>>(new Set());
   protected readonly caseVersion = signal(0);
   protected readonly delegateOpen = signal(false);
   protected readonly groupDialog = signal<{ caseRef: InboxItemRef | null; caseTitle: string | null; people: PeoplePickerOption[] } | null>(null);
@@ -383,18 +366,13 @@ export class InboxPageComponent implements OnInit {
     const ref = this.chatRefValue();
     if (!ref) return null;
     return this.chats.rows().find((r) => sameRef(chatRef(r), ref))
-      ?? (this.startedChat() && sameRef(chatRef(this.startedChat()!), ref) ? this.startedChat() : null);
-  });
-  protected readonly kindLabels = computed(() => {
-    const labels = new Map<string, string>();
-    for (const k of this.kinds.kinds()) labels.set(`${k.source}:${k.kind}`, k.label);
-    return labels;
+      ?? (this.chats.started() && sameRef(chatRef(this.chats.started()!), ref) ? this.chats.started() : null);
   });
   /** The pending items of the ticked chats that pass the type filter, as the inbox lists them (with their actions). */
   protected readonly selectedPending = computed(() => {
     const refs = this.chats.rows()
-      .filter((r) => this.selectedChats().has(r.conversationId))
-      .flatMap((r) => pendingMatching(r, this.kindFilter()));
+      .filter((r) => this.chats.selectedIds().has(r.conversationId))
+      .flatMap((r) => pendingMatching(r, this.chats.kind()));
     return this.store.items().filter((i) => refs.some((p) => sameRef(p, i)));
   });
   private readonly bulkChoices = computed(() => bulkActionsFor(this.selectedPending(), (s, k) => this.kinds.descriptor(s, k)));
@@ -422,6 +400,13 @@ export class InboxPageComponent implements OnInit {
       untracked(() => this.selectCase({ source: row.caseItem!.source, kind: row.caseItem!.kind, id: row.caseItem!.id }));
   });
 
+  /** Pending (in the sub-sidebar) turns bulk approval on: it needs the pending items with their actions, as the inbox
+   *  lists them. */
+  private readonly loadPending = effect(() => {
+    if (this.chats.filter() === 'pending')
+      untracked(() => void this.store.applyFilter({ status: ['pending'], direction: ['received'], page: 1, pageSize: PENDING_PAGE }));
+  });
+
   /** The open chat was read: its badge clears without waiting for a reload. */
   private readonly markRead = effect(() => {
     const id = this.conversation.conversationId();
@@ -431,6 +416,7 @@ export class InboxPageComponent implements OnInit {
   ngOnInit(): void {
     void this.kinds.ensureLoaded();
     void this.store.loadCounts();
+    if (!this.chats.loaded()) void this.chats.load();
     const onMedia = (event: MediaQueryListEvent) => this.narrow.set(event.matches);
     this.media?.addEventListener?.('change', onMedia);
     this.destroyRef.onDestroy(() => this.media?.removeEventListener?.('change', onMedia));
@@ -507,20 +493,6 @@ export class InboxPageComponent implements OnInit {
     void this.router.navigate([], { relativeTo: this.route, queryParams: { case: ref ? caseParam(ref) : null }, queryParamsHandling: 'merge' });
   }
 
-  protected async openPerson(person: ConversationPersonDto): Promise<void> {
-    try {
-      const chat = await firstValueFrom(this.chatsApi.openDirect(person.employeeId));
-      this.startedChat.set({
-        conversationId: chat.conversationId, source: chat.source, kind: chat.kind, subjectId: chat.subjectId, type: 'direct',
-        title: person.name, otherEmployeeId: person.employeeId, avatarFileId: person.avatarFileId, memberCount: 2, preview: null,
-        lastMessageAt: null, unread: 0, pending: [], caseItem: null
-      });
-      this.openChat(chatRef(chat));
-    } catch {
-      this.notifications.error(`Could not start a chat with ${person.name}.`);
-    }
-  }
-
   /** "New group", or - with a case - the case's own group (from a 1-on-1 chat's "Add people" or the details). */
   protected openNewGroup(caseRef: InboxItemRef | null): void {
     const row = this.activeRow();
@@ -569,18 +541,13 @@ export class InboxPageComponent implements OnInit {
     }
   }
 
-  protected setFilter(filter: ChatListFilter): void {
-    this.filter.set(filter);
-    this.selectedChats.set(this.noChats);
-    this.kindFilter.set(null);
-    // Bulk approval needs the pending items with their actions, as the inbox lists them.
-    if (filter === 'pending') void this.store.applyFilter({ status: ['pending'], direction: ['received'], page: 1, pageSize: PENDING_PAGE });
-  }
-
   protected toggleHistory(): void {
     const next = !this.history();
     this.history.set(next);
-    if (next) void this.store.loadHistory({});
+    if (next) {
+      this.drawerOpen.set(false);
+      void this.store.loadHistory({});
+    }
   }
 
   // ---- Case actions ----------------------------------------------------------------------------------
@@ -649,7 +616,7 @@ export class InboxPageComponent implements OnInit {
       this.notifications.error(this.store.actionError() ?? 'The bulk action failed.');
       return;
     }
-    this.selectedChats.set(this.noChats);
+    this.chats.setSelection(this.noChats);
     this.caseVersion.update((v) => v + 1);
     void this.chats.load();
     if (result.failed.length === 0) {
