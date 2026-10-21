@@ -10,7 +10,7 @@ import { parseExtra } from '../../renderers/inbox-detail-renderers';
 import { InboxKindsStore } from '../../state/inbox-kinds.store';
 import { inboxIconTone, inboxStatusLabel, inboxStatusTone, inboxTitle, inboxTypeMeta } from '../../utils/inbox-item.util';
 import { FaceEvidenceCardComponent } from '../face-evidence-card/face-evidence-card.component';
-import { InboxChangeSetComponent } from '../inbox-change-set/inbox-change-set.component';
+import { CaseSummaryComponent } from '../case-summary/case-summary.component';
 import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
 import { LeaveRequestSummaryComponent } from '../leave-request-summary/leave-request-summary.component';
 
@@ -30,7 +30,7 @@ const CARD_HIDDEN_ACTIONS = new Set(['open_target', 'revert']);
 @Component({
   selector: 'app-case-card',
   standalone: true,
-  imports: [DatePipe, FaceEvidenceCardComponent, InboxChangeSetComponent, InboxTypeIconComponent, LeaveRequestSummaryComponent],
+  imports: [DatePipe, CaseSummaryComponent, FaceEvidenceCardComponent, InboxTypeIconComponent, LeaveRequestSummaryComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="cc" data-testid="case-card" [class.cc--selected]="selected()" [class.cc--resolved]="resolved()">
@@ -66,7 +66,7 @@ const CARD_HIDDEN_ACTIONS = new Set(['open_target', 'revert']);
             <app-leave-request-summary [changes]="d.changeSet" [editable]="selected() && editable()" [errors]="errors()"
               (editsChange)="editsChange.emit($event)" />
           } @else if (d.changeSet.length > 0) {
-            <app-inbox-change-set [changes]="d.changeSet" [editable]="selected() && editable()" [errors]="errors()"
+            <app-case-summary [changes]="d.changeSet" [editable]="selected() && editable()" [errors]="errors()"
               (editsChange)="editsChange.emit($event)" />
           } @else if (d.item.subtitle) {
             <p class="cc__text">{{ d.item.subtitle }}</p>
