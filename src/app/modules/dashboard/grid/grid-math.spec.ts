@@ -118,6 +118,56 @@ describe('moveTo', () => {
     const input = [item('a', r(0, 0, 4, 2))];
     expect(moveTo(input, 'zzz', 1, 1, 12)).toEqual(input);
   });
+
+  const isCompacted = (items: { id: string; rect: GridRect }[]) => {
+    const out = compact(items);
+    return out.every((o, i) => o.rect.y === items[i].rect.y);
+  };
+
+  it('moving down by one row swaps with the neighbour below', () => {
+    const items = [item('a', r(0, 0, 4, 2)), item('b', r(0, 2, 4, 3))];
+    const out = moveTo(items, 'a', 0, 1, 4);
+    expect(out.find(i => i.id === 'b')!.rect).toEqual(r(0, 0, 4, 3));
+    expect(out.find(i => i.id === 'a')!.rect).toEqual(r(0, 3, 4, 2));
+    expect(anyOverlap(out)).toBe(false);
+    expect(isCompacted(out)).toBe(true);
+  });
+
+  it('a drop onto an overlapping lower neighbour lands below it', () => {
+    const items = [item('a', r(0, 0, 4, 2)), item('b', r(0, 2, 4, 3))];
+    for (const y of [2, 3, 4]) {
+      const out = moveTo(items, 'a', 0, y, 4);
+      expect(out.find(i => i.id === 'a')!.rect).toEqual(r(0, 3, 4, 2));
+      expect(out.find(i => i.id === 'b')!.rect).toEqual(r(0, 0, 4, 3));
+      expect(anyOverlap(out)).toBe(false);
+      expect(isCompacted(out)).toBe(true);
+    }
+  });
+
+  it('moving down past one of three stacked widgets swaps only with that one', () => {
+    const items = [item('a', r(0, 0, 4, 2)), item('b', r(0, 2, 4, 2)), item('c', r(0, 4, 4, 2))];
+    const out = moveTo(items, 'a', 0, 1, 4);
+    expect(out.map(i => [i.id, i.rect.y])).toEqual([['a', 2], ['b', 0], ['c', 4]]);
+    expect(anyOverlap(out)).toBe(false);
+    expect(isCompacted(out)).toBe(true);
+  });
+
+  it('a wide widget moved down settles below every neighbour it passes over', () => {
+    const items = [item('a', r(0, 0, 8, 2)), item('b', r(0, 2, 4, 2)), item('c', r(4, 2, 4, 4)), item('d', r(8, 0, 4, 2))];
+    const out = moveTo(items, 'a', 0, 1, 12);
+    expect(out.find(i => i.id === 'a')!.rect).toEqual(r(0, 4, 8, 2));
+    expect(anyOverlap(out)).toBe(false);
+    expect(isCompacted(out)).toBe(true);
+    expect(out.every(i => i.rect.x + i.rect.w <= 12 && i.rect.y + i.rect.h <= MAX_ROWS)).toBe(true);
+  });
+
+  it('moving up by one row still swaps with the neighbour above', () => {
+    const items = [item('a', r(0, 0, 4, 2)), item('b', r(0, 2, 4, 3))];
+    const out = moveTo(items, 'b', 0, 1, 4);
+    expect(out.find(i => i.id === 'b')!.rect).toEqual(r(0, 0, 4, 3));
+    expect(out.find(i => i.id === 'a')!.rect).toEqual(r(0, 3, 4, 2));
+    expect(anyOverlap(out)).toBe(false);
+  });
 });
 
 describe('resizeTo', () => {

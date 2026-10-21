@@ -105,7 +105,33 @@ function place<T extends GridItem>(items: T[], id: string, rect: GridRect): T[] 
   return compact(list);
 }
 
-/** Moves an item to (x, y) (snapped, clamped to the grid), pushes colliders down, then compacts. */
+/**
+ * Moving down: the others are compacted first (as if the moved item were lifted out), then the moved item settles
+ * below every neighbour that starts above its target row (they swap places with it); neighbours starting at or
+ * below the target row are pushed down. Without this, pushing the lower neighbour down and compacting would just
+ * float the moved item back to where it started.
+ */
+function placeBelow<T extends GridItem>(items: T[], id: string, rect: GridRect): T[] {
+  const moved = items.find(i => i.id === id) as T;
+  const others = compact(items.filter(i => i.id !== id));
+  const target = { ...rect };
+  let guard = others.length + 1;
+  let passed = others.filter(o => overlaps(o.rect, target) && o.rect.y < target.y);
+  while (passed.length > 0 && guard-- > 0) {
+    target.y = Math.max(...passed.map(o => o.rect.y + o.rect.h));
+    passed = others.filter(o => overlaps(o.rect, target) && o.rect.y < target.y);
+  }
+  const byId = new Map<string, T>(others.map(o => [o.id, o]));
+  byId.set(id, { ...moved, rect: target });
+  const list = items.map(i => ({ ...(byId.get(i.id) as T) }));
+  pushColliders(list, id);
+  return compact(list);
+}
+
+/**
+ * Moves an item to (x, y) (snapped, clamped to the grid). Moving up or sideways pushes colliders down; moving
+ * down swaps with the neighbours passed over (see placeBelow). The result is always compacted with no overlap.
+ */
 export function moveTo<T extends GridItem>(items: T[], id: string, x: number, y: number, cols: number): T[] {
   const current = items.find(i => i.id === id);
   if (!current) return items;
@@ -114,7 +140,7 @@ export function moveTo<T extends GridItem>(items: T[], id: string, x: number, y:
     x: clamp(Math.round(x), 0, Math.max(cols - current.rect.w, 0)),
     y: Math.max(Math.round(y), 0)
   };
-  return place(items, id, rect);
+  return rect.y > current.rect.y ? placeBelow(items, id, rect) : place(items, id, rect);
 }
 
 /** Resizes an item (snapped to integers within its size limits and the columns), pushes colliders down, compacts. */

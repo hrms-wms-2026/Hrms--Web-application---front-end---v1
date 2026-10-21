@@ -376,6 +376,13 @@ describe('DashboardStore', () => {
     expect(store.bootstrap()?.layoutVersion).toBe(9);
   });
 
+  it('moving a widget down one row (keyboard ArrowDown) swaps it with the neighbour below', async () => {
+    const { store } = await loaded([widget('i-a', 'a', 0, 0, 12, 2), widget('i-b', 'b', 0, 2, 12, 3)]);
+    store.startEditing();
+    store.move('i-a', 0, 1);
+    expect(store.draft().map(w => [w.instanceId, w.layout.y])).toEqual([['i-a', 3], ['i-b', 0]]);
+  });
+
   it('load failure sets error', async () => {
     const { store, api } = setup();
     api.listMine.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
