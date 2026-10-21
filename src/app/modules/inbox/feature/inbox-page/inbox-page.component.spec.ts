@@ -107,6 +107,26 @@ describe('InboxPageComponent', () => {
       { queryParams: { case: 'leave:request:l1' }, replaceUrl: true });
   });
 
+  it('names the open chat in the breadcrumb and keeps History under the header "⋯"', async () => {
+    const { fixture, el } = await render();
+    expect(el.querySelector('app-breadcrumb-header')!.textContent).not.toContain('Person c1');
+
+    params.next(convertToParamMap({ source: 'direct', kind: 'direct', id: 'pair-c1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+
+    const crumb = el.querySelector('app-breadcrumb-header')!.textContent!;
+    expect(crumb).toContain('Chats');
+    expect(crumb).toContain('Person c1');
+    expect(el.querySelector('[data-testid="inbox-toggle-details"]')).not.toBeNull();
+
+    (el.querySelector('[data-testid="inbox-menu"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="menu-item-history"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-breadcrumb-header')!.textContent).toContain('History');
+  });
+
   it('a link to a case the user has no chat for says so', async () => {
     chatsApi['forItem'].mockReturnValue(throwError(() => new Error('404')));
     const { fixture, el } = await render();

@@ -10,6 +10,7 @@ import { ExceptionEvidenceResponse } from '../../../../shared/models/exception-e
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-action-bar/bulk-action-bar.component';
 import { BulkActionResultModalComponent, BulkResultSummary } from '../../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
+import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { InboxChatRowDto, chatRef, isPeopleChatSource } from '../../models/inbox-chat.dto';
@@ -81,7 +82,7 @@ export function faceEvidenceFor(
   selector: 'app-inbox-page',
   standalone: true,
   imports: [
-    DatePipe, BreadcrumbHeaderComponent, BulkActionBarComponent, BulkActionResultModalComponent, ApprovalDelegateModalComponent,
+    DatePipe, BreadcrumbHeaderComponent, BulkActionBarComponent, DropdownMenuComponent, BulkActionResultModalComponent, ApprovalDelegateModalComponent,
     InboxChatSidebarComponent, ConversationPanelComponent, InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent,
     NewGroupDialogComponent, PersonCasesViewComponent, ForwardDialogComponent
   ],
@@ -92,12 +93,30 @@ export function faceEvidenceFor(
     <div class="inbox">
       <header class="work-page-header inbox__page-header">
         <div class="inbox__header-row">
-          <app-breadcrumb-header parentLabel="Inbox" [currentLabel]="history() ? 'History' : 'Chats'" icon="inbox" />
+          <app-breadcrumb-header parentLabel="Inbox" [middleLabel]="crumbChat() ? 'Chats' : undefined"
+            [currentLabel]="history() ? 'History' : (crumbChat() ?? 'Chats')" icon="inbox" />
+          <!-- The open chat's tools (wide screens - phones keep them in the chat's own header), then History and
+               delegation under the same "⋯". -->
           <div class="inbox__header-tools">
-            <button type="button" class="inbox__tool-btn" data-testid="inbox-history-toggle" [attr.aria-pressed]="history()"
-              (click)="toggleHistory()">History</button>
-            @if (canDelegate) {
-              <button type="button" class="inbox__tool-btn" data-testid="inbox-delegate" (click)="delegateOpen.set(true)">Delegate my approvals</button>
+            @if (chatTools(); as panel) {
+              @if (!panel.isDirect()) {
+                <button type="button" class="inbox__icon-btn" data-testid="inbox-chat-add" aria-label="Add people" title="Add people"
+                  [disabled]="conversation.removed()" (click)="panel.onSlashCommand('add')">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><circle cx="9" cy="8" r="4" /><path d="M19 8v6M16 11h6" /></svg>
+                </button>
+              }
+            }
+            <app-dropdown-menu [items]="headerMenu()" ariaLabel="Inbox options" (selected)="onHeaderMenu($event)">
+              <button menu-trigger type="button" class="inbox__icon-btn" data-testid="inbox-menu" aria-label="Inbox options" title="More">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+              </button>
+            </app-dropdown-menu>
+            @if (chatTools()) {
+              <button type="button" class="inbox__icon-btn" data-testid="inbox-toggle-details" [attr.aria-pressed]="detailsShown()"
+                [attr.aria-label]="detailsShown() ? 'Hide details' : 'Show details'" [attr.title]="detailsShown() ? 'Hide details' : 'Show details'"
+                (click)="toggleDetails()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
+              </button>
             }
           </div>
         </div>
@@ -153,6 +172,7 @@ export function faceEvidenceFor(
             </div>
           } @else if (chatRefValue(); as ref) {
             <app-conversation-panel
+              #panel
               [itemRef]="ref"
               [chat]="activeRow()"
               [detailsVisible]="detailsShown()"
@@ -268,20 +288,29 @@ export function faceEvidenceFor(
   `,
   styles: [`
     :host { display: block; height: 100%; min-height: 0; }
-    .inbox { display: flex; height: 100%; min-height: 0; flex-direction: column; gap: 12px; }
+    .inbox { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+    .inbox__bulk { margin: 12px 0; }
     /* Same sticky header as Work (global .work-page-header). */
     .inbox__page-header { margin-bottom: 0 !important; }
-    .inbox__header-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; min-height: 36px; }
-    .inbox__header-row app-breadcrumb-header { display: inline-flex; flex-shrink: 0; align-items: center; }
+    .inbox__header-row { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; min-height: 36px; }
+    .inbox__header-row app-breadcrumb-header { display: inline-flex; min-width: 0; flex-shrink: 1; align-items: center; overflow: hidden; }
     .inbox__header-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-    .inbox__tool-btn { height: 30px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
-    .inbox__tool-btn:hover { border-color: var(--color-accent); }
-    .inbox__tool-btn[aria-pressed="true"] { border-color: var(--color-accent); color: var(--color-accent); }
-    .inbox__tool-btn:focus-visible, .inbox__chip:focus-visible, .inbox__back:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .inbox__icon-btn { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 8px;
+      background: none; color: var(--color-text-secondary); cursor: pointer; }
+    .inbox__icon-btn:hover:not(:disabled), .inbox__icon-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--color-text-primary) 6%, transparent); color: var(--color-text-primary); }
+    .inbox__icon-btn:disabled { opacity: .45; cursor: default; }
+    .inbox__icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .inbox__icon-btn:focus-visible, .inbox__chip:focus-visible, .inbox__back:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 
     /* One surface split by lines, not three separate cards: chats | conversation | details. */
     .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr); background: var(--color-surface); }
     .inbox__workspace--details { grid-template-columns: minmax(360px, 62fr) minmax(320px, 38fr); }
+    /* Wide screens: the workspace runs to the page's right and bottom edges, so the details panel is a full-height
+       column under the header line (the chat keeps the page's left gutter). */
+    @media (min-width: 1024px) {
+      .inbox__workspace { margin: 0 -2rem -1.75rem 0; }
+      .inbox__chat { padding-bottom: 12px; }
+    }
     .inbox__list { border-right: 0; }
     .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--color-surface); }
     .inbox__details { border-left: 1px solid var(--color-border); }
@@ -341,6 +370,7 @@ export class InboxPageComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   readonly card = viewChild<InboxItemCardComponent>('card');
+  private readonly panel = viewChild<ConversationPanelComponent>('panel');
 
   protected readonly canDelegate = inject(PermissionService).hasPermission(LEAVE_APPROVE);
   protected readonly chatRef = chatRef;
@@ -382,6 +412,17 @@ export class InboxPageComponent implements OnInit {
     if (!ref) return null;
     return this.chats.rows().find((r) => sameRef(chatRef(r), ref))
       ?? (this.chats.started() && sameRef(chatRef(this.chats.started()!), ref) ? this.chats.started() : null);
+  });
+  /** The open chat's name, as the breadcrumb's last level. */
+  protected readonly crumbChat = computed(() =>
+    this.history() || this.chatRefValue() === null ? null : this.activeRow()?.title ?? (this.conversation.title() || null));
+  /** The open chat, whose tools sit in the header row on wide screens (phones show them in the chat's own header). */
+  protected readonly chatTools = computed(() => (this.history() || this.narrow() ? null : this.panel() ?? null));
+  protected readonly headerMenu = computed<MenuItem[]>(() => {
+    const chatItems = this.chatTools()?.menuItems() ?? [];
+    const items: MenuItem[] = [...chatItems, { id: 'history', label: this.history() ? 'Back to chats' : 'History', dividerBefore: chatItems.length > 0 }];
+    if (this.canDelegate) items.push({ id: 'delegate', label: 'Delegate my approvals' });
+    return items;
   });
   /** The pending items of the ticked chats that pass the type filter, as the inbox lists them (with their actions). */
   protected readonly selectedPending = computed(() => {
@@ -560,6 +601,12 @@ export class InboxPageComponent implements OnInit {
   }
 
   /** Hide/show the details: a remembered preference on wide screens, a drawer on narrow ones. */
+  protected onHeaderMenu(id: string): void {
+    if (id === 'history') this.toggleHistory();
+    else if (id === 'delegate') this.delegateOpen.set(true);
+    else this.panel()?.onSlashCommand(id);
+  }
+
   protected toggleDetails(): void {
     if (this.narrow()) {
       this.drawerOpen.update((open) => !open);

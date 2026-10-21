@@ -391,7 +391,8 @@ const QUOTE_LENGTH = 120;
     .conv__icon-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .conv__icon-btn:focus-visible, .conv__link:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .conv__icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .conv__head { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--color-border); }
+    /* Wide screens: the page's breadcrumb row names the chat and holds its tools; phones keep this header (back button). */
+    .conv__head { display: none; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--color-border); }
     .conv__head app-avatar { flex: 0 0 auto; }
     .conv__who { display: flex; min-width: 0; flex: 1; flex-direction: column; }
     .conv__name { overflow: hidden; color: var(--color-text-primary); font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
@@ -505,6 +506,7 @@ const QUOTE_LENGTH = 120;
     .conv__justify { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 12px; }
     /* Narrow screens: the chat is its own screen with a back button; the details open as a drawer. */
     @media (max-width: 1023px) {
+      .conv__head { display: flex; }
       .conv__back { display: inline-flex; }
       .msg { max-width: 92%; }
     }
@@ -598,7 +600,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
   protected readonly mentionCandidates = computed<MentionCandidate[]>(() => this.store.participants()
     .filter((p) => p.employeeId !== this.me())
     .map((p) => ({ id: p.employeeId, name: p.name, avatarUrl: this.avatarUrl(p.avatarFileId) })));
-  protected readonly isDirect = computed(() => this.itemRef().source === 'direct');
+  readonly isDirect = computed(() => this.itemRef().source === 'direct');
   /** A 1-on-1 chat has no "add people": groups start from a case (its ⋯), or from the sidebar. */
   protected readonly slashCommands = computed<HostSlashCommand[]>(() => this.isDirect() ? [] : [
     { id: ADD_COMMAND, label: 'Add people', category: 'ACTIONS', icon: '+', description: 'Add someone to this conversation' }
@@ -608,7 +610,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
     { id: 'group', label: 'Start a group for this case', iconPath: 'M16 20a4 4 0 0 0-8 0M12 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19 8v6M16 11h6' },
     { id: 'forward', label: 'Forward', iconPath: 'm15 5 5 5-5 5M20 10H9a5 5 0 0 0-5 5v4' }
   ];
-  protected readonly menuItems = computed<MenuItem[]>(() => {
+  /** The chat's options (Members, Rename group). On wide screens the page shows them in its header row. */
+  readonly menuItems = computed<MenuItem[]>(() => {
     if (this.isDirect()) return [];
     const items: MenuItem[] = [{ id: MEMBERS_COMMAND, label: 'Members' }];
     if (this.itemRef().source === 'group') items.push({ id: RENAME_COMMAND, label: 'Rename group' });
@@ -930,7 +933,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
     });
   }
 
-  protected onSlashCommand(id: string): void {
+  onSlashCommand(id: string): void {
     if (id === ADD_COMMAND) {
       // A 1-on-1 chat stays between its two people.
       if (!this.isDirect() && !this.addOpen()) this.toggleAdd();
