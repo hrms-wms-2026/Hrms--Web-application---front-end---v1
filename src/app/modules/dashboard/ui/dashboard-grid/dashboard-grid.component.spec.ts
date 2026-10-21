@@ -1,0 +1,235 @@
+import { TestBed } from '@angular/core/testing';
+import { describe, expect, it, vi } from 'vitest';
+import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
+import { BootstrapWidget } from '../../models/dashboard-layout.model';
+import { DashboardGridComponent } from './dashboard-grid.component';
+
+function widget(id: string, over: Partial<BootstrapWidget> = {}): BootstrapWidget {
+  return {
+    instanceId: id,
+    widgetKey: 'fake-' + id,
+    title: 'Widget ' + id,
+    layout: { x: 2, y: 1, w: 3, h: 2 },
+    size: { minW: 2, minH: 1, maxW: 6, maxH: 4 },
+    dataState: { status: 'success', fetchedAt: null, error: null },
+    data: null,
+    ...over
+  };
+}
+
+// 1200px wide, 12 columns, 12px gap => cell 89px, pitch 101px horizontally; rows 96px => pitch 108px.
+function setup(widgets: BootstrapWidget[], editing = true) {
+  TestBed.configureTestingModule({
+    providers: [{ provide: DashboardLayoutApiService, useValue: { widgetData: vi.fn() } }]
+  });
+  const fixture = TestBed.createComponent(DashboardGridComponent);
+  fixture.componentRef.setInput('widgets', widgets);
+  fixture.componentRef.setInput('columns', 12);
+  fixture.componentRef.setInput('rowHeight', 96);
+  fixture.componentRef.setInput('gap', 12);
+  fixture.componentRef.setInput('editing', editing);
+  const el: HTMLElement = fixture.nativeElement;
+  const grid = el.querySelector('[data-testid="dashboard-grid"]') as HTMLElement | null;
+  fixture.detectChanges();
+  const gridEl = (grid ?? (el.querySelector('[data-testid="dashboard-grid"]') as HTMLElement));
+  Object.defineProperty(gridEl, 'clientWidth', { configurable: true, value: 1200 });
+  const moved = vi.fn();
+  const resized = vi.fn();
+  const removed = vi.fn();
+  fixture.componentInstance.moved.subscribe((e) => moved(e.id, e.x, e.y));
+  fixture.componentInstance.resized.subscribe((e) => resized(e.id, e.w, e.h));
+  fixture.componentInstance.removed.subscribe((id) => removed(id));
+  return { fixture, el, moved, resized, removed };
+}
+
+function cell(el: HTMLElement, id: string): HTMLElement {
+  return el.querySelector(`[data-instance-id="${id}"]`) as HTMLElement;
+}
+
+function ptr(type: string, clientX: number, clientY: number, target: EventTarget) {
+  target.dispatchEvent(new MouseEvent(type, { clientX, clientY, bubbles: true, cancelable: true }));
+}
+
+function key(target: HTMLElement, k: string, shiftKey = false) {
+  target.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey, bubbles: true, cancelable: true }));
+}
+
+describe('DashboardGridComponent', () => {
+  it('places_widget_by_grid_lines', () => {
+    const { el } = setup([widget('a'), widget('b', { layout: { x: 0, y: 0, w: 4, h: 3 } })]);
+    const a = cell(el, 'a');
+    expect(a.style.gridColumn).toBe('3 / span 3');
+    expect(a.style.gridRow).toBe('2 / span 2');
+    const b = cell(el, 'b');
+    expect(b.style.gridColumn).toBe('1 / span 4');
+    expect(b.style.gridRow).toBe('1 / span 3');
+    const grid = el.querySelector('[data-testid="dashboard-grid"]') as HTMLElement;
+    expect(grid.style.gridTemplateColumns).toContain('repeat(12');
+    expect(grid.style.gridTemplateColumns).toContain('minmax(0');
+    expect(grid.style.gridAutoRows).toBe('96px');
+    expect(grid.style.gap).toBe('12px');
+  });
+
+  it('keyboard_arrow_emits_moved', () => {
+    const { fixture, el, moved } = setup([widget('a')]);
+    const a = cell(el, 'a');
+    expect(a.getAttribute('tabindex')).toBe('0');
+    expect(a.getAttribute('aria-label')).toBe('Widget a, column 3, row 2, width 3, height 2');
+    key(a, 'ArrowRight');
+    expect(moved).toHaveBeenLastCalledWith('a', 3, 1);
+    key(a, 'ArrowDown');
+    expect(moved).toHaveBeenLastCalledWith('a', 2, 2);
+    key(a, 'ArrowLeft');
+    expect(moved).toHaveBeenLastCalledWith('a', 1, 1);
+    key(a, 'ArrowUp');
+    expect(moved).toHaveBeenLastCalledWith('a', 2, 0);
+    fixture.detectChanges();
+  });
+
+  it('shift_arrow_emits_resized', () => {
+    const { el, resized, moved } = setup([widget('a')]);
+    const a = cell(el, 'a');
+    key(a, 'ArrowRight', true);
+    expect(resized).toHaveBeenLastCalledWith('a', 4, 2);
+    key(a, 'ArrowDown', true);
+    expect(resized).toHaveBeenLastCalledWith('a', 3, 3);
+    key(a, 'ArrowLeft', true);
+    expect(resized).toHaveBeenLastCalledWith('a', 2, 2);
+    key(a, 'ArrowUp', true);
+    expect(resized).toHaveBeenLastCalledWith('a', 3, 1);
+    expect(moved).not.toHaveBeenCalled();
+  });
+
+  it('delete_and_backspace_emit_removed', () => {
+    const { el, removed } = setup([widget('a')]);
+    key(cell(el, 'a'), 'Delete');
+    key(cell(el, 'a'), 'Backspace');
+    expect(removed).toHaveBeenCalledTimes(2);
+    expect(removed).toHaveBeenCalledWith('a');
+  });
+
+  it('keyboard_respects_clamps', () => {
+    const { el, moved, resized } = setup([widget('a', { layout: { x: 0, y: 0, w: 2, h: 1 } })]);
+    const a = cell(el, 'a');
+    key(a, 'ArrowLeft');
+    key(a, 'ArrowUp');
+    expect(moved).not.toHaveBeenCalled();
+    key(a, 'ArrowLeft', true); // w already at minW 2
+    key(a, 'ArrowUp', true); // h already at minH 1
+    expect(resized).not.toHaveBeenCalled();
+  });
+
+  it('keyboard_respects_right_edge', () => {
+    const { el, moved, resized } = setup([widget('b', { layout: { x: 9, y: 0, w: 3, h: 1 } })]);
+    key(cell(el, 'b'), 'ArrowRight');
+    key(cell(el, 'b'), 'ArrowRight', true);
+    expect(moved).not.toHaveBeenCalled();
+    expect(resized).not.toHaveBeenCalled();
+  });
+
+  it('no_emit_during_pointer_move_only_on_up', () => {
+    const { fixture, el, moved } = setup([widget('a')]);
+    const handle = cell(el, 'a').querySelector('[data-drag-handle]') as HTMLElement;
+    ptr('pointerdown', 100, 100, handle);
+    ptr('pointermove', 302, 316, document);
+    fixture.detectChanges();
+    expect(moved).not.toHaveBeenCalled();
+    const ghost = el.querySelector('[data-testid="grid-ghost"]') as HTMLElement;
+    expect(ghost.style.gridColumn).toBe('5 / span 3');
+    expect(ghost.style.gridRow).toBe('4 / span 2');
+    ptr('pointerup', 302, 316, document);
+    fixture.detectChanges();
+    expect(moved).toHaveBeenCalledTimes(1);
+    expect(moved).toHaveBeenCalledWith('a', 4, 3);
+    expect(el.querySelector('[data-testid="grid-ghost"]')).toBeNull();
+  });
+
+  it('resize_handle_emits_resized_on_up_and_clamps_to_size', () => {
+    const { fixture, el, resized } = setup([widget('a')]);
+    const handle = cell(el, 'a').querySelector('[data-resize-handle]') as HTMLElement;
+    ptr('pointerdown', 0, 0, handle);
+    ptr('pointermove', 202, 108, document);
+    expect(resized).not.toHaveBeenCalled();
+    ptr('pointerup', 202, 108, document);
+    expect(resized).toHaveBeenLastCalledWith('a', 5, 3);
+    // far beyond max (6x4) clamps to size.max
+    ptr('pointerdown', 0, 0, handle);
+    ptr('pointermove', 2000, 2000, document);
+    ptr('pointerup', 2000, 2000, document);
+    expect(resized).toHaveBeenLastCalledWith('a', 6, 4);
+    // far below min (2x1) clamps to size.min
+    ptr('pointerdown', 0, 0, handle);
+    ptr('pointermove', -2000, -2000, document);
+    ptr('pointerup', -2000, -2000, document);
+    expect(resized).toHaveBeenLastCalledWith('a', 2, 1);
+    fixture.detectChanges();
+  });
+
+  it('move_clamps_to_columns_and_top', () => {
+    const { el, moved } = setup([widget('a')]);
+    const handle = cell(el, 'a').querySelector('[data-drag-handle]') as HTMLElement;
+    ptr('pointerdown', 0, 0, handle);
+    ptr('pointermove', 5000, -5000, document);
+    ptr('pointerup', 5000, -5000, document);
+    expect(moved).toHaveBeenLastCalledWith('a', 9, 0);
+  });
+
+  it('does_not_emit_when_cell_unchanged', () => {
+    const { el, moved, resized } = setup([widget('a')]);
+    const drag = cell(el, 'a').querySelector('[data-drag-handle]') as HTMLElement;
+    ptr('pointerdown', 10, 10, drag);
+    ptr('pointermove', 30, 20, document);
+    ptr('pointerup', 30, 20, document);
+    expect(moved).not.toHaveBeenCalled();
+    const rs = cell(el, 'a').querySelector('[data-resize-handle]') as HTMLElement;
+    ptr('pointerdown', 10, 10, rs);
+    ptr('pointermove', 30, 20, document);
+    ptr('pointerup', 30, 20, document);
+    expect(resized).not.toHaveBeenCalled();
+  });
+
+  it('escape_cancels_drag', () => {
+    const { fixture, el, moved } = setup([widget('a')]);
+    const handle = cell(el, 'a').querySelector('[data-drag-handle]') as HTMLElement;
+    ptr('pointerdown', 0, 0, handle);
+    ptr('pointermove', 303, 0, document);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="grid-ghost"]')).not.toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="grid-ghost"]')).toBeNull();
+    ptr('pointerup', 303, 0, document);
+    expect(moved).not.toHaveBeenCalled();
+  });
+
+  it('view_mode_has_no_tabindex_handles_or_aria_label', () => {
+    const { el } = setup([widget('a')], false);
+    const a = cell(el, 'a');
+    expect(a.hasAttribute('tabindex')).toBe(false);
+    expect(a.hasAttribute('aria-label')).toBe(false);
+    expect(a.querySelector('[data-drag-handle]')).toBeNull();
+    key(a, 'ArrowRight');
+  });
+
+  it('team_widgets_keep_deep_link_anchor_ids', () => {
+    const { el } = setup(
+      [
+        widget('s', { widgetKey: 'team-status' }),
+        widget('p', { widgetKey: 'team-progress' }),
+        widget('c', { widgetKey: 'action-center' })
+      ],
+      false
+    );
+    expect(el.querySelector('#my-team-widget-teamStatus')).not.toBeNull();
+    expect(el.querySelector('#my-team-widget-teamProgress')).not.toBeNull();
+    const ac = el.querySelector('#my-team-widget-actionCenter') as HTMLElement;
+    expect(ac).not.toBeNull();
+    expect(ac.classList.contains('scroll-mt-4')).toBe(true);
+  });
+
+  it('frame_remove_is_reemitted_as_removed', () => {
+    const { el, removed } = setup([widget('a')]);
+    (el.querySelector('button[aria-label="Remove Widget a"]') as HTMLButtonElement).click();
+    expect(removed).toHaveBeenCalledWith('a');
+  });
+});
