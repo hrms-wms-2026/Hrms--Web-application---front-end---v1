@@ -1,20 +1,83 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription } from 'rxjs';
+import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
+import { LedEmployeeProgress, LedPeriodProgress, LedProgressPeriod } from '../../models/team-progress-detail.model';
 import { Router } from '@angular/router';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
-import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { LedHourTotals, LedOverdueTask, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
-import { buildPieSlices } from '../../utils/pie-slices.util';
+import {
+  PROGRESS_STATUSES,
+  ProgressStatusKey,
+  formatHourValue,
+  formatPercent,
+  percentOf
+} from '../../utils/team-progress-format.util';
+import { TeamProgressMode, resolveTeamProgressMode, teamProgressListBudget } from '../../utils/team-progress-layout.util';
+import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
 
-export interface HourSegment {
-  key: 'completed' | 'inProgress' | 'notStarted' | 'untasked';
+/** Per-viewer memory of the period switch. A convenience only: when storage is blocked the card
+ * simply starts on All time. */
+export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'onevo.teamProgress.period';
+
+export const TEAM_PROGRESS_PERIODS: readonly { value: LedProgressPeriod; label: string }[] = [
+  { value: 'all', label: 'All time' },
+  { value: 'month', label: 'This month' },
+  { value: 'week', label: 'This week' }
+];
+
+type DatedPeriod = Exclude<LedProgressPeriod, 'all'>;
+type TaskStatusKey = Exclude<ProgressStatusKey, 'untasked'>;
+
+export type MetricTone = 'green' | 'blue' | 'gray' | 'amber' | 'rose';
+
+/** One tinted metric tile. Every value is a real number from a payload, never estimated. */
+export interface MetricTile {
+  key: string;
+  value: string;
+  label: string;
+  tone: MetricTone;
+}
+
+/** One of the hour states, ready for the donut, legends, tiles and bars. */
+export interface StatusRow {
+  key: ProgressStatusKey;
+  label: string;
+  color: string;
+  bgClass: string;
   hours: number;
+  hoursText: string;
+  /** Share of the base (allocation, task estimates when nothing is allocated, or the period total). */
+  percentText: string;
+  /** The same share as a 0-100 number for bar widths. */
+  percentValue: number;
+  /** Whole-number share for aria-valuenow. */
+  percentRounded: number;
+  /** Stable test id suffix, kept from the original legend. */
+  testId: string;
+  /** Tile tint in the medium layout. */
+  tone: MetricTone;
+}
+
+export interface HourSegment {
+  key: ProgressStatusKey;
   percent: number;
-  cssClass: string;
+  bgClass: string;
+}
+
+interface DonutSegment {
+  key: ProgressStatusKey;
+  color: string;
+  /** Arc length on a circle whose circumference is 100. */
+  length: number;
+  /** stroke-dashoffset that starts this arc where the previous one ended (12 o'clock first). */
+  offset: number;
 }
 
 interface ProgressRow {
@@ -28,15 +91,76 @@ interface ProgressRow {
   atRisk: boolean;
   hours: LedHourTotals;
   completionPercent: number;
+  completionRounded: number;
+  completionText: string;
 }
 
-/** Same look as Employee Detail's Work Management card: an estimated-hours pie + legend + rates on
- * the card, and the module-by-module (child modules indented) breakdown and overdue tasks in the
- * pop-out. Hours come from a trigger-maintained summary table on the backend, so each poll is cheap. */
+interface ProjectRow {
+  projectId: string;
+  name: string;
+  identifier: string;
+  hours: LedHourTotals;
+  completionPercent: number;
+  completionRounded: number;
+  completionText: string;
+}
+
+const LEGEND_TEST_IDS: Record<ProgressStatusKey, string> = {
+  completed: 'completed',
+  inProgress: 'in-progress',
+  notStarted: 'not-started',
+  untasked: 'untasked'
+};
+
+const TONE_BY_STATUS: Record<ProgressStatusKey, MetricTone> = {
+  completed: 'green',
+  inProgress: 'blue',
+  notStarted: 'gray',
+  untasked: 'amber'
+};
+
+const HOURS_BY_KEY: Record<ProgressStatusKey, (h: LedHourTotals) => number> = {
+  completed: (h) => h.completedHours,
+  inProgress: (h) => h.inProgressHours,
+  notStarted: (h) => h.notStartedHours,
+  untasked: (h) => h.untaskedHours
+};
+
+const PERIOD_HOURS_BY_KEY: Record<TaskStatusKey, (p: LedPeriodProgress) => number> = {
+  completed: (p) => p.completedHours,
+  inProgress: (p) => p.inProgressHours,
+  notStarted: (p) => p.notStartedHours
+};
+
+function readStoredPeriod(): LedProgressPeriod {
+  try {
+    const value = localStorage.getItem(TEAM_PROGRESS_PERIOD_STORAGE_KEY);
+    return value === 'month' || value === 'week' ? value : 'all';
+  } catch {
+    return 'all';
+  }
+}
+
+function storePeriod(period: LedProgressPeriod): void {
+  try {
+    localStorage.setItem(TEAM_PROGRESS_PERIOD_STORAGE_KEY, period);
+  } catch {
+    // Storage blocked (private window, site policy): the choice is just not remembered.
+  }
+}
+
+/**
+ * Team Progress: the estimated-hours (task estimate weightage, not time worked) picture of the
+ * modules the viewer leads. The card picks one of six layouts from its own rendered size (see
+ * team-progress-layout.util) and every layout fills the card: the donut and type scale with the
+ * space through container query units. Resizing only re-lays out what is loaded, it never fetches.
+ * A period switch (All time / This month / This week) narrows the figures to tasks due in it.
+ * The expand button, "View all" and a click anywhere on the card open the detail dialog.
+ */
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [WidgetCardComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [NgTemplateOutlet, WidgetCardComponent, PopoutHeaderActionsComponent, TeamProgressDetailDialogComponent],
   templateUrl: './team-progress-card.component.html',
   styleUrl: './team-progress-card.component.css',
   host: { class: 'block h-full' },
@@ -53,12 +177,81 @@ export class TeamProgressCardComponent implements OnInit {
   });
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly detailApi = inject(TeamProgressDetailApiService);
 
   private pollId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
 
-  protected readonly showAll = signal(false);
-  protected readonly formatHours = formatHours;
+  private resizeObserver: ResizeObserver | null = null;
+  private frameId: number | null = null;
+  private pendingSize: { width: number; height: number } | null = null;
+
+  /** Layout for the card's current size. 'compact' until the first measurement (and without ResizeObserver). */
+  readonly mode = signal<TeamProgressMode>('compact');
+  /** Rows each list shows in the current mode and height; the rest sit behind "+N more". */
+  readonly listBudget = signal(0);
+  /** Rendered card width, rounded to 100px steps so it only changes the layout at those steps. */
+  private readonly widthStep = signal(0);
+  readonly detailOpen = signal(false);
+
+  /** The period switch: 'all' is the bootstrap led-progress payload; week / month use the period endpoint. */
+  readonly period = signal<LedProgressPeriod>(readStoredPeriod());
+  protected readonly periods = TEAM_PROGRESS_PERIODS;
+  /** Period payloads, each with the led-progress load it was fetched for. A newer load (refresh or
+   * poll) refetches the selected period and keeps showing the older payload until the new one lands. */
+  private readonly periodCache = signal<Partial<Record<DatedPeriod, { payload: LedPeriodProgress; for: LedWorkProgressResponse }>>>({});
+  private readonly periodRequested = new Map<DatedPeriod, LedWorkProgressResponse>();
+  protected readonly periodFailed = signal(false);
+
+  /** Top 5 people by assigned task estimate. Only the large and maximum layouts show it, so it is
+   * fetched lazily there, once per data load; resizing within those layouts never refetches. */
+  protected readonly topMembers = signal<LedEmployeeProgress[]>([]);
+  /** The data load and period the shown top members belong to; a new load or period refetches. */
+  private topMembersFor: { data: LedWorkProgressResponse; period: LedProgressPeriod } | null = null;
+  private topMembersSub: Subscription | null = null;
+  protected readonly topMemberScale = computed(() => Math.max(0, ...this.topMembers().map((m) => m.totalHours)));
+
+  constructor() {
+    effect(() => {
+      const period = this.period();
+      const data = this.store.data();
+      if (period === 'all' || !data) return;
+      const cached = untracked(() => this.periodCache()[period]);
+      if (cached?.for === data || this.periodRequested.get(period) === data) return;
+      this.periodRequested.set(period, data);
+      untracked(() => this.fetchPeriod(period, data));
+    });
+
+    effect(() => {
+      const mode = this.mode();
+      const data = this.store.data();
+      const period = this.period();
+      if ((mode !== 'large' && mode !== 'maximum') || !data) return;
+      if (this.topMembersFor?.data === data && this.topMembersFor.period === period) return;
+      this.topMembersFor = { data, period };
+      untracked(() => {
+        // A newer period or load replaces the request in flight, so an old answer never lands last.
+        this.topMembersSub?.unsubscribe();
+        this.topMembersSub = this.detailApi
+          .getEmployees({
+            pageNumber: 1,
+            pageSize: 5,
+            sort: 'totalHours',
+            direction: 'desc',
+            ...(period === 'all' ? {} : { period })
+          })
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (page) => this.topMembers.set(page.items.filter((m) => m.totalHours > 0)),
+            // Optional extra: on failure the layout simply keeps its other sections.
+            error: () => this.topMembers.set([])
+          });
+      });
+    });
+  }
+
+  protected readonly formatHourValue = formatHourValue;
 
   /** Polls set `loading` every minute; only a first load (no data yet) shows the skeleton. */
   protected readonly widgetState = computed<WidgetState>(() => {
@@ -76,66 +269,300 @@ export class TeamProgressCardComponent implements OnInit {
 
   protected readonly refreshing = computed(() => this.store.loading() && !!this.store.data());
 
-  protected readonly pieSlices = computed(() => {
-    const h = this.store.data()?.hours;
-    if (!h) return [];
-    return buildPieSlices([
-      { key: 'completed', label: 'Completed', count: h.completedHours, color: '#10b981' },
-      { key: 'inProgress', label: 'In progress', count: h.inProgressHours, color: '#3b82f6' },
-      { key: 'notStarted', label: 'Not started', count: h.notStartedHours, color: '#cbd5e1' },
-      { key: 'untasked', label: 'Not yet tasked', count: h.untaskedHours, color: '#fcd34d' }
-    ]);
+  /** The selected period's payload; null for All time and until its first fetch lands. */
+  protected readonly periodData = computed<LedPeriodProgress | null>(() => {
+    const period = this.period();
+    return period === 'all' ? null : (this.periodCache()[period]?.payload ?? null);
   });
 
-  /** Completed hours against the allocation (against the task estimates when nothing is allocated). */
-  protected readonly completionRate = computed(() => {
+  /** 'ready' for All time; for a dated period, whether its payload is there yet. */
+  protected readonly periodState = computed<'ready' | 'loading' | 'error'>(() => {
+    if (this.period() === 'all' || this.periodData()) return 'ready';
+    return this.periodFailed() ? 'error' : 'loading';
+  });
+
+  protected readonly periodCaption = computed(() => {
+    const period = this.period();
+    return period === 'week' ? 'Due this week' : period === 'month' ? 'Due this month' : 'Allocated';
+  });
+
+  protected readonly periodEmptyText = computed(() => (this.period() === 'week' ? 'No tasks due this week' : 'No tasks due this month'));
+
+  /** A dated period with no estimated hours due in it. */
+  protected readonly periodEmpty = computed(() => {
+    const p = this.periodData();
+    return !!p && !(p.totalHours > 0);
+  });
+
+  /** Four states for All time (a zero state still shows "0 h · 0%"); for a dated period the three
+   * task states against the hours due in it ("not yet tasked" has no date). */
+  protected readonly statusRows = computed<StatusRow[]>(() => {
+    if (this.period() !== 'all') {
+      const p = this.periodData();
+      return p ? buildPeriodStatusRows(p) : [];
+    }
     const h = this.store.data()?.hours;
-    return h ? completionPercent(h) : 0;
+    return h ? buildStatusRows(h) : [];
+  });
+
+  /** Donut arcs share the circle by the states' hours. A tiny state gets a tiny arc. */
+  protected readonly donutSegments = computed<DonutSegment[]>(() => {
+    const rows = this.statusRows();
+    const total = rows.reduce((sum, row) => sum + Math.max(0, row.hours), 0);
+    if (total <= 0) return [];
+    let start = 0;
+    const segments: DonutSegment[] = [];
+    for (const row of rows) {
+      if (!(row.hours > 0)) continue;
+      const length = (row.hours / total) * 100;
+      // The circle starts at 3 o'clock; an offset of 25 moves the first arc to 12 o'clock.
+      segments.push({ key: row.key, color: row.color, length, offset: 25 - start });
+      start += length;
+    }
+    return segments;
+  });
+
+  /** Donut centre / headline: allocated weightage for All time, due task hours for a period. */
+  protected readonly totalText = computed(() => {
+    const total = this.period() === 'all' ? (this.store.data()?.hours.allocatedHours ?? 0) : (this.periodData()?.totalHours ?? 0);
+    return `${formatHourValue(total)} h`;
+  });
+
+  /** Centre number size in cqw of the donut, so a long total still fits inside the ring. */
+  protected readonly totalFontCqw = computed(() => Math.min(13, 56 / (this.totalText().length * 0.58)));
+
+  protected readonly donutLabel = computed(() => {
+    if (!this.store.data()) return '';
+    const parts = this.statusRows().map((row) => `${row.label} ${row.hoursText} h (${row.percentText})`);
+    return `Estimated hours, ${this.totalText()} ${this.periodCaption().toLowerCase()}: ${parts.join(', ')}`;
+  });
+
+  /** Completed hours against the allocation (task estimates when nothing is allocated), or against
+   * the hours due in the selected period. */
+  protected readonly completionText = computed(() => {
+    if (this.period() !== 'all') {
+      const p = this.periodData();
+      return p ? formatPercent(p.completedHours, p.totalHours) : '0%';
+    }
+    const h = this.store.data()?.hours;
+    return h ? formatPercent(h.completedHours, completionBase(h)) : '0%';
+  });
+
+  protected readonly untaskedText = computed(() => {
+    const h = this.store.data()?.hours;
+    return h ? formatPercent(h.untaskedHours, completionBase(h)) : '0%';
   });
 
   protected readonly modulesAtRisk = computed(() => this.store.data()?.modulesAtRisk ?? 0);
 
-  protected readonly ledModuleCount = computed(() => this.progressRows().filter((row) => row.depth === 0).length);
+  /** Tinted metric tiles. Task counts by status only exist for a period, so All time shows the total
+   * task count and modules at risk instead. */
+  protected readonly metricTiles = computed<MetricTile[]>(() => {
+    const data = this.store.data();
+    if (!data) return [];
+    const completed: MetricTile = { key: 'completion', value: this.completionText(), label: 'Hours completed', tone: 'green' };
+    if (this.period() !== 'all') {
+      const p = this.periodData();
+      if (!p) return [];
+      return [
+        completed,
+        { key: 'tasks', value: formatHourValue(p.taskCount), label: this.period() === 'week' ? 'Tasks due this week' : 'Tasks due this month', tone: 'gray' },
+        { key: 'not-started-tasks', value: formatHourValue(p.notStartedTaskCount), label: 'Tasks not started', tone: 'gray' },
+        { key: 'in-progress-tasks', value: formatHourValue(p.inProgressTaskCount), label: 'Tasks in progress', tone: 'blue' }
+      ];
+    }
+    const atRisk = data.modulesAtRisk;
+    return [
+      completed,
+      { key: 'tasks', value: formatHourValue(data.hours.taskCount), label: 'Total tasks', tone: 'gray' },
+      { key: 'at-risk', value: String(atRisk), label: atRisk === 1 ? 'Module at risk' : 'Modules at risk', tone: atRisk > 0 ? 'rose' : 'gray' },
+      { key: 'untasked', value: this.untaskedText(), label: 'Not yet tasked', tone: 'amber' }
+    ];
+  });
 
-  /** Led modules with their child modules right below them. Led modules are ordered at-risk first,
-   * then least complete; ties keep the backend order. Children keep the backend's tree order. */
-  protected readonly progressRows = computed<ProgressRow[]>(() => {
-    const blocks: { head: ProgressRow; rows: ProgressRow[]; index: number }[] = [];
+  /** The wide layout's three tiles (four on a card 1000px+ wide): completion, a task count, then not
+   * yet tasked (All time) or the tasks due (period). */
+  protected readonly wideTiles = computed<MetricTile[]>(() => {
+    const tiles = this.metricTiles();
+    if (tiles.length < 4 || this.widthStep() >= 1000) return tiles;
+    return this.period() === 'all' ? [tiles[0], tiles[1], tiles[3]] : [tiles[0], tiles[2], tiles[1]];
+  });
+
+  /** The maximum layout adds overdue tasks (not period-bound) as a fifth tile. */
+  protected readonly maximumTiles = computed<MetricTile[]>(() => {
+    const data = this.store.data();
+    const tiles = this.metricTiles();
+    if (!data || tiles.length === 0) return tiles;
+    const overdue = data.overdueTotal;
+    return [...tiles, { key: 'overdue', value: String(overdue), label: 'Overdue tasks', tone: overdue > 0 ? 'rose' : 'gray' }];
+  });
+
+  /** Over-tasked / unestimated notes only make sense against the allocation (All time). */
+  protected readonly showNotes = computed(() => {
+    const h = this.store.data()?.hours;
+    return this.period() === 'all' && !!h && (h.overTaskedHours > 0 || h.unestimatedTaskCount > 0);
+  });
+
+  /** Led modules (depth 0) ordered at-risk first, then least complete; ties keep the backend order. */
+  protected readonly moduleRows = computed<ProgressRow[]>(() => {
+    const rows: { row: ProgressRow; index: number }[] = [];
     for (const project of this.store.data()?.projects ?? []) {
       for (const module of project.modules) {
-        const row: ProgressRow = {
-          key: module.objectiveId,
-          objectiveId: module.objectiveId,
-          projectId: project.projectId,
-          title: module.title,
-          projectName: module.depth === 0 && project.projectName && project.projectName !== module.title ? project.projectName : null,
-          depth: module.depth,
-          atRisk: module.atRisk,
-          hours: module.hours,
-          completionPercent: completionPercent(module.hours)
-        };
-        if (module.depth === 0 || blocks.length === 0) blocks.push({ head: row, rows: [row], index: blocks.length });
-        else blocks[blocks.length - 1].rows.push(row);
+        if (module.depth !== 0) continue;
+        const base = completionBase(module.hours);
+        rows.push({
+          index: rows.length,
+          row: {
+            key: module.objectiveId,
+            objectiveId: module.objectiveId,
+            projectId: project.projectId,
+            title: module.title,
+            projectName: project.projectName && project.projectName !== module.title ? project.projectName : null,
+            depth: module.depth,
+            atRisk: module.atRisk,
+            hours: module.hours,
+            completionPercent: Math.min(100, percentOf(module.hours.completedHours, base)),
+            completionRounded: Math.round(Math.min(100, percentOf(module.hours.completedHours, base))),
+            completionText: formatPercent(module.hours.completedHours, base)
+          }
+        });
       }
     }
-    return blocks
+    return rows
       .sort(
         (a, b) =>
-          Number(b.head.atRisk) - Number(a.head.atRisk) ||
-          a.head.completionPercent - b.head.completionPercent ||
+          Number(b.row.atRisk) - Number(a.row.atRisk) ||
+          a.row.completionPercent - b.row.completionPercent ||
           a.index - b.index
       )
-      .flatMap((block) => block.rows);
+      .map((r) => r.row);
   });
+
+  protected readonly ledModuleCount = computed(() => this.moduleRows().length);
+
+  protected readonly projectRows = computed<ProjectRow[]>(() =>
+    (this.store.data()?.projects ?? []).map((project) => {
+      const base = completionBase(project.hours);
+      return {
+        projectId: project.projectId,
+        name: project.projectName,
+        identifier: project.identifier,
+        hours: project.hours,
+        completionPercent: Math.min(100, percentOf(project.hours.completedHours, base)),
+        completionRounded: Math.round(Math.min(100, percentOf(project.hours.completedHours, base))),
+        completionText: formatPercent(project.hours.completedHours, base)
+      };
+    })
+  );
+
+  /** The over-tasked / unestimated note takes about one list row; give it back from the lists. */
+  private readonly effectiveBudget = computed(() => {
+    const budget = this.listBudget();
+    return budget > 1 && this.showNotes() ? budget - 1 : budget;
+  });
+
+  protected readonly visibleModules = computed(() => this.moduleRows().slice(0, this.effectiveBudget()));
+  protected readonly hiddenModuleCount = computed(() => this.moduleRows().length - this.visibleModules().length);
+  protected readonly visibleProjects = computed(() => this.projectRows().slice(0, this.effectiveBudget()));
+  protected readonly hiddenProjectCount = computed(() => this.projectRows().length - this.visibleProjects().length);
+  protected readonly visibleOverdue = computed(() => (this.store.data()?.overdueTasks ?? []).slice(0, this.effectiveBudget()));
+  protected readonly hiddenOverdueCount = computed(() =>
+    Math.max(0, (this.store.data()?.overdueTotal ?? 0) - this.visibleOverdue().length)
+  );
+  /** Maximum layout columns: projects, modules, overdue tasks (when there are any) and top members (when loaded). */
+  protected readonly maximumPanelCount = computed(
+    () => 2 + Number((this.store.data()?.overdueTotal ?? 0) > 0) + Number(this.topMembers().length > 0)
+  );
+  protected readonly visibleMembers = computed(() => this.topMembers().slice(0, Math.max(1, this.effectiveBudget())));
 
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
     if (document.visibilityState === 'visible') this.startPolling();
+    this.observeSize();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
       this.stopPolling();
+      this.stopObservingSize();
     });
+  }
+
+  setPeriod(period: LedProgressPeriod): void {
+    if (period !== 'all' && period !== 'month' && period !== 'week') return;
+    if (period === this.period()) return;
+    this.periodFailed.set(false);
+    this.period.set(period);
+    storePeriod(period);
+  }
+
+  onPeriodSelect(event: Event): void {
+    this.setPeriod((event.target as HTMLSelectElement).value as LedProgressPeriod);
+  }
+
+  retryPeriod(event?: Event): void {
+    event?.stopPropagation();
+    const period = this.period();
+    const data = this.store.data();
+    if (period === 'all' || !data) return;
+    this.periodFailed.set(false);
+    this.periodRequested.set(period, data);
+    this.fetchPeriod(period, data);
+  }
+
+  private fetchPeriod(period: DatedPeriod, data: LedWorkProgressResponse): void {
+    this.detailApi
+      .getPeriodProgress(period)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (payload) => {
+          this.periodCache.update((cache) => ({ ...cache, [period]: { payload, for: data } }));
+          if (this.period() === period) this.periodFailed.set(false);
+        },
+        error: () => {
+          this.periodRequested.delete(period);
+          if (this.period() === period) this.periodFailed.set(true);
+        }
+      });
+  }
+
+  /** Layout follows the host's rendered size; a resize only changes signals, never the data. */
+  private observeSize(): void {
+    if (typeof ResizeObserver === 'undefined') return;
+    this.resizeObserver = new ResizeObserver((entries) => {
+      const rect = entries[entries.length - 1]?.contentRect;
+      if (!rect) return;
+      this.pendingSize = { width: rect.width, height: rect.height };
+      if (typeof requestAnimationFrame !== 'function') {
+        this.applySize();
+        return;
+      }
+      if (this.frameId !== null) return;
+      this.frameId = requestAnimationFrame(() => {
+        this.frameId = null;
+        this.applySize();
+      });
+    });
+    this.resizeObserver.observe(this.host.nativeElement);
+  }
+
+  private applySize(): void {
+    const size = this.pendingSize;
+    if (!size) return;
+    this.pendingSize = null;
+    const mode = resolveTeamProgressMode(size.width, size.height, this.mode());
+    if (mode !== this.mode()) this.mode.set(mode);
+    const widthStep = Math.floor(size.width / 100) * 100;
+    if (widthStep !== this.widthStep()) this.widthStep.set(widthStep);
+    if (!(size.height > 0)) return;
+    const budget = teamProgressListBudget(mode, size.height);
+    if (budget !== this.listBudget()) this.listBudget.set(budget);
+  }
+
+  private stopObservingSize(): void {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    if (this.frameId !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.frameId);
+    this.frameId = null;
   }
 
   private onVisibilityChange(): void {
@@ -168,29 +595,20 @@ export class TeamProgressCardComponent implements OnInit {
   hourSegments(hours: LedHourTotals): HourSegment[] {
     const scale = Math.max(hours.allocatedHours, hours.completedHours + hours.inProgressHours + hours.notStartedHours);
     if (scale <= 0) return [];
-    const segments: HourSegment[] = [
-      { key: 'completed', hours: hours.completedHours, percent: 0, cssClass: 'team-progress-segment--completed' },
-      { key: 'inProgress', hours: hours.inProgressHours, percent: 0, cssClass: 'team-progress-segment--in-progress' },
-      { key: 'notStarted', hours: hours.notStartedHours, percent: 0, cssClass: 'team-progress-segment--not-started' },
-      { key: 'untasked', hours: hours.untaskedHours, percent: 0, cssClass: 'team-progress-segment--untasked' }
-    ];
-    return segments.filter((s) => s.hours > 0).map((s) => ({ ...s, percent: (s.hours / scale) * 100 }));
+    return PROGRESS_STATUSES.map((s) => ({ key: s.key, hours: HOURS_BY_KEY[s.key](hours), bgClass: s.bgClass }))
+      .filter((s) => s.hours > 0)
+      .map((s) => ({ key: s.key, bgClass: s.bgClass, percent: (s.hours / scale) * 100 }));
   }
 
-  /** A click anywhere on the card pops out the module breakdown. */
-  expand(): void {
-    if (this.showAll() || !this.store.data()) return;
-    this.showAll.set(true);
+  /** Expand, "View all", "+N more" and a click anywhere on a loaded card open the detail dialog. */
+  openDetail(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.store.data()) return;
+    this.detailOpen.set(true);
   }
 
-  collapse(): void {
-    this.showAll.set(false);
-  }
-
-  onToggleClick(event: Event): void {
-    event.stopPropagation();
-    if (this.showAll()) this.collapse();
-    else this.expand();
+  closeDetail(): void {
+    this.detailOpen.set(false);
   }
 
   openModule(projectId: string, objectiveId: string, event?: Event): void {
@@ -210,12 +628,35 @@ export class TeamProgressCardComponent implements OnInit {
   }
 }
 
-function completionPercent(hours: LedHourTotals): number {
-  const base = hours.allocatedHours > 0 ? hours.allocatedHours : hours.completedHours + hours.inProgressHours + hours.notStartedHours;
-  return base <= 0 ? 0 : Math.min(100, Math.round((hours.completedHours / base) * 100));
+/** Percentages are taken against the allocation, or the task estimates when nothing is allocated. */
+function completionBase(hours: LedHourTotals): number {
+  return hours.allocatedHours > 0 ? hours.allocatedHours : hours.completedHours + hours.inProgressHours + hours.notStartedHours;
 }
 
-/** Hours for display: whole numbers as-is, otherwise one decimal (12.5 h). */
-export function formatHours(value: number): string {
-  return Number.isInteger(value) ? String(value) : (Math.round(value * 10) / 10).toString();
+function statusRow(status: (typeof PROGRESS_STATUSES)[number], value: number, base: number): StatusRow {
+  return {
+    key: status.key,
+    label: status.label,
+    color: status.color,
+    bgClass: status.bgClass,
+    hours: value,
+    hoursText: formatHourValue(value),
+    percentText: formatPercent(value, base),
+    percentValue: Math.min(100, percentOf(value, base)),
+    percentRounded: Math.round(Math.min(100, percentOf(value, base))),
+    testId: LEGEND_TEST_IDS[status.key],
+    tone: TONE_BY_STATUS[status.key]
+  };
+}
+
+export function buildStatusRows(hours: LedHourTotals): StatusRow[] {
+  const base = completionBase(hours);
+  return PROGRESS_STATUSES.map((status) => statusRow(status, HOURS_BY_KEY[status.key](hours), base));
+}
+
+/** A dated period's three task states, each a share of the hours due in it. */
+export function buildPeriodStatusRows(p: LedPeriodProgress): StatusRow[] {
+  return PROGRESS_STATUSES.filter((s) => s.key !== 'untasked').map((status) =>
+    statusRow(status, PERIOD_HOURS_BY_KEY[status.key as TaskStatusKey](p), p.totalHours)
+  );
 }

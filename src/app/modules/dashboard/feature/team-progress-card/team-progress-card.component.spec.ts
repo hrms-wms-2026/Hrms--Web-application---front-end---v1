@@ -1,20 +1,97 @@
+import { Component, input, output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MyTeamLedProgressApiService } from '../../data-access/my-team-led-progress-api.service';
+import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
+import { LedEmployeeProgress, LedEmployeeProgressPage, LedPeriodProgress, LedProgressPeriod } from '../../models/team-progress-detail.model';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
-import { TeamProgressCardComponent } from './team-progress-card.component';
+import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
+import { TEAM_PROGRESS_PERIOD_STORAGE_KEY, TeamProgressCardComponent } from './team-progress-card.component';
+
+/** The real dialog loads its own lists; the card only needs its inputs and output. */
+@Component({ selector: 'app-team-progress-detail-dialog', standalone: true, template: '' })
+class StubDetailDialogComponent {
+  readonly open = input(false);
+  readonly summary = input<LedWorkProgressResponse | null>(null);
+  readonly period = input<LedProgressPeriod>('all');
+  readonly periodChange = output<LedProgressPeriod>();
+  readonly closed = output<void>();
+}
+
+/** Stands in for ResizeObserver so a test can report any host size. */
+class FakeResizeObserver {
+  static instances: FakeResizeObserver[] = [];
+  readonly observed: Element[] = [];
+  disconnected = false;
+
+  constructor(private readonly callback: ResizeObserverCallback) {
+    FakeResizeObserver.instances.push(this);
+  }
+
+  observe(target: Element): void {
+    this.observed.push(target);
+  }
+
+  unobserve(): void {
+    // Not used by the card.
+  }
+
+  disconnect(): void {
+    this.disconnected = true;
+  }
+
+  trigger(width: number, height: number): void {
+    this.callback([{ contentRect: { width, height } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+  }
+}
+
+const STUB_DIALOG = {
+  remove: { imports: [TeamProgressDetailDialogComponent] },
+  add: { imports: [StubDetailDialogComponent] }
+};
+
+const member = (employeeId: string, displayName: string, totalHours: number): LedEmployeeProgress => ({
+  employeeId, displayName, completedHours: totalHours / 2, inProgressHours: totalHours / 2, notStartedHours: 0,
+  totalHours, taskCount: totalHours > 0 ? 2 : 0, sharedTaskCount: 0, sharedHours: 0
+});
+
+const employeePage = (items: LedEmployeeProgress[]): LedEmployeeProgressPage => ({
+  items, pageNumber: 1, pageSize: 5, totalCount: items.length, totalPages: 1, hasNext: false, hasPrevious: false,
+  unassigned: { completedHours: 0, inProgressHours: 0, notStartedHours: 0, totalHours: 0, taskCount: 0 }
+});
+
+const periodPayload = (period: 'week' | 'month', extra: Partial<LedPeriodProgress> = {}): LedPeriodProgress => ({
+  period, from: '2026-10-19', to: '2026-10-25',
+  completedHours: 5, inProgressHours: 5, notStartedHours: 10, totalHours: 20,
+  taskCount: 6, completedTaskCount: 1, inProgressTaskCount: 2, notStartedTaskCount: 3, unestimatedTaskCount: 0,
+  ...extra
+});
 
 describe('TeamProgressCardComponent', () => {
   let navigate: ReturnType<typeof vi.fn>;
+  let getEmployees: ReturnType<typeof vi.fn>;
+  let getPeriodProgress: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    getEmployees = vi.fn(() => of(employeePage([])));
+    getPeriodProgress = vi.fn((period: 'week' | 'month') => of(periodPayload(period)));
+    try {
+      localStorage.removeItem(TEAM_PROGRESS_PERIOD_STORAGE_KEY);
+    } catch {
+      // Some runs stub storage away.
+    }
+  });
 
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   async function setup(
@@ -27,7 +104,8 @@ describe('TeamProgressCardComponent', () => {
   async function setupWithApi(
     result: LedWorkProgressResponse | 'error'
   ): Promise<{ fixture: ComponentFixture<TeamProgressCardComponent>; getLedProgress: ReturnType<typeof vi.fn> }> {
-    const getLedProgress = vi.fn(() => (result === 'error' ? throwError(() => new Error('fail')) : of(result)));
+    // A fresh object per call, like a real HTTP response.
+    const getLedProgress = vi.fn(() => (result === 'error' ? throwError(() => new Error('fail')) : of(structuredClone(result))));
     navigate = vi.fn();
 
     await TestBed.configureTestingModule({
@@ -35,9 +113,12 @@ describe('TeamProgressCardComponent', () => {
       providers: [
         MyTeamLedProgressStore,
         { provide: MyTeamLedProgressApiService, useValue: { getLedProgress } },
-        { provide: Router, useValue: { navigate } }
+        { provide: Router, useValue: { navigate } },
+        { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress } }
       ]
-    }).compileComponents();
+    })
+      .overrideComponent(TeamProgressCardComponent, STUB_DIALOG)
+      .compileComponents();
 
     const fixture = TestBed.createComponent(TeamProgressCardComponent);
     fixture.detectChanges();
@@ -79,8 +160,14 @@ describe('TeamProgressCardComponent', () => {
     };
   };
 
+  const layoutMode = (fixture: ComponentFixture<TeamProgressCardComponent>): string | null =>
+    (fixture.nativeElement.querySelector('[data-testid="team-progress-layout"]') as HTMLElement).getAttribute('data-mode');
+
+  const dialog = (fixture: ComponentFixture<TeamProgressCardComponent>): StubDetailDialogComponent =>
+    fixture.debugElement.query(By.directive(StubDetailDialogComponent)).componentInstance as StubDetailDialogComponent;
+
   const text = (fixture: ComponentFixture<TeamProgressCardComponent>, testId: string): string =>
-    (fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) as HTMLElement).textContent!.trim();
+    (fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) as HTMLElement).textContent!.replace(/\s+/g, ' ').trim();
 
   it('shows "you don\'t lead any active modules" when there are no projects', async () => {
     const fixture = await setup({ hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0 });
@@ -96,14 +183,46 @@ describe('TeamProgressCardComponent', () => {
     // 200 h allocated: 40 done, 30 in progress, 70 not started, 60 not given to any task yet.
     const fixture = await setup(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
 
-    expect(text(fixture, 'team-progress-total')).toBe('200 h allocated');
+    expect(text(fixture, 'team-progress-total')).toBe('200 h Allocated');
     expect(text(fixture, 'team-progress-legend-completed')).toBe('40 h');
     expect(text(fixture, 'team-progress-legend-in-progress')).toBe('30 h');
     expect(text(fixture, 'team-progress-legend-not-started')).toBe('70 h');
     expect(text(fixture, 'team-progress-legend-untasked')).toBe('60 h');
+    expect(text(fixture, 'team-progress-legend-completed-percent')).toBe('(20%)');
+    expect(text(fixture, 'team-progress-legend-in-progress-percent')).toBe('(15%)');
+    expect(text(fixture, 'team-progress-legend-not-started-percent')).toBe('(35%)');
+    expect(text(fixture, 'team-progress-legend-untasked-percent')).toBe('(30%)');
     expect(text(fixture, 'team-progress-completion')).toBe('20%');
-    expect(fixture.nativeElement.querySelectorAll('[data-testid="pie-slice"]').length).toBe(4);
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="donut-segment"]').length).toBe(4);
     expect(fixture.nativeElement.querySelector('[data-testid="team-progress-over-tasked"]')).toBeNull();
+  });
+
+  it('labels the donut with every status, its hours and its share', async () => {
+    const fixture = await setup(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
+    const svg: SVGElement = fixture.nativeElement.querySelector('[data-testid="team-progress-donut"] svg');
+    expect(svg.getAttribute('role')).toBe('img');
+    const label = svg.getAttribute('aria-label')!;
+    expect(label).toContain('200 h allocated');
+    for (const part of ['Completed 40 h (20%)', 'In progress 30 h (15%)', 'Not started 70 h (35%)', 'Not yet tasked 60 h (30%)']) {
+      expect(label).toContain(part);
+    }
+  });
+
+  it('never shows a non-zero share as 0% and separates thousands', async () => {
+    const fixture = await setup(response([module('o1', 'Payments', hours(20_200, 100, 0, 0))]));
+    expect(text(fixture, 'team-progress-total')).toBe('20,200 h Allocated');
+    expect(text(fixture, 'team-progress-completion')).toBe('0.5%');
+    expect(text(fixture, 'team-progress-legend-completed')).toBe('100 h');
+    expect(text(fixture, 'team-progress-legend-completed-percent')).toBe('(0.5%)');
+    expect(text(fixture, 'team-progress-legend-untasked')).toBe('20,100 h');
+    expect(text(fixture, 'team-progress-legend-untasked-percent')).toBe('(99.5%)');
+    expect(text(fixture, 'team-progress-legend-in-progress-percent')).toBe('(0%)');
+  });
+
+  it('takes shares against the task estimates when nothing is allocated', async () => {
+    const fixture = await setup(response([module('o1', 'Payments', hours(0, 10, 30, 0))]));
+    expect(text(fixture, 'team-progress-completion')).toBe('25%');
+    expect(text(fixture, 'team-progress-legend-in-progress-percent')).toBe('(75%)');
   });
 
   it('flags tasks beyond the allocation and tasks without an estimate', async () => {
@@ -113,72 +232,310 @@ describe('TeamProgressCardComponent', () => {
     expect(text(fixture, 'team-progress-unestimated')).toBe('2 tasks have no estimate');
   });
 
-  it('lists led modules at-risk first, then least complete, with child modules indented below their parent', async () => {
-    const fixture = await setup(response([
-      module('healthy', 'Healthy', hours(10, 9, 1, 0)),
-      module('slow', 'Slow', hours(10, 1, 0, 0)),
-      module('late', 'Late', hours(10, 2, 0, 3), { atRisk: true }),
-      module('late-child', 'Late child', hours(5, 0, 0, 3), { parentObjectiveId: 'late', depth: 1, atRisk: true })
-    ]));
-    expect(text(fixture, 'team-progress-at-risk')).toBe('1');
-    expect(text(fixture, 'team-progress-toggle')).toBe('View all (3)');
-
-    const el = openAll(fixture);
-    const rows = Array.from(el.querySelectorAll('[data-testid="team-progress-module"]') as NodeListOf<HTMLElement>);
-    expect(rows.map((row) => row.querySelector('button p')!.textContent!.trim().replace(/^↳\s*/, ''))).toEqual(
-      ['Late', 'Late child', 'Slow', 'Healthy']
-    );
-    expect(rows.map((row) => row.getAttribute('data-depth'))).toEqual(['0', '1', '0', '0']);
-    expect(rows[0].textContent).toContain('5 h not tasked');
-    expect(rows[0].textContent).toContain('Overdue work');
-  });
-
-  it('names the assignees on each overdue task', async () => {
-    const fixture = await setup(response([module('o1', 'Platform', hours(5, 0, 0, 1), { atRisk: true })], {
-      overdueTasks: [{
-        taskId: 't1', shortId: 'PL-1', title: 'Ship it', projectId: 'p1', objectiveId: 'o1', dueDate: '2026-10-01',
-        daysOverdue: 6, assignees: [{ employeeId: 'e1', displayName: 'Kajaa Tharan' }]
-      }],
-      overdueTotal: 1
-    }));
-    expect(openAll(fixture).querySelector('[data-testid="team-progress-overdue"]')!.textContent).toContain('Kajaa Tharan');
-  });
-
-  /** Opens the pop-out (module breakdown + overdue tasks) via the card's "View all". */
-  function openAll(fixture: ComponentFixture<TeamProgressCardComponent>): HTMLElement {
-    const el: HTMLElement = fixture.nativeElement;
-    (el.querySelector('[data-testid="team-progress-toggle"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    return el;
-  }
-
   it('shows the error state with retry on failure', async () => {
     const fixture = await setup('error');
     expect(fixture.nativeElement.textContent).toContain("Couldn't load team progress");
   });
 
-  it('navigates to the module tree on a module or child-module click', async () => {
-    const fixture = await setup(response([
-      module('o1', 'Payments', hours(10, 0, 1, 0)),
-      module('o2', 'Refunds', hours(4, 0, 1, 0), { parentObjectiveId: 'o1', depth: 1 })
-    ]));
-    const buttons = openAll(fixture).querySelectorAll('[data-testid="team-progress-projects"] button') as NodeListOf<HTMLButtonElement>;
-    buttons[1].click();
-    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o2', 'tree']);
+  it('starts in the compact layout when ResizeObserver is not available', async () => {
+    vi.stubGlobal('ResizeObserver', undefined);
+    const fixture = await setup(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
+    expect(layoutMode(fixture)).toBe('compact');
+    expect(fixture.nativeElement.querySelector('[data-testid="team-progress-donut"]')).not.toBeNull();
   });
 
-  it('navigates to the task board with a highlight on overdue task click', async () => {
-    const fixture = await setup(response([module('o1', 'Payments', hours(5, 0, 0, 1), { atRisk: true })], {
-      overdueTasks: [{
-        taskId: 't1', shortId: 'CP-9', title: 'Fix login bug', projectId: 'p1', objectiveId: 'o1',
-        dueDate: '2026-09-25', daysOverdue: 5, assignees: []
-      }],
-      overdueTotal: 1
-    }));
-    const taskButton: HTMLButtonElement = openAll(fixture).querySelector('[data-testid="team-progress-overdue"] button')!;
-    taskButton.click();
-    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'board'], {
-      queryParams: { highlightTaskId: 't1' }
+  describe('size-adaptive layout', () => {
+    let rafQueue: FrameRequestCallback[];
+
+    beforeEach(() => {
+      FakeResizeObserver.instances = [];
+      rafQueue = [];
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        rafQueue.push(cb);
+        return rafQueue.length;
+      });
+      vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    });
+
+    function flushFrames(): void {
+      const queued = rafQueue;
+      rafQueue = [];
+      for (const cb of queued) cb(0);
+    }
+
+    /** Reports a host size and runs the queued animation frame. */
+    function resize(fixture: ComponentFixture<TeamProgressCardComponent>, width: number, height: number): void {
+      FakeResizeObserver.instances[FakeResizeObserver.instances.length - 1].trigger(width, height);
+      flushFrames();
+      fixture.detectChanges();
+    }
+
+    const has = (fixture: ComponentFixture<TeamProgressCardComponent>, testId: string): boolean =>
+      fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) !== null;
+
+    const sample = (): LedWorkProgressResponse =>
+      response([
+        module('o1', 'Payments', hours(200, 40, 30, 70), { atRisk: true }),
+        module('o2', 'Billing', hours(100, 50, 0, 10))
+      ], {
+        overdueTasks: [{
+          taskId: 't1', shortId: 'CP-1', title: 'Ship it', projectId: 'p1', objectiveId: 'o1', dueDate: '2026-10-01',
+          daysOverdue: 3, assignees: [{ employeeId: 'e1', displayName: 'Kajaa Tharan' }]
+        }],
+        overdueTotal: 1
+      });
+
+    it('observes the card host', async () => {
+      const fixture = await setup(sample());
+      expect(FakeResizeObserver.instances).toHaveLength(1);
+      expect(FakeResizeObserver.instances[0].observed).toEqual([fixture.nativeElement]);
+    });
+
+    const cases: [string, number, number, string, string[], string[]][] = [
+      ['4x4', 430, 420, 'compact',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion'],
+        ['team-progress-metrics', 'team-progress-modules']],
+      ['mobile', 320, 420, 'compact', ['team-progress-donut', 'team-progress-legend'], ['team-progress-modules']],
+      ['6x4', 650, 420, 'medium',
+        ['team-progress-total', 'team-progress-status-bar', 'team-progress-tiles'],
+        ['team-progress-donut', 'team-progress-modules']],
+      ['8x4', 900, 420, 'wide',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics'],
+        ['team-progress-modules', 'team-progress-overdue']],
+      ['12x4', 1300, 420, 'wide', ['team-progress-donut', 'team-progress-metrics'], ['team-progress-projects']],
+      ['4x6', 450, 636, 'tall',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-modules', 'team-progress-view-details'],
+        ['team-progress-metrics', 'team-progress-projects']],
+      ['8x6', 900, 636, 'large',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-modules', 'team-progress-overdue'],
+        ['team-progress-projects']],
+      ['12x8', 1300, 852, 'maximum',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-projects', 'team-progress-modules', 'team-progress-overdue'],
+        ['team-progress-status-bar']]
+    ];
+
+    for (const [name, width, height, mode, present, absent] of cases) {
+      it(`${name} (${width}x${height}) renders the ${mode} layout`, async () => {
+        const fixture = await setup(sample());
+        resize(fixture, width, height);
+        expect(layoutMode(fixture)).toBe(mode);
+        for (const id of present) expect(has(fixture, id), `${id} should be shown`).toBe(true);
+        for (const id of absent) expect(has(fixture, id), `${id} should be hidden`).toBe(false);
+        // Every status is listed with hours and a share in every layout.
+        for (const key of ['completed', 'in-progress', 'not-started', 'untasked']) {
+          expect(text(fixture, `team-progress-legend-${key}`)).toMatch(/ h$/);
+          expect(text(fixture, `team-progress-legend-${key}-percent`)).toMatch(/%\)?$/);
+        }
+        expect(text(fixture, 'team-progress-completion')).toBe('30%');
+      });
+    }
+
+    it('shows three metric tiles in the wide layout and four from 1000px', async () => {
+      const fixture = await setup(sample());
+      const tiles = (): number => fixture.nativeElement.querySelectorAll('[data-testid="team-progress-metrics"] .tp-tile').length;
+      resize(fixture, 900, 420);
+      expect(tiles()).toBe(3);
+      expect(has(fixture, 'team-progress-at-risk')).toBe(false);
+      resize(fixture, 1300, 420);
+      expect(tiles()).toBe(4);
+      expect(text(fixture, 'team-progress-at-risk')).toBe('1');
+    });
+
+    it('coalesces several size reports into one frame and uses the last one', async () => {
+      const fixture = await setup(sample());
+      const observer = FakeResizeObserver.instances[0];
+      const setMode = vi.spyOn(fixture.componentInstance.mode, 'set');
+      observer.trigger(900, 420);
+      observer.trigger(650, 420);
+      observer.trigger(1300, 852);
+      expect(setMode).not.toHaveBeenCalled();
+      flushFrames();
+      expect(setMode).toHaveBeenCalledOnce();
+      expect(setMode).toHaveBeenCalledWith('maximum');
+      fixture.detectChanges();
+      expect(layoutMode(fixture)).toBe('maximum');
+    });
+
+    it('loads the top team members only in the large and maximum layouts, once per data load', async () => {
+      getEmployees = vi.fn(() => of(employeePage([member('e1', 'Asha Perera', 40), member('e2', 'Ravi Kumar', 0)])));
+      const fixture = await setup(sample());
+      resize(fixture, 650, 420);
+      expect(getEmployees).not.toHaveBeenCalled();
+
+      resize(fixture, 900, 636);
+      expect(getEmployees).toHaveBeenCalledOnce();
+      expect(getEmployees).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 5, sort: 'totalHours', direction: 'desc' });
+      fixture.detectChanges();
+      // Zero-hour people are left out; the panel replaces overdue tasks in the large layout.
+      expect(fixture.nativeElement.querySelectorAll('[data-testid="team-progress-top-member"]').length).toBe(1);
+      expect(has(fixture, 'team-progress-overdue')).toBe(false);
+
+      resize(fixture, 1300, 852);
+      resize(fixture, 900, 636);
+      expect(getEmployees).toHaveBeenCalledOnce();
+    });
+
+    it('reloads the top team members for the selected period', async () => {
+      getEmployees = vi.fn(() => of(employeePage([member('e1', 'Asha Perera', 40)])));
+      const fixture = await setup(sample());
+      resize(fixture, 900, 636);
+      expect(getEmployees).toHaveBeenCalledOnce();
+      expect(getEmployees.mock.calls[0][0]).not.toHaveProperty('period');
+
+      fixture.componentInstance.setPeriod('week');
+      fixture.detectChanges();
+      expect(getEmployees).toHaveBeenCalledTimes(2);
+      expect(getEmployees.mock.calls[1][0]).toMatchObject({ period: 'week', pageSize: 5 });
+
+      // Resizing within the large layouts does not refetch for the same period.
+      resize(fixture, 1300, 852);
+      expect(getEmployees).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the large layout working when the top team members fail to load', async () => {
+      getEmployees = vi.fn(() => throwError(() => new Error('fail')));
+      const fixture = await setup(sample());
+      resize(fixture, 900, 636);
+      expect(has(fixture, 'team-progress-top-members')).toBe(false);
+      expect(has(fixture, 'team-progress-overdue')).toBe(true);
+    });
+
+    it('never fetches because of a size change', async () => {
+      const { fixture, getLedProgress } = await setupWithApi(sample());
+      expect(getLedProgress).toHaveBeenCalledTimes(1);
+      resize(fixture, 650, 420);
+      resize(fixture, 1300, 852);
+      resize(fixture, 320, 420);
+      expect(getLedProgress).toHaveBeenCalledTimes(1);
+    });
+
+    it('lists led modules at-risk first, then least complete', async () => {
+      const fixture = await setup(response([
+        module('healthy', 'Healthy', hours(10, 9, 1, 0)),
+        module('slow', 'Slow', hours(10, 1, 0, 0)),
+        module('late', 'Late', hours(10, 2, 0, 3), { atRisk: true }),
+        module('late-child', 'Late child', hours(5, 0, 0, 3), { parentObjectiveId: 'late', depth: 1, atRisk: true })
+      ]));
+      resize(fixture, 900, 852);
+      expect(text(fixture, 'team-progress-at-risk')).toBe('1');
+      expect(text(fixture, 'team-progress-toggle')).toBe('View all (3)');
+      const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="team-progress-module"]') as NodeListOf<HTMLElement>);
+      expect(rows.map((row) => row.querySelector('button span span')!.textContent!.trim())).toEqual(['Late', 'Slow', 'Healthy']);
+      expect(rows[0].textContent).toContain('At risk');
+      expect(rows[1].querySelector('[role="progressbar"]')!.getAttribute('aria-valuenow')).toBe('10');
+    });
+
+    it('shows only the rows that fit and a "+N more" link that opens the dialog', async () => {
+      const many = Array.from({ length: 12 }, (_, i) => module(`m${i}`, `Module ${i}`, hours(10, i % 10, 0, 0)));
+      const fixture = await setup(response(many));
+      resize(fixture, 450, 636);
+      const shown = fixture.nativeElement.querySelectorAll('[data-testid="team-progress-module"]').length;
+      expect(shown).toBeGreaterThan(0);
+      expect(shown).toBeLessThan(12);
+      expect(text(fixture, 'team-progress-more')).toBe(`+${12 - shown} more`);
+
+      (fixture.nativeElement.querySelector('[data-testid="team-progress-more"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(dialog(fixture).open()).toBe(true);
+
+      resize(fixture, 450, 852);
+      expect(fixture.nativeElement.querySelectorAll('[data-testid="team-progress-module"]').length).toBeGreaterThan(shown);
+    });
+
+    it('names the assignees on each overdue task', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 900, 636);
+      expect(text(fixture, 'team-progress-overdue')).toContain('Kajaa Tharan');
+    });
+
+    it('lists each project with its completion', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 1300, 852);
+      const projects = fixture.nativeElement.querySelectorAll('[data-testid="team-progress-project"]') as NodeListOf<HTMLElement>;
+      expect(projects).toHaveLength(1);
+      expect(projects[0].textContent).toContain('Core Platform');
+      expect(projects[0].textContent).toContain('90 / 300 h');
+      expect(projects[0].textContent).toContain('30%');
+    });
+
+    it('navigates to the module tree on a module click without opening the dialog', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 900, 636);
+      (fixture.nativeElement.querySelector('[data-testid="team-progress-module"] button') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'tree']);
+      expect(dialog(fixture).open()).toBe(false);
+    });
+
+    it('navigates to the task board with a highlight on overdue task click', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 900, 636);
+      (fixture.nativeElement.querySelector('[data-testid="team-progress-overdue"] button') as HTMLButtonElement).click();
+      expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'board'], {
+        queryParams: { highlightTaskId: 't1' }
+      });
+    });
+
+    it('disconnects the observer on destroy', async () => {
+      const fixture = await setup(sample());
+      const observer = FakeResizeObserver.instances[0];
+      fixture.destroy();
+      expect(observer.disconnected).toBe(true);
+    });
+  });
+
+  describe('detail dialog', () => {
+    it('is closed at first and receives the loaded summary', async () => {
+      const payload = response([module('o1', 'Payments', hours(200, 40, 30, 70))]);
+      const fixture = await setup(payload);
+      expect(dialog(fixture).open()).toBe(false);
+      expect(dialog(fixture).summary()).toEqual(payload);
+    });
+
+    it('opens from the header expand button', async () => {
+      const fixture = await setup(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
+      (fixture.nativeElement.querySelector('[data-testid="popout-expand"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(dialog(fixture).open()).toBe(true);
+    });
+
+    it('opens from "View details" and closes when the dialog emits closed', async () => {
+      FakeResizeObserver.instances = [];
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+      vi.stubGlobal('requestAnimationFrame', undefined);
+      const fixture = await setup(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
+      FakeResizeObserver.instances[0].trigger(450, 636);
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('[data-testid="team-progress-view-details"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(dialog(fixture).open()).toBe(true);
+
+      dialog(fixture).closed.emit();
+      fixture.detectChanges();
+      expect(dialog(fixture).open()).toBe(false);
+    });
+
+    it('opens on a click anywhere on the card', async () => {
+      const fixture = await setup(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
+      (fixture.nativeElement.querySelector('[data-testid="team-progress-legend"]') as HTMLElement).click();
+      fixture.detectChanges();
+      expect(dialog(fixture).open()).toBe(true);
+    });
+
+    it('does not open while there is no data', async () => {
+      const fixture = await setup('error');
+      (fixture.nativeElement.querySelector('[data-testid="team-progress-card"]') as HTMLElement).click();
+      fixture.detectChanges();
+      expect(dialog(fixture).open()).toBe(false);
+    });
+
+    it('refresh reloads without opening the dialog', async () => {
+      const { fixture, getLedProgress } = await setupWithApi(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
+      (fixture.nativeElement.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(getLedProgress).toHaveBeenCalledTimes(2);
+      expect(dialog(fixture).open()).toBe(false);
     });
   });
 
@@ -228,6 +585,7 @@ describe('TeamProgressCardComponent', () => {
     await vi.advanceTimersByTimeAsync(120_000);
     expect(getLedProgress).toHaveBeenCalledTimes(1);
   });
+
   describe('inside a dashboard frame', () => {
     async function setupInFrame(widget: ReturnType<typeof fakeWidgetData>, result: LedWorkProgressResponse | 'error') {
       const getLedProgress = vi.fn(() => (result === 'error' ? throwError(() => new Error('fail')) : of(result)));
@@ -238,9 +596,12 @@ describe('TeamProgressCardComponent', () => {
           MyTeamLedProgressStore,
           { provide: MyTeamLedProgressApiService, useValue: { getLedProgress } },
           { provide: Router, useValue: { navigate } },
+          { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress } },
           widget.provider
         ]
-      }).compileComponents();
+      })
+        .overrideComponent(TeamProgressCardComponent, STUB_DIALOG)
+        .compileComponents();
       const fixture = TestBed.createComponent(TeamProgressCardComponent);
       fixture.detectChanges();
       await fixture.whenStable();
@@ -255,7 +616,7 @@ describe('TeamProgressCardComponent', () => {
 
       expect(getLedProgress).not.toHaveBeenCalled();
       expect(widget.refresh).not.toHaveBeenCalled();
-      expect(fixture.nativeElement.textContent).toContain('200 h allocated');
+      expect(text(fixture, 'team-progress-total')).toBe('200 h Allocated');
       // The shared root store (also read by the action center) holds the same led-progress data.
       expect(store.data()).toEqual(payload);
       expect(store.loading()).toBe(false);
@@ -266,7 +627,7 @@ describe('TeamProgressCardComponent', () => {
     it('falls_back_to_own_api_outside_dashboard', async () => {
       const { fixture, getLedProgress } = await setupWithApi(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
       expect(getLedProgress).toHaveBeenCalledOnce();
-      expect(fixture.nativeElement.textContent).toContain('200 h allocated');
+      expect(text(fixture, 'team-progress-total')).toBe('200 h Allocated');
     });
 
     it('falls back to its own api, with its own error state, when the bootstrap state is an error', async () => {
@@ -307,6 +668,156 @@ describe('TeamProgressCardComponent', () => {
 
       expect(getLedProgress).toHaveBeenCalledOnce();
       expect(store.data()).toEqual(next);
+    });
+  });
+
+  describe('period switch', () => {
+    const payload = (): LedWorkProgressResponse => response([module('o1', 'Payments', hours(200, 40, 30, 70))]);
+
+    function choose(fixture: ComponentFixture<TeamProgressCardComponent>, value: string): void {
+      const select = fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement;
+      select.value = value;
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      fixture.detectChanges();
+    }
+
+    const has = (fixture: ComponentFixture<TeamProgressCardComponent>, testId: string): boolean =>
+      fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) !== null;
+
+    it('starts on All time without calling the period endpoint', async () => {
+      const fixture = await setup(payload());
+      expect(fixture.componentInstance.period()).toBe('all');
+      expect((fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement).value).toBe('all');
+      expect(getPeriodProgress).not.toHaveBeenCalled();
+    });
+
+    it('fetches the week, hides not yet tasked and takes shares against the hours due', async () => {
+      const fixture = await setup(payload());
+      choose(fixture, 'week');
+
+      expect(getPeriodProgress).toHaveBeenCalledOnce();
+      expect(getPeriodProgress).toHaveBeenCalledWith('week');
+      expect(text(fixture, 'team-progress-total')).toBe('20 h Due this week');
+      expect(text(fixture, 'team-progress-legend-completed')).toBe('5 h');
+      expect(text(fixture, 'team-progress-legend-completed-percent')).toBe('(25%)');
+      expect(text(fixture, 'team-progress-legend-not-started-percent')).toBe('(50%)');
+      expect(has(fixture, 'team-progress-legend-untasked')).toBe(false);
+      expect(text(fixture, 'team-progress-completion')).toBe('25%');
+      expect(fixture.nativeElement.querySelectorAll('[data-testid="donut-segment"]').length).toBe(3);
+      expect(localStorage.getItem(TEAM_PROGRESS_PERIOD_STORAGE_KEY)).toBe('week');
+    });
+
+    it('hides the over-tasked note in a period', async () => {
+      const fixture = await setup(response([module('o1', 'Payments', hours(10, 4, 4, 4.5))]));
+      expect(has(fixture, 'team-progress-over-tasked')).toBe(true);
+      choose(fixture, 'month');
+      expect(has(fixture, 'team-progress-over-tasked')).toBe(false);
+      expect(text(fixture, 'team-progress-total')).toBe('20 h Due this month');
+    });
+
+    it('caches each period per data load: switching back and forth never refetches anything', async () => {
+      const { fixture, getLedProgress } = await setupWithApi(payload());
+      choose(fixture, 'week');
+      choose(fixture, 'all');
+      choose(fixture, 'week');
+      choose(fixture, 'month');
+      choose(fixture, 'week');
+      expect(getPeriodProgress).toHaveBeenCalledTimes(2);
+      expect(getPeriodProgress.mock.calls.map((c) => c[0])).toEqual(['week', 'month']);
+      expect(getLedProgress).toHaveBeenCalledOnce();
+    });
+
+    it('a refresh reloads led-progress and the selected period', async () => {
+      const { fixture, getLedProgress } = await setupWithApi(payload());
+      choose(fixture, 'week');
+      getPeriodProgress.mockReturnValue(of(periodPayload('week', { completedHours: 10, totalHours: 40 })));
+      (fixture.nativeElement.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      fixture.detectChanges();
+      expect(getLedProgress).toHaveBeenCalledTimes(2);
+      expect(getPeriodProgress).toHaveBeenCalledTimes(2);
+      expect(text(fixture, 'team-progress-total')).toBe('40 h Due this week');
+    });
+
+    it('does not refetch the period because of a size change', async () => {
+      FakeResizeObserver.instances = [];
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+      vi.stubGlobal('requestAnimationFrame', undefined);
+      const fixture = await setup(payload());
+      choose(fixture, 'month');
+      for (const [w, h] of [[650, 420], [900, 636], [1300, 852], [320, 420]]) {
+        FakeResizeObserver.instances[0].trigger(w, h);
+        fixture.detectChanges();
+      }
+      expect(getPeriodProgress).toHaveBeenCalledOnce();
+    });
+
+    it('says when nothing is due in the period', async () => {
+      getPeriodProgress = vi.fn(() => of(periodPayload('week', { completedHours: 0, inProgressHours: 0, notStartedHours: 0, totalHours: 0, taskCount: 0 })));
+      const fixture = await setup(payload());
+      choose(fixture, 'week');
+      expect(text(fixture, 'team-progress-period-empty')).toBe('No tasks due this week');
+      expect(has(fixture, 'team-progress-donut')).toBe(false);
+    });
+
+    it('shows a retry when the period fails to load', async () => {
+      getPeriodProgress = vi.fn(() => throwError(() => new Error('fail')));
+      const fixture = await setup(payload());
+      choose(fixture, 'month');
+      expect(text(fixture, 'team-progress-period-error')).toContain("Couldn't load this month");
+
+      getPeriodProgress.mockReturnValue(of(periodPayload('month')));
+      (fixture.nativeElement.querySelector('[data-testid="team-progress-period-error"] button') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(text(fixture, 'team-progress-total')).toBe('20 h Due this month');
+    });
+
+    it('remembers the period per viewer', async () => {
+      localStorage.setItem(TEAM_PROGRESS_PERIOD_STORAGE_KEY, 'month');
+      const fixture = await setup(payload());
+      expect(fixture.componentInstance.period()).toBe('month');
+      expect(getPeriodProgress).toHaveBeenCalledWith('month');
+    });
+
+    it('ignores an unknown stored value', async () => {
+      localStorage.setItem(TEAM_PROGRESS_PERIOD_STORAGE_KEY, 'year');
+      const fixture = await setup(payload());
+      expect(fixture.componentInstance.period()).toBe('all');
+    });
+
+    it('works when storage throws', async () => {
+      const throwing = {
+        getItem: () => { throw new Error('blocked'); },
+        setItem: () => { throw new Error('blocked'); },
+        removeItem: () => { throw new Error('blocked'); }
+      };
+      vi.stubGlobal('localStorage', throwing);
+      const fixture = await setup(payload());
+      expect(fixture.componentInstance.period()).toBe('all');
+      expect(() => choose(fixture, 'week')).not.toThrow();
+      expect(fixture.componentInstance.period()).toBe('week');
+      expect(text(fixture, 'team-progress-total')).toBe('20 h Due this week');
+    });
+
+    it('passes the period to the dialog and follows its periodChange', async () => {
+      const fixture = await setup(payload());
+      choose(fixture, 'week');
+      expect(dialog(fixture).period()).toBe('week');
+
+      dialog(fixture).periodChange.emit('month');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.period()).toBe('month');
+      expect((fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement).value).toBe('month');
+      expect(getPeriodProgress).toHaveBeenLastCalledWith('month');
+    });
+
+    it('does not open the dialog when the period dropdown is used', async () => {
+      const fixture = await setup(payload());
+      (fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement).click();
+      fixture.detectChanges();
+      expect(dialog(fixture).open()).toBe(false);
     });
   });
 });

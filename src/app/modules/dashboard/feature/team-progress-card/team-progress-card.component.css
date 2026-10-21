@@ -1,41 +1,554 @@
-.team-progress-segment--completed {
-  background: var(--color-success);
+/* Every layout fills the card: the "fill" regions are size containers, and the donut and type inside
+ * them are sized in container query units (cqw / cqh), so they scale with the space they get. */
+
+:host {
+  container: tp-card / inline-size;
 }
 
-.team-progress-segment--in-progress {
-  background: var(--color-accent);
+/* ---- Header period switch ---- */
+.tp-period {
+  flex: none;
+  max-width: 7.5rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.5rem;
+  background-color: #fff;
+  padding: 0.25rem 0.375rem 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: rgb(51 65 85);
+  cursor: pointer;
 }
 
-.team-progress-segment--not-started {
-  background: #cbd5e1;
+.tp-period:hover {
+  border-color: rgb(203 213 225);
 }
 
-.team-progress-segment--untasked {
-  background: #fcd34d;
+.tp-period:focus-visible {
+  outline: 2px solid rgb(59 130 246);
+  outline-offset: 1px;
 }
 
-/* Popped out: pie + legend + rates share one row, so the module list starts higher. */
-.progress-layout--wide {
+/* No room next to the title: the switch stays in the detail dialog only. */
+@container tp-card (max-width: 330px) {
+  .tp-period {
+    display: none;
+  }
+}
+
+/* ---- Body and fill regions ---- */
+.tp-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.tp-fill {
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 0;
+  container-type: size;
+}
+
+/* ---- Donut ---- */
+.tp-donut {
+  position: relative;
+  flex: none;
+  aspect-ratio: 1;
+  container-type: inline-size;
+}
+
+.tp-donut-center {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.tp-donut-caption {
+  margin-top: 1.5cqw;
+  font-size: max(9px, 6.5cqw);
+  font-weight: 500;
+  color: rgb(100 116 139);
+}
+
+/* ---- Compact: donut + legend side by side, stacked when the card is taller than wide ---- */
+.tp-compact {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  height: 100%;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  column-gap: 2.5rem;
+  gap: 0 clamp(0.75rem, 5cqw, 1.5rem);
 }
 
-.progress-layout--wide > section {
-  grid-column: 1 / -1;
-}
-
-.progress-layout--wide [data-testid='team-progress-legend'] {
-  max-width: 20rem;
-}
-
-.progress-layout--wide .progress-rates {
-  border-top: 0;
-  padding-top: 0;
-  padding-left: 2.5rem;
-  border-left: 1px solid rgb(241 245 249);
-  column-gap: 2.5rem;
-  align-self: stretch;
+.tp-compact-side {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: clamp(0.25rem, 3cqh, 1rem);
+}
+
+.tp-compact .tp-donut {
+  width: min(54cqw, calc(100cqh - 4rem));
+}
+
+.tp-completion-big {
+  font-size: clamp(1.125rem, 7cqh, 1.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.tp-completion-caption {
+  font-size: clamp(0.75rem, 3.6cqh, 0.9375rem);
+  color: rgb(71 85 105);
+  text-align: center;
+}
+
+.tp-compact .tp-legend {
+  height: 100%;
+}
+
+@container (orientation: portrait) {
+  .tp-compact {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .tp-compact-side {
+    height: auto;
+    flex-direction: row;
+    gap: 1rem;
+  }
+
+  .tp-compact .tp-donut {
+    width: min(58cqw, calc(52cqh - 1rem));
+  }
+}
+
+/* ---- Status legend / rows ---- */
+.tp-legend {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.tp-legend-row {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  column-gap: 0.625rem;
+}
+
+/* Compact (like the small reference card): dot, label, bold hours with the share under it. */
+.tp-legend--compact .tp-legend-row {
+  grid-template-columns: 0.625rem minmax(0, 1fr) auto;
+  font-size: clamp(0.75rem, 4cqh, 0.9375rem);
+}
+
+.tp-legend--compact .tp-legend-pct {
+  grid-column: 3;
+  text-align: right;
+  font-size: 0.85em;
+}
+
+/* List (tall): dot, label, hours, share on one line. */
+.tp-legend--list .tp-legend-row {
+  grid-template-columns: 0.625rem minmax(0, 1fr) auto 3.5rem;
+  font-size: clamp(0.8125rem, 4.2cqw, 0.9375rem);
+}
+
+/* Bars (wide / large / maximum): dot, label, hours, share, then a bar filling the rest. */
+.tp-legend--bars .tp-legend-row {
+  grid-template-columns: 0.625rem minmax(5.5rem, 9rem) 5.75rem 3.5rem minmax(3rem, 1fr);
+  font-size: clamp(0.8125rem, 6cqh, 0.9375rem);
+}
+
+.tp-legend-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgb(51 65 85);
+}
+
+.tp-legend--compact .tp-legend-label {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.tp-legend--list .tp-legend-label,
+.tp-legend--bars .tp-legend-label {
+  white-space: nowrap;
+}
+
+.tp-legend-hours {
+  text-align: right;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-legend-pct {
+  text-align: right;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-legend-bar {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(241 245 249);
+}
+
+.tp-legend-bar > span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: 9999px;
+}
+
+/* ---- Hero: donut + rows side by side (wide / large / maximum) ---- */
+.tp-hero {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  gap: clamp(1rem, 4cqw, 2.5rem);
+}
+
+.tp-hero .tp-donut {
+  width: min(32cqw, 100cqh);
+}
+
+.tp-hero .tp-legend {
+  height: min(100%, 15rem);
+  flex: 1 1 0;
+}
+
+/* Maximum: donut | status rows | tiles in one band of fixed height, so the extra height goes to the
+ * panels (more list rows) instead of empty space around an oversized donut. */
+.tp-max-top {
+  display: grid;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 2rem;
+}
+
+.tp-max-top .tp-donut {
+  width: 12.5rem;
+}
+
+.tp-max-top .tp-legend {
+  height: 11rem;
+}
+
+/* An odd last tile spans both columns, so the tile block has no empty slot. */
+.tp-max-top .tp-tile:last-child:nth-child(odd) {
+  grid-column: span 2;
+}
+
+.tp-panels.tp-panels--grow {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+/* Rows spread over the panel's height instead of leaving its bottom empty. */
+.tp-panels--grow .tp-panel > ul {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+/* ---- Tall: donut over the status list ---- */
+.tp-tall-hero {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tp-tall-side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.tp-tall-hero .tp-donut {
+  width: min(64cqw, calc(55cqh - 1.5rem));
+}
+
+.tp-tall-hero .tp-legend {
+  width: 100%;
+  flex: 1 1 0;
+  max-height: 10rem;
+}
+
+/* A wider tall card (6 columns): donut beside the list instead of above it. */
+@container (min-width: 520px) {
+  .tp-tall-hero {
+    flex-direction: row;
+    gap: clamp(1.5rem, 6cqw, 3rem);
+  }
+
+  .tp-tall-hero .tp-donut {
+    width: min(42cqw, calc(100cqh - 1.75rem));
+  }
+
+  .tp-tall-hero .tp-legend {
+    height: min(100%, 12rem);
+    max-height: none;
+  }
+}
+
+/* ---- Medium ---- */
+.tp-medium {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: clamp(0.5rem, 4cqh, 1rem);
+}
+
+.tp-status-bar {
+  display: flex;
+  height: clamp(0.75rem, 5cqh, 1.25rem);
+  width: 100%;
+  flex: none;
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background: rgb(241 245 249);
+}
+
+.tp-status-bar > span + span {
+  border-left: 2px solid #fff;
+}
+
+.tp-headline {
+  font-size: clamp(1.375rem, 10cqh, 2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-status-tiles {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.tp-status-tiles--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tp-status-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.25rem, 3cqh, 0.75rem);
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.875rem;
+}
+
+.tp-status-tile-hours {
+  font-size: clamp(1rem, 9cqh, 1.75rem);
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-status-tile-pct {
+  font-size: clamp(0.875rem, 6.5cqh, 1.25rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Tinted metric tiles ---- */
+.tp-tiles {
+  display: grid;
+  flex: none;
+  gap: 0.625rem;
+}
+
+/* The label comes first in the markup (dt before dd); the value shows on top. */
+.tp-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.875rem;
+}
+
+.tp-tile-value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-tile-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+
+.tone-green { background: rgb(236 253 245); border-color: rgb(209 250 229); }
+.tone-green .tp-tone-text { color: rgb(5 150 105); }
+.tone-blue { background: rgb(239 246 255); border-color: rgb(219 234 254); }
+.tone-blue .tp-tone-text { color: rgb(37 99 235); }
+.tone-gray { background: rgb(248 250 252); border-color: rgb(241 245 249); }
+.tone-gray .tp-tone-text { color: rgb(51 65 85); }
+.tone-amber { background: rgb(255 251 235); border-color: rgb(254 243 199); }
+.tone-amber .tp-tone-text { color: rgb(217 119 6); }
+.tone-rose { background: rgb(255 241 242); border-color: rgb(255 228 230); }
+.tone-rose .tp-tone-text { color: rgb(225 29 72); }
+
+/* ---- Panels (lists) ---- */
+.tp-panels {
+  display: grid;
+  flex: none;
+  gap: 0.75rem;
+}
+
+.tp-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid rgb(241 245 249);
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.625rem;
+}
+
+.team-progress-heading {
+  margin-bottom: 0.25rem;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(30 41 59);
+}
+
+/* One list row (module, project or overdue task): about 42px tall, see TEAM_PROGRESS_LIST_ROW_PX. */
+.team-progress-row {
+  display: block;
+  height: 2.625rem;
+  width: 100%;
+  min-width: 0;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.375rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.team-progress-row:hover {
+  background: rgb(239 246 255 / 0.6);
+}
+
+.team-progress-row:focus-visible,
+.team-progress-link:focus-visible,
+.tp-view-details:focus-visible {
+  outline: 2px solid rgb(59 130 246);
+  outline-offset: 2px;
+}
+
+/* Top members: name, blue bar, hours (like the reference). */
+.tp-member {
+  display: grid;
+  height: 2.625rem;
+  grid-template-columns: minmax(0, 7.5rem) minmax(2rem, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.375rem;
+}
+
+.tp-member-bar {
+  height: 0.625rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(241 245 249);
+}
+
+.tp-member-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: rgb(96 165 250);
+}
+
+.team-progress-link {
+  border-radius: 0.25rem;
+  color: rgb(37 99 235);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.team-progress-link:hover {
+  color: rgb(29 78 216);
+  text-decoration: underline;
+}
+
+.tp-view-details {
+  display: flex;
+  width: 100%;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.5rem;
+  background: rgb(248 250 252);
+  padding: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(37 99 235);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.tp-view-details:hover {
+  background: rgb(239 246 255);
+}
+
+.tp-message {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgb(100 116 139);
 }
