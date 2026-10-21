@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MyTeamLedProgressApiService } from '../../data-access/my-team-led-progress-api.service';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
+import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamProgressCardComponent } from './team-progress-card.component';
 
 describe('TeamProgressCardComponent', () => {
@@ -226,5 +227,86 @@ describe('TeamProgressCardComponent', () => {
 
     await vi.advanceTimersByTimeAsync(120_000);
     expect(getLedProgress).toHaveBeenCalledTimes(1);
+  });
+  describe('inside a dashboard frame', () => {
+    async function setupInFrame(widget: ReturnType<typeof fakeWidgetData>, result: LedWorkProgressResponse | 'error') {
+      const getLedProgress = vi.fn(() => (result === 'error' ? throwError(() => new Error('fail')) : of(result)));
+      navigate = vi.fn();
+      await TestBed.configureTestingModule({
+        imports: [TeamProgressCardComponent],
+        providers: [
+          MyTeamLedProgressStore,
+          { provide: MyTeamLedProgressApiService, useValue: { getLedProgress } },
+          { provide: Router, useValue: { navigate } },
+          widget.provider
+        ]
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TeamProgressCardComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return { fixture, getLedProgress, store: TestBed.inject(MyTeamLedProgressStore) };
+    }
+
+    it('uses_bootstrap_payload_without_calling_its_api', async () => {
+      const payload = response([module('o1', 'Payments', hours(200, 40, 30, 70))]);
+      const widget = fakeWidgetData('success', payload);
+      const { fixture, getLedProgress, store } = await setupInFrame(widget, EMPTY);
+
+      expect(getLedProgress).not.toHaveBeenCalled();
+      expect(widget.refresh).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.textContent).toContain('200 h allocated');
+      // The shared root store (also read by the action center) holds the same led-progress data.
+      expect(store.data()).toEqual(payload);
+      expect(store.loading()).toBe(false);
+      expect(store.error()).toBeNull();
+      expect(store.loadedAt()).toBeInstanceOf(Date);
+    });
+
+    it('falls_back_to_own_api_outside_dashboard', async () => {
+      const { fixture, getLedProgress } = await setupWithApi(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
+      expect(getLedProgress).toHaveBeenCalledOnce();
+      expect(fixture.nativeElement.textContent).toContain('200 h allocated');
+    });
+
+    it('falls back to its own api, with its own error state, when the bootstrap state is an error', async () => {
+      const { fixture, getLedProgress } = await setupInFrame(fakeWidgetData('error'), 'error');
+      expect(getLedProgress).toHaveBeenCalledOnce();
+      expect(fixture.nativeElement.textContent).toContain("Couldn't load team progress");
+    });
+
+    it('polls through the widget context every 60 seconds and feeds the result into the store', async () => {
+      vi.useFakeTimers();
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+      const widget = fakeWidgetData('success', EMPTY);
+      const { fixture, getLedProgress, store } = await setupInFrame(widget, EMPTY);
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(widget.refresh).toHaveBeenCalledOnce();
+      expect(getLedProgress).not.toHaveBeenCalled();
+      expect(store.loading()).toBe(true);
+
+      const next = response([module('o2', 'Billing', hours(10, 5, 0, 0))]);
+      widget.resolve(next);
+      fixture.detectChanges();
+      expect(store.data()).toEqual(next);
+      expect(store.loading()).toBe(false);
+    });
+
+    it('falls back to its own api when a context refresh fails', async () => {
+      vi.useFakeTimers();
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+      const widget = fakeWidgetData('success', EMPTY);
+      const next = response([module('o3', 'Ledger', hours(10, 5, 0, 0))]);
+      const { fixture, getLedProgress, store } = await setupInFrame(widget, next);
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      widget.fail();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(getLedProgress).toHaveBeenCalledOnce();
+      expect(store.data()).toEqual(next);
+    });
   });
 });

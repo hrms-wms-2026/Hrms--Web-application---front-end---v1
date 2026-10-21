@@ -27,6 +27,14 @@ export const MyTeamTodayStore = signalStore(
   { providedIn: 'root' },
   withState<MyTeamTodayState>(initialState),
   withMethods((store, api = inject(MyTeamTodayApiService)) => ({
+    /** Applies a response the dashboard widget context already fetched, exactly as load() applies its own. */
+    seed(data: TeamTodayResponse): void {
+      patchState(store, { data, loading: false, error: null, loadedAt: new Date() });
+    },
+    /** A reload is running elsewhere (the dashboard refresh) - same state load() sets while in flight. */
+    markLoading(): void {
+      patchState(store, { loading: true, error: null });
+    },
     async load(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {

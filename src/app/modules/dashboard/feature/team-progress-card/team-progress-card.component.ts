@@ -4,7 +4,8 @@ import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-heade
 import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
-import { LedHourTotals, LedOverdueTask } from '../../models/my-team-led-progress.model';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
+import { LedHourTotals, LedOverdueTask, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { buildPieSlices } from '../../utils/pie-slices.util';
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -43,6 +44,13 @@ interface ProgressRow {
 })
 export class TeamProgressCardComponent implements OnInit {
   protected readonly store = inject(MyTeamLedProgressStore);
+  /** Inside a dashboard frame the first payload comes from the bootstrap and reloads go through the
+   * widget context; outside one (or when that data isn't available) the store fetches as before. */
+  private readonly feed = injectWidgetDataFeed<LedWorkProgressResponse>({
+    apply: (data) => this.store.seed(data),
+    fetch: () => void this.store.load(),
+    refreshing: () => this.store.markLoading()
+  });
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -121,7 +129,7 @@ export class TeamProgressCardComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    void this.store.load();
+    this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
     if (document.visibilityState === 'visible') this.startPolling();
     this.destroyRef.onDestroy(() => {
@@ -132,7 +140,7 @@ export class TeamProgressCardComponent implements OnInit {
 
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
-      void this.store.load();
+      this.feed.reload();
       this.startPolling();
     } else {
       this.stopPolling();
@@ -141,7 +149,7 @@ export class TeamProgressCardComponent implements OnInit {
 
   private startPolling(): void {
     if (this.pollId) return;
-    this.pollId = setInterval(() => void this.store.load(), REFRESH_INTERVAL_MS);
+    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
   }
 
   private stopPolling(): void {
@@ -152,7 +160,7 @@ export class TeamProgressCardComponent implements OnInit {
   }
 
   retry(): void {
-    void this.store.load();
+    this.feed.reload();
   }
 
   /** Bar segments sized against the larger of the allocation and the task estimates, so an

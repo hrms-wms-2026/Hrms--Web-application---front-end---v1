@@ -7,7 +7,8 @@ import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
-import { TeamTodayMember } from '../../models/my-team-today.model';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
+import { TeamTodayMember, TeamTodayResponse } from '../../models/my-team-today.model';
 import { TeamStatusFilter, TeamStatusGroup, partitionTeamMembers } from '../../utils/team-status-groups.util';
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -72,6 +73,13 @@ export interface TeamStripSegment {
 })
 export class TeamStatusCardComponent implements OnInit {
   protected readonly store = inject(MyTeamTodayStore);
+  /** Inside a dashboard frame the first payload comes from the bootstrap and reloads go through the
+   * widget context; outside one (or when that data isn't available) the store fetches as before. */
+  private readonly feed = injectWidgetDataFeed<TeamTodayResponse>({
+    apply: (data) => this.store.seed(data),
+    fetch: () => void this.store.load(),
+    refreshing: () => this.store.markLoading()
+  });
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -190,7 +198,7 @@ export class TeamStatusCardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.store.load();
+    this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
     if (document.visibilityState === 'visible') this.startPolling();
     this.destroyRef.onDestroy(() => {
@@ -201,7 +209,7 @@ export class TeamStatusCardComponent implements OnInit {
 
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
-      void this.store.load();
+      this.feed.reload();
       this.startPolling();
     } else {
       this.stopPolling();
@@ -210,7 +218,7 @@ export class TeamStatusCardComponent implements OnInit {
 
   private startPolling(): void {
     if (this.pollId) return;
-    this.pollId = setInterval(() => void this.store.load(), REFRESH_INTERVAL_MS);
+    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
   }
 
   private stopPolling(): void {
@@ -221,7 +229,7 @@ export class TeamStatusCardComponent implements OnInit {
   }
 
   retry(): void {
-    void this.store.load();
+    this.feed.reload();
   }
 
   /** A click anywhere on the card pops out the full team list. */

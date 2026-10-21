@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProjectApiService } from '../../../work/data-access/project-api.service';
 import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
+import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { ActiveProjectsCardComponent } from './active-projects-card.component';
 
 function project(id: string, overrides: Partial<ProjectListItemDto> = {}): ProjectListItemDto {
@@ -85,5 +86,52 @@ describe('ActiveProjectsCardComponent', () => {
     error?.querySelector('button')?.click();
     fixture.detectChanges();
     expect(q(fixture, 'active-projects-count')?.textContent?.trim()).toBe('1');
+  });
+  describe('inside a dashboard frame', () => {
+    async function setupInFrame(widget: ReturnType<typeof fakeWidgetData>, listMine: ReturnType<typeof vi.fn>) {
+      await TestBed.configureTestingModule({
+        imports: [ActiveProjectsCardComponent],
+        providers: [provideRouter([]), { provide: ProjectApiService, useValue: { listMine } }, widget.provider]
+      }).compileComponents();
+      const fixture = TestBed.createComponent(ActiveProjectsCardComponent);
+      fixture.detectChanges();
+      return fixture;
+    }
+
+    it('uses_bootstrap_payload_without_calling_its_api', async () => {
+      const listMine = vi.fn().mockReturnValue(of(page([])));
+      const widget = fakeWidgetData(
+        'success',
+        page([project('1'), project('2', { isAchieved: true }), project('3'), project('4'), project('5'), project('6')])
+      );
+      const fixture = await setupInFrame(widget, listMine);
+
+      expect(listMine).not.toHaveBeenCalled();
+      expect(widget.refresh).not.toHaveBeenCalled();
+      expect(q(fixture, 'active-projects-count')?.textContent?.trim()).toBe('5');
+      expect(fixture.nativeElement.querySelectorAll('[data-testid="active-projects-item"]').length).toBe(4);
+      expect(q(fixture, 'active-projects-more')?.textContent?.trim()).toBe('+1 more');
+    });
+
+    it('falls_back_to_own_api_outside_dashboard', async () => {
+      const listMine = vi.fn().mockReturnValue(of(page([project('1')])));
+      const fixture = await setup(listMine);
+      expect(listMine).toHaveBeenCalledWith(1, 100);
+      expect(q(fixture, 'active-projects-count')?.textContent?.trim()).toBe('1');
+    });
+
+    it('falls back to its own api, with its own error and retry, when the bootstrap state is an error', async () => {
+      const listMine = vi
+        .fn()
+        .mockReturnValueOnce(throwError(() => new Error('boom')))
+        .mockReturnValue(of(page([project('1'), project('2')])));
+      const fixture = await setupInFrame(fakeWidgetData('error'), listMine);
+      expect(listMine).toHaveBeenCalledWith(1, 100);
+      const error = q(fixture, 'active-projects-error');
+      expect(error).not.toBeNull();
+      error?.querySelector('button')?.click();
+      fixture.detectChanges();
+      expect(q(fixture, 'active-projects-count')?.textContent?.trim()).toBe('2');
+    });
   });
 });
