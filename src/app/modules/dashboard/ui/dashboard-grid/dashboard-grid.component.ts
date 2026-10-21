@@ -160,18 +160,23 @@ export class DashboardGridComponent {
     const onMove = (e: Event) => this.onPointerMove(e as MouseEvent);
     const onUp = (e: Event) => this.onPointerUp(e as MouseEvent);
     const onCancel = () => this.cancelDrag();
+    // Escape during a drag cancels only the drag: listen in the capture phase on window (ahead of the shell's
+    // document-level Escape handler, which would cancel the whole edit) and stop the event there.
     const onKey = (e: Event) => {
-      if ((e as KeyboardEvent).key === 'Escape') this.cancelDrag();
+      if ((e as KeyboardEvent).key !== 'Escape') return;
+      e.stopPropagation();
+      e.preventDefault();
+      this.cancelDrag();
     };
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
     document.addEventListener('pointercancel', onCancel);
-    document.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
     this.cleanup = () => {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onCancel);
-      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onKey, true);
     };
   }
 

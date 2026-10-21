@@ -263,6 +263,31 @@ describe('DashboardShellComponent', () => {
     expect(ctx.toolbar.action()?.label).toBe('Customize');
   });
 
+  it('escape_during_a_drag_cancels_only_the_drag_and_keeps_the_draft', async () => {
+    const ctx = setup();
+    await ready(ctx.fixture);
+    await enterEdit(ctx);
+    const store = ctx.fixture.debugElement.query(By.directive(DashboardShellComponent)).injector.get(DashboardStore);
+    const handle = ctx.el.querySelector('[data-instance-id="w1"] [data-drag-handle]') as HTMLElement;
+    handle.dispatchEvent(new MouseEvent('pointerdown', { clientX: 0, clientY: 0, bubbles: true, cancelable: true }));
+    document.dispatchEvent(new MouseEvent('pointermove', { clientX: 303, clientY: 0, bubbles: true, cancelable: true }));
+    ctx.fixture.detectChanges();
+    expect(q(ctx.el, 'grid-ghost')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    ctx.fixture.detectChanges();
+
+    expect(q(ctx.el, 'grid-ghost')).toBeNull();
+    expect(store.editing()).toBe(true);
+    expect(q(ctx.el, 'dashboard-edit-toolbar')).not.toBeNull();
+    expect(store.draft().map(w => w.instanceId)).toEqual(['w1']);
+
+    // Once the drag is over, Escape cancels editing as before.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    ctx.fixture.detectChanges();
+    expect(store.editing()).toBe(false);
+  });
+
   it('escape_closes_the_drawer_first_then_cancels', async () => {
     const ctx = setup();
     await ready(ctx.fixture);
