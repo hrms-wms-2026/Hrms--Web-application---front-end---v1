@@ -39,6 +39,10 @@ export class DashboardStore {
   private dashboardId: string | null = null;
   private currentBreakpoint: Breakpoint = 'desktop';
   private refreshSeq = 0;
+  /** The bootstrap the current draft was started from (breakpoint, base version, saved set); null when not editing. */
+  private editBase: DashboardBootstrap | null = null;
+  /** A refresh was skipped (or its result discarded) while editing; re-bootstrap once editing ends. */
+  private staleWhileEditing = false;
 
   readonly bootstrap = signal<DashboardBootstrap | null>(null);
   readonly editing = signal(false);
@@ -57,6 +61,11 @@ export class DashboardStore {
   });
 
   async load(key: DashboardKey): Promise<void> {
+    if (this.editing()) {
+      // Never replace the bootstrap a draft is based on; reload once editing ends.
+      this.staleWhileEditing = true;
+      return;
+    }
     this.error.set(null);
     try {
       const summaries = await firstValueFrom(this.api.listMine());
@@ -87,8 +96,10 @@ export class DashboardStore {
   }
 
   startEditing(): void {
-    if (!this.bootstrap()) return;
-    this.draft.set(this.bootstrap()!.widgets.map(w => ({ ...w, layout: { ...w.layout } })));
+    const boot = this.bootstrap();
+    if (!boot || this.editing()) return;
+    this.editBase = boot;
+    this.draft.set(boot.widgets.map(w => ({ ...w, layout: { ...w.layout } })));
     this.error.set(null);
     this.editing.set(true);
   }
@@ -100,7 +111,7 @@ export class DashboardStore {
 
   add(key: string): void {
     const def = this.serverAvailable().find(a => a.key === key);
-    const boot = this.bootstrap();
+    const boot = this.editBase;
     if (!this.editing() || !def || !boot || this.draft().some(w => w.widgetKey === key)) return;
     const cols = boot.grid.columns;
     const base = clampSize({ x: 0, y: 0, w: def.defaultW, h: def.defaultH }, def.size, cols);
@@ -123,20 +134,21 @@ export class DashboardStore {
   }
 
   move(instanceId: string, x: number, y: number): void {
-    const boot = this.bootstrap();
+    const boot = this.editBase;
     if (!this.editing() || !boot) return;
     this.draft.set(fromItems(moveTo(toItems(this.draft()), instanceId, x, y, boot.grid.columns)));
   }
 
   resize(instanceId: string, w: number, h: number): void {
-    const boot = this.bootstrap();
+    const boot = this.editBase;
     const target = this.draft().find(d => d.instanceId === instanceId);
     if (!this.editing() || !boot || !target) return;
     this.draft.set(fromItems(resizeTo(toItems(this.draft()), instanceId, w, h, target.size, boot.grid.columns)));
   }
 
   async save(): Promise<void> {
-    const boot = this.bootstrap();
+    // Always the bootstrap the draft started from, so the PUT targets that breakpoint and version.
+    const boot = this.editBase;
     if (!this.editing() || !boot || !this.dashboardId || this.saving()) return;
     const id = this.dashboardId;
     const saved = boot.widgets;
@@ -230,10 +242,13 @@ export class DashboardStore {
   private exitEditing(): void {
     this.editing.set(false);
     this.draft.set([]);
+    this.editBase = null;
   }
 
+  /** After leaving editing without saving: catch up on a breakpoint change or a refresh skipped while editing. */
   private async reloadIfBreakpointStale(): Promise<void> {
-    if (this.dashboardId && this.bootstrap()?.grid.breakpoint !== this.currentBreakpoint) {
+    const stale = this.staleWhileEditing || this.bootstrap()?.grid.breakpoint !== this.currentBreakpoint;
+    if (this.dashboardId && stale) {
       await this.safeRefresh();
     }
   }
@@ -266,9 +281,19 @@ export class DashboardStore {
       ]);
     } catch (err) {
       if (token !== this.refreshSeq) return; // a newer refresh superseded this one; its failure is irrelevant
+      if (this.editing()) {
+        this.staleWhileEditing = true; // retried when editing ends
+        return;
+      }
       throw err;
     }
     if (token !== this.refreshSeq) return;
+    if (this.editing()) {
+      // Landed after editing started: keep the bootstrap the draft is based on and re-bootstrap after exit.
+      this.staleWhileEditing = true;
+      return;
+    }
+    this.staleWhileEditing = false;
     this.bootstrap.set(boot);
     this.serverAvailable.set(available);
   }

@@ -33,7 +33,8 @@ function clearLegacyDashboardStorage(): void {
  *
  * Content slots for the host page:
  *  - [emptyState]: shown below the grid when no gated widget is allowed for the viewer (and capabilities loaded).
- *  - [retryState]: shown when the capabilities query failed; the host's "Try again" button calls reload().
+ *  - [retryState]: shown when the capabilities query failed (hidden while editing); the host's "Try again" button
+ *    calls reload(), which is a no-op while editing.
  */
 @Component({
   selector: 'app-dashboard-shell',
@@ -77,7 +78,10 @@ function clearLegacyDashboardStorage(): void {
           (removed)="store.remove($event)"
         />
         @if (boot.capabilitiesUnavailable) {
-          <ng-content select="[retryState]" />
+          <!-- "Try again" reloads the dashboard, which must not happen under an open draft. -->
+          @if (!store.editing()) {
+            <ng-content select="[retryState]" />
+          }
         } @else if (!boot.hasAllowedGatedWidgets) {
           <ng-content select="[emptyState]" />
         }
@@ -184,6 +188,7 @@ export class DashboardShellComponent {
 
   /** Loads the dashboard again (hosts call this from their "Try again" button). */
   reload(): void {
+    if (this.store.editing()) return;
     void this.store.load(this.dashboardKey());
   }
 

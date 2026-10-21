@@ -318,6 +318,64 @@ describe('DashboardStore', () => {
     expect(store.bootstrap()?.grid.breakpoint).toBe('mobile');
   });
 
+  it('a breakpoint refresh landing after editing started does not move the draft to the new breakpoint', async () => {
+    const { store, api } = await loaded();
+    const slow = new Subject<DashboardBootstrap>();
+    api.bootstrap.mockReturnValueOnce(slow);
+    const crossing = store.setBreakpoint('tablet');
+    store.startEditing(); // user clicks Customize before the tablet bootstrap returns
+    store.move('i-b', 0, 3);
+    slow.next(bootstrapOf([widget('i-a', 'a', 0, 0, 6, 2), widget('i-b', 'b', 0, 2, 6, 2)], 8, 'tablet'));
+    slow.complete();
+    await crossing;
+
+    expect(store.editing()).toBe(true);
+    expect(store.bootstrap()?.grid.breakpoint).toBe('desktop');
+    expect(store.bootstrap()?.layoutVersion).toBe(3);
+
+    api.saveLayout.mockReturnValue(of({ layoutVersion: 4 }));
+    api.bootstrap.mockReturnValue(of(bootstrapOf([widget('i-a', 'a', 0, 0, 6, 2)], 4, 'tablet')));
+    await store.save();
+    expect(api.saveLayout).toHaveBeenCalledTimes(1);
+    expect(api.saveLayout.mock.calls[0][1]).toBe('desktop');
+    expect(api.saveLayout.mock.calls[0][2]).toBe(3);
+    // after the save the page re-bootstraps at the real (tablet) breakpoint
+    expect(api.bootstrap).toHaveBeenLastCalledWith('dash-1', 'tablet');
+    expect(store.bootstrap()?.grid.breakpoint).toBe('tablet');
+  });
+
+  it('a reload (My Team "Try again") while editing does not replace the bootstrap under the draft', async () => {
+    const { store, api } = await loaded();
+    store.startEditing();
+    store.move('i-b', 0, 3);
+    api.listMine.mockClear();
+    api.bootstrap.mockReturnValue(of(bootstrapOf([widget('i-a', 'a', 0, 0)], 9)));
+    await store.load('my-work');
+    expect(store.editing()).toBe(true);
+    expect(store.bootstrap()?.layoutVersion).toBe(3);
+    expect(store.draft().map(w => w.instanceId)).toEqual(['i-a', 'i-b']);
+
+    api.saveLayout.mockReturnValue(of({ layoutVersion: 4 }));
+    await store.save();
+    expect(api.saveLayout.mock.calls[0][1]).toBe('desktop');
+    expect(api.saveLayout.mock.calls[0][2]).toBe(3);
+  });
+
+  it('a refresh skipped while editing is applied when editing is cancelled', async () => {
+    const { store, api } = await loaded();
+    const slow = new Subject<DashboardBootstrap>();
+    api.bootstrap.mockReturnValueOnce(slow);
+    const pending = store.load('my-work');
+    store.startEditing();
+    slow.next(bootstrapOf([widget('i-a', 'a', 0, 0)], 9));
+    slow.complete();
+    await pending;
+    expect(store.bootstrap()?.layoutVersion).toBe(3);
+    api.bootstrap.mockReturnValue(of(bootstrapOf([widget('i-a', 'a', 0, 0)], 9)));
+    await store.cancel();
+    expect(store.bootstrap()?.layoutVersion).toBe(9);
+  });
+
   it('load failure sets error', async () => {
     const { store, api } = setup();
     api.listMine.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));

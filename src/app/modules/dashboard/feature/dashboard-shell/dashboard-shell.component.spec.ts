@@ -385,6 +385,17 @@ describe('DashboardShellComponent', () => {
     expect(q(ctx.el, 'slot-empty')).toBeNull();
   });
 
+  it('hides_the_retry_slot_and_ignores_reload_while_editing', async () => {
+    const ctx = setup({ bootstrap: boot({ hasAllowedGatedWidgets: false, capabilitiesUnavailable: true }) });
+    await ready(ctx.fixture);
+    expect(q(ctx.el, 'slot-retry')).not.toBeNull();
+    await enterEdit(ctx);
+    expect(q(ctx.el, 'slot-retry')).toBeNull();
+    ctx.api.listMine.mockClear();
+    ctx.fixture.componentInstance.shell().reload();
+    expect(ctx.api.listMine).not.toHaveBeenCalled();
+  });
+
   it('renders_neither_slot_when_gated_widgets_are_allowed', async () => {
     const ctx = setup();
     await ready(ctx.fixture);
