@@ -221,6 +221,12 @@ export class DashboardStore {
     }
   }
 
+  /** Leaves editing without reloading anything (for page teardown); in-flight refreshes are discarded. */
+  dispose(): void {
+    this.refreshSeq++;
+    this.exitEditing();
+  }
+
   private exitEditing(): void {
     this.editing.set(false);
     this.draft.set([]);

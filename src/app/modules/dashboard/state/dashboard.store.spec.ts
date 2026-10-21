@@ -95,6 +95,18 @@ describe('DashboardStore', () => {
     expect(store.widgets()[1].layout).toEqual({ x: 6, y: 0, w: 6, h: 2 });
   });
 
+  it('dispose_exits_editing_without_reloading', async () => {
+    const { store, api } = await loaded();
+    await store.setBreakpoint('tablet');
+    store.startEditing();
+    store.remove('i-a');
+    api.bootstrap.mockClear();
+    store.dispose();
+    expect(store.editing()).toBe(false);
+    expect(store.draft()).toEqual([]);
+    expect(api.bootstrap).not.toHaveBeenCalled();
+  });
+
   it('no_api_call_during_move_or_resize', async () => {
     const { store, api } = await loaded();
     const calls = () => api.addWidget.mock.calls.length + api.removeWidget.mock.calls.length + api.saveLayout.mock.calls.length + api.reset.mock.calls.length;
