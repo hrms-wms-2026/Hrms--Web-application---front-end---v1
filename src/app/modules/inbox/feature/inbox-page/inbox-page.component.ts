@@ -29,7 +29,7 @@ import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../../ui/inbox-
 import { InboxCommentDialogComponent } from '../../ui/inbox-comment-dialog/inbox-comment-dialog.component';
 import { InboxCardAction, InboxItemCardComponent } from '../../ui/inbox-item-card/inbox-item-card.component';
 import { NewGroupChoice, NewGroupDialogComponent } from '../../ui/new-group-dialog/new-group-dialog.component';
-import { ForwardDialogComponent } from '../../ui/forward-dialog/forward-dialog.component';
+import { ForwardDialogComponent, ForwardTargets } from '../../ui/forward-dialog/forward-dialog.component';
 import { PersonCasesViewComponent } from '../../ui/person-cases/person-cases-view.component';
 import { inboxTitle } from '../../utils/inbox-item.util';
 import { InboxBulkActionChoice, bulkActionsFor } from '../../utils/inbox-page-state.util';
@@ -539,12 +539,15 @@ export class InboxPageComponent implements OnInit {
   }
 
   /** WhatsApp-style forward: a copy of the case card goes into each picked chat. */
-  protected async forward(conversationIds: string[]): Promise<void> {
+  protected async forward(targets: ForwardTargets): Promise<void> {
     const ref = this.forwarding();
     if (!ref) return;
     this.forwardBusy.set(true);
     this.forwardError.set(null);
     try {
+      // People with no chat yet: their 1-on-1 chat is started first (the same as starting one from the search).
+      const started = await Promise.all(targets.employeeIds.map((id) => firstValueFrom(this.chatsApi.openDirect(id))));
+      const conversationIds = [...targets.conversationIds, ...started.map((c) => c.conversationId)];
       const count = await firstValueFrom(this.chatsApi.forward({ source: ref.source, kind: ref.kind, id: ref.id }, conversationIds));
       this.forwarding.set(null);
       this.notifications.success(count === 1 ? 'Forwarded' : `Forwarded to ${count} chats`);

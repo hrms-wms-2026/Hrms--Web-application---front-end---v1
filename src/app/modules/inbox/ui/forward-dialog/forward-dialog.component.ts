@@ -1,13 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { InboxChatRowDto } from '../../models/inbox-chat.dto';
+import { ConversationPersonDto } from '../../models/inbox.dto';
 import { InboxChatsStore } from '../../state/inbox-chats.store';
 
+/** Who the case goes to: existing chats, and people with no chat yet (a 1-on-1 chat is started with each). */
+export interface ForwardTargets {
+  conversationIds: string[];
+  employeeIds: string[];
+}
+
 /**
- * WhatsApp-style "Forward to…": pick one or more of your chats (groups and people) and send the case there. The chat it
- * is forwarded from is left out.
+ * WhatsApp-style "Forward to…": pick one or more of your chats (groups and people) and send the case there. The search
+ * also finds anyone in the legal entity (the same lookup as the sub-sidebar) to start a chat with. The chat it is
+ * forwarded from is left out.
  */
 @Component({
   selector: 'app-forward-dialog',
@@ -20,7 +31,7 @@ import { InboxChatsStore } from '../../state/inbox-chats.store';
         <label class="fwd__search">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
           <input type="search" placeholder="Search chats…" aria-label="Search chats" data-testid="forward-search"
-            [value]="search()" (input)="search.set($any($event.target).value)" />
+            [value]="search()" (input)="onSearch($any($event.target).value)" />
         </label>
         <ul class="fwd__list">
           @for (row of rows(); track row.conversationId) {
@@ -36,15 +47,29 @@ import { InboxChatsStore } from '../../state/inbox-chats.store';
                 <span class="fwd__kind">{{ row.type === 'direct' ? 'Person' : row.type === 'case' ? 'Case group' : 'Group' }}</span>
               </label>
             </li>
-          } @empty {
-            <li class="fwd__quiet">No chat matches</li>
+          }
+          @if (people().length > 0) {
+            <li class="fwd__section">People</li>
+            @for (p of people(); track p.employeeId) {
+              <li>
+                <label class="fwd__row" [attr.data-testid]="'forward-person-' + p.employeeId">
+                  <input type="checkbox" [checked]="chosenPeople().has(p.employeeId)" (change)="togglePerson(p)" />
+                  <app-avatar [userName]="p.name" [avatarUrl]="p.avatarFileId ? fileUrl(p.avatarFileId) : null" size="xs" />
+                  <span class="fwd__name">{{ p.name }}</span>
+                  <span class="fwd__kind">New chat</span>
+                </label>
+              </li>
+            }
+          }
+          @if (rows().length === 0 && people().length === 0) {
+            <li class="fwd__quiet">{{ search().trim() ? 'No one matches that name' : 'No chats yet' }}</li>
           }
         </ul>
         @if (error()) { <p class="fwd__error" role="alert">{{ error() }}</p> }
         <div class="fwd__actions">
           <button type="button" class="fwd__btn" (click)="closed.emit()">Cancel</button>
-          <button type="button" class="fwd__btn fwd__btn--primary" data-testid="forward-send" [disabled]="chosen().size === 0 || busy()"
-            (click)="send.emit([...chosen()])">Forward{{ chosen().size > 1 ? ' to ' + chosen().size : '' }}</button>
+          <button type="button" class="fwd__btn fwd__btn--primary" data-testid="forward-send" [disabled]="total() === 0 || busy()"
+            (click)="send.emit({ conversationIds: [...chosen()], employeeIds: [...chosenPeople().keys()] })">Forward{{ total() > 1 ? ' to ' + total() : '' }}</button>
         </div>
       </div>
     </app-modal>
@@ -64,6 +89,7 @@ import { InboxChatsStore } from '../../state/inbox-chats.store';
     .fwd__name { min-width: 0; flex: 1; overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .fwd__kind { color: var(--color-text-secondary); font-size: 11px; }
     .fwd__quiet { padding: 12px 8px; color: var(--color-text-secondary); font-size: 13px; }
+    .fwd__section { padding: 8px 8px 2px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
     .fwd__error { margin: 0; color: var(--color-danger); font-size: 12px; }
     .fwd__actions { display: flex; justify-content: flex-end; gap: 8px; }
     .fwd__btn { height: 32px; padding: 0 14px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface);
@@ -74,6 +100,7 @@ import { InboxChatsStore } from '../../state/inbox-chats.store';
 })
 export class ForwardDialogComponent {
   private readonly chats = inject(InboxChatsStore);
+  private readonly conversations = inject(ConversationsApiService);
 
   open = input(false);
   caseTitle = input('');
@@ -82,11 +109,24 @@ export class ForwardDialogComponent {
   busy = input(false);
   error = input<string | null>(null);
 
-  send = output<string[]>();
+  send = output<ForwardTargets>();
   closed = output<void>();
 
   protected readonly search = signal('');
   protected readonly chosen = signal<ReadonlySet<string>>(new Set());
+  /** People with no chat yet, picked from the search (kept by id with their name, so they stay picked across searches). */
+  protected readonly chosenPeople = signal<ReadonlyMap<string, ConversationPersonDto>>(new Map());
+  private readonly found = signal<ConversationPersonDto[]>([]);
+  private readonly searches = new Subject<string>();
+  protected readonly total = computed(() => this.chosen().size + this.chosenPeople().size);
+  /** Anyone in the legal entity matching the search, minus people the user already has a 1-on-1 chat with; picked
+   *  people stay listed. */
+  protected readonly people = computed<ConversationPersonDto[]>(() => {
+    const chatting = new Set(this.chats.rows().filter((r) => r.type === 'direct').map((r) => r.otherEmployeeId));
+    const found = this.found().filter((p) => !chatting.has(p.employeeId));
+    const picked = [...this.chosenPeople().values()].filter((p) => !found.some((f) => f.employeeId === p.employeeId));
+    return [...picked, ...found];
+  });
   protected readonly rows = computed<InboxChatRowDto[]>(() => {
     const term = this.search().trim().toLowerCase();
     return this.chats.rows()
@@ -100,8 +140,27 @@ export class ForwardDialogComponent {
       untracked(() => {
         this.search.set('');
         this.chosen.set(new Set());
+        this.chosenPeople.set(new Map());
+        this.found.set([]);
       });
     });
+    this.searches.pipe(
+      debounceTime(250),
+      switchMap((text) => (text.trim() ? this.conversations.searchPeople(text.trim()).pipe(catchError(() => of([]))) : of([]))),
+      takeUntilDestroyed(inject(DestroyRef))
+    ).subscribe((people) => this.found.set(people));
+  }
+
+  protected onSearch(text: string): void {
+    this.search.set(text);
+    this.searches.next(text);
+  }
+
+  protected togglePerson(person: ConversationPersonDto): void {
+    const next = new Map(this.chosenPeople());
+    if (next.has(person.employeeId)) next.delete(person.employeeId);
+    else next.set(person.employeeId, person);
+    this.chosenPeople.set(next);
   }
 
   protected toggle(id: string): void {
