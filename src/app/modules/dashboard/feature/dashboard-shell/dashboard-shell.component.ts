@@ -8,6 +8,24 @@ import { DashboardStore } from '../../state/dashboard.store';
 import { DashboardGridComponent, GridMoveEvent, GridResizeEvent } from '../../ui/dashboard-grid/dashboard-grid.component';
 import { WidgetStoreDrawerComponent } from '../widget-store-drawer/widget-store-drawer.component';
 
+/** localStorage key prefixes written by the pre-server-side customize implementation; cleared once. */
+const LEGACY_STORAGE_PREFIXES = ['onexso.dashboard_layout', 'onexso.my_team_widget_order'];
+
+function clearLegacyDashboardStorage(): void {
+  try {
+    const storage = typeof window !== 'undefined' ? window.localStorage : null;
+    if (!storage) return;
+    const stale: string[] = [];
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (key && LEGACY_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) stale.push(key);
+    }
+    stale.forEach((key) => storage.removeItem(key));
+  } catch {
+    // Storage unavailable (private mode, blocked): nothing to clean.
+  }
+}
+
 /**
  * Hosts one customizable dashboard: loads it (at the container's real breakpoint), renders the grid and,
  * in edit mode, the toolbar (Add widget / Reset / Cancel / Save) and the widget store drawer. Registers the
@@ -128,6 +146,8 @@ export class DashboardShellComponent {
   protected readonly confirmingReset = signal(false);
 
   constructor() {
+    clearLegacyDashboardStorage();
+
     // The first breakpoint value is provisional (the host may not be laid out yet), so load only after the first
     // render, reading the real width then. Later breakpoint changes are forwarded to the store.
     afterNextRender(() => {

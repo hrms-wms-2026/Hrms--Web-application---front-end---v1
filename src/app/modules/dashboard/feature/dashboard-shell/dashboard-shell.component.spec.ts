@@ -130,6 +130,38 @@ describe('DashboardShellComponent', () => {
     expect(ctx.api.bootstrap).toHaveBeenCalledWith('d1', 'desktop');
   });
 
+  it('clears_legacy_localStorage_customization_keys_once_on_construction', async () => {
+    localStorage.setItem('onexso.dashboard_layout', '{}');
+    localStorage.setItem('onexso.dashboard_layout:emp-1', '{}');
+    localStorage.setItem('onexso.my_team_widget_order:emp-1', '[]');
+    localStorage.setItem('unrelated.key', 'keep');
+    try {
+      const ctx = setup();
+      await ready(ctx.fixture);
+      expect(localStorage.getItem('onexso.dashboard_layout')).toBeNull();
+      expect(localStorage.getItem('onexso.dashboard_layout:emp-1')).toBeNull();
+      expect(localStorage.getItem('onexso.my_team_widget_order:emp-1')).toBeNull();
+      expect(localStorage.getItem('unrelated.key')).toBe('keep');
+    } finally {
+      localStorage.removeItem('unrelated.key');
+    }
+  });
+
+  it('survives_unavailable_localStorage', async () => {
+    const spy = vi.spyOn(Storage.prototype, 'key').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    try {
+      localStorage.setItem('onexso.dashboard_layout', '{}');
+      const ctx = setup();
+      await ready(ctx.fixture);
+      expect(ctx.api.listMine).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+      localStorage.removeItem('onexso.dashboard_layout');
+    }
+  });
+
   it('customize_button_enters_edit_mode', async () => {
     const ctx = setup();
     await ready(ctx.fixture);
