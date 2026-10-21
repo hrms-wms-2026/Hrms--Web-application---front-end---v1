@@ -106,8 +106,10 @@ describe('MyTeamPageComponent', () => {
     const ctx = setup(boot({ hasAllowedGatedWidgets: false, capabilitiesUnavailable: true }));
     await ready(ctx.fixture);
     const before = ctx.api.listMine.mock.calls.length;
+    const capsBefore = ctx.loadCapabilities.mock.calls.length;
     q(ctx.el, 'my-team-retry')!.click();
     await ready(ctx.fixture);
     expect(ctx.api.listMine.mock.calls.length).toBe(before + 1);
+    expect(ctx.loadCapabilities.mock.calls.length).toBe(capsBefore + 1);
   });
 });
