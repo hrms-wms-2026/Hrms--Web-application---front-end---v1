@@ -86,6 +86,14 @@ export function buildObjectiveForest(items: ObjectiveTreeItemDto[]): MilestoneTr
   return build(rootItem);
 }
 
+/**
+ * A key that changes only when the set of modules changes. The tree object itself is replaced on
+ * every lazy sprint/task load (Expand all, search, filters), which must not reload the network view.
+ */
+export function moduleStructureKey(tree: MilestoneTreeNode): string {
+  return collectObjectiveOptions(tree).map((o) => o.id).sort().join(',');
+}
+
 export function collectObjectiveOptions(node: MilestoneTreeNode): { id: string; title: string; isActive: boolean }[] {
   const options: { id: string; title: string; isActive: boolean }[] = [];
   const walk = (current: MilestoneTreeNode): void => {

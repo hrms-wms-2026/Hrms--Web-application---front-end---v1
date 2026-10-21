@@ -1,6 +1,8 @@
-export type WorkGraphNodeKind = 'employee' | 'project' | 'module' | 'task';
+/** `sprint` (and a task's `done` status) only ever come from Work Management's project-rooted graph. */
+export type WorkGraphNodeKind = 'employee' | 'project' | 'module' | 'task' | 'sprint';
 export type WorkGraphModuleRole = 'owner' | 'member' | 'contributor';
-export type WorkGraphTaskStatus = 'not_started' | 'active';
+export type WorkGraphTaskStatus = 'not_started' | 'active' | 'done';
+export type WorkGraphSprintStatus = 'draft' | 'active' | 'complete' | 'achieved';
 export type WorkGraphLinkKind = 'works_on' | 'contains' | 'owns' | 'member_of' | 'has_task';
 
 export interface WorkGraphNode {
@@ -9,7 +11,8 @@ export interface WorkGraphNode {
   readonly label: string;
   readonly sublabel?: string | null;
   readonly role?: WorkGraphModuleRole | null;
-  readonly status?: WorkGraphTaskStatus | null;
+  /** A task's status category, or (project graph only) a sprint's status. */
+  readonly status?: WorkGraphTaskStatus | WorkGraphSprintStatus | null;
   readonly projectId?: string | null;
   readonly objectiveId?: string | null;
   readonly taskId?: string | null;

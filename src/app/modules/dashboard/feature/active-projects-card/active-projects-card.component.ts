@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { ProjectApiService } from '../../../work/data-access/project-api.service';
-import { ProjectListItemDto } from '../../../work/models/dto/project.dto';
+import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 
 /** `/work/projects/mine` has no status filter, so one page this size is fetched and filtered here -
  * the count stops at this many projects. */
@@ -34,8 +35,21 @@ export class ActiveProjectsCardComponent implements OnInit {
   protected readonly preview = computed(() => this.active().slice(0, PREVIEW_COUNT));
   protected readonly moreCount = computed(() => Math.max(0, this.active().length - PREVIEW_COUNT));
 
+  /** Inside a dashboard frame the first page comes from the bootstrap (same `listMine(1, 100)` result);
+   * otherwise (or when it isn't available) the card fetches it as before. Retry stays on load(): its
+   * error state only appears after the card's own request failed. */
+  private readonly feed = injectWidgetDataFeed<PagedResultDto<ProjectListItemDto>>({
+    apply: (page) => this.applyPage(page),
+    fetch: () => this.load()
+  });
+
   ngOnInit(): void {
-    this.load();
+    this.feed.start();
+  }
+
+  private applyPage(page: PagedResultDto<ProjectListItemDto>): void {
+    this.projects.set(page.items);
+    this.loading.set(false);
   }
 
   protected load(): void {
@@ -45,10 +59,7 @@ export class ActiveProjectsCardComponent implements OnInit {
       .listMine(1, PROJECT_PAGE_SIZE)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (page) => {
-          this.projects.set(page.items);
-          this.loading.set(false);
-        },
+        next: (page) => this.applyPage(page),
         error: () => {
           this.error.set(true);
           this.loading.set(false);
