@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
 import { DashboardBootstrap } from '../../models/dashboard-layout.model';
+import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { DashboardHomeComponent } from './dashboard-home.component';
 
 const BOOTSTRAP: DashboardBootstrap = {
@@ -21,6 +22,7 @@ describe('DashboardHomeComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('renders_my_work_shell', async () => {
+    const ensureLoaded = vi.fn(() => Promise.resolve());
     const api = {
       listMine: vi.fn(() => of([{ id: 'd1', key: 'my-work', title: 'My Work', layoutVersion: 1 }])),
       bootstrap: vi.fn(() => of(BOOTSTRAP)),
@@ -30,6 +32,7 @@ describe('DashboardHomeComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: DashboardLayoutApiService, useValue: api },
+        { provide: MyTeamCapabilitiesStore, useValue: { ensureLoaded } },
         { provide: NotificationService, useValue: { warning: vi.fn(), error: vi.fn(), success: vi.fn() } }
       ]
     });
@@ -41,6 +44,7 @@ describe('DashboardHomeComponent', () => {
     }
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('app-dashboard-shell')).not.toBeNull();
+    expect(ensureLoaded).toHaveBeenCalledTimes(1);
     expect(api.listMine).toHaveBeenCalled();
     expect(api.bootstrap).toHaveBeenCalledWith(expect.anything(), expect.anything());
   });

@@ -4,6 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
 import { DashboardBootstrap } from '../../models/dashboard-layout.model';
+import { signal } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { ProjectApiService } from '../../../work/data-access/project-api.service';
+import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { MyTeamPageComponent } from './my-team-page.component';
 
 function boot(over: Partial<DashboardBootstrap> = {}): DashboardBootstrap {
@@ -27,14 +33,20 @@ function setup(bootstrap: DashboardBootstrap) {
     available: vi.fn(() => of([])),
     widgetData: vi.fn(() => of())
   };
+  const loadCapabilities = vi.fn(() => Promise.resolve());
   TestBed.configureTestingModule({
     providers: [
+      provideRouter([]),
+      { provide: MyTeamCapabilitiesStore, useValue: { loadCapabilities } },
+      { provide: TimeTrackingStore, useValue: { today: signal(null), actionLoading: signal(false), activeAction: signal(null), loadToday: vi.fn(), startBreak: vi.fn(), endBreak: vi.fn() } },
+      { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
+      { provide: ProjectApiService, useValue: { listMine: () => of({ items: [], pageNumber: 1, pageSize: 100, totalCount: 0, totalPages: 0, hasNext: false, hasPrevious: false }) } },
       { provide: DashboardLayoutApiService, useValue: api },
       { provide: NotificationService, useValue: { warning: vi.fn(), error: vi.fn(), success: vi.fn() } }
     ]
   });
   const fixture = TestBed.createComponent(MyTeamPageComponent);
-  return { fixture, api, el: fixture.nativeElement as HTMLElement };
+  return { fixture, api, loadCapabilities, el: fixture.nativeElement as HTMLElement };
 }
 
 async function ready(fixture: ReturnType<typeof setup>['fixture']) {
@@ -50,6 +62,21 @@ const q = (el: HTMLElement, id: string) => el.querySelector(`[data-testid="${id}
 
 describe('MyTeamPageComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
+
+  it('loads_capabilities_on_init', async () => {
+    const ctx = setup(boot());
+    await ready(ctx.fixture);
+    expect(ctx.loadCapabilities).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows_quick_actions_and_the_empty_state_together', async () => {
+    const quick = { instanceId: 'q1', widgetKey: 'team-quick-actions', title: 'Quick Actions', layout: { x: 0, y: 0, w: 4, h: 3 }, size: { minW: 2, minH: 2, maxW: 12, maxH: 6 }, dataState: { status: 'client' as const, fetchedAt: null, error: null }, data: null };
+    const ctx = setup(boot({ hasAllowedGatedWidgets: false, widgets: [quick] }));
+    await ready(ctx.fixture);
+    expect(ctx.el.querySelector('app-quick-actions-card')).not.toBeNull();
+    expect(q(ctx.el, 'quick-action-my-work')).not.toBeNull();
+    expect(q(ctx.el, 'my-team-empty')).not.toBeNull();
+  });
 
   it('hosts_the_my_team_shell', async () => {
     const ctx = setup(boot());

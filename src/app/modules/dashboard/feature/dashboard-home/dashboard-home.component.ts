@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { DashboardShellComponent } from '../dashboard-shell/dashboard-shell.component';
 
 /**
@@ -12,4 +13,11 @@ import { DashboardShellComponent } from '../dashboard-shell/dashboard-shell.comp
   template: `<app-dashboard-shell dashboardKey="my-work" />`,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DashboardHomeComponent {}
+export class DashboardHomeComponent implements OnInit {
+  private readonly capabilitiesStore = inject(MyTeamCapabilitiesStore);
+
+  ngOnInit(): void {
+    // Action Center reads the My Team capabilities (subtitle, Overdue chip, rail); load them once, cached.
+    void this.capabilitiesStore.ensureLoaded();
+  }
+}

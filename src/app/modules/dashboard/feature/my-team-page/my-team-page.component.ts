@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { DashboardShellComponent } from '../dashboard-shell/dashboard-shell.component';
 
@@ -15,4 +16,11 @@ import { DashboardShellComponent } from '../dashboard-shell/dashboard-shell.comp
   templateUrl: './my-team-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MyTeamPageComponent {}
+export class MyTeamPageComponent implements OnInit {
+  private readonly capabilitiesStore = inject(MyTeamCapabilitiesStore);
+
+  ngOnInit(): void {
+    // Fresh on every visit, so a lead's newly granted (or removed) team access shows up here.
+    void this.capabilitiesStore.loadCapabilities();
+  }
+}
