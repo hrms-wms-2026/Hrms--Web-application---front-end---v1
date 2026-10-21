@@ -251,6 +251,8 @@ const QUOTE_LENGTH = 120;
                         @if (canReply(m)) {
                           <button type="button" class="conv__link" [attr.data-testid]="'message-reply-' + m.id" aria-label="Reply to message" (click)="startReply(m)">Reply</button>
                         }
+                        <button type="button" class="conv__link" [attr.data-testid]="'message-forward-' + m.id" aria-label="Forward message"
+                          (click)="forwardMessage.emit({ messageId: m.id, preview: replyingText(m) })">Forward</button>
                         <span class="msg__react">
                           <button type="button" class="msg__react-btn" [attr.data-testid]="'message-react-' + m.id" aria-label="React to message"
                             title="React" aria-haspopup="dialog" [attr.aria-expanded]="reactPickerFor() === m.id" (click)="toggleReactPicker(m.id)">
@@ -278,7 +280,12 @@ const QUOTE_LENGTH = 120;
                         <span class="msg__quote-text">{{ quoteText(m.replyTo) }}</span>
                       </button>
                     }
-                    @if (m.tag && !m.isDeleted) { <div class="msg__tag" data-testid="message-tag">{{ tagLabel(m.tag) }}</div> }
+                    @if (m.tag === 'forwarded' && !m.isDeleted) {
+                      <span class="msg__forwarded" data-testid="message-forwarded">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 5 5-5 5" /><path d="M20 10H9a5 5 0 0 0-5 5v4" /></svg>
+                        Forwarded
+                      </span>
+                    } @else if (m.tag && !m.isDeleted) { <div class="msg__tag" data-testid="message-tag">{{ tagLabel(m.tag) }}</div> }
                     @if (m.isDeleted) {
                       <div class="msg__body msg__body--deleted">Message deleted</div>
                     } @else if (editingId() === m.id) {
@@ -539,6 +546,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
   startCaseGroup = output<InboxItemRef>();
   /** "Forward" on a case card: the host opens the forward picker. */
   forwardCase = output<InboxItemRef & { title: string }>();
+  /** "Forward" on a chat message: the host opens the picker; the server sends a copy (text and files). */
+  forwardMessage = output<{ messageId: string; preview: string }>();
   /** "Open group" on a case that moved to its group. */
   openChat = output<InboxItemRef>();
   /** The group was renamed (the host reloads the list). */

@@ -185,7 +185,8 @@ export function faceEvidenceFor(
               (caseAction)="onCaseAction($event)"
               (caseEdits)="card()?.setEdits($event)"
               (startCaseGroup)="openNewGroup($event)"
-              (forwardCase)="forwarding.set($event)"
+              (forwardCase)="forwarding.set({ type: 'case', ...$event })"
+              (forwardMessage)="forwarding.set({ type: 'message', messageId: $event.messageId, title: $event.preview })"
               (openChat)="openChat($event)"
               (renamed)="chats.load()"
               (toggleDetails)="toggleDetails()"
@@ -390,8 +391,9 @@ export class InboxPageComponent implements OnInit {
   protected readonly groupBusy = signal(false);
   protected readonly groupError = signal<string | null>(null);
   protected readonly bulkPending = signal<InboxBulkActionChoice | null>(null);
-  /** The case being forwarded (the picker is open). */
-  protected readonly forwarding = signal<(InboxItemRef & { title: string }) | null>(null);
+  /** The case card or chat message being forwarded (the picker is open). */
+  protected readonly forwarding = signal<
+    ({ type: 'case'; title: string } & InboxItemRef) | { type: 'message'; messageId: string; title: string } | null>(null);
   protected readonly forwardBusy = signal(false);
   protected readonly forwardError = signal<string | null>(null);
   protected readonly bulkResult = signal<BulkResultSummary | null>(null);
@@ -579,22 +581,24 @@ export class InboxPageComponent implements OnInit {
     }
   }
 
-  /** WhatsApp-style forward: a copy of the case card goes into each picked chat. */
+  /** WhatsApp-style forward: a copy of the case card or message goes into each picked chat. */
   protected async forward(targets: ForwardTargets): Promise<void> {
-    const ref = this.forwarding();
-    if (!ref) return;
+    const what = this.forwarding();
+    if (!what) return;
     this.forwardBusy.set(true);
     this.forwardError.set(null);
     try {
       // People with no chat yet: their 1-on-1 chat is started first (the same as starting one from the search).
       const started = await Promise.all(targets.employeeIds.map((id) => firstValueFrom(this.chatsApi.openDirect(id))));
       const conversationIds = [...targets.conversationIds, ...started.map((c) => c.conversationId)];
-      const count = await firstValueFrom(this.chatsApi.forward({ source: ref.source, kind: ref.kind, id: ref.id }, conversationIds));
+      const count = await firstValueFrom(what.type === 'case'
+        ? this.chatsApi.forward({ source: what.source, kind: what.kind, id: what.id }, conversationIds)
+        : this.chatsApi.forwardMessage(what.messageId, conversationIds));
       this.forwarding.set(null);
       this.notifications.success(count === 1 ? 'Forwarded' : `Forwarded to ${count} chats`);
       void this.chats.load();
     } catch (err) {
-      this.forwardError.set((err as { error?: { detail?: string } })?.error?.detail ?? 'The case could not be forwarded.');
+      this.forwardError.set((err as { error?: { detail?: string } })?.error?.detail ?? (what.type === 'case' ? 'The case could not be forwarded.' : 'The message could not be forwarded.'));
     } finally {
       this.forwardBusy.set(false);
     }

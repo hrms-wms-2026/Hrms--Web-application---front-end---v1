@@ -43,6 +43,11 @@ export class InboxChatsApiService {
     return this.http.post<number>(`${this.base}/forward`, { source: ref.source, kind: ref.kind, id: ref.id, conversationIds });
   }
 
+  /** Forwards a copy of a chat message (text and files) into chats the caller is in; returns how many got it. */
+  forwardMessage(messageId: string, conversationIds: string[]): Observable<number> {
+    return this.http.post<number>(`${this.base}/forward-message`, { messageId, conversationIds });
+  }
+
   /** Moves a case to its own group and adds people to it. */
   startCaseGroup(ref: InboxItemRef, employeeIds: string[]): Observable<InboxChatRefDto> {
     return this.http.post<InboxChatRefDto>(`${this.base}/case-group`, { source: ref.source, kind: ref.kind, id: ref.id, employeeIds });

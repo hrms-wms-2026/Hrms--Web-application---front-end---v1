@@ -145,6 +145,27 @@ describe('ConversationPanelComponent', () => {
     expect(el.querySelector('[data-testid="message-forwarded"]')!.textContent).toContain('Forwarded by Anu');
   });
 
+  it('forwards a chat message with a one-line preview, and labels a forwarded copy', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('m1', '2026-10-12T08:00:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>can we   start?</p>' }),
+        message('m2', '2026-10-12T08:01:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>hello</p>', tag: 'forwarded' })
+      ]
+    }));
+    const { fixture, el } = await render();
+    const forwarded: unknown[] = [];
+    fixture.componentInstance.forwardMessage.subscribe((m) => forwarded.push(m));
+
+    (el.querySelector('[data-testid="message-forward-m1"]') as HTMLButtonElement).click();
+
+    expect(forwarded).toEqual([{ messageId: 'm1', preview: 'can we start?' }]);
+    const labels = el.querySelectorAll('[data-testid="message-forwarded"]');
+    expect(labels.length).toBe(1);
+    expect(labels[0].closest('[data-message-id]')!.getAttribute('data-message-id')).toBe('m2');
+    expect(el.querySelector('[data-testid="message-tag"]')).toBeNull();
+  });
+
   it('shows a case card, its "resolved" line with the date, and a link to the group a case moved to', async () => {
     api['open'] = vi.fn(() => of({
       ...conversation(),
