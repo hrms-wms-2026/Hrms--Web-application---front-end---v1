@@ -15,7 +15,7 @@ import { HostSlashCommand, MentionCandidate } from '../../../../shared/ui/rich-t
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { ConversationMessageDto, InboxItemRef, sameRef } from '../../models/inbox.dto';
-import { ChatSystemEvent, InboxChatRowDto, caseRefOf, parseSystemEvent } from '../../models/inbox-chat.dto';
+import { ChatSystemEvent, InboxChatRowDto, caseRefOf, isPeopleChatSource, parseSystemEvent } from '../../models/inbox-chat.dto';
 import { RealtimeConversationReaction } from '../../../../core/realtime/inbox-realtime.models';
 import { ConversationStore } from '../../state/conversation.store';
 import { CaseCardAction, CaseCardComponent } from '../case-card/case-card.component';
@@ -251,8 +251,10 @@ const QUOTE_LENGTH = 120;
                         @if (canReply(m)) {
                           <button type="button" class="conv__link" [attr.data-testid]="'message-reply-' + m.id" aria-label="Reply to message" (click)="startReply(m)">Reply</button>
                         }
-                        <button type="button" class="conv__link" [attr.data-testid]="'message-forward-' + m.id" aria-label="Forward message"
-                          (click)="forwardMessage.emit({ messageId: m.id, preview: replyingText(m) })">Forward</button>
+                        @if (canForward()) {
+                          <button type="button" class="conv__link" [attr.data-testid]="'message-forward-' + m.id" aria-label="Forward message"
+                            (click)="forwardMessage.emit({ messageId: m.id, preview: replyingText(m) })">Forward</button>
+                        }
                         <span class="msg__react">
                           <button type="button" class="msg__react-btn" [attr.data-testid]="'message-react-' + m.id" aria-label="React to message"
                             title="React" aria-haspopup="dialog" [attr.aria-expanded]="reactPickerFor() === m.id" (click)="toggleReactPicker(m.id)">
@@ -610,6 +612,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
     .filter((p) => p.employeeId !== this.me())
     .map((p) => ({ id: p.employeeId, name: p.name, avatarUrl: this.avatarUrl(p.avatarFileId) })));
   readonly isDirect = computed(() => this.itemRef().source === 'direct');
+  /** Messages of 1-on-1 chats and named groups can be forwarded; a case's group keeps its messages to the case's people. */
+  protected readonly canForward = computed(() => isPeopleChatSource(this.itemRef().source));
   /** A 1-on-1 chat has no "add people": groups start from a case (its ⋯), or from the sidebar. */
   protected readonly slashCommands = computed<HostSlashCommand[]>(() => this.isDirect() ? [] : [
     { id: ADD_COMMAND, label: 'Add people', category: 'ACTIONS', icon: '+', description: 'Add someone to this conversation' }

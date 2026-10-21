@@ -153,7 +153,7 @@ describe('ConversationPanelComponent', () => {
         message('m2', '2026-10-12T08:01:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>hello</p>', tag: 'forwarded' })
       ]
     }));
-    const { fixture, el } = await render();
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
     const forwarded: unknown[] = [];
     fixture.componentInstance.forwardMessage.subscribe((m) => forwarded.push(m));
 
@@ -164,6 +164,17 @@ describe('ConversationPanelComponent', () => {
     expect(labels.length).toBe(1);
     expect(labels[0].closest('[data-message-id]')!.getAttribute('data-message-id')).toBe('m2');
     expect(el.querySelector('[data-testid="message-tag"]')).toBeNull();
+  });
+
+  it('offers no Forward on messages in a case group', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('m1', '2026-10-12T08:00:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>evidence notes</p>' })]
+    }));
+    const { el } = await render();
+
+    expect(el.querySelector('[data-testid="message-reply-m1"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="message-forward-m1"]')).toBeNull();
   });
 
   it('shows a case card, its "resolved" line with the date, and a link to the group a case moved to', async () => {
