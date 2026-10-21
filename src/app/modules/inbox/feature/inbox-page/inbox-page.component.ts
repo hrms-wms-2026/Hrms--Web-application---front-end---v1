@@ -29,6 +29,7 @@ import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../../ui/inbox-
 import { InboxCommentDialogComponent } from '../../ui/inbox-comment-dialog/inbox-comment-dialog.component';
 import { InboxCardAction, InboxItemCardComponent } from '../../ui/inbox-item-card/inbox-item-card.component';
 import { NewGroupChoice, NewGroupDialogComponent } from '../../ui/new-group-dialog/new-group-dialog.component';
+import { ForwardDialogComponent } from '../../ui/forward-dialog/forward-dialog.component';
 import { PersonCasesViewComponent } from '../../ui/person-cases/person-cases-view.component';
 import { inboxTitle } from '../../utils/inbox-item.util';
 import { InboxBulkActionChoice, bulkActionsFor } from '../../utils/inbox-page-state.util';
@@ -82,7 +83,7 @@ export function faceEvidenceFor(
   imports: [
     DatePipe, BreadcrumbHeaderComponent, BulkActionBarComponent, BulkActionResultModalComponent, ApprovalDelegateModalComponent,
     InboxChatSidebarComponent, ConversationPanelComponent, InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent,
-    NewGroupDialogComponent, PersonCasesViewComponent
+    NewGroupDialogComponent, PersonCasesViewComponent, ForwardDialogComponent
   ],
   // The open chat: shared by the conversation panel and the details. The open person's history: the details panel.
   providers: [ConversationStore, InboxPersonCasesStore],
@@ -163,7 +164,8 @@ export function faceEvidenceFor(
               (openCase)="selectCase($event)"
               (caseAction)="onCaseAction($event)"
               (caseEdits)="card()?.setEdits($event)"
-              (startGroup)="openNewGroup(selectedCase())"
+              (startCaseGroup)="openNewGroup($event)"
+              (forwardCase)="forwarding.set($event)"
               (openChat)="openChat($event)"
               (renamed)="chats.load()"
               (toggleDetails)="toggleDetails()"
@@ -236,6 +238,15 @@ export function faceEvidenceFor(
       [error]="groupError()"
       (created)="createGroup($event)"
       (closed)="groupDialog.set(null)"
+    />
+    <app-forward-dialog
+      [open]="forwarding() !== null"
+      [caseTitle]="forwarding()?.title ?? ''"
+      [fromConversationId]="activeRow()?.conversationId ?? null"
+      [busy]="forwardBusy()"
+      [error]="forwardError()"
+      (send)="forward($event)"
+      (closed)="forwarding.set(null)"
     />
     <app-inbox-comment-dialog
       [open]="bulkPending()?.needsComment === true && bulkPending()?.key !== 'resolve'"
@@ -349,6 +360,10 @@ export class InboxPageComponent implements OnInit {
   protected readonly groupBusy = signal(false);
   protected readonly groupError = signal<string | null>(null);
   protected readonly bulkPending = signal<InboxBulkActionChoice | null>(null);
+  /** The case being forwarded (the picker is open). */
+  protected readonly forwarding = signal<(InboxItemRef & { title: string }) | null>(null);
+  protected readonly forwardBusy = signal(false);
+  protected readonly forwardError = signal<string | null>(null);
   protected readonly bulkResult = signal<BulkResultSummary | null>(null);
   protected readonly bulkNames = signal<ReadonlyMap<string, string>>(new Map());
 
@@ -520,6 +535,24 @@ export class InboxPageComponent implements OnInit {
       this.groupError.set((err as { error?: { detail?: string } })?.error?.detail ?? 'The group could not be created.');
     } finally {
       this.groupBusy.set(false);
+    }
+  }
+
+  /** WhatsApp-style forward: a copy of the case card goes into each picked chat. */
+  protected async forward(conversationIds: string[]): Promise<void> {
+    const ref = this.forwarding();
+    if (!ref) return;
+    this.forwardBusy.set(true);
+    this.forwardError.set(null);
+    try {
+      const count = await firstValueFrom(this.chatsApi.forward({ source: ref.source, kind: ref.kind, id: ref.id }, conversationIds));
+      this.forwarding.set(null);
+      this.notifications.success(count === 1 ? 'Forwarded' : `Forwarded to ${count} chats`);
+      void this.chats.load();
+    } catch (err) {
+      this.forwardError.set((err as { error?: { detail?: string } })?.error?.detail ?? 'The case could not be forwarded.');
+    } finally {
+      this.forwardBusy.set(false);
     }
   }
 

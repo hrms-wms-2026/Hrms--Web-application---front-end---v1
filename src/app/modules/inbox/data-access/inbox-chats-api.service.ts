@@ -38,6 +38,11 @@ export class InboxChatsApiService {
     return this.http.put<void>(`${this.base}/${conversationId}/favorite`, { favorite });
   }
 
+  /** Forwards a case card into chats the caller is in; returns how many got it. */
+  forward(ref: InboxItemRef, conversationIds: string[]): Observable<number> {
+    return this.http.post<number>(`${this.base}/forward`, { source: ref.source, kind: ref.kind, id: ref.id, conversationIds });
+  }
+
   /** Moves a case to its own group and adds people to it. */
   startCaseGroup(ref: InboxItemRef, employeeIds: string[]): Observable<InboxChatRefDto> {
     return this.http.post<InboxChatRefDto>(`${this.base}/case-group`, { source: ref.source, kind: ref.kind, id: ref.id, employeeIds });

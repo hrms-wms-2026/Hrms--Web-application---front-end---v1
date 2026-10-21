@@ -110,10 +110,12 @@ const QUOTE_LENGTH = 120;
           <div class="conv__who"><span class="conv__name">{{ store.title() }}</span></div>
         }
         <div class="conv__head-tools">
-          <button type="button" class="conv__icon-btn" data-testid="conversation-add" [attr.aria-label]="addLabel()" [attr.title]="addLabel()"
-            [disabled]="store.removed()" (click)="onSlashCommand('add')">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><circle cx="9" cy="8" r="4" /><path d="M19 8v6M16 11h6" /></svg>
-          </button>
+          @if (!isDirect()) {
+            <button type="button" class="conv__icon-btn" data-testid="conversation-add" aria-label="Add people" title="Add people"
+              [disabled]="store.removed()" (click)="onSlashCommand('add')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><circle cx="9" cy="8" r="4" /><path d="M19 8v6M16 11h6" /></svg>
+            </button>
+          }
           @if (menuItems().length > 0) {
             <app-dropdown-menu [items]="menuItems()" ariaLabel="Chat options" (selected)="onSlashCommand($event)">
               <button menu-trigger type="button" class="conv__icon-btn" data-testid="conversation-menu" aria-label="Chat options">
@@ -196,9 +198,24 @@ const QUOTE_LENGTH = 120;
               @let caseRef = caseOf(m);
               @if (caseRef) {
                 <div class="msg msg--case" [class.msg--highlight]="highlightedId() === m.id" [attr.data-message-id]="m.id" data-testid="message-case">
-                  <app-case-card [ref]="caseRef" [title]="caseRef.title" [resolved]="resolvedKeys().has(keyOf(caseRef))"
-                    [selected]="isSelected(caseRef)" [editable]="caseEditable()" [errors]="caseErrors()" [busy]="caseBusy()" [version]="caseVersion()"
-                    (open)="openCase.emit($event)" (action)="caseAction.emit($event)" (editsChange)="caseEdits.emit($event)" />
+                  <div class="msg__case">
+                    @if (caseRef.forwarded) {
+                      <span class="msg__forwarded" data-testid="message-forwarded">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 5 5-5 5" /><path d="M20 10H9a5 5 0 0 0-5 5v4" /></svg>
+                        Forwarded{{ m.authorName ? ' by ' + (m.authorEmployeeId === me() ? 'you' : m.authorName) : '' }}
+                      </span>
+                    }
+                    <app-case-card [ref]="caseRef" [title]="caseRef.title" [resolved]="resolvedKeys().has(keyOf(caseRef))"
+                      [selected]="isSelected(caseRef)" [editable]="caseEditable()" [errors]="caseErrors()" [busy]="caseBusy()" [version]="caseVersion()"
+                      (open)="openCase.emit($event)" (action)="caseAction.emit($event)" (editsChange)="caseEdits.emit($event)" />
+                  </div>
+                  @if (!store.removed()) {
+                    <app-dropdown-menu class="msg__case-menu" [items]="caseMenu" ariaLabel="Case options" (selected)="onCaseMenu(m, caseRef, $event)">
+                      <button menu-trigger type="button" class="conv__icon-btn" [attr.data-testid]="'case-menu-' + m.id" aria-label="Case options" title="More">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5h.01M12 12h.01M12 19h.01" /></svg>
+                      </button>
+                    </app-dropdown-menu>
+                  }
                 </div>
               }
             } @else if (m.kind === 'system') {
@@ -390,7 +407,13 @@ const QUOTE_LENGTH = 120;
     .conv__input:focus { border-color: var(--color-accent); outline: none; }
     .conv__members { display: flex; max-height: 180px; flex-direction: column; gap: 6px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 13px; }
     .conv__members li { display: flex; align-items: center; gap: 8px; }
-    .msg--case { max-width: 100%; }
+    .msg--case { max-width: 100%; align-items: flex-start; gap: 4px; }
+    .msg__case { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+    .msg__forwarded { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 11px; font-style: italic; }
+    .msg__forwarded svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    /* The case's ⋯ shows on hover, like a message's own menu. */
+    .msg__case-menu { opacity: 0; transition: opacity .1s; }
+    .msg--case:hover .msg__case-menu, .msg__case-menu:focus-within, .msg__case-menu:has([role="menuitem"]) { opacity: 1; }
     .msg--escalation { background: color-mix(in srgb, var(--color-warning, #d97706) 12%, var(--color-surface)); color: var(--color-warning, #b45309); font-weight: 600; }
     /* "Case resolved · date": a divider across the chat, like the day lines. */
     .conv__resolved { display: flex; align-items: center; gap: 10px; color: var(--color-success, #16a34a); font-size: 12px; font-weight: 650; }
@@ -510,8 +533,10 @@ export class ConversationPanelComponent implements AfterViewChecked {
   /** A case card's action button: the host runs it exactly like the details panel's button. */
   caseAction = output<CaseCardAction>();
   caseEdits = output<Record<string, string>>();
-  /** "Add people" in a 1-on-1 chat: the host starts a group with both people instead. */
-  startGroup = output<void>();
+  /** "Start a group for this case" on a case card: the host opens the case group dialog. */
+  startCaseGroup = output<InboxItemRef>();
+  /** "Forward" on a case card: the host opens the forward picker. */
+  forwardCase = output<InboxItemRef & { title: string }>();
   /** "Open group" on a case that moved to its group. */
   openChat = output<InboxItemRef>();
   /** The group was renamed (the host reloads the list). */
@@ -574,11 +599,15 @@ export class ConversationPanelComponent implements AfterViewChecked {
     .filter((p) => p.employeeId !== this.me())
     .map((p) => ({ id: p.employeeId, name: p.name, avatarUrl: this.avatarUrl(p.avatarFileId) })));
   protected readonly isDirect = computed(() => this.itemRef().source === 'direct');
-  protected readonly addLabel = computed(() => (this.isDirect() ? 'Start a group with more people' : 'Add people'));
-  protected readonly slashCommands = computed<HostSlashCommand[]>(() => [
-    { id: ADD_COMMAND, label: this.isDirect() ? 'Start a group' : 'Add people', category: 'ACTIONS', icon: '+',
-      description: this.isDirect() ? 'Start a group with this person and others' : 'Add someone to this conversation' }
+  /** A 1-on-1 chat has no "add people": groups start from a case (its ⋯), or from the sidebar. */
+  protected readonly slashCommands = computed<HostSlashCommand[]>(() => this.isDirect() ? [] : [
+    { id: ADD_COMMAND, label: 'Add people', category: 'ACTIONS', icon: '+', description: 'Add someone to this conversation' }
   ]);
+  protected readonly caseMenu: MenuItem[] = [
+    { id: 'reply', label: 'Reply', iconPath: 'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11' },
+    { id: 'group', label: 'Start a group for this case', iconPath: 'M16 20a4 4 0 0 0-8 0M12 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19 8v6M16 11h6' },
+    { id: 'forward', label: 'Forward', iconPath: 'm15 5 5 5-5 5M20 10H9a5 5 0 0 0-5 5v4' }
+  ];
   protected readonly menuItems = computed<MenuItem[]>(() => {
     if (this.isDirect()) return [];
     const items: MenuItem[] = [{ id: MEMBERS_COMMAND, label: 'Members' }];
@@ -745,7 +774,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
 
   /** Each case card's reference, parsed once per message: the same object on every render, so cards don't reload. */
   private readonly caseRefs = computed(() => {
-    const refs = new Map<string, InboxItemRef & { title: string }>();
+    const refs = new Map<string, InboxItemRef & { title: string; forwarded: boolean }>();
     for (const m of this.store.messages()) {
       const ref = m.kind === 'case' ? caseRefOf(m.systemEventJson) : null;
       if (ref) refs.set(m.id, ref);
@@ -753,7 +782,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
     return refs;
   });
 
-  protected caseOf(message: ConversationMessageDto): (InboxItemRef & { title: string }) | null {
+  protected caseOf(message: ConversationMessageDto): (InboxItemRef & { title: string; forwarded: boolean }) | null {
     return this.caseRefs().get(message.id) ?? null;
   }
 
@@ -797,10 +826,16 @@ export class ConversationPanelComponent implements AfterViewChecked {
     }
   }
 
-  /** Text messages can be answered. */
+  /** Text messages and case cards can be answered. */
   protected canReply(message: ConversationMessageDto): boolean {
     if (message.isDeleted || this.store.removed()) return false;
-    return message.kind === 'text';
+    return message.kind === 'text' || message.kind === 'case';
+  }
+
+  protected onCaseMenu(message: ConversationMessageDto, ref: InboxItemRef & { title: string }, id: string): void {
+    if (id === 'reply') this.startReply(message);
+    else if (id === 'group') this.startCaseGroup.emit({ source: ref.source, kind: ref.kind, id: ref.id });
+    else if (id === 'forward') this.forwardCase.emit(ref);
   }
 
   protected startReply(message: ConversationMessageDto): void {
@@ -811,6 +846,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
   /** Who a quote is from: "You", the author, or "Face checks" for the evidence card. */
   protected quoteAuthor(quote: { kind: string; authorEmployeeId: string | null; authorName: string | null }): string {
     if (quote.kind === 'evidence') return this.evidenceLabel();
+    if (quote.kind === 'case') return 'Case';
     if (quote.authorEmployeeId && quote.authorEmployeeId === this.me()) return 'You';
     return quote.authorName ?? 'A teammate';
   }
@@ -896,9 +932,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
 
   protected onSlashCommand(id: string): void {
     if (id === ADD_COMMAND) {
-      // A 1-on-1 chat stays between two people: adding someone starts a group.
-      if (this.isDirect()) this.startGroup.emit();
-      else if (!this.addOpen()) this.toggleAdd();
+      // A 1-on-1 chat stays between its two people.
+      if (!this.isDirect() && !this.addOpen()) this.toggleAdd();
     } else if (id === RENAME_COMMAND) {
       this.renameText.set(this.chat()?.title ?? '');
       this.renameOpen.set(true);

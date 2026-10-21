@@ -99,17 +99,50 @@ describe('ConversationPanelComponent', () => {
     expect(emitted).toHaveBeenCalled();
   });
 
-  it('in a 1-on-1 chat, adding people starts a group instead of adding to the chat', async () => {
+  it('a 1-on-1 chat has no "add people" at all', async () => {
     const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
-    const started = vi.fn();
-    fixture.componentInstance.startGroup.subscribe(started);
+    const composer = fixture.debugElement.query(By.directive(CommentComposerComponent)).componentInstance as CommentComposerComponent;
 
-    (el.querySelector('[data-testid="conversation-add"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(started).toHaveBeenCalled();
-    expect(el.querySelector('[data-testid="conversation-add-panel"]')).toBeNull();
+    expect(el.querySelector('[data-testid="conversation-add"]')).toBeNull();
     expect(el.querySelector('[data-testid="conversation-menu"]')).toBeNull();
+    expect(composer.extraSlashCommands()).toEqual([]);
+  });
+
+  it('a case card\'s menu replies to it, forwards it, or starts its group', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam"}' })]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const forwarded: unknown[] = [];
+    const grouped: unknown[] = [];
+    fixture.componentInstance.forwardCase.subscribe((r) => forwarded.push(r));
+    fixture.componentInstance.startCaseGroup.subscribe((r) => grouped.push(r));
+    const choose = (id: string) => {
+      (el.querySelector('[data-testid="case-menu-card"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el.querySelector(`[data-testid="menu-item-${id}"]`) as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    choose('reply');
+    expect(el.querySelector('[data-testid="conversation-replying"]')!.textContent).toContain('Replying to Case');
+    choose('forward');
+    expect(forwarded).toEqual([expect.objectContaining({ source: 'leave', kind: 'request', id: 'l1', title: 'Sick Leave - Sam' })]);
+    choose('group');
+    expect(grouped).toEqual([{ source: 'leave', kind: 'request', id: 'l1' }]);
+  });
+
+  it('labels a forwarded case card with who forwarded it', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('fwd', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam","forwarded":true}' })]
+    }));
+    const { el } = await render();
+
+    expect(el.querySelector('[data-testid="message-forwarded"]')!.textContent).toContain('Forwarded by Anu');
   });
 
   it('shows a case card, its "resolved" line with the date, and a link to the group a case moved to', async () => {

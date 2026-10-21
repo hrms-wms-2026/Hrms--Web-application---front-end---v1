@@ -61,6 +61,8 @@ export interface ChatSystemEvent {
   status?: string;
   category?: string;
   conversationId?: string;
+  /** A case card someone forwarded into this chat (a copy; the case is worked on where it was placed). */
+  forwarded?: boolean;
 }
 
 export function parseSystemEvent(json: string | null | undefined): ChatSystemEvent | null {
@@ -74,9 +76,9 @@ export function parseSystemEvent(json: string | null | undefined): ChatSystemEve
 }
 
 /** The item a case card message carries. */
-export function caseRefOf(json: string | null | undefined): (InboxItemRef & { title: string }) | null {
+export function caseRefOf(json: string | null | undefined): (InboxItemRef & { title: string; forwarded: boolean }) | null {
   const event = parseSystemEvent(json);
   return event?.type === 'case' && event.source && event.kind && event.id
-    ? { source: event.source, kind: event.kind, id: event.id, title: event.title ?? '' }
+    ? { source: event.source, kind: event.kind, id: event.id, title: event.title ?? '', forwarded: event.forwarded === true }
     : null;
 }

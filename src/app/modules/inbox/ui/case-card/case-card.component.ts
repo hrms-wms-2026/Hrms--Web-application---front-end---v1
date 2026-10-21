@@ -189,7 +189,7 @@ export class CaseCardComponent {
       const detail = await firstValueFrom(this.api.detail(ref));
       if (mine === this.request) this.detail.set(detail);
     } catch {
-      if (mine === this.request && !this.detail()) this.error.set('You can no longer see this case.');
+      if (mine === this.request && !this.detail()) this.error.set('Only the people on this case can see its details.');
     } finally {
       if (mine === this.request) this.loading.set(false);
     }
