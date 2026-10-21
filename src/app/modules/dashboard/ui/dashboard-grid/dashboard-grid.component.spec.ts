@@ -227,6 +227,66 @@ describe('DashboardGridComponent', () => {
     expect(ac.classList.contains('scroll-mt-4')).toBe(true);
   });
 
+  it('edit_cell_is_a_described_widget_group_and_handles_are_hidden_from_assistive_tech', () => {
+    const { el } = setup([widget('a')]);
+    const a = cell(el, 'a');
+    expect(a.getAttribute('role')).toBe('group');
+    expect(a.getAttribute('aria-roledescription')).toBe('widget');
+    const describedBy = a.getAttribute('aria-describedby')!;
+    expect(describedBy).toBeTruthy();
+    const help = el.querySelector('#' + describedBy) as HTMLElement;
+    expect(help.classList.contains('sr-only')).toBe(true);
+    expect(help.textContent).toContain('arrow keys');
+    const drag = a.querySelector('[data-drag-handle]') as HTMLElement;
+    const resize = a.querySelector('[data-resize-handle]') as HTMLElement;
+    for (const h of [drag, resize]) {
+      expect(h.getAttribute('aria-hidden')).toBe('true');
+      expect(h.hasAttribute('aria-label')).toBe(false);
+    }
+  });
+
+  it('view_mode_cell_has_no_group_role_or_live_region', () => {
+    const { el } = setup([widget('a')], false);
+    const a = cell(el, 'a');
+    expect(a.hasAttribute('role')).toBe(false);
+    expect(a.hasAttribute('aria-roledescription')).toBe(false);
+    expect(a.hasAttribute('aria-describedby')).toBe(false);
+    expect(el.querySelector('[data-testid="grid-live"]')).toBeNull();
+  });
+
+  it('announces_the_new_position_and_size_after_keyboard_move_and_resize', () => {
+    const { fixture, el } = setup([widget('a')]);
+    const live = () => (el.querySelector('[data-testid="grid-live"]') as HTMLElement);
+    expect(live().getAttribute('aria-live')).toBe('polite');
+    key(cell(el, 'a'), 'ArrowDown');
+    // The owner recomputes the layout (compaction may differ from the request); announce what it settled on.
+    fixture.componentRef.setInput('widgets', [widget('a', { layout: { x: 2, y: 4, w: 3, h: 2 } })]);
+    fixture.detectChanges();
+    expect(live().textContent).toContain('Widget a moved to column 3, row 5');
+    key(cell(el, 'a'), 'ArrowRight', true);
+    fixture.componentRef.setInput('widgets', [widget('a', { layout: { x: 2, y: 4, w: 4, h: 2 } })]);
+    fixture.detectChanges();
+    expect(live().textContent).toContain('Widget a resized to width 4, height 2');
+  });
+
+  it('delete_moves_focus_to_the_next_cell_else_the_previous_else_requests_outside_focus', () => {
+    const ws = [widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }), widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } }), widget('c', { layout: { x: 6, y: 0, w: 3, h: 2 } })];
+    const { fixture, el } = setup(ws);
+    const outside = vi.fn();
+    fixture.componentInstance.focusOutside.subscribe(() => outside());
+    cell(el, 'b').focus();
+    key(cell(el, 'b'), 'Delete');
+    expect(document.activeElement).toBe(cell(el, 'c'));
+    fixture.componentRef.setInput('widgets', [ws[0], ws[2]]);
+    fixture.detectChanges();
+    key(cell(el, 'c'), 'Delete');
+    expect(document.activeElement).toBe(cell(el, 'a'));
+    fixture.componentRef.setInput('widgets', [ws[0]]);
+    fixture.detectChanges();
+    key(cell(el, 'a'), 'Delete');
+    expect(outside).toHaveBeenCalledTimes(1);
+  });
+
   it('frame_remove_is_reemitted_as_removed', () => {
     const { el, removed } = setup([widget('a')]);
     (el.querySelector('button[aria-label="Remove Widget a"]') as HTMLButtonElement).click();

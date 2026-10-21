@@ -383,6 +383,67 @@ describe('DashboardStore', () => {
     expect(store.draft().map(w => [w.instanceId, w.layout.y])).toEqual([['i-a', 3], ['i-b', 0]]);
   });
 
+  it('validation errors are shown as plain messages, not raw codes', async () => {
+    const { store, api, notifications } = await loaded();
+    api.saveLayout.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 422,
+            error: { title: 'Unprocessable Entity', detail: 'OVERLAP,SIZE_NOT_ALLOWED', code: 'OVERLAP', codes: ['OVERLAP', 'SIZE_NOT_ALLOWED'] }
+          })
+      )
+    );
+    store.startEditing();
+    store.move('i-b', 0, 3);
+    await store.save();
+    const message = store.error()!;
+    expect(message).not.toMatch(/OVERLAP|SIZE_NOT_ALLOWED|Unprocessable/);
+    expect(message).toBe("Could not save the dashboard: some widgets overlap, a widget has a size that isn't allowed.");
+    expect(notifications.error).toHaveBeenCalledWith(message);
+  });
+
+  it('an unknown code or a bare status title falls back to the plain message', async () => {
+    const { store, api } = await loaded();
+    api.saveLayout.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 422, error: { title: 'Unprocessable Entity', detail: 'SOMETHING_NEW', code: 'SOMETHING_NEW', codes: ['SOMETHING_NEW'] } }))
+    );
+    store.startEditing();
+    store.move('i-b', 0, 3);
+    await store.save();
+    expect(store.error()).toBe('Could not save the dashboard.');
+    api.saveLayout.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403, error: { title: 'Forbidden' } })));
+    await store.save();
+    expect(store.error()).toBe('Could not save the dashboard.');
+  });
+
+  it('LAYOUT_SET_MISMATCH (widgets changed during the edit) reloads and exits editing like a conflict', async () => {
+    const { store, api, notifications } = await loaded();
+    api.saveLayout.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 422, error: { detail: 'LAYOUT_SET_MISMATCH', code: 'LAYOUT_SET_MISMATCH', codes: ['LAYOUT_SET_MISMATCH'] } }))
+    );
+    store.startEditing();
+    store.move('i-b', 0, 3);
+    await store.save();
+    expect(notifications.warning).toHaveBeenCalledWith('Your available widgets changed — reloaded.');
+    expect(notifications.error).not.toHaveBeenCalled();
+    expect(store.editing()).toBe(false);
+    expect(store.error()).toBeNull();
+    expect(api.bootstrap).toHaveBeenCalledTimes(2);
+  });
+
+  it('draft edits are ignored while saving', async () => {
+    const { store } = await loaded();
+    store.startEditing();
+    const before = store.draft();
+    store.saving.set(true);
+    store.add('c');
+    store.remove('i-a');
+    store.move('i-b', 0, 4);
+    store.resize('i-a', 4, 3);
+    expect(store.draft()).toBe(before);
+  });
+
   it('load failure sets error', async () => {
     const { store, api } = setup();
     api.listMine.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));

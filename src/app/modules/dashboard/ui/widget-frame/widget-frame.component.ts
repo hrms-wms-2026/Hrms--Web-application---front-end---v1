@@ -38,7 +38,7 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
         <div
           class="absolute left-2 top-2 z-20 flex cursor-grab touch-none items-center gap-1 rounded-lg bg-white/90 px-2 py-1 text-xs font-medium text-slate-600 shadow-sm active:cursor-grabbing"
           data-drag-handle
-          [attr.aria-label]="'Move ' + widget().title"
+          aria-hidden="true"
         >
           <span aria-hidden="true">&#8942;&#8942;</span>
           <span class="max-w-[10rem] truncate">{{ widget().title }}</span>
@@ -54,7 +54,7 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
         <div
           class="absolute bottom-1 right-1 z-20 h-5 w-5 cursor-nwse-resize touch-none rounded-br-xl border-b-2 border-r-2 border-slate-400"
           data-resize-handle
-          [attr.aria-label]="'Resize ' + widget().title"
+          aria-hidden="true"
         ></div>
       }
     </div>

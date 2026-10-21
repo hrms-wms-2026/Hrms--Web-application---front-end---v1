@@ -15,6 +15,18 @@ import {
 } from '../models/dashboard-layout.model';
 
 const CONFLICT_MESSAGE = 'Your dashboard changed in another tab or device — reloaded.';
+const SET_MISMATCH_MESSAGE = 'Your available widgets changed — reloaded.';
+const LAYOUT_SET_MISMATCH = 'LAYOUT_SET_MISMATCH';
+
+/** Plain-language reasons for the backend's machine-readable layout error codes. */
+const CODE_REASONS: Record<string, string | undefined> = {
+  OVERLAP: 'some widgets overlap',
+  SIZE_NOT_ALLOWED: "a widget has a size that isn't allowed",
+  OUT_OF_BOUNDS: 'a widget is outside the grid',
+  UNKNOWN_WIDGET: 'a widget is no longer available',
+  DUPLICATE_WIDGET: 'a widget appears more than once',
+  WIDGET_ALREADY_PLACED: 'that widget is already on your dashboard'
+};
 const NEW_PREFIX = 'new:';
 
 interface Item {
@@ -112,7 +124,7 @@ export class DashboardStore {
   add(key: string): void {
     const def = this.serverAvailable().find(a => a.key === key);
     const boot = this.editBase;
-    if (!this.editing() || !def || !boot || this.draft().some(w => w.widgetKey === key)) return;
+    if (!this.editing() || this.saving() || !def || !boot || this.draft().some(w => w.widgetKey === key)) return;
     const cols = boot.grid.columns;
     const base = clampSize({ x: 0, y: 0, w: def.defaultW, h: def.defaultH }, def.size, cols);
     const rect = autoPlace(this.draft().map(w => w.layout), base.w, base.h, cols);
@@ -129,20 +141,20 @@ export class DashboardStore {
   }
 
   remove(instanceId: string): void {
-    if (!this.editing()) return;
+    if (!this.editing() || this.saving()) return;
     this.draft.set(fromItems(compact(toItems(this.draft().filter(w => w.instanceId !== instanceId)))));
   }
 
   move(instanceId: string, x: number, y: number): void {
     const boot = this.editBase;
-    if (!this.editing() || !boot) return;
+    if (!this.editing() || this.saving() || !boot) return;
     this.draft.set(fromItems(moveTo(toItems(this.draft()), instanceId, x, y, boot.grid.columns)));
   }
 
   resize(instanceId: string, w: number, h: number): void {
     const boot = this.editBase;
     const target = this.draft().find(d => d.instanceId === instanceId);
-    if (!this.editing() || !boot || !target) return;
+    if (!this.editing() || this.saving() || !boot || !target) return;
     this.draft.set(fromItems(resizeTo(toItems(this.draft()), instanceId, w, h, target.size, boot.grid.columns)));
   }
 
@@ -190,8 +202,9 @@ export class DashboardStore {
       this.exitEditing();
       await this.reloadAfterSuccess('Saved, but could not reload the dashboard.');
     } catch (err) {
-      if (this.isConflict(err)) {
-        this.notifications.warning(CONFLICT_MESSAGE);
+      if (this.isConflict(err) || this.isSetMismatch(err)) {
+        // A set mismatch means the allowed widgets changed during the edit (e.g. a capability flicker).
+        this.notifications.warning(this.isConflict(err) ? CONFLICT_MESSAGE : SET_MISMATCH_MESSAGE);
         this.exitEditing();
         await this.safeRefresh();
       } else {
@@ -257,6 +270,10 @@ export class DashboardStore {
     return err instanceof HttpErrorResponse && readLayoutProblem(err).status === 409;
   }
 
+  private isSetMismatch(err: unknown): boolean {
+    return err instanceof HttpErrorResponse && readLayoutProblem(err).codes.includes(LAYOUT_SET_MISMATCH);
+  }
+
   /** The server change already succeeded; a reload failure is reported on its own, not as a save failure. */
   private async reloadAfterSuccess(message: string): Promise<void> {
     try {
@@ -310,14 +327,23 @@ export class DashboardStore {
     this.error.set(this.messageOf(err, fallback));
   }
 
+  /**
+   * A message fit for a toast. Machine-readable codes are mapped to plain reasons (unknown codes fall back);
+   * a plain-sentence detail is passed through; bare status titles ("Forbidden") are never shown.
+   */
   private messageOf(err: unknown, fallback: string): string {
-    if (err instanceof HttpErrorResponse) {
-      const body = err.error as { detail?: unknown; title?: unknown } | null;
-      if (body && typeof body === 'object') {
-        if (typeof body.detail === 'string') return body.detail;
-        if (typeof body.title === 'string') return body.title;
-      }
+    if (!(err instanceof HttpErrorResponse)) return fallback;
+    const problem = readLayoutProblem(err);
+    const codes = problem.codes.length ? problem.codes : problem.code ? [problem.code] : [];
+    if (codes.length) {
+      const reasons = codes.map(c => CODE_REASONS[c]);
+      if (reasons.some(r => r === undefined)) return fallback;
+      return `${fallback.replace(/\.$/, '')}: ${reasons.join(', ')}.`;
     }
+    const body = err.error as { detail?: unknown } | null;
+    const detail = body && typeof body === 'object' ? body.detail : null;
+    // Plain-language detail (e.g. "Dashboard not found."), never a code-shaped string.
+    if (typeof detail === 'string' && detail.trim() && !/^[A-Z][A-Z_,]*$/.test(detail.trim())) return detail;
     return fallback;
   }
 }

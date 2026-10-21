@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { BootstrapWidget, GridRect } from '../../models/dashboard-layout.model';
 import { pixelToCell } from '../../grid/grid-math';
 import { WidgetFrameComponent } from '../widget-frame/widget-frame.component';
@@ -21,6 +21,13 @@ const ANCHOR_IDS: Record<string, string | undefined> = {
   'team-progress': 'my-team-widget-teamProgress',
   'action-center': 'my-team-widget-actionCenter'
 };
+
+let nextGridId = 0;
+
+interface PendingAnnouncement {
+  id: string;
+  kind: 'move' | 'resize';
+}
 
 interface ActiveDrag {
   id: string;
@@ -59,6 +66,9 @@ interface ActiveDrag {
           [attr.id]="anchorId(w)"
           [attr.data-instance-id]="w.instanceId"
           [attr.tabindex]="editing() ? 0 : null"
+          [attr.role]="editing() ? 'group' : null"
+          [attr.aria-roledescription]="editing() ? 'widget' : null"
+          [attr.aria-describedby]="editing() ? helpId : null"
           [attr.aria-label]="editing() ? ariaLabel(w) : null"
           [style.grid-column]="gridColumn(w.layout)"
           [style.grid-row]="gridRow(w.layout)"
@@ -78,6 +88,12 @@ interface ActiveDrag {
         ></div>
       }
     </div>
+    @if (editing()) {
+      <p class="sr-only" [id]="helpId">
+        Use the arrow keys to move this widget, Shift plus the arrow keys to resize it, and Delete to remove it.
+      </p>
+      <div class="sr-only" aria-live="polite" aria-atomic="true" data-testid="grid-live">{{ announcement() }}</div>
+    }
   `,
   host: { class: 'block w-full min-w-0' },
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -92,6 +108,12 @@ export class DashboardGridComponent {
   readonly moved = output<GridMoveEvent>();
   readonly resized = output<GridResizeEvent>();
   readonly removed = output<string>();
+  /** Emitted when a keyboard removal leaves no other widget to focus; the owner moves focus elsewhere. */
+  readonly focusOutside = output<void>();
+
+  protected readonly helpId = `dashboard-grid-help-${nextGridId++}`;
+  protected readonly announcement = signal('');
+  private pendingAnnouncement: PendingAnnouncement | null = null;
 
   private readonly gridEl = viewChild.required<ElementRef<HTMLElement>>('grid');
   protected readonly drag = signal<ActiveDrag | null>(null);
@@ -101,6 +123,25 @@ export class DashboardGridComponent {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.stopListening());
+
+    // After a keyboard move/resize the owner recomputes the layout (compaction may differ from the request);
+    // announce where the widget actually settled.
+    effect(() => {
+      const widgets = this.widgets();
+      untracked(() => {
+        const pending = this.pendingAnnouncement;
+        if (!pending) return;
+        this.pendingAnnouncement = null;
+        const w = widgets.find(x => x.instanceId === pending.id);
+        if (!w) return;
+        const l = w.layout;
+        this.announcement.set(
+          pending.kind === 'move'
+            ? `${w.title} moved to column ${l.x + 1}, row ${l.y + 1}`
+            : `${w.title} resized to width ${l.w}, height ${l.h}`
+        );
+      });
+    });
   }
 
   protected gridColumn(r: GridRect): string {
@@ -228,10 +269,21 @@ export class DashboardGridComponent {
     const l = w.layout;
     switch (event.key) {
       case 'Delete':
-      case 'Backspace':
+      case 'Backspace': {
         event.preventDefault();
+        const list = this.widgets();
+        const index = list.findIndex(x => x.instanceId === w.instanceId);
+        const neighbour = list[index + 1] ?? list[index - 1] ?? null;
         this.removed.emit(w.instanceId);
+        this.announcement.set(`${w.title} removed`);
+        const next = neighbour ? this.cellElement(neighbour.instanceId) : null;
+        if (next) {
+          next.focus();
+        } else {
+          this.focusOutside.emit();
+        }
         return;
+      }
       case 'ArrowLeft':
       case 'ArrowRight':
       case 'ArrowUp':
@@ -241,14 +293,25 @@ export class DashboardGridComponent {
         const dy = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
         if (event.shiftKey) {
           const t = this.clampResize(l, w.size, dx, dy);
-          if (t.w !== l.w || t.h !== l.h) this.resized.emit({ id: w.instanceId, w: t.w, h: t.h });
+          if (t.w !== l.w || t.h !== l.h) {
+            this.pendingAnnouncement = { id: w.instanceId, kind: 'resize' };
+            this.resized.emit({ id: w.instanceId, w: t.w, h: t.h });
+          }
         } else {
           const t = this.clampMove(l, dx, dy);
-          if (t.x !== l.x || t.y !== l.y) this.moved.emit({ id: w.instanceId, x: t.x, y: t.y });
+          if (t.x !== l.x || t.y !== l.y) {
+            this.pendingAnnouncement = { id: w.instanceId, kind: 'move' };
+            this.moved.emit({ id: w.instanceId, x: t.x, y: t.y });
+          }
         }
         return;
       }
     }
+  }
+
+  private cellElement(instanceId: string): HTMLElement | null {
+    const cells = this.gridEl().nativeElement.querySelectorAll<HTMLElement>('[data-instance-id]');
+    return Array.from(cells).find(c => c.dataset['instanceId'] === instanceId) ?? null;
   }
 
   // ---- clamping ----

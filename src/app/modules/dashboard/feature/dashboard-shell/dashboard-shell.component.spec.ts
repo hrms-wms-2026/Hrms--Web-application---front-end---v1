@@ -320,6 +320,37 @@ describe('DashboardShellComponent', () => {
     }
   });
 
+  it('escape_does_nothing_while_saving', async () => {
+    const ctx = setup();
+    await ready(ctx.fixture);
+    await enterEdit(ctx);
+    const store = ctx.fixture.debugElement.query(By.directive(DashboardShellComponent)).injector.get(DashboardStore);
+    store.saving.set(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    ctx.fixture.detectChanges();
+    expect(store.editing()).toBe(true);
+  });
+
+  it('edit_toolbar_buttons_wrap_on_narrow_screens', async () => {
+    const ctx = setup();
+    await ready(ctx.fixture);
+    await enterEdit(ctx);
+    const group = (q(ctx.el, 'dashboard-save') as HTMLElement).parentElement!;
+    expect(group.classList.contains('flex-wrap')).toBe(true);
+  });
+
+  it('removing_the_last_widget_from_the_keyboard_focuses_add_widget', async () => {
+    const ctx = setup();
+    await ready(ctx.fixture);
+    await enterEdit(ctx);
+    const cell = ctx.el.querySelector('[data-instance-id="w1"]') as HTMLElement;
+    cell.focus();
+    cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+    ctx.fixture.detectChanges();
+    expect(ctx.el.querySelector('[data-instance-id="w1"]')).toBeNull();
+    expect(document.activeElement).toBe(q(ctx.el, 'dashboard-add-widget'));
+  });
+
   it('forwards_later_breakpoint_changes_to_the_store', async () => {
     let resizeCb: ResizeObserverCallback = () => undefined;
     vi.stubGlobal(

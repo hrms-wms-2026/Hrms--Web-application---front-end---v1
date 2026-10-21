@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
@@ -55,8 +55,8 @@ function clearLegacyDashboardStorage(): void {
             <h2 class="text-sm font-bold text-slate-800">Customize your dashboard</h2>
             <p class="text-xs text-slate-500">Drag a widget by its handle, resize from the corner, or use the arrow keys on a focused widget.</p>
           </div>
-          <div class="flex items-center gap-2">
-            <button type="button" class="shell-btn" data-testid="dashboard-add-widget" [disabled]="store.saving()" (click)="openDrawer($event)">Add widget</button>
+          <div class="flex flex-wrap items-center gap-2">
+            <button #addWidgetBtn type="button" class="shell-btn" data-testid="dashboard-add-widget" [disabled]="store.saving()" (click)="openDrawer($event)">Add widget</button>
             <button type="button" class="shell-btn" data-testid="dashboard-reset" [disabled]="store.saving()" (click)="confirmingReset.set(true)">Reset</button>
             <button type="button" class="shell-btn" data-testid="dashboard-cancel" [disabled]="store.saving()" (click)="cancel()">Cancel</button>
             <button type="button" class="shell-btn shell-btn--primary" data-testid="dashboard-save" [disabled]="store.saving()" (click)="store.save()">
@@ -76,6 +76,7 @@ function clearLegacyDashboardStorage(): void {
           (moved)="onMoved($event)"
           (resized)="onResized($event)"
           (removed)="store.remove($event)"
+          (focusOutside)="focusAddWidget()"
         />
         @if (boot.capabilitiesUnavailable) {
           <!-- "Try again" reloads the dashboard, which must not happen under an open draft. -->
@@ -145,6 +146,7 @@ export class DashboardShellComponent {
   private readonly breakpoint = injectBreakpoint(this.host);
   private readonly measured = signal(false);
   private drawerOpener: HTMLElement | null = null;
+  private readonly addWidgetBtn = viewChild<ElementRef<HTMLButtonElement>>('addWidgetBtn');
 
   protected readonly drawerOpen = signal(false);
   protected readonly confirmingReset = signal(false);
@@ -200,6 +202,11 @@ export class DashboardShellComponent {
     this.store.resize(e.id, e.w, e.h);
   }
 
+  /** The grid removed its last focusable widget from the keyboard: keep focus in the edit UI. */
+  protected focusAddWidget(): void {
+    this.addWidgetBtn()?.nativeElement.focus();
+  }
+
   protected cancel(): void {
     this.closeDrawer();
     void this.store.cancel();
@@ -228,6 +235,7 @@ export class DashboardShellComponent {
   protected onEscape(event: Event): void {
     const target = event.target;
     if (target instanceof Element && target.closest('[role="dialog"]')) return;
+    if (this.store.saving()) return;
     if (this.confirmingReset()) {
       this.confirmingReset.set(false);
     } else if (this.drawerOpen()) {
