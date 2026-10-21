@@ -136,6 +136,8 @@ export class CaseCardComponent {
   action = output<CaseCardAction>();
   editsChange = output<Record<string, string>>();
 
+  /** "source:kind:id" - a string, so it only changes when the case does. */
+  private readonly refKey = computed(() => `${this.ref().source}:${this.ref().kind}:${this.ref().id}`);
   protected readonly detail = signal<InboxItemDetailDto | null>(null);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -162,12 +164,14 @@ export class CaseCardComponent {
   });
 
   constructor() {
+    // Keyed on the case's identity, not the ref object: a host that hands over an equal but new object on every
+    // render must not trigger a reload each time (that looped into a request storm and HTTP 429s).
     effect(() => {
-      const ref = this.ref();
+      this.refKey();
       const resolved = this.resolved();
       this.version();
       untracked(() => {
-        if (!resolved) void this.load(ref);
+        if (!resolved) void this.load(this.ref());
       });
     });
     // The case changed somewhere (decided, escalated): refresh its status and actions.

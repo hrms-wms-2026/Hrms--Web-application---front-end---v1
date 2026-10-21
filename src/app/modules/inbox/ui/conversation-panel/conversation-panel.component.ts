@@ -743,8 +743,18 @@ export class ConversationPanelComponent implements AfterViewChecked {
   private readonly evidenceLabel = (): string => 'Evidence';
   private readonly evidenceLine = (): string => 'Case evidence';
 
+  /** Each case card's reference, parsed once per message: the same object on every render, so cards don't reload. */
+  private readonly caseRefs = computed(() => {
+    const refs = new Map<string, InboxItemRef & { title: string }>();
+    for (const m of this.store.messages()) {
+      const ref = m.kind === 'case' ? caseRefOf(m.systemEventJson) : null;
+      if (ref) refs.set(m.id, ref);
+    }
+    return refs;
+  });
+
   protected caseOf(message: ConversationMessageDto): (InboxItemRef & { title: string }) | null {
-    return caseRefOf(message.systemEventJson);
+    return this.caseRefs().get(message.id) ?? null;
   }
 
   protected eventOf(message: ConversationMessageDto): ChatSystemEvent | null {
