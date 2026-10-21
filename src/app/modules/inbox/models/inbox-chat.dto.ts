@@ -29,6 +29,8 @@ export interface InboxChatRowDto {
   pending: InboxChatPendingItemDto[];
   /** Case groups: their request or alert. */
   caseItem: InboxChatPendingItemDto | null;
+  /** The caller pinned it to the top of its section. */
+  isFavorite?: boolean;
 }
 
 /** Where a chat opens. */

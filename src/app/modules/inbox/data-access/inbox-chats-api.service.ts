@@ -33,6 +33,11 @@ export class InboxChatsApiService {
     return this.http.put<void>(`${this.base}/groups/${conversationId}/name`, { name });
   }
 
+  /** Pins (or unpins) a chat to the top of its section, for the caller only. */
+  setFavorite(conversationId: string, favorite: boolean): Observable<void> {
+    return this.http.put<void>(`${this.base}/${conversationId}/favorite`, { favorite });
+  }
+
   /** Moves a case to its own group and adds people to it. */
   startCaseGroup(ref: InboxItemRef, employeeIds: string[]): Observable<InboxChatRefDto> {
     return this.http.post<InboxChatRefDto>(`${this.base}/case-group`, { source: ref.source, kind: ref.kind, id: ref.id, employeeIds });

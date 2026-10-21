@@ -1,14 +1,12 @@
-import { computed, effect, inject, untracked } from '@angular/core';
+import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 import { Subscription, debounceTime, firstValueFrom, merge, map } from 'rxjs';
-import { AuthStore } from '../../../core/auth/state/auth.store';
 import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.service';
 import { InboxChatsApiService } from '../data-access/inbox-chats-api.service';
 import { InboxChatRowDto } from '../models/inbox-chat.dto';
 
 /** Live events arrive in bursts (a decision touches several people); one reload per burst. */
 const REALTIME_DEBOUNCE_MS = 400;
-const FAVORITES_KEY = 'inbox.favoriteChats';
 
 export type InboxChatFilter = 'all' | 'pending';
 
@@ -23,7 +21,7 @@ interface InboxChatsState {
   readonly kind: string | null;
   /** Ticked chats (Pending only). */
   readonly selectedIds: ReadonlySet<string>;
-  /** Favorite chats (conversation ids): pinned at the top of their section. Per viewer, kept in this browser. */
+  /** Favorite chats (conversation ids): pinned at the top of their section. Per viewer, saved on the server. */
   readonly favorites: ReadonlySet<string>;
   /** A 1-on-1 chat just started from the search, shown until the list has it (an empty chat is not listed). */
   readonly started: InboxChatRowDto | null;
@@ -37,20 +35,6 @@ function extractError(err: any, fallback: string): string {
   return err?.error?.detail || err?.error?.message || err?.message || fallback;
 }
 
-function favoritesKey(employeeId: string | null): string {
-  return `${FAVORITES_KEY}.${employeeId ?? 'anonymous'}`;
-}
-
-function readFavorites(employeeId: string | null): Set<string> {
-  try {
-    const raw = localStorage.getItem(favoritesKey(employeeId));
-    const ids = raw ? (JSON.parse(raw) as unknown) : [];
-    return new Set(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []);
-  } catch {
-    return new Set();
-  }
-}
-
 /**
  * The inbox's chats (people, groups, case groups), shared by the sub-sidebar list and the inbox page. Reloads on any
  * inbox change or new message, since a new case card or message moves a chat to the top.
@@ -61,7 +45,7 @@ export const InboxChatsStore = signalStore(
   withComputed((store) => ({
     pendingCount: computed(() => store.rows().reduce((n, r) => n + r.pending.length, 0))
   })),
-  withMethods((store, api = inject(InboxChatsApiService), auth = inject(AuthStore)) => {
+  withMethods((store, api = inject(InboxChatsApiService)) => {
     let request = 0;
     return {
       async load(): Promise<void> {
@@ -72,7 +56,7 @@ export const InboxChatsStore = signalStore(
           if (mine !== request) return;
           const started = store.started();
           patchState(store, {
-            rows, loaded: true, loading: false,
+            rows, loaded: true, loading: false, favorites: new Set(rows.filter((r) => r.isFavorite).map((r) => r.conversationId)),
             started: started && rows.some((r) => r.conversationId === started.conversationId) ? null : started
           });
         } catch (err) {
@@ -96,31 +80,28 @@ export const InboxChatsStore = signalStore(
       setStarted(started: InboxChatRowDto | null): void {
         patchState(store, { started });
       },
-      loadFavorites(): void {
-        patchState(store, { favorites: readFavorites(auth.employeeId() ?? null) });
-      },
-      toggleFavorite(conversationId: string): void {
-        const next = new Set(store.favorites());
-        if (next.has(conversationId)) next.delete(conversationId);
-        else next.add(conversationId);
-        patchState(store, { favorites: next });
+      /** Pins or unpins a chat at once; the server keeps it. A failed save puts it back. */
+      async toggleFavorite(conversationId: string): Promise<void> {
+        const favorite = !store.favorites().has(conversationId);
+        const apply = (on: boolean) => {
+          const next = new Set(store.favorites());
+          if (on) next.add(conversationId);
+          else next.delete(conversationId);
+          patchState(store, { favorites: next });
+        };
+        apply(favorite);
         try {
-          localStorage.setItem(favoritesKey(auth.employeeId() ?? null), JSON.stringify([...next]));
+          await firstValueFrom(api.setFavorite(conversationId, favorite));
         } catch {
-          // Storage can be unavailable (private mode); the pin still holds for this visit.
+          apply(!favorite);
         }
       }
     };
   }),
-  withHooks((store, realtime = inject(InboxRealtimeService), auth = inject(AuthStore)) => {
+  withHooks((store, realtime = inject(InboxRealtimeService)) => {
     let subscription: Subscription | null = null;
     return {
       onInit(): void {
-        // Favorites belong to the signed-in person: reload them when that changes.
-        effect(() => {
-          auth.employeeId();
-          untracked(() => store.loadFavorites());
-        });
         subscription = merge(
           realtime.inboxChanged$.pipe(map(() => undefined)),
           realtime.messageCreated$.pipe(map(() => undefined)),

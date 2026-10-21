@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
@@ -26,12 +26,13 @@ describe('InboxChatSidebarComponent', () => {
   let router: { navigate: ReturnType<typeof vi.fn>; url: string; events: Subject<unknown> };
   let collapse: ReturnType<typeof vi.fn>;
   let searchPeople: ReturnType<typeof vi.fn>;
+  let setFavorite: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    localStorage.clear();
     router = { navigate: vi.fn(() => Promise.resolve(true)), url: '/inbox/direct/direct/pair-c1', events: new Subject() };
     collapse = vi.fn();
+    setFavorite = vi.fn(() => of(undefined));
     searchPeople = vi.fn(() => of([{ employeeId: 'emp-new', name: 'Kiran New', avatarFileId: null }]));
     TestBed.configureTestingModule({
       imports: [InboxChatSidebarComponent],
@@ -41,11 +42,13 @@ describe('InboxChatSidebarComponent', () => {
             list: vi.fn(() => of([
               row('c1', { unread: 2 }),
               row('c2', { title: 'Kiru', pending: [{ source: 'leave', kind: 'request', id: 'l1', title: 'Annual leave' }] }),
+              row('g2', { source: 'group', kind: 'group', subjectId: 'g2', type: 'group', title: 'Ops huddle', otherEmployeeId: null, isFavorite: true }),
               row('g1', { source: 'group', kind: 'group', subjectId: 'g1', type: 'group', title: 'Payroll review', otherEmployeeId: null }),
               row('k1', { source: 'monitoring', kind: 'exception_case', subjectId: 'x1', type: 'case', title: 'Face check - Priya', otherEmployeeId: null })
             ])),
             openDirect: vi.fn(() => of({ conversationId: 'c9', source: 'direct', kind: 'direct', subjectId: 'pair-c9' })),
-            createGroup: vi.fn()
+            createGroup: vi.fn(),
+            setFavorite
           }
         },
         { provide: ConversationsApiService, useValue: { searchPeople } },
@@ -75,7 +78,7 @@ describe('InboxChatSidebarComponent', () => {
   it('lists groups (named and case groups) apart from direct messages, each with an always-shown "+"', async () => {
     const { q, names } = await render();
 
-    expect(names('chat-section-groups')).toEqual([expect.stringContaining('Payroll review'), expect.stringContaining('Face check - Priya')]);
+    expect(names('chat-section-groups')).toEqual([expect.stringContaining('Ops huddle'), expect.stringContaining('Payroll review'), expect.stringContaining('Face check - Priya')]);
     expect(names('chat-section-direct')).toEqual([expect.stringContaining('Person c1'), expect.stringContaining('Kiru')]);
     expect(q('chat-new-group')).not.toBeNull();
     expect(q('chat-new-direct')).not.toBeNull();
@@ -89,15 +92,24 @@ describe('InboxChatSidebarComponent', () => {
     expect(active.querySelector('.cl__unread')).toBeNull();
   });
 
-  it('a favorite moves to the top of its own section and stays after a reload', async () => {
+  it('a favorite moves to the top of its own section and is saved on the server', async () => {
     const { fixture, names } = await render();
 
-    TestBed.inject(InboxChatsStore).toggleFavorite('c2');
+    expect(names('chat-section-groups')[0]).toContain('Ops huddle');
+    await TestBed.inject(InboxChatsStore).toggleFavorite('c2');
     fixture.detectChanges();
-    expect(names('chat-section-direct')[0]).toContain('Kiru');
 
-    TestBed.inject(InboxChatsStore).loadFavorites();
-    expect(TestBed.inject(InboxChatsStore).favorites().has('c2')).toBe(true);
+    expect(names('chat-section-direct')[0]).toContain('Kiru');
+    expect(setFavorite).toHaveBeenCalledWith('c2', true);
+  });
+
+  it('a favorite that fails to save is put back', async () => {
+    setFavorite.mockReturnValue(throwError(() => new Error('offline')));
+    await render();
+
+    await TestBed.inject(InboxChatsStore).toggleFavorite('c2');
+
+    expect(TestBed.inject(InboxChatsStore).favorites().has('c2')).toBe(false);
   });
 
   it('Pending narrows to chats waiting on the user, with checkboxes', async () => {
