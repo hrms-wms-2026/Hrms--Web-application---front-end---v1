@@ -20,16 +20,42 @@ describe('summarize', () => {
     expect(s.lines).toEqual([{ label: 'Outcome', before: null, after: 'Confirmed - keep counting it' }]);
   });
 
-  it('shows a change as before → after and leaves out empty rows', () => {
+  it('a task or module update shows labelled before → after lines, with no unlabelled headline', () => {
     const s = summarize([
-      change('work_mode', 'Work mode', 'Remote', { before: 'Office' }),
+      change('priority', 'Priority', 'High', { kind: 'priority', before: 'low' }),
       change('note', 'Note', null),
-      change('hours', 'Hours', '6', { kind: 'hours', before: '8' })
+      change('hours', 'Estimate', '6', { kind: 'hours', before: '8' })
     ])!;
 
-    expect(s.headline).toBe('Office → Remote');
-    expect(s.when).toBeNull();
-    expect(s.lines).toEqual([{ label: 'Hours', before: '8h', after: '6h' }]);
+    expect(s.headline).toBeNull();
+    expect(s.lines).toEqual([
+      { label: 'Priority', before: 'Low', after: 'High' },
+      { label: 'Estimate', before: '8h', after: '6h' }
+    ]);
+  });
+
+  it('a seat increase keeps "Extra seats 3" as a line instead of a bare "3" headline', () => {
+    const s = summarize([
+      change('seats', 'Extra seats', '3'),
+      change('current', 'Seats when requested', '20'),
+      change('approvers', 'Approvers', 'Dapi Owner')
+    ])!;
+
+    expect(s.headline).toBeNull();
+    expect(s.lines.map((l) => `${l.label}: ${l.after}`)).toEqual(['Extra seats: 3', 'Seats when requested: 20', 'Approvers: Dapi Owner']);
+  });
+
+  it('a position approval and a new task are headed by who or what they are about', () => {
+    const position = summarize([
+      change('employee', 'New employee', 'Priya Raj'),
+      change('position', 'Position', 'Designer'),
+      change('start', 'Start date', '2026-11-02', { kind: 'date' })
+    ])!;
+    expect(position.headline).toBe('Priya Raj');
+    expect(position.when).toContain('Nov');
+    expect(position.lines).toEqual([{ label: 'Position', before: null, after: 'Designer' }]);
+
+    expect(summarize([change('title', 'Title', 'Fix login'), change('assignee', 'Assignee', 'Anu')])!.headline).toBe('Fix login');
   });
 
   it('is nothing when every row is empty', () => {

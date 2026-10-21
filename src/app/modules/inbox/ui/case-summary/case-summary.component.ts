@@ -14,7 +14,8 @@ export interface CaseSummaryLine {
 }
 
 export interface CaseSummary {
-  headline: string;
+  /** What the case is about (a task title, a person, an alert) - null when the first value does not name it. */
+  headline: string | null;
   /** "Mon, Oct 12" / "Mon, Oct 12 · 9:30 AM", from the first date row; null when there is none. */
   when: string | null;
   lines: CaseSummaryLine[];
@@ -29,25 +30,33 @@ function whenOf(change: InboxChangeDto): string {
     : `${date.toLocaleDateString(undefined, DAY)} · ${date.toLocaleTimeString(undefined, TIME)}`;
 }
 
+/** A value that names the case (a task title, a person, an alert type): plain text, not a change, not a bare number.
+ *  "3" (extra seats) or "Low → High" (a priority edit) read wrongly without their label, so they stay detail lines. */
+function namesTheCase(c: InboxChangeDto): boolean {
+  const value = (c.after ?? '').trim();
+  const isChange = c.before !== null && c.before !== '' && c.before !== c.after;
+  return !isChange && (c.kind === 'text' || c.kind === 'select') && value !== '' && !/^\d+(\.\d+)?$/.test(value);
+}
+
 /**
- * A request's or alert's rows as one small card, the way the leave card reads: the first value as the headline (what it
- * is), the first date as when, and the rest as quiet detail lines - a change shows "before → after", a plain value just
- * itself. Empty rows are left out.
+ * A request's or alert's rows as one small card, the way the leave card reads: the first value as the headline when it
+ * names the case, the first date as when, and the rest as quiet labelled lines - a change shows "before → after", a plain
+ * value just itself. Empty rows are left out.
  */
 export function summarize(changes: readonly InboxChangeDto[]): CaseSummary | null {
   const rows = changes.filter((c) => (c.after ?? '') !== '' || (c.before ?? '') !== '');
   if (rows.length === 0) return null;
   const whenRow = rows.find((c) => WHEN_KINDS.has(c.kind));
-  const headRow = rows.find((c) => c !== whenRow) ?? rows[0];
+  const first = rows.find((c) => c !== whenRow);
+  const headRow = first && namesTheCase(first) ? first : null;
   const line = (c: InboxChangeDto): CaseSummaryLine => ({
     label: c.label,
     before: c.before !== null && c.before !== '' && c.before !== c.after ? displayChangeValue(c, c.before) : null,
     after: displayChangeValue(c, c.after)
   });
-  const head = line(headRow);
   return {
-    headline: head.before ? `${head.before} → ${head.after}` : head.after,
-    when: whenRow && whenRow !== headRow ? whenOf(whenRow) : null,
+    headline: headRow ? line(headRow).after : null,
+    when: whenRow ? whenOf(whenRow) : null,
     lines: rows.filter((c) => c !== headRow && c !== whenRow).map(line)
   };
 }
@@ -63,7 +72,7 @@ export function summarize(changes: readonly InboxChangeDto[]): CaseSummary | nul
     @if (summary(); as s) {
       <div class="cs" data-testid="case-summary">
         <div class="cs__head">
-          <span class="cs__headline" data-testid="case-summary-headline">{{ s.headline }}</span>
+          @if (s.headline) { <span class="cs__headline" data-testid="case-summary-headline">{{ s.headline }}</span> }
           @if (editable() && !editing()) {
             <button type="button" class="cs__edit" data-testid="case-summary-edit" (click)="editing.set(true)">
               Edit
