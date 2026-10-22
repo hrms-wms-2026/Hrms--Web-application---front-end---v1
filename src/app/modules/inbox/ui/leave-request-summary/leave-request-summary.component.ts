@@ -30,12 +30,12 @@ const TIME: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
       @if (editing()) {
         <div class="lrs__form">
           <label class="lrs__field">From
-            <input type="datetime-local" data-testid="inbox-edit-startAt" [value]="local('startAt')"
+            <input class="ui-input ui-input--sm" type="datetime-local" data-testid="inbox-edit-startAt" [value]="local('startAt')"
               (input)="set('startAt', $any($event.target).value)" />
           </label>
           @if (errors()['startAt']; as e) { <span class="lrs__error">{{ e }}</span> }
           <label class="lrs__field">To
-            <input type="datetime-local" data-testid="inbox-edit-endAt" [value]="local('endAt')"
+            <input class="ui-input ui-input--sm" type="datetime-local" data-testid="inbox-edit-endAt" [value]="local('endAt')"
               (input)="set('endAt', $any($event.target).value)" />
           </label>
           @if (errors()['endAt']; as e) { <span class="lrs__error">{{ e }}</span> }
@@ -58,8 +58,7 @@ const TIME: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
     .lrs__edit:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .lrs__form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--color-border); }
     .lrs__field { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--color-text-secondary); font-size: 12px; }
-    .lrs__field input { height: 30px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface);
-      color: var(--color-text-primary); font: inherit; font-size: 12px; }
+
     .lrs__error { color: var(--color-danger); font-size: 11px; }
   `]
 })

@@ -133,11 +133,7 @@ interface AddedPerson {
     .event-hover-row:hover:not(:focus-within):not(.event-hover-row--active) { background: var(--color-surface-secondary); }
     /* active = the same look as a clicked title field */
     .event-hover-row:focus-within, .event-hover-row--active { border-color: color-mix(in srgb, var(--color-text-secondary) 55%, var(--color-border)); }
-    .event-plain-input {
-      width: 100%; height: 2.5rem; border: 0; background: transparent; outline: none;
-      font-size: 0.875rem; color: var(--color-text-primary);
-    }
-    .event-plain-input::placeholder { color: var(--color-text-secondary); }
+
     .event-inline-link { border-radius: 0.25rem; padding: 0.125rem 0.25rem; color: var(--color-text-secondary); }
     .event-inline-link:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .event-row-icon { display: inline-flex; width: 1.25rem; flex-shrink: 0; justify-content: center; color: var(--color-text-secondary); }

@@ -58,6 +58,8 @@ function parseYYYYMMDD(str: string): { year: number; month: number; date: number
 })
 export class DatePickerComponent {
   label = input<string>('');
+  /** 'sm' is the compact field for dense panels and toolbars. */
+  size = input<'md' | 'sm'>('md');
   placeholder = input<string>('YYYY-MM-DD');
   disabled = input(false);
   value = input<string>('');

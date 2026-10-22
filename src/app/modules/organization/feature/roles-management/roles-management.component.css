@@ -46,9 +46,7 @@
 }
 
 .rm-search-expandable {
-  position: relative;
-  display: flex;
-  align-items: center;
+  width: 220px;
   animation: rmSearchExpand 0.15s ease-out;
 }
 
@@ -61,35 +59,6 @@
     opacity: 1;
     width: 220px;
   }
-}
-
-.rm-search-icon {
-  position: absolute;
-  left: 0.625rem;
-  color: var(--color-text-secondary);
-  pointer-events: none;
-}
-
-.rm-search-input {
-  width: 220px;
-  padding: 0.375rem 1.75rem 0.375rem 2rem;
-  font-size: 0.8125rem;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  outline: none;
-}
-
-.rm-search-clear-btn {
-  position: absolute;
-  right: 0.5rem;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 1.125rem;
-  cursor: pointer;
-  line-height: 1;
 }
 
 .rm-icon-btn {

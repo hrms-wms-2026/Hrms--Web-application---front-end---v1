@@ -48,9 +48,9 @@ export const ESCALATE_NOTE_MAX = 500;
               <small>Choose who will take over this conversation</small>
             </span>
             @if (candidates().length > 0) {
-              <label class="esc__search">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-                <input type="text" data-testid="inbox-escalate-search" placeholder="Search people..." aria-label="Search people"
+              <label class="esc__search ui-field ui-field--sm">
+                <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg></span>
+                <input class="ui-field__control" type="text" data-testid="inbox-escalate-search" placeholder="Search people..." aria-label="Search people"
                   [value]="query()" (input)="query.set($any($event.target).value)" />
               </label>
             }
@@ -121,7 +121,7 @@ export const ESCALATE_NOTE_MAX = 500;
                 <small>Add a note to help the assignee understand the context.</small>
               </span>
             </div>
-            <textarea class="esc__note" data-testid="inbox-escalate-note" rows="5" [attr.maxlength]="noteMax"
+            <textarea class="ui-input" data-testid="inbox-escalate-note" rows="5" [attr.maxlength]="noteMax"
               placeholder="E.g. Need higher level approval, policy clarification..."
               [value]="note()" (input)="note.set($any($event.target).value)"></textarea>
             <span class="esc__count">{{ note().length }}/{{ noteMax }}</span>
@@ -154,11 +154,7 @@ export const ESCALATE_NOTE_MAX = 500;
     .esc__heading { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
     .esc__heading strong { font-size: 15px; font-weight: 650; color: var(--color-text-primary); }
     .esc__heading small, .esc__subhead small { color: var(--color-text-secondary); font-size: 12px; }
-    .esc__search { display: flex; flex: 0 1 220px; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--color-border);
-      border-radius: 10px; background: var(--color-surface); color: var(--color-text-secondary); }
-    .esc__search:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
-    .esc__search svg { width: 16px; height: 16px; flex: none; }
-    .esc__search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; }
+    .esc__search { flex: 0 1 220px; }
 
     .esc__list { display: flex; max-height: 360px; flex-direction: column; overflow-y: auto; padding: 4px; border: 1px solid var(--color-border); border-radius: 12px; }
     .esc__row { display: flex; width: 100%; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px;
@@ -198,9 +194,7 @@ export const ESCALATE_NOTE_MAX = 500;
     .esc__ticket-sub { color: var(--color-text-secondary); font-size: 12.5px; }
 
     .esc__reason { display: flex; flex-direction: column; gap: 10px; }
-    .esc__note { width: 100%; min-height: 130px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 12px; resize: vertical;
-      background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; }
-    .esc__note:focus { border-color: var(--color-accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+
     .esc__count { align-self: flex-end; color: var(--color-text-secondary); font-size: 12px; }
 
     .esc__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }

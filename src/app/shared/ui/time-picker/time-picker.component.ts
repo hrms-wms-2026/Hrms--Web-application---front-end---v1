@@ -99,6 +99,8 @@ const POSITIONS_UP: ConnectionPositionPair[] = [
 })
 export class TimePickerComponent {
   label = input<string>('');
+  /** 'sm' is the compact field for dense panels and toolbars. */
+  size = input<'md' | 'sm'>('md');
   placeholder = input<string>('--:-- --');
   disabled = input(false);
   value = input<string>(''); // 24h format HH:mm e.g. "09:00"

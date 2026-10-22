@@ -51,7 +51,7 @@ const OUTCOME_HINTS: Record<string, string | undefined> = {
             [options]="leaveTypes()" [value]="leaveTypeId() ?? ''" (valueChange)="leaveTypeId.set($event || null)" />
           @if (leaveHint()) { <p class="idlg__hint" data-testid="inbox-outcome-leave-hint">{{ leaveHint() }}</p> }
         }
-        <textarea class="idlg__input" data-testid="inbox-outcome-note" rows="3" maxlength="4000" placeholder="Note (optional)"
+        <textarea class="ui-input" data-testid="inbox-outcome-note" rows="3" maxlength="4000" placeholder="Note (optional)"
           [value]="note()" (input)="note.set($any($event.target).value)"></textarea>
         <div class="idlg__actions">
           <app-button variant="secondary" data-testid="inbox-outcome-cancel" (pressed)="closed.emit()">Cancel</app-button>

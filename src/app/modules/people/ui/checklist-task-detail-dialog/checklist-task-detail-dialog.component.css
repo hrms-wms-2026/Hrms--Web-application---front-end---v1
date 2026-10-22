@@ -397,23 +397,6 @@
   border-radius: 8px;
 }
 
-.ctd-textarea {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 13px;
-  resize: vertical;
-  outline: none;
-}
-
-.ctd-textarea:focus {
-  border-color: var(--color-accent);
-}
-
 @media (max-width: 640px) {
   .ctd-scrim {
     padding: 16px;

@@ -31,7 +31,7 @@ import { toWorkTask } from '../../utils/task.mapper';
           <div class="task-clock-widget__overlay" aria-hidden="true" (click)="closePushPopup()"></div>
           <div class="task-clock-widget__popup" role="dialog" aria-modal="true" aria-label="Pause task progress" (click)="$event.stopPropagation()">
             <p data-testid="push-current-percent">Current: {{ task().progressPercent }}%</p>
-            <input
+            <input class="ui-input ui-input--sm"
               data-testid="push-percent-input"
               type="number"
               min="0"
@@ -39,7 +39,7 @@ import { toWorkTask } from '../../utils/task.mapper';
               [value]="pushPercent() ?? ''"
               (input)="onPercentInput($event)"
             />
-            <input
+            <input class="ui-input ui-input--sm"
               data-testid="push-reason-input"
               type="text"
               placeholder="Optional note"
@@ -127,7 +127,7 @@ import { toWorkTask } from '../../utils/task.mapper';
       cursor: not-allowed;
       animation: none;
     }
-    .task-clock-widget__button:focus-visible, .task-clock-widget__popup button:focus-visible, .task-clock-widget__popup input:focus-visible {
+    .task-clock-widget__button:focus-visible, .task-clock-widget__popup button:focus-visible {
       outline: 2px solid var(--color-focus-ring);
       outline-offset: 2px;
     }
@@ -170,8 +170,7 @@ import { toWorkTask } from '../../utils/task.mapper';
     .task-clock-widget__overlay { position: fixed; z-index: 90; inset: 0; background: rgb(15 23 42 / .22); animation: task-clock-overlay-in 160ms ease-out; }
     .task-clock-widget__popup { position: fixed; z-index: 91; top: 50%; left: 50%; display: flex; flex-direction: column; gap: 9px; width: min(320px, calc(100vw - 32px)); margin: 0; padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 20px 50px rgb(15 23 42 / .24); transform: translate(-50%, -50%); animation: task-clock-popup-in 160ms ease-out; }
     .task-clock-widget__popup p { margin: 0; color: var(--color-text-primary); font-size: 13px; font-weight: 600; }
-    .task-clock-widget__popup input { width: 100%; height: 34px; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; }
-    .task-clock-widget__popup input::placeholder { color: var(--color-text-secondary); }
+
     .task-clock-widget__popup [role="alert"] { color: var(--color-danger-text); font-size: 12px; line-height: 1.35; }
     .task-clock-widget__popup > div { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px; }
     .task-clock-widget__popup button { min-height: 30px; padding: 5px 10px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }

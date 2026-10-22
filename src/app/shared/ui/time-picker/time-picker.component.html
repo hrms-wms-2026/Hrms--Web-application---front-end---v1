@@ -1,9 +1,18 @@
 <div class="tp-container">
   @if (label()) {
-    <label [for]="inputId" class="tp-label">{{ label() }}</label>
+    <label [for]="inputId" class="tp-label ui-field-label">{{ label() }}</label>
   }
 
-  <div class="tp-input-wrapper" cdkOverlayOrigin #overlayOrigin="cdkOverlayOrigin" (click)="togglePopover()">
+  <div
+    class="tp-input-wrapper ui-field"
+      [class.ui-field--sm]="size() === 'sm'"
+    [class.ui-field--error]="!!error()"
+    [class.ui-field--disabled]="disabled()"
+    cdkOverlayOrigin
+    #overlayOrigin="cdkOverlayOrigin"
+    (click)="togglePopover()"
+  >
+    <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M12 7.5V12l3 2" /></svg></span>
     <input
       [id]="inputId"
       type="text"
@@ -13,14 +22,14 @@
       [value]="displayValue()"
       [attr.aria-invalid]="error() ? true : null"
       [attr.aria-describedby]="error() ? errorId() : hint() ? hintId() : null"
-      class="tp-input"
+      class="tp-input ui-field__control"
     />
 
-    <div class="tp-actions" (click)="$event.stopPropagation()">
+    <div class="tp-actions ui-field__trailing" (click)="$event.stopPropagation()">
       @if (value() && !disabled()) {
         <button
           type="button"
-          class="tp-clear-btn"
+          class="tp-clear-btn ui-field__icon-btn"
           (click)="clearValue()"
           title="Clear time"
           aria-label="Clear time"
@@ -34,25 +43,24 @@
 
       <button
         type="button"
-        class="tp-icon-trigger"
+        class="tp-icon-trigger ui-field__icon-btn"
         (click)="togglePopover()"
         [attr.aria-expanded]="isOpen()"
         title="Open time picker"
         aria-label="Open time picker"
         [disabled]="disabled()"
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <polyline points="12 6 12 12 16 14"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
     </div>
   </div>
 
   @if (error()) {
-    <span [id]="errorId()" class="tp-error-text">{{ error() }}</span>
+    <span [id]="errorId()" class="tp-error-text ui-field-error">{{ error() }}</span>
   } @else if (hint()) {
-    <span [id]="hintId()" class="tp-hint-text">{{ hint() }}</span>
+    <span [id]="hintId()" class="tp-hint-text ui-field-hint">{{ hint() }}</span>
   }
 
   <!-- Rendered in a CDK overlay so the popover isn't clipped by scrolling/overflow ancestors such as modals. -->

@@ -19,7 +19,7 @@
 
     <label class="lcc-field">
       <span>Reason @if (requireReason) { (required) } @else { (optional) }</span>
-      <textarea rows="2" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+      <textarea class="ui-input" rows="2" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
     </label>
 
     @if (cancelError) { <p class="lcc-error">{{ cancelError }}</p> }

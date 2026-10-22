@@ -106,7 +106,7 @@ const STEP_ITEMS = [
                       <input
                         #newCategoryInput
                         type="text"
-                        class="proj-category-add-input"
+                        class="ui-input ui-input--sm"
                         placeholder="Category name"
                         maxlength="100"
                         [value]="newCategoryName()"
@@ -569,21 +569,7 @@ const STEP_ITEMS = [
       gap: 0.375rem;
       padding: 0.375rem 0.5rem;
     }
-    .proj-category-add-input {
-      min-width: 0;
-      flex: 1;
-      border: 1px solid var(--color-border);
-      border-radius: 6px;
-      background: var(--color-surface);
-      color: var(--color-text-primary);
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 0.3rem 0.5rem;
-      outline: none;
-    }
-    .proj-category-add-input:focus {
-      border-color: var(--color-accent);
-    }
+
     .proj-category-add-actions {
       display: flex;
       align-items: center;

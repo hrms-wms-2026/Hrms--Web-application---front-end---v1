@@ -47,9 +47,9 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
       </div>
 
       @if (searchOpen()) {
-        <label class="ics__search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input #searchInput type="search" placeholder="Search people and chats…" aria-label="Search people and chats" data-testid="chat-search"
+        <label class="ics__search ui-field ui-field--sm">
+          <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg></span>
+          <input class="ui-field__control" #searchInput type="search" placeholder="Search people and chats…" aria-label="Search people and chats" data-testid="chat-search"
             [value]="search()" (input)="search.set($any($event.target).value)" (keydown.escape)="closeSearch()" />
         </label>
       }
@@ -110,11 +110,7 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
     .ics__tool:hover, .ics__tool--on { border-color: var(--color-border); background: var(--color-surface); color: var(--color-text-primary); }
     .ics__tool:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
     .ics__tool svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .ics__search { display: flex; align-items: center; gap: 6px; height: 30px; margin: 0 .25rem; padding: 0 8px; border: 1px solid var(--color-border);
-      border-radius: 8px; background: var(--color-surface); }
-    .ics__search:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
-    .ics__search svg { width: 14px; height: 14px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 2; stroke-linecap: round; }
-    .ics__search input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; outline: none; }
+    .ics__search { width: auto; margin: 0 .25rem; }
     .ics__filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 .25rem; }
     .ics__segment { display: inline-flex; box-sizing: border-box; height: 28px; align-items: center; padding: 2px; border: 1px solid var(--color-border);
       border-radius: 8px; background: var(--color-surface); }

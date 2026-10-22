@@ -17,7 +17,7 @@
   <div class="ns-toolbar">
     <label class="ns-search">
       <span class="ns-visually-hidden">Search notifications</span>
-      <input
+      <input class="ui-input ui-input--sm"
         type="search"
         placeholder="Search notifications"
         [value]="search()"
@@ -76,7 +76,7 @@
               @if (s.templates.length > 0) {
                 <label class="ns-field">
                   <span>Template</span>
-                  <select
+                  <select class="ui-input ui-input--sm"
                     [attr.data-testid]="'template-' + s.eventKey"
                     [value]="selectedTemplate(s)"
                     (change)="setTemplate(s, $any($event.target).value)"
@@ -90,7 +90,7 @@
               @if (s.recipientRules.length > 1) {
                 <label class="ns-field">
                   <span>Recipients</span>
-                  <select [value]="row(s).recipientRule" (change)="setRecipientRule(s, $any($event.target).value)">
+                  <select class="ui-input ui-input--sm" [value]="row(s).recipientRule" (change)="setRecipientRule(s, $any($event.target).value)">
                     @for (rule of s.recipientRules; track rule) {
                       <option [value]="rule" [selected]="rule === row(s).recipientRule">{{ recipientLabel(rule) }}</option>
                     }

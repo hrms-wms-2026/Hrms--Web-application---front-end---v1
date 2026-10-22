@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldIconComponent } from '../../../../shared/ui/field-icon/field-icon.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -21,7 +22,7 @@ const STATUS_MESSAGES: Record<string, string> = {
 @Component({
   selector: 'app-accept-invitation',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, FieldIconComponent],
   templateUrl: './accept-invitation.component.html',
   styleUrl: './accept-invitation.component.css'
 })

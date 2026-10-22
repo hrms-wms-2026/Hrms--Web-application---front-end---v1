@@ -28,14 +28,7 @@
 }
 
 .ns-search input {
-  width: 100%;
   max-width: 22rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.875rem;
 }
 
 .ns-visually-hidden {
@@ -166,12 +159,6 @@
 }
 
 .ns-field select {
-  padding: 0.375rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.8125rem;
   max-width: 16rem;
 }
 

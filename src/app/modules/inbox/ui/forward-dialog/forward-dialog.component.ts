@@ -28,9 +28,9 @@ export interface ForwardTargets {
   template: `
     <app-modal [open]="open()" title="Forward to…" [subtitle]="caseTitle()" size="md" (closed)="closed.emit()">
       <div class="fwd" data-testid="forward-dialog">
-        <label class="fwd__search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input type="search" placeholder="Search chats…" aria-label="Search chats" data-testid="forward-search"
+        <label class="fwd__search ui-field ui-field--sm">
+          <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg></span>
+          <input class="ui-field__control" type="search" placeholder="Search chats…" aria-label="Search chats" data-testid="forward-search"
             [value]="search()" (input)="onSearch($any($event.target).value)" />
         </label>
         <ul class="fwd__list">
@@ -76,10 +76,7 @@ export interface ForwardTargets {
   `,
   styles: [`
     .fwd { display: flex; flex-direction: column; gap: 12px; }
-    .fwd__search { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
-    .fwd__search:focus-within { border-color: var(--color-accent); }
-    .fwd__search svg { width: 14px; height: 14px; fill: none; stroke: var(--color-text-secondary); stroke-width: 2; stroke-linecap: round; }
-    .fwd__search input { width: 100%; border: 0; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; outline: none; }
+    .fwd__search { flex: none; }
     .fwd__list { display: flex; max-height: 320px; flex-direction: column; gap: 2px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
     .fwd__row { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
     .fwd__row:hover { background: var(--color-surface-secondary); }

@@ -83,7 +83,7 @@
     @if (step() === 4) {
       <label class="nlw-field">
         <span>Reason <em class="nlw-optional">(optional)</em></span>
-        <textarea rows="3" [attr.maxlength]="reasonMaxLength" placeholder="e.g. Family function, medical appointment..." [value]="draft().reason ?? ''" (input)="draft.update(d => ({...d, reason: ($any($event.target).value || null)}))"></textarea>
+        <textarea class="ui-input" rows="3" [attr.maxlength]="reasonMaxLength" placeholder="e.g. Family function, medical appointment..." [value]="draft().reason ?? ''" (input)="draft.update(d => ({...d, reason: ($any($event.target).value || null)}))"></textarea>
         <small class="nlw-counter">{{ (draft().reason ?? '').length }} / {{ reasonMaxLength }}</small>
       </label>
       @if (selectedLeaveType()?.requiresDocument) {

@@ -13,7 +13,7 @@
     }
     <label class="lhm-field">
       <span>Name</span>
-      <input type="text" [value]="name()" (input)="name.set($any($event.target).value)" aria-label="Holiday name" />
+      <input class="ui-input" type="text" [value]="name()" (input)="name.set($any($event.target).value)" aria-label="Holiday name" />
     </label>
     <app-date-picker label="Date" [value]="date()" (valueChange)="date.set($event)" />
     <app-date-picker label="End date (optional)" [value]="endDate()" (valueChange)="endDate.set($event)" />
