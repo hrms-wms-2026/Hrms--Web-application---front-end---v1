@@ -4,24 +4,35 @@ import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-heade
 import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
-import { LedOverdueTask, LedWorkTotals } from '../../models/my-team-led-progress.model';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
+import { LedHourTotals, LedOverdueTask, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { buildPieSlices } from '../../utils/pie-slices.util';
 
 const REFRESH_INTERVAL_MS = 60_000;
 
+export interface HourSegment {
+  key: 'completed' | 'inProgress' | 'notStarted' | 'untasked';
+  hours: number;
+  percent: number;
+  cssClass: string;
+}
+
 interface ProgressRow {
   key: string;
-  title: string;
-  /** Shown after the title only when it differs from it. */
-  projectName: string | null;
+  objectiveId: string;
   projectId: string;
-  objectiveId: string | null;
-  totals: LedWorkTotals;
+  title: string;
+  /** Shown after a led module's title only when it differs from it. */
+  projectName: string | null;
+  depth: number;
+  atRisk: boolean;
+  hours: LedHourTotals;
   completionPercent: number;
 }
 
-/** Same look as Employee Detail's Work Management card: pie + legend + rates on the card, and the
- * module-by-module breakdown and overdue tasks in the pop-out. */
+/** Same look as Employee Detail's Work Management card: an estimated-hours pie + legend + rates on
+ * the card, and the module-by-module (child modules indented) breakdown and overdue tasks in the
+ * pop-out. Hours come from a trigger-maintained summary table on the backend, so each poll is cheap. */
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
@@ -33,6 +44,13 @@ interface ProgressRow {
 })
 export class TeamProgressCardComponent implements OnInit {
   protected readonly store = inject(MyTeamLedProgressStore);
+  /** Inside a dashboard frame the first payload comes from the bootstrap and reloads go through the
+   * widget context; outside one (or when that data isn't available) the store fetches as before. */
+  private readonly feed = injectWidgetDataFeed<LedWorkProgressResponse>({
+    apply: (data) => this.store.seed(data),
+    fetch: () => void this.store.load(),
+    refreshing: () => this.store.markLoading()
+  });
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -40,78 +58,78 @@ export class TeamProgressCardComponent implements OnInit {
   private visibilityHandler = (): void => this.onVisibilityChange();
 
   protected readonly showAll = signal(false);
+  protected readonly formatHours = formatHours;
 
   /** Polls set `loading` every minute; only a first load (no data yet) shows the skeleton. */
   protected readonly widgetState = computed<WidgetState>(() => {
     const data = this.store.data();
     if (!data) return this.store.error() ? 'error' : 'loading';
-    return data.projects.length === 0 || data.totals.total === 0 ? 'empty' : 'ready';
+    const h = data.hours;
+    return data.projects.length === 0 || (h.allocatedHours === 0 && h.taskCount === 0) ? 'empty' : 'ready';
   });
+
   protected readonly emptyMessage = computed(() =>
     (this.store.data()?.projects.length ?? 0) === 0
       ? "You don't lead any active modules"
-      : 'No open tasks in the modules you lead'
+      : 'No hours allocated or tasks in the modules you lead'
   );
+
   protected readonly refreshing = computed(() => this.store.loading() && !!this.store.data());
 
   protected readonly pieSlices = computed(() => {
-    const t = this.store.data()?.totals;
-    if (!t) return [];
+    const h = this.store.data()?.hours;
+    if (!h) return [];
     return buildPieSlices([
-      { key: 'completed', label: 'Completed', count: t.completed, color: '#10b981' },
-      { key: 'inProgress', label: 'In progress', count: t.inProgress, color: '#3b82f6' },
-      { key: 'overdue', label: 'Overdue', count: t.overdue, color: '#ef4444' },
-      { key: 'notStarted', label: 'Not started', count: t.notStarted, color: '#cbd5e1' }
+      { key: 'completed', label: 'Completed', count: h.completedHours, color: '#10b981' },
+      { key: 'inProgress', label: 'In progress', count: h.inProgressHours, color: '#3b82f6' },
+      { key: 'notStarted', label: 'Not started', count: h.notStartedHours, color: '#cbd5e1' },
+      { key: 'untasked', label: 'Not yet tasked', count: h.untaskedHours, color: '#fcd34d' }
     ]);
   });
 
+  /** Completed hours against the allocation (against the task estimates when nothing is allocated). */
   protected readonly completionRate = computed(() => {
-    const t = this.store.data()?.totals;
-    return t ? completionPercent(t) : 0;
+    const h = this.store.data()?.hours;
+    return h ? completionPercent(h) : 0;
   });
 
-  protected readonly modulesAtRisk = computed(() => this.progressRows().filter((row) => row.totals.overdue > 0).length);
+  protected readonly modulesAtRisk = computed(() => this.store.data()?.modulesAtRisk ?? 0);
 
-  /** Modules (or module-less projects) flattened and sorted at-risk first: most overdue, then
-   * least complete. Ties keep the backend order. */
+  protected readonly ledModuleCount = computed(() => this.progressRows().filter((row) => row.depth === 0).length);
+
+  /** Led modules with their child modules right below them. Led modules are ordered at-risk first,
+   * then least complete; ties keep the backend order. Children keep the backend's tree order. */
   protected readonly progressRows = computed<ProgressRow[]>(() => {
-    const projects = this.store.data()?.projects ?? [];
-    const rows: ProgressRow[] = projects.flatMap((project): ProgressRow[] =>
-      project.modules.length > 0
-        ? project.modules.map((module) => ({
-            key: `m:${module.objectiveId}`,
-            title: module.title,
-            projectName: project.projectName && project.projectName !== module.title ? project.projectName : null,
-            projectId: project.projectId,
-            objectiveId: module.objectiveId,
-            totals: module.totals,
-            completionPercent: completionPercent(module.totals)
-          }))
-        : [
-            {
-              key: `p:${project.projectId}`,
-              title: project.projectName,
-              projectName: null,
-              projectId: project.projectId,
-              objectiveId: null,
-              totals: project.totals,
-              completionPercent: completionPercent(project.totals)
-            }
-          ]
-    );
-    return rows
-      .map((row, index) => ({ row, index }))
+    const blocks: { head: ProgressRow; rows: ProgressRow[]; index: number }[] = [];
+    for (const project of this.store.data()?.projects ?? []) {
+      for (const module of project.modules) {
+        const row: ProgressRow = {
+          key: module.objectiveId,
+          objectiveId: module.objectiveId,
+          projectId: project.projectId,
+          title: module.title,
+          projectName: module.depth === 0 && project.projectName && project.projectName !== module.title ? project.projectName : null,
+          depth: module.depth,
+          atRisk: module.atRisk,
+          hours: module.hours,
+          completionPercent: completionPercent(module.hours)
+        };
+        if (module.depth === 0 || blocks.length === 0) blocks.push({ head: row, rows: [row], index: blocks.length });
+        else blocks[blocks.length - 1].rows.push(row);
+      }
+    }
+    return blocks
       .sort(
         (a, b) =>
-          b.row.totals.overdue - a.row.totals.overdue ||
-          a.row.completionPercent - b.row.completionPercent ||
+          Number(b.head.atRisk) - Number(a.head.atRisk) ||
+          a.head.completionPercent - b.head.completionPercent ||
           a.index - b.index
       )
-      .map(({ row }) => row);
+      .flatMap((block) => block.rows);
   });
 
   ngOnInit(): void {
-    void this.store.load();
+    this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
     if (document.visibilityState === 'visible') this.startPolling();
     this.destroyRef.onDestroy(() => {
@@ -122,7 +140,7 @@ export class TeamProgressCardComponent implements OnInit {
 
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
-      void this.store.load();
+      this.feed.reload();
       this.startPolling();
     } else {
       this.stopPolling();
@@ -131,7 +149,7 @@ export class TeamProgressCardComponent implements OnInit {
 
   private startPolling(): void {
     if (this.pollId) return;
-    this.pollId = setInterval(() => void this.store.load(), REFRESH_INTERVAL_MS);
+    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
   }
 
   private stopPolling(): void {
@@ -142,17 +160,21 @@ export class TeamProgressCardComponent implements OnInit {
   }
 
   retry(): void {
-    void this.store.load();
+    this.feed.reload();
   }
 
-  totalsSegments(totals: LedWorkTotals | undefined | null): { key: 'completed' | 'inProgress' | 'notStarted'; percent: number; count: number; cssClass: string }[] {
-    if (!totals || totals.total === 0) return [];
-    const segments: { key: 'completed' | 'inProgress' | 'notStarted'; percent: number; count: number; cssClass: string }[] = [
-      { key: 'completed', count: totals.completed, percent: (totals.completed / totals.total) * 100, cssClass: 'team-progress-segment--completed' },
-      { key: 'inProgress', count: totals.inProgress, percent: (totals.inProgress / totals.total) * 100, cssClass: 'team-progress-segment--in-progress' },
-      { key: 'notStarted', count: totals.notStarted, percent: (totals.notStarted / totals.total) * 100, cssClass: 'team-progress-segment--not-started' }
+  /** Bar segments sized against the larger of the allocation and the task estimates, so an
+   * over-tasked module fills the bar and an under-tasked one shows its untasked share. */
+  hourSegments(hours: LedHourTotals): HourSegment[] {
+    const scale = Math.max(hours.allocatedHours, hours.completedHours + hours.inProgressHours + hours.notStartedHours);
+    if (scale <= 0) return [];
+    const segments: HourSegment[] = [
+      { key: 'completed', hours: hours.completedHours, percent: 0, cssClass: 'team-progress-segment--completed' },
+      { key: 'inProgress', hours: hours.inProgressHours, percent: 0, cssClass: 'team-progress-segment--in-progress' },
+      { key: 'notStarted', hours: hours.notStartedHours, percent: 0, cssClass: 'team-progress-segment--not-started' },
+      { key: 'untasked', hours: hours.untaskedHours, percent: 0, cssClass: 'team-progress-segment--untasked' }
     ];
-    return segments.filter((s) => s.count > 0);
+    return segments.filter((s) => s.hours > 0).map((s) => ({ ...s, percent: (s.hours / scale) * 100 }));
   }
 
   /** A click anywhere on the card pops out the module breakdown. */
@@ -188,6 +210,12 @@ export class TeamProgressCardComponent implements OnInit {
   }
 }
 
-function completionPercent(totals: LedWorkTotals): number {
-  return totals.total === 0 ? 0 : Math.round((totals.completed / totals.total) * 100);
+function completionPercent(hours: LedHourTotals): number {
+  const base = hours.allocatedHours > 0 ? hours.allocatedHours : hours.completedHours + hours.inProgressHours + hours.notStartedHours;
+  return base <= 0 ? 0 : Math.min(100, Math.round((hours.completedHours / base) * 100));
+}
+
+/** Hours for display: whole numbers as-is, otherwise one decimal (12.5 h). */
+export function formatHours(value: number): string {
+  return Number.isInteger(value) ? String(value) : (Math.round(value * 10) / 10).toString();
 }

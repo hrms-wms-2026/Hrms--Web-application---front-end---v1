@@ -7,7 +7,7 @@ import { LedWorkProgressResponse } from '../models/my-team-led-progress.model';
 
 describe('MyTeamLedProgressStore', () => {
   const sampleResponse: LedWorkProgressResponse = {
-    totals: { total: 4, completed: 2, inProgress: 1, notStarted: 1, overdue: 0 },
+    hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0,
     projects: [],
     overdueTasks: [],
     overdueTotal: 0

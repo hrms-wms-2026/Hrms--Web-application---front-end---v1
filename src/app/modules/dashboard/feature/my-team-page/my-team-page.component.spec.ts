@@ -1,123 +1,115 @@
-import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
-import { ActionCenterDecisionService } from '../../data-access/action-center-decision.service';
-import { MyTeamActionItemsApiService } from '../../data-access/my-team-action-items-api.service';
-import { MyTeamDeepLinkService } from '../../data-access/my-team-deep-link.service';
-import { MyTeamLedProgressApiService } from '../../data-access/my-team-led-progress-api.service';
-import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.service';
-import { MyTeamCapabilitiesResponse } from '../../models/my-team-capabilities.model';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
+import { DashboardBootstrap } from '../../models/dashboard-layout.model';
+import { signal } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { ProjectApiService } from '../../../work/data-access/project-api.service';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { MyTeamPageComponent } from './my-team-page.component';
 
-const TEAM_CAPS: MyTeamCapabilitiesResponse = {
-  isAvailable: true, canViewPeopleStatus: true, canReviewPeopleApprovals: true, canReviewExceptions: false,
-  hasWorkApprovals: false, leadsWork: true, canViewLiveActivity: false, legalEntityId: 'le-1'
-};
-const EMPTY_TODAY = { workDate: '2026-10-08', timezone: 'UTC', legalEntityId: 'le-1', summary: { total: 0, working: 0, onBreak: 0, clockedOut: 0, late: 0, absent: 0, notStarted: 0, onLeave: 0, notScheduled: 0, needsAttention: 0 }, members: [], totalMembers: 0 };
-const EMPTY_LED = { totals: { total: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0 }, projects: [], overdueTasks: [], overdueTotal: 0 };
+function boot(over: Partial<DashboardBootstrap> = {}): DashboardBootstrap {
+  return {
+    id: 'd2',
+    key: 'my-team',
+    title: 'My Team',
+    layoutVersion: 1,
+    grid: { breakpoint: 'desktop', columns: 12, rowHeight: 96, gap: 12 },
+    widgets: [],
+    hasAllowedGatedWidgets: true,
+    capabilitiesUnavailable: false,
+    ...over
+  };
+}
+
+function setup(bootstrap: DashboardBootstrap) {
+  const api = {
+    listMine: vi.fn(() => of([{ id: 'd2', key: 'my-team', title: 'My Team', layoutVersion: 1 }])),
+    bootstrap: vi.fn(() => of(bootstrap)),
+    available: vi.fn(() => of([])),
+    widgetData: vi.fn(() => of())
+  };
+  const loadCapabilities = vi.fn(() => Promise.resolve());
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([]),
+      { provide: MyTeamCapabilitiesStore, useValue: { loadCapabilities } },
+      { provide: TimeTrackingStore, useValue: { today: signal(null), actionLoading: signal(false), activeAction: signal(null), loadToday: vi.fn(), startBreak: vi.fn(), endBreak: vi.fn() } },
+      { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
+      { provide: ProjectApiService, useValue: { listMine: () => of({ items: [], pageNumber: 1, pageSize: 100, totalCount: 0, totalPages: 0, hasNext: false, hasPrevious: false }) } },
+      { provide: DashboardLayoutApiService, useValue: api },
+      { provide: NotificationService, useValue: { warning: vi.fn(), error: vi.fn(), success: vi.fn() } }
+    ]
+  });
+  const fixture = TestBed.createComponent(MyTeamPageComponent);
+  return { fixture, api, loadCapabilities, el: fixture.nativeElement as HTMLElement };
+}
+
+async function ready(fixture: ReturnType<typeof setup>['fixture']) {
+  for (let i = 0; i < 4; i++) {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise(resolve => setTimeout(resolve));
+  }
+  fixture.detectChanges();
+}
+
+const q = (el: HTMLElement, id: string) => el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
 
 describe('MyTeamPageComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  async function setup(caps: MyTeamCapabilitiesResponse | null, opts: { loaded?: boolean; error?: string | null } = {}) {
-    const loadCapabilities = vi.fn(() => Promise.resolve());
-    const timeTracking = {
-      today: signal(null),
-      actionLoading: signal(false),
-      activeAction: signal(null),
-      loadToday: () => Promise.resolve(),
-      startBreak: () => Promise.resolve(),
-      endBreak: () => Promise.resolve()
-    };
-
-    await TestBed.configureTestingModule({
-      imports: [MyTeamPageComponent],
-      providers: [
-        provideRouter([]),
-        { provide: TimeTrackingStore, useValue: timeTracking },
-        { provide: AuthStore, useValue: { email: signal('arjun.kumar@onevo.dev'), employeeId: signal(null) } },
-        { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
-        {
-          provide: MyTeamCapabilitiesStore,
-          useValue: {
-            capabilities: signal(caps),
-            loaded: signal(opts.loaded ?? true),
-            error: signal(opts.error ?? null),
-            loadCapabilities,
-            ensureLoaded: () => Promise.resolve(),
-            refresh: () => Promise.resolve()
-          }
-        },
-        { provide: MyTeamTodayApiService, useValue: { getTeamToday: () => of(EMPTY_TODAY) } },
-        { provide: MyTeamActionItemsApiService, useValue: { getActionItems: () => of({ legalEntityId: 'le-1', sources: [] }) } },
-        { provide: MyTeamLedProgressApiService, useValue: { getLedProgress: () => of(EMPTY_LED) } },
-        { provide: MyTeamDeepLinkService, useValue: { navigate: () => Promise.resolve() } },
-        { provide: ActionCenterDecisionService, useValue: { decide: () => Promise.resolve() } }
-      ]
-    }).compileComponents();
-
-    const fixture = TestBed.createComponent(MyTeamPageComponent);
-    fixture.detectChanges();
-    return { fixture, loadCapabilities };
-  }
-
-  const el = (fixture: { nativeElement: HTMLElement }, selector: string): Element | null => fixture.nativeElement.querySelector(selector);
-
-  it('reloads capabilities on every visit', async () => {
-    const { loadCapabilities } = await setup(TEAM_CAPS);
-    expect(loadCapabilities).toHaveBeenCalledOnce();
+  it('loads_capabilities_on_init', async () => {
+    const ctx = setup(boot());
+    await ready(ctx.fixture);
+    expect(ctx.loadCapabilities).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a lead Quick Actions plus Team Status and Team Progress - not Action Center, which stays on My Work', async () => {
-    const { fixture } = await setup(TEAM_CAPS);
-    expect(el(fixture, 'app-quick-actions-card')).toBeTruthy();
-    expect(el(fixture, '[data-testid="my-team-main"] #my-team-widget-teamStatus')).toBeTruthy();
-    expect(el(fixture, '[data-testid="my-team-side"] #my-team-widget-teamProgress')).toBeTruthy();
-    expect(el(fixture, 'app-action-center-card')).toBeNull();
-    expect(el(fixture, 'app-my-tasks-card')).toBeNull();
+  it('shows_quick_actions_and_the_empty_state_together', async () => {
+    const quick = { instanceId: 'q1', widgetKey: 'team-quick-actions', title: 'Quick Actions', layout: { x: 0, y: 0, w: 4, h: 3 }, size: { minW: 2, minH: 2, maxW: 12, maxH: 6 }, dataState: { status: 'client' as const, fetchedAt: null, error: null }, data: null };
+    const ctx = setup(boot({ hasAllowedGatedWidgets: false, widgets: [quick] }));
+    await ready(ctx.fixture);
+    expect(ctx.el.querySelector('app-quick-actions-card')).not.toBeNull();
+    expect(q(ctx.el, 'quick-action-my-work')).not.toBeNull();
+    expect(q(ctx.el, 'my-team-empty')).not.toBeNull();
   });
 
-  it('swaps the My Team quick action for My Work, linking back to the personal dashboard', async () => {
-    const { fixture } = await setup(TEAM_CAPS);
-    expect(el(fixture, '[data-testid="quick-action-my-work"]')!.getAttribute('href')).toBe('/dashboard');
-    expect(el(fixture, '[data-testid="quick-action-my-team"]')).toBeNull();
+  it('hosts_the_my_team_shell', async () => {
+    const ctx = setup(boot());
+    await ready(ctx.fixture);
+    expect(ctx.el.querySelector('app-dashboard-shell')).not.toBeNull();
+    expect(q(ctx.el, 'my-team-empty')).toBeNull();
+    expect(q(ctx.el, 'my-team-retry')).toBeNull();
   });
 
-  it('moves Team Progress into the wide column when Team Status is not allowed', async () => {
-    const { fixture } = await setup({ ...TEAM_CAPS, canViewPeopleStatus: false });
-    expect(el(fixture, '#my-team-widget-teamStatus')).toBeNull();
-    expect(el(fixture, '[data-testid="my-team-main"] #my-team-widget-teamProgress')).toBeTruthy();
-    expect(fixture.nativeElement.querySelectorAll('app-team-progress-card').length).toBe(1);
+  it('shows_empty_state_when_no_team_widgets', async () => {
+    const ctx = setup(boot({ hasAllowedGatedWidgets: false }));
+    await ready(ctx.fixture);
+    expect(q(ctx.el, 'my-team-empty')).not.toBeNull();
+    expect(ctx.el.textContent).toContain('No team to show yet');
+    expect(q(ctx.el, 'my-team-retry')).toBeNull();
   });
 
-  it('shows the empty state to an approver-only viewer, whose only card (Action Center) lives on My Work', async () => {
-    const { fixture } = await setup({ ...TEAM_CAPS, canViewPeopleStatus: false, leadsWork: false });
-    expect(el(fixture, '[data-testid="my-team-empty"]')).toBeTruthy();
-    expect(el(fixture, 'app-action-center-card')).toBeNull();
+  it('shows_retry_state_when_capabilities_unavailable', async () => {
+    const ctx = setup(boot({ hasAllowedGatedWidgets: false, capabilitiesUnavailable: true }));
+    await ready(ctx.fixture);
+    expect(q(ctx.el, 'my-team-retry')).not.toBeNull();
+    expect(ctx.el.textContent).toContain("Couldn't load your team");
+    expect(q(ctx.el, 'my-team-empty')).toBeNull();
   });
 
-  it('shows an empty state, but keeps Quick Actions, for a viewer without a team', async () => {
-    const { fixture } = await setup({ ...TEAM_CAPS, isAvailable: false });
-    expect(el(fixture, '[data-testid="my-team-empty"]')).toBeTruthy();
-    expect(el(fixture, 'app-quick-actions-card')).toBeTruthy();
-    expect(el(fixture, 'app-team-status-card, app-team-progress-card')).toBeNull();
-  });
-
-  it('shows a loader until capabilities arrive', async () => {
-    const { fixture } = await setup(null, { loaded: false });
-    expect(el(fixture, 'app-loader')).toBeTruthy();
-    expect(el(fixture, 'app-team-status-card')).toBeNull();
-  });
-
-  it('offers a retry when capabilities fail to load', async () => {
-    const { fixture, loadCapabilities } = await setup(null, { error: 'Failed to load My Team capabilities.' });
-    (el(fixture, '[data-testid="my-team-retry"]') as HTMLButtonElement).click();
-    expect(loadCapabilities).toHaveBeenCalledTimes(2);
+  it('retry_reloads', async () => {
+    const ctx = setup(boot({ hasAllowedGatedWidgets: false, capabilitiesUnavailable: true }));
+    await ready(ctx.fixture);
+    const before = ctx.api.listMine.mock.calls.length;
+    const capsBefore = ctx.loadCapabilities.mock.calls.length;
+    q(ctx.el, 'my-team-retry')!.click();
+    await ready(ctx.fixture);
+    expect(ctx.api.listMine.mock.calls.length).toBe(before + 1);
+    expect(ctx.loadCapabilities.mock.calls.length).toBe(capsBefore + 1);
   });
 });

@@ -10,8 +10,8 @@
   background: #cbd5e1;
 }
 
-.team-progress-segment--overdue {
-  background: var(--color-danger);
+.team-progress-segment--untasked {
+  background: #fcd34d;
 }
 
 /* Popped out: pie + legend + rates share one row, so the module list starts higher. */

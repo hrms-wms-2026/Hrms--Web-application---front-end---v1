@@ -25,7 +25,7 @@ function actionItems(sources: Partial<TeamActionItemsResponse['sources'][number]
 }
 
 function led(overdueTasks: LedWorkProgressResponse['overdueTasks'], overdueTotal = overdueTasks.length): LedWorkProgressResponse {
-  return { totals: { total: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: overdueTotal }, projects: [], overdueTasks, overdueTotal };
+  return { hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0, projects: [], overdueTasks, overdueTotal };
 }
 
 const task = (id: string, days: number, assignee = 'e1') => ({

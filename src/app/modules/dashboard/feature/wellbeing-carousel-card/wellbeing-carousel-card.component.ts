@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { FocusStatusApiService } from '../../data-access/focus-status-api.service';
 import { FocusStatus } from '../../models/focus-status.model';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 
 export type WellbeingCardKind = 'reminder' | 'hydration' | 'posture' | 'eye-rest' | 'stretch';
 
@@ -44,6 +45,13 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   private readonly timeTrackingStore = inject(TimeTrackingStore);
 
   private readonly focusStatus = signal<FocusStatus | null>(null);
+  /** Inside a dashboard frame the first status comes from the bootstrap and polls go through the widget
+   * context; outside one (or when that data isn't available, or a refresh fails) the card calls its own
+   * API as before - whose failure still means "tips only". */
+  private readonly feed = injectWidgetDataFeed<FocusStatus>({
+    apply: (status) => this.applyFocusStatus(status),
+    fetch: () => this.refreshFocusStatus()
+  });
   protected readonly currentIndex = signal(0);
   protected readonly actionLoading = this.timeTrackingStore.actionLoading;
 
@@ -91,8 +99,8 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.refreshFocusStatus();
-    this.focusStatusPollId = setInterval(() => this.refreshFocusStatus(), FOCUS_STATUS_POLL_MS);
+    this.feed.start();
+    this.focusStatusPollId = setInterval(() => this.feed.reload(), FOCUS_STATUS_POLL_MS);
     // Respect prefers-reduced-motion: don't auto-advance a rotating carousel for employees who
     // asked the OS not to animate content changes on their behalf. Manual prev/next/dots still work.
     if (!prefersReducedMotion()) {
@@ -140,17 +148,19 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
 
   private refreshFocusStatus(): void {
     this.focusStatusApi.getMyFocusStatus().subscribe({
-      next: (status) => {
-        this.focusStatus.set(status);
-        // Jump straight to the reminder card the moment it becomes due, so it isn't missed
-        // mid-rotation - the reminder is always inserted at index 0 in `cards`.
-        if (status.isBreakReminderDue && !this.wasBreakReminderDue) {
-          this.currentIndex.set(0);
-        }
-        this.wasBreakReminderDue = status.isBreakReminderDue;
-      },
+      next: (status) => this.applyFocusStatus(status),
       error: () => this.focusStatus.set(null)
     });
+  }
+
+  private applyFocusStatus(status: FocusStatus): void {
+    this.focusStatus.set(status);
+    // Jump straight to the reminder card the moment it becomes due, so it isn't missed
+    // mid-rotation - the reminder is always inserted at index 0 in `cards`.
+    if (status.isBreakReminderDue && !this.wasBreakReminderDue) {
+      this.currentIndex.set(0);
+    }
+    this.wasBreakReminderDue = status.isBreakReminderDue;
   }
 }
 

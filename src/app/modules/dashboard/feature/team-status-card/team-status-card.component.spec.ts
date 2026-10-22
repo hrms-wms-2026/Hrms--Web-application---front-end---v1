@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.service';
 import { TeamTodayMember, TeamTodayResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
+import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamStatusCardComponent } from './team-status-card.component';
 
 function member(overrides: Partial<TeamTodayMember> = {}): TeamTodayMember {
@@ -303,5 +304,83 @@ describe('TeamStatusCardComponent', () => {
 
     await vi.advanceTimersByTimeAsync(120_000);
     expect(getTeamToday).toHaveBeenCalledTimes(1);
+  });
+  describe('inside a dashboard frame', () => {
+    async function setupInFrame(widget: ReturnType<typeof fakeWidgetData>, result: TeamTodayResponse | 'error') {
+      const getTeamToday = vi.fn(() => (result === 'error' ? throwError(() => new Error('network error')) : of(result)));
+      navigate = vi.fn();
+      await TestBed.configureTestingModule({
+        imports: [TeamStatusCardComponent],
+        providers: [
+          MyTeamTodayStore,
+          { provide: MyTeamTodayApiService, useValue: { getTeamToday } },
+          { provide: Router, useValue: { navigate } },
+          widget.provider
+        ]
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TeamStatusCardComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return { fixture, getTeamToday, store: TestBed.inject(MyTeamTodayStore) };
+    }
+
+    it('uses_bootstrap_payload_without_calling_its_api', async () => {
+      const payload = response([member({ displayName: 'Bootstrap Bea' })]);
+      const widget = fakeWidgetData('success', payload);
+      const { fixture, getTeamToday, store } = await setupInFrame(widget, response([]));
+
+      expect(getTeamToday).not.toHaveBeenCalled();
+      expect(widget.refresh).not.toHaveBeenCalled();
+      expect(store.data()).toEqual(payload);
+      expect(store.loadedAt()).toBeInstanceOf(Date);
+      expect(fixture.nativeElement.querySelector('[data-testid="team-stat-present"]')!.textContent!.trim()).toBe('1');
+    });
+
+    it('falls_back_to_own_api_outside_dashboard', async () => {
+      const { getTeamToday, fixture } = await setup(response([member()]));
+      expect(getTeamToday).toHaveBeenCalledOnce();
+      expect(fixture.nativeElement.querySelector('[data-testid="team-stat-present"]')!.textContent!.trim()).toBe('1');
+    });
+
+    it('falls back to its own api, with its own error state, when the bootstrap state is an error', async () => {
+      const { fixture, getTeamToday } = await setupInFrame(fakeWidgetData('error'), 'error');
+      expect(getTeamToday).toHaveBeenCalledOnce();
+      expect(fixture.nativeElement.textContent).toContain("Couldn't load team status");
+    });
+
+    it('polls through the widget context every 60 seconds and feeds the result into the store', async () => {
+      vi.useFakeTimers();
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+      const widget = fakeWidgetData('success', response([member()]));
+      const { fixture, getTeamToday, store } = await setupInFrame(widget, response([]));
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(widget.refresh).toHaveBeenCalledOnce();
+      expect(getTeamToday).not.toHaveBeenCalled();
+      expect(store.loading()).toBe(true);
+
+      const next = response([member(), member({ employeeId: 'emp-2' })]);
+      widget.resolve(next);
+      fixture.detectChanges();
+      expect(store.data()).toEqual(next);
+      expect(store.loading()).toBe(false);
+    });
+
+    it('falls back to its own api when a context refresh fails', async () => {
+      vi.useFakeTimers();
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+      const widget = fakeWidgetData('success', response([member()]));
+      const next = response([member(), member({ employeeId: 'emp-3' })]);
+      const { fixture, getTeamToday, store } = await setupInFrame(widget, next);
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      widget.fail();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(getTeamToday).toHaveBeenCalledOnce();
+      expect(store.data()).toEqual(next);
+    });
   });
 });
