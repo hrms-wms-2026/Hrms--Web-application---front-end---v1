@@ -2,11 +2,17 @@ import { Component, input, output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MyTeamLedProgressApiService } from '../../data-access/my-team-led-progress-api.service';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
-import { LedEmployeeProgress, LedEmployeeProgressPage, LedPeriodProgress, LedProgressPeriod } from '../../models/team-progress-detail.model';
+import {
+  LedEmployeeProgress,
+  LedEmployeeProgressPage,
+  LedPeriodProgress,
+  LedProgressPeriod,
+  LedWeeklyCompletion
+} from '../../models/team-progress-detail.model';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
@@ -72,13 +78,28 @@ const periodPayload = (period: 'week' | 'month', extra: Partial<LedPeriodProgres
   ...extra
 });
 
+const weeklyPayload = (extra: Partial<LedWeeklyCompletion> = {}): LedWeeklyCompletion => ({
+  weeks: Array.from({ length: 10 }, (_, i) => ({
+    weekStart: `2026-08-${String(10 + i).padStart(2, '0')}`,
+    weekEnd: `2026-08-${String(16 + i).padStart(2, '0')}`,
+    completedHours: i * 2,
+    completedTaskCount: i
+  })),
+  allocatedHours: 300,
+  undatedCompletedHours: 0,
+  undatedCompletedTaskCount: 0,
+  ...extra
+});
+
 describe('TeamProgressCardComponent', () => {
   let navigate: ReturnType<typeof vi.fn>;
   let getEmployees: ReturnType<typeof vi.fn>;
   let getPeriodProgress: ReturnType<typeof vi.fn>;
+  let getWeeklyCompletion: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getEmployees = vi.fn(() => of(employeePage([])));
+    getWeeklyCompletion = vi.fn(() => of(weeklyPayload()));
     getPeriodProgress = vi.fn((period: 'week' | 'month') => of(periodPayload(period)));
     try {
       localStorage.removeItem(TEAM_PROGRESS_PERIOD_STORAGE_KEY);
@@ -114,7 +135,7 @@ describe('TeamProgressCardComponent', () => {
         MyTeamLedProgressStore,
         { provide: MyTeamLedProgressApiService, useValue: { getLedProgress } },
         { provide: Router, useValue: { navigate } },
-        { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress } }
+        { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress, getWeeklyCompletion } }
       ]
     })
       .overrideComponent(TeamProgressCardComponent, STUB_DIALOG)
@@ -237,10 +258,10 @@ describe('TeamProgressCardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain("Couldn't load team progress");
   });
 
-  it('starts in the compact layout when ResizeObserver is not available', async () => {
+  it('starts in the small layout when ResizeObserver is not available', async () => {
     vi.stubGlobal('ResizeObserver', undefined);
     const fixture = await setup(response([module('o1', 'Payments', hours(200, 40, 30, 70))]));
-    expect(layoutMode(fixture)).toBe('compact');
+    expect(layoutMode(fixture)).toBe('small');
     expect(fixture.nativeElement.querySelector('[data-testid="team-progress-donut"]')).not.toBeNull();
   });
 
@@ -292,26 +313,40 @@ describe('TeamProgressCardComponent', () => {
       expect(FakeResizeObserver.instances[0].observed).toEqual([fixture.nativeElement]);
     });
 
+    const LEGEND = ['completed', 'in-progress', 'not-started', 'untasked'];
     const cases: [string, number, number, string, string[], string[]][] = [
-      ['4x4', 430, 420, 'compact',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion'],
-        ['team-progress-metrics', 'team-progress-modules']],
-      ['mobile', 320, 420, 'compact', ['team-progress-donut', 'team-progress-legend'], ['team-progress-modules']],
-      ['6x4', 650, 420, 'medium',
-        ['team-progress-total', 'team-progress-status-bar', 'team-progress-tiles'],
+      ['3x3', 315, 312, 'xs',
+        ['team-progress-donut', 'team-progress-completion'],
+        ['team-progress-legend', 'team-progress-metrics', 'team-progress-modules', 'team-progress-view-details', 'team-progress-period']],
+      ['3x4', 315, 420, 'xs', ['team-progress-donut', 'team-progress-legend'], ['team-progress-metrics', 'team-progress-period']],
+      ['3x5', 315, 528, 'xs',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-view-details'],
+        ['team-progress-modules']],
+      ['4x3', 424, 312, 'small',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion', 'team-progress-metrics', 'team-progress-period'],
+        ['team-progress-modules', 'team-progress-view-details', 'team-progress-weekly']],
+      ['4x5', 424, 528, 'small', ['team-progress-donut', 'team-progress-legend', 'team-progress-view-details'], ['team-progress-modules']],
+      ['6x3', 642, 312, 'wide', ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics'], ['team-progress-modules']],
+      ['6x4', 642, 420, 'medium',
+        ['team-progress-total', 'team-progress-status-bar', 'team-progress-tiles', 'team-progress-metrics', 'team-progress-view-details'],
         ['team-progress-donut', 'team-progress-modules']],
-      ['8x4', 900, 420, 'wide',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics'],
-        ['team-progress-modules', 'team-progress-overdue']],
-      ['12x4', 1300, 420, 'wide', ['team-progress-donut', 'team-progress-metrics'], ['team-progress-projects']],
-      ['4x6', 450, 636, 'tall',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-modules', 'team-progress-view-details'],
-        ['team-progress-metrics', 'team-progress-projects']],
-      ['8x6', 900, 636, 'large',
+      ['6x5', 642, 528, 'medium',
+        ['team-progress-status-bar', 'team-progress-tiles', 'team-progress-modules', 'team-progress-overdue'],
+        ['team-progress-donut', 'team-progress-view-details']],
+      ['8x4', 860, 420, 'wide',
         ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-modules', 'team-progress-overdue'],
-        ['team-progress-projects']],
-      ['12x8', 1300, 852, 'maximum',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-projects', 'team-progress-modules', 'team-progress-overdue'],
+        ['team-progress-weekly', 'team-progress-top-members']],
+      ['12x4', 1296, 420, 'wide', ['team-progress-donut', 'team-progress-metrics'], ['team-progress-projects', 'team-progress-weekly']],
+      ['4x6', 424, 636, 'tall',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-weekly', 'team-progress-view-details'],
+        ['team-progress-metrics', 'team-progress-projects']],
+      ['mobile', 343, 636, 'tall', ['team-progress-donut', 'team-progress-legend', 'team-progress-weekly'], ['team-progress-metrics']],
+      ['4x8', 424, 852, 'tall', ['team-progress-weekly', 'team-progress-modules', 'team-progress-view-details'], ['team-progress-metrics']],
+      ['8x6', 860, 636, 'large',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-weekly', 'team-progress-modules', 'team-progress-overdue'],
+        ['team-progress-projects', 'team-progress-view-details']],
+      ['12x8', 1296, 852, 'maximum',
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-weekly', 'team-progress-projects', 'team-progress-modules', 'team-progress-overdue'],
         ['team-progress-status-bar']]
     ];
 
@@ -322,14 +357,25 @@ describe('TeamProgressCardComponent', () => {
         expect(layoutMode(fixture)).toBe(mode);
         for (const id of present) expect(has(fixture, id), `${id} should be shown`).toBe(true);
         for (const id of absent) expect(has(fixture, id), `${id} should be hidden`).toBe(false);
-        // Every status is listed with hours and a share in every layout.
-        for (const key of ['completed', 'in-progress', 'not-started', 'untasked']) {
-          expect(text(fixture, `team-progress-legend-${key}`)).toMatch(/ h$/);
-          expect(text(fixture, `team-progress-legend-${key}-percent`)).toMatch(/%\)?$/);
+        // Every status is listed with hours and a share wherever a legend or status tiles show.
+        if (has(fixture, 'team-progress-legend') || has(fixture, 'team-progress-tiles')) {
+          for (const key of LEGEND) {
+            expect(text(fixture, `team-progress-legend-${key}`)).toMatch(/ h$/);
+            expect(text(fixture, `team-progress-legend-${key}-percent`)).toMatch(/%\)?$/);
+          }
         }
         expect(text(fixture, 'team-progress-completion')).toBe('30%');
       });
     }
+
+    it('keeps the donut centre text at one fixed size in every view', async () => {
+      const fixture = await setup(sample());
+      for (const [w, h] of [[315, 312], [424, 312], [860, 420], [424, 636], [860, 636], [1296, 852]]) {
+        resize(fixture, w, h);
+        const center = fixture.nativeElement.querySelector('[data-testid="team-progress-total"] span') as HTMLElement;
+        expect(center.style.fontSize).toBe('16px');
+      }
+    });
 
     it('shows three metric tiles in the wide layout and four from 1000px', async () => {
       const fixture = await setup(sample());
@@ -367,9 +413,9 @@ describe('TeamProgressCardComponent', () => {
       expect(getEmployees).toHaveBeenCalledOnce();
       expect(getEmployees).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 5, sort: 'totalHours', direction: 'desc' });
       fixture.detectChanges();
-      // Zero-hour people are left out; the panel replaces overdue tasks in the large layout.
+      // Zero-hour people are left out; the panel sits beside the weekly chart.
       expect(fixture.nativeElement.querySelectorAll('[data-testid="team-progress-top-member"]').length).toBe(1);
-      expect(has(fixture, 'team-progress-overdue')).toBe(false);
+      expect(has(fixture, 'team-progress-weekly')).toBe(true);
 
       resize(fixture, 1300, 852);
       resize(fixture, 900, 636);
@@ -401,6 +447,40 @@ describe('TeamProgressCardComponent', () => {
       expect(has(fixture, 'team-progress-overdue')).toBe(true);
     });
 
+    it('2x2 shows the mini view: a small donut beside the completion figure, no period switch', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 206, 204);
+      expect(layoutMode(fixture)).toBe('mini');
+      expect(has(fixture, 'team-progress-mini')).toBe(true);
+      expect(fixture.nativeElement.querySelector('[data-testid="team-progress-mini"] [data-testid="team-progress-donut"]')).not.toBeNull();
+      expect(has(fixture, 'team-progress-period')).toBe(false);
+      expect(has(fixture, 'team-progress-legend')).toBe(false);
+      expect(text(fixture, 'team-progress-completion')).toBe('30%');
+
+      expect(has(fixture, 'team-progress-status-bar')).toBe(false);
+
+      // Stretched sideways, the stacked status bar and a one-line legend with every status's hours.
+      resize(fixture, 860, 204);
+      expect(layoutMode(fixture)).toBe('mini');
+      expect(has(fixture, 'team-progress-status-bar')).toBe(true);
+      for (const key of ['completed', 'in-progress', 'not-started', 'untasked']) {
+        expect(text(fixture, `team-progress-legend-${key}`)).toMatch(/ h$/);
+      }
+    });
+
+    it('a 2-column card with height keeps the donut (xs), its legend without the share column', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 282, 420);
+      expect(layoutMode(fixture)).toBe('xs');
+      expect(has(fixture, 'team-progress-donut')).toBe(true);
+      expect(has(fixture, 'team-progress-mini')).toBe(false);
+      const body = fixture.nativeElement.querySelector('[data-testid="team-progress-layout"]') as HTMLElement;
+      expect(body.classList).toContain('tp-body--narrow');
+
+      resize(fixture, 424, 420);
+      expect(body.classList).not.toContain('tp-body--narrow');
+    });
+
     it('never fetches because of a size change', async () => {
       const { fixture, getLedProgress } = await setupWithApi(sample());
       expect(getLedProgress).toHaveBeenCalledTimes(1);
@@ -429,7 +509,7 @@ describe('TeamProgressCardComponent', () => {
     it('shows only the rows that fit and a "+N more" link that opens the dialog', async () => {
       const many = Array.from({ length: 12 }, (_, i) => module(`m${i}`, `Module ${i}`, hours(10, i % 10, 0, 0)));
       const fixture = await setup(response(many));
-      resize(fixture, 450, 636);
+      resize(fixture, 450, 852);
       const shown = fixture.nativeElement.querySelectorAll('[data-testid="team-progress-module"]').length;
       expect(shown).toBeGreaterThan(0);
       expect(shown).toBeLessThan(12);
@@ -439,7 +519,7 @@ describe('TeamProgressCardComponent', () => {
       fixture.detectChanges();
       expect(dialog(fixture).open()).toBe(true);
 
-      resize(fixture, 450, 852);
+      resize(fixture, 450, 1100);
       expect(fixture.nativeElement.querySelectorAll('[data-testid="team-progress-module"]').length).toBeGreaterThan(shown);
     });
 
@@ -474,6 +554,81 @@ describe('TeamProgressCardComponent', () => {
       (fixture.nativeElement.querySelector('[data-testid="team-progress-overdue"] button') as HTMLButtonElement).click();
       expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'o1', 'board'], {
         queryParams: { highlightTaskId: 't1' }
+      });
+    });
+
+    describe('weekly completion', () => {
+      it('is fetched only in the tall, large and maximum views, once per data load', async () => {
+        const fixture = await setup(sample());
+        for (const [w, h] of [[315, 312], [424, 312], [642, 420], [860, 420]]) resize(fixture, w, h);
+        expect(getWeeklyCompletion).not.toHaveBeenCalled();
+
+        resize(fixture, 424, 636);
+        expect(getWeeklyCompletion).toHaveBeenCalledOnce();
+        expect(getWeeklyCompletion).toHaveBeenCalledWith(10);
+        expect(text(fixture, 'team-progress-weekly')).toContain('Weekly completion · last 10 weeks');
+        expect(fixture.nativeElement.querySelectorAll('[data-testid="weekly-completion-bar"]').length).toBe(10);
+
+        // Resizing between (and out of and back into) the weekly views never refetches.
+        resize(fixture, 860, 636);
+        resize(fixture, 1296, 852);
+        resize(fixture, 424, 312);
+        resize(fixture, 424, 636);
+        expect(getWeeklyCompletion).toHaveBeenCalledOnce();
+      });
+
+      it('is not tied to the period switch', async () => {
+        const fixture = await setup(sample());
+        resize(fixture, 860, 636);
+        fixture.componentInstance.setPeriod('week');
+        fixture.detectChanges();
+        fixture.componentInstance.setPeriod('month');
+        fixture.detectChanges();
+        expect(getWeeklyCompletion).toHaveBeenCalledOnce();
+      });
+
+      it('reloads with a refresh', async () => {
+        const { fixture, getLedProgress } = await setupWithApi(sample());
+        resize(fixture, 424, 636);
+        (fixture.nativeElement.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(getLedProgress).toHaveBeenCalledTimes(2);
+        expect(getWeeklyCompletion).toHaveBeenCalledTimes(2);
+      });
+
+      it('shows a skeleton while loading', async () => {
+        const pending = new Subject<LedWeeklyCompletion>();
+        getWeeklyCompletion = vi.fn(() => pending.asObservable());
+        const fixture = await setup(sample());
+        resize(fixture, 424, 636);
+        expect(has(fixture, 'team-progress-weekly-loading')).toBe(true);
+        pending.next(weeklyPayload());
+        fixture.detectChanges();
+        expect(has(fixture, 'team-progress-weekly-loading')).toBe(false);
+        expect(has(fixture, 'weekly-completion-chart')).toBe(true);
+      });
+
+      it('notes completed hours without a date', async () => {
+        getWeeklyCompletion = vi.fn(() => of(weeklyPayload({ undatedCompletedHours: 12.5, undatedCompletedTaskCount: 3 })));
+        const fixture = await setup(sample());
+        resize(fixture, 860, 636);
+        expect(text(fixture, 'team-progress-weekly-undated')).toBe('12.5 h completed without a date');
+      });
+
+      it('has no footnote when every completed task has a date', async () => {
+        const fixture = await setup(sample());
+        resize(fixture, 860, 636);
+        expect(has(fixture, 'team-progress-weekly-undated')).toBe(false);
+      });
+
+      it('hides the section on failure and gives its space to the lists', async () => {
+        getWeeklyCompletion = vi.fn(() => throwError(() => new Error('404')));
+        const fixture = await setup(sample());
+        resize(fixture, 424, 636);
+        expect(has(fixture, 'team-progress-weekly')).toBe(false);
+        expect(has(fixture, 'team-progress-modules')).toBe(true);
+        expect(has(fixture, 'team-progress-view-details')).toBe(true);
       });
     });
 
@@ -596,7 +751,7 @@ describe('TeamProgressCardComponent', () => {
           MyTeamLedProgressStore,
           { provide: MyTeamLedProgressApiService, useValue: { getLedProgress } },
           { provide: Router, useValue: { navigate } },
-          { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress } },
+          { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress, getWeeklyCompletion } },
           widget.provider
         ]
       })

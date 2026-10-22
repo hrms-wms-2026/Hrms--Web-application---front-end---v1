@@ -3,7 +3,8 @@ import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
-import { LedEmployeeProgress, LedPeriodProgress, LedProgressPeriod } from '../../models/team-progress-detail.model';
+import { LedEmployeeProgress, LedPeriodProgress, LedProgressPeriod, LedWeeklyCompletion } from '../../models/team-progress-detail.model';
+import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
 import { Router } from '@angular/router';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
@@ -17,7 +18,12 @@ import {
   formatPercent,
   percentOf
 } from '../../utils/team-progress-format.util';
-import { TeamProgressMode, resolveTeamProgressMode, teamProgressListBudget } from '../../utils/team-progress-layout.util';
+import {
+  TeamProgressMode,
+  TeamProgressPlan,
+  planTeamProgressLayout,
+  resolveTeamProgressMode
+} from '../../utils/team-progress-layout.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -149,18 +155,30 @@ function storePeriod(period: LedProgressPeriod): void {
   }
 }
 
+/** Views that show the weekly completion chart. */
+const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['tall', 'large', 'maximum']);
+
+const EMPTY_PLAN: TeamProgressPlan = { miniLegend: 'none', legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0 };
+
 /**
  * Team Progress: the estimated-hours (task estimate weightage, not time worked) picture of the
- * modules the viewer leads. The card picks one of six layouts from its own rendered size (see
- * team-progress-layout.util) and every layout fills the card: the donut and type scale with the
- * space through container query units. Resizing only re-lays out what is loaded, it never fetches.
+ * modules the viewer leads. The card picks one of seven views from its own rendered size (see
+ * team-progress-layout.util). Every component keeps one fixed size (the donut is always 128px): a
+ * bigger card shows more sections and list rows, never bigger graphics. Resizing only re-lays out
+ * what is loaded, it never fetches.
  * A period switch (All time / This month / This week) narrows the figures to tasks due in it.
  * The expand button, "View all" and a click anywhere on the card open the detail dialog.
  */
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [NgTemplateOutlet, WidgetCardComponent, PopoutHeaderActionsComponent, TeamProgressDetailDialogComponent],
+  imports: [
+    NgTemplateOutlet,
+    WidgetCardComponent,
+    PopoutHeaderActionsComponent,
+    TeamProgressDetailDialogComponent,
+    WeeklyCompletionChartComponent
+  ],
   templateUrl: './team-progress-card.component.html',
   styleUrl: './team-progress-card.component.css',
   host: { class: 'block h-full' },
@@ -187,12 +205,14 @@ export class TeamProgressCardComponent implements OnInit {
   private frameId: number | null = null;
   private pendingSize: { width: number; height: number } | null = null;
 
-  /** Layout for the card's current size. 'compact' until the first measurement (and without ResizeObserver). */
-  readonly mode = signal<TeamProgressMode>('compact');
-  /** Rows each list shows in the current mode and height; the rest sit behind "+N more". */
-  readonly listBudget = signal(0);
+  /** Layout for the card's current size. 'small' until the first measurement (and without ResizeObserver). */
+  readonly mode = signal<TeamProgressMode>('small');
+  /** Optional sections and list rows the current view has room for. */
+  readonly plan = signal<TeamProgressPlan>(EMPTY_PLAN);
   /** Rendered card width, rounded to 100px steps so it only changes the layout at those steps. */
-  private readonly widthStep = signal(0);
+  protected readonly widthStep = signal(0);
+  /** Placeholder bar heights (%) for the weekly chart skeleton. */
+  protected readonly skeletonBars = [40, 65, 30, 80, 55, 70, 45, 85, 60, 35];
   readonly detailOpen = signal(false);
 
   /** The period switch: 'all' is the bootstrap led-progress payload; week / month use the period endpoint. */
@@ -212,7 +232,55 @@ export class TeamProgressCardComponent implements OnInit {
   private topMembersSub: Subscription | null = null;
   protected readonly topMemberScale = computed(() => Math.max(0, ...this.topMembers().map((m) => m.totalHours)));
 
+  /** Weekly completion (last 10 weeks) for the tall, large and maximum views. Fetched lazily the
+   * first time one of them shows, once per data load (refresh / poll reload it, resizing never does);
+   * not tied to the period switch. A failure hides the section and gives its space to the lists. */
+  private readonly weekly = signal<{ for: LedWorkProgressResponse; payload: LedWeeklyCompletion | null } | null>(null);
+  private weeklyRequestedFor: LedWorkProgressResponse | null = null;
+  private weeklySub: Subscription | null = null;
+
+  /** The weekly payload for the current data load; null while loading or after a failure. */
+  protected readonly weeklyData = computed(() => {
+    const w = this.weekly();
+    return w && w.for === this.store.data() ? w.payload : null;
+  });
+
+  /** 'loading' until the current load's weekly payload lands, 'ready' with it, 'hidden' on failure.
+   * A reload keeps showing the previous load's chart until the new one lands. */
+  protected readonly weeklyState = computed<'loading' | 'ready' | 'hidden'>(() => {
+    const w = this.weekly();
+    if (!w) return 'loading';
+    if (w.for !== this.store.data()) return w.payload ? 'ready' : 'loading';
+    return w.payload ? 'ready' : 'hidden';
+  });
+
+  /** The chart's payload: the current load's, else the previous one while a reload is in flight. */
+  protected readonly weeklyShown = computed(() => this.weekly()?.payload ?? null);
+
+  protected readonly undatedText = computed(() => {
+    const undated = this.weeklyShown()?.undatedCompletedHours ?? 0;
+    return undated > 0 ? `${formatHourValue(undated)} h completed without a date` : '';
+  });
+
   constructor() {
+    effect(() => {
+      const mode = this.mode();
+      const data = this.store.data();
+      if (!WEEKLY_MODES.has(mode) || !data || this.weeklyRequestedFor === data) return;
+      this.weeklyRequestedFor = data;
+      untracked(() => {
+        this.weeklySub?.unsubscribe();
+        this.weeklySub = this.detailApi
+          .getWeeklyCompletion(10)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (payload) => this.weekly.set({ for: data, payload }),
+            // Optional extra: on failure the section is hidden and the lists take its space.
+            error: () => this.weekly.set({ for: data, payload: null })
+          });
+      });
+    });
+
     effect(() => {
       const period = this.period();
       const data = this.store.data();
@@ -328,8 +396,11 @@ export class TeamProgressCardComponent implements OnInit {
     return `${formatHourValue(total)} h`;
   });
 
-  /** Centre number size in cqw of the donut, so a long total still fits inside the ring. */
-  protected readonly totalFontCqw = computed(() => Math.min(13, 56 / (this.totalText().length * 0.58)));
+  /** Centre number size in px: fixed, one step smaller only for a long total, so it fits the ring. */
+  protected readonly totalFontPx = computed(() => {
+    const length = this.totalText().length;
+    return length <= 8 ? 16 : length <= 10 ? 14 : 12;
+  });
 
   protected readonly donutLabel = computed(() => {
     if (!this.store.data()) return '';
@@ -388,14 +459,34 @@ export class TeamProgressCardComponent implements OnInit {
     return this.period() === 'all' ? [tiles[0], tiles[1], tiles[3]] : [tiles[0], tiles[2], tiles[1]];
   });
 
-  /** The maximum layout adds overdue tasks (not period-bound) as a fifth tile. */
-  protected readonly maximumTiles = computed<MetricTile[]>(() => {
-    const data = this.store.data();
-    const tiles = this.metricTiles();
-    if (!data || tiles.length === 0) return tiles;
-    const overdue = data.overdueTotal;
-    return [...tiles, { key: 'overdue', value: String(overdue), label: 'Overdue tasks', tone: overdue > 0 ? 'rose' : 'gray' }];
+  private readonly overdueTile = computed<MetricTile>(() => {
+    const overdue = this.store.data()?.overdueTotal ?? 0;
+    return { key: 'overdue', value: String(overdue), label: 'Overdue tasks', tone: overdue > 0 ? 'rose' : 'gray' };
   });
+
+  /** The maximum layout adds overdue tasks (not period-bound) and the led module count: six tiles, 3 x 2. */
+  protected readonly maximumTiles = computed<MetricTile[]>(() => {
+    const tiles = this.metricTiles();
+    if (tiles.length === 0) return tiles;
+    const modules = this.ledModuleCount();
+    return [
+      ...tiles,
+      this.overdueTile(),
+      { key: 'modules', value: String(modules), label: modules === 1 ? 'Led module' : 'Led modules', tone: 'gray' }
+    ];
+  });
+
+  /** Extra tiles of the xs, small and medium views, which already show the completion figure: the
+   * other metric tiles plus overdue tasks, two per row (four per row in medium). */
+  protected readonly extraTiles = computed<MetricTile[]>(() => {
+    const tiles = this.metricTiles();
+    if (tiles.length === 0) return tiles;
+    return [...tiles.slice(1), this.overdueTile()];
+  });
+
+  protected readonly visibleExtraTiles = computed(() =>
+    this.extraTiles().slice(0, this.plan().tileRows * (this.mode() === 'medium' ? 4 : 2))
+  );
 
   /** Over-tasked / unestimated notes only make sense against the allocation (All time). */
   protected readonly showNotes = computed(() => {
@@ -455,11 +546,17 @@ export class TeamProgressCardComponent implements OnInit {
     })
   );
 
-  /** The over-tasked / unestimated note takes about one list row; give it back from the lists. */
+  /** List rows in the current view: the plan's rows, plus the weekly panel's space when it is hidden,
+   * minus one for the over-tasked / unestimated note. */
   private readonly effectiveBudget = computed(() => {
-    const budget = this.listBudget();
-    return budget > 1 && this.showNotes() ? budget - 1 : budget;
+    const plan = this.plan();
+    let budget = plan.listRows + (this.weeklyState() === 'hidden' ? plan.weeklyFallbackRows : 0);
+    if (budget > 1 && this.showNotes()) budget--;
+    return budget;
   });
+
+  /** Whether the current view has room for list panels. */
+  protected readonly showLists = computed(() => this.effectiveBudget() > 0);
 
   protected readonly visibleModules = computed(() => this.moduleRows().slice(0, this.effectiveBudget()));
   protected readonly hiddenModuleCount = computed(() => this.moduleRows().length - this.visibleModules().length);
@@ -469,11 +566,8 @@ export class TeamProgressCardComponent implements OnInit {
   protected readonly hiddenOverdueCount = computed(() =>
     Math.max(0, (this.store.data()?.overdueTotal ?? 0) - this.visibleOverdue().length)
   );
-  /** Maximum layout columns: projects, modules, overdue tasks (when there are any) and top members (when loaded). */
-  protected readonly maximumPanelCount = computed(
-    () => 2 + Number((this.store.data()?.overdueTotal ?? 0) > 0) + Number(this.topMembers().length > 0)
-  );
-  protected readonly visibleMembers = computed(() => this.topMembers().slice(0, Math.max(1, this.effectiveBudget())));
+  /** Maximum layout list columns: projects, modules and overdue tasks (when there are any). */
+  protected readonly maximumPanelCount = computed(() => 2 + Number((this.store.data()?.overdueTotal ?? 0) > 0));
 
   ngOnInit(): void {
     this.feed.start();
@@ -554,8 +648,8 @@ export class TeamProgressCardComponent implements OnInit {
     const widthStep = Math.floor(size.width / 100) * 100;
     if (widthStep !== this.widthStep()) this.widthStep.set(widthStep);
     if (!(size.height > 0)) return;
-    const budget = teamProgressListBudget(mode, size.height);
-    if (budget !== this.listBudget()) this.listBudget.set(budget);
+    const plan = planTeamProgressLayout(mode, size.width, size.height);
+    if (!samePlan(plan, this.plan())) this.plan.set(plan);
   }
 
   private stopObservingSize(): void {
@@ -626,6 +720,17 @@ export class TeamProgressCardComponent implements OnInit {
   assigneeNames(task: LedOverdueTask): string {
     return task.assignees.map((a) => a.displayName).join(', ');
   }
+}
+
+function samePlan(a: TeamProgressPlan, b: TeamProgressPlan): boolean {
+  return (
+    a.miniLegend === b.miniLegend &&
+    a.legend === b.legend &&
+    a.tileRows === b.tileRows &&
+    a.viewDetails === b.viewDetails &&
+    a.listRows === b.listRows &&
+    a.weeklyFallbackRows === b.weeklyFallbackRows
+  );
 }
 
 /** Percentages are taken against the allocation, or the task estimates when nothing is allocated. */

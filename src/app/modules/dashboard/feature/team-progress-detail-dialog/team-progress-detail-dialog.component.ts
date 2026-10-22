@@ -16,17 +16,10 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { Observable, Subject, catchError, debounceTime, map, of, switchMap, tap } from 'rxjs';
-import {
-  DataTableCellDirective,
-  DataTableColumn,
-  DataTableComponent
-} from '../../../../shared/ui/data-table/data-table.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
-import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
-import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
 import {
   LedHourTotals,
@@ -36,19 +29,14 @@ import {
   LedWorkProgressResponse
 } from '../../models/my-team-led-progress.model';
 import {
-  LedEmployeeProgress,
   LedEmployeeProgressPage,
   LedEmployeeQuery,
-  LedEmployeeSort,
   LedPeriodProgress,
   LedProgressPeriod,
-  LedSortDirection,
-  LedTaskPage,
-  LedTaskQuery,
-  LedTaskRow,
-  LedTaskSort,
-  LedTaskStatus
+  LedTaskStatus,
+  LedWeeklyCompletion
 } from '../../models/team-progress-detail.model';
+import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
 import {
   PROGRESS_STATUSES,
   PROGRESS_STATUS_BY_KEY,
@@ -58,20 +46,22 @@ import {
   formatPercent
 } from '../../utils/team-progress-format.util';
 
-export type TeamProgressTab = 'overview' | 'employees' | 'projects' | 'modules' | 'tasks';
-
-export const TEAM_PROGRESS_PAGE_SIZE = 20;
 export const TEAM_PROGRESS_SEARCH_DEBOUNCE_MS = 300;
 /** Rows in the Overview's compact Employee Breakdown. */
 export const TEAM_PROGRESS_OVERVIEW_EMPLOYEES = 5;
-/** Rows in the Overview's "Status by project / module" panel before "View all". */
-const BREAKDOWN_ROWS = 6;
+/** Weeks in the weekly completion chart (current week last). */
+export const TEAM_PROGRESS_WEEKS = 10;
 
 type DatedPeriod = Exclude<LedProgressPeriod, 'all'>;
 
+interface ScopeFilters {
+  projectId?: string;
+  objectiveId?: string;
+}
+
 interface PeriodQuery {
   period: DatedPeriod;
-  filters: { projectId?: string; objectiveId?: string };
+  filters: ScopeFilters;
 }
 
 interface OverviewTile {
@@ -95,31 +85,11 @@ interface OverviewView {
   chartLabel: string;
 }
 
-interface BreakdownRow {
-  id: string;
-  label: string;
-  total: number;
-  /** Bar length relative to the largest row (0-100). */
-  width: number;
-  segments: StatusSegment[];
-  ariaLabel: string;
-}
-
 interface StatusSegment {
   meta: ProgressStatusMeta;
   hours: number;
-  /** Share of the bar scale (0-100). */
+  /** Share of the scale (0-100). */
   percent: number;
-}
-
-interface ModuleRow {
-  objectiveId: string;
-  projectId: string;
-  projectName: string;
-  title: string;
-  depth: number;
-  atRisk: boolean;
-  hours: LedHourTotals;
 }
 
 interface DonutSlice {
@@ -128,13 +98,11 @@ interface DonutSlice {
   offset: number;
 }
 
-/** Status of one server-backed tab. `key` is the query the data belongs to (the per-tab cache). */
+/** Status of one server-backed section. */
 interface RemoteState<T> {
   status: 'idle' | 'loading' | 'ready' | 'error';
   data: T | null;
 }
-
-type TaskStatusFilter = LedTaskStatus | '';
 
 const TASK_STATUS_META: Readonly<Record<LedTaskStatus, ProgressStatusMeta>> = {
   completed: PROGRESS_STATUS_BY_KEY.completed,
@@ -143,26 +111,17 @@ const TASK_STATUS_META: Readonly<Record<LedTaskStatus, ProgressStatusMeta>> = {
 };
 
 /**
- * Team Progress detail: Overview / By Employee / By Project / By Module / Tasks over the caller's led
- * scope. Overview, projects and modules come from the card's summary (filtered client-side); the
- * employee and task tabs page through the server, fetched only while the dialog is open and the tab
- * is showing, and cached per tab until a filter, search, sort or page changes.
+ * Team Progress detail (Overview only) over the caller's led scope: stat tiles, status distribution,
+ * the last 10 weeks of completed task hours, a compact employee breakdown and overdue tasks.
+ * The all-time numbers come from the card's summary (filtered client-side); the period summary,
+ * the weekly chart and the employee breakdown come from the server, fetched only while the dialog
+ * is open and cached until a filter changes (or the card hands in a new summary).
  * Hours are task estimates (weightage), never time worked.
  */
 @Component({
   selector: 'app-team-progress-detail-dialog',
   standalone: true,
-  imports: [
-    DatePipe,
-    ModalComponent,
-    TabsComponent,
-    SelectComponent,
-    InputComponent,
-    DataTableComponent,
-    DataTableCellDirective,
-    EmptyStateComponent,
-    ErrorStateComponent
-  ],
+  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent],
   templateUrl: './team-progress-detail-dialog.component.html',
   styleUrl: './team-progress-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -180,17 +139,7 @@ export class TeamProgressDetailDialogComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly formatHours = formatHourValue;
-  protected readonly formatPercent = formatPercent;
-  protected readonly statuses = PROGRESS_STATUSES;
-  protected readonly pageSize = TEAM_PROGRESS_PAGE_SIZE;
-
-  protected readonly tabs: readonly TabOption[] = [
-    { value: 'overview', label: 'Overview' },
-    { value: 'employees', label: 'By Employee' },
-    { value: 'projects', label: 'By Project' },
-    { value: 'modules', label: 'By Module' },
-    { value: 'tasks', label: 'Task List' }
-  ];
+  protected readonly weekCount = TEAM_PROGRESS_WEEKS;
 
   protected readonly periodOptions: readonly SelectOption[] = [
     { value: 'all', label: 'All time' },
@@ -198,8 +147,6 @@ export class TeamProgressDetailDialogComponent {
     { value: 'week', label: 'This week' }
   ];
 
-  protected readonly activeTab = signal<TeamProgressTab>('overview');
-  protected readonly activeTabLabel = computed(() => this.tabs.find((t) => t.value === this.activeTab())?.label ?? '');
   protected readonly projectFilter = signal('');
   protected readonly moduleFilter = signal('');
 
@@ -209,91 +156,18 @@ export class TeamProgressDetailDialogComponent {
   /** The `period` query param: omitted for All time so the backend keeps its default. */
   private readonly periodParam = computed<LedProgressPeriod | undefined>(() => (this.period() === 'all' ? undefined : this.period()));
 
-  // ---- Overview: compact Employee Breakdown (server, top 5) ----
+  // ---- Employee Breakdown (server, top 5) ----
   protected readonly overviewEmployeeSearchText = signal('');
   private readonly overviewEmployeeSearch = signal('');
   /** Pages reset to 1 whenever the period changes (linkedSignal), in the same change as the period. */
   protected readonly overviewEmployeePage = linkedSignal({ source: this.period, computation: () => 1 });
   protected readonly overviewEmployees = signal<RemoteState<LedEmployeeProgressPage>>({ status: 'idle', data: null });
 
-  // ---- Overview: period summary (server, week / month only) ----
+  // ---- Period summary (server, week / month only) ----
   protected readonly periodSummary = signal<RemoteState<LedPeriodProgress>>({ status: 'idle', data: null });
 
-  // ---- By Employee (server) ----
-  protected readonly employeeSearchText = signal('');
-  private readonly employeeSearch = signal('');
-  protected readonly employeeSort = signal<LedEmployeeSort>('totalHours');
-  protected readonly employeeDir = signal<LedSortDirection>('desc');
-  protected readonly employeePage = linkedSignal({ source: this.period, computation: () => 1 });
-  protected readonly employees = signal<RemoteState<LedEmployeeProgressPage>>({ status: 'idle', data: null });
-
-  // ---- Tasks (server) ----
-  protected readonly taskSearchText = signal('');
-  private readonly taskSearch = signal('');
-  protected readonly taskStatus = signal<TaskStatusFilter>('');
-  protected readonly taskEmployee = signal<{ id: string; name: string } | null>(null);
-  protected readonly taskSort = signal<LedTaskSort>('estimatedHours');
-  protected readonly taskDir = signal<LedSortDirection>('desc');
-  protected readonly taskPage = linkedSignal({ source: this.period, computation: () => 1 });
-  protected readonly tasks = signal<RemoteState<LedTaskPage>>({ status: 'idle', data: null });
-
-  protected readonly taskStatusChips: readonly { value: TaskStatusFilter; label: string; meta: ProgressStatusMeta | null }[] = [
-    { value: '', label: 'All', meta: null },
-    { value: 'completed', label: 'Completed', meta: TASK_STATUS_META.completed },
-    { value: 'inProgress', label: 'In progress', meta: TASK_STATUS_META.inProgress },
-    { value: 'notStarted', label: 'Not started', meta: TASK_STATUS_META.notStarted }
-  ];
-
-  protected readonly projectColumns: readonly DataTableColumn[] = [
-    { key: 'name', label: 'Project', width: '22%' },
-    { key: 'allocated', label: 'Total weightage', align: 'end' },
-    { key: 'completed', label: 'Completed', align: 'end' },
-    { key: 'inProgress', label: 'In progress', align: 'end' },
-    { key: 'notStarted', label: 'Not started', align: 'end' },
-    { key: 'untasked', label: 'Not yet tasked', align: 'end' },
-    { key: 'completion', label: 'Completion', align: 'end' },
-    { key: 'bar', label: 'Breakdown', width: '16%' }
-  ];
-
-  protected readonly moduleColumns: readonly DataTableColumn[] = [
-    { key: 'name', label: 'Module', width: '26%' },
-    { key: 'allocated', label: 'Total weightage', align: 'end' },
-    { key: 'completed', label: 'Completed', align: 'end' },
-    { key: 'inProgress', label: 'In progress', align: 'end' },
-    { key: 'notStarted', label: 'Not started', align: 'end' },
-    { key: 'untasked', label: 'Not yet tasked', align: 'end' },
-    { key: 'completion', label: 'Completion', align: 'end' },
-    { key: 'bar', label: 'Breakdown', width: '14%' }
-  ];
-
-  protected readonly employeeColumns: readonly DataTableColumn[] = [
-    { key: 'name', label: 'Employee', sortable: true, width: '24%' },
-    { key: 'completedHours', label: 'Completed', sortable: true, align: 'end' },
-    { key: 'inProgressHours', label: 'In progress', sortable: true, align: 'end' },
-    { key: 'notStartedHours', label: 'Not started', sortable: true, align: 'end' },
-    { key: 'totalHours', label: 'Total assigned', sortable: true, align: 'end' },
-    { key: 'shared', label: 'Shared tasks', width: '18%' }
-  ];
-
-  protected readonly taskColumns: readonly DataTableColumn[] = [
-    { key: 'title', label: 'Task', sortable: true, width: '26%' },
-    { key: 'status', label: 'Status', sortable: true, width: '12%' },
-    { key: 'estimatedHours', label: 'Estimate', sortable: true, align: 'end', width: '9%' },
-    { key: 'assignees', label: 'Assignees', wrap: true, width: '17%' },
-    { key: 'project', label: 'Project', width: '12%' },
-    { key: 'module', label: 'Module', width: '13%' },
-    { key: 'dueDate', label: 'Due', sortable: true, width: '11%' }
-  ];
-
-  protected readonly trackProject = (p: LedProjectProgress): string => p.projectId;
-  protected readonly trackModule = (m: ModuleRow): string => m.objectiveId;
-  protected readonly trackEmployee = (e: LedEmployeeProgress): string => e.employeeId;
-  protected readonly trackTask = (t: LedTaskRow): string => t.taskId;
-  protected readonly sortTestId = (key: string): string => `tp-sort-${key}`;
-  protected readonly employeeRowTestId = (e: LedEmployeeProgress): string => `tp-employee-${e.employeeId}`;
-  protected readonly moduleRowTestId = (m: ModuleRow): string => `tp-module-${m.objectiveId}`;
-  protected readonly taskRowTestId = (t: LedTaskRow): string => `tp-task-${t.taskId}`;
-  protected readonly moduleRowClass = (m: ModuleRow): string => (m.depth > 0 ? 'team-progress-detail__child-row' : '');
+  // ---- Weekly completion (server, last 10 weeks, never filtered by the period) ----
+  protected readonly weekly = signal<RemoteState<LedWeeklyCompletion>>({ status: 'idle', data: null });
 
   // ---- Filters (options from the summary) ----
 
@@ -341,11 +215,6 @@ export class TeamProgressDetailDialogComponent {
 
   // ---- Client-side views of the summary ----
 
-  private readonly scopedProjects = computed(() => {
-    const project = this.selectedProject();
-    return project ? [project] : this.projects();
-  });
-
   /** Ids of the selected module and every module below it. */
   private readonly selectedSubtree = computed<Set<string> | null>(() => {
     const sel = this.selectedModule();
@@ -386,37 +255,6 @@ export class TeamProgressDetailDialogComponent {
     });
   });
 
-  /** Panel 2 of the Overview (real data, never a made-up trend): status bars per project, or per
-   * module once a project is picked, or per child module once a module is picked. Always all-time. */
-  protected readonly breakdown = computed(() => {
-    const project = this.selectedProject();
-    const sel = this.selectedModule();
-    let items: { id: string; label: string; hours: LedHourTotals }[];
-    let kind: 'projects' | 'modules';
-    if (!project) {
-      kind = 'projects';
-      items = this.projects().map((p) => ({ id: p.projectId, label: p.projectName, hours: p.hours }));
-    } else {
-      kind = 'modules';
-      const modules = sel
-        ? project.modules.filter((m) => this.selectedSubtree()?.has(m.objectiveId) && m.depth === sel.module.depth + 1)
-        : project.modules.filter((m) => m.depth === 0);
-      const shown = modules.length ? modules : sel ? [sel.module] : [];
-      items = shown.map((m) => ({ id: m.objectiveId, label: m.title, hours: m.hours }));
-    }
-    const sorted = [...items].sort((a, b) => barScale(b.hours) - barScale(a.hours));
-    const max = Math.max(0, ...sorted.map((i) => barScale(i.hours)));
-    const rows: BreakdownRow[] = sorted.slice(0, BREAKDOWN_ROWS).map((i) => ({
-      id: i.id,
-      label: i.label,
-      total: barScale(i.hours),
-      width: max > 0 ? (barScale(i.hours) / max) * 100 : 0,
-      segments: statusSegments(i.hours),
-      ariaLabel: `${i.label}: ${barLabelOf(i.hours)}`
-    }));
-    return { kind, title: kind === 'projects' ? 'Status by Project' : 'Status by Module', rows, more: Math.max(0, sorted.length - BREAKDOWN_ROWS) };
-  });
-
   protected readonly modulesAtRisk = computed(() => {
     const summary = this.summary();
     if (!summary) return 0;
@@ -435,49 +273,16 @@ export class TeamProgressDetailDialogComponent {
 
   protected readonly overdueTotal = computed(() => this.summary()?.overdueTotal ?? 0);
 
-  protected readonly projectRows = computed(() => this.scopedProjects());
-
-  protected readonly moduleRows = computed<ModuleRow[]>(() => {
-    const subtree = this.selectedSubtree();
-    return this.scopedProjects().flatMap((p) =>
-      p.modules
-        .filter((m) => !subtree || subtree.has(m.objectiveId))
-        .map((m) => ({
-          objectiveId: m.objectiveId,
-          projectId: p.projectId,
-          projectName: p.projectName,
-          title: m.title,
-          // Indent relative to the selected module, so a picked child module isn't pushed right.
-          depth: m.depth - (this.selectedModule()?.module.depth ?? 0),
-          atRisk: m.atRisk,
-          hours: m.hours
-        }))
-    );
-  });
-
   // ---- Server queries ----
 
-  private readonly serverFilters = computed(() => ({
+  private readonly serverFilters = computed<ScopeFilters>(() => ({
     projectId: this.selectedProject()?.projectId,
     objectiveId: this.selectedModule()?.module.objectiveId
   }));
 
-  /** Null while the dialog is closed or the tab isn't showing: nothing is fetched then. */
-  private readonly employeeQuery = computed<LedEmployeeQuery | null>(() => {
-    if (!this.open() || this.activeTab() !== 'employees' || !this.summary()) return null;
-    return {
-      pageNumber: this.employeePage(),
-      pageSize: TEAM_PROGRESS_PAGE_SIZE,
-      search: this.employeeSearch() || undefined,
-      ...this.serverFilters(),
-      period: this.periodParam(),
-      sort: this.employeeSort(),
-      direction: this.employeeDir()
-    };
-  });
-
+  /** Null while the dialog is closed: nothing is fetched then. */
   private readonly overviewEmployeeQuery = computed<LedEmployeeQuery | null>(() => {
-    if (!this.open() || this.activeTab() !== 'overview' || !this.summary()) return null;
+    if (!this.open() || !this.summary()) return null;
     return {
       pageNumber: this.overviewEmployeePage(),
       pageSize: TEAM_PROGRESS_OVERVIEW_EMPLOYEES,
@@ -489,52 +294,34 @@ export class TeamProgressDetailDialogComponent {
     };
   });
 
-  /** Only for week / month, only while the Overview is showing; narrowed by the project / module filters. */
+  /** Only for week / month, only while open; narrowed by the project / module filters. */
   private readonly periodQuery = computed<PeriodQuery | null>(() => {
     const period = this.period();
-    if (period === 'all' || !this.open() || this.activeTab() !== 'overview' || !this.summary()) return null;
+    if (period === 'all' || !this.open() || !this.summary()) return null;
     return { period, filters: this.serverFilters() };
   });
 
-  private fetchPeriod(q: PeriodQuery): Observable<LedPeriodProgress> {
-    return this.api.getPeriodProgress(q.period, q.filters);
-  }
-
-  private readonly taskQuery = computed<LedTaskQuery | null>(() => {
-    if (!this.open() || this.activeTab() !== 'tasks' || !this.summary()) return null;
-    return {
-      pageNumber: this.taskPage(),
-      pageSize: TEAM_PROGRESS_PAGE_SIZE,
-      search: this.taskSearch() || undefined,
-      status: this.taskStatus() || undefined,
-      ...this.serverFilters(),
-      period: this.periodParam(),
-      employeeId: this.taskEmployee()?.id,
-      sort: this.taskSort(),
-      direction: this.taskDir()
-    };
+  /** Only while open; narrowed by the project / module filters, never by the period. */
+  private readonly weeklyQuery = computed<ScopeFilters | null>(() => {
+    if (!this.open() || !this.summary()) return null;
+    return this.serverFilters();
   });
 
-  private readonly employeeRequests = new Subject<LedEmployeeQuery>();
-  private readonly taskRequests = new Subject<LedTaskQuery>();
-  private readonly employeeSearchInput = new Subject<string>();
-  private readonly taskSearchInput = new Subject<string>();
-  /** Query key of the data each tab holds (or is loading); the same key isn't fetched again. */
-  private employeeKey: string | null = null;
-  private taskKey: string | null = null;
   private readonly overviewEmployeeRequests = new Subject<LedEmployeeQuery>();
   private readonly overviewEmployeeSearchInput = new Subject<string>();
+  /** Query key of the data each section holds (or is loading); the same key isn't fetched again. */
   private overviewEmployeeKey: string | null = null;
   private readonly periodRequests = new Subject<PeriodQuery>();
   private periodKey: string | null = null;
-  /** Period summaries by query key, so flipping week / month / filters back and forth doesn't
-   * refetch. Dropped when the card hands in a new summary (a refresh). */
+  private readonly weeklyRequests = new Subject<ScopeFilters>();
+  private weeklyKey: string | null = null;
+  /** Period summaries and weekly charts by query key, so flipping week / month / filters back and
+   * forth doesn't refetch. Dropped when the card hands in a new summary (a refresh). */
   private readonly periodCache = new Map<string, LedPeriodProgress>();
-  private periodCacheFor: LedWorkProgressResponse | null = null;
+  private readonly weeklyCache = new Map<string, LedWeeklyCompletion>();
+  private cacheFor: LedWorkProgressResponse | null = null;
 
   constructor() {
-    this.connect(this.employeeRequests, (q) => this.api.getEmployees(q), this.employees, () => (this.employeeKey = null));
-    this.connect(this.taskRequests, (q) => this.api.getTasks(q), this.tasks, () => (this.taskKey = null));
     this.connect(
       this.overviewEmployeeRequests,
       (q) => this.api.getEmployees(q),
@@ -543,14 +330,16 @@ export class TeamProgressDetailDialogComponent {
     );
     this.connect(
       this.periodRequests,
-      (q) => {
-        // Served from the cache inside the switchMap, so it still cancels an older request in flight.
-        const key = JSON.stringify(q);
-        const cached = this.periodCache.get(key);
-        return cached ? of(cached) : this.fetchPeriod(q).pipe(tap((data) => this.periodCache.set(key, data)));
-      },
+      // Served from the cache inside the switchMap, so it still cancels an older request in flight.
+      (q) => cached(this.periodCache, JSON.stringify(q), () => this.api.getPeriodProgress(q.period, q.filters)),
       this.periodSummary,
       () => (this.periodKey = null)
+    );
+    this.connect(
+      this.weeklyRequests,
+      (q) => cached(this.weeklyCache, JSON.stringify(q), () => this.api.getWeeklyCompletion(TEAM_PROGRESS_WEEKS, q)),
+      this.weekly,
+      () => (this.weeklyKey = null)
     );
 
     this.overviewEmployeeSearchInput
@@ -570,47 +359,29 @@ export class TeamProgressDetailDialogComponent {
     });
     effect(() => {
       const summary = this.summary();
-      const q = this.periodQuery();
-      if (summary !== this.periodCacheFor) {
-        this.periodCacheFor = summary;
+      const period = this.periodQuery();
+      const weekly = this.weeklyQuery();
+      if (summary !== this.cacheFor) {
+        this.cacheFor = summary;
         this.periodCache.clear();
+        this.weeklyCache.clear();
         this.periodKey = null;
+        this.weeklyKey = null;
       }
-      if (!q) return;
-      const key = JSON.stringify(q);
-      if (key === this.periodKey) return;
-      this.periodKey = key;
-      untracked(() => this.periodRequests.next(q));
-    });
-
-    this.employeeSearchInput
-      .pipe(debounceTime(TEAM_PROGRESS_SEARCH_DEBOUNCE_MS), takeUntilDestroyed(this.destroyRef))
-      .subscribe((term) => {
-        this.employeeSearch.set(term.trim());
-        this.employeePage.set(1);
-      });
-    this.taskSearchInput
-      .pipe(debounceTime(TEAM_PROGRESS_SEARCH_DEBOUNCE_MS), takeUntilDestroyed(this.destroyRef))
-      .subscribe((term) => {
-        this.taskSearch.set(term.trim());
-        this.taskPage.set(1);
-      });
-
-    effect(() => {
-      const q = this.employeeQuery();
-      if (!q) return;
-      const key = JSON.stringify(q);
-      if (key === this.employeeKey) return;
-      this.employeeKey = key;
-      untracked(() => this.employeeRequests.next(q));
-    });
-    effect(() => {
-      const q = this.taskQuery();
-      if (!q) return;
-      const key = JSON.stringify(q);
-      if (key === this.taskKey) return;
-      this.taskKey = key;
-      untracked(() => this.taskRequests.next(q));
+      if (period) {
+        const key = JSON.stringify(period);
+        if (key !== this.periodKey) {
+          this.periodKey = key;
+          untracked(() => this.periodRequests.next(period));
+        }
+      }
+      if (weekly) {
+        const key = JSON.stringify(weekly);
+        if (key !== this.weeklyKey) {
+          this.weeklyKey = key;
+          untracked(() => this.weeklyRequests.next(weekly));
+        }
+      }
     });
   }
 
@@ -645,38 +416,28 @@ export class TeamProgressDetailDialogComponent {
     this.closed.emit();
   }
 
-  selectTab(value: string): void {
-    this.activeTab.set(value as TeamProgressTab);
-  }
-
   setProject(projectId: string): void {
     this.projectFilter.set(projectId);
     const sel = this.selectedModule();
     if (projectId && sel && sel.project.projectId !== projectId) this.moduleFilter.set('');
-    this.resetPages();
+    this.overviewEmployeePage.set(1);
   }
 
   setModule(objectiveId: string): void {
     this.moduleFilter.set(objectiveId);
-    this.resetPages();
+    this.overviewEmployeePage.set(1);
   }
 
   clearFilters(): void {
     this.projectFilter.set('');
     this.moduleFilter.set('');
-    this.resetPages();
+    this.overviewEmployeePage.set(1);
   }
 
   /** The card owns the period; it feeds the new value back in, which resets paging. */
   setPeriod(value: string): void {
     const period = value as LedProgressPeriod;
     if (period !== this.period()) this.periodChange.emit(period);
-  }
-
-  private resetPages(): void {
-    this.employeePage.set(1);
-    this.taskPage.set(1);
-    this.overviewEmployeePage.set(1);
   }
 
   onOverviewEmployeeSearch(term: string): void {
@@ -689,7 +450,6 @@ export class TeamProgressDetailDialogComponent {
   }
 
   retryOverviewEmployees(): void {
-    this.overviewEmployeeKey = null;
     const q = this.overviewEmployeeQuery();
     if (q) {
       this.overviewEmployeeKey = JSON.stringify(q);
@@ -698,7 +458,6 @@ export class TeamProgressDetailDialogComponent {
   }
 
   retryPeriod(): void {
-    this.periodKey = null;
     const q = this.periodQuery();
     if (q) {
       this.periodKey = JSON.stringify(q);
@@ -706,89 +465,15 @@ export class TeamProgressDetailDialogComponent {
     }
   }
 
-  /** "View all" under the Overview's status-by-project / module panel. */
-  viewAllBreakdown(): void {
-    this.activeTab.set(this.breakdown().kind);
-  }
-
-  onEmployeeSearch(term: string): void {
-    this.employeeSearchText.set(term);
-    this.employeeSearchInput.next(term);
-  }
-
-  onTaskSearch(term: string): void {
-    this.taskSearchText.set(term);
-    this.taskSearchInput.next(term);
-  }
-
-  sortEmployees(key: string): void {
-    const sort = key as LedEmployeeSort;
-    if (this.employeeSort() === sort) this.employeeDir.update((d) => (d === 'asc' ? 'desc' : 'asc'));
-    else {
-      this.employeeSort.set(sort);
-      this.employeeDir.set(sort === 'name' ? 'asc' : 'desc');
-    }
-    this.employeePage.set(1);
-  }
-
-  sortTasks(key: string): void {
-    const sort = key as LedTaskSort;
-    if (this.taskSort() === sort) this.taskDir.update((d) => (d === 'asc' ? 'desc' : 'asc'));
-    else {
-      this.taskSort.set(sort);
-      this.taskDir.set(sort === 'title' || sort === 'dueDate' ? 'asc' : 'desc');
-    }
-    this.taskPage.set(1);
-  }
-
-  setTaskStatus(status: TaskStatusFilter): void {
-    this.taskStatus.set(status);
-    this.taskPage.set(1);
-  }
-
-  goToEmployeePage(page: number): void {
-    this.employeePage.set(Math.max(1, page));
-  }
-
-  goToTaskPage(page: number): void {
-    this.taskPage.set(Math.max(1, page));
-  }
-
-  retryEmployees(): void {
-    this.employeeKey = null;
-    const q = this.employeeQuery();
+  retryWeekly(): void {
+    const q = this.weeklyQuery();
     if (q) {
-      this.employeeKey = JSON.stringify(q);
-      this.employeeRequests.next(q);
+      this.weeklyKey = JSON.stringify(q);
+      this.weeklyRequests.next(q);
     }
   }
 
-  retryTasks(): void {
-    this.taskKey = null;
-    const q = this.taskQuery();
-    if (q) {
-      this.taskKey = JSON.stringify(q);
-      this.taskRequests.next(q);
-    }
-  }
-
-  /** An employee row opens the Tasks tab narrowed to that employee's tasks. */
-  showEmployeeTasks(employee: LedEmployeeProgress): void {
-    this.taskEmployee.set({ id: employee.employeeId, name: employee.displayName });
-    this.taskPage.set(1);
-    this.activeTab.set('tasks');
-  }
-
-  clearTaskEmployee(): void {
-    this.taskEmployee.set(null);
-    this.taskPage.set(1);
-  }
-
-  openModule(row: { projectId: string; objectiveId: string }): void {
-    this.closed.emit();
-    void this.router.navigate(['/work', row.projectId, 'milestones', row.objectiveId, 'tree']);
-  }
-
+  /** An overdue task opens its module's board with the task highlighted. */
   openTask(task: { taskId: string; projectId: string; objectiveId: string }): void {
     this.closed.emit();
     void this.router.navigate(['/work', task.projectId, 'milestones', task.objectiveId, 'board'], {
@@ -797,18 +482,6 @@ export class TeamProgressDetailDialogComponent {
   }
 
   // ---- Template helpers ----
-
-  segments(hours: LedHourTotals): StatusSegment[] {
-    return statusSegments(hours);
-  }
-
-  completionOf(hours: LedHourTotals): string {
-    return completionLabel(hours);
-  }
-
-  barLabel(hours: LedHourTotals): string {
-    return barLabelOf(hours);
-  }
 
   /** "AL" for Ann Lee; "?" when there's no name. */
   initials(name: string): string {
@@ -819,29 +492,26 @@ export class TeamProgressDetailDialogComponent {
     return (first + last).toUpperCase();
   }
 
-  /** "1–5 of 42" for the Overview's compact pager. */
+  /** "1–5 of 42" for the Employee Breakdown's compact pager. */
   rangeLabel(page: { pageNumber: number; pageSize: number; totalCount: number; items: readonly unknown[] }): string {
     if (page.totalCount === 0) return '0 of 0';
     const start = (page.pageNumber - 1) * page.pageSize + 1;
     return `${start}–${start + page.items.length - 1} of ${page.totalCount}`;
   }
 
-  taskStatusMeta(status: LedTaskStatus): ProgressStatusMeta {
-    return TASK_STATUS_META[status];
-  }
-
   assigneeNames(assignees: readonly { displayName: string }[]): string {
     return assignees.map((a) => a.displayName).join(', ');
   }
-
-  pageLabel(page: { pageNumber: number; totalPages: number; totalCount: number }, noun: string): string {
-    const pages = Math.max(1, page.totalPages);
-    return `Page ${page.pageNumber} of ${pages} · ${page.totalCount} ${noun}`;
-  }
 }
 
-/** The bar is sized against the larger of the allocation and the task estimates (as on the card), so
- * an over-tasked module fills the bar and an under-tasked one shows its not-yet-tasked share. */
+/** Serves a cached response, or fetches and caches it. */
+function cached<T>(cache: Map<string, T>, key: string, fetch: () => Observable<T>): Observable<T> {
+  const hit = cache.get(key);
+  return hit ? of(hit) : fetch().pipe(tap((data) => cache.set(key, data)));
+}
+
+/** The donut is sized against the larger of the allocation and the task estimates (as on the card), so
+ * an over-tasked scope fills it and an under-tasked one shows its not-yet-tasked share. */
 function barScale(h: LedHourTotals): number {
   return Math.max(h.allocatedHours, h.completedHours + h.inProgressHours + h.notStartedHours);
 }
@@ -866,11 +536,6 @@ function statusSegments(h: LedHourTotals): StatusSegment[] {
 function completionLabel(h: LedHourTotals): string {
   const base = h.allocatedHours > 0 ? h.allocatedHours : h.completedHours + h.inProgressHours + h.notStartedHours;
   return formatPercent(h.completedHours, base);
-}
-
-function barLabelOf(hours: LedHourTotals): string {
-  const parts = statusSegments(hours).map((s) => `${s.meta.label} ${formatHourValue(s.hours)} h`);
-  return parts.length ? parts.join(', ') : 'No hours';
 }
 
 function chartLabelOf(prefix: string, tiles: readonly OverviewTile[]): string {

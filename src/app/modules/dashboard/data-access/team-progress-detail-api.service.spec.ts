@@ -44,25 +44,6 @@ describe('TeamProgressDetailApiService', () => {
     expect(total).toBe(7);
   });
 
-  it('GETs tasks with status, employee and module filters and drops an empty search', () => {
-    service
-      .getTasks({
-        pageNumber: 1, pageSize: 20, search: '', status: 'inProgress', objectiveId: 'o1', employeeId: 'e1',
-        sort: 'dueDate', direction: 'desc'
-      })
-      .subscribe();
-
-    const req = http.expectOne((r) => r.url === `${base}/tasks`);
-    const p = req.request.params;
-    expect(p.get('status')).toBe('inProgress');
-    expect(p.get('objectiveId')).toBe('o1');
-    expect(p.get('employeeId')).toBe('e1');
-    expect(p.get('sort')).toBe('dueDate');
-    expect(p.get('direction')).toBe('desc');
-    expect(p.has('search')).toBe(false);
-    expect(p.has('projectId')).toBe(false);
-    req.flush({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0, totalPages: 0, hasNext: false, hasPrevious: false });
-  });
 
   it('GETs the period progress for a week or month', () => {
     let total = -1;

@@ -11,7 +11,7 @@
   (retry)="retry()"
 >
   <div widget-actions class="flex min-w-0 items-center gap-1">
-    @if (store.data()) {
+    @if (store.data() && mode() !== 'xs' && mode() !== 'mini') {
       <select
         class="tp-period"
         data-testid="team-progress-period"
@@ -57,7 +57,7 @@
           }
         </svg>
         <p class="tp-donut-center" data-testid="team-progress-total">
-          <span class="font-bold text-slate-900 tabular-nums" [style.font-size]="totalFontCqw() + 'cqw'">{{ totalText() + ' ' }}</span>
+          <span class="font-bold text-slate-900 tabular-nums" [style.font-size.px]="totalFontPx()">{{ totalText() + ' ' }}</span>
           <span class="tp-donut-caption">{{ periodCaption() }}</span>
         </p>
       </div>
@@ -67,7 +67,7 @@
     <ng-template #statusListTpl let-variant>
       <ul class="tp-legend" [class]="'tp-legend--' + variant" data-testid="team-progress-legend">
         @for (row of statusRows(); track row.key) {
-          <li class="tp-legend-row">
+          <li class="tp-legend-row" [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'">
             <span class="h-2.5 w-2.5 rounded-full" [class]="row.bgClass" aria-hidden="true"></span>
             <span class="tp-legend-label" [title]="row.label">{{ row.label }}</span>
             <span class="tp-legend-hours" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
@@ -131,7 +131,7 @@
       @if (count > 0) {
         <button
           type="button"
-          class="team-progress-link mt-0.5 self-start text-xs font-semibold"
+          class="team-progress-link shrink-0 text-xs font-semibold"
           data-testid="team-progress-more"
           (click)="openDetail($event)"
         >+{{ count }} more</button>
@@ -142,7 +142,10 @@
       <section class="tp-panel" aria-label="Led modules" data-testid="team-progress-modules">
         <h3 class="team-progress-heading">
           <span class="truncate">Led modules ({{ ledModuleCount() }}){{ period() === 'all' ? '' : ' · all time' }}</span>
-          <ng-container *ngTemplateOutlet="viewAllTpl" />
+          @if (hiddenModuleCount() > 0) {
+              } @else {
+            <ng-container *ngTemplateOutlet="viewAllTpl" />
+          }
         </h3>
         <ul class="min-h-0">
           @for (row of visibleModules(); track row.key) {
@@ -183,7 +186,10 @@
 
     <ng-template #overdueTpl>
       <section class="tp-panel" aria-label="Overdue tasks" data-testid="team-progress-overdue">
-        <h3 class="team-progress-heading"><span class="truncate">Overdue tasks ({{ data.overdueTotal }})</span></h3>
+        <h3 class="team-progress-heading">
+          <span class="truncate">Overdue tasks ({{ data.overdueTotal }})</span>
+          <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenOverdueCount() }" />
+        </h3>
         @if (visibleOverdue().length === 0) {
           <p class="px-1.5 py-2 text-xs text-slate-500">No overdue tasks</p>
         } @else {
@@ -208,7 +214,6 @@
             }
           </ul>
         }
-        <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenOverdueCount() }" />
       </section>
     </ng-template>
 
@@ -218,7 +223,7 @@
           <span class="truncate">Top {{ topMembers().length }} team members by task hours{{ period() === 'all' ? '' : period() === 'week' ? ' · due this week' : ' · due this month' }}</span>
         </h3>
         <ul class="min-h-0">
-          @for (member of visibleMembers(); track member.employeeId) {
+          @for (member of topMembers(); track member.employeeId) {
             <li class="tp-member" data-testid="team-progress-top-member">
               <span class="truncate text-sm text-slate-700" [title]="member.displayName">{{ member.displayName }}</span>
               <span
@@ -235,7 +240,10 @@
 
     <ng-template #projectsTpl>
       <section class="tp-panel" aria-label="Projects" data-testid="team-progress-projects">
-        <h3 class="team-progress-heading"><span class="truncate">Projects ({{ projectRows().length }}){{ period() === 'all' ? '' : ' · all time' }}</span></h3>
+        <h3 class="team-progress-heading">
+          <span class="truncate">Projects ({{ projectRows().length }}){{ period() === 'all' ? '' : ' · all time' }}</span>
+          <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenProjectCount() }" />
+        </h3>
         <ul class="min-h-0">
           @for (project of visibleProjects(); track project.projectId) {
             <li class="team-progress-row cursor-default hover:bg-transparent" data-testid="team-progress-project">
@@ -260,14 +268,54 @@
             </li>
           }
         </ul>
-        <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenProjectCount() }" />
       </section>
     </ng-template>
 
-    <div class="tp-body" data-testid="team-progress-layout" [attr.data-mode]="mode()" [attr.data-period]="period()">
+    <ng-template #weeklyTpl>
+      @if (weeklyState() !== 'hidden') {
+        <section class="tp-panel tp-weekly" aria-label="Weekly completion, last 10 weeks" data-testid="team-progress-weekly">
+          <h3 class="team-progress-heading" title="Estimated hours of tasks completed each week (task weightage, not time worked).">
+            <span class="truncate">Weekly completion · last 10 weeks</span>
+          </h3>
+          @if (weeklyShown(); as weekly) {
+            <app-weekly-completion-chart
+              class="tp-weekly-chart"
+              [weeks]="weekly.weeks"
+              [allocatedHours]="weekly.allocatedHours"
+              [compact]="mode() === 'tall' && widthStep() < 500"
+            />
+            @if (undatedText()) {
+              <p class="tp-footnote" data-testid="team-progress-weekly-undated">{{ undatedText() }}</p>
+            }
+          } @else {
+            <div class="tp-weekly-skeleton" data-testid="team-progress-weekly-loading" aria-busy="true">
+              @for (h of skeletonBars; track $index) {
+                <span [style.height.%]="h"></span>
+              }
+            </div>
+          }
+        </section>
+      }
+    </ng-template>
+
+    <ng-template #viewDetailsTpl>
+      <button type="button" class="tp-view-details" data-testid="team-progress-view-details" (click)="openDetail($event)">
+        View details <span aria-hidden="true">→</span>
+      </button>
+    </ng-template>
+
+    <!-- Lists beside each other: led modules, then overdue tasks (or projects when nothing is overdue). -->
+    <ng-template #listPairTpl>
+      <div class="tp-panels tp-panels--grow grid-cols-2">
+        <ng-container *ngTemplateOutlet="modulesTpl" />
+        <ng-container *ngTemplateOutlet="data.overdueTotal > 0 || projectRows().length < 2 ? overdueTpl : projectsTpl" />
+      </div>
+    </ng-template>
+
+    <div class="tp-body" [class.tp-body--narrow]="widthStep() < 300" data-testid="team-progress-layout" [attr.data-mode]="mode()" [attr.data-period]="period()">
       @if (periodState() === 'loading') {
         <div class="tp-message" data-testid="team-progress-period-loading" aria-busy="true">
-          <span class="h-[45%] max-h-40 rounded-full border-[14px] border-slate-100 aspect-square animate-pulse" aria-hidden="true"></span>
+          <span class="tp-donut-skeleton animate-pulse" aria-hidden="true"></span>
           <span>Loading {{ period() === 'week' ? 'this week' : 'this month' }}…</span>
         </div>
       } @else if (periodState() === 'error') {
@@ -284,125 +332,204 @@
         </div>
       } @else {
         @switch (mode()) {
-          @case ('medium') {
-            <div class="tp-fill">
-              <div class="tp-medium">
-                <div
-                  class="tp-status-bar"
-                  role="img"
-                  [attr.aria-label]="donutLabel()"
-                  data-testid="team-progress-status-bar"
-                >
-                  @for (seg of donutSegments(); track seg.key) {
-                    <span class="h-full" [style.background]="seg.color" [style.width.%]="seg.length"></span>
-                  }
-                </div>
-                <div class="flex shrink-0 items-end justify-between gap-4">
-                  <div class="min-w-0" data-testid="team-progress-total">
-                    <p class="tp-headline">{{ totalText() + ' ' }}</p>
-                    <p class="mt-0.5 text-sm text-slate-500">{{ period() === 'all' ? 'Total allocated' : periodCaption() }}</p>
-                  </div>
-                  <p class="shrink-0 text-right text-sm text-slate-500">
-                    <span class="block text-lg font-bold text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
-                    completed
-                  </p>
-                </div>
-                <ul class="tp-status-tiles" [class.tp-status-tiles--3]="statusRows().length === 3" data-testid="team-progress-tiles">
-                  @for (row of statusRows(); track row.key) {
-                    <li class="tp-status-tile" [class]="'tone-' + row.tone">
-                      <span class="tp-status-tile-hours tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
-                      <span class="truncate text-sm text-slate-500" [title]="row.label">{{ row.label }}</span>
-                      <span class="tp-status-tile-pct tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId + '-percent'">{{ row.percentText }}</span>
-                    </li>
-                  }
-                </ul>
+          @case ('mini') {
+            <!-- 2-row cards (2x2 minimum): the 128px donut doesn't fit under the title, so a small donut
+            beside the completion figure. Stretched sideways, the stacked status bar and a one-line legend
+            fill the extra width. -->
+            <div class="tp-mini" [class.tp-mini--wide]="plan().miniLegend === 'inline'" data-testid="team-progress-mini">
+              <div class="tp-mini-top">
+                <ng-container *ngTemplateOutlet="donutTpl" />
+                <p class="tp-mini-figure">
+                  <span class="tp-completion-big text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+                  <span class="tp-completion-caption">
+                    completed of
+                    <span class="font-semibold text-slate-700 tabular-nums">{{ totalText() }}</span>
+                  </span>
+                </p>
               </div>
+              @if (plan().miniLegend === 'inline') {
+                <div class="tp-mini-bar">
+                  <div class="tp-status-bar" role="img" [attr.aria-label]="donutLabel()" data-testid="team-progress-status-bar">
+                    @for (seg of donutSegments(); track seg.key) {
+                      <span class="h-full" [style.background]="seg.color" [style.width.%]="seg.length"></span>
+                    }
+                  </div>
+                  <ul class="tp-mini-legend" data-testid="team-progress-legend">
+                    @for (row of statusRows(); track row.key) {
+                      <li class="tp-mini-legend-item" [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'">
+                        <span class="h-2 w-2 shrink-0 rounded-full" [class]="row.bgClass" aria-hidden="true"></span>
+                        <span class="tp-mini-legend-label">{{ row.label }}</span>
+                        <span class="tp-mini-legend-hours" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+          }
+
+          @case ('xs') {
+            <!-- 3x3: donut over the completion figure; taller cards add the legend, tiles and View details. -->
+            <div class="tp-xs">
+              <ng-container *ngTemplateOutlet="donutTpl" />
+              <p class="tp-completion">
+                <span class="tp-completion-big text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+                <span class="tp-completion-caption">Completed</span>
+              </p>
+            </div>
+            @if (plan().legend) {
+              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'list' }" />
+            }
+            @if (visibleExtraTiles().length > 0) {
+              <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: 2 }" />
+            }
+            <ng-container *ngTemplateOutlet="notesTpl" />
+            @if (plan().viewDetails) {
+              <ng-container *ngTemplateOutlet="viewDetailsTpl" />
+            }
+          }
+
+          @case ('medium') {
+            <div class="tp-medium">
+              <div
+                class="tp-status-bar"
+                role="img"
+                [attr.aria-label]="donutLabel()"
+                data-testid="team-progress-status-bar"
+              >
+                @for (seg of donutSegments(); track seg.key) {
+                  <span class="h-full" [style.background]="seg.color" [style.width.%]="seg.length"></span>
+                }
+              </div>
+              <div class="flex items-end justify-between gap-4">
+                <div class="min-w-0" data-testid="team-progress-total">
+                  <p class="tp-headline">{{ totalText() + ' ' }}</p>
+                  <p class="text-xs text-slate-500">{{ period() === 'all' ? 'Total allocated' : periodCaption() }}</p>
+                </div>
+                <p class="shrink-0 text-right text-xs text-slate-500">
+                  <span class="block text-lg font-bold leading-tight text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+                  completed
+                </p>
+              </div>
+              <ul class="tp-status-tiles" [class.tp-status-tiles--3]="statusRows().length === 3" data-testid="team-progress-tiles">
+                @for (row of statusRows(); track row.key) {
+                  <li class="tp-status-tile" [class]="'tone-' + row.tone">
+                    <span class="tp-status-tile-hours tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
+                    <span class="truncate text-xs text-slate-500" [title]="row.label">{{ row.label }}</span>
+                    <span class="tp-status-tile-pct tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId + '-percent'">{{ row.percentText }}</span>
+                  </li>
+                }
+              </ul>
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
+            @if (visibleExtraTiles().length > 0) {
+              <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: visibleExtraTiles().length }" />
+            }
+            @if (showLists()) {
+              <ng-container *ngTemplateOutlet="listPairTpl" />
+            } @else if (plan().viewDetails) {
+              <ng-container *ngTemplateOutlet="viewDetailsTpl" />
+            }
           }
 
           @case ('wide') {
-            <div class="tp-fill">
-              <div class="tp-hero">
-                <ng-container *ngTemplateOutlet="donutTpl" />
-                <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
-              </div>
+            <div class="tp-hero">
+              <ng-container *ngTemplateOutlet="donutTpl" />
+              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
             <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: wideTiles(), columns: wideTiles().length }" />
+            @if (showLists()) {
+              <ng-container *ngTemplateOutlet="listPairTpl" />
+            }
           }
 
           @case ('tall') {
-            <div class="tp-fill">
-              <div class="tp-tall-hero">
-                <div class="tp-tall-side">
-                  <ng-container *ngTemplateOutlet="donutTpl" />
-                  <p class="shrink-0 text-xs text-slate-500">
-                    <span class="font-bold text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span> completed
-                  </p>
-                </div>
-                <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'list' }" />
+            <div class="tp-tall-hero" [class.tp-tall-hero--row]="widthStep() >= 600">
+              <div class="tp-tall-side">
+                <ng-container *ngTemplateOutlet="donutTpl" />
+                <p class="text-xs text-slate-500">
+                  <span class="font-bold text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span> completed
+                </p>
               </div>
+              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'list' }" />
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
-            <ng-container *ngTemplateOutlet="modulesTpl" />
-            <button type="button" class="tp-view-details" data-testid="team-progress-view-details" (click)="openDetail($event)">
-              View details <span aria-hidden="true">→</span>
-            </button>
+            <ng-container *ngTemplateOutlet="weeklyTpl" />
+            @if (showLists()) {
+              <div class="tp-panels tp-panels--grow">
+                <ng-container *ngTemplateOutlet="modulesTpl" />
+              </div>
+            }
+            <ng-container *ngTemplateOutlet="viewDetailsTpl" />
           }
 
           @case ('large') {
-            <div class="tp-fill">
-              <div class="tp-hero">
-                <ng-container *ngTemplateOutlet="donutTpl" />
-                <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
-              </div>
+            <div class="tp-hero">
+              <ng-container *ngTemplateOutlet="donutTpl" />
+              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
             <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: metricTiles(), columns: metricTiles().length }" />
-            <div class="tp-panels grid-cols-2">
-              <ng-container *ngTemplateOutlet="modulesTpl" />
-              <!-- Top members when loaded, else overdue tasks, else projects: never an empty panel. -->
-              <ng-container *ngTemplateOutlet="topMembers().length > 0 ? membersTpl : data.overdueTotal > 0 || projectRows().length < 2 ? overdueTpl : projectsTpl" />
-            </div>
+            @if (weeklyState() !== 'hidden' || topMembers().length > 0) {
+              <div class="tp-panels tp-panels--fixed" [class.grid-cols-2]="weeklyState() !== 'hidden' && topMembers().length > 0">
+                <ng-container *ngTemplateOutlet="weeklyTpl" />
+                @if (topMembers().length > 0) {
+                  <ng-container *ngTemplateOutlet="membersTpl" />
+                }
+              </div>
+            }
+            @if (showLists()) {
+              <ng-container *ngTemplateOutlet="listPairTpl" />
+            }
           }
 
           @case ('maximum') {
-            <!-- One compact band (donut | rows | tiles); the panels below take the remaining height. -->
+            <!-- One band (donut | rows | tiles), weekly chart beside the top members, then the lists. -->
             <div class="tp-max-top">
               <ng-container *ngTemplateOutlet="donutTpl" />
               <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
-              <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: maximumTiles(), columns: 2 }" />
+              <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: maximumTiles(), columns: 3 }" />
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
-            <!-- Overdue tasks only take a column when there are some. -->
-            <div class="tp-panels tp-panels--grow" [style.grid-template-columns]="'repeat(' + maximumPanelCount() + ', minmax(0, 1fr))'">
-              <ng-container *ngTemplateOutlet="projectsTpl" />
-              <ng-container *ngTemplateOutlet="modulesTpl" />
-              @if (data.overdueTotal > 0) {
-                <ng-container *ngTemplateOutlet="overdueTpl" />
-              }
-              @if (topMembers().length > 0) {
-                <ng-container *ngTemplateOutlet="membersTpl" />
-              }
-            </div>
+            @if (weeklyState() !== 'hidden' || topMembers().length > 0) {
+              <div class="tp-panels tp-panels--fixed" [class.tp-panels--weekly-members]="weeklyState() !== 'hidden' && topMembers().length > 0">
+                <ng-container *ngTemplateOutlet="weeklyTpl" />
+                @if (topMembers().length > 0) {
+                  <ng-container *ngTemplateOutlet="membersTpl" />
+                }
+              </div>
+            }
+            @if (showLists()) {
+              <!-- Overdue tasks only take a column when there are some. -->
+              <div class="tp-panels tp-panels--grow" [style.grid-template-columns]="'repeat(' + maximumPanelCount() + ', minmax(0, 1fr))'">
+                <ng-container *ngTemplateOutlet="projectsTpl" />
+                <ng-container *ngTemplateOutlet="modulesTpl" />
+                @if (data.overdueTotal > 0) {
+                  <ng-container *ngTemplateOutlet="overdueTpl" />
+                }
+              </div>
+            }
           }
 
           @default {
-            <!-- compact: 4x4, 5x4, 4x5 and mobile. -->
-            <div class="tp-fill">
-              <div class="tp-compact">
-                <div class="tp-compact-side">
-                  <ng-container *ngTemplateOutlet="donutTpl" />
-                  <p class="tp-completion">
-                    <span class="tp-completion-big block text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
-                    <span class="tp-completion-caption block">Completed</span>
-                  </p>
-                </div>
-                <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'compact' }" />
+            <!-- small: donut (with the completion line) beside the legend; taller cards add tiles. -->
+            <div class="tp-small">
+              <div class="tp-small-side">
+                <ng-container *ngTemplateOutlet="donutTpl" />
+                <p class="text-xs text-slate-500">
+                  <span class="font-bold text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span> completed
+                </p>
               </div>
+              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'compact' }" />
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
+            @if (visibleExtraTiles().length > 0) {
+              <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: 2 }" />
+            }
+            @if (plan().viewDetails) {
+              <ng-container *ngTemplateOutlet="viewDetailsTpl" />
+            }
           }
         }
       }

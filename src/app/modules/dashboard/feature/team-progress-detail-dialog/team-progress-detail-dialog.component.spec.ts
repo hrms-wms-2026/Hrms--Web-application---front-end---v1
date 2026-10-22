@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { environment } from '../../../../../environments/environment';
 import { pickSelectOption } from '../../../../shared/ui/select/select.testing';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
-import { LedEmployeeProgressPage, LedPeriodProgress, LedProgressPeriod, LedTaskPage } from '../../models/team-progress-detail.model';
+import { LedEmployeeProgressPage, LedPeriodProgress, LedProgressPeriod, LedWeeklyCompletion } from '../../models/team-progress-detail.model';
 import { TeamProgressDetailDialogComponent } from './team-progress-detail-dialog.component';
 
 const BASE = `${environment.apiUrl}/work/led-progress`;
@@ -24,7 +24,7 @@ const mod = (objectiveId: string, title: string, h: LedHourTotals, extra: Partia
   objectiveId, title, isRootModule: false, endDate: '2026-12-01', parentObjectiveId: null, depth: 0, atRisk: false, hours: h, ...extra
 });
 
-function summary(): LedWorkProgressResponse {
+function summary(extra: Partial<LedWorkProgressResponse> = {}): LedWorkProgressResponse {
   return {
     hours: hours(200, 50, 30, 20, { overTaskedHours: 5, unestimatedTaskCount: 2 }),
     projects: [
@@ -45,7 +45,8 @@ function summary(): LedWorkProgressResponse {
       { taskId: 't2', shortId: 'ZEU-7', title: 'Polish header', projectId: 'p2', objectiveId: 'm2', dueDate: '2026-01-12', daysOverdue: 1, assignees: [] }
     ],
     overdueTotal: 9,
-    modulesAtRisk: 1
+    modulesAtRisk: 1,
+    ...extra
   };
 }
 
@@ -55,7 +56,7 @@ function employeePage(extra: Partial<LedEmployeeProgressPage> = {}): LedEmployee
       { employeeId: 'e1', displayName: 'Ann Lee', completedHours: 10, inProgressHours: 5, notStartedHours: 9, totalHours: 24, taskCount: 4, sharedTaskCount: 3, sharedHours: 24 },
       { employeeId: 'e2', displayName: 'Bo Chen', completedHours: 2, inProgressHours: 0, notStartedHours: 0, totalHours: 2, taskCount: 1, sharedTaskCount: 0, sharedHours: 0 }
     ],
-    pageNumber: 1, pageSize: 20, totalCount: 45, totalPages: 3, hasNext: true, hasPrevious: false,
+    pageNumber: 1, pageSize: 5, totalCount: 45, totalPages: 9, hasNext: true, hasPrevious: false,
     unassigned: { completedHours: 1, inProgressHours: 2, notStartedHours: 3, totalHours: 6, taskCount: 2 },
     ...extra
   };
@@ -70,18 +71,14 @@ function periodSummary(period: 'week' | 'month', extra: Partial<LedPeriodProgres
   };
 }
 
-function taskPage(extra: Partial<LedTaskPage> = {}): LedTaskPage {
-  return {
-    items: [
-      {
-        taskId: 'tk1', shortId: 'APO-12', title: 'Build API', status: 'inProgress', statusName: 'Doing', estimatedHours: 8,
-        dueDate: '2026-03-01', projectId: 'p1', projectName: 'Apollo', objectiveId: 'm1', objectiveTitle: 'Backend',
-        assignees: [{ employeeId: 'e1', displayName: 'Ann Lee' }, { employeeId: 'e2', displayName: 'Bo Chen' }], isShared: true
-      }
-    ],
-    pageNumber: 1, pageSize: 20, totalCount: 21, totalPages: 2, hasNext: true, hasPrevious: false,
-    ...extra
-  };
+/** Ten fixed ISO weeks (no dependency on today's date). */
+function weekly(extra: Partial<LedWeeklyCompletion> = {}): LedWeeklyCompletion {
+  const weeks = Array.from({ length: 10 }, (_, i) => {
+    const day = String(5 + i * 7 - (i >= 4 ? 28 : 0)).padStart(2, '0');
+    const month = i >= 4 ? '02' : '01';
+    return { weekStart: `2026-${month}-${day}`, weekEnd: `2026-${month}-${day}`, completedHours: i * 2, completedTaskCount: i };
+  });
+  return { weeks, allocatedHours: 200, undatedCompletedHours: 0, undatedCompletedTaskCount: 0, ...extra };
 }
 
 describe('TeamProgressDetailDialogComponent', () => {
@@ -121,50 +118,49 @@ describe('TeamProgressDetailDialogComponent', () => {
   };
 
   const isEmployees = (r: { url: string }): boolean => r.url === `${BASE}/employees`;
-  /** The Overview's compact Employee Breakdown asks for 5 rows; the By Employee tab for 20. */
-  const expectOverviewEmployees = (): TestRequest =>
-    http.expectOne((r) => isEmployees(r) && r.params.get('pageSize') === '5');
-  const expectPeriod = (): TestRequest => http.expectOne((r) => r.url === `${BASE}/period`);
+  const isWeekly = (r: { url: string }): boolean => r.url === `${BASE}/weekly-completion`;
+  const isPeriod = (r: { url: string }): boolean => r.url === `${BASE}/period`;
+  const expectEmployees = (): TestRequest => http.expectOne(isEmployees);
+  const expectWeekly = (): TestRequest => http.expectOne(isWeekly);
+  const expectPeriod = (): TestRequest => http.expectOne(isPeriod);
 
-  /** Opens on the Overview and answers its Employee Breakdown request (when there's a summary). */
-  function openWith(data: LedWorkProgressResponse | null = summary(), period: LedProgressPeriod = 'all'): void {
+  /** Opens the dialog and answers its Employee Breakdown and weekly chart requests (when there's a summary). */
+  function openWith(data: LedWorkProgressResponse | null = summary(), period: LedProgressPeriod = 'all', week: LedWeeklyCompletion = weekly()): void {
     fixture.componentRef.setInput('summary', data);
     fixture.componentRef.setInput('period', period);
     fixture.componentRef.setInput('open', true);
     render();
     if (data) {
-      expectOverviewEmployees().flush(employeePage({ pageSize: 5 }));
+      expectEmployees().flush(employeePage());
+      expectWeekly().flush(week);
       render();
     }
   }
 
-  function clickTab(label: string): void {
-    const tab = Array.from(el().querySelectorAll<HTMLButtonElement>('[role="tab"]')).find((t) => t.textContent?.trim() === label);
-    if (!tab) throw new Error(`tab ${label} not found`);
-    tab.click();
-    render();
-  }
-
-  const expectEmployees = (): TestRequest => http.expectOne((r) => isEmployees(r) && r.params.get('pageSize') === '20');
-  const expectTasks = (): TestRequest => http.expectOne((r) => r.url === `${BASE}/tasks`);
-
-  function typeInto(container: HTMLElement | null, value: string): void {
-    const input = container?.querySelector('input');
-    if (!input) throw new Error('input not found');
-    input.value = value;
-    input.dispatchEvent(new Event('input'));
-    render();
-  }
+  const retryIn = (container: HTMLElement | null): HTMLButtonElement | undefined =>
+    Array.from(container?.querySelectorAll<HTMLButtonElement>('[role="alert"] button') ?? []).find((b) => b.textContent?.trim() === 'Retry');
 
   it('renders nothing and fetches nothing while closed', () => {
     fixture.componentRef.setInput('summary', summary());
+    fixture.componentRef.setInput('period', 'week');
     fixture.componentRef.setInput('open', false);
     render();
     expect(el().querySelector('[role="dialog"]')).toBeNull();
     http.expectNone(() => true);
   });
 
-  it('renders the overview from the summary without any HTTP', () => {
+  it('is Overview only: no tabs, no project/module status panel, no task list', () => {
+    openWith();
+    expect(el().querySelector('[role="tablist"]')).toBeNull();
+    expect(el().querySelector('[role="tab"]')).toBeNull();
+    expect(el().querySelector('[role="tabpanel"]')).toBeNull();
+    expect(q('tp-breakdown')).toBeNull();
+    expect(el().textContent).not.toContain('By Employee');
+    expect(el().textContent).not.toContain('Task List');
+    expect(el().textContent).not.toContain('Status by Project');
+  });
+
+  it('renders the overview from the summary: tiles, donut, notes, three panels and overdue tasks', () => {
     openWith();
     expect(el().querySelector('[role="dialog"]')).not.toBeNull();
     expect(el().textContent).toContain('Team Progress');
@@ -178,43 +174,158 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-note-overtasked')?.textContent).toContain('5 h');
     expect(q('tp-note-unestimated')?.textContent).toContain('2 tasks');
     expect(q('tp-note-risk')?.textContent).toContain('1');
-    expect(q('tp-overdue-count')?.textContent).toContain('2 of 9');
-    expect(q('tp-overdue-t1')?.textContent).toContain('10 Jan 2026');
     expect(q('tp-total-label')?.textContent?.trim()).toBe('Total allocated');
-    // Panel 2: real per-project status bars (no made-up trend).
-    expect(q('tp-breakdown')?.textContent).toContain('Status by Project');
-    expect(q('tp-breakdown-p1')?.textContent).toContain('Apollo');
-    expect(q('tp-breakdown-p2')?.textContent).toContain('Zeus');
-    expect(q('tp-breakdown-alltime')).toBeNull();
-    // Panel 3: compact top-5 employee table with a "1–2 of 45" pager.
+    // Panel order: Status Distribution | Weekly completion | Employee Breakdown.
+    const panels = Array.from(el().querySelectorAll('.tp-panels > section')).map((s) => s.getAttribute('data-testid'));
+    expect(panels).toEqual(['tp-distribution', 'tp-weekly', 'tp-ov-employees']);
+    expect(q('tp-weekly')?.textContent).toContain('Weekly completion');
+    expect(q('tp-weekly-range')?.textContent?.trim()).toBe('Last 10 weeks');
+    expect(q('tp-weekly')?.textContent).toContain('Allocated task hours completed per week');
+    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="weekly-completion-bar"]').length).toBe(10);
+    expect(q('tp-weekly-undated')).toBeNull();
     expect(q('tp-ov-employee-e1')?.textContent).toContain('AL');
-    expect(q('tp-ov-employee-e1')?.textContent).toContain('Ann Lee');
     expect(q('tp-ov-employee-e1')?.textContent).toContain('24 h');
     expect(q('tp-ov-employee-range')?.textContent?.trim()).toBe('1–2 of 45');
+    expect(q('tp-overdue-count')?.textContent).toContain('2 of 9');
+    expect(q('tp-overdue-t1')?.textContent).toContain('10 Jan 2026');
     http.expectNone(() => true);
   });
 
-  it('asks the Overview employee breakdown for the top 5 by total hours, without a period for All time', () => {
+  it('hides the overdue section when nothing is overdue', () => {
+    openWith(summary({ overdueTasks: [], overdueTotal: 0 }));
+    expect(q('tp-overdue')).toBeNull();
+    expect(el().textContent).not.toContain('Overdue tasks');
+  });
+
+  it('fetches the weekly chart once on open (10 weeks, no filters), shows a skeleton until it loads', () => {
     fixture.componentRef.setInput('summary', summary());
     fixture.componentRef.setInput('open', true);
     render();
-    const req = expectOverviewEmployees();
+    expectEmployees().flush(employeePage());
+    const req = expectWeekly();
+    expect(req.request.params.get('weeks')).toBe('10');
+    expect(req.request.params.has('projectId')).toBe(false);
+    expect(req.request.params.has('objectiveId')).toBe(false);
+    expect(req.request.params.has('period')).toBe(false);
+    render();
+    expect(q('tp-weekly-loading')).not.toBeNull();
+    req.flush(weekly());
+    render();
+    expect(q('tp-weekly-loading')).toBeNull();
+    expect(q('tp-weekly-chart')).not.toBeNull();
+    // Re-rendering, closing and reopening are served from the cache.
+    render();
+    fixture.componentRef.setInput('open', false);
+    render();
+    fixture.componentRef.setInput('open', true);
+    render();
+    http.expectNone(isWeekly);
+  });
+
+  it('narrows the weekly chart by the project / module filters, caches each, and ignores the period', () => {
+    openWith();
+    fixture.componentInstance.setProject('p2');
+    render();
+    let req = expectWeekly();
+    expect(req.request.params.get('projectId')).toBe('p2');
+    expect(req.request.params.get('weeks')).toBe('10');
+    req.flush(weekly({ allocatedHours: 80 }));
+    expectEmployees().flush(employeePage());
+    render();
+
+    fixture.componentInstance.setProject('p1');
+    fixture.componentInstance.setModule('m1a');
+    render();
+    req = expectWeekly();
+    expect(req.request.params.get('projectId')).toBe('p1');
+    expect(req.request.params.get('objectiveId')).toBe('m1a');
+    req.flush(weekly());
+    expectEmployees().flush(employeePage());
+
+    // Back to no filters: cached.
+    fixture.componentInstance.clearFilters();
+    render();
+    http.expectNone(isWeekly);
+    expectEmployees().flush(employeePage());
+
+    // The period dropdown never refetches the weekly chart.
+    fixture.componentRef.setInput('period', 'month');
+    render();
+    http.expectNone(isWeekly);
+    expectPeriod().flush(periodSummary('month'));
+    expectEmployees().flush(employeePage());
+  });
+
+  it('drops the weekly cache when the card passes a new summary', () => {
+    openWith();
+    fixture.componentRef.setInput('summary', summary());
+    render();
+    expectWeekly().flush(weekly());
+    http.expectNone(isEmployees);
+  });
+
+  it('cancels an in-flight weekly request when the filters change', () => {
+    fixture.componentRef.setInput('summary', summary());
+    fixture.componentRef.setInput('open', true);
+    render();
+    expectEmployees().flush(employeePage());
+    const first = expectWeekly();
+    fixture.componentInstance.setProject('p1');
+    render();
+    const second = expectWeekly();
+    expect(first.cancelled).toBe(true);
+    expect(second.request.params.get('projectId')).toBe('p1');
+    second.flush(weekly());
+    expectEmployees().flush(employeePage());
+  });
+
+  it('shows an error with Retry when the weekly chart fails', () => {
+    fixture.componentRef.setInput('summary', summary());
+    fixture.componentRef.setInput('open', true);
+    render();
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush('boom', { status: 500, statusText: 'Server Error' });
+    render();
+    expect(q('tp-weekly-error')).not.toBeNull();
+    const retry = retryIn(q('tp-weekly'));
+    expect(retry).toBeTruthy();
+    retry!.click();
+    render();
+    expectWeekly().flush(weekly());
+    render();
+    expect(q('tp-weekly-error')).toBeNull();
+    expect(q('tp-weekly-chart')).not.toBeNull();
+  });
+
+  it('notes completed hours that have no completion date under the weekly chart', () => {
+    openWith(summary(), 'all', weekly({ undatedCompletedHours: 12.5, undatedCompletedTaskCount: 3 }));
+    expect(q('tp-weekly-undated')?.textContent).toContain('12.5 h');
+    expect(q('tp-weekly-undated')?.textContent).toContain('3 tasks');
+  });
+
+  it('asks the Employee Breakdown for the top 5 by total hours, without a period for All time', () => {
+    fixture.componentRef.setInput('summary', summary());
+    fixture.componentRef.setInput('open', true);
+    render();
+    const req = expectEmployees();
     expect(req.request.params.get('pageNumber')).toBe('1');
+    expect(req.request.params.get('pageSize')).toBe('5');
     expect(req.request.params.get('sort')).toBe('totalHours');
     expect(req.request.params.get('direction')).toBe('desc');
     expect(req.request.params.has('period')).toBe(false);
-    req.flush(employeePage({ pageSize: 5 }));
-    http.expectNone((r) => r.url === `${BASE}/period`);
+    req.flush(employeePage());
+    expectWeekly().flush(weekly());
+    http.expectNone(isPeriod);
   });
 
-  it('pages and searches the Overview employee breakdown, and a row opens that employee tasks', () => {
+  it('pages and searches the Employee Breakdown; rows are not clickable', () => {
     vi.useFakeTimers();
     openWith();
     q('tp-ov-employee-next')!.click();
     render();
-    let req = expectOverviewEmployees();
+    let req = expectEmployees();
     expect(req.request.params.get('pageNumber')).toBe('2');
-    req.flush(employeePage({ pageSize: 5, pageNumber: 2, hasPrevious: true }));
+    req.flush(employeePage({ pageNumber: 2, hasPrevious: true }));
     render();
     expect(q('tp-ov-employee-range')?.textContent?.trim()).toBe('6–7 of 45');
 
@@ -225,48 +336,55 @@ describe('TeamProgressDetailDialogComponent', () => {
     http.expectNone(() => true);
     vi.advanceTimersByTime(300);
     render();
-    req = expectOverviewEmployees();
+    req = expectEmployees();
     expect(req.request.params.get('search')).toBe('bo');
     expect(req.request.params.get('pageNumber')).toBe('1');
-    req.flush(employeePage({ pageSize: 5 }));
+    req.flush(employeePage());
     render();
 
+    expect(q('tp-ov-employee-e2')?.querySelector('button')).toBeNull();
     q('tp-ov-employee-e2')!.click();
     render();
-    const tasks = expectTasks();
-    expect(tasks.request.params.get('employeeId')).toBe('e2');
-    tasks.flush(taskPage());
+    http.expectNone(() => true);
+    expect(closedCount).toBe(0);
+  });
+
+  it('shows an error with Retry when the Employee Breakdown fails', () => {
+    fixture.componentRef.setInput('summary', summary());
+    fixture.componentRef.setInput('open', true);
+    render();
+    expectEmployees().flush('boom', { status: 500, statusText: 'Server Error' });
+    expectWeekly().flush(weekly());
+    render();
+    retryIn(q('tp-ov-employees'))!.click();
+    render();
+    expectEmployees().flush(employeePage());
+    render();
+    expect(q('tp-ov-employee-e1')).not.toBeNull();
   });
 
   it('emits periodChange from the period dropdown and leaves the value to the card', () => {
     openWith();
     pickSelectOption(q('tp-period-filter')!, 'This week', () => render());
     expect(periodChanges).toEqual(['week']);
-    // The input is unchanged until the card feeds it back, so nothing is refetched.
     http.expectNone(() => true);
     expect(q('tp-tile-untasked')).not.toBeNull();
   });
 
-  it('does not fetch the period summary while closed or for All time', () => {
+  it('shows the period summary for This week: no Not yet tasked, totals due this week, task counts', () => {
     fixture.componentRef.setInput('summary', summary());
     fixture.componentRef.setInput('period', 'week');
-    fixture.componentRef.setInput('open', false);
-    render();
-    http.expectNone(() => true);
-    fixture.componentRef.setInput('period', 'all');
     fixture.componentRef.setInput('open', true);
     render();
-    expectOverviewEmployees().flush(employeePage({ pageSize: 5 }));
-    http.expectNone((r) => r.url === `${BASE}/period`);
-  });
-
-  it('shows the period summary for This week: no Not yet tasked, totals due this week, task counts', () => {
-    openWith(summary(), 'week');
     expect(q('tp-period-loading')).not.toBeNull();
     const req = expectPeriod();
     expect(req.request.params.get('period')).toBe('week');
     expect(req.request.params.has('projectId')).toBe(false);
     req.flush(periodSummary('week'));
+    const emp = expectEmployees();
+    expect(emp.request.params.get('period')).toBe('week');
+    emp.flush(employeePage());
+    expectWeekly().flush(weekly());
     render();
 
     expect(q('tp-tile-untasked')).toBeNull();
@@ -279,63 +397,58 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-note-overtasked')).toBeNull();
     expect(q('tp-note-unestimated')?.textContent).toContain('1 task has');
     expect(q('tp-donut')?.getAttribute('aria-label')).toContain('due this week');
-    expect(q('tp-breakdown-alltime')?.textContent).toContain('All time');
+    // The weekly chart is its own 10-week timeline, still shown.
+    expect(q('tp-weekly-chart')).not.toBeNull();
   });
 
-  it('sends the period with the filters, caches each period, and only fetches on the Overview', () => {
-    openWith(summary(), 'week');
-    expectPeriod().flush(periodSummary('week'));
+  it('caches each period summary, narrows it by the filters, and resets employee paging on a period change', () => {
+    openWith();
+    q('tp-ov-employee-next')!.click();
     render();
+    expectEmployees().flush(employeePage({ pageNumber: 2, hasPrevious: true }));
+
+    fixture.componentRef.setInput('period', 'week');
+    render();
+    expectPeriod().flush(periodSummary('week'));
+    let emp = expectEmployees();
+    expect(emp.request.params.get('pageNumber')).toBe('1');
+    expect(emp.request.params.get('period')).toBe('week');
+    emp.flush(employeePage());
 
     fixture.componentRef.setInput('period', 'month');
     render();
-    let req = expectPeriod();
-    expect(req.request.params.get('period')).toBe('month');
-    req.flush(periodSummary('month', { totalHours: 40 }));
-    let emp = expectOverviewEmployees();
-    expect(emp.request.params.get('period')).toBe('month');
-    emp.flush(employeePage({ pageSize: 5 }));
+    expectPeriod().flush(periodSummary('month', { totalHours: 40 }));
+    expectEmployees().flush(employeePage());
     render();
     expect(q('tp-total-label')?.textContent?.trim()).toBe('Due this month');
 
-    // Back to week: served from the cache (the employee breakdown is asked again for the new period).
+    // Back to week: served from the cache.
     fixture.componentRef.setInput('period', 'week');
     render();
-    http.expectNone((r) => r.url === `${BASE}/period`);
-    expectOverviewEmployees().flush(employeePage({ pageSize: 5 }));
+    http.expectNone(isPeriod);
+    expectEmployees().flush(employeePage());
     render();
     expect(q('tp-total-label')?.textContent?.trim()).toBe('Due this week');
 
-    // A project filter narrows the period summary on the server.
     fixture.componentInstance.setProject('p2');
     render();
-    const narrowed = http.expectOne((r) => r.url === `${BASE}/period`);
-    expect(narrowed.request.params.get('period')).toBe('week');
+    const narrowed = expectPeriod();
     expect(narrowed.request.params.get('projectId')).toBe('p2');
     narrowed.flush(periodSummary('week'));
-    expect(q('tp-tile-allocated')).toBeNull();
-    expectOverviewEmployees().flush(employeePage({ pageSize: 5 }));
-    fixture.componentInstance.clearFilters();
-    render();
-    http.expectNone((r) => r.url === `${BASE}/period`);
-    expectOverviewEmployees().flush(employeePage({ pageSize: 5 }));
-    render();
-    expect(q('tp-total-label')?.textContent?.trim()).toBe('Due this week');
-
-    // Other tabs never ask for the period summary.
-    clickTab('By Employee');
     emp = expectEmployees();
-    expect(emp.request.params.get('period')).toBe('week');
+    expect(emp.request.params.get('projectId')).toBe('p2');
     emp.flush(employeePage());
-    fixture.componentRef.setInput('period', 'month');
-    render();
-    expectEmployees().flush(employeePage());
-    http.expectNone((r) => r.url === `${BASE}/period`);
+    expectWeekly().flush(weekly());
   });
 
   it('shows an error with Retry when the period summary fails', () => {
-    openWith(summary(), 'month');
+    fixture.componentRef.setInput('summary', summary());
+    fixture.componentRef.setInput('period', 'month');
+    fixture.componentRef.setInput('open', true);
+    render();
     expectPeriod().flush('boom', { status: 500, statusText: 'Server Error' });
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
     render();
     const retry = Array.from(el().querySelectorAll<HTMLButtonElement>('[role="alert"] button')).find((b) => b.textContent?.trim() === 'Retry');
     expect(retry).toBeTruthy();
@@ -346,43 +459,11 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-total-label')?.textContent?.trim()).toBe('Due this month');
   });
 
-  it('sends the period to the employee and task tabs and resets paging when it changes', () => {
-    openWith();
-    clickTab('By Employee');
-    expectEmployees().flush(employeePage());
-    render();
-    q('tp-employee-next')!.click();
-    render();
-    expectEmployees().flush(employeePage({ pageNumber: 2, hasPrevious: true }));
-    fixture.componentRef.setInput('period', 'week');
-    render();
-    const req = expectEmployees();
-    expect(req.request.params.get('period')).toBe('week');
-    expect(req.request.params.get('pageNumber')).toBe('1');
-    req.flush(employeePage());
-
-    clickTab('Task List');
-    const tasks = expectTasks();
-    expect(tasks.request.params.get('period')).toBe('week');
-    tasks.flush(taskPage());
-  });
-
-  it('notes that project and module totals are all-time when a period is picked', () => {
-    openWith();
-    clickTab('By Project');
-    expect(q('tp-period-alltime-note')).toBeNull();
-    fixture.componentRef.setInput('period', 'month');
-    render();
-    expect(q('tp-period-alltime-note')?.textContent).toContain('all-time');
-    clickTab('By Module');
-    expect(q('tp-period-alltime-note')?.textContent).toContain('all-time');
-    http.expectNone(() => true);
-  });
-
   it('shows a safe empty state when the summary is null', () => {
     openWith(null);
     expect(el().textContent).toContain('No team progress yet');
     expect(q('team-progress-detail')).toBeNull();
+    http.expectNone(() => true);
   });
 
   it('filters the overview client-side by project and module', () => {
@@ -391,23 +472,18 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-tile-allocated')?.textContent).toContain('80');
     expect(q('tp-overdue-t2')).not.toBeNull();
     expect(q('tp-overdue-t1')).toBeNull();
-    // Only the Employee Breakdown goes to the server, narrowed the same way.
-    let req = expectOverviewEmployees();
-    expect(req.request.params.get('projectId')).toBe('p2');
-    req.flush(employeePage({ pageSize: 5 }));
+    expect(q('tp-overdue-count')?.textContent).toContain('1 of the 2 listed match the filter');
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
     render();
-    // A picked project switches panel 2 to its modules.
-    expect(q('tp-breakdown')?.textContent).toContain('Status by Module');
-    expect(q('tp-breakdown-m2')).not.toBeNull();
 
     fixture.componentInstance.setProject('p1');
     fixture.componentInstance.setModule('m1a');
     render();
     expect(q('tp-tile-allocated')?.textContent).toContain('40');
     expect(q('tp-overdue-t1')).not.toBeNull();
-    req = expectOverviewEmployees();
-    expect(req.request.params.get('objectiveId')).toBe('m1a');
-    req.flush(employeePage({ pageSize: 5 }));
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
     http.expectNone(() => true);
   });
 
@@ -419,236 +495,10 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(closedCount).toBe(2);
   });
 
-  it('fetches employees only when the tab is activated, with default params, and caches the result', () => {
-    openWith();
-    http.expectNone(() => true);
-    clickTab('By Employee');
-    const req = expectEmployees();
-    expect(req.request.params.get('pageNumber')).toBe('1');
-    expect(req.request.params.get('pageSize')).toBe('20');
-    expect(req.request.params.get('sort')).toBe('totalHours');
-    expect(req.request.params.get('direction')).toBe('desc');
-    expect(req.request.params.has('search')).toBe(false);
-    expect(req.request.params.has('period')).toBe(false);
-    req.flush(employeePage());
-    render();
-
-    expect(q('tp-employee-e1')?.textContent).toContain('Ann Lee');
-    expect(q('tp-shared-badge')?.textContent).toContain('3 shared · 24 h');
-    expect(q('tp-shared-note')?.textContent).toContain('more than the team total');
-    expect(q('tp-unassigned')?.textContent).toContain('2 tasks');
-    expect(q('tp-unassigned')?.textContent).toContain('6 h');
-
-    clickTab('Overview');
-    clickTab('By Employee');
-    http.expectNone(() => true);
-  });
-
-  it('does not fetch while closed even on the employee tab, and fetches again once reopened only if needed', () => {
-    openWith();
-    clickTab('By Employee');
-    expectEmployees().flush(employeePage());
-    fixture.componentRef.setInput('open', false);
-    render();
-    fixture.componentInstance.sortEmployees('name');
-    render();
-    http.expectNone(() => true);
-
-    fixture.componentRef.setInput('open', true);
-    render();
-    const req = expectEmployees();
-    expect(req.request.params.get('sort')).toBe('name');
-    expect(req.request.params.get('direction')).toBe('asc');
-    req.flush(employeePage());
-  });
-
-  it('debounces the employee search by 300 ms and resets to page 1', () => {
-    vi.useFakeTimers();
-    openWith();
-    clickTab('By Employee');
-    expectEmployees().flush(employeePage());
-    render();
-    q('tp-employee-next')!.click();
-    render();
-    const page2 = expectEmployees();
-    expect(page2.request.params.get('pageNumber')).toBe('2');
-    page2.flush(employeePage({ pageNumber: 2, hasPrevious: true }));
-    render();
-
-    typeInto(q('tp-employee-search'), 'an');
-    typeInto(q('tp-employee-search'), 'ann');
-    vi.advanceTimersByTime(299);
-    render();
-    http.expectNone(() => true);
-    vi.advanceTimersByTime(1);
-    render();
-    const req = expectEmployees();
-    expect(req.request.params.get('search')).toBe('ann');
-    expect(req.request.params.get('pageNumber')).toBe('1');
-    req.flush(employeePage());
-  });
-
-  it('cancels the in-flight request when a newer query starts', () => {
-    openWith();
-    clickTab('By Employee');
-    const first = expectEmployees();
-    fixture.componentInstance.sortEmployees('completedHours');
-    render();
-    const second = expectEmployees();
-    expect(first.cancelled).toBe(true);
-    expect(second.request.params.get('sort')).toBe('completedHours');
-    second.flush(employeePage());
-  });
-
-  it('sorts employees on the server when a header is clicked, toggling direction', () => {
-    openWith();
-    clickTab('By Employee');
-    expectEmployees().flush(employeePage());
-    render();
-    q('tp-sort-name')!.click();
-    render();
-    let req = expectEmployees();
-    expect(req.request.params.get('sort')).toBe('name');
-    expect(req.request.params.get('direction')).toBe('asc');
-    req.flush(employeePage());
-    render();
-    q('tp-sort-name')!.click();
-    render();
-    req = expectEmployees();
-    expect(req.request.params.get('direction')).toBe('desc');
-    req.flush(employeePage());
-  });
-
-  it('sends project/module filters to the server and resets paging when they change', () => {
-    openWith();
-    clickTab('By Employee');
-    expectEmployees().flush(employeePage());
-    render();
-    q('tp-employee-next')!.click();
-    render();
-    expectEmployees().flush(employeePage({ pageNumber: 2 }));
-    fixture.componentInstance.setModule('m1a');
-    render();
-    const req = expectEmployees();
-    expect(req.request.params.get('projectId')).toBe('p1');
-    expect(req.request.params.get('objectiveId')).toBe('m1a');
-    expect(req.request.params.get('pageNumber')).toBe('1');
-    req.flush(employeePage());
-  });
-
-  it('shows an error with Retry that refetches', () => {
-    openWith();
-    clickTab('By Employee');
-    expectEmployees().flush('boom', { status: 500, statusText: 'Server Error' });
-    render();
-    const retry = Array.from(el().querySelectorAll<HTMLButtonElement>('[role="alert"] button')).find((b) => b.textContent?.trim() === 'Retry');
-    expect(retry).toBeTruthy();
-    retry!.click();
-    render();
-    expectEmployees().flush(employeePage());
-    render();
-    expect(el().querySelector('[role="alert"]')).toBeNull();
-    expect(q('tp-employee-e1')).not.toBeNull();
-  });
-
-  it('opens the Tasks tab filtered by an employee when a row is clicked', () => {
-    openWith();
-    clickTab('By Employee');
-    expectEmployees().flush(employeePage());
-    render();
-    q('tp-employee-e1')!.click();
-    render();
-    const req = expectTasks();
-    expect(req.request.params.get('employeeId')).toBe('e1');
-    req.flush(taskPage());
-    render();
-    expect(q('tp-task-employee')?.textContent).toContain('Ann Lee');
-  });
-
-  it('loads tasks lazily with status filter, search, sort and paging params', () => {
-    vi.useFakeTimers();
-    openWith();
-    http.expectNone(() => true);
-    clickTab('Task List');
-    let req = expectTasks();
-    expect(req.request.params.get('sort')).toBe('estimatedHours');
-    expect(req.request.params.get('direction')).toBe('desc');
-    expect(req.request.params.has('status')).toBe(false);
-    req.flush(taskPage());
-    render();
-
-    expect(q('tp-task-tk1')?.textContent).toContain('APO-12');
-    expect(q('tp-task-tk1')?.textContent).toContain('Doing');
-    expect(q('tp-task-shared')?.textContent).toContain('Shared');
-    expect(q('tp-task-tk1')?.textContent).toContain('1 Mar 2026');
-
-    q('tp-status-completed')!.click();
-    render();
-    req = expectTasks();
-    expect(req.request.params.get('status')).toBe('completed');
-    req.flush(taskPage());
-    render();
-    expect(q('tp-status-completed')?.getAttribute('aria-pressed')).toBe('true');
-
-    q('tp-task-next')!.click();
-    render();
-    req = expectTasks();
-    expect(req.request.params.get('pageNumber')).toBe('2');
-    req.flush(taskPage({ pageNumber: 2, hasNext: false, hasPrevious: true }));
-    render();
-
-    q('tp-sort-dueDate')!.click();
-    render();
-    req = expectTasks();
-    expect(req.request.params.get('sort')).toBe('dueDate');
-    expect(req.request.params.get('direction')).toBe('asc');
-    expect(req.request.params.get('pageNumber')).toBe('1');
-    req.flush(taskPage());
-    render();
-
-    typeInto(q('tp-task-search'), 'APO');
-    vi.advanceTimersByTime(300);
-    render();
-    req = expectTasks();
-    expect(req.request.params.get('search')).toBe('APO');
-    req.flush(taskPage());
-  });
-
-  it('navigates to the task board and closes when a task row is clicked', () => {
-    openWith();
-    clickTab('Task List');
-    expectTasks().flush(taskPage());
-    render();
-    q('tp-task-tk1')!.click();
-    expect(closedCount).toBe(1);
-    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'm1', 'board'], { queryParams: { highlightTaskId: 'tk1' } });
-  });
-
-  it('navigates to the module tree and closes when a module row is clicked', () => {
-    openWith();
-    clickTab('By Module');
-    expect(q('tp-module-m1a')).not.toBeNull();
-    expect(q('tp-at-risk')).not.toBeNull();
-    q('tp-module-m1a')!.click();
-    expect(closedCount).toBe(1);
-    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'milestones', 'm1a', 'tree']);
-    http.expectNone(() => true);
-  });
-
   it('overdue task link navigates to the board and closes', () => {
     openWith();
     q('tp-overdue-t2')!.click();
     expect(closedCount).toBe(1);
     expect(navigate).toHaveBeenCalledWith(['/work', 'p2', 'milestones', 'm2', 'board'], { queryParams: { highlightTaskId: 't2' } });
-  });
-
-  it('lists projects with their hours and completion', () => {
-    openWith();
-    clickTab('By Project');
-    const text = q('tp-panel-projects')?.textContent ?? '';
-    expect(text).toContain('Apollo');
-    expect(text).toContain('Zeus');
-    expect(text).toContain('33%');
-    http.expectNone(() => true);
   });
 });

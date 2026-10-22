@@ -1,4 +1,4 @@
-/** Team Progress detail dialog: paged employee and task breakdowns of the caller's led scope.
+/** Team Progress: paged employee breakdown, period summary and weekly completion of the caller's led scope.
  * Hours are task estimates (weightage), never time worked. See TEAM_PROGRESS_WIDGET_CONTRACT.md. */
 
 export type LedSortDirection = 'asc' | 'desc';
@@ -6,8 +6,6 @@ export type LedSortDirection = 'asc' | 'desc';
 export type LedTaskStatus = 'completed' | 'inProgress' | 'notStarted';
 
 export type LedEmployeeSort = 'totalHours' | 'completedHours' | 'inProgressHours' | 'notStartedHours' | 'name';
-
-export type LedTaskSort = 'estimatedHours' | 'dueDate' | 'title' | 'status';
 
 interface LedPage<T> {
   items: T[];
@@ -46,30 +44,6 @@ export interface LedEmployeeProgressPage extends LedPage<LedEmployeeProgress> {
   unassigned: LedUnassignedTotals;
 }
 
-export interface LedTaskAssigneeRef {
-  employeeId: string;
-  displayName: string;
-}
-
-export interface LedTaskRow {
-  taskId: string;
-  shortId: string;
-  title: string;
-  status: LedTaskStatus;
-  statusName: string;
-  estimatedHours: number;
-  /** yyyy-MM-dd, or null when the task has no due date. */
-  dueDate: string | null;
-  projectId: string;
-  projectName: string;
-  objectiveId: string;
-  objectiveTitle: string;
-  assignees: LedTaskAssigneeRef[];
-  isShared: boolean;
-}
-
-export type LedTaskPage = LedPage<LedTaskRow>;
-
 export interface LedEmployeeQuery {
   pageNumber: number;
   pageSize: number;
@@ -79,20 +53,6 @@ export interface LedEmployeeQuery {
   projectId?: string;
   objectiveId?: string;
   sort: LedEmployeeSort;
-  direction: LedSortDirection;
-}
-
-export interface LedTaskQuery {
-  pageNumber: number;
-  pageSize: number;
-  /** Due-date window; omitted (or "all") means no window. */
-  period?: LedProgressPeriod;
-  search?: string;
-  status?: LedTaskStatus;
-  projectId?: string;
-  objectiveId?: string;
-  employeeId?: string;
-  sort: LedTaskSort;
   direction: LedSortDirection;
 }
 
@@ -117,4 +77,26 @@ export interface LedPeriodProgress {
   inProgressTaskCount: number;
   notStartedTaskCount: number;
   unestimatedTaskCount: number;
+}
+
+/** One ISO week (Monday..Sunday, UTC) of completed task estimates. */
+export interface LedWeeklyCompletionWeek {
+  /** yyyy-MM-dd, Monday. */
+  weekStart: string;
+  /** yyyy-MM-dd, Sunday. */
+  weekEnd: string;
+  /** Estimates of top-level tasks completed in the week (by CompletedAt) that are still done. */
+  completedHours: number;
+  completedTaskCount: number;
+}
+
+/** GET work/led-progress/weekly-completion. `weeks` is oldest first; the last one is the current,
+ * partial week. Done tasks without a completion date can't be placed in a week: they are reported
+ * as `undated*` instead of being guessed. */
+export interface LedWeeklyCompletion {
+  weeks: LedWeeklyCompletionWeek[];
+  /** Allocation of the (filtered) led scope, so a week can be read as a share of it. */
+  allocatedHours: number;
+  undatedCompletedHours: number;
+  undatedCompletedTaskCount: number;
 }
