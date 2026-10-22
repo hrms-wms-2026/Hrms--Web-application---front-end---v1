@@ -451,4 +451,19 @@ describe('DashboardStore', () => {
     expect(store.error()).not.toBeNull();
     expect(store.bootstrap()).toBeNull();
   });
+
+  it('hidden widgets are not shown or offered, but stay in the saved set', async () => {
+    const { store, api } = await loaded([widget('i-a', 'a', 0, 0), widget('i-t', 'my-tasks', 0, 2), widget('i-w', 'work-pattern', 0, 4)]);
+    expect(store.visibleWidgets().map(w => w.instanceId)).toEqual(['i-a']);
+
+    store.serverAvailable.set([...availableList, { key: 'wellbeing', title: 'Wellbeing', description: '', size, defaultW: 3, defaultH: 3, placed: false }]);
+    expect(store.available().map(a => a.key)).not.toContain('wellbeing');
+
+    api.saveLayout.mockReturnValue(of({ layoutVersion: 4 }));
+    store.startEditing();
+    store.move('i-a', 6, 0);
+    await store.save();
+    const items = api.saveLayout.mock.calls[0][3] as { instanceId: string }[];
+    expect(items.map(i => i.instanceId).sort()).toEqual(['i-a', 'i-t', 'i-w']);
+  });
 });

@@ -68,7 +68,7 @@ function clearLegacyDashboardStorage(): void {
 
       @if (boot) {
         <app-dashboard-grid
-          [widgets]="store.widgets()"
+          [widgets]="store.visibleWidgets()"
           [columns]="boot.grid.columns"
           [rowHeight]="boot.grid.rowHeight"
           [gap]="boot.grid.gap"

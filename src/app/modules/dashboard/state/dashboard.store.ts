@@ -13,6 +13,7 @@ import {
   GridRect,
   readLayoutProblem
 } from '../models/dashboard-layout.model';
+import { HIDDEN_WIDGET_KEYS } from '../widgets/widget-registry';
 
 const CONFLICT_MESSAGE = 'Your dashboard changed in another tab or device — reloaded.';
 const SET_MISMATCH_MESSAGE = 'Your available widgets changed — reloaded.';
@@ -66,10 +67,13 @@ export class DashboardStore {
   /** The draft while editing, otherwise the saved widgets. */
   readonly widgets = computed<BootstrapWidget[]>(() => (this.editing() ? this.draft() : (this.bootstrap()?.widgets ?? [])));
 
+  /** The widgets the grid renders: hidden catalog widgets are left out. */
+  readonly visibleWidgets = computed<BootstrapWidget[]>(() => this.widgets().filter(w => !HIDDEN_WIDGET_KEYS.has(w.widgetKey)));
+
   /** Catalog entries not currently on the board (placed ones removed in the draft count as available again). */
   readonly available = computed<AvailableWidget[]>(() => {
     const onBoard = new Set(this.widgets().map(w => w.widgetKey));
-    return this.serverAvailable().filter(a => !onBoard.has(a.key));
+    return this.serverAvailable().filter(a => !onBoard.has(a.key) && !HIDDEN_WIDGET_KEYS.has(a.key));
   });
 
   async load(key: DashboardKey): Promise<void> {

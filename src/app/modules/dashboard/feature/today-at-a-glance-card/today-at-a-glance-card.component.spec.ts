@@ -108,11 +108,47 @@ describe('TodayAtAGlanceCardComponent', () => {
     expect(store.loadToday).toHaveBeenCalled();
   });
 
-  it('shows clocked-in status and worked time', async () => {
-    const { fixture } = await setup({ attendanceStatus: 'clocked_in', totalWorkedMinutes: 320 });
+  it('shows clocked-in status and the time left to finish the required day', async () => {
+    const { fixture } = await setup({ attendanceStatus: 'clocked_in', requiredWorkMinutes: 480, totalWorkedMinutes: 320 });
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Clocked in');
-    expect(text).toContain('5h 20m');
+    expect(text).toContain('Time left to finish');
+    expect(fixture.nativeElement.querySelector('[data-testid="time-left"]').textContent.trim()).toBe('2h 40m');
+  });
+
+  it('shows when work started, whatever the status label, and when it should finish', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-26T08:00:00Z'));
+    try {
+      const { fixture } = await setup({ attendanceStatus: 'working', attendanceStatusLabel: 'Working', requiredWorkMinutes: 480, totalWorkedMinutes: 320 });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const clock = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      expect(fixture.nativeElement.querySelector('[data-testid="started-at"]').textContent.trim()).toBe(`Started at ${clock('2026-08-26T03:24:00Z')}`);
+      expect(fixture.nativeElement.textContent).not.toContain('Shift not active');
+      // 160 minutes left from the 08:00Z refresh.
+      expect(fixture.nativeElement.querySelector('[data-testid="finish-at"]').textContent.trim()).toBe(`Finish at ${clock('2026-08-26T10:40:00Z')}`);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows the clock-out time once the day is finished, and "Shift not active" before clock-in', async () => {
+    const out = await setup({ attendanceStatus: 'clocked_out', clockOutAt: '2026-08-26T12:00:00Z' });
+    const clock = new Date('2026-08-26T12:00:00Z').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    expect(out.fixture.nativeElement.querySelector('[data-testid="finish-at"]').textContent.trim()).toBe(`Finished at ${clock}`);
+    TestBed.resetTestingModule();
+    const before = await setup({ attendanceStatus: 'not_clocked_in', clockInAt: null, totalWorkedMinutes: 0 });
+    expect(before.fixture.nativeElement.textContent).toContain('Shift not active');
+    expect(before.fixture.nativeElement.querySelector('[data-testid="finish-at"]')).toBeNull();
+  });
+
+  it('shows 0m left once the required time is worked, and a dash without a target', async () => {
+    const done = await setup({ requiredWorkMinutes: 480, totalWorkedMinutes: 500 });
+    expect(done.fixture.nativeElement.querySelector('[data-testid="time-left"]').textContent.trim()).toBe('0m');
+    TestBed.resetTestingModule();
+    const noTarget = await setup({ requiredWorkMinutes: 0, totalWorkedMinutes: 100 });
+    expect(noTarget.fixture.nativeElement.querySelector('[data-testid="time-left"]').textContent.trim()).toBe('—');
   });
 
   it('shows not-clocked-in status when the employee has not clocked in', async () => {
@@ -147,7 +183,7 @@ describe('TodayAtAGlanceCardComponent', () => {
   it('does not show worked time or status while today is not yet loaded', async () => {
     const { fixture } = await setup(null);
     const text = fixture.nativeElement.textContent as string;
-    expect(text).not.toContain('Worked time');
+    expect(text).not.toContain('Time left to finish');
     expect(text).not.toContain('Clocked in');
     expect(text).not.toContain('Not clocked in');
   });

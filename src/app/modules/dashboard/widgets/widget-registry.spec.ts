@@ -7,7 +7,7 @@ import { QuickActionsCardComponent } from '../feature/quick-actions-card/quick-a
 import { TeamProgressCardComponent } from '../feature/team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../feature/team-status-card/team-status-card.component';
 import { TodayAtAGlanceCardComponent } from '../feature/today-at-a-glance-card/today-at-a-glance-card.component';
-import { TodayTotalTimeCardComponent } from '../feature/today-total-time-card/today-total-time-card.component';
+import { WeeklyProgressCardComponent } from '../feature/weekly-progress-card/weekly-progress-card.component';
 import { TodaysScheduleCardComponent } from '../feature/todays-schedule-card/todays-schedule-card.component';
 import { WellbeingCarouselCardComponent } from '../feature/wellbeing-carousel-card/wellbeing-carousel-card.component';
 import { WorkPatternCardComponent } from '../feature/work-pattern-card/work-pattern-card.component';
@@ -18,7 +18,7 @@ describe('WIDGET_REGISTRY', () => {
     const expected: Record<string, unknown> = {
       'today-at-a-glance': TodayAtAGlanceCardComponent,
       'todays-schedule': TodaysScheduleCardComponent,
-      'today-total-time': TodayTotalTimeCardComponent,
+      'today-total-time': WeeklyProgressCardComponent,
       'active-projects': ActiveProjectsCardComponent,
       'my-tasks': MyTasksCardComponent,
       notifications: DashboardNotificationsCardComponent,
