@@ -6,7 +6,7 @@
 >
   @if (variant() === 'input') {
     @if (label()) {
-      <label [for]="inputId" class="dp-label ui-field-label">{{ label() }}</label>
+      <label [for]="inputId" class="dp-label ui-field-label">{{ label() }}@if (required()) {<span class="ui-field-required" aria-hidden="true">*</span>}</label>
     }
 
     <div
@@ -29,6 +29,9 @@
         [readonly]="readonlyInput()"
         [value]="value()"
         (input)="onInputText($event)"
+        (keydown)="onInputKeydown($event)"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="isOpen()"
         [attr.name]="name() || null"
         [attr.maxlength]="10"
         [attr.aria-label]="ariaLabel() || label() || null"
@@ -37,21 +40,6 @@
         [attr.data-testid]="inputTestId() || null"
         class="dp-input ui-field__control"
       />
-      <span class="ui-field__trailing">
-        <button
-          type="button"
-          class="dp-icon-trigger ui-field__icon-btn"
-          (click)="$event.stopPropagation(); togglePopover($event)"
-          [attr.aria-expanded]="isOpen()"
-          title="Open calendar picker"
-          aria-label="Open calendar picker"
-          [disabled]="disabled()"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M16 2v4M8 2v4M4 10h16" />
-          </svg>
-        </button>
-      </span>
     </div>
 
     @if (error()) {

@@ -58,6 +58,8 @@ function parseYYYYMMDD(str: string): { year: number; month: number; date: number
 })
 export class DatePickerComponent {
   label = input<string>('');
+  /** Shows a red asterisk after the label. */
+  required = input(false);
   /** 'sm' is the compact field for dense panels and toolbars. */
   size = input<'md' | 'sm'>('md');
   placeholder = input<string>('YYYY-MM-DD');
@@ -190,6 +192,15 @@ export class DatePickerComponent {
 
   private lastWheelTime = 0;
   private readonly WHEEL_THROTTLE_MS = 200;
+
+  /** Keyboard way in to the calendar: Enter, Space or Down on the read-only input. */
+  onInputKeydown(event: KeyboardEvent): void {
+    if (!this.readonlyInput() || this.isOpen()) return;
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.togglePopover();
+    }
+  }
 
   togglePopover(event?: MouseEvent): void {
     if (event) {
