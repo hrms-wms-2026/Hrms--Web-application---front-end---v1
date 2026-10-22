@@ -112,8 +112,16 @@ describe('QuickActionsCardComponent', () => {
     );
   });
 
-  it('links Create Ticket to the Inbox and Settings to settings', async () => {
+  it('shows only Start Break, My Team and Activity Timeline on My Work', async () => {
     const { fixture } = await setup(makeToday());
+    const ids = Array.from(fixture.nativeElement.querySelectorAll('[data-testid^="quick-action-"]'))
+      .map((el) => (el as HTMLElement).dataset['testid'])
+      .filter((id) => id !== 'quick-action-break-label');
+    expect(ids).toEqual(['quick-action-break', 'quick-action-my-team', 'quick-action-activity-timeline']);
+  });
+
+  it('links Create Ticket to the Inbox and Settings to settings on My Team', async () => {
+    const { fixture } = await setup(makeToday(), true);
     const href = (id: string): string | null =>
       fixture.nativeElement.querySelector(`[data-testid="quick-action-${id}"]`)?.getAttribute('href') ?? null;
     expect(href('create-ticket')).toBe('/inbox');
@@ -121,7 +129,7 @@ describe('QuickActionsCardComponent', () => {
   });
 
   it('opens the Create Task popup over the page (attached to body), once, until it closes', async () => {
-    const { fixture } = await setup(makeToday());
+    const { fixture } = await setup(makeToday(), true);
     const button: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="quick-action-create-task"]');
     button.click();
     button.click();
@@ -133,7 +141,7 @@ describe('QuickActionsCardComponent', () => {
   });
 
   it('hides Create Task and Settings from a viewer who cannot open Work or any settings page', async () => {
-    const { fixture } = await setup(makeToday(), false, false);
+    const { fixture } = await setup(makeToday(), true, false);
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-create-ticket"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-create-task"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-settings"]')).toBeNull();
