@@ -10,6 +10,7 @@ import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 import { EmployeeEmploymentTabComponent } from './employment-tab.component';
 
+import { EmployeeLeavePolicyApiService } from '../../../leave/data-access/employee-leave-policy-api.service';
 describe('EmployeeEmploymentTabComponent', () => {
   const employee: EmployeeDetailResponse = {
     id: 'emp-1',
@@ -99,6 +100,7 @@ describe('EmployeeEmploymentTabComponent', () => {
       imports: [EmployeeEmploymentTabComponent],
       providers: [
         { provide: PeopleApiService, useValue: { getWorkGraph, listEmployees } },
+        { provide: EmployeeLeavePolicyApiService, useValue: { list: () => of([]) } },
         { provide: WorkModeStore, useValue: workModeStoreStub },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn(), ensureLoaded: vi.fn().mockResolvedValue(undefined), seed: vi.fn() } }
       ]

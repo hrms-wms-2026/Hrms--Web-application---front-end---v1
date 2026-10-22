@@ -7,9 +7,6 @@
   <ng-template appDataTableCell="approvedBy" let-request><span data-testid="approved-by">{{ request.approvedByName || '—' }}</span></ng-template>
   <ng-template appDataTableCell="submitted" let-request>{{ request.createdAt | slice:0:10 }}</ng-template>
   <ng-template appDataTableCell="actions" let-request>
-    @if (canReply(request)) {
-      <button type="button" data-testid="reply-request" class="lrh-reply" aria-label="Reply to information request" (click)="replyRequested.emit(request)">Reply</button>
-    }
     @if (canCancel(request)) {
       <button type="button" data-testid="cancel-request" class="lrh-cancel" (click)="cancelRequested.emit(request)">Cancel</button>
     }

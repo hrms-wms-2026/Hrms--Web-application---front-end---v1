@@ -9,6 +9,8 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { ClockInPolicyStore } from '../../state/clock-in-policy.store';
+import { LeaveTypeApiService } from '../../../leave/data-access/leave-type-api.service';
+import { firstValueFrom } from 'rxjs';
 import { WorkModeListComponent } from '../work-mode-list/work-mode-list.component';
 import {
   ClockInPolicySettingsFormValue,
@@ -51,6 +53,7 @@ export class ClockInPolicyFormComponent {
 
   readonly legalEntityStore = inject(LegalEntityStore);
   readonly policyStore = inject(ClockInPolicyStore);
+  private readonly leaveTypes = inject(LeaveTypeApiService);
 
   readonly hasReadAccess = computed(
     () =>
@@ -114,7 +117,10 @@ export class ClockInPolicyFormComponent {
     this.submitted.set(false);
     this.isDirty.set(false);
 
+    // Both lookups in parallel; the form is filled once the types decided whether rules are editable.
+    const types = this.loadTimeOffTypes();
     await this.policyStore.loadCompanyPolicy(legalEntityId);
+    await types;
 
     if (this.bootstrapKey !== legalEntityId) {
       return;
@@ -125,6 +131,20 @@ export class ClockInPolicyFormComponent {
       this.form.set(formModelFromPolicy(policy, undefined, this.lateRulesEditable()));
     }
     this.isDirty.set(false);
+  }
+
+  /** The rules editor turns on once there is at least one active time-off type to charge; otherwise the "configure
+   *  time off types first" message stays. A failed lookup leaves it off. */
+  private async loadTimeOffTypes(): Promise<void> {
+    try {
+      const types = await firstValueFrom(this.leaveTypes.list(false));
+      const options = types.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.name }));
+      if (options.length === 0) return;
+      this.timeOffTypeOptions.set(options);
+      this.lateRulesEditable.set(true);
+    } catch {
+      // No lookup (e.g. no leave:read access): the editor stays off with its explanation.
+    }
   }
 
   patchForm(partial: Partial<ClockInPolicySettingsFormValue>): void {

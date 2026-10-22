@@ -143,7 +143,7 @@ interface DisplayOption extends SelectOption {
             />
           </div>
         }
-        <ul role="listbox" class="flex max-h-64 flex-col gap-0.5 overflow-y-auto p-1" [attr.aria-labelledby]="label() ? selectId : null">
+        <ul role="listbox" class="flex max-h-64 flex-col gap-0.5 overflow-y-auto p-1 scroll-fade" [attr.aria-labelledby]="label() ? selectId : null">
           @for (option of filteredOptions(); track option.value) {
             <li role="none">
               <button

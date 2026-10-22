@@ -9,7 +9,7 @@ describe('LeaveCalendarGridComponent', () => {
     {
       date: '2026-09-10', dayOfWeek: 'Thursday',
       absences: [
-        { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: null, departmentName: null, legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', leaveTypeCategory: 'annual', typeColorHex: null, status: 'approved', isTentative: false, isPartialCancellationHistory: false, startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3}
+        { requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', departmentId: null, departmentName: null, legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', typeColorHex: null, status: 'approved', isTentative: false, isPartialCancellationHistory: false, startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3}
       ],
       holidays: []
     },
@@ -55,10 +55,8 @@ describe('LeaveCalendarGridComponent', () => {
     expect(emitted).toEqual(['2026-09-10']);
   });
 
-  it('resolves a colour from typeColorHex when present, falling back by category otherwise', () => {
+  it('uses the leave type colour, with a neutral fallback', () => {
     expect(fixture.componentInstance.colorFor({ ...days[0].absences[0], typeColorHex: '#ff0000' })).toBe('#ff0000');
-    expect(fixture.componentInstance.colorFor({ ...days[0].absences[0], typeColorHex: null, leaveTypeCategory: 'annual' })).toBe('#1e5eff');
-    expect(fixture.componentInstance.colorFor({ ...days[0].absences[0], typeColorHex: null, leaveTypeCategory: 'sick' })).toBe('#c98a1f');
-    expect(fixture.componentInstance.colorFor({ ...days[0].absences[0], typeColorHex: null, leaveTypeCategory: 'unpaid' })).toBe('#6b5b95');
+    expect(fixture.componentInstance.colorFor({ ...days[0].absences[0], typeColorHex: null })).toBe('#6b5b95');
   });
 });

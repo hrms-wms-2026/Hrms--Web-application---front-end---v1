@@ -17,6 +17,10 @@ export const DEFAULT_POLICY_NAME = 'Default clock-in policy';
  */
 export const LATE_DEDUCTION_RULES_EDITABLE = false;
 
+/** A rule starts at most a working day (8h) late; it charges at most 10× the missing minutes. */
+export const MAX_LATE_RULE_MINUTES = 480;
+export const MAX_LATE_RULE_MULTIPLIER = 10;
+
 export const LATE_DEDUCTION_RULES_DISABLED_MESSAGE =
   'Time off types must be configured before late deduction rules can be added.';
 
@@ -169,6 +173,8 @@ export function validateClockInPolicyForm(
         errors[minutesKey] = 'Enter how many minutes late.';
       } else if (!isIntegerAtLeastOne(rule.lateArrivalMinutes)) {
         errors[minutesKey] = 'Minutes must be a whole number of at least 1.';
+      } else if (Number(rule.lateArrivalMinutes) > MAX_LATE_RULE_MINUTES) {
+        errors[minutesKey] = `Minutes can be at most ${MAX_LATE_RULE_MINUTES}.`;
       } else {
         const minutes = Number(rule.lateArrivalMinutes);
         const prior = seenMinutes.get(minutes);
@@ -187,6 +193,8 @@ export function validateClockInPolicyForm(
         errors[amountKey] = 'Enter a deduction amount.';
       } else if (!isPositiveNumber(rule.deductionAmount)) {
         errors[amountKey] = 'Deduction amount must be greater than 0.';
+      } else if (Number(rule.deductionAmount) > MAX_LATE_RULE_MULTIPLIER) {
+        errors[amountKey] = `Deduction can be at most ${MAX_LATE_RULE_MULTIPLIER}× the minutes.`;
       }
 
       if (!rule.timeOffTypeId.trim()) {

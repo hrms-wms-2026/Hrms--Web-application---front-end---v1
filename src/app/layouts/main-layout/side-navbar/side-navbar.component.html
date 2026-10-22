@@ -23,7 +23,7 @@
 
   @for (item of visibleItems(); track item.id) {
     <a
-      [routerLink]="item.path"
+      [routerLink]="entryPath(item)"
       class="nav-rail-item"
       [class.nav-rail-item--active]="activeItem()?.id === item.id"
       [attr.aria-current]="activeItem()?.id === item.id ? 'page' : null"

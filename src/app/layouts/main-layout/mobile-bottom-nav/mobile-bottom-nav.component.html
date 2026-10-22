@@ -18,7 +18,7 @@
     <div class="mobile-bottom-nav__bar">
       @for (item of visibleItems(); track item.id) {
         <a
-          [routerLink]="item.path"
+          [routerLink]="entryPath(item)"
           class="mobile-nav-item"
           [class.mobile-nav-item--active]="activeItem()?.id === item.id"
           [attr.aria-label]="item.label"

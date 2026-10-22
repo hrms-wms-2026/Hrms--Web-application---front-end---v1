@@ -67,10 +67,12 @@ export function formatJoinedAgo(hireDate: string | null | undefined, now: Date =
  * Work Network. Each card owns its own states, so a failure or 403 in one (e.g. the work graph or
  * the direct-reports list) never affects the others.
  */
+import { EmployeeLeavePoliciesComponent } from '../../ui/employee-leave-policies/employee-leave-policies.component';
 @Component({
   selector: 'app-employee-employment-tab',
   standalone: true,
   imports: [
+    EmployeeLeavePoliciesComponent,
     ErrorStateComponent,
     PopoutHeaderActionsComponent,
     EmployeeJobInfoComponent,
@@ -136,6 +138,8 @@ export function formatJoinedAgo(hireDate: string | null | undefined, now: Date =
           />
         </div>
       </div>
+
+      <app-employee-leave-policies [employeeId]="employee().id" />
 
       <!-- items-start: Career Journey is only as tall as its entries, not stretched to the Work Network card -->
       <div class="grid grid-cols-1 items-start gap-3 xl:grid-cols-5">

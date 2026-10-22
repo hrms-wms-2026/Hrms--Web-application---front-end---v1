@@ -10,6 +10,7 @@ import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveRequestResponse, LeaveUploadedDocument, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
 import { formatHours, toLeaveSubmitDateTimes } from '../../utils/leave-request-datetime';
+import { formatHours as hoursLabel } from '../../utils/leave-amount';
 
 export interface LeaveRequestDraft {
   leaveTypeId: string;
@@ -61,6 +62,8 @@ export class NewLeaveRequestWizardComponent {
   readonly employeeId = signal<string | null>(null);
   readonly pickerOpen = signal(false);
   readonly formatHours = formatHours;
+  /** "24 h" for the over-balance warning. */
+  readonly hoursLabel = hoursLabel;
 
   readonly steps = ['Leave type', 'From / To', 'Total & warnings', 'Reason', 'Review'];
   readonly activeLeaveTypes = computed(() => (this.leaveTypes as LeaveTypeResponse[]).filter((type) => type.isActive));

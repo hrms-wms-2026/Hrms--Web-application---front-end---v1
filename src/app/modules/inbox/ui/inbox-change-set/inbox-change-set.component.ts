@@ -251,23 +251,28 @@ export class InboxChangeSetComponent {
   }
 
   protected display(change: InboxChangeDto, value: string | null): string {
-    if (value === null || value === '') return '—';
-    switch (change.kind) {
-      case 'hours': return `${value}h`;
-      case 'priority': return this.capitalize(value);
-      case 'select':
-      case 'employee': return change.options?.find((o) => o.value === value)?.label ?? value;
-      case 'date': {
-        const date = new Date(`${value}T00:00:00`);
-        return isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' });
-      }
-      case 'datetime': return formatDateTime(value);
-      case 'breaks': {
-        const breaks = parseBreaks(value);
-        return breaks.length === 0 ? 'No breaks' : breaks.map((b) => `${formatTime(b.breakStart)} – ${formatTime(b.breakEnd)}`).join('\n');
-      }
-      default: return value;
+    return displayChangeValue(change, value);
+  }
+}
+
+/** A change row's value as people read it ("8h", "Oct 12, 2026", an option's label, ...); "—" when empty. */
+export function displayChangeValue(change: InboxChangeDto, value: string | null): string {
+  if (value === null || value === '') return '—';
+  switch (change.kind) {
+    case 'hours': return `${value}h`;
+    case 'priority': return value.charAt(0).toUpperCase() + value.slice(1);
+    case 'select':
+    case 'employee': return change.options?.find((o) => o.value === value)?.label ?? value;
+    case 'date': {
+      const date = new Date(`${value}T00:00:00`);
+      return isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' });
     }
+    case 'datetime': return formatDateTime(value);
+    case 'breaks': {
+      const breaks = parseBreaks(value);
+      return breaks.length === 0 ? 'No breaks' : breaks.map((b) => `${formatTime(b.breakStart)} – ${formatTime(b.breakEnd)}`).join('\n');
+    }
+    default: return value;
   }
 }
 

@@ -57,6 +57,9 @@
             <strong>{{ formatHours(previewResult.balanceImpact.remainingAfterSubmitHours) }}</strong>
           </div>
         </div>
+        @if ((previewResult.exceedsBalanceByHours ?? 0) > 0) {
+          <p class="nlw-warning" data-testid="over-balance">This is {{ hoursLabel(previewResult.exceedsBalanceByHours ?? 0) }} more than your balance. If approved, your balance goes negative.</p>
+        }
         @if (!previewResult.noticePeriodMissed && previewResult.conflictSnapshot.warnings.length === 0 && previewResult.conflictSnapshot.calendarConflicts.length === 0) {
           <p class="nlw-ok" data-testid="no-warnings">No policy warnings or calendar conflicts.</p>
         }
@@ -85,7 +88,7 @@
       </label>
       @if (selectedLeaveType()?.requiresDocument) {
         <p class="nlw-muted" data-testid="document-note">
-          A supporting document is required when this leave is {{ selectedLeaveType()?.documentRequiredAfterDays ?? 1 }} days or longer.
+          @if (selectedLeaveType()?.documentRequiredAfterHours; as hours) { A supporting document is required when this leave is longer than {{ hours }} hours. } @else { A supporting document is required for this leave. }
         </p>
         <label class="nlw-field">
           <span>Supporting document</span>

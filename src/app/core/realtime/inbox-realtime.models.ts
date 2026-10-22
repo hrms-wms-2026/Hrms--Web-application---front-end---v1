@@ -12,12 +12,14 @@ export interface RealtimeConversationMessage {
   authorEmployeeId: string | null;
   authorName: string | null;
   authorAvatarFileId: string | null;
-  kind: 'text' | 'system';
+  /** "evidence": an empty marker where the item's evidence (an identity case's face checks) sits in the chat.
+   *  "case": a request or alert posted into a people chat; systemEventJson holds its reference. */
+  kind: 'text' | 'system' | 'evidence' | 'case';
   bodyHtml: string;
   systemEventJson: string | null;
   mentionEmployeeIds: string[];
   createdAt: string;
-  /** null | "info_request" | "info_response" | "justification". */
+  /** null | "justification". */
   tag?: string | null;
   editedAt?: string | null;
   /** A deleted message keeps its place with an empty body ("Message deleted"). */
@@ -25,6 +27,18 @@ export interface RealtimeConversationMessage {
   attachments?: RealtimeConversationAttachment[] | null;
   /** One reaction per person; grouped by emoji, first used first. */
   reactions?: RealtimeConversationReaction[] | null;
+  /** The message this one replies to, as it is now. */
+  replyTo?: RealtimeConversationReplyPreview | null;
+}
+
+/** A reply's quote: plain text, cut short; empty for a deleted message and for an evidence marker. */
+export interface RealtimeConversationReplyPreview {
+  id: string;
+  authorEmployeeId: string | null;
+  authorName: string | null;
+  kind: 'text' | 'system' | 'evidence' | 'case';
+  excerpt: string;
+  isDeleted: boolean;
 }
 
 export interface RealtimeConversationReaction {
@@ -47,6 +61,8 @@ export interface RealtimeConversationParticipant {
   joinReason: 'base' | 'added' | 'viewer';
   addedByEmployeeId: string | null;
   addedAt: string | null;
+  /** Latest point this participant marked the conversation read. */
+  lastReadAt?: string | null;
 }
 
 export interface MessageUpdatedEvent {
@@ -57,6 +73,17 @@ export interface MessageUpdatedEvent {
 export interface MessageDeletedEvent {
   conversationId: string;
   messageId: string;
+}
+
+export interface MessageHiddenEvent {
+  conversationId: string;
+  messageId: string;
+}
+
+export interface ParticipantReadEvent {
+  conversationId: string;
+  employeeId: string;
+  readAt: string;
 }
 
 export interface ParticipantRemovedEvent {

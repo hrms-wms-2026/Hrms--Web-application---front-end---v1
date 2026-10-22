@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
-import { errorInterceptor } from './error.interceptor';
+import { SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
 import { AuthStore } from '../auth/state/auth.store';
 import { NotificationService } from '../services/notification.service';
 
@@ -157,6 +157,18 @@ describe('errorInterceptor', () => {
 
     expect(clearSpy).not.toHaveBeenCalled();
     expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not banner an error for a request marked SILENT_HTTP_ERRORS - the caller handles it', () => {
+    const notify = TestBed.inject(NotificationService);
+    let failed = false;
+
+    http.get('/api/v1/inbox/people/e1/cases', { context: new HttpContext().set(SILENT_HTTP_ERRORS, true) })
+      .subscribe({ error: () => (failed = true) });
+    httpMock.expectOne('/api/v1/inbox/people/e1/cases').flush({}, { status: 403, statusText: 'Forbidden' });
+
+    expect(failed).toBe(true);
+    expect(notify.notifications()).toHaveLength(0);
   });
 
   it('does not banner a 429 from tray activation generate — the presence store owns that message', () => {

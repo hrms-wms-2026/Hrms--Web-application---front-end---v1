@@ -7,7 +7,7 @@ import { InboxKindsStore } from './inbox-kinds.store';
 
 const LEAVE: InboxKindDescriptorDto = {
   source: 'leave', kind: 'request', label: 'Leave request', category: 'request',
-  capabilities: InboxCapability.Chat | InboxCapability.Bulk | InboxCapability.EditBeforeApprove, detailRenderer: 'leave-request'
+  capabilities: InboxCapability.Chat | InboxCapability.EditBeforeApprove, detailRenderer: 'leave-request'
 };
 
 describe('InboxKindsStore', () => {
@@ -28,7 +28,7 @@ describe('InboxKindsStore', () => {
     expect(kinds).toHaveBeenCalledTimes(1);
     expect(store.descriptor('leave', 'request')).toEqual(LEAVE);
     expect(store.descriptor('leave', 'other')).toBeNull();
-    expect(store.has('leave', 'request', InboxCapability.Bulk)).toBe(true);
+    expect(store.has('leave', 'request', InboxCapability.EditBeforeApprove)).toBe(true);
     expect(store.has('leave', 'request', InboxCapability.Revert)).toBe(false);
     expect(store.has('work', 'approval', InboxCapability.Chat)).toBe(false);
   });

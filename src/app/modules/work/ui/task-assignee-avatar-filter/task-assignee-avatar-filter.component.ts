@@ -71,7 +71,7 @@ const MAX_VISIBLE_AVATARS = 5;
               />
             </div>
           }
-          <div class="taaf__list">
+          <div class="taaf__list scroll-fade">
             @for (member of filteredMembers(); track member.employeeId) {
               <button type="button" class="taaf__option" (click)="toggleMember(member.employeeId)">
                 <span class="taaf__checkbox" [class.taaf__checkbox--on]="isSelected(member.employeeId)" aria-hidden="true">

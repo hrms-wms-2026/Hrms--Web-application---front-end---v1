@@ -149,3 +149,4 @@
 @media (max-width: 640px) {
   .ltt-grid { padding: 0.75rem; grid-template-columns: 1fr; }
 }
+.ltt-dot { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 999px; vertical-align: middle; }

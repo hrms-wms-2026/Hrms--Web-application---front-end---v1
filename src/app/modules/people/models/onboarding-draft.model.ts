@@ -184,30 +184,6 @@ export interface FinalizeOnboardingDraftResponse {
   readonly messageKey: string;
 }
 
-export interface ApproveAccessGrantRequestResponse {
-  readonly accessGrantRequestId: string;
-  readonly onboardingDraftId: string;
-  readonly employeeId: string;
-  readonly finalizationStatus: string;
-  readonly invitationQueued: boolean;
-  readonly checklistTaskCount: number;
-  readonly positionApprovalStatus: string;
-  readonly messageKey: string;
-}
-
-export interface RejectAccessGrantRequestRequest {
-  decisionNote?: string | null;
-}
-
-export interface RejectAccessGrantRequestResponse {
-  readonly accessGrantRequestId: string;
-  readonly onboardingDraftId: string;
-  readonly requestStatus: string;
-  readonly draftStatus: string;
-  readonly draftReason: string | null;
-  readonly messageKey: string;
-}
-
 /** GET /api/v1/onboarding/employee-number-suggestion */
 export interface EmployeeNumberSuggestionResponse {
   readonly employeeNumber: string;

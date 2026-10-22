@@ -17,6 +17,7 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { EMPLOYMENT_TYPE_OPTIONS as ALL_EMPLOYMENT_TYPE_OPTIONS, SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import { DRAFT_REASON_LABELS, ReportingChainNode, WizardStep, WorkModeOption } from '../../models/onboarding-draft.model';
+import { OnboardingApprovalPreview } from '../../models/access-grant-request.model';
 import { ChecklistTemplateMatchLevel, ChecklistTemplateType, DraftChecklistTask } from '../../models/checklist-template.model';
 import { UnsavedChangesService, DirtyFormHandle } from '../../../../shared/services/unsaved-changes.service';
 import { DraftsStore } from '../../../../shared/state/drafts.store';
@@ -439,13 +440,33 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     return fullName || 'New employee';
   });
 
+  /** Who will have to approve this person (position access / seat increase), loaded on the review step. */
+  readonly approvalPreview = signal<OnboardingApprovalPreview | null>(null);
+
+  /** One line per approval this person needs, naming who decides it. */
+  readonly approvalLines = computed(() => {
+    const preview = this.approvalPreview();
+    if (!preview) {
+      return [];
+    }
+    const names = (list: readonly { name: string }[]) => (list.length ? list.map((a) => a.name).join(', ') : 'nobody yet - ask an admin to grant the permission');
+    const lines: { key: string; label: string; approvers: string }[] = [];
+    if (preview.positionApprovalRequired && !preview.positionApprovalBypassed) {
+      lines.push({ key: 'position', label: 'This position needs access approval from', approvers: names(preview.positionApprovers) });
+    }
+    if (preview.seatsAvailable === false) {
+      lines.push({ key: 'seat', label: 'No seat is free - a seat increase will be requested from', approvers: names(preview.seatApprovers) });
+    }
+    return lines;
+  });
+
   readonly saveReasonMessage = computed(() => {
     const reason = this.store.lastSaveReason();
     if (!reason) {
       return null;
     }
     if (reason === 'waiting_for_seat') {
-      return 'Saved as a draft: no seat is currently available. You can request a seat increase from your billing manager, and this draft will be rechecked once one is approved.';
+      return 'Saved as a draft: no seat is currently available. A seat increase request was sent to the billing managers in their Inbox; finalize this draft again once it is approved.';
     }
     if (reason === 'seat_configuration_required') {
       return 'Seat policy is not configured. The draft was saved, but invitation cannot be sent yet.';
@@ -569,6 +590,19 @@ export class AddEmployeeWizardComponent implements OnDestroy {
         }
         void this.store.loadClockInDefaults(this.form.controls.workModeId.value || chosen);
       });
+    });
+
+    // Review step: who will have to approve this person (re-fetched when the position changes).
+    effect((onCleanup) => {
+      if (this.store.step() !== 'review_and_submit') {
+        return;
+      }
+      const positionId = this.store.positionId();
+      const sub = this.peopleApi.getOnboardingApprovalPreview(positionId ?? null).subscribe({
+        next: (preview) => this.approvalPreview.set(preview),
+        error: () => this.approvalPreview.set(null),
+      });
+      onCleanup(() => sub.unsubscribe());
     });
 
     effect(() => {

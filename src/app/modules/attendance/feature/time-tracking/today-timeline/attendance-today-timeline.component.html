@@ -237,7 +237,7 @@
             <span class="modal-timeline-count">{{ totalCount() }} {{ totalCount() === 1 ? 'entry' : 'entries' }}</span>
           </div>
 
-          <div class="modal-stepper">
+          <div class="modal-stepper scroll-fade">
             @for (item of allTimelineItems(); track item.id; let isLast = $last) {
               <div
                 class="modal-stepper-item"

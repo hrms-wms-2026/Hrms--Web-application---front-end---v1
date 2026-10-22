@@ -10,12 +10,8 @@ describe('LeaveTypeApiService', () => {
   let httpMock: HttpTestingController;
 
   const mockType: LeaveTypeResponse = {
-    id: 'type-1', name: 'Annual Leave', code: 'ANNUAL', description: null, category: 'annual',
-    isPaid: true, requiresApproval: true, requiresDocument: false, documentRequiredAfterDays: null,
-    acceptedDocumentTypes: [], maxConsecutiveDays: null, defaultDaysPerYear: 20,
-    carryForwardAllowed: true, maxCarryForwardDays: 5, carryForwardExpiryMonths: 3,
-    proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0,
-    isActive: true, createdAt: '2026-08-21T00:00:00Z'
+    id: 'type-1', name: 'Annual Leave', code: 'ANNUAL', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [],
+    isActive: true, createdAt: '2026-08-21T00:00:00Z', policyCount: 0
   };
 
   beforeEach(() => {
@@ -35,11 +31,9 @@ describe('LeaveTypeApiService', () => {
 
   it('creates a leave type', () => {
     const payload: CreateLeaveTypeRequest = {
-      name: 'Sick Leave', code: 'SICK', description: null, category: 'sick',
-      isPaid: true, requiresApproval: true, requiresDocument: true, documentRequiredAfterDays: 3,
-      acceptedDocumentTypes: ['pdf'], maxConsecutiveDays: null, defaultDaysPerYear: 10,
-      carryForwardAllowed: false, maxCarryForwardDays: null, carryForwardExpiryMonths: null,
-      proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0
+      name: 'Sick Leave', code: 'SICK', description: null, color: '#16A34A',
+      isPaid: true, applicableGender: 'all', requiresDocument: true, documentRequiredAfterHours: 16,
+      acceptedDocumentTypes: ['pdf']
     };
     service.create(payload).subscribe((item) => expect(item).toEqual(mockType));
     const req = httpMock.expectOne(`${environment.apiUrl}/leave/types`);

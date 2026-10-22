@@ -809,6 +809,21 @@
   line-height: 1.45;
 }
 
+.add-emp-approvers {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.add-emp-approvers strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
 .add-emp-review-notice-icon {
   flex: none;
   width: 1rem;

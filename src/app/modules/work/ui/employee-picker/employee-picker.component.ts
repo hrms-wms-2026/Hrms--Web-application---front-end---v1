@@ -25,7 +25,7 @@ import { EmployeeListItemResponse } from '../../../people/models/employee.model'
         class="mb-2 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs text-[var(--color-text-primary)]"
         (input)="onSearchInput($event)"
       />
-      <div class="flex max-h-64 flex-col gap-1 overflow-y-auto">
+      <div class="flex max-h-64 flex-col gap-1 overflow-y-auto scroll-fade">
         @for (employee of results(); track employee.id) {
           <button
             type="button"

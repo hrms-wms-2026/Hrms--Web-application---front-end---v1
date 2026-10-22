@@ -11,7 +11,7 @@ describe('NewLeaveRequestWizardComponent', () => {
   let fixture: ComponentFixture<NewLeaveRequestWizardComponent>;
 
   const leaveTypes: LeaveTypeResponse[] = [
-    { id: 'type-1', name: 'Annual Leave', code: 'ANNUAL', description: null, category: 'annual', isPaid: true, requiresApproval: true, requiresDocument: false, documentRequiredAfterDays: null, acceptedDocumentTypes: [], maxConsecutiveDays: null, defaultDaysPerYear: 20, carryForwardAllowed: true, maxCarryForwardDays: 5, carryForwardExpiryMonths: 3, proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0, isActive: true, createdAt: '2026-08-21T00:00:00Z' }
+    { id: 'type-1', name: 'Annual Leave', code: 'ANNUAL', description: null, color: '#2563EB', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [], isActive: true, createdAt: '2026-08-21T00:00:00Z', policyCount: 1 }
   ];
   const balances: LeaveBalanceResponse[] = [
     { employeeId: 'emp-1', employeeNumber: 'EMP-001', employeeName: 'Anu Raman', departmentId: null, departmentName: null, legalEntityId: null, legalEntityName: null, leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', year: 2026, entitledHours: 160, annualHours: 160, carriedForwardHours: 0, usedHours: 40, pendingHours: 0, remainingHours: 120, isNegative: false, carryForwardExpiresOn: null }
@@ -166,13 +166,13 @@ describe('NewLeaveRequestWizardComponent', () => {
   });
 
   it('explains the document rule when the selected type requires a document', () => {
-    fixture.componentRef.setInput('leaveTypes', [{ ...leaveTypes[0], requiresDocument: true, documentRequiredAfterDays: 3 }]);
+    fixture.componentRef.setInput('leaveTypes', [{ ...leaveTypes[0], requiresDocument: true, documentRequiredAfterHours: 24 }]);
     fixture.detectChanges();
     fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1' }));
     fixture.componentInstance.step.set(4);
     fixture.detectChanges();
     const note = fixture.nativeElement.querySelector('[data-testid="document-note"]') as HTMLElement;
-    expect(note.textContent).toContain('3');
+    expect(note.textContent).toContain('longer than 24 hours');
     expect(fixture.nativeElement.querySelector('[data-testid="document-input"]')).toBeTruthy();
   });
 
@@ -204,5 +204,29 @@ describe('NewLeaveRequestWizardComponent', () => {
     expect(review.textContent).toContain('Family function');
     expect(review.textContent).toContain('2026-10-07 (Wed)');
     expect((fixture.nativeElement.querySelector('[data-testid="review-approver"]') as HTMLElement).textContent).toContain('Mathusanth Kumaran');
+  });
+
+  function overBalancePreview(exceeds: number): LeaveRequestResponse {
+    return {
+      totalHours: 40, paidHours: 40, unpaidHours: 0, noticePeriodMissed: false, exceedsBalanceByHours: exceeds,
+      balanceImpact: { currentRemainingHours: 16, pendingAfterSubmitHours: 40, remainingAfterSubmitHours: -24 },
+      approvers: [], conflictSnapshot: { warnings: [], calendarConflicts: [], teamAbsencePercent: null }
+    } as unknown as LeaveRequestResponse;
+  }
+
+  it('warns, but still allows submitting, when the request is more than the balance', () => {
+    fixture.componentRef.setInput('previewResult', overBalancePreview(24));
+    fixture.componentInstance.step.set(3);
+    fixture.detectChanges();
+    const warning = fixture.nativeElement.querySelector('[data-testid="over-balance"]') as HTMLElement;
+    expect(warning.textContent).toContain('This is 24 h more than your balance. If approved, your balance goes negative.');
+    expect(fixture.componentInstance.canLeaveStep(3)).toBe(true);
+  });
+
+  it('shows no over-balance warning when the request fits', () => {
+    fixture.componentRef.setInput('previewResult', overBalancePreview(0));
+    fixture.componentInstance.step.set(3);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="over-balance"]')).toBeNull();
   });
 });

@@ -8,8 +8,10 @@ import { FileApiService } from '../../../../shared/data-access/file-api.service'
 import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { InboxApiService } from '../../data-access/inbox-api.service';
+import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { ConversationDto, ConversationMessageDto, ConversationParticipantDto } from '../../models/inbox.dto';
 import { InboxStore } from '../../state/inbox.store';
+import { ConversationStore } from '../../state/conversation.store';
 import { ConversationPanelComponent } from './conversation-panel.component';
 
 /** FS3: roles, remove/leave, edit/delete, realtime removal, attachments, tags, export. */
@@ -46,7 +48,6 @@ describe('ConversationPanelComponent (FS3)', () => {
         message('own', { authorEmployeeId: 'mgr' }),
         message('edited', { authorEmployeeId: 'pat', authorName: 'Pat', editedAt: '2026-10-13T09:30:00Z' }),
         message('gone', { authorEmployeeId: 'pat', authorName: 'Pat', isDeleted: true, bodyHtml: '' }),
-        message('ask', { tag: 'info_request' }),
         message('why', { authorEmployeeId: 'pat', authorName: 'Pat', tag: 'justification' }),
         message('file', { attachments: [{ id: 'att1', fileName: 'note.pdf', contentType: 'application/pdf', sizeBytes: 2048 }] })
       ],
@@ -70,8 +71,10 @@ describe('ConversationPanelComponent (FS3)', () => {
     TestBed.configureTestingModule({
       imports: [ConversationPanelComponent],
       providers: [
+        ConversationStore,
         { provide: ConversationsApiService, useValue: api },
         { provide: InboxApiService, useValue: inboxApi },
+        { provide: InboxChatsApiService, useValue: { renameGroup: vi.fn(() => of(undefined)) } },
         { provide: FileApiService, useValue: { upload: vi.fn() } },
         {
           provide: InboxRealtimeService, useValue: {
@@ -86,17 +89,16 @@ describe('ConversationPanelComponent (FS3)', () => {
     });
     URL.createObjectURL = vi.fn(() => 'blob:x');
     URL.revokeObjectURL = vi.fn();
-    // A fixed clock, 10 minutes after the fixture messages were sent (inside the 30-minute edit window).
+    // A fixed clock, 10 minutes after the fixture messages were sent (inside the 15-minute edit window).
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-13T09:10:00Z'));
   });
 
   afterEach(() => vi.useRealTimers());
 
-  async function render(requesterId: string | null = 'pat') {
+  async function render() {
     const fixture = TestBed.createComponent(ConversationPanelComponent);
     fixture.componentRef.setInput('itemRef', REF);
-    fixture.componentRef.setInput('requesterId', requesterId);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -104,69 +106,26 @@ describe('ConversationPanelComponent (FS3)', () => {
     const q = (id: string) => el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
     const msg = (id: string) => el.querySelector(`[data-message-id="${id}"]`) as HTMLElement;
     const settle = async () => { fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges(); };
-    const panel = fixture.componentInstance as unknown as { menu(): { id: string }[]; onMenu(id: string): void };
-    /** Picks an entry of the header's ⋯ menu. */
-    const menu = (id: string) => panel.onMenu(id);
-    const menuIds = () => panel.menu().map((i) => i.id);
-    return { fixture, el, q, msg, settle, menu, menuIds };
+    return { fixture, el, q, msg, settle };
   }
-
-  it('the participants popover shows each role; Remove shows for added members to base members', async () => {
-    const { q, settle, el, menu } = await render(null);
-    menu('members');
-    await settle();
-
-    const rows = Array.from(el.querySelectorAll('[data-testid="conversation-participant"]')) as HTMLElement[];
-    expect(rows.map((r) => r.querySelector('[data-testid="participant-role"]')?.textContent?.trim()))
-      .toEqual(['Subject', 'Approver', 'Viewer', 'Added', 'Added']);
-    expect(q('participant-remove-sam')).not.toBeNull();
-    expect(q('participant-remove-lee')).not.toBeNull();
-    expect(q('participant-remove-pat')).toBeNull();
-    expect(q('participant-remove-hr')).toBeNull();
-
-    q('participant-remove-sam')!.click();
-    await settle();
-    expect(api['removeParticipant']).toHaveBeenCalledWith('c1', 'sam');
-  });
-
-  it('labels the requester; an added member may remove whom they added, and can leave', async () => {
-    me = 'sam';
-    const { q, settle, el, menu, menuIds } = await render('mgr');
-    menu('members');
-    await settle();
-
-    expect(el.querySelector('[data-employee-id="mgr"] [data-testid="participant-role"]')?.textContent).toContain('Requester');
-    expect(q('participant-remove-lee')).not.toBeNull();
-    expect(q('participant-remove-pat')).toBeNull();
-    expect(q('participant-remove-sam')).toBeNull();
-
-    expect(menuIds()).toContain('leave');
-    menu('leave');
-    await settle();
-    q('conversation-leave-confirm')!.click();
-    await settle();
-    expect(api['leave']).toHaveBeenCalledWith('c1');
-    expect(q('conversation-removed')?.textContent).toContain('You were removed from this conversation');
-    expect(el.querySelector('app-comment-composer')).toBeNull();
-  });
 
   it('shows (edited), the deleted placeholder, tag labels and the justification card', async () => {
     const { msg } = await render();
 
     expect(msg('edited').textContent).toContain('(edited)');
     expect(msg('gone').textContent).toContain('Message deleted');
-    expect(msg('ask').querySelector('[data-testid="message-tag"]')?.textContent).toContain('Info requested');
     expect(msg('why').classList.contains('msg--justification')).toBe(true);
   });
 
-  it('the author edits inline with the composer and deletes; others can only react', async () => {
+  it('keeps reply/reaction quick actions and puts forward, edit and delete in the three-dot menu', async () => {
     const { msg, q, settle, fixture } = await render();
 
     expect(msg('edited').querySelector('[data-testid="message-react-edited"]')).not.toBeNull();
-    expect(msg('edited').querySelector('[data-testid="message-edit-edited"]')).toBeNull();
-    expect(msg('edited').querySelector('[data-testid="message-delete-edited"]')).toBeNull();
+    expect(msg('edited').querySelector('[data-testid="message-more-edited"]')).not.toBeNull();
     expect(msg('gone').querySelector('[data-testid="message-menu"]')).toBeNull();
-    q('message-edit-own')!.click();
+    q('message-more-own')!.click();
+    await settle();
+    q('menu-item-edit')!.click();
     await settle();
     const editor = fixture.nativeElement.querySelector('[data-testid="message-editor-own"]');
     expect(editor).not.toBeNull();
@@ -177,19 +136,40 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(msg('own').textContent).toContain('fixed');
     expect(msg('own').textContent).toContain('(edited)');
 
-    q('message-delete-own')!.click();
+    q('message-more-own')!.click();
     await settle();
-    expect(api['deleteMessage']).toHaveBeenCalledWith('c1', 'own');
+    q('menu-item-delete-everyone')!.click();
+    await settle();
+    expect(api['deleteMessage']).toHaveBeenCalledWith('c1', 'own', true);
     expect(msg('own').textContent).toContain('Message deleted');
   });
 
-  it('after 30 minutes the author can no longer edit or delete, only react', async () => {
+  it('after 30 minutes edit and delete for everyone both disappear', async () => {
     vi.setSystemTime(new Date('2026-10-13T09:31:00Z'));
-    const { msg } = await render();
+    const { q, settle } = await render();
 
-    expect(msg('own').querySelector('[data-testid="message-edit-own"]')).toBeNull();
-    expect(msg('own').querySelector('[data-testid="message-delete-own"]')).toBeNull();
-    expect(msg('own').querySelector('[data-testid="message-react-own"]')).not.toBeNull();
+    q('message-more-own')!.click();
+    await settle();
+    expect(q('menu-item-edit')).toBeNull();
+    expect(q('menu-item-delete-everyone')).toBeNull();
+    expect(q('message-react-own')).not.toBeNull();
+  });
+
+  it('after another participant reads the message, edit remains during 30 minutes but deletion becomes delete for me', async () => {
+    conv.participants = conv.participants.map((p) => p.employeeId === 'pat'
+      ? { ...p, lastReadAt: '2026-10-13T09:05:00Z' }
+      : p);
+    const { q, settle, msg } = await render();
+
+    q('message-more-own')!.click();
+    await settle();
+    expect(q('menu-item-edit')).not.toBeNull();
+    expect(q('menu-item-delete-everyone')).toBeNull();
+    q('menu-item-delete-self')!.click();
+    await settle();
+
+    expect(api['deleteMessage']).toHaveBeenCalledWith('c1', 'own', false);
+    expect(msg('own')).toBeNull();
   });
 
   /** jsdom's selector engine does not match emoji in attribute selectors, so chips are found by comparing the attribute. */
@@ -278,18 +258,7 @@ describe('ConversationPanelComponent (FS3)', () => {
       .send('<p>I was at the clinic</p>', [], ['f1']);
     await settle();
 
-    expect(api['post']).toHaveBeenCalledWith('c1', '<p>I was at the clinic</p>', [], ['f1'], 'justification');
-  });
-
-  it('export is offered to deciders and viewers, not to the subject or an added member', async () => {
-    const { settle, menu, menuIds } = await render();
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
-
-    expect(menuIds()).toContain('export');
-    menu('export');
-    await settle();
-    expect(inboxApi.exportItem).toHaveBeenCalledWith(REF);
-    click.mockRestore();
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>I was at the clinic</p>', [], ['f1'], 'justification', null);
   });
 
   it('uploads chat attachments as conversation_attachment, at most 5 and 25 MB each', async () => {
@@ -308,18 +277,58 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect((uploader as unknown as { accept: string }).accept).toBe('.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip');
   });
 
-  it('says so when the server refuses the export', async () => {
-    inboxApi.exportItem.mockReturnValueOnce(throwError(() => ({ status: 403 })));
-    const { settle, el, menu } = await render();
-
-    menu('export');
+  it('replies to a message like a messenger: Reply shows a bar over the composer, the send carries the quoted id', async () => {
+    const { fixture, q, settle } = await render();
+    q('message-reply-edited')!.click();
     await settle();
 
-    expect(el.textContent).toContain('You cannot export this conversation.');
+    expect(q('conversation-replying')!.textContent).toContain('Replying to Pat');
+    expect(q('conversation-replying')!.textContent).toContain('edited');
+
+    await (fixture.componentInstance as unknown as { send(html: string, mentions: string[], files: string[]): Promise<void> })
+      .send('<p>thanks</p>', [], []);
+    await settle();
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>thanks</p>', [], [], null, 'edited');
+    expect(q('conversation-replying')).toBeNull();
   });
 
-  it('the subject is not offered Export in the menu', async () => {
-    me = 'pat';
-    expect((await render()).menuIds()).not.toContain('export');
+  it('cancels a reply, and offers no Reply on deleted messages', async () => {
+    const { q, settle } = await render();
+    expect(q('message-reply-gone')).toBeNull();
+
+    q('message-reply-own')!.click();
+    await settle();
+    q('conversation-reply-cancel')!.click();
+    await settle();
+    expect(q('conversation-replying')).toBeNull();
+  });
+
+  it('shows the quote on a reply and jumps to the quoted message', async () => {
+    conv.messages = [
+      ...conv.messages,
+      message('re', { authorEmployeeId: 'pat', authorName: 'Pat', replyTo: {
+        id: 'own', authorEmployeeId: 'mgr', authorName: 'Maya', kind: 'text', excerpt: 'own', isDeleted: false } }),
+      message('re-gone', { replyTo: { id: 'gone', authorEmployeeId: 'pat', authorName: 'Pat', kind: 'text', excerpt: '', isDeleted: true } })
+    ];
+    const { msg, settle } = await render();
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+
+    const quote = msg('re').querySelector('[data-testid="message-quote"]') as HTMLButtonElement;
+    expect(quote.textContent).toContain('You');
+    expect(quote.textContent).toContain('own');
+    expect(msg('re-gone').querySelector('[data-testid="message-quote"]')!.textContent).toContain('Message deleted');
+
+    quote.click();
+    await settle();
+    expect(scroll).toHaveBeenCalled();
+    expect(msg('own').classList).toContain('msg--highlight');
+  });
+
+  it('hides the evidence markers of the old per-ticket chats', async () => {
+    conv.messages = [message('ev', { kind: 'evidence', authorEmployeeId: null, authorName: null, bodyHtml: '' })];
+    const { msg, el } = await render();
+    expect(msg('ev')).toBeNull();
+    expect(el.textContent).toContain('No messages yet');
   });
 });

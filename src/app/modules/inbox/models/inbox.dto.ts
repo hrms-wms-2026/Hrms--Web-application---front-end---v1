@@ -24,7 +24,8 @@ export interface InboxActionDto {
   tone: InboxActionTone;
   needsComment: boolean;
   needsPayload: boolean;
-  /** Per-action extras for the dialogs: "revertableUntil" (ISO), "outcomes" (comma list), "forwardTo", "escalateTo". */
+  /** Per-action extras for the dialogs: "revertableUntil" (ISO), "outcomes" (comma list), "escalateTo",
+   *  "escalateCandidates" (JSON list of { employeeId, name, role, isDefault }). */
   meta?: Record<string, string> | null;
 }
 
@@ -90,6 +91,8 @@ export interface InboxItemDetailDto {
   editablePayloadJson: string | null;
   /** The payload of the kind's detail renderer (descriptor `detailRenderer`); null for the default view. */
   extraJson?: string | null;
+  /** Plain fact rows shown under the standard ones (e.g. what a late clock-in cost); absent for most kinds. */
+  facts?: InboxFactDto[] | null;
 }
 
 export interface InboxFilterOptionDto {
@@ -125,12 +128,9 @@ export const InboxCapability = {
   Chat: 1,
   EditBeforeApprove: 2,
   Revert: 4,
-  Bulk: 8,
   Escalate: 16,
   Resolve: 32,
   Cancel: 64,
-  Forward: 128,
-  RequestInfo: 256,
   SubjectParticipates: 512
 } as const;
 export type InboxCapabilityFlag = (typeof InboxCapability)[keyof typeof InboxCapability];
@@ -181,6 +181,8 @@ export interface InboxActionBody {
   effectiveDate?: string | null;
   /** "resolve" with convert_to_leave. */
   leaveTypeId?: string | null;
+  /** "escalate": someone picked from the action's "escalateCandidates" instead of the suggested target. */
+  targetEmployeeId?: string | null;
 }
 
 /** One History row: a decision the caller took. `item` is null when the caller can no longer see the item. */
@@ -200,6 +202,28 @@ export interface InboxHistoryEntryDto {
   item: InboxItemDto | null;
 }
 
+export interface InboxFactDto {
+  label: string;
+  value: string;
+}
+
+/** A row of a person's case history (ticket details "Past cases"). canOpen = false: listed for accountability, not clickable. */
+export interface InboxPersonCaseDto {
+  item: InboxItemDto;
+  canOpen: boolean;
+}
+
+/** A month (1-12) of the requested year that holds history; cancelled requests are not counted. */
+export interface InboxPersonCaseMonthDto {
+  month: number;
+  count: number;
+}
+
+export interface InboxPersonCaseMonthsDto {
+  hireDate: string | null;
+  months: InboxPersonCaseMonthDto[];
+}
+
 export interface InboxHistoryPageDto {
   items: InboxHistoryEntryDto[];
   total: number;
@@ -214,19 +238,6 @@ export interface InboxHistoryQuery {
   kind?: string | null;
   page?: number;
   pageSize?: number;
-}
-
-/** POST /inbox/bulk: one action over many items (kinds with the Bulk capability). */
-export interface InboxBulkRequestDto {
-  action: string;
-  items: InboxItemRef[];
-  comment?: string | null;
-  outcome?: string | null;
-}
-
-export interface InboxBulkResultDto {
-  succeeded: InboxItemRef[];
-  failed: { ref: InboxItemRef; message: string }[];
 }
 
 export interface InboxActionResultDto {

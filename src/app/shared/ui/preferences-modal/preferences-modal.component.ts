@@ -29,7 +29,7 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
     <app-modal [open]="open()" [title]="title()" [icon]="icon()" [subtitle]="subtitle()" [size]="size()" (closed)="closed.emit()">
       <div class="preferences-container" [class.preferences-container--no-sidebar]="tabs().length === 0">
         @if (tabs().length > 0) {
-          <nav class="preferences-sidebar" aria-label="Preferences categories">
+          <nav class="preferences-sidebar scroll-fade" aria-label="Preferences categories">
             @for (tab of tabs(); track tab.id) {
               <button
                 type="button"
@@ -79,7 +79,7 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
           </nav>
         }
 
-        <div class="preferences-content">
+        <div class="preferences-content scroll-fade">
           <ng-content />
         </div>
       </div>

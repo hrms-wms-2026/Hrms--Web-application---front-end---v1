@@ -31,6 +31,7 @@ const ICON_PATHS: Record<string, string[]> = {
     :host(.iti--neutral) { --tone: var(--color-text-secondary); }
     :host(.iti--warning) { --tone: var(--color-warning, #d97706); }
     :host(.iti--danger) { --tone: var(--color-danger); }
+    :host(.iti--info) { --tone: var(--color-purple, #7c3aed); }
     svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   `]
 })

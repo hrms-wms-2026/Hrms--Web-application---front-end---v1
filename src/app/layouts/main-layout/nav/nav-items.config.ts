@@ -6,16 +6,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'work', label: 'Work', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
   // Requests, alerts and investigations from every module (Work, Leave, Attendance, Monitoring, Calendar):
   // shown to every employee - each source decides what the caller sees.
-  { id: 'inbox', label: 'Inbox', icon: 'inbox', path: '/inbox' },
-  {
-    id: 'people', label: 'People', icon: 'people', path: '/people', requiredModules: ['core_hr'],
-    children: [
-      { id: 'people-employees', label: 'Employees', path: '/people/employees', requiredModules: ['core_hr'], requiredPermissions: [MANAGES_PEOPLE, 'employees:write'] },
-      { id: 'people-checklists', label: 'Checklists', path: '/people/checklists', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
-      { id: 'people-offboarding', label: 'Offboarding', path: '/people/offboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:offboard', 'employees:write'] },
-      { id: 'people-approvals', label: 'Approvals', path: '/people/approvals', requiredModules: ['core_hr'], requiredPermissions: ['roles:manage'] }
-    ]
-  },
+  // Its sub-sidebar is the chat list (people, groups), not child links.
+  { id: 'inbox', label: 'Inbox', icon: 'inbox', path: '/inbox', customSubSidebar: 'inbox' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar', path: '/calendar', requiredModules: ['calendar'] },
   {
     id: 'time-off', label: 'Time Off', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
@@ -76,11 +68,18 @@ export const NAV_ITEMS: readonly NavItem[] = [
       }
     ]
   },
+  // Org holds the organization structure and the people in it, as two sections of one sub-sidebar. The parent needs
+  // either module and shows when any child is reachable (a team manager sees only People, an org admin only
+  // Organization), and the rail opens the first reachable child (NavigationStateService.entryPath).
   {
-    id: 'organization', label: 'Org', icon: 'organization', path: '/organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'],
+    id: 'organization', label: 'Org', icon: 'organization', path: '/organization', alsoMatches: ['/people'],
+    requiredModules: ['org_structure', 'core_hr'],
     children: [
-      { id: 'organization-departments', label: 'Departments', path: '/organization/departments', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
-      { id: 'organization-positions', label: 'Positions', path: '/organization/positions', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] }
+      { id: 'organization-departments', label: 'Departments', path: '/organization/departments', section: 'Organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
+      { id: 'organization-positions', label: 'Positions', path: '/organization/positions', section: 'Organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
+      { id: 'people-employees', label: 'Employees', path: '/people/employees', section: 'People', requiredModules: ['core_hr'], requiredPermissions: [MANAGES_PEOPLE, 'employees:write'] },
+      { id: 'people-checklists', label: 'Checklists', path: '/people/checklists', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
+      { id: 'people-offboarding', label: 'Offboarding', path: '/people/offboarding', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['employees:offboard', 'employees:write'] }
     ]
   },
   {

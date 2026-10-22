@@ -13,12 +13,13 @@ export interface InboxOutcomeChoice {
 
 export const CONVERT_TO_LEAVE = 'convert_to_leave';
 
-const OUTCOME_LABELS: Record<string, string> = {
-  excused: 'Excused', confirmed: 'Confirmed', [CONVERT_TO_LEAVE]: 'Convert to leave', approve: 'Approve', reject: 'Reject'
+const OUTCOME_LABELS: Record<string, string | undefined> = {
+  excused: 'No issue - clear it', confirmed: 'Real issue - keep on record', [CONVERT_TO_LEAVE]: 'Count it as leave',
+  approve: 'Approve', reject: 'Reject'
 };
-const OUTCOME_HINTS: Record<string, string> = {
-  excused: 'Not held against the employee - it no longer counts.',
-  confirmed: 'It stands and keeps counting.',
+const OUTCOME_HINTS: Record<string, string | undefined> = {
+  excused: 'There was a valid reason (e.g. a camera or lighting problem, an agreed absence). It will not count against the employee.',
+  confirmed: "The problem is real. The case is closed, but it stays on the employee's record and counts against them.",
   [CONVERT_TO_LEAVE]: 'Records an approved leave for the day instead.',
   approve: 'The request is approved again.',
   reject: 'The request is rejected; a reason is required.'
@@ -32,13 +33,19 @@ const OUTCOME_HINTS: Record<string, string> = {
   template: `
     <app-modal [open]="open()" [title]="title()" (closed)="closed.emit()">
       <div class="idlg" data-testid="inbox-outcome-dialog">
-        <div class="idlg__choices" role="group" aria-label="Outcome">
+        @if (outcomes().includes('confirmed')) { <p class="idlg__question">What did you find?</p> }
+        <div class="idlg__options" role="radiogroup" aria-label="Outcome">
           @for (o of outcomes(); track o) {
-            <button type="button" class="idlg__choice" [attr.aria-pressed]="outcome() === o" [attr.data-testid]="'inbox-outcome-' + o"
-              (click)="outcome.set(o)">{{ label(o) }}</button>
+            <button type="button" class="idlg__option" role="radio" [attr.aria-checked]="outcome() === o" [attr.data-testid]="'inbox-outcome-' + o"
+              (click)="outcome.set(o)">
+              <span class="idlg__option-dot" aria-hidden="true"></span>
+              <span class="idlg__option-text">
+                <span class="idlg__option-label">{{ label(o) }}</span>
+                @if (hint(o)) { <span class="idlg__option-hint">{{ hint(o) }}</span> }
+              </span>
+            </button>
           }
         </div>
-        @if (outcome(); as o) { <p class="idlg__hint">{{ hint(o) }}</p> }
         @if (outcome() === convert) {
           <app-select data-testid="inbox-outcome-leave-type" label="Leave type" placeholder="Choose a leave type"
             [options]="leaveTypes()" [value]="leaveTypeId() ?? ''" (valueChange)="leaveTypeId.set($event || null)" />
@@ -53,7 +60,19 @@ const OUTCOME_HINTS: Record<string, string> = {
       </div>
     </app-modal>
   `,
-  styles: [INBOX_DIALOG_STYLES]
+  styles: [INBOX_DIALOG_STYLES, `
+    .idlg__question { margin: 0; color: var(--color-text-primary); font-size: 14px; font-weight: 600; }
+    .idlg__options { display: flex; flex-direction: column; gap: 8px; }
+    .idlg__option { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
+    .idlg__option:hover { border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border)); }
+    .idlg__option[aria-checked="true"] { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+    .idlg__option:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .idlg__option-dot { flex: none; width: 16px; height: 16px; margin-top: 1px; border: 2px solid var(--color-border); border-radius: 50%; }
+    .idlg__option[aria-checked="true"] .idlg__option-dot { border-color: var(--color-accent); box-shadow: inset 0 0 0 3px var(--color-surface); background: var(--color-accent); }
+    .idlg__option-text { display: flex; flex-direction: column; gap: 2px; }
+    .idlg__option-label { font-size: 13px; font-weight: 600; }
+    .idlg__option-hint { color: var(--color-text-secondary); font-size: 12px; line-height: 1.45; }
+  `]
 })
 export class InboxOutcomeDialogComponent {
   open = input(false);

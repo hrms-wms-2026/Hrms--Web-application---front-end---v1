@@ -8,8 +8,12 @@ import { MessageCreatedEvent } from '../../../../core/realtime/inbox-realtime.mo
 import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
+import { InboxApiService } from '../../data-access/inbox-api.service';
+import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { ConversationDto, ConversationMessageDto } from '../../models/inbox.dto';
+import { InboxKindsStore } from '../../state/inbox-kinds.store';
 import { ConversationPanelComponent, decorateMentions } from './conversation-panel.component';
+import { ConversationStore } from '../../state/conversation.store';
 import { InboxStore } from '../../state/inbox.store';
 
 const ME = 'e1';
@@ -56,58 +60,191 @@ describe('ConversationPanelComponent', () => {
     TestBed.configureTestingModule({
       imports: [ConversationPanelComponent],
       providers: [
+        ConversationStore,
         { provide: ConversationsApiService, useValue: api },
-        { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), participantAdded$: new Subject(), reconnected$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
+        { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), inboxChanged$: new Subject(), participantAdded$: new Subject(), reconnected$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
         { provide: AuthStore, useValue: { employeeId: () => ME } },
         { provide: InboxStore, useValue: { loadCounts: vi.fn(() => Promise.resolve()) } },
-        { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } }
+        { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } },
+        { provide: InboxChatsApiService, useValue: { renameGroup: vi.fn(() => of(undefined)) } },
+        { provide: InboxApiService, useValue: { detail: vi.fn(() => throwError(() => new Error('not used'))) } },
+        { provide: InboxKindsStore, useValue: { descriptor: () => null } }
       ]
     });
   });
 
-  async function render(actions = [{ key: 'approve', label: 'Approve', tone: 'primary' as const, needsComment: false, needsPayload: false }]) {
+  async function render(ref: { source: string; kind: string; id: string } = REF) {
     const fixture = TestBed.createComponent(ConversationPanelComponent);
-    fixture.componentRef.setInput('itemRef', REF);
-    fixture.componentRef.setInput('actions', actions);
+    fixture.componentRef.setInput('itemRef', ref);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('opens the item conversation; the ⋯ menu offers Add member and Members, which lists base vs added people', async () => {
+  it('opens the chat under a header with its name and the details toggle', async () => {
     const { fixture, el } = await render();
-    const panel = fixture.componentInstance as unknown as { menu(): { id: string; label: string }[]; onMenu(id: string): void };
+    fixture.componentRef.setInput('chat', {
+      conversationId: 'c1', source: 'group', kind: 'group', subjectId: 'g1', type: 'group', title: 'Payroll review', otherEmployeeId: null,
+      avatarFileId: null, memberCount: 3, preview: null, lastMessageAt: null, unread: 0, pending: [], caseItem: null
+    });
+    fixture.detectChanges();
 
     expect(api['open']).toHaveBeenCalledWith(REF);
-    expect(panel.menu().map((i) => i.id)).toEqual(['add', 'members', 'export']);
-    expect(panel.menu()[1].label).toBe('Members (3)');
-    panel.onMenu('members');
-    fixture.detectChanges();
-    const roles = Array.from(el.querySelectorAll('[data-testid="conversation-participant"]')).map((p) => p.textContent);
-    expect(roles.some((r) => r?.includes('Priya') && r.includes('Added'))).toBe(true);
-    expect(roles.some((r) => r?.includes('Anu'))).toBe(true);
-  });
-
-  it('shows the ticket in the header: title, reference and status; the details toggle shows when details are hidden', async () => {
-    const { fixture, el } = await render();
-    fixture.componentRef.setInput('item', {
-      source: 'work', kind: 'approval', id: 'a1b2c3d4-0000-0000-0000-000000000000', category: 'request', actionType: 'task.edit',
-      title: 'Audit events', subtitle: null, status: 'pending', direction: 'received', severity: null, contextType: 'project',
-      contextId: 'p1', contextName: 'Apollo', requestedBy: null, requestedTo: null, createdAt: '2026-10-13T09:00:00Z',
-      updatedAt: '2026-10-13T09:00:00Z', availableActions: [], unreadMessages: 0, isPending: true, facets: {}
-    });
-    fixture.componentRef.setInput('detailsVisible', false);
-    fixture.detectChanges();
-
-    expect(el.querySelector('[data-testid="conversation-ref"]')?.textContent).toBe('#WOR-A1B2C3D4');
-    expect(el.querySelector('[data-testid="conversation-status"]')?.textContent).toBe('Pending');
-    const toggle = el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement;
-    expect(toggle.classList).toContain('conv__details-toggle--always');
+    expect(el.querySelector('[data-testid="conversation-title"]')!.textContent).toContain('Payroll review');
+    expect(el.querySelector('[data-testid="conversation-header"]')!.textContent).toContain('3 members');
     const emitted = vi.fn();
     fixture.componentInstance.toggleDetails.subscribe(emitted);
-    toggle.click();
+    (el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement).click();
     expect(emitted).toHaveBeenCalled();
+  });
+
+  it('a 1-on-1 chat has no "add people" at all', async () => {
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const composer = fixture.debugElement.query(By.directive(CommentComposerComponent)).componentInstance as CommentComposerComponent;
+
+    expect(el.querySelector('[data-testid="conversation-add"]')).toBeNull();
+    expect(el.querySelector('[data-testid="conversation-menu"]')).toBeNull();
+    expect(composer.extraSlashCommands()).toEqual([]);
+  });
+
+  it('a case card\'s menu replies to it, forwards it, or starts its group', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam"}' })]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const forwarded: unknown[] = [];
+    const grouped: unknown[] = [];
+    fixture.componentInstance.forwardCase.subscribe((r) => forwarded.push(r));
+    fixture.componentInstance.startCaseGroup.subscribe((r) => grouped.push(r));
+    const choose = (id: string) => {
+      (el.querySelector('[data-testid="case-menu-card"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el.querySelector(`[data-testid="menu-item-${id}"]`) as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    choose('reply');
+    expect(el.querySelector('[data-testid="conversation-replying"]')!.textContent).toContain('Replying to Case');
+    choose('forward');
+    expect(forwarded).toEqual([expect.objectContaining({ source: 'leave', kind: 'request', id: 'l1', title: 'Sick Leave - Sam' })]);
+    choose('group');
+    expect(grouped).toEqual([{ source: 'leave', kind: 'request', id: 'l1' }]);
+  });
+
+  it('a case card\'s quote button (before the ⋮) replies to it', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam"}' })]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+
+    (el.querySelector('[data-testid="case-reply-card"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="conversation-replying"]')!.textContent).toContain('Replying to Case');
+  });
+
+  it('labels a forwarded case card with who forwarded it', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('fwd', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam","forwarded":true}' })]
+    }));
+    const { el } = await render();
+
+    expect(el.querySelector('[data-testid="message-forwarded"]')!.textContent).toContain('Forwarded by Anu');
+  });
+
+  it('forwards a chat message with a one-line preview, and labels a forwarded copy', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('m1', '2026-10-12T08:00:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>can we   start?</p>' }),
+        message('m2', '2026-10-12T08:01:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>hello</p>', tag: 'forwarded' })
+      ]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const forwarded: unknown[] = [];
+    fixture.componentInstance.forwardMessage.subscribe((m) => forwarded.push(m));
+
+    (el.querySelector('[data-testid="message-more-m1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="menu-item-forward"]') as HTMLButtonElement).click();
+
+    expect(forwarded).toEqual([{ messageId: 'm1', preview: 'can we start?' }]);
+    const labels = el.querySelectorAll('[data-testid="message-forwarded"]');
+    expect(labels.length).toBe(1);
+    expect(labels[0].closest('[data-message-id]')!.getAttribute('data-message-id')).toBe('m2');
+    expect(el.querySelector('[data-testid="message-tag"]')).toBeNull();
+  });
+
+  it('offers no Forward on messages in a case group', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('m1', '2026-10-12T08:00:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>evidence notes</p>' })]
+    }));
+    const { el } = await render();
+
+    expect(el.querySelector('[data-testid="message-reply-m1"]')).not.toBeNull();
+    (el.querySelector('[data-testid="message-more-m1"]') as HTMLButtonElement).click();
+    expect(el.querySelector('[data-testid="menu-item-forward"]')).toBeNull();
+  });
+
+  it('the decision card says what was decided and by whom, leaves the note out, and opens the item', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('done', '2026-10-11T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'x',
+          systemEventJson: '{"type":"case_resolved","source":"leave","kind":"request","id":"l1","title":"Annual Leave - Vithya","status":"rejected","category":"request","what":"Annual Leave","byName":"Mathusanth Kumaran","comment":"Team is short that week","summary":"Annual Leave · 15 Sep – 15 Sep · 8 h"}' }),
+        message('old', '2026-10-12T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'x',
+          systemEventJson: '{"type":"case_resolved","source":"attendance","kind":"alert","id":"a1","title":"Late clock-in - Vithya","status":"excused","category":"alert"}' })
+      ]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const opened: unknown[] = [];
+    fixture.componentInstance.openCase.subscribe((r) => opened.push(r));
+
+    const [decided, older] = Array.from(el.querySelectorAll('[data-testid="message-case-resolved"]'));
+    expect(decided.getAttribute('data-tone')).toBe('danger');
+    expect(decided.textContent).toContain('Annual Leave · 15 Sep – 15 Sep · 8 h');
+    expect(decided.querySelector('.conv__decision-heading')!.textContent).toBe('Annual Leave rejected');
+    expect(decided.textContent).toContain('Rejected by Mathusanth Kumaran on Oct 11, 2026');
+    expect(decided.textContent).not.toContain('Team is short that week');
+    expect(older.getAttribute('data-tone')).toBe('success');
+    expect(older.querySelector('.conv__decision-heading')!.textContent).toBe('Late clock-in cleared - no issue');
+    (decided.querySelector('[data-testid="message-case-resolved-open"]') as HTMLButtonElement).click();
+    expect(opened).toEqual([{ source: 'leave', kind: 'request', id: 'l1' }]);
+  });
+
+  it('shows a case card, its "resolved" line with the date, and a link to the group a case moved to', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Annual leave - Priya',
+          systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Annual leave - Priya"}' }),
+        message('done', '2026-10-12T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'Request approved',
+          systemEventJson: '{"type":"case_resolved","source":"leave","kind":"request","id":"l1","status":"approved","category":"request"}' }),
+        message('moved', '2026-10-13T08:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'Continued in a group: Face check',
+          systemEventJson: '{"type":"case_moved","conversationId":"g9","source":"monitoring","kind":"exception_case","id":"x1"}' })
+      ]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const opened: unknown[] = [];
+    fixture.componentInstance.openChat.subscribe((r) => opened.push(r));
+
+    const card = el.querySelector('[data-testid="message-case"] app-case-card')!;
+    expect(card.textContent).toContain('Annual leave - Priya');
+    expect(card.textContent).toContain('Closed');
+    const resolved = el.querySelector('[data-testid="message-case-resolved"]')!;
+    expect(resolved.getAttribute('data-tone')).toBe('success');
+    expect(resolved.querySelector('.conv__decision-heading')!.textContent).toBe('Request approved');
+    expect(resolved.textContent).toContain('Approved on Oct 12, 2026');
+    (el.querySelector('[data-testid="message-case-moved"] button') as HTMLButtonElement).click();
+    expect(opened).toEqual([{ source: 'monitoring', kind: 'exception_case', id: 'x1' }]);
   });
 
   it('keeps an unsent draft per ticket and never carries it into another ticket', async () => {
@@ -154,21 +291,17 @@ describe('ConversationPanelComponent', () => {
     composer.submitted.emit({ content: '<p>hi</p>', attachmentFileIds: [], mentions: ['e2'] });
     await fixture.whenStable();
 
-    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null);
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null, null);
   });
 
-  it('offers the item actions and /add in the composer slash menu', async () => {
+  it('offers /add in the composer slash menu', async () => {
     const { fixture } = await render();
     const composer = fixture.debugElement.query(By.directive(CommentComposerComponent)).componentInstance as CommentComposerComponent;
-    const actions: string[] = [];
-    fixture.componentInstance.action.subscribe((k) => actions.push(k));
 
-    expect(composer.extraSlashCommands().map((c) => c.id)).toEqual(['approve', 'add']);
-    composer.slashCommand.emit('approve');
+    expect(composer.extraSlashCommands().map((c) => c.id)).toEqual(['add']);
     composer.slashCommand.emit('add');
     fixture.detectChanges();
 
-    expect(actions).toEqual(['approve']);
     expect(fixture.nativeElement.querySelector('[data-testid="conversation-add-panel"]')).not.toBeNull();
   });
 
@@ -184,9 +317,9 @@ describe('ConversationPanelComponent', () => {
     expect(insert).toHaveBeenCalledWith({ id: 'e7', name: 'Chen Li' });
   });
 
-  it('adds members picked in the add panel (⋯ → Add member)', async () => {
+  it('adds members picked in the add panel (/add)', async () => {
     const { fixture, el } = await render();
-    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
+    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
     fixture.detectChanges();
     expect(el.querySelector('[data-testid="conversation-add-panel"]')).not.toBeNull();
     const panel = fixture.componentInstance as unknown as { toggleCandidate(id: string): void; confirmAdd(): Promise<void> };
@@ -199,7 +332,7 @@ describe('ConversationPanelComponent', () => {
 
   it('finds people to add through the conversation people lookup, leaving out current members', async () => {
     const { fixture } = await render();
-    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
+    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
 
     fixture.detectChanges();
     const panel = fixture.componentInstance as unknown as {
@@ -218,7 +351,7 @@ describe('ConversationPanelComponent', () => {
   it('keeps the add panel usable when the people lookup fails', async () => {
     api['searchPeople'].mockReturnValue(throwError(() => new Error('boom')));
     const { fixture } = await render();
-    (fixture.componentInstance as unknown as { onMenu(id: string): void }).onMenu('add');
+    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
     fixture.detectChanges();
     const panel = fixture.componentInstance as unknown as {
       candidateOptions(): unknown[];
