@@ -89,7 +89,7 @@ describe('ConversationPanelComponent (FS3)', () => {
     });
     URL.createObjectURL = vi.fn(() => 'blob:x');
     URL.revokeObjectURL = vi.fn();
-    // A fixed clock, 10 minutes after the fixture messages were sent (inside the 30-minute edit window).
+    // A fixed clock, 10 minutes after the fixture messages were sent (inside the 15-minute edit window).
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-13T09:10:00Z'));
   });
@@ -117,14 +117,15 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(msg('why').classList.contains('msg--justification')).toBe(true);
   });
 
-  it('the author edits inline with the composer and deletes; others can only react', async () => {
+  it('keeps reply/reaction quick actions and puts forward, edit and delete in the three-dot menu', async () => {
     const { msg, q, settle, fixture } = await render();
 
     expect(msg('edited').querySelector('[data-testid="message-react-edited"]')).not.toBeNull();
-    expect(msg('edited').querySelector('[data-testid="message-edit-edited"]')).toBeNull();
-    expect(msg('edited').querySelector('[data-testid="message-delete-edited"]')).toBeNull();
+    expect(msg('edited').querySelector('[data-testid="message-more-edited"]')).not.toBeNull();
     expect(msg('gone').querySelector('[data-testid="message-menu"]')).toBeNull();
-    q('message-edit-own')!.click();
+    q('message-more-own')!.click();
+    await settle();
+    q('menu-item-edit')!.click();
     await settle();
     const editor = fixture.nativeElement.querySelector('[data-testid="message-editor-own"]');
     expect(editor).not.toBeNull();
@@ -135,19 +136,40 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(msg('own').textContent).toContain('fixed');
     expect(msg('own').textContent).toContain('(edited)');
 
-    q('message-delete-own')!.click();
+    q('message-more-own')!.click();
     await settle();
-    expect(api['deleteMessage']).toHaveBeenCalledWith('c1', 'own');
+    q('menu-item-delete-everyone')!.click();
+    await settle();
+    expect(api['deleteMessage']).toHaveBeenCalledWith('c1', 'own', true);
     expect(msg('own').textContent).toContain('Message deleted');
   });
 
-  it('after 30 minutes the author can no longer edit or delete, only react', async () => {
-    vi.setSystemTime(new Date('2026-10-13T09:31:00Z'));
-    const { msg } = await render();
+  it('after 15 minutes edit disappears but delete for everyone remains until another participant reads it', async () => {
+    vi.setSystemTime(new Date('2026-10-13T09:16:00Z'));
+    const { q, settle } = await render();
 
-    expect(msg('own').querySelector('[data-testid="message-edit-own"]')).toBeNull();
-    expect(msg('own').querySelector('[data-testid="message-delete-own"]')).toBeNull();
-    expect(msg('own').querySelector('[data-testid="message-react-own"]')).not.toBeNull();
+    q('message-more-own')!.click();
+    await settle();
+    expect(q('menu-item-edit')).toBeNull();
+    expect(q('menu-item-delete-everyone')).not.toBeNull();
+    expect(q('message-react-own')).not.toBeNull();
+  });
+
+  it('after another participant reads the message, edit remains during 15 minutes but deletion becomes delete for me', async () => {
+    conv.participants = conv.participants.map((p) => p.employeeId === 'pat'
+      ? { ...p, lastReadAt: '2026-10-13T09:05:00Z' }
+      : p);
+    const { q, settle, msg } = await render();
+
+    q('message-more-own')!.click();
+    await settle();
+    expect(q('menu-item-edit')).not.toBeNull();
+    expect(q('menu-item-delete-everyone')).toBeNull();
+    q('menu-item-delete-self')!.click();
+    await settle();
+
+    expect(api['deleteMessage']).toHaveBeenCalledWith('c1', 'own', false);
+    expect(msg('own')).toBeNull();
   });
 
   /** jsdom's selector engine does not match emoji in attribute selectors, so chips are found by comparing the attribute. */

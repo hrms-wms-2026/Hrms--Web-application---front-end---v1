@@ -175,3 +175,14 @@ export function requestedOnFrom(value: string | undefined, now = new Date()): st
   const days = Number(value);
   return days > 0 ? new Date(now.getTime() - days * 86_400_000).toISOString() : null;
 }
+
+/** Statuses that end a case whoever looks at it - the same list as the backend's CaseCards.IsClosed. "Not pending" is
+ *  not enough: isPending is per viewer (a step-1 approver sees an open two-step request as not pending on them). */
+const CLOSED_STATUSES = new Set([
+  'approved', 'rejected', 'cancelled', 'canceled', 'resolved', 'declined', 'expired', 'accepted', 'charged', 'stale', 'skipped',
+  'withdrawn', 'closed', 'revoked', 'completed', 'dismissed', 'outdated'
+]);
+
+export function isCaseClosed(status: string | null | undefined): boolean {
+  return CLOSED_STATUSES.has((status ?? '').toLowerCase());
+}

@@ -9,8 +9,8 @@ import { pick } from './renderers/renderer.util';
 /** FZ coverage audit: the small pieces the feature specs only reach indirectly. */
 describe('inbox coverage audit (FZ)', () => {
   it('hasCapability needs every bit of the flag and a descriptor', () => {
-    const descriptor = { source: 'leave', kind: 'request', label: 'Leave', category: 'request' as const, capabilities: InboxCapability.Chat | InboxCapability.Bulk, detailRenderer: null };
-    expect(hasCapability(descriptor, InboxCapability.Bulk)).toBe(true);
+    const descriptor = { source: 'leave', kind: 'request', label: 'Leave', category: 'request' as const, capabilities: InboxCapability.Chat | InboxCapability.EditBeforeApprove, detailRenderer: null };
+    expect(hasCapability(descriptor, InboxCapability.EditBeforeApprove)).toBe(true);
     expect(hasCapability(descriptor, InboxCapability.Revert)).toBe(false);
     expect(hasCapability(null, InboxCapability.Chat)).toBe(false);
   });

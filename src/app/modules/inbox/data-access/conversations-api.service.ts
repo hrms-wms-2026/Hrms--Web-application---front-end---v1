@@ -55,8 +55,9 @@ export class ConversationsApiService {
     return this.http.delete<ConversationMessageDto>(`${this.base}/${conversationId}/messages/${messageId}/reaction`);
   }
 
-  deleteMessage(conversationId: string, messageId: string): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${conversationId}/messages/${messageId}`);
+  deleteMessage(conversationId: string, messageId: string, forEveryone: boolean): Observable<void> {
+    const params = new HttpParams().set('forEveryone', forEveryone);
+    return this.http.delete<void>(`${this.base}/${conversationId}/messages/${messageId}`, { params });
   }
 
   /** Removes an added member (base members and whoever added them may). */

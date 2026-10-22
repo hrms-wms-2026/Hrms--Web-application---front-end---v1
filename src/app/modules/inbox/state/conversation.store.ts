@@ -88,6 +88,16 @@ export const ConversationStore = signalStore(
       patchState(store, { messages: store.messages().map((m) => (m.id === messageId ? asDeleted(m) : m)) });
     }
 
+    function removeMessage(messageId: string): void {
+      patchState(store, { messages: store.messages().filter((m) => m.id !== messageId) });
+    }
+
+    function updateParticipantRead(employeeId: string, readAt: string): void {
+      patchState(store, {
+        participants: store.participants().map((p) => p.employeeId === employeeId ? { ...p, lastReadAt: readAt } : p)
+      });
+    }
+
     function addParticipantRows(incoming: readonly ConversationParticipantDto[]): void {
       const known = new Set(store.participantIds());
       const fresh = incoming.filter((p) => !known.has(p.employeeId));
@@ -155,6 +165,8 @@ export const ConversationStore = signalStore(
       appendMessages,
       replaceMessage,
       markDeleted,
+      removeMessage,
+      updateParticipantRead,
       addParticipantRows,
       dropParticipant,
       async loadOlder(): Promise<void> {
@@ -203,10 +215,11 @@ export const ConversationStore = signalStore(
           ? api.react(id, messageId, emoji)
           : api.unreact(id, messageId))), 'Could not react to the message.');
       },
-      deleteMessage(messageId: string): Promise<boolean> {
+      deleteMessage(messageId: string, forEveryone: boolean): Promise<boolean> {
         return run(async (id) => {
-          await firstValueFrom(api.deleteMessage(id, messageId));
-          markDeleted(messageId);
+          await firstValueFrom(api.deleteMessage(id, messageId, forEveryone));
+          if (forEveryone) markDeleted(messageId);
+          else removeMessage(messageId);
         }, 'Could not delete the message.');
       },
       removeParticipant(employeeId: string): Promise<boolean> {
@@ -266,6 +279,12 @@ export const ConversationStore = signalStore(
         }));
         subscription.add(realtime.messageDeleted$.subscribe((event) => {
           if (mine(event.conversationId)) store.markDeleted(event.messageId);
+        }));
+        subscription.add(realtime.messageHidden$?.subscribe((event) => {
+          if (mine(event.conversationId)) store.removeMessage(event.messageId);
+        }));
+        subscription.add(realtime.participantRead$?.subscribe((event) => {
+          if (mine(event.conversationId)) store.updateParticipantRead(event.employeeId, event.readAt);
         }));
         subscription.add(realtime.participantRemoved$.subscribe((event) => {
           if (!mine(event.conversationId)) return;

@@ -32,11 +32,14 @@ describe('FaceEvidenceCardComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('shows the photo and one short row per face check, in time order', () => {
-    const { el } = render(evidence);
+  const rowTexts = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('[data-testid="face-evidence-rows"] li')).map((li) => Array.from(li.querySelectorAll('span')).map((s) => s.textContent!.trim()).join(' '));
 
-    expect((el.querySelector('img') as HTMLImageElement).src).toBe('https://signed/photo.jpg');
-    const rows = Array.from(el.querySelectorAll('[data-testid="face-evidence-rows"] li')).map((li) => Array.from(li.querySelectorAll('span')).map((s) => s.textContent!.trim()).join(' '));
+  it('shows one short row per face check, in time order, with no large photo', () => {
+    const { el } = render({ ...evidence, identity: { ...evidence.identity!, photoUrl: null } });
+
+    expect(el.querySelector('.fec__photo')).toBeNull();
+    const rows = rowTexts(el);
     expect(rows).toHaveLength(4);
     expect(rows[0]).toContain('Clock-in Failed 61%');
     expect(rows[1]).toContain('Clock-in Let through 64%');
@@ -45,35 +48,59 @@ describe('FaceEvidenceCardComponent', () => {
     expect(el.querySelectorAll('.fec__row--bad')).toHaveLength(3);
   });
 
-  it('says the photo is unavailable when its link fails', () => {
-    const { fixture, el } = render(evidence);
+  const withPhotos: ExceptionEvidenceResponse = {
+    ...evidence,
+    identity: { ...evidence.identity!, photoUrl: 'https://signed/flagged.jpg' },
+    faceChecks: [
+      { id: 'f1', at: '2026-09-28T08:58:00Z', purpose: 'clock_in', outcome: 'failed', failureReason: 'not_matched', similarityScore: 61, photoUrl: 'https://signed/try1.jpg' },
+      { id: 'f2', at: '2026-09-28T09:01:00Z', purpose: 'clock_in', outcome: 'overridden', failureReason: null, similarityScore: 64, photoUrl: 'https://signed/flagged.jpg' }
+    ],
+    checkInScans: []
+  };
+  const viewerImg = (el: HTMLElement) => el.querySelector('[data-testid="face-photo-viewer"] img') as HTMLImageElement | null;
 
-    (el.querySelector('img') as HTMLImageElement).dispatchEvent(new Event('error'));
+  it('opens the photo full page when the row is clicked and steps through the other photos', () => {
+    const { fixture, el } = render(withPhotos);
+
+    expect(el.querySelectorAll('.fec__thumb img')).toHaveLength(2);
+    expect(el.querySelector('.fec__row--flagged')).not.toBeNull();
+    expect(viewerImg(el)).toBeNull();
+
+    (el.querySelector('.fec__row--open') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(viewerImg(el)!.src).toBe('https://signed/try1.jpg');
+    expect(el.querySelector('.fec__viewer-count')!.textContent).toBe('1 / 2');
+
+    (el.querySelector('[aria-label="Next photo"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(viewerImg(el)!.src).toBe('https://signed/flagged.jpg');
+
+    (el.querySelector('[aria-label="Close"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(viewerImg(el)).toBeNull();
+  });
+
+  it('says the photo is unavailable when its link fails in the viewer', () => {
+    const { fixture, el } = render(withPhotos);
+
+    (el.querySelector('.fec__row--open') as HTMLElement).click();
+    fixture.detectChanges();
+    viewerImg(el)!.dispatchEvent(new Event('error'));
     fixture.detectChanges();
 
-    expect(el.querySelector('img')).toBeNull();
+    expect(viewerImg(el)).toBeNull();
     expect(el.textContent).toContain('Photo unavailable');
   });
 
-  it('shows the photo of each try as a thumbnail; picking one shows it large', () => {
-    const withPhotos: ExceptionEvidenceResponse = {
+  it('puts a work-photo case photo on its own row so it can still be opened', () => {
+    const { el } = render({
       ...evidence,
-      identity: { ...evidence.identity!, photoUrl: 'https://signed/flagged.jpg' },
-      faceChecks: [
-        { id: 'f1', at: '2026-09-28T08:58:00Z', purpose: 'clock_in', outcome: 'failed', failureReason: 'not_matched', similarityScore: 61, photoUrl: 'https://signed/try1.jpg' },
-        { id: 'f2', at: '2026-09-28T09:01:00Z', purpose: 'clock_in', outcome: 'overridden', failureReason: null, similarityScore: 64, photoUrl: 'https://signed/flagged.jpg' }
-      ],
-      checkInScans: []
-    };
-    const { fixture, el } = render(withPhotos);
+      identity: { ...evidence.identity!, source: 'check_in_scan', occurredAt: '2026-09-28T13:00:00Z', photoUrl: 'https://signed/scan.jpg' }
+    });
 
-    const main = () => (el.querySelector('.fec__photo') as HTMLImageElement).src;
-    expect(main()).toBe('https://signed/flagged.jpg');
-    expect(el.querySelectorAll('.fec__thumb img')).toHaveLength(2);
-
-    (el.querySelector('.fec__thumb') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(main()).toBe('https://signed/try1.jpg');
+    const flagged = el.querySelector('.fec__row--flagged')!;
+    expect(flagged.textContent).toContain('Work photo');
+    expect((flagged.querySelector('.fec__thumb img') as HTMLImageElement).src).toBe('https://signed/scan.jpg');
   });
 
   it('renders nothing when there are no face checks and no photo', () => {

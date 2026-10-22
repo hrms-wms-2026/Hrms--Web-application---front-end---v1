@@ -6,8 +6,6 @@ import { environment } from '../../../../environments/environment';
 import {
   InboxActionBody,
   InboxActionResultDto,
-  InboxBulkRequestDto,
-  InboxBulkResultDto,
   InboxCountsDto,
   InboxHistoryPageDto,
   InboxHistoryQuery,
@@ -66,10 +64,6 @@ export class InboxApiService {
   /** The investigation bundle (HTML) - deciders and HR only. */
   exportItem(ref: InboxItemRef): Observable<Blob> {
     return this.http.get(`${this.base}/${itemPath(ref)}/export`, { responseType: 'blob' });
-  }
-
-  bulk(request: InboxBulkRequestDto): Observable<InboxBulkResultDto> {
-    return this.http.post<InboxBulkResultDto>(`${this.base}/bulk`, request);
   }
 
   /** A person's alerts or requests created in [from, to) (ISO), newest first - the ticket details' Past cases. */

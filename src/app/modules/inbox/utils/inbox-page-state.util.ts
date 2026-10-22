@@ -1,4 +1,4 @@
-import { InboxCapability, InboxCategory, InboxItemDto, InboxKindDescriptorDto, InboxQuery, InboxSort, hasCapability } from '../models/inbox.dto';
+import { InboxCategory, InboxItemDto, InboxQuery, InboxSort } from '../models/inbox.dto';
 import { requestedOnFrom } from './inbox-item.util';
 
 export type InboxTab = 'all' | InboxCategory | 'history';
@@ -72,38 +72,6 @@ export function pageStateToQuery(state: InboxPageState, myEmployeeId: string | n
   return { ...query, facets, from: requestedOnFrom(state.filters['requestedOn']?.[0], now) };
 }
 
-
-export const INBOX_BULK_ACTIONS = ['approve', 'reject', 'resolve'] as const;
-const BULK_LABELS: Record<string, string> = { approve: 'Approve', reject: 'Reject', resolve: 'Resolve' };
-
-export interface InboxBulkActionChoice {
-  key: string;
-  label: string;
-  needsComment: boolean;
-  /** "resolve": the outcomes every selected item allows. */
-  outcomes?: string[];
-}
-
-/** The bulk actions every selected item offers (only kinds with the Bulk capability can be bulk-selected). */
-export function bulkActionsFor(
-  items: readonly InboxItemDto[], descriptor: (source: string, kind: string) => InboxKindDescriptorDto | null
-): InboxBulkActionChoice[] {
-  if (items.length === 0 || items.some((i) => !hasCapability(descriptor(i.source, i.kind), InboxCapability.Bulk))) return [];
-  const choices: InboxBulkActionChoice[] = [];
-  for (const key of INBOX_BULK_ACTIONS) {
-    const actions = items.map((i) => i.availableActions.find((a) => a.key === key));
-    if (actions.some((a) => !a)) continue;
-    const choice: InboxBulkActionChoice = { key, label: BULK_LABELS[key], needsComment: actions.some((a) => a!.needsComment) };
-    if (key === 'resolve') {
-      const sets = actions.map((a) => (a!.meta?.['outcomes'] ?? '').split(',').filter(Boolean));
-      // Convert-to-leave needs a leave type per alert, so it is never a bulk outcome.
-      choice.outcomes = sets[0].filter((o) => o !== 'convert_to_leave' && sets.every((s) => s.includes(o)));
-      if (choice.outcomes.length === 0) continue;
-    }
-    choices.push(choice);
-  }
-  return choices;
-}
 
 export interface InboxEmployeeGroup {
   key: string;

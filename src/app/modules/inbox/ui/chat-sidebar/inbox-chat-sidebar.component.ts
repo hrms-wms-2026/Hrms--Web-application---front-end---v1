@@ -77,7 +77,6 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
           [activeId]="activeId()"
           [filter]="store.filter()"
           [kind]="store.kind()"
-          [selectedIds]="store.selectedIds()"
           [favorites]="store.favorites()"
           [search]="search()"
           [roomy]="embedded()"
@@ -85,7 +84,6 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
           (openPerson)="openPerson($event)"
           (newGroup)="groupOpen.set(true)"
           (newDirect)="startNewMessage()"
-          (selectionChange)="store.setSelection($event)"
           (toggleFavorite)="store.toggleFavorite($event)"
         />
       </div>
@@ -127,7 +125,10 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
     .ics__count { min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--color-accent); color: var(--color-accent-contrast, #fff);
       font-size: 10px; line-height: 16px; text-align: center; }
     .ics__kind { min-width: 0; flex: 1 1 120px; }
-    .ics__body { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-y: auto; }
+    /* The list scrolls to the sidebar's right edge (the negative margin eats the shell's padding, which the list keeps as its own).
+       "auto" turns off the standard thin scrollbar - in Chrome that one draws arrow buttons - so the global slim ::-webkit-scrollbar applies. */
+    .ics__body { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-y: auto; margin-right: -.625rem; padding-right: .5rem;
+      scrollbar-width: auto; scrollbar-color: auto; }
   `]
 })
 export class InboxChatSidebarComponent implements OnInit {

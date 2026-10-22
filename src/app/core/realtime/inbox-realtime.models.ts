@@ -61,6 +61,8 @@ export interface RealtimeConversationParticipant {
   joinReason: 'base' | 'added' | 'viewer';
   addedByEmployeeId: string | null;
   addedAt: string | null;
+  /** Latest point this participant marked the conversation read. */
+  lastReadAt?: string | null;
 }
 
 export interface MessageUpdatedEvent {
@@ -71,6 +73,17 @@ export interface MessageUpdatedEvent {
 export interface MessageDeletedEvent {
   conversationId: string;
   messageId: string;
+}
+
+export interface MessageHiddenEvent {
+  conversationId: string;
+  messageId: string;
+}
+
+export interface ParticipantReadEvent {
+  conversationId: string;
+  employeeId: string;
+  readAt: string;
 }
 
 export interface ParticipantRemovedEvent {

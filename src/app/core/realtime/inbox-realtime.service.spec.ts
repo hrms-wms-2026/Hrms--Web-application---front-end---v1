@@ -107,22 +107,30 @@ describe('InboxRealtimeService', () => {
     expect(changed).toHaveBeenCalledWith({ item: { source: 'work', kind: 'approval', id: 'a1' } });
   });
 
-  it('re-emits the conversation v2 events: message edited, message deleted, participant removed', async () => {
+  it('re-emits message mutation, read marker and participant removal events', async () => {
     await connect();
     const updated = vi.fn();
     const deleted = vi.fn();
     const removed = vi.fn();
+    const hidden = vi.fn();
+    const read = vi.fn();
     service.messageUpdated$.subscribe(updated);
     service.messageDeleted$.subscribe(deleted);
     service.participantRemoved$.subscribe(removed);
+    service.messageHidden$.subscribe(hidden);
+    service.participantRead$.subscribe(read);
 
     hub.handlers.get('messageUpdated')!({ conversationId: 'c1', message: { id: 'm1' } });
     hub.handlers.get('messageDeleted')!({ conversationId: 'c1', messageId: 'm1' });
     hub.handlers.get('participantRemoved')!({ conversationId: 'c1', employeeId: 'e1' });
+    hub.handlers.get('messageHidden')!({ conversationId: 'c1', messageId: 'm2' });
+    hub.handlers.get('participantRead')!({ conversationId: 'c1', employeeId: 'e2', readAt: '2026-10-21T09:00:00Z' });
 
     expect(updated).toHaveBeenCalledWith({ conversationId: 'c1', message: { id: 'm1' } });
     expect(deleted).toHaveBeenCalledWith({ conversationId: 'c1', messageId: 'm1' });
     expect(removed).toHaveBeenCalledWith({ conversationId: 'c1', employeeId: 'e1' });
+    expect(hidden).toHaveBeenCalledWith({ conversationId: 'c1', messageId: 'm2' });
+    expect(read).toHaveBeenCalledWith({ conversationId: 'c1', employeeId: 'e2', readAt: '2026-10-21T09:00:00Z' });
   });
 
   it('emits reconnected$ after an automatic reconnect so stores can refetch what they missed', async () => {

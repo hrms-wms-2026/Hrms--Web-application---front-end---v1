@@ -32,7 +32,7 @@ export function withFavoritesFirst(rows: readonly InboxChatRowDto[], favorites: 
  * The inbox's chats in two sections, ClickUp-style: Groups (named groups and case groups) and Direct messages
  * (1-on-1 chats), each with an always-visible "+" and favorites pinned on top. A search term also finds anyone in the
  * legal entity to start a chat with. "Pending" narrows to chats with something waiting on the user (optionally of one
- * type), each with a checkbox for bulk approval.
+ * type).
  */
 @Component({
   selector: 'app-chat-list',
@@ -45,13 +45,6 @@ export function withFavoritesFirst(rows: readonly InboxChatRowDto[], favorites: 
         <p class="cl__state" aria-live="polite">Loading your chats…</p>
       } @else if (error() && rows().length === 0) {
         <p class="cl__state cl__state--error" role="alert">{{ error() }}</p>
-      }
-
-      @if (filter() === 'pending' && visibleRows().length > 0) {
-        <label class="cl__select-all">
-          <input type="checkbox" data-testid="chat-select-all" [checked]="allSelected()" (change)="selectAll($any($event.target).checked)" />
-          Select all
-        </label>
       }
 
       <section class="cl__section" data-testid="chat-section-groups">
@@ -102,10 +95,6 @@ export function withFavoritesFirst(rows: readonly InboxChatRowDto[], favorites: 
 
     <ng-template #rowTpl let-row>
       <li class="cl__row" [class.cl__row--active]="row.conversationId === activeId()">
-        @if (filter() === 'pending') {
-          <input type="checkbox" class="cl__check" [attr.aria-label]="'Select ' + row.title" [attr.data-testid]="'chat-check-' + row.conversationId"
-            [checked]="selectedIds().has(row.conversationId)" (change)="toggle(row.conversationId, $any($event.target).checked)" />
-        }
         <button type="button" class="cl__open" data-testid="chat-row" [title]="row.preview ?? row.title" (click)="openRow.emit(row)">
           @if (row.type === 'direct') {
             <app-avatar [userName]="row.title" [avatarUrl]="avatarUrl(row.avatarFileId)" size="xs" />
@@ -125,8 +114,11 @@ export function withFavoritesFirst(rows: readonly InboxChatRowDto[], favorites: 
           @if (favorites().has(row.conversationId)) {
             <svg class="cl__star" viewBox="0 0 24 24" aria-label="Favorite"><path [attr.d]="starIcon" /></svg>
           }
-          @if (pendingMatching(row, kind()).length > 0) {
-            <span class="cl__pending" [attr.title]="pendingMatching(row, kind()).length + ' waiting on you'">{{ pendingMatching(row, kind()).length }}</span>
+          <!-- Open cases waiting on you (until decided) plus unread text messages (until the chat is read). -->
+          @let waiting = pendingMatching(row, kind()).length;
+          @if (waiting > 0) {
+            <span class="cl__pending" data-testid="chat-row-count"
+              [attr.title]="waiting + ' waiting on you' + (unreadOf(row) > 0 ? ', ' + unreadOf(row) + ' unread' : '')">{{ waiting + unreadOf(row) }}</span>
           } @else if (unreadOf(row) > 0) {
             <span class="cl__unread" [attr.aria-label]="unreadOf(row) + ' unread'">{{ unreadOf(row) }}</span>
           }
@@ -144,7 +136,6 @@ export function withFavoritesFirst(rows: readonly InboxChatRowDto[], favorites: 
     .cl { display: flex; flex-direction: column; gap: 14px; }
     .cl__state { margin: 0; padding: 16px 8px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
     .cl__state--error { color: var(--color-danger); }
-    .cl__select-all { display: flex; align-items: center; gap: 8px; padding: 0 8px; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
     .cl__section { display: flex; flex-direction: column; gap: 2px; }
     .cl__section-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 4px 8px; color: var(--color-text-secondary);
       font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
@@ -159,7 +150,6 @@ export function withFavoritesFirst(rows: readonly InboxChatRowDto[], favorites: 
     .cl__row:hover { background: var(--color-surface); }
     .cl__row--active, .cl__row--active:hover { background: var(--color-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
     .cl__row--active .cl__name { color: var(--color-accent); font-weight: 650; }
-    .cl__check { flex: 0 0 auto; margin-left: 6px; }
     .cl__open { display: flex; min-width: 0; flex: 1; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 8px; background: none;
       color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
     .cl__open:focus-visible, .cl__add:focus-visible, .cl__more:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: -2px; }
@@ -201,8 +191,6 @@ export class ChatListComponent {
   filter = input<ChatListFilter>('all');
   /** Pending type filter ("source:kind"), null = every type. */
   kind = input<string | null>(null);
-  /** Ticked chats (Pending only). */
-  selectedIds = input<ReadonlySet<string>>(new Set());
   favorites = input<ReadonlySet<string>>(new Set());
   /** Narrows the chats by name and finds people to start a chat with. */
   search = input('');
@@ -214,7 +202,6 @@ export class ChatListComponent {
   openPerson = output<ConversationPersonDto>();
   newGroup = output<void>();
   newDirect = output<void>();
-  selectionChange = output<ReadonlySet<string>>();
   toggleFavorite = output<string>();
 
   protected readonly people = signal<ConversationPersonDto[]>([]);
@@ -230,10 +217,6 @@ export class ChatListComponent {
   });
   protected readonly groupRows = computed(() => withFavoritesFirst(this.visibleRows().filter((r) => r.type !== 'direct'), this.favorites()));
   protected readonly directRows = computed(() => withFavoritesFirst(this.visibleRows().filter((r) => r.type === 'direct'), this.favorites()));
-  protected readonly allSelected = computed(() => {
-    const rows = this.visibleRows();
-    return rows.length > 0 && rows.every((r) => this.selectedIds().has(r.conversationId));
-  });
 
   constructor() {
     // Anyone in the legal entity, minus people the user already has a 1-on-1 chat with (those show as chats).
@@ -256,17 +239,6 @@ export class ChatListComponent {
 
   protected startWith(person: ConversationPersonDto): void {
     this.openPerson.emit(person);
-  }
-
-  protected toggle(id: string, checked: boolean): void {
-    const next = new Set(this.selectedIds());
-    if (checked) next.add(id);
-    else next.delete(id);
-    this.selectionChange.emit(next);
-  }
-
-  protected selectAll(checked: boolean): void {
-    this.selectionChange.emit(checked ? new Set(this.visibleRows().map((r) => r.conversationId)) : new Set());
   }
 
   protected menuFor(row: InboxChatRowDto): MenuItem[] {

@@ -134,6 +134,20 @@ describe('ConversationPanelComponent', () => {
     expect(grouped).toEqual([{ source: 'leave', kind: 'request', id: 'l1' }]);
   });
 
+  it('a case card\'s quote button (before the ⋮) replies to it', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam"}' })]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+
+    (el.querySelector('[data-testid="case-reply-card"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="conversation-replying"]')!.textContent).toContain('Replying to Case');
+  });
+
   it('labels a forwarded case card with who forwarded it', async () => {
     api['open'] = vi.fn(() => of({
       ...conversation(),
@@ -157,7 +171,9 @@ describe('ConversationPanelComponent', () => {
     const forwarded: unknown[] = [];
     fixture.componentInstance.forwardMessage.subscribe((m) => forwarded.push(m));
 
-    (el.querySelector('[data-testid="message-forward-m1"]') as HTMLButtonElement).click();
+    (el.querySelector('[data-testid="message-more-m1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="menu-item-forward"]') as HTMLButtonElement).click();
 
     expect(forwarded).toEqual([{ messageId: 'm1', preview: 'can we start?' }]);
     const labels = el.querySelectorAll('[data-testid="message-forwarded"]');
@@ -174,7 +190,34 @@ describe('ConversationPanelComponent', () => {
     const { el } = await render();
 
     expect(el.querySelector('[data-testid="message-reply-m1"]')).not.toBeNull();
-    expect(el.querySelector('[data-testid="message-forward-m1"]')).toBeNull();
+    (el.querySelector('[data-testid="message-more-m1"]') as HTMLButtonElement).click();
+    expect(el.querySelector('[data-testid="menu-item-forward"]')).toBeNull();
+  });
+
+  it('the decision card says what was decided and by whom, leaves the note out, and opens the item', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('done', '2026-10-11T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'x',
+          systemEventJson: '{"type":"case_resolved","source":"leave","kind":"request","id":"l1","title":"Annual Leave - Vithya","status":"rejected","category":"request","what":"Annual Leave","byName":"Mathusanth Kumaran","comment":"Team is short that week","summary":"Annual Leave · 15 Sep – 15 Sep · 8 h"}' }),
+        message('old', '2026-10-12T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'x',
+          systemEventJson: '{"type":"case_resolved","source":"attendance","kind":"alert","id":"a1","title":"Late clock-in - Vithya","status":"excused","category":"alert"}' })
+      ]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const opened: unknown[] = [];
+    fixture.componentInstance.openCase.subscribe((r) => opened.push(r));
+
+    const [decided, older] = Array.from(el.querySelectorAll('[data-testid="message-case-resolved"]'));
+    expect(decided.getAttribute('data-tone')).toBe('danger');
+    expect(decided.textContent).toContain('Annual Leave · 15 Sep – 15 Sep · 8 h');
+    expect(decided.querySelector('.conv__decision-heading')!.textContent).toBe('Annual Leave rejected');
+    expect(decided.textContent).toContain('Rejected by Mathusanth Kumaran on Oct 11, 2026');
+    expect(decided.textContent).not.toContain('Team is short that week');
+    expect(older.getAttribute('data-tone')).toBe('success');
+    expect(older.querySelector('.conv__decision-heading')!.textContent).toBe('Late clock-in cleared - no issue');
+    (decided.querySelector('[data-testid="message-case-resolved-open"]') as HTMLButtonElement).click();
+    expect(opened).toEqual([{ source: 'leave', kind: 'request', id: 'l1' }]);
   });
 
   it('shows a case card, its "resolved" line with the date, and a link to the group a case moved to', async () => {
@@ -196,7 +239,10 @@ describe('ConversationPanelComponent', () => {
     const card = el.querySelector('[data-testid="message-case"] app-case-card')!;
     expect(card.textContent).toContain('Annual leave - Priya');
     expect(card.textContent).toContain('Closed');
-    expect(el.querySelector('[data-testid="message-case-resolved"]')!.textContent).toContain('Request approved · Oct 12, 2026');
+    const resolved = el.querySelector('[data-testid="message-case-resolved"]')!;
+    expect(resolved.getAttribute('data-tone')).toBe('success');
+    expect(resolved.querySelector('.conv__decision-heading')!.textContent).toBe('Request approved');
+    expect(resolved.textContent).toContain('Approved on Oct 12, 2026');
     (el.querySelector('[data-testid="message-case-moved"] button') as HTMLButtonElement).click();
     expect(opened).toEqual([{ source: 'monitoring', kind: 'exception_case', id: 'x1' }]);
   });

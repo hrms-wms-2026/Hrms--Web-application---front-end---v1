@@ -218,7 +218,6 @@ describe('InboxStore', () => {
 
     beforeEach(() => {
       api['history'] = vi.fn(() => of({ items: [entry], total: 1, page: 1, pageSize: 25 }));
-      api['bulk'] = vi.fn(() => of({ succeeded: [{ source: 'leave', kind: 'request', id: 'l1' }], failed: [] }));
     });
 
     it('loads the history page and keeps its error', async () => {
@@ -244,25 +243,6 @@ describe('InboxStore', () => {
       expect(api['runAction']).toHaveBeenCalledWith({ source: 'leave', kind: 'request', id: 'l1' }, 'revert', {});
       expect(api['history']).toHaveBeenCalledTimes(1);
       expect(api['counts']).toHaveBeenCalledTimes(1);
-    });
-
-    it('runs a bulk action, returns the per-item result and refreshes', async () => {
-      const refs = [{ source: 'leave', kind: 'request', id: 'l1' }, { source: 'attendance', kind: 'correction', id: 'c1' }];
-      api['bulk'].mockReturnValueOnce(of({ succeeded: [refs[0]], failed: [{ ref: refs[1], message: 'Already decided.' }] }));
-      api['counts'].mockClear();
-
-      const result = await store.runBulk({ action: 'reject', items: refs, comment: 'No cover' });
-
-      expect(api['bulk']).toHaveBeenCalledWith({ action: 'reject', items: refs, comment: 'No cover' });
-      expect(result?.failed).toEqual([{ ref: refs[1], message: 'Already decided.' }]);
-      expect(api['counts']).toHaveBeenCalledTimes(1);
-    });
-
-    it('a bulk call that fails outright reports null and keeps the error', async () => {
-      api['bulk'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'Not allowed.' } })));
-
-      expect(await store.runBulk({ action: 'approve', items: [] })).toBeNull();
-      expect(store.actionError()).toBe('Not allowed.');
     });
   });
 });

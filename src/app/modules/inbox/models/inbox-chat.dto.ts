@@ -63,6 +63,13 @@ export interface ChatSystemEvent {
   conversationId?: string;
   /** A case card someone forwarded into this chat (a copy; the case is worked on where it was placed). */
   forwarded?: boolean;
+  /** case_resolved: the item's type ("Annual Leave"), who decided it, the alert outcome and the decision's note. */
+  what?: string;
+  byName?: string | null;
+  outcome?: string | null;
+  comment?: string | null;
+  /** case_resolved: the item's one-line summary ("Sick Leave · 15 Sep – 15 Sep · 8 h"). */
+  summary?: string | null;
 }
 
 export function parseSystemEvent(json: string | null | undefined): ChatSystemEvent | null {

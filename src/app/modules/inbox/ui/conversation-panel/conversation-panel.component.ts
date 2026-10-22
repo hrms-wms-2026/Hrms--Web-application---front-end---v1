@@ -26,9 +26,9 @@ const MEMBERS_COMMAND = 'members';
 const CONVERSATION_ATTACHMENT = 'conversation_attachment';
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
-/** The author may edit or delete a message for this long after sending it (the server enforces it too). */
-const EDIT_WINDOW_MS = 30 * 60 * 1000;
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
 const CLOCK_TICK_MS = 30 * 1000;
+/** The author may edit or delete a message for this long after sending it (the server enforces it too). */
 /** What the server takes for conversation_attachment (UploadPurposeCatalog). */
 const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip';
 const TAG_LABELS: Record<string, string> = {
@@ -81,6 +81,18 @@ const QUOTE_LENGTH = 120;
  *  provided by the host page, which shares it with the details panel): a header with who it is with, messages anchored
  *  to the bottom (scrolling up loads older ones) where requests and alerts sit as case cards with their actions and a
  *  "resolved" line when closed, and a composer with @mentions and add-and-tag. Each chat keeps its own unsent draft. */
+/** How a decision ended, for its card's colour. */
+const DECISION_SUCCESS = new Set(['approved', 'accepted', 'completed', 'excused', 'convert_to_leave']);
+const DECISION_DANGER = new Set(['rejected', 'declined', 'revoked']);
+
+/** A resolved alert's outcome, in the Resolve dialog's words. */
+const RESOLVED_OUTCOMES: Record<string, string | undefined> = {
+  excused: 'cleared - no issue', confirmed: 'kept on record', convert_to_leave: 'counted as leave'
+};
+
+/** Reply with quote (24x24 stroke). */
+const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
+
 @Component({
   selector: 'app-conversation-panel',
   standalone: true,
@@ -207,30 +219,54 @@ const QUOTE_LENGTH = 120;
                     }
                     <app-case-card [ref]="caseRef" [title]="caseRef.title" [resolved]="resolvedKeys().has(keyOf(caseRef))"
                       [selected]="isSelected(caseRef)" [editable]="caseEditable()" [errors]="caseErrors()" [busy]="caseBusy()" [version]="caseVersion()"
-                      (open)="openCase.emit($event)" (action)="caseAction.emit($event)" (editsChange)="caseEdits.emit($event)" />
+                      (open)="openCase.emit($event)" (action)="caseAction.emit($event)" (editsChange)="caseEdits.emit($event)">
+                      <!-- One block around one element, so it lands in the card's header slot. -->
+                      @if (!store.removed()) {
+                        <span caseMenu class="msg__case-tools">
+                          <!-- Reply with quote shows on hover, before the ⋮ (which keeps its own Reply). -->
+                          <button type="button" class="conv__icon-btn msg__case-quote" [attr.data-testid]="'case-reply-' + m.id"
+                            aria-label="Reply with quote" title="Reply with quote" (click)="startReply(m)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="replyIcon" /></svg>
+                          </button>
+                          <app-dropdown-menu class="msg__case-menu" [items]="groupedCases().has(keyOf(caseRef)) ? caseMenuGrouped : caseMenu" ariaLabel="Case options" (selected)="onCaseMenu(m, caseRef, $event)">
+                            <button menu-trigger type="button" class="conv__icon-btn" [attr.data-testid]="'case-menu-' + m.id" aria-label="Case options" title="More">
+                              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5h.01M12 12h.01M12 19h.01" /></svg>
+                            </button>
+                          </app-dropdown-menu>
+                        </span>
+                      }
+                    </app-case-card>
                   </div>
-                  @if (!store.removed()) {
-                    <app-dropdown-menu class="msg__case-menu" [items]="caseMenu" ariaLabel="Case options" (selected)="onCaseMenu(m, caseRef, $event)">
-                      <button menu-trigger type="button" class="conv__icon-btn" [attr.data-testid]="'case-menu-' + m.id" aria-label="Case options" title="More">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5h.01M12 12h.01M12 19h.01" /></svg>
-                      </button>
-                    </app-dropdown-menu>
-                  }
                 </div>
               }
             } @else if (m.kind === 'system') {
               @let event = eventOf(m);
               @if (event && event.type === 'case_resolved') {
-                <div class="conv__resolved" data-testid="message-case-resolved" [attr.data-message-id]="m.id">
-                  <span>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
-                    {{ resolvedLabel(event) }} · {{ m.createdAt | date: 'MMM d, y' }}
+                @let d = decision(event);
+                <div class="conv__decision" data-testid="message-case-resolved" [attr.data-tone]="d.tone" [attr.data-message-id]="m.id">
+                  <span class="conv__decision-icon" aria-hidden="true">
+                    @if (d.tone === 'danger') {
+                      <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+                    }
                   </span>
+                  <!-- The whole card opens the case: no border, no button, no decision note (like the open case card). -->
+                  <button type="button" class="conv__decision-text" data-testid="message-case-resolved-open" (click)="openResolved(event)"
+                    [attr.aria-label]="'View ' + (event.category === 'request' ? 'request' : 'case') + ': ' + d.heading">
+                    <strong class="conv__decision-heading">{{ d.heading }}</strong>
+                    @if (event.summary) { <span class="conv__decision-meta">{{ event.summary }}</span> }
+                    <span class="conv__decision-meta">{{ d.chip }}{{ event.byName ? ' by ' + event.byName : '' }} on {{ m.createdAt | date: 'MMM d, y, h:mm a' }}</span>
+                  </button>
                 </div>
               } @else if (event && event.type === 'case_moved' && event.conversationId) {
-                <div class="msg msg--system" [attr.data-message-id]="m.id" data-testid="message-case-moved">
-                  <span [innerHTML]="m.bodyHtml"></span> ·
-                  <button type="button" class="conv__link" (click)="openGroup(event)">Open group</button>
+                <div class="msg msg--system msg--moved" [attr.data-message-id]="m.id" data-testid="message-case-moved">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                  <span [innerHTML]="m.bodyHtml"></span>
+                  <span class="msg__moved-sep" aria-hidden="true"></span>
+                  <button type="button" class="conv__link" (click)="openGroup(event)">Open group
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" /></svg>
+                  </button>
                 </div>
               } @else {
                 <div class="msg msg--system" [class.msg--escalation]="isEscalation(event)" [attr.data-message-id]="m.id">
@@ -241,19 +277,20 @@ const QUOTE_LENGTH = 120;
               @let own = m.authorEmployeeId === me();
               <div class="msg" [class.msg--own]="own" [class.msg--justification]="m.tag === 'justification' && !m.isDeleted"
                 [class.msg--highlight]="highlightedId() === m.id" [attr.data-message-id]="m.id">
-                <app-avatar class="msg__avatar" [userName]="own ? 'You' : m.authorName" [avatarUrl]="avatarUrl(m.authorAvatarFileId)" size="sm" />
+                <!-- Own messages are already marked by their side and colour, so they carry no avatar or name. -->
+                @if (!own) {
+                  <app-avatar class="msg__avatar" [userName]="m.authorName" [avatarUrl]="avatarUrl(m.authorAvatarFileId)" size="sm" />
+                }
                 <div class="msg__content">
                   <div class="msg__meta">
-                    <span class="msg__author">{{ own ? 'You' : m.authorName }}</span>
+                    @if (!own) {
+                      <span class="msg__author">{{ m.authorName }}</span>
+                    }
                     <time class="msg__time">{{ m.createdAt | date: 'h:mm a' }}@if (m.editedAt && !m.isDeleted) { <span> (edited)</span> }</time>
                     @if (!m.isDeleted && !store.removed() && editingId() !== m.id) {
                       <span class="msg__menu" [class.msg__menu--open]="reactPickerFor() === m.id" data-testid="message-menu">
                         @if (canReply(m)) {
                           <button type="button" class="conv__link" [attr.data-testid]="'message-reply-' + m.id" aria-label="Reply to message" (click)="startReply(m)">Reply</button>
-                        }
-                        @if (canForward()) {
-                          <button type="button" class="conv__link" [attr.data-testid]="'message-forward-' + m.id" aria-label="Forward message"
-                            (click)="forwardMessage.emit({ messageId: m.id, preview: replyingText(m) })">Forward</button>
                         }
                         <span class="msg__react">
                           <button type="button" class="msg__react-btn" [attr.data-testid]="'message-react-' + m.id" aria-label="React to message"
@@ -266,10 +303,14 @@ const QUOTE_LENGTH = 120;
                               [attr.data-testid]="'message-react-picker-' + m.id" (emojiSelected)="react(m, $event)" />
                           }
                         </span>
-                        @if (own && canChange(m)) {
-                          <button type="button" class="conv__link" [attr.data-testid]="'message-edit-' + m.id" aria-label="Edit message" (click)="editingId.set(m.id)">Edit</button>
-                          <button type="button" class="conv__link conv__link--danger" [attr.data-testid]="'message-delete-' + m.id" aria-label="Delete message"
-                            (click)="deleteMessage(m.id)">Delete</button>
+                        @if (messageMenuItems(m).length > 0) {
+                          <app-dropdown-menu class="msg__more-menu" [items]="messageMenuItems(m)" ariaLabel="Message options"
+                            (selected)="onMessageMenu(m, $event)">
+                            <button menu-trigger type="button" class="msg__more" [attr.data-testid]="'message-more-' + m.id"
+                              aria-label="Message options" title="More">
+                              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+                            </button>
+                          </app-dropdown-menu>
                         }
                       </span>
                     }
@@ -361,7 +402,7 @@ const QUOTE_LENGTH = 120;
           }
           @if (replyingTo(); as r) {
             <div class="conv__replying" data-testid="conversation-replying">
-              <svg class="conv__replying-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+              <svg class="conv__replying-icon" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="replyIcon" /></svg>
               <span class="conv__replying-text"><strong>Replying to {{ quoteAuthor(r) }}</strong> {{ replyingText(r) }}</span>
               <button type="button" class="conv__icon-btn conv__replying-close" data-testid="conversation-reply-cancel" aria-label="Cancel reply"
                 (click)="replyingTo.set(null)">
@@ -417,19 +458,36 @@ const QUOTE_LENGTH = 120;
     .conv__input:focus { border-color: var(--color-accent); outline: none; }
     .conv__members { display: flex; max-height: 180px; flex-direction: column; gap: 6px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 13px; }
     .conv__members li { display: flex; align-items: center; gap: 8px; }
-    .msg--case { max-width: 100%; align-items: flex-start; gap: 4px; }
-    .msg__case { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+    /* Case cards use the chat's full width (".msg" caps other messages at 82%, so this needs both classes). */
+    .msg.msg--case { width: 100%; max-width: 100%; align-items: flex-start; gap: 4px; }
+    .msg__case { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; }
+    .msg__case-tools { display: inline-flex; flex: none; align-items: center; gap: 2px; }
+    .msg__case-quote { opacity: 0; transition: opacity 120ms ease; }
+    .msg--case:hover .msg__case-quote, .msg__case-quote:focus-visible { opacity: 1; }
     .msg__forwarded { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 11px; font-style: italic; }
     .msg__forwarded svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     /* The case's ⋯ shows on hover, like a message's own menu. */
-    .msg__case-menu { opacity: 0; transition: opacity .1s; }
-    .msg--case:hover .msg__case-menu, .msg__case-menu:focus-within, .msg__case-menu:has([role="menuitem"]) { opacity: 1; }
     .msg--escalation { background: color-mix(in srgb, var(--color-warning, #d97706) 12%, var(--color-surface)); color: var(--color-warning, #b45309); font-weight: 600; }
     /* "Case resolved · date": a divider across the chat, like the day lines. */
-    .conv__resolved { display: flex; align-items: center; gap: 10px; color: var(--color-success, #16a34a); font-size: 12px; font-weight: 650; }
-    .conv__resolved::before, .conv__resolved::after { content: ''; flex: 1; height: 1px; background: color-mix(in srgb, var(--color-success, #16a34a) 35%, transparent); }
-    .conv__resolved span { display: inline-flex; align-items: center; gap: 6px; }
-    .conv__resolved svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    /* A decision: a tinted card - green when approved or cleared, red when rejected, plain otherwise. */
+    .conv__decision { --tone: var(--color-text-secondary); display: flex; align-items: center; gap: 16px; padding: 16px 18px; border-radius: 14px;
+      background: color-mix(in srgb, var(--tone) 7%, var(--color-surface)); }
+    .conv__decision[data-tone="success"] { --tone: var(--color-success, #16a34a); }
+    .conv__decision[data-tone="danger"] { --tone: var(--color-danger); }
+    .conv__decision-icon { display: inline-flex; width: 40px; height: 40px; flex: none; align-items: center; justify-content: center; border-radius: 50%;
+      background: var(--tone); color: #fff; }
+    .conv__decision-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .conv__decision-text { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; padding: 0; border: 0; background: none; font: inherit;
+      text-align: left; cursor: pointer; }
+    .conv__decision-text:hover .conv__decision-heading { color: var(--color-accent); }
+    .conv__decision-text:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-radius: 8px; }
+    .conv__decision-heading { color: var(--color-text-primary); font-size: 15px; font-weight: 650; }
+    /* "Continued in a group" - a pill with the group icon and an Open group link. */
+    .msg--moved { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; }
+    .msg--moved > svg, .msg--moved .conv__link svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .msg--moved .conv__link { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+    .msg__moved-sep { width: 1px; height: 14px; background: var(--color-border); }
+    .conv__decision-meta { color: var(--color-text-secondary); font-size: 13px; }
     .conv__panel { display: flex; flex-direction: column; gap: 6px; margin: 10px 16px 0; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
     .conv__panel-head { display: flex; align-items: center; justify-content: space-between; color: var(--color-text-secondary); font-size: 12px; font-weight: 650; }
     .conv__panel-actions { display: flex; justify-content: flex-end; gap: 8px; }
@@ -442,6 +500,8 @@ const QUOTE_LENGTH = 120;
     /* Pushes a short conversation to the bottom, like a messenger: the latest message sits above the composer. */
     .conv__spacer { flex: 1 0 0; }
     .conv__day, .conv__unread { display: flex; align-items: center; gap: 10px; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+    /* The day sits in a chip on the line. */
+    .conv__day span { padding: 3px 12px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface-secondary); }
     .conv__day::before, .conv__day::after, .conv__unread::before, .conv__unread::after { content: ''; flex: 1; height: 1px; background: var(--color-border); }
     .conv__unread { color: var(--color-danger); }
     .conv__unread::before, .conv__unread::after { background: color-mix(in srgb, var(--color-danger) 40%, transparent); }
@@ -454,6 +514,8 @@ const QUOTE_LENGTH = 120;
     .msg__content { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
     .msg--own .msg__content { align-items: flex-end; }
     .msg__meta { display: flex; align-items: baseline; gap: 8px; }
+    /* The hover actions go on the inner side, so an own message's time lines up with its bubble's edge. */
+    .msg--own .msg__meta { flex-direction: row-reverse; }
     .msg__author { color: var(--color-text-primary); font-size: 13px; font-weight: 650; }
     .msg__time { color: var(--color-text-secondary); font-size: 11px; }
     .msg__bubble { min-width: 0; padding: 9px 12px; border-radius: 4px 12px 12px 12px; background: var(--color-surface-secondary); color: var(--color-text-primary); font-size: 13px; }
@@ -470,6 +532,11 @@ const QUOTE_LENGTH = 120;
     .msg__react-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .msg__react-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
     .msg__react-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .msg__more-menu { display: inline-flex; }
+    .msg__more { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+    .msg__more:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .msg__more:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+    .msg__more svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
     .msg__react-backdrop { position: fixed; inset: 0; z-index: 40; }
     .msg__react-picker { position: absolute; top: calc(100% + 4px); left: 0; z-index: 41; }
     .msg__react-picker--own { right: 0; left: auto; }
@@ -546,6 +613,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
   caseEdits = output<Record<string, string>>();
   /** "Start a group for this case" on a case card: the host opens the case group dialog. */
   startCaseGroup = output<InboxItemRef>();
+  /** Cases ("source:kind:id") that already have a group the viewer is in. */
+  groupedCases = input<ReadonlySet<string>>(new Set());
   /** "Forward" on a case card: the host opens the forward picker. */
   forwardCase = output<InboxItemRef & { title: string }>();
   /** "Forward" on a chat message: the host opens the picker; the server sends a copy (text and files). */
@@ -571,7 +640,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
   };
   /** The message whose emoji picker is open. */
   protected readonly reactPickerFor = signal<string | null>(null);
-  /** Ticks so Edit/Delete disappear once a message's 30 minutes are over. */
+  /** Keeps the 15-minute Edit action current while the chat remains open. */
   private readonly now = signal(Date.now());
   protected readonly editingId = signal<string | null>(null);
   protected readonly justification = signal(false);
@@ -618,11 +687,15 @@ export class ConversationPanelComponent implements AfterViewChecked {
   protected readonly slashCommands = computed<HostSlashCommand[]>(() => this.isDirect() ? [] : [
     { id: ADD_COMMAND, label: 'Add people', category: 'ACTIONS', icon: '+', description: 'Add someone to this conversation' }
   ]);
+  /** One quote icon for replying: a case's hover button, the ⋮ menu's Reply and the "Replying to" bar. */
+  protected readonly replyIcon = REPLY_ICON;
   protected readonly caseMenu: MenuItem[] = [
-    { id: 'reply', label: 'Reply', iconPath: 'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11' },
+    { id: 'reply', label: 'Reply', iconPath: REPLY_ICON },
     { id: 'group', label: 'Start a group for this case', iconPath: 'M16 20a4 4 0 0 0-8 0M12 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19 8v6M16 11h6' },
     { id: 'forward', label: 'Forward', iconPath: 'm15 5 5 5-5 5M20 10H9a5 5 0 0 0-5 5v4' }
   ];
+  /** A case that already has its group: the same menu opens that group instead of starting one. */
+  protected readonly caseMenuGrouped: MenuItem[] = this.caseMenu.map((item) => item.id === 'group' ? { ...item, label: 'Open group' } : item);
   /** The chat's options (Members, Rename group). On wide screens the page shows them in its header row. */
   readonly menuItems = computed<MenuItem[]>(() => {
     if (this.isDirect()) return [];
@@ -819,10 +892,25 @@ export class ConversationPanelComponent implements AfterViewChecked {
   }
 
   /** "Case resolved" for alerts and cases; "Request approved" / "Request rejected" / ... for requests. */
-  protected resolvedLabel(event: ChatSystemEvent): string {
-    if (event.category !== 'request') return 'Case resolved';
-    const status = (event.status ?? 'closed').replace(/_/g, ' ').toLowerCase();
-    return `Request ${status}`;
+  /** A decision card's parts: "Approved" + "Annual Leave approved", toned by how it ended. */
+  protected decision(event: ChatSystemEvent): { chip: string; heading: string; tone: 'success' | 'danger' | 'neutral' } {
+    // Older lines carry only the title: its type is the part before " - <person>".
+    const title = event.title ?? '';
+    const cut = title.lastIndexOf(' - ');
+    const what = event.what || (cut > 0 ? title.slice(0, cut) : title) || (event.category === 'request' ? 'Request' : 'Case');
+    // An alert line written before outcomes were recorded still has its status ("excused", "confirmed").
+    const ended = event.category === 'request' ? event.status ?? '' : event.outcome || event.status || '';
+    const verb = event.category === 'request'
+      ? (event.status ?? 'closed').replace(/_/g, ' ').toLowerCase()
+      : RESOLVED_OUTCOMES[ended] ?? 'resolved';
+    const tone = DECISION_DANGER.has(ended) ? 'danger' : DECISION_SUCCESS.has(ended) ? 'success' : 'neutral';
+    const chip = verb.split(' - ')[0];
+    return { chip: chip.charAt(0).toUpperCase() + chip.slice(1), heading: `${what} ${verb}`, tone };
+  }
+
+  /** The decision line opens the item it decided. */
+  protected openResolved(event: ChatSystemEvent): void {
+    if (event.source && event.kind && event.id) this.openCase.emit({ source: event.source, kind: event.kind, id: event.id });
   }
 
   protected openGroup(event: ChatSystemEvent): void {
@@ -894,9 +982,43 @@ export class ConversationPanelComponent implements AfterViewChecked {
   }
 
 
-  /** The author may still edit or delete: within 30 minutes of sending (the server checks it too). */
-  protected canChange(message: ConversationMessageDto): boolean {
+  /** Editing is allowed for 15 minutes, regardless of whether another participant has read the message. */
+  protected canEdit(message: ConversationMessageDto): boolean {
+    const author = message.authorEmployeeId;
+    if (!author || author !== this.me()) return false;
     return this.now() - new Date(message.createdAt).getTime() <= EDIT_WINDOW_MS;
+  }
+
+  /** Deleting for everyone ends as soon as any other current participant has read the message. */
+  protected canDeleteForEveryone(message: ConversationMessageDto): boolean {
+    const author = message.authorEmployeeId;
+    if (!author || author !== this.me()) return false;
+    const sentAt = new Date(message.createdAt).getTime();
+    return !this.store.participants().some((p) => p.employeeId !== author
+      && !!p.lastReadAt && new Date(p.lastReadAt).getTime() >= sentAt);
+  }
+
+  protected messageMenuItems(message: ConversationMessageDto): MenuItem[] {
+    const items: MenuItem[] = [];
+    if (this.canForward()) {
+      items.push({ id: 'forward', label: 'Forward', iconPath: 'm15 5 5 5-5 5M20 10H9a5 5 0 0 0-5 5v4' });
+    }
+    if (message.authorEmployeeId === this.me() && this.canEdit(message)) {
+      items.push({ id: 'edit', label: 'Edit' });
+    }
+    if (message.authorEmployeeId === this.me() && this.canDeleteForEveryone(message)) {
+      items.push({ id: 'delete-everyone', label: 'Delete for everyone', danger: true, dividerBefore: items.length > 0 });
+    } else {
+      items.push({ id: 'delete-self', label: 'Delete for me', danger: true, dividerBefore: items.length > 0 });
+    }
+    return items;
+  }
+
+  protected onMessageMenu(message: ConversationMessageDto, action: string): void {
+    if (action === 'forward') this.forwardMessage.emit({ messageId: message.id, preview: this.replyingText(message) });
+    else if (action === 'edit') this.editingId.set(message.id);
+    else if (action === 'delete-everyone') void this.deleteMessage(message.id, true);
+    else if (action === 'delete-self') void this.deleteMessage(message.id, false);
   }
 
   protected isMine(reaction: RealtimeConversationReaction): boolean {
@@ -928,8 +1050,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
     if (await this.store.editMessage(messageId, event.content, event.mentions)) this.editingId.set(null);
   }
 
-  protected async deleteMessage(messageId: string): Promise<void> {
-    await this.store.deleteMessage(messageId);
+  protected async deleteMessage(messageId: string, forEveryone: boolean): Promise<void> {
+    await this.store.deleteMessage(messageId, forEveryone);
   }
 
   protected size(bytes: number): string {

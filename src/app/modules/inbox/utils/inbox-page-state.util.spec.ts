@@ -1,8 +1,6 @@
-import { InboxCapability, InboxItemDto, InboxKindDescriptorDto } from '../models/inbox.dto';
+import { InboxItemDto } from '../models/inbox.dto';
 import {
-  INBOX_BULK_ACTIONS,
   InboxPageState,
-  bulkActionsFor,
   groupByEmployee,
   pageStateFromParams,
   pageStateToParams,
@@ -17,16 +15,6 @@ function item(id: string, extra: Partial<InboxItemDto> = {}): InboxItemDto {
     availableActions: [], unreadMessages: 0, isPending: true, facets: {}, ...extra
   };
 }
-
-const KINDS: InboxKindDescriptorDto[] = [
-  { source: 'leave', kind: 'request', label: 'Leave request', category: 'request', capabilities: InboxCapability.Bulk, detailRenderer: null },
-  { source: 'attendance', kind: 'alert', label: 'Attendance alert', category: 'alert', capabilities: InboxCapability.Bulk | InboxCapability.Resolve, detailRenderer: null },
-  { source: 'work', kind: 'approval', label: 'Work request', category: 'request', capabilities: 0, detailRenderer: null }
-];
-const descriptor = (source: string, kind: string) => KINDS.find((k) => k.source === source && k.kind === kind) ?? null;
-
-const action = (key: string, meta?: Record<string, string>) =>
-  ({ key, label: key, tone: 'primary' as const, needsComment: key === 'reject', needsPayload: false, meta });
 
 describe('inbox page state', () => {
   it('reads and writes the URL: tab, direction, search and every filter, so a reload or a shared link restores it', () => {
@@ -52,19 +40,6 @@ describe('inbox page state', () => {
     });
     expect(pageStateToQuery({ tab: 'all', direction: 'received', search: '', sort: 'latest', filters: {} }, null, now))
       .toMatchObject({ category: [], direction: ['received'], facets: {}, from: null });
-  });
-
-  it('offers only the bulk actions every selected item has, with the outcomes they share', () => {
-    const leave = item('l1', { availableActions: [action('approve'), action('reject')] });
-    const leave2 = item('l2', { availableActions: [action('approve')] });
-    const alert = item('a1', { source: 'attendance', kind: 'alert', category: 'alert', availableActions: [action('resolve', { outcomes: 'excused,confirmed,convert_to_leave' })] });
-    const alert2 = item('a2', { source: 'attendance', kind: 'alert', category: 'alert', availableActions: [action('resolve', { outcomes: 'excused,confirmed' })] });
-
-    expect(INBOX_BULK_ACTIONS).toEqual(['approve', 'reject', 'resolve']);
-    expect(bulkActionsFor([leave, leave2], descriptor).map((a) => a.key)).toEqual(['approve']);
-    expect(bulkActionsFor([alert, alert2], descriptor)).toEqual([{ key: 'resolve', label: 'Resolve', needsComment: false, outcomes: ['excused', 'confirmed'] }]);
-    expect(bulkActionsFor([leave, item('w1', { source: 'work', kind: 'approval', availableActions: [action('approve')] })], descriptor)).toEqual([]);
-    expect(bulkActionsFor([], descriptor)).toEqual([]);
   });
 
   it('groups alerts by the employee they are about, biggest group first', () => {

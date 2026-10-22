@@ -15,12 +15,10 @@ interface InboxChatsState {
   readonly loaded: boolean;
   readonly loading: boolean;
   readonly error: string | null;
-  /** All chats, or only those with something waiting on the user (bulk approval). */
+  /** All chats, or only those with something waiting on the user. */
   readonly filter: InboxChatFilter;
   /** Pending type filter ("source:kind"), null = every type. */
   readonly kind: string | null;
-  /** Ticked chats (Pending only). */
-  readonly selectedIds: ReadonlySet<string>;
   /** Favorite chats (conversation ids): pinned at the top of their section. Per viewer, saved on the server. */
   readonly favorites: ReadonlySet<string>;
   /** A 1-on-1 chat just started from the search, shown until the list has it (an empty chat is not listed). */
@@ -28,7 +26,7 @@ interface InboxChatsState {
 }
 
 const initialState: InboxChatsState = {
-  rows: [], loaded: false, loading: false, error: null, filter: 'all', kind: null, selectedIds: new Set(), favorites: new Set(), started: null
+  rows: [], loaded: false, loading: false, error: null, filter: 'all', kind: null, favorites: new Set(), started: null
 };
 
 function extractError(err: any, fallback: string): string {
@@ -69,13 +67,10 @@ export const InboxChatsStore = signalStore(
           patchState(store, { rows: store.rows().map((r) => (r.conversationId === conversationId ? { ...r, unread: 0 } : r)) });
       },
       setFilter(filter: InboxChatFilter): void {
-        patchState(store, { filter, kind: null, selectedIds: new Set() });
+        patchState(store, { filter, kind: null });
       },
       setKind(kind: string | null): void {
-        patchState(store, { kind, selectedIds: new Set() });
-      },
-      setSelection(selectedIds: ReadonlySet<string>): void {
-        patchState(store, { selectedIds });
+        patchState(store, { kind });
       },
       setStarted(started: InboxChatRowDto | null): void {
         patchState(store, { started });

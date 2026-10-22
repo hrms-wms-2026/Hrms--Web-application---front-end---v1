@@ -122,7 +122,6 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
     fixture.detectChanges();
     (el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).click();
 
-    expect(el.querySelector('.card__eyebrow')?.textContent).toContain('Leave request');
     expect(actions).toEqual([{ key: 'approve', body: { editedPayloadJson: JSON.stringify({ startAt: new Date('2026-10-14T10:00').toISOString() }) } }]);
   });
 

@@ -3,13 +3,10 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, firstValueFrom } from 'rxjs';
 import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
-import { ExceptionEvidenceResponse } from '../../../../shared/models/exception-evidence.model';
 import { InboxApiService } from '../../data-access/inbox-api.service';
 import { InboxActionDto, InboxItemDetailDto, InboxItemRef, sameRef } from '../../models/inbox.dto';
-import { parseExtra } from '../../renderers/inbox-detail-renderers';
 import { InboxKindsStore } from '../../state/inbox-kinds.store';
-import { inboxIconTone, inboxStatusLabel, inboxStatusTone, inboxTitle, inboxTypeMeta } from '../../utils/inbox-item.util';
-import { FaceEvidenceCardComponent } from '../face-evidence-card/face-evidence-card.component';
+import { inboxIconTone, inboxTitle, inboxTypeMeta, isAlert } from '../../utils/inbox-item.util';
 import { CaseSummaryComponent } from '../case-summary/case-summary.component';
 import { InboxTypeIconComponent } from '../inbox-type-icon/inbox-type-icon.component';
 import { LeaveRequestSummaryComponent } from '../leave-request-summary/leave-request-summary.component';
@@ -19,65 +16,63 @@ export interface CaseCardAction {
   key: string;
 }
 
-/** Actions that open somewhere else or undo a decision stay in the details panel, not on the card. */
-const CARD_HIDDEN_ACTIONS = new Set(['open_target', 'revert']);
+/** Actions that open somewhere else, undo a decision or hand the case over stay in the details panel, not on the card. */
+const CARD_HIDDEN_ACTIONS = new Set(['open_target', 'revert', 'escalate']);
 
 /**
- * A request or alert inside a chat: what it is, its status, its evidence (face checks, the requested leave or changes -
- * only what this viewer's own item detail includes) and its actions, so it can be decided right in the chat. A card
- * whose case is already resolved shows from the message alone and loads nothing.
+ * A request or alert inside a chat: what it is and when, and its actions, so it can be decided right in the chat; the
+ * details are in the Ticket details panel. A card whose case is already resolved shows from the message alone and loads nothing.
  */
 @Component({
   selector: 'app-case-card',
   standalone: true,
-  imports: [DatePipe, CaseSummaryComponent, FaceEvidenceCardComponent, InboxTypeIconComponent, LeaveRequestSummaryComponent],
+  imports: [DatePipe, CaseSummaryComponent, InboxTypeIconComponent, LeaveRequestSummaryComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <article class="cc" data-testid="case-card" [class.cc--selected]="selected()" [class.cc--resolved]="resolved()">
-      <button type="button" class="cc__head" data-testid="case-card-open" (click)="open.emit(ref())"
-        [attr.aria-label]="'Open details of ' + heading()">
-        @if (detail(); as d) {
-          <app-inbox-type-icon [icon]="meta()!.icon" [tone]="iconTone()" />
-        } @else {
-          <app-inbox-type-icon icon="task" tone="neutral" />
-        }
-        <span class="cc__title">
-          <span class="cc__name">{{ heading() }}</span>
+    <article class="cc" data-testid="case-card" [attr.data-tone]="cardTone()" [class.cc--selected]="selected()" [class.cc--resolved]="resolved()">
+      <div class="cc__head">
+        <button type="button" class="cc__open" data-testid="case-card-open" (click)="open.emit(ref())"
+          [attr.aria-label]="'Open details of ' + heading()">
           @if (detail(); as d) {
-            <span class="cc__sub">{{ meta()!.label }} · {{ d.item.createdAt | date: 'MMM d, h:mm a' }}</span>
+            <app-inbox-type-icon class="cc__icon" [icon]="meta()!.icon" [tone]="iconTone()" />
+          } @else {
+            <app-inbox-type-icon class="cc__icon" icon="task" tone="neutral" />
           }
-        </span>
-        @if (detail(); as d) {
-          <span [class]="'cc__pill cc__pill--' + statusTone()" data-testid="case-card-status">{{ status() }}</span>
-        } @else if (resolved()) {
-          <span class="cc__pill cc__pill--neutral">Closed</span>
+          <span class="cc__title">
+            <span class="cc__name">{{ heading() }}</span>
+            @if (detail(); as d) {
+              <span class="cc__sub" data-testid="case-card-sub">{{ meta()!.label }} · {{ d.item.createdAt | date: 'MMM d, y, h:mm a' }}</span>
+              @if (!alert() && d.item.subtitle) { <span class="cc__sub">{{ d.item.subtitle }}</span> }
+            } @else if (resolved()) {
+              <span class="cc__sub">Closed</span>
+            } @else if (loading()) {
+              <span class="cc__sub">Loading…</span>
+            } @else if (error()) {
+              <span class="cc__sub">{{ error() }}</span>
+            }
+          </span>
+        </button>
+        <!-- The actions sit in the heading row, just before the ⋮ menu. -->
+        @if (detail() && actions().length > 0) {
+          <div class="cc__actions">
+            @for (a of actions(); track a.key) {
+              <button type="button" [class]="'cc__btn cc__btn--' + a.tone" [attr.data-testid]="'case-card-action-' + a.key"
+                [disabled]="busy()" (click)="action.emit({ ref: ref(), key: a.key })">{{ a.label }}</button>
+            }
+          </div>
         }
-      </button>
+        <ng-content select="[caseMenu]" />
+      </div>
 
-      @if (!resolved() || detail()) {
-        @if (loading() && !detail()) {
-          <p class="cc__quiet">Loading…</p>
-        } @else if (error()) {
-          <p class="cc__quiet">{{ error() }}</p>
-        } @else if (detail(); as d) {
-          @if (faceEvidence(); as ev) {
-            <app-face-evidence-card [evidence]="ev" />
-          } @else if (d.item.source === 'leave' && d.changeSet.length > 0) {
-            <app-leave-request-summary [changes]="d.changeSet" [editable]="selected() && editable()" [errors]="errors()"
+      @if (detail(); as d) {
+        <!-- The approver edits the requested changes on the card open in the details panel; otherwise the card is its heading row. -->
+        @if (selected() && editable() && d.changeSet.length > 0) {
+          @if (d.item.source === 'leave') {
+            <app-leave-request-summary class="cc__editor" [changes]="d.changeSet" [editable]="true" [errors]="errors()"
               (editsChange)="editsChange.emit($event)" />
-          } @else if (d.changeSet.length > 0) {
-            <app-case-summary [changes]="d.changeSet" [editable]="selected() && editable()" [errors]="errors()"
+          } @else {
+            <app-case-summary class="cc__editor" [changes]="d.changeSet" [editable]="true" [errors]="errors()"
               (editsChange)="editsChange.emit($event)" />
-          } @else if (d.item.subtitle) {
-            <p class="cc__text">{{ d.item.subtitle }}</p>
-          }
-          @if (actions().length > 0) {
-            <div class="cc__actions">
-              @for (a of actions(); track a.key) {
-                <button type="button" [class]="'cc__btn cc__btn--' + a.tone" [attr.data-testid]="'case-card-action-' + a.key"
-                  [disabled]="busy()" (click)="action.emit({ ref: ref(), key: a.key })">{{ a.label }}</button>
-              }
-            </div>
           }
         }
       }
@@ -85,30 +80,28 @@ const CARD_HIDDEN_ACTIONS = new Set(['open_target', 'revert']);
   `,
   styles: [`
     :host { display: block; width: 100%; }
-    .cc { display: flex; flex-direction: column; gap: 10px; width: min(460px, 100%); padding: 12px; border: 1px solid var(--color-border);
-      border-radius: 12px; background: var(--color-surface); }
-    .cc--selected { border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 12%, transparent); }
-    .cc--resolved { background: color-mix(in srgb, var(--color-surface-secondary) 50%, var(--color-surface)); }
-    .cc__head { display: flex; width: 100%; min-width: 0; align-items: center; gap: 10px; padding: 0; border: 0; background: none; color: var(--color-text-primary);
+    /* No border: a soft tint of what it is - an open exception red, an open attendance alert amber, anything else gray. */
+    .cc { --tone: var(--color-text-secondary); display: flex; flex-direction: column; gap: 10px; width: 100%; padding: 16px 18px; border-radius: 14px;
+      background: color-mix(in srgb, var(--tone) 6%, var(--color-surface)); }
+    .cc[data-tone="warning"] { --tone: var(--color-warning, #d97706); }
+    .cc[data-tone="danger"] { --tone: var(--color-danger); }
+    .cc[data-tone="warning"], .cc[data-tone="danger"] { background: color-mix(in srgb, var(--tone) 8%, var(--color-surface)); }
+    .cc--selected { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 45%, transparent); }
+    .cc__head { display: flex; min-width: 0; align-items: center; gap: 10px; }
+    .cc__open { display: flex; min-width: 0; flex: 1; align-items: center; gap: 16px; padding: 0; border: 0; background: none; color: var(--color-text-primary);
       font: inherit; text-align: left; cursor: pointer; }
-    .cc__head:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-radius: 8px; }
-    .cc__title { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
-    .cc__name { overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-    .cc__head:hover .cc__name { color: var(--color-accent); }
-    .cc__sub { color: var(--color-text-secondary); font-size: 12px; }
-    .cc__pill { --tone: var(--color-accent); flex: 0 0 auto; padding: 2px 9px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent);
-      color: var(--tone); font-size: 11px; font-weight: 650; white-space: nowrap; }
-    .cc__pill--neutral { --tone: var(--color-text-secondary); }
-    .cc__pill--warning { --tone: var(--color-warning, #d97706); }
-    .cc__pill--danger { --tone: var(--color-danger); }
-    .cc__pill--info { --tone: var(--color-purple, #7c3aed); }
-    .cc__quiet, .cc__text { margin: 0; color: var(--color-text-secondary); font-size: 12px; }
-    .cc__text { color: var(--color-text-primary); font-size: 13px; line-height: 1.45; }
-    .cc__actions { display: flex; flex-wrap: wrap; gap: 8px; }
-    .cc__btn { height: 30px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface);
-      color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .cc__open:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-radius: 8px; }
+    app-inbox-type-icon.cc__icon { width: 44px; height: 44px; border-radius: 50%; }
+    .cc__title { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
+    .cc__name { overflow: hidden; font-size: 15px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .cc__open:hover .cc__name { color: var(--color-accent); }
+    .cc__sub { color: var(--color-text-secondary); font-size: 13px; }
+    .cc__editor { display: block; padding: 12px 14px; border-radius: 10px; background: var(--color-surface); }
+    .cc__actions { display: flex; flex: none; gap: 8px; }
+    .cc__btn { height: 36px; padding: 0 18px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface);
+      color: var(--color-text-primary); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
     .cc__btn:hover:not(:disabled) { border-color: var(--color-accent); }
-    .cc__btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
+    .cc__btn--primary { min-width: 108px; border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .cc__btn--danger { border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border)); color: var(--color-danger); }
     .cc__btn:disabled { opacity: .55; cursor: default; }
     .cc__btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
@@ -151,17 +144,16 @@ export class CaseCardComponent {
     const d = this.detail();
     return d ? inboxTitle(d.item) : this.title() || 'Case';
   });
-  protected readonly status = computed(() => (this.detail() ? inboxStatusLabel(this.detail()!.item) : ''));
-  protected readonly statusTone = computed(() => (this.detail() ? inboxStatusTone(this.detail()!.item) : 'neutral'));
   protected readonly iconTone = computed(() => (this.detail() && this.meta() ? inboxIconTone(this.detail()!.item, this.meta()!) : 'neutral'));
+  protected readonly alert = computed(() => !!this.detail() && isAlert(this.detail()!.item));
+  /** Only an open alert or case is tinted; requests and closed items stay plain. */
+  protected readonly cardTone = computed(() => {
+    const d = this.detail();
+    const tone = this.iconTone();
+    return d && !this.resolved() && isAlert(d.item) && (tone === 'warning' || tone === 'danger') ? tone : 'neutral';
+  });
   protected readonly actions = computed<InboxActionDto[]>(() =>
     (this.detail()?.item.availableActions ?? []).filter((a) => !CARD_HIDDEN_ACTIONS.has(a.key)));
-  /** An identity case's face checks - present only in a reviewer's own detail. */
-  protected readonly faceEvidence = computed<ExceptionEvidenceResponse | null>(() => {
-    const d = this.detail();
-    if (!d || this.kinds.descriptor(d.item.source, d.item.kind)?.detailRenderer !== 'exception-evidence') return null;
-    return parseExtra(d.extraJson) as ExceptionEvidenceResponse | null;
-  });
 
   constructor() {
     // Keyed on the case's identity, not the ref object: a host that hands over an equal but new object on every

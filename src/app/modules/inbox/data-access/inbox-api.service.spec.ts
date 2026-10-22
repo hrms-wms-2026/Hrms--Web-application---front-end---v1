@@ -64,13 +64,6 @@ describe('Inbox data-access', () => {
     expect(history.request.params.get('kind')).toBeNull();
     expect(history.request.params.get('page')).toBe('2');
     history.flush({ items: [], total: 0, page: 2, pageSize: 10 });
-
-    const body = { action: 'approve', items: [{ source: 'leave', kind: 'request', id: 'l1' }], comment: null, outcome: null };
-    inbox.bulk(body).subscribe();
-    const bulk = http.expectOne(`${base}/inbox/bulk`);
-    expect(bulk.request.method).toBe('POST');
-    expect(bulk.request.body).toEqual(body);
-    bulk.flush({ succeeded: [], failed: [] });
   });
 
   it('omits empty filters', () => {
@@ -116,7 +109,7 @@ describe('Inbox data-access', () => {
   it('conversation v2: posts with attachments and a tag, edits, deletes, removes, leaves, downloads, exports', () => {
     conversations.post('c1', '<p>see</p>', [], ['f1'], 'justification').subscribe();
     conversations.edit('c1', 'm1', '<p>fixed</p>', ['e2']).subscribe();
-    conversations.deleteMessage('c1', 'm1').subscribe();
+    conversations.deleteMessage('c1', 'm1', true).subscribe();
     conversations.removeParticipant('c1', 'e9').subscribe();
     conversations.leave('c1').subscribe();
     conversations.attachment('c1', 'a1').subscribe();
@@ -127,7 +120,8 @@ describe('Inbox data-access', () => {
     const edit = http.expectOne((r) => r.url === `${base}/conversations/c1/messages/m1` && r.method === 'PUT');
     expect(edit.request.method).toBe('PUT');
     expect(edit.request.body).toEqual({ bodyHtml: '<p>fixed</p>', mentionEmployeeIds: ['e2'] });
-    expect(http.expectOne((r) => r.url === `${base}/conversations/c1/messages/m1` && r.method === 'DELETE')).toBeTruthy();
+    const deletion = http.expectOne((r) => r.url === `${base}/conversations/c1/messages/m1` && r.method === 'DELETE');
+    expect(deletion.request.params.get('forEveryone')).toBe('true');
     expect(http.expectOne(`${base}/conversations/c1/participants/e9`).request.method).toBe('DELETE');
     expect(http.expectOne(`${base}/conversations/c1/leave`).request.method).toBe('POST');
     expect(http.expectOne(`${base}/conversations/c1/attachments/a1`).request.responseType).toBe('blob');

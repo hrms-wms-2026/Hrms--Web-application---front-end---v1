@@ -3,7 +3,8 @@ import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.service';
 import {
-  MessageCreatedEvent, MessageDeletedEvent, MessageUpdatedEvent, ParticipantAddedEvent, ParticipantRemovedEvent
+  MessageCreatedEvent, MessageDeletedEvent, MessageHiddenEvent, MessageUpdatedEvent, ParticipantAddedEvent, ParticipantReadEvent,
+  ParticipantRemovedEvent
 } from '../../../core/realtime/inbox-realtime.models';
 import { AuthStore } from '../../../core/auth/state/auth.store';
 import { signal } from '@angular/core';
@@ -42,6 +43,8 @@ describe('ConversationStore', () => {
   let updated: Subject<MessageUpdatedEvent>;
   let deleted: Subject<MessageDeletedEvent>;
   let removed: Subject<ParticipantRemovedEvent>;
+  let hidden: Subject<MessageHiddenEvent>;
+  let read: Subject<ParticipantReadEvent>;
   let store: InstanceType<typeof ConversationStore>;
   let inbox: { loadCounts: ReturnType<typeof vi.fn> };
 
@@ -59,6 +62,8 @@ describe('ConversationStore', () => {
     updated = new Subject();
     deleted = new Subject();
     removed = new Subject();
+    hidden = new Subject();
+    read = new Subject();
     inbox = { loadCounts: vi.fn(() => Promise.resolve()) };
     TestBed.configureTestingModule({
       providers: [
@@ -70,7 +75,8 @@ describe('ConversationStore', () => {
           provide: InboxRealtimeService,
           useValue: {
             messageCreated$: created.asObservable(), participantAdded$: added.asObservable(), reconnected$: reconnected.asObservable(),
-            messageUpdated$: updated.asObservable(), messageDeleted$: deleted.asObservable(), participantRemoved$: removed.asObservable()
+            messageUpdated$: updated.asObservable(), messageDeleted$: deleted.asObservable(), participantRemoved$: removed.asObservable(),
+            messageHidden$: hidden.asObservable(), participantRead$: read.asObservable()
           }
         }
       ]
@@ -160,6 +166,16 @@ describe('ConversationStore', () => {
     expect(api['markRead']).toHaveBeenCalledTimes(1);
   });
 
+  it('applies live read markers and removes a message hidden only for this user', async () => {
+    await store.open(REF);
+
+    read.next({ conversationId: 'c1', employeeId: 'e2', readAt: '2026-10-13T09:04:00Z' });
+    hidden.next({ conversationId: 'c1', messageId: 'm2' });
+
+    expect(store.participants().find((p) => p.employeeId === 'e2')?.lastReadAt).toBe('2026-10-13T09:04:00Z');
+    expect(store.messages().map((m) => m.id)).toEqual(['m3']);
+  });
+
   it('addParticipants adds the new members; live participant events are de-duplicated', async () => {
     await store.open(REF);
 
@@ -195,15 +211,18 @@ describe('ConversationStore', () => {
       expect(await store.editMessage('m2', '<p>fixed</p>', [])).toBe(true);
       expect(store.messages().find((m) => m.id === 'm2')).toMatchObject({ bodyHtml: '<p>fixed</p>', editedAt: '2026-10-13T10:00:00Z' });
 
-      expect(await store.deleteMessage('m3')).toBe(true);
+      expect(await store.deleteMessage('m3', true)).toBe(true);
       expect(store.messages().find((m) => m.id === 'm3')).toMatchObject({ isDeleted: true, bodyHtml: '', attachments: [] });
 
       api['deleteMessage'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'Only the author can delete.' } })));
-      expect(await store.deleteMessage('m2')).toBe(false);
+      expect(await store.deleteMessage('m2', true)).toBe(false);
       expect(store.sendError()).toBe('Only the author can delete.');
+
+      expect(await store.deleteMessage('m2', false)).toBe(true);
+      expect(store.messages().find((m) => m.id === 'm2')).toBeUndefined();
     });
 
-    it('sets, replaces and removes the caller\'s reaction; the 30-minute refusal is reported', async () => {
+    it('sets, replaces and removes the caller\'s reaction; the 15-minute edit refusal is reported', async () => {
       api['react'] = vi.fn((_: string, id: string, emoji: string) => of(message(id, '2026-10-13T09:02:00Z', { reactions: [{ emoji, employeeIds: ['me'] }] })));
       api['unreact'] = vi.fn((_: string, id: string) => of(message(id, '2026-10-13T09:02:00Z', { reactions: [] })));
       await store.open(REF);
@@ -216,9 +235,9 @@ describe('ConversationStore', () => {
       expect(api['unreact']).toHaveBeenCalledWith('c1', 'm2');
       expect(store.messages().find((m) => m.id === 'm2')?.reactions).toEqual([]);
 
-      api['edit'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'A message can only be changed within 30 minutes of sending it.' } })));
+      api['edit'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'Messages can only be edited within 15 minutes of sending.' } })));
       expect(await store.editMessage('m2', '<p>late</p>', [])).toBe(false);
-      expect(store.sendError()).toBe('A message can only be changed within 30 minutes of sending it.');
+      expect(store.sendError()).toBe('Messages can only be edited within 15 minutes of sending.');
     });
 
     it('removes an added member, and leaving marks the caller removed', async () => {

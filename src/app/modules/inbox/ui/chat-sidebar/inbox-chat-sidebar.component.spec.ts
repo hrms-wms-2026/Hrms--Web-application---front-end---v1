@@ -112,7 +112,7 @@ describe('InboxChatSidebarComponent', () => {
     expect(TestBed.inject(InboxChatsStore).favorites().has('c2')).toBe(false);
   });
 
-  it('Pending narrows to chats waiting on the user, with checkboxes', async () => {
+  it('Pending narrows to chats waiting on the user, with no selection checkboxes', async () => {
     const { fixture, q, names } = await render();
 
     (q('chat-filter-pending') as HTMLButtonElement).click();
@@ -120,7 +120,7 @@ describe('InboxChatSidebarComponent', () => {
 
     expect(names('chat-section-direct')).toEqual([expect.stringContaining('Kiru')]);
     expect(names('chat-section-groups')).toEqual([]);
-    expect(q('chat-check-c2')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('input[type="checkbox"]')).toBeNull();
   });
 
   it('the search filters chats by name and offers people to start a chat with', async () => {

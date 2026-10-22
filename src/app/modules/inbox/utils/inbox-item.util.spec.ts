@@ -7,8 +7,7 @@ import {
   inboxSubtitle,
   inboxTitle,
   inboxTypeMeta,
-  toFilterFields
-} from './inbox-item.util';
+  toFilterFields, isCaseClosed } from './inbox-item.util';
 
 function item(extra: Partial<InboxItemDto> = {}): InboxItemDto {
   return {
@@ -129,5 +128,12 @@ describe('inbox item util for non-WM kinds (FS1)', () => {
     expect(inboxStatusLabel({ ...leave, status: 'approved' })).toBe('Approved');
     expect(inboxStatusLabel({ ...leave, category: 'alert', status: 'excused' })).toBe('Excused');
     expect(inboxStatusLabel({ ...leave, category: 'alert', status: 'acknowledged' })).toBe('Acknowledged');
+  });
+});
+
+describe('isCaseClosed', () => {
+  it('is the case status, not the viewer: decided and resolved items are closed, open and pending ones are not', () => {
+    expect(['approved', 'Rejected', 'resolved', 'cancelled'].every(isCaseClosed)).toBe(true);
+    expect(['pending', 'open', 'acknowledged', 'escalated', '', null].some(isCaseClosed)).toBe(false);
   });
 });

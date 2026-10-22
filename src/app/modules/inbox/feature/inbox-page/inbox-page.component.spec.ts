@@ -127,6 +127,32 @@ describe('InboxPageComponent', () => {
     expect(el.querySelector('app-breadcrumb-header')!.textContent).toContain('History');
   });
 
+  it('a 1-on-1 chat shows the month by default and switches to Ticket details when a case opens', async () => {
+    const { fixture, el } = await render();
+    params.next(convertToParamMap({ source: 'direct', kind: 'direct', id: 'pair-c1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+
+    const tabs = () => Array.from(el.querySelectorAll('[data-testid="inbox-detail-tabs"] [role="tab"]')) as HTMLButtonElement[];
+    expect(tabs().map((t) => t.textContent?.trim())).toEqual(['Ticket details', expect.stringMatching(/\d{4}|This month/)]);
+    expect(tabs()[1].getAttribute('aria-selected')).toBe('true');
+    expect(el.querySelector('app-person-cases-view')).not.toBeNull();
+
+    query.next(convertToParamMap({ case: 'leave:request:l1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(tabs()[0].getAttribute('aria-selected')).toBe('true');
+    expect(el.querySelector('app-inbox-item-card')).not.toBeNull();
+    expect(el.querySelector('.inbox__detail-tabs [data-testid="inbox-start-case-group"]')?.textContent).toContain('Start a group');
+    expect(el.querySelector('app-inbox-item-card .card__top')).toBeNull();
+    expect(el.querySelector('app-person-cases-view')).toBeNull();
+
+    tabs()[1].click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-person-cases-view')).not.toBeNull();
+    expect(el.querySelector('app-inbox-item-card')).toBeNull();
+  });
+
   it('a link to a case the user has no chat for says so', async () => {
     chatsApi['forItem'].mockReturnValue(throwError(() => new Error('404')));
     const { fixture, el } = await render();
