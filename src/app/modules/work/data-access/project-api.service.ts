@@ -8,6 +8,7 @@ import {
 } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
+import { ProjectWorkGraphDto } from '../models/dto/project-work-graph.dto';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
@@ -73,6 +74,11 @@ export class ProjectApiService {
 
   getMyMilestones(projectId: string): Observable<MyProjectMilestoneDto[]> {
     return this.http.get<MyProjectMilestoneDto[]>(`${this.base}/${projectId}/objectives/mine`);
+  }
+
+  /** Project-rooted Work Network graph: module nodes, their links and open task nodes. */
+  getWorkGraph(projectId: string): Observable<ProjectWorkGraphDto> {
+    return this.http.get<ProjectWorkGraphDto>(`${this.base}/${projectId}/work-graph`);
   }
 
   getProjectTree(projectId: string): Observable<ObjectiveTreeItemDto[]> {

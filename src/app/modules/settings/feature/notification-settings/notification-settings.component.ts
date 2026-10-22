@@ -3,6 +3,9 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { NotificationSettingsStore } from '../../state/notification-settings.store';
 import {
@@ -33,7 +36,7 @@ interface ModuleGroup {
 @Component({
   selector: 'app-notification-settings',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent],
+  imports: [BreadcrumbHeaderComponent, ButtonComponent, CardComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent],
   templateUrl: './notification-settings.component.html',
   styleUrl: './notification-settings.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -126,6 +129,14 @@ export class NotificationSettingsComponent implements OnInit {
   /** Select value: the chosen template, or the product default when none is chosen. */
   protected selectedTemplate(s: NotificationSetting): string {
     return this.row(s).templateId ?? s.templates.find((t) => t.isProductDefault)?.id ?? '';
+  }
+
+  protected templateOptions(s: NotificationSetting): SelectOption[] {
+    return s.templates.map((t) => ({ value: t.id, label: t.name }));
+  }
+
+  protected recipientOptions(s: NotificationSetting): SelectOption[] {
+    return s.recipientRules.map((rule) => ({ value: rule, label: this.recipientLabel(rule) }));
   }
 
   protected setTemplate(s: NotificationSetting, templateId: string): void {

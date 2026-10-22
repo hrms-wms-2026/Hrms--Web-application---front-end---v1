@@ -47,6 +47,37 @@ export function buildTimelineSegments(
     return [];
   }
 
+  return applyMinimumVisibleWidth(
+    rawTimelineSegments(start, end, breaks, activity).map((s) => ({ type: s.type, widthPercent: ((s.end - s.start) / totalMs) * 100 }))
+  );
+}
+
+/** Whole minutes of each kind over [start, end) - the same carve-up the timeline draws (breaks
+ * first, then focus / idle from activity data, the rest working), as durations instead of widths. */
+export function timelineMinutes(
+  start: number,
+  end: number,
+  breaks: BreakInterval[],
+  activity: ActivityTimelineSegment[]
+): Record<TimelineSegment['type'], number> {
+  const ms: Record<TimelineSegment['type'], number> = { working: 0, focus: 0, break: 0, idle: 0 };
+  if (end > start) {
+    for (const s of rawTimelineSegments(start, end, breaks, activity)) ms[s.type] += s.end - s.start;
+  }
+  return {
+    working: Math.round(ms.working / 60_000),
+    focus: Math.round(ms.focus / 60_000),
+    break: Math.round(ms.break / 60_000),
+    idle: Math.round(ms.idle / 60_000)
+  };
+}
+
+function rawTimelineSegments(
+  start: number,
+  end: number,
+  breaks: BreakInterval[],
+  activity: ActivityTimelineSegment[]
+): { type: TimelineSegment['type']; start: number; end: number }[] {
   const breakIntervals = clip(
     breaks.map((b) => ({
       start: new Date(b.startedAt).getTime(),
@@ -77,10 +108,7 @@ export function buildTimelineSegments(
   if (cursor < end) {
     segments.push(...subdivideWorking(cursor, end, activityIntervals));
   }
-
-  return applyMinimumVisibleWidth(
-    segments.map((s) => ({ type: s.type, widthPercent: ((s.end - s.start) / totalMs) * 100 }))
-  );
+  return segments;
 }
 
 /** Below this width a segment renders as a sliver too thin to see (or to pick a color out of) in

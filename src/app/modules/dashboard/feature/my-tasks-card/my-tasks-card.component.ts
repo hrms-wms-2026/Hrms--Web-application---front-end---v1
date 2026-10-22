@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
-import { MyTaskItem } from '../../models/my-tasks.model';
+import { MyTaskItem, MyTasksResponse } from '../../models/my-tasks.model';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 
 /** "Show only the most relevant tasks, not the full task list" (dashboard spec) - the card
  * shows at most this many rows total, overdue first, then upcoming filling the rest. */
@@ -40,17 +41,30 @@ export class MyTasksCardComponent implements OnInit {
     return first ? ['/work', first.projectId, 'board'] : null;
   });
 
+  /** Inside a dashboard frame the first payload comes from the bootstrap; otherwise (or when it isn't
+   * available) the card fetches its own tasks as before. The card never reloads. */
+  private readonly feed = injectWidgetDataFeed<MyTasksResponse>({
+    apply: (response) => this.applyResponse(response),
+    fetch: () => this.fetchTasks()
+  });
+
   ngOnInit(): void {
+    this.feed.start();
+  }
+
+  private fetchTasks(): void {
     this.api.getMyTasks().subscribe({
-      next: (response) => {
-        this.tasks.set(response.tasks);
-        this.loading.set(false);
-      },
+      next: (response) => this.applyResponse(response),
       error: () => {
         this.tasks.set([]);
         this.loading.set(false);
       }
     });
+  }
+
+  private applyResponse(response: MyTasksResponse): void {
+    this.tasks.set(response.tasks);
+    this.loading.set(false);
   }
 
   // Task details live in the board modal, so taskId navigates to the board and opens

@@ -27,6 +27,7 @@ import {
   progressPercent,
   settleExplorerLayout,
   shorten,
+  taskStatusDot,
   taskTone,
   tasksByParent
 } from './explorer-layout';
@@ -117,6 +118,7 @@ const TWEEN_LAYOUT_MS = 650;
             [class.wgx-node--dim]="isDimmed(node)"
             [class.wgx-node--locked]="locked() === node.id"
             [class.wgx-node--focus]="focusId() === node.id"
+            [class.wgx-node--alert]="hasAlert(node)"
             [attr.data-node-id]="node.id"
             [attr.transform]="'translate(' + node.x + ',' + node.y + ')'"
             [style.animation-delay.ms]="enterDelay(node)"
@@ -134,6 +136,17 @@ const TWEEN_LAYOUT_MS = 650;
             <title>{{ node.data.label }}</title>
             <g class="wgx-node__body">
               <circle class="wgx-halo" [attr.r]="node.radius + 9" />
+              @if (showProgressRing() && node.data.kind === 'module') {
+                <circle class="wgx-ring-track" [attr.r]="ringRadius(node)" />
+                <circle
+                  class="wgx-ring-fill"
+                  [attr.r]="ringRadius(node)"
+                  [attr.stroke-dasharray]="ringDash(node)"
+                  transform="rotate(-90)"
+                >
+                  <title>{{ progressOf(node) }}% of allocated hours completed</title>
+                </circle>
+              }
               <circle class="wgx-core" [attr.r]="node.radius" />
               @if (imageOf(node); as src) {
                 <!-- Photo / project logo; the coloured circle and code underneath stay as the placeholder. -->
@@ -206,7 +219,7 @@ const TWEEN_LAYOUT_MS = 650;
             <rect class="wgx-card__box" [attr.width]="cardW" [attr.height]="cardH" rx="9" />
             @if (card.task; as task) {
               <title>{{ task.label }}</title>
-              <circle [class]="'wgx-card__dot wgx-tone--' + card.tone" cx="16" [attr.cy]="cardH / 2" r="5" />
+              <circle [class]="cardDotClass(card)" cx="16" [attr.cy]="cardH / 2" r="5" />
               <text class="wgx-card__title" x="30" y="17">{{ short(task.label, 22) }}</text>
               <text class="wgx-card__code" x="30" y="32">{{ task.sublabel }}</text>
             } @else {
@@ -264,6 +277,28 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-code { fill: #fff; font-size: 14px; font-weight: 700; pointer-events: none; }
     .wgx-node--employee .wgx-code { font-size: 20px; }
     .wgx-node--module-member .wgx-code, .wgx-node--module-contributor .wgx-code { fill: #7c3aed; }
+    /* Project mode: modules are not viewer-relative - one purple fill for all of them, and blue for
+       the project's default (root) module. */
+    .wgx-node--module-neutral { color: #8b5cf6; }
+    .wgx-node--module-neutral .wgx-core { fill: url(#wgx-module); }
+    .wgx-node--module-default { color: #2563eb; }
+    .wgx-node--module-default .wgx-core { fill: url(#wgx-project); }
+    /* Project mode sprints (purple): active = empty, draft = filled, complete/achieved = gray. */
+    .wgx-node--sprint-active, .wgx-node--sprint-draft { color: #8b5cf6; }
+    .wgx-node--sprint-active .wgx-core { fill: #fff; stroke: #8b5cf6; stroke-width: 3; }
+    .wgx-node--sprint-active .wgx-code { fill: #7c3aed; }
+    .wgx-node--sprint-draft .wgx-core { fill: url(#wgx-module); }
+    .wgx-node--sprint-done { color: #94a3b8; }
+    .wgx-node--sprint-done .wgx-core { fill: #cbd5e1; }
+    /* Project mode task status dots (light blue): not started = empty, started = filled, done = gray. */
+    .wgx-dot--empty { fill: #fff; stroke: #38bdf8; stroke-width: 2; }
+    .wgx-dot--filled { fill: #38bdf8; }
+    .wgx-dot--done { fill: #cbd5e1; }
+    /* A module the project monitor raised an alert on - the tree's red dot, as a whole circle. */
+    .wgx-node--alert .wgx-core { fill: #ef4444; stroke: #b91c1c; stroke-width: 2; stroke-dasharray: none; }
+    .wgx-node--alert .wgx-code { fill: #fff; }
+    .wgx-ring-track { fill: none; stroke: #e2e8f0; stroke-width: 4; }
+    .wgx-ring-fill { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; }
     .wgx-icon path { fill: rgb(255 255 255 / 0.9); }
     .wgx-photo { pointer-events: none; }
     .wgx-badge circle { fill: #fff; stroke: #c7d2fe; stroke-width: 1; }
@@ -307,6 +342,21 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   /** A node to highlight briefly (search result). */
   readonly focusId = input<string | null>(null);
   readonly animated = input(true);
+  /**
+   * Project mode. All four default to the employee-rooted behaviour, so the employee Work Network
+   * passes none of them and renders exactly as it did before they existed.
+   */
+  readonly rootId = input<string | null>(null);
+  /** Draws each module's completed/allocated share as a ring on the circle's outline. */
+  readonly showProgressRing = input(false);
+  /** Nodes whose circle is drawn in the alert colour (the red dots of the Work Management tree). */
+  readonly alertNodeIds = input<ReadonlySet<string>>(new Set<string>());
+  /** Modules with no viewer-relative role draw in one neutral fill instead of the contributor one. */
+  readonly neutralModuleFill = input(false);
+  /** 'status': task card dots show light-blue empty / filled / gray-done instead of the tone colour. */
+  readonly taskDotStyle = input<'tone' | 'status'>('tone');
+  /** Sprints stay hidden until their module is hovered or locked (project graph only). */
+  readonly revealSprintsOnHover = input(false);
 
   readonly nodeClicked = output<WorkGraphNode>();
   readonly taskClicked = output<WorkGraphNode>();
@@ -340,13 +390,50 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
     return node ? node.id.replace(/^employee:/, '') : null;
   });
 
+  /** Project mode: each sprint's parent modules, from the graph's module -> sprint links. */
+  private readonly sprintParents = computed(() => {
+    const parents = new Map<string, Set<string>>();
+    for (const link of this.graph().links) {
+      if (link.kind !== 'contains' || !link.target.startsWith('sprint:')) continue;
+      parents.set(link.target, (parents.get(link.target) ?? new Set()).add(link.source));
+    }
+    return parents;
+  });
+
+  /**
+   * With revealSprintsOnHover, the sprints on screen: those of the module that is hovered or locked,
+   * or the siblings of a sprint that is (so moving from a module onto one of its sprints keeps the
+   * rest). Null means "no filtering" - every sprint is drawn, as it always was.
+   */
+  private readonly openSprints = computed<ReadonlySet<string> | null>(() => {
+    if (!this.revealSprintsOnHover()) return null;
+    const parents = this.sprintParents();
+    const modules = new Set<string>();
+    for (const id of [this.locked(), this.previewed()]) {
+      if (!id) continue;
+      if (id.startsWith('sprint:')) parents.get(id)?.forEach((m) => modules.add(m));
+      else modules.add(id);
+    }
+    const open = new Set<string>();
+    for (const [sprintId, sprintModules] of parents) {
+      if ([...sprintModules].some((m) => modules.has(m))) open.add(sprintId);
+    }
+    return open;
+  });
+
+  private isHiddenSprint(node: ExplorerNode, open: ReadonlySet<string> | null): boolean {
+    return open !== null && node.data.kind === 'sprint' && !open.has(node.id);
+  }
+
   readonly visibleNodes = computed(() => {
     this.version();
-    return this.layout.nodes.filter((n) => !n.spacer);
+    const open = this.openSprints();
+    return this.layout.nodes.filter((n) => !n.spacer && !this.isHiddenSprint(n, open));
   });
   readonly links = computed(() => {
     this.version();
-    return this.layout.links;
+    const open = this.openSprints();
+    return this.layout.links.filter((l) => !this.isHiddenSprint(l.source, open) && !this.isHiddenSprint(l.target, open));
   });
 
   /** Locked parent wins; otherwise whatever is being previewed. */
@@ -465,7 +552,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   relayout(): void {
     this.stopSimulation();
     this.cancelTween();
-    const fresh = settleExplorerLayout(buildExplorerLayout(this.graph()), 320);
+    const fresh = settleExplorerLayout(buildExplorerLayout(this.graph(), this.rootId() ?? undefined), 320);
     const targets = fresh.nodes.map((n) => ({ node: n, x: n.x ?? 0, y: n.y ?? 0 }));
     this.layout = fresh;
     this.animateCamera(this.fitCamera(this.boundsOf(fresh.nodes, [])));
@@ -494,7 +581,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   onNodeEnter(node: ExplorerNode): void {
     this.hovered.set(node.id);
     this.clearPreviewTimer();
-    if (node.data.kind === 'module' || node.data.kind === 'project') this.previewed.set(node.id);
+    if (node.data.kind === 'module' || node.data.kind === 'project' || node.data.kind === 'sprint') this.previewed.set(node.id);
     else this.previewed.set(null);
   }
 
@@ -586,7 +673,31 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   }
 
   kindClass(node: ExplorerNode): string {
-    return node.data.kind === 'module' ? `module-${node.data.role ?? 'contributor'}` : node.data.kind;
+    if (node.data.kind === 'sprint') {
+      const status = node.data.status;
+      return `sprint-${status === 'active' ? 'active' : status === 'draft' ? 'draft' : 'done'}`;
+    }
+    if (node.data.kind !== 'module') return node.data.kind;
+    if (node.data.role) return `module-${node.data.role}`;
+    if (!this.neutralModuleFill()) return 'module-contributor';
+    // Project mode: the pinned root is the project's default module and gets its own colour.
+    return node.isRoot ? 'module-default' : 'module-neutral';
+  }
+
+  hasAlert(node: ExplorerNode): boolean {
+    return this.alertNodeIds().has(node.id);
+  }
+
+  /** Circumference of the ring, and the completed arc inside it. */
+  ringRadius(node: ExplorerNode): number {
+    return node.radius + 5;
+  }
+
+  /** "<arc> <rest>": progressPercent already returns 0 for a module with no allocated hours. */
+  ringDash(node: ExplorerNode): string {
+    const circumference = 2 * Math.PI * this.ringRadius(node);
+    const drawn = (circumference * this.progressOf(node)) / 100;
+    return `${drawn} ${circumference - drawn}`;
   }
 
   isDimmed(node: ExplorerNode): boolean {
@@ -652,8 +763,18 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   }
 
   moduleSummary(node: ExplorerNode): string {
+    if (node.data.kind === 'sprint') {
+      const count = tasksByParent(this.graph()).get(node.id)?.length ?? 0;
+      return `${count} task${count === 1 ? '' : 's'}`;
+    }
     const total = node.data.stats?.totalTasks ?? 0;
     return `${total} task${total === 1 ? '' : 's'} in module`;
+  }
+
+  /** Tone dot (employee view) or, with taskDotStyle 'status', the light-blue empty/filled/done dot. */
+  cardDotClass(card: RenderedCard): string {
+    if (this.taskDotStyle() === 'status' && card.task) return `wgx-card__dot wgx-dot--${taskStatusDot(card.task)}`;
+    return 'wgx-card__dot wgx-tone--' + card.tone;
   }
 
   progressOf(node: ExplorerNode): number {
@@ -681,7 +802,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   private rebuild(graph: EmployeeWorkGraphResponse): void {
     this.stopSimulation();
     this.cancelTween();
-    this.layout = settleExplorerLayout(buildExplorerLayout(graph), 320);
+    this.layout = settleExplorerLayout(buildExplorerLayout(graph, this.rootId() ?? undefined), 320);
     this.version.update((v) => v + 1);
     // The view box is set once per graph; Fit / zoom / pan only ever move the camera inside it.
     this.baseViewBox.set(this.boxToViewBox(this.boundsOf(this.visibleNodes(), [])));
