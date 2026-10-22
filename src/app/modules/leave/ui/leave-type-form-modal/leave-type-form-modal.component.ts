@@ -20,11 +20,12 @@ export class LeaveTypeFormModalComponent implements OnInit {
   @Output() cancel = new EventEmitter<void>();
 
   readonly colors = LEAVE_TYPE_COLORS;
+  readonly descriptionMaxLength = 500;
   readonly genderOptions = [{ value: 'all', label: 'All employees' }, { value: 'male', label: 'Men only' }, { value: 'female', label: 'Women only' }];
   readonly form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     code: ['', [Validators.required, Validators.maxLength(20)]],
-    description: [''],
+    description: ['', Validators.maxLength(500)],
     color: [LEAVE_TYPE_COLORS[0] as string, [Validators.required, Validators.pattern(HEX_COLOR)]],
     isPaid: [true],
     applicableGender: ['all', Validators.required],
