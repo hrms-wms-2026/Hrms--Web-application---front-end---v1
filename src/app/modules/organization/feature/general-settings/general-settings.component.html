@@ -225,9 +225,6 @@
             }
           </div>
 
-          @if (getWorkingHoursSummary(); as summary) {
-            <p class="gs-work-hours-live" data-testid="work-hours-live-line">{{ summary }}</p>
-          }
           @if (isOvernightWindow()) {
             <p class="gs-work-hours-nextday">End time is the next calendar day.</p>
           }
