@@ -11,119 +11,12 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
   standalone: true,
   imports: [AvatarComponent, TreeAlertMarkComponent],
   template: `
-    @if (!compact()) {
-      <div
-        class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
-        data-testid="tree-row"
-        (click)="selectedRow.emit(node())"
-      >
-        <span class="flex items-center gap-1.5 min-w-0" [style.paddingLeft.px]="depth() * 20">
-          @if (showChevron()) {
-            <button
-              type="button"
-              class="flex h-4 w-4 shrink-0 items-center justify-center transition-transform {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}"
-              [style.transform]="expanded() ? 'rotate(90deg)' : 'rotate(0deg)'"
-              data-testid="chevron"
-              [attr.aria-label]="expanded() ? 'Collapse' : 'Expand'"
-              (click)="onChevron($event)"
-            >
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          } @else {
-            <span class="h-4 w-4 shrink-0"></span>
-          }
-          <svg data-testid="folder-icon" class="h-4 w-4 shrink-0 {{ selected() ? 'text-white' : 'text-[var(--color-accent)]' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a4 4 0 0 1-2-2V6Z" />
-          </svg>
-          <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
-          <app-tree-alert-mark [alerts]="alerts()" />
-          @if (node().isAchieved) {
-            <span data-testid="achieved-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">Achieved</span>
-          }
-          @if (node().sprintTaskLoadState === 'error') {
-            <button
-              type="button"
-              class="shrink-0 rounded-md px-1.5 py-0.5 text-xs {{ selected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]' }}"
-              data-testid="retry-sprint-task-load"
-              (click)="onRetry($event)"
-            >Retry</button>
-          }
-        </span>
-
-        <span class="flex items-center gap-2 text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="progress-cell">
-          <span data-testid="progress-track" class="h-1.5 w-16 overflow-hidden rounded-full {{ selected() ? 'bg-white/25' : 'bg-[var(--color-surface-secondary)]' }}">
-            <span data-testid="progress-fill" class="block h-full rounded-full {{ selected() ? 'bg-white' : 'bg-[var(--color-accent)]' }}" [style.width.%]="node().progress"></span>
-          </span>
-          {{ node().progress }}%
-        </span>
-
-        <span
-          data-testid="owner-cell"
-          class="inline-flex shrink-0"
-          style="--color-profile-bg: var(--color-accent); --color-profile-text: #ffffff; --color-border: #ffffff;"
-        >
-          <app-avatar [avatarUrl]="ownerIdentity()?.avatarUrl" [userName]="ownerIdentity()?.name ?? node().ownerName" size="sm" />
-        </span>
-
-        <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
-
-        <span class="relative flex items-center justify-end gap-px" data-testid="row-actions" #actionsCell>
-          @if (node().isOwner) {
-            <button type="button" class="{{ iconClass() }}" data-testid="create-sub-button" aria-label="Create sub Module" (click)="emit($event, createRequested)">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="{{ iconClass() }}"
-              data-testid="shortcut-menu-button"
-              aria-label="Show all shortcuts"
-              [attr.aria-expanded]="actionsOpen()"
-              (click)="toggleActions($event)"
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-                <circle cx="5" cy="12" r="1" fill="currentColor" />
-                <circle cx="12" cy="12" r="1" fill="currentColor" />
-                <circle cx="19" cy="12" r="1" fill="currentColor" />
-              </svg>
-            </button>
-            @if (actionsOpen()) {
-              <div class="absolute right-0 top-7 z-30 min-w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-lg" data-testid="shortcut-menu">
-                <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-sub-button" (click)="emit($event, createRequested)">
-                  <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Sub module</span>
-                </button>
-                <button type="button" class="{{ menuItemClass() }}" data-testid="menu-edit-button" (click)="emit($event, editRequested)">
-                  <span class="{{ menuIconClass() }}" aria-hidden="true">✎</span><span>Edit</span>
-                </button>
-                <button type="button" class="{{ menuItemClass() }}" data-testid="menu-members-button" (click)="emit($event, membersRequested)">
-                  <span class="{{ menuIconClass() }}" aria-hidden="true">♙</span><span>Members</span>
-                </button>
-                <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-task-button" (click)="emit($event, createTaskRequested)">
-                  <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Create work item</span>
-                </button>
-                @if (isLeaf()) {
-                  <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-sprint-button" (click)="emit($event, createSprintRequested)">
-                    <span class="{{ menuIconClass() }}" aria-hidden="true">□</span><span>Create sprint</span>
-                  </button>
-                }
-                <button type="button" class="{{ menuItemClass() }}" data-testid="menu-achieve-button" (click)="emit($event, achieveRequested)">
-                  <span class="{{ menuIconClass() }}" aria-hidden="true">★</span><span>{{ node().isAchieved ? 'Unachieve module' : 'Achieve module' }}</span>
-                </button>
-              </div>
-            }
-          }
-        </span>
-      </div>
-    } @else {
-      <div
-        class="flex items-center gap-2 min-w-0 flex-1 rounded-md px-2 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
-        data-testid="tree-row"
-        (click)="selectedRow.emit(node())"
-      >
+    <div
+      class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
+      data-testid="tree-row"
+      (click)="selectedRow.emit(node())"
+    >
+      <span class="flex items-center gap-1.5 min-w-0" [style.paddingLeft.px]="depth() * 20">
         @if (showChevron()) {
           <button
             type="button"
@@ -143,14 +36,87 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
         <svg data-testid="folder-icon" class="h-4 w-4 shrink-0 {{ selected() ? 'text-white' : 'text-[var(--color-accent)]' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a4 4 0 0 1-2-2V6Z" />
         </svg>
-        <span class="min-w-0 flex-1">
-          <span data-testid="title-text" class="block min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
-        </span>
-        @if (progressLabel(); as label) {
-          <span data-testid="compact-progress-label" class="shrink-0 text-xs font-medium {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}">{{ label }}</span>
+        <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
+        <app-tree-alert-mark [alerts]="alerts()" />
+        @if (node().isAchieved) {
+          <span data-testid="achieved-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">Achieved</span>
         }
-      </div>
-    }
+        @if (node().sprintTaskLoadState === 'error') {
+          <button
+            type="button"
+            class="shrink-0 rounded-md px-1.5 py-0.5 text-xs {{ selected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]' }}"
+            data-testid="retry-sprint-task-load"
+            (click)="onRetry($event)"
+          >Retry</button>
+        }
+      </span>
+
+      <span class="flex items-center gap-2 text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="progress-cell">
+        <span data-testid="progress-track" class="h-1.5 w-16 overflow-hidden rounded-full {{ selected() ? 'bg-white/25' : 'bg-[var(--color-surface-secondary)]' }}">
+          <span data-testid="progress-fill" class="block h-full rounded-full {{ selected() ? 'bg-white' : 'bg-[var(--color-accent)]' }}" [style.width.%]="node().progress"></span>
+        </span>
+        {{ node().progress }}%
+      </span>
+
+      <span
+        data-testid="owner-cell"
+        class="inline-flex shrink-0"
+        style="--color-profile-bg: var(--color-accent); --color-profile-text: #ffffff; --color-border: #ffffff;"
+      >
+        <app-avatar [avatarUrl]="ownerIdentity()?.avatarUrl" [userName]="ownerIdentity()?.name ?? node().ownerName" size="sm" />
+      </span>
+
+      <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
+
+      <span class="relative flex items-center justify-end gap-px" data-testid="row-actions" #actionsCell>
+        @if (node().isOwner) {
+          <button type="button" class="{{ iconClass() }}" data-testid="create-sub-button" aria-label="Create sub Module" (click)="emit($event, createRequested)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="{{ iconClass() }}"
+            data-testid="shortcut-menu-button"
+            aria-label="Show all shortcuts"
+            [attr.aria-expanded]="actionsOpen()"
+            (click)="toggleActions($event)"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <circle cx="5" cy="12" r="1" fill="currentColor" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" />
+              <circle cx="19" cy="12" r="1" fill="currentColor" />
+            </svg>
+          </button>
+          @if (actionsOpen()) {
+            <div class="absolute right-0 top-7 z-30 min-w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-lg" data-testid="shortcut-menu">
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-sub-button" (click)="emit($event, createRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Sub module</span>
+              </button>
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-edit-button" (click)="emit($event, editRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">✎</span><span>Edit</span>
+              </button>
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-members-button" (click)="emit($event, membersRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">♙</span><span>Members</span>
+              </button>
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-task-button" (click)="emit($event, createTaskRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Create work item</span>
+              </button>
+              @if (isLeaf()) {
+                <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-sprint-button" (click)="emit($event, createSprintRequested)">
+                  <span class="{{ menuIconClass() }}" aria-hidden="true">□</span><span>Create sprint</span>
+                </button>
+              }
+              <button type="button" class="{{ menuItemClass() }}" data-testid="menu-achieve-button" (click)="emit($event, achieveRequested)">
+                <span class="{{ menuIconClass() }}" aria-hidden="true">★</span><span>{{ node().isAchieved ? 'Unachieve module' : 'Achieve module' }}</span>
+              </button>
+            </div>
+          }
+        }
+      </span>
+    </div>
   `
 })
 export class ModuleTreeRowComponent implements OnInit, OnDestroy {
@@ -162,10 +128,6 @@ export class ModuleTreeRowComponent implements OnInit, OnDestroy {
   alerts = input<readonly MonitorAlertDto[]>([]);
   showChevron = input(false);
     expanded = input(false);
-  compact = input(false);
-  /** Compact-mode caller's own progress text (e.g. "40%" or "—"), since MilestoneTreeNode's
-   *  `progress` is a non-nullable number with no "no data" state. */
-  progressLabel = input<string | null>(null);
   actionsOpen = signal(false);
   protected readonly ownerIdentity = computed(() => {
     const ownerId = this.node().ownerId;

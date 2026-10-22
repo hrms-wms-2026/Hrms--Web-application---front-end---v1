@@ -152,9 +152,6 @@ export interface TaskCardAssignableMember {
             (valueChange)="onDateChange($event)"
           />
 
-          @if (task().activeEventName) {
-            <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
-          }
           @if (isAssignee()) {
             <div class="task-card__clock" (click)="$event.stopPropagation()">
               <app-task-clock-widget
@@ -382,7 +379,6 @@ export interface TaskCardAssignableMember {
     .task-card__priority-icon[data-priority="medium"] { color: #3b82f6; fill: #3b82f6; }
     .task-card__priority[data-priority="low"] .task-card__priority-icon,
     .task-card__priority-icon[data-priority="low"] { color: #94a3b8; fill: #94a3b8; }
-    .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__clock { min-width: 0; margin-left: auto; flex-shrink: 0; }
 
     .task-card__popover {
