@@ -459,10 +459,11 @@ describe('TeamProgressCardComponent', () => {
 
       expect(has(fixture, 'team-progress-status-bar')).toBe(false);
 
-      // Stretched sideways, the stacked status bar and a one-line legend with every status's hours.
+      // Stretched sideways, the stacked status bar and its legend replace the donut (one chart only).
       resize(fixture, 860, 204);
       expect(layoutMode(fixture)).toBe('mini');
       expect(has(fixture, 'team-progress-status-bar')).toBe(true);
+      expect(has(fixture, 'team-progress-donut')).toBe(false);
       for (const key of ['completed', 'in-progress', 'not-started', 'untasked']) {
         expect(text(fixture, `team-progress-legend-${key}`)).toMatch(/ h$/);
       }

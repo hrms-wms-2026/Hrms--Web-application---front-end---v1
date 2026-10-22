@@ -189,9 +189,10 @@ describe('team-progress-layout.util', () => {
       });
     });
 
-    it('mini: no legend at 2x2 or 3x2, one legend line on a wide strip', () => {
+    it('mini: the small donut at 2x2 and 3x2; from 4 columns the bar and legend replace it', () => {
       expect(planTeamProgressLayout('mini', cols(2), rows(2)).miniLegend).toBe('none');
       expect(planTeamProgressLayout('mini', cols(3), rows(2)).miniLegend).toBe('none');
+      expect(planTeamProgressLayout('mini', cols(4), rows(2)).miniLegend).toBe('inline');
       expect(planTeamProgressLayout('mini', cols(5), rows(2)).miniLegend).toBe('inline');
       expect(planTeamProgressLayout('mini', cols(12), rows(2)).miniLegend).toBe('inline');
       expect(planTeamProgressLayout('xs', cols(3), rows(3)).miniLegend).toBe('none');

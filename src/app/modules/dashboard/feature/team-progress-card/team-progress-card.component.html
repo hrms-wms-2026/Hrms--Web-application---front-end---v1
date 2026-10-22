@@ -334,11 +334,13 @@
         @switch (mode()) {
           @case ('mini') {
             <!-- 2-row cards (2x2 minimum): the 128px donut doesn't fit under the title, so a small donut
-            beside the completion figure. Stretched sideways, the stacked status bar and a one-line legend
-            fill the extra width. -->
+            beside the completion figure. Stretched sideways the donut gives way to the stacked status bar
+            and a one-line legend - one chart, never both. -->
             <div class="tp-mini" [class.tp-mini--wide]="plan().miniLegend === 'inline'" data-testid="team-progress-mini">
               <div class="tp-mini-top">
-                <ng-container *ngTemplateOutlet="donutTpl" />
+                @if (plan().miniLegend !== 'inline') {
+                  <ng-container *ngTemplateOutlet="donutTpl" />
+                }
                 <p class="tp-mini-figure">
                   <span class="tp-completion-big text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
                   <span class="tp-completion-caption">

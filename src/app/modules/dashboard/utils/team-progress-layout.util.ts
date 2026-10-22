@@ -99,16 +99,16 @@ export const TEAM_PROGRESS_TALL_SIDE_BY_SIDE_PX = 560;
 const TILE_ROW_PX = 60 + GAP_PX;
 /** Height of the mini legend line. */
 const MINI_LEGEND_ROW_PX = 22;
-/** Body width from which a 2-row card has room, beside its donut and figure, for the stacked status
- * bar and its one-line legend (about 5 columns at 1440px, 4 at 1920px). */
-const MINI_INLINE_LEGEND_WIDTH_PX = 440;
+/** Body width from which a 2-row card swaps its small donut for the stacked status bar and its
+ * legend beside the completion figure (from 4 columns at 1440px, 3 at 1920px). */
+const MINI_INLINE_LEGEND_WIDTH_PX = 320;
 const VIEW_DETAILS_PX = 36 + GAP_PX;
 
 /** The optional sections a view shows at a size. Everything here has a fixed height, so a larger
  * card adds sections and list rows instead of growing what is already there. */
 export interface TeamProgressPlan {
-  /** mini only: 'inline' on a card stretched sideways - the stacked status bar and a one-line legend
-   * beside the donut; 'none' when only the donut and figure fit. */
+  /** mini only: 'inline' on a card stretched sideways - the stacked status bar and its legend take the
+   * donut's place beside the figure; 'none' keeps the small donut. */
   miniLegend: 'none' | 'inline';
   /** xs only: the four-status legend under the completion figure. */
   legend: boolean;
@@ -125,7 +125,7 @@ export interface TeamProgressPlan {
 /** Fixed height of each view's always-shown content (body pixels, before optional sections). */
 function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
   switch (mode) {
-    // The small (80px) donut beside the completion figure.
+    // The small (80px) donut, or the bar and legend, beside the completion figure.
     case 'mini':
       return 80;
     // Donut, the big completion figure and its caption.
