@@ -1,78 +1,178 @@
-/** Quiet Operations Desk: policy administration combines a ledger, read-only review panel, and guided creation. */
+/** Leave policies: one policy per leave type, assigned to the company, departments and positions;
+ * edits are saved as dated versions. */
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { firstValueFrom } from 'rxjs';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
-import { CommonModule } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
-import { LegalEntityListItem } from '../../../organization/models/legal-entity.model';
-import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
+import { DepartmentApiService } from '../../../organization/data-access/department-api.service';
+import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { LeavePolicyStore } from '../../state/leave-policy.store';
-import { CloneLeavePolicyRequest, LeavePolicyFormDraft, LeavePolicyListItemResponse } from '../../models/leave-policy.model';
-import { toCreateLeavePolicyRequest } from '../../utils/leave-policy-form.mapper';
+import { CreateLeavePolicyRequest, LeavePolicyListItem } from '../../models/leave-policy.model';
 import { LeavePolicyListTableComponent } from '../../ui/leave-policy-list-table/leave-policy-list-table.component';
 import { LeavePolicyDetailPanelComponent } from '../../ui/leave-policy-detail-panel/leave-policy-detail-panel.component';
-import { LeavePolicyFormWizardComponent } from '../../ui/leave-policy-form-wizard/leave-policy-form-wizard.component';
+import {
+  LeavePolicyFormWizardComponent,
+  LeavePolicyWizardEdit,
+  LeavePolicyWizardEntity
+} from '../../ui/leave-policy-form-wizard/leave-policy-form-wizard.component';
 
-@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrls: ['../../ui/time-off-chrome.css', './policy-management.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
+/** The org list endpoints accept at most 100 per page. */
+const PAGE_SIZE = 100;
+
+async function loadAll<T>(page: (n: number) => Promise<{ readonly items: readonly T[] }>): Promise<T[]> {
+  const all: T[] = [];
+  for (let n = 1; ; n++) {
+    const { items } = await page(n);
+    all.push(...items);
+    if (items.length < PAGE_SIZE) return all;
+  }
+}
+
+@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrls: ['../../ui/time-off-chrome.css', './policy-management.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
 export class PolicyManagementComponent implements OnInit {
-  private readonly permissionService = inject(PermissionService); private readonly notificationService = inject(NotificationService); private readonly legalEntityApi = inject(LegalEntityApiService);
-  private readonly generalSettingsStore = inject(GeneralSettingsStore);
-  readonly policyStore = inject(LeavePolicyStore); readonly leaveTypeStore = inject(LeaveTypeStore);
+  private readonly permissionService = inject(PermissionService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly legalEntityApi = inject(LegalEntityApiService);
+  private readonly departmentApi = inject(DepartmentApiService);
+  private readonly positionApi = inject(PositionApiService);
+  readonly policyStore = inject(LeavePolicyStore);
+  readonly leaveTypeStore = inject(LeaveTypeStore);
+
   readonly hasManageAccess = computed(() => this.permissionService.hasPermission('leave:manage'));
-  readonly policySummary = computed(() => {
-    const items = this.policyStore.items();
-    const entities = new Set(items.flatMap((policy) => policy.legalEntities.map((entity) => entity.legalEntityId)));
-    return { total: items.length, active: items.filter((policy) => policy.isActive).length, entities: entities.size };
+  readonly legalEntities = signal<readonly LeavePolicyWizardEntity[]>([]);
+  readonly departmentOptions = signal<readonly SelectOption[]>([]);
+  readonly positionOptions = signal<readonly SelectOption[]>([]);
+  readonly wizardMode = signal<'create' | 'edit' | null>(null);
+  readonly detailOpen = signal(false);
+  readonly cloneSource = signal<LeavePolicyListItem | null>(null);
+  readonly cloneName = signal('');
+  /** The policy the user clicked; the panel and Edit only use the loaded policy once it is this one. */
+  private readonly viewingId = signal<string | null>(null);
+  readonly viewedPolicy = computed(() => {
+    const selected = this.policyStore.selectedPolicy();
+    return selected && selected.id === this.viewingId() ? selected : null;
   });
+
   readonly policyKpiTiles = computed<readonly KpiTile[]>(() => {
-    const s = this.policySummary();
+    const items = this.policyStore.items();
     return [
-      { label: 'Policies', value: s.total, icon: 'clipboard-list' },
-      { label: 'Active', value: s.active, icon: 'check-circle', tone: 'success' },
-      { label: 'Companies', value: s.entities, icon: 'layers' }
+      { label: 'Policies', value: items.length, icon: 'clipboard-list' },
+      { label: 'Active', value: items.filter((p) => p.isActive).length, icon: 'check-circle', tone: 'success' },
+      { label: 'Not assigned', value: items.filter((p) => p.isActive && p.assignmentCount === 0).length, icon: 'layers' }
     ];
   });
-  readonly legalEntities = signal<readonly LegalEntityListItem[]>([]); readonly wizardOpen = signal(false); readonly detailOpen = signal(false); readonly latestDraft = signal<LeavePolicyFormDraft | null>(null); readonly replaceConfirmOpen = signal(false); readonly cloneSource = signal<LeavePolicyListItemResponse | null>(null); readonly cloneName = signal(''); readonly cloneEffectiveFrom = signal(''); readonly cloneLegalEntityIds = signal<readonly string[]>([]);
+
   ngOnInit(): void { if (this.hasManageAccess()) void this.loadInitialData(); }
-  async loadInitialData(): Promise<void> { await Promise.all([this.policyStore.loadPolicies(), this.leaveTypeStore.load(), this.loadLegalEntities()]); }
-  private async loadLegalEntities(): Promise<void> { try { this.legalEntities.set(await firstValueFrom(this.legalEntityApi.getLegalEntities(false))); } catch { this.notificationService.error('Failed to load legal entities.'); } }
-  openWizard(): void { this.latestDraft.set(null); this.wizardOpen.set(true); }
-  closeWizard(): void { this.wizardOpen.set(false); }
-  async viewPolicy(policy: LeavePolicyListItemResponse): Promise<void> { this.detailOpen.set(true); await this.policyStore.loadPolicy(policy.id); }
-  closeDetail(): void { this.detailOpen.set(false); }
-  async onSavePolicy(draft: LeavePolicyFormDraft): Promise<void> {
-    const country = this.generalSettingsStore.settings()?.countryCode?.trim().toUpperCase() || draft.country?.trim().toUpperCase() || 'NA';
-    const ready = { ...draft, country, jobLevel: null };
-    this.latestDraft.set(ready);
-    const outcome = await this.policyStore.createPolicy(toCreateLeavePolicyRequest(ready, false));
-    await this.handleCreateOutcome(outcome, ready.name);
-  }
-  private async handleCreateOutcome(outcome: 'created' | 'confirm-replace' | 'failed', name: string): Promise<void> { if (outcome === 'created') { this.closeWizard(); this.replaceConfirmOpen.set(false); this.policyStore.clearReplacementConfirmation(); this.notificationService.success(`Leave policy '${name}' created successfully.`); return; } if (outcome === 'confirm-replace') { this.replaceConfirmOpen.set(true); return; } this.notificationService.error(this.policyStore.actionError() ?? 'Failed to save leave policy.'); }
-  async confirmReplacement(): Promise<void> { const clone = this.cloneSource(); if (clone) { const payload = this.clonePayload(true); if (!payload) return; const outcome = await this.policyStore.clonePolicy(clone.id, payload); if (outcome === 'created') { this.closeClone(); this.replaceConfirmOpen.set(false); this.notificationService.success(`Leave policy '${payload.name}' cloned successfully.`); } else if (outcome === 'failed') this.notificationService.error(this.policyStore.actionError() ?? 'Failed to clone leave policy.'); return; } const draft = this.latestDraft(); if (!draft) return; const outcome = await this.policyStore.createPolicy(toCreateLeavePolicyRequest(draft, true)); await this.handleCreateOutcome(outcome, draft.name); }
-  cancelReplacement(): void { this.replaceConfirmOpen.set(false); this.policyStore.clearReplacementConfirmation(); }
-  openClone(policy: LeavePolicyListItemResponse): void { this.cloneSource.set(policy); this.cloneName.set(''); this.cloneEffectiveFrom.set(''); this.cloneLegalEntityIds.set([]); }
-  closeClone(): void { this.cloneSource.set(null); }
-  toggleCloneEntity(id: string, checked: boolean): void { this.cloneLegalEntityIds.update((ids) => checked ? [...ids, id] : ids.filter((current) => current !== id)); }
-  private clonePayload(confirmReplaceExistingLegalEntityAssignments: boolean): CloneLeavePolicyRequest | null {
-    const source = this.cloneSource();
-    if (!this.cloneName().trim() || !this.cloneEffectiveFrom() || !this.cloneLegalEntityIds().length) {
-      this.notificationService.error('Provide a name, effective date, and legal entity for the clone.');
-      return null;
-    }
-    const country = (source?.country || this.generalSettingsStore.settings()?.countryCode || 'NA').trim().toUpperCase();
-    return { name: this.cloneName().trim(), country, effectiveFrom: this.cloneEffectiveFrom(), legalEntityIds: [...this.cloneLegalEntityIds()], confirmReplaceExistingLegalEntityAssignments };
+
+  async loadInitialData(): Promise<void> {
+    await Promise.all([this.policyStore.loadPolicies(), this.leaveTypeStore.load(), this.loadOrg()]);
   }
 
-  async submitClone(): Promise<void> { const source = this.cloneSource(); const payload = this.clonePayload(false); if (!source || !payload) return; const outcome = await this.policyStore.clonePolicy(source.id, payload); if (outcome === 'created') { this.closeClone(); this.notificationService.success(`Leave policy '${payload.name}' cloned successfully.`); } else if (outcome === 'confirm-replace') this.replaceConfirmOpen.set(true); else this.notificationService.error(this.policyStore.actionError() ?? 'Failed to clone leave policy.'); }
+  private async loadOrg(): Promise<void> {
+    try {
+      const entities = await firstValueFrom(this.legalEntityApi.getLegalEntities(false));
+      this.legalEntities.set(entities.map((e) => ({ id: e.id, name: e.name })));
+      const several = entities.length > 1;
+      const perEntity = await Promise.all(entities.map(async (e) => {
+        const [departments, positions] = await Promise.all([
+          loadAll((page) => firstValueFrom(this.departmentApi.listFlat(e.id, { page, pageSize: PAGE_SIZE }))),
+          loadAll((page) => firstValueFrom(this.positionApi.listFlat(e.id, { page, pageSize: PAGE_SIZE })))
+        ]);
+        const suffix = several ? ` · ${e.name}` : '';
+        return {
+          departments: departments.map((d) => ({ value: d.id, label: `${d.name}${suffix}` })),
+          positions: positions.map((p) => ({ value: p.id, label: `${p.name}${suffix}` }))
+        };
+      }));
+      this.departmentOptions.set(perEntity.flatMap((x) => x.departments));
+      this.positionOptions.set(perEntity.flatMap((x) => x.positions));
+    } catch {
+      this.notificationService.error('Failed to load companies, departments and positions.');
+    }
+  }
+
+  openCreate(): void { this.policyStore.clearConflicts(); this.wizardMode.set('create'); }
+  openEdit(): void {
+    if (!this.viewedPolicy()) return;
+    this.policyStore.clearConflicts();
+    this.wizardMode.set('edit');
+  }
+  closeWizard(): void { this.wizardMode.set(null); this.policyStore.clearConflicts(); }
+
+  async viewPolicy(policy: LeavePolicyListItem): Promise<void> {
+    this.detailOpen.set(true);
+    this.viewingId.set(policy.id);
+    await this.policyStore.loadPolicy(policy.id);
+  }
+  closeDetail(): void { this.detailOpen.set(false); }
+
+  async onCreate(request: CreateLeavePolicyRequest): Promise<void> {
+    const outcome = await this.policyStore.create(request);
+    if (outcome === 'saved') {
+      this.closeWizard();
+      this.notificationService.success(`Leave policy '${request.name}' created.`);
+    } else if (outcome === 'failed') {
+      this.notificationService.error(this.policyStore.actionError() ?? 'Failed to create leave policy.');
+    }
+  }
+
+  async onSaveEdit(change: LeavePolicyWizardEdit): Promise<void> {
+    const { details, version, assignments } = change.edit;
+    if (!details && !version && !assignments) { this.closeWizard(); return; }
+    const outcome = await this.policyStore.saveEdit(change.policyId, change.edit);
+    if (outcome === 'saved') {
+      this.closeWizard();
+      this.notificationService.success('Leave policy saved.');
+    } else if (outcome === 'failed') {
+      this.notificationService.error(this.policyStore.actionError() ?? 'Failed to save leave policy.');
+    }
+  }
+
+  async onDeleteVersion(versionId: string): Promise<void> {
+    const policy = this.viewedPolicy();
+    if (!policy) return;
+    const outcome = await this.policyStore.deleteVersion(policy.id, versionId);
+    if (outcome === 'saved') this.notificationService.success('Scheduled change cancelled.');
+    else this.notificationService.error(this.policyStore.actionError() ?? 'Failed to cancel the scheduled change.');
+  }
+
+  async onSetActive(isActive: boolean): Promise<void> {
+    const policy = this.viewedPolicy();
+    if (!policy) return;
+    const outcome = await this.policyStore.setActive(policy.id, isActive);
+    if (outcome === 'saved') {
+      await this.policyStore.loadPolicy(policy.id);
+      this.notificationService.success(isActive ? 'Policy turned on.' : 'Policy turned off.');
+    } else {
+      this.notificationService.error(this.policyStore.actionError() ?? 'Failed to update the policy.');
+    }
+  }
+
+  openClone(policy: LeavePolicyListItem): void { this.cloneSource.set(policy); this.cloneName.set(`${policy.name} (copy)`); }
+  closeClone(): void { this.cloneSource.set(null); }
+
+  async submitClone(): Promise<void> {
+    const source = this.cloneSource();
+    const name = this.cloneName().trim();
+    if (!source || !name) return;
+    const outcome = await this.policyStore.clone(source.id, name);
+    if (outcome === 'saved') {
+      this.closeClone();
+      this.notificationService.success(`Copied as '${name}'. Assign it before anyone gets it.`);
+    } else {
+      this.notificationService.error(this.policyStore.actionError() ?? 'Failed to copy the policy.');
+    }
+  }
 }

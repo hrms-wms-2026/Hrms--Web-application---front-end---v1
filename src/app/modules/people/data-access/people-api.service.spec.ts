@@ -533,43 +533,6 @@ describe('PeopleApiService', () => {
     });
   });
 
-  it('POSTs to approve access grant request endpoint', () => {
-    service.approveAccessGrantRequest('req-1').subscribe((res) => {
-      expect(res.accessGrantRequestId).toBe('req-1');
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/access-grant-requests/req-1/approve-and-send-invite`);
-    expect(req.request.method).toBe('POST');
-    req.flush({
-      accessGrantRequestId: 'req-1',
-      onboardingDraftId: 'draft-1',
-      employeeId: 'emp-1',
-      finalizationStatus: 'finalized',
-      invitationQueued: true,
-      checklistTaskCount: 3,
-      positionApprovalStatus: 'Approved',
-      messageKey: 'approved'
-    });
-  });
-
-  it('POSTs to reject access grant request endpoint with decisionNote', () => {
-    service.rejectAccessGrantRequest('req-1', { decisionNote: 'Position budget reduced' }).subscribe((res) => {
-      expect(res.requestStatus).toBe('Rejected');
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/onboarding/access-grant-requests/req-1/reject`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body.decisionNote).toBe('Position budget reduced');
-    req.flush({
-      accessGrantRequestId: 'req-1',
-      onboardingDraftId: 'draft-1',
-      requestStatus: 'Rejected',
-      draftStatus: 'draft',
-      draftReason: 'position_approval_rejected',
-      messageKey: 'rejected'
-    });
-  });
-
   it('getEmployeeDetail sends GET to /employees/{id}/detail', () => {
     service.getEmployeeDetail('emp-1').subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/employees/emp-1/detail`);

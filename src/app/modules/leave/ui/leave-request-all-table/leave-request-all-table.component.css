@@ -13,7 +13,6 @@
 }
 .lra-status { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 650; }
 .lra-status-pending { background: var(--color-warning-subtle); color: var(--color-warning-text); }
-.lra-status-information_requested { background: var(--color-accent-subtle); color: var(--color-accent); }
 .lra-status-approved { background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface)); color: var(--color-success); }
 .lra-status-rejected { background: var(--color-danger-subtle); color: var(--color-danger-text); }
 .lra-status-cancelled { background: var(--color-surface-secondary); color: var(--color-text-secondary); }

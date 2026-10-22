@@ -9,66 +9,70 @@ import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-pre
 import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { InboxApiService } from '../../data-access/inbox-api.service';
+import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { ApprovalDelegatesApiService } from '../../data-access/approval-delegates-api.service';
-import { InboxItemDto } from '../../models/inbox.dto';
-import { InboxStore } from '../../state/inbox.store';
-import { InboxPageComponent } from './inbox-page.component';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
+import { InboxChatRowDto } from '../../models/inbox-chat.dto';
+import { InboxPageComponent } from './inbox-page.component';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { TaskApiService } from '../../../work/data-access/task-api.service';
 
-function item(id: string, extra: Partial<InboxItemDto> = {}): InboxItemDto {
+function row(id: string, extra: Partial<InboxChatRowDto> = {}): InboxChatRowDto {
   return {
-    source: 'work', kind: 'approval', id, category: 'request', actionType: 'task.edit', title: `Target ${id}`, subtitle: null,
-    status: 'pending', direction: 'received', severity: null, contextType: 'project', contextId: 'p1', contextName: 'Apollo',
-    requestedBy: { id: 'e1', name: 'Bala' }, requestedTo: { id: 'e2', name: 'Anu' }, createdAt: '2026-10-13T08:00:00Z',
-    updatedAt: '2026-10-13T08:00:00Z', availableActions: [], unreadMessages: 0, isPending: true, facets: {}, ...extra
+    conversationId: id, source: 'direct', kind: 'direct', subjectId: `pair-${id}`, type: 'direct', title: `Person ${id}`,
+    otherEmployeeId: `emp-${id}`, avatarFileId: null, memberCount: 2, preview: 'You: hi', lastMessageAt: '2026-10-20T08:00:00Z',
+    unread: 0, pending: [], caseItem: null, ...extra
   };
 }
 
 describe('InboxPageComponent', () => {
-  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let chatsApi: Record<string, ReturnType<typeof vi.fn>>;
   let params: BehaviorSubject<ParamMap>;
+  let query: BehaviorSubject<ParamMap>;
   let router: { navigate: ReturnType<typeof vi.fn> };
-  let notifications: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
-  let conversations: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    api = {
-      list: vi.fn(() => of({ items: [item('a1', { unreadMessages: 2 }), item('a2', { category: 'alert', kind: 'monitor_alert', actionType: 'monitor.task_overdue', status: 'open', severity: 'high' })], total: 2, page: 1, pageSize: 25 })),
-      filters: vi.fn(() => of([
-        { key: 'project', label: 'Project', multi: true, options: [{ value: 'p1', label: 'Apollo' }] },
-        { key: 'module', label: 'Module', multi: true, options: [{ value: 'm1', label: 'Payments' }] }
+    chatsApi = {
+      list: vi.fn(() => of([
+        row('c1', { unread: 2 }),
+        row('c2', { pending: [{ source: 'leave', kind: 'request', id: 'l1', title: 'Annual leave - Priya' }] }),
+        row('c3', { source: 'group', kind: 'group', subjectId: 'g3', type: 'group', title: 'Payroll review', otherEmployeeId: null, memberCount: 4 })
       ])),
-      counts: vi.fn(() => of({ pendingReceived: 1, unreadMessages: 2, openAlerts: 1 })),
-      detail: vi.fn(() => of({ item: item('a1', { availableActions: [{ key: 'approve', label: 'Approve', tone: 'primary', needsComment: false, needsPayload: false }] }), steps: [], summary: null, changeSet: [], explanation: null, explanationDetails: null, target: { route: ['/work', 'p1', 'board'], label: 'Open task', queryParams: { taskId: 't1' } }, editablePayloadJson: null })),
-      runAction: vi.fn(() => of({ affectedEmployeeIds: [], message: null })),
-      kinds: vi.fn(() => of([]))
+      forItem: vi.fn(() => of(row('c2'))),
+      openDirect: vi.fn(() => of({ conversationId: 'c9', source: 'direct', kind: 'direct', subjectId: 'pair-c9' })),
+      createGroup: vi.fn(), startCaseGroup: vi.fn(), renameGroup: vi.fn()
     };
     params = new BehaviorSubject(convertToParamMap({}));
+    query = new BehaviorSubject(convertToParamMap({}));
     router = { navigate: vi.fn(() => Promise.resolve(true)) };
-    notifications = { success: vi.fn(), error: vi.fn() };
-    conversations = {
-      open: vi.fn(() => of({ id: 'c1', source: 'work', kind: 'approval', subjectId: 'a1', title: 't', projectId: 'p1', participants: [], messages: [], hasMoreMessages: false, lastReadAt: null })),
-      markRead: vi.fn(() => of(undefined)),
-      messages: vi.fn(), post: vi.fn(), addParticipants: vi.fn()
-    };
     TestBed.configureTestingModule({
       imports: [InboxPageComponent],
       providers: [
-        { provide: InboxApiService, useValue: api },
+        { provide: InboxChatsApiService, useValue: chatsApi },
+        {
+          provide: InboxApiService, useValue: {
+            list: vi.fn(() => of({ items: [], total: 0, page: 1, pageSize: 100 })), counts: vi.fn(() => of({ pendingReceived: 0, unreadMessages: 0, openAlerts: 0 })),
+            kinds: vi.fn(() => of([])), detail: vi.fn(() => throwError(() => new Error('no detail'))), filters: vi.fn(() => of([])),
+            personCases: vi.fn(() => of([])), personCaseMonths: vi.fn(() => of({ hireDate: null, months: [] }))
+          }
+        },
         { provide: InboxRealtimeService, useValue: { inboxChanged$: new Subject(), reconnected$: new Subject(), messageCreated$: new Subject(), participantAdded$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
-        { provide: ConversationsApiService, useValue: conversations },
+        {
+          provide: ConversationsApiService, useValue: {
+            open: vi.fn(() => of({ id: 'c1', source: 'direct', kind: 'direct', subjectId: 'pair-c1', title: 'Direct message', projectId: null, participants: [], messages: [], hasMoreMessages: false, lastReadAt: null })),
+            markRead: vi.fn(() => of(undefined)), searchPeople: vi.fn(() => of([])), messages: vi.fn(), post: vi.fn(), addParticipants: vi.fn()
+          }
+        },
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn(() => of({ items: [] })) } },
         { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } },
-        { provide: AuthStore, useValue: { authenticated: signal(false), employeeId: signal('e1') } },
+        { provide: AuthStore, useValue: { authenticated: signal(false), employeeId: signal('me') } },
         { provide: PermissionService, useValue: { hasModule: () => false, hasPermission: () => false } },
         { provide: ApprovalDelegatesApiService, useValue: { list: vi.fn(() => of([])), create: vi.fn(), remove: vi.fn() } },
         { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => true } },
-        { provide: ActivatedRoute, useValue: { paramMap: params.asObservable() } },
+        { provide: ActivatedRoute, useValue: { paramMap: params.asObservable(), queryParamMap: query.asObservable(), snapshot: { queryParamMap: convertToParamMap({}) } } },
         { provide: Router, useValue: router },
-        { provide: NotificationService, useValue: notifications }
+        { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } }
       ]
     });
   });
@@ -80,212 +84,83 @@ describe('InboxPageComponent', () => {
     fixture.detectChanges();
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
-    return { fixture, el: fixture.nativeElement as HTMLElement, store: TestBed.inject(InboxStore) };
+    const el = fixture.nativeElement as HTMLElement;
+    return { fixture, el };
   }
 
-  it('lists tickets with type and source chips, status and the unread-chat dot; no ticket open yet', async () => {
-    const { el } = await render();
-    const rows = Array.from(el.querySelectorAll('[data-testid="inbox-row"]')) as HTMLElement[];
-
-    expect(el.querySelector('[data-testid="inbox-chat-empty"]')?.textContent).toContain('Select a ticket');
-    expect(el.querySelector('[data-testid="inbox-workspace"]')?.classList).not.toContain('inbox__workspace--details');
-    expect(rows).toHaveLength(2);
-    expect(rows[0].textContent).toContain('Update task details');
-    expect(rows[0].querySelector('.inbox__source')?.textContent).toBe('Work');
-    expect(rows[0].querySelector('[data-testid="inbox-row-unread"]')).not.toBeNull();
-    expect(rows[1].textContent).toContain('Task past its due date');
-    expect(rows[1].querySelector('[data-testid="inbox-status"]')?.textContent).toContain('Open');
-  });
-
-  it('switches category with the tabs and direction with the segment', async () => {
-    const { fixture, el } = await render();
-
-    (Array.from(el.querySelectorAll('[role="tab"]')).find((t) => t.textContent?.includes('Alerts')) as HTMLElement).click();
-    await vi.advanceTimersByTimeAsync(0);
-    expect(api['list']).toHaveBeenLastCalledWith(expect.objectContaining({ category: ['alert'], page: 1 }));
-
-    (el.querySelector('[data-testid="inbox-direction-sent"]') as HTMLElement).click();
-    await vi.advanceTimersByTimeAsync(0);
-    fixture.detectChanges();
-    expect(api['list']).toHaveBeenLastCalledWith(expect.objectContaining({ category: ['alert'], direction: ['sent'] }));
-  });
-
-  it('maps filter-bar values to query fields, module to a facet and "requested on" to a from date', async () => {
-    const { fixture } = await render();
-    const page = fixture.componentInstance as unknown as { onFilterChanged(e: { key: string; values: string[] }): void };
-
-    page.onFilterChanged({ key: 'project', values: ['p1'] });
-    page.onFilterChanged({ key: 'module', values: ['m1'] });
-    page.onFilterChanged({ key: 'requestedOn', values: ['7'] });
-    await vi.advanceTimersByTimeAsync(0);
-
-    const last = api['list'].mock.calls.at(-1)![0];
-    expect(last.project).toEqual(['p1']);
-    expect(last.facets).toEqual({ module: ['m1'] });
-    expect(typeof last.from).toBe('string');
-  });
-
-  function withTabInUrl(previousNavigation: object | null): void {
-    const query = convertToParamMap({ tab: 'requests' });
-    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: params.asObservable(), snapshot: { queryParamMap: query } } });
-    Object.assign(router, { lastSuccessfulNavigation: signal({ previousNavigation }) });
-  }
-
-  it('opens the first tab on a browser refresh, dropping the saved tab from the URL', async () => {
-    withTabInUrl(null);
-    const { el } = await render();
-    expect(el.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('All');
-    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: {}, replaceUrl: true }));
-  });
-
-  it('keeps the linked tab on an in-app navigation', async () => {
-    withTabInUrl({});
-    const { el } = await render();
-    expect(el.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toContain('Requests');
-  });
-
-  it('debounces the search box', async () => {
-    const { fixture, el } = await render();
-    expect(el.querySelector('[data-testid="inbox-search"]')).toBeNull();
-    (el.querySelector('[data-testid="inbox-search-toggle"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    const input = el.querySelector('[data-testid="inbox-search"]') as HTMLInputElement;
-    api['list'].mockClear();
-
-    input.value = 'aud';
-    input.dispatchEvent(new Event('input'));
-    input.value = 'audit';
-    input.dispatchEvent(new Event('input'));
-    await vi.advanceTimersByTimeAsync(299);
-    expect(api['list']).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(1);
-
-    expect(api['list']).toHaveBeenCalledTimes(1);
-    expect(api['list']).toHaveBeenCalledWith(expect.objectContaining({ search: 'audit' }));
-  });
-
-  it('selecting a row puts it in the URL; the URL selects the item and shows its card', async () => {
-    const { fixture, el, store } = await render();
-
-    (el.querySelector('[data-testid="inbox-row"]') as HTMLElement).click();
-    expect(router.navigate).toHaveBeenCalledWith(['/inbox', 'work', 'approval', 'a1'], { queryParamsHandling: 'preserve' });
-
-    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
-    await vi.advanceTimersByTimeAsync(0);
-    fixture.detectChanges();
-    expect(store.selectedRef()).toEqual({ source: 'work', kind: 'approval', id: 'a1' });
-    expect(el.querySelector('[data-testid="inbox-card"]')).not.toBeNull();
-
-    params.next(convertToParamMap({}));
-    await vi.advanceTimersByTimeAsync(0);
-    fixture.detectChanges();
-    expect(store.selectedRef()).toBeNull();
-    expect(el.querySelector('[data-testid="inbox-card"]')).toBeNull();
-  });
-
-  it('runs a card action through the store and confirms it', async () => {
-    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
-    const { fixture, el } = await render();
-
-    (el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).click();
-    await vi.advanceTimersByTimeAsync(0);
-    fixture.detectChanges();
-
-    expect(api['runAction']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' }, 'approve', {});
-    expect(notifications.success).toHaveBeenCalled();
-  });
-
-  it('reports a refused action', async () => {
-    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
-    api['runAction'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'Only the approver can decide.' } })));
+  it('shows the empty state and leaves the chat list to the sub-sidebar on wide screens', async () => {
     const { el } = await render();
 
-    (el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).click();
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(notifications.error).toHaveBeenCalledWith('Only the approver can decide.');
+    expect(el.querySelector('[data-testid="inbox-chat-empty"]')!.textContent).toContain('Select a chat');
+    expect(el.querySelector('app-inbox-chat-sidebar')).toBeNull();
+    expect(chatsApi['list']).toHaveBeenCalled();
   });
 
-  it('opens the ticket conversation in the middle column, beside its details; a "/" action runs like its button', async () => {
-    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
+  it('a link to a request opens the 1-on-1 chat that carries it, with the case selected', async () => {
+    await render();
+
+    params.next(convertToParamMap({ source: 'leave', kind: 'request', id: 'l1' }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(chatsApi['forItem']).toHaveBeenCalledWith({ source: 'leave', kind: 'request', id: 'l1' });
+    expect(router.navigate).toHaveBeenCalledWith(['/inbox', 'direct', 'direct', 'pair-c2'],
+      { queryParams: { case: 'leave:request:l1' }, replaceUrl: true });
+  });
+
+  it('names the open chat in the breadcrumb and keeps History under the header "⋯"', async () => {
+    const { fixture, el } = await render();
+    expect(el.querySelector('app-breadcrumb-header')!.textContent).not.toContain('Person c1');
+
+    params.next(convertToParamMap({ source: 'direct', kind: 'direct', id: 'pair-c1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+
+    const crumb = el.querySelector('app-breadcrumb-header')!.textContent!;
+    expect(crumb).toContain('Chats');
+    expect(crumb).toContain('Person c1');
+    expect(el.querySelector('[data-testid="inbox-toggle-details"]')).not.toBeNull();
+
+    (el.querySelector('[data-testid="inbox-menu"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="menu-item-history"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-breadcrumb-header')!.textContent).toContain('History');
+  });
+
+  it('a 1-on-1 chat shows the month by default and switches to Ticket details when a case opens', async () => {
+    const { fixture, el } = await render();
+    params.next(convertToParamMap({ source: 'direct', kind: 'direct', id: 'pair-c1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+
+    const tabs = () => Array.from(el.querySelectorAll('[data-testid="inbox-detail-tabs"] [role="tab"]')) as HTMLButtonElement[];
+    expect(tabs().map((t) => t.textContent?.trim())).toEqual(['Ticket details', expect.stringMatching(/\d{4}|This month/)]);
+    expect(tabs()[1].getAttribute('aria-selected')).toBe('true');
+    expect(el.querySelector('app-person-cases-view')).not.toBeNull();
+
+    query.next(convertToParamMap({ case: 'leave:request:l1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(tabs()[0].getAttribute('aria-selected')).toBe('true');
+    expect(el.querySelector('app-inbox-item-card')).not.toBeNull();
+    expect(el.querySelector('.inbox__detail-tabs [data-testid="inbox-start-case-group"]')?.textContent).toContain('Start a group');
+    expect(el.querySelector('app-inbox-item-card .card__top')).toBeNull();
+    expect(el.querySelector('app-person-cases-view')).toBeNull();
+
+    tabs()[1].click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-person-cases-view')).not.toBeNull();
+    expect(el.querySelector('app-inbox-item-card')).toBeNull();
+  });
+
+  it('a link to a case the user has no chat for says so', async () => {
+    chatsApi['forItem'].mockReturnValue(throwError(() => new Error('404')));
     const { fixture, el } = await render();
 
-    expect(el.querySelector('.inbox__chat [data-testid="conversation-panel"]')).not.toBeNull();
-    expect(el.querySelector('[data-testid="inbox-card"] [data-testid="conversation-panel"]')).toBeNull();
-    expect(el.querySelector('.inbox__details [data-testid="inbox-card"]')).not.toBeNull();
-    expect(conversations['open']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' });
-
-    const panel = fixture.debugElement.query((d) => d.name === 'app-conversation-panel').componentInstance;
-    panel.action.emit('approve');
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(api['runAction']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' }, 'approve', {});
-  });
-
-  it('still shows the conversation when the item detail cannot be loaded', async () => {
-    api['detail'].mockReturnValue(throwError(() => ({ status: 404 })));
-    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
-    const { el } = await render();
-
-    expect(el.querySelector('.inbox__chat [data-testid="conversation-panel"]')).not.toBeNull();
-    expect(conversations['open']).toHaveBeenCalledWith({ source: 'work', kind: 'approval', id: 'a1' });
-  });
-
-  it('hides the ticket details (the chat takes the space), remembers it, and shows them again', async () => {
-    localStorage.removeItem('inbox.detailsHidden');
-    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
-    const { fixture, el } = await render();
-    const workspace = () => el.querySelector('[data-testid="inbox-workspace"]')!;
-    expect(workspace().classList).toContain('inbox__workspace--details');
-
-    (el.querySelector('[data-testid="inbox-card-hide"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(workspace().classList).not.toContain('inbox__workspace--details');
-    expect(localStorage.getItem('inbox.detailsHidden')).toBe('1');
-    expect(el.querySelector('.inbox__chat [data-testid="conversation-panel"]')).not.toBeNull();
-
-    (el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(workspace().classList).toContain('inbox__workspace--details');
-    expect(localStorage.getItem('inbox.detailsHidden')).toBe('0');
-  });
-
-  it('sorts the list on the server and keeps the order in the URL', async () => {
-    const { fixture } = await render();
-    (fixture.componentInstance as unknown as { onSort(id: string): void }).onSort('oldest');
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(api['list']).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'oldest' }));
-    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { sort: 'oldest' }, replaceUrl: true }));
-  });
-
-  it('opens the item target with its query params', async () => {
-    params.next(convertToParamMap({ source: 'work', kind: 'approval', id: 'a1' }));
-    const { el } = await render();
-
-    (el.querySelector('[data-testid="inbox-card-open-target"]') as HTMLButtonElement).click();
-
-    expect(router.navigate).toHaveBeenCalledWith(['/work', 'p1', 'board'], { queryParams: { taskId: 't1' } });
-  });
-
-  it('shows "nothing yet" for an empty inbox and "no match" once filtered', async () => {
-    api['list'].mockReturnValue(of({ items: [], total: 0, page: 1, pageSize: 25 }));
-    const { fixture, el, store } = await render();
-    expect(el.textContent).toContain('Nothing here yet');
-
-    await store.applyFilter({ category: ['alert'] });
-    fixture.detectChanges();
-    expect(el.textContent).toContain('Nothing matches these filters');
-  });
-
-  it('pages when there are more items than fit', async () => {
-    api['list'].mockReturnValue(of({ items: [item('a1')], total: 60, page: 1, pageSize: 25 }));
-    const { fixture, el } = await render();
-
-    expect(el.textContent).toContain('Page 1 of 3');
-    (el.querySelector('[data-testid="inbox-next"]') as HTMLButtonElement).click();
+    params.next(convertToParamMap({ source: 'leave', kind: 'request', id: 'zz' }));
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
-    expect(api['list']).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }));
+
+    expect(el.querySelector('[data-testid="inbox-chat-empty"]')!.textContent).toContain('not in any of your chats');
   });
 });

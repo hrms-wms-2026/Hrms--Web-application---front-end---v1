@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { NavItem } from '../nav/nav-item.model';
 import { NavigationStateService } from '../nav/navigation-state.service';
 import { NavIconComponent } from '../side-navbar/nav-icon.component';
 
@@ -16,6 +17,7 @@ export class MobileBottomNavComponent {
   private readonly router = inject(Router);
 
   readonly visibleItems = this.navState.visibleItems;
+  readonly entryPath = (item: NavItem): string => this.navState.entryPath(item);
   readonly activeItem = this.navState.activeItem;
   readonly activeChildren = this.navState.activeChildren;
 

@@ -140,20 +140,6 @@
   margin-top: 0.1rem;
 }
 
-.emp-open-alerts {
-  margin-left: 6px;
-  padding: 1px 8px;
-  border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 45%, var(--color-border));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface));
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
+.emp-avatar-wrapper--alerts {
   cursor: pointer;
-}
-
-.emp-open-alerts:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
 }

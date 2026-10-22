@@ -20,7 +20,7 @@
         </button>
       </header>
 
-      <div class="tfm__body">
+      <div class="tfm__body scroll-fade">
         @if (initialLoading()) {
           <div class="p-6 flex justify-center items-center">
             <app-loader label="Loading checklist template..." />
@@ -423,7 +423,7 @@
                       @if (loadingAssigneePositions()) {
                         <span class="cb-assigned-field__loading">Loading positions…</span>
                       } @else {
-                        <div class="cb-picker__list">
+                        <div class="cb-picker__list scroll-fade">
                           @for (pos of filteredAssigneePositions(); track pos.value) {
                             <button type="button" class="cb-picker__option cb-picker__option--list" (click)="selectTaskPosition(idx, pos.value)">
                               <span class="cb-picker__emoji" aria-hidden="true">
@@ -460,7 +460,7 @@
                       @if (isLoadingAssignees(taskGroup.value.assigneePositionId)) {
                         <span class="cb-assigned-field__loading">Loading employees…</span>
                       } @else {
-                        <div class="cb-picker__list">
+                        <div class="cb-picker__list scroll-fade">
                           @for (person of filteredEmployeeOptions(); track person.userId) {
                             <button type="button" class="cb-picker__option cb-picker__option--list" (click)="selectTaskEmployee(idx, person.userId)">
                               <span class="cb-picker__emoji" aria-hidden="true">

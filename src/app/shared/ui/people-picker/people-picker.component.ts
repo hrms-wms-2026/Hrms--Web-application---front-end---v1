@@ -38,7 +38,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       </div>
       }
 
-      <div class="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
+      <div class="flex max-h-64 flex-col gap-0.5 overflow-y-auto scroll-fade">
         @for (guest of guests(); track guest) {
           <button
             type="button"

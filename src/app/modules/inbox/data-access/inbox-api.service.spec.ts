@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { environment } from '../../../../environments/environment';
 import { InboxApiService } from './inbox-api.service';
+import { SILENT_HTTP_ERRORS } from '../../../core/interceptors/error.interceptor';
 import { ConversationsApiService } from './conversations-api.service';
 
 describe('Inbox data-access', () => {
@@ -19,6 +20,24 @@ describe('Inbox data-access', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('reads a person\'s cases for a month and the months that hold history', () => {
+    inbox.personCases('e1', 'alert', '2026-10-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z').subscribe();
+    inbox.personCaseMonths('e1', 'request', 2026, 330).subscribe();
+
+    const cases = http.expectOne((r) => r.url === `${base}/inbox/people/e1/cases`);
+    expect(cases.request.params.get('category')).toBe('alert');
+    expect(cases.request.params.get('from')).toBe('2026-10-01T00:00:00.000Z');
+    expect(cases.request.params.get('to')).toBe('2026-11-01T00:00:00.000Z');
+    expect(cases.request.context.get(SILENT_HTTP_ERRORS)).toBe(true);
+    cases.flush([]);
+    const months = http.expectOne((r) => r.url === `${base}/inbox/people/e1/cases/months`);
+    expect(months.request.params.get('category')).toBe('request');
+    expect(months.request.params.get('year')).toBe('2026');
+    expect(months.request.params.get('offsetMinutes')).toBe('330');
+    expect(months.request.context.get(SILENT_HTTP_ERRORS)).toBe(true);
+    months.flush({ hireDate: null, months: [] });
+  });
 
   it('lists with repeated keys for multi-value filters and facet=key:value', () => {
     inbox.list({ category: ['request'], status: ['pending', 'open'], project: ['p1'], facets: { module: ['m1', 'm2'] }, search: ' budget ', page: 2, pageSize: 10 }).subscribe();
@@ -45,13 +64,6 @@ describe('Inbox data-access', () => {
     expect(history.request.params.get('kind')).toBeNull();
     expect(history.request.params.get('page')).toBe('2');
     history.flush({ items: [], total: 0, page: 2, pageSize: 10 });
-
-    const body = { action: 'approve', items: [{ source: 'leave', kind: 'request', id: 'l1' }], comment: null, outcome: null };
-    inbox.bulk(body).subscribe();
-    const bulk = http.expectOne(`${base}/inbox/bulk`);
-    expect(bulk.request.method).toBe('POST');
-    expect(bulk.request.body).toEqual(body);
-    bulk.flush({ succeeded: [], failed: [] });
   });
 
   it('omits empty filters', () => {
@@ -97,7 +109,7 @@ describe('Inbox data-access', () => {
   it('conversation v2: posts with attachments and a tag, edits, deletes, removes, leaves, downloads, exports', () => {
     conversations.post('c1', '<p>see</p>', [], ['f1'], 'justification').subscribe();
     conversations.edit('c1', 'm1', '<p>fixed</p>', ['e2']).subscribe();
-    conversations.deleteMessage('c1', 'm1').subscribe();
+    conversations.deleteMessage('c1', 'm1', true).subscribe();
     conversations.removeParticipant('c1', 'e9').subscribe();
     conversations.leave('c1').subscribe();
     conversations.attachment('c1', 'a1').subscribe();
@@ -108,7 +120,8 @@ describe('Inbox data-access', () => {
     const edit = http.expectOne((r) => r.url === `${base}/conversations/c1/messages/m1` && r.method === 'PUT');
     expect(edit.request.method).toBe('PUT');
     expect(edit.request.body).toEqual({ bodyHtml: '<p>fixed</p>', mentionEmployeeIds: ['e2'] });
-    expect(http.expectOne((r) => r.url === `${base}/conversations/c1/messages/m1` && r.method === 'DELETE')).toBeTruthy();
+    const deletion = http.expectOne((r) => r.url === `${base}/conversations/c1/messages/m1` && r.method === 'DELETE');
+    expect(deletion.request.params.get('forEveryone')).toBe('true');
     expect(http.expectOne(`${base}/conversations/c1/participants/e9`).request.method).toBe('DELETE');
     expect(http.expectOne(`${base}/conversations/c1/leave`).request.method).toBe('POST');
     expect(http.expectOne(`${base}/conversations/c1/attachments/a1`).request.responseType).toBe('blob');

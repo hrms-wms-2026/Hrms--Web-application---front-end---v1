@@ -76,7 +76,7 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
   });
 
   it('an alert change set is not an approve form', () => {
-    expect(render(alertDetail).el.querySelector('[data-testid="inbox-edit-outcome"]')).toBeNull();
+    expect(render(alertDetail).fixture.componentInstance.canEdit()).toBe(false);
   });
 
   it('escalate opens the escalate dialog with the target preview and sends the note as the comment', () => {
@@ -89,17 +89,6 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
     click('inbox-escalate-confirm');
 
     expect(actions).toEqual([{ key: 'escalate', body: { comment: null } }]);
-  });
-
-  it('forward opens the forward dialog naming the recipient', () => {
-    const forward = { key: 'forward', label: 'Send to Anu', tone: 'neutral' as const, needsComment: false, needsPayload: false, meta: { forwardTo: 'Anu', forwardToId: 'e9' } };
-    const { q, click, actions } = render(detail({}, { availableActions: [forward] }));
-
-    click('inbox-action-forward');
-    expect(q('inbox-forward-dialog')?.textContent).toContain('Send to Anu');
-    click('inbox-forward-confirm');
-
-    expect(actions).toEqual([{ key: 'forward', body: { comment: null } }]);
   });
 
   it('a revert with a deadline shows the undo banner instead of a footer button, and undo asks to confirm', () => {
@@ -125,16 +114,14 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
       source: 'leave', kind: 'request', label: 'Leave request', category: 'request', capabilities: InboxCapability.EditBeforeApprove, detailRenderer: null
     };
 
-    expect(render(leave).el.querySelector('[data-testid="inbox-edit-startAt"]')).toBeNull();
+    expect(render(leave).fixture.componentInstance.canEdit()).toBe(false);
     TestBed.resetTestingModule();
     const { el, fixture, actions } = render(leave, { descriptor });
-    const input = el.querySelector('[data-testid="inbox-edit-startAt"]') as HTMLInputElement;
-    input.value = '2026-10-14T10:00';
-    input.dispatchEvent(new Event('input'));
+    expect(fixture.componentInstance.canEdit()).toBe(true);
+    fixture.componentInstance.setEdits({ startAt: new Date('2026-10-14T10:00').toISOString() });
     fixture.detectChanges();
     (el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).click();
 
-    expect(el.querySelector('.card__eyebrow')?.textContent).toContain('Leave request');
     expect(actions).toEqual([{ key: 'approve', body: { editedPayloadJson: JSON.stringify({ startAt: new Date('2026-10-14T10:00').toISOString() }) } }]);
   });
 
@@ -144,25 +131,26 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
     expect(el.querySelector('[data-testid="inbox-card-action-error"]')).toBeNull();
   });
 
-  it('renders the kind detail renderer with the parsed extra payload, else the default view', () => {
+  it('passes the parsed extra payload to the exception evidence; no other kind renders an Additional information block', () => {
     @Component({ selector: 'app-test-renderer', standalone: true, template: `<p data-testid="test-renderer">{{ extra()?.['balance'] }}</p>` })
     class TestRendererComponent {
       extra = input<Record<string, unknown> | null>(null);
       detail = input<InboxItemDetailDto | null>(null);
     }
     const descriptor: InboxKindDescriptorDto = {
-      source: 'leave', kind: 'request', label: 'Leave request', category: 'request', capabilities: 0, detailRenderer: 'leave-request'
+      source: 'monitoring', kind: 'exception_case', label: 'Exception case', category: 'alert', capabilities: 0, detailRenderer: 'exception-evidence'
     };
     const withExtra = detail({ extraJson: '{"balance":"12h"}' });
+    const renderers = { 'exception-evidence': TestRendererComponent, 'attendance-correction': TestRendererComponent };
 
-    const { el } = render(withExtra, { descriptor }, { 'leave-request': TestRendererComponent });
+    const { el } = render(withExtra, { descriptor }, renderers);
     expect(el.querySelector('[data-testid="test-renderer"]')?.textContent).toContain('12h');
-    expect(el.querySelector('[data-testid="inbox-card-renderer"]')?.textContent).toContain('Additional information');
+    expect(el.textContent).not.toContain('Additional information');
 
     TestBed.resetTestingModule();
-    const fallback = render(withExtra, { descriptor: { ...descriptor, detailRenderer: 'unknown' } }).el;
-    expect(fallback.querySelector('[data-testid="inbox-card-renderer"]')).toBeNull();
-    expect(fallback.querySelector('[data-testid="inbox-card-explanation-toggle"]')).not.toBeNull();
+    const correction = render(withExtra, { descriptor: { ...descriptor, detailRenderer: 'attendance-correction' } }, renderers).el;
+    expect(correction.querySelector('[data-testid="inbox-card-renderer"]')).toBeNull();
+    expect(correction.textContent).not.toContain('Additional information');
   });
 
   // ---- FL: leave ---------------------------------------------------------------------------------

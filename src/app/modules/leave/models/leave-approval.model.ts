@@ -18,7 +18,7 @@ export interface LeavePendingApprovalListItemResponse {
   totalHours: number;
   paidHours: number;
   unpaidHours: number;
-  status: 'pending' | 'information_requested';
+  status: 'pending';
   submittedAt: string;
 }
 
@@ -33,7 +33,7 @@ export interface LeaveRequestAllListItemResponse {
   startAt: string;
   endAt: string;
   totalHours: number;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   submittedAt: string;
   approverNames: string[];
 }
@@ -42,16 +42,10 @@ export interface LeaveApprovalApproverResponse {
   approverEmployeeId: string;
   approverName: string;
   sequenceOrder: number;
-  status: 'pending' | 'approved' | 'rejected' | 'skipped' | 'information_requested' | 'forwarded';
+  status: 'pending' | 'approved' | 'rejected' | 'skipped' | 'cancelled';
   comment: string | null;
   delegatedFromApproverId: string | null;
   decidedAt: string | null;
-}
-
-export interface LeaveApprovalInfoMessageResponse {
-  senderEmployeeId: string;
-  message: string;
-  createdAt: string;
 }
 
 export interface LeaveApprovalDetailResponse {
@@ -66,24 +60,16 @@ export interface LeaveApprovalDetailResponse {
   totalHours: number;
   paidHours: number;
   unpaidHours: number;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   reason: string | null;
   approvers: LeaveApprovalApproverResponse[];
-  infoMessages: LeaveApprovalInfoMessageResponse[];
   submissionConflictSnapshotJson: string | null;
   currentWarnings: LeaveApprovalWarningResponse[];
   remainingHours: number;
   /** True only when the caller is the approver whose turn it is on a still-open request. */
   canDecide: boolean;
-  /** Who "Send to my manager" hands the request to; null when the caller can't forward it. */
-  forwardTo: LeaveApprovalForwardTargetResponse | null;
   /** True when the caller made this approve/reject decision and the leave hasn't started yet. */
   canChangeDecision: boolean;
-}
-
-export interface LeaveApprovalForwardTargetResponse {
-  employeeId: string;
-  name: string;
 }
 
 /** One request the current approver already acted on (Pending Approvals > History). */
@@ -95,19 +81,15 @@ export interface LeaveApprovalHistoryItemResponse {
   startAt: string;
   endAt: string;
   totalHours: number;
-  myAction: 'approved' | 'rejected' | 'forwarded' | 'information_requested';
+  myAction: 'approved' | 'rejected';
   actedAt: string;
   myComment: string | null;
-  requestStatus: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
+  requestStatus: 'pending' | 'approved' | 'rejected' | 'cancelled';
 }
 
 export interface ChangeLeaveDecisionRequest {
   decision: 'approve' | 'reject';
   comment: string | null;
-}
-
-export interface ForwardLeaveRequestRequest {
-  note: string | null;
 }
 
 export interface LeaveApprovalHistoryFilter {
@@ -147,14 +129,6 @@ export interface RejectLeaveRequestRequest {
   reason: string;
 }
 
-export interface RequestLeaveInformationRequest {
-  question: string;
-}
-
-export interface RespondLeaveInformationRequest {
-  message: string;
-  fileRecordIds: string[] | null;
-}
 
 export interface BulkApproveLeaveRequestsRequest {
   requestIds: string[];

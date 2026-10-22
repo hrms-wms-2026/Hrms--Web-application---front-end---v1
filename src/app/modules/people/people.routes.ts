@@ -86,13 +86,8 @@ export const PEOPLE_ROUTES: Routes = [
       }
     ]
   },
-  {
-    path: 'approvals',
-    loadComponent: () =>
-      import('./feature/approvals-list/approvals-list.component').then((m) => m.ApprovalsListComponent),
-    canActivate: [permissionGuard],
-    data: { title: 'Approvals', permissions: ['roles:manage'] }
-  },
+  // Position approvals (and seat increases) are decided in the Inbox now.
+  { path: 'approvals', redirectTo: '/inbox', pathMatch: 'full' },
   {
     path: 'offboarding-approvals',
     loadComponent: () =>

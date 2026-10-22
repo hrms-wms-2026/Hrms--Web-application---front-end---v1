@@ -34,7 +34,7 @@ export interface TaskAssigneeOption {
         />
       </div>
 
-      <div class="task-assignee-dropdown__list task-card__assignee-list">
+      <div class="task-assignee-dropdown__list task-card__assignee-list scroll-fade">
         @if (allowUnassigned()) {
           <button
             type="button"

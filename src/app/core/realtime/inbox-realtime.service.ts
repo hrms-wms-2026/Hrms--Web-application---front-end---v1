@@ -12,7 +12,9 @@ import {
   MessageCreatedEvent,
   MessageDeletedEvent,
   MessageUpdatedEvent,
+  MessageHiddenEvent,
   ParticipantAddedEvent,
+  ParticipantReadEvent,
   ParticipantRemovedEvent
 } from './inbox-realtime.models';
 
@@ -59,6 +61,8 @@ export class InboxRealtimeService {
   private readonly inboxChanged = new Subject<InboxChangedEvent>();
   private readonly messageUpdated = new Subject<MessageUpdatedEvent>();
   private readonly messageDeleted = new Subject<MessageDeletedEvent>();
+  private readonly messageHidden = new Subject<MessageHiddenEvent>();
+  private readonly participantRead = new Subject<ParticipantReadEvent>();
   private readonly participantRemoved = new Subject<ParticipantRemovedEvent>();
   private readonly reconnected = new Subject<void>();
 
@@ -67,6 +71,8 @@ export class InboxRealtimeService {
   readonly inboxChanged$: Observable<InboxChangedEvent> = this.inboxChanged.asObservable();
   readonly messageUpdated$: Observable<MessageUpdatedEvent> = this.messageUpdated.asObservable();
   readonly messageDeleted$: Observable<MessageDeletedEvent> = this.messageDeleted.asObservable();
+  readonly messageHidden$: Observable<MessageHiddenEvent> = this.messageHidden.asObservable();
+  readonly participantRead$: Observable<ParticipantReadEvent> = this.participantRead.asObservable();
   readonly participantRemoved$: Observable<ParticipantRemovedEvent> = this.participantRemoved.asObservable();
   readonly reconnected$: Observable<void> = this.reconnected.asObservable();
   readonly connected = signal(false);
@@ -95,6 +101,8 @@ export class InboxRealtimeService {
     connection.on('inboxChanged', (event: InboxChangedEvent) => this.inboxChanged.next(event));
     connection.on('messageUpdated', (event: MessageUpdatedEvent) => this.messageUpdated.next(event));
     connection.on('messageDeleted', (event: MessageDeletedEvent) => this.messageDeleted.next(event));
+    connection.on('messageHidden', (event: MessageHiddenEvent) => this.messageHidden.next(event));
+    connection.on('participantRead', (event: ParticipantReadEvent) => this.participantRead.next(event));
     connection.on('participantRemoved', (event: ParticipantRemovedEvent) => this.participantRemoved.next(event));
     connection.onreconnected(() => this.reconnected.next());
     connection.onclose(() => this.lost(connection));

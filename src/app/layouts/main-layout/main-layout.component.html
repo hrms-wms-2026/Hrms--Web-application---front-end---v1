@@ -5,11 +5,18 @@
   <app-top-navbar class="main-layout__topbar" [email]="email()" [avatarUrl]="avatarUrl()" [userName]="userName()" />
 
   @if (navState.hasVisibleSubSidebar()) {
-    <app-sub-sidebar
-      class="main-layout__sub-sidebar"
-      [sectionLabel]="navState.activeItem()!.label"
-      [items]="navState.activeChildren()"
-    />
+    @if (navState.customSubSidebar() === 'inbox') {
+      <!-- Loaded only when the inbox is open. -->
+      @defer (on immediate) {
+        <app-inbox-chat-sidebar class="main-layout__sub-sidebar" />
+      }
+    } @else {
+      <app-sub-sidebar
+        class="main-layout__sub-sidebar"
+        [sectionLabel]="navState.activeItem()!.label"
+        [items]="navState.activeChildren()"
+      />
+    }
   }
 
   <main

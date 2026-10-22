@@ -1,0 +1,75 @@
+<section data-testid="leave-policies-card" class="flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs">
+  <header class="mb-3 flex items-center gap-2.5">
+    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+      </svg>
+    </span>
+    <div>
+      <h3 class="text-sm font-semibold text-slate-900">Leave policies</h3>
+      <p class="text-xs text-slate-500">Which policy applies to each kind of leave, and where it comes from.</p>
+    </div>
+  </header>
+
+  @if (loading() && !rows().length) {
+    <p class="text-sm text-slate-500">Loading…</p>
+  } @else if (loadError()) {
+    <p class="text-sm text-red-600">{{ loadError() }}</p>
+  } @else if (!rows().length) {
+    <p class="text-sm text-slate-500">No leave types yet.</p>
+  } @else {
+    <ul class="divide-y divide-slate-100">
+      @for (row of rows(); track row.leaveTypeId) {
+        <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
+          <span class="flex min-w-[9rem] items-center gap-2 font-medium text-slate-900">
+            <i class="inline-block h-2.5 w-2.5 rounded-full" [style.background]="row.leaveTypeColor" aria-hidden="true"></i>
+            {{ row.leaveTypeName }}
+          </span>
+          @if (row.policyId) {
+            <span class="text-slate-700">{{ row.policyName }}</span>
+            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{{ sourceLabel(row) }}</span>
+            <span class="text-slate-500">{{ amount(row) }}</span>
+          } @else {
+            <span class="text-slate-400">No policy</span>
+          }
+          @if (canChange()) {
+            <span class="ml-auto flex items-center gap-3">
+              @if (row.isOverride) {
+                <button type="button" data-testid="reset-policy" class="text-xs font-semibold text-slate-500 hover:text-slate-800" (click)="askReset(row)">Reset to inherited</button>
+              }
+              <button type="button" data-testid="change-policy" class="text-xs font-semibold text-blue-600 hover:text-blue-800" (click)="openChange(row)">{{ row.policyId ? 'Change' : 'Assign' }}</button>
+            </span>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>
+
+<app-modal [open]="changeRow() !== null" [title]="'Change ' + (changeRow()?.leaveTypeName ?? '') + ' policy'" (closed)="closeChange()">
+  <p class="mb-3 text-sm text-slate-600">Applies to this employee from today and beats their position, department and company policies.</p>
+  <app-select
+    label="Policy"
+    placeholder="Choose a policy"
+    [options]="policyOptions()"
+    [value]="selectedPolicyId()"
+    (valueChange)="selectedPolicyId.set($event)"
+  />
+  @if (!policyOptions().length) {
+    <p class="mt-2 text-xs text-slate-500">There are no active policies for this leave type yet.</p>
+  }
+  <div class="mt-5 flex justify-end gap-2">
+    <app-button variant="secondary" (click)="closeChange()">Cancel</app-button>
+    <app-button [loading]="saving()" [disabled]="!selectedPolicyId() || saving()" (click)="saveChange()">Save</app-button>
+  </div>
+</app-modal>
+
+<app-confirm-modal
+  [open]="resetRow() !== null"
+  title="Reset to inherited policy?"
+  [message]="'This employee will get ' + (resetRow()?.leaveTypeName ?? '') + ' from their position, department or company again, from today.'"
+  confirmLabel="Reset"
+  [loading]="saving()"
+  (confirmed)="confirmReset()"
+  (cancelled)="cancelReset()"
+/>

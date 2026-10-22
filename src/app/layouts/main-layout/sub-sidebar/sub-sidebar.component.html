@@ -14,11 +14,18 @@
       </svg>
     </button>
   </div>
-  <ul class="sub-sidebar__list">
-    @for (item of items(); track item.id) {
-      <li>
-        <a [routerLink]="item.path" routerLinkActive="sub-sidebar__link--active" [routerLinkActiveOptions]="{ exact: item.exact === true }" class="sub-sidebar__link">{{ item.label }}</a>
-      </li>
-    }
-  </ul>
+  @for (group of groups(); track $index) {
+    <div class="sub-sidebar__section">
+      @if (group.title) {
+        <h3 class="sub-sidebar__section-title">{{ group.title }}</h3>
+      }
+      <ul class="sub-sidebar__list" [attr.aria-label]="group.title">
+        @for (item of group.items; track item.id) {
+          <li>
+            <a [routerLink]="item.path" routerLinkActive="sub-sidebar__link--active" [routerLinkActiveOptions]="{ exact: item.exact === true }" class="sub-sidebar__link">{{ item.label }}</a>
+          </li>
+        }
+      </ul>
+    </div>
+  }
 </nav>

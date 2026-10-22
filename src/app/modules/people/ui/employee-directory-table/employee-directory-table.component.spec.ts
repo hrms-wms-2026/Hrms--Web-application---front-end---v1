@@ -171,7 +171,7 @@ describe('EmployeeDirectoryTableComponent', () => {
     expect(el.querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('Still has not clocked in');
   });
 
-  it('shows an "N open alerts" chip that opens the employee alerts in the Inbox without opening the profile', async () => {
+  it('rings the avatar for open alerts, shows the count on hover, and opens them in the Inbox without opening the profile', async () => {
     const { fixture, el, host } = await setup();
     const router = TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> };
     host.employees.set([
@@ -192,8 +192,11 @@ describe('EmployeeDirectoryTableComponent', () => {
 
     const chips = el.querySelectorAll('[data-testid="employee-open-alerts"]');
     expect(chips).toHaveLength(1);
-    expect(chips[0].textContent).toContain('21 open alerts');
-    (chips[0] as HTMLButtonElement).click();
+    expect(chips[0].classList).toContain('emp-avatar-wrapper--caution');
+    expect(chips[0].querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('21 open alerts');
+    expect(chips[0].getAttribute('aria-label')).toContain('21 open alerts');
+    expect(el.querySelector('.emp-open-alerts')).toBeNull();
+    (chips[0] as HTMLElement).click();
 
     expect(router.navigate).toHaveBeenCalledTimes(1);
     expect(router.navigate).toHaveBeenCalledWith(['/inbox'], { queryParams: { tab: 'alerts', employee: 'al' } });

@@ -41,31 +41,24 @@ describe('InboxItemCardComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, actions };
   }
 
-  it('shows the summary, status, steps and change set; the explanation opens from its collapsed header', () => {
-    const { fixture, el } = render(detail());
+  it('shows the summary, status and steps; the change set lives in the chat, not here', () => {
+    const { el } = render(detail());
 
     expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Update task details');
     expect(el.querySelector('[data-testid="inbox-card-status"]')?.textContent).toContain('Pending');
     expect(el.querySelectorAll('[data-testid="inbox-step"]')).toHaveLength(2);
-    expect(el.querySelector('[data-testid="inbox-change-set"]')).not.toBeNull();
-    expect(el.querySelector('[data-testid="inbox-card-explanation"]')).toBeNull();
-
-    (el.querySelector('[data-testid="inbox-card-explanation-toggle"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(el.querySelector('[data-testid="inbox-card-explanation"]')?.textContent).toContain('Typo in the title');
+    expect(el.querySelector('[data-testid="inbox-change-set"]')).toBeNull();
+    expect(el.textContent).not.toContain('Explanation');
   });
 
-  it('says when there is no explanation, and Hide asks the page to collapse the panel', () => {
-    const { fixture, el } = render(detail({ explanation: null }));
-    const hidden = vi.fn();
-    fixture.componentInstance.hide.subscribe(hidden);
+  it('has no facts block (status, type, people, dates) and no open-target link: the header and sections carry it', () => {
+    const { el } = render(detail());
 
-    (el.querySelector('[data-testid="inbox-card-explanation-toggle"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(el.textContent).toContain('No explanation was given for this ticket.');
-
-    (el.querySelector('[data-testid="inbox-card-hide"]') as HTMLButtonElement).click();
-    expect(hidden).toHaveBeenCalled();
+    expect(el.querySelector('[data-testid="inbox-card-project"]')).toBeNull();
+    expect(el.querySelector('[data-testid="inbox-card-open-target"]')).toBeNull();
+    expect(el.textContent).not.toContain('Requested by');
+    expect(el.textContent).not.toContain('Requested to');
+    expect(el.textContent).not.toContain('Severity');
   });
 
   it('shows a loading state and an error', () => {
@@ -76,9 +69,9 @@ describe('InboxItemCardComponent', () => {
 
   it('renders one button per available action and approves with the approver edits', () => {
     const { fixture, el, actions } = render(detail({}, { availableActions: [APPROVE, REJECT] }));
-    const input = el.querySelector('[data-testid="inbox-edit-title"]') as HTMLInputElement;
-    input.value = 'Newer';
-    input.dispatchEvent(new Event('input'));
+    // The chat's changes message reports the edits to the card.
+    expect(fixture.componentInstance.canEdit()).toBe(true);
+    fixture.componentInstance.setEdits({ title: 'Newer' });
     fixture.detectChanges();
 
     (el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).click();
@@ -89,8 +82,8 @@ describe('InboxItemCardComponent', () => {
   });
 
   it('does not offer editing when the item has no editable payload', () => {
-    const { el } = render(detail({ editablePayloadJson: null }, { availableActions: [APPROVE] }));
-    expect(el.querySelector('[data-testid="inbox-edit-title"]')).toBeNull();
+    const { fixture } = render(detail({ editablePayloadJson: null }, { availableActions: [APPROVE] }));
+    expect(fixture.componentInstance.canEdit()).toBe(false);
   });
 
   it('asks for a comment before a comment action and sends it', () => {
@@ -116,26 +109,87 @@ describe('InboxItemCardComponent', () => {
     expect(actions).toEqual([{ key: 'revert', body: {} }]);
   });
 
-  it('opens the target and disables actions while busy', () => {
-    const { fixture, el } = render(detail({}, { availableActions: [APPROVE] }), { busy: true });
-    const targets: unknown[] = [];
-    fixture.componentInstance.openTarget.subscribe((t) => targets.push(t));
-
-    (el.querySelector('[data-testid="inbox-card-open-target"]') as HTMLButtonElement).click();
-
-    expect(targets).toEqual([{ route: ['/work', 'p1', 'board'], label: 'Open task', queryParams: { taskId: 't1' } }]);
+  it('disables actions while busy', () => {
+    const { el } = render(detail({}, { availableActions: [APPROVE] }), { busy: true });
     expect((el.querySelector('[data-testid="inbox-action-approve"]') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('shows an alert explanation with its details and no decision buttons', () => {
+  it('shows a late clock-in as Attendance details and its Outcome, without the deduction facts', () => {
+    const { el } = render(detail({
+      changeSet: [
+        { field: 'signal', label: 'Alert', before: null, after: 'Late clock-in', kind: 'text', editable: false, applied: null },
+        { field: 'work_date', label: 'Day', before: null, after: '2026-10-12', kind: 'date', editable: false, applied: null },
+        { field: 'clock_in', label: 'Clocked in', before: null, after: '9:20 AM', kind: 'text', editable: false, applied: null },
+        { field: 'expected_in', label: 'Expected', before: null, after: '9:00 AM', kind: 'text', editable: false, applied: null },
+        { field: 'minutes', label: 'Late by', before: null, after: '20 min', kind: 'text', editable: false, applied: null },
+        { field: 'outcome', label: 'Outcome', before: null, after: 'confirmed', kind: 'select', editable: true, applied: null,
+          options: [{ value: 'excused', label: 'Excused - stop counting it' }, { value: 'confirmed', label: 'Confirmed - keep counting it' }] }
+      ],
+      editablePayloadJson: null, explanation: null, explanationDetails: null, target: null,
+      facts: [{ label: 'Deducted', value: '0.5 h from Annual Leave' }]
+    }, { source: 'attendance', kind: 'alert', category: 'alert', status: 'open', direction: 'received' }));
+
+    const details = el.querySelector('[data-testid="inbox-card-details"]')!;
+    expect(details.querySelector('h4')!.textContent).toBe('Attendance details');
+    expect(Array.from(details.querySelectorAll('[data-testid="inbox-card-detail-row"]'))
+      .map((r) => `${r.querySelector('dt')!.textContent!.trim()} ${r.querySelector('dd')!.textContent!.trim()}`))
+      .toEqual(['Scheduled start 9:00 AM', 'Actual clock-in 9:20 AM', 'Delay 20 min']);
+    expect(el.querySelector('[data-testid="inbox-card-outcome"]')!.textContent).toContain('Confirmed - keep counting it');
+    expect(el.textContent).not.toContain('Deducted');
+    expect(el.querySelector('[data-testid="inbox-card-steps"] h4')!.textContent).toBe('Request steps');
+  });
+
+  it('shows a leave as Request details with the employee note, and no approval note', () => {
+    const { el } = render(detail({
+      steps: [
+        { key: 'submitted', label: 'Submitted', actor: { id: 'e1', name: 'Bala' }, at: '2026-10-10T10:00:00Z', state: 'done', note: null },
+        { key: 'approver:1', label: 'Approved', actor: { id: 'e2', name: 'Anu' }, at: '2026-10-11T10:00:00Z', state: 'done', note: 'Approved for the demo.' }
+      ],
+      changeSet: [
+        { field: 'leave_type', label: 'Leave type', before: null, after: 'Annual Leave', kind: 'text', editable: false, applied: null },
+        { field: 'startAt', label: 'From', before: null, after: '2026-10-15T09:00:00', kind: 'datetime', editable: false, applied: null },
+        { field: 'endAt', label: 'To', before: null, after: '2026-10-15T17:00:00', kind: 'datetime', editable: false, applied: null },
+        { field: 'total_hours', label: 'Total', before: null, after: '8', kind: 'hours', editable: false, applied: null },
+        { field: 'reason', label: 'Reason', before: null, after: 'Personal matters.', kind: 'text', editable: false, applied: null }
+      ],
+      editablePayloadJson: null, explanation: 'Personal matters.', target: null
+    }, { source: 'leave', kind: 'request', status: 'approved', isPending: false, title: 'Annual Leave approved' }));
+
+    const rows = Array.from(el.querySelectorAll('[data-testid="inbox-card-detail-row"] dt')).map((r) => r.textContent!.trim());
+    expect(rows).toEqual(['Leave type', 'Date', 'Duration', 'Requested on', 'Approved on']);
+    expect(el.querySelector('[data-testid="inbox-card-details"]')!.textContent).toContain('8 hours');
+    expect(el.querySelector('[data-testid="inbox-card-decided"]')!.textContent).toContain('Approved on');
+    const note = el.querySelector('[data-testid="inbox-card-note"]')!;
+    expect(note.textContent).toContain("Employee's note");
+    expect(note.textContent).toContain('Personal matters.');
+    expect(note.textContent).not.toContain('Approval note');
+  });
+
+  it('shows an alert without an Additional information block and no decision buttons', () => {
     const { el } = render(detail(
       { changeSet: [], editablePayloadJson: null, explanation: 'Over capacity by 40h', explanationDetails: { allocatedHours: '100', requiredHours: '140' } },
       { category: 'alert', kind: 'monitor_alert', actionType: 'monitor.module_over_capacity', status: 'open', direction: 'info', severity: 'high',
         availableActions: [{ key: 'open_target', label: 'Open', tone: 'neutral', needsComment: false, needsPayload: false }] }));
 
     expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Module over capacity');
-    expect(el.querySelector('[data-testid="inbox-card-details"]')?.textContent).toContain('140');
+    expect(el.querySelector('[data-testid="inbox-card-details"]')).toBeNull();
+    expect(el.textContent).not.toContain('Additional information');
     expect(el.querySelector('[data-testid^="inbox-action-"]')).toBeNull();
+  });
+
+  it('renders no per-kind Additional information block; only the exception evidence keeps its slot', () => {
+    const descriptor = (detailRenderer: string) =>
+      ({ source: 'attendance', kind: 'alert', label: 'Attendance alert', category: 'alert', capabilities: 0, detailRenderer });
+    const alert = detail({ changeSet: [], editablePayloadJson: null, explanation: null, explanationDetails: null },
+      { category: 'alert', kind: 'alert', status: 'open', direction: 'received' });
+
+    const attendance = render(alert, { descriptor: descriptor('attendance-alert') }).el;
+    expect(attendance.querySelector('[data-testid="inbox-card-renderer"]')).toBeNull();
+    expect(attendance.textContent).not.toContain('Additional information');
+
+    TestBed.resetTestingModule();
+    const evidence = render(alert, { descriptor: descriptor('exception-evidence') }).el;
+    expect(evidence.querySelector('[data-testid="inbox-card-renderer"]')).not.toBeNull();
   });
 
   it('shows the action error', () => {

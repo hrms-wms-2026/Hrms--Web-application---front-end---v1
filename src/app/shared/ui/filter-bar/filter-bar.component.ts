@@ -153,7 +153,7 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
                   (input)="search.set($any($event.target).value)"
                 />
               </div>
-              <div class="tfb__picker-list">
+              <div class="tfb__picker-list scroll-fade">
                 @for (field of availableFields(); track field.key) {
                   <button type="button" class="tfb__picker-item" [attr.data-testid]="'filter-picker-' + field.key" (click)="addField(field.key)">
                     <span class="tfb__row-icon">

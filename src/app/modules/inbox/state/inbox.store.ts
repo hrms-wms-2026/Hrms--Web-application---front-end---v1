@@ -9,8 +9,6 @@ import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.serv
 import { InboxApiService } from '../data-access/inbox-api.service';
 import {
   InboxActionBody,
-  InboxBulkRequestDto,
-  InboxBulkResultDto,
   InboxCountsDto,
   InboxHistoryEntryDto,
   InboxHistoryQuery,
@@ -188,19 +186,6 @@ export const InboxStore = signalStore(
         } catch (err) {
           patchState(store, { busy: false, actionError: extractError(err, 'The decision could not be undone.') });
           return false;
-        }
-      },
-      /** One action over many items; null when the whole call failed (the error stays in actionError). */
-      async runBulk(request: InboxBulkRequestDto): Promise<InboxBulkResultDto | null> {
-        patchState(store, { busy: true, actionError: null, actionErrorInline: false });
-        try {
-          const result = await firstValueFrom(api.bulk(request));
-          patchState(store, { busy: false });
-          await refresh();
-          return result;
-        } catch (err) {
-          patchState(store, { busy: false, actionError: extractError(err, 'The bulk action failed.') });
-          return null;
         }
       },
       async runAction(ref: InboxItemRef, action: string, body: InboxActionBody = {}): Promise<boolean> {

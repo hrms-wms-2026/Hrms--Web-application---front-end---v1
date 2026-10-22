@@ -245,7 +245,7 @@ export type TaskFormMode = 'create' | 'edit';
             }
           </header>
 
-          <div class="tfm__body" (click)="closePopover()">
+          <div class="tfm__body scroll-fade" (click)="closePopover()">
             <ng-template #descriptionEditorTpl>
               <app-rich-text-editor
                 #descRte

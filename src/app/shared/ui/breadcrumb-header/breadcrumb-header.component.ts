@@ -19,6 +19,8 @@ export interface BreadcrumbSwitcherItem {
 export class BreadcrumbHeaderComponent {
   parentLabel = input.required<string>();
   currentLabel = input.required<string>();
+  /** An optional level between the parent and the current page (Inbox › Chats › Priya). */
+  middleLabel = input<string | undefined>(undefined);
   parentUrl = input<string | undefined>(undefined);
   icon = input<NavIconName | undefined>(undefined);
 

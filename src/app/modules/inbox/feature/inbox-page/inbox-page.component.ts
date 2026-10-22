@@ -1,61 +1,39 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, debounceTime, skip } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-action-bar/bulk-action-bar.component';
-import { BulkActionResultModalComponent, BulkResultSummary } from '../../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
-import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
-import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
+import { ExceptionEvidenceResponse } from '../../../../shared/models/exception-evidence.model';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
-import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../../work/ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
-import { InboxCapability, InboxHistoryEntryDto, InboxItemDto, InboxItemRef, InboxSort, InboxTargetDto, sameRef } from '../../models/inbox.dto';
+import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
+import { PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
+import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
+import { InboxChatRowDto, chatRef, isPeopleChatSource } from '../../models/inbox-chat.dto';
+import { InboxHistoryEntryDto, InboxItemDetailDto, InboxItemRef, InboxTargetDto, sameRef } from '../../models/inbox.dto';
+import { parseExtra } from '../../renderers/inbox-detail-renderers';
+import { ConversationStore } from '../../state/conversation.store';
+import { InboxChatsStore } from '../../state/inbox-chats.store';
 import { InboxKindsStore } from '../../state/inbox-kinds.store';
+import { InboxPersonCasesStore } from '../../state/inbox-person-cases.store';
 import { InboxStore } from '../../state/inbox.store';
-import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../../ui/inbox-action-dialogs/inbox-outcome-dialog.component';
 import { ApprovalDelegateModalComponent } from '../../ui/approval-delegate-modal/approval-delegate-modal.component';
+import { CaseCardAction } from '../../ui/case-card/case-card.component';
+import { InboxChatSidebarComponent } from '../../ui/chat-sidebar/inbox-chat-sidebar.component';
 import { ConversationPanelComponent } from '../../ui/conversation-panel/conversation-panel.component';
-import { InboxCommentDialogComponent } from '../../ui/inbox-comment-dialog/inbox-comment-dialog.component';
 import { InboxCardAction, InboxItemCardComponent } from '../../ui/inbox-item-card/inbox-item-card.component';
-import { InboxTypeIconComponent } from '../../ui/inbox-type-icon/inbox-type-icon.component';
-import {
-  inboxMenuItems,
-  inboxStatusLabel,
-  inboxStatusTone,
-  inboxSubtitle,
-  inboxTitle,
-  inboxTypeMeta,
-  requestedOnFrom,
-  toFilterFields
-} from '../../utils/inbox-item.util';
-import {
-  InboxBulkActionChoice,
-  InboxDirectionChoice,
-  InboxPageState,
-  InboxTab,
-  bulkActionsFor,
-  groupByEmployee,
-  pageStateFromParams,
-  pageStateToParams,
-  pageStateToQuery,
-  tabCounts
-} from '../../utils/inbox-page-state.util';
+import { NewGroupChoice, NewGroupDialogComponent } from '../../ui/new-group-dialog/new-group-dialog.component';
+import { ForwardDialogComponent, ForwardTargets } from '../../ui/forward-dialog/forward-dialog.component';
+import { PersonCasesViewComponent } from '../../ui/person-cases/person-cases-view.component';
+import { inboxTitle, isCaseClosed } from '../../utils/inbox-item.util';
 
-const SORT_OPTIONS: readonly { id: InboxSort; label: string; short: string }[] = [
-  { id: 'latest', label: 'Latest activity', short: 'Latest' },
-  { id: 'newest', label: 'Newest first', short: 'Newest' },
-  { id: 'oldest', label: 'Oldest first', short: 'Oldest' }
-];
-const CHECK_ICON = 'M20 6 9 17l-5-5';
-/** Whether the ticket details panel is collapsed - a per-viewer preference. */
+/** Whether the details panel is collapsed - a per-viewer preference. */
 const DETAILS_HIDDEN_KEY = 'inbox.detailsHidden';
 const NARROW_QUERY = '(max-width: 1023px)';
+const LEAVE_APPROVE = 'leave:approve';
 
 function readDetailsHidden(): boolean {
   try {
@@ -65,96 +43,92 @@ function readDetailsHidden(): boolean {
   }
 }
 
-const DIRECTION_OPTIONS: readonly TabOption[] = [
-  { value: 'all', label: 'All' }, { value: 'received', label: 'Received' }, { value: 'sent', label: 'Sent' }, { value: 'about', label: 'About me' }
-];
-
-const TAB_LABELS: Record<InboxTab, string> = { all: 'All', request: 'Requests', alert: 'Alerts', history: 'History' };
-
-const LEAVE_APPROVE = 'leave:approve';
-
-function sameParams(a: Record<string, string>, b: Record<string, string>): boolean {
-  const keys = Object.keys(a);
-  return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
+/** "source:kind:id" of the ?case= query parameter. */
+function parseCaseParam(value: string | null): InboxItemRef | null {
+  const parts = value?.split(':') ?? [];
+  return parts.length === 3 && parts.every(Boolean) ? { source: parts[0], kind: parts[1], id: parts[2] } : null;
 }
 
-function withCount(label: string, n: number): string {
-  return n > 0 ? `${label} (${n > 99 ? '99+' : n})` : label;
+function caseParam(ref: InboxItemRef): string {
+  return `${ref.source}:${ref.kind}:${ref.id}`;
 }
 
-/** The Inbox as a ticket workspace: the ticket list (tabs, direction, sort, filters), the selected ticket's own
- *  conversation, and its details panel (collapsible) with the actions - across projects and modules. */
+/** The open case's face evidence, or null - only that case's own detail counts (never the previous one's). */
+export function faceEvidenceFor(
+  detail: InboxItemDetailDto | null, selected: InboxItemRef | null, rendererOf: (source: string, kind: string) => string | null
+): ExceptionEvidenceResponse | null {
+  if (!detail || !selected || !sameRef(detail.item, selected)) return null;
+  if (rendererOf(detail.item.source, detail.item.kind) !== 'exception-evidence') return null;
+  return parseExtra(detail.extraJson) as ExceptionEvidenceResponse | null;
+}
+
+/**
+ * The Inbox as chats between people. Left: everyone the user chats with, groups and case groups (search starts a chat
+ * with anyone in the legal entity; Pending narrows to what waits on the user). Middle: the open chat,
+ * where requests and alerts arrive as case cards and are decided. Right: the other person's cases this month, or the
+ * details of the case that was clicked.
+ *
+ * URLs: /inbox/direct/direct/:pairId and /inbox/group/group/:id open a chat; /inbox/:source/:kind/:id of a request or
+ * alert (bell, links) opens the chat it is worked on in, with that case selected (?case=).
+ */
 @Component({
   selector: 'app-inbox-page',
   standalone: true,
   imports: [
-    DatePipe, AvatarComponent, BulkActionBarComponent, BulkActionResultModalComponent, DataTableComponent, DataTableCellDirective,
-    DropdownMenuComponent, FilterBarComponent, BreadcrumbHeaderComponent, TabsComponent, ApprovalDelegateModalComponent, ConversationPanelComponent,
-    InboxCommentDialogComponent, InboxItemCardComponent, InboxOutcomeDialogComponent, InboxTypeIconComponent, TaskAssigneeAvatarFilterComponent
+    DatePipe, BreadcrumbHeaderComponent, DropdownMenuComponent, ApprovalDelegateModalComponent,
+    InboxChatSidebarComponent, ConversationPanelComponent, InboxItemCardComponent,
+    NewGroupDialogComponent, PersonCasesViewComponent, ForwardDialogComponent, TabsComponent
   ],
+  // The open chat: shared by the conversation panel and the details. The open person's history: the details panel.
+  providers: [ConversationStore, InboxPersonCasesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="inbox">
       <header class="work-page-header inbox__page-header">
         <div class="inbox__header-row">
-          <app-breadcrumb-header parentLabel="Inbox" [currentLabel]="currentTabLabel()" icon="inbox" />
+          <app-breadcrumb-header parentLabel="Inbox" [middleLabel]="crumbChat() ? 'Chats' : undefined"
+            [currentLabel]="history() ? 'History' : (crumbChat() ?? 'Chats')" icon="inbox" />
+          <!-- The open chat's tools (wide screens - phones keep them in the chat's own header), then History and
+               delegation under the same "⋯". -->
           <div class="inbox__header-tools">
-            @if (state().tab !== 'history') {
-              @if (searchExpanded() || search()) {
-                <label class="inbox__search">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                  <input type="search" placeholder="Search requests and alerts…" aria-label="Search the inbox" data-testid="inbox-search" autofocus
-                    [value]="search()" (input)="onSearch($any($event.target).value)" />
-                  <button type="button" class="inbox__search-close" aria-label="Close search" title="Close search"
-                    data-testid="inbox-search-close" (click)="closeSearch()">&times;</button>
-                </label>
-              } @else {
-                <button type="button" class="inbox__icon-btn" aria-label="Search the inbox" title="Search"
-                  data-testid="inbox-search-toggle" (click)="searchExpanded.set(true)">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            @if (chatTools(); as panel) {
+              @if (!panel.isDirect()) {
+                <button type="button" class="inbox__icon-btn" data-testid="inbox-chat-add" aria-label="Add people" title="Add people"
+                  [disabled]="conversation.removed()" (click)="panel.onSlashCommand('add')">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><circle cx="9" cy="8" r="4" /><path d="M19 8v6M16 11h6" /></svg>
                 </button>
               }
-              <app-task-assignee-avatar-filter [members]="people()" [currentEmployeeId]="myEmployeeId()"
-                [selected]="requestedByFilter()" (selectionChanged)="onFilterChanged({ key: 'requestedBy', values: $event })" />
             }
-            <app-filter-bar [fields]="filterFields()" [values]="filterValues()" panelAlign="right" (fieldChanged)="onFilterChanged($event)" />
-            @if (state().tab === 'alert') {
-              <button type="button" class="inbox__tool-btn" data-testid="inbox-group-toggle" [attr.aria-pressed]="grouped()"
-                (click)="grouped.set(!grouped())">{{ grouped() ? 'Ungroup' : 'Group by employee' }}</button>
-            }
-            @if (canDelegate) {
-              <button type="button" class="inbox__tool-btn" data-testid="inbox-delegate" (click)="delegateOpen.set(true)">Delegate my approvals</button>
+            <app-dropdown-menu [items]="headerMenu()" ariaLabel="Inbox options" (selected)="onHeaderMenu($event)">
+              <button menu-trigger type="button" class="inbox__icon-btn" data-testid="inbox-menu" aria-label="Inbox options" title="More">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
+              </button>
+            </app-dropdown-menu>
+            @if (chatTools()) {
+              <button type="button" class="inbox__icon-btn" data-testid="inbox-toggle-details" [attr.aria-pressed]="detailsShown()"
+                [attr.aria-label]="detailsShown() ? 'Hide details' : 'Show details'" [attr.title]="detailsShown() ? 'Hide details' : 'Show details'"
+                (click)="toggleDetails()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
+              </button>
             }
           </div>
         </div>
       </header>
 
       <div class="inbox__workspace" data-testid="inbox-workspace"
-        [class.inbox__workspace--open]="store.selectedRef() !== null"
+        [class.inbox__workspace--open]="chatRefValue() !== null || history()"
         [class.inbox__workspace--details]="detailsShown()"
         [class.inbox__workspace--drawer]="narrow() && detailsShown()">
-        <section class="inbox__panel inbox__list" aria-label="Tickets">
-          <app-tabs class="inbox__tabs" ariaLabel="Category" [tabs]="tabs()" [value]="state().tab" (valueChange)="onTab($event)" />
-          @if (state().tab !== 'history') {
-            <div class="inbox__list-tools">
-              <div class="inbox__segment" role="radiogroup" aria-label="Direction">
-                @for (option of directionOptions; track option.value) {
-                  <button type="button" role="radio" class="inbox__segment-btn" [class.inbox__segment-btn--active]="state().direction === option.value"
-                    [attr.aria-checked]="state().direction === option.value" [attr.data-testid]="'inbox-direction-' + option.value"
-                    (click)="onDirection(option.value)">{{ option.label }}</button>
-                }
-              </div>
-              <app-dropdown-menu [items]="sortMenu()" ariaLabel="Sort tickets" (selected)="onSort($event)">
-                <button menu-trigger type="button" class="inbox__sort" data-testid="inbox-sort">
-                  Sort: <strong>{{ sortLabel() }}</strong>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-                </button>
-              </app-dropdown-menu>
-            </div>
-          }
+        <!-- The chat list lives in the app's sub-sidebar; phones have none, so it shows here until a chat opens. -->
+        @if (narrow() && chatRefValue() === null && !history()) {
+          <section class="inbox__panel inbox__list" aria-label="Chats">
+            <app-inbox-chat-sidebar [embedded]="true" />
+          </section>
+        }
 
-          <div class="inbox__list-body">
-            @if (state().tab === 'history') {
+        <section class="inbox__panel inbox__chat" aria-label="Conversation">
+          @if (history()) {
+            <div class="inbox__history-body scroll-fade">
               @if (store.historyLoading() && store.history().length === 0) {
                 <p class="inbox__state" aria-live="polite">Loading your history…</p>
               } @else if (store.historyError()) {
@@ -168,13 +142,13 @@ function withCount(label: string, n: number): string {
                 <ul class="inbox__history" data-testid="inbox-history">
                   @for (entry of store.history(); track entry.journalId) {
                     <li class="inbox__history-row" data-testid="inbox-history-row">
-                      <button type="button" class="inbox__history-main" [disabled]="!entry.item" (click)="openHistory(entry)">
-                        <span class="inbox__title"><span class="inbox__ellipsis">{{ entry.title }}</span></span>
+                      <button type="button" class="inbox__history-main" [disabled]="!entry.item" (click)="openItem({ source: entry.source, kind: entry.kind, id: entry.itemId })">
+                        <span class="inbox__history-title">{{ entry.title }}</span>
                         <span class="inbox__secondary">Decided {{ entry.actionLabel }} · {{ entry.decidedAt | date: 'MMM d, y h:mm a' }}</span>
-                        @if (entry.comment) { <span class="inbox__secondary inbox__ellipsis">“{{ entry.comment }}”</span> }
+                        @if (entry.comment) { <span class="inbox__secondary">“{{ entry.comment }}”</span> }
                       </button>
                       @if (entry.isReverted) {
-                        <span class="inbox__pill inbox__pill--neutral">Undone</span>
+                        <span class="inbox__pill">Undone</span>
                       } @else if (canUndo(entry)) {
                         <button type="button" class="inbox__chip" data-testid="inbox-history-revert" [disabled]="store.busy()"
                           (click)="undoFromHistory(entry)">Undo · until {{ entry.revertableUntil | date: 'h:mm a' }}</button>
@@ -182,268 +156,178 @@ function withCount(label: string, n: number): string {
                     </li>
                   }
                 </ul>
-                @if (historyPageCount() > 1) {
-                  <nav class="inbox__pager" aria-label="History pages">
-                    <button type="button" [disabled]="historyPage() <= 1" (click)="store.loadHistory({ page: historyPage() - 1 })">Previous</button>
-                    <span>Page {{ historyPage() }} of {{ historyPageCount() }}</span>
-                    <button type="button" [disabled]="historyPage() >= historyPageCount()" (click)="store.loadHistory({ page: historyPage() + 1 })">Next</button>
-                  </nav>
-                }
               }
-            } @else if (store.loading() && store.items().length === 0) {
-              <p class="inbox__state" aria-live="polite" data-testid="inbox-loading">Loading your inbox…</p>
-            } @else if (store.error() && store.items().length === 0) {
-              <div class="inbox__state inbox__state--error" role="alert" data-testid="inbox-error">
-                <span>{{ store.error() }}</span>
-                <button type="button" (click)="store.load()">Try again</button>
-              </div>
-            } @else if (state().tab === 'alert' && grouped()) {
-              @if (groups().length === 0) { <p class="inbox__state">{{ emptyMessage() }}</p> }
-              @for (group of groups(); track group.key) {
-                <section class="inbox__group" data-testid="inbox-group">
-                  <button type="button" class="inbox__group-header" data-testid="inbox-group-header"
-                    [attr.aria-expanded]="!collapsed().has(group.key)" (click)="toggleGroup(group.key)">
-                    <span class="inbox__group-caret" aria-hidden="true">{{ collapsed().has(group.key) ? '▸' : '▾' }}</span>
-                    <app-avatar [userName]="group.name" size="xs" />
-                    <span>{{ group.name }} · {{ group.items.length }}</span>
-                  </button>
-                  @if (!collapsed().has(group.key)) {
-                    <ul class="inbox__group-list">
-                      @for (row of group.items; track trackItem(row)) {
-                        <li>
-                          <button type="button" class="inbox__group-row" data-testid="inbox-row" [class.inbox__group-row--active]="activeRowId() === trackItem(row)"
-                            (click)="open(refOf(row))">
-                            <app-inbox-type-icon [icon]="meta(row).icon" [tone]="meta(row).tone" />
-                            <span class="inbox__ticket-text">
-                              <span class="inbox__ellipsis inbox__title">{{ title(row) }}</span>
-                              <span class="inbox__secondary inbox__ellipsis">{{ subtitle(row) }}</span>
-                            </span>
-                            <span data-testid="inbox-status" [class]="'inbox__pill inbox__pill--' + tone(row)">{{ status(row) }}</span>
-                          </button>
-                        </li>
-                      }
-                    </ul>
-                  }
-                </section>
-              }
-            } @else {
-              @if (selectedItems().length > 0) {
-                <app-bulk-action-bar [count]="selectedItems().length" noun="item" [actions]="bulkBarActions()"
-                  (action)="onBulkAction($event)" (cleared)="selectedIds.set(emptySelection)" />
-              }
-              <app-data-table
-                data-testid="inbox-table"
-                [columns]="columns()"
-                [rows]="store.items()"
-                [trackBy]="trackItem"
-                [rowTestId]="rowTestId"
-                [activeRowId]="activeRowId()"
-                [busyRowId]="busyRowId()"
-                [rowFocusable]="true"
-                [emptyMessage]="emptyMessage()"
-                [selectable]="selectable()"
-                [selectedIds]="selectedIds()"
-                [isRowSelectable]="isSelectable"
-                (rowSelectionChanged)="onRowSelection($event)"
-                (selectAllChanged)="onSelectAll($event)"
-                (rowClicked)="open(refOf($event))"
-              >
-                <ng-template appDataTableCell="ticket" let-item>
-                  <div class="inbox__ticket">
-                    <app-inbox-type-icon [icon]="meta(item).icon" [tone]="meta(item).tone" />
-                    <div class="inbox__ticket-text">
-                      <span class="inbox__title">
-                        <span class="inbox__ellipsis">{{ title(item) }}</span>
-                        @if (item.unreadMessages > 0) {
-                          <span class="inbox__unread" data-testid="inbox-row-unread" [attr.aria-label]="item.unreadMessages + ' unread messages'"></span>
-                        }
-                      </span>
-                      @if (subtitle(item)) { <span class="inbox__secondary inbox__ellipsis">{{ subtitle(item) }}</span> }
-                      <span class="inbox__chips">
-                        <span [class]="'inbox__pill inbox__pill--sm inbox__pill--' + meta(item).tone">{{ meta(item).label }}</span>
-                        <span class="inbox__source">{{ sourceLabel(item) }}</span>
-                      </span>
-                    </div>
-                  </div>
-                </ng-template>
-                <ng-template appDataTableCell="person" let-item>
-                  <span class="inbox__person">
-                    @if (item.requestedBy) { <app-avatar [userName]="item.requestedBy.name" size="sm" /> }
-                    <span class="inbox__person-text">
-                      <span class="inbox__ellipsis">{{ item.requestedBy?.name ?? '—' }}</span>
-                      <span class="inbox__secondary inbox__ellipsis">{{ item.createdAt | date: 'MMM d, y' }}</span>
-                    </span>
-                  </span>
-                </ng-template>
-                <ng-template appDataTableCell="status" let-item>
-                  <span data-testid="inbox-status" [class]="'inbox__pill inbox__pill--' + tone(item)">{{ status(item) }}</span>
-                </ng-template>
-                <ng-template appDataTableCell="actions" let-item>
-                  <app-dropdown-menu [items]="menuFor(item)" ariaLabel="Item actions" (selected)="onRowMenu(item, $event)">
-                    <button menu-trigger type="button" class="inbox__kebab" data-testid="inbox-row-menu" aria-label="Item actions">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
-                    </button>
-                  </app-dropdown-menu>
-                </ng-template>
-              </app-data-table>
-
-              @if (pageCount() > 1) {
-                <nav class="inbox__pager" aria-label="Pages">
-                  <button type="button" data-testid="inbox-prev" [disabled]="page() <= 1" (click)="store.setPage(page() - 1)">Previous</button>
-                  <span>Page {{ page() }} of {{ pageCount() }}</span>
-                  <button type="button" data-testid="inbox-next" [disabled]="page() >= pageCount()" (click)="store.setPage(page() + 1)">Next</button>
-                </nav>
-              }
-            }
-          </div>
-        </section>
-
-        <section class="inbox__panel inbox__chat" aria-label="Ticket conversation">
-          @if (store.selectedRef(); as ref) {
+            </div>
+          } @else if (chatRefValue(); as ref) {
             <app-conversation-panel
+              #panel
               [itemRef]="ref"
-              [item]="selectedItem()"
-              [descriptor]="selectedItem() ? kinds.descriptor(selectedItem()!.source, selectedItem()!.kind) : null"
+              [chat]="activeRow()"
               [detailsVisible]="detailsShown()"
-              [actions]="store.detail()?.item?.availableActions ?? []"
-              [requesterId]="store.detail()?.item?.requestedBy?.id ?? null"
-              (action)="card()?.runAction($event)"
+              [selectedCase]="selectedCase()"
+              [caseEditable]="card()?.canEdit() ?? false"
+              [caseErrors]="card()?.editErrors() ?? {}"
+              [caseBusy]="store.busy()"
+              [caseVersion]="caseVersion()"
+              (openCase)="selectCase($event)"
+              (caseAction)="onCaseAction($event)"
+              (caseEdits)="card()?.setEdits($event)"
+              [groupedCases]="caseGroupKeys()"
+              (startCaseGroup)="openNewGroup($event)"
+              (forwardCase)="forwarding.set({ type: 'case', ...$event })"
+              (forwardMessage)="forwarding.set({ type: 'message', messageId: $event.messageId, title: $event.preview })"
+              (openChat)="openChat($event)"
+              (renamed)="chats.load()"
               (toggleDetails)="toggleDetails()"
-              (back)="close()"
+              (back)="closeChat()"
             />
           } @else {
             <div class="inbox__chat-empty" data-testid="inbox-chat-empty">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12Z" /></svg>
-              <p class="inbox__chat-empty-title">Select a ticket</p>
-              <p>Its conversation and details open here.</p>
+              @if (resolveError()) {
+                <p class="inbox__chat-empty-title">{{ resolveError() }}</p>
+              } @else {
+                <p class="inbox__chat-empty-title">Select a chat</p>
+                <p>Requests and alerts arrive in the chat with the person they are about.</p>
+              }
             </div>
           }
         </section>
 
-        @if (store.selectedRef() !== null) {
+        @if (chatRefValue() !== null) {
           <div class="inbox__scrim" aria-hidden="true" (click)="toggleDetails()"></div>
-          <aside class="inbox__panel inbox__details">
-            <app-inbox-item-card
-              #card
-              [detail]="store.detail()"
-              [loading]="store.detailLoading()"
-              [error]="store.detailError()"
-              [busy]="store.busy()"
-              [actionError]="store.actionError()"
-              [actionErrorInline]="store.actionErrorInline()"
-              [descriptor]="store.detail() ? kinds.descriptor(store.detail()!.item.source, store.detail()!.item.kind) : null"
-              (hide)="toggleDetails()"
-              (action)="onCardAction($event)"
-              (openTarget)="openTarget($event)"
-            />
+          <aside class="inbox__panel inbox__details" aria-label="Details">
+            @if (activeRow()?.type === 'direct') {
+              <div class="inbox__detail-tabs">
+                <app-tabs class="inbox__detail-tablist" data-testid="inbox-detail-tabs" ariaLabel="Details view"
+                  [tabs]="detailTabs()" [value]="detailTab()" (valueChange)="setDetailTab($event)" />
+                @if (caseGroupAction(); as label) {
+                  @if (detailTab() === 'ticket') {
+                    <button type="button" class="inbox__chip" [attr.data-testid]="selectedCaseGroup() ? 'inbox-open-case-group' : 'inbox-start-case-group'"
+                      (click)="openNewGroup(selectedCase())">{{ label }}</button>
+                  }
+                }
+              </div>
+            }
+            @if (selectedCase() && (activeRow()?.type !== 'direct' || detailTab() === 'ticket')) {
+              <app-inbox-item-card
+                #card
+                [detail]="store.detail()"
+                [loading]="store.detailLoading()"
+                [error]="store.detailError()"
+                [busy]="store.busy()"
+                [actionError]="store.actionError()"
+                [actionErrorInline]="store.actionErrorInline()"
+                [descriptor]="store.detail() ? kinds.descriptor(store.detail()!.item.source, store.detail()!.item.kind) : null"
+                [showHeading]="activeRow()?.type !== 'direct'"
+                (action)="onCardAction($event)"
+                (openTarget)="openTarget($event)"
+              >
+                <!-- One block around one element: only then does it land in the card's header slot. -->
+                @if (activeRow()?.type === 'group' && caseGroupAction()) {
+                  <button cardHeaderAction type="button" class="inbox__chip"
+                    [attr.data-testid]="selectedCaseGroup() ? 'inbox-open-case-group' : 'inbox-start-case-group'"
+                    (click)="openNewGroup(selectedCase())">{{ caseGroupAction() }}</button>
+                }
+              </app-inbox-item-card>
+            } @else if (activeRow()?.type === 'direct') {
+              @if (detailTab() === 'month') {
+                <app-person-cases-view [avatarFileId]="activeRow()!.avatarFileId" (open)="selectCase($event)" />
+              } @else {
+                <p class="inbox__detail-empty" data-testid="inbox-detail-empty">Pick a case in the chat or from the month to see its details.</p>
+              }
+            } @else {
+              <section class="inbox__members" data-testid="inbox-members">
+                <h3>Members · {{ conversation.participants().length }}</h3>
+                <ul>
+                  @for (p of conversation.participants(); track p.employeeId) {
+                    <li>{{ p.employeeId === myEmployeeId() ? 'You' : p.name }}
+                      @if (p.joinReason === 'viewer') { <span class="inbox__secondary">· escalation</span> }
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
           </aside>
         }
       </div>
     </div>
 
     <!-- Overlays sit outside the flex column so they add no gap below the workspace. -->
-    <app-inbox-comment-dialog
-      [open]="bulkPending()?.needsComment === true && bulkPending()?.key !== 'resolve'"
-      [title]="(bulkPending()?.label ?? '') + ' ' + selectedItems().length + ' items?'"
-      [confirmLabel]="bulkPending()?.label ?? ''"
-      (confirmed)="runBulk(bulkPending()!.key, $event, null)"
-      (closed)="bulkPending.set(null)"
+    <app-new-group-dialog
+      [open]="groupDialog() !== null"
+      [caseTitle]="groupDialog()?.caseTitle ?? null"
+      [initialPeople]="groupDialog()?.people ?? []"
+      [busy]="groupBusy()"
+      [error]="groupError()"
+      (created)="createGroup($event)"
+      (closed)="groupDialog.set(null)"
     />
-    <app-inbox-outcome-dialog
-      [open]="bulkPending()?.key === 'resolve'"
-      [title]="'Resolve ' + selectedItems().length + ' alerts'"
-      [outcomes]="bulkPending()?.outcomes ?? []"
-      (confirmed)="onBulkOutcome($event)"
-      (closed)="bulkPending.set(null)"
+    <app-forward-dialog
+      [open]="forwarding() !== null"
+      [caseTitle]="forwarding()?.title ?? ''"
+      [fromConversationId]="activeRow()?.conversationId ?? null"
+      [busy]="forwardBusy()"
+      [error]="forwardError()"
+      (send)="forward($event)"
+      (closed)="forwarding.set(null)"
     />
-    <app-bulk-action-result-modal [result]="bulkResult()" [names]="bulkNames()" noun="item" [showApprovals]="false"
-      (closed)="bulkResult.set(null)" />
     <app-approval-delegate-modal [open]="delegateOpen()" (closed)="delegateOpen.set(false)" />
   `,
   styles: [`
     :host { display: block; height: 100%; min-height: 0; }
-    .inbox { display: flex; height: 100%; min-height: 0; flex-direction: column; gap: 12px; }
+    .inbox { display: flex; height: 100%; min-height: 0; flex-direction: column; }
     /* Same sticky header as Work (global .work-page-header). */
     .inbox__page-header { margin-bottom: 0 !important; }
-    .inbox__header-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; min-height: 36px; }
-    .inbox__header-row app-breadcrumb-header { display: inline-flex; flex-shrink: 0; align-items: center; }
+    .inbox__header-row { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; min-height: 36px; }
+    .inbox__header-row app-breadcrumb-header { display: inline-flex; min-width: 0; flex-shrink: 1; align-items: center; overflow: hidden; }
     .inbox__header-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-    .inbox__icon-btn { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-secondary); cursor: pointer; }
-    .inbox__icon-btn:hover { border-color: var(--color-accent); color: var(--color-text-primary); }
-    .inbox__icon-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .inbox__icon-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-    .inbox__search-close { display: inline-flex; width: 20px; height: 20px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: none; color: var(--color-text-secondary); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
-    .inbox__search-close:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    .inbox__search { display: inline-flex; width: 320px; max-width: 100%; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
-    .inbox__search:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
-    .inbox__search svg { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 2; stroke-linecap: round; }
-    .inbox__search input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; outline: none; }
-    .inbox__tool-btn { height: 30px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
-    .inbox__tool-btn:hover { border-color: var(--color-accent); }
-    .inbox__tool-btn[aria-pressed="true"] { border-color: var(--color-accent); color: var(--color-accent); }
-    .inbox__tool-btn:focus-visible, .inbox__chip:focus-visible, .inbox__group-header:focus-visible, .inbox__sort:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+    .inbox__icon-btn { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 8px;
+      background: none; color: var(--color-text-secondary); cursor: pointer; }
+    .inbox__icon-btn:hover:not(:disabled), .inbox__icon-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--color-text-primary) 6%, transparent); color: var(--color-text-primary); }
+    .inbox__icon-btn:disabled { opacity: .45; cursor: default; }
+    .inbox__icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    /* The tabs and the group button share one row; the row draws the line under both. */
+    .inbox__detail-tabs { display: flex; align-items: flex-end; gap: 8px; margin: 8px 12px 0; border-bottom: 1px solid var(--color-border); }
+    .inbox__detail-tabs > .inbox__chip { margin-bottom: 5px; }
+    .inbox__detail-tablist { flex: 1; min-width: 0; }
+    .inbox__detail-tablist ::ng-deep [role='tablist'] { border-bottom: 0; }
+    .inbox__detail-empty { margin: 0; padding: 24px 16px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
+    .inbox__icon-btn:focus-visible, .inbox__chip:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 
-    /* The workspace: ticket list | conversation | ticket details, filling the rest of the page. */
-    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(400px, 40fr) minmax(0, 60fr); gap: 12px; }
-    .inbox__workspace--details { grid-template-columns: minmax(400px, 40fr) minmax(320px, 36fr) minmax(300px, 24fr); }
-    .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+    /* One surface split by lines, not three separate cards: chats | conversation | details. */
+    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr); background: var(--color-surface); }
+    .inbox__workspace--details { grid-template-columns: minmax(360px, 62fr) minmax(320px, 38fr); }
+    /* Wide screens: the workspace runs to the page's right and bottom edges, so the details panel is a full-height
+       column under the header line (the chat keeps the page's left gutter). */
+    @media (min-width: 1024px) {
+      .inbox__workspace { margin: 0 -2rem -1.75rem 0; }
+      .inbox__chat { padding-bottom: 12px; }
+    }
+    .inbox__list { border-right: 0; }
+    .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--color-surface); }
+    .inbox__details { border-left: 1px solid var(--color-border); }
     .inbox__details { display: none; }
     .inbox__workspace--details .inbox__details { display: flex; }
     .inbox__scrim { display: none; }
-
-    .inbox__tabs { padding: 6px 12px 0; }
-    .inbox__list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 4px; }
-    .inbox__segment { display: inline-flex; box-sizing: border-box; height: 30px; align-items: center; padding: 2px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-secondary); }
-    .inbox__segment-btn { height: 24px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .inbox__segment-btn--active { background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
-    .inbox__segment-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
-    .inbox__sort { display: inline-flex; height: 30px; align-items: center; gap: 4px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); font: inherit; font-size: 12px; cursor: pointer; }
-    .inbox__sort strong { color: var(--color-text-primary); font-weight: 600; }
-    .inbox__sort:hover { background: var(--color-surface-secondary); }
-    .inbox__sort svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .inbox__list-body { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 8px; overflow-y: auto; padding: 4px 8px 8px; }
-    /* Compact cells for the narrow list (beats the table's own encapsulated padding). */
-    .inbox__list-body ::ng-deep table.data-table th { padding: 8px; }
-    .inbox__list-body ::ng-deep table.data-table td { padding: 8px; }
+    .inbox__members { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+    .inbox__members h3 { margin: 0; font-size: 13px; font-weight: 650; }
+    .inbox__members ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
 
     .inbox__state { display: flex; align-items: center; gap: 8px; margin: 0; padding: 24px 8px; color: var(--color-text-secondary); font-size: 13px; }
     .inbox__state--error { color: var(--color-danger); }
     .inbox__state button { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-weight: 650; text-decoration: underline; cursor: pointer; }
-    .inbox__ticket { display: flex; min-width: 0; align-items: flex-start; gap: 10px; }
-    .inbox__ticket-text, .inbox__person-text { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
-    .inbox__title { display: flex; min-width: 0; align-items: center; gap: 8px; font-weight: 600; }
-    .inbox__unread { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 999px; background: var(--color-accent); }
-    .inbox__ellipsis { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .inbox__secondary { color: var(--color-text-secondary); font-size: 12px; }
-    .inbox__chips { display: flex; min-width: 0; align-items: center; gap: 6px; margin-top: 2px; }
-    .inbox__source { overflow: hidden; color: var(--color-text-secondary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-    .inbox__person { display: flex; min-width: 0; align-items: center; gap: 8px; }
-    .inbox__person app-avatar { flex: 0 0 auto; }
-    .inbox__pill { --tone: var(--color-accent); display: inline-block; max-width: 100%; overflow: hidden; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 12%, transparent); color: var(--tone); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-    .inbox__pill--sm { padding: 1px 8px; font-size: 11px; }
-    .inbox__pill--neutral { --tone: var(--color-text-secondary); }
-    .inbox__pill--warning { --tone: var(--color-warning, #d97706); }
-    .inbox__pill--danger { --tone: var(--color-danger); }
-    .inbox__kebab { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
-    .inbox__kebab:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    .inbox__kebab svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-    .inbox__pager { display: flex; align-items: center; justify-content: flex-end; gap: 12px; color: var(--color-text-secondary); font-size: 12px; }
-    .inbox__pager button { padding: 5px 10px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; cursor: pointer; }
-    .inbox__pager button:disabled { opacity: .5; cursor: default; }
+    .inbox__pill { padding: 3px 10px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+    .inbox__chip { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--color-accent); border-radius: 999px; background: var(--color-surface); color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .inbox__chip:disabled { opacity: .55; cursor: default; }
+    .inbox__history-body { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-y: auto; padding: 12px; }
     .inbox__history { display: flex; flex-direction: column; margin: 0; padding: 0; border: 1px solid var(--color-border); border-radius: 12px; list-style: none; }
     .inbox__history-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--color-border); }
     .inbox__history-row:last-child { border-bottom: 0; }
     .inbox__history-main { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; padding: 0; border: 0; background: none; color: var(--color-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
     .inbox__history-main:disabled { cursor: default; }
-    .inbox__chip { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--color-accent); border-radius: 999px; background: var(--color-surface); color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .inbox__chip:disabled { opacity: .55; cursor: default; }
-    .inbox__group { border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; }
-    .inbox__group-header { display: flex; width: 100%; align-items: center; gap: 8px; padding: 10px 14px; border: 0; background: var(--color-surface-secondary); color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 650; text-align: left; cursor: pointer; }
-    .inbox__group-caret { width: 12px; color: var(--color-text-secondary); }
-    .inbox__group-list { margin: 0; padding: 0; list-style: none; }
-    .inbox__group-row { display: flex; width: 100%; min-width: 0; align-items: center; gap: 11px; padding: 9px 14px; border: 0; border-top: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
-    .inbox__group-row:hover { background: var(--color-surface-secondary); }
-    .inbox__group-row--active { background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); }
+    .inbox__history-title { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 
     .inbox__chat-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 24px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
     .inbox__chat-empty svg { width: 36px; height: 36px; margin-bottom: 6px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -454,7 +338,6 @@ function withCount(label: string, n: number): string {
     @media (max-width: 1023px) {
       .inbox__workspace, .inbox__workspace--details { grid-template-columns: minmax(0, 1fr); }
       .inbox__chat { display: none; }
-      .inbox__workspace--open .inbox__list { display: none; }
       .inbox__workspace--open .inbox__chat { display: flex; }
       .inbox__workspace--details .inbox__details { display: none; }
       .inbox__workspace--drawer .inbox__scrim { position: fixed; inset: 0; z-index: 1000; display: block; background: color-mix(in srgb, var(--color-text-primary) 35%, transparent); }
@@ -464,204 +347,285 @@ function withCount(label: string, n: number): string {
 })
 export class InboxPageComponent implements OnInit {
   protected readonly store = inject(InboxStore);
+  protected readonly chats = inject(InboxChatsStore);
+  protected readonly conversation = inject(ConversationStore);
   protected readonly kinds = inject(InboxKindsStore);
+  private readonly personCases = inject(InboxPersonCasesStore);
+  private readonly chatsApi = inject(InboxChatsApiService);
   private readonly auth = inject(AuthStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   readonly card = viewChild<InboxItemCardComponent>('card');
+  private readonly panel = viewChild<ConversationPanelComponent>('panel');
 
-  protected readonly columns = computed<DataTableColumn[]>(() => [
-    { key: 'ticket', label: `Tickets (${this.store.total()})` },
-    { key: 'person', label: 'Requested by', width: '120px', hideLabel: true },
-    { key: 'status', label: 'Status', width: '92px', hideLabel: true },
-    { key: 'actions', label: 'Actions', width: '36px', interactive: true, align: 'end', hideLabel: true }
-  ]);
-  protected readonly directionOptions = DIRECTION_OPTIONS;
-  protected readonly trackItem = (item: InboxItemDto): string => `${item.source}:${item.kind}:${item.id}`;
-  protected readonly rowTestId = (): string => 'inbox-row';
-  /** Only kinds that declare Bulk can be bulk-selected. */
-  protected readonly isSelectable = (item: InboxItemDto): boolean => this.kinds.has(item.source, item.kind, InboxCapability.Bulk);
-  protected readonly emptySelection: ReadonlySet<string> = new Set<string>();
   protected readonly canDelegate = inject(PermissionService).hasPermission(LEAVE_APPROVE);
+  protected readonly chatRef = chatRef;
 
-  /** Tab, direction, search and filters - mirrored in the URL query string. */
-  protected readonly state = signal<InboxPageState>({ tab: 'all', direction: 'all', search: '', sort: 'latest', filters: {} });
-  protected readonly search = signal('');
-  protected readonly searchExpanded = signal(false);
-  /** The avatar stack's selection: the requestedBy filter, which is absent until someone is picked. */
-  protected readonly requestedByFilter = computed(() => {
-    const filters: Record<string, string[] | undefined> = this.state().filters;
-    return filters['requestedBy'] ?? [];
-  });
-  protected readonly myEmployeeId = computed(() => this.auth.employeeId?.() ?? '');
-  /** Everyone the inbox can be narrowed to (Work's requestedBy + other sources' employee facets), for the avatar stack. */
-  protected readonly people = computed<TaskAssigneeAvatarMember[]>(() => {
-    const byId = new Map<string, TaskAssigneeAvatarMember>();
-    for (const field of this.store.filterFields())
-      if (field.key === 'requestedBy' || field.key === 'employee')
-        for (const o of field.options) if (!byId.has(o.value)) byId.set(o.value, { employeeId: o.value, name: o.label });
-    return [...byId.values()];
-  });
-  protected readonly busyRowId = signal<string | null>(null);
-  protected readonly grouped = signal(false);
-  protected readonly collapsed = signal<ReadonlySet<string>>(new Set());
-  protected readonly selectedIds = signal<ReadonlySet<string>>(new Set());
-  protected readonly bulkPending = signal<InboxBulkActionChoice | null>(null);
-  protected readonly bulkResult = signal<BulkResultSummary | null>(null);
-  protected readonly bulkNames = signal<ReadonlyMap<string, string>>(new Map());
+  /** The open chat's subject (from the URL). */
+  protected readonly chatRefValue = signal<InboxItemRef | null>(null);
+  /** The case shown in the details panel (?case=, or a case group's own case). */
+  protected readonly selectedCase = signal<InboxItemRef | null>(null);
+  /** A link to a case the user has no chat for. */
+  protected readonly resolveError = signal<string | null>(null);
+  /** A 1-on-1 chat just started from the search: shown in the header until the list has it. */
+  protected readonly history = signal(false);
+  protected readonly caseVersion = signal(0);
   protected readonly delegateOpen = signal(false);
+  protected readonly groupDialog = signal<{ caseRef: InboxItemRef | null; caseTitle: string | null; people: PeoplePickerOption[] } | null>(null);
+  protected readonly groupBusy = signal(false);
+  protected readonly groupError = signal<string | null>(null);
+  /** The case card or chat message being forwarded (the picker is open). */
+  protected readonly forwarding = signal<
+    ({ type: 'case'; title: string } & InboxItemRef) | { type: 'message'; messageId: string; title: string } | null>(null);
+  protected readonly forwardBusy = signal(false);
+  protected readonly forwardError = signal<string | null>(null);
+
   private readonly media = typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(NARROW_QUERY) : null;
   /** Below 1024px the workspace is one screen at a time (list, chat, details drawer). */
   protected readonly narrow = signal(this.media?.matches ?? false);
   protected readonly detailsHidden = signal(readDetailsHidden());
   protected readonly drawerOpen = signal(false);
   protected readonly detailsShown = computed(() =>
-    this.store.selectedRef() !== null && (this.narrow() ? this.drawerOpen() : !this.detailsHidden()));
-  /** The open ticket for the chat header: the loaded detail when it is this ticket, else its list row. */
-  protected readonly selectedItem = computed(() => {
-    const ref = this.store.selectedRef();
-    if (!ref) return null;
-    const detail = this.store.detail()?.item;
-    return detail && sameRef(detail, ref) ? detail : this.store.items().find((i) => sameRef(i, ref)) ?? null;
-  });
-  private readonly sourceLabels = computed(() =>
-    new Map((this.store.filterFields().find((f) => f.key === 'source')?.options ?? []).map((o) => [o.value, o.label])));
-  protected readonly sortMenu = computed<MenuItem[]>(() =>
-    SORT_OPTIONS.map((o) => ({ id: o.id, label: o.label, iconPath: o.id === this.state().sort ? CHECK_ICON : undefined })));
-  protected readonly sortLabel = computed(() => SORT_OPTIONS.find((o) => o.id === this.state().sort)?.short ?? 'Latest');
-  private readonly searchChanges = new Subject<string>();
+    this.chatRefValue() !== null && (this.narrow() ? this.drawerOpen() : !this.detailsHidden()));
+  protected readonly myEmployeeId = computed(() => this.auth.employeeId() ?? null);
 
-  protected readonly filterValues = computed(() => ({ requestedOn: ['any'], ...this.state().filters }));
-  protected readonly filterFields = computed<FilterFieldConfig[]>(() => {
-    const fields = toFilterFields(this.store.filterFields());
-    if (fields.some((f) => f.key === 'kind')) return fields;
-    // The kind filter comes from the registry; same-named kinds of different sources share one option.
-    const options = new Map<string, string>();
-    for (const k of this.kinds.kinds()) if (!options.has(k.kind)) options.set(k.kind, k.label);
-    if (options.size === 0) return fields;
-    const kind: FilterFieldConfig = { key: 'kind', label: 'Kind', icon: 'type', kind: 'multi', options: [...options].map(([value, label]) => ({ value, label })) };
-    return [...fields.slice(0, -1), kind, fields[fields.length - 1]];
+  /** The open chat's row in the list (or the chat just started from the search). */
+  protected readonly activeRow = computed<InboxChatRowDto | null>(() => {
+    const ref = this.chatRefValue();
+    if (!ref) return null;
+    return this.chats.rows().find((r) => sameRef(chatRef(r), ref))
+      ?? (this.chats.started() && sameRef(chatRef(this.chats.started()!), ref) ? this.chats.started() : null);
   });
-  protected readonly tabs = computed<TabOption[]>(() => {
-    const n = tabCounts(this.store.counts(), this.kinds.kinds());
-    return [
-      { value: 'all', label: withCount('All', n.all) },
-      { value: 'request', label: withCount('Requests', n.request) },
-      { value: 'alert', label: withCount('Alerts', n.alert) },
-      { value: 'history', label: 'History' }
-    ];
+  /** A 1-on-1 chat's details panel: the open ticket, or the person's month of requests and alerts. */
+  protected readonly detailTab = signal<'ticket' | 'month'>('month');
+  /** The month tab is named after the month it shows ("October 2026"). */
+  protected readonly detailTabs = computed<TabOption[]>(() => {
+    const year = this.personCases.year();
+    const month = this.personCases.month();
+    const label = year && month
+      ? new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })
+      : 'This month';
+    return [{ value: 'ticket', label: 'Ticket details' }, { value: 'month', label }];
   });
-  protected readonly currentTabLabel = computed(() => TAB_LABELS[this.state().tab]);
-  protected readonly activeRowId = computed(() => {
-    const ref = this.store.selectedRef();
-    return ref ? `${ref.source}:${ref.kind}:${ref.id}` : null;
+  /** Opening a case shows its ticket; with none open the panel shows the month. */
+  private readonly syncDetailTab = effect(() => {
+    const open = this.selectedCase() !== null;
+    untracked(() => this.detailTab.set(open ? 'ticket' : 'month'));
   });
-  protected readonly page = computed(() => this.store.query().page ?? 1);
-  protected readonly pageCount = computed(() => Math.max(1, Math.ceil(this.store.total() / (this.store.query().pageSize ?? 25))));
-  protected readonly historyPage = computed(() => this.store.historyQuery().page ?? 1);
-  protected readonly historyPageCount = computed(() =>
-    Math.max(1, Math.ceil(this.store.historyTotal() / (this.store.historyQuery().pageSize ?? 25))));
-  protected readonly emptyMessage = computed(() => this.isFiltered()
-    ? 'Nothing matches these filters.'
-    : 'Nothing here yet. Requests and alerts that involve you will show up here.');
-  protected readonly groups = computed(() => groupByEmployee(this.store.items()));
-  protected readonly selectable = computed(() => this.store.items().some(this.isSelectable));
-  /** Selected rows still on the page (a refresh drops the ones that left). */
-  protected readonly selectedItems = computed(() => this.store.items().filter((i) => this.selectedIds().has(this.trackItem(i))));
-  private readonly bulkChoices = computed(() => bulkActionsFor(this.selectedItems(), (s, k) => this.kinds.descriptor(s, k)));
-  protected readonly bulkBarActions = computed<BulkAction[]>(() => {
-    const choices = this.bulkChoices();
-    if (choices.length === 0)
-      return [{ id: 'none', label: 'No common action', placement: 'primary', disabled: true, disabledReason: 'The selected items share no action.' }];
-    return choices.map((c) => ({ id: c.key, label: c.label, placement: 'primary', danger: c.key === 'reject' }));
+  /** The details' group button: "Open group" when the case has one; "Start a group" only while it is still open. */
+  protected readonly caseGroupAction = computed<string | null>(() => {
+    const ref = this.selectedCase();
+    if (!ref) return null;
+    if (this.selectedCaseGroup()) return 'Open group';
+    const detail = this.store.detail();
+    return detail && sameRef(detail.item, ref) && isCaseClosed(detail.item.status) ? null : 'Start a group';
+  });
+  /** The case groups in the viewer's chat list, by case. */
+  protected readonly caseGroupKeys = computed<ReadonlySet<string>>(() => new Set(this.chats.rows()
+    .filter((r) => r.type === 'case' && r.caseItem)
+    .map((r) => `${r.caseItem!.source}:${r.caseItem!.kind}:${r.caseItem!.id}`)));
+  /** The open case's group when one exists: "Open group" instead of starting another. */
+  protected readonly selectedCaseGroup = computed<InboxChatRowDto | null>(() => {
+    const ref = this.selectedCase();
+    return ref ? this.chats.rows().find((r) => r.type === 'case' && !!r.caseItem && sameRef(r.caseItem, ref)) ?? null : null;
+  });
+  /** The open chat's name, as the breadcrumb's last level. */
+  protected readonly crumbChat = computed(() =>
+    this.history() || this.chatRefValue() === null ? null : this.activeRow()?.title ?? (this.conversation.title() || null));
+  /** The open chat, whose tools sit in the header row on wide screens (phones show them in the chat's own header). */
+  protected readonly chatTools = computed(() => (this.history() || this.narrow() ? null : this.panel() ?? null));
+  protected readonly headerMenu = computed<MenuItem[]>(() => {
+    const chatItems = this.chatTools()?.menuItems() ?? [];
+    const items: MenuItem[] = [...chatItems, { id: 'history', label: this.history() ? 'Back to chats' : 'History', dividerBefore: chatItems.length > 0 }];
+    if (this.canDelegate) items.push({ id: 'delegate', label: 'Delegate my approvals' });
+    return items;
+  });
+  /** The details panel's person: the other person of a 1-on-1 chat. */
+  private readonly loadPerson = effect(() => {
+    const row = this.activeRow();
+    const person = row?.type === 'direct' ? row.otherEmployeeId : null;
+    const name = row?.title ?? '';
+    untracked(() => {
+      if (person !== this.personCases.personId()) void this.personCases.load(person, name, this.auth.employeeId() ?? null);
+    });
+  });
+
+  /** A case group's details show its case. */
+  private readonly caseGroupCase = effect(() => {
+    const row = this.activeRow();
+    if (row?.type === 'case' && row.caseItem && !this.selectedCase())
+      untracked(() => this.selectCase({ source: row.caseItem!.source, kind: row.caseItem!.kind, id: row.caseItem!.id }));
+  });
+
+  /** The open chat was read: its badge clears without waiting for a reload. */
+  private readonly markRead = effect(() => {
+    const id = this.conversation.conversationId();
+    if (id && !this.conversation.loading()) untracked(() => this.chats.markRead(id));
   });
 
   ngOnInit(): void {
-    const params: Record<string, string> = {};
-    const snapshot = this.route.snapshot?.queryParamMap;
-    for (const key of snapshot?.keys ?? []) params[key] = snapshot!.get(key) ?? '';
-    // A browser refresh (the app's first navigation) always opens the first tab; in-app links (bell, renderers) keep theirs.
-    const nav = this.router.currentNavigation?.() ?? this.router.lastSuccessfulNavigation?.();
-    const isPageLoad = !!nav && !nav.previousNavigation;
-    if (isPageLoad && params['tab']) delete params['tab'];
-    const initial = pageStateFromParams(params);
-    this.state.set(initial);
-    if (isPageLoad && snapshot?.has('tab'))
-      void this.router.navigate([], { relativeTo: this.route, queryParams: pageStateToParams(initial), replaceUrl: true });
-    this.search.set(initial.search);
-    void this.loadForState();
-    void this.store.loadFilters();
-    void this.store.loadCounts();
     void this.kinds.ensureLoaded();
+    void this.store.loadCounts();
+    if (!this.chats.loaded()) void this.chats.load();
     const onMedia = (event: MediaQueryListEvent) => this.narrow.set(event.matches);
     this.media?.addEventListener?.('change', onMedia);
     this.destroyRef.onDestroy(() => this.media?.removeEventListener?.('change', onMedia));
 
-    this.searchChanges.pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
-      .subscribe((search) => this.applyState({ search }));
-
-    // The component is reused across /inbox navigations (nav item, bell, renderer links), so follow the query string
-    // whenever it no longer matches the page state; the page's own URL writes echo back equal and are ignored.
-    // skip(1): the first emission is the snapshot read above.
-    this.route.queryParamMap?.pipe(skip(1), takeUntilDestroyed(this.destroyRef)).subscribe((map) => {
-      const params: Record<string, string> = {};
-      for (const key of map.keys) params[key] = map.get(key) ?? '';
-      const next = pageStateFromParams(params);
-      if (sameParams(pageStateToParams(next), pageStateToParams(this.state()))) return;
-      this.selectedIds.set(this.emptySelection);
-      this.state.set(next);
-      this.search.set(next.search);
-      void this.loadForState();
-    });
-
-    // The URL is the source of truth for the selection, so back/forward and deep links work.
+    // The URL is the source of truth for the open chat and case, so back/forward and deep links work.
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const source = params.get('source');
       const kind = params.get('kind');
       const id = params.get('id');
-      const ref = source && kind && id ? { source, kind, id } : null;
-      const current = this.store.selectedRef();
-      if (ref ? !sameRef(ref, current) : current !== null) void this.store.select(ref);
+      void this.follow(source && kind && id ? { source, kind, id } : null);
+    });
+    this.route.queryParamMap?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((map) => {
+      const ref = parseCaseParam(map.get('case'));
+      if (ref ? !sameRef(ref, this.selectedCase()) : this.selectedCase() !== null && this.activeRow()?.type !== 'case')
+        void this.showCase(ref);
     });
   }
 
-  protected refOf(item: InboxItemDto): InboxItemRef {
-    return { source: item.source, kind: item.kind, id: item.id };
+  /** A chat's URL opens it; a request's or alert's URL finds the chat it is worked on in. */
+  private async follow(ref: InboxItemRef | null): Promise<void> {
+    this.resolveError.set(null);
+    if (!ref) {
+      this.chatRefValue.set(null);
+      void this.showCase(null);
+      return;
+    }
+    if (isPeopleChatSource(ref.source)) {
+      if (!sameRef(ref, this.chatRefValue())) {
+        this.chatRefValue.set(ref);
+        if (!parseCaseParam(this.route.snapshot?.queryParamMap.get('case') ?? null)) void this.showCase(null);
+      }
+      return;
+    }
+    // A case group is addressed by its case; any other case link is resolved to the chat that carries its card.
+    try {
+      const row = await firstValueFrom(this.chatsApi.forItem(ref));
+      if (row.type === 'case') {
+        this.chatRefValue.set(chatRef(row));
+        void this.showCase(ref);
+      } else {
+        void this.router.navigate(['/inbox', row.source, row.kind, row.subjectId], { queryParams: { case: caseParam(ref) }, replaceUrl: true });
+      }
+    } catch {
+      this.chatRefValue.set(null);
+      this.resolveError.set('This request or alert is not in any of your chats.');
+    }
   }
 
-  protected meta(item: InboxItemDto) { return inboxTypeMeta(item, this.kinds.descriptor(item.source, item.kind)); }
-  protected title(item: InboxItemDto): string { return inboxTitle(item); }
-  protected subtitle(item: InboxItemDto): string { return inboxSubtitle(item); }
-  protected status(item: InboxItemDto): string { return inboxStatusLabel(item); }
-  protected tone(item: InboxItemDto): string { return inboxStatusTone(item); }
-  protected sourceLabel(item: InboxItemDto): string {
-    return this.sourceLabels().get(item.source) ?? item.source.charAt(0).toUpperCase() + item.source.slice(1);
+  private async showCase(ref: InboxItemRef | null): Promise<void> {
+    this.selectedCase.set(ref);
+    await this.store.select(ref);
   }
 
-  protected menuFor(item: InboxItemDto): MenuItem[] {
-    const detail = this.store.detail();
-    return inboxMenuItems(item, !!detail?.target && sameRef(detail.item, item));
-  }
-
-  /** Opening or closing an item keeps the list's tab and filters (query string). */
-  open(ref: InboxItemRef): void {
-    void this.router.navigate(['/inbox', ref.source, ref.kind, ref.id], { queryParamsHandling: 'preserve' });
-  }
-
-  close(): void {
+  protected openChat(ref: InboxItemRef): void {
     this.drawerOpen.set(false);
-    void this.router.navigate(['/inbox'], { queryParamsHandling: 'preserve' });
+    void this.router.navigate(['/inbox', ref.source, ref.kind, ref.id]);
   }
 
-  /** Hide/show the ticket details: a remembered preference on wide screens, a drawer on narrow ones. */
+  /** History and links: open the chat that carries the item. */
+  protected openItem(ref: InboxItemRef): void {
+    this.history.set(false);
+    void this.router.navigate(['/inbox', ref.source, ref.kind, ref.id]);
+  }
+
+  protected closeChat(): void {
+    this.drawerOpen.set(false);
+    void this.router.navigate(['/inbox']);
+  }
+
+  /** A case card or a row of the person's month was clicked: its details open on the right. */
+  protected selectCase(ref: InboxItemRef | null): void {
+    // The same case again (e.g. from the month tab) still has to bring its details forward.
+    if (ref) this.detailTab.set('ticket');
+    if (ref && this.narrow()) this.drawerOpen.set(true);
+    if (ref && !this.narrow() && this.detailsHidden()) this.setDetailsHidden(false);
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { case: ref ? caseParam(ref) : null }, queryParamsHandling: 'merge' });
+  }
+
+  protected setDetailTab(tab: string): void {
+    this.detailTab.set(tab === 'ticket' ? 'ticket' : 'month');
+  }
+
+  /** "New group", or - with a case - the case's own group (from a 1-on-1 chat's "Add people" or the details). */
+  protected openNewGroup(caseRef: InboxItemRef | null): void {
+    // The case already has its group: open it rather than starting another.
+    const existing = caseRef ? this.chats.rows().find((r) => r.type === 'case' && !!r.caseItem && sameRef(r.caseItem, caseRef)) : null;
+    if (existing) {
+      this.openChat(chatRef(existing));
+      return;
+    }
+    const row = this.activeRow();
+    const detail = this.store.detail();
+    const caseTitle = caseRef ? (detail && sameRef(detail.item, caseRef) ? inboxTitle(detail.item) : 'This case') : null;
+    // From a 1-on-1 chat, a plain group starts with its other person already picked.
+    const people = !caseRef && row?.type === 'direct' && row.otherEmployeeId ? [{ id: row.otherEmployeeId, name: row.title }] : [];
+    this.groupError.set(null);
+    this.groupDialog.set({ caseRef, caseTitle, people });
+  }
+
+  protected async createGroup(choice: NewGroupChoice): Promise<void> {
+    const dialog = this.groupDialog();
+    if (!dialog) return;
+    this.groupBusy.set(true);
+    this.groupError.set(null);
+    try {
+      const chat = dialog.caseRef
+        ? await firstValueFrom(this.chatsApi.startCaseGroup(dialog.caseRef, choice.employeeIds))
+        : await firstValueFrom(this.chatsApi.createGroup(choice.name, choice.employeeIds));
+      this.groupDialog.set(null);
+      await this.chats.load();
+      this.openChat(chatRef(chat));
+    } catch (err) {
+      this.groupError.set((err as { error?: { detail?: string } })?.error?.detail ?? 'The group could not be created.');
+    } finally {
+      this.groupBusy.set(false);
+    }
+  }
+
+  /** WhatsApp-style forward: a copy of the case card or message goes into each picked chat. */
+  protected async forward(targets: ForwardTargets): Promise<void> {
+    const what = this.forwarding();
+    if (!what) return;
+    this.forwardBusy.set(true);
+    this.forwardError.set(null);
+    try {
+      // People with no chat yet: their 1-on-1 chat is started first (the same as starting one from the search).
+      const started = await Promise.all(targets.employeeIds.map((id) => firstValueFrom(this.chatsApi.openDirect(id))));
+      const conversationIds = [...targets.conversationIds, ...started.map((c) => c.conversationId)];
+      const count = await firstValueFrom(what.type === 'case'
+        ? this.chatsApi.forward({ source: what.source, kind: what.kind, id: what.id }, conversationIds)
+        : this.chatsApi.forwardMessage(what.messageId, conversationIds));
+      this.forwarding.set(null);
+      this.notifications.success(count === 1 ? 'Forwarded' : `Forwarded to ${count} chats`);
+      void this.chats.load();
+    } catch (err) {
+      this.forwardError.set((err as { error?: { detail?: string } })?.error?.detail ?? (what.type === 'case' ? 'The case could not be forwarded.' : 'The message could not be forwarded.'));
+    } finally {
+      this.forwardBusy.set(false);
+    }
+  }
+
+  /** Hide/show the details: a remembered preference on wide screens, a drawer on narrow ones. */
+  protected onHeaderMenu(id: string): void {
+    if (id === 'history') this.toggleHistory();
+    else if (id === 'delegate') this.delegateOpen.set(true);
+    else this.panel()?.onSlashCommand(id);
+  }
+
   protected toggleDetails(): void {
     if (this.narrow()) {
       this.drawerOpen.update((open) => !open);
       return;
     }
-    const hidden = !this.detailsHidden();
+    this.setDetailsHidden(!this.detailsHidden());
+  }
+
+  private setDetailsHidden(hidden: boolean): void {
     this.detailsHidden.set(hidden);
     try {
       localStorage.setItem(DETAILS_HIDDEN_KEY, hidden ? '1' : '0');
@@ -670,53 +634,50 @@ export class InboxPageComponent implements OnInit {
     }
   }
 
-  protected onSort(id: string): void {
-    this.applyState({ sort: id as InboxSort });
-  }
-
-  protected onTab(value: string): void {
-    this.selectedIds.set(this.emptySelection);
-    this.applyState({ tab: value as InboxTab });
-  }
-
-  protected onDirection(value: string): void {
-    this.applyState({ direction: value as InboxDirectionChoice });
-  }
-
-  protected closeSearch(): void {
-    this.searchExpanded.set(false);
-    if (this.search()) this.onSearch('');
-  }
-
-  protected onSearch(value: string): void {
-    this.search.set(value);
-    this.searchChanges.next(value);
-  }
-
-  protected onFilterChanged(event: { key: string; values: string[] }): void {
-    this.applyState({ filters: { ...this.state().filters, [event.key]: event.values } });
-  }
-
-  /** Updates the state, mirrors it in the URL (replacing the entry) and reloads what the tab shows. */
-  private applyState(patch: Partial<InboxPageState>): void {
-    this.state.update((s) => ({ ...s, ...patch }));
-    void this.router.navigate([], { relativeTo: this.route, queryParams: pageStateToParams(this.state()), replaceUrl: true });
-    void this.loadForState();
-  }
-
-  private loadForState(): Promise<void> {
-    const state = this.state();
-    if (state.tab === 'history') {
-      return this.store.loadHistory({
-        source: state.filters['source']?.[0] ?? null,
-        kind: state.filters['kind']?.[0] ?? null,
-        from: requestedOnFrom(state.filters['requestedOn']?.[0])
-      });
+  protected toggleHistory(): void {
+    const next = !this.history();
+    this.history.set(next);
+    if (next) {
+      this.drawerOpen.set(false);
+      void this.store.loadHistory({});
     }
-    return this.store.applyFilter(pageStateToQuery(state, this.auth.employeeId?.() ?? null));
   }
 
-  // ---- History -----------------------------------------------------------------------------------
+  // ---- Case actions ----------------------------------------------------------------------------------
+
+  /** A card's button runs exactly like the details panel's: the case opens there (dialogs, edits) and runs. */
+  protected async onCaseAction(event: CaseCardAction): Promise<void> {
+    if (!sameRef(event.ref, this.selectedCase()) || !sameRef(this.store.detail()?.item, event.ref)) {
+      this.selectCase(event.ref);
+      await this.showCase(event.ref);
+    }
+    if (this.narrow()) this.drawerOpen.set(true);
+    else if (this.detailsHidden()) this.setDetailsHidden(false);
+    // The card renders once the details panel has the case.
+    setTimeout(() => this.card()?.runAction(event.key));
+  }
+
+  protected onCardAction(event: InboxCardAction): void {
+    const ref = this.selectedCase();
+    if (ref) void this.runAction(ref, event.key, event.body);
+  }
+
+  private async runAction(ref: InboxItemRef, key: string, body: InboxCardAction['body']): Promise<void> {
+    const ok = await this.store.runAction(ref, key, body);
+    if (ok) {
+      this.notifications.success('Done');
+      this.caseVersion.update((v) => v + 1);
+      void this.chats.load();
+    } else {
+      this.notifications.error(this.store.actionError() ?? 'The action failed.');
+    }
+  }
+
+  protected openTarget(target: InboxTargetDto): void {
+    void this.router.navigate(target.route, { queryParams: target.queryParams ?? undefined });
+  }
+
+  // ---- History -----------------------------------------------------------------------------------------
 
   protected canUndo(entry: InboxHistoryEntryDto): boolean {
     return entry.canRevert && !!entry.revertableUntil && new Date(entry.revertableUntil).getTime() > Date.now();
@@ -725,112 +686,5 @@ export class InboxPageComponent implements OnInit {
   protected async undoFromHistory(entry: InboxHistoryEntryDto): Promise<void> {
     if (await this.store.revertFromHistory(entry)) this.notifications.success('Undone');
     else this.notifications.error(this.store.actionError() ?? 'The decision could not be undone.');
-  }
-
-  protected openHistory(entry: InboxHistoryEntryDto): void {
-    if (entry.item) this.open({ source: entry.source, kind: entry.kind, id: entry.itemId });
-  }
-
-  // ---- Group by employee --------------------------------------------------------------------------
-
-  protected toggleGroup(key: string): void {
-    const next = new Set(this.collapsed());
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    this.collapsed.set(next);
-  }
-
-  // ---- Bulk ---------------------------------------------------------------------------------------
-
-  protected onRowSelection(event: { row: InboxItemDto; selected: boolean }): void {
-    if (!this.isSelectable(event.row)) return;
-    const next = new Set(this.selectedIds());
-    if (event.selected) next.add(this.trackItem(event.row));
-    else next.delete(this.trackItem(event.row));
-    this.selectedIds.set(next);
-  }
-
-  protected onSelectAll(selected: boolean): void {
-    this.selectedIds.set(selected ? new Set(this.store.items().filter(this.isSelectable).map(this.trackItem)) : this.emptySelection);
-  }
-
-  protected onBulkAction(key: string): void {
-    const choice = this.bulkChoices().find((c) => c.key === key);
-    if (!choice) return;
-    if (choice.needsComment || choice.key === 'resolve') this.bulkPending.set(choice);
-    else void this.runBulk(choice.key, null, null);
-  }
-
-  protected onBulkOutcome(choice: InboxOutcomeChoice): void {
-    void this.runBulk('resolve', choice.comment, choice.outcome);
-  }
-
-  protected async runBulk(action: string, comment: string | null, outcome: string | null): Promise<void> {
-    this.bulkPending.set(null);
-    const items = this.selectedItems();
-    const result = await this.store.runBulk({ action, items: items.map((i) => this.refOf(i)), comment, outcome });
-    if (!result) {
-      this.notifications.error(this.store.actionError() ?? 'The bulk action failed.');
-      return;
-    }
-    this.selectedIds.set(this.emptySelection);
-    if (result.failed.length === 0) {
-      this.notifications.success(`${result.succeeded.length} done`);
-      return;
-    }
-    const id = (ref: InboxItemRef) => `${ref.source}:${ref.kind}:${ref.id}`;
-    this.bulkNames.set(new Map(items.map((i) => [this.trackItem(i), inboxTitle(i)])));
-    this.bulkResult.set({
-      items: [
-        ...result.succeeded.map((ref) => ({ id: id(ref), outcome: 'succeeded' as const, reason: null })),
-        ...result.failed.map((f) => ({ id: id(f.ref), outcome: 'failed' as const, reason: f.message }))
-      ],
-      succeeded: result.succeeded.length,
-      pendingApproval: 0,
-      failed: result.failed.length
-    });
-  }
-
-  private isFiltered(): boolean {
-    const q = this.store.query();
-    const lists = [q.category, q.direction, q.project, q.source, q.type, q.status, q.requestedBy];
-    return lists.some((l) => (l?.length ?? 0) > 0) || !!q.search?.trim() || !!q.from
-      || Object.values(q.facets ?? {}).some((v) => v.length > 0);
-  }
-
-  protected onRowMenu(item: InboxItemDto, id: string): void {
-    const ref = this.refOf(item);
-    if (id === 'view') this.open(ref);
-    else if (id === 'open' && this.store.detail()?.target) this.openTarget(this.store.detail()!.target!);
-    else if (id === 'copy') void this.copyLink(ref);
-    else if (id.startsWith('action:')) void this.runAction(ref, id.slice('action:'.length), {});
-  }
-
-  protected onCardAction(event: InboxCardAction): void {
-    const ref = this.store.selectedRef();
-    if (ref) void this.runAction(ref, event.key, event.body);
-  }
-
-  async runAction(ref: InboxItemRef, key: string, body: InboxCardAction['body']): Promise<boolean> {
-    this.busyRowId.set(`${ref.source}:${ref.kind}:${ref.id}`);
-    const ok = await this.store.runAction(ref, key, body);
-    this.busyRowId.set(null);
-    if (ok) this.notifications.success('Done');
-    else this.notifications.error(this.store.actionError() ?? 'The action failed.');
-    return ok;
-  }
-
-  openTarget(target: InboxTargetDto): void {
-    void this.router.navigate(target.route, { queryParams: target.queryParams ?? undefined });
-  }
-
-  private async copyLink(ref: InboxItemRef): Promise<void> {
-    const url = `${location.origin}/inbox/${ref.source}/${ref.kind}/${ref.id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      this.notifications.success('Link copied');
-    } catch {
-      this.notifications.error('Could not copy the link.');
-    }
   }
 }

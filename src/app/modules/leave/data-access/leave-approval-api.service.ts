@@ -5,15 +5,12 @@ import { environment } from '../../../../environments/environment';
 import {
   ApproveLeaveRequestRequest,
   ChangeLeaveDecisionRequest,
-  ForwardLeaveRequestRequest,
   LeaveApprovalDecisionResponse,
   LeaveApprovalDetailResponse,
   LeaveApprovalListFilter,
   LeaveRequestAllListFilter,
   LeaveRequestAllListItemResponse,
-  RejectLeaveRequestRequest,
-  RequestLeaveInformationRequest,
-  RespondLeaveInformationRequest
+  RejectLeaveRequestRequest
 } from '../models/leave-approval.model';
 import { CancelLeaveRequestRequest, CancelLeaveRequestResponse } from '../models/leave-request.model';
 
@@ -45,20 +42,8 @@ export class LeaveApprovalApiService {
     return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/reject`, payload);
   }
 
-  requestInfo(requestId: string, payload: RequestLeaveInformationRequest): Observable<LeaveApprovalDecisionResponse> {
-    return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/request-info`, payload);
-  }
-
-  forward(requestId: string, payload: ForwardLeaveRequestRequest): Observable<LeaveApprovalDecisionResponse> {
-    return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/forward`, payload);
-  }
-
   changeDecision(requestId: string, payload: ChangeLeaveDecisionRequest): Observable<LeaveApprovalDecisionResponse> {
     return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/change-decision`, payload);
-  }
-
-  respondInfo(requestId: string, payload: RespondLeaveInformationRequest): Observable<LeaveApprovalDecisionResponse> {
-    return this.http.post<LeaveApprovalDecisionResponse>(`${environment.apiUrl}/leave/requests/${requestId}/respond-info`, payload);
   }
 
   cancel(requestId: string, payload: CancelLeaveRequestRequest): Observable<CancelLeaveRequestResponse> {

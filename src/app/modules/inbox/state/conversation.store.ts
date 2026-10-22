@@ -64,7 +64,8 @@ export const ConversationStore = signalStore(
     /** First message the user had not read when the chat opened (null = all read). */
     unreadFromId: computed(() => {
       const since = store.openedLastReadAt();
-      const first = store.messages().find((m) => since === null || m.createdAt > since);
+      // The evidence card is not a message anyone sent: it never counts as unread.
+      const first = store.messages().find((m) => m.kind !== 'evidence' && (since === null || m.createdAt > since));
       return first?.id ?? null;
     }),
     participantIds: computed(() => store.participants().map((p) => p.employeeId))
@@ -85,6 +86,16 @@ export const ConversationStore = signalStore(
 
     function markDeleted(messageId: string): void {
       patchState(store, { messages: store.messages().map((m) => (m.id === messageId ? asDeleted(m) : m)) });
+    }
+
+    function removeMessage(messageId: string): void {
+      patchState(store, { messages: store.messages().filter((m) => m.id !== messageId) });
+    }
+
+    function updateParticipantRead(employeeId: string, readAt: string): void {
+      patchState(store, {
+        participants: store.participants().map((p) => p.employeeId === employeeId ? { ...p, lastReadAt: readAt } : p)
+      });
     }
 
     function addParticipantRows(incoming: readonly ConversationParticipantDto[]): void {
@@ -154,6 +165,8 @@ export const ConversationStore = signalStore(
       appendMessages,
       replaceMessage,
       markDeleted,
+      removeMessage,
+      updateParticipantRead,
       addParticipantRows,
       dropParticipant,
       async loadOlder(): Promise<void> {
@@ -173,13 +186,14 @@ export const ConversationStore = signalStore(
       },
       /** True when posted. Mentions must be participant ids (add-and-tag adds them first). */
       async send(
-        bodyHtml: string, mentionEmployeeIds: readonly string[], attachmentFileIds: readonly string[] = [], tag: string | null = null
+        bodyHtml: string, mentionEmployeeIds: readonly string[], attachmentFileIds: readonly string[] = [], tag: string | null = null,
+        replyToMessageId: string | null = null
       ): Promise<boolean> {
         const id = store.conversationId();
         if (!id || store.removed()) return false;
         patchState(store, { sending: true, sendError: null });
         try {
-          const message = await firstValueFrom(api.post(id, bodyHtml, [...mentionEmployeeIds], [...attachmentFileIds], tag));
+          const message = await firstValueFrom(api.post(id, bodyHtml, [...mentionEmployeeIds], [...attachmentFileIds], tag, replyToMessageId));
           // Posted to its own ticket; only shown if that ticket is still the open one.
           if (store.conversationId() === id) {
             appendMessages([message]);
@@ -201,10 +215,11 @@ export const ConversationStore = signalStore(
           ? api.react(id, messageId, emoji)
           : api.unreact(id, messageId))), 'Could not react to the message.');
       },
-      deleteMessage(messageId: string): Promise<boolean> {
+      deleteMessage(messageId: string, forEveryone: boolean): Promise<boolean> {
         return run(async (id) => {
-          await firstValueFrom(api.deleteMessage(id, messageId));
-          markDeleted(messageId);
+          await firstValueFrom(api.deleteMessage(id, messageId, forEveryone));
+          if (forEveryone) markDeleted(messageId);
+          else removeMessage(messageId);
         }, 'Could not delete the message.');
       },
       removeParticipant(employeeId: string): Promise<boolean> {
@@ -264,6 +279,12 @@ export const ConversationStore = signalStore(
         }));
         subscription.add(realtime.messageDeleted$.subscribe((event) => {
           if (mine(event.conversationId)) store.markDeleted(event.messageId);
+        }));
+        subscription.add(realtime.messageHidden$?.subscribe((event) => {
+          if (mine(event.conversationId)) store.removeMessage(event.messageId);
+        }));
+        subscription.add(realtime.participantRead$?.subscribe((event) => {
+          if (mine(event.conversationId)) store.updateParticipantRead(event.employeeId, event.readAt);
         }));
         subscription.add(realtime.participantRemoved$.subscribe((event) => {
           if (!mine(event.conversationId)) return;

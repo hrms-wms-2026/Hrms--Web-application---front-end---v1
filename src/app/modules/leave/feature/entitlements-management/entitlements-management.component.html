@@ -72,7 +72,7 @@
     } @else if (auditStore.error()) {
       <app-error-state [message]="auditStore.error()!" [retryable]="true" (retry)="auditStore.load()" />
     } @else if (auditStore.rows().length === 0) {
-      <app-empty-state title="No balance changes recorded yet" description="Accruals, deductions, and adjustments will appear here as they happen." />
+      <app-empty-state title="No balance changes recorded yet" description="Credits, deductions, and adjustments will appear here as they happen." />
     } @else {
       <div class="to-table-card">
         <app-leave-balance-audit-table [rows]="auditStore.rows()" [hasMore]="auditStore.hasMore()" [loading]="auditStore.loading()" (loadMoreRequested)="auditStore.loadMore()" />
