@@ -235,9 +235,9 @@ describe('ConversationStore', () => {
       expect(api['unreact']).toHaveBeenCalledWith('c1', 'm2');
       expect(store.messages().find((m) => m.id === 'm2')?.reactions).toEqual([]);
 
-      api['edit'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'Messages can only be edited within 15 minutes of sending.' } })));
+      api['edit'].mockReturnValueOnce(throwError(() => ({ error: { detail: 'A message can only be changed within 30 minutes of sending it.' } })));
       expect(await store.editMessage('m2', '<p>late</p>', [])).toBe(false);
-      expect(store.sendError()).toBe('Messages can only be edited within 15 minutes of sending.');
+      expect(store.sendError()).toBe('A message can only be changed within 30 minutes of sending it.');
     });
 
     it('removes an added member, and leaving marks the caller removed', async () => {

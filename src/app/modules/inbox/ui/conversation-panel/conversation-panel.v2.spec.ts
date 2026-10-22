@@ -144,18 +144,18 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(msg('own').textContent).toContain('Message deleted');
   });
 
-  it('after 15 minutes edit disappears but delete for everyone remains until another participant reads it', async () => {
-    vi.setSystemTime(new Date('2026-10-13T09:16:00Z'));
+  it('after 30 minutes edit and delete for everyone both disappear', async () => {
+    vi.setSystemTime(new Date('2026-10-13T09:31:00Z'));
     const { q, settle } = await render();
 
     q('message-more-own')!.click();
     await settle();
     expect(q('menu-item-edit')).toBeNull();
-    expect(q('menu-item-delete-everyone')).not.toBeNull();
+    expect(q('menu-item-delete-everyone')).toBeNull();
     expect(q('message-react-own')).not.toBeNull();
   });
 
-  it('after another participant reads the message, edit remains during 15 minutes but deletion becomes delete for me', async () => {
+  it('after another participant reads the message, edit remains during 30 minutes but deletion becomes delete for me', async () => {
     conv.participants = conv.participants.map((p) => p.employeeId === 'pat'
       ? { ...p, lastReadAt: '2026-10-13T09:05:00Z' }
       : p);

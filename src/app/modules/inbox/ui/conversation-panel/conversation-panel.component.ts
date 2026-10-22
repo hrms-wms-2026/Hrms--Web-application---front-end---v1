@@ -26,7 +26,7 @@ const MEMBERS_COMMAND = 'members';
 const CONVERSATION_ATTACHMENT = 'conversation_attachment';
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
-const EDIT_WINDOW_MS = 15 * 60 * 1000;
+const EDIT_WINDOW_MS = 30 * 60 * 1000;
 const CLOCK_TICK_MS = 30 * 1000;
 /** The author may edit or delete a message for this long after sending it (the server enforces it too). */
 /** What the server takes for conversation_attachment (UploadPurposeCatalog). */
@@ -982,18 +982,19 @@ export class ConversationPanelComponent implements AfterViewChecked {
   }
 
 
-  /** Editing is allowed for 15 minutes, regardless of whether another participant has read the message. */
+  /** Editing is allowed for 30 minutes (the server's window), regardless of whether another participant has read the message. */
   protected canEdit(message: ConversationMessageDto): boolean {
     const author = message.authorEmployeeId;
     if (!author || author !== this.me()) return false;
     return this.now() - new Date(message.createdAt).getTime() <= EDIT_WINDOW_MS;
   }
 
-  /** Deleting for everyone ends as soon as any other current participant has read the message. */
+  /** Deleting for everyone: within the same 30 minutes, and only until any other current participant has read the message. */
   protected canDeleteForEveryone(message: ConversationMessageDto): boolean {
     const author = message.authorEmployeeId;
     if (!author || author !== this.me()) return false;
     const sentAt = new Date(message.createdAt).getTime();
+    if (this.now() - sentAt > EDIT_WINDOW_MS) return false;
     return !this.store.participants().some((p) => p.employeeId !== author
       && !!p.lastReadAt && new Date(p.lastReadAt).getTime() >= sentAt);
   }

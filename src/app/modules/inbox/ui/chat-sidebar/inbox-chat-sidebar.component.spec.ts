@@ -41,7 +41,7 @@ describe('InboxChatSidebarComponent', () => {
           provide: InboxChatsApiService, useValue: {
             list: vi.fn(() => of([
               row('c1', { unread: 2 }),
-              row('c2', { title: 'Kiru', pending: [{ source: 'leave', kind: 'request', id: 'l1', title: 'Annual leave' }] }),
+              row('c2', { title: 'Kiru', unread: 3, pending: [{ source: 'leave', kind: 'request', id: 'l1', title: 'Annual leave' }] }),
               row('g2', { source: 'group', kind: 'group', subjectId: 'g2', type: 'group', title: 'Ops huddle', otherEmployeeId: null, isFavorite: true }),
               row('g1', { source: 'group', kind: 'group', subjectId: 'g1', type: 'group', title: 'Payroll review', otherEmployeeId: null }),
               row('k1', { source: 'monitoring', kind: 'exception_case', subjectId: 'x1', type: 'case', title: 'Face check - Priya', otherEmployeeId: null })
@@ -121,6 +121,14 @@ describe('InboxChatSidebarComponent', () => {
     expect(names('chat-section-direct')).toEqual([expect.stringContaining('Kiru')]);
     expect(names('chat-section-groups')).toEqual([]);
     expect(fixture.nativeElement.querySelector('input[type="checkbox"]')).toBeNull();
+  });
+
+  it('a chat badge counts its open cases plus its unread messages', async () => {
+    const { fixture } = await render();
+
+    const badge = fixture.nativeElement.querySelector('[data-testid="chat-row-count"]') as HTMLElement;
+    expect(badge.textContent!.trim()).toBe('4');
+    expect(badge.getAttribute('title')).toBe('1 waiting on you, 3 unread');
   });
 
   it('the search filters chats by name and offers people to start a chat with', async () => {
