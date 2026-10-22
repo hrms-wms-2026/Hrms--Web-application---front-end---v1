@@ -99,6 +99,8 @@ const POSITIONS_UP: ConnectionPositionPair[] = [
 })
 export class TimePickerComponent {
   label = input<string>('');
+  /** Shows a red asterisk after the label. */
+  required = input(false);
   /** 'sm' is the compact field for dense panels and toolbars. */
   size = input<'md' | 'sm'>('md');
   placeholder = input<string>('--:-- --');

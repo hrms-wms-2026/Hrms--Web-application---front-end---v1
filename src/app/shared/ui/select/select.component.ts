@@ -51,7 +51,7 @@ interface DisplayOption extends SelectOption {
   template: `
     <div class="app-select flex w-full min-w-0 flex-col gap-1.5">
       @if (label()) {
-        <label [for]="selectId" class="app-select__label ui-field-label">{{ label() }}</label>
+        <label [for]="selectId" class="app-select__label ui-field-label">{{ label() }}@if (required()) {<span class="ui-field-required" aria-hidden="true">*</span>}</label>
       }
       <div
         class="app-select__control ui-field"
@@ -169,6 +169,8 @@ interface DisplayOption extends SelectOption {
 })
 export class SelectComponent {
   label = input<string>('');
+  /** Shows a red asterisk after the label. */
+  required = input(false);
   placeholder = input<string>('Select…');
   options = input<readonly SelectOption[]>([]);
   disabled = input(false);

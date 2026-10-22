@@ -243,6 +243,11 @@
     color: var(--color-text-secondary);
   }
 
+  .ui-field-required {
+    margin-left: 0.2rem;
+    color: var(--color-danger);
+  }
+
   .ui-field-hint {
     font-size: 0.75rem;
     color: var(--color-text-secondary);

@@ -1,6 +1,6 @@
 <div class="tp-container">
   @if (label()) {
-    <label [for]="inputId" class="tp-label ui-field-label">{{ label() }}</label>
+    <label [for]="inputId" class="tp-label ui-field-label">{{ label() }}@if (required()) {<span class="ui-field-required" aria-hidden="true">*</span>}</label>
   }
 
   <div

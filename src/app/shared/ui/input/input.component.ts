@@ -36,7 +36,7 @@ const DEFAULT_TYPE_ICON: Partial<Record<InputType, FieldIcon>> = {
   template: `
     <div class="flex flex-col gap-1.5">
       @if (label()) {
-        <label [for]="inputId" class="ui-field-label">{{ label() }}</label>
+        <label [for]="inputId" class="ui-field-label">{{ label() }}@if (required()) {<span class="ui-field-required" aria-hidden="true">*</span>}</label>
       }
       <div
         class="ui-field"
@@ -127,6 +127,8 @@ const DEFAULT_TYPE_ICON: Partial<Record<InputType, FieldIcon>> = {
 })
 export class InputComponent {
   label = input<string>('');
+  /** Shows a red asterisk after the label. */
+  required = input(false);
   type = input<InputType>('text');
   placeholder = input<string>('');
   disabled = input(false);
