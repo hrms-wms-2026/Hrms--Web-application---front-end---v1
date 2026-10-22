@@ -63,9 +63,6 @@
         @if (!previewResult.noticePeriodMissed && previewResult.conflictSnapshot.warnings.length === 0 && previewResult.conflictSnapshot.calendarConflicts.length === 0) {
           <p class="nlw-ok" data-testid="no-warnings">No policy warnings or calendar conflicts.</p>
         }
-        @if (previewResult.noticePeriodMissed) {
-          <p class="nlw-warning">This request does not meet the minimum notice period. Your manager will be informed.</p>
-        }
         @for (warning of previewResult.conflictSnapshot.warnings; track warning.code) {
           <p class="nlw-warning">{{ warning.message }}</p>
         }
