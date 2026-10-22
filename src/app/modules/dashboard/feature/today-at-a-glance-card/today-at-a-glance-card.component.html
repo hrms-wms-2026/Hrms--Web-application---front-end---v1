@@ -58,7 +58,7 @@
               <div class="min-w-0">
                 <p class="truncate text-xs font-bold leading-none text-slate-800">{{ statusLabel() }}</p>
                 @if (clockInTimeLabel(); as time) {
-                  <p class="mt-1 truncate text-[10px] text-slate-400">Since {{ time }}</p>
+                  <p class="mt-1 truncate text-[10px] text-slate-400" data-testid="started-at">Started at {{ time }}</p>
                 }
               </div>
             } @else {
@@ -70,16 +70,23 @@
               </div>
               <div class="min-w-0">
                 <p class="truncate text-xs font-bold leading-none text-slate-800">{{ statusLabel() }}</p>
-                <p class="mt-1 truncate text-[10px] text-slate-400">Shift not active</p>
+                @if (clockInTimeLabel(); as time) {
+                  <p class="mt-1 truncate text-[10px] text-slate-400" data-testid="started-at">Started at {{ time }}</p>
+                } @else {
+                  <p class="mt-1 truncate text-[10px] text-slate-400">Shift not active</p>
+                }
               </div>
             }
           </div>
 
-          <!-- Worked Time Box -->
-          <div class="flex items-center justify-between rounded-xl border border-blue-100 bg-white/90 p-3 shadow-xs backdrop-blur-xs">
-            <div>
-              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Worked Time</p>
-              <p class="mt-0.5 text-lg font-bold leading-tight text-slate-800">{{ workedTimeLabel() }}</p>
+          <!-- Time Left Box -->
+          <div class="flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50/70 p-3 shadow-xs backdrop-blur-xs">
+            <div class="min-w-0">
+              <p class="truncate text-[10px] font-semibold text-blue-600">Time left to finish</p>
+              <p class="mt-0.5 text-lg font-bold leading-tight text-slate-800" data-testid="time-left">{{ timeLeftLabel() }}</p>
+              @if (finishLabel(); as finish) {
+                <p class="mt-0.5 truncate text-[10px] text-slate-500" data-testid="finish-at">{{ finish }}</p>
+              }
             </div>
             <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-500">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

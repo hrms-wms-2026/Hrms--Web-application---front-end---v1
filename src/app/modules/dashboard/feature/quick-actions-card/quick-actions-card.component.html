@@ -67,57 +67,60 @@
       <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Full activity</span>
     </a>
 
-    <!-- Action 4: Create Ticket - opens the Inbox ticket workspace -->
-    <a
-      routerLink="/inbox"
-      data-testid="quick-action-create-ticket"
-      class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-amber-300 hover:bg-amber-50/30 transition-all text-center cursor-pointer"
-    >
-      <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path d="M4 7a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 000-4V7z" stroke-linejoin="round" stroke-width="1.8"></path>
-          <path d="M12 9v4M10 11h4" stroke-linecap="round" stroke-width="1.8"></path>
-        </svg>
-      </div>
-      <span class="text-xs font-bold text-slate-800 leading-tight">Create Ticket</span>
-      <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Raise a request</span>
-    </a>
-
-    <!-- Action 5: Create Task - picks a project, then opens Work's task form as a popup -->
-    @if (canOpenWork()) {
-      <button
-        type="button"
-        data-testid="quick-action-create-task"
-        (click)="openCreateTask()"
-        class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all text-center cursor-pointer"
-      >
-        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <rect height="16" rx="2.5" stroke-width="1.8" width="16" x="4" y="4"></rect>
-            <path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-          </svg>
-        </div>
-        <span class="text-xs font-bold text-slate-800 leading-tight">Create Task</span>
-        <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Add work item</span>
-      </button>
-    }
-
-    <!-- Action 6: Settings -->
-    @if (canOpenSettings()) {
+    <!-- Actions 4-6 sit on the My Team dashboard only; My Work keeps its three core actions. -->
+    @if (onTeamDashboard()) {
+      <!-- Action 4: Create Ticket - opens the Inbox ticket workspace -->
       <a
-        routerLink="/settings"
-        data-testid="quick-action-settings"
-        class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:bg-slate-50/30 transition-all text-center cursor-pointer"
+        routerLink="/inbox"
+        data-testid="quick-action-create-ticket"
+        class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-amber-300 hover:bg-amber-50/30 transition-all text-center cursor-pointer"
       >
-        <div class="w-9 h-9 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M10.3 4.3c.4-1.7 3-1.7 3.4 0a1.7 1.7 0 002.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 001 2.5c1.8.5 1.8 3 0 3.5a1.7 1.7 0 00-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 00-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 00-2.6-1c-1.5.9-3.3-.9-2.4-2.4a1.7 1.7 0 00-1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 001-2.6c-.9-1.5.9-3.3 2.4-2.4a1.7 1.7 0 002.6-1.1z" stroke-linejoin="round" stroke-width="1.8"></path>
-            <circle cx="12" cy="12" r="3" stroke-width="1.8"></circle>
+            <path d="M4 7a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 000-4V7z" stroke-linejoin="round" stroke-width="1.8"></path>
+            <path d="M12 9v4M10 11h4" stroke-linecap="round" stroke-width="1.8"></path>
           </svg>
         </div>
-        <span class="text-xs font-bold text-slate-800 leading-tight">Settings</span>
-        <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Preferences</span>
+        <span class="text-xs font-bold text-slate-800 leading-tight">Create Ticket</span>
+        <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Raise a request</span>
       </a>
+
+      <!-- Action 5: Create Task - picks a project, then opens Work's task form as a popup -->
+      @if (canOpenWork()) {
+        <button
+          type="button"
+          data-testid="quick-action-create-task"
+          (click)="openCreateTask()"
+          class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all text-center cursor-pointer"
+        >
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect height="16" rx="2.5" stroke-width="1.8" width="16" x="4" y="4"></rect>
+              <path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+            </svg>
+          </div>
+          <span class="text-xs font-bold text-slate-800 leading-tight">Create Task</span>
+          <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Add work item</span>
+        </button>
+      }
+
+      <!-- Action 6: Settings -->
+      @if (canOpenSettings()) {
+        <a
+          routerLink="/settings"
+          data-testid="quick-action-settings"
+          class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:bg-slate-50/30 transition-all text-center cursor-pointer"
+        >
+          <div class="w-9 h-9 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M10.3 4.3c.4-1.7 3-1.7 3.4 0a1.7 1.7 0 002.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 001 2.5c1.8.5 1.8 3 0 3.5a1.7 1.7 0 00-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 00-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 00-2.6-1c-1.5.9-3.3-.9-2.4-2.4a1.7 1.7 0 00-1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 001-2.6c-.9-1.5.9-3.3 2.4-2.4a1.7 1.7 0 002.6-1.1z" stroke-linejoin="round" stroke-width="1.8"></path>
+              <circle cx="12" cy="12" r="3" stroke-width="1.8"></circle>
+            </svg>
+          </div>
+          <span class="text-xs font-bold text-slate-800 leading-tight">Settings</span>
+          <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Preferences</span>
+        </a>
+      }
     }
   </div>
 </section>

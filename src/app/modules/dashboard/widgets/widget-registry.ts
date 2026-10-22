@@ -7,7 +7,7 @@ import { QuickActionsCardComponent } from '../feature/quick-actions-card/quick-a
 import { TeamProgressCardComponent } from '../feature/team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../feature/team-status-card/team-status-card.component';
 import { TodayAtAGlanceCardComponent } from '../feature/today-at-a-glance-card/today-at-a-glance-card.component';
-import { TodayTotalTimeCardComponent } from '../feature/today-total-time-card/today-total-time-card.component';
+import { WeeklyProgressCardComponent } from '../feature/weekly-progress-card/weekly-progress-card.component';
 import { TodaysScheduleCardComponent } from '../feature/todays-schedule-card/todays-schedule-card.component';
 import { WellbeingCarouselCardComponent } from '../feature/wellbeing-carousel-card/wellbeing-carousel-card.component';
 import { WorkPatternCardComponent } from '../feature/work-pattern-card/work-pattern-card.component';
@@ -19,11 +19,17 @@ export interface WidgetRegistryEntry {
   overflowVisible?: boolean;
 }
 
+/**
+ * Catalog widgets kept out of My Work: never rendered and not offered in the widget store. They stay in the
+ * saved layout (the backend's layout PUT needs the full set), so Save and Reset are unaffected.
+ */
+export const HIDDEN_WIDGET_KEYS: ReadonlySet<string> = new Set(['my-tasks', 'work-pattern', 'notifications', 'wellbeing']);
+
 /** widgetKey (as stored by the backend registry) to the card component that renders it. */
 export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
   'today-at-a-glance': { component: TodayAtAGlanceCardComponent },
   'todays-schedule': { component: TodaysScheduleCardComponent },
-  'today-total-time': { component: TodayTotalTimeCardComponent },
+  'today-total-time': { component: WeeklyProgressCardComponent },
   'active-projects': { component: ActiveProjectsCardComponent },
   'my-tasks': { component: MyTasksCardComponent },
   notifications: { component: DashboardNotificationsCardComponent },

@@ -10,10 +10,16 @@ import {
   SEGMENT_OPACITY,
   TimelineSegment,
   buildTimelineSegments,
-  formatMinutes,
-  formatTime
+  formatMinutes
 } from '../../util/timeline-segments.util';
 import { getTimeOfDayInfo, TimeOfDayInfo } from '../../util/time-of-day.util';
+
+const CLOCK_FORMAT = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
+
+/** "9:00 AM" style, whatever the browser locale; null for an invalid date. */
+function formatClock(date: Date): string | null {
+  return Number.isNaN(date.getTime()) ? null : CLOCK_FORMAT.format(date);
+}
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: 'Not clocked in',
@@ -58,10 +64,36 @@ export class TodayAtAGlanceCardComponent implements OnInit {
 
   protected readonly clockInTimeLabel = computed(() => {
     const clockInAt = this.today()?.clockInAt;
-    return clockInAt ? formatTime(new Date(clockInAt)) : null;
+    return clockInAt ? formatClock(new Date(clockInAt)) : null;
   });
 
-  protected readonly workedTimeLabel = computed(() => formatMinutes(this.today()?.totalWorkedMinutes ?? null));
+  /** Required time still to work today, in minutes; null when the day has no target. */
+  private readonly minutesLeft = computed(() => {
+    const today = this.today();
+    const required = today?.requiredWorkMinutes ?? 0;
+    return required > 0 ? Math.max(0, required - (today?.totalWorkedMinutes ?? 0)) : null;
+  });
+
+  /** Required time still to work today, never below zero; a dash when the day has no target. */
+  protected readonly timeLeftLabel = computed(() => formatMinutes(this.minutesLeft()));
+
+  /**
+   * When the day ends: the clock-out time once clocked out, otherwise the time left counted from the
+   * last refresh (the worked minutes are as of that refresh). Nothing before clock-in or without a target.
+   */
+  protected readonly finishLabel = computed(() => {
+    const today = this.today();
+    if (!today?.clockInAt) return null;
+    if (today.clockOutAt) {
+      const out = formatClock(new Date(today.clockOutAt));
+      return out ? `Finished at ${out}` : null;
+    }
+    const left = this.minutesLeft();
+    if (left === null) return null;
+    if (left === 0) return 'Required time done';
+    const from = this.lastUpdated()?.getTime() ?? this.now();
+    return `Finish at ${formatClock(new Date(from + left * 60_000))}`;
+  });
 
   protected readonly legendTypes: TimelineSegment['type'][] = ['working', 'focus', 'break', 'idle'];
 
@@ -86,7 +118,7 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     if (!today?.clockInAt) {
       return null;
     }
-    return formatTime(today.clockOutAt ? new Date(today.clockOutAt) : new Date(this.now()));
+    return formatClock(today.clockOutAt ? new Date(today.clockOutAt) : new Date(this.now()));
   });
 
   private readonly lastUpdated = signal<Date | null>(null);
