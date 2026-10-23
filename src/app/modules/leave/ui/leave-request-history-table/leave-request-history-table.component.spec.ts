@@ -6,8 +6,8 @@ describe('LeaveRequestHistoryTableComponent', () => {
   let fixture: ComponentFixture<LeaveRequestHistoryTableComponent>;
 
   const requests: LeaveRequestListItemResponse[] = [
-    { id: 'req-1', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', noticePeriodMissed: false, approvedByName: null, infoQuestion: null, createdAt: '2026-08-25T00:00:00Z', updatedAt: null },
-    { id: 'req-2', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-07-01', endAt: '2026-07-01', totalHours: 1, paidHours: 1, unpaidHours: 0, status: 'rejected', noticePeriodMissed: true, approvedByName: null, infoQuestion: null, createdAt: '2026-06-20T00:00:00Z', updatedAt: '2026-06-21T00:00:00Z' }
+    { id: 'req-1', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12', totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', noticePeriodMissed: false, approvedByName: null, createdAt: '2026-08-25T00:00:00Z', updatedAt: null },
+    { id: 'req-2', employeeId: 'emp-1', leaveTypeId: 'type-1', leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-07-01', endAt: '2026-07-01', totalHours: 1, paidHours: 1, unpaidHours: 0, status: 'rejected', noticePeriodMissed: true, approvedByName: null, createdAt: '2026-06-20T00:00:00Z', updatedAt: '2026-06-21T00:00:00Z' }
   ];
 
   beforeEach(async () => {
@@ -45,13 +45,12 @@ describe('LeaveRequestHistoryTableComponent', () => {
     expect(emitted).toEqual([requests[0]]);
   });
 
-  it('shows the approved-by name and a Reply action for information requested rows', () => {
+  it('shows the approved-by name', () => {
     fixture.componentRef.setInput('requests', [
-      { ...requests[0], status: 'information_requested', infoQuestion: 'Need tickets', approvedByName: null },
+      { ...requests[0], status: 'pending', approvedByName: null },
       { ...requests[1], status: 'approved', approvedByName: 'Priya Nair' }
     ]);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="reply-request"]')).toBeTruthy();
     const names = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="approved-by"]') as NodeListOf<HTMLElement>).map((el) => el.textContent?.trim());
     expect(names).toContain('Priya Nair');
   });

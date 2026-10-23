@@ -78,6 +78,7 @@ describe('CalendarPageComponent - create submission', () => {
 
     expect(store.createEvent).toHaveBeenCalledTimes(1);
     expect(store.createMeeting).toHaveBeenCalledTimes(1);
+    expect(store.createMeeting).toHaveBeenCalledWith(createdEvent().id, 'microsoft_teams', true);
   });
 
   it('a meeting created right after its event says the invites were held back for the link', async () => {

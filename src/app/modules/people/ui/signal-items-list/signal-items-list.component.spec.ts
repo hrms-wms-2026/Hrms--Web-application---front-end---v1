@@ -78,7 +78,7 @@ describe('SignalItemsListComponent', () => {
 
     expect(selected).not.toHaveBeenCalled();
     const review = el.querySelector('[data-testid="approval-review-link"]') as HTMLAnchorElement;
-    expect(review.getAttribute('href')).toBe('/time-off/team-approvals');
+    expect(review.getAttribute('href')).toBe('/inbox/leave/request/r-1');
   });
 
   it('shows "+N more" with the full-list link when the list is capped', () => {

@@ -139,3 +139,7 @@
 .emp-break-overage-marker {
   margin-top: 0.1rem;
 }
+
+.emp-avatar-wrapper--alerts {
+  cursor: pointer;
+}

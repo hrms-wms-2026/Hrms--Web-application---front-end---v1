@@ -11,6 +11,12 @@ function checker(permissions: string[], modules: string[]): NavAccessChecker {
 }
 
 describe('canAccessNavItem', () => {
+  it('shows the Inbox to every employee, with no module or permission gate', () => {
+    const inbox = NAV_ITEMS.find((i) => i.id === 'inbox')!;
+    expect(inbox.requiredModules).toBeUndefined();
+    expect(canAccessNavItem(inbox, checker([], []))).toBe(true);
+  });
+
   it('is always visible for a leaf item with no gates (Home)', () => {
     const item: NavItem = { id: 'home', label: 'Home', path: '/dashboard' };
     expect(canAccessNavItem(item, checker([], []))).toBe(true);
@@ -122,16 +128,8 @@ describe('canAccessNavItem', () => {
       expect(children.map((child) => child.id)).toEqual([
         'time-attendance-overview',
         'time-attendance-tracking',
-        'time-attendance-requests',
-        'time-attendance-alerts',
         'time-attendance-monitoring'
       ]);
-      const alerts = children.find((child) => child.id === 'time-attendance-alerts')!;
-      expect(alerts.path).toBe('/attendance/alerts');
-      // Reporting managers and HR both work the alerts queue; a plain employee does not.
-      expect(canAccessNavItem(alerts, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(alerts, checker(['employees:write'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(alerts, checker(['attendance:read-own'], ['time_attendance']))).toBe(false);
       const monitoring = children.find((child) => child.id === 'time-attendance-monitoring')!;
       expect(monitoring.label).toBe('Monitoring');
       expect(monitoring.path).toBe('/attendance/monitoring');
@@ -140,12 +138,6 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(monitoring, checker(['monitoring:read'], []))).toBe(false);
       const tracking = children.find((child) => child.id === 'time-attendance-tracking')!;
       expect(canAccessNavItem(tracking, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
-
-      const requests = children.find((child) => child.id === 'time-attendance-requests')!;
-      expect(requests.path).toBe('/attendance/time-tracking/requests');
-      expect(requests.path).not.toBe(tracking.path);
-      expect(canAccessNavItem(requests, checker(['attendance:read-own'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(requests, checker(['attendance:read'], ['time_attendance']))).toBe(false);
     });
 
     it('does not leak the parent Attendance item to a monitoring:read-only user (no attendance permission)', () => {
@@ -167,8 +159,8 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
     });
 
-    it('does not leak the parent People item to a bare Employee (core_hr module, no employees permission)', () => {
-      const people = NAV_ITEMS.find((item) => item.id === 'people')!;
+    it('does not leak Org to a bare Employee through its People section (core_hr module, no employees permission)', () => {
+      const people = NAV_ITEMS.find((item) => item.id === 'organization')!;
 
       // Regression: the "Employees" child used to declare no requiredPermissions at all, so
       // any user with core_hr enabled saw "People" even without managing anyone or employees:write - matching
@@ -177,8 +169,15 @@ describe('canAccessNavItem', () => {
       // Managing people is a relationship, surfaced as the MANAGES_PEOPLE capability token.
       expect(canAccessNavItem(people, checker([MANAGES_PEOPLE], ['core_hr']))).toBe(true);
       expect(canAccessNavItem(people, checker(['employees:write'], ['core_hr']))).toBe(true);
-      // A user who only has roles:manage still sees People, via the Approvals child.
-      expect(canAccessNavItem(people, checker(['roles:manage'], ['core_hr']))).toBe(true);
+      // roles:manage alone no longer shows People: position approvals moved to the Inbox with the Approvals child.
+      expect(canAccessNavItem(people, checker(['roles:manage'], ['core_hr']))).toBe(false);
+    });
+
+    it('lists the Organization section before the People section under Org', () => {
+      const org = NAV_ITEMS.find((item) => item.id === 'organization')!;
+      expect(org.children!.map((child) => `${child.section}:${child.label}`)).toEqual([
+        'Organization:Departments', 'Organization:Positions', 'People:Employees', 'People:Checklists', 'People:Offboarding'
+      ]);
     });
   });
 

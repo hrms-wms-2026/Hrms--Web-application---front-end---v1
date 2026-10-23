@@ -39,21 +39,22 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()" class="invite-form">
       <div class="invite-field">
-        <div class="invite-input-wrapper">
+        <div class="ui-field" [class.ui-field--error]="form.controls.password.touched && form.controls.password.invalid">
+          <span class="ui-field__addon" aria-hidden="true"><app-field-icon name="lock" /></span>
           <input
             id="password"
             [type]="showPassword() ? 'text' : 'password'"
             formControlName="password"
             placeholder="Password"
-            class="invite-input"
-            [class.invite-input--error]="form.controls.password.touched && form.controls.password.invalid"
+            class="ui-field__control"
             autocomplete="new-password"
           />
-          <button
+          <span class="ui-field__trailing">
+            <button
             type="button"
             (click)="toggleShowPassword()"
             [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
-            class="invite-toggle-pw"
+            class="ui-field__icon-btn"
           >
             @if (showPassword()) {
               <!-- Eye Slash Icon (Hide) -->
@@ -69,6 +70,7 @@
               </svg>
             }
           </button>
+        </span>
         </div>
         @if (form.controls.password.touched && form.controls.password.invalid) {
           <p class="invite-error-text">Password must be at least 8 characters.</p>
@@ -76,21 +78,22 @@
       </div>
 
       <div class="invite-field">
-        <div class="invite-input-wrapper">
+        <div class="ui-field" [class.ui-field--error]="form.controls.confirmPassword.touched && form.controls.confirmPassword.invalid">
+          <span class="ui-field__addon" aria-hidden="true"><app-field-icon name="lock" /></span>
           <input
             id="confirmPassword"
             [type]="showConfirmPassword() ? 'text' : 'password'"
             formControlName="confirmPassword"
             placeholder="Confirm password"
-            class="invite-input"
-            [class.invite-input--error]="form.controls.confirmPassword.touched && form.controls.confirmPassword.invalid"
+            class="ui-field__control"
             autocomplete="new-password"
           />
-          <button
+          <span class="ui-field__trailing">
+            <button
             type="button"
             (click)="toggleShowConfirmPassword()"
             [attr.aria-label]="showConfirmPassword() ? 'Hide password' : 'Show password'"
-            class="invite-toggle-pw"
+            class="ui-field__icon-btn"
           >
             @if (showConfirmPassword()) {
               <!-- Eye Slash Icon (Hide) -->
@@ -106,6 +109,7 @@
               </svg>
             }
           </button>
+        </span>
         </div>
         @if (form.controls.confirmPassword.touched && form.controls.confirmPassword.invalid) {
           <p class="invite-error-text">Passwords must match.</p>
@@ -166,7 +170,7 @@
         <h3 class="text-base font-semibold text-slate-900">{{ activeDoc()?.title }}</h3>
         <button type="button" (click)="closeDocument()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 leading-none focus:outline-none">&times;</button>
       </div>
-      <div class="my-4 overflow-y-auto text-sm text-slate-700 space-y-3 prose max-w-none pr-1">
+      <div class="my-4 overflow-y-auto text-sm text-slate-700 space-y-3 prose max-w-none pr-1 scroll-fade">
         @if (activeDoc()?.content_html) {
           <div [innerHTML]="activeDoc()?.content_html"></div>
         } @else {

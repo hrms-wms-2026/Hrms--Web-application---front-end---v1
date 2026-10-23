@@ -1,18 +1,41 @@
 <ng-template #toolbarTpl>
   <div class="flex flex-wrap items-center justify-end gap-2">
+    <div class="inline-flex h-[30px] items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-0.5"
+      role="group" aria-label="Tree view mode">
+      @for (mode of ['tree', 'network']; track mode) {
+      <button type="button" [attr.data-testid]="'tree-view-switch-' + mode" [attr.aria-pressed]="viewMode() === mode"
+        [title]="mode === 'tree' ? 'Module list' : 'Network diagram'"
+        class="inline-flex h-[26px] items-center gap-1.5 rounded-[6px] px-2 text-[13px] font-medium transition-colors"
+        [class.bg-[var(--color-accent)]]="viewMode() === mode" [class.text-white]="viewMode() === mode"
+        [class.text-[var(--color-text-secondary)]]="viewMode() !== mode" (click)="viewMode.set($any(mode))">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          @if (mode === 'tree') {
+          <path d="M3 6h3m0 0h15M6 6v12m0-6h15M6 18h15" />
+          } @else {
+          <circle cx="5" cy="6" r="2" /><circle cx="19" cy="6" r="2" /><circle cx="12" cy="18" r="2" />
+          <path d="M5 8v4h14V8M12 12v4" />
+          }
+        </svg>
+        {{ mode === 'tree' ? 'Tree' : 'Network' }}
+      </button>
+      }
+    </div>
+    <!-- Every control stays put across Tree / Network: the header must not change or re-render
+         with the view. They act on the tree; the network has its own search. -->
     @if (searchExpanded()) {
-    <div class="relative flex h-[30px] w-80 items-center" data-testid="tree-search">
-      <svg class="pointer-events-none absolute left-2.5 text-[var(--color-text-secondary)]" viewBox="0 0 24 24"
+    <div class="ui-field ui-field--sm w-80" data-testid="tree-search">
+      <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24"
         width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <circle cx="11" cy="11" r="8" />
         <path d="m21 21-4.35-4.35" />
-      </svg>
+      </svg></span>
       <input #treeSearchInput autofocus type="search" placeholder="Search modules, sprints, tasks…"
         [value]="searchTerm()" (input)="onSearchChanged($any($event.target).value)"
-        class="h-[30px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-8 text-[13px] text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]" />
-      <button type="button" data-testid="tree-search-close" aria-label="Close search" title="Close search"
-        class="absolute right-1.5 inline-flex h-5 w-5 items-center justify-center rounded text-base leading-none text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
-        (click)="toggleSearch()">&times;</button>
+        class="ui-field__control" />
+      <span class="ui-field__trailing"><button type="button" data-testid="tree-search-close" aria-label="Close search" title="Close search"
+        class="ui-field__icon-btn h-5 w-5 text-base leading-none"
+        (click)="toggleSearch()">&times;</button></span>
     </div>
     } @else {
     <button type="button" data-testid="tree-search-toggle" aria-label="Search tree" title="Search tree"
@@ -31,7 +54,7 @@
       [selected]="ownerFilter()"
       (selectionChanged)="setOwnerFilter($event)"
     />
-    <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" [highlightColor]="highlightColor()"
+    <app-filter-bar [fields]="filterFields()" [values]="filterValues()" [highlightColor]="highlightColor()"
       panelAlign="right" (fieldChanged)="onFilterFieldChanged($event)"
       (highlightColorChanged)="onHighlightColorChanged($event)" />
     <button type="button" data-testid="expand-all-toggle" [attr.aria-pressed]="allExpanded()"
@@ -62,9 +85,18 @@
     (click)="dismissCreateAssetWarning()">&#x2715;</button>
 </div>
 }
+<!-- The explanation card stays put across Tree / Network: only the left side switches. -->
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
   <div
     class="w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm min-h-[220px]">
+    @if (viewMode() === 'network') {
+    @if (renderedTree(); as tree) {
+    <app-project-network-view [projectId]="projectId()" [rootObjectiveId]="tree.id" [reloadKey]="networkReloadKey()"
+      (nodeSelected)="onNetworkNodeSelected($event)" />
+    } @else {
+    <app-empty-state title="No modules" description="This project has no modules to draw yet" />
+    }
+    } @else {
     @if (store.subtreeLoading()) {
     <app-loader label="Loading tree…" />
     } @else if (store.subtreeError()) {
@@ -107,6 +139,7 @@
       (deleteSprintRequested)="onDeleteRequested($event)" />
     }
     }
+    }
   </div>
   <div class="lg:sticky lg:top-4">
     @if (selectedNode(); as node) {
@@ -115,7 +148,7 @@
       (createRequested)="onCreateSubRequested($event)" (createSprintRequested)="onCreateSprintRequested($event)"
       (createTaskRequested)="onCreateTaskRequested($event)" (achieveSprintRequested)="onAchieveSprintRequested($event)"
       (completeSprintRequested)="onCompleteSprintRequested($event)" (deleteRequested)="onDeleteRequested($event)"
-      (deleteSprintRequested)="onDeleteRequested($event)" />
+      (deleteSprintRequested)="onDeleteRequested($event)" (allocationRequested)="onAllocationRequested($event)" />
     } @else {
     <app-empty-state title="No selection" description="Select a module, sprint, or task to see its details" />
     }
@@ -171,4 +204,12 @@
   (saved)="onTaskModalDone()"
   (changed)="onTaskModalChanged()"
   (closed)="onTaskModalClosed()"
+/>
+
+<app-allocation-request-modal
+  [open]="allocationNode() !== null"
+  [moduleId]="allocationNode()?.id ?? ''"
+  [moduleTitle]="allocationNode()?.title ?? ''"
+  (closed)="allocationNode.set(null)"
+  (submitted)="onAllocationSubmitted()"
 />

@@ -94,22 +94,22 @@ const CONFIRM_COPY: Record<'revoke' | 'suspend' | 'sign-out', { title: string; l
         <div class="users-controls">
           <div class="users-search-container">
             @if (searchExpanded()) {
-              <div class="users-search-expandable">
-                <svg class="users-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <div class="users-search-expandable ui-field ui-field--sm">
+                <span class="ui-field__addon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
+                </svg></span>
                 <input
                   type="text"
-                  class="users-search-input"
+                  class="ui-field__control"
                   placeholder="Search by name or email..."
                   aria-label="Search users"
                   data-testid="users-search"
                   [value]="search()"
                   (input)="search.set($any($event.target).value)"
                 />
-                <button type="button" class="users-search-clear-btn" (click)="toggleSearch()" title="Close search" aria-label="Close search">
+                <span class="ui-field__trailing"><button type="button" class="ui-field__icon-btn" (click)="toggleSearch()" title="Close search" aria-label="Close search">
                   &times;
-                </button>
+                </button></span>
               </div>
             } @else {
               <button
@@ -254,37 +254,12 @@ const CONFIRM_COPY: Record<'revoke' | 'suspend' | 'sign-out', { title: string; l
         align-items: center;
       }
       .users-search-expandable {
+        width: 260px;
         animation: usersSearchExpand 0.15s ease-out;
       }
       @keyframes usersSearchExpand {
         from { opacity: 0; width: 30px; }
         to { opacity: 1; width: 260px; }
-      }
-      .users-search-icon {
-        position: absolute;
-        left: 0.625rem;
-        color: var(--color-text-secondary);
-        pointer-events: none;
-      }
-      .users-search-input {
-        width: 260px;
-        padding: 0.375rem 1.75rem 0.375rem 2rem;
-        font-size: 0.8125rem;
-        border-radius: 6px;
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        color: var(--color-text-primary);
-        outline: none;
-      }
-      .users-search-clear-btn {
-        position: absolute;
-        right: 0.5rem;
-        border: none;
-        background: transparent;
-        color: var(--color-text-secondary);
-        font-size: 1.125rem;
-        cursor: pointer;
-        line-height: 1;
       }
       .users-icon-btn {
         width: 32px;

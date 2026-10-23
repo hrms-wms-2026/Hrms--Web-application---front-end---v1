@@ -187,7 +187,7 @@
           <div class="threshold-card__input-group">
             <input
               type="number"
-              class="threshold-input"
+              class="ui-input threshold-input"
               min="1"
               max="1440"
               [value]="company.idleThresholdMinutes"
@@ -213,7 +213,7 @@
           <div class="threshold-card__input-group">
             <input
               type="number"
-              class="threshold-input"
+              class="ui-input threshold-input"
               min="0"
               [value]="company.allowedRadiusMeters ?? ''"
               [disabled]="!hasWriteAccess()"
@@ -289,8 +289,8 @@
 
             <div class="form-group threshold-input-field">
               <span class="form-label">Activity check threshold</span>
-              <div class="input-with-unit">
-                <input
+              <div class="ui-field">
+                <input class="ui-field__control"
                   type="number"
                   min="1"
                   max="1440"
@@ -299,14 +299,14 @@
                   (change)="setOverrideThreshold($any($event.target).value)"
                   placeholder="Inherited"
                 />
-                <span class="input-unit">min</span>
+                <span class="ui-field__trailing">min</span>
               </div>
             </div>
 
             <div class="form-group threshold-input-field">
               <span class="form-label">Allowed range</span>
-              <div class="input-with-unit">
-                <input
+              <div class="ui-field">
+                <input class="ui-field__control"
                   type="number"
                   min="0"
                   [value]="overrideForm().allowedRadiusMeters ?? ''"
@@ -314,7 +314,7 @@
                   (change)="setOverrideAllowedRadius($any($event.target).value)"
                   placeholder="Inherited"
                 />
-                <span class="input-unit">m</span>
+                <span class="ui-field__trailing">m</span>
               </div>
             </div>
 
@@ -369,7 +369,7 @@
 
             <label class="reason-field form-group">
               <span class="form-label">Reason <small>Optional note for administrators.</small></span>
-              <textarea
+              <textarea class="ui-input"
                 rows="2"
                 maxlength="500"
                 placeholder="e.g. Specific team policy requirements"

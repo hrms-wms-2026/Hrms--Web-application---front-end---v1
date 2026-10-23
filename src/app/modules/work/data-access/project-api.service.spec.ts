@@ -6,6 +6,7 @@ import { ProjectApiService } from './project-api.service';
 import { ProjectDetailDto, ProjectListItemDto, PagedResultDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto, ObjectiveDetailDto, ObjectiveSubtreeResponseDto, EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../models/dto/milestone.dto';
 import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
+import { ProjectWorkGraphDto } from '../models/dto/project-work-graph.dto';
 
 describe('ProjectApiService', () => {
   let service: ProjectApiService;
@@ -229,5 +230,16 @@ describe('ProjectApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p1/objectives`);
     expect(req.request.method).toBe('GET');
     req.flush(items);
+  });
+
+  it('getWorkGraph GETs /work/projects/{id}/work-graph', () => {
+    const graph: ProjectWorkGraphDto = { nodes: [], links: [], hiddenTaskCount: 0 };
+    let received: ProjectWorkGraphDto | undefined;
+    service.getWorkGraph('p-1').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/work/projects/p-1/work-graph`);
+    expect(req.request.method).toBe('GET');
+    req.flush(graph);
+    expect(received).toEqual(graph);
   });
 });

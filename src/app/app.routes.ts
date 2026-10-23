@@ -1,3 +1,4 @@
+import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
@@ -61,6 +62,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'dashboard/my-team',
+        loadComponent: () =>
+          import('./modules/dashboard/feature/my-team-page/my-team-page.component').then(
+            (module) => module.MyTeamPageComponent
+          )
+      },
+      {
         path: 'dashboard/activity-timeline',
         loadComponent: () =>
           import('./modules/dashboard/feature/activity-timeline-page/activity-timeline-page.component').then(
@@ -72,6 +80,11 @@ export const routes: Routes = [
         canActivate: [permissionGuard],
         data: { modules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
         loadChildren: () => import('./modules/work/work.routes').then((module) => module.WORK_ROUTES)
+      },
+      {
+        path: 'inbox',
+        canActivate: [permissionGuard],
+        loadChildren: () => import('./modules/inbox/inbox.routes').then((module) => module.INBOX_ROUTES)
       },
       {
         path: 'people',
@@ -143,8 +156,12 @@ export const routes: Routes = [
           },
           {
             path: 'notifications',
-            loadComponent: loadPlaceholder,
+            loadComponent: () =>
+              import('./modules/settings/feature/notification-settings/notification-settings.component').then(
+                (m) => m.NotificationSettingsComponent
+              ),
             canActivate: [permissionGuard],
+            canDeactivate: [unsavedChangesGuard],
             data: { title: 'Notification Settings', permissions: ['notifications:manage'] }
           },
           {

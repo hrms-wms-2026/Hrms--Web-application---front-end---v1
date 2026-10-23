@@ -52,6 +52,10 @@ import { NavIconName } from '../nav/nav-item.model';
           <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
           <path d="M3 13h18" />
         }
+        @case ('inbox') {
+          <path d="M3 13h5l1.5 3h5L16 13h5" />
+          <path d="M5.5 5h13l2.5 8v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5l2.5-8Z" />
+        }
         @case ('people') {
           <circle cx="9" cy="8" r="3" />
           <path d="M2 20c0-3.3 3-6 7-6s7 2.7 7 6" />

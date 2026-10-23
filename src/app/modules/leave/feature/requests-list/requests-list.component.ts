@@ -13,7 +13,7 @@ import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveRequestAllListItemResponse } from '../../models/leave-approval.model';
-import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
+import { LeaveCancelConfirmDialogComponent } from '../../../../shared/ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import { LeaveRequestAllTableComponent } from '../../ui/leave-request-all-table/leave-request-all-table.component';
 import { decisionMessage, LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
 
@@ -75,18 +75,15 @@ export class RequestsListComponent {
   async onDecision(event: LeaveApprovalDecisionRequest): Promise<void> {
     const requestId = this.store.detail()?.requestId;
     if (!requestId) return;
-    const forwardToName = this.store.detail()?.forwardTo?.name ?? 'your manager';
 
     let result;
     if (event.kind === 'approve') result = await this.store.approve(requestId, { comment: event.comment });
     else if (event.kind === 'reject') result = await this.store.reject(requestId, { reason: event.reason });
-    else if (event.kind === 'forward') result = await this.store.forward(requestId, { note: event.note });
     else if (event.kind === 'change-to-reject') result = await this.store.changeDecision(requestId, { decision: 'reject', comment: event.reason });
-    else if (event.kind === 'change-to-approve') result = await this.store.changeDecision(requestId, { decision: 'approve', comment: event.comment });
-    else result = await this.store.requestInfo(requestId, { question: event.question });
+    else result = await this.store.changeDecision(requestId, { decision: 'approve', comment: event.comment });
 
     if (result) {
-      this.notificationService.success(decisionMessage(event, forwardToName));
+      this.notificationService.success(decisionMessage(event));
       this.closeDetail();
     } else {
       this.notificationService.error(this.store.decideError() ?? 'Failed to record your decision.');

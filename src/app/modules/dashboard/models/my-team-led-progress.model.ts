@@ -1,9 +1,16 @@
-export interface LedWorkTotals {
-  total: number;
-  completed: number;
-  inProgress: number;
-  notStarted: number;
-  overdue: number;
+/** Estimated-hours picture of a module (its whole subtree) or a sum of modules. Completed /
+ * in progress / not started are task estimates by task state; untasked is the part of the
+ * allocation not yet given to any task, overTasked how far task estimates exceed it. */
+export interface LedHourTotals {
+  allocatedHours: number;
+  completedHours: number;
+  inProgressHours: number;
+  notStartedHours: number;
+  untaskedHours: number;
+  overTaskedHours: number;
+  taskCount: number;
+  /** Tasks with no estimate - they add no hours anywhere. */
+  unestimatedTaskCount: number;
 }
 
 export interface LedModuleProgress {
@@ -11,14 +18,21 @@ export interface LedModuleProgress {
   title: string;
   isRootModule: boolean;
   endDate: string;
-  totals: LedWorkTotals;
+  /** Null for a module the viewer leads directly; otherwise its parent (a child-module row). */
+  parentObjectiveId: string | null;
+  /** 0 for a led module, 1 for its children, and so on. */
+  depth: number;
+  /** Not-completed work past its due date somewhere in this module's subtree. */
+  atRisk: boolean;
+  hours: LedHourTotals;
 }
 
 export interface LedProjectProgress {
   projectId: string;
   projectName: string;
   identifier: string;
-  totals: LedWorkTotals;
+  hours: LedHourTotals;
+  /** Led modules, each followed depth-first by its child modules. */
   modules: LedModuleProgress[];
 }
 
@@ -39,8 +53,10 @@ export interface LedOverdueTask {
 }
 
 export interface LedWorkProgressResponse {
-  totals: LedWorkTotals;
+  hours: LedHourTotals;
   projects: LedProjectProgress[];
   overdueTasks: LedOverdueTask[];
   overdueTotal: number;
+  /** Led modules whose subtree has overdue work. */
+  modulesAtRisk: number;
 }

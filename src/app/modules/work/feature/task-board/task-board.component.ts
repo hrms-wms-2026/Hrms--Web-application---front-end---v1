@@ -18,7 +18,7 @@ import { WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { ProfileStore } from '../../../profile/state/profile.store';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
@@ -31,21 +31,21 @@ import { NotificationService } from '../../../../core/services/notification.serv
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
         @if (searchExpanded()) {
-          <div class="relative flex h-[30px] w-80 items-center" data-testid="board-search">
-            <svg class="pointer-events-none absolute left-2.5 text-[var(--color-text-secondary)]" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <div class="ui-field ui-field--sm w-80" data-testid="board-search">
+            <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
+            </svg></span>
             <input autofocus type="search" placeholder="Search work items…" [value]="searchTerm()"
               (input)="onSearchChanged($any($event.target).value)"
-              class="h-[30px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-8 text-[13px] text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]" />
-            <button type="button" data-testid="board-search-close" aria-label="Close search" title="Close search"
-              class="absolute right-1.5 inline-flex h-5 w-5 items-center justify-center rounded text-base leading-none text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
-              (click)="toggleSearch()">&times;</button>
+              class="ui-field__control" />
+            <span class="ui-field__trailing"><button type="button" data-testid="board-search-close" aria-label="Close search" title="Close search"
+              class="ui-field__icon-btn h-5 w-5 text-base leading-none"
+              (click)="toggleSearch()">&times;</button></span>
           </div>
         } @else {
           <button type="button" data-testid="board-search-toggle" aria-label="Search board" title="Search board"
@@ -62,7 +62,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
           [selected]="assigneeFilter()"
           (selectionChanged)="setAssigneeFilter($event)"
         />
-        <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
+        <app-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="goToCreate()">Create work item</app-button>
         }
@@ -264,7 +264,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     { value: 'high', label: 'High' },
     { value: 'critical', label: 'Critical' }
   ];
-  protected readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
+  protected readonly filterFields = computed<FilterFieldConfig[]>(() => [
     { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
     { key: 'sprint', label: 'Sprint', icon: 'sprint', kind: 'single', options: this.sprintOptions(), defaultValues: ['all'] },
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },

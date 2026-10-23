@@ -9,16 +9,21 @@ import { environment } from '../../../../environments/environment';
 import { LegalEntityApiService } from '../../../modules/organization/data-access/legal-entity-api.service';
 import { LegalEntityStore } from '../../../modules/organization/state/legal-entity.store';
 import { NavigationStateService } from '../nav/navigation-state.service';
+import { signal } from '@angular/core';
+import { InboxStore } from '../../../modules/inbox/state/inbox.store';
 
 @Component({ standalone: true, template: '' })
 class BlankComponent {}
+
+const inboxBadge = signal('');
 
 function setup(permissions: string[], activeModules: string[], managesPeople = false) {
   TestBed.configureTestingModule({
     imports: [SideNavbarComponent],
     providers: [
       provideRouter([{ path: '**', component: BlankComponent }]),
-      { provide: AuthStore, useValue: { permissions: () => permissions, activeModules: () => activeModules, managesPeople: () => managesPeople } }
+      { provide: AuthStore, useValue: { permissions: () => permissions, activeModules: () => activeModules, managesPeople: () => managesPeople } },
+      { provide: InboxStore, useValue: { badgeLabel: inboxBadge } }
     ]
   });
   const fixture = TestBed.createComponent(SideNavbarComponent);
@@ -30,7 +35,7 @@ describe('SideNavbarComponent', () => {
   it('always shows Home for an authenticated user with no other modules/permissions', () => {
     const fixture = setup([], []);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
-    expect(labels).toEqual(['Home']);
+    expect(labels).toEqual(['Home', 'Inbox']);
   });
 
   it('shows Calendar/Time Off/Attendance when their modules and self-service access are active, but not People without an employees permission', () => {
@@ -40,17 +45,21 @@ describe('SideNavbarComponent', () => {
     // so People must stay hidden for this user even though core_hr is active.
     const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
-    expect(labels).toEqual(['Home', 'Calendar', 'Time Off', 'Attendance']);
+    expect(labels).toEqual(['Home', 'Inbox', 'Calendar', 'Time Off', 'Attendance']);
   });
 
-  it('shows People once the user manages people (relationship, no permission), alongside self-service access', () => {
+  it('shows Org (its People section) once the user manages people (relationship, no permission), alongside self-service access', () => {
     const fixture = setup(
       ['attendance:read-own', 'leave:read-own'],
       ['core_hr', 'calendar', 'leave', 'time_attendance'],
       true
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
-    expect(labels).toEqual(['Home', 'People', 'Calendar', 'Time Off', 'Attendance']);
+    expect(labels).toEqual(['Home', 'Inbox', 'Calendar', 'Time Off', 'Attendance', 'Org']);
+    // org:read is missing, so the rail opens the People section rather than /organization.
+    const org = (Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item')) as HTMLAnchorElement[])
+      .find((a) => a.textContent?.includes('Org'))!;
+    expect(org.getAttribute('href')).toBe('/people/employees');
   });
 
   it('hides Organization when org_structure is active but the user lacks org:read', () => {
@@ -79,20 +88,38 @@ describe('SideNavbarComponent', () => {
 
   it('renders all 8 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
     const fixture = setup(
-      ['org:read', 'roles:manage', 'attendance:read', 'leave:read-own'],
+      ['org:read', 'roles:manage', 'employees:write', 'attendance:read', 'leave:read-own'],
       ['worksync_foundation', 'core_hr', 'calendar', 'leave', 'time_attendance', 'org_structure']
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual([
       'Home',
       'Work',
-      'People',
+      'Inbox',
       'Calendar',
       'Time Off',
       'Attendance',
       'Org',
       'Settings'
     ]);
+  });
+
+  it('shows the Inbox right after Work with its badge (pending requests + unread messages)', () => {
+    inboxBadge.set('9+');
+    const fixture = setup([], ['worksync_foundation']);
+    const links = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item')) as HTMLElement[];
+    const inbox = links.find((l) => l.textContent?.includes('Inbox'));
+
+    expect(links.map((l) => l.querySelector('span')?.textContent)).toEqual(['Home', 'Work', 'Inbox']);
+    expect(inbox?.getAttribute('href')).toBe('/inbox');
+    expect(inbox?.querySelector('.nav-rail-item__badge')?.textContent?.trim()).toBe('9+');
+    inboxBadge.set('');
+  });
+
+  it('hides the Inbox badge when there is nothing waiting', () => {
+    inboxBadge.set('');
+    const fixture = setup([], ['worksync_foundation']);
+    expect(fixture.nativeElement.querySelector('.nav-rail-item__badge')).toBeNull();
   });
 
   it('shows Settings when the user has roles:manage, even with no active_modules at all', () => {

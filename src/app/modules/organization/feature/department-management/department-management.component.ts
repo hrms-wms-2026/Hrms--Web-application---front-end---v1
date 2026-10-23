@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { firstValueFrom } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -8,9 +9,11 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LegalEntityStore } from '../../state/legal-entity.store';
 import { DepartmentStore } from '../../state/department.store';
 import { DepartmentListItemResponse, DepartmentTreeNodeResponse } from '../../models/department.model';
+import { PositionListItemResponse } from '../../models/position.model';
+import { PositionApiService } from '../../data-access/position-api.service';
 import { DepartmentTreeNodeComponent } from '../../ui/department-tree-node/department-tree-node.component';
 import { DepartmentListTableComponent } from '../../ui/department-list-table/department-list-table.component';
-import { DepartmentFormModalComponent, DepartmentFormValue } from '../../ui/department-form-modal/department-form-modal.component';
+import { DepartmentFormModalComponent, DepartmentFormValue, HeadPositionOption } from '../../ui/department-form-modal/department-form-modal.component';
 import { DepartmentArchiveModalComponent } from '../../ui/department-archive-modal/department-archive-modal.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 
@@ -35,6 +38,7 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
 export class DepartmentManagementComponent {
   private readonly permissionService = inject(PermissionService);
   private readonly notificationService = inject(NotificationService);
+  private readonly positionApi = inject(PositionApiService);
 
   readonly legalEntityStore = inject(LegalEntityStore);
   readonly departmentStore = inject(DepartmentStore);
@@ -47,6 +51,25 @@ export class DepartmentManagementComponent {
   readonly formModalOpen = signal(false);
   readonly editingDepartment = signal<DepartmentListItemResponse | DepartmentTreeNodeResponse | null>(null);
   readonly parentPreset = signal<DepartmentTreeNodeResponse | null>(null);
+  private readonly companyPositions = signal<readonly PositionListItemResponse[]>([]);
+
+  /**
+   * Head candidates: active single-occupancy positions. Edit offers the department's own
+   * positions (the backend requires the head to belong to it); create offers any position not
+   * already heading another department, which then moves into the new department.
+   */
+  readonly headPositionOptions = computed<readonly HeadPositionOption[]>(() => {
+    const editing = this.editingDepartment();
+    const takenHeads = new Set(
+      this.departmentStore.allFlatList()
+        .filter((d) => d.id !== editing?.id && d.headPositionId)
+        .map((d) => d.headPositionId as string)
+    );
+    return this.companyPositions()
+      .filter((p) => p.isActive && p.positionType.toLowerCase() === 'unique')
+      .filter((p) => (editing ? p.departmentId === editing.id : !takenHeads.has(p.id)))
+      .map((p) => ({ id: p.id, title: p.name, departmentName: p.departmentName ?? null }));
+  });
 
   readonly archiveModalOpen = signal(false);
   readonly archivingDepartment = signal<DepartmentListItemResponse | DepartmentTreeNodeResponse | null>(null);
@@ -94,6 +117,7 @@ export class DepartmentManagementComponent {
     this.editingDepartment.set(null);
     this.parentPreset.set(parentPreset || null);
     this.formModalOpen.set(true);
+    void this.loadCompanyPositions();
   }
 
   openEditModal(dept: DepartmentListItemResponse | DepartmentTreeNodeResponse): void {
@@ -104,6 +128,18 @@ export class DepartmentManagementComponent {
     this.editingDepartment.set(dept);
     this.parentPreset.set(null);
     this.formModalOpen.set(true);
+    void this.loadCompanyPositions();
+  }
+
+  private async loadCompanyPositions(): Promise<void> {
+    const le = this.selectedLegalEntity();
+    if (!le) return;
+    try {
+      const page = await firstValueFrom(this.positionApi.listFlat(le.id, { pageSize: 100 }));
+      this.companyPositions.set(page.items);
+    } catch {
+      this.companyPositions.set([]);
+    }
   }
 
   closeFormModal(): void {
@@ -133,7 +169,8 @@ export class DepartmentManagementComponent {
       success = await this.departmentStore.createDepartment(le.id, {
         name: val.name,
         code: val.code,
-        parentDepartmentId: val.parentDepartmentId
+        parentDepartmentId: val.parentDepartmentId,
+        headPositionId: val.headPositionId
       });
       if (success) {
         this.notificationService.success(`Department '${val.name}' created successfully.`);

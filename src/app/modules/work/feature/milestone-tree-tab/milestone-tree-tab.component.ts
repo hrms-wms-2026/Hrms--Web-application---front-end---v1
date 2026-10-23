@@ -7,11 +7,12 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent, TreeExpandCommand } from '../../ui/milestone-tree-node/milestone-tree-node.component';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { HIGHLIGHT_SWATCHES, TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { HIGHLIGHT_SWATCHES, FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { collectNodes, computeTreeHighlight, hasActiveHighlight } from '../../utils/tree-highlight.utils';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
+import { AllocationRequestModalComponent } from '../../ui/allocation-request-modal/allocation-request-modal.component';
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { SprintFormComponent, SprintFormModuleOption } from '../../ui/sprint-form/sprint-form.component';
@@ -21,10 +22,12 @@ import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/s
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { ProjectNetworkViewComponent } from '../project-network-view/project-network-view.component';
+import { WorkGraphNode } from '../../../people/models/work-graph.model';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
-import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../utils/project.mapper';
+import { findTreeNode, isLeafObjective, collectObjectiveOptions, moduleStructureKey } from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProjectMonitorStore } from '../../state/project-monitor.store';
@@ -72,10 +75,10 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, TaskFilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
+    MilestoneTreeNodeComponent, FilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent,
-    TaskAssigneeAvatarFilterComponent
+    TaskAssigneeAvatarFilterComponent, AllocationRequestModalComponent, ProjectNetworkViewComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
@@ -92,6 +95,8 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   private readonly toolbarStore = inject(WorkPageToolbarStore);
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
+  /** The module "Request more hours" was opened for (null = closed). */
+  readonly allocationNode = signal<MilestoneTreeNode | null>(null);
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
   readonly taskModalTaskId = signal('');
@@ -123,9 +128,20 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   private readonly taskStatusOptions = signal<WorkDropdownOption[]>([]);
   private readonly categoryOptions = signal<WorkDropdownOption[]>([]);
 
-  renderedTree = computed(() => this.store.selectedSubtree());
+  /**
+   * Which view fills the tree area. The explanation card, the tabs and everything else on the page
+   * are untouched by this: only the list itself gives way to the network canvas.
+   */
+  readonly viewMode = signal<'tree' | 'network'>('tree');
 
-  readonly filterFields = computed<TaskFilterFieldConfig[]>(() => {
+  renderedTree = computed(() => this.store.selectedSubtree());
+  /** Reloads the network only when modules are added or removed - see moduleStructureKey. */
+  readonly networkReloadKey = computed(() => {
+    const tree = this.renderedTree();
+    return tree ? moduleStructureKey(tree) : '';
+  });
+
+  readonly filterFields = computed<FilterFieldConfig[]>(() => {
     const tree = this.store.selectedSubtree();
     const modules = tree ? collectObjectiveOptions(tree).map((o) => ({ value: o.id, label: o.title })) : [];
     const sprints = tree ? collectNodes(tree, (n) => n.kind === 'sprint').map((n) => ({ value: n.id, label: n.title })) : [];
@@ -309,6 +325,23 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
 
   onNodeSelected(node: MilestoneTreeNode): void {
     this.selectedNodeId.set(node.id);
+  }
+
+  /**
+   * A module, sprint or task clicked in the network: the explanation card beside it shows that
+   * node, the same card the tree list uses. Graph ids are "<kind>:<id>"; tree ids are the bare id.
+   * Sprints and tasks are lazy-loaded into the tree, so one that is not there yet pulls the whole
+   * tree in first (falling back to its module if it still cannot be found).
+   */
+  async onNetworkNodeSelected(node: WorkGraphNode): Promise<void> {
+    const id = node.id.slice(node.id.indexOf(':') + 1);
+    const inTree = () => {
+      const tree = this.store.selectedSubtree();
+      return tree ? findTreeNode(tree, id) !== null : false;
+    };
+    if (!inTree() && node.kind !== 'module') await this.loadWholeTree();
+    if (inTree()) this.selectedNodeId.set(id);
+    else if (node.objectiveId) this.selectedNodeId.set(node.objectiveId);
   }
 
   async retryTree(): Promise<void> {
@@ -632,6 +665,16 @@ onExpandLeafRequested(node: MilestoneTreeNode): void {
   onDeleteCancelled(): void {
     this.deleteConfirmOpen.set(false);
     this.pendingDeleteNode.set(null);
+  }
+
+  onAllocationRequested(node: MilestoneTreeNode): void {
+    this.allocationNode.set(node);
+  }
+
+  async onAllocationSubmitted(): Promise<void> {
+    this.allocationNode.set(null);
+    this.notificationService.success('Request sent');
+    await this.loadTree({ force: true });
   }
 
   onMembersRequested(node?: MilestoneTreeNode): void {

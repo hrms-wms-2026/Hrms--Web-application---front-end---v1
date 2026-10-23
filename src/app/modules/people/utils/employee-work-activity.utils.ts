@@ -36,6 +36,11 @@ export function formatDurationCompact(totalMinutes: number): string {
   return hours > 0 ? `${hours}h ${String(minutes).padStart(2, '0')}m` : `${minutes}m`;
 }
 
+/** 'chrome.exe' -> 'chrome': the tray reports Windows process names, so drop the '.exe' for display. */
+export function appDisplayName(appName: string): string {
+  return appName.trim().replace(/\.exe$/i, '');
+}
+
 /** '2:41 PM' in the given zone (or the viewer's own zone when omitted); '—' for a missing timestamp. */
 export function formatClock(iso: string | null, timeZone?: string): string {
   if (!iso) return '—';

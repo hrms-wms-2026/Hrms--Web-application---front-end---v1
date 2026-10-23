@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { FocusStatusApiService } from '../../data-access/focus-status-api.service';
 import { FocusStatus } from '../../models/focus-status.model';
+import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { WellbeingCarouselCardComponent } from './wellbeing-carousel-card.component';
 
 function makeStatus(overrides: Partial<FocusStatus> = {}): FocusStatus {
@@ -187,5 +188,76 @@ describe('WellbeingCarouselCardComponent', () => {
     for (const dot of dots) {
       expect(dot.style.backgroundColor.startsWith('var(')).toBe(true);
     }
+  });
+  describe('inside a dashboard frame', () => {
+    async function setupInFrame(widget: ReturnType<typeof fakeWidgetData>, status: FocusStatus | 'error' = makeStatus()) {
+      const getMyFocusStatus = vi.fn(() =>
+        status === 'error' ? { subscribe: (obs: any) => obs.error(new Error('boom')) } : of(status)
+      );
+      await TestBed.configureTestingModule({
+        imports: [WellbeingCarouselCardComponent],
+        providers: [
+          { provide: FocusStatusApiService, useValue: { getMyFocusStatus } },
+          { provide: TimeTrackingStore, useValue: { actionLoading: signal(false), startBreak: vi.fn() } },
+          widget.provider
+        ]
+      }).compileComponents();
+      const fixture = TestBed.createComponent(WellbeingCarouselCardComponent);
+      fixture.detectChanges();
+      return { fixture, getMyFocusStatus };
+    }
+
+    const title = (fixture: ComponentFixture<WellbeingCarouselCardComponent>): string =>
+      fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim();
+
+    it('uses_bootstrap_payload_without_calling_its_api', async () => {
+      const widget = fakeWidgetData('success', makeStatus({ isBreakReminderDue: true, continuousFocusMinutes: 92 }));
+      const { fixture, getMyFocusStatus } = await setupInFrame(widget);
+
+      expect(getMyFocusStatus).not.toHaveBeenCalled();
+      expect(widget.refresh).not.toHaveBeenCalled();
+      expect(title(fixture)).toBe('Take a mindful break');
+      expect(fixture.nativeElement.textContent).toContain('92 minutes');
+    });
+
+    it('falls_back_to_own_api_outside_dashboard', async () => {
+      const { fixture, getMyFocusStatus } = await setup(makeStatus({ isBreakReminderDue: true, continuousFocusMinutes: 50 }));
+      expect(getMyFocusStatus).toHaveBeenCalledOnce();
+      expect(title(fixture)).toBe('Take a mindful break');
+    });
+
+    it('falls back to its own api (tips only on failure) when the bootstrap state is an error', async () => {
+      const { fixture, getMyFocusStatus } = await setupInFrame(fakeWidgetData('error'), 'error');
+      expect(getMyFocusStatus).toHaveBeenCalledOnce();
+      expect(title(fixture)).toBe('Stay hydrated');
+    });
+
+    it('polls through the widget context and applies the refreshed payload', async () => {
+      vi.useFakeTimers();
+      const widget = fakeWidgetData('success', makeStatus());
+      const { fixture, getMyFocusStatus } = await setupInFrame(widget);
+      expect(title(fixture)).toBe('Stay hydrated');
+
+      vi.advanceTimersByTime(90_000);
+      expect(widget.refresh).toHaveBeenCalledOnce();
+      expect(getMyFocusStatus).not.toHaveBeenCalled();
+
+      widget.resolve(makeStatus({ isBreakReminderDue: true, continuousFocusMinutes: 95 }));
+      fixture.detectChanges();
+      expect(title(fixture)).toBe('Take a mindful break');
+    });
+
+    it('falls back to its own api when a context refresh fails', async () => {
+      vi.useFakeTimers();
+      const widget = fakeWidgetData('success', makeStatus());
+      const { fixture, getMyFocusStatus } = await setupInFrame(widget, makeStatus({ isBreakReminderDue: true, continuousFocusMinutes: 70 }));
+
+      vi.advanceTimersByTime(90_000);
+      widget.fail();
+      fixture.detectChanges();
+
+      expect(getMyFocusStatus).toHaveBeenCalledOnce();
+      expect(title(fixture)).toBe('Take a mindful break');
+    });
   });
 });

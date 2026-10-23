@@ -171,6 +171,37 @@ describe('EmployeeDirectoryTableComponent', () => {
     expect(el.querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('Still has not clocked in');
   });
 
+  it('rings the avatar for open alerts, shows the count on hover, and opens them in the Inbox without opening the profile', async () => {
+    const { fixture, el, host } = await setup();
+    const router = TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> };
+    host.employees.set([
+      emp('al', {
+        attendanceSummary: {
+          showNotClockedInWarning: false, shouldHaveClockedIn: true, hasClockedInToday: true, workDate: '2026-09-28',
+          timezone: 'Asia/Colombo', scheduledStartTime: '09:00', warningLabel: null, openAlertCount: 21
+        }
+      }),
+      emp('none', {
+        attendanceSummary: {
+          showNotClockedInWarning: false, shouldHaveClockedIn: true, hasClockedInToday: true, workDate: '2026-09-28',
+          timezone: 'Asia/Colombo', scheduledStartTime: '09:00', warningLabel: null, openAlertCount: 0
+        }
+      })
+    ]);
+    fixture.detectChanges();
+
+    const chips = el.querySelectorAll('[data-testid="employee-open-alerts"]');
+    expect(chips).toHaveLength(1);
+    expect(chips[0].classList).toContain('emp-avatar-wrapper--caution');
+    expect(chips[0].querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('21 open alerts');
+    expect(chips[0].getAttribute('aria-label')).toContain('21 open alerts');
+    expect(el.querySelector('.emp-open-alerts')).toBeNull();
+    (chips[0] as HTMLElement).click();
+
+    expect(router.navigate).toHaveBeenCalledTimes(1);
+    expect(router.navigate).toHaveBeenCalledWith(['/inbox'], { queryParams: { tab: 'alerts', employee: 'al' } });
+  });
+
   it('shows a warning-severity attention label as a yellow avatar tooltip instead of an inline pill', async () => {
     const { fixture, el, host } = await setup();
     host.employees.set([

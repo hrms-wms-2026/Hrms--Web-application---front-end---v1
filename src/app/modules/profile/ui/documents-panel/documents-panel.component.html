@@ -51,9 +51,9 @@
     <div class="dp-list__bar">
       <h4 class="dp-list__title">Uploaded documents</h4>
       <div class="dp-list__tools">
-        <label class="dp-search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input type="search" placeholder="Search documents..." aria-label="Search documents" [value]="search()" (input)="onSearch($event)" />
+        <label class="dp-search ui-field ui-field--sm">
+          <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg></span>
+          <input class="ui-field__control" type="search" placeholder="Search documents..." aria-label="Search documents" [value]="search()" (input)="onSearch($event)" />
         </label>
         <div class="dp-filter">
           <app-select [vacancyBadges]="true"

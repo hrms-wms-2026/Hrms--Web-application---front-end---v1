@@ -7,7 +7,7 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { environment } from '../../../../../environments/environment';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
-import { MyBalancesComponent, summarizeBalances } from './my-balances.component';
+import { monthlyAccrualNote, MyBalancesComponent, summarizeBalances } from './my-balances.component';
 
 const ANNUAL: LeaveBalanceResponse = {
   employeeId: 'emp-1',
@@ -161,5 +161,23 @@ describe('summarizeBalances', () => {
       entitled: 25,
       types: 2
     });
+  });
+});
+
+describe('monthlyAccrualNote', () => {
+  const MONTHLY: LeaveBalanceResponse = { ...ANNUAL, year: 2026, amountHours: 8, amountPeriod: 'month' };
+
+  it('shows the rate and the next credit date for the current year', () => {
+    expect(monthlyAccrualNote(MONTHLY, new Date(2026, 9, 23))).toBe('Accrues 8 h / month · next credit 1 Nov 2026');
+  });
+
+  it('shows only the rate in December and for other years', () => {
+    expect(monthlyAccrualNote(MONTHLY, new Date(2026, 11, 5))).toBe('Accrues 8 h / month');
+    expect(monthlyAccrualNote(MONTHLY, new Date(2027, 2, 1))).toBe('Accrues 8 h / month');
+  });
+
+  it('returns nothing for yearly or policy-less balances', () => {
+    expect(monthlyAccrualNote({ ...MONTHLY, amountPeriod: 'year' }, new Date(2026, 9, 23))).toBeNull();
+    expect(monthlyAccrualNote({ ...MONTHLY, amountHours: null }, new Date(2026, 9, 23))).toBeNull();
   });
 });

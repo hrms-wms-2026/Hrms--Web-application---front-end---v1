@@ -91,7 +91,7 @@ describe('PeopleStore', () => {
 
     expect(store.employeesLoading()).toBe(false);
     expect(store.employeesError()).not.toContain('Npgsql');
-    expect(store.employeesError()).toBe('Something went wrong while saving your changes.');
+    expect(store.employeesError()).toBe('Something went wrong while loading employees.');
   });
 
   it('does not let a stale in-flight request overwrite a newer ones result', async () => {

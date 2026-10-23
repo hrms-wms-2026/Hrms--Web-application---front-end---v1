@@ -24,9 +24,11 @@ import {
   filterInbox,
   inboxAgeClass,
   inboxCounts,
-  inboxTagClass
+  inboxTagClass,
+  isExceptionSource
 } from '../../utils/action-inbox.util';
 import { actionCenterRailVisible } from '../../utils/my-team-widget-visibility.util';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 const REFRESH_INTERVAL_MS = 60_000;
 /** Inbox rows on the compact card; "View all" pops out the rest. */
@@ -107,8 +109,8 @@ export class ActionCenterCardComponent implements OnInit {
     const counts = this.counts();
     const sources = this.store.data()?.sources ?? [];
     const chips: FilterChip[] = [{ key: 'all', label: 'All', count: counts.all }];
-    if (sources.some((s) => s.sourceKey !== 'monitoring.exception')) chips.push({ key: 'approval', label: 'Approvals', count: counts.approval });
-    if (sources.some((s) => s.sourceKey === 'monitoring.exception')) chips.push({ key: 'exception', label: 'Exceptions', count: counts.exception });
+    if (sources.some((s) => !isExceptionSource(s.sourceKey))) chips.push({ key: 'approval', label: 'Approvals', count: counts.approval });
+    if (sources.some((s) => isExceptionSource(s.sourceKey))) chips.push({ key: 'exception', label: 'Exceptions', count: counts.exception });
     if (this.ledProgressStore.data() && this.capabilitiesStore.capabilities()?.leadsWork) {
       chips.push({ key: 'overdue', label: 'Overdue', count: counts.overdue });
     }
@@ -310,8 +312,8 @@ export class ActionCenterCardComponent implements OnInit {
 
 function decisionErrorMessage(err: unknown): string {
   if (err instanceof HttpErrorResponse) {
-    const detail = err.error?.detail || err.error?.message || err.error?.title;
-    if (detail) return String(detail);
+    const detail = safeServerDetail(err);
+    if (detail) return detail;
     if (err.status === 409) return 'Someone already decided this request. The list has been refreshed.';
     if (err.status === 403) return "You can't decide this request.";
   }

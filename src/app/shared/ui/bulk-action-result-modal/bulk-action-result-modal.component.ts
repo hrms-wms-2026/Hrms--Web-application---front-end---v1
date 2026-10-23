@@ -26,7 +26,7 @@ export interface BulkResultSummary {
             {{ r.succeeded }} changed ·@if (showApprovals()) { {{ r.pendingApproval }} sent for approval ·} {{ r.failed }} skipped
           </p>
           @if (failures().length > 0) {
-            <ul class="flex max-h-64 flex-col gap-2 overflow-y-auto text-sm">
+            <ul class="flex max-h-64 flex-col gap-2 overflow-y-auto text-sm scroll-fade">
               @for (item of failures(); track item.id) {
                 <li class="rounded-md border border-[var(--color-border)] p-2" [attr.data-testid]="'bulk-result-failure-' + item.id">
                   <span class="font-semibold text-[var(--color-text-primary)]">{{ names().get(item.id) ?? ('Unknown ' + noun()) }}</span>

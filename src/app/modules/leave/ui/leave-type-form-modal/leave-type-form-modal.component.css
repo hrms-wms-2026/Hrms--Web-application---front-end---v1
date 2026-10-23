@@ -11,8 +11,8 @@
 .ltfm-modal {
   display: flex;
   flex-direction: column;
-  width: min(640px, 100%);
-  max-height: min(90vh, 820px);
+  width: min(920px, 100%);
+  max-height: 96vh;
   overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -67,8 +67,8 @@
 .ltfm-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.5rem;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem 1.5rem;
 }
 .ltfm-grid {
   display: grid;
@@ -76,51 +76,86 @@
   gap: 0.9rem 1rem;
 }
 .ltfm-wide { grid-column: 1 / -1; }
+/* Two columns so the whole form fits without scrolling: details left, who + rules right. */
+.ltfm-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.ltfm-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-left: 1.5rem;
+  border-left: 1px solid var(--color-border);
+}
 .ltfm-rules {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding-top: 0.25rem;
-  border-top: 1px solid var(--color-border);
+  gap: 0.5rem;
 }
 .ltfm-rules h3 {
-  margin: 0 0 0.55rem;
+  margin: 0 0 0.25rem;
   color: var(--color-text-primary);
-  font-size: 0.8125rem;
+  font-size: 0.95rem;
   font-weight: 650;
 }
+/* A rule card: checkbox, icon tile, text. Highlighted while ticked. */
 .ltfm-check {
   display: grid;
-  grid-template-columns: 1.1rem minmax(0, 1fr);
-  align-items: flex-start;
-  gap: 0.7rem;
-  padding: 0.65rem 0.15rem;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
   color: var(--color-text-primary);
   cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
 }
+.ltfm-check:hover { border-color: var(--field-border-hover); }
+.ltfm-check:has(input:checked) {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+}
+.ltfm-check:has(input:focus-visible) { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 .ltfm-check input {
-  width: 1.05rem;
-  height: 1.05rem;
-  margin-top: 0.15rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
   accent-color: var(--color-accent);
 }
+.ltfm-check__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-accent);
+}
+.ltfm-check__icon svg { width: 18px; height: 18px; }
 .ltfm-check strong {
   display: block;
-  font-size: 0.84rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 .ltfm-check small {
   display: block;
-  margin-top: 0.12rem;
+  margin-top: 0.125rem;
   color: var(--color-text-secondary);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   line-height: 1.4;
 }
 .ltfm-reveal {
-  margin: 0 0 0.4rem 1.8rem;
-  padding: 0.75rem;
+  margin: 0 0 0 2rem;
+  padding: 0.875rem;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--color-surface-secondary);
 }
 .ltfm-reveal--two {
@@ -132,8 +167,12 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding-top: 0.35rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--color-border);
+}
+@media (max-width: 860px) {
+  .ltfm-body { grid-template-columns: 1fr; }
+  .ltfm-side { padding-top: 1rem; padding-left: 0; border-top: 1px solid var(--color-border); border-left: 0; }
 }
 @media (max-width: 640px) {
   .ltfm-backdrop { align-items: flex-end; padding: 0.5rem; }
@@ -143,3 +182,111 @@
   .ltfm-footer { flex-wrap: wrap; }
   .ltfm-footer app-button { flex: 1; }
 }
+
+.ltfm-label { display: block; margin-bottom: 0.5rem; }
+.ltfm-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+.ltfm-swatch-list { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; }
+/* Colour dot with a ring around the chosen one. */
+.ltfm-swatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--swatch);
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px color-mix(in srgb, var(--swatch) 25%, transparent);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.ltfm-swatch:hover { transform: scale(1.08); }
+.ltfm-swatch--on { box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--swatch); }
+.ltfm-swatch:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 4px; }
+/* Custom swatch: rainbow ring with a plus until a custom colour is picked, then that colour. */
+.ltfm-swatch--custom {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  background: var(--swatch, var(--color-surface));
+}
+.ltfm-swatch--custom:not(.ltfm-swatch--on) {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-border);
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+    conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444) border-box;
+  border: 3px solid transparent;
+}
+.ltfm-swatch--custom svg { width: 0.875rem; height: 0.875rem; pointer-events: none; }
+/* Custom colour popover: opens above the swatch so the modal never needs to scroll. */
+.ltfm-custom { position: relative; display: inline-flex; }
+.ltfm-picker {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 0.625rem);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 15rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px var(--color-card-shadow);
+}
+.ltfm-picker__area {
+  position: relative;
+  height: 8.5rem;
+  border-radius: 6px;
+  background:
+    linear-gradient(to top, #000, transparent),
+    linear-gradient(to right, #fff, hsl(var(--hue) 100% 50%));
+  cursor: crosshair;
+  touch-action: none;
+}
+.ltfm-picker__thumb {
+  position: absolute;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.ltfm-picker__hue {
+  width: 100%;
+  height: 0.625rem;
+  margin: 0;
+  border-radius: 999px;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  appearance: none;
+  cursor: pointer;
+}
+.ltfm-picker__hue::-webkit-slider-thumb {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  appearance: none;
+}
+.ltfm-picker__hue::-moz-range-thumb {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.ltfm-picker__hue:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.ltfm-picker__footer { display: flex; align-items: center; justify-content: space-between; }
+.ltfm-picker__preview { width: 1.75rem; height: 1.75rem; border: 1px solid var(--color-border); border-radius: 999px; }
+.ltfm-error { margin: 0.375rem 0 0; }
+/* Character counter on the Description label row. */
+.ltfm-counted { position: relative; }
+.ltfm-counter, .ltfm-lock-note { position: absolute; top: 0; right: 0; color: var(--color-text-secondary); font-size: 0.75rem; }
+.ltfm-counted ::ng-deep .ui-field--multiline { min-height: 4rem; }

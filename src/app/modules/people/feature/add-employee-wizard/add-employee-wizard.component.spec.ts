@@ -177,6 +177,10 @@ describe('AddEmployeeWizardComponent', () => {
   afterEach(() => {
     flushEmployeeNumberSuggestionRequests();
     flushEmployeeNumberAvailabilityRequests();
+    // The review step loads who will have to approve this person.
+    for (const req of httpMock.match((r) => r.url.includes('/onboarding/drafts/approval-preview'))) {
+      req.flush({ positionApprovalRequired: false, positionApprovalBypassed: false, positionApprovers: [], seatsAvailable: true, availableSeats: 5, seatApprovers: [] });
+    }
     httpMock.verify();
   });
 
@@ -352,6 +356,10 @@ describe('AddEmployeeWizardComponent', () => {
     });
     await fixture.whenStable();
 
+    // The review step loads who will have to approve this person.
+    for (const req of httpMock.match((r) => r.url.includes('/onboarding/drafts/approval-preview'))) {
+      req.flush({ positionApprovalRequired: false, positionApprovalBypassed: false, positionApprovers: [], seatsAvailable: true, availableSeats: 5, seatApprovers: [] });
+    }
     httpMock.verify();
   });
 

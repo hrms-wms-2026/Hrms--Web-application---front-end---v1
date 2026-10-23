@@ -23,7 +23,6 @@
 
 .lad-pill { flex: none; padding: 0.22rem 0.7rem; border-radius: 999px; font-size: 0.74rem; font-weight: 700; }
 .lad-pill--pending { background: var(--color-warning-subtle); color: var(--color-warning-text); }
-.lad-pill--information_requested { background: var(--color-accent-subtle); color: var(--color-accent); }
 .lad-pill--approved { background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface)); color: var(--color-success); }
 .lad-pill--rejected { background: var(--color-danger-subtle); color: var(--color-danger-text); }
 .lad-pill--cancelled { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
@@ -79,7 +78,6 @@
 }
 .lad-trail__dot { flex: none; width: 0.7rem; height: 0.7rem; margin-top: 0.3rem; border-radius: 50%; background: var(--color-border); }
 .lad-trail__item--pending .lad-trail__dot,
-.lad-trail__item--information_requested .lad-trail__dot { background: var(--color-warning); box-shadow: 0 0 0 3px var(--color-warning-subtle); }
 .lad-trail__item--approved .lad-trail__dot { background: var(--color-success); }
 .lad-trail__item--rejected .lad-trail__dot { background: var(--color-danger); }
 .lad-trail__item--forwarded .lad-trail__dot { background: var(--color-accent); }
@@ -88,28 +86,10 @@
 .lad-trail__comment { margin: 0.25rem 0 0; color: var(--color-text-secondary); font-size: 0.8rem; word-break: break-word; }
 .lad-time { color: var(--color-text-secondary); font-size: 0.72rem; }
 .lad-tag { padding: 0.08rem 0.45rem; border-radius: 6px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 0.7rem; font-weight: 650; }
-.lad-tag--pending, .lad-tag--information_requested { background: var(--color-warning-subtle); color: var(--color-warning-text); }
+.lad-tag--pending { background: var(--color-warning-subtle); color: var(--color-warning-text); }
 .lad-tag--approved { background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface)); color: var(--color-success); }
 .lad-tag--rejected { background: var(--color-danger-subtle); color: var(--color-danger-text); }
 .lad-tag--forwarded { background: var(--color-accent-subtle); color: var(--color-accent); }
-
-/* Conversation */
-.lad-chat { display: flex; flex-direction: column; gap: 0.5rem; }
-.lad-msg {
-  align-self: flex-start;
-  max-width: 85%;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px 12px 12px 12px;
-  background: var(--color-surface-secondary);
-}
-.lad-msg--employee {
-  align-self: flex-end;
-  border-radius: 12px 4px 12px 12px;
-  background: var(--color-accent-subtle);
-}
-.lad-msg__meta { display: flex; align-items: baseline; gap: 0.5rem; color: var(--color-text-secondary); font-size: 0.7rem; }
-.lad-msg__meta strong { color: var(--color-text-primary); font-size: 0.75rem; }
-.lad-msg__text { margin: 0.15rem 0 0; color: var(--color-text-primary); font-size: 0.86rem; white-space: pre-wrap; word-break: break-word; }
 
 /* Checks */
 .lad-ok {
@@ -138,21 +118,9 @@
 .lad-footer { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--color-border); }
 .lad-actions { display: flex; flex-direction: column; gap: 0.6rem; }
 .lad-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.lad-push { margin-left: auto; }
 .lad-action-panel { display: flex; flex-direction: column; gap: 0.5rem; }
 .lad-action-panel label { display: flex; flex-direction: column; gap: 0.3rem; color: var(--color-text-secondary); font-size: 0.8rem; }
-.lad-action-panel textarea {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.45rem 0.6rem;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 0.84rem;
-}
-.lad-action-panel textarea:focus { outline: 2px solid var(--color-focus-ring); border-color: var(--color-accent); }
+
 .lad-action-buttons { display: flex; justify-content: flex-end; gap: 0.5rem; }
 .lad-primary, .lad-secondary, .lad-danger {
   border-radius: 8px;
@@ -172,6 +140,4 @@
   .lad-facts { grid-template-columns: 1fr 1fr; }
   .lad-fact--wide { grid-column: 1 / -1; }
   .lad-state { margin-left: 0; }
-  .lad-push { margin-left: 0; }
-  .lad-msg { max-width: 100%; }
 }

@@ -10,7 +10,6 @@ export interface LeaveCalendarAbsenceResponse {
   leaveTypeId: string;
   leaveTypeName: string;
   leaveTypeCode: string;
-  leaveTypeCategory: string;
   typeColorHex: string | null;
   status: string;
   isTentative: boolean;

@@ -13,6 +13,12 @@ export interface DepartmentFormValue {
   headPositionId: string | null;
 }
 
+export interface HeadPositionOption {
+  id: string;
+  title: string;
+  departmentName: string | null;
+}
+
 @Component({
   selector: 'app-department-form-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
@@ -28,7 +34,7 @@ export class DepartmentFormModalComponent implements OnInit {
   @Input() department: DepartmentListItemResponse | DepartmentTreeNodeResponse | null = null;
   @Input() parentPreset: DepartmentTreeNodeResponse | null = null;
   @Input() availableParents: readonly { id: string; name: string }[] = [];
-  @Input() availableHeadPositions: readonly { id: string; title: string }[] = [];
+  @Input() availableHeadPositions: readonly HeadPositionOption[] = [];
   @Input({ required: true }) companyName!: string;
   @Input() loading = false;
 
@@ -64,9 +70,18 @@ export class DepartmentFormModalComponent implements OnInit {
       { value: '', label: 'Select Head Position' }
     ];
     for (const pos of this.availableHeadPositions) {
-      opts.push({ value: pos.id, label: pos.title });
+      // On create every candidate lives in another department, so name it.
+      const label = !this.isEdit && pos.departmentName ? `${pos.title} · ${pos.departmentName}` : pos.title;
+      opts.push({ value: pos.id, label });
     }
     return opts;
+  }
+
+  /** The position picked on create, which will move out of its current department. */
+  get movingHeadPosition(): HeadPositionOption | null {
+    if (this.isEdit) return null;
+    const id = this.form.controls.headPositionId.value;
+    return this.availableHeadPositions.find((p) => p.id === id) ?? null;
   }
 
   ngOnInit(): void {

@@ -34,7 +34,7 @@ describe('NavigationStateService', () => {
 
     expect(service.activeItem()?.id).toBe('time-attendance');
     const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-alerts', 'time-attendance-monitoring']);
+    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-monitoring']);
   });
 
   it('keeps Attendance active and sub-sidebar visible when navigating with query parameters', async () => {
@@ -42,7 +42,23 @@ describe('NavigationStateService', () => {
 
     expect(service.activeItem()?.id).toBe('time-attendance');
     const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-requests', 'time-attendance-alerts', 'time-attendance-monitoring']);
+    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-monitoring']);
+  });
+
+  it('hides the sub-sidebar when the section has only one reachable page', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '**', component: BlankComponent }]),
+        { provide: AuthStore, useValue: { permissions: () => ['leave:read-own'], activeModules: () => ['leave'] } }
+      ]
+    });
+    const single = TestBed.inject(NavigationStateService);
+    await TestBed.inject(Router).navigateByUrl('/time-off');
+
+    expect(single.activeChildren().map((c) => c.id)).toEqual(['time-off-balances']);
+    expect(single.hasSubSidebar()).toBe(false);
+    expect(single.hasVisibleSubSidebar()).toBe(false);
   });
 
   it('manages sub-sidebar collapsed and expanded states and persists to localStorage', async () => {

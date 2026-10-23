@@ -156,8 +156,19 @@ export interface MeetingAttendeeResponse {
 
 export type MeetingAttendanceSyncStatus = 'none' | 'pending' | 'synced' | 'attendance_unavailable' | 'sync_failed';
 
+/** An incident the meeting raised for a participant (organizer view; rule and occurrence only). */
+export interface MeetingIncidentResponse {
+  employeeName: string;
+  rule: string;
+  occurrenceStart: string;
+  /** Detected from the desktop agent rather than the provider's attendance report. */
+  estimated: boolean;
+}
+
 export interface MeetingAttendanceResponse {
   available: boolean;
   attendees: readonly MeetingAttendeeResponse[];
   syncStatus?: MeetingAttendanceSyncStatus;
+  /** Filled for the organizer only. */
+  incidents?: readonly MeetingIncidentResponse[];
 }

@@ -145,7 +145,7 @@
                   <label class="mb-1 block text-[11px] font-semibold text-slate-600" [attr.for]="'ac-comment-' + item.key">{{ formLabel(item) }}</label>
                   <textarea
                     [id]="'ac-comment-' + item.key"
-                    class="w-full resize-none rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-400 focus:outline-none"
+                    class="ui-input"
                     rows="2"
                     [attr.maxlength]="commentMax"
                     [value]="comment()"

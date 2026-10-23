@@ -74,7 +74,6 @@
             <header class="mbc-card__head">
               <div>
                 <h2>{{ balance.leaveTypeName }}</h2>
-                <p class="mbc-card__code">{{ balance.leaveTypeCode }}</p>
               </div>
               @if (balance.isNegative) {
                 <span class="mbc-pill mbc-pill--danger" data-testid="balance-remaining-negative">{{ formatHours(balance.remainingHours) }} overdrawn</span>
@@ -97,6 +96,9 @@
               <div><dt>Used</dt><dd>{{ formatHours(balance.usedHours) }}</dd></div>
               <div><dt>Pending</dt><dd>{{ formatHours(balance.pendingHours) }}</dd></div>
             </dl>
+            @if (accrualNote(balance); as note) {
+              <p class="mbc-card__accrual" data-testid="balance-accrual">{{ note }}</p>
+            }
             @if (balance.carryForwardExpiresOn) {
               <p class="mbc-card__expiry">Carry-forward expires {{ balance.carryForwardExpiresOn }}</p>
             }
@@ -117,7 +119,7 @@
       } @else if (requestStore.myRequests().length === 0) {
         <app-empty-state title="No leave requests yet" description="Requests you submit will appear here." />
       } @else {
-        <app-leave-request-history-table [requests]="requestStore.myRequests()" (cancelRequested)="onCancelRequested($event)" (replyRequested)="onReplyRequested($event)" />
+        <app-leave-request-history-table [requests]="requestStore.myRequests()" (cancelRequested)="onCancelRequested($event)" />
       }
     </section>
   } @else {
@@ -171,13 +173,4 @@
   [cancelError]="requestStore.cancelError()"
   (confirmed)="onConfirmCancel($event)"
   (closed)="closeCancelDialog()"
-/>
-
-<app-leave-respond-info-dialog
-  [open]="replyTarget() !== null"
-  [question]="replyTarget()?.infoQuestion ?? ''"
-  [sending]="approvalStore.deciding()"
-  [sendError]="approvalStore.decideError()"
-  (confirmed)="onConfirmReply($event)"
-  (closed)="closeReplyDialog()"
 />

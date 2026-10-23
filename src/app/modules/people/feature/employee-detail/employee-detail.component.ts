@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { merge } from 'rxjs';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
@@ -15,6 +17,7 @@ import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.s
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
+import { StartOffboardingModalComponent } from '../../ui/start-offboarding-modal/start-offboarding-modal.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
@@ -33,6 +36,13 @@ import { EmployeeOverviewTabComponent } from './overview-tab.component';
 import { EmployeeWorkActivityTabComponent } from './work-activity-tab.component';
 
 type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
+
+const DETAIL_TABS: readonly DetailTab[] = ['overview', 'employment', 'work-activity', 'personal'];
+
+/** Reads the ?tab= query value; anything unknown falls back to Overview. */
+function toDetailTab(value: string | null): DetailTab {
+  return DETAIL_TABS.find((tab) => tab === value) ?? 'overview';
+}
 
 /**
  * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity, key
@@ -53,6 +63,7 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
     ErrorStateComponent,
     LoaderComponent,
     ChangePositionModalComponent,
+    StartOffboardingModalComponent,
     PopoverComponent,
     EmployeeEmploymentTabComponent,
     EmployeePersonalTabComponent,
@@ -193,20 +204,6 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
                   }
                 </div>
               </app-popover>
-
-              <!-- Overflow Menu Button (⋮) -->
-              <button
-                type="button"
-                class="p-2 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
-                title="More actions"
-                (click)="changePositionMenuOpen.set(!changePositionMenuOpen())"
-              >
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="1"></circle>
-                  <circle cx="12" cy="5" r="1"></circle>
-                  <circle cx="12" cy="19" r="1"></circle>
-                </svg>
-              </button>
             }
             <!-- Only the person who added this employee, or users:manage, gets canManageInvitation. -->
             @if (employee.canManageInvitation && employee.invitationStatus === 'expired') {
@@ -292,6 +289,14 @@ type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
         />
       }
 
+      <app-start-offboarding-modal
+        [open]="startOffboardingOpen()"
+        [employeeId]="employee.id"
+        [employeeName]="employee.personalInformation.firstName + ' ' + employee.personalInformation.lastName"
+        (started)="openOffboarding($event)"
+        (closed)="startOffboardingOpen.set(false)"
+      />
+
       <app-confirm-modal
         [open]="revokeConfirmOpen()"
         title="Revoke invitation?"
@@ -372,6 +377,7 @@ export class EmployeeDetailComponent {
   readonly savingJobDetails = signal(false);
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
+  readonly startOffboardingOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
   readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
     { id: 'overview', label: 'Overview' },
@@ -401,34 +407,76 @@ export class EmployeeDetailComponent {
     return employeeId ? this.employeeDirectory.get(employeeId)?.avatarUrl ?? null : null;
   });
 
+  /** The employee id the page is showing; a different id in the URL starts a fresh load. */
+  private currentId: string | null = null;
+
   constructor() {
-    this.load();
+    // The component is reused when the URL moves to another employee, so follow the route
+    // instead of reading it once. The snapshot is already updated whichever stream fires first.
+    merge(this.route.paramMap, this.route.queryParamMap)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.syncWithRoute());
   }
 
+  private syncWithRoute(): void {
+    const snapshot = this.route.snapshot;
+    const id = snapshot.paramMap.get('id');
+    const tab = toDetailTab(snapshot.queryParamMap.get('tab'));
+    if (id && id !== this.currentId) {
+      this.currentId = id;
+      this.employee.set(null);
+      this.jobJourney.set([]);
+      this.jobJourneyLoadedAt.set(null);
+      this.activeTab.set(tab);
+      this.employmentVisited.set(tab === 'employment');
+      this.load();
+    } else {
+      this.showTab(tab);
+    }
+  }
+
+  /** First load shows the loader; a reload of the same employee keeps the page (and its tabs) on screen. */
   load(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       return;
     }
 
-    this.loading.set(true);
+    const refreshing = this.employee()?.id === id;
+    if (!refreshing) this.loading.set(true);
     this.error.set(null);
     void this.employeeDirectory.ensureLoaded([id]);
     this.api.getEmployeeDetail(id).subscribe({
       next: (employee) => {
+        if (id !== this.currentId) return;
         this.employee.set(employee);
         this.loading.set(false);
       },
       error: (err) => {
+        if (id !== this.currentId) return;
         this.loading.set(false);
-        this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
+        if (refreshing) {
+          this.notifications.error(toSafeErrorMessage(err, 'Could not refresh the employee.'));
+        } else {
+          this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
+        }
       }
     });
     if (this.employmentVisited()) this.loadJobJourney(id);
     void this.offboardingStore.loadOffboarding(id);
   }
 
+  /** Switches tab and records it as ?tab= so a refresh or shared link opens the same tab. */
   selectTab(tab: DetailTab): void {
+    this.showTab(tab);
+    void this.router.navigate([], {
+      queryParams: { tab: tab === 'overview' ? null : tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
+  private showTab(tab: DetailTab): void {
     this.activeTab.set(tab);
     if (tab === 'employment' && !this.employmentVisited()) {
       this.employmentVisited.set(true);
@@ -447,6 +495,7 @@ export class EmployeeDetailComponent {
     if (quiet) this.jobJourneyRefreshing.set(true);
     this.api.getJobJourney(id).subscribe({
       next: (entries) => {
+        if (id !== this.currentId) return;
         this.jobJourney.set(entries);
         this.jobJourneyLoadedAt.set(new Date());
         this.jobJourneyRefreshing.set(false);
@@ -518,9 +567,19 @@ export class EmployeeDetailComponent {
     this.changePositionOpen.set(true);
   }
 
+  /** An open (or finished) offboarding opens its page; otherwise the Start Offboarding popup asks for the exit details first. */
   navigateToOffboarding(employeeId: string): void {
     this.changePositionMenuOpen.set(false);
-    void this.router.navigate(['/people/employees', employeeId, 'offboarding']);
+    const status = this.offboardingStatus();
+    if (status && status !== 'cancelled') {
+      this.openOffboarding(employeeId);
+    } else {
+      this.startOffboardingOpen.set(true);
+    }
+  }
+
+  openOffboarding(employeeId: string): void {
+    void this.router.navigate(['/people/offboarding', employeeId]);
   }
 
   onPositionPendingApproval(): void {

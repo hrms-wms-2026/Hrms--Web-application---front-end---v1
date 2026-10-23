@@ -6,6 +6,7 @@ import { toTaskStatusColumn, toWorkTask } from '../utils/task.mapper';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
 import { CreateSubtaskRequestDto, CreateTaskRequestDto, EditTaskRequestDto, InsufficientAllocationErrorDto } from '../models/dto/task.dto';
 import { PendingApprovalDto, isPendingApproval } from '../models/dto/work-approval.dto';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface TaskBoardState {
   readonly statuses: readonly TaskStatusColumn[];
@@ -18,7 +19,7 @@ interface TaskBoardState {
 const initialState: TaskBoardState = { statuses: [], tasks: [], subtasksByParentId: {}, loading: false, error: null };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 function tryParseInsufficientAllocation(err: any): InsufficientAllocationErrorDto | null {

@@ -91,6 +91,13 @@ describe('CalendarEventApiService', () => {
     req.flush({ conflicts: [] });
   });
 
+  it('createMeeting tells the API the invites were held back for a meeting created with a new event', () => {
+    service.createMeeting('event-1', 'zoom', true).subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);
+    expect(req.request.body).toEqual({ provider: 'zoom', invitesHeldBack: true });
+    req.flush({ joinUrl: 'https://us05web.zoom.us/j/123' });
+  });
+
   it('createMeeting posts to {eventId}/meeting', () => {
     service.createMeeting('event-1', 'zoom').subscribe();
     const req = http.expectOne(`${environment.apiUrl}/calendar/event-1/meeting`);

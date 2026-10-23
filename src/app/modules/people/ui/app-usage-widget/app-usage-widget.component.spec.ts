@@ -30,7 +30,8 @@ describe('AppUsageWidgetComponent', () => {
     });
 
     const row = el.querySelector('[data-testid="app-row"]')!.textContent!;
-    expect(row).toContain('Code.exe');
+    expect(row).toContain('Code');
+    expect(row).not.toContain('.exe');
     expect(row).toContain('2h 12m');
     expect(row).toContain('12');
   });

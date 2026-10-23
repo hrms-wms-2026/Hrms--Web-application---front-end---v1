@@ -1,15 +1,16 @@
-<!-- Quiet Operations Desk: ledger rows hold the information needed for a policy decision. -->
 <app-data-table [columns]="columns" [rows]="policies" [trackBy]="trackById" caption="Leave policies">
-  <ng-template appDataTableCell="policy" let-policy><strong>{{ policy.name }}</strong><span class="lpl-meta">{{ policy.country }} · v{{ policy.version }}</span></ng-template>
-  <ng-template appDataTableCell="leaveTypes" let-policy><div class="lpl-chips">@for (rule of policy.leaveTypes; track rule.id) { <span>{{ rule.leaveTypeName }}</span> }</div></ng-template>
-  <ng-template appDataTableCell="legalEntities" let-policy><div class="lpl-entities">@for (entity of policy.legalEntities; track entity.id) { <span>{{ entity.legalEntityName }}</span> }</div></ng-template>
-  <ng-template appDataTableCell="rules" let-policy><span class="lpl-rule">{{ policy.accrualMethod }}</span><span class="lpl-rule">{{ policy.approvalMode.replaceAll('_', ' ') }}</span></ng-template>
-  <ng-template appDataTableCell="effective" let-policy>{{ policy.effectiveFrom }}</ng-template>
+  <ng-template appDataTableCell="policy" let-policy><strong>{{ policy.name }}</strong></ng-template>
+  <ng-template appDataTableCell="leaveType" let-policy><span class="lpl-type"><i [style.background]="policy.leaveTypeColor" aria-hidden="true"></i>{{ policy.leaveTypeName }}</span></ng-template>
+  <ng-template appDataTableCell="amount" let-policy>{{ amount(policy) }}</ng-template>
+  <ng-template appDataTableCell="assignedTo" let-policy>
+    @if (policy.assignedToSummary.length) { {{ policy.assignedToSummary.join(' · ') }} } @else { <span class="lpl-muted">Not assigned</span> }
+  </ng-template>
+  <ng-template appDataTableCell="version" let-policy>{{ versionLabel(policy) }}</ng-template>
   <ng-template appDataTableCell="status" let-policy><span class="lpl-status" [class.lpl-status--inactive]="!policy.isActive"><i></i>{{ policy.isActive ? 'Active' : 'Inactive' }}</span></ng-template>
   <ng-template appDataTableCell="actions" let-policy>
     <span class="lpl-actions">
       <button type="button" title="View policy" aria-label="View {{ policy.name }}" (click)="viewPolicy.emit(policy)">⌕</button>
-      @if (canManage) { <button type="button" title="Clone policy" aria-label="Clone {{ policy.name }}" (click)="clonePolicy.emit(policy)">⧉</button> }
+      @if (canManage) { <button type="button" title="Copy policy" aria-label="Copy {{ policy.name }}" (click)="clonePolicy.emit(policy)">⧉</button> }
     </span>
   </ng-template>
 </app-data-table>

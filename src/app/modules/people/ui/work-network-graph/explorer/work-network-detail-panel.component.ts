@@ -48,7 +48,7 @@ function formatDate(value: string | null | undefined): string {
         }
       </nav>
 
-      <div class="wgp-body">
+      <div class="wgp-body scroll-fade">
         @switch (tab()) {
           @case ('overview') {
             @if (node.stats; as s) {
@@ -92,10 +92,10 @@ function formatDate(value: string | null | undefined): string {
               }
             </dl>
 
-            @if (node.kind === 'module') {
+            @if (node.kind === 'module' || node.kind === 'sprint') {
               <section class="wgp-section">
                 <div class="wgp-section-head">
-                  <h4>Assigned to {{ firstName() }} (open)</h4>
+                  <h4>{{ tasksHeading() }}</h4>
                   @if (myTasks().length > 5) {
                     <button type="button" class="wgp-link" (click)="tab.set('tasks')">View all</button>
                   }
@@ -110,8 +110,8 @@ function formatDate(value: string | null | undefined): string {
             }
           }
           @case ('tasks') {
-            @if (node.kind === 'module') {
-              <p class="wgp-note">{{ firstName() }}'s open tasks in this module. The overview counts every task in the module.</p>
+            @if (node.kind === 'module' || node.kind === 'sprint') {
+              <p class="wgp-note">{{ tasksNote() }}</p>
               <ng-container *ngTemplateOutlet="taskList; context: { $implicit: myTasks() }" />
             } @else {
               <ng-container *ngTemplateOutlet="moduleList; context: { $implicit: modules() }" />
@@ -135,12 +135,15 @@ function formatDate(value: string | null | undefined): string {
         }
       </div>
 
+      <!-- Sprints (project graph only) have no Work Management page of their own to open. -->
+      @if (node.kind !== 'sprint') {
       <footer class="wgp-foot">
         <button type="button" class="wgp-primary" data-testid="panel-open" (click)="open.emit(node)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
           Open {{ node.kind === 'module' ? 'module' : 'project' }} in Work Management
         </button>
       </footer>
+      }
     </aside>
 
     <ng-template #taskList let-tasks>
@@ -165,7 +168,7 @@ function formatDate(value: string | null | undefined): string {
 
     <ng-template #moduleList let-mods>
       @if (mods.length === 0) {
-        <p class="wgp-note">No modules in this project for {{ firstName() }}.</p>
+        <p class="wgp-note">{{ noModulesNote() }}</p>
       }
       <ul class="wgp-list">
         @for (m of mods; track m.id) {
@@ -252,6 +255,13 @@ export class WorkNetworkDetailPanelComponent {
   /** A project or module node from the graph. */
   readonly selected = input.required<WorkGraphNode>();
   readonly code = input('');
+  /**
+   * Project mode: the graph is rooted on a project's module tree, so it has no employee node and
+   * no project node. The kind line names the parent module instead of the project and drops the
+   * viewer-relative role word, and the task copy speaks about the module rather than a person.
+   * Left false, every line reads exactly as it did for the employee Work Network.
+   */
+  readonly projectMode = input(false);
   readonly closed = output<void>();
   /** "Open in Work Management" (and the project link): the parent navigates. */
   readonly open = output<WorkGraphNode>();
@@ -262,6 +272,17 @@ export class WorkNetworkDetailPanelComponent {
 
   private readonly employee = computed(() => this.graph().nodes.find((n) => n.kind === 'employee') ?? null);
   readonly firstName = computed(() => this.employee()?.label.split(/\s+/)[0] ?? 'Employee');
+  readonly tasksHeading = computed(() =>
+    this.projectMode() ? 'Open tasks' : `Assigned to ${this.firstName()} (open)`
+  );
+  readonly tasksNote = computed(() =>
+    this.projectMode()
+      ? 'Open tasks in this module. The overview counts every task in the module.'
+      : `${this.firstName()}'s open tasks in this module. The overview counts every task in the module.`
+  );
+  readonly noModulesNote = computed(() =>
+    this.projectMode() ? 'No modules in this project.' : `No modules in this project for ${this.firstName()}.`
+  );
   readonly progress = computed(() => progressPercent(this.selected().stats));
   readonly myTasks = computed(() => tasksByParent(this.graph()).get(this.selected().id) ?? []);
   readonly modules = computed(() =>
@@ -270,9 +291,20 @@ export class WorkNetworkDetailPanelComponent {
   readonly projectNode = computed(() =>
     this.graph().nodes.find((n) => n.kind === 'project' && n.projectId === this.selected().projectId) ?? null
   );
+  /** Project mode: the module this one hangs off, from the graph's own `contains` links. */
+  readonly parentModule = computed(() => {
+    const id = this.selected().id;
+    const link = this.graph().links.find((l) => l.target === id && l.kind === 'contains');
+    return link ? this.graph().nodes.find((n) => n.id === link.source && n.kind === 'module') ?? null : null;
+  });
   readonly kindLine = computed(() => {
     const node = this.selected();
     if (node.kind === 'project') return `Project${node.sublabel ? ' • ' + node.sublabel : ''}`;
+    if (this.projectMode()) {
+      const parent = this.parentModule();
+      const kind = node.kind === 'sprint' ? 'Sprint' : 'Module';
+      return parent ? `${kind} • ${parent.label}` : kind;
+    }
     const role = node.role === 'owner' ? 'You own' : node.role === 'member' ? 'Member' : 'Contributor';
     return `Module • ${this.projectNode()?.label ?? ''} • ${role}`;
   });

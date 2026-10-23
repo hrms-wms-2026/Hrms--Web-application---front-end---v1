@@ -3,6 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { MyTeamLedProgressApiService } from '../data-access/my-team-led-progress-api.service';
 import { LedWorkProgressResponse } from '../models/my-team-led-progress.model';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface MyTeamLedProgressState {
   readonly data: LedWorkProgressResponse | null;
@@ -20,13 +21,21 @@ const initialState: MyTeamLedProgressState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const MyTeamLedProgressStore = signalStore(
   { providedIn: 'root' },
   withState<MyTeamLedProgressState>(initialState),
   withMethods((store, api = inject(MyTeamLedProgressApiService)) => ({
+    /** Applies a response the dashboard widget context already fetched, exactly as load() applies its own. */
+    seed(data: LedWorkProgressResponse): void {
+      patchState(store, { data, loading: false, error: null, loadedAt: new Date() });
+    },
+    /** A reload is running elsewhere (the dashboard refresh) - same state load() sets while in flight. */
+    markLoading(): void {
+      patchState(store, { loading: true, error: null });
+    },
     async load(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {

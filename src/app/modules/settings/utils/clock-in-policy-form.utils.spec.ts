@@ -108,6 +108,19 @@ describe('clock-in-policy-form.utils', () => {
     expect(result.errors['lateDeductionRules.2.lateArrivalMinutes']).toContain('once');
   });
 
+  it('caps minutes at 480 and the multiplier at 10', () => {
+    const model = createDefaultClockInPolicyFormModel();
+    model.lateDeductionRules = [
+      { lateArrivalMinutes: '481', deductionAmount: '11', timeOffTypeId: 'tot-1' },
+      { lateArrivalMinutes: '480', deductionAmount: '10', timeOffTypeId: 'tot-1' }
+    ];
+    const result = validateClockInPolicyForm(model, true);
+    expect(result.errors['lateDeductionRules.0.lateArrivalMinutes']).toContain('480');
+    expect(result.errors['lateDeductionRules.0.deductionAmount']).toContain('10');
+    expect(result.errors['lateDeductionRules.1.lateArrivalMinutes']).toBeUndefined();
+    expect(result.errors['lateDeductionRules.1.deductionAmount']).toBeUndefined();
+  });
+
   it('requires minutes and deduction amount when blank', () => {
     const model = createDefaultClockInPolicyFormModel();
     model.lateDeductionRules = [createEmptyLateDeductionRule()];

@@ -63,7 +63,7 @@
     </div>
 
     <!-- Modal Body (Scrollable) -->
-    <div class="add-emp-modal-body">
+    <div class="add-emp-modal-body scroll-fade">
       @if (!hasCompany()) {
         <div class="py-8">
           <app-empty-state
@@ -420,9 +420,9 @@
                     </div>
                   </header>
 
-                  <div class="aw-search">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                    <input
+                  <div class="aw-search ui-field">
+                    <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+                    <input class="ui-field__control"
                       type="text"
                       placeholder="Search by name, position or department…"
                       aria-label="Search for a reporting manager"
@@ -888,7 +888,7 @@
                                   } @else if (filteredTaskPositions().length === 0) {
                                     <span class="text-[11px] text-[var(--color-text-secondary)]">No active positions found for this company.</span>
                                   } @else {
-                                    <div class="task-picker__list">
+                                    <div class="task-picker__list scroll-fade">
                                       @for (pos of filteredTaskPositions(); track pos.value) {
                                         <button type="button" class="task-picker__option task-picker__option--list" (click)="onTaskPositionChange(task.clientId, pos.value)">
                                           <span class="task-picker__emoji" aria-hidden="true">
@@ -926,7 +926,7 @@
                                   } @else if (assigneesFor(task.assigneePositionId).length === 0) {
                                     <span class="text-[11px] text-[var(--color-text-secondary)]">No active employees are assigned to this position yet.</span>
                                   } @else {
-                                    <div class="task-picker__list">
+                                    <div class="task-picker__list scroll-fade">
                                       @for (person of filteredTaskAssignees(task); track person.userId) {
                                         <button type="button" class="task-picker__option task-picker__option--list" (click)="onTaskAssigneeUserChange(task.clientId, person.userId); closeTaskPickers()">
                                           <span class="task-picker__emoji" aria-hidden="true">
@@ -963,7 +963,7 @@
                                 min="0"
                                 step="1"
                                 [id]="'task-due-' + task.clientId"
-                                class="task-edit-due__input"
+                                class="ui-input ui-input--sm task-edit-due__input"
                                 [value]="task.dueDays"
                                 (change)="onTaskDueDaysChange(task.clientId, $any($event.target).value)"
                               />
@@ -1077,10 +1077,21 @@
             </svg>
             @if (saveReasonMessage()) {
               <span>{{ saveReasonMessage() }}</span>
-            } @else {
+            } @else if (approvalLines().length === 0 && approvalPreview()) {
+              <span>No approval needed - the invitation is sent as soon as you finish.</span>
+            } @else if (approvalLines().length === 0) {
               <span>Seat and approval status will be shown here after you save.</span>
+            } @else {
+              <span>This person needs approval before they can be invited. It goes to the approvers' Inbox.</span>
             }
           </div>
+          @if (approvalLines().length) {
+            <ul class="add-emp-approvers" data-testid="add-emp-approvers">
+              @for (line of approvalLines(); track line.key) {
+                <li><span class="add-emp-approvers-label">{{ line.label }}</span> <strong>{{ line.approvers }}</strong></li>
+              }
+            </ul>
+          }
         </div>
       }
     }

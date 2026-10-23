@@ -4,6 +4,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs/operators';
 import { PermissionService } from '../../../core/auth/state/permission.service';
 import { canAccessNavItem } from './nav-access';
+import { NavItem } from './nav-item.model';
 import { NAV_ITEMS } from './nav-items.config';
 
 @Injectable({ providedIn: 'root' })
@@ -27,7 +28,7 @@ export class NavigationStateService {
     const rawUrl = this.currentUrl();
     const url = rawUrl.split('?')[0].split('#')[0];
     return this.visibleItems().find((item) => {
-      if (url === item.path || url.startsWith(`${item.path}/`)) {
+      if ([item.path, ...(item.alsoMatches ?? [])].some((path) => url === path || url.startsWith(`${path}/`))) {
         return true;
       }
       if (item.children && item.children.length > 0) {
@@ -45,9 +46,18 @@ export class NavigationStateService {
     return active.children.filter((child) => canAccessNavItem(child, this.permissionService));
   });
 
+  /** Where a rail item goes: its first reachable child (a parent like Org may hold pages the caller cannot open, e.g.
+   *  a team manager has People but not Organization), or its own path when it has none. */
+  entryPath(item: NavItem): string {
+    return item.children?.find((child) => canAccessNavItem(child, this.permissionService))?.path ?? item.path;
+  }
+
   readonly isSubSidebarCollapsed = signal<boolean>(this.loadInitialCollapsedState());
 
-  readonly hasSubSidebar = computed(() => this.activeChildren().length > 0);
+  readonly hasSubSidebar = computed(() => this.activeChildren().length > 1 || !!this.activeItem()?.customSubSidebar);
+
+  /** The active module's own sub-sidebar, when it renders one instead of child links. */
+  readonly customSubSidebar = computed(() => this.activeItem()?.customSubSidebar ?? null);
 
   readonly hasVisibleSubSidebar = computed(() => this.hasSubSidebar() && !this.isSubSidebarCollapsed());
 

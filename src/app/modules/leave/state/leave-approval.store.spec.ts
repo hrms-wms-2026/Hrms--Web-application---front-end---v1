@@ -19,7 +19,7 @@ describe('LeaveApprovalStore', () => {
     requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
     leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12',
     totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Trip',
-    approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: true, forwardTo: null, canChangeDecision: false
+    approvers: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: true, canChangeDecision: false
   };
 
   beforeEach(() => {
@@ -29,22 +29,6 @@ describe('LeaveApprovalStore', () => {
   });
 
   afterEach(() => httpMock.verify());
-
-  it('loads pending approvals', async () => {
-    const loading = store.loadPending();
-    httpMock.expectOne(`${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
-    await loading;
-    expect(store.pending()).toEqual([]);
-    expect(store.pendingLoading()).toBe(false);
-  });
-
-  it('reloads pending with new filters when setPendingFilter is called', async () => {
-    const loading = store.loadPending();
-    httpMock.expectOne(`${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
-    await loading;
-    store.setPendingFilter({ search: 'anu' });
-    httpMock.expectOne(`${environment.apiUrl}/leave/requests/pending-approvals?search=anu`).flush([]);
-  });
 
   it('loads all requests with status filter', async () => {
     const loading = store.loadAll();
@@ -70,7 +54,7 @@ describe('LeaveApprovalStore', () => {
     expect(store.detail()).toBeNull();
   });
 
-  it('approve succeeds, refreshes detail and pending queue', async () => {
+  it('approve succeeds and refreshes the detail', async () => {
     const loading = store.loadDetail('req-1');
     httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/approval`).flush(detail);
     await loading;
@@ -80,8 +64,6 @@ describe('LeaveApprovalStore', () => {
     await Promise.resolve();
     httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/approval`).flush({ ...detail, status: 'approved' });
     await Promise.resolve(); // loadDetail's firstValueFrom continuation runs
-    await Promise.resolve(); // decide() resumes and calls loadPending()
-    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
     const result = await deciding;
     expect(result).toEqual(decision);
     expect(store.deciding()).toBe(false);
@@ -96,16 +78,6 @@ describe('LeaveApprovalStore', () => {
     expect(store.decideError()).toContain('already been approved');
   });
 
-  it('bulkApprove returns the bulk result', async () => {
-    const bulkResult = { items: [], successCount: 1, failureCount: 0 };
-    const bulking = store.bulkApprove({ requestIds: ['req-1'], comment: null });
-    httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-approve`).flush(bulkResult);
-    await Promise.resolve();
-    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
-    const result = await bulking;
-    expect(result).toEqual(bulkResult);
-  });
-
   it('cancels a request and reloads the all-requests list', async () => {
     const cancelResponse: CancelLeaveRequestResponse = {
       requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
@@ -117,14 +89,6 @@ describe('LeaveApprovalStore', () => {
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/all`).flush([]);
     const result = await cancelling;
     expect(result).toEqual(cancelResponse);
-  });
-
-  it('sets pendingLoading to false and pendingError on loadPending failure', async () => {
-    const loading = store.loadPending();
-    httpMock.expectOne(`${environment.apiUrl}/leave/requests/pending-approvals`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
-    await loading;
-    expect(store.pendingLoading()).toBe(false);
-    expect(store.pendingError()).toBeTruthy();
   });
 
   it('sets allLoading to false and allError on loadAll failure', async () => {
@@ -150,33 +114,6 @@ describe('LeaveApprovalStore', () => {
     expect(result).toBeNull();
     expect(store.decideError()).toBeTruthy();
     expect(store.deciding()).toBe(false);
-  });
-
-  it('sets decideError and returns null when bulkApprove fails', async () => {
-    const bulking = store.bulkApprove({ requestIds: ['req-1'], comment: null });
-    httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-approve`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
-    const result = await bulking;
-    expect(result).toBeNull();
-    expect(store.decideError()).toBeTruthy();
-  });
-
-  it('bulkReject returns the bulk result and reloads pending', async () => {
-    const bulkResult = { items: [], successCount: 1, failureCount: 0 };
-    const bulking = store.bulkReject({ requestIds: ['req-1'], reason: 'Not approved' });
-    httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-reject`).flush(bulkResult);
-    await Promise.resolve();
-    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/requests/pending-approvals`).flush([]);
-    const result = await bulking;
-    expect(result).toEqual(bulkResult);
-    expect(store.deciding()).toBe(false);
-  });
-
-  it('sets decideError and returns null when bulkReject fails', async () => {
-    const bulking = store.bulkReject({ requestIds: ['req-1'], reason: 'Not approved' });
-    httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-reject`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
-    const result = await bulking;
-    expect(result).toBeNull();
-    expect(store.decideError()).toBeTruthy();
   });
 
   it('sets cancelDialogError and returns null when cancel fails', async () => {

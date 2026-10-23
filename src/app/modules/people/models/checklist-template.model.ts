@@ -9,6 +9,16 @@ export type ChecklistTaskAssignmentType = 'unassigned' | 'employee' | 'company_p
 
 export type ChecklistTemplateScopeLevel = 'company' | 'department' | 'position';
 
+/** Mirrors Work task priorities: the provisioned Work task gets this priority (default medium). */
+export type ChecklistTaskPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface ChecklistTemplateTaskAttachment {
+  fileId: string;
+  fileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+}
+
 export interface ChecklistTemplateTaskRequest {
   title: string;
   ownerType: ChecklistTaskOwnerType;
@@ -20,6 +30,9 @@ export interface ChecklistTemplateTaskRequest {
   isBypassable: boolean;
   bypassPenaltyDescription: string | null;
   category: ChecklistTaskCategory | null;
+  description?: string | null;
+  priority?: ChecklistTaskPriority | null;
+  attachmentFileIds?: string[];
 }
 
 export interface ChecklistTemplateTaskResponse {
@@ -33,6 +46,9 @@ export interface ChecklistTemplateTaskResponse {
   isBypassable: boolean;
   bypassPenaltyDescription: string | null;
   category: ChecklistTaskCategory | null;
+  description?: string | null;
+  priority?: ChecklistTaskPriority | null;
+  attachments?: ChecklistTemplateTaskAttachment[] | null;
 }
 
 export interface ChecklistTemplateListItemResponse {
@@ -127,6 +143,14 @@ export interface DraftChecklistTask {
   readonly selectedAssigneeUserId: string | null;
   readonly dueDays: number;
   readonly isRequired: boolean;
+  /** Template task details carried untouched into EditedTasksJson so the Work task gets them. */
+  readonly details?: DraftChecklistTaskDetails;
+}
+
+export interface DraftChecklistTaskDetails {
+  readonly description: string | null;
+  readonly priority: ChecklistTaskPriority | null;
+  readonly attachmentFileIds: readonly string[];
 }
 
 export interface ChecklistAssignee {

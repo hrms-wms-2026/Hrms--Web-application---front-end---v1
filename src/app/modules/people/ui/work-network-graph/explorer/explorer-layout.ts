@@ -20,6 +20,8 @@ export interface ExplorerNode extends SimulationNodeDatum {
   readonly code: string;
   /** True for invisible spacer nodes that push neighbours away from expanded task cards. */
   readonly spacer?: boolean;
+  /** True for the node pinned at the centre by `rootId`; absent in the employee-rooted graph. */
+  readonly isRoot?: boolean;
 }
 
 export interface ExplorerLink {
@@ -45,11 +47,13 @@ export function initialsOf(name: string): string {
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1]![0] : '')).toUpperCase() || 'EM';
 }
 
-function radiusOf(node: WorkGraphNode): number {
+function radiusOf(node: WorkGraphNode, isRoot = false): number {
+  if (isRoot) return 38;
   return node.kind === 'employee' ? 38 : node.kind === 'project' ? 30 : 21;
 }
 
-function collideOf(node: WorkGraphNode): number {
+function collideOf(node: WorkGraphNode, isRoot = false): number {
+  if (isRoot) return 96;
   return node.kind === 'employee' ? 96 : node.kind === 'project' ? 84 : 62;
 }
 
@@ -57,10 +61,17 @@ function collideOf(node: WorkGraphNode): number {
  * Employee, projects and modules only - tasks are never part of the force layout, they are drawn as
  * cards next to whichever module is revealed. Modules hang off their project (owner/member is shown
  * by the module's fill, not by an extra line to the employee), which keeps the picture readable.
+ *
+ * `rootId` names a node other than the employee to pin at the centre - the project-rooted graph
+ * Work Management draws has no employee node, and its root is a module. The pinned node takes the
+ * centre's radius and collision, and the links leaving it take the long `works_on` distance, so it
+ * reads as the centre rather than as one more module. Omit `rootId` and nothing changes: the
+ * employee node is pinned, every size and distance is what it was.
  */
-export function buildExplorerLayout(graph: EmployeeWorkGraphResponse): ExplorerLayout {
+export function buildExplorerLayout(graph: EmployeeWorkGraphResponse, rootId?: string): ExplorerLayout {
   const projectCodes = new Map<string, string>();
   const moduleCounters = new Map<string, number>();
+  let sprintCount = 0;
   const nodes: ExplorerNode[] = [];
 
   for (const data of graph.nodes) {
@@ -70,19 +81,23 @@ export function buildExplorerLayout(graph: EmployeeWorkGraphResponse): ExplorerL
     else if (data.kind === 'project') {
       code = `P${projectCodes.size + 1}`;
       projectCodes.set(data.id, code);
+    } else if (data.kind === 'sprint') {
+      code = `S${++sprintCount}`;
     } else {
       const key = data.projectId ?? '';
       const next = (moduleCounters.get(key) ?? 0) + 1;
       moduleCounters.set(key, next);
       code = `M${next}`;
     }
+    const isRoot = rootId !== undefined && data.id === rootId;
     nodes.push({
       id: data.id,
       data,
-      radius: radiusOf(data),
-      collide: collideOf(data),
+      radius: radiusOf(data, isRoot),
+      collide: collideOf(data, isRoot),
       code,
-      ...(data.kind === 'employee' ? { x: 0, y: 0, fx: 0, fy: 0 } : {})
+      ...(isRoot ? { isRoot: true } : {}),
+      ...(isRoot || data.kind === 'employee' ? { x: 0, y: 0, fx: 0, fy: 0 } : {})
     });
   }
 
@@ -92,12 +107,14 @@ export function buildExplorerLayout(graph: EmployeeWorkGraphResponse): ExplorerL
     if (link.kind !== 'works_on' && link.kind !== 'contains') continue;
     const source = byId.get(link.source);
     const target = byId.get(link.target);
-    if (source && target) links.push({ source, target, kind: link.kind });
+    // Links leaving the pinned root get the long distance, so its children sit clear of it.
+    const kind = source?.isRoot ? 'works_on' : link.kind;
+    if (source && target) links.push({ source, target, kind });
   }
-  // A module whose project is not in the graph still needs an anchor: tie it to the employee.
-  const employee = nodes.find((n) => n.data.kind === 'employee');
+  // A module whose project is not in the graph still needs an anchor: tie it to the centre.
+  const employee = nodes.find((n) => (rootId !== undefined ? n.isRoot : n.data.kind === 'employee'));
   for (const node of nodes) {
-    if (node.data.kind !== 'module' || !employee) continue;
+    if (node.data.kind !== 'module' || !employee || node === employee) continue;
     if (!links.some((l) => l.target === node)) links.push({ source: employee, target: node, kind: 'works_on' });
   }
   return { nodes, links };
@@ -178,6 +195,13 @@ export function taskTone(task: WorkGraphNode): TaskTone {
   return task.status === 'active' ? 'progress' : 'not-started';
 }
 
+/** Project-graph status dot: not started = empty, started = filled, completed = done (gray). */
+export type TaskStatusDot = 'empty' | 'filled' | 'done';
+
+export function taskStatusDot(task: WorkGraphNode): TaskStatusDot {
+  return task.status === 'done' ? 'done' : task.status === 'active' ? 'filled' : 'empty';
+}
+
 export const TASK_TONE_LABELS: Record<TaskTone, string> = {
   progress: 'In progress',
   'not-started': 'Not started',
@@ -193,13 +217,17 @@ export interface SearchHit {
 export function searchGraph(graph: EmployeeWorkGraphResponse, query: string, limit = 8): SearchHit[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const order = { project: 0, module: 1, task: 2, employee: 3 } as const;
+  // Sprints (project graph only) sort between modules and tasks; the other kinds keep their order.
+  const order = { project: 0, module: 1, sprint: 2, task: 3, employee: 4 } as const;
   return graph.nodes
     .filter((n) => n.kind !== 'employee')
     .filter((n) => n.label.toLowerCase().includes(q) || (n.sublabel ?? '').toLowerCase().includes(q))
     .sort((a, b) => order[a.kind] - order[b.kind] || a.label.localeCompare(b.label))
     .slice(0, limit)
-    .map((node) => ({ node, kindLabel: node.kind === 'project' ? 'Project' : node.kind === 'module' ? 'Module' : 'Task' }));
+    .map((node) => ({
+      node,
+      kindLabel: node.kind === 'project' ? 'Project' : node.kind === 'module' ? 'Module' : node.kind === 'sprint' ? 'Sprint' : 'Task'
+    }));
 }
 
 export function shorten(label: string, max: number): string {

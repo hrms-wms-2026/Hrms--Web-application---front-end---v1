@@ -2,6 +2,15 @@
   display: block;
 }
 
+/* The personal history sits in a half-width card: the shared table's 14-16px cell padding made its
+   nowrap columns wider than the card, so the Status pills spilled past the right edge. Tighter
+   padding lets the columns fit; minWidth (template) scrolls the table inside its container below that. */
+:host ::ng-deep .data-table th,
+:host ::ng-deep .data-table td {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
 .table-primary {
   display: block;
   color: var(--color-text-primary);

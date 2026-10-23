@@ -3,6 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { MyTeamTodayApiService } from '../data-access/my-team-today-api.service';
 import { TeamTodayResponse } from '../models/my-team-today.model';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface MyTeamTodayState {
   readonly data: TeamTodayResponse | null;
@@ -20,13 +21,21 @@ const initialState: MyTeamTodayState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const MyTeamTodayStore = signalStore(
   { providedIn: 'root' },
   withState<MyTeamTodayState>(initialState),
   withMethods((store, api = inject(MyTeamTodayApiService)) => ({
+    /** Applies a response the dashboard widget context already fetched, exactly as load() applies its own. */
+    seed(data: TeamTodayResponse): void {
+      patchState(store, { data, loading: false, error: null, loadedAt: new Date() });
+    },
+    /** A reload is running elsewhere (the dashboard refresh) - same state load() sets while in flight. */
+    markLoading(): void {
+      patchState(store, { loading: true, error: null });
+    },
     async load(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {

@@ -9,12 +9,9 @@ describe('LeaveTypeStore', () => {
   let store: InstanceType<typeof LeaveTypeStore>;
   let httpMock: HttpTestingController;
   const mockType: LeaveTypeResponse = {
-    id: 'type-1', name: 'Annual Leave', code: 'ANNUAL', description: null, category: 'annual',
-    isPaid: true, requiresApproval: true, requiresDocument: false, documentRequiredAfterDays: null,
-    acceptedDocumentTypes: [], maxConsecutiveDays: null, defaultDaysPerYear: 20,
-    carryForwardAllowed: true, maxCarryForwardDays: 5, carryForwardExpiryMonths: 3,
-    proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0,
-    isActive: true, createdAt: '2026-08-21T00:00:00Z'
+    id: 'type-1', name: 'Annual Leave', code: 'ANNUAL', description: null, color: '#2563EB',
+    isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null,
+    acceptedDocumentTypes: [], isActive: true, createdAt: '2026-08-21T00:00:00Z', policyCount: 1
   };
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [LeaveTypeStore, provideHttpClient(), provideHttpClientTesting()] });
@@ -39,11 +36,7 @@ describe('LeaveTypeStore', () => {
   });
   it('creates a leave type and refreshes the list', async () => {
     const creating = store.createLeaveType({
-      name: 'Sick Leave', code: 'SICK', description: null, category: 'sick',
-      isPaid: true, requiresApproval: true, requiresDocument: false, documentRequiredAfterDays: null,
-      acceptedDocumentTypes: [], maxConsecutiveDays: null, defaultDaysPerYear: 10,
-      carryForwardAllowed: false, maxCarryForwardDays: null, carryForwardExpiryMonths: null,
-      proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0
+      name: 'Sick Leave', code: 'SICK', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: []
     });
     httpMock.expectOne(`${environment.apiUrl}/leave/types`).flush(mockType);
     await Promise.resolve();
@@ -53,7 +46,7 @@ describe('LeaveTypeStore', () => {
   });
 
   it('sets actionError and returns false when createLeaveType fails', async () => {
-    const creating = store.createLeaveType({ name: 'Sick Leave', code: 'SICK', description: null, category: 'sick', isPaid: true, requiresApproval: true, requiresDocument: false, documentRequiredAfterDays: null, acceptedDocumentTypes: [], maxConsecutiveDays: null, defaultDaysPerYear: 10, carryForwardAllowed: false, maxCarryForwardDays: null, carryForwardExpiryMonths: null, proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0 });
+    const creating = store.createLeaveType({ name: 'Sick Leave', code: 'SICK', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [] });
     httpMock.expectOne(`${environment.apiUrl}/leave/types`).flush({ detail: 'Code already exists' }, { status: 409, statusText: 'Conflict' });
     expect(await creating).toBe(false);
     expect(store.actionError()).toBeTruthy();
@@ -61,7 +54,7 @@ describe('LeaveTypeStore', () => {
   });
 
   it('updates a leave type and refreshes the list', async () => {
-    const updating = store.updateLeaveType('type-1', { name: 'Annual Leave Updated', description: null, category: 'annual', isPaid: true, requiresApproval: true, requiresDocument: false, documentRequiredAfterDays: null, acceptedDocumentTypes: [], maxConsecutiveDays: null, defaultDaysPerYear: 21, carryForwardAllowed: true, maxCarryForwardDays: 5, carryForwardExpiryMonths: 3, proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0 });
+    const updating = store.updateLeaveType('type-1', { name: 'Annual Leave Updated', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [] });
     httpMock.expectOne(`${environment.apiUrl}/leave/types/type-1`).flush(mockType);
     await Promise.resolve();
     httpMock.expectOne(`${environment.apiUrl}/leave/types?includeInactive=false`).flush([mockType]);
@@ -70,7 +63,7 @@ describe('LeaveTypeStore', () => {
   });
 
   it('sets actionError and returns false when updateLeaveType fails', async () => {
-    const updating = store.updateLeaveType('type-1', { name: 'X', description: null, category: 'annual', isPaid: true, requiresApproval: true, requiresDocument: false, documentRequiredAfterDays: null, acceptedDocumentTypes: [], maxConsecutiveDays: null, defaultDaysPerYear: 20, carryForwardAllowed: false, maxCarryForwardDays: null, carryForwardExpiryMonths: null, proRataForNewJoiners: true, applicableGender: 'all', minimumNoticeDays: 0 });
+    const updating = store.updateLeaveType('type-1', { name: 'X', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [] });
     httpMock.expectOne(`${environment.apiUrl}/leave/types/type-1`).flush('Not found', { status: 404, statusText: 'Not Found' });
     expect(await updating).toBe(false);
     expect(store.actionError()).toBeTruthy();
@@ -97,12 +90,5 @@ describe('LeaveTypeStore', () => {
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/types/type-1/deactivate`).flush('Server error', { status: 500, statusText: 'Internal Server Error' });
     expect(await deactivating).toBe('error');
     expect(store.actionError()).toBeTruthy();
-  });
-
-  it('setIncludeInactive reloads with includeInactive=true', async () => {
-    store.setIncludeInactive(true);
-    httpMock.expectOne(`${environment.apiUrl}/leave/types?includeInactive=true`).flush([mockType]);
-    await Promise.resolve();
-    expect(store.includeInactive()).toBe(true);
   });
 });

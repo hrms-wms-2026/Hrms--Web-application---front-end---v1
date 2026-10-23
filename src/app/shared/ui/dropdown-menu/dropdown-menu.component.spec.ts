@@ -49,6 +49,21 @@ describe('DropdownMenuComponent', () => {
     expect(menus().length).toBe(1);
   });
 
+  it('opens upwards when the panel would be cut off at the bottom of the window', async () => {
+    const { fixture, el, click } = await setup();
+    const rect = (top: number, bottom: number) => ({ top, bottom, left: 0, right: 0, width: 0, height: bottom - top, x: 0, y: top, toJSON: () => ({}) });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(600);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('app-popover__panel') || this.classList.contains('dropdown-menu__panel') ? rect(580, 700) : rect(550, 570);
+    });
+    click('.trigger-a');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-dropdown-menu')!.classList).toContain('dropdown-menu--up');
+    vi.restoreAllMocks();
+  });
+
   it('trigger click does not reach a clickable ancestor row', async () => {
     const { fixture, click } = await setup();
     click('.trigger-a');

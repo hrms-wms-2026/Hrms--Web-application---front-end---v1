@@ -36,12 +36,17 @@ describe('captureFlipRects', () => {
 describe('playFlipAnimation', () => {
   const originalMatchMedia = window.matchMedia;
 
+  // defineProperty, not assignment: another spec in the same run may leave matchMedia non-writable.
+  function setMatchMedia(value: typeof window.matchMedia): void {
+    Object.defineProperty(window, 'matchMedia', { configurable: true, writable: true, value });
+  }
+
   afterEach(() => {
-    window.matchMedia = originalMatchMedia;
+    setMatchMedia(originalMatchMedia);
   });
 
   function setPrefersReducedMotion(matches: boolean): void {
-    window.matchMedia = vi.fn().mockReturnValue({ matches } as MediaQueryList);
+    setMatchMedia(vi.fn().mockReturnValue({ matches } as MediaQueryList));
   }
 
   it('animates an element that moved, from its old position back to the new one', () => {

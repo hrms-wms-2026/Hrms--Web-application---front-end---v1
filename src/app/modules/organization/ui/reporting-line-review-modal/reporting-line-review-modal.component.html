@@ -17,7 +17,7 @@
       </button>
     </header>
 
-    <div class="rlm-body">
+    <div class="rlm-body scroll-fade">
       <div class="rlm-summary" aria-label="Change impact">
         <span><strong>{{ impact().directRelationshipsChanged }}</strong> manager {{ impact().directRelationshipsChanged === 1 ? 'change' : 'changes' }}</span>
         <span class="rlm-summary__divider" aria-hidden="true"></span>
@@ -65,7 +65,7 @@
 
       <label class="rlm-reason">
         <span>Reason <small>Optional · recorded in employee history</small></span>
-        <textarea
+        <textarea class="ui-input"
           rows="2"
           maxlength="500"
           placeholder="Add context for this reporting change"

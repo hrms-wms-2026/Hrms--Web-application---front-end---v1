@@ -45,12 +45,19 @@ export class EmployeeDirectoryTableComponent {
   readonly breakOverageLabel = breakOverageLabel;
 
   /** The attendance issue shown as the avatar hover popup: red for errors, yellow for warnings. */
-  protected avatarIssue(employee: EmployeeListItemResponse): { label: string; tone: 'critical' | 'warning' } | null {
+  /** Ring + hover tooltip on the avatar: today's attendance problem and/or open alerts awaiting review. */
+  protected avatarIssue(
+    employee: EmployeeListItemResponse
+  ): { label: string; tone: 'critical' | 'warning'; alertCount: number } | null {
+    const alertCount = employee.attendanceSummary?.openAlertCount ?? 0;
+    const alertsLabel = alertCount > 0 ? `${alertCount} open ${alertCount === 1 ? 'alert' : 'alerts'}` : null;
     const warning = attendanceWarningLabel(employee);
-    if (warning) return { label: warning, tone: 'critical' };
-    const attention = attendanceAttentionLabel(employee);
-    if (!attention) return null;
-    return { label: attention, tone: attendanceSeverityClass(employee) === 'emp-attention--critical' ? 'critical' : 'warning' };
+    const attention = warning ? null : attendanceAttentionLabel(employee);
+    const issueLabel = warning ?? attention;
+    if (!issueLabel && !alertsLabel) return null;
+    const tone = warning || (attention && attendanceSeverityClass(employee) === 'emp-attention--critical') ? 'critical' : 'warning';
+    const label = [issueLabel, alertsLabel].filter((part): part is string => !!part).join(' · ');
+    return { label, tone, alertCount };
   }
 
   /** Columns with a dedicated cell template; every other column renders its plain value(). */
@@ -111,6 +118,13 @@ export class EmployeeDirectoryTableComponent {
 
   protected openEmployee(employee: EmployeeListItemResponse): void {
     void this.router.navigate(['/people/employees', employee.id]);
+  }
+
+  /** The employee's open attendance alerts, reviewed in the Inbox. */
+  protected openAlerts(employee: EmployeeListItemResponse, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+    void this.router.navigate(['/inbox'], { queryParams: { tab: 'alerts', employee: employee.id } });
   }
 
   protected onMenuSelected(employee: EmployeeListItemResponse, actionId: string): void {

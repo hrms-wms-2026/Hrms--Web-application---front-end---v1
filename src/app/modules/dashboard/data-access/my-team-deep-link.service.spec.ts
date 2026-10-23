@@ -19,24 +19,30 @@ describe('MyTeamDeepLinkService', () => {
     return { service: TestBed.inject(MyTeamDeepLinkService), navigate, getNotificationNavigation };
   }
 
-  it('routes leave.approval to the team approvals screen', async () => {
+  it('routes leave.approval to the leave request in the Inbox', async () => {
     const { service, navigate } = setup();
     await service.navigate({ kind: 'leave.approval', params: { requestId: 'r1' } });
-    expect(navigate).toHaveBeenCalledWith(['/time-off/team-approvals'], { queryParams: { requestId: 'r1' } });
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'leave', 'request', 'r1']);
   });
 
-  it('routes attendance.approval with its type param', async () => {
+  it('routes attendance.approval to the request in the Inbox by its type', async () => {
     const { service, navigate } = setup();
     await service.navigate({ kind: 'attendance.approval', params: { type: 'corrections', requestId: 'r2' } });
-    expect(navigate).toHaveBeenCalledWith(['/attendance/time-tracking'], {
-      queryParams: { view: 'team', type: 'corrections', requestId: 'r2' }
-    });
+    await service.navigate({ kind: 'attendance.approval', params: { type: 'work-area', requestId: 'r3' } });
+    expect(navigate).toHaveBeenNthCalledWith(1, ['/inbox', 'attendance', 'correction', 'r2']);
+    expect(navigate).toHaveBeenNthCalledWith(2, ['/inbox', 'attendance', 'work_mode_change', 'r3']);
   });
 
-  it('routes monitoring.exception to the alerts screen', async () => {
+  it('routes calendar.meeting_exception to the calendar case in the Inbox', async () => {
+    const { service, navigate } = setup();
+    await service.navigate({ kind: 'calendar.meeting_exception', params: { exceptionId: 'm1' } });
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'calendar', 'meeting_exception', 'm1']);
+  });
+
+  it('routes monitoring.exception to the case in the Inbox', async () => {
     const { service, navigate } = setup();
     await service.navigate({ kind: 'monitoring.exception', params: { alertId: 'a1' } });
-    expect(navigate).toHaveBeenCalledWith(['/attendance/alerts'], { queryParams: { alertId: 'a1' } });
+    expect(navigate).toHaveBeenCalledWith(['/inbox', 'monitoring', 'exception_case', 'a1']);
   });
 
   it('resolves work.request via notification-navigation and routes to the tree tab', async () => {

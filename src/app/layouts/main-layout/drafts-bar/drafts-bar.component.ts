@@ -234,7 +234,7 @@ export class DraftsBarComponent {
   protected readonly store = inject(DraftsStore);
   private readonly navState = inject(NavigationStateService, { optional: true });
 
-  protected readonly hasSubNav = computed(() => !!this.navState && this.navState.activeChildren().length > 0);
+  protected readonly hasSubNav = computed(() => !!this.navState && this.navState.activeChildren().length > 1);
 
   protected readonly pendingDelete = signal<DraftChip | null>(null);
   protected readonly deleting = signal(false);

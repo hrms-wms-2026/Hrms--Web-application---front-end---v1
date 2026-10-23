@@ -1,7 +1,7 @@
 @if (visibleItems().length > 0) {
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
 
-    @if (activeChildren().length > 0) {
+    @if (activeChildren().length > 1) {
       <div class="mobile-sub-nav">
         @for (child of activeChildren(); track child.id) {
           <a
@@ -18,7 +18,7 @@
     <div class="mobile-bottom-nav__bar">
       @for (item of visibleItems(); track item.id) {
         <a
-          [routerLink]="item.path"
+          [routerLink]="entryPath(item)"
           class="mobile-nav-item"
           [class.mobile-nav-item--active]="activeItem()?.id === item.id"
           [attr.aria-label]="item.label"

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject } from '@angular/core';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { AttendanceHistoryRow, TimeTrackingRange } from '../../../attendance/models/time-tracking.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
@@ -27,9 +28,13 @@ export class AttendanceTrendCardComponent implements OnInit {
   private readonly store = inject(TimeTrackingStore);
   private readonly generalSettingsStore = inject(GeneralSettingsStore, { optional: true });
   private readonly legalEntityStore = inject(LegalEntityStore, { optional: true });
+  // Company General Settings is an admin endpoint (legal_entity:read/update) - a self-service
+  // user would get a 403, so they use today's requiredWorkMinutes fallback instead.
+  private readonly canReadCompanySettings = inject(PermissionService).hasAnyPermission(['legal_entity:read', 'legal_entity:update']);
 
   constructor() {
     effect(() => {
+      if (!this.canReadCompanySettings) return;
       const legalEntityId = this.store.today?.()?.legalEntityId || this.legalEntityStore?.selectedLegalEntityId();
       if (legalEntityId && this.generalSettingsStore && this.generalSettingsStore.legalEntityId() !== legalEntityId) {
         void this.generalSettingsStore.load(legalEntityId);

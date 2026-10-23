@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectApiService } from '../data-access/project-api.service';
 import { toProject, toProjectDetail } from '../utils/project.mapper';
 import { Project, ProjectDetail, CreateProjectPayload, EditProjectPayload } from '../models/project.model';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 export type AchievedFilter = 'active' | 'archived' | 'all';
 
@@ -24,7 +25,7 @@ const initialState: ProjectListState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const ProjectListStore = signalStore(

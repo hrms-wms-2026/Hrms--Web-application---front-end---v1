@@ -4,7 +4,7 @@ import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loa
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeAppUsageResponse } from '../../models/employee-work-activity.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
-import { formatClock, formatDurationCompact } from '../../utils/employee-work-activity.utils';
+import { appDisplayName, formatClock, formatDurationCompact } from '../../utils/employee-work-activity.utils';
 
 @Component({
   selector: 'app-app-usage-widget',
@@ -28,7 +28,7 @@ import { formatClock, formatDurationCompact } from '../../utils/employee-work-ac
           @for (app of d.apps; track app.appName) {
             <li data-testid="app-row" class="min-w-0">
               <div class="flex items-baseline justify-between gap-3">
-                <span class="truncate text-sm font-semibold text-slate-900" [title]="app.appName">{{ app.appName }}</span>
+                <span class="truncate text-sm font-semibold text-slate-900" [title]="appName(app.appName)">{{ appName(app.appName) }}</span>
                 <span class="shrink-0 text-sm font-bold tabular-nums text-slate-900">{{ fmt(app.activeMinutes) }}</span>
               </div>
               <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
@@ -92,6 +92,10 @@ export class AppUsageWidgetComponent {
   /** The app's share of the period's tracked time, as a bar width. */
   share(minutes: number, total: number): number {
     return total > 0 ? Math.min(100, Math.round((minutes / total) * 100)) : 0;
+  }
+
+  appName(name: string): string {
+    return appDisplayName(name);
   }
 
   fmt(minutes: number): string {

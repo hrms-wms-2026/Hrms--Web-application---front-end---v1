@@ -32,7 +32,9 @@ describe('WorkPatternWidgetComponent', () => {
     });
 
     expect(el.querySelector('[data-testid="pattern-focus"]')!.textContent).toContain('3');
-    expect(el.querySelector('[data-testid="pattern-top-app"]')!.textContent).toContain('Code.exe');
+    const topApp = el.querySelector('[data-testid="pattern-top-app"]')!.textContent;
+    expect(topApp).toContain('Code');
+    expect(topApp).not.toContain('.exe');
     expect(el.querySelector('[data-testid="pattern-top-app"]')!.textContent).toContain('1h 12m');
     expect(el.querySelector('[data-testid="pattern-idle"]')!.textContent).toContain('28m');
   });

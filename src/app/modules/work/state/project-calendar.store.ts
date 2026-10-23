@@ -15,6 +15,7 @@ import {
   UpdateCalendarEventRequestDto
 } from '../models/dto/calendar.dto';
 import { EditObjectiveRequestDto } from '../models/dto/milestone.dto';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface ProjectCalendarState {
   readonly projectId: string | null;
@@ -47,7 +48,7 @@ const initialState: ProjectCalendarState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 /**

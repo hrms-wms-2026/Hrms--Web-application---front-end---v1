@@ -32,6 +32,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ColorSwatchPickerComponent } from '../color-swatch-picker/color-swatch-picker.component';
 import { TaskStatusCategory, TaskStatusColumn } from '../../models/task.model';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 /**
  * direct: top (default) module owner/member - saves immediately, as before.
@@ -1029,6 +1030,6 @@ export class BoardStructureEditorComponent {
     }
   }
   private showError(error: unknown, fallback: string) {
-    this.errorMessage.set((error as { error?: { detail?: string } })?.error?.detail || fallback);
+    this.errorMessage.set(safeServerDetail(error) || fallback);
   }
 }

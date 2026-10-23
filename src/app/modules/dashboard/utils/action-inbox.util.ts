@@ -1,6 +1,9 @@
 import { ActionItemLink, TeamActionItemsResponse } from '../models/my-team-action-items.model';
 import { LedWorkProgressResponse } from '../models/my-team-led-progress.model';
 import { wholeDaysSince } from './priority-actions.util';
+import { isExceptionSource } from './exception-sources.util';
+
+export { isExceptionSource };
 
 export type InboxKind = 'approval' | 'exception' | 'overdue';
 export type InboxFilter = 'all' | InboxKind;
@@ -41,6 +44,7 @@ const TAG: Record<string, string> = {
   'attendance.location': 'Location',
   'attendance.device_change': 'Device',
   'monitoring.exception': 'Exception',
+  'calendar.meeting_exception': 'Meeting exception',
   'work.task_creation': 'Task creation',
   'work.task_edit': 'Task edit',
   'work.objective_change': 'Objective',
@@ -71,7 +75,7 @@ export function buildActionInbox(
 
   for (const source of actionItems?.sources ?? []) {
     if (source.status !== 'ok') continue;
-    const kind: InboxKind = source.sourceKey === 'monitoring.exception' ? 'exception' : 'approval';
+    const kind: InboxKind = isExceptionSource(source.sourceKey) ? 'exception' : 'approval';
     for (const item of source.topItems) {
       items.push({
         key: `${source.sourceKey}:${item.entityId}`,
@@ -119,8 +123,8 @@ export function inboxCounts(
   inbox: readonly InboxItem[]
 ): InboxCounts {
   const ok = (actionItems?.sources ?? []).filter((source) => source.status === 'ok');
-  const approval = ok.filter((s) => s.sourceKey !== 'monitoring.exception').reduce((sum, s) => sum + s.pendingCount, 0);
-  const exception = ok.filter((s) => s.sourceKey === 'monitoring.exception').reduce((sum, s) => sum + s.pendingCount, 0);
+  const approval = ok.filter((s) => !isExceptionSource(s.sourceKey)).reduce((sum, s) => sum + s.pendingCount, 0);
+  const exception = ok.filter((s) => isExceptionSource(s.sourceKey)).reduce((sum, s) => sum + s.pendingCount, 0);
   // The backend total includes the caller's own overdue tasks; the inbox leaves those out, so count
   // the rows when every overdue task was returned, and the total otherwise.
   const overdueRows = inbox.filter((item) => item.kind === 'overdue').length;

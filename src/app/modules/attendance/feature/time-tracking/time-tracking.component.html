@@ -303,7 +303,7 @@
               />
             </div>
             <fieldset class="form-field"><legend>Requested work area <b aria-hidden="true">*</b></legend><div class="work-area-options">@for (option of workAreaOptions; track option.value) { <label class="work-area-option"><input type="radio" name="requestedWorkArea" [value]="option.value" [checked]="workAreaRequestedArea() === option.value" (change)="workAreaRequestedArea.set(option.value); resetWorkAreaReview()" />{{ option.label }}</label> }</div><small class="field-error">{{ workAreaFieldErrors()['requestedWorkArea'] || '' }}</small></fieldset>
-            <label class="form-field"><span>Reason <b aria-hidden="true">*</b></span><textarea rows="4" [ngModel]="workAreaReason()" (ngModelChange)="workAreaReason.set($event); resetWorkAreaReview()" name="workAreaReason" required></textarea><small class="field-error">{{ workAreaFieldErrors()['reason'] || '' }}</small></label>
+            <label class="form-field"><span>Reason <b aria-hidden="true">*</b></span><textarea class="ui-input" rows="4" [ngModel]="workAreaReason()" (ngModelChange)="workAreaReason.set($event); resetWorkAreaReview()" name="workAreaReason" required></textarea><small class="field-error">{{ workAreaFieldErrors()['reason'] || '' }}</small></label>
           } @else if (store.workAreaPreview(); as preview) {
             <div class="review-panel"><p>Review the details before sending this request.</p><dl class="review-summary"><div><dt>Date</dt><dd>{{ formatWorkAreaDate(preview.date, preview.timezone) }}</dd></div><div><dt>Current planned work area</dt><dd>{{ workAreaLabel(preview.currentExpectedWorkArea) }}</dd></div><div><dt>Requested work area</dt><dd>{{ workAreaLabel(preview.requestedWorkArea) }}</dd></div><div><dt>Reason</dt><dd>{{ preview.reason }}</dd></div><div><dt>Sent to</dt><dd>{{ preview.receiver.displayName }}@if (preview.receiver.positionName) {, {{ preview.receiver.positionName }}}</dd></div></dl><button type="button" class="text-action" (click)="resetWorkAreaReview()">Edit request</button></div>
           }
@@ -363,41 +363,11 @@
     }
 
     @if (hasApproveAccess()) {
-      <section class="history-card" aria-label="Approvals">
+      <section class="history-card" aria-label="Attendance requests">
         <div class="section-heading">
-          <div><p class="eyebrow">Review queue</p><h2 id="approvals-heading">Approvals</h2><p class="access-note">Review attendance requests assigned to you.</p></div>
+          <div><p class="eyebrow">Review queue</p><h2>Attendance requests</h2><p class="access-note">Corrections, work mode, location and device changes waiting for you are reviewed in the Inbox.</p></div>
+          <a class="inbox-link" data-testid="attendance-inbox-link" routerLink="/inbox" [queryParams]="{ source: 'attendance', tab: 'requests' }">Open the Inbox</a>
         </div>
-        <div class="my-requests-tablist" role="tablist" aria-label="Approval type">
-          <button type="button" role="tab" id="approval-type-tab-corrections" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'corrections'" [attr.aria-selected]="approvalType() === 'corrections'" aria-controls="approval-type-panel-corrections" tabindex="0" (click)="selectApprovalType('corrections')">
-            Attendance corrections@if (approvalBadgeCorrections() > 0) { ({{ approvalBadgeCorrections() }}) }
-          </button>
-          <button type="button" role="tab" id="approval-type-tab-work-area" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'work-area'" [attr.aria-selected]="approvalType() === 'work-area'" aria-controls="approval-type-panel-work-area" tabindex="0" (click)="selectApprovalType('work-area')">
-            Work-area changes@if (approvalBadgeWorkArea() > 0) { ({{ approvalBadgeWorkArea() }}) }
-          </button>
-          <button type="button" role="tab" id="approval-type-tab-location" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'location'" [attr.aria-selected]="approvalType() === 'location'" aria-controls="approval-type-panel-location" tabindex="0" (click)="selectApprovalType('location')">
-            Location changes@if (approvalBadgeLocation() > 0) { ({{ approvalBadgeLocation() }}) }
-          </button>
-          <button type="button" role="tab" id="approval-type-tab-device-change" class="my-requests-tab" [class.my-requests-tab--active]="approvalType() === 'device-change'" [attr.aria-selected]="approvalType() === 'device-change'" aria-controls="approval-type-panel-device-change" tabindex="0" (click)="selectApprovalType('device-change')">
-            Device changes@if (approvalBadgeDeviceChange() > 0) { ({{ approvalBadgeDeviceChange() }}) }
-          </button>
-        </div>
-        @if (approvalType() === 'corrections') {
-          <div id="approval-type-panel-corrections" role="tabpanel" aria-labelledby="approval-type-tab-corrections" tabindex="0">
-            <app-correction-approvals [embedded]="true" />
-          </div>
-        } @else if (approvalType() === 'work-area') {
-          <div id="approval-type-panel-work-area" role="tabpanel" aria-labelledby="approval-type-tab-work-area" tabindex="0">
-            <app-work-area-approvals [embedded]="true" />
-          </div>
-        } @else if (approvalType() === 'location') {
-          <div id="approval-type-panel-location" role="tabpanel" aria-labelledby="approval-type-tab-location" tabindex="0">
-            <app-location-change-approvals [embedded]="true" />
-          </div>
-        } @else {
-          <div id="approval-type-panel-device-change" role="tabpanel" aria-labelledby="approval-type-tab-device-change" tabindex="0">
-            <app-device-change-approvals [embedded]="true" />
-          </div>
-        }
       </section>
     }
   }

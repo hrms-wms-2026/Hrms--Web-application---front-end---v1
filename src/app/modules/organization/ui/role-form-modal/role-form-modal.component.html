@@ -30,7 +30,7 @@
 
     <!-- Body Form -->
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="rfm-form">
-      <div class="rfm-body-scroll">
+      <div class="rfm-body-scroll scroll-fade">
 
         @if (readOnly) {
           @if (role?.description; as description) {
@@ -51,7 +51,7 @@
               <label class="rfm-label" for="rfm-description">Description — optional</label>
               <textarea
                 id="rfm-description"
-                class="rfm-textarea"
+                class="ui-input"
                 rows="2"
                 placeholder="Describe the responsibilities and scope of this role…"
                 [value]="form.controls.description.value || ''"

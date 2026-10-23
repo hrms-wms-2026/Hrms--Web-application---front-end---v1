@@ -1,15 +1,18 @@
-/** Screen 5, 5 steps per the product spec: type -> From/To -> live total/warnings -> reason -> review & submit. */
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
+/** New leave request: one form (type, From/To, reason) whose policy warnings preview as soon as the dates are valid. */
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, effect, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { TimePickerComponent } from '../../../../shared/ui/time-picker/time-picker.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmployeePickerComponent } from '../../../work/ui/employee-picker/employee-picker.component';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveRequestResponse, LeaveUploadedDocument, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
-import { formatHours, toLeaveSubmitDateTimes } from '../../utils/leave-request-datetime';
+import { toLeaveSubmitDateTimes } from '../../utils/leave-request-datetime';
+import { formatHours as hoursLabel } from '../../utils/leave-amount';
 
 export interface LeaveRequestDraft {
   leaveTypeId: string;
@@ -27,7 +30,7 @@ function emptyDraft(): LeaveRequestDraft {
 @Component({
   selector: 'app-new-leave-request-wizard',
   standalone: true,
-  imports: [CommonModule, ModalComponent, DatePickerComponent, TimePickerComponent, EmployeePickerComponent, SelectComponent],
+  imports: [CommonModule, ModalComponent, DatePickerComponent, TimePickerComponent, EmployeePickerComponent, SelectComponent, InputComponent, ButtonComponent],
   templateUrl: './new-leave-request-wizard.component.html',
   styleUrl: './new-leave-request-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -56,23 +59,36 @@ export class NewLeaveRequestWizardComponent {
   @Output() documentRemoved = new EventEmitter<string>();
   @Output() closed = new EventEmitter<void>();
 
-  readonly step = signal(1);
   readonly draft = signal<LeaveRequestDraft>(emptyDraft());
   readonly employeeId = signal<string | null>(null);
   readonly pickerOpen = signal(false);
-  readonly formatHours = formatHours;
+  /** "24 h" for the over-balance warning. */
+  readonly hoursLabel = hoursLabel;
 
-  readonly steps = ['Leave type', 'From / To', 'Total & warnings', 'Reason', 'Review'];
-  readonly activeLeaveTypes = computed(() => (this.leaveTypes as LeaveTypeResponse[]).filter((type) => type.isActive));
-  readonly workWindowMissing = computed(() => !this.workStartTime || !this.workEndTime);
-  readonly reasonMaxLength = 2000;
+  readonly reasonMaxLength = 500;
+
+  /** Type + range last sent for preview, so editing the reason doesn't re-run it. */
+  private lastPreviewKey = '';
+
+  constructor() {
+    // Preview (total, balance, notice and conflict warnings) as soon as the type and dates are valid.
+    effect(() => {
+      const d = this.draft();
+      if (!d.leaveTypeId || this.dateRangeHint() !== null) return;
+      const payload = this.toSubmitPayload();
+      if (!payload) return;
+      const key = `${payload.leaveTypeId}|${payload.startAt}|${payload.endAt}`;
+      if (key === this.lastPreviewKey) return;
+      this.lastPreviewKey = key;
+      untracked(() => this.previewRequested.emit(payload));
+    });
+  }
 
   /** Leave type dropdown options with each type's remaining balance; rebuilt when the inputs change. */
   leaveTypeOptions: readonly SelectOption[] = [];
 
   ngOnChanges(): void {
     this.leaveTypeOptions = [
-      { value: '', label: 'Select a leave type' },
       ...this.leaveTypes
         .filter((type) => type.isActive)
         .map((type) => {
@@ -91,6 +107,15 @@ export class NewLeaveRequestWizardComponent {
     }));
   }
 
+  // Plain methods, not computed(): these read @Input()s, which a computed would cache at their first (empty) value.
+  activeLeaveTypes(): LeaveTypeResponse[] {
+    return (this.leaveTypes as LeaveTypeResponse[]).filter((type) => type.isActive);
+  }
+
+  workWindowMissing(): boolean {
+    return !this.workStartTime || !this.workEndTime;
+  }
+
   remainingHoursFor(leaveTypeId: string): number | null {
     const balance = (this.balances as LeaveBalanceResponse[]).find((b) => b.leaveTypeId === leaveTypeId);
     return balance ? balance.remainingHours : null;
@@ -104,10 +129,6 @@ export class NewLeaveRequestWizardComponent {
     return this.selectedLeaveType()?.name ?? '';
   }
 
-  stepLabel(): string {
-    return this.steps[this.step() - 1] ?? '';
-  }
-
   onLeaveTypeChange(leaveTypeId: string): void {
     this.draft.update((d) => ({ ...d, leaveTypeId }));
   }
@@ -117,7 +138,7 @@ export class NewLeaveRequestWizardComponent {
     this.pickerOpen.set(false);
   }
 
-  /** Why Continue is disabled on the From/To step, so the user isn't left guessing. */
+  /** Why Submit is disabled by the dates, so the user isn't left guessing. */
   dateRangeHint(): string | null {
     const d = this.draft();
     if (this.workWindowMissing()) return null;
@@ -135,45 +156,16 @@ export class NewLeaveRequestWizardComponent {
     this.draft.update((d) => ({ ...d, startDate, endDate: !d.endDate || d.endDate < startDate ? startDate : d.endDate }));
   }
 
-  approverNames(): string[] {
-    return (this.previewResult?.approvers ?? [])
-      .slice()
-      .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
-      .map((a) => a.approverName)
-      .filter((name) => !!name);
-  }
-
-  formatDay(date: string): string {
-    if (!date) return '';
-    const [year, month, day] = date.split('-').map(Number);
-    const weekday = new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'short' });
-    return `${date} (${weekday})`;
-  }
-
-  canLeaveStep(step: number): boolean {
+  /** Submit needs a complete form and a clean preview of the current range. */
+  canSubmit(): boolean {
     const d = this.draft();
-    if (step === 1) return this.onBehalf ? this.employeeId() !== null && !!d.leaveTypeId : !!d.leaveTypeId;
-    if (step === 2) return this.toSubmitPayload() !== null && this.dateRangeHint() === null;
-    // Submit needs a successful preview, so don't let a blocking preview error lead the user
-    // through steps 4-5 to a Submit button that can never be enabled.
-    if (step === 3) return !this.previewing && !this.previewError && this.previewResult !== null;
-    return true;
-  }
-
-  onNext(): void {
-    if (!this.canLeaveStep(this.step())) return;
-    if (this.step() === 2) {
-      const payload = this.toSubmitPayload();
-      if (payload) this.previewRequested.emit(payload);
-    }
-    this.step.update((s) => Math.min(5, s + 1));
-  }
-
-  onBack(): void {
-    this.step.update((s) => Math.max(1, s - 1));
+    if (!d.leaveTypeId || (this.onBehalf && this.employeeId() === null)) return false;
+    if (this.toSubmitPayload() === null || this.dateRangeHint() !== null) return false;
+    return !this.submitting && !this.uploadingDocument && !this.previewing && !this.previewError;
   }
 
   onSubmit(): void {
+    if (!this.canSubmit()) return;
     const request = this.toSubmitPayload();
     if (!request) return;
     if (this.onBehalf) {

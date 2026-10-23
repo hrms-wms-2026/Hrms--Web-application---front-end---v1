@@ -3,6 +3,8 @@ import { RouterLink } from '@angular/router';
 import { LegalEntityApiService } from '../../../modules/organization/data-access/legal-entity-api.service';
 import { LegalEntityStore } from '../../../modules/organization/state/legal-entity.store';
 import { CompanyLogoTileComponent } from '../../../shared/ui/company-logo-tile/company-logo-tile.component';
+import { InboxStore } from '../../../modules/inbox/state/inbox.store';
+import { NavItem } from '../nav/nav-item.model';
 import { NavigationStateService } from '../nav/navigation-state.service';
 import { NavIconComponent } from './nav-icon.component';
 
@@ -18,8 +20,11 @@ export class SideNavbarComponent {
   private readonly navState = inject(NavigationStateService);
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly legalEntityApi = inject(LegalEntityApiService);
+  /** Pending requests + unread chat messages ('' when none, capped at 9+). */
+  readonly inboxBadge = inject(InboxStore).badgeLabel;
 
   readonly visibleItems = this.navState.visibleItems;
+  readonly entryPath = (item: NavItem): string => this.navState.entryPath(item);
   readonly activeItem = this.navState.activeItem;
 
   readonly selectedCompany = this.legalEntityStore.selectedLegalEntity;

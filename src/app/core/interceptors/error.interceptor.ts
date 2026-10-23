@@ -1,4 +1,4 @@
-import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpContextToken, HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, retry, throwError, timer } from 'rxjs';
@@ -7,6 +7,10 @@ import { ErrorHandlerService } from '../services/error-handler.service';
 import { TrayPresenceRequiredEvents } from '../tray-presence/state/tray-presence-required.events';
 
 const RETRY_DELAYS_MS = [250, 500, 1000];
+
+/** Set on a request whose caller handles its errors itself (e.g. hides a section): no banner/toast for it. Session
+ *  handling (401, CSRF) still applies. */
+export const SILENT_HTTP_ERRORS = new HttpContextToken<boolean>(() => false);
 const SESSION_EXEMPT_PATH_FRAGMENTS = ['/auth/login', '/auth/me'];
 const CSRF_ERROR_TYPE = 'https://onevo.com/errors/csrf';
 
@@ -77,7 +81,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
-      errorHandler.handle(error);
+      if (!req.context.get(SILENT_HTTP_ERRORS)) errorHandler.handle(error);
       return throwError(() => error);
     })
   );

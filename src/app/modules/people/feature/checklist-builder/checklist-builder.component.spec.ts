@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -174,7 +175,8 @@ describe('ChecklistBuilderComponent', () => {
     await component.chooseExistingEmployee(0);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Select position');
+    // The picker renders in the CDK overlay container (outside the fixture) so it isn't clipped.
+    expect(document.querySelector('.cdk-overlay-container')?.textContent).toContain('Select position');
   });
 
   it('allows an optional employee picker in the template builder after position selection', async () => {
@@ -299,7 +301,10 @@ describe('ChecklistBuilderComponent', () => {
       isRequired: true,
       isBypassable: false,
       bypassPenaltyDescription: null,
-      category: null
+      category: null,
+      description: null,
+      priority: 'medium',
+      attachmentFileIds: []
     });
 
     req.flush({ id: 'tmpl-104', ...req.request.body, isActive: true });
@@ -337,7 +342,10 @@ describe('ChecklistBuilderComponent', () => {
       isRequired: true,
       isBypassable: false,
       bypassPenaltyDescription: null,
-      category: null
+      category: null,
+      description: null,
+      priority: 'medium',
+      attachmentFileIds: []
     });
 
     req.flush({ id: 'tmpl-105', ...req.request.body, isActive: true });
@@ -378,7 +386,7 @@ describe('ChecklistBuilderComponent', () => {
     await submitPromise;
   });
 
-  it('supports task addition, removal, and reordering with correct button disabled states', () => {
+  it('supports task addition, removal, and drag reordering, with a details button per row', () => {
     expect(component.tasksArray.length).toBe(1);
 
     component.addTask({ title: 'Task 2' });
@@ -389,15 +397,16 @@ describe('ChecklistBuilderComponent', () => {
 
     fixture.detectChanges();
 
-    const upButtons = fixture.nativeElement.querySelectorAll('.cb-task-row__actions .cb-icon-btn');
-    expect(upButtons[0].disabled).toBe(true);
-    expect(upButtons[upButtons.length - 2].disabled).toBe(true);
+    const rowButtons = fixture.nativeElement.querySelectorAll('.cb-task-row__actions .cb-icon-btn');
+    expect(rowButtons.length).toBe(6);
+    expect(fixture.nativeElement.querySelector('[aria-label="Move task up"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.cb-icon-btn--details').length).toBe(3);
 
-    component.moveTaskUp(1);
+    component.onDropTask({ previousIndex: 1, currentIndex: 0 } as CdkDragDrop<unknown>);
     expect(component.tasksArray.at(0).value.title).toBe('Task 2');
     expect(component.tasksArray.at(1).value.title).toBe('Task 1');
 
-    component.moveTaskDown(0);
+    component.onDropTask({ previousIndex: 0, currentIndex: 1 } as CdkDragDrop<unknown>);
     expect(component.tasksArray.at(0).value.title).toBe('Task 1');
 
     component.removeTask(2);
@@ -474,6 +483,57 @@ describe('ChecklistBuilderComponent', () => {
     expect(request.isBypassable).toBe(true);
     expect(request.bypassPenaltyDescription).toBe('Deduct from settlement');
     expect(request.category).toBe('asset_return');
+  });
+
+  it('mapTaskFormToRequest sends description, priority and attachment ids from task details', () => {
+    const request = component.mapTaskFormToRequest(
+      {
+        title: 'Return laptop', assignmentType: 'employee', assigneePositionId: '', selectedAssigneeUserId: '',
+        dueOffsetDays: 1, isRequired: true, isBypassable: false, bypassPenaltyDescription: '', category: '',
+        description: '<p>Bring the charger</p>', priority: 'high',
+        attachments: [{ fileId: 'file-1', name: 'policy.pdf', sizeBytes: 10 }], pendingFileIds: ['file-1']
+      },
+      0
+    );
+    expect(request.description).toBe('<p>Bring the charger</p>');
+    expect(request.priority).toBe('high');
+    expect(request.attachmentFileIds).toEqual(['file-1']);
+  });
+
+  it('opens the task details popup from the row details button', () => {
+    component.tasksArray.at(0).patchValue({ title: 'Collect contract' });
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="task-0-details"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(component.openTaskDetailIndex()).toBe(0);
+    expect(document.querySelector('.ctd')).not.toBeNull();
+    expect((document.querySelector('.ctd-title-input') as HTMLInputElement).value).toBe('Collect contract');
+
+    component.closeTaskDetail();
+    fixture.detectChanges();
+    expect(document.querySelector('.ctd')).toBeNull();
+  });
+
+  it('keeps the builder open when Escape is pressed while task details are open', () => {
+    const closedSpy = vi.fn();
+    component.closed.subscribe(closedSpy);
+    component.openTaskDetail(0);
+    fixture.detectChanges();
+
+    const detailsButton = fixture.nativeElement.querySelector('[data-testid="task-0-details"]') as HTMLButtonElement;
+    detailsButton.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    component.onBackdrop();
+    fixture.detectChanges();
+
+    expect(closedSpy).not.toHaveBeenCalled();
+    expect(component.openTaskDetailIndex()).toBe(0);
+
+    (document.querySelector('.ctd') as HTMLElement).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(component.openTaskDetailIndex()).toBeNull();
+    expect(closedSpy).not.toHaveBeenCalled();
   });
 
   it('adds a new task row when Enter is pressed on the last row with a non-empty title', () => {
@@ -713,7 +773,10 @@ describe('ChecklistBuilderComponent (Edit Mode)', () => {
           isRequired: true,
           isBypassable: false,
           bypassPenaltyDescription: null,
-          category: null
+          category: null,
+          description: null,
+          priority: 'medium',
+          attachmentFileIds: []
         }
       ]
     });

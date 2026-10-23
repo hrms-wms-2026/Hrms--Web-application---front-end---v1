@@ -7,7 +7,7 @@ import { TaskCommentApiService } from '../../data-access/task-comment-api.servic
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCommentDto, TaskCommentReactionDto, TaskCommentReactorDto } from '../../models/dto/task-comment.dto';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
-import { CommentComposerComponent } from '../comment-composer/comment-composer.component';
+import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
 import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-link.util';
 
@@ -177,7 +177,7 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
                 >
                   <div class="tc-popover" role="dialog" [attr.aria-label]="'People who reacted with ' + r.emoji" data-testid="reactors-popover" (click)="$event.stopPropagation()">
                     <div class="tc-popover-title">{{ r.emoji }} Reactions · {{ r.count }}</div>
-                    <div class="tc-popover-list">
+                    <div class="tc-popover-list scroll-fade">
                       @for (person of reactorsFor(comment, r.emoji); track person.employeeId) {
                         <div class="tc-popover-option" [class.tc-popover-option--selected]="person.employeeId === currentEmployeeId()" data-testid="reactor-row">
                           <app-employee-avatar [employeeId]="person.employeeId" />

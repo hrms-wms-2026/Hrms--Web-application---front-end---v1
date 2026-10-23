@@ -12,11 +12,10 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     approvers: [
       { approverEmployeeId: 'mgr-1', approverName: 'Priya Nair', sequenceOrder: 1, status: 'pending', comment: null, delegatedFromApproverId: null, decidedAt: null }
     ],
-    infoMessages: [],
     submissionConflictSnapshotJson: JSON.stringify({ warnings: [], calendarConflicts: [], teamAbsencePercent: null }),
     currentWarnings: [{ code: 'blackout_period', message: 'Overlaps a configured blackout period.' }],
     remainingHours: 17,
-    canDecide: true, forwardTo: null, canChangeDecision: false
+    canDecide: true, canChangeDecision: false
   };
 
   beforeEach(async () => {
@@ -94,39 +93,10 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     expect(emitted).toEqual([]);
   });
 
-  it('emits decisionRequested with a request-info action once a question is entered', () => {
-    fixture.detectChanges();
-    const emitted: unknown[] = [];
-    fixture.componentInstance.decisionRequested.subscribe((e: unknown) => emitted.push(e));
-    fixture.componentInstance.openAction('request-info');
-    fixture.componentInstance.infoQuestion.set('Can you share your travel dates?');
-    fixture.componentInstance.onSubmitRequestInfo();
-    expect(emitted).toEqual([{ kind: 'request-info', question: 'Can you share your travel dates?' }]);
-  });
-
   it('hides action buttons when canApprove is false', () => {
     fixture.componentRef.setInput('canApprove', false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="action-approve"]')).toBeNull();
-  });
-
-  it('offers Send to the manager when a forward target exists and emits the note', () => {
-    fixture.componentRef.setInput('detail', { ...detail, forwardTo: { employeeId: 'mgr-2', name: 'Nadesh Coomaraswamy' }, canChangeDecision: false });
-    fixture.detectChanges();
-    const forwardButton = fixture.nativeElement.querySelector('[data-testid="action-forward"]') as HTMLButtonElement;
-    expect(forwardButton.textContent).toContain('Send to Nadesh Coomaraswamy');
-    forwardButton.click();
-    fixture.componentInstance.forwardNote.set('  Long leave  ');
-    fixture.detectChanges();
-    const emitted: unknown[] = [];
-    fixture.componentInstance.decisionRequested.subscribe((e: unknown) => emitted.push(e));
-    (fixture.nativeElement.querySelector('[data-testid="confirm-forward"]') as HTMLButtonElement).click();
-    expect(emitted).toEqual([{ kind: 'forward', note: 'Long leave' }]);
-  });
-
-  it('hides Send to when there is nobody to forward to', () => {
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="action-forward"]')).toBeNull();
   });
 
   it('lets the deciding approver change an approval to a rejection with a reason', () => {
@@ -164,21 +134,5 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     fixture.componentRef.setInput('detail', detail);
     fixture.detectChanges();
     expect((fixture.nativeElement.querySelector('[data-testid="approver-state"]') as HTMLElement).textContent).toContain('Waiting for Priya Nair');
-  });
-
-  it('labels each conversation message with who wrote it', () => {
-    fixture.componentRef.setInput('detail', {
-      ...detail,
-      infoMessages: [
-        { senderEmployeeId: 'mgr-1', message: 'What is the trip for?', createdAt: '2026-09-01T08:00:00Z' },
-        { senderEmployeeId: 'emp-1', message: 'Family wedding', createdAt: '2026-09-01T09:00:00Z' }
-      ]
-    });
-    fixture.detectChanges();
-    const messages = Array.from(fixture.nativeElement.querySelectorAll('.lad-msg')) as HTMLElement[];
-    expect(messages.length).toBe(2);
-    expect(messages[0].textContent).toContain('Priya Nair');
-    expect(messages[1].textContent).toContain('Anu Raman');
-    expect(messages[1].classList).toContain('lad-msg--employee');
   });
 });

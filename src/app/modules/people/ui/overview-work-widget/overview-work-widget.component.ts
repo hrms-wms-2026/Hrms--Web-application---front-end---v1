@@ -10,10 +10,10 @@ import {
   EmployeeWorkTaskBucket,
   EmployeeWorkTaskItem
 } from '../../models/employee-overview.model';
-import { formatDateWithYear } from '../../utils/employee-overview.utils';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
 import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
+import { WorkTaskRowComponent } from '../work-task-row/work-task-row.component';
 
 /** List order of the buckets. */
 const GROUPS: readonly { readonly bucket: EmployeeWorkTaskBucket }[] = [
@@ -22,13 +22,6 @@ const GROUPS: readonly { readonly bucket: EmployeeWorkTaskBucket }[] = [
   { bucket: 'in_progress' },
   { bucket: 'completed' }
 ];
-
-const PRIORITY_CLASSES: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-amber-50 text-amber-700',
-  low: 'bg-slate-100 text-slate-600'
-};
 
 type TasksState = 'loading' | 'ready' | 'error';
 
@@ -41,7 +34,7 @@ type TasksState = 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-overview-work-widget',
   standalone: true,
-  imports: [WidgetCardComponent, DeltaBadgeComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [WidgetCardComponent, DeltaBadgeComponent, PopoutPanelComponent, PopoutHeaderActionsComponent, WorkTaskRowComponent],
   host: { class: 'block h-full' },
   template: `
     <app-popout-panel
@@ -181,38 +174,7 @@ type TasksState = 'loading' | 'ready' | 'error';
                     <div class="mb-2 last:mb-0" data-testid="work-task-group" [attr.data-bucket]="group.bucket">
                       <ul class="space-y-2">
                         @for (task of group.items; track task.taskId) {
-                          <li>
-                            <button
-                              type="button"
-                              class="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 rounded-xl border border-slate-100 bg-white px-4 py-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40 cursor-pointer"
-                              data-testid="work-task"
-                              [attr.aria-label]="'Open task ' + task.title"
-                              (click)="openTask($event, task)"
-                            >
-                              <div class="min-w-0">
-                                <p class="truncate text-sm font-semibold text-slate-900">
-                                  @if (task.shortId) { <span class="mr-1.5 font-medium text-slate-400">{{ task.shortId }}</span> }{{ task.title }}
-                                </p>
-                                <p class="mt-0.5 truncate text-xs text-slate-500" data-testid="work-task-where">
-                                  {{ task.projectName }}@if (task.moduleName) { <span class="text-slate-300"> › </span>{{ task.moduleName }} }
-                                </p>
-                              </div>
-                              <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                                <span class="rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize" [class]="priorityClass(task.priority)" data-testid="work-task-priority">{{ task.priority }}</span>
-                                <span class="inline-flex items-center gap-1.5 rounded-md bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700" data-testid="work-task-status">
-                                  <span class="h-2 w-2 rounded-full" [style.background]="task.statusColor || '#94a3b8'"></span>{{ task.statusName }}
-                                </span>
-                                <span class="min-w-24 text-right text-xs" [class]="task.bucket === 'overdue' ? 'min-w-24 text-right text-xs font-semibold text-rose-600' : 'min-w-24 text-right text-xs text-slate-500'" data-testid="work-task-due">
-                                  @if (task.dueDate) {
-                                    Due {{ shortDate(task.dueDate) }}@if (task.daysOverdue > 0) { · {{ task.daysOverdue }}d late }
-                                  } @else {
-                                    No due date
-                                  }
-                                </span>
-                                <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                              </div>
-                            </button>
-                          </li>
+                          <li><app-work-task-row [task]="task" (opened)="taskSelected.emit($event)" /></li>
                         }
                       </ul>
                     </div>
@@ -290,21 +252,10 @@ export class OverviewWorkWidgetComponent {
     else this.expand();
   }
 
-  openTask(event: Event, task: EmployeeWorkTaskItem): void {
-    event.stopPropagation();
-    this.taskSelected.emit(task);
-  }
-
   retryTasks(event: Event): void {
     event.stopPropagation();
     this.loadTasks();
   }
-
-  priorityClass(priority: string): string {
-    return PRIORITY_CLASSES[priority] ?? PRIORITY_CLASSES['medium'];
-  }
-
-  shortDate = formatDateWithYear;
 
   /** Popup refresh: the counts and the task list again, keeping both on screen until the new data lands. */
   refreshAll(): void {

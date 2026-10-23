@@ -166,7 +166,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(memberFilter).not.toBeNull();
     expect(searchToggle.compareDocumentPosition(memberFilter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(memberFilter.querySelector('img')?.getAttribute('src')).toBe('/cached/avatar-1');
-    expect(toolbar.host.querySelector('app-task-filter-bar')).not.toBeNull();
+    expect(toolbar.host.querySelector('app-filter-bar')).not.toBeNull();
     expect(toolbar.host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
 
     (memberFilter.querySelector('.taaf__avatar') as HTMLButtonElement).click();
@@ -233,7 +233,7 @@ describe('MilestoneTreeTabComponent', () => {
       const toolbar = renderToolbar();
       expect(fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"]')).toBeNull();
       expect(fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]')).toBeNull();
-      expect(toolbar.host.querySelector('app-task-filter-bar')).not.toBeNull();
+      expect(toolbar.host.querySelector('app-filter-bar')).not.toBeNull();
       expect(toolbar.host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
       toolbar.view.destroy();
     });
@@ -448,6 +448,24 @@ describe('MilestoneTreeTabComponent', () => {
 
     expect(fixture.componentInstance.createModalOpen()).toBe(true);
     expect(fixture.componentInstance.createModalParentId()).toBe('o1');
+  });
+
+  it('"Request more hours" in the panel opens the allocation request for that module; sending it reloads the tree', async () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.allocationNode()?.id).toBe('o1');
+    expect(fixture.nativeElement.querySelector('[data-testid="allocation-request-modal"]')).not.toBeNull();
+
+    const loadsBefore = storeStub.loadProjectTree.mock.calls.length;
+    await fixture.componentInstance.onAllocationSubmitted();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.allocationNode()).toBeNull();
+    expect(storeStub.loadProjectTree.mock.calls.length).toBe(loadsBefore + 1);
   });
 
   it('reloads the tree and closes the modal after a successful create', async () => {
@@ -1052,5 +1070,100 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.taskModalMode()).toBe('create');
     expect(fixture.componentInstance.taskModalPrefillModule()).toBe('o1');
     expect(fixture.componentInstance.taskModalPrefillSprint()).toBe('');
+  });
+
+  describe('view switch', () => {
+    const el = () => fixture.nativeElement as HTMLElement;
+    // The switch lives in the toolbar template, which the page shell renders, not this component.
+    const toolbar = () => renderToolbar().host;
+    const switchTo = (mode: 'tree' | 'network') => {
+      toolbar().querySelector<HTMLButtonElement>(`[data-testid="tree-view-switch-${mode}"]`)!.click();
+      fixture.detectChanges();
+    };
+
+    it('renders the tree list and not the network view by default', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      expect(el().querySelector('app-milestone-tree-node')).not.toBeNull();
+      expect(el().querySelector('app-project-network-view')).toBeNull();
+    });
+
+    it('renders the network view and not the tree list after the switch is clicked', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      expect(fixture.componentInstance.viewMode()).toBe('network');
+      expect(el().querySelector('app-project-network-view')).not.toBeNull();
+      expect(el().querySelector('app-milestone-tree-node')).toBeNull();
+    });
+
+    it('keeps tree search, the owner filter, the highlight filter bar and Expand all visible in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+
+      // The header must not change when the view does (spec Revision 1).
+      expect(host.querySelector('[data-testid="tree-search-toggle"]')).not.toBeNull();
+      expect(host.querySelector('app-task-assignee-avatar-filter')).not.toBeNull();
+      expect(host.querySelector('app-filter-bar')).not.toBeNull();
+      expect(host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
+    });
+
+    it('keeps Create module and the switch itself visible in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+
+      expect(host.querySelector('[data-testid="tree-view-switch-tree"]')).not.toBeNull();
+      expect(host.textContent).toContain('Create module');
+    });
+
+    it('paints the selected mode with the accent background and the other with the secondary text colour', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+      const network = host.querySelector('[data-testid="tree-view-switch-network"]')!;
+      const tree = host.querySelector('[data-testid="tree-view-switch-tree"]')!;
+
+      // The exact Tailwind class names - a backslash-escaped binding adds a class no rule matches.
+      expect(network.classList.contains('bg-[var(--color-accent)]')).toBe(true);
+      expect(network.classList.contains('text-white')).toBe(true);
+      expect(tree.classList.contains('text-[var(--color-text-secondary)]')).toBe(true);
+      expect(tree.classList.contains('bg-[var(--color-accent)]')).toBe(false);
+    });
+
+    it('keeps the explanation card column mounted in tree mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      expect(el().querySelector('app-tree-explanation-panel, app-empty-state')).not.toBeNull();
+    });
+
+    it('keeps the same explanation card beside the network in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      expect(el().querySelector('app-tree-explanation-panel')).not.toBeNull();
+      expect(el().querySelector('[data-testid="tree-explanation-panel"]')?.textContent).toContain('Root');
+    });
+
+    it('shows a module clicked in the network in the explanation card, staying in network mode', async () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      await fixture.componentInstance.onNetworkNodeSelected({ id: 'module:o3', kind: 'module', label: 'Other', objectiveId: 'o3' });
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.viewMode()).toBe('network');
+      expect(fixture.componentInstance.selectedNodeId()).toBe('o3');
+      expect(el().querySelector('[data-testid="tree-explanation-panel"]')?.textContent).toContain('Other');
+    });
   });
 });

@@ -17,7 +17,7 @@ import { DEFAULT_EMPLOYEE_COLUMNS, EMPLOYEE_COLUMNS, EmployeeColumnKey } from '.
         <p class="ecp__title">Columns</p>
         <input class="ecp__search" type="search" placeholder="Search columns…" data-testid="columns-search"
           [value]="search()" (input)="search.set($any($event.target).value)" />
-        <ul class="ecp__list">
+        <ul class="ecp__list scroll-fade">
           @for (column of filteredColumns(); track column.key) {
             <li>
               <label class="ecp__item">

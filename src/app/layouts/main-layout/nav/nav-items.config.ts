@@ -4,15 +4,10 @@ import { NavItem } from './nav-item.model';
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', path: '/dashboard' },
   { id: 'work', label: 'Work', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
-  {
-    id: 'people', label: 'People', icon: 'people', path: '/people', requiredModules: ['core_hr'],
-    children: [
-      { id: 'people-employees', label: 'Employees', path: '/people/employees', requiredModules: ['core_hr'], requiredPermissions: [MANAGES_PEOPLE, 'employees:write'] },
-      { id: 'people-checklists', label: 'Checklists', path: '/people/checklists', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
-      { id: 'people-offboarding', label: 'Offboarding', path: '/people/offboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:offboard', 'employees:write'] },
-      { id: 'people-approvals', label: 'Approvals', path: '/people/approvals', requiredModules: ['core_hr'], requiredPermissions: ['roles:manage'] }
-    ]
-  },
+  // Requests, alerts and investigations from every module (Work, Leave, Attendance, Monitoring, Calendar):
+  // shown to every employee - each source decides what the caller sees.
+  // Its sub-sidebar is the chat list (people, groups), not child links.
+  { id: 'inbox', label: 'Inbox', icon: 'inbox', path: '/inbox', customSubSidebar: 'inbox' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar', path: '/calendar', requiredModules: ['calendar'] },
   {
     id: 'time-off', label: 'Time Off', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
@@ -21,7 +16,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'time-off-entitlements', label: 'Entitlements', path: '/time-off/entitlements', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
       { id: 'time-off-types', label: 'Leave Types', path: '/time-off/types', requiredModules: ['leave'], requiredPermissions: ['leave:read'] },
       { id: 'time-off-policies', label: 'Leave Policies', path: '/time-off/policies', requiredModules: ['leave'], requiredPermissions: ['leave:manage'] },
-      { id: 'time-off-team-approvals', label: 'Pending Approvals', path: '/time-off/team-approvals', requiredModules: ['leave'], requiredPermissions: ['leave:approve'] },
       { id: 'time-off-all-requests', label: 'All Requests', path: '/time-off/all', requiredModules: ['leave'], requiredPermissions: ['leave:read'] }
     ]
   },
@@ -50,29 +44,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
         requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
       },
       {
-        // Requests has no standalone page yet - the correction/work-area draft-form state it
-        // needs still lives on TimeTrackingComponent itself (see
-        // docs/superpowers/plans/2026-09-08-attendance-overview-redesign.md, "Deferred"). It
-        // renders that same component via a second route (attendance.routes.ts,
-        // 'time-tracking/requests') so this has its own URL, distinct from "Time Tracking" -
-        // reusing the identical path made both sidebar links highlight together, since
-        // routerLinkActive compares each link's own target against the current URL and can't
-        // tell two identical targets apart.
-        id: 'time-attendance-requests',
-        label: 'Requests',
-        path: '/attendance/time-tracking/requests',
-        exact: true,
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own']
-      },
-      {
-        id: 'time-attendance-alerts',
-        label: 'Alerts',
-        path: '/attendance/alerts',
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:approve', 'employees:write', 'exceptions:view']
-      },
-      {
         id: 'time-attendance-monitoring',
         label: 'Monitoring',
         path: '/attendance/monitoring',
@@ -81,11 +52,18 @@ export const NAV_ITEMS: readonly NavItem[] = [
       }
     ]
   },
+  // Org holds the organization structure and the people in it, as two sections of one sub-sidebar. The parent needs
+  // either module and shows when any child is reachable (a team manager sees only People, an org admin only
+  // Organization), and the rail opens the first reachable child (NavigationStateService.entryPath).
   {
-    id: 'organization', label: 'Org', icon: 'organization', path: '/organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'],
+    id: 'organization', label: 'Org', icon: 'organization', path: '/organization', alsoMatches: ['/people'],
+    requiredModules: ['org_structure', 'core_hr'],
     children: [
-      { id: 'organization-departments', label: 'Departments', path: '/organization/departments', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
-      { id: 'organization-positions', label: 'Positions', path: '/organization/positions', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] }
+      { id: 'organization-departments', label: 'Departments', path: '/organization/departments', section: 'Organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
+      { id: 'organization-positions', label: 'Positions', path: '/organization/positions', section: 'Organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
+      { id: 'people-employees', label: 'Employees', path: '/people/employees', section: 'People', requiredModules: ['core_hr'], requiredPermissions: [MANAGES_PEOPLE, 'employees:write'] },
+      { id: 'people-checklists', label: 'Checklists', path: '/people/checklists', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
+      { id: 'people-offboarding', label: 'Offboarding', path: '/people/offboarding', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['employees:offboard', 'employees:write'] }
     ]
   },
   {

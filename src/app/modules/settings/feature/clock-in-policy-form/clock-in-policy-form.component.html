@@ -66,8 +66,8 @@
     >
       <div class="cipf-section-header">
         <div class="cipf-section-header__text">
-          <h2 id="cipf-late-heading" class="cipf-section-title">Late deduction rules</h2>
-          <p class="cipf-section-desc">Configure leave deductions when clock-in occurs after scheduled time.</p>
+          <h2 id="cipf-late-heading" class="cipf-section-title">Late arrival &amp; early leave deductions</h2>
+          <p class="cipf-section-desc">Charge leave for the minutes missed when someone clocks in late or clocks out early. Below the first row nothing is charged; a reviewer can excuse any charge.</p>
         </div>
       </div>
 
@@ -87,7 +87,7 @@
           @for (rule of form().lateDeductionRules; track $index; let i = $index) {
             <article class="cipf-late-row" [attr.data-testid]="'late-rule-row-' + i">
               <div class="cipf-late-sentence">
-                <span class="cipf-late-label">If late by</span>
+                <span class="cipf-late-label">If late or leaving early by</span>
                 <div class="cipf-late-field">
                   <app-input
                     label=""
@@ -110,7 +110,7 @@
                     [error]="errorFor('lateDeductionRules.' + i + '.deductionAmount')"
                   />
                 </div>
-                <span class="cipf-late-label">from</span>
+                <span class="cipf-late-label">× those minutes from</span>
                 <div class="cipf-late-field cipf-late-field--type">
                   <app-select
                     label="time off type"
