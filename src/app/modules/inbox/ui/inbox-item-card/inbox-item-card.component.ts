@@ -14,6 +14,8 @@ import {
   hasCapability
 } from '../../models/inbox.dto';
 import { InboxDetailRendererRegistry, parseExtra } from '../../renderers/inbox-detail-renderers';
+import { MeetingApprovalSnapshot } from '../../../work/meetings/models/meeting.models';
+import { MeetingApprovalSnapshotComponent } from '../../../work/meetings/ui/meeting-approval-snapshot/meeting-approval-snapshot.component';
 import { inboxStatusLabel, inboxStatusTone, inboxSubtitle, inboxTitle, inboxTypeMeta, isAlert, isWorkActionType } from '../../utils/inbox-item.util';
 import { TicketRowIcon, decisionLine, ticketSections } from '../../utils/ticket-details.util';
 import { FaceEvidenceCardComponent } from '../face-evidence-card/face-evidence-card.component';
@@ -32,6 +34,8 @@ export interface InboxCardAction {
 
 /** "Open" is navigation, not a server action - it is the card's target link. */
 const NAVIGATION_ACTIONS = new Set(['open_target']);
+/** Meeting requests are decided exactly as submitted and show their frozen snapshot (meetings-as-tasks D5). */
+const MEETING_ACTIONS = new Set(['meeting.create', 'meeting.move']);
 
 /** Stroke paths (24x24) of the details rows' icons. */
 const ROW_ICONS: Record<TicketRowIcon, string> = {
@@ -53,7 +57,7 @@ const ROW_ICONS: Record<TicketRowIcon, string> = {
   selector: 'app-inbox-item-card',
   standalone: true,
   imports: [
-    DatePipe, NgComponentOutlet, ConfirmModalComponent, FaceEvidenceCardComponent,
+    DatePipe, NgComponentOutlet, ConfirmModalComponent, FaceEvidenceCardComponent, MeetingApprovalSnapshotComponent,
     InboxCommentDialogComponent, InboxEscalateDialogComponent, InboxOutcomeDialogComponent,
     InboxRevertBannerComponent, InboxStepsComponent, InboxTypeIconComponent, LeaveCancelConfirmDialogComponent
   ],
@@ -104,6 +108,13 @@ const ROW_ICONS: Record<TicketRowIcon, string> = {
             <section class="card__section" data-testid="inbox-card-renderer">
               <h4 class="card__label">Attendance details</h4>
               <ng-container *ngComponentOutlet="r; inputs: { extra: extra(), detail: d }" />
+            </section>
+          }
+
+          @if (meetingSnapshot(); as snapshot) {
+            <section class="card__section" data-testid="inbox-card-meeting-snapshot">
+              <h4 class="card__label">Meeting</h4>
+              <app-meeting-approval-snapshot [snapshot]="snapshot" />
             </section>
           }
 
@@ -321,6 +332,8 @@ export class InboxItemCardComponent {
   /** Edit-before-approve: an approve action, editable rows, and a kind that takes edits (payload or capability). */
   readonly canEdit = computed(() => {
     const d = this.detail();
+    // A meeting request is approved exactly as submitted: the approver saw that snapshot (meetings-as-tasks D5).
+    if (d && MEETING_ACTIONS.has(d.item.actionType)) return false;
     return !!d && this.actions().some((a) => a.key === 'approve') && d.changeSet.some((c) => c.editable)
       && (!!d.editablePayloadJson || hasCapability(this.descriptor(), InboxCapability.EditBeforeApprove));
   });
@@ -328,6 +341,14 @@ export class InboxItemCardComponent {
     ? this.renderers.resolve('exception-evidence')
     : null);
   protected readonly extra = computed(() => parseExtra(this.detail()?.extraJson));
+  /** The frozen D5 snapshot of a meeting.create / meeting.move request, when the detail carries it. */
+  protected readonly meetingSnapshot = computed<MeetingApprovalSnapshot | null>(() => {
+    const d = this.detail();
+    if (!d || !MEETING_ACTIONS.has(d.item.actionType)) return null;
+    const extra = this.extra() as { snapshot?: MeetingApprovalSnapshot } | MeetingApprovalSnapshot | null;
+    const snapshot = extra && 'snapshot' in extra ? extra.snapshot : extra;
+    return snapshot && typeof (snapshot as MeetingApprovalSnapshot).title === 'string' ? snapshot as MeetingApprovalSnapshot : null;
+  });
   protected readonly rowIcons = ROW_ICONS;
   protected readonly sections = computed(() => {
     const d = this.detail();
