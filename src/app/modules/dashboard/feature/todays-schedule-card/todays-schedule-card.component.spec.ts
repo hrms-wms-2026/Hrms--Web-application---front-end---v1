@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse, CalendarEventsResponse } from '../../../calendar/models/calendar-event.model';
 import { TodaysScheduleCardComponent } from './todays-schedule-card.component';
+import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
+import { MeetingListItem } from '../../../work/meetings/models/meeting.models';
 
 function event(partial: Partial<CalendarEventResponse> & { id: string; title: string; startDate: string; endDate: string }): CalendarEventResponse {
   return {
@@ -34,7 +36,8 @@ describe('TodaysScheduleCardComponent', () => {
       imports: [TodaysScheduleCardComponent],
       providers: [
         provideRouter([]),
-        { provide: CalendarEventApiService, useValue: { getEvents, getMyTimezone } }
+        { provide: CalendarEventApiService, useValue: { getEvents, getMyTimezone } },
+        { provide: MeetingApiService, useValue: { list: vi.fn(() => of([])) } }
       ]
     }).compileComponents();
 
@@ -150,5 +153,62 @@ describe('TodaysScheduleCardComponent', () => {
     expect(btn.textContent!.trim()).toBe('Join');
     expect(btn.title).toBe('Join Teams Meeting');
     expect(btn.getAttribute('href')).toBe('https://teams.microsoft.com/l/meetup-join/123');
+  });
+});
+
+describe('TodaysScheduleCardComponent - meetings', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const at = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString();
+  const meeting = (id: string, title: string, start: string, end: string): MeetingListItem => ({
+    taskId: id, shortId: `ACME-${id}`, seriesId: `s-${id}`, originalStart: start, startAt: start, endAt: end, isAllDay: false,
+    title, status: 'scheduled', isPrivate: false, projectId: 'p1', objectiveId: 'o1', myRole: 'attendee', myResponse: 'accepted',
+  });
+
+  async function setup(events: CalendarEventResponse[], meetings: MeetingListItem[]) {
+    const list = vi.fn(() => of(meetings));
+    await TestBed.configureTestingModule({
+      imports: [TodaysScheduleCardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: CalendarEventApiService, useValue: { getEvents: vi.fn(() => of({ events })), getMyTimezone: vi.fn(() => of({ timezone: 'UTC' })) } },
+        { provide: MeetingApiService, useValue: { list } }
+      ]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(TodaysScheduleCardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, list };
+  }
+
+  it("today's meetings lists only today's items, sorted by start", async () => {
+    const today = new Date();
+    const todayAt = (h: number) => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), h)).toISOString();
+    const tomorrow = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1, 9)).toISOString();
+    const { fixture, list } = await setup([], [
+      meeting('b', 'Afternoon review', todayAt(15), todayAt(16)),
+      meeting('x', 'Tomorrow planning', tomorrow, tomorrow),
+      meeting('a', 'Morning standup', todayAt(9), todayAt(10)),
+    ]);
+
+    expect(list).toHaveBeenCalledOnce();
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="todays-meetings-item"]'));
+    expect(rows.map((r) => r.querySelector('[data-testid="meeting-card-title"]')?.textContent?.trim()))
+      .toEqual(['Morning standup', 'Afternoon review']);
+  });
+
+  it('legacy events are labelled Calendar event', async () => {
+    const { fixture } = await setup([event({ id: 'e1', title: 'Dentist', startDate: at(60), endDate: at(90) })], []);
+    const row: HTMLElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-item"]');
+    expect(row.querySelector('[data-testid="todays-schedule-kind"]')?.textContent?.trim()).toBe('Calendar event');
+  });
+
+  it('a task meeting the calendar feed also returns is listed once, under the meetings', async () => {
+    const m = meeting('a', 'Morning standup', at(30), at(60));
+    const { fixture } = await setup(
+      [event({ id: 'a', title: 'Morning standup', startDate: m.startAt, endDate: m.endAt, itemKind: 'meeting' })], [m]);
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="todays-schedule-item"]').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="todays-meetings-item"]').length).toBe(1);
   });
 });

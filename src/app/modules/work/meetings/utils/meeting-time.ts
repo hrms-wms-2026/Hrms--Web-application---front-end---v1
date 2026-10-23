@@ -35,6 +35,12 @@ export function toZonedParts(utcIso: string, timeZone: string): { date: string; 
   };
 }
 
+/** The board, Work Tree and My Work show meetings from 1 day ago to 7 days ahead; further out is calendar-only. */
+export function meetingListWindow(now: Date = new Date()): { from: string; to: string } {
+  const day = 24 * 60 * 60 * 1000;
+  return { from: new Date(now.getTime() - day).toISOString(), to: new Date(now.getTime() + 7 * day).toISOString() };
+}
+
 export function browserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 }

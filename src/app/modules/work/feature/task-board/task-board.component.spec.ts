@@ -1,3 +1,4 @@
+import { MeetingApiService } from '../../meetings/data-access/meeting-api.service';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -56,7 +57,8 @@ describe('TaskBoardComponent', () => {
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -81,7 +83,8 @@ describe('TaskBoardComponent', () => {
         { provide: TaskApiService, useValue: { getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn(), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub('shared-task-1') },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -154,7 +157,8 @@ describe('TaskBoardComponent', () => {
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -236,7 +240,8 @@ describe('TaskBoardComponent', () => {
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -296,7 +301,8 @@ describe('TaskBoardComponent', () => {
         { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -377,7 +383,8 @@ describe('TaskBoardComponent', () => {
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -430,7 +437,8 @@ describe('TaskBoardComponent', () => {
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -486,7 +494,8 @@ describe('TaskBoardComponent', () => {
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -547,7 +556,8 @@ describe('TaskBoardComponent', () => {
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -594,7 +604,8 @@ describe('TaskBoardComponent', () => {
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
         },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -643,7 +654,8 @@ describe('TaskBoardComponent', () => {
         { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -707,7 +719,8 @@ describe('TaskBoardComponent', () => {
         { provide: TaskApiService, useValue: taskApiStub },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -776,7 +789,8 @@ describe('TaskBoardComponent', () => {
         { provide: NotificationService, useValue: notifications },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -829,7 +843,8 @@ describe('TaskBoardComponent', () => {
         { provide: TaskApiService, useValue: { getStatuses: vi.fn().mockReturnValue(of([])), assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
 
@@ -871,7 +886,8 @@ describe('TaskBoardComponent - new meeting', () => {
         { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
         { provide: ActivatedRoute, useValue: routeStub() },
-        { provide: Router, useValue: { navigate: vi.fn() } }
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list: vi.fn().mockReturnValue(of([])) } }
       ]
     });
     const fixture = TestBed.createComponent(TaskBoardComponent);
@@ -897,4 +913,47 @@ describe('TaskBoardComponent - new meeting', () => {
   function routeStub() {
     return { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) }, queryParamMap: { get: () => null } } };
   }
+});
+
+describe('TaskBoardComponent - meetings', () => {
+  it('meeting cards are not draggable', async () => {
+    const list = vi.fn().mockReturnValue(of([{
+      taskId: 'm1', shortId: 'P-M1', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
+      endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Standup', status: 'scheduled', isPrivate: false,
+      projectId: 'project-1', objectiveId: 'milestone-1', myRole: 'attendee', myResponse: 'accepted'
+    }]));
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        {
+          provide: TaskBoardStore,
+          useValue: { loadBoard: vi.fn().mockResolvedValue(undefined), columnsWithTasks: () => [], tasks: () => [], loading: () => false,
+            error: () => null, moveTask: vi.fn(), statuses: () => [] }
+        },
+        {
+          provide: ProjectDetailStore,
+          useValue: { milestones: () => [], project: () => ({ id: 'project-1', systemPurpose: null }),
+            getMilestoneDetail: vi.fn().mockResolvedValue(null), loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [] }
+        },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: (k: string) => (k === 'id' ? 'project-1' : null) }, queryParamMap: { get: () => null } } } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: MeetingApiService, useValue: { list } }
+      ]
+    });
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(list).toHaveBeenCalledWith(expect.any(String), expect.any(String), 'project-1');
+    const cards: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('app-meeting-card'));
+    expect(cards.length).toBe(1);
+    for (const card of cards) {
+      expect(card.closest('.cdk-drag, [cdkdrag], .cdk-drop-list, [cdkdroplist]')).toBeNull();
+    }
+  });
 });

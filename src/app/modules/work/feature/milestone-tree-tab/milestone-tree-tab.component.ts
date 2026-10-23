@@ -1,3 +1,7 @@
+import { MeetingApiService } from '../../meetings/data-access/meeting-api.service';
+import { MeetingOccurrenceDrawerComponent } from '../../meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
+import { MeetingListItem } from '../../meetings/models/meeting.models';
+import { meetingListWindow } from '../../meetings/utils/meeting-time';
 import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { AfterViewInit, Component, OnDestroy, TemplateRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
@@ -78,7 +82,7 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
   imports: [
     MilestoneTreeNodeComponent, FilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
-    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent, MeetingFormModalComponent,
+    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent, MeetingFormModalComponent, MeetingOccurrenceDrawerComponent,
     TaskAssigneeAvatarFilterComponent, AllocationRequestModalComponent, ProjectNetworkViewComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
@@ -108,6 +112,27 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   private currentProjectId = '';
   protected readonly projectId = signal('');
   protected readonly meetingFormOpen = signal(false);
+  private readonly meetingApi = inject(MeetingApiService);
+  /** The project's meetings in the board/tree window (past day to 7 days ahead), by module id. */
+  protected readonly meetingsByModule = signal<ReadonlyMap<string, readonly MeetingListItem[]>>(new Map());
+  protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
+
+  protected loadMeetings(): void {
+    const projectId = this.currentProjectId;
+    if (!projectId) return;
+    const { from, to } = meetingListWindow();
+    this.meetingApi.list(from, to, projectId).subscribe({
+      next: (items) => {
+        const byModule = new Map<string, MeetingListItem[]>();
+        for (const item of items) {
+          if (!item.objectiveId) continue;
+          byModule.set(item.objectiveId, [...(byModule.get(item.objectiveId) ?? []), item]);
+        }
+        this.meetingsByModule.set(byModule);
+      },
+      error: () => this.meetingsByModule.set(new Map()),
+    });
+  }
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
   protected readonly projectRosterMembers = computed<TaskAssigneeAvatarMember[]>(() =>
     (this.store.project()?.members ?? []).map((member) => ({
@@ -224,6 +249,7 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
       void this.loadTree().then(() => {
         if (openMembersOnLoad) this.onMembersRequested();
       });
+      this.loadMeetings();
       void this.currentEmployee.ensureLoaded();
       if (this.currentProjectId && this.loadedMembersForProjectId !== this.currentProjectId) {
         this.loadedMembersForProjectId = this.currentProjectId;

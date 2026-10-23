@@ -18,6 +18,12 @@ export interface CalendarEventParticipantsResponse {
 
 export interface CalendarEventResponse {
   id: string;
+  /** "meeting" for a meetings-as-tasks occurrence merged into the calendar (backend Plan C); absent or "event" otherwise. */
+  itemKind?: 'event' | 'meeting';
+  /** Task meetings only: the series and, once materialized, the occurrence task; open with series + originalStart. */
+  meetingSeriesId?: string | null;
+  meetingTaskId?: string | null;
+  meetingStatus?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | null;
   title: string;
   description: string | null;
   startDate: string;

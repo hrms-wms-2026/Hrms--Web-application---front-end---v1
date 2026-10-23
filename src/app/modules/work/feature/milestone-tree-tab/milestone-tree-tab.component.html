@@ -130,7 +130,7 @@
     @if (renderedTree(); as tree) {
     <app-milestone-tree-node [node]="tree" [selectedId]="selectedNodeId()" [expandedByDefault]="true"
       [highlightedKeys]="highlight().matchedKeys" [highlightColor]="highlightActive() ? highlightColor() : null"
-      [expandCommand]="expandCommand()"
+      [expandCommand]="expandCommand()" [meetingsByModule]="meetingsByModule()" (meetingOpened)="openMeeting.set($event)"
       (selected)="onNodeSelected($event)" (createRequested)="onCreateSubRequested($event)"
       (expandLeafRequested)="onExpandLeafRequested($event)" (createSprintRequested)="onCreateSprintRequested($event)"
       (createTaskRequested)="onCreateTaskRequested($event)" (viewRequested)="onViewRequested($event)" (editRequested)="onEditRequested($event)"
@@ -217,5 +217,9 @@
 
 @if (meetingFormOpen()) {
   <app-meeting-form-modal [open]="true" mode="create" [placement]="{ projectId: projectId(), objectiveId: renderedTree()?.id ?? null }"
-    (saved)="meetingFormOpen.set(false)" (closed)="meetingFormOpen.set(false)" />
+    (saved)="meetingFormOpen.set(false); loadMeetings()" (closed)="meetingFormOpen.set(false)" />
+}
+
+@if (openMeeting(); as key) {
+  <app-meeting-occurrence-drawer [key]="key" (closed)="openMeeting.set(null); loadMeetings()" />
 }

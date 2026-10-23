@@ -1,4 +1,4 @@
-import { toOffsetIso, toZonedParts } from './meeting-time';
+import { meetingListWindow, toOffsetIso, toZonedParts } from './meeting-time';
 
 describe('meeting-time', () => {
   it('turns a wall-clock time in a zone into an ISO string with that zone\'s offset', () => {
@@ -9,6 +9,11 @@ describe('meeting-time', () => {
   it('uses the offset in force on that date (daylight saving)', () => {
     expect(toOffsetIso('2026-07-01', '09:00', 'America/New_York')).toBe('2026-07-01T09:00:00-04:00');
     expect(toOffsetIso('2026-12-01', '09:00', 'America/New_York')).toBe('2026-12-01T09:00:00-05:00');
+  });
+
+  it('the board, tree and My Work window runs from 1 day ago to 7 days ahead', () => {
+    const now = new Date('2026-11-04T10:00:00Z');
+    expect(meetingListWindow(now)).toEqual({ from: '2026-11-03T10:00:00.000Z', to: '2026-11-11T10:00:00.000Z' });
   });
 
   it('shows a UTC instant as date and time in the meeting\'s zone', () => {
