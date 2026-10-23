@@ -29,7 +29,7 @@
         <div class="h-10 w-full rounded-lg bg-slate-100"></div>
       }
     </div>
-  } @else if (agendaItems().length === 0) {
+  } @else if (isEmpty()) {
     <div class="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center" data-testid="todays-schedule-empty">
       <p class="text-sm font-semibold text-slate-800">No events scheduled today</p>
       <p class="text-xs text-slate-400">Your calendar is clear for the day.</p>
@@ -39,42 +39,133 @@
       >+ Add Quick Event</a>
     </div>
   } @else {
-    <ol class="rounded-xl bg-slate-50/70 px-3 py-1">
-      @for (item of agendaItems(); track item.event.id; let last = $last) {
-        <li class="relative flex items-center gap-3 py-2.5" [class.border-b]="!last" [class.border-slate-200/70]="!last" data-testid="todays-schedule-item" [attr.data-status]="item.status">
-          <span class="w-16 shrink-0 text-xs font-medium text-slate-500 @md:w-20">{{ timeLabel(item.event) }}</span>
+    <ol class="flex flex-col gap-2">
+      @for (item of agendaItems(); track item.event.id; let first = $first; let last = $last) {
+        <li class="flex items-stretch gap-3" data-testid="todays-schedule-item" [attr.data-status]="item.status">
+          <span
+            class="w-16 shrink-0 self-center text-xs font-medium @md:w-[4.5rem]"
+            [class.text-slate-900]="item.status === 'inProgress'"
+            [class.text-slate-500]="item.status !== 'inProgress'"
+          >{{ timeLabel(item.event) }}</span>
 
-          <!-- Timeline rail + dot -->
-          <span class="relative flex w-3 shrink-0 justify-center self-stretch" aria-hidden="true">
-            @if (!last) {
-              <span class="absolute top-1/2 -bottom-3 w-px bg-slate-200"></span>
+          <!-- Timeline rail + dot; the running event's dot is the blue "now" marker -->
+          <span class="relative flex w-3 shrink-0 items-center justify-center" aria-hidden="true">
+            <span class="absolute left-1/2 w-px -translate-x-1/2 bg-slate-200" [class.top-1/2]="first" [class.-top-1]="!first" [class.bottom-1/2]="last && taskItems().length === 0" [class.-bottom-1]="!last || taskItems().length > 0"></span>
+            @if (item.status === 'inProgress') {
+              <span class="absolute left-1/2 top-0 h-1/2 w-0.5 -translate-x-1/2 bg-blue-600"></span>
+              <span class="relative h-3 w-3 rounded-full bg-blue-600 ring-2 ring-white"></span>
+            } @else {
+              <span class="relative h-2.5 w-2.5 rounded-full bg-slate-300 ring-2 ring-white"></span>
             }
-            <span class="relative mt-auto mb-auto h-2.5 w-2.5 rounded-full ring-2 ring-white" [style.background-color]="statusDotColor(item.status)"></span>
           </span>
 
-          <div class="min-w-0 flex-1">
-            <a routerLink="/calendar" class="block truncate text-sm font-semibold text-slate-800 hover:text-blue-600">{{ item.event.title }}</a>
-            <p class="truncate text-xs text-slate-500">{{ subtitle(item.event) }}</p>
+          <div
+            class="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5"
+            [class.bg-emerald-50]="item.status === 'inProgress'"
+            [class.bg-slate-50]="item.status !== 'inProgress'"
+            data-testid="todays-schedule-row"
+          >
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" [class]="kindTileClass(item.kind)" data-testid="todays-schedule-icon" [attr.data-kind]="item.kind" aria-hidden="true">
+              @switch (item.kind) {
+                @case ('team') {
+                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5.5 12a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM18.5 12a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM12 13.5c-3 0-5.5 1.6-5.5 3.6V19h11v-1.9c0-2-2.5-3.6-5.5-3.6zM5 13.6c-2 .2-3.5 1.3-3.5 2.7V18H5v-.9c0-1.3.5-2.5 1.4-3.4-.4-.1-.9-.1-1.4-.1zM19 13.6c-.5 0-1 0-1.4.1.9.9 1.4 2.1 1.4 3.4v.9h3.5v-1.7c0-1.4-1.5-2.5-3.5-2.7z"></path></svg>
+                }
+                @case ('code') {
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"></rect><path d="M10 9l-3 3 3 3M14 9l3 3-3 3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                }
+                @case ('chat') {
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5z" stroke-linejoin="round"></path><path d="M8 9.5h8M8 12.5h5" stroke-linecap="round"></path></svg>
+                }
+                @case ('doc') {
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6V3z" stroke-linejoin="round"></path><path d="M14 3v4h4M9 12h6M9 16h6" stroke-linecap="round"></path></svg>
+                }
+                @default {
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"></rect><path d="M8 3v4M16 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01" stroke-linecap="round"></path></svg>
+                }
+              }
+            </span>
+
+            <div class="min-w-0 flex-1">
+              <a routerLink="/calendar" class="block truncate text-sm font-semibold text-slate-800 hover:text-blue-600">{{ item.event.title }}</a>
+              @if (subtitle(item.event); as sub) {
+                <p class="truncate text-xs text-slate-500">{{ sub }}</p>
+              }
+            </div>
+
+            @if (getMeetingLink(item.event); as meetingUrl) {
+              @if (item.status !== 'completed') {
+                <a
+                  [href]="meetingUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="todays-schedule-meeting-btn"
+                  [title]="(isOrganizer(item.event) ? 'Start ' : 'Join ') + getMeetingPlatformLabel(item.event) + ' Meeting'"
+                  class="inline-flex shrink-0 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
+                >{{ isOrganizer(item.event) ? 'Start' : 'Join' }}</a>
+              }
+            }
+
+            <span
+              class="hidden shrink-0 text-xs font-medium @md:block"
+              [class.text-emerald-700]="item.status === 'inProgress'"
+              [class.text-slate-500]="item.status !== 'inProgress'"
+            >{{ timeRangeLabel(item.event) }}</span>
+
+            <!-- Status: green tick once done, green ring while running, empty circle before -->
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center" [title]="statusLabel(item.status)">
+              @if (item.status === 'completed') {
+                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white" aria-hidden="true">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </span>
+              } @else if (item.status === 'inProgress') {
+                <span class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-emerald-500" aria-hidden="true">
+                  <span class="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"></span>
+                </span>
+              } @else {
+                <span class="h-6 w-6 rounded-full border-2 border-slate-300" aria-hidden="true"></span>
+              }
+              <span class="sr-only" data-testid="todays-schedule-status">{{ statusLabel(item.status) }}</span>
+            </span>
           </div>
+        </li>
+      }
 
-          @if (getMeetingLink(item.event); as meetingUrl) {
-            @if (item.status !== 'completed') {
-              <a
-                [href]="meetingUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                data-testid="todays-schedule-meeting-btn"
-                [title]="(isOrganizer(item.event) ? 'Start ' : 'Join ') + getMeetingPlatformLabel(item.event) + ' Meeting'"
-                class="inline-flex shrink-0 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700"
-              >{{ isOrganizer(item.event) ? 'Start' : 'Join' }}</a>
-            }
-          }
+      <!-- Tasks due today / overdue, after the meetings -->
+      @for (item of taskItems(); track item.task.taskId; let first = $first; let last = $last) {
+        <li class="flex items-stretch gap-3" data-testid="todays-schedule-item" [attr.data-status]="item.status">
+          <span
+            class="w-16 shrink-0 self-center text-xs font-medium @md:w-[4.5rem]"
+            [class.text-red-600]="item.status === 'overdue'"
+            [class.text-slate-500]="item.status !== 'overdue'"
+          >{{ item.status === 'overdue' ? 'Overdue' : 'Due today' }}</span>
 
-          <span class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold" [class]="statusChipClass(item.status)" data-testid="todays-schedule-status">
-            {{ statusLabel(item.status) }}
+          <span class="relative flex w-3 shrink-0 items-center justify-center" aria-hidden="true">
+            <span class="absolute left-1/2 w-px -translate-x-1/2 bg-slate-200" [class.top-1/2]="first && agendaItems().length === 0" [class.-top-1]="!first || agendaItems().length > 0" [class.bottom-1/2]="last" [class.-bottom-1]="!last"></span>
+            <span class="relative h-2.5 w-2.5 rounded-full ring-2 ring-white" [class.bg-red-400]="item.status === 'overdue'" [class.bg-amber-400]="item.status !== 'overdue'"></span>
           </span>
+
+          <div class="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5" data-testid="todays-schedule-row">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600" data-testid="todays-schedule-icon" data-kind="task" aria-hidden="true">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </span>
+
+            <div class="min-w-0 flex-1">
+              <a [routerLink]="taskLink(item.task)" [queryParams]="{ taskId: item.task.taskId }" class="block truncate text-sm font-semibold text-slate-800 hover:text-blue-600">{{ item.task.title }}</a>
+              <p class="truncate text-xs text-slate-500">{{ item.task.projectName }}</p>
+            </div>
+
+            <span class="hidden shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-600 @md:inline-flex">{{ item.task.priority }}</span>
+
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center" [title]="item.status === 'overdue' ? 'Overdue' : 'Due today'">
+              <span class="h-6 w-6 rounded-full border-2" [class.border-red-300]="item.status === 'overdue'" [class.border-slate-300]="item.status !== 'overdue'" aria-hidden="true"></span>
+              <span class="sr-only" data-testid="todays-schedule-status">{{ item.status === 'overdue' ? 'Overdue' : 'Due today' }}</span>
+            </span>
+          </div>
         </li>
       }
     </ol>
+    @if (hiddenTaskCount() > 0) {
+      <a routerLink="/work" class="mt-2 self-start text-xs font-semibold text-blue-600 hover:underline" data-testid="todays-schedule-more-tasks">+{{ hiddenTaskCount() }} more tasks</a>
+    }
   }
 </section>

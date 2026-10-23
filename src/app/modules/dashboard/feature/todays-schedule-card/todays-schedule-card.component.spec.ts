@@ -4,7 +4,9 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse, CalendarEventsResponse } from '../../../calendar/models/calendar-event.model';
-import { TodaysScheduleCardComponent } from './todays-schedule-card.component';
+import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
+import { MyTaskItem } from '../../models/my-tasks.model';
+import { TodaysScheduleCardComponent, compactTimeRange } from './todays-schedule-card.component';
 
 function event(partial: Partial<CalendarEventResponse> & { id: string; title: string; startDate: string; endDate: string }): CalendarEventResponse {
   return {
@@ -21,26 +23,30 @@ describe('TodaysScheduleCardComponent', () => {
 
   async function setup(
     events: CalendarEventsResponse | 'error' = { events: [] },
-    timezone = 'Asia/Colombo'
+    timezone = 'Asia/Colombo',
+    tasks: MyTaskItem[] | 'error' = []
   ): Promise<{
     fixture: ComponentFixture<TodaysScheduleCardComponent>;
     getEvents: ReturnType<typeof vi.fn>;
     getMyTimezone: ReturnType<typeof vi.fn>;
+    getMyTasks: ReturnType<typeof vi.fn>;
   }> {
     const getEvents = vi.fn(() => (events === 'error' ? throwError(() => new Error('network error')) : of(events)));
     const getMyTimezone = vi.fn(() => of({ timezone }));
+    const getMyTasks = vi.fn(() => (tasks === 'error' ? throwError(() => new Error('network error')) : of({ tasks })));
 
     await TestBed.configureTestingModule({
       imports: [TodaysScheduleCardComponent],
       providers: [
         provideRouter([]),
-        { provide: CalendarEventApiService, useValue: { getEvents, getMyTimezone } }
+        { provide: CalendarEventApiService, useValue: { getEvents, getMyTimezone } },
+        { provide: MyTasksApiService, useValue: { getMyTasks } }
       ]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(TodaysScheduleCardComponent);
     fixture.detectChanges();
-    return { fixture, getEvents, getMyTimezone };
+    return { fixture, getEvents, getMyTimezone, getMyTasks };
   }
 
   it('resolves the viewer timezone before fetching events, and requests a UTC range covering today', async () => {
@@ -77,6 +83,29 @@ describe('TodaysScheduleCardComponent', () => {
       'Upcoming'
     ]);
     expect(rows[2].textContent).toContain('Review PR');
+    expect(rows[1].querySelector('[data-testid="todays-schedule-row"]')!.className).toContain('bg-emerald-50');
+  });
+
+  it('picks a row icon from the event title, falling back to the calendar icon', async () => {
+    const at = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString();
+    const { fixture } = await setup({
+      events: [
+        event({ id: 'a', title: 'Daily Standup', startDate: at(10), endDate: at(20) }),
+        event({ id: 'b', title: 'Code Review (PR #482)', startDate: at(30), endDate: at(40) }),
+        event({ id: 'c', title: 'Feature Discussion', startDate: at(50), endDate: at(60) }),
+        event({ id: 'd', title: 'Client Meeting', startDate: at(70), endDate: at(80) }),
+        event({ id: 'e', title: 'Lunch', startDate: at(90), endDate: at(100) })
+      ]
+    });
+    const kinds = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="todays-schedule-icon"]')).map(
+      (el) => (el as HTMLElement).dataset['kind']
+    );
+    expect(kinds).toEqual(['team', 'code', 'chat', 'doc', 'calendar']);
+  });
+
+  it('shows one AM/PM suffix for a range that stays in the same half of the day', () => {
+    expect(compactTimeRange(new Date(2026, 9, 22, 9, 0), new Date(2026, 9, 22, 9, 30))).toBe('09:00 – 09:30 AM');
+    expect(compactTimeRange(new Date(2026, 9, 22, 11, 30), new Date(2026, 9, 22, 12, 30))).toBe('11:30 AM – 12:30 PM');
   });
 
   it('limits the agenda list to 5 items', async () => {
@@ -151,4 +180,38 @@ describe('TodaysScheduleCardComponent', () => {
     expect(btn.title).toBe('Join Teams Meeting');
     expect(btn.getAttribute('href')).toBe('https://teams.microsoft.com/l/meetup-join/123');
   });
+
+  it('lists tasks due today and overdue after the meetings, linking each to its project board', async () => {
+    const at = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString();
+    const { fixture, getMyTasks } = await setup({ events: [event({ id: 'm', title: 'Daily Standup', startDate: at(30), endDate: at(45) })] }, 'Asia/Colombo', [
+      task({ taskId: 't-today', title: 'Write release notes', isOverdue: false, projectName: 'Onexso' }),
+      task({ taskId: 't-late', title: 'Fix login bug', isOverdue: true, projectName: 'Watercraft' })
+    ]);
+    expect(getMyTasks).toHaveBeenCalledWith(0);
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="todays-schedule-item"]'));
+    expect(rows.map((r) => r.dataset['status'])).toEqual(['upcoming', 'overdue', 'due']);
+    expect(rows[1].textContent).toContain('Fix login bug');
+    expect(rows[1].textContent).toContain('Watercraft');
+    expect(rows[1].textContent).toContain('Overdue');
+    expect(rows[2].textContent).toContain('Due today');
+    const link: HTMLAnchorElement = rows[2].querySelector('a')!;
+    expect(link.getAttribute('href')).toBe('/work/p-1/board?taskId=t-today');
+  });
+
+  it('shows tasks without meetings, and the empty state only when there are neither', async () => {
+    const withTasks = await setup({ events: [] }, 'Asia/Colombo', [task({ taskId: 't1', title: 'Only a task' })]);
+    expect(withTasks.fixture.nativeElement.querySelector('[data-testid="todays-schedule-empty"]')).toBeNull();
+    expect(withTasks.fixture.nativeElement.textContent).toContain('Only a task');
+    TestBed.resetTestingModule();
+    const failedTasks = await setup({ events: [] }, 'Asia/Colombo', 'error');
+    expect(failedTasks.fixture.nativeElement.querySelector('[data-testid="todays-schedule-empty"]')).not.toBeNull();
+  });
 });
+
+function task(partial: Partial<MyTaskItem> & { taskId: string; title: string }): MyTaskItem {
+  return {
+    shortId: 'T-1', dueDate: '2026-10-22', isOverdue: false, projectId: 'p-1', projectName: 'Project',
+    objectiveId: 'o-1', priority: 'medium',
+    ...partial
+  };
+}
