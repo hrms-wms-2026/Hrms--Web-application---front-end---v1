@@ -1020,11 +1020,11 @@ describe('PositionManagementComponent - System Access Flow', () => {
       expect(createBtn).not.toBeNull();
 
       // Search input is collapsed by default and expands on click
-      expect(headerRow.querySelector('.pm-search-input')).toBeNull();
+      expect(headerRow.querySelector('.pm-search-expandable input')).toBeNull();
       searchBtn.click();
       fixture.detectChanges();
 
-      const searchInput: HTMLInputElement = headerRow.querySelector('.pm-search-input');
+      const searchInput: HTMLInputElement = headerRow.querySelector('.pm-search-expandable input');
       expect(searchInput).not.toBeNull();
     });
 

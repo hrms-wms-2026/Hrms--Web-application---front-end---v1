@@ -24,7 +24,7 @@
 
       <label class="form-field">
         <span>Work date</span>
-        <input [value]="effectiveWorkDate()" readonly aria-readonly="true" />
+        <input class="ui-input" [value]="effectiveWorkDate()" readonly aria-readonly="true" />
       </label>
     </div>
 
@@ -32,7 +32,7 @@
       <div class="correction-form-grid">
         <label class="form-field">
           <span>Requested clock-in time</span>
-          <input
+          <input class="ui-input"
             type="time"
             [ngModel]="requestedClockInTime()"
             (ngModelChange)="requestedClockInTime.set($event); correctionPreviewReady.set(false)"
@@ -47,7 +47,7 @@
       <div class="correction-form-grid">
         <label class="form-field">
           <span>Requested clock-out time</span>
-          <input
+          <input class="ui-input"
             type="time"
             [ngModel]="requestedClockOutTime()"
             (ngModelChange)="requestedClockOutTime.set($event); correctionPreviewReady.set(false)"
@@ -62,7 +62,7 @@
       <div class="correction-form-grid">
         <label class="form-field">
           <span>Requested clock-in time</span>
-          <input
+          <input class="ui-input"
             type="time"
             [ngModel]="requestedClockInTime()"
             (ngModelChange)="requestedClockInTime.set($event); correctionPreviewReady.set(false)"
@@ -73,7 +73,7 @@
 
         <label class="form-field">
           <span>Requested clock-out time</span>
-          <input
+          <input class="ui-input"
             type="time"
             [ngModel]="requestedClockOutTime()"
             (ngModelChange)="requestedClockOutTime.set($event); correctionPreviewReady.set(false)"
@@ -90,7 +90,7 @@
         <div class="break-list-container">
           @for (item of correctionBreaks(); track $index; let index = $index) {
             <div class="break-row">
-              <input
+              <input class="ui-input"
                 type="time"
                 [ngModel]="item.start"
                 (ngModelChange)="correctionBreaks.update((items) => items.map((entry, itemIndex) => itemIndex === index ? { ...entry, start: $event } : entry)); correctionPreviewReady.set(false)"
@@ -98,7 +98,7 @@
                 aria-label="Break start time"
               />
               <span>to</span>
-              <input
+              <input class="ui-input"
                 type="time"
                 [ngModel]="item.end"
                 (ngModelChange)="correctionBreaks.update((items) => items.map((entry, itemIndex) => itemIndex === index ? { ...entry, end: $event } : entry)); correctionPreviewReady.set(false)"
@@ -123,7 +123,7 @@
 
     <label class="form-field">
       <span>Reason <b aria-hidden="true">*</b></span>
-      <textarea
+      <textarea class="ui-input"
         rows="3"
         maxlength="255"
         [ngModel]="correctionReason()"
@@ -136,7 +136,7 @@
 
     <label class="form-field">
       <span>Notes <small>(optional)</small></span>
-      <textarea
+      <textarea class="ui-input"
         rows="2"
         maxlength="2000"
         [ngModel]="correctionNotes()"

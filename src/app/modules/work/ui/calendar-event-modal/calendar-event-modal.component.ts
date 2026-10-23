@@ -25,7 +25,7 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
         </div>
 
         <label class="mb-3 block text-sm text-[var(--color-text-secondary)]">Name
-          <input class="mt-1 w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[var(--color-text-primary)]" [value]="name()" (input)="name.set($any($event.target).value)" maxlength="255" data-testid="event-name" />
+          <input class="ui-input mt-1" [value]="name()" (input)="name.set($any($event.target).value)" maxlength="255" data-testid="event-name" />
         </label>
 
         <div class="mb-3 flex gap-3">
@@ -50,13 +50,13 @@ import { toggleModuleLive } from '../../utils/module-task-selection';
         <label class="mb-4 block text-sm text-[var(--color-text-secondary)]">Color
           <span class="mt-1 flex gap-2">
             <input type="color" class="h-10 w-14" [value]="color()" (input)="color.set($any($event.target).value)" />
-            <input class="flex-1 rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 uppercase text-[var(--color-text-primary)]" [value]="color()" (input)="color.set($any($event.target).value.toUpperCase())" pattern="^#[0-9A-Fa-f]{6}$" />
+            <input class="ui-input flex-1 uppercase" [value]="color()" (input)="color.set($any($event.target).value.toUpperCase())" pattern="^#[0-9A-Fa-f]{6}$" />
           </span>
         </label>
 
         <label class="mb-4 block text-sm text-[var(--color-text-secondary)]">Description
           <textarea
-            class="mt-1 w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[var(--color-text-primary)]"
+            class="ui-input mt-1"
             rows="3" maxlength="2000"
             [value]="description()"
             (input)="description.set($any($event.target).value)"

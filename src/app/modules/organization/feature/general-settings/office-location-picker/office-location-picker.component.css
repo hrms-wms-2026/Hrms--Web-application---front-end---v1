@@ -9,26 +9,6 @@
   z-index: 10;
 }
 
-.olp-search__input {
-  width: 100%;
-  border-radius: 0.375rem;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  color: var(--color-text-primary);
-}
-
-.olp-search__input:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}
-
-.olp-search__input:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
 .olp-search__status {
   position: absolute;
   right: 0.75rem;

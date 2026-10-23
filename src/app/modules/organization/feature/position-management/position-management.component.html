@@ -9,26 +9,26 @@
         <!-- Expandable Search (Icon Click Toggle) -->
         <div class="pm-search-container">
           @if (searchExpanded()) {
-            <div class="pm-search-expandable">
-              <svg class="pm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="pm-search-expandable ui-field ui-field--sm">
+              <span class="ui-field__addon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
+              </svg></span>
               <input
                 type="text"
-                class="pm-search-input"
+                class="ui-field__control"
                 placeholder="Search positions…"
                 [value]="positionStore.searchQuery()"
                 (input)="onSearchChange($any($event.target).value)"
               />
-              <button
+              <span class="ui-field__trailing"><button
                 type="button"
-                class="pm-search-clear-btn"
+                class="ui-field__icon-btn"
                 (click)="toggleSearch()"
                 title="Close search"
                 aria-label="Close search"
               >
                 &times;
-              </button>
+              </button></span>
             </div>
           } @else {
             <button

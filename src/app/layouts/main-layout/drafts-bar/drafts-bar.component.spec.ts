@@ -99,7 +99,7 @@ describe('DraftsBarComponent', () => {
 
   it('applies has-sub-nav host class and 80px offset when sub-navigation is present', () => {
     TestBed.resetTestingModule();
-    const navStateMock = { activeChildren: signal([{ id: 'c1', label: 'Child 1', path: '/child1' }]) };
+    const navStateMock = { activeChildren: signal([{ id: 'c1', label: 'Child 1', path: '/child1' }, { id: 'c2', label: 'Child 2', path: '/child2' }]) };
     TestBed.configureTestingModule({
       imports: [DraftsBarComponent],
       providers: [

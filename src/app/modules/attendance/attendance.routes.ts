@@ -68,11 +68,9 @@ export const ATTENDANCE_ROUTES: Routes = [
   {
     // Same component as 'time-tracking' - Requests has no standalone page yet (its
     // correction/work-area draft-form state still lives on TimeTrackingComponent itself, see
-    // docs/superpowers/plans/2026-09-08-attendance-overview-redesign.md, "Deferred"). This
-    // route exists only so the "Requests" nav item has a URL distinct from "Time Tracking" -
-    // reusing that exact path made both sidebar entries highlight together (routerLinkActive
-    // compares each link's own target against the current URL, so two links pointing at the
-    // identical string both light up regardless of `exact`).
+    // docs/superpowers/plans/2026-09-08-attendance-overview-redesign.md, "Deferred"). The
+    // sidebar no longer lists Requests; this route stays as the target of the Overview
+    // requests card's "View all requests" link.
     path: 'time-tracking/requests',
     canActivate: [permissionGuard],
     data: {

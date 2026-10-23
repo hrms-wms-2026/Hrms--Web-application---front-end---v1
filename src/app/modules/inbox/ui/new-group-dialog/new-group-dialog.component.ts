@@ -26,7 +26,7 @@ export interface NewGroupChoice {
         @if (!caseTitle()) {
           <label class="ngd__field">
             <span>Group name</span>
-            <input data-testid="new-group-name" maxlength="80" placeholder="e.g. Payroll review" [value]="name()"
+            <input class="ui-input" data-testid="new-group-name" maxlength="80" placeholder="e.g. Payroll review" [value]="name()"
               (input)="name.set($any($event.target).value)" />
           </label>
         } @else {
@@ -49,9 +49,7 @@ export interface NewGroupChoice {
   styles: [`
     .ngd { display: flex; flex-direction: column; gap: 14px; }
     .ngd__field { display: flex; flex-direction: column; gap: 6px; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
-    .ngd__field input { height: 34px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface);
-      color: var(--color-text-primary); font: inherit; font-size: 13px; font-weight: 400; }
-    .ngd__field input:focus { border-color: var(--color-accent); outline: none; }
+
     .ngd__hint { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
     .ngd__error { margin: 0; color: var(--color-danger); font-size: 12px; }
     .ngd__actions { display: flex; justify-content: flex-end; gap: 8px; }

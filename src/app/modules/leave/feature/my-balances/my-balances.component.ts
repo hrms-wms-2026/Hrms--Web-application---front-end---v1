@@ -22,6 +22,7 @@ import { LeaveCancelConfirmDialogComponent } from '../../../../shared/ui/leave-c
 import { LeaveRequestHistoryTableComponent } from '../../ui/leave-request-history-table/leave-request-history-table.component';
 import { NewLeaveRequestWizardComponent } from '../../ui/new-leave-request-wizard/new-leave-request-wizard.component';
 import { balancesToCsv, downloadCsv } from '../../utils/leave-balance-csv';
+import { formatAmount } from '../../utils/leave-amount';
 
 export type BalanceViewMode = 'my' | 'team';
 
@@ -166,6 +167,10 @@ export class MyBalancesComponent {
     return value.toFixed(2);
   }
 
+  accrualNote(balance: LeaveBalanceResponse): string | null {
+    return monthlyAccrualNote(balance, new Date());
+  }
+
   barShare(part: number, balance: LeaveBalanceResponse): number {
     const total = Math.max(balance.entitledHours, balance.usedHours + balance.pendingHours + Math.max(balance.remainingHours, 0), 1);
     return Math.max(0, Math.min(100, (Math.max(part, 0) / total) * 100));
@@ -195,6 +200,17 @@ export class MyBalancesComponent {
 export function yearOptions(): SelectOption[] {
   const current = new Date().getFullYear();
   return [current - 1, current, current + 1].map((year) => ({ value: String(year), label: String(year) }));
+}
+
+/** "Accrues 8 h / month · next credit 1 Nov 2026" for monthly policies. The next-credit part only
+ * shows for the current year before December; December's credit is the last one in this balance. */
+export function monthlyAccrualNote(balance: LeaveBalanceResponse, today: Date): string | null {
+  if (balance.amountPeriod !== 'month' || balance.amountHours == null) return null;
+  const rate = `Accrues ${formatAmount(balance.amountHours, 'month')}`;
+  if (balance.year !== today.getFullYear() || today.getMonth() === 11) return rate;
+  const next = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const label = next.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return `${rate} · next credit ${label}`;
 }
 
 export function summarizeBalances(rows: readonly LeaveBalanceResponse[]): {

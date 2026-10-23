@@ -95,7 +95,8 @@ export function isMachineValue(str: string): boolean {
   }
 
   // Raw SQL / database table / column names
-  if (/\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|dbo\.|FK_|IX_)\b/i.test(trimmed)) {
+  // Structural only: a plain sentence like "Only the author can delete." must still reach the user.
+  if (/\bSELECT\b[\s\S]+\bFROM\b|\bINSERT\s+INTO\b|\bUPDATE\b[\s\S]+\bSET\b|\bDELETE\s+FROM\b|\bdbo\.|\b(FK|IX|PK)_\w/i.test(trimmed)) {
     return true;
   }
 
@@ -105,6 +106,27 @@ export function isMachineValue(str: string): boolean {
   }
 
   return false;
+}
+
+/** The server's own human message (detail / message / title / first field error), or null when there is none or it
+ *  looks technical (URL, exception, SQL, internal code). For callers that pick their own fallback per status. */
+export function safeServerDetail(err: unknown): string | null {
+  const body = err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : null;
+  if (!body || typeof body !== 'object') return null;
+  const b = body as { detail?: unknown; message?: unknown; title?: unknown; errors?: unknown };
+  let candidate: unknown = null;
+  if (b.errors && typeof b.errors === 'object' && !Array.isArray(b.errors)) {
+    const first = Object.values(b.errors as Record<string, unknown>)[0];
+    candidate = Array.isArray(first) ? first[0] : first;
+  }
+  if (typeof candidate !== 'string' && typeof b.detail === 'string' && b.detail !== GENERIC_VALIDATION_DETAIL) candidate = b.detail;
+  if (typeof candidate !== 'string' && typeof b.message === 'string') candidate = b.message;
+  if (typeof candidate !== 'string' && typeof b.title === 'string' && b.title !== GENERIC_VALIDATION_DETAIL) candidate = b.title;
+  if (typeof candidate !== 'string') return null;
+  const trimmed = candidate.trim();
+  const known = KNOWN_CODE_MAPPINGS[trimmed.toLowerCase()];
+  if (known) return known;
+  return trimmed.length > 0 && trimmed.length < 300 && !isMachineValue(trimmed) ? trimmed : null;
 }
 
 export function toSafeErrorMessage(err: unknown, fallbackMessage?: string): string {
@@ -169,6 +191,11 @@ export function toSafeErrorMessage(err: unknown, fallbackMessage?: string): stri
     if (!isMachineValue(trimmed) && trimmed.length > 0 && trimmed.length < 300) {
       return trimmed;
     }
+  }
+
+  // A caller's own fallback ("Failed to load projects.") says more than the generic server-error line.
+  if (fallbackMessage && statusCode !== null && statusCode >= 500) {
+    return fallbackMessage;
   }
 
   if (statusCode !== null && HTTP_STATUS_MAPPINGS[statusCode]) {

@@ -42,9 +42,9 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
       </div>
 
       <div class="wge-actions">
-        <div class="wge-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input
+        <div class="wge-search ui-field ui-field--sm">
+          <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+          <input class="ui-field__control"
             type="search"
             data-testid="work-network-search"
             placeholder="Search projects, modules or tasks…"
@@ -152,10 +152,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
     .wge-title h2 { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--color-text-primary); }
     .wge-title p { margin: 0.15rem 0 0; font-size: 0.75rem; color: var(--color-text-secondary); }
     .wge-actions { display: flex; align-items: center; gap: 0.5rem; }
-    .wge-search { position: relative; display: flex; align-items: center; gap: 0.5rem; width: 17rem; height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--color-border); border-radius: 0.6rem; background: var(--color-surface); }
-    .wge-search:focus-within { border-color: #93c5fd; box-shadow: 0 0 0 3px rgb(59 130 246 / 0.12); }
-    .wge-search > svg { width: 1rem; height: 1rem; flex-shrink: 0; color: var(--color-text-secondary); }
-    .wge-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 0.8rem; color: var(--color-text-primary); }
+    .wge-search { width: 17rem; }
     .wge-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 5; margin: 0; padding: 0.3rem; list-style: none; border: 1px solid var(--color-border); border-radius: 0.6rem; background: var(--color-surface); box-shadow: 0 16px 32px rgb(15 23 42 / 0.16); }
     .wge-results--empty { padding: 0.6rem 0.75rem; font-size: 0.75rem; color: var(--color-text-secondary); }
     .wge-results button { display: flex; width: 100%; align-items: center; gap: 0.5rem; border: 0; border-radius: 0.4rem; background: transparent; padding: 0.4rem 0.5rem; text-align: left; cursor: pointer; font-size: 0.78rem; color: var(--color-text-primary); }

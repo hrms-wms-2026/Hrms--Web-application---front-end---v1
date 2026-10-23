@@ -120,18 +120,7 @@
 .lad-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .lad-action-panel { display: flex; flex-direction: column; gap: 0.5rem; }
 .lad-action-panel label { display: flex; flex-direction: column; gap: 0.3rem; color: var(--color-text-secondary); font-size: 0.8rem; }
-.lad-action-panel textarea {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.45rem 0.6rem;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 0.84rem;
-}
-.lad-action-panel textarea:focus { outline: 2px solid var(--color-focus-ring); border-color: var(--color-accent); }
+
 .lad-action-buttons { display: flex; justify-content: flex-end; gap: 0.5rem; }
 .lad-primary, .lad-secondary, .lad-danger {
   border-radius: 8px;

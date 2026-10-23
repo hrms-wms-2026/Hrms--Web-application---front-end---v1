@@ -54,13 +54,14 @@
             [options]="headPositionOptions"
             [value]="form.controls.headPositionId.value || ''"
             (valueChange)="form.controls.headPositionId.setValue($event)"
-            [disabled]="!isEdit"
           />
-          @if (!isEdit) {
-            <p class="dfm-hint dfm-hint--info">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              Assign an active head position after creating the department.
+          @if (movingHeadPosition; as moving) {
+            <p class="dfm-hint dfm-hint--warn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              {{ moving.title }} will move {{ moving.departmentName ? 'from ' + moving.departmentName + ' ' : '' }}into this department, with anyone holding it.
             </p>
+          } @else if (!isEdit) {
+            <p class="dfm-hint">Choose an existing single-occupancy position to lead this department. It moves into the new department.</p>
           } @else {
             <p class="dfm-hint">Choose an active unique position in this company. This position may be vacant.</p>
           }

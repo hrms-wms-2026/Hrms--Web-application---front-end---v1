@@ -18,6 +18,22 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
     expect(notify.notifications()[0].message).toBe('Something went wrong while saving your changes.');
   });
 
+  it('never shows the raw "Http failure response for <url>" text when the server is unreachable', () => {
+    const err = new HttpErrorResponse({ status: 0, statusText: 'Unknown Error', url: 'https://dapi.onexso.com:7229/api/v1/work/projects/mine' });
+    const message = toSafeErrorMessage(err, 'Failed to load projects.');
+    expect(message).toBe('We could not reach the server. Check your connection and try again.');
+    expect(message).not.toContain('http');
+  });
+
+  it('prefers the caller fallback over the generic server-error line for a 5xx', () => {
+    expect(toSafeErrorMessage(makeError(500), 'Failed to load projects.')).toBe('Failed to load projects.');
+  });
+
+  it('keeps a plain sentence that happens to contain an SQL keyword', () => {
+    expect(toSafeErrorMessage(makeError(403, { detail: 'Only the author can delete.' }))).toBe('Only the author can delete.');
+    expect(toSafeErrorMessage(makeError(500, { detail: 'SELECT * FROM employees WHERE id = 1' }))).toBe('Something went wrong while saving your changes.');
+  });
+
   it('maps storage_not_entitled to plan feature error', () => {
     const err = makeError(403, { detail: 'storage_not_entitled' });
     expect(toSafeErrorMessage(err)).toBe('This feature is not included in your current plan.');

@@ -104,10 +104,10 @@
               <div class="lad-action-panel">
                 @if (detail.status === 'approved') {
                   <p class="lad-muted">The {{ detail.paidHours }} paid hours go back to {{ detail.employeeName }}'s balance and they are told it was rejected.</p>
-                  <label>Reason (required)<textarea rows="2" maxlength="1900" [value]="changeComment()" (input)="changeComment.set($any($event.target).value)"></textarea></label>
+                  <label>Reason (required)<textarea class="ui-input" rows="2" maxlength="1900" [value]="changeComment()" (input)="changeComment.set($any($event.target).value)"></textarea></label>
                 } @else {
                   <p class="lad-muted">The {{ detail.paidHours }} paid hours are taken from {{ detail.employeeName }}'s balance again.</p>
-                  <label>Comment (optional)<textarea rows="2" maxlength="1900" [value]="changeComment()" (input)="changeComment.set($any($event.target).value)"></textarea></label>
+                  <label>Comment (optional)<textarea class="ui-input" rows="2" maxlength="1900" [value]="changeComment()" (input)="changeComment.set($any($event.target).value)"></textarea></label>
                 }
                 <div class="lad-action-buttons">
                   <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
@@ -132,7 +132,7 @@
 
             @if (activeAction() === 'approve') {
               <div class="lad-action-panel">
-                <label>Comment (optional)<textarea rows="2" [value]="approveComment()" (input)="approveComment.set($any($event.target).value)"></textarea></label>
+                <label>Comment (optional)<textarea class="ui-input" rows="2" [value]="approveComment()" (input)="approveComment.set($any($event.target).value)"></textarea></label>
                 <div class="lad-action-buttons">
                   <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
                   <button type="button" class="lad-primary" [disabled]="deciding" (click)="onSubmitApprove()">{{ deciding ? 'Approving...' : 'Confirm approve' }}</button>
@@ -142,7 +142,7 @@
 
             @if (activeAction() === 'reject') {
               <div class="lad-action-panel">
-                <label>Reason (required)<textarea rows="2" [value]="rejectReason()" (input)="rejectReason.set($any($event.target).value)"></textarea></label>
+                <label>Reason (required)<textarea class="ui-input" rows="2" [value]="rejectReason()" (input)="rejectReason.set($any($event.target).value)"></textarea></label>
                 <div class="lad-action-buttons">
                   <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
                   <button type="button" class="lad-danger" [disabled]="deciding || !rejectReason().trim()" (click)="onSubmitReject()">{{ deciding ? 'Rejecting...' : 'Confirm reject' }}</button>

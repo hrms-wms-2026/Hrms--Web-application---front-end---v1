@@ -5,10 +5,11 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { ApprovalDelegateDto, ApprovalDelegatesApiService } from '../../data-access/approval-delegates-api.service';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
+import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 
 function errorText(err: unknown, fallback: string): string {
   const e = err as { error?: { detail?: string; message?: string }; message?: string };
-  return e?.error?.detail || e?.error?.message || fallback;
+  return toSafeErrorMessage(e, fallback);
 }
 
 /** "Delegate my approvals" (Inbox toolbar, leave:approve): who covers the caller's leave approvals and when. */

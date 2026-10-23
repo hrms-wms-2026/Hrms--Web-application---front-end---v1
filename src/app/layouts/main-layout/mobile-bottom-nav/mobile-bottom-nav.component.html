@@ -1,7 +1,7 @@
 @if (visibleItems().length > 0) {
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
 
-    @if (activeChildren().length > 0) {
+    @if (activeChildren().length > 1) {
       <div class="mobile-sub-nav">
         @for (child of activeChildren(); track child.id) {
           <a

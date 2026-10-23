@@ -44,22 +44,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
         requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
       },
       {
-        // Requests has no standalone page yet - the correction/work-area draft-form state it
-        // needs still lives on TimeTrackingComponent itself (see
-        // docs/superpowers/plans/2026-09-08-attendance-overview-redesign.md, "Deferred"). It
-        // renders that same component via a second route (attendance.routes.ts,
-        // 'time-tracking/requests') so this has its own URL, distinct from "Time Tracking" -
-        // reusing the identical path made both sidebar links highlight together, since
-        // routerLinkActive compares each link's own target against the current URL and can't
-        // tell two identical targets apart.
-        id: 'time-attendance-requests',
-        label: 'Requests',
-        path: '/attendance/time-tracking/requests',
-        exact: true,
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own']
-      },
-      {
         id: 'time-attendance-monitoring',
         label: 'Monitoring',
         path: '/attendance/monitoring',

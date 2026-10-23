@@ -328,24 +328,10 @@
   flex-shrink: 0;
 }
 
+/* Standard .ui-input; just narrow and centred for a number. */
 .threshold-input {
   width: 80px;
-  min-height: 36px;
-  padding: 0.375rem 0.625rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.875rem;
-  font-weight: 600;
   text-align: center;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.threshold-input:focus {
-  outline: none;
-  border-color: var(--color-primary, #2563eb);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
 }
 
 .threshold-card__unit {
@@ -498,22 +484,6 @@
   width: 100%;
 }
 
-.target-field ::ng-deep .app-select__trigger {
-  min-height: 36px;
-  height: 36px;
-  box-sizing: border-box;
-  border-radius: 7px;
-  padding: 0.45rem 0.75rem;
-  border: 1px solid var(--color-border);
-  font-size: 0.8125rem;
-  line-height: 1.25;
-}
-
-.target-field ::ng-deep .app-select__value {
-  font-size: 0.8125rem;
-  line-height: 1.25;
-}
-
 .select-wrapper {
   position: relative;
   width: 100%;
@@ -565,25 +535,6 @@ select:disabled, input:disabled, textarea:disabled {
   color: var(--color-text-secondary);
   cursor: not-allowed;
   opacity: 0.7;
-}
-
-.input-with-unit {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-with-unit input {
-  padding-right: 2.5rem;
-}
-
-.input-unit {
-  position: absolute;
-  right: 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  pointer-events: none;
 }
 
 /* ── Radio Button Override Controls ───────────────────────── */

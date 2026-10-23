@@ -45,18 +45,23 @@
     <!-- Expandable Search Input (Collapsible) -->
     @if (searchExpanded()) {
       <div class="ptd-search-expandable">
-        <input
-          type="text"
-          class="ptd-search-input"
-          placeholder="Filter template packs or positions..."
-          [value]="searchQuery()"
-          (input)="onSearchChange($any($event.target).value)"
-        />
-        @if (searchQuery()) {
-          <button type="button" class="ptd-clear-btn" (click)="onSearchChange('')" title="Clear search">
-            &times;
-          </button>
-        }
+        <div class="ui-field ui-field--sm">
+          <span class="ui-field__addon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          </span>
+          <input
+            type="text"
+            class="ui-field__control"
+            placeholder="Filter template packs or positions..."
+            [value]="searchQuery()"
+            (input)="onSearchChange($any($event.target).value)"
+          />
+          @if (searchQuery()) {
+            <span class="ui-field__trailing">
+              <button type="button" class="ui-field__icon-btn" (click)="onSearchChange('')" title="Clear search" aria-label="Clear search">&times;</button>
+            </span>
+          }
+        </div>
       </div>
     }
 

@@ -28,7 +28,7 @@ export interface TaskDuplicatePayload {
           <span class="task-duplicate-dialog__label">Name</span>
           <input
             type="text"
-            class="task-duplicate-dialog__input"
+            class="ui-input"
             data-testid="duplicate-title-input"
             [value]="title()"
             (input)="title.set($any($event.target).value)"
@@ -88,8 +88,7 @@ export interface TaskDuplicatePayload {
     .task-duplicate-dialog { display: flex; flex-direction: column; gap: 12px; }
     .task-duplicate-dialog__field { display: flex; flex-direction: column; gap: 5px; }
     .task-duplicate-dialog__label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
-    .task-duplicate-dialog__input { height: 38px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; }
-    .task-duplicate-dialog__input:focus { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+
     .task-duplicate-dialog__toggles { display: flex; flex-wrap: wrap; gap: 12px; }
     .task-duplicate-dialog__toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text-primary); cursor: pointer; }
     .task-duplicate-dialog__toggle input { accent-color: var(--color-accent); cursor: pointer; }

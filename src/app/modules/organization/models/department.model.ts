@@ -73,12 +73,13 @@ export interface DepartmentResponse {
 
 /**
  * Create department request payload matching CreateDepartmentRequest.cs.
- * Note: headPositionId is not accepted on Create (rejects with 409 Conflict per business rules).
+ * Note: a headPositionId on Create moves that existing position into the new department.
  */
 export interface CreateDepartmentRequest {
   name: string;
   code: string;
   parentDepartmentId?: string | null;
+  headPositionId?: string | null;
 }
 
 /**

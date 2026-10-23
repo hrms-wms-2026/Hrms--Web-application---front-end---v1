@@ -143,24 +143,6 @@
   color: var(--color-text-primary);
 }
 
-.rfm-textarea {
-  width: 100%;
-  padding: 0.625rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  resize: vertical;
-  outline: none;
-  transition: border-color 150ms ease;
-}
-
-.rfm-textarea:focus {
-  border-color: var(--color-sidebar-active-bg, #2563eb);
-}
-
 .rfm-perm-header {
   display: flex;
   align-items: center;

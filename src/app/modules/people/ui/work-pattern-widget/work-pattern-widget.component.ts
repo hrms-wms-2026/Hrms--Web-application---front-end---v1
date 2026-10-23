@@ -3,7 +3,7 @@ import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-ca
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
-import { formatClock, formatDurationCompact } from '../../utils/employee-work-activity.utils';
+import { appDisplayName, formatClock, formatDurationCompact } from '../../utils/employee-work-activity.utils';
 
 @Component({
   selector: 'app-work-pattern-widget',
@@ -36,7 +36,7 @@ import { formatClock, formatDurationCompact } from '../../utils/employee-work-ac
             <div class="min-w-0 flex-1">
               <dt class="text-xs font-medium text-violet-700">Top application</dt>
               <dd class="flex items-baseline justify-between gap-2">
-                <span class="truncate text-base font-bold text-slate-900" [title]="d.topApp ?? ''">{{ d.topApp ?? '—' }}</span>
+                <span class="truncate text-base font-bold text-slate-900" [title]="d.topApp ? appName(d.topApp) : ''">{{ d.topApp ? appName(d.topApp) : '—' }}</span>
                 @if (d.topApp) {
                   <span class="shrink-0 text-xs font-semibold text-violet-700">{{ fmt(d.topAppMinutes) }}</span>
                 }
@@ -75,6 +75,10 @@ export class WorkPatternWidgetComponent {
     () => this.api.getWorkActivityWorkPattern(this.employeeId(), this.period.from(), this.period.to()),
     { isEmpty: (d) => !d.activityMonitoringEnabled }
   );
+
+  appName(name: string): string {
+    return appDisplayName(name);
+  }
 
   fmt(minutes: number): string {
     return formatDurationCompact(minutes);

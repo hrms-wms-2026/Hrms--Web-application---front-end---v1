@@ -51,7 +51,7 @@ const PROVIDER_LABELS: Record<CalendarConnectionProvider, string> = {
   standalone: true,
   imports: [DatePipe, BreadcrumbHeaderComponent, ButtonComponent, CardComponent, ConfirmModalComponent, EmptyStateComponent, LoaderComponent, SelectComponent],
   template: `
-    <header class="mb-6">
+    <header class="app-page-header">
       <app-breadcrumb-header parentLabel="Settings" currentLabel="Calendar Sync" icon="settings" />
     </header>
 

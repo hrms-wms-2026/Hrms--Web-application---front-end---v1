@@ -25,9 +25,7 @@
 .lpw-fields label,.lpw-rule label,.lpw-blackout label{display:grid;gap:.3rem;color:var(--color-text-secondary);font-size:.73rem;font-weight:650}
 .lpw-fields label em{font-style:normal;color:var(--color-danger)}
 .lpw-fields label>span,.lpw-blackout label>span,.lpw-rule label>span{color:var(--color-text-secondary);font-size:.64rem;font-weight:500}
-.lpw-fields input,.lpw-fields textarea,.lpw-rule input,.lpw-blackout input{width:100%;box-sizing:border-box;border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface);padding:.58rem .7rem;color:var(--color-text-primary);font:inherit;font-size:.84rem;outline:none}
-.lpw-fields input:focus,.lpw-fields textarea:focus,.lpw-rule input:focus,.lpw-blackout input:focus{border-color:var(--color-accent);box-shadow:0 0 0 3px var(--color-focus-ring)}
-.lpw-fields textarea{min-height:72px;resize:vertical}
+
 .lpw-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
 .lpw-rule-list,.lpw-blackout-list{display:grid;gap:.7rem}
 .lpw-rule{padding:.9rem;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}

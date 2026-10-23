@@ -12,7 +12,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
       <div class="reject-dialog" data-testid="inbox-comment-dialog">
         <p class="reject-dialog__hint">Adding a reason helps the requester understand the decision. It's optional.</p>
         <textarea
-          class="reject-dialog__input"
+          class="ui-input"
           data-testid="inbox-comment-reason"
           rows="4"
           maxlength="4000"
@@ -35,8 +35,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
   styles: [`
     .reject-dialog { display: flex; flex-direction: column; gap: 12px; }
     .reject-dialog__hint { margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
-    .reject-dialog__input { width: 100%; min-height: 96px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; resize: vertical; }
-    .reject-dialog__input:focus { border-color: var(--color-accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+
     .reject-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
   `]
 })

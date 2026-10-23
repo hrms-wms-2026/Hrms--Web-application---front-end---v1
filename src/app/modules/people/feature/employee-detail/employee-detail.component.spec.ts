@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, provideRouter } from '@angular/router';
-import { of, throwError, Subject } from 'rxjs';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject, of, throwError, Subject } from 'rxjs';
 import { EmployeeDetailComponent } from './employee-detail.component';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -54,8 +54,19 @@ describe('EmployeeDetailComponent', () => {
     apiOverrides: Partial<PeopleApiService> = {},
     hasWritePermission = true,
     currentEmployeeId: string | null = 'emp-99',
-    hasOffboardPermission = true
+    hasOffboardPermission = true,
+    initialQuery: Record<string, string> = {}
   ) {
+    // Mirrors ActivatedRoute: the snapshot is current by the time either stream emits.
+    const params$ = new BehaviorSubject(convertToParamMap({ id: employee.id }));
+    const query$ = new BehaviorSubject(convertToParamMap(initialQuery));
+    const routeStub = {
+      paramMap: params$,
+      queryParamMap: query$,
+      get snapshot() {
+        return { paramMap: params$.value, queryParamMap: query$.value };
+      }
+    };
     const apiStub = {
       getEmployeeDetail: vi.fn().mockReturnValue(of(employee)),
       resendInvitation: vi.fn().mockReturnValue(of({ expiresAt: '2026-08-25T00:00:00Z' })),
@@ -143,7 +154,7 @@ describe('EmployeeDetailComponent', () => {
         { provide: PositionApiService, useValue: positionApiStub },
         { provide: PermissionService, useValue: permissionServiceStub },
         { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId } },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'emp-1' } } } },
+        { provide: ActivatedRoute, useValue: routeStub },
         { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } },
         { provide: WorkModeStore, useValue: workModeStoreStub },
         { provide: EmployeeDirectoryStore, useValue: employeeDirectoryStub }
@@ -151,8 +162,101 @@ describe('EmployeeDetailComponent', () => {
     });
 
     const fixture = TestBed.createComponent(EmployeeDetailComponent);
-    return { fixture, apiStub, notificationsStub, employeeDirectoryStub };
+    return { fixture, apiStub, notificationsStub, employeeDirectoryStub, params$, query$ };
   }
+
+  it('loads the new employee when the id in the URL changes', () => {
+    const other: EmployeeDetailResponse = {
+      ...detailFixture,
+      id: 'emp-2',
+      personalInformation: { ...detailFixture.personalInformation, firstName: 'Grace', lastName: 'Hopper' }
+    };
+    const getEmployeeDetail = vi.fn((id: string) => of(id === 'emp-2' ? other : detailFixture));
+    const { fixture, params$ } = setup(detailFixture, { getEmployeeDetail });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
+
+    params$.next(convertToParamMap({ id: 'emp-2' }));
+    fixture.detectChanges();
+
+    expect(getEmployeeDetail).toHaveBeenLastCalledWith('emp-2');
+    expect(fixture.nativeElement.textContent).toContain('Grace Hopper');
+    expect(fixture.nativeElement.textContent).not.toContain('Ada Lovelace');
+  });
+
+  it('keeps the page on screen while it reloads the same employee', () => {
+    const reload = new Subject<EmployeeDetailResponse>();
+    const getEmployeeDetail = vi.fn()
+      .mockReturnValueOnce(of(detailFixture))
+      .mockReturnValueOnce(reload.asObservable());
+    const { fixture } = setup(detailFixture, { getEmployeeDetail });
+    fixture.detectChanges();
+    fixture.componentInstance.selectTab('personal');
+    fixture.detectChanges();
+
+    fixture.componentInstance.onPositionChanged();
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).not.toContain('Loading employee');
+    expect(el.querySelector('app-employee-personal-tab')).toBeTruthy();
+
+    reload.next(detailFixture);
+    fixture.detectChanges();
+    expect(el.querySelector('app-employee-personal-tab')).toBeTruthy();
+  });
+
+  it('shows a toast instead of the error page when a reload fails', () => {
+    const getEmployeeDetail = vi.fn()
+      .mockReturnValueOnce(of(detailFixture))
+      .mockReturnValueOnce(throwError(() => new Error('boom')));
+    const { fixture, notificationsStub } = setup(detailFixture, { getEmployeeDetail });
+    fixture.detectChanges();
+
+    fixture.componentInstance.onPositionChanged();
+    fixture.detectChanges();
+
+    expect(notificationsStub.error).toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
+  });
+
+  it('opens the tab named in ?tab= and follows later changes to it', () => {
+    const { fixture, apiStub, query$ } = setup(detailFixture, {}, true, 'emp-99', true, { tab: 'employment' });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeTab()).toBe('employment');
+    expect(apiStub.getJobJourney).toHaveBeenCalledTimes(1);
+
+    query$.next(convertToParamMap({ tab: 'personal' }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activeTab()).toBe('personal');
+
+    query$.next(convertToParamMap({ tab: 'nonsense' }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activeTab()).toBe('overview');
+  });
+
+  it('writes the selected tab to the URL, dropping it for Overview', () => {
+    const { fixture } = setup(detailFixture);
+    const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectTab('work-activity');
+    expect(navigateSpy).toHaveBeenLastCalledWith([], expect.objectContaining({
+      queryParams: { tab: 'work-activity' }, queryParamsHandling: 'merge', replaceUrl: true
+    }));
+
+    fixture.componentInstance.selectTab('overview');
+    expect(navigateSpy).toHaveBeenLastCalledWith([], expect.objectContaining({ queryParams: { tab: null } }));
+  });
+
+  it('has no separate More actions button beside the action menu', () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="change-position-trigger"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('button[title="More actions"]')).toBeFalsy();
+  });
 
   it('shows the loader while the employee is loading', () => {
     const subject = new Subject<EmployeeDetailResponse>();

@@ -3,6 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { MyTeamTodayApiService } from '../data-access/my-team-today-api.service';
 import { TeamTodayResponse } from '../models/my-team-today.model';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface MyTeamTodayState {
   readonly data: TeamTodayResponse | null;
@@ -20,7 +21,7 @@ const initialState: MyTeamTodayState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const MyTeamTodayStore = signalStore(

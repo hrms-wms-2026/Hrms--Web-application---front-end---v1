@@ -4,6 +4,7 @@ import { Subscription, debounceTime, firstValueFrom, merge, map } from 'rxjs';
 import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.service';
 import { InboxChatsApiService } from '../data-access/inbox-chats-api.service';
 import { InboxChatRowDto } from '../models/inbox-chat.dto';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 /** Live events arrive in bursts (a decision touches several people); one reload per burst. */
 const REALTIME_DEBOUNCE_MS = 400;
@@ -30,7 +31,7 @@ const initialState: InboxChatsState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 /**

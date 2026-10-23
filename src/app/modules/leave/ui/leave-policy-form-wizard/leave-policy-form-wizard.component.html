@@ -47,10 +47,10 @@
               (valueChange)="leaveTypeId.set($event)"
             />
             <label>Policy name <em>*</em>
-              <input placeholder="e.g. Annual leave - standard" [value]="name()" (input)="name.set($any($event.target).value)" />
+              <input class="ui-input" placeholder="e.g. Annual leave - standard" [value]="name()" (input)="name.set($any($event.target).value)" />
             </label>
             <label>Description <span>Optional</span>
-              <textarea placeholder="Short internal note" [value]="description()" (input)="description.set($any($event.target).value)"></textarea>
+              <textarea class="ui-input" placeholder="Short internal note" [value]="description()" (input)="description.set($any($event.target).value)"></textarea>
             </label>
           </div>
         }
@@ -59,7 +59,7 @@
           <div class="lpw-fields">
             <div class="lpw-sentence" role="group" aria-label="Amount">
               <span>Gives</span>
-              <input class="lpw-sentence-num" type="number" min="0" step="0.5" aria-label="Hours"
+              <input class="ui-input lpw-sentence-num" type="number" min="0" step="0.5" aria-label="Hours"
                 [value]="amountHours() ?? ''" (input)="amountHours.set(num($any($event.target).value))" />
               <span>hours every</span>
               <app-select ariaLabel="Period" [searchable]="false" [options]="periodOptions" [value]="amountPeriod()" (valueChange)="amountPeriod.set($any($event))" />
@@ -76,7 +76,7 @@
             </label>
             @if (carryMode() === 'cap') {
               <label>Most hours carried over <em>*</em>
-                <input type="number" min="0" [value]="carryCapHours() ?? ''" (input)="carryCapHours.set(num($any($event.target).value))" />
+                <input class="ui-input" type="number" min="0" [value]="carryCapHours() ?? ''" (input)="carryCapHours.set(num($any($event.target).value))" />
               </label>
             }
             <label class="lpw-toggle">
@@ -85,7 +85,7 @@
             </label>
             @if (carryExpires()) {
               <label>Expire after (months) <em>*</em>
-                <input type="number" min="1" max="24" [value]="carryExpiryMonths() ?? ''" (input)="carryExpiryMonths.set(num($any($event.target).value))" />
+                <input class="ui-input" type="number" min="1" max="24" [value]="carryExpiryMonths() ?? ''" (input)="carryExpiryMonths.set(num($any($event.target).value))" />
               </label>
             }
 
@@ -93,7 +93,7 @@
             <app-select ariaLabel="New joiners can use it" [searchable]="false" [options]="eligibilityOptions" [value]="eligibleFrom()" (valueChange)="eligibleFrom.set($any($event))" />
             @if (eligibleFrom() === 'after_months') {
               <label>Months after joining <em>*</em>
-                <input type="number" min="1" max="60" [value]="eligibleAfterMonths() ?? ''" (input)="eligibleAfterMonths.set(num($any($event.target).value))" />
+                <input class="ui-input" type="number" min="1" max="60" [value]="eligibleAfterMonths() ?? ''" (input)="eligibleAfterMonths.set(num($any($event.target).value))" />
               </label>
             }
           </div>
@@ -103,16 +103,16 @@
           <div class="lpw-fields">
             <div class="lpw-two">
               <label>Minimum notice (days)
-                <input type="number" min="0" [value]="minimumNoticeDays()" (input)="minimumNoticeDays.set(num($any($event.target).value) ?? 0)" />
+                <input class="ui-input" type="number" min="0" [value]="minimumNoticeDays()" (input)="minimumNoticeDays.set(num($any($event.target).value) ?? 0)" />
               </label>
               <label>Maximum team absence (%) <span>Optional</span>
-                <input type="number" min="1" max="100" [value]="maxTeamAbsencePercent() ?? ''" (input)="maxTeamAbsencePercent.set(num($any($event.target).value))" />
+                <input class="ui-input" type="number" min="1" max="100" [value]="maxTeamAbsencePercent() ?? ''" (input)="maxTeamAbsencePercent.set(num($any($event.target).value))" />
               </label>
               <label>Shortest request (hours) <em>*</em>
-                <input type="number" min="0.5" step="0.5" [value]="minRequestHours() ?? ''" (input)="minRequestHours.set(num($any($event.target).value))" />
+                <input class="ui-input" type="number" min="0.5" step="0.5" [value]="minRequestHours() ?? ''" (input)="minRequestHours.set(num($any($event.target).value))" />
               </label>
               <label>Longest request (hours) <span>Blank = no limit</span>
-                <input type="number" min="0" [value]="maxRequestHours() ?? ''" (input)="maxRequestHours.set(num($any($event.target).value))" />
+                <input class="ui-input" type="number" min="0" [value]="maxRequestHours() ?? ''" (input)="maxRequestHours.set(num($any($event.target).value))" />
               </label>
             </div>
             <app-select label="Approval" [searchable]="false" [options]="approvalOptions" [value]="approvalMode()" (valueChange)="approvalMode.set($any($event))" />
@@ -125,7 +125,7 @@
                 <app-date-picker label="Start" [value]="period.startDate" (valueChange)="updateBlackout(index, 'startDate', $event)" />
                 <app-date-picker label="End" [value]="period.endDate" (valueChange)="updateBlackout(index, 'endDate', $event)" />
                 <label>Reason <span>Optional</span>
-                  <input placeholder="e.g. Year-end close" [value]="period.reason ?? ''" (input)="updateBlackout(index, 'reason', $any($event.target).value)" />
+                  <input class="ui-input" placeholder="e.g. Year-end close" [value]="period.reason ?? ''" (input)="updateBlackout(index, 'reason', $any($event.target).value)" />
                 </label>
                 <button type="button" (click)="removeBlackout(index)" aria-label="Remove blackout period">×</button>
               </section>

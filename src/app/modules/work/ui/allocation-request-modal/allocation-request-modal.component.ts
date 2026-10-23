@@ -4,6 +4,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
+import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 
 /** Ask for more allocated hours on a module. The server either adds them at once (the caller owns the
  *  parent or above) or sends an approval request, which then shows up in the approver's Inbox. */
@@ -75,7 +76,7 @@ export class AllocationRequestModalComponent {
       await firstValueFrom(this.api.createAllocationRequest(this.moduleId(), { requestedAdditionalHours: hours, reason: this.reason().trim() }));
       this.submitted.emit();
     } catch (err: any) {
-      this.error.set(err?.error?.detail || err?.error?.message || err?.message || 'Failed to send the request.');
+      this.error.set(toSafeErrorMessage(err, 'Failed to send the request.'));
     } finally {
       this.saving.set(false);
     }

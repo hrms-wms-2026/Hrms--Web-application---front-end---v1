@@ -3,6 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { MyTeamActionItemsApiService } from '../data-access/my-team-action-items-api.service';
 import { TeamActionItemsResponse } from '../models/my-team-action-items.model';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface MyTeamActionItemsState {
   readonly data: TeamActionItemsResponse | null;
@@ -20,7 +21,7 @@ const initialState: MyTeamActionItemsState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 /** Rows per source the Action Center inbox lists - enough for a real team's queue; the chip

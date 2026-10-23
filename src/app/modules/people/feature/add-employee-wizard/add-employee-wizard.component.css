@@ -264,8 +264,6 @@
   to { opacity: 1; }
 }
 
-
-
 .work-mode-chip {
   display: inline-flex;
   align-items: center;
@@ -418,8 +416,7 @@
 }
 
 .task-edit-icon-btn,
-.task-edit-assignee__btn,
-.task-edit-due__input {
+.task-edit-assignee__btn {
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -447,8 +444,7 @@
   cursor: not-allowed;
 }
 
-.task-edit-assignee__btn,
-.task-edit-due__input {
+.task-edit-assignee__btn {
   color: var(--color-text-primary);
 }
 
@@ -465,7 +461,6 @@
 
 .task-edit-due__input {
   width: 3.5rem;
-  padding: 0.3125rem 0.5rem;
 }
 
 .task-pill-stack {
@@ -832,7 +827,6 @@
   color: var(--color-accent);
 }
 
-
 /* ---------- Step layout: cards, split columns (Identity / Reporting / Work setup) ---------- */
 
 .aw-card {
@@ -1013,41 +1007,10 @@
 
 /* Reporting step */
 
-.aw-search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: 2.5rem;
-  padding: 0 0.75rem;
-  margin-bottom: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-}
-
-.aw-search:focus-within {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent);
-}
-
-.aw-search svg {
-  width: 16px;
-  height: 16px;
-  flex: none;
-}
-
-.aw-search input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 0.8125rem;
-  color: var(--color-text-primary);
-}
+.aw-search { margin-bottom: 0.75rem; }
 
 .aw-search__clear {
+  margin-right: 0.75rem;
   border: none;
   background: none;
   font-size: 1rem;
@@ -1441,7 +1404,6 @@
   color: var(--color-text-primary);
 }
 
-
 /* ---------- Identity step (matches the E02 mockup) ---------- */
 
 .aw-identity {
@@ -1491,7 +1453,7 @@
 .aw-field__error {
   margin: 0;
   font-size: 0.75rem;
-  color: var(--color-danger-text, #dc2626);
+  color: var(--color-danger);
 }
 
 .aw-ctl__status {
@@ -1508,11 +1470,11 @@
 }
 
 .aw-ctl__status--ok {
-  color: #16a34a;
+  color: var(--color-success);
 }
 
 .aw-ctl__status--bad {
-  color: var(--color-danger-text, #dc2626);
+  color: var(--color-danger);
 }
 
 .aw-ctl__spinner {
@@ -1535,29 +1497,34 @@
   color: var(--color-text-secondary);
 }
 
-/* Field frame: icon cell + bare control. --divided adds a rule after the icon. */
+/* Field frame: the standard ONEXSO field (shared/styles/fields.css) - icon cell with a divider + bare control. */
 .aw-ctl {
   display: flex;
   align-items: stretch;
-  height: 2.625rem;
+  height: var(--field-height);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--field-radius);
   background: var(--color-surface);
+  font-size: var(--field-font-size);
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .aw-ctl:hover {
-  border-color: color-mix(in srgb, var(--color-border) 60%, var(--color-accent));
+  border-color: var(--field-border-hover);
 }
 
 .aw-ctl:focus-within {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent);
+  box-shadow: var(--field-focus-shadow);
 }
 
 .aw-ctl--error,
 .aw-ctl--error:hover {
-  border-color: var(--color-danger-text, #dc2626);
+  border-color: var(--color-danger);
+}
+
+.aw-ctl--error:focus-within {
+  box-shadow: var(--field-error-shadow);
 }
 
 .aw-ctl__icon {
@@ -1565,18 +1532,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
+  min-width: 2.75rem;
+  border-right: 1px solid var(--color-border);
   color: var(--color-text-secondary);
 }
 
 .aw-ctl__icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.aw-ctl--divided .aw-ctl__icon {
-  width: 3.125rem;
-  border-right: 1px solid var(--color-border);
+  width: 16px;
+  height: 16px;
 }
 
 .aw-ctl__input {
@@ -1585,13 +1548,14 @@
   border: none;
   outline: none;
   background: transparent;
-  padding: 0 0.875rem 0 0;
-  font-size: 0.9375rem;
+  padding: 0 0.875rem;
+  font: inherit;
   color: var(--color-text-primary);
 }
 
-.aw-ctl--divided .aw-ctl__input {
-  padding-left: 0.875rem;
+.aw-ctl__input::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.85;
 }
 
 /* Hosted shared controls (select / date picker): drop their own frame, fill the cell. */
@@ -1602,32 +1566,25 @@
   align-items: center;
 }
 
-.aw-ctl--host ::ng-deep .app-select,
-.aw-ctl--host ::ng-deep .app-select__control,
-.aw-ctl--host ::ng-deep .dp-container,
-.aw-ctl--host ::ng-deep .dp-input-wrapper {
-  height: 100%;
-}
-
 .aw-ctl--host ::ng-deep app-select,
-.aw-ctl--host ::ng-deep app-date-picker {
+.aw-ctl--host ::ng-deep app-date-picker,
+.aw-ctl--host ::ng-deep .app-select,
+.aw-ctl--host ::ng-deep .dp-container {
+  width: 100%;
   height: 100%;
 }
 
-.aw-ctl--host ::ng-deep .app-select__trigger,
-.aw-ctl--host ::ng-deep .dp-input {
+.aw-ctl--host ::ng-deep .ui-field {
   height: 100%;
-  border: none !important;
-  box-shadow: none !important;
+  border: 0;
+  border-radius: 0 var(--field-radius) var(--field-radius) 0;
   background: transparent;
-  border-radius: 0 10px 10px 0;
-  padding-left: 0.875rem;
-  font-size: 0.9375rem;
+  box-shadow: none;
 }
 
-.aw-ctl--host ::ng-deep .app-select__trigger:focus-visible,
-.aw-ctl--host ::ng-deep .dp-input:focus-visible {
-  outline: none;
+/* The frame already shows the icon; the date picker's own calendar addon would repeat it. */
+.aw-ctl--host ::ng-deep .dp-input-wrapper > .ui-field__addon {
+  display: none;
 }
 
 .aw-chips {
@@ -1638,7 +1595,7 @@
 }
 
 .aw-chip {
-  height: 2.625rem;
+  height: var(--field-height);
   min-width: 0;
   padding: 0 0.5rem;
   border-radius: 10px;
@@ -1812,7 +1769,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-
 
 /* ---------- Reporting step (E03 mockup) ---------- */
 

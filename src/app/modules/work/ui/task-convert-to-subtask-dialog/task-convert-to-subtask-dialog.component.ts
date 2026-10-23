@@ -24,7 +24,7 @@ export interface TaskConvertToSubtaskPayload {
             <span class="tcsd__label">Search for task name or ID</span>
             <input
               type="text"
-              class="tcsd__input"
+              class="ui-input"
               data-testid="convert-subtask-search-input"
               placeholder="Search for task name or ID"
               [value]="searchTerm()"
@@ -80,8 +80,7 @@ export interface TaskConvertToSubtaskPayload {
     .tcsd { display: flex; flex-direction: column; gap: 12px; }
     .tcsd__field { display: flex; flex-direction: column; gap: 5px; }
     .tcsd__label { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
-    .tcsd__input { height: 38px; border: 1px solid var(--color-border); border-radius: 8px; padding: 0 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; }
-    .tcsd__input:focus { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+
     .tcsd__list { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 8px; }
     .tcsd__item { display: flex; align-items: center; gap: 10px; width: 100%; border: none; border-bottom: 1px solid var(--color-border); background: transparent; padding: 9px 12px; text-align: left; cursor: pointer; font: inherit; color: var(--color-text-primary); }
     .tcsd__item:last-child { border-bottom: none; }
