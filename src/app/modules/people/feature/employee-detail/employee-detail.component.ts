@@ -1,3 +1,4 @@
+import { MeetingAttendanceTabComponent } from './meeting-attendance-tab/meeting-attendance-tab.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -35,9 +36,9 @@ import { EmployeePersonalTabComponent } from './personal-tab.component';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 import { EmployeeWorkActivityTabComponent } from './work-activity-tab.component';
 
-type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
+type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal' | 'meetings';
 
-const DETAIL_TABS: readonly DetailTab[] = ['overview', 'employment', 'work-activity', 'personal'];
+const DETAIL_TABS: readonly DetailTab[] = ['overview', 'employment', 'work-activity', 'personal', 'meetings'];
 
 /** Reads the ?tab= query value; anything unknown falls back to Overview. */
 function toDetailTab(value: string | null): DetailTab {
@@ -56,6 +57,7 @@ function toDetailTab(value: string | null): DetailTab {
   selector: 'app-employee-detail',
   standalone: true,
   imports: [
+    MeetingAttendanceTabComponent,
     BreadcrumbHeaderComponent,
     AvatarComponent,
     ButtonComponent,
@@ -223,7 +225,7 @@ function toDetailTab(value: string | null): DetailTab {
       <!-- Navigation Tabs -->
       <div class="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--color-border)]">
         <nav class="flex gap-2" aria-label="Employee Detail Sections">
-          @for (tab of tabs; track tab.id) {
+          @for (tab of tabs(); track tab.id) {
             <button
               type="button"
               class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
@@ -275,6 +277,14 @@ function toDetailTab(value: string | null): DetailTab {
       @if (activeTab() === 'personal') {
         <app-employee-personal-tab [employee]="employee" />
       }
+
+      <!-- Rendered from the start (hidden) so it can ask the API whether this caller may see it; a 404 keeps the tab hidden. -->
+      <app-meeting-attendance-tab
+        [employeeId]="employee.id"
+        [hidden]="activeTab() !== 'meetings'"
+        [class.hidden]="activeTab() !== 'meetings'"
+        (availability)="onMeetingTabAvailability($event)"
+      />
 
       @if (employee.jobInformation.legalEntityId; as legalEntityId) {
         <app-change-position-modal
@@ -379,12 +389,18 @@ export class EmployeeDetailComponent {
   readonly changePositionOpen = signal(false);
   readonly startOffboardingOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
-  readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
+  private readonly baseTabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'employment', label: 'Employment' },
     { id: 'work-activity', label: 'Work & Activity' },
     { id: 'personal', label: 'Personal' }
   ];
+  /** Meeting attendance (meetings-as-tasks D16) is the employee's own or their current reporting line's: the tab
+   * appears only once the API answers for this caller, and a 404 keeps it hidden. */
+  readonly meetingTabAvailable = signal(false);
+  readonly tabs = computed(() => this.meetingTabAvailable()
+    ? [...this.baseTabs, { id: 'meetings' as DetailTab, label: 'Meeting attendance' }]
+    : this.baseTabs);
   readonly activeTab = signal<DetailTab>('overview');
   readonly employmentVisited = signal(false);
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
@@ -467,6 +483,11 @@ export class EmployeeDetailComponent {
   }
 
   /** Switches tab and records it as ?tab= so a refresh or shared link opens the same tab. */
+  onMeetingTabAvailability(available: boolean): void {
+    this.meetingTabAvailable.set(available);
+    if (!available && this.activeTab() === 'meetings') this.activeTab.set('overview');
+  }
+
   selectTab(tab: DetailTab): void {
     this.showTab(tab);
     void this.router.navigate([], {

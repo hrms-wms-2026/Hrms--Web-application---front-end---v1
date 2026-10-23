@@ -173,13 +173,16 @@ export interface MeetingAttendanceStatusResponse {
   lastError: 'provider_error' | 'missing_scope' | 'not_connected' | 'reauth_required' | null;
 }
 
+/** Backend MeetingActionItemContracts.MeetingActionItemView: a linked task the caller may see. */
 export interface MeetingActionItemView {
   taskId: string;
   shortId: string;
   title: string;
-  statusName: string | null;
-  assigneeName: string | null;
+  statusName: string;
+  objectiveId: string;
+  assigneeEmployeeId: string | null;
   linkedByEmployeeId: string;
+  linkedAt: string;
 }
 
 export interface MeetingBulkPreviewRequest {

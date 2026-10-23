@@ -9,6 +9,8 @@ import { MeetingOccurrenceKey, MeetingOccurrenceStore } from '../../state/meetin
 import { meetingErrorMessage } from '../../utils/meeting-error-messages';
 import { MeetingFormModalComponent } from '../../ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingLinkPanelComponent } from '../../ui/meeting-link-panel/meeting-link-panel.component';
+import { MeetingAttendanceTableComponent } from '../../ui/meeting-attendance-table/meeting-attendance-table.component';
+import { MeetingActionItemsComponent } from '../../ui/meeting-action-items/meeting-action-items.component';
 import { MeetingMoveDialogComponent, MeetingMoveChoice } from '../../ui/meeting-move-dialog/meeting-move-dialog.component';
 import { MeetingScopeDialogComponent } from '../../ui/meeting-scope-dialog/meeting-scope-dialog.component';
 
@@ -25,7 +27,7 @@ const RESPONSE_LABELS: Record<string, string> = { accepted: 'Accepted', rejected
   selector: 'app-meeting-occurrence-drawer',
   standalone: true,
   imports: [ModalComponent, MeetingLinkPanelComponent, MeetingFormModalComponent, MeetingScopeDialogComponent,
-    MeetingMoveDialogComponent, CalendarParticipantPickerComponent],
+    MeetingMoveDialogComponent, CalendarParticipantPickerComponent, MeetingAttendanceTableComponent, MeetingActionItemsComponent],
   providers: [MeetingOccurrenceStore],
   template: `
     <app-modal [open]="true" size="xl" [title]="store.occurrence()?.title ?? 'Meeting'" (closed)="closed.emit()">
@@ -114,6 +116,22 @@ const RESPONSE_LABELS: Record<string, string> = { accepted: 'Accepted', rejected
             <span class="font-medium">Online meeting</span>
             <app-meeting-link-panel [seriesId]="occ.seriesId" [isOrganizer]="isOrganizer()" />
           </section>
+
+          @if (occ.status === 'in_progress' || occ.status === 'completed') {
+            <section class="flex flex-col gap-1">
+              <span class="font-medium">Attendance</span>
+              <app-meeting-attendance-table [seriesId]="occ.seriesId" [originalStart]="occ.originalStart" [endAt]="occ.endAt"
+                [isOrganizer]="isOrganizer()" [attendees]="occ.attendees" />
+            </section>
+          }
+
+          @if (occ.placement.projectId && occ.placement.objectiveId && occ.status !== 'cancelled') {
+            <section class="flex flex-col gap-1">
+              <span class="font-medium">Action items</span>
+              <app-meeting-action-items [occurrenceTaskId]="occ.taskId" [projectId]="occ.placement.projectId"
+                [objectiveId]="occ.placement.objectiveId" [isOrganizer]="isOrganizer()" />
+            </section>
+          }
         </div>
 
         @if (formOpen()) {

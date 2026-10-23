@@ -12,8 +12,17 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { OffboardingApiService } from '../../data-access/offboarding-api.service';
 import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
 
 describe('EmployeeDetailComponent', () => {
+  // The Meeting attendance tab asks the API whether this caller may see it; a 404 (the default here) hides it.
+  let meetingAttendance: () => Observable<unknown> = () =>
+    throwError(() => new HttpErrorResponse({ status: 404, error: { code: 'meeting_not_found' } }));
+  beforeEach(() => {
+    meetingAttendance = () => throwError(() => new HttpErrorResponse({ status: 404, error: { code: 'meeting_not_found' } }));
+  });
   const detailFixture: EmployeeDetailResponse = {
     id: 'emp-1',
     jobInformation: {
@@ -157,13 +166,36 @@ describe('EmployeeDetailComponent', () => {
         { provide: ActivatedRoute, useValue: routeStub },
         { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } },
         { provide: WorkModeStore, useValue: workModeStoreStub },
-        { provide: EmployeeDirectoryStore, useValue: employeeDirectoryStub }
+        { provide: EmployeeDirectoryStore, useValue: employeeDirectoryStub },
+        { provide: MeetingApiService, useValue: { employeeMeetingAttendance: () => meetingAttendance() } }
       ]
     });
 
     const fixture = TestBed.createComponent(EmployeeDetailComponent);
     return { fixture, apiStub, notificationsStub, employeeDirectoryStub, params$, query$ };
   }
+
+  function tabLabels(fixture: ReturnType<typeof setup>['fixture']): string[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('nav[aria-label="Employee Detail Sections"] button') as NodeListOf<HTMLElement>)
+      .map((b) => b.textContent?.trim() ?? '');
+  }
+
+  it('shows the Meeting attendance tab only when the API answers for this caller', async () => {
+    meetingAttendance = () => of({ items: [] });
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(tabLabels(fixture)).toContain('Meeting attendance');
+  });
+
+  it('hides the Meeting attendance tab on 404 (not the employee or their reporting line)', async () => {
+    const { fixture } = setup(detailFixture);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(tabLabels(fixture)).not.toContain('Meeting attendance');
+  });
 
   it('loads the new employee when the id in the URL changes', () => {
     const other: EmployeeDetailResponse = {

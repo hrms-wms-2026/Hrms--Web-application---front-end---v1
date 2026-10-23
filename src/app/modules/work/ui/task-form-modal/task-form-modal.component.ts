@@ -2150,6 +2150,8 @@ export class TaskFormModalComponent {
   readonly taskId = input<string>('');
   readonly prefillModuleId = input<string>('');
   readonly prefillSprintId = input<string>('');
+  /** Set when the task is an action item raised from a meeting occurrence (meetings-as-tasks spec 5.4); null otherwise. */
+  readonly sourceMeetingOccurrenceId = input<string | null>(null);
   /** Create mode only: resume this saved draft instead of starting from a blank form. */
   readonly draftId = input<string>('');
 
@@ -3592,7 +3594,8 @@ export class TaskFormModalComponent {
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,
       sprintId: this.sprintId() || null,
-      attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
+      attachmentFileIds: this.attachedFiles().map((f) => f.fileId),
+      ...(this.sourceMeetingOccurrenceId() ? { sourceMeetingOccurrenceId: this.sourceMeetingOccurrenceId()! } : {})
     };
 
     this.submitting.set(true);

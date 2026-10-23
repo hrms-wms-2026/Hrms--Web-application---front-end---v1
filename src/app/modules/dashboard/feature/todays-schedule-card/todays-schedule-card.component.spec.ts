@@ -205,7 +205,10 @@ describe('TodaysScheduleCardComponent - meetings', () => {
   });
 
   it('a task meeting the calendar feed also returns is listed once, under the meetings', async () => {
-    const m = meeting('a', 'Morning standup', at(30), at(60));
+    // A fixed hour of today (the viewer zone is UTC here), so the test does not depend on the time it runs at.
+    const today = new Date();
+    const todayAt = (h: number) => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), h)).toISOString();
+    const m = meeting('a', 'Morning standup', todayAt(9), todayAt(10));
     const { fixture } = await setup(
       [event({ id: 'a', title: 'Morning standup', startDate: m.startAt, endDate: m.endAt, itemKind: 'meeting' })], [m]);
     expect(fixture.nativeElement.querySelectorAll('[data-testid="todays-schedule-item"]').length).toBe(0);

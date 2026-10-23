@@ -109,6 +109,17 @@ describe('MeetingOccurrenceDrawerComponent', () => {
     expect(testId('meeting-drawer-unavailable')).toBeNull();
   });
 
+  it('shows attendance once the meeting has started, and action items for a project meeting', async () => {
+    api.getOccurrenceAt.mockReturnValue(of(occurrence({ status: 'scheduled' })));
+    await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+    expect(fixture.nativeElement.querySelector('app-meeting-attendance-table')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-meeting-action-items')).not.toBeNull();
+
+    api.getOccurrenceAt.mockReturnValue(of(occurrence({ status: 'completed', canEdit: false })));
+    await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+    expect(fixture.nativeElement.querySelector('app-meeting-attendance-table')).not.toBeNull();
+  });
+
   it('follows the new series after a splitting edit', async () => {
     api.getOccurrenceAt
       .mockReturnValueOnce(of(occurrence()))
