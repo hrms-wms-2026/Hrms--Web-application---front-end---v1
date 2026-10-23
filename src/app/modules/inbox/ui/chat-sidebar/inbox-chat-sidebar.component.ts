@@ -12,6 +12,7 @@ import { InboxChatsStore } from '../../state/inbox-chats.store';
 import { InboxKindsStore } from '../../state/inbox-kinds.store';
 import { ChatListComponent, pendingKindKey } from '../chat-list/chat-list.component';
 import { NewGroupChoice, NewGroupDialogComponent } from '../new-group-dialog/new-group-dialog.component';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 /** "/inbox/:source/:kind/:id" of the open chat (or case link), else null. */
 function chatOfUrl(url: string): { source: string; kind: string; id: string } | null {
@@ -218,7 +219,7 @@ export class InboxChatSidebarComponent implements OnInit {
       await this.store.load();
       void this.router.navigate(['/inbox', chat.source, chat.kind, chat.subjectId]);
     } catch (err) {
-      this.groupError.set((err as { error?: { detail?: string } })?.error?.detail ?? 'The group could not be created.');
+      this.groupError.set(safeServerDetail(err) ?? 'The group could not be created.');
     } finally {
       this.groupBusy.set(false);
     }

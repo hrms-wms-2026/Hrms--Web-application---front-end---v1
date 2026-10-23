@@ -10,6 +10,7 @@ import {
   StartSprintRequestDto
 } from '../models/dto/sprint.dto';
 import { isPendingApproval } from '../models/dto/work-approval.dto';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface SprintListState {
   readonly sprints: readonly Sprint[];
@@ -24,7 +25,7 @@ const initialState: SprintListState = { sprints: [], loading: false, error: null
 const SENT_FOR_APPROVAL = 'Sent for approval.';
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const SprintListStore = signalStore(

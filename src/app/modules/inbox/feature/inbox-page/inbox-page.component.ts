@@ -29,6 +29,7 @@ import { NewGroupChoice, NewGroupDialogComponent } from '../../ui/new-group-dial
 import { ForwardDialogComponent, ForwardTargets } from '../../ui/forward-dialog/forward-dialog.component';
 import { PersonCasesViewComponent } from '../../ui/person-cases/person-cases-view.component';
 import { inboxTitle, isCaseClosed } from '../../utils/inbox-item.util';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 /** Whether the details panel is collapsed - a per-viewer preference. */
 const DETAILS_HIDDEN_KEY = 'inbox.detailsHidden';
@@ -581,7 +582,7 @@ export class InboxPageComponent implements OnInit {
       await this.chats.load();
       this.openChat(chatRef(chat));
     } catch (err) {
-      this.groupError.set((err as { error?: { detail?: string } })?.error?.detail ?? 'The group could not be created.');
+      this.groupError.set(safeServerDetail(err) ?? 'The group could not be created.');
     } finally {
       this.groupBusy.set(false);
     }
@@ -604,7 +605,7 @@ export class InboxPageComponent implements OnInit {
       this.notifications.success(count === 1 ? 'Forwarded' : `Forwarded to ${count} chats`);
       void this.chats.load();
     } catch (err) {
-      this.forwardError.set((err as { error?: { detail?: string } })?.error?.detail ?? (what.type === 'case' ? 'The case could not be forwarded.' : 'The message could not be forwarded.'));
+      this.forwardError.set(safeServerDetail(err) ?? (what.type === 'case' ? 'The case could not be forwarded.' : 'The message could not be forwarded.'));
     } finally {
       this.forwardBusy.set(false);
     }

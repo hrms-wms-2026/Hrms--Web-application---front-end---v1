@@ -19,6 +19,7 @@ import {
   InboxQuery,
   sameRef
 } from '../models/inbox.dto';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 export const INBOX_PAGE_SIZE = 25;
 const REALTIME_DEBOUNCE_MS = 500;
@@ -73,7 +74,7 @@ const initialState: InboxState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 /** The user's Inbox across modules (requests + alerts), its filters, the selected item and the rail badge.

@@ -26,21 +26,6 @@
     />
 
     <div class="tp-actions ui-field__trailing" (click)="$event.stopPropagation()">
-      @if (value() && !disabled()) {
-        <button
-          type="button"
-          class="tp-clear-btn ui-field__icon-btn"
-          (click)="clearValue()"
-          title="Clear time"
-          aria-label="Clear time"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      }
-
       <button
         type="button"
         class="tp-icon-trigger ui-field__icon-btn"
@@ -77,23 +62,6 @@
     (detach)="closePopover()"
   >
     <div class="tp-popover" [class.tp-popover--up]="openUpward()" role="dialog" aria-label="Time picker">
-      <!-- Quick Presets -->
-      <div class="tp-presets">
-        <span class="tp-presets__label">Quick:</span>
-        <div class="tp-presets__chips">
-          @for (preset of presets; track preset.value) {
-            <button
-              type="button"
-              class="tp-preset-chip"
-              [class.tp-preset-chip--active]="value() === preset.value"
-              (click)="selectPreset(preset)"
-            >
-              {{ preset.label }}
-            </button>
-          }
-        </div>
-      </div>
-
       <!-- Time Preview Header -->
       <div class="tp-header">
         <div class="tp-time-display">

@@ -198,6 +198,7 @@
     [department]="editingDepartment()"
     [parentPreset]="parentPreset()"
     [availableParents]="departmentStore.allFlatList()"
+    [availableHeadPositions]="headPositionOptions()"
     [companyName]="selectedLegalEntity()?.name || ''"
     [loading]="departmentStore.saving()"
     (save)="onSaveDepartment($event)"

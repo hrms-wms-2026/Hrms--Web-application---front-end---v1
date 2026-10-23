@@ -7,6 +7,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AuthApiService } from '../../data-access/auth-api.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { safeServerDetail } from '../../../services/error-handler.service';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not reach the server. Please try again.';
 const INVALID_TOKEN_MESSAGE = 'This password reset link is invalid or has expired. Request a new one.';
@@ -87,8 +88,9 @@ export class ResetPasswordComponent implements OnInit {
 
   private describeFailure(err: unknown): string {
     if (err instanceof HttpErrorResponse) {
-      if (err.error && typeof err.error.detail === 'string') {
-        return err.error.detail;
+      const detail = safeServerDetail(err);
+      if (detail) {
+        return detail;
       }
       if (err.status === 400 || err.status === 404 || err.status === 410) {
         return INVALID_TOKEN_MESSAGE;

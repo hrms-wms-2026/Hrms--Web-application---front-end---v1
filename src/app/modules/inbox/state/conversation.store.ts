@@ -6,6 +6,7 @@ import { InboxRealtimeService } from '../../../core/realtime/inbox-realtime.serv
 import { ConversationsApiService } from '../data-access/conversations-api.service';
 import { ConversationMessageDto, ConversationParticipantDto, InboxItemRef } from '../models/inbox.dto';
 import { InboxStore } from './inbox.store';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface ConversationState {
   readonly ref: InboxItemRef | null;
@@ -45,7 +46,7 @@ const initialState: ConversationState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 function byTime(a: ConversationMessageDto, b: ConversationMessageDto): number {

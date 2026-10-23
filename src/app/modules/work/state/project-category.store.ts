@@ -3,6 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { ProjectCategoryApiService } from '../data-access/project-category-api.service';
 import { ProjectCategory } from '../models/project-category.model';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface ProjectCategoryState {
   readonly categories: readonly ProjectCategory[];
@@ -28,7 +29,7 @@ export const ProjectCategoryStore = signalStore(
         });
       } catch (err: any) {
         patchState(store, {
-          error: err?.error?.detail || err?.error?.message || err?.message || 'Failed to load project categories.',
+          error: toSafeErrorMessage(err, 'Failed to load project categories.'),
           loading: false,
           loaded: true
         });

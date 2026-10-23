@@ -11,8 +11,8 @@
 .ltfm-modal {
   display: flex;
   flex-direction: column;
-  width: min(640px, 100%);
-  max-height: min(90vh, 820px);
+  width: min(920px, 100%);
+  max-height: 96vh;
   overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -76,12 +76,24 @@
   gap: 0.9rem 1rem;
 }
 .ltfm-wide { grid-column: 1 / -1; }
+/* Two columns so the whole form fits without scrolling: details left, who + rules right. */
+.ltfm-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.ltfm-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-left: 1.5rem;
+  border-left: 1px solid var(--color-border);
+}
 .ltfm-rules {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-border);
 }
 .ltfm-rules h3 {
   margin: 0 0 0.25rem;
@@ -158,6 +170,10 @@
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
 }
+@media (max-width: 860px) {
+  .ltfm-body { grid-template-columns: 1fr; }
+  .ltfm-side { padding-top: 1rem; padding-left: 0; border-top: 1px solid var(--color-border); border-left: 0; }
+}
 @media (max-width: 640px) {
   .ltfm-backdrop { align-items: flex-end; padding: 0.5rem; }
   .ltfm-modal { max-height: 94vh; border-radius: 12px 12px 8px 8px; }
@@ -185,10 +201,92 @@
 .ltfm-swatch:hover { transform: scale(1.08); }
 .ltfm-swatch--on { box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--swatch); }
 .ltfm-swatch:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 4px; }
-.ltfm-hex { width: 9rem; text-transform: uppercase; }
-.ltfm-hex-dot { width: 0.875rem; height: 0.875rem; border-radius: 999px; border: 1px solid var(--color-border); }
+/* Custom swatch: rainbow ring with a plus until a custom colour is picked, then that colour. */
+.ltfm-swatch--custom {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  background: var(--swatch, var(--color-surface));
+}
+.ltfm-swatch--custom:not(.ltfm-swatch--on) {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-border);
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+    conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444) border-box;
+  border: 3px solid transparent;
+}
+.ltfm-swatch--custom svg { width: 0.875rem; height: 0.875rem; pointer-events: none; }
+/* Custom colour popover: opens above the swatch so the modal never needs to scroll. */
+.ltfm-custom { position: relative; display: inline-flex; }
+.ltfm-picker {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 0.625rem);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 15rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px var(--color-card-shadow);
+}
+.ltfm-picker__area {
+  position: relative;
+  height: 8.5rem;
+  border-radius: 6px;
+  background:
+    linear-gradient(to top, #000, transparent),
+    linear-gradient(to right, #fff, hsl(var(--hue) 100% 50%));
+  cursor: crosshair;
+  touch-action: none;
+}
+.ltfm-picker__thumb {
+  position: absolute;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.ltfm-picker__hue {
+  width: 100%;
+  height: 0.625rem;
+  margin: 0;
+  border-radius: 999px;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  appearance: none;
+  cursor: pointer;
+}
+.ltfm-picker__hue::-webkit-slider-thumb {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  appearance: none;
+}
+.ltfm-picker__hue::-moz-range-thumb {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.ltfm-picker__hue:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.ltfm-picker__footer { display: flex; align-items: center; justify-content: space-between; }
+.ltfm-picker__preview { width: 1.75rem; height: 1.75rem; border: 1px solid var(--color-border); border-radius: 999px; }
 .ltfm-error { margin: 0.375rem 0 0; }
 /* Character counter on the Description label row. */
 .ltfm-counted { position: relative; }
-.ltfm-counter { position: absolute; top: 0; right: 0; color: var(--color-text-secondary); font-size: 0.75rem; }
+.ltfm-counter, .ltfm-lock-note { position: absolute; top: 0; right: 0; color: var(--color-text-secondary); font-size: 0.75rem; }
 .ltfm-counted ::ng-deep .ui-field--multiline { min-height: 4rem; }

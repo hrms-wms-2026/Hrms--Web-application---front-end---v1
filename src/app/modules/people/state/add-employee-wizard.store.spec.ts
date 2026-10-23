@@ -146,7 +146,7 @@ describe('AddEmployeeWizardStore', () => {
 
     expect(store.loadingWorkModes()).toBe(false);
     expect(store.workModes()).toEqual([]);
-    expect(store.workModesError()).toBe('Something went wrong while saving your changes.');
+    expect(store.workModesError()).toBe('Failed to load work modes.');
   });
 
   it('resumeDraft restores step, selections, and form value including firstName, lastName, workModeId', async () => {
@@ -621,7 +621,7 @@ describe('AddEmployeeWizardStore', () => {
 
     expect(store.loadingSelectedTemplateDetail()).toBe(false);
     expect(store.selectedTemplateDetail()).toBeNull();
-    expect(store.selectedTemplateDetailError()).toBe('Something went wrong while saving your changes.');
+    expect(store.selectedTemplateDetailError()).toBe('Failed to load checklist details.');
   });
 
   it('clears selectedTemplateId and selectedTemplateDetail when the department changes', async () => {

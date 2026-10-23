@@ -13,6 +13,7 @@ import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto }
 import { CompleteSprintRequestDto } from '../models/dto/sprint.dto';
 import { isPendingApproval } from '../models/dto/work-approval.dto';
 import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface ProjectDetailState {
   readonly project: ProjectDetail | null;
@@ -47,7 +48,7 @@ const initialState: ProjectDetailState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const ProjectDetailStore = signalStore(

@@ -25,10 +25,6 @@
   cursor: not-allowed;
 }
 
-.tp-clear-btn:hover {
-  color: var(--color-danger);
-}
-
 /* ── Apple-style Time Popover ───────────────────────────────── */
 .tp-popover {
   position: relative;
@@ -69,61 +65,6 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-}
-
-/* ── Presets Chips ─────────────────────────────────────────── */
-.tp-presets {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
-  scrollbar-width: none;
-}
-
-.tp-presets::-webkit-scrollbar {
-  display: none;
-}
-
-.tp-presets__label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  flex-shrink: 0;
-}
-
-.tp-presets__chips {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex-wrap: nowrap;
-}
-
-.tp-preset-chip {
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-secondary);
-  color: var(--color-text-primary);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  padding: 0.2rem 0.45rem;
-  border-radius: 9999px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-
-.tp-preset-chip:hover {
-  background: color-mix(in srgb, var(--color-accent) 15%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
-  color: var(--color-accent);
-}
-
-.tp-preset-chip--active {
-  background: var(--color-accent) !important;
-  color: var(--color-accent-contrast) !important;
-  border-color: var(--color-accent) !important;
 }
 
 /* ── Time Preview Header ───────────────────────────────────── */

@@ -4,6 +4,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { WorkTask } from '../../models/task.model';
 import { toWorkTask } from '../../utils/task.mapper';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 @Component({
   selector: 'app-task-clock-widget',
@@ -250,7 +251,7 @@ export class TaskClockWidgetComponent {
       }
       this.clockedIn.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       this.notificationService.error(detail || 'Failed to clock in.');
     }
   }
@@ -293,7 +294,7 @@ export class TaskClockWidgetComponent {
       this.pushed.emit(toWorkTask(dto));
       this.pushPopupOpen.set(false);
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       this.pushError.set(detail || 'Failed to push.');
     } finally {
       this.pushSubmitting.set(false);

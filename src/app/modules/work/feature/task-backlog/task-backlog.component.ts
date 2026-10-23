@@ -34,6 +34,7 @@ import { BulkActionResultModalComponent, BulkResultSummary } from '../../../../s
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { TaskAssigneeDropdownComponent } from '../../ui/task-assignee-dropdown/task-assignee-dropdown.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -7 },
@@ -711,7 +712,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       this.clearSelection();
       await this.reloadTasks();
     } catch (error: unknown) {
-      const detail = (error as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(error);
       this.bulkError.set(detail || 'The bulk action failed. Nothing was changed.');
     } finally {
       this.bulkSubmitting.set(false);
@@ -754,7 +755,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       this.clearSelection();
       await this.reloadTasks();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       this.moveError.set(detail || 'Failed to move the selected tasks.');
     } finally {
       this.movingTasks.set(false);
@@ -776,7 +777,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       this.clearSelection();
       await this.reloadTasks();
     } catch (error: unknown) {
-      const detail = (error as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(error);
       this.bulkError.set(detail || 'Failed to move the selected tasks to the backlog.');
     }
   }

@@ -143,7 +143,7 @@ describe('MainLayoutComponent', () => {
     expect(container.querySelector('app-toast-host')).toBeTruthy();
   });
 
-  it('renders the sub-sidebar filtered to permitted children when navigated into Settings', async () => {
+  it('hides the sub-sidebar when only one Settings page is permitted', async () => {
     await TestBed.configureTestingModule({
       imports: [MainLayoutComponent],
       providers: [
@@ -165,7 +165,8 @@ describe('MainLayoutComponent', () => {
     const subLinks = Array.from(fixture.nativeElement.querySelectorAll('app-sub-sidebar a')).map(
       (el) => (el as HTMLElement).textContent
     );
-    expect(subLinks).toEqual(['Roles & Permissions']);
+    expect(subLinks).toEqual([]);
+    expect(fixture.nativeElement.querySelector('app-sub-sidebar')).toBeNull();
   });
 
   it('renders Organization sub-sidebar with Departments and Positions when navigated into /organization/departments', async () => {

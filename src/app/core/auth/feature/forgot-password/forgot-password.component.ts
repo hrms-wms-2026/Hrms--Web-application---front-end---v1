@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthApiService } from '../../data-access/auth-api.service';
-
+import { safeServerDetail } from '../../../services/error-handler.service';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not reach the server. Please try again.';
 
@@ -48,9 +48,6 @@ export class ForgotPasswordComponent {
   }
 
   private describeFailure(err: unknown): string {
-    if (err instanceof HttpErrorResponse && err.error && typeof err.error.detail === 'string') {
-      return err.error.detail;
-    }
-    return NETWORK_FAILURE_MESSAGE;
+    return (err instanceof HttpErrorResponse ? safeServerDetail(err) : null) ?? NETWORK_FAILURE_MESSAGE;
   }
 }

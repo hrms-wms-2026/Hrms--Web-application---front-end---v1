@@ -8,6 +8,7 @@ import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-reques
 import { LegalDocumentDto } from '../models/dto/legal-document.dto';
 import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
 import { toCurrentUserViewModel } from '../utils/auth.mapper';
+import { safeServerDetail } from '../../services/error-handler.service';
 
 type AuthState = {
   authenticated: boolean;
@@ -41,21 +42,10 @@ const initialState: AuthState = {
   error: null
 };
 
+const UNREACHABLE_MESSAGE = 'We could not reach the server. Check your connection and try again.';
+
 function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'error' in err) {
-    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
-    if (body?.detail) return body.detail;
-    if (body?.message) return body.message;
-    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
-    if (body?.errors) {
-      const firstKey = Object.keys(body.errors)[0];
-      if (firstKey && body.errors[firstKey]) {
-        const val = body.errors[firstKey];
-        return Array.isArray(val) ? val[0] : val;
-      }
-    }
-  }
-  return fallback;
+  return safeServerDetail(err) ?? fallback;
 }
 
 export const AuthStore = signalStore(
@@ -88,7 +78,7 @@ export const AuthStore = signalStore(
         patchState(store, {
           loading: false,
           error: isUnreachable
-            ? 'Could not reach the server. Check your connection or local HTTPS certificate and try again.'
+            ? UNREACHABLE_MESSAGE
             : extractErrorMessage(err, 'Invalid email or password.')
         });
         throw err;
@@ -216,7 +206,7 @@ export const AuthStore = signalStore(
         patchState(store, {
           loading: false,
           error: isUnreachable
-            ? 'Could not reach the tenant workspace. Check your local HTTPS certificate and try again.'
+            ? UNREACHABLE_MESSAGE
             : extractErrorMessage(err, 'This sign-in link is invalid or has expired. Please sign in again.')
         });
         throw err;

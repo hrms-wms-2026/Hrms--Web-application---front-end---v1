@@ -10,6 +10,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { InvitationPreviewDto } from '../../models/dto/invitation-preview.dto';
 import { PublishedLegalDocumentDto } from '../../models/dto/published-legal-document.dto';
+import { safeServerDetail } from '../../../services/error-handler.service';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not load this invitation. Refresh and try again.';
 
@@ -112,8 +113,9 @@ export class AcceptInvitationComponent implements OnInit {
       if (err.status === 410) {
         return 'This invitation link has expired.';
       }
-      if (err.error && typeof err.error.detail === 'string') {
-        return err.error.detail;
+      const detail = safeServerDetail(err);
+      if (detail) {
+        return detail;
       }
     }
     return NETWORK_FAILURE_MESSAGE;

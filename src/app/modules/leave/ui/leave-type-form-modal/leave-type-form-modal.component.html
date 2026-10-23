@@ -16,6 +16,7 @@
     </header>
 
     <form class="ltfm-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="ltfm-body">
       <div class="ltfm-grid">
         <app-input
           label="Name"
@@ -27,18 +28,20 @@
           (blurred)="form.controls.name.markAsTouched()"
           [error]="form.controls.name.touched && form.controls.name.invalid ? 'Enter a name (up to 100 characters).' : ''"
         />
-        <app-input
-          label="Code"
-          [required]="true"
-          placeholder="e.g. AL"
-          hint="Locked after creation."
-          [maxlength]="20"
-          [value]="form.controls.code.value || ''"
-          [disabled]="isEdit"
-          (valueChange)="form.controls.code.setValue($event)"
-          (blurred)="form.controls.code.markAsTouched()"
-          [error]="form.controls.code.touched && form.controls.code.invalid ? 'Enter a code (up to 20 characters).' : ''"
-        />
+        <div class="ltfm-counted">
+          <app-input
+            label="Code"
+            [required]="true"
+            placeholder="e.g. AL"
+            [maxlength]="20"
+            [value]="form.controls.code.value || ''"
+            [disabled]="isEdit"
+            (valueChange)="form.controls.code.setValue($event)"
+            (blurred)="form.controls.code.markAsTouched()"
+            [error]="form.controls.code.touched && form.controls.code.invalid ? 'Enter a code (up to 20 characters).' : ''"
+          />
+          <small class="ltfm-lock-note">Locked after creation</small>
+        </div>
         <div class="ltfm-wide ltfm-counted">
           <app-input
             label="Description"
@@ -67,24 +70,58 @@
                   (click)="pickColor(color)"
                 ></button>
               }
-            </div>
-            <div class="ui-field ui-field--sm ltfm-hex" [class.ui-field--error]="form.controls.color.invalid">
-              <span class="ui-field__addon" aria-hidden="true"><span class="ltfm-hex-dot" [style.background]="form.controls.color.valid ? form.controls.color.value : 'transparent'"></span></span>
-              <input
-                class="ui-field__control"
-                aria-label="Colour hex code"
-                maxlength="7"
-                [value]="form.controls.color.value || ''"
-                (input)="pickColor($any($event.target).value)"
-              />
+              <!-- Custom: opens a small picker (colour area + hue); shows the chosen colour once picked. -->
+              <div class="ltfm-custom">
+                <button
+                  type="button"
+                  class="ltfm-swatch ltfm-swatch--custom"
+                  [class.ltfm-swatch--on]="isCustomColor"
+                  [style.--swatch]="isCustomColor ? form.controls.color.value : null"
+                  aria-label="Custom colour"
+                  title="Custom colour"
+                  [attr.aria-expanded]="pickerOpen()"
+                  (click)="togglePicker()"
+                >
+                  @if (!isCustomColor) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  }
+                </button>
+                @if (pickerOpen()) {
+                  <div class="ltfm-picker" role="dialog" aria-label="Pick a custom colour" (keydown.escape)="pickerOpen.set(false); $event.stopPropagation()">
+                    <div
+                      class="ltfm-picker__area"
+                      [style.--hue]="hue()"
+                      (pointerdown)="onAreaPointer($event, true)"
+                      (pointermove)="onAreaPointer($event, false)"
+                    >
+                      <span class="ltfm-picker__thumb" [style.left.%]="sat() * 100" [style.top.%]="(1 - val()) * 100" [style.background]="form.controls.color.value"></span>
+                    </div>
+                    <input
+                      type="range"
+                      class="ltfm-picker__hue"
+                      min="0"
+                      max="360"
+                      aria-label="Hue"
+                      [value]="hue()"
+                      (input)="setHue(+$any($event.target).value)"
+                    />
+                    <div class="ltfm-picker__footer">
+                      <span class="ltfm-picker__preview" [style.background]="form.controls.color.value"></span>
+                      <app-button type="button" size="sm" (click)="pickerOpen.set(false)">Done</app-button>
+                    </div>
+                  </div>
+                }
+              </div>
             </div>
           </div>
           @if (form.controls.color.invalid) {
             <p class="ui-field-error ltfm-error">Use a colour like #2563EB.</p>
           }
         </div>
-        <app-select class="ltfm-wide" label="Who can take it" [required]="true" [searchable]="false" [options]="genderOptions" [value]="form.controls.applicableGender.value || 'all'" (valueChange)="form.controls.applicableGender.setValue($event)" />
       </div>
+
+      <div class="ltfm-side">
+      <app-select label="Who can take it" [required]="true" [searchable]="false" [options]="genderOptions" [value]="form.controls.applicableGender.value || 'all'" (valueChange)="form.controls.applicableGender.setValue($event)" />
 
       <section class="ltfm-rules" aria-labelledby="kind-title">
         <h3 id="kind-title">About this leave</h3>
@@ -93,7 +130,7 @@
           <span class="ltfm-check__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.75" /><path d="M4.5 5.5v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-6" /><path d="M4.5 11.5v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-6" /></svg>
           </span>
-          <span><strong>Paid leave</strong><small>Uses the employee's balance. Unpaid leave never does.</small></span>
+          <span><strong>Paid leave</strong><small>Deducts from employee's leave balance</small></span>
         </label>
         <label class="ltfm-check">
           <input type="checkbox" [formControl]="form.controls.requiresDocument" />
@@ -115,6 +152,8 @@
           </div>
         }
       </section>
+      </div>
+      </div>
 
       <footer class="ltfm-footer">
         <app-button type="button" variant="secondary" [disabled]="loading" (click)="cancel.emit()">Cancel</app-button>

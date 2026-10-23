@@ -3,6 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { MyTeamCapabilitiesApiService } from '../data-access/my-team-capabilities-api.service';
 import { MyTeamCapabilitiesResponse } from '../models/my-team-capabilities.model';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface MyTeamCapabilitiesState {
   readonly capabilities: MyTeamCapabilitiesResponse | null;
@@ -19,7 +20,7 @@ const initialState: MyTeamCapabilitiesState = {
 };
 
 function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+  return toSafeErrorMessage(err, fallback);
 }
 
 /** Root-provided so every widget on /dashboard and the page shell itself share one fetch -

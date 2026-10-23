@@ -74,11 +74,6 @@
             <header class="mbc-card__head">
               <div>
                 <h2>{{ balance.leaveTypeName }}</h2>
-                @if (balance.policyName && balance.amountHours != null && balance.amountPeriod) {
-                  <p class="mbc-card__code" data-testid="balance-policy">{{ balance.policyName }} · {{ balance.amountHours }} h / {{ balance.amountPeriod }}</p>
-                } @else {
-                  <p class="mbc-card__code">{{ balance.leaveTypeCode }}</p>
-                }
               </div>
               @if (balance.isNegative) {
                 <span class="mbc-pill mbc-pill--danger" data-testid="balance-remaining-negative">{{ formatHours(balance.remainingHours) }} overdrawn</span>
@@ -101,6 +96,9 @@
               <div><dt>Used</dt><dd>{{ formatHours(balance.usedHours) }}</dd></div>
               <div><dt>Pending</dt><dd>{{ formatHours(balance.pendingHours) }}</dd></div>
             </dl>
+            @if (accrualNote(balance); as note) {
+              <p class="mbc-card__accrual" data-testid="balance-accrual">{{ note }}</p>
+            }
             @if (balance.carryForwardExpiresOn) {
               <p class="mbc-card__expiry">Carry-forward expires {{ balance.carryForwardExpiresOn }}</p>
             }

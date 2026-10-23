@@ -326,6 +326,9 @@ html.dark .greeting-card-bg {
 .ow-page-header,
 .ap-page-header,
 .al-page-header,
+.to-header,
+.ns-page-header,
+.attendance-overview-header,
 .app-page-header {
   position: sticky !important;
   top: -1.75rem !important;
@@ -333,7 +336,7 @@ html.dark .greeting-card-bg {
   margin-top: -1.75rem !important;
   margin-left: -2rem !important;
   margin-right: -2rem !important;
-  padding: 1.125rem 2rem 0.75rem 2rem !important;
+  padding: 0.5rem 2rem 0.5rem 2rem !important;
   background: var(--color-surface) !important;
   border-bottom: 1px solid var(--color-border) !important;
   margin-bottom: 1rem !important;
@@ -370,6 +373,9 @@ html.dark .greeting-card-bg {
   .ow-page-header,
   .ap-page-header,
   .al-page-header,
+  .to-header,
+  .ns-page-header,
+  .attendance-overview-header,
   .app-page-header {
     top: -1rem !important;
     margin-top: -1rem !important;

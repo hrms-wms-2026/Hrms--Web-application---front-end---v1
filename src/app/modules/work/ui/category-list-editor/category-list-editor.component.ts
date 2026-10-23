@@ -5,6 +5,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { TaskCategoryColumn } from '../../models/task-category.model';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 interface DraftRow {
   id: string;
@@ -407,7 +408,7 @@ export class CategoryListEditorComponent {
   }
 
   private getErrorDetail(err: unknown): string | null {
-    return (err as { error?: { detail?: string } })?.error?.detail ?? null;
+    return safeServerDetail(err) ?? null;
   }
 }
 

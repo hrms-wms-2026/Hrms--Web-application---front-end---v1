@@ -8,6 +8,7 @@ import { EmployeePickerComponent } from '../employee-picker/employee-picker.comp
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
 import { CreateProjectPayload } from '../../models/project.model';
 import { ColorSwatchPickerComponent } from '../color-swatch-picker/color-swatch-picker.component';
+import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 
 const STEP_ITEMS = [
   { id: 1, label: 'Category', desc: 'Select category' },
@@ -765,7 +766,7 @@ export class ProjectFormModalComponent implements OnInit {
       this.addingCategory.set(false);
       this.newCategoryName.set('');
     } catch (err: any) {
-      this.addCategoryError.set(err?.error?.detail || err?.error?.message || err?.message || 'Failed to create category.');
+      this.addCategoryError.set(toSafeErrorMessage(err, 'Failed to create category.'));
     } finally {
       this.creatingCategory.set(false);
     }

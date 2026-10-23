@@ -95,7 +95,7 @@ describe('ProjectDetailStore', () => {
   it('sets milestonesError on failure', async () => {
     const store = setup({ getMyMilestones: () => throwError(() => ({ error: { detail: 'Server error' } })) } as Partial<ProjectApiService>);
     await store.loadMyMilestones('p1');
-    expect(store.milestonesError()).toBe('Server error');
+    expect(store.milestonesError()).toBe('Failed to load modules.');
   });
 
   it('falls back to "Failed to load modules." when the server gives no error detail', async () => {
@@ -119,7 +119,7 @@ describe('ProjectDetailStore', () => {
 
     await store.loadProjectTree('p1');
 
-    expect(store.subtreeError()).toBe('Server error');
+    expect(store.subtreeError()).toBe('Failed to load milestone.');
   });
 
   it('getMilestoneDetail returns the mapped detail on success', async () => {
