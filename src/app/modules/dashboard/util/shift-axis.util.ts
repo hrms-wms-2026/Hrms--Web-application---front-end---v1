@@ -100,6 +100,9 @@ export function buildShiftAxis(source: AxisSource, now: number): ShiftAxis | nul
 
 export type DayBlockType = 'working' | 'break' | 'leave';
 
+/** Narrowest a Break or Leave block is drawn (% of the bar), so a 2-minute break is still visible. */
+export const MIN_BLOCK_PCT = 1.5;
+
 export interface DayBlock {
   readonly type: DayBlockType;
   /** Start and width along the bar, 0-100. */
@@ -171,9 +174,20 @@ export function buildDayBlocks(
           return e > s ? subtract([{ start: s, end: e }], leaveSpans) : [];
         })
     : [];
-  const workingSpans = worked ? subtract([worked], [...breakSpans, ...leaveSpans]) : [];
-
   const span = axis.end - axis.start;
+  // Short breaks and leave get the minimum width: one that ends at the bar's right edge or at now (a break
+  // still running) grows to the left, so the "now" marker does not cover it; any other grows to the right.
+  const minMs = (MIN_BLOCK_PCT / 100) * span;
+  const widen = (s: Span, rightEdge: number): Span => {
+    if (s.end - s.start >= minMs) return s;
+    if (s.end >= rightEdge) return { start: Math.max(axis.start, s.end - minMs), end: s.end };
+    const end = Math.min(axis.end, s.start + minMs);
+    return { start: Math.max(axis.start, end - minMs), end };
+  };
+  const shownBreaks = breakSpans.map((b) => widen(b, worked ? worked.end : axis.end));
+  const shownLeaves = leaveSpans.map((l) => widen(l, axis.end));
+  const workingSpans = worked ? subtract([worked], [...shownBreaks, ...shownLeaves]) : [];
+
   const toBlock = (type: DayBlockType) => (s: Span): DayBlock => ({
     type,
     leftPct: clampPct(((s.start - axis.start) / span) * 100),
@@ -181,8 +195,8 @@ export function buildDayBlocks(
   });
   return [
     ...workingSpans.map(toBlock('working')),
-    ...breakSpans.map(toBlock('break')),
-    ...leaveSpans.map(toBlock('leave'))
+    ...shownBreaks.map(toBlock('break')),
+    ...shownLeaves.map(toBlock('leave'))
   ]
     .filter((b) => b.widthPct > 0)
     .sort((a, b) => a.leftPct - b.leftPct);
