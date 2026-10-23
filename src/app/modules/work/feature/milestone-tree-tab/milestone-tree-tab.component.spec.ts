@@ -1,3 +1,6 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { By } from '@angular/platform-browser';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -80,7 +83,9 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: WorkApprovalsApiService, useValue: approvalsApiStub },
         { provide: EmployeeDirectoryStore, useValue: directoryStub },
         { provide: FileApiService, useValue: { getFileUrl: (fileId: string) => `/cached/${fileId}` } },
-        { provide: Router, useValue: routerStub }
+        { provide: Router, useValue: routerStub },
+        provideHttpClient(),
+        provideHttpClientTesting()
       ]
     }).compileComponents();
 
@@ -182,6 +187,23 @@ describe('MilestoneTreeTabComponent', () => {
     createButton.click();
     expect(fixture.componentInstance.createModalOpen()).toBe(true);
     expect(fixture.componentInstance.createModalParentId()).toBe('o1');
+    toolbar.view.destroy();
+  });
+
+  it('offers New meeting in the toolbar, placed in the routed module', () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    const toolbar = renderToolbar();
+    const button = Array.from(toolbar.host.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'New meeting') as HTMLButtonElement;
+    expect(button).toBeTruthy();
+    button.click();
+    fixture.detectChanges();
+
+    const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
+    expect(form).not.toBeNull();
+    expect(form.componentInstance.placement()).toEqual({ projectId: 'p1', objectiveId: 'o1' });
     toolbar.view.destroy();
   });
 

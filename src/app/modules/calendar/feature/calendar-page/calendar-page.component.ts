@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CalendarEventResponse, MeetingProvider, RecurrenceEditScope } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
@@ -36,7 +37,7 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   standalone: true,
   imports: [
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
-    CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent
+    CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent
   ],
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -54,6 +55,7 @@ export class CalendarPageComponent {
   readonly prefillStart = signal<string | null>(null);
   readonly prefillEnd = signal<string | null>(null);
   readonly submitting = signal(false);
+  readonly meetingFormOpen = signal(false);
 
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
@@ -174,6 +176,12 @@ export class CalendarPageComponent {
 
   goToToday(): void {
     this.cursor.set(new Date());
+  }
+
+  /** A meeting work item was created (or sent for approval): close the form and show it on the calendar. */
+  async onMeetingSaved(): Promise<void> {
+    this.meetingFormOpen.set(false);
+    await this.reloadEvents();
   }
 
   openCreate(prefillStart?: string, prefillEnd?: string): void {

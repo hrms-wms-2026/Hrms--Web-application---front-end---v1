@@ -1,3 +1,4 @@
+import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { AfterViewChecked, AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute } from '@angular/router';
@@ -31,7 +32,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent, MeetingFormModalComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
@@ -65,6 +66,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
         <app-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="goToCreate()">Create work item</app-button>
+          <app-button variant="secondary" data-testid="board-new-meeting" (pressed)="meetingFormOpen.set(true)">New meeting</app-button>
         }
       </div>
     </ng-template>
@@ -98,6 +100,11 @@ import { NotificationService } from '../../../../core/services/notification.serv
           />
         }
       </div>
+    }
+
+    @if (meetingFormOpen()) {
+      <app-meeting-form-modal [open]="true" mode="create" [placement]="{ projectId: projectId(), objectiveId: null }"
+        (saved)="onMeetingSaved()" (closed)="meetingFormOpen.set(false)" />
     }
 
     <app-task-form-modal
@@ -144,6 +151,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
   protected readonly projectId = signal('');
+  protected readonly meetingFormOpen = signal(false);
   protected readonly isOfficeProject = computed(() => this.projectStore.project()?.systemPurpose === 'office');
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
@@ -446,6 +454,12 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     }
     return '';
   });
+
+  /** A meeting was created (or sent for approval) from the board: close the form and refresh the board. */
+  protected onMeetingSaved(): void {
+    this.meetingFormOpen.set(false);
+    void this.store.loadBoard(this.projectId());
+  }
 
   onTaskViewed(task: WorkTask): void {
     this.taskModalMode.set('edit');

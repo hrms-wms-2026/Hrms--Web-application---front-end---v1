@@ -73,6 +73,7 @@
     @if (canCreateModule()) {
     <app-button variant="primary" (pressed)="onCreateModuleRequested()">Create module</app-button>
     }
+    <app-button variant="secondary" data-testid="tree-new-meeting" (pressed)="meetingFormOpen.set(true)">New meeting</app-button>
   </div>
 </ng-template>
 
@@ -213,3 +214,8 @@
   (closed)="allocationNode.set(null)"
   (submitted)="onAllocationSubmitted()"
 />
+
+@if (meetingFormOpen()) {
+  <app-meeting-form-modal [open]="true" mode="create" [placement]="{ projectId: projectId(), objectiveId: renderedTree()?.id ?? null }"
+    (saved)="meetingFormOpen.set(false)" (closed)="meetingFormOpen.set(false)" />
+}

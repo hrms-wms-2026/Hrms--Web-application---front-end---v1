@@ -162,3 +162,22 @@ describe('CalendarPageComponent - create submission', () => {
     expect(store.createEvent).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('CalendarPageComponent - new meeting (work item)', () => {
+  it('offers "Meeting (work item)" next to New event and opens the meeting form as an Office meeting', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
+    });
+    const fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-meeting-form-modal')).toBeNull();
+
+    const button: HTMLElement = fixture.nativeElement.querySelector('[data-testid="calendar-new-meeting"]');
+    expect(button.textContent?.trim()).toBe('Meeting (work item)');
+    button.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-meeting-form-modal')).not.toBeNull();
+    expect(fixture.componentInstance.meetingFormOpen()).toBe(true);
+  });
+});

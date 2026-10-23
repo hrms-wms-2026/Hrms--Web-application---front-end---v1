@@ -1,3 +1,4 @@
+import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { AfterViewInit, Component, OnDestroy, TemplateRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
@@ -77,7 +78,7 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
   imports: [
     MilestoneTreeNodeComponent, FilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
-    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent,
+    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent, MeetingFormModalComponent,
     TaskAssigneeAvatarFilterComponent, AllocationRequestModalComponent, ProjectNetworkViewComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
@@ -106,6 +107,7 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   private currentMilestoneId = '';
   private currentProjectId = '';
   protected readonly projectId = signal('');
+  protected readonly meetingFormOpen = signal(false);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
   protected readonly projectRosterMembers = computed<TaskAssigneeAvatarMember[]>(() =>
     (this.store.project()?.members ?? []).map((member) => ({

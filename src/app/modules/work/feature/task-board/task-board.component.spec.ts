@@ -11,6 +11,9 @@ import { SprintApiService } from '../../data-access/sprint-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 describe('TaskBoardComponent', () => {
   function routeStub(taskId: string | null = null) {
@@ -845,3 +848,53 @@ describe('TaskBoardComponent', () => {
   });
 });
 
+
+describe('TaskBoardComponent - new meeting', () => {
+  it('offers New meeting next to Create work item and opens the meeting form placed in this project', async () => {
+    TestBed.configureTestingModule({
+      imports: [TaskBoardComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: TaskBoardStore,
+          useValue: { loadBoard: vi.fn().mockResolvedValue(undefined), columnsWithTasks: () => [], tasks: () => [], loading: () => false,
+            error: () => null, moveTask: vi.fn(), statuses: () => [] }
+        },
+        {
+          provide: ProjectDetailStore,
+          useValue: { milestones: () => [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner: true }],
+            project: () => ({ id: 'project-1', systemPurpose: null }), getMilestoneDetail: vi.fn().mockResolvedValue(null), loadMyMilestones: vi.fn().mockResolvedValue(undefined),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [] }
+        },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskApiService, useValue: { assignTask: vi.fn(), getCategories: vi.fn().mockReturnValue(of([])) } },
+        { provide: EmployeeDirectoryStore, useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) } },
+        { provide: ActivatedRoute, useValue: routeStub() },
+        { provide: Router, useValue: { navigate: vi.fn() } }
+      ]
+    });
+    const fixture = TestBed.createComponent(TaskBoardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The toolbar is a template the project page renders (WorkPageToolbarStore), not part of the board's own view.
+    const toolbar = TestBed.inject(WorkPageToolbarStore).template()!.createEmbeddedView(null);
+    toolbar.detectChanges();
+    const button = toolbar.rootNodes
+      .map((node: Node) => (node instanceof HTMLElement ? node.querySelector('[data-testid="board-new-meeting"]') : null))
+      .find((el: Element | null) => el !== null) as HTMLElement | undefined;
+    expect(button).toBeDefined();
+    (button!.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
+    expect(form).not.toBeNull();
+    expect(form.componentInstance.placement()).toEqual({ projectId: 'project-1', objectiveId: null });
+  });
+
+  function routeStub() {
+    return { snapshot: { paramMap: { get: (key: string) => (key === 'id' ? 'project-1' : null) }, queryParamMap: { get: () => null } } };
+  }
+});
