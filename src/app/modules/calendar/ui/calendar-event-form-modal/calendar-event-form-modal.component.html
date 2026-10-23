@@ -288,7 +288,11 @@
                   <path d="M12 9v4" />
                   <path d="M12 17h.01" />
                 </svg>
-                <span>{{ conflict.employeeName }} is busy {{ formatOverlap(conflict.overlapStart, conflict.overlapEnd) }} ({{ conflict.conflictingEventTitle }}).</span>
+                @if (conflict.isBusyOnly) {
+                  <span>{{ conflict.employeeName }}: Busy · {{ formatOverlap(conflict.overlapStart, conflict.overlapEnd) }}.</span>
+                } @else {
+                  <span>{{ conflict.employeeName }} is busy {{ formatOverlap(conflict.overlapStart, conflict.overlapEnd) }} ({{ conflict.conflictingEventTitle }}).</span>
+                }
               </div>
             }
           </div>

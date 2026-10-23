@@ -122,6 +122,8 @@ export interface CalendarConflict {
   employeeName: string;
   conflictingEventId: string;
   conflictingEventTitle: string;
+  /** A task meeting the caller may not see: only its time is known, and it reads "Busy" (meetings-as-tasks 5.9). */
+  isBusyOnly?: boolean;
   overlapStart: string;
   overlapEnd: string;
 }

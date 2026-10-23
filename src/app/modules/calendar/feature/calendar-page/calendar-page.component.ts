@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CalendarEventResponse, MeetingProvider, RecurrenceEditScope } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
@@ -37,7 +38,8 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   standalone: true,
   imports: [
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
-    CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent
+    CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
+    MeetingOccurrenceDrawerComponent
   ],
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -56,6 +58,7 @@ export class CalendarPageComponent {
   readonly prefillEnd = signal<string | null>(null);
   readonly submitting = signal(false);
   readonly meetingFormOpen = signal(false);
+  readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
 
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
@@ -178,6 +181,12 @@ export class CalendarPageComponent {
     this.cursor.set(new Date());
   }
 
+  /** A meeting may have been edited, moved or cancelled in its drawer: refresh the calendar. */
+  async onMeetingDrawerClosed(): Promise<void> {
+    this.openMeeting.set(null);
+    await this.reloadEvents();
+  }
+
   /** A meeting work item was created (or sent for approval): close the form and show it on the calendar. */
   async onMeetingSaved(): Promise<void> {
     this.meetingFormOpen.set(false);
@@ -203,6 +212,12 @@ export class CalendarPageComponent {
 
   openEdit(eventId: string): void {
     const found = this.store.events().find((e) => e.id === eventId) ?? null;
+    // A task meeting opens its own drawer by series + original start (it may not be materialized yet, so it has no
+    // task id); it never goes through the legacy /calendar/{id} event actions.
+    if (found?.itemKind === 'meeting' && found.meetingSeriesId) {
+      this.openMeeting.set({ seriesId: found.meetingSeriesId, originalStart: found.originalStart ?? found.startDate });
+      return;
+    }
     this.editingEvent.set(found);
     this.prefillStart.set(null);
     this.prefillEnd.set(null);

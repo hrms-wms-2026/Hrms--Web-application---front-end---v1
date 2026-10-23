@@ -90,3 +90,7 @@
 @if (meetingFormOpen()) {
   <app-meeting-form-modal [open]="true" mode="create" (saved)="onMeetingSaved()" (closed)="meetingFormOpen.set(false)" />
 }
+
+@if (openMeeting(); as key) {
+  <app-meeting-occurrence-drawer [key]="key" (closed)="onMeetingDrawerClosed()" />
+}

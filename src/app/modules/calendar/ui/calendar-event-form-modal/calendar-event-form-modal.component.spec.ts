@@ -414,6 +414,20 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
   });
 
+  it('busy-only conflicts show Busy and no title', () => {
+    // A task meeting the caller may not see comes back with its time only (meetings-as-tasks spec 5.9).
+    fixture.componentRef.setInput('conflicts', [
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: '00000000-0000-0000-0000-000000000000',
+        conflictingEventTitle: 'Busy', isBusyOnly: true, overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T09:30:00Z'
+      }
+    ]);
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Ada Lovelace: Busy · from 9:00 AM to 9:30 AM');
+    expect(text).not.toContain('(Busy)');
+  });
+
   it('shows the overlap time range in the conflict warning', () => {
     fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
     fixture.componentRef.setInput('conflicts', [
