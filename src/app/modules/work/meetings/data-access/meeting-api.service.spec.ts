@@ -3,6 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
+import { SILENT_HTTP_ERRORS } from '../../../../core/interceptors/error.interceptor';
+import { MeetingsAvailabilityService } from '../state/meetings-availability.service';
 import { MeetingApiService } from './meeting-api.service';
 
 describe('MeetingApiService', () => {
@@ -59,6 +61,27 @@ describe('MeetingApiService', () => {
     const req = http.expectOne((r) => r.url === url);
     expect(req.request.method).toBe(method);
     req.flush(null);
+  });
+
+  it.each(cases)('%s leaves its errors to the caller only when it writes', (_name, call, method, url) => {
+    call(service).subscribe({ error: () => undefined });
+    const req = http.expectOne((r) => r.url === url);
+    expect(req.request.context.get(SILENT_HTTP_ERRORS)).toBe(method !== 'GET');
+    req.flush(null);
+  });
+
+  it('a refused write tells the app whether meetings are off or read-only', () => {
+    const availability = TestBed.inject(MeetingsAvailabilityService);
+    expect(availability.canCreate()).toBe(true);
+
+    service.cancel(series, start, 'this').subscribe({ error: () => undefined });
+    http.expectOne(`${occ}/cancel`).flush({ code: 'meetings_read_only' }, { status: 409, statusText: 'Conflict' });
+    expect(availability.state()).toBe('read_only');
+    expect(availability.canCreate()).toBe(false);
+
+    service.retryLink(series).subscribe({ error: () => undefined });
+    http.expectOne(`${base}/series/${series}/link/retry`).flush({ code: 'meetings_disabled' }, { status: 503, statusText: 'Unavailable' });
+    expect(availability.state()).toBe('disabled');
   });
 
   it('list sends the window and the optional project', () => {

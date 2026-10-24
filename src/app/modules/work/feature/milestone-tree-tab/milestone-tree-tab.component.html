@@ -73,7 +73,9 @@
     @if (canCreateModule()) {
     <app-button variant="primary" (pressed)="onCreateModuleRequested()">Create module</app-button>
     }
+    @if (meetingsAvailability.canCreate()) {
     <app-button variant="secondary" data-testid="tree-new-meeting" (pressed)="meetingFormOpen.set(true)">New meeting</app-button>
+    }
   </div>
 </ng-template>
 

@@ -4,6 +4,7 @@ import { MeetingListItem } from '../../meetings/models/meeting.models';
 import { MeetingCardComponent } from '../../meetings/ui/meeting-card/meeting-card.component';
 import { meetingListWindow } from '../../meetings/utils/meeting-time';
 import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
 import { AfterViewChecked, AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute } from '@angular/router';
@@ -71,7 +72,9 @@ import { NotificationService } from '../../../../core/services/notification.serv
         <app-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="goToCreate()">Create work item</app-button>
-          <app-button variant="secondary" data-testid="board-new-meeting" (pressed)="meetingFormOpen.set(true)">New meeting</app-button>
+          @if (meetingsAvailability.canCreate()) {
+            <app-button variant="secondary" data-testid="board-new-meeting" (pressed)="meetingFormOpen.set(true)">New meeting</app-button>
+          }
         }
       </div>
     </ng-template>
@@ -173,6 +176,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
 
   protected readonly projectId = signal('');
   protected readonly meetingFormOpen = signal(false);
+  protected readonly meetingsAvailability = inject(MeetingsAvailabilityService);
   protected readonly meetings = signal<readonly MeetingListItem[]>([]);
   protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
   protected readonly isOfficeProject = computed(() => this.projectStore.project()?.systemPurpose === 'office');

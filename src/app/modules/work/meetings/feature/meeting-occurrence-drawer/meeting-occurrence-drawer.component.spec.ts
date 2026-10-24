@@ -3,6 +3,7 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthStore } from '../../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../../core/services/notification.service';
 import { MeetingApiService } from '../../data-access/meeting-api.service';
 import { MeetingOccurrenceResponse } from '../../models/meeting.models';
@@ -10,7 +11,8 @@ import { MeetingOccurrenceDrawerComponent } from './meeting-occurrence-drawer.co
 
 describe('MeetingOccurrenceDrawerComponent', () => {
   let fixture: ComponentFixture<MeetingOccurrenceDrawerComponent>;
-  const api = { getOccurrenceAt: vi.fn(), getOccurrence: vi.fn(), respond: vi.fn(), cancel: vi.fn(), move: vi.fn() };
+  const api = { getOccurrenceAt: vi.fn(), getOccurrence: vi.fn(), getSeries: vi.fn(), respond: vi.fn(), cancel: vi.fn(), move: vi.fn() };
+  const auth = { employeeId: () => 'e2' as string | null };
   const notify = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() };
 
   const occurrence = (over: Partial<MeetingOccurrenceResponse> = {}): MeetingOccurrenceResponse => ({
@@ -36,7 +38,8 @@ describe('MeetingOccurrenceDrawerComponent', () => {
   beforeEach(() => {
     Object.values(api).forEach((f) => f.mockReset());
     TestBed.configureTestingModule({
-      providers: [{ provide: MeetingApiService, useValue: api }, { provide: NotificationService, useValue: notify }],
+      providers: [{ provide: MeetingApiService, useValue: api }, { provide: NotificationService, useValue: notify },
+        { provide: AuthStore, useValue: auth }],
     });
     TestBed.overrideComponent(MeetingOccurrenceDrawerComponent, { set: { imports: [], schemas: [NO_ERRORS_SCHEMA] } });
   });
@@ -121,15 +124,44 @@ describe('MeetingOccurrenceDrawerComponent', () => {
   });
 
   it('follows the new series after a splitting edit', async () => {
+    // 09:00 -> 10:00 for "all": the new series' occurrences start at the new time, so the old original start is gone.
     api.getOccurrenceAt
       .mockReturnValueOnce(of(occurrence()))
-      .mockReturnValueOnce(of(occurrence({ seriesId: 's2', title: 'New time' })));
+      .mockReturnValueOnce(of(occurrence({ seriesId: 's2', originalStart: '2026-11-02T04:30:00Z', title: 'New time' })));
     await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
 
-    await fixture.componentInstance.onEdited({ seriesId: 's2', occurrenceTaskId: 't7', split: true });
+    await fixture.componentInstance.onEdited({ seriesId: 's2', occurrenceTaskId: 't7', split: true, sentStart: '2026-11-02T10:00:00+05:30' });
     fixture.detectChanges();
 
-    expect(api.getOccurrenceAt).toHaveBeenLastCalledWith('s2', '2026-11-02T03:30:00Z');
+    expect(api.getOccurrenceAt).toHaveBeenLastCalledWith('s2', '2026-11-02T10:00:00+05:30');
     expect(testId('meeting-drawer-title')?.textContent?.trim()).toBe('New time');
+  });
+
+  it("falls back to the new series' next occurrence when the split moved it elsewhere", async () => {
+    api.getOccurrenceAt
+      .mockReturnValueOnce(of(occurrence()))
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 404, error: { code: 'meeting_not_found' } })))
+      .mockReturnValueOnce(of(occurrence({ seriesId: 's2', originalStart: '2026-11-03T04:30:00Z', title: 'New day' })));
+    api.getSeries.mockReturnValue(of({ upcomingOccurrences: [{ seriesId: 's2', originalStart: '2026-11-03T04:30:00Z' }] }));
+    await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+
+    await fixture.componentInstance.onEdited({ seriesId: 's2', occurrenceTaskId: 't7', split: true, sentStart: '2026-11-02T10:00:00+05:30' });
+    fixture.detectChanges();
+
+    expect(api.getSeries).toHaveBeenCalledWith('s2');
+    expect(api.getOccurrenceAt).toHaveBeenLastCalledWith('s2', '2026-11-03T04:30:00Z');
+    expect(testId('meeting-drawer-title')?.textContent?.trim()).toBe('New day');
+  });
+
+  it('a person added to one occurrence answers for that occurrence', async () => {
+    api.getOccurrenceAt.mockReturnValue(of(occurrence({ myRole: 'attendee', canEdit: false, myResponse: 'pending', attendees: [
+      { kind: 'employee', employeeId: 'e2', name: 'Arjun M.', email: null, response: null, responseReason: null, source: 'occurrence' },
+    ] })));
+    api.respond.mockReturnValue(of(undefined));
+    await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+
+    await fixture.componentInstance.respond('accepted', null);
+
+    expect(api.respond).toHaveBeenCalledWith('s1', { status: 'accepted', reason: null, originalStart: '2026-11-02T03:30:00Z' });
   });
 });

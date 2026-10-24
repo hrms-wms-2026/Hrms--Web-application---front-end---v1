@@ -19,6 +19,8 @@ import { MeetingScopeDialogComponent } from '../meeting-scope-dialog/meeting-sco
 import { MeetingBulkInvitePanelComponent } from './meeting-bulk-invite-panel.component';
 
 export interface MeetingPlacementInput { projectId: string | null; objectiveId: string | null; }
+/** A saved edit, with the start it sent: after a split the occurrence lives at that start in the new series. */
+export interface MeetingEditSaved extends MeetingEditResponse { sentStart: string | null; }
 type PlatformChoice = 'none' | MeetingPlatform;
 interface MeetingFormValue {
   title: string; description: string | null; location: string; isPrivate: boolean; date: string; time: string;
@@ -26,6 +28,7 @@ interface MeetingFormValue {
 }
 
 const RELOADED = 'Someone else changed this meeting. We reloaded it - check and save again.';
+const SERIES_ONLY = 'A repeat or time zone change applies to the series: choose this and following, or all.';
 
 /** The one meeting form (spec D3): create from the calendar or a project's board, and edit an occurrence or its series. */
 @Component({
@@ -39,16 +42,21 @@ const RELOADED = 'Someone else changed this meeting. We reloaded it - check and 
         @if (mode() === 'create') {
           <div class="grid grid-cols-2 gap-2">
             <label class="flex flex-col gap-1">Project
-              <select data-testid="meeting-project" [value]="projectId() ?? ''" (change)="selectProject($any($event.target).value)">
-                <option value="">Office (no project)</option>
-                @for (project of projects(); track project.id) { <option [value]="project.id">{{ project.name }}</option> }
+              <!-- [selected] per option: the options load after the value is known, and a select-level [value] is not re-applied. -->
+              <select data-testid="meeting-project" (change)="selectProject($any($event.target).value)">
+                <option value="" [selected]="!projectId()">Office (no project)</option>
+                @for (project of projects(); track project.id) {
+                  <option [value]="project.id" [selected]="project.id === projectId()">{{ project.name }}</option>
+                }
               </select>
             </label>
             @if (projectId()) {
               <label class="flex flex-col gap-1">Module
-                <select data-testid="meeting-module" [value]="objectiveId() ?? ''" (change)="objectiveId.set($any($event.target).value || null)">
-                  <option value="">Choose a module</option>
-                  @for (module of modules(); track module.id) { <option [value]="module.id">{{ module.title }}</option> }
+                <select data-testid="meeting-module" (change)="objectiveId.set($any($event.target).value || null)">
+                  <option value="" [selected]="!objectiveId()">Choose a module</option>
+                  @for (module of modules(); track module.id) {
+                    <option [value]="module.id" [selected]="module.id === objectiveId()">{{ module.title }}</option>
+                  }
                 </select>
               </label>
             }
@@ -59,7 +67,8 @@ const RELOADED = 'Someone else changed this meeting. We reloaded it - check and 
           </p>
         }
 
-        <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="rounded-md border px-2 py-1" />
+        <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="rounded-md border px-2 py-1"
+          [readOnly]="notesOnly()" />
         <app-rich-text-editor [initialHtml]="form.controls.description.value ?? ''" ariaLabel="Agenda" placeholder="Agenda"
           [compact]="true" [allowAttachments]="false" [allowImages]="false" (htmlChange)="onAgenda($event)" />
 
@@ -125,7 +134,7 @@ export class MeetingFormModalComponent implements OnInit {
   readonly mode = input<'create' | 'edit'>('create');
   readonly placement = input<MeetingPlacementInput | null>(null);
   readonly occurrence = input<MeetingOccurrenceResponse | null>(null);
-  readonly saved = output<MeetingCreatedResponse | MeetingEditResponse>();
+  readonly saved = output<MeetingCreatedResponse | MeetingEditSaved>();
   readonly closed = output<void>();
 
   readonly presets: readonly RecurrencePreset[] = ['none', 'daily', 'weekly', 'biweekly', 'monthly', 'custom'];
@@ -226,7 +235,8 @@ export class MeetingFormModalComponent implements OnInit {
       await this.create();
       return;
     }
-    if (this.current()?.recurrenceRule) {
+    // After the end only this occurrence's notes can change (D19), so there is no scope to choose.
+    if (this.current()?.recurrenceRule && !this.notesOnly()) {
       this.scopeDialogOpen.set(true);
       return;
     }
@@ -237,11 +247,16 @@ export class MeetingFormModalComponent implements OnInit {
     this.scopeDialogOpen.set(false);
     const occ = this.current();
     if (!occ) return;
+    if (scope === 'this' && this.seriesFieldsChanged()) {
+      this.notify.error(SERIES_ONLY);
+      return;
+    }
     this.saving.set(true);
     try {
-      const result = await firstValueFrom(this.meetings.edit(occ.seriesId, occ.originalStart, this.buildEditRequest(scope, occ)));
+      const request = this.buildEditRequest(scope, occ);
+      const result = await firstValueFrom(this.meetings.edit(occ.seriesId, occ.originalStart, request));
       this.notify.success('Meeting updated');
-      this.saved.emit(result);
+      this.saved.emit({ ...result, sentStart: request.start ?? null });
     } catch (e) {
       const code = this.codeOf(e);
       if (code === 'meeting_changed') {
@@ -277,20 +292,30 @@ export class MeetingFormModalComponent implements OnInit {
     const v = this.form.getRawValue();
     const was = this.initial ?? v;
     const request: EditMeetingRequest = { scope, revision: scope === 'this' ? occ.revision : occ.seriesRevision };
-    if (v.title.trim() !== was.title.trim()) request.title = v.title.trim();
     if (v.description !== was.description) request.description = v.description;
     if (this.notesOnly()) return request;
+    if (v.title.trim() !== was.title.trim()) request.title = v.title.trim();
     if (v.location.trim() !== was.location.trim()) request.location = v.location.trim() || null;
     if (v.isPrivate !== was.isPrivate) request.isPrivate = v.isPrivate;
     if (v.date !== was.date || v.time !== was.time || v.timezone !== was.timezone || v.isAllDay !== was.isAllDay) {
       request.start = toOffsetIso(v.date, v.isAllDay ? '00:00' : v.time, v.timezone);
-      if (v.timezone !== was.timezone) request.timezone = v.timezone;
+      if (v.timezone !== was.timezone && scope !== 'this') request.timezone = v.timezone;
       if (v.isAllDay !== was.isAllDay) request.isAllDay = v.isAllDay;
     }
     if (v.durationMinutes !== was.durationMinutes) request.durationMinutes = v.durationMinutes;
+    // One occurrence keeps the series' rule: a preset rebuilt from its new date (BYDAY) is not a rule change.
+    if (scope === 'this') return request;
     const rule = this.rule(v.recurrence, v.customRule, v.date);
     if (rule !== this.rule(was.recurrence, was.customRule, was.date)) request.recurrenceRule = rule;
     return request;
+  }
+
+  /** The repeat and the time zone belong to the whole series (the backend refuses them for scope "this"). */
+  private seriesFieldsChanged(): boolean {
+    const v = this.form.getRawValue();
+    const was = this.initial ?? v;
+    return v.timezone !== was.timezone || v.recurrence !== was.recurrence
+      || (v.recurrence === 'custom' && v.customRule.trim() !== was.customRule.trim());
   }
 
   private load(occ: MeetingOccurrenceResponse): void {

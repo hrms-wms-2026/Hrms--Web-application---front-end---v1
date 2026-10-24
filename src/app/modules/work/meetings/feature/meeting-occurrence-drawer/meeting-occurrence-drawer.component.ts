@@ -4,10 +4,10 @@ import { NotificationService } from '../../../../../core/services/notification.s
 import { ModalComponent } from '../../../../../shared/ui/modal/modal.component';
 import { CalendarParticipantPickerComponent } from '../../../../calendar/ui/calendar-participant-picker/calendar-participant-picker.component';
 import { MeetingApiService } from '../../data-access/meeting-api.service';
-import { MeetingAttendee, MeetingEditResponse, MeetingScope, MeetingStatus } from '../../models/meeting.models';
+import { MeetingAttendee, MeetingScope, MeetingStatus } from '../../models/meeting.models';
 import { MeetingOccurrenceKey, MeetingOccurrenceStore } from '../../state/meeting-occurrence.store';
 import { meetingErrorMessage } from '../../utils/meeting-error-messages';
-import { MeetingFormModalComponent } from '../../ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingEditSaved, MeetingFormModalComponent } from '../../ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingLinkPanelComponent } from '../../ui/meeting-link-panel/meeting-link-panel.component';
 import { MeetingAttendanceTableComponent } from '../../ui/meeting-attendance-table/meeting-attendance-table.component';
 import { MeetingActionItemsComponent } from '../../ui/meeting-action-items/meeting-action-items.component';
@@ -194,9 +194,9 @@ export class MeetingOccurrenceDrawerComponent implements OnInit {
   }
 
   /** After the form saved: a splitting edit moved this occurrence to a new series, so follow it (Review Focus 3). */
-  async onEdited(result: MeetingEditResponse): Promise<void> {
+  async onEdited(result: MeetingEditSaved): Promise<void> {
     this.formOpen.set(false);
-    await this.store.afterEdit(result);
+    await this.store.afterEdit(result, result.sentStart);
   }
 
   startCancel(): void {

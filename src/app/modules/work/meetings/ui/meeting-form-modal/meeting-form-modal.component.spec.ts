@@ -131,6 +131,71 @@ describe('MeetingFormModalComponent', () => {
     expect(notify.error).toHaveBeenCalledWith('Someone else changed this meeting. We reloaded it - check and save again.');
   });
 
+  it('moving one occurrence to another day leaves the series rule alone', async () => {
+    api.edit.mockReturnValue(of({ seriesId: 's1', occurrenceTaskId: 't1', split: false }));
+    build({ mode: 'edit', occurrence: occurrence({ recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO' }) });
+    form.form.patchValue({ date: '2026-11-03' });
+
+    await form.save();
+    await form.applyScope('this');
+
+    const request = api.edit.mock.calls[0][2];
+    expect(request).toEqual({ scope: 'this', revision: 3, start: expect.any(String) });
+    expect(Date.parse(request.start)).toBe(Date.parse('2026-11-03T03:30:00Z'));
+  });
+
+  it('a repeat or time zone change cannot be saved to one occurrence', async () => {
+    build({ mode: 'edit', occurrence: occurrence({ recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO' }) });
+    form.form.patchValue({ recurrence: 'daily' });
+
+    await form.save();
+    await form.applyScope('this');
+
+    expect(api.edit).not.toHaveBeenCalled();
+    expect(notify.error).toHaveBeenCalledWith('A repeat or time zone change applies to the series: choose this and following, or all.');
+  });
+
+  it('notes after a recurring meeting save to that occurrence without asking for a scope', async () => {
+    api.edit.mockReturnValue(of({ seriesId: 's1', occurrenceTaskId: 't1', split: false }));
+    build({ mode: 'edit', occurrence: occurrence({ status: 'completed', recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO' }) });
+    expect((fixture.nativeElement.querySelector('[data-testid="meeting-title"]') as HTMLInputElement).readOnly).toBe(true);
+    form.form.patchValue({ title: 'Renamed' });
+    form.onAgenda('<p>Minutes</p>');
+
+    await form.save();
+
+    expect(form.scopeDialogOpen()).toBe(false);
+    expect(api.edit).toHaveBeenCalledWith('s1', '2026-11-02T03:30:00Z', { scope: 'this', revision: 3, description: '<p>Minutes</p>' });
+  });
+
+  it('a saved edit carries the start it sent, so the drawer can follow a split', async () => {
+    api.edit.mockReturnValue(of({ seriesId: 's2', occurrenceTaskId: 't7', split: true }));
+    build({ mode: 'edit', occurrence: occurrence({ recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO' }) });
+    const saved: unknown[] = [];
+    form.saved.subscribe((e) => saved.push(e));
+    form.form.patchValue({ time: '10:00' });
+
+    await form.save();
+    await form.applyScope('all');
+
+    const event = saved[0] as { seriesId: string; sentStart: string };
+    expect(event.seriesId).toBe('s2');
+    expect(Date.parse(event.sentStart)).toBe(Date.parse('2026-11-02T04:30:00Z'));
+  });
+
+  it('shows the pre-selected project and module once their options load', async () => {
+    TestBed.overrideProvider(ProjectApiService, { useValue: {
+      listMine: () => of({ items: [{ id: 'p0', name: 'Other' }, { id: 'p1', name: 'Acme' }], totalCount: 2 }),
+      getProjectTree: () => of([{ id: 'o0', title: 'Root' }, { id: 'o1', title: 'Delivery' }]),
+    } });
+    build({ mode: 'create', placement: { projectId: 'p1', objectiveId: 'o1' } });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement.querySelector('[data-testid="meeting-project"]') as HTMLSelectElement).value).toBe('p1');
+    expect((fixture.nativeElement.querySelector('[data-testid="meeting-module"]') as HTMLSelectElement).value).toBe('o1');
+  });
+
   it('an edit sends only the changed fields', async () => {
     build({ mode: 'edit', occurrence: occurrence() });
     expect(form.form.controls.date.value).toBe('2026-11-02');

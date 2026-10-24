@@ -1,4 +1,5 @@
-import { provideHttpClient } from '@angular/common/http';
+import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -221,6 +222,17 @@ describe('MilestoneTreeTabComponent', () => {
     const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
     expect(form).not.toBeNull();
     expect(form.componentInstance.placement()).toEqual({ projectId: 'p1', objectiveId: 'o1' });
+    toolbar.view.destroy();
+  });
+
+  it('hides New meeting once the server says meetings are off', () => {
+    setup('o1');
+    TestBed.inject(MeetingsAvailabilityService).noteError(new HttpErrorResponse({ status: 503, error: { code: 'meetings_disabled' } }));
+    fixture.detectChanges();
+
+    const toolbar = renderToolbar();
+    const button = Array.from(toolbar.host.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'New meeting');
+    expect(button).toBeUndefined();
     toolbar.view.destroy();
   });
 

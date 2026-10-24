@@ -35,7 +35,9 @@
         >Agenda</button>
       </div>
       <app-button type="button" (click)="openCreate()">New event</app-button>
-      <app-button type="button" variant="secondary" data-testid="calendar-new-meeting" (click)="meetingFormOpen.set(true)">Meeting (work item)</app-button>
+      @if (meetingsAvailability.canCreate()) {
+        <app-button type="button" variant="secondary" data-testid="calendar-new-meeting" (click)="meetingFormOpen.set(true)">Meeting (work item)</app-button>
+      }
     </div>
   </div>
 

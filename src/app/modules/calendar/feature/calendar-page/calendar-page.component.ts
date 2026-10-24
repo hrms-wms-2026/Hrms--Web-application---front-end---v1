@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CalendarEventResponse, MeetingProvider, RecurrenceEditScope } from '../../models/calendar-event.model';
@@ -58,6 +59,7 @@ export class CalendarPageComponent {
   readonly prefillEnd = signal<string | null>(null);
   readonly submitting = signal(false);
   readonly meetingFormOpen = signal(false);
+  readonly meetingsAvailability = inject(MeetingsAvailabilityService);
   readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
 
   readonly year = computed(() => this.cursor().getFullYear());

@@ -1,3 +1,5 @@
+import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
@@ -181,6 +183,17 @@ describe('CalendarPageComponent - new meeting (work item)', () => {
 
     expect(fixture.nativeElement.querySelector('app-meeting-form-modal')).not.toBeNull();
     expect(fixture.componentInstance.meetingFormOpen()).toBe(true);
+  });
+
+  it('hides "Meeting (work item)" once the server says meetings are off', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
+    });
+    TestBed.inject(MeetingsAvailabilityService).noteError(new HttpErrorResponse({ status: 503, error: { code: 'meetings_disabled' } }));
+    const fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-new-meeting"]')).toBeNull();
   });
 });
 

@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { MeetingApiService } from '../data-access/meeting-api.service';
 import { MeetingEditResponse, MeetingOccurrenceResponse, MeetingScope } from '../models/meeting.models';
 import { meetingErrorMessage } from '../utils/meeting-error-messages';
@@ -25,7 +26,7 @@ function codeOf(e: unknown): string | undefined {
 /** One open occurrence (the drawer's state). Every write reloads it by its key, so the view never goes stale. */
 export const MeetingOccurrenceStore = signalStore(
   withState(initialState),
-  withMethods((store, api = inject(MeetingApiService)) => {
+  withMethods((store, api = inject(MeetingApiService), auth = inject(AuthStore)) => {
     let key: { seriesId: string; originalStart: string } | null = null;
 
     async function fetch(next: MeetingOccurrenceKey): Promise<void> {
@@ -57,15 +58,33 @@ export const MeetingOccurrenceStore = signalStore(
       load: (next: MeetingOccurrenceKey) => fetch(next),
       reload: () => (key ? fetch(key) : Promise.resolve()),
 
-      /** After an edit: a splitting edit created a new series from here on - follow it (Review Focus 3). */
-      afterEdit: (result: MeetingEditResponse) =>
-        key ? fetch(result.split ? { seriesId: result.seriesId, originalStart: key.originalStart } : key) : Promise.resolve(),
+      /**
+       * After an edit: a splitting edit created a new series from here on - follow it (Review Focus 3). The new series
+       * keeps the edit's shift, so this occurrence now starts at the start that was sent; if the rule moved it elsewhere,
+       * open the new series' next occurrence instead.
+       */
+      async afterEdit(result: MeetingEditResponse, sentStart: string | null): Promise<void> {
+        if (!key) return;
+        if (!result.split) return fetch(key);
+        await fetch({ seriesId: result.seriesId, originalStart: sentStart ?? key.originalStart });
+        if (!store.notFound()) return;
+        try {
+          const next = (await firstValueFrom(api.getSeries(result.seriesId))).upcomingOccurrences[0];
+          if (next) await fetch({ seriesId: result.seriesId, originalStart: next.originalStart });
+        } catch {
+          // Stays on the not-available state.
+        }
+      },
 
       async respond(status: 'accepted' | 'rejected', reason: string | null): Promise<boolean> {
         if (!key) return false;
         const k = key;
+        // Someone added to this occurrence only answers for it (spec 5.3); everyone else answers for the series.
+        const me = auth.employeeId();
+        const mine = store.occurrence()?.attendees.find((a) => a.employeeId !== null && a.employeeId === me);
+        const originalStart = mine?.source === 'occurrence' ? k.originalStart : null;
         // Declining keeps access (D18): the drawer reloads and stays open with read access.
-        const done = await write(() => firstValueFrom(api.respond(k.seriesId, { status, reason, originalStart: null })).then(() => true));
+        const done = await write(() => firstValueFrom(api.respond(k.seriesId, { status, reason, originalStart })).then(() => true));
         if (done) await fetch(k);
         return done === true;
       },
