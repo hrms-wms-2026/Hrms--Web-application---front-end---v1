@@ -1,4 +1,5 @@
 import { MeetingAttendanceTabComponent } from './meeting-attendance-tab/meeting-attendance-tab.component';
+import { TodaysPlanTabComponent } from './todays-plan-tab/todays-plan-tab.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -36,9 +37,9 @@ import { EmployeePersonalTabComponent } from './personal-tab.component';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 import { EmployeeWorkActivityTabComponent } from './work-activity-tab.component';
 
-type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal' | 'meetings';
+type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal' | 'meetings' | 'plan';
 
-const DETAIL_TABS: readonly DetailTab[] = ['overview', 'employment', 'work-activity', 'personal', 'meetings'];
+const DETAIL_TABS: readonly DetailTab[] = ['overview', 'employment', 'work-activity', 'personal', 'meetings', 'plan'];
 
 /** Reads the ?tab= query value; anything unknown falls back to Overview. */
 function toDetailTab(value: string | null): DetailTab {
@@ -58,6 +59,7 @@ function toDetailTab(value: string | null): DetailTab {
   standalone: true,
   imports: [
     MeetingAttendanceTabComponent,
+    TodaysPlanTabComponent,
     BreadcrumbHeaderComponent,
     AvatarComponent,
     ButtonComponent,
@@ -286,6 +288,14 @@ function toDetailTab(value: string | null): DetailTab {
         (availability)="onMeetingTabAvailability($event)"
       />
 
+      <!-- Day planner: the employee's own or their reporting line's; hidden until the API answers for this caller. -->
+      <app-todays-plan-tab
+        [employeeId]="employee.id"
+        [hidden]="activeTab() !== 'plan'"
+        [class.hidden]="activeTab() !== 'plan'"
+        (availability)="onPlanTabAvailability($event)"
+      />
+
       @if (employee.jobInformation.legalEntityId; as legalEntityId) {
         <app-change-position-modal
           [open]="changePositionOpen()"
@@ -398,9 +408,13 @@ export class EmployeeDetailComponent {
   /** Meeting attendance (meetings-as-tasks D16) is the employee's own or their current reporting line's: the tab
    * appears only once the API answers for this caller, and a 404 keeps it hidden. */
   readonly meetingTabAvailable = signal(false);
-  readonly tabs = computed(() => this.meetingTabAvailable()
-    ? [...this.baseTabs, { id: 'meetings' as DetailTab, label: 'Meeting attendance' }]
-    : this.baseTabs);
+  /** Today's plan (day planner): the same rule, its tab appears only once the planner API answers for this caller. */
+  readonly planTabAvailable = signal(false);
+  readonly tabs = computed(() => [
+    ...this.baseTabs,
+    ...(this.meetingTabAvailable() ? [{ id: 'meetings' as DetailTab, label: 'Meeting attendance' }] : []),
+    ...(this.planTabAvailable() ? [{ id: 'plan' as DetailTab, label: "Today's plan" }] : []),
+  ]);
   readonly activeTab = signal<DetailTab>('overview');
   readonly employmentVisited = signal(false);
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
@@ -486,6 +500,11 @@ export class EmployeeDetailComponent {
   onMeetingTabAvailability(available: boolean): void {
     this.meetingTabAvailable.set(available);
     if (!available && this.activeTab() === 'meetings') this.activeTab.set('overview');
+  }
+
+  onPlanTabAvailability(available: boolean): void {
+    this.planTabAvailable.set(available);
+    if (!available && this.activeTab() === 'plan') this.activeTab.set('overview');
   }
 
   selectTab(tab: DetailTab): void {
