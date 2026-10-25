@@ -5,7 +5,8 @@ import { environment } from '../../../../../environments/environment';
 import { SILENT_HTTP_ERRORS } from '../../../../core/interceptors/error.interceptor';
 import { CreatePlannedBlockRequest, MovePlannedBlockRequest, PlannerDayResponse } from '../models/planner.models';
 
-/** Every /api/v1/planner call. Writes return the caller's today; their callers show their own error copy. */
+/** Every /api/v1/planner call. Writes return the caller's today. Every caller shows its own error copy (or hides itself on
+ * 503 planner_disabled), so no call raises the global error toast. */
 @Injectable({ providedIn: 'root' })
 export class PlannerApiService {
   private readonly http = inject(HttpClient);
@@ -13,11 +14,11 @@ export class PlannerApiService {
   private readonly silent = { context: new HttpContext().set(SILENT_HTTP_ERRORS, true) };
 
   getMyDay(date: string | null): Observable<PlannerDayResponse> {
-    return this.http.get<PlannerDayResponse>(`${this.baseUrl}/me`, { params: this.dateParams(date) });
+    return this.http.get<PlannerDayResponse>(`${this.baseUrl}/me`, { params: this.dateParams(date), ...this.silent });
   }
 
   getEmployeeDay(employeeId: string, date: string | null): Observable<PlannerDayResponse> {
-    return this.http.get<PlannerDayResponse>(`${this.baseUrl}/employees/${employeeId}`, { params: this.dateParams(date) });
+    return this.http.get<PlannerDayResponse>(`${this.baseUrl}/employees/${employeeId}`, { params: this.dateParams(date), ...this.silent });
   }
 
   createBlock(request: CreatePlannedBlockRequest): Observable<PlannerDayResponse> {

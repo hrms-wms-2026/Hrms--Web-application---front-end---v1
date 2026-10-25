@@ -1,3 +1,6 @@
+import { of } from 'rxjs';
+import { PlannerApiService } from '../../../modules/work/planner/data-access/planner-api.service';
+import { PlannerAvailabilityService } from '../../../modules/work/planner/state/planner-availability.service';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component } from '@angular/core';
@@ -17,21 +20,32 @@ class BlankComponent {}
 
 const inboxBadge = signal('');
 
-function setup(permissions: string[], activeModules: string[], managesPeople = false) {
+function setup(permissions: string[], activeModules: string[], managesPeople = false, plannerOn = true) {
   TestBed.configureTestingModule({
     imports: [SideNavbarComponent],
     providers: [
       provideRouter([{ path: '**', component: BlankComponent }]),
       { provide: AuthStore, useValue: { permissions: () => permissions, activeModules: () => activeModules, managesPeople: () => managesPeople } },
-      { provide: InboxStore, useValue: { badgeLabel: inboxBadge } }
+      { provide: InboxStore, useValue: { badgeLabel: inboxBadge } },
+      { provide: PlannerApiService, useValue: { getMyDay: () => of({}) } }
     ]
   });
+  if (plannerOn) TestBed.inject(PlannerAvailabilityService).markAvailable(true);
   const fixture = TestBed.createComponent(SideNavbarComponent);
   fixture.detectChanges();
   return fixture;
 }
 
 describe('SideNavbarComponent', () => {
+  it('hides Planner until the planner is known to be on', () => {
+    const fixture = setup([], ['worksync_foundation'], false, false);
+    TestBed.inject(PlannerAvailabilityService).markAvailable(false);
+    fixture.detectChanges();
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
+
+    expect(labels).not.toContain('Planner');
+  });
+
   it('always shows Home for an authenticated user with no other modules/permissions', () => {
     const fixture = setup([], []);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);

@@ -16,8 +16,12 @@ import { PlannerDayResponse } from '../../../../work/planner/models/planner.mode
   template: `
     @if (day(); as d) {
       <section class="flex flex-col gap-3 text-sm">
-        <div class="flex gap-6 rounded-md border p-3">
+        <div class="flex flex-wrap items-center gap-6 rounded-md border p-3">
           <span>{{ d.date }}</span>
+          <button type="button" data-testid="plan-previous-day" class="rounded-md border px-2 py-0.5 text-xs" (click)="shiftDay(d.date, -1)">Previous day</button>
+          @if (date()) {
+            <button type="button" data-testid="plan-today" class="rounded-md border px-2 py-0.5 text-xs" (click)="goToday()">Today</button>
+          }
           <span>Planned <strong>{{ duration(d.totals.plannedMinutes) }}</strong></span>
           <span>Actual <strong>{{ duration(d.totals.actualMinutes) }}</strong></span>
         </div>
@@ -43,12 +47,29 @@ export class TodaysPlanTabComponent {
   readonly availability = output<boolean>();
 
   readonly day = signal<PlannerDayResponse | null>(null);
+  /** Null means today; a manager may go back to earlier days (read-only). */
+  readonly date = signal<string | null>(null);
 
   constructor() {
     effect(() => {
       const employeeId = this.employeeId();
-      untracked(() => void this.load(employeeId));
+      untracked(() => {
+        this.date.set(null);
+        void this.load(employeeId);
+      });
     });
+  }
+
+  shiftDay(current: string, days: number): void {
+    const next = new Date(`${current}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + days);
+    this.date.set(next.toISOString().slice(0, 10));
+    void this.load(this.employeeId(), false);
+  }
+
+  goToday(): void {
+    this.date.set(null);
+    void this.load(this.employeeId(), false);
   }
 
   protected rows(d: PlannerDayResponse): { time: string; title: string; planned: number; actual: number; start: number }[] {
@@ -65,14 +86,15 @@ export class TodaysPlanTabComponent {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
-  private async load(employeeId: string): Promise<void> {
-    if (this.day()) {
+  private async load(employeeId: string, newEmployee = true): Promise<void> {
+    const date = this.date();
+    if (newEmployee && this.day()) {
       this.day.set(null);
       this.availability.emit(false);
     }
     try {
-      const day = await firstValueFrom(this.api.getEmployeeDay(employeeId, null));
-      if (employeeId !== this.employeeId()) return;   // a newer employee is already loading
+      const day = await firstValueFrom(this.api.getEmployeeDay(employeeId, date));
+      if (employeeId !== this.employeeId() || date !== this.date()) return;   // a newer employee or day is already loading
       this.day.set(day);
       this.availability.emit(true);
     } catch (e) {

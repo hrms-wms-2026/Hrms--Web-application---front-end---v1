@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs/operators';
 import { PermissionService } from '../../../core/auth/state/permission.service';
+import { PlannerAvailabilityService } from '../../../modules/work/planner/state/planner-availability.service';
 import { canAccessNavItem } from './nav-access';
 import { NavItem } from './nav-item.model';
 import { NAV_ITEMS } from './nav-items.config';
@@ -13,6 +14,7 @@ export class NavigationStateService {
 
   private readonly router = inject(Router);
   private readonly permissionService = inject(PermissionService);
+  private readonly plannerAvailability = inject(PlannerAvailabilityService);
 
   private readonly currentUrl = toSignal(
     this.router.events.pipe(
@@ -22,7 +24,9 @@ export class NavigationStateService {
     { initialValue: this.router.url }
   );
 
-  readonly visibleItems = computed(() => NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService)));
+  // The Planner item waits for the planner to be known on (Planner:Enabled), so nobody is sent to a page that answers 503.
+  readonly visibleItems = computed(() => NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService)
+    && (item.id !== 'planner' || this.plannerAvailability.state() === 'on')));
 
   readonly activeItem = computed(() => {
     const rawUrl = this.currentUrl();

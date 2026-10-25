@@ -7,6 +7,7 @@ import { MeetingOccurrenceKey } from '../../../meetings/state/meeting-occurrence
 import { toOffsetIso, toZonedParts } from '../../../meetings/utils/meeting-time';
 import { PlannerApiService } from '../../data-access/planner-api.service';
 import { PlannerBlockView, PlannerDayResponse, PlannerMeetingView } from '../../models/planner.models';
+import { PlannerAvailabilityService } from '../../state/planner-availability.service';
 import { plannerErrorMessage } from '../../utils/planner-error-messages';
 
 const DAY_START_MINUTES = 6 * 60;
@@ -118,6 +119,7 @@ type TimelineItem = { kind: 'block'; block: PlannerBlockView; start: number } | 
 export class PlannerPageComponent implements OnInit {
   private readonly api = inject(PlannerApiService);
   private readonly notify = inject(NotificationService);
+  private readonly availability = inject(PlannerAvailabilityService);
 
   readonly slots: readonly number[] = Array.from({ length: (DAY_END_MINUTES - DAY_START_MINUTES) / SLOT_MINUTES },
     (_, i) => DAY_START_MINUTES + i * SLOT_MINUTES);
@@ -222,7 +224,9 @@ export class PlannerPageComponent implements OnInit {
     try {
       this.day.set(await firstValueFrom(this.api.getMyDay(this.date())));
       this.unavailable.set(null);
+      this.availability.markAvailable(true);
     } catch (e) {
+      if (this.codeOf(e) === 'planner_disabled') this.availability.markAvailable(false);
       this.unavailable.set(plannerErrorMessage(this.codeOf(e)));
     }
   }

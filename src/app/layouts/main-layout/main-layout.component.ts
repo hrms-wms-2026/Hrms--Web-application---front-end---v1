@@ -6,6 +6,7 @@ import { LockedWorkspacePreviewComponent } from '../../core/tray-presence/ui/loc
 
 import { AuthStore } from '../../core/auth/state/auth.store';
 import { PermissionService } from '../../core/auth/state/permission.service';
+import { PlannerAvailabilityService } from '../../modules/work/planner/state/planner-availability.service';
 import { NavigationStateService } from './nav/navigation-state.service';
 import { SideNavbarComponent } from './side-navbar/side-navbar.component';
 import { SubSidebarComponent } from './sub-sidebar/sub-sidebar.component';
@@ -36,6 +37,7 @@ export class MainLayoutComponent {
   readonly trayPresence = inject(TrayPresenceStore);
 
   readonly navState = inject(NavigationStateService);
+  private readonly plannerAvailability = inject(PlannerAvailabilityService);
 
   readonly email = this.authStore.email;
   readonly announcementMessage = signal('');
@@ -56,6 +58,7 @@ export class MainLayoutComponent {
 
   constructor() {
     this.profileStore.loadProfile();
+    void this.plannerAvailability.probe();   // decides whether the Planner nav item shows
     if (this.monitoringEnabled) {
       this.trayPresence.start();
     }

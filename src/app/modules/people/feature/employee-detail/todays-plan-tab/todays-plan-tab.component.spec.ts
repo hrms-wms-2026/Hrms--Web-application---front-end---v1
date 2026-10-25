@@ -56,8 +56,22 @@ describe('TodaysPlanTabComponent', () => {
     expect(text).toContain('Write the report');
     expect(text).toContain('Private meeting');
     expect(text).toContain('1h 30m');
-    expect(fixture.nativeElement.querySelectorAll('button').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('button:not([data-testid^="plan-"])').length).toBe(0);
     expect(api.getEmployeeDay).toHaveBeenCalledWith('e1', null);
+  });
+
+  it('a manager can go back to earlier days, and back to today', async () => {
+    api.getEmployeeDay.mockReturnValue(of(day()));
+    await render('e1');
+
+    (fixture.nativeElement.querySelector('[data-testid="plan-previous-day"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api.getEmployeeDay).toHaveBeenLastCalledWith('e1', '2026-11-01');
+
+    (fixture.nativeElement.querySelector('[data-testid="plan-today"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(api.getEmployeeDay).toHaveBeenLastCalledWith('e1', null);
   });
 
   it('resets when navigating to another employee', async () => {

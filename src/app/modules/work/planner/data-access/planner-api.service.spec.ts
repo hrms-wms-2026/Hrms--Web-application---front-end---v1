@@ -27,11 +27,11 @@ describe('PlannerApiService', () => {
     ['deleteBlock', (s) => s.deleteBlock('b1'), 'DELETE', `${base}/me/blocks/b1`],
   ];
 
-  it.each(cases)('%s calls its route, and only writes are silent', (_name, call, method, url) => {
+  it.each(cases)('%s calls its route and leaves its errors to the caller', (_name, call, method, url) => {
     call(service).subscribe({ error: () => undefined });
     const req = http.expectOne((r) => r.url === url);
     expect(req.request.method).toBe(method);
-    expect(req.request.context.get(SILENT_HTTP_ERRORS)).toBe(method !== 'GET');
+    expect(req.request.context.get(SILENT_HTTP_ERRORS)).toBe(true);
     req.flush(null);
   });
 
