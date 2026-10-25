@@ -86,7 +86,7 @@ describe('SideNavbarComponent', () => {
     expect(labels).not.toContain('Org');
   });
 
-  it('renders all 8 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
+  it('renders all 9 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
     const fixture = setup(
       ['org:read', 'roles:manage', 'employees:write', 'attendance:read', 'leave:read-own'],
       ['worksync_foundation', 'core_hr', 'calendar', 'leave', 'time_attendance', 'org_structure']
@@ -97,6 +97,7 @@ describe('SideNavbarComponent', () => {
       'Work',
       'Inbox',
       'Calendar',
+      'Planner',
       'Time Off',
       'Attendance',
       'Org',
@@ -110,7 +111,7 @@ describe('SideNavbarComponent', () => {
     const links = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item')) as HTMLElement[];
     const inbox = links.find((l) => l.textContent?.includes('Inbox'));
 
-    expect(links.map((l) => l.querySelector('span')?.textContent)).toEqual(['Home', 'Work', 'Inbox']);
+    expect(links.map((l) => l.querySelector('span')?.textContent)).toEqual(['Home', 'Work', 'Inbox', 'Planner']);
     expect(inbox?.getAttribute('href')).toBe('/inbox');
     expect(inbox?.querySelector('.nav-rail-item__badge')?.textContent?.trim()).toBe('9+');
     inboxBadge.set('');

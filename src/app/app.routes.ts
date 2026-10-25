@@ -99,6 +99,12 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/calendar/calendar.routes').then((module) => module.CALENDAR_ROUTES)
       },
       {
+        // Day planner (backend docs/api/planner-v1.md): every employee plans their own today; the API answers 503 while off.
+        path: 'planner',
+        loadComponent: () =>
+          import('./modules/work/planner/feature/planner-page/planner-page.component').then((module) => module.PlannerPageComponent)
+      },
+      {
         path: 'time-off',
         canActivate: [permissionGuard],
         data: { permissions: ['leave:read-own', 'leave:read-team', 'leave:read', 'leave:manage', 'leave:approve', 'calendar:read'], modules: ['leave'] },
