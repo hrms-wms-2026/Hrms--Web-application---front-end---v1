@@ -15,6 +15,7 @@ const DAY_END_MINUTES = 22 * 60;
 const SLOT_MINUTES = 30;
 const NEW_BLOCK_MINUTES = 60;
 const RESIZE_STEP_MINUTES = 15;
+const MINUTES_PER_DAY = 24 * 60;
 
 type TimelineItem = { kind: 'block'; block: PlannerBlockView; start: number } | { kind: 'meeting'; meeting: PlannerMeetingView; start: number };
 
@@ -168,7 +169,9 @@ export class PlannerPageComponent implements OnInit {
   async resize(block: PlannerBlockView, deltaMinutes: number): Promise<void> {
     const d = this.day();
     if (!d?.editable) return;
-    const end = this.minutesOf(block.endAt, d.timezone) + Math.sign(deltaMinutes) * RESIZE_STEP_MINUTES;
+    // From the start and length, not the end's clock time: a block ending at midnight ends at 24:00, not 00:00.
+    const length = (Date.parse(block.endAt) - Date.parse(block.startAt)) / 60000;
+    const end = this.minutesOf(block.startAt, d.timezone) + length + Math.sign(deltaMinutes) * RESIZE_STEP_MINUTES;
     await this.write(() => this.api.moveBlock(block.id, { startAt: block.startAt, endAt: this.at(d, end) }));
   }
 
@@ -240,8 +243,12 @@ export class PlannerPageComponent implements OnInit {
     }
   }
 
+  /** The day's date at <minutes> past midnight; minutes beyond 24:00 fall on the next date (never "24:30"). */
   private at(d: PlannerDayResponse, minutes: number): string {
-    return toOffsetIso(d.date, this.clock(minutes), d.timezone);
+    const date = new Date(`${d.date}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + Math.floor(minutes / MINUTES_PER_DAY));
+    const wrapped = ((minutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+    return toOffsetIso(date.toISOString().slice(0, 10), this.clock(wrapped), d.timezone);
   }
 
   private minutesOf(iso: string, zone: string): number {

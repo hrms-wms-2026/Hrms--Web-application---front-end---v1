@@ -127,4 +127,27 @@ describe('PlannerPageComponent', () => {
       startAt: day().blocks[0].startAt, endAt: toOffsetIso('2026-11-02', '11:15', tz),
     });
   });
+
+  it('moving a block past midnight sends the next day time, never 24:30', async () => {
+    // A two-hour block dropped at 22:30 would end at 00:30 the next day. The server then answers "only today" -
+    // before, the page built "T24:30", an invalid time that failed with a generic error.
+    await render();
+    api.moveBlock.mockReturnValue(of(day()));
+
+    await fixture.componentInstance.moveTo(day().blocks[0], 22 * 60 + 30);
+
+    expect(api.moveBlock).toHaveBeenCalledWith('b1', {
+      startAt: toOffsetIso('2026-11-02', '22:30', tz), endAt: toOffsetIso('2026-11-03', '00:30', tz),
+    });
+  });
+
+  it('a block ending at midnight shortens to 23:45, not a negative time', async () => {
+    const lateBlock = { ...day().blocks[0], startAt: toOffsetIso('2026-11-02', '23:00', tz), endAt: toOffsetIso('2026-11-03', '00:00', tz) };
+    await render(day({ blocks: [lateBlock] }));
+    api.moveBlock.mockReturnValue(of(day()));
+
+    await fixture.componentInstance.resize(lateBlock, -15);
+
+    expect(api.moveBlock).toHaveBeenCalledWith('b1', { startAt: lateBlock.startAt, endAt: toOffsetIso('2026-11-02', '23:45', tz) });
+  });
 });
