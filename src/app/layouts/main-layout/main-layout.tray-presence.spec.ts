@@ -1,3 +1,4 @@
+import { PlannerAvailabilityService } from '../../modules/work/planner/state/planner-availability.service';
 import { Component, input, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
@@ -11,6 +12,9 @@ import { MainLayoutComponent } from './main-layout.component';
 import { ProfileStore } from '@modules/profile/state/profile.store';
 import { FileApiService } from '../../shared/data-access/file-api.service';
 import { MyProfile } from '@modules/profile/models/profile.model';
+
+/** The planner probe is a real HTTP call in the layout; these specs are not about it. */
+const plannerAvailabilityStub = { probe: () => Promise.resolve(), state: () => 'off' as const, markAvailable: () => undefined };
 
 @Component({ selector: 'app-side-navbar', standalone: true, template: '' })
 class SideNavbarStubComponent {}
@@ -89,6 +93,7 @@ describe('MainLayoutComponent tray activation gate', () => {
       imports: [MainLayoutComponent],
       providers: [
         { provide: TrayPresenceStore, useValue: trayPresence },
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         { provide: TrayPresenceApiService, useValue: trayApi },
         {
           provide: AuthStore,
@@ -176,6 +181,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
       imports: [MainLayoutComponent],
       providers: [
         { provide: TrayPresenceStore, useValue: trayPresence },
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         {
           provide: TrayPresenceApiService,
           useValue: { getStatus: vi.fn(), generateActivationCode: vi.fn() }
