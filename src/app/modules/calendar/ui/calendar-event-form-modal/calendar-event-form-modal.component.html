@@ -166,6 +166,7 @@
       </div>
     }
 
+    @if (!meetingsAsWorkItems || isEdit) {
     <!-- Who: a search bar holding an avatar stack (first 4, then +N); typing or clicking opens a floating
          dropdown with everyone already added (removable) and the directory results (you first). -->
     <div class="event-hover-row flex items-start gap-3" [class.event-hover-row--active]="participantPickerOpen()">
@@ -506,6 +507,14 @@
         }
       </div>
     </div>
+    } @else {
+      <!-- Meetings-as-tasks: a meeting with people or an online link is a Meeting work item, in a project or Office. -->
+      <div class="event-hover-row flex items-center gap-3 text-sm" data-testid="calendar-form-meeting-handoff">
+        <span class="text-[var(--color-text-secondary)]">People or a Teams/Zoom link? Create it as a meeting so it lands in a project.</span>
+        <button type="button" class="rounded-md border px-2 py-1" data-testid="calendar-form-meeting-handoff-button"
+          (click)="onConvertToMeeting()">Make it a meeting</button>
+      </div>
+    }
 
     <!-- Where -->
     <div class="event-hover-row flex items-center gap-3">

@@ -196,6 +196,26 @@ describe('MeetingFormModalComponent', () => {
     expect((fixture.nativeElement.querySelector('[data-testid="meeting-module"]') as HTMLSelectElement).value).toBe('o1');
   });
 
+  it('offers Office once, by name, and never lists the Office project as a second choice', async () => {
+    TestBed.overrideProvider(ProjectApiService, { useValue: {
+      listMine: () => of({ items: [{ id: 'off', name: 'Office', systemPurpose: 'office' }, { id: 'p1', name: 'Acme' }], totalCount: 2 }),
+      getProjectTree: () => of([]),
+    } });
+    build({ mode: 'create' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const options = Array.from((fixture.nativeElement.querySelector('[data-testid="meeting-project"]') as HTMLSelectElement).options)
+      .map((o) => o.textContent?.trim());
+    expect(options).toEqual(['Office', 'Acme']);
+  });
+
+  it('a calendar handoff fills the title, date, time and length', () => {
+    build({ mode: 'create', prefill: { title: 'Design review', start: '2026-11-02T10:00', end: '2026-11-02T11:30' } });
+
+    expect(form.form.getRawValue()).toMatchObject({ title: 'Design review', date: '2026-11-02', time: '10:00', durationMinutes: 90 });
+  });
+
   it('an edit sends only the changed fields', async () => {
     build({ mode: 'edit', occurrence: occurrence() });
     expect(form.form.controls.date.value).toBe('2026-11-02');

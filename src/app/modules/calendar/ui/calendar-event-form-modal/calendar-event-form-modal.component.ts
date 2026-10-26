@@ -180,6 +180,8 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   /** Whether the organizer has an active Zoom connection that can host a Zoom meeting. */
   @Input() hasZoomCapableConnection = false;
   @Input() meetingActionSaving = false;
+  /** Meetings-as-tasks on: a new event cannot carry people or a link; it hands over to the Meeting (work item) form. */
+  @Input() meetingsAsWorkItems = false;
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
   @Output() respond = new EventEmitter<RespondToCalendarEventPayload>();
@@ -193,6 +195,7 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   @Output() addGuestsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingGuest = new EventEmitter<string>();
   @Output() cancel = new EventEmitter<void>();
+  @Output() convertToMeeting = new EventEmitter<{ title: string; start: string; end: string }>();
 
   private readonly authStore = inject(AuthStore);
   private conflictCheckTimer: ReturnType<typeof setTimeout> | null = null;
@@ -267,6 +270,11 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   });
 
   private readonly formChangeSubscription = this.form.valueChanges.subscribe(() => this.scheduleConflictCheck());
+
+  onConvertToMeeting(): void {
+    const v = this.form.getRawValue();
+    this.convertToMeeting.emit({ title: (v.title ?? '').trim(), start: `${v.startDate}T${v.startTime}`, end: `${v.endDate}T${v.endTime}` });
+  }
 
   get isEdit(): boolean {
     return !!this.event;

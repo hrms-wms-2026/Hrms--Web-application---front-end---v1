@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingFormModalComponent, MeetingPrefill } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -59,6 +59,8 @@ export class CalendarPageComponent {
   readonly prefillEnd = signal<string | null>(null);
   readonly submitting = signal(false);
   readonly meetingFormOpen = signal(false);
+  /** Set when a new calendar event with people is handed over to the meeting form. */
+  readonly meetingPrefill = signal<MeetingPrefill | null>(null);
   readonly meetingsAvailability = inject(MeetingsAvailabilityService);
   readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
 
@@ -190,6 +192,13 @@ export class CalendarPageComponent {
   }
 
   /** A meeting work item was created (or sent for approval): close the form and show it on the calendar. */
+  /** Meetings-as-tasks: a new event that would have people or a link becomes a Meeting work item instead. */
+  onConvertToMeeting(prefill: MeetingPrefill): void {
+    this.formOpen.set(false);
+    this.meetingPrefill.set(prefill);
+    this.meetingFormOpen.set(true);
+  }
+
   async onMeetingSaved(): Promise<void> {
     this.meetingFormOpen.set(false);
     await this.reloadEvents();

@@ -19,6 +19,8 @@ import { MeetingScopeDialogComponent } from '../meeting-scope-dialog/meeting-sco
 import { MeetingBulkInvitePanelComponent } from './meeting-bulk-invite-panel.component';
 
 export interface MeetingPlacementInput { projectId: string | null; objectiveId: string | null; }
+/** What a calendar event handed over: its title and local start/end ('YYYY-MM-DDTHH:mm'). */
+export interface MeetingPrefill { title: string; start: string; end: string; }
 /** A saved edit, with the start it sent: after a split the occurrence lives at that start in the new series. */
 export interface MeetingEditSaved extends MeetingEditResponse { sentStart: string | null; }
 type PlatformChoice = 'none' | MeetingPlatform;
@@ -44,7 +46,8 @@ const SERIES_ONLY = 'A repeat or time zone change applies to the series: choose 
             <label class="flex flex-col gap-1">Project
               <!-- [selected] per option: the options load after the value is known, and a select-level [value] is not re-applied. -->
               <select data-testid="meeting-project" (change)="selectProject($any($event.target).value)">
-                <option value="" [selected]="!projectId()">Office (no project)</option>
+                <!-- "Office" is the tenant's Office project: a meeting with no other project still lands in a project. -->
+                <option value="" [selected]="!projectId()" title="The Office project">Office</option>
                 @for (project of projects(); track project.id) {
                   <option [value]="project.id" [selected]="project.id === projectId()">{{ project.name }}</option>
                 }
@@ -133,6 +136,7 @@ export class MeetingFormModalComponent implements OnInit {
   readonly open = input(false);
   readonly mode = input<'create' | 'edit'>('create');
   readonly placement = input<MeetingPlacementInput | null>(null);
+  readonly prefill = input<MeetingPrefill | null>(null);
   readonly occurrence = input<MeetingOccurrenceResponse | null>(null);
   readonly saved = output<MeetingCreatedResponse | MeetingEditSaved>();
   readonly closed = output<void>();
@@ -175,6 +179,12 @@ export class MeetingFormModalComponent implements OnInit {
     if (this.mode() === 'edit' && occ) {
       this.load(occ);
       return;
+    }
+    const prefill = this.prefill();
+    if (prefill) {
+      const minutes = Math.round((Date.parse(prefill.end) - Date.parse(prefill.start)) / 60000);
+      this.form.patchValue({ title: prefill.title, date: prefill.start.slice(0, 10), time: prefill.start.slice(11, 16),
+        durationMinutes: minutes > 0 ? minutes : 30 });
     }
     const placement = this.placement();
     this.projectId.set(placement?.projectId ?? null);
@@ -346,7 +356,8 @@ export class MeetingFormModalComponent implements OnInit {
   private async loadProjects(): Promise<void> {
     try {
       const page = await firstValueFrom(this.projectApi.listMine(1, 100));
-      this.projects.set(page.items.map((p) => ({ id: p.id, name: p.name })));
+      // The Office system project is the "Office" choice above, not a second entry here.
+      this.projects.set(page.items.filter((p) => p.systemPurpose !== 'office').map((p) => ({ id: p.id, name: p.name })));
     } catch {
       this.projects.set([]);
     }

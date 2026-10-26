@@ -37,6 +37,37 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
   }
 
+  describe('meetings as work items', () => {
+    const q = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+
+    it('a new event offers the meeting form instead of people and a link', () => {
+      fixture.componentRef.setInput('meetingsAsWorkItems', true);
+      fixture.detectChanges();
+
+      expect(q('calendar-form-participant-box')).toBeNull();
+      expect(q('calendar-form-meeting-trigger')).toBeNull();
+      expect(q('calendar-form-meeting-handoff')).not.toBeNull();
+    });
+
+    it('the handoff carries the title and time to the meeting form', () => {
+      fixture.componentRef.setInput('meetingsAsWorkItems', true);
+      fixture.detectChanges();
+      fixture.componentInstance.form.patchValue({ title: 'Design review', startDate: '2026-11-02', startTime: '10:00',
+        endDate: '2026-11-02', endTime: '11:30' });
+      const spy = vi.fn();
+      fixture.componentInstance.convertToMeeting.subscribe(spy);
+
+      (q('calendar-form-meeting-handoff-button') as HTMLButtonElement).click();
+
+      expect(spy).toHaveBeenCalledWith({ title: 'Design review', start: '2026-11-02T10:00', end: '2026-11-02T11:30' });
+    });
+
+    it('people and a link stay available while meetings are off', () => {
+      expect(q('calendar-form-participant-box')).not.toBeNull();
+      expect(q('calendar-form-meeting-handoff')).toBeNull();
+    });
+  });
+
   it('marks the form invalid until title and dates are filled', () => {
     expect(fixture.componentInstance.form.invalid).toBe(true);
   });

@@ -63,6 +63,8 @@
 
 <app-calendar-event-form-modal
   [open]="formOpen()"
+  [meetingsAsWorkItems]="meetingsAvailability.canCreate()"
+  (convertToMeeting)="onConvertToMeeting($event)"
   [event]="editingEvent()"
   [prefillStart]="prefillStart()"
   [prefillEnd]="prefillEnd()"
@@ -90,7 +92,8 @@
 />
 
 @if (meetingFormOpen()) {
-  <app-meeting-form-modal [open]="true" mode="create" (saved)="onMeetingSaved()" (closed)="meetingFormOpen.set(false)" />
+  <app-meeting-form-modal [open]="true" mode="create" [prefill]="meetingPrefill()" (saved)="onMeetingSaved()"
+    (closed)="meetingFormOpen.set(false); meetingPrefill.set(null)" />
 }
 
 @if (openMeeting(); as key) {

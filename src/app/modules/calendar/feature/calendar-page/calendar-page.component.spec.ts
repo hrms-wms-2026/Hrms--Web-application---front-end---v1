@@ -185,6 +185,24 @@ describe('CalendarPageComponent - new meeting (work item)', () => {
     expect(fixture.componentInstance.meetingFormOpen()).toBe(true);
   });
 
+  it('a new event with people hands over to the meeting form with its title and time', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
+    });
+    const fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+    const page = fixture.componentInstance;
+    page.formOpen.set(true);
+
+    page.onConvertToMeeting({ title: 'Design review', start: '2026-11-02T10:00', end: '2026-11-02T11:30' });
+    fixture.detectChanges();
+
+    expect(page.formOpen()).toBe(false);
+    expect(page.meetingFormOpen()).toBe(true);
+    const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
+    expect(form.componentInstance.prefill()).toEqual({ title: 'Design review', start: '2026-11-02T10:00', end: '2026-11-02T11:30' });
+  });
+
   it('hides "Meeting (work item)" once the server says meetings are off', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
