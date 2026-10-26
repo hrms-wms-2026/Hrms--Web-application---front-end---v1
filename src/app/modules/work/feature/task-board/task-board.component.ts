@@ -1,4 +1,5 @@
 import { MeetingApiService } from '../../meetings/data-access/meeting-api.service';
+import { MeetingCreatedEvent, drawerKeyForCreated } from '../../meetings/utils/meeting-created-drawer.util';
 import { MeetingOccurrenceDrawerComponent } from '../../meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { MeetingListItem } from '../../meetings/models/meeting.models';
 import { MeetingCardComponent } from '../../meetings/ui/meeting-card/meeting-card.component';
@@ -127,7 +128,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 
     @if (meetingFormOpen()) {
       <app-meeting-form-modal [open]="true" mode="create" [placement]="{ projectId: projectId(), objectiveId: null }"
-        (saved)="onMeetingSaved()" (closed)="meetingFormOpen.set(false)" />
+        (saved)="onMeetingSaved($any($event))" (closed)="meetingFormOpen.set(false)" />
     }
 
     <app-task-form-modal
@@ -483,11 +484,14 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     return '';
   });
 
-  /** A meeting was created (or sent for approval) from the board: close the form and refresh the board. */
-  protected onMeetingSaved(): void {
+  /** A meeting was created (or sent for approval) from the board: close the form, refresh the board and open the new
+   *  meeting's drawer. */
+  protected onMeetingSaved(event: MeetingCreatedEvent): void {
     this.meetingFormOpen.set(false);
     void this.store.loadBoard(this.projectId());
     this.loadMeetings();
+    const key = drawerKeyForCreated(event);
+    if (key) this.openMeeting.set(key);
   }
 
   protected onMeetingDrawerClosed(): void {

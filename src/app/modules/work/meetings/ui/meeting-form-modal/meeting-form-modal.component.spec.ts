@@ -78,7 +78,18 @@ describe('MeetingFormModalComponent', () => {
     await form.save();
 
     expect(notify.success).toHaveBeenCalledWith('Meeting created');
-    expect(saved).toEqual(created);
+    // The start it sent, so the caller can open the new meeting's drawer by series and original start.
+    expect(saved).toEqual({ ...created, originalStart: '2026-11-02T09:00:00+05:30' });
+  });
+
+  it('a duration outside 15 to 480 minutes cannot be saved', () => {
+    build({ mode: 'create' });
+    fillOffice();
+
+    for (const [minutes, ok] of [[10, false], [500, false], [15, true], [480, true]] as const) {
+      form.form.patchValue({ durationMinutes: minutes });
+      expect(form.canSave(), `${minutes} min`).toBe(ok);
+    }
   });
 
   it('requested outcome shows the approval toast', async () => {
@@ -93,7 +104,7 @@ describe('MeetingFormModalComponent', () => {
 
     expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'p1', objectiveId: 'o1' }));
     expect(notify.success).toHaveBeenCalledWith('Sent for approval');
-    expect(notify.warning).toHaveBeenCalledWith('2 people were not invited: inactive');
+    expect(notify.warning).toHaveBeenCalledWith('2 people were not invited: no longer active');
   });
 
   it('edit asks for scope only for recurring meetings', async () => {

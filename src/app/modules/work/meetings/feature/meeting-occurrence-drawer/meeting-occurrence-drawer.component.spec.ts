@@ -86,6 +86,24 @@ describe('MeetingOccurrenceDrawerComponent', () => {
     }
   });
 
+  it('while the meeting is in progress there is no Edit, Cancel or Move', async () => {
+    // The server refuses them once the meeting has started (409); notes wait for the end.
+    api.getOccurrenceAt.mockReturnValue(of(occurrence({ status: 'in_progress' })));
+    await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+
+    for (const id of ['meeting-edit', 'meeting-cancel', 'meeting-move', 'meeting-notes-edit']) {
+      expect(testId(id), id).toBeNull();
+    }
+  });
+
+  it('a virtual occurrence (beyond the 7-day window) offers no action items', async () => {
+    // It has no task yet, so an action item could not be linked to it.
+    api.getOccurrenceAt.mockReturnValue(of(occurrence({ shortId: '' })));
+    await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+
+    expect(fixture.nativeElement.querySelector('app-meeting-action-items')).toBeNull();
+  });
+
   it('after the end only notes are editable', async () => {
     api.getOccurrenceAt.mockReturnValue(of(occurrence({ status: 'completed', canEdit: false })));
     await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });

@@ -92,7 +92,7 @@
 />
 
 @if (meetingFormOpen()) {
-  <app-meeting-form-modal [open]="true" mode="create" [prefill]="meetingPrefill()" (saved)="onMeetingSaved()"
+  <app-meeting-form-modal [open]="true" mode="create" [prefill]="meetingPrefill()" (saved)="onMeetingSaved($any($event))"
     (closed)="meetingFormOpen.set(false); meetingPrefill.set(null)" />
 }
 

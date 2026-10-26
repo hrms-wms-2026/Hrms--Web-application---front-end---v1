@@ -51,7 +51,8 @@ const RESPONSE_LABELS: Record<string, string> = { accepted: 'Accepted', rejected
             <div class="flex flex-wrap gap-2">
               @if (ended()) {
                 <button type="button" data-testid="meeting-notes-edit" class="rounded-md border px-3 py-1" (click)="formOpen.set(true)">Edit notes</button>
-              } @else {
+              } @else if (occ.status === 'scheduled') {
+                <!-- Once it has started the server refuses edit, cancel and move (409); notes wait for the end. -->
                 @if (occ.canEdit) {
                   <button type="button" data-testid="meeting-edit" class="rounded-md border px-3 py-1" (click)="formOpen.set(true)">Edit</button>
                 }
@@ -125,7 +126,8 @@ const RESPONSE_LABELS: Record<string, string> = { accepted: 'Accepted', rejected
             </section>
           }
 
-          @if (occ.placement.projectId && occ.placement.objectiveId && occ.status !== 'cancelled') {
+          <!-- A virtual occurrence (no short id yet) has no task to link an action item to. -->
+          @if (occ.placement.projectId && occ.placement.objectiveId && occ.status !== 'cancelled' && occ.shortId) {
             <section class="flex flex-col gap-1">
               <span class="font-medium">Action items</span>
               <app-meeting-action-items [occurrenceTaskId]="occ.taskId" [projectId]="occ.placement.projectId"

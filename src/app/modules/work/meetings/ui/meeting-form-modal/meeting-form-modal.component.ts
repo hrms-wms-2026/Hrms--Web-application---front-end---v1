@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { MeetingCreatedEvent } from '../../utils/meeting-created-drawer.util';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -33,6 +34,9 @@ const RELOADED = 'Someone else changed this meeting. We reloaded it - check and 
 const SERIES_ONLY = 'A repeat or time zone change applies to the series: choose this and following, or all.';
 
 /** The one meeting form (spec D3): create from the calendar or a project's board, and edit an occurrence or its series. */
+/** Why a picked person was not invited, in words (the server sends codes). */
+const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', not_found: 'not found' };
+
 @Component({
   selector: 'app-meeting-form-modal',
   standalone: true,
@@ -138,7 +142,7 @@ export class MeetingFormModalComponent implements OnInit {
   readonly placement = input<MeetingPlacementInput | null>(null);
   readonly prefill = input<MeetingPrefill | null>(null);
   readonly occurrence = input<MeetingOccurrenceResponse | null>(null);
-  readonly saved = output<MeetingCreatedResponse | MeetingEditSaved>();
+  readonly saved = output<MeetingCreatedEvent | MeetingEditSaved>();
   readonly closed = output<void>();
 
   readonly presets: readonly RecurrencePreset[] = ['none', 'daily', 'weekly', 'biweekly', 'monthly', 'custom'];
@@ -195,6 +199,7 @@ export class MeetingFormModalComponent implements OnInit {
 
   canSave(): boolean {
     if (this.form.controls.title.value.trim() === '' || !this.form.controls.date.value) return false;
+    if (!this.form.controls.isAllDay.value && this.form.controls.durationMinutes.invalid) return false;
     return this.mode() === 'edit' || this.projectId() === null || this.objectiveId() !== null;
   }
 
@@ -283,13 +288,14 @@ export class MeetingFormModalComponent implements OnInit {
   private async create(): Promise<void> {
     this.saving.set(true);
     try {
-      const result = await firstValueFrom(this.meetings.create(this.buildCreateRequest()));
+      const request = this.buildCreateRequest();
+      const result = await firstValueFrom(this.meetings.create(request));
       this.notify.success(result.outcome === 'requested' ? 'Sent for approval' : 'Meeting created');
       if (result.skipped.length > 0) {
-        const reasons = [...new Set(result.skipped.map((s) => s.reason))].join(', ');
+        const reasons = [...new Set(result.skipped.map((s) => SKIPPED_REASONS[s.reason] ?? s.reason))].join(', ');
         this.notify.warning(`${result.skipped.length} people were not invited: ${reasons}`);
       }
-      this.saved.emit(result);
+      this.saved.emit({ ...result, originalStart: request.start });
     } catch (e) {
       this.notify.error(meetingErrorMessage(this.codeOf(e)));
     } finally {

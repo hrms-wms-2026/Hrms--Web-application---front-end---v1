@@ -1,3 +1,4 @@
+import { MeetingCreatedEvent, drawerKeyForCreated } from '../../../work/meetings/utils/meeting-created-drawer.util';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -199,9 +200,12 @@ export class CalendarPageComponent {
     this.meetingFormOpen.set(true);
   }
 
-  async onMeetingSaved(): Promise<void> {
+  async onMeetingSaved(event?: MeetingCreatedEvent): Promise<void> {
     this.meetingFormOpen.set(false);
     await this.reloadEvents();
+    // A new meeting opens in its drawer; a request sent for approval has nothing to open yet.
+    const key = event ? drawerKeyForCreated(event) : null;
+    if (key) this.openMeeting.set(key);
   }
 
   openCreate(prefillStart?: string, prefillEnd?: string): void {
