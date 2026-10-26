@@ -50,6 +50,7 @@ type TimelineItem = { kind: 'block'; block: PlannerBlockView; start: number } | 
         <section data-testid="planner-totals" class="flex gap-6 rounded-md border p-3 text-sm">
           <span>Planned <strong>{{ duration(d.totals.plannedMinutes) }}</strong></span>
           <span>Actual <strong>{{ duration(d.totals.actualMinutes) }}</strong></span>
+          <span data-testid="planner-attendance">Attendance <strong>{{ duration(d.attendanceMinutes) }}</strong></span>
         </section>
 
         <div class="grid gap-4 md:grid-cols-[1fr_18rem]">

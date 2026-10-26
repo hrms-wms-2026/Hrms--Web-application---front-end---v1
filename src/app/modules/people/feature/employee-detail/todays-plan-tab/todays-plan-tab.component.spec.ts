@@ -18,7 +18,7 @@ describe('TodaysPlanTabComponent', () => {
     meetings: [{ taskId: 'm1', seriesId: 's1', originalStart: '2026-11-02T15:00:00Z', startAt: '2026-11-02T15:00:00Z',
       endAt: '2026-11-02T15:30:00Z', title: 'Private meeting', isPrivate: true, cancelled: false, declined: false,
       plannedMinutes: 30, actualMinutes: 0 }],
-    dueTasks: [], totals: { plannedMinutes: 90, actualMinutes: 30 },
+    dueTasks: [], totals: { plannedMinutes: 90, actualMinutes: 30 }, attendanceMinutes: 75,
   });
 
   async function render(employeeId: string): Promise<void> {
@@ -56,6 +56,7 @@ describe('TodaysPlanTabComponent', () => {
     expect(text).toContain('Write the report');
     expect(text).toContain('Private meeting');
     expect(text).toContain('1h 30m');
+    expect(fixture.nativeElement.querySelector('[data-testid="plan-attendance"]')?.textContent).toContain('1h 15m');
     expect(fixture.nativeElement.querySelectorAll('button:not([data-testid^="plan-"])').length).toBe(0);
     expect(api.getEmployeeDay).toHaveBeenCalledWith('e1', null);
   });

@@ -45,6 +45,8 @@ export interface PlannerDayResponse {
   meetings: PlannerMeetingView[];
   dueTasks: PlannerDueTaskView[];
   totals: PlannerTotals;
+  /** The attendance clock for the day (worked minutes; while clocked in, since clock-in less breaks). */
+  attendanceMinutes: number;
 }
 
 export interface CreatePlannedBlockRequest {

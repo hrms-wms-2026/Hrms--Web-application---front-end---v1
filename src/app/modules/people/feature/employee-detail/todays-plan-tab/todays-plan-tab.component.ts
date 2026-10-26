@@ -24,6 +24,7 @@ import { PlannerDayResponse } from '../../../../work/planner/models/planner.mode
           }
           <span>Planned <strong>{{ duration(d.totals.plannedMinutes) }}</strong></span>
           <span>Actual <strong>{{ duration(d.totals.actualMinutes) }}</strong></span>
+          <span data-testid="plan-attendance">Attendance <strong>{{ duration(d.attendanceMinutes) }}</strong></span>
         </div>
         @for (row of rows(d); track $index) {
           <div class="flex flex-wrap items-center gap-2 rounded-md border px-2 py-1 text-xs">

@@ -24,6 +24,7 @@ describe('PlannerPageComponent', () => {
       isPrivate: false, cancelled: false, declined: false, plannedMinutes: 60, actualMinutes: 0 }],
     dueTasks: [{ taskId: 't2', title: 'Fix the login bug', dueDate: '2026-11-02', estimatedHours: 3 }],
     totals: { plannedMinutes: 180, actualMinutes: 45 },
+    attendanceMinutes: 450,
     ...over,
   });
 
@@ -72,6 +73,12 @@ describe('PlannerPageComponent', () => {
     expect(q('planner-block')?.textContent).toContain('45m actual');
     expect(q('planner-totals')?.textContent).toContain('3h 0m');
     expect(q('planner-totals')?.textContent).toContain('45m');
+  });
+
+  it('shows the attendance clock beside planned vs actual', async () => {
+    await render();
+
+    expect(q('planner-attendance')?.textContent).toContain('7h 30m');
   });
 
   it('marks a block that overlaps a meeting', async () => {
