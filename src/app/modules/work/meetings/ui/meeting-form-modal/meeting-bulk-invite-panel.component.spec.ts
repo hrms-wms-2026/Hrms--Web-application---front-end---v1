@@ -41,6 +41,21 @@ describe('MeetingBulkInvitePanelComponent', () => {
     fixture.detectChanges();
   });
 
+  it('says what to pick while Preview cannot run, and looks disabled', () => {
+    // A disabled Preview looked like any other button, so a click seemed to do nothing.
+    const button = () => fixture.nativeElement.querySelector('[data-testid="bulk-preview"]') as HTMLButtonElement;
+    const hint = () => fixture.nativeElement.querySelector('[data-testid="bulk-preview-hint"]') as HTMLElement | null;
+
+    expect(button().disabled).toBe(true);
+    expect(button().className).toContain('disabled:opacity-50');
+    expect(hint()?.textContent).toContain('Pick a department or a manager');
+
+    panel.toggleDepartment('d1');
+    fixture.detectChanges();
+    expect(button().disabled).toBe(false);
+    expect(hint()).toBeNull();
+  });
+
   it('bulk preview merges only the kept people and shows the counts line', async () => {
     bulkPreview.mockReturnValue(of(preview()));
     panel.toggleDepartment('d1');

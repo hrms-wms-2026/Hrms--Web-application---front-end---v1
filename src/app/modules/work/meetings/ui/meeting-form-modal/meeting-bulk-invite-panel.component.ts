@@ -34,8 +34,12 @@ const PAGE_SIZE = 100;
         </div>
         <div class="text-xs text-[var(--color-text-secondary)]">A manager's direct reports</div>
         <app-calendar-participant-picker [selectedIds]="managerIds()" [guestEmails]="[]" (selectedIdsChange)="managerIds.set($event)" />
-        <button type="button" data-testid="bulk-preview" class="self-start rounded-md border px-3 py-1 text-xs"
-          [disabled]="loading() || (departmentIds().length === 0 && managerIds().length === 0)" (click)="preview()">Preview</button>
+        <button type="button" data-testid="bulk-preview"
+          class="self-start rounded-md border px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="loading() || nothingPicked()" (click)="preview()">Preview</button>
+        @if (nothingPicked()) {
+          <p data-testid="bulk-preview-hint" class="text-xs text-[var(--color-text-secondary)]">Pick a department or a manager to preview who will be invited.</p>
+        }
         @if (error()) {
           <p class="text-xs text-[var(--color-danger)]">{{ error() }}</p>
         }
@@ -82,6 +86,7 @@ export class MeetingBulkInvitePanelComponent implements OnInit {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly unavailable = signal(false);
+  readonly nothingPicked = computed(() => this.departmentIds().length === 0 && this.managerIds().length === 0);
   readonly kept = computed(() => (this.result()?.people ?? []).filter((p) => !this.removed().has(p.employeeId)));
 
   ngOnInit(): void {
