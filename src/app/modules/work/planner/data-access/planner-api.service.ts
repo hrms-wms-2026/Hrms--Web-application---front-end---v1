@@ -3,9 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { SILENT_HTTP_ERRORS } from '../../../../core/interceptors/error.interceptor';
-import { CreatePlannedBlockRequest, MovePlannedBlockRequest, PlannerDayResponse } from '../models/planner.models';
+import {
+  CreatePlannedBlockRequest, MovePlannedBlockRequest, PlannerDayResponse, PlannerFocusResponse, PlannerRangeResponse,
+} from '../models/planner.models';
 
-/** Every /api/v1/planner call. Writes return the caller's today. Every caller shows its own error copy (or hides itself on
+/** Every /api/v1/planner call. Writes return the day they wrote. Every caller shows its own error copy (or hides itself on
  * 503 planner_disabled), so no call raises the global error toast. */
 @Injectable({ providedIn: 'root' })
 export class PlannerApiService {
@@ -19,6 +21,16 @@ export class PlannerApiService {
 
   getEmployeeDay(employeeId: string, date: string | null): Observable<PlannerDayResponse> {
     return this.http.get<PlannerDayResponse>(`${this.baseUrl}/employees/${employeeId}`, { params: this.dateParams(date), ...this.silent });
+  }
+
+  getRange(from: string, to: string): Observable<PlannerRangeResponse> {
+    return this.http.get<PlannerRangeResponse>(`${this.baseUrl}/me/range`, {
+      params: new HttpParams().set('from', from).set('to', to), ...this.silent,
+    });
+  }
+
+  getFocus(): Observable<PlannerFocusResponse> {
+    return this.http.get<PlannerFocusResponse>(`${this.baseUrl}/me/focus`, this.silent);
   }
 
   createBlock(request: CreatePlannedBlockRequest): Observable<PlannerDayResponse> {

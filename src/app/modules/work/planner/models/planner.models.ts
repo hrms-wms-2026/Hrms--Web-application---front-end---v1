@@ -59,3 +59,76 @@ export interface MovePlannedBlockRequest {
   startAt: string;
   endAt: string;
 }
+
+/** A day's working hours from the legal entity, as wall-clock in the employee's zone (planner API v1.1). */
+export interface PlannerWorkWindow {
+  /** "HH:mm:ss". */
+  workStart: string;
+  workEnd: string;
+  breakMinutes: number;
+  breakStart: string | null;
+  isWorkingDay: boolean;
+  workingMinutes: number;
+}
+
+export interface PlannerRangeBlockView {
+  id: string;
+  taskId: string;
+  projectId: string;
+  taskTitle: string;
+  startAt: string;
+  endAt: string;
+  plannedMinutes: number;
+  actualMinutes: number;
+  stillAssigned: boolean;
+}
+
+export interface PlannerRangeDay {
+  date: string;
+  editable: boolean;
+  workWindow: PlannerWorkWindow | null;
+  blocks: PlannerRangeBlockView[];
+  blockMinutes: number;
+  workingMinutes: number;
+}
+
+/** GET /planner/me/range: the caller's days for the calendar grid (at most 42). */
+export interface PlannerRangeResponse {
+  timezone: string;
+  today: string;
+  days: PlannerRangeDay[];
+}
+
+export type PlannerFocusReason = 'overdue' | 'due_today' | 'due_this_week' | 'backlog';
+
+export interface PlannerFocusItem {
+  taskId: string;
+  projectId: string;
+  projectName: string;
+  title: string;
+  priority: string;
+  dueDate: string | null;
+  estimatedMinutes: number | null;
+  /** Everyone's clocked minutes on the task. */
+  loggedMinutes: number;
+  remainingMinutes: number | null;
+  plannedAheadMinutes: number;
+  firstPlannedDate: string | null;
+  plannedDayCount: number;
+  fullyPlanned: boolean;
+  reason: PlannerFocusReason;
+}
+
+export interface PlannerFocusGroup {
+  reason: PlannerFocusReason;
+  /** Every task in the group; `items` keeps the first 50. */
+  count: number;
+  items: PlannerFocusItem[];
+}
+
+/** GET /planner/me/focus: always the four groups, in the order overdue, due today, due this week, backlog. */
+export interface PlannerFocusResponse {
+  today: string;
+  weekEnd: string;
+  groups: PlannerFocusGroup[];
+}
