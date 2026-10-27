@@ -1,36 +1,43 @@
 <div class="lpw-backdrop" (click)="cancel.emit()">
   <section class="lpw-modal ui-scroll-open" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="isEdit() ? 'Edit leave policy' : 'Create leave policy'">
-    <aside class="lpw-steps scroll-fade">
-      <div class="lpw-brand">
-        <p>{{ isEdit() ? 'EDIT POLICY' : 'CREATE POLICY' }}</p>
-        <h2>Leave policy</h2>
+    <header class="lpw-header ui-popup-header">
+      <div class="lpw-header-top">
+        <span class="ui-popup-icon" data-icon="sun" aria-hidden="true"></span>
+        <div class="lpw-title">
+          <p class="lpw-kicker">TIME OFF</p>
+          <h2>{{ isEdit() ? 'Edit leave policy' : 'Create leave policy' }}</h2>
+          <p>{{ stepHints[step() - 1] }}</p>
+        </div>
+        <button type="button" class="lpw-close" (click)="cancel.emit()" aria-label="Close dialog">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
       </div>
-      <ol>
-        @for (label of steps; track label; let index = $index) {
-          <li [class.is-active]="step() === index + 1" [class.is-complete]="step() > index + 1">
-            <button type="button" (click)="setStep(index + 1)">
-              <span>{{ index + 1 }}</span>
-              <b>{{ label }}</b>
+
+      <ol class="lpw-stepper" aria-label="Policy steps">
+        @for (label of steps; track label; let index = $index; let last = $last) {
+          <li class="lpw-stepper__item" [class.is-active]="step() === index + 1" [class.is-complete]="step() > index + 1">
+            <button type="button" class="lpw-stepper__btn" (click)="setStep(index + 1)" [attr.aria-current]="step() === index + 1 ? 'step' : null">
+              <span class="lpw-stepper__dot">
+                @if (step() > index + 1) {
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                } @else {
+                  {{ index + 1 }}
+                }
+              </span>
+              <span class="lpw-stepper__label">{{ label }}</span>
             </button>
+            @if (!last) {
+              <span class="lpw-stepper__line" [class.is-complete]="step() > index + 1" aria-hidden="true"></span>
+            }
           </li>
         }
       </ol>
-      <div class="lpw-rail-note">
-        <span>Step {{ step() }} of {{ totalSteps }}</span>
-        <app-progress-bar [progress]="stepProgress()" />
-      </div>
-    </aside>
+    </header>
 
-    <div class="lpw-panel">
     <form class="lpw-content" (ngSubmit)="submit()">
-      <header class="ui-popup-header">
-        <span class="ui-popup-icon" data-icon="sun" aria-hidden="true"></span>
-        <div>
-          <h1>{{ steps[step() - 1] }}</h1>
-        </div>
-        <button type="button" class="lpw-close" (click)="cancel.emit()" aria-label="Close policy builder">×</button>
-      </header>
-
       <main class="scroll-fade">
         @if (scheduledNote()) {
           <p class="lpw-hint">{{ scheduledNote() }}</p>
@@ -46,12 +53,22 @@
               [disabled]="isEdit()"
               (valueChange)="leaveTypeId.set($event)"
             />
-            <label>Policy name <em>*</em>
-              <input class="ui-input" placeholder="e.g. Annual leave - standard" [value]="name()" (input)="name.set($any($event.target).value)" />
-            </label>
-            <label>Description <span>Optional</span>
-              <textarea class="ui-input" placeholder="Short internal note" [value]="description()" (input)="description.set($any($event.target).value)"></textarea>
-            </label>
+            <app-input
+              label="Policy name"
+              [required]="true"
+              placeholder="e.g. Annual leave - standard"
+              [value]="name()"
+              (valueChange)="name.set($event)"
+            />
+            <app-input
+              label="Description"
+              hint="Optional"
+              [multiline]="true"
+              [rows]="3"
+              placeholder="Short internal note"
+              [value]="description()"
+              (valueChange)="description.set($event)"
+            />
           </div>
         }
 
@@ -181,7 +198,7 @@
             <strong>Already assigned</strong>
             <ul>@for (line of conflictLines(); track line) { <li>{{ line }}</li> }</ul>
             <p>Replace it from today?</p>
-            <button type="button" class="lpw-primary" [disabled]="saving()" (click)="confirmReplace()">Replace</button>
+            <app-button size="sm" [disabled]="saving()" (pressed)="confirmReplace()">Replace</app-button>
           </div>
         }
 
@@ -194,17 +211,18 @@
       </main>
 
       <footer class="lpw-footer">
-        <button type="button" class="lpw-secondary" (click)="step() === 1 ? cancel.emit() : back()">{{ step() === 1 ? 'Cancel' : 'Back' }}</button>
-        <div class="lpw-footer-spacer"></div>
-        @if (step() < totalSteps) {
-          <button type="button" class="lpw-primary" (click)="next()">Continue</button>
-        } @else {
-          <button type="submit" class="lpw-primary" data-testid="create-policy-submit" [disabled]="!canSubmit()">
-            {{ saving() ? 'Saving…' : (isEdit() ? 'Save changes' : 'Create policy') }}
-          </button>
-        }
+        <span class="lpw-footer-step">Step {{ step() }} of {{ totalSteps }}</span>
+        <div class="lpw-footer-actions">
+          <app-button variant="secondary" (pressed)="step() === 1 ? cancel.emit() : back()">{{ step() === 1 ? 'Cancel' : 'Back' }}</app-button>
+          @if (step() < totalSteps) {
+            <app-button (pressed)="next()">Continue</app-button>
+          } @else {
+            <app-button type="submit" data-testid="create-policy-submit" [loading]="saving()" [disabled]="!canSubmit()">
+              {{ isEdit() ? 'Save changes' : 'Create policy' }}
+            </app-button>
+          }
+        </div>
       </footer>
     </form>
-    </div>
   </section>
 </div>
