@@ -64,6 +64,7 @@ export class TeamAttendanceDetailDialogComponent {
   protected readonly rows = signal<TeamAttendancePage<TeamAttendanceEmployeeRow> | null>(null);
   protected readonly rowsError = signal(false);
   protected readonly exporting = signal(false);
+  protected readonly exportError = signal(false);
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private rowsSub: Subscription | null = null;
@@ -164,7 +165,9 @@ export class TeamAttendanceDetailDialogComponent {
     this.page.set(Math.min(Math.max(1, page), Math.max(1, total)));
   }
 
+  /** The department filter is a dialog-only refinement: clear it, so the card goes back to the whole team. */
   close(): void {
+    if (this.store.query().departmentId !== null) this.store.setDepartment(null);
     this.closed.emit();
   }
 
@@ -185,6 +188,7 @@ export class TeamAttendanceDetailDialogComponent {
     const data = this.store.data();
     if (!data || this.exporting()) return;
     this.exporting.set(true);
+    this.exportError.set(false);
     try {
       const base: Omit<TeamAttendanceEmployeesQuery, 'page'> = {
         mode: data.mode,
@@ -209,6 +213,8 @@ export class TeamAttendanceDetailDialogComponent {
         r.rate === null ? '' : String(r.rate)
       ]);
       this.downloadFile(`team-attendance-${data.rangeStart}_${data.rangeEnd}.csv`, toCsv([header, ...lines]));
+    } catch {
+      this.exportError.set(true);
     } finally {
       this.exporting.set(false);
     }

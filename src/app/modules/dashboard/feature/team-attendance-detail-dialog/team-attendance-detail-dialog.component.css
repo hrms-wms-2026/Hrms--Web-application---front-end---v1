@@ -292,3 +292,8 @@
 }
 
 .tad-legend-line .tad-cell { margin-right: -0.375rem; }
+
+.tad-error {
+  font-size: 0.75rem;
+  color: var(--color-danger-text);
+}

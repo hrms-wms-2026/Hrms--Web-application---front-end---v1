@@ -86,6 +86,9 @@
           </div>
         </div>
 
+        @if (exportError()) {
+          <p class="tad-error" role="alert" data-testid="tad-export-error">Couldn't export the list. Please try again.</p>
+        }
         @if (rowsError()) {
           <p class="tad-muted tad-pad">Couldn't load the employee list.</p>
         } @else {

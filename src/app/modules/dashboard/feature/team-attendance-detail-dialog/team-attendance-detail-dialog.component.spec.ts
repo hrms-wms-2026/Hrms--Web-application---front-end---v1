@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.service';
 import {
@@ -151,6 +151,27 @@ describe('TeamAttendanceDetailDialogComponent', () => {
     expect(lines[1].startsWith(`"'=HYPERLINK(""x"")",Development,Present,Late,`)).toBe(true);
     expect(lines[1]).toContain(',Off,');
     expect(lines).toHaveLength(3);
+  });
+
+  it('a failed export says so and downloads nothing', async () => {
+    setup();
+    const download = vi.spyOn(fixture.componentInstance, 'downloadFile').mockImplementation(() => undefined);
+    getEmployees.mockImplementation(() => throwError(() => new Error('boom')));
+
+    await fixture.componentInstance.exportCsv();
+    fixture.detectChanges();
+
+    expect(download).not.toHaveBeenCalled();
+    expect(one('tad-export-error')?.textContent).toContain("Couldn't export");
+  });
+
+  it('closing clears a department filter, so the card never shows filtered figures unannounced', () => {
+    setup();
+    store.setDepartment('d1');
+
+    fixture.componentInstance.close();
+
+    expect(store.query().departmentId).toBeNull();
   });
 
   it('emits closed when the modal closes', () => {
