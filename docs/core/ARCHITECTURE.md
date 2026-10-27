@@ -1185,7 +1185,7 @@ Angular's template engine auto-escapes interpolated values, and `[innerHTML]` bi
 
 **Rich text written with raw DOM APIs.** The shared rich-text editor (`shared/ui/rich-text-editor`) loads stored HTML (task descriptions, comments, checklist task descriptions) with `element.innerHTML = ...`, which bypasses Angular's sanitizer. Every such write must go through `sanitizeEditableHtml()` (`shared/utils/editable-html.util.ts`, DOMPurify). It removes scripts, embedded frames, inline event handlers and script URLs but keeps the editor's own markup (mention chips, checkboxes, inline colours). The editor also emits sanitized HTML, so pasted web content cannot carry active content to the API. The backend rejects active content on write as well (`RichTextRules`). Any new component that assigns `innerHTML` from data must use the same helper.
 
-CSRF: **double-submit cookie pattern** — the backend sets a readable `onevo_csrf` cookie (`onevo_legal_csrf` during the pending-legal login step), and the frontend sends it back as the `X-CSRF-Token` header on state-changing requests. `CsrfProtectionMiddleware` verifies they match.
+CSRF: **double-submit cookie pattern** — the backend sets a readable `onevo_csrf` cookie (`onevo_legal_csrf` during the pending-legal login step), and the frontend sends it back as the `X-CSRF-Token` header on state-changing requests. `CsrfProtectionMiddleware` hashes the header and compares it with the hash stored on the server-side session, so the token is bound to that session (a copied CSRF value without the matching session cookie fails).
 
 ```typescript
 // core/interceptors/csrf.interceptor.ts
