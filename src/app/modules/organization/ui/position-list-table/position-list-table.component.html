@@ -2,6 +2,8 @@
   [columns]="columns"
   [rows]="positions"
   [trackBy]="trackById"
+  [rowClass]="rowClass"
+  [rowTitle]="vacancyTitle"
   [rowMuted]="isArchived"
   caption="Positions"
   emptyMessage="No positions found."
@@ -16,11 +18,6 @@
   </ng-template>
   <ng-template appDataTableCell="department" let-pos>{{ pos.departmentName || getDepartmentName(pos.departmentId) }}</ng-template>
   <ng-template appDataTableCell="reportsTo" let-pos><span class="plt-text-secondary">{{ pos.reportsToPositionName || getReportsToName(pos.reportsToPositionId) }}</span></ng-template>
-  <ng-template appDataTableCell="type" let-pos>
-    <span class="plt-type-badge" [class.plt-type-badge--pooled]="(pos.positionType || '').toLowerCase() === 'pooled'">
-      {{ (pos.positionType || '').toLowerCase() === 'pooled' ? 'Pooled' : 'Unique' }}
-    </span>
-  </ng-template>
   <ng-template appDataTableCell="capacity" let-pos>
     <app-position-seat-preview
       [assignedCount]="pos.assignedCount ?? 0"
@@ -29,27 +26,13 @@
       [remainingAssignedCount]="pos.remainingAssignedCount ?? 0"
     />
   </ng-template>
-  <ng-template appDataTableCell="status" let-pos>
-    @let occupancy = getOccupancy(pos);
-    <span
-      class="plt-badge"
-      [class.plt-badge--occupied]="occupancy.statusType === 'occupied'"
-      [class.plt-badge--vacant]="occupancy.statusType === 'vacant'"
-      [class.plt-badge--available]="occupancy.statusType === 'available'"
-      [class.plt-badge--full]="occupancy.statusType === 'full'"
-      [class.plt-badge--unknown]="occupancy.statusType === 'unassigned' || occupancy.statusType === 'unknown'"
-      [class.plt-badge--inactive]="occupancy.statusType === 'archived'"
-    >
-      {{ occupancy.statusLabel }}
-    </span>
-  </ng-template>
   <ng-template appDataTableCell="actions" let-pos>
     <div class="plt-action-wrapper">
       <button
         type="button"
         class="plt-action-btn"
-        (click)="toggleMenu(pos.id, $event)"
-        aria-label="Actions"
+        (click)="openPositionPanel(pos, $event)"
+        aria-label="Open position details"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="1" />
@@ -57,36 +40,6 @@
           <circle cx="12" cy="19" r="1" />
         </svg>
       </button>
-
-      @if (openMenuId() === pos.id) {
-        <div class="plt-menu" (click)="$event.stopPropagation()">
-          <button type="button" class="plt-menu-item" (click)="onEdit(pos, $event)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            Edit
-          </button>
-          @if (canConfigureAccess) {
-            <button type="button" class="plt-menu-item" (click)="onAccess(pos, $event)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              Position Access
-            </button>
-          }
-          <button type="button" class="plt-menu-item" (click)="onCoverage(pos, $event)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Management Coverage
-          </button>
-          @if (pos.isActive) {
-            <button type="button" class="plt-menu-item plt-menu-item--danger" (click)="onArchive(pos, $event)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              Archive
-            </button>
-          } @else {
-            <button type="button" class="plt-menu-item" (click)="onRestore(pos, $event)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-              Restore
-            </button>
-          }
-        </div>
-      }
     </div>
   </ng-template>
 </app-data-table>

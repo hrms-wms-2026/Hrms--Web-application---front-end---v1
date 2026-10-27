@@ -16,6 +16,8 @@ import { DepartmentListTableComponent } from '../../ui/department-list-table/dep
 import { DepartmentFormModalComponent, DepartmentFormValue, HeadPositionOption } from '../../ui/department-form-modal/department-form-modal.component';
 import { DepartmentArchiveModalComponent } from '../../ui/department-archive-modal/department-archive-modal.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
+import { ViewModeOption, ViewModeToggleComponent } from '../../../../shared/ui/view-mode-toggle/view-mode-toggle.component';
 
 @Component({
   selector: 'app-department-management',
@@ -24,6 +26,8 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
     CommonModule,
     BreadcrumbHeaderComponent,
     ButtonComponent,
+    FilterBarComponent,
+    ViewModeToggleComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     DepartmentTreeNodeComponent,
@@ -71,20 +75,48 @@ export class DepartmentManagementComponent {
       .map((p) => ({ id: p.id, title: p.name, departmentName: p.departmentName ?? null }));
   });
 
+  /** Phone summary card. Each department's counts are its own (the API groups by department id), so they add up. */
+  readonly companyTotals = computed(() => {
+    const active = this.departmentStore.allFlatList().filter((d) => d.isActive);
+    return {
+      employees: active.reduce((sum, d) => sum + (d.employeeCount ?? 0), 0),
+      positions: active.reduce((sum, d) => sum + (d.positionCount ?? 0), 0),
+      departments: active.length
+    };
+  });
+
   readonly archiveModalOpen = signal(false);
   readonly archivingDepartment = signal<DepartmentListItemResponse | DepartmentTreeNodeResponse | null>(null);
-  readonly filterMenuOpen = signal(false);
   readonly searchExpanded = signal(false);
+
+  readonly viewModes: readonly ViewModeOption[] = [
+    { value: 'tree', label: 'Tree', icon: 'tree' },
+    { value: 'list', label: 'List', icon: 'list' }
+  ];
+
+  readonly filterFields: readonly FilterFieldConfig[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      icon: 'status',
+      kind: 'single',
+      options: [
+        { value: 'active', label: 'Active only' },
+        { value: 'all', label: 'Include archived' }
+      ],
+      defaultValues: ['active']
+    }
+  ];
+
+  readonly filterValues = computed<Record<string, string[]>>(() => ({
+    status: [this.departmentStore.includeInactive() ? 'all' : 'active']
+  }));
 
   toggleSearch(): void {
     this.searchExpanded.update((v) => !v);
     if (!this.searchExpanded()) {
       this.departmentStore.setSearch('');
     }
-  }
-
-  onFilterToggle(): void {
-    this.filterMenuOpen.update((v) => !v);
   }
 
   constructor() {
@@ -100,13 +132,14 @@ export class DepartmentManagementComponent {
     this.departmentStore.setSearch(query);
   }
 
-  onViewModeToggle(mode: 'tree' | 'list'): void {
-    this.departmentStore.setViewMode(mode);
+  onViewModeToggle(mode: string): void {
+    this.departmentStore.setViewMode(mode === 'list' ? 'list' : 'tree');
   }
 
-  onIncludeInactiveToggle(event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.departmentStore.setIncludeInactive(checked);
+  onFilterFieldChanged(event: { key: string; values: string[] }): void {
+    if (event.key === 'status') {
+      this.departmentStore.setIncludeInactive(event.values[0] === 'all');
+    }
   }
 
   openCreateModal(parentPreset?: DepartmentTreeNodeResponse): void {

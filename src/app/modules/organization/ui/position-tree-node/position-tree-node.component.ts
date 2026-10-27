@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { POSITION_TEMPLATE_DRAG_MIME_TYPE, PositionTemplatePackPositionResponse, PositionTreeNodeResponse } from '../../models/position.model';
+import { CoverageCardVisual, POSITION_TEMPLATE_DRAG_MIME_TYPE, PositionTemplatePackPositionResponse, PositionTreeNodeResponse } from '../../models/position.model';
 import { PositionOccupancyDisplay, resolvePositionOccupancy } from '../../utils/position-occupancy';
 import { PositionSeatPreviewComponent } from '../position-seat-preview/position-seat-preview.component';
 
@@ -33,27 +33,19 @@ export class PositionTreeNodeComponent {
   @Input({ required: true }) node!: PositionTreeNodeResponse;
   @Input() level = 0;
   @Input() canManage = false;
-  @Input() canConfigureAccess = false;
   @Input() departmentNameMap: Record<string, string> = {};
   @Input() isRoot = false;
   /** Read-only views (e.g. an employee's reporting structure) mark one position as "this one". */
   @Input() highlightPositionId: string | null = null;
+  @Input() coverageVisual: CoverageCardVisual = { state: 'default', levels: [], accessibleLabel: null };
+  @Output() selectPosition = new EventEmitter<PositionTreeNodeResponse>();
   @Output() addSubPosition = new EventEmitter<PositionTreeNodeResponse>();
-  @Output() editPosition = new EventEmitter<PositionTreeNodeResponse>();
-  @Output() viewAccess = new EventEmitter<PositionTreeNodeResponse>();
   @Output() viewCoverage = new EventEmitter<PositionTreeNodeResponse>();
-  @Output() archivePosition = new EventEmitter<PositionTreeNodeResponse>();
   @Output() reparentPosition = new EventEmitter<ReparentPositionEvent>();
   @Output() templateDropped = new EventEmitter<TemplateDropOnPositionEvent>();
 
-  readonly menuOpen = signal(false);
   readonly isDragOver = signal(false);
   readonly isTemplateDragOver = signal(false);
-
-  @HostListener('document:click')
-  onDocumentClick(): void {
-    this.closeMenu();
-  }
 
   get resolvedDepartmentName(): string {
     if (this.node.departmentName) return this.node.departmentName;
@@ -90,43 +82,20 @@ export class PositionTreeNodeComponent {
     return 'general';
   }
 
-  toggleMenu(event: Event): void {
+  openPositionPanel(event: Event): void {
     event.stopPropagation();
-    this.menuOpen.update((v) => !v);
-  }
-
-  closeMenu(): void {
-    this.menuOpen.set(false);
+    this.viewCoverage.emit(this.node);
   }
 
   onAddSub(event: Event): void {
     event.stopPropagation();
-    this.closeMenu();
     this.addSubPosition.emit(this.node);
   }
 
-  onEdit(event: Event): void {
+  onCardClick(event: MouseEvent): void {
+    if ((event.target as Element | null)?.closest('button, .ptn-drag-handle, .ptn-menu')) return;
     event.stopPropagation();
-    this.closeMenu();
-    this.editPosition.emit(this.node);
-  }
-
-  onAccess(event: Event): void {
-    event.stopPropagation();
-    this.closeMenu();
-    this.viewAccess.emit(this.node);
-  }
-
-  onCoverage(event: Event): void {
-    event.stopPropagation();
-    this.closeMenu();
-    this.viewCoverage.emit(this.node);
-  }
-
-  onArchive(event: Event): void {
-    event.stopPropagation();
-    this.closeMenu();
-    this.archivePosition.emit(this.node);
+    this.selectPosition.emit(this.node);
   }
 
   // ── Native Drag & Drop Handlers ───────────────────────────

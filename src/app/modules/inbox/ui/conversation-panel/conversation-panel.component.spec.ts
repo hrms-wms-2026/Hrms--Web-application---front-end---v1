@@ -302,7 +302,7 @@ describe('ConversationPanelComponent', () => {
     composer.slashCommand.emit('add');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="conversation-add-panel"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="person-picker"]')).not.toBeNull();
   });
 
   it('add-and-tag adds the person first, then inserts the mention', async () => {
@@ -317,48 +317,60 @@ describe('ConversationPanelComponent', () => {
     expect(insert).toHaveBeenCalledWith({ id: 'e7', name: 'Chen Li' });
   });
 
-  it('adds members picked in the add panel (/add)', async () => {
-    const { fixture, el } = await render();
-    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
+  function openAdd(fixture: { componentInstance: unknown; detectChanges(): void }): void {
+    (fixture.componentInstance as { onSlashCommand(id: string): void }).onSlashCommand('add');
     fixture.detectChanges();
-    expect(el.querySelector('[data-testid="conversation-add-panel"]')).not.toBeNull();
-    const panel = fixture.componentInstance as unknown as { toggleCandidate(id: string): void; confirmAdd(): Promise<void> };
+  }
 
-    panel.toggleCandidate('e7');
-    await panel.confirmAdd();
+  const pickerRows = (el: HTMLElement) => Array.from(el.querySelectorAll('[data-testid^="person-picker-row-"]')) as HTMLElement[];
+  const rowNames = (el: HTMLElement) => pickerRows(el).map((r) => r.querySelector('.ppd__name')!.textContent!.trim());
+
+  it('adds the people picked in the shared Add member picker (/add)', async () => {
+    const { fixture, el } = await render();
+    openAdd(fixture);
+    expect(el.querySelector('[data-testid="person-picker"]')).not.toBeNull();
+
+    (el.querySelector('[data-testid="person-picker-row-e7"] input') as HTMLInputElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="person-picker-confirm"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
 
     expect(api['addParticipants']).toHaveBeenCalledWith('c1', ['e7']);
   });
 
-  it('finds people to add through the conversation people lookup, leaving out current members', async () => {
-    const { fixture } = await render();
-    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
+  it('the Add member picker lists everyone alphabetically, people already in the chat ticked and disabled, never the viewer', async () => {
+    const { fixture, el } = await render();
+    openAdd(fixture);
 
-    fixture.detectChanges();
+    expect(api['searchPeople']).toHaveBeenCalledWith('');
+    expect(rowNames(el)).toEqual(['Anu', 'Chen Li', 'Priya']);
+    const anu = pickerRows(el)[0].querySelector('input') as HTMLInputElement;
+    expect(anu.checked && anu.disabled).toBe(true);
+    expect(pickerRows(el)[0].textContent).toContain('Already added to group');
+    const chen = pickerRows(el)[1].querySelector('input') as HTMLInputElement;
+    expect(chen.checked || chen.disabled).toBe(false);
+    expect(el.querySelector('[data-testid="person-picker-confirm"]')!.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('mentions search the conversation people lookup', async () => {
+    const { fixture } = await render();
     const panel = fixture.componentInstance as unknown as {
-      candidateOptions(): { id: string; name: string }[];
       mentionSearch(q: string): import('rxjs').Observable<readonly { id: string; name: string }[]>;
     };
 
-    expect(api['searchPeople']).toHaveBeenCalledWith('');
-    expect(panel.candidateOptions().map((o) => o.id)).toEqual(['e7']);
     let found: readonly { id: string; name: string }[] = [];
     panel.mentionSearch('ch').subscribe((r) => (found = r));
     expect(api['searchPeople']).toHaveBeenCalledWith('ch');
     expect(found.map((p) => p.id)).toEqual(['e7', 'e2']);
   });
 
-  it('keeps the add panel usable when the people lookup fails', async () => {
+  it('keeps the Add member picker usable when the people lookup fails (the members still show)', async () => {
     api['searchPeople'].mockReturnValue(throwError(() => new Error('boom')));
-    const { fixture } = await render();
-    (fixture.componentInstance as unknown as { onSlashCommand(id: string): void }).onSlashCommand('add');
-    fixture.detectChanges();
-    const panel = fixture.componentInstance as unknown as {
-      candidateOptions(): unknown[];
-      mentionSearch(q: string): import('rxjs').Observable<readonly unknown[]>;
-    };
+    const { fixture, el } = await render();
+    openAdd(fixture);
+    const panel = fixture.componentInstance as unknown as { mentionSearch(q: string): import('rxjs').Observable<readonly unknown[]> };
 
-    expect(panel.candidateOptions()).toEqual([]);
+    expect(rowNames(el)).toEqual(['Anu', 'Priya']);
     let found: readonly unknown[] | null = null;
     panel.mentionSearch('x').subscribe((r) => (found = r));
     expect(found).toEqual([]);

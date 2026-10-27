@@ -24,10 +24,15 @@ interface InboxChatsState {
   readonly favorites: ReadonlySet<string>;
   /** A 1-on-1 chat just started from the search, shown until the list has it (an empty chat is not listed). */
   readonly started: InboxChatRowDto | null;
+  /** The inbox page shows History instead of a chat (opened from the sidebar's "+" menu or a chat's info panel). */
+  readonly history: boolean;
+  /** "Delegate my approvals" is open (from the sidebar's "+" menu). */
+  readonly delegateOpen: boolean;
 }
 
 const initialState: InboxChatsState = {
-  rows: [], loaded: false, loading: false, error: null, filter: 'all', kind: null, favorites: new Set(), started: null
+  rows: [], loaded: false, loading: false, error: null, filter: 'all', kind: null, favorites: new Set(), started: null,
+  history: false, delegateOpen: false
 };
 
 function extractError(err: any, fallback: string): string {
@@ -75,6 +80,26 @@ export const InboxChatsStore = signalStore(
       },
       setStarted(started: InboxChatRowDto | null): void {
         patchState(store, { started });
+      },
+      setHistory(history: boolean): void {
+        patchState(store, { history });
+      },
+      setDelegateOpen(delegateOpen: boolean): void {
+        patchState(store, { delegateOpen });
+      },
+      /** Mutes or unmutes a chat at once; the server keeps it. A failed save puts it back. */
+      async toggleMuted(conversationId: string): Promise<boolean> {
+        const muted = !store.rows().find((r) => r.conversationId === conversationId)?.isMuted;
+        const apply = (on: boolean) =>
+          patchState(store, { rows: store.rows().map((r) => (r.conversationId === conversationId ? { ...r, isMuted: on } : r)) });
+        apply(muted);
+        try {
+          await firstValueFrom(api.setMuted(conversationId, muted));
+          return true;
+        } catch {
+          apply(!muted);
+          return false;
+        }
       },
       /** Pins or unpins a chat at once; the server keeps it. A failed save puts it back. */
       async toggleFavorite(conversationId: string): Promise<void> {

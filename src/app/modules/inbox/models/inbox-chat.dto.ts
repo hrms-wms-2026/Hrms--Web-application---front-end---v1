@@ -31,6 +31,44 @@ export interface InboxChatRowDto {
   caseItem: InboxChatPendingItemDto | null;
   /** The caller pinned it to the top of its section. */
   isFavorite?: boolean;
+  /** The caller muted it: its unread messages leave their inbox badge. */
+  isMuted?: boolean;
+  /** Groups and case groups: their description (plain text). */
+  description?: string | null;
+}
+
+/** What a chat's files are grouped by in its info panel. */
+export type ChatMediaKind = 'image' | 'video' | 'audio' | 'document';
+
+/** One file posted in a chat (GET /inbox/chats/:id/media). */
+export interface ChatMediaItemDto {
+  id: string;
+  messageId: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  kind: ChatMediaKind;
+  sentAt: string;
+  authorEmployeeId: string | null;
+  authorName: string | null;
+}
+
+export interface ChatMediaPageDto {
+  items: ChatMediaItemDto[];
+  /** Files of the requested kind (all files when no kind was asked for). */
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Partial<Record<ChatMediaKind, number>>;
+}
+
+/** A text message that matched the chat search. */
+export interface ChatSearchResultDto {
+  messageId: string;
+  sentAt: string;
+  authorEmployeeId: string | null;
+  authorName: string | null;
+  snippet: string;
 }
 
 /** Where a chat opens. */

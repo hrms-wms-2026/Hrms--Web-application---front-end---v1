@@ -163,6 +163,18 @@ interface DisplayOption extends SelectOption {
             <li class="px-2.5 py-2 text-xs text-[var(--color-text-secondary)]">{{ options().length ? 'No matches' : 'No options' }}</li>
           }
         </ul>
+        @if (panelActionLabel()) {
+          <div class="border-t border-[var(--color-border)] p-1">
+            <button
+              type="button"
+              data-testid="select-panel-action"
+              class="flex w-full items-center rounded px-2.5 py-1.5 text-left text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)] focus-visible:bg-[var(--color-accent-subtle)] focus-visible:outline-none"
+              (click)="runPanelAction()"
+            >
+              {{ panelActionLabel() }}
+            </button>
+          </div>
+        }
       </div>
     </ng-template>
   `
@@ -188,8 +200,11 @@ export class SelectComponent {
   /** Element the open list aligns to and matches in width - e.g. a host frame that wraps an icon
    * plus this select. Defaults to the select's own field. */
   panelAnchor = input<HTMLElement | null>(null);
+  /** Optional action rendered below the options inside the open panel. */
+  panelActionLabel = input('');
 
   valueChange = output<string>();
+  panelAction = output<void>();
   /** Fires whenever the open list closes - by picking, Escape, or a click outside. */
   closed = output<void>();
 
@@ -255,6 +270,17 @@ export class SelectComponent {
     this.valueChange.emit(option.value);
     this.close();
     this.trigger()?.nativeElement.focus();
+  }
+
+  runPanelAction(): void {
+    this.panelAction.emit();
+    this.query.set('');
+    setTimeout(() => {
+      const options = this.optionButtons();
+      const lastOption = options.at(-1);
+      lastOption?.scrollIntoView?.({ block: 'nearest' });
+      lastOption?.focus();
+    }, 0);
   }
 
   onTriggerKeydown(event: KeyboardEvent): void {

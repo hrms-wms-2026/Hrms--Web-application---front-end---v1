@@ -298,8 +298,10 @@ export const PositionStore = signalStore(
       });
       try {
         const res = await firstValueFrom(api.listCoverage(legalEntityId, position.id));
+        if (store.selectedCoveragePosition()?.id !== position.id) return;
         patchState(store, { coverageRecords: res, coverageLoading: false });
       } catch (err) {
+        if (store.selectedCoveragePosition()?.id !== position.id) return;
         patchState(store, {
           coverageLoading: false,
           coverageError: toSafeErrorMessage(err, 'Failed to load management coverage records.')
@@ -414,8 +416,10 @@ export const PositionStore = signalStore(
     async loadCoverageOwnerHolders(legalEntityId: string, positionId: string): Promise<void> {
       try {
         const holders = await firstValueFrom(api.getActiveHolders(legalEntityId, positionId));
+        if (store.selectedCoveragePosition()?.id !== positionId) return;
         patchState(store, { coverageOwnerHolders: holders });
       } catch {
+        if (store.selectedCoveragePosition()?.id !== positionId) return;
         patchState(store, { coverageOwnerHolders: [] });
       }
     },

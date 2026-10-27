@@ -1,0 +1,112 @@
+:host { display: flex; min-height: 0; flex: 1; flex-direction: column; }
+.cip { display: flex; min-height: 0; flex: 1; flex-direction: column; }
+.cip__head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--color-border); }
+.cip__title { margin: 0; overflow: hidden; color: var(--color-text-primary); font-size: 15px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.cip__scroll { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-y: auto; padding: 0 16px 16px; }
+
+.cip__icon-btn { display: inline-flex; width: 28px; height: 28px; flex: 0 0 auto; align-items: center; justify-content: center; padding: 0; border: 0;
+  border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.cip__icon-btn:hover, .cip__icon-btn--on { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+.cip__icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cip__icon-btn:focus-visible, .cip__action:focus-visible, .cip__row:focus-visible, .cip__tile:focus-visible, .cip__file-row:focus-visible,
+.cip__result:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+
+/* Identity */
+.cip__identity { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 0 16px; border-bottom: 1px solid var(--color-border); }
+.cip__photo { position: relative; display: inline-flex; padding: 0; border: 0; border-radius: 999px; background: none; }
+.cip__photo--edit { cursor: pointer; }
+.cip__photo--edit::after { position: absolute; inset: 0; border-radius: 999px; background: rgb(0 0 0 / 0%); content: ''; transition: background-color 150ms ease; }
+.cip__photo--edit:hover::after { background: rgb(0 0 0 / 12%); }
+.cip__photo--edit:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 3px; }
+.cip__photo--edit:disabled { cursor: default; }
+.cip__photo ::ng-deep .avatar--xl { width: 96px; height: 96px; font-size: 2rem; }
+.cip__photo-icon { display: inline-flex; width: 96px; height: 96px; align-items: center; justify-content: center; border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); }
+.cip__photo-icon svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.cip__camera { position: absolute; z-index: 1; right: -2px; bottom: 2px; display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center;
+  padding: 0; border: 2px solid var(--color-surface); border-radius: 999px; background: var(--color-text-primary); color: var(--color-surface); cursor: pointer; }
+.cip__camera svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cip__file { display: none; }
+.cip__name-row { display: flex; max-width: 100%; align-items: center; gap: 4px; margin-top: 6px; }
+.cip__name { margin: 0; overflow: hidden; color: var(--color-text-primary); font-size: 18px; font-weight: 700; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.cip__name-input { width: 100%; margin-top: 6px; text-align: center; }
+.cip__meta { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
+.cip__link { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-weight: 600; cursor: pointer; }
+.cip__link:hover { text-decoration: underline; }
+.cip__actions { display: flex; justify-content: center; gap: 18px; margin-top: 10px; }
+.cip__action { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 10px; background: none;
+  color: var(--color-text-primary); font: inherit; font-size: 12px; cursor: pointer; }
+.cip__action-icon { display: inline-flex; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid var(--color-border);
+  border-radius: 999px; background: var(--color-surface); transition: background-color 150ms ease; }
+.cip__action:hover .cip__action-icon { background: var(--color-surface-secondary); }
+.cip__action-icon--on { border-color: var(--color-accent); color: var(--color-accent); }
+.cip__action-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Blocks */
+.cip__block { display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--color-border); }
+.cip__block:last-child { border-bottom: 0; }
+.cip__block--rows { gap: 2px; }
+.cip__block-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cip__head-tools { display: inline-flex; gap: 2px; }
+.cip__head-end { margin-left: auto; }
+.cip__label { color: var(--color-text-primary); font-size: 13px; font-weight: 650; }
+.cip__description { margin: 0; color: var(--color-text-primary); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cip__placeholder { padding: 0; border: 0; background: none; color: var(--color-text-secondary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.cip__placeholder:hover { color: var(--color-text-primary); }
+.cip__textarea { width: 100%; min-height: 72px; resize: vertical; }
+.cip__edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.cip__btn { height: 30px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface);
+  color: var(--color-text-primary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.cip__btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
+.cip__btn:disabled { opacity: .5; cursor: default; }
+.cip__quiet { margin: 0; padding: 4px 0; color: var(--color-text-secondary); font-size: 12px; list-style: none; }
+.cip__quiet--center { padding: 24px 0; text-align: center; }
+
+/* Rows (Media, Favorite, History) */
+.cip__row { display: flex; width: 100%; align-items: center; gap: 12px; padding: 8px 4px; border: 0; border-radius: 8px; background: none;
+  color: var(--color-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.cip__row:hover { background: var(--color-surface-secondary); }
+.cip__row-icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cip__row-icon--star { fill: var(--color-warning, #d97706); stroke: var(--color-warning, #d97706); }
+.cip__row-label { min-width: 0; flex: 1; }
+.cip__row-value { color: var(--color-text-secondary); font-size: 12px; }
+.cip__chevron { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Files */
+.cip__strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.cip__tile { display: block; aspect-ratio: 1; overflow: hidden; padding: 0; border: 0; border-radius: 8px; background: none; cursor: pointer; }
+.cip__thumb { display: block; width: 40px; height: 40px; flex: 0 0 auto; border-radius: 8px; object-fit: cover; }
+.cip__thumb--large { width: 100%; height: 100%; }
+.cip__thumb--icon { display: inline-flex; align-items: center; justify-content: center; background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+.cip__thumb--icon[data-kind='video'] { background: color-mix(in srgb, var(--color-text-primary) 85%, transparent); color: #fff; }
+.cip__thumb--icon[data-kind='audio'] { background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface)); color: var(--color-accent); }
+.cip__thumb--icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cip__tabs { display: flex; gap: 4px; overflow-x: auto; padding: 10px 16px; border-bottom: 1px solid var(--color-border); scrollbar-width: none; }
+.cip__tab { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border: 1px solid var(--color-border);
+  border-radius: 999px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.cip__tab--on { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); color: var(--color-accent); }
+.cip__tab-count { font-weight: 500; opacity: .8; }
+.cip__files, .cip__results, .cip__members { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 0; padding: 0; list-style: none; }
+.cip__file-row, .cip__result { display: flex; width: 100%; align-items: center; gap: 10px; padding: 8px 4px; border: 0; border-radius: 8px; background: none;
+  color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
+.cip__file-row:hover, .cip__result:hover { background: var(--color-surface-secondary); }
+.cip__file-text { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
+.cip__file-name { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.cip__file-meta { overflow: hidden; color: var(--color-text-secondary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.cip__pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.cip__pager-text { color: var(--color-text-secondary); font-size: 12px; }
+
+/* Search */
+.cip__filter { width: 100%; margin-top: 12px; }
+.cip__block .cip__filter { margin-top: 0; }
+.cip__result { flex-direction: column; align-items: flex-start; gap: 2px; }
+.cip__result-meta { color: var(--color-text-secondary); font-size: 11px; }
+.cip__result-text { font-size: 13px; line-height: 1.4; }
+
+/* Members */
+.cip__members { margin: 0; }
+.cip__member { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: 13px; }
+.cip__member-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cip__member-tag { color: var(--color-text-secondary); font-size: 11px; }
+.cip__more { align-self: flex-start; padding: 4px; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.cip__more:hover { text-decoration: underline; }

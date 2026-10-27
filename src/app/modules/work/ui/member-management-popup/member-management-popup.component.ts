@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, input, output, signal } from '@ang
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
+import { PersonPickerDialogComponent, PersonPickerOption } from '../../../../shared/ui/person-picker-dialog/person-picker-dialog.component';
 import { ObjectiveMemberItemDto } from '../../models/dto/objective-invitation.dto';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 
@@ -15,27 +15,11 @@ export interface ProjectMemberPopupItem {
 @Component({
   selector: 'app-member-management-popup',
   standalone: true,
-  imports: [ModalComponent, ButtonComponent, AvatarComponent, EmployeePickerComponent],
+  imports: [ModalComponent, ButtonComponent, AvatarComponent, PersonPickerDialogComponent],
   template: `
-    <app-modal [open]="open()" [title]="modalTitle()" (closed)="closed.emit()">
-      @if (pickerOpen() !== null) {
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-[var(--color-text-primary)]">
-              {{ pickerOpen() === 'leader' ? 'Choose a new leader' : 'Add a member' }}
-            </span>
-            <span data-testid="picker-back" (click)="pickerOpen.set(null)">
-              <app-button variant="secondary" size="sm">Back</app-button>
-            </span>
-          </div>
-          <app-employee-picker
-            [inline]="true"
-            [open]="true"
-            (selected)="onEmployeePicked($event)"
-            (closed)="pickerOpen.set(null)"
-          />
-        </div>
-      } @else if (scope() === 'project') {
+    <!-- One popup at a time: while picking people the shared picker takes this popup's place, then the list comes back. -->
+    <app-modal [open]="open() && pickerOpen() === null" [title]="modalTitle()" (closed)="closed.emit()">
+      @if (scope() === 'project') {
         <div class="flex flex-col gap-2">
           @if (canManage()) {
             <span data-testid="add-member-button">
@@ -104,6 +88,17 @@ export interface ProjectMemberPopupItem {
         </div>
       }
     </app-modal>
+
+    <!-- Adding members (several at once) or choosing a new leader (one): the app's shared picker. -->
+    <app-person-picker-dialog
+      [open]="open() && pickerOpen() !== null"
+      [title]="pickerOpen() === 'leader' ? 'Choose a new leader' : 'Add members'"
+      [icon]="pickerOpen() === 'leader' ? 'user' : 'user-plus'"
+      [multiple]="pickerOpen() === 'member'"
+      [disabledPeople]="pickerOpen() === 'member' ? currentMembers() : []"
+      (confirmed)="onPeoplePicked($event)"
+      (closed)="pickerOpen.set(null)"
+    />
   `
 })
 export class MemberManagementPopupComponent {
@@ -138,10 +133,15 @@ export class MemberManagementPopupComponent {
     });
   }
 
-  onEmployeePicked(employeeId: string): void {
+  /** Who is in already: listed as added when adding members. */
+  protected readonly currentMembers = computed<PersonPickerOption[]>(() => this.scope() === 'project'
+    ? this.projectMembers().map((m) => ({ id: m.id, name: m.name, avatarFileId: m.avatarFileId }))
+    : this.objectiveMembers().map((m) => ({ id: m.employeeId, name: m.name ?? 'Unknown employee', avatarFileId: m.avatarFileId })));
+
+  onPeoplePicked(employeeIds: string[]): void {
     const mode = this.pickerOpen();
     this.pickerOpen.set(null);
-    if (mode === 'member') this.addRequested.emit(employeeId);
-    else if (mode === 'leader') this.transferRequested.emit(employeeId);
+    if (mode === 'member') employeeIds.forEach((id) => this.addRequested.emit(id));
+    else if (mode === 'leader' && employeeIds[0]) this.transferRequested.emit(employeeIds[0]);
   }
 }

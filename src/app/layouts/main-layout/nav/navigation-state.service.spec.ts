@@ -85,4 +85,76 @@ describe('NavigationStateService', () => {
     expect(service.isSubSidebarCollapsed()).toBe(true);
     expect(localStorage.getItem('onevo.sub_sidebar_collapsed')).toBe('true');
   });
+
+  it('shows every module on the mobile bar, with no More, when five or fewer are reachable', () => {
+    expect(service.hasMobileMore()).toBe(false);
+    expect(service.mobileBarItems().map((item) => item.id)).toEqual(['home', 'inbox', 'time-attendance', 'settings']);
+    expect(service.mobileMoreItems()).toEqual([]);
+  });
+
+  describe('mobile bar with More', () => {
+    let full: NavigationStateService;
+    let fullRouter: Router;
+    const ids = (items: readonly { id: string }[]): string[] => items.map((item) => item.id);
+    const item = (id: string) => full.visibleItems().find((candidate) => candidate.id === id)!;
+
+    beforeEach(() => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([{ path: '**', component: BlankComponent }]),
+          {
+            provide: AuthStore,
+            useValue: {
+              permissions: () => ['leave:read', 'attendance:read', 'org:read', 'roles:read', 'calendar:read'],
+              activeModules: () => ['tasks', 'calendar', 'leave', 'time_attendance', 'org_structure']
+            }
+          }
+        ]
+      });
+      full = TestBed.inject(NavigationStateService);
+      fullRouter = TestBed.inject(Router);
+    });
+
+    it('keeps Home and the first three modules on the bar in rail order and puts the rest behind More', () => {
+      expect(full.hasMobileMore()).toBe(true);
+      expect(ids(full.mobileBarItems())).toEqual(['home', 'work', 'inbox', 'calendar']);
+      expect(ids(full.mobileMoreItems())).toEqual(['time-off', 'time-attendance', 'organization', 'settings']);
+    });
+
+    it('moves a module opened from More onto the bar, in rail order, in place of the one opened longest ago', async () => {
+      await fullRouter.navigateByUrl('/work');
+      await fullRouter.navigateByUrl('/inbox');
+      await fullRouter.navigateByUrl('/settings/roles');
+
+      expect(ids(full.mobileBarItems())).toEqual(['home', 'work', 'inbox', 'settings']);
+      expect(ids(full.mobileMoreItems())).toContain('calendar');
+
+      await fullRouter.navigateByUrl('/time-off/types');
+      expect(ids(full.mobileBarItems())).toEqual(['home', 'inbox', 'time-off', 'settings']);
+    });
+
+    it('keeps pinned modules on the bar, so a module opened from More stays behind it once three are pinned', async () => {
+      full.togglePin(item('work'));
+      full.togglePin(item('inbox'));
+      full.togglePin(item('organization'));
+
+      expect(ids(full.mobileBarItems())).toEqual(['home', 'work', 'inbox', 'organization']);
+      expect(full.canPin(item('settings'))).toBe(false);
+      expect(JSON.parse(localStorage.getItem('onevo.mobile_nav_pinned')!)).toEqual(['work', 'inbox', 'organization']);
+
+      await fullRouter.navigateByUrl('/settings/roles');
+      expect(ids(full.mobileBarItems())).toEqual(['home', 'work', 'inbox', 'organization']);
+      expect(ids(full.mobileMoreItems())).toContain('settings');
+
+      full.togglePin(item('inbox'));
+      expect(full.canPin(item('settings'))).toBe(true);
+    });
+
+    it('never lets Home be pinned', () => {
+      expect(full.canPin(item('home'))).toBe(false);
+      full.togglePin(item('home'));
+      expect(full.pinnedIds()).toEqual([]);
+    });
+  });
 });

@@ -37,6 +37,9 @@ class ToastHostStubComponent {}
 @Component({ selector: 'app-mobile-bottom-nav', standalone: true, template: '' })
 class MobileBottomNavStubComponent {}
 
+@Component({ selector: 'app-mobile-section-nav', standalone: true, template: '' })
+class MobileSectionNavStubComponent {}
+
 @Component({ selector: 'app-drafts-bar', standalone: true, template: '' })
 class DraftsBarStubComponent {}
 
@@ -115,6 +118,7 @@ describe('MainLayoutComponent tray activation gate', () => {
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          MobileSectionNavStubComponent,
           DraftsBarStubComponent,
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
@@ -201,6 +205,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          MobileSectionNavStubComponent,
           DraftsBarStubComponent,
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
