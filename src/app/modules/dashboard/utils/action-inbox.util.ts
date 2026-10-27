@@ -19,6 +19,10 @@ export interface InboxItem {
   readonly title: string;
   /** The requester (approvals), the employee (exceptions) or the assignees (overdue tasks). */
   readonly subject: string | null;
+  /** Whose photo the row shows: the requester / employee, or an overdue task's first assignee. */
+  readonly subjectEmployeeId: string | null;
+  /** When the wait started (ms) - created (approvals, exceptions) or due (overdue tasks). Sort key. */
+  readonly waitingSince: number;
   /** Days waiting (approvals, exceptions) or days late (overdue tasks). */
   readonly ageDays: number;
   /** "3h ago" / "6d ago" / "7d late". */
@@ -43,8 +47,8 @@ const TAG: Record<string, string> = {
   'attendance.work_area': 'Work-area',
   'attendance.location': 'Location',
   'attendance.device_change': 'Device',
-  'monitoring.exception': 'Exception',
-  'calendar.meeting_exception': 'Meeting exception',
+  'monitoring.exception': 'Alert',
+  'calendar.meeting_exception': 'Meeting alert',
   'work.task_creation': 'Task creation',
   'work.task_edit': 'Task edit',
   'work.objective_change': 'Objective',
@@ -61,9 +65,8 @@ function ageLabel(iso: string, now: Date): string {
 
 /**
  * Option B "one inbox": every pending approval, open exception and overdue task in one list,
- * oldest first, each row tagged with its type. Escalated exceptions stay pinned on top - they are
- * already past someone else's deadline. The caller's own overdue tasks are left out (they are on
- * My Tasks). Pure: built from the two responses the dashboard already loads.
+ * strictly by how long each has been waiting (longest first), each row tagged with its type. The
+ * caller's own overdue tasks are left out (they are on My Tasks). Pure: built from the two responses the dashboard already loads.
  */
 export function buildActionInbox(
   actionItems: TeamActionItemsResponse | null,
@@ -85,6 +88,8 @@ export function buildActionInbox(
         tag: TAG[source.sourceKey] ?? source.sourceKey,
         title: item.title,
         subject: item.subjectName,
+        subjectEmployeeId: item.subjectEmployeeId,
+        waitingSince: new Date(item.createdAt).getTime(),
         ageDays: wholeDaysSince(item.createdAt, now),
         ageLabel: ageLabel(item.createdAt, now),
         exceptionStatus: item.exceptionStatus,
@@ -104,6 +109,8 @@ export function buildActionInbox(
       tag: TAG['work.overdue_task'],
       title: task.title,
       subject: task.assignees.map((a) => a.displayName).join(', ') || null,
+      subjectEmployeeId: task.assignees[0]?.employeeId ?? null,
+      waitingSince: now.getTime() - task.daysOverdue * 86_400_000,
       ageDays: task.daysOverdue,
       ageLabel: `${task.daysOverdue}d late`,
       exceptionStatus: null,
@@ -112,8 +119,7 @@ export function buildActionInbox(
     });
   }
 
-  const pinned = (item: InboxItem): number => (item.exceptionStatus === 'Escalated' ? 0 : 1);
-  return items.sort((a, b) => pinned(a) - pinned(b) || b.ageDays - a.ageDays || a.key.localeCompare(b.key));
+  return items.sort((a, b) => a.waitingSince - b.waitingSince || a.key.localeCompare(b.key));
 }
 
 /** Chip counts from the backend's real totals, so they never shrink to the rows loaded. */
@@ -150,12 +156,24 @@ export function inboxAgeClass(item: InboxItem): string {
   return AGE_CLASS.fresh;
 }
 
-const TAG_CLASS: Record<InboxKind, string> = {
-  approval: 'bg-slate-100 text-slate-700',
-  exception: 'bg-amber-100 text-amber-800',
-  overdue: 'bg-red-50 text-red-700'
+/** The small icon on the avatar's corner that says what kind of request the row is. */
+export type InboxBadge = 'leave' | 'attendance' | 'location' | 'device' | 'alert' | 'task' | 'objective' | 'overdue';
+
+const BADGE: Record<string, InboxBadge | undefined> = {
+  'leave.approval': 'leave',
+  'attendance.correction': 'attendance',
+  'attendance.work_area': 'location',
+  'attendance.location': 'location',
+  'attendance.device_change': 'device',
+  'monitoring.exception': 'alert',
+  'calendar.meeting_exception': 'alert',
+  'work.task_creation': 'task',
+  'work.task_edit': 'task',
+  'work.objective_change': 'objective',
+  'work.status_template_change': 'task',
+  'work.overdue_task': 'overdue'
 };
 
-export function inboxTagClass(item: InboxItem): string {
-  return TAG_CLASS[item.kind];
+export function inboxBadge(item: InboxItem): InboxBadge {
+  return BADGE[item.sourceKey] ?? (item.kind === 'exception' ? 'alert' : 'task');
 }

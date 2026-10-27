@@ -115,6 +115,14 @@
   overflow-y: auto;
 }
 
+/* The dashboard's cards bring their own spacing (the grid gap), so a slim gutter keeps the default
+   two-row layout on one screen without page scroll. Desktop only; mobile keeps its bottom-nav padding. */
+@media (min-width: 769px) {
+  .main-content:has(app-dashboard-home) .main-content__viewport {
+    padding: 0.75rem;
+  }
+}
+
 .main-content:has(app-tray-activation-gate) .main-content__viewport,
 .main-content--gated .main-content__viewport {
   position: relative;
