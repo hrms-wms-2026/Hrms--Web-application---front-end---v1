@@ -13,6 +13,8 @@ import { PlannerRangeBlockView, PlannerWorkWindow } from '../../../work/planner/
 })
 export class CalendarWeekViewComponent {
   weekStart = input.required<string>();
+  /** The days to show instead of all seven (the planner hides rest days until "Show weekend"). */
+  visibleDays = input<readonly string[] | null>(null);
   events = input<readonly CalendarEventResponse[]>([]);
   timezone = input<string>('UTC');
 
@@ -33,7 +35,9 @@ export class CalendarWeekViewComponent {
   blockMoveAfter = output<{ block: PlannerRangeBlockView; date: string; afterMinute: number }>();
   blockRemove = output<string>();
 
-  readonly days = computed<readonly string[]>(() => {
+  readonly days = computed<readonly string[]>(() => this.visibleDays() ?? this.allDays());
+
+  private readonly allDays = computed<readonly string[]>(() => {
     const [y, m, d] = this.weekStart().split('-').map(Number);
     const start = new Date(y, m - 1, d);
     return Array.from({ length: 7 }, (_, i) => {

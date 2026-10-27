@@ -34,6 +34,14 @@
           (click)="setView('agenda')"
         >Agenda</button>
       </div>
+      @if (planner.active()) {
+        @if (view() === 'week') {
+          <button type="button" data-testid="planner-show-weekend" class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
+            [attr.aria-pressed]="showWeekend()" (click)="toggleWeekend()">{{ showWeekend() ? 'Hide weekend' : 'Show weekend' }}</button>
+        }
+        <button type="button" data-testid="planner-focus-toggle" class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
+          [attr.aria-pressed]="showPanel()" (click)="toggleFocus()">Focus · {{ planner.focusCount() }}</button>
+      }
       <app-button type="button" (click)="openCreate()">New event</app-button>
       @if (meetingsAvailability.canCreate()) {
         <app-button type="button" variant="secondary" data-testid="calendar-new-meeting" (click)="meetingFormOpen.set(true)">Meeting (work item)</app-button>
@@ -45,21 +53,65 @@
     <p class="text-sm text-red-600">{{ store.loadError() }}</p>
   }
 
-  @switch (view()) {
-    @case ('month') {
-      <app-calendar-month-grid [year]="year()" [month]="month()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
-    }
-    @case ('week') {
-      <app-calendar-week-view [weekStart]="weekStart()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)" />
-    }
-    @case ('day') {
-      <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)" />
-    }
-    @case ('agenda') {
-      <app-calendar-agenda-view [events]="store.events()" [timezone]="store.myTimezone()" (eventClick)="openEdit($event)" />
+  @if (planner.active() && view() === 'day') {
+    @if (dayTotals(); as totals) {
+      <section data-testid="planner-day-totals" class="flex flex-wrap gap-6 rounded-md border border-[var(--color-border)] p-3 text-sm">
+        @if (totals.working) {
+          <span>Working hours <strong>{{ totals.working }}</strong></span>
+        } @else {
+          <span class="text-[var(--color-text-secondary)]">Working hours not set</span>
+        }
+        <span>Planned <strong>{{ totals.planned }}</strong></span>
+        <span>Free <strong>{{ totals.free }}</strong></span>
+        @if (totals.actual) {
+          <span>Actual / attendance <strong>{{ totals.actual }}</strong></span>
+        }
+      </section>
     }
   }
+
+  <div class="grid gap-4" [ngClass]="showPanel() ? 'md:grid-cols-[minmax(0,1fr)_18rem]' : ''">
+    <div class="min-w-0">
+      @switch (view()) {
+        @case ('month') {
+          <app-calendar-month-grid [year]="year()" [month]="month()" [events]="store.events()" [timezone]="store.myTimezone()"
+            [summaries]="monthSummaries()" (eventClick)="openEdit($event)" (dayClick)="openDay($event)" />
+        }
+        @case ('week') {
+          <app-calendar-week-view [weekStart]="weekStart()" [visibleDays]="weekDays()" [events]="store.events()" [timezone]="store.myTimezone()"
+            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [loads]="gridLoads()" [employeeId]="employeeId()"
+            (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)"
+            (blockCreate)="onBlockCreate($event)" (blockMove)="onBlockMove($event)" (blockOpen)="openTask($event.projectId, $event.taskId)"
+            (blockMoveAfter)="onBlockMoveAfter($event)" (blockRemove)="onBlockRemove($event)" />
+        }
+        @case ('day') {
+          <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()"
+            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [loads]="gridLoads()" [employeeId]="employeeId()"
+            (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)"
+            (blockCreate)="onBlockCreate($event)" (blockMove)="onBlockMove($event)" (blockOpen)="openTask($event.projectId, $event.taskId)"
+            (blockMoveAfter)="onBlockMoveAfter($event)" (blockRemove)="onBlockRemove($event)" />
+        }
+        @case ('agenda') {
+          <app-calendar-agenda-view [events]="store.events()" [timezone]="store.myTimezone()" [blocks]="agendaBlocks()"
+            (eventClick)="openEdit($event)" (blockClick)="openTask($event.projectId, $event.taskId)" />
+        }
+      }
+    </div>
+    @if (showPanel()) {
+      <app-planner-focus-panel [focus]="planner.focus()" [closable]="view() !== 'day'" (closed)="closeFocus()"
+        (pick)="pickerItem.set($event)" (open)="openTask($event.projectId, $event.taskId)" />
+    }
+  </div>
 </div>
+
+@if (pickerItem(); as item) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center" (click)="pickerItem.set(null)">
+    <div class="w-full max-w-sm" (click)="$event.stopPropagation()">
+      <app-planner-block-picker [item]="item" [editableDates]="editableDateList()" (submitted)="onPickerSubmitted($event)"
+        (cancelled)="pickerItem.set(null)" />
+    </div>
+  </div>
+}
 
 <app-calendar-event-form-modal
   [open]="formOpen()"
