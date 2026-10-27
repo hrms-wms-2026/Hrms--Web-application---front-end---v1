@@ -41,7 +41,8 @@ describe('InboxPageComponent', () => {
       ])),
       forItem: vi.fn(() => of(row('c2'))),
       openDirect: vi.fn(() => of({ conversationId: 'c9', source: 'direct', kind: 'direct', subjectId: 'pair-c9' })),
-      createGroup: vi.fn(), startCaseGroup: vi.fn(), renameGroup: vi.fn()
+      createGroup: vi.fn(), startCaseGroup: vi.fn(), renameGroup: vi.fn(),
+      media: vi.fn(() => of({ items: [], total: 0, page: 1, pageSize: 5, counts: {} })), search: vi.fn(() => of([]))
     };
     params = new BehaviorSubject(convertToParamMap({}));
     query = new BehaviorSubject(convertToParamMap({}));
@@ -107,7 +108,7 @@ describe('InboxPageComponent', () => {
       { queryParams: { case: 'leave:request:l1' }, replaceUrl: true });
   });
 
-  it('names the open chat in the breadcrumb and keeps History under the header "⋯"', async () => {
+  it('names the open chat in the breadcrumb; History (from the info panel) replaces the chat until "Back to chats"', async () => {
     const { fixture, el } = await render();
     expect(el.querySelector('app-breadcrumb-header')!.textContent).not.toContain('Person c1');
 
@@ -119,12 +120,73 @@ describe('InboxPageComponent', () => {
     expect(crumb).toContain('Chats');
     expect(crumb).toContain('Person c1');
     expect(el.querySelector('[data-testid="inbox-toggle-details"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="inbox-menu"]')).toBeNull();
 
-    (el.querySelector('[data-testid="inbox-menu"]') as HTMLButtonElement).click();
+    (el.querySelector('[data-testid="conversation-settings"]') as HTMLButtonElement).click();
     fixture.detectChanges();
-    (el.querySelector('[data-testid="menu-item-history"]') as HTMLButtonElement).click();
+    (el.querySelector('[data-testid="chat-info-history"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el.querySelector('app-breadcrumb-header')!.textContent).toContain('History');
+
+    (el.querySelector('[data-testid="inbox-history-back"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-breadcrumb-header')!.textContent).toContain('Person c1');
+  });
+
+  it('on wide screens the chat name in the breadcrumb opens Contact info for a 1-on-1 chat, and closes it again', async () => {
+    const { fixture, el } = await render();
+    params.next(convertToParamMap({ source: 'direct', kind: 'direct', id: 'pair-c1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+
+    const name = el.querySelector('[data-testid="breadcrumb-current"]') as HTMLButtonElement;
+    expect(name.textContent).toContain('Person c1');
+    expect(name.getAttribute('title')).toBe('Contact info');
+    name.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="chat-info-panel"]')!.textContent).toContain('Contact info');
+
+    name.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="chat-info-panel"]')).toBeNull();
+  });
+
+  it('the settings icon in the chat header (phones) opens Contact info for a 1-on-1 chat, where it can be favorited, and closes it again; the page header has none', async () => {
+    chatsApi['setFavorite'] = vi.fn(() => of(undefined));
+    const { fixture, el } = await render();
+    params.next(convertToParamMap({ source: 'direct', kind: 'direct', id: 'pair-c1' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="chat-info-panel"]')).toBeNull();
+
+    expect(el.querySelector('[data-testid="inbox-chat-settings"]')).toBeNull();
+    (el.querySelector('[data-testid="conversation-settings"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="chat-info-panel"]')!.textContent).toContain('Contact info');
+    const favorite = el.querySelector('[data-testid="chat-info-favorite"]') as HTMLButtonElement;
+    expect(favorite.textContent).toContain('Add to favorites');
+    favorite.click();
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(chatsApi['setFavorite']).toHaveBeenCalledWith('c1', true);
+    expect(favorite.textContent).toContain('Remove from favorites');
+
+    (el.querySelector('[data-testid="chat-info-close"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="chat-info-panel"]')).toBeNull();
+    expect(el.querySelector('app-person-cases-view')).not.toBeNull();
+  });
+
+  it('a group shows its Group info in the details panel by default, with its members', async () => {
+    const { fixture, el } = await render();
+    params.next(convertToParamMap({ source: 'group', kind: 'group', id: 'g3' }));
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+
+    const info = el.querySelector('[data-testid="chat-info-panel"]')!;
+    expect(info.textContent).toContain('Group info');
+    expect(info.textContent).toContain('Payroll review');
+    expect(chatsApi['media']).toHaveBeenCalledWith('c3', null, 1, 5);
   });
 
   it('a 1-on-1 chat shows the month by default and switches to Ticket details when a case opens', async () => {

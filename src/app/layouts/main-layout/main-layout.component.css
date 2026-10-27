@@ -110,6 +110,11 @@
   overflow: hidden;
 }
 
+/* The hierarchy canvas owns its pan/zoom viewport, but the position list must use the page scroller. */
+.main-content:has(app-position-management app-position-list-table) .main-content__viewport {
+  overflow-y: auto;
+}
+
 .main-content:has(app-tray-activation-gate) .main-content__viewport,
 .main-content--gated .main-content__viewport {
   position: relative;
@@ -201,6 +206,7 @@
   }
 
   .main-content {
+    position: relative; /* anchors the mobile page list over the content */
     flex: 1;
     margin: 0;
     border-radius: 0;

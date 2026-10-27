@@ -9,7 +9,7 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { FileApiService, buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { CommentComposerComponent, ComposerUploader } from '../../../../shared/ui/comment-composer/comment-composer.component';
-import { PeoplePickerComponent, PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
+import { PersonPickerDialogComponent, PersonPickerOption, PersonSearch } from '../../../../shared/ui/person-picker-dialog/person-picker-dialog.component';
 import { EmojiPickerComponent } from '../../../work/ui/emoji-picker/emoji-picker.component';
 import { HostSlashCommand, MentionCandidate } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
@@ -30,7 +30,7 @@ const EDIT_WINDOW_MS = 30 * 60 * 1000;
 const CLOCK_TICK_MS = 30 * 1000;
 /** The author may edit or delete a message for this long after sending it (the server enforces it too). */
 /** What the server takes for conversation_attachment (UploadPurposeCatalog). */
-const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip';
+const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip,.mp4,.webm,.mov,.mp3,.wav,.m4a,.ogg';
 const TAG_LABELS: Record<string, string> = {
   justification: 'Justification'
 };
@@ -97,7 +97,7 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
   selector: 'app-conversation-panel',
   standalone: true,
   imports: [
-    DatePipe, AvatarComponent, CaseCardComponent, CommentComposerComponent, DropdownMenuComponent, EmojiPickerComponent, PeoplePickerComponent
+    DatePipe, AvatarComponent, CaseCardComponent, CommentComposerComponent, DropdownMenuComponent, EmojiPickerComponent, PersonPickerDialogComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -107,7 +107,8 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
         </button>
         @if (chat(); as c) {
-          @if (c.type === 'direct') {
+          <!-- Groups show their photo once they have one, as in the chat list; otherwise the group icon. -->
+          @if (c.type === 'direct' || c.avatarFileId) {
             <app-avatar [userName]="c.title" [avatarUrl]="avatarUrl(c.avatarFileId)" size="sm" />
           } @else {
             <span class="conv__group-icon" [class.conv__group-icon--case]="c.type === 'case'" aria-hidden="true">
@@ -122,19 +123,10 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
           <div class="conv__who"><span class="conv__name">{{ store.title() }}</span></div>
         }
         <div class="conv__head-tools">
-          @if (!isDirect()) {
-            <button type="button" class="conv__icon-btn" data-testid="conversation-add" aria-label="Add people" title="Add people"
-              [disabled]="store.removed()" (click)="onSlashCommand('add')">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><circle cx="9" cy="8" r="4" /><path d="M19 8v6M16 11h6" /></svg>
-            </button>
-          }
-          @if (menuItems().length > 0) {
-            <app-dropdown-menu [items]="menuItems()" ariaLabel="Chat options" (selected)="onSlashCommand($event)">
-              <button menu-trigger type="button" class="conv__icon-btn" data-testid="conversation-menu" aria-label="Chat options">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
-              </button>
-            </app-dropdown-menu>
-          }
+          <button type="button" class="conv__icon-btn" data-testid="conversation-settings" aria-label="Chat settings" title="Chat settings"
+            (click)="openInfo.emit()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+          </button>
           <button type="button" class="conv__icon-btn" data-testid="conversation-toggle-details" [attr.aria-pressed]="detailsVisible()"
             [attr.aria-label]="detailsVisible() ? 'Hide details' : 'Show details'" [attr.title]="detailsVisible() ? 'Hide details' : 'Show details'"
             (click)="toggleDetails.emit()">
@@ -170,23 +162,10 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
         </div>
       }
 
-      @if (addOpen()) {
-        <div class="conv__panel" data-testid="conversation-add-panel">
-          <div class="conv__panel-head"><span>Add member</span></div>
-          <app-people-picker
-            [options]="candidateOptions()"
-            [selectedIds]="chosen()"
-            placeholder="Search people to add…"
-            (searchChange)="searchPeople($event)"
-            (toggled)="toggleCandidate($event)"
-          />
-          <div class="conv__panel-actions">
-            <button type="button" class="conv__btn" (click)="toggleAdd()">Cancel</button>
-            <button type="button" class="conv__btn conv__btn--primary" data-testid="conversation-add-confirm"
-              [disabled]="chosen().length === 0" (click)="confirmAdd()">Add {{ chosen().length || '' }}</button>
-          </div>
-        </div>
-      }
+      <!-- Adding people: the app's shared picker - everyone this chat may add, people already in it ticked and greyed out. -->
+      <app-person-picker-dialog [open]="addOpen()" title="Add member" [subtitle]="'Add people to ' + (chat()?.title ?? 'this chat')"
+        [search]="peopleToAdd" [disabledPeople]="memberOptions()" [hiddenIds]="hiddenFromAdd()"
+        [disabledLabel]="isDirect() ? 'Already in this chat' : 'Already added to group'" (confirmed)="confirmAdd($event)" (closed)="closeAdd()" />
 
       <div #scroller class="conv__messages scroll-fade" data-testid="conversation-messages" (scroll)="onScroll()">
         <div class="conv__spacer"></div>
@@ -393,13 +372,6 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
         @if (store.removed()) {
           <p class="conv__muted conv__removed" role="status" data-testid="conversation-removed">You were removed from this conversation.</p>
         } @else {
-          @if (isSubject()) {
-            <label class="conv__justify">
-              <input type="checkbox" data-testid="conversation-justification" [checked]="justification()"
-                (change)="justification.set($any($event.target).checked)" />
-              Mark as justification
-            </label>
-          }
           @if (replyingTo(); as r) {
             <div class="conv__replying" data-testid="conversation-replying">
               <svg class="conv__replying-icon" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="replyIcon" /></svg>
@@ -579,7 +551,6 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
     .msg__file-size { color: var(--color-text-secondary); font-size: 11px; }
     .conv__footer { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--color-border); }
     .conv__removed { padding: 8px; border: 1px dashed var(--color-border); border-radius: 8px; }
-    .conv__justify { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 12px; }
     /* Narrow screens: the chat is its own screen with a back button; the details open as a drawer. */
     @media (max-width: 1023px) {
       .conv__head { display: flex; }
@@ -624,6 +595,8 @@ export class ConversationPanelComponent implements AfterViewChecked {
   /** The group was renamed (the host reloads the list). */
   renamed = output<string>();
   toggleDetails = output<void>();
+  /** The phone header's settings icon: the page opens the chat's info. */
+  openInfo = output<void>();
   /** Narrow screens: back to the chat list. */
   back = output<void>();
   private readonly chatsApi = inject(InboxChatsApiService);
@@ -643,7 +616,6 @@ export class ConversationPanelComponent implements AfterViewChecked {
   /** Keeps the 15-minute Edit action current while the chat remains open. */
   private readonly now = signal(Date.now());
   protected readonly editingId = signal<string | null>(null);
-  protected readonly justification = signal(false);
   /** The last message that failed to send, kept so it can be retried as it was. */
   protected readonly failed = signal<FailedSend | null>(null);
   /** The message the next send answers (WhatsApp/Teams-style reply); cleared on send and on switching tickets. */
@@ -651,15 +623,19 @@ export class ConversationPanelComponent implements AfterViewChecked {
   /** The message briefly highlighted after jumping to it from a quote. */
   protected readonly highlightedId = signal<string | null>(null);
 
-  protected readonly isSubject = computed(() => !!this.me() && this.me() === this.store.subjectEmployeeId());
 
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
   private readonly composer = viewChild<CommentComposerComponent>('composer');
 
   protected readonly me = computed(() => this.auth.employeeId() ?? null);
   protected readonly addOpen = signal(false);
-  protected readonly chosen = signal<string[]>([]);
-  protected readonly searchResults = signal<PeoplePickerOption[]>([]);
+  /** The Add member picker: people already in the chat (listed greyed out), and the viewer (not listed). */
+  protected readonly memberOptions = computed<PersonPickerOption[]>(() =>
+    this.store.participants().map((p) => ({ id: p.employeeId, name: p.name, avatarFileId: p.avatarFileId })));
+  protected readonly hiddenFromAdd = computed(() => (this.me() ? [this.me()!] : []));
+  /** Anyone this chat may add (the conversations people lookup). */
+  protected readonly peopleToAdd: PersonSearch = (text) =>
+    this.conversations.searchPeople(text).pipe(map((people) => people.map((p) => ({ id: p.employeeId, name: p.name, avatarFileId: p.avatarFileId }))));
   protected readonly refKey = computed(() => { const r = this.itemRef(); return `${r.source}:${r.kind}:${r.id}`; });
   /** Unsent text per ticket. */
   private readonly drafts = new Map<string, string>();
@@ -714,10 +690,6 @@ export class ConversationPanelComponent implements AfterViewChecked {
   protected readonly renameOpen = signal(false);
   protected readonly renameText = signal('');
   protected readonly membersOpen = signal(false);
-  protected readonly candidateOptions = computed(() => {
-    const members = new Set(this.store.participantIds());
-    return this.searchResults().filter((p) => !members.has(p.id));
-  });
   /** Cases with a "resolved" line in this chat: their cards show from the message alone. */
   protected readonly resolvedKeys = computed(() => {
     const keys = new Set<string>();
@@ -839,13 +811,11 @@ export class ConversationPanelComponent implements AfterViewChecked {
     this.stickToBottom = true;
     const key = this.refKey();
     this.drafts.delete(key);
-    const tag = this.isSubject() && this.justification() ? 'justification' : null;
     this.replyingTo.set(null);
-    const ok = await this.store.send(html, mentions, attachmentFileIds, tag, replyToId);
+    const ok = await this.store.send(html, mentions, attachmentFileIds, null, replyToId);
     // Only the ticket it was written in may keep (and retry) a failed message.
     if (this.refKey() !== key) return;
     if (ok) {
-      this.justification.set(false);
       this.failed.set(null);
     } else {
       this.failed.set({ html, mentions, attachmentFileIds, replyToId });
@@ -970,15 +940,16 @@ export class ConversationPanelComponent implements AfterViewChecked {
     return text.length > QUOTE_LENGTH ? text.slice(0, QUOTE_LENGTH - 1).trimEnd() + '…' : text;
   }
 
-  /** Scrolls to the quoted message (when it is loaded) and highlights it for a moment. */
-  protected jumpTo(messageId: string): void {
+  /** Scrolls to a message (when it is loaded) and highlights it for a moment; false when it is not loaded. */
+  jumpTo(messageId: string): boolean {
     const target = Array.from(this.scroller()?.nativeElement.querySelectorAll<HTMLElement>('[data-message-id]') ?? [])
       .find((el) => el.dataset['messageId'] === messageId);
-    if (!target) return;
+    if (!target) return false;
     this.stickToBottom = false;
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     this.highlightedId.set(messageId);
     setTimeout(() => { if (this.highlightedId() === messageId) this.highlightedId.set(null); }, JUMP_HIGHLIGHT_MS);
+    return true;
   }
 
 
@@ -1088,25 +1059,16 @@ export class ConversationPanelComponent implements AfterViewChecked {
 
   protected toggleAdd(): void {
     this.addOpen.update((open) => !open);
-    this.chosen.set([]);
-    if (this.addOpen()) this.searchPeople('');
   }
 
-  protected searchPeople(search: string): void {
-    this.conversations.searchPeople(search).pipe(catchError(() => of([])))
-      .subscribe((people) => this.searchResults.set(people.map((p) => ({ id: p.employeeId, name: p.name }))));
+  protected closeAdd(): void {
+    this.addOpen.set(false);
   }
 
-  protected toggleCandidate(id: string): void {
-    this.chosen.update((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
-  }
-
-  protected async confirmAdd(): Promise<void> {
-    const ids = this.chosen();
+  protected async confirmAdd(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     await this.store.addParticipants(ids);
     this.addOpen.set(false);
-    this.chosen.set([]);
   }
 
   private scrollToBottom(): void {

@@ -114,6 +114,38 @@ describe('PositionTreeNodeComponent', () => {
     expect(fixture.nativeElement.querySelector('.ptn-status-pill')).toBeNull();
   });
 
+  it('opens the unified position panel directly from the three-dot button without selecting the card', async () => {
+    const node = makeNode({});
+    const fixture = await createComponent(node);
+    fixture.componentRef.setInput('canManage', true);
+    fixture.detectChanges();
+    const selected = vi.fn();
+    const opened = vi.fn();
+    fixture.componentInstance.selectPosition.subscribe(selected);
+    fixture.componentInstance.viewCoverage.subscribe(opened);
+
+    (fixture.nativeElement.querySelector('.ptn-node-card') as HTMLElement).click();
+    expect(selected).toHaveBeenCalledWith(node);
+
+    (fixture.nativeElement.querySelector('.ptn-action-btn') as HTMLButtonElement).click();
+    expect(selected).toHaveBeenCalledTimes(1);
+    expect(opened).toHaveBeenCalledWith(node);
+    expect(fixture.nativeElement.querySelector('.ptn-menu')).toBeNull();
+  });
+
+  it('renders green/amber coverage state and compact Primary/backup level labels', async () => {
+    const fixture = await createComponent(makeNode({}));
+    fixture.componentRef.setInput('coverageVisual', {
+      state: 'unresolved', levels: ['Primary', '2'], accessibleLabel: 'Coverage needs attention'
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ptn-node-card--coverage-unresolved')).not.toBeNull();
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.ptn-coverage-level')).map((x: any) => x.textContent.trim()))
+      .toEqual(['Primary', '2']);
+    expect(fixture.nativeElement.querySelector('.ptn-coverage-warning')).not.toBeNull();
+  });
+
   it('renders seat preview component in list-table as well (shared component regression)', async () => {
     // Verifies both tree and list use the same component without duplicating rendering logic
     await TestBed.resetTestingModule();

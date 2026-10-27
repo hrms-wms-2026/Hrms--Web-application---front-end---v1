@@ -165,16 +165,38 @@ describe('InboxItemCardComponent', () => {
     expect(note.textContent).not.toContain('Approval note');
   });
 
-  it('shows an alert without an Additional information block and no decision buttons', () => {
+  it('shows a monitor alert with its reason and labelled evidence, no raw keys and no decision buttons', () => {
     const { el } = render(detail(
-      { changeSet: [], editablePayloadJson: null, explanation: 'Over capacity by 40h', explanationDetails: { allocatedHours: '100', requiredHours: '140' } },
-      { category: 'alert', kind: 'monitor_alert', actionType: 'monitor.module_over_capacity', status: 'open', direction: 'info', severity: 'high',
+      {
+        changeSet: [], editablePayloadJson: null,
+        explanation: '220 h of work remain, but the team can produce only 200 h before the Oct 16 deadline.',
+        explanationDetails: {
+          endDate: '2026-10-16', expectedFinish: '2026-10-19', lateDays: '1', remainingHours: '220', capacityHours: '200',
+          shortfallHours: '20', memberCount: '5', employeeId: '7f0c2c1e-0000-0000-0000-000000000000', somethingNew: 'x'
+        }
+      },
+      { category: 'alert', kind: 'monitor_alert', actionType: 'monitor.module_capacity_shortfall', title: 'Hardware integration portal',
+        status: 'open', direction: 'info', severity: 'high',
         availableActions: [{ key: 'open_target', label: 'Open', tone: 'neutral', needsComment: false, needsPayload: false }] }));
 
-    expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Module over capacity');
-    expect(el.querySelector('[data-testid="inbox-card-details"]')).toBeNull();
+    expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Module cannot finish in time');
+    expect(el.querySelector('[data-testid="inbox-card-description"]')?.textContent).toContain('220 h of work remain');
+    const details = el.querySelector('[data-testid="inbox-card-details"]')!;
+    expect(details.querySelector('h4')!.textContent).toBe('Evidence & details');
+    expect(Array.from(details.querySelectorAll('[data-testid="inbox-card-detail-row"]'))
+      .map((r) => `${r.querySelector('dt')!.textContent!.trim()}: ${r.querySelector('dd')!.textContent!.trim()}`))
+      .toEqual([
+        'Module: Hardware integration portal', 'Project: Apollo', 'Deadline: Oct 16, 2026', 'Expected finish: Oct 19, 2026',
+        'Late by: 1 working day', 'Work remaining: 220 hours', 'Time available: 200 hours', 'Short by: 20 hours', 'Team size: 5 people'
+      ]);
+    expect(el.textContent).not.toContain('employeeId');
+    expect(el.textContent).not.toContain('somethingNew');
     expect(el.textContent).not.toContain('Additional information');
     expect(el.querySelector('[data-testid^="inbox-action-"]')).toBeNull();
+  });
+
+  it('does not repeat a request explanation as the header description', () => {
+    expect(render(detail()).el.querySelector('[data-testid="inbox-card-description"]')).toBeNull();
   });
 
   it('renders no per-kind Additional information block; only the exception evidence keeps its slot', () => {

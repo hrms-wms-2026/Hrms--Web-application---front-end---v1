@@ -99,6 +99,12 @@ import { NavIconName } from '../nav/nav-item.model';
             <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="2" fill="none" />
           }
         }
+        @case ('more') {
+          <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" [attr.fill]="active() ? 'currentColor' : 'none'" />
+          <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" [attr.fill]="active() ? 'currentColor' : 'none'" />
+          <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" [attr.fill]="active() ? 'currentColor' : 'none'" />
+          <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" [attr.fill]="active() ? 'currentColor' : 'none'" />
+        }
       }
     </svg>
   `

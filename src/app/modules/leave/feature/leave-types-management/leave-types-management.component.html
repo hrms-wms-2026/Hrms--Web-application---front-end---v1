@@ -25,7 +25,7 @@
     </div>
   } @else {
     <div class="to-table-card">
-      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" />
+      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" (viewPolicies)="viewPolicies($event)" (addPolicy)="addPolicy($event)" />
     </div>
   }
 </section>

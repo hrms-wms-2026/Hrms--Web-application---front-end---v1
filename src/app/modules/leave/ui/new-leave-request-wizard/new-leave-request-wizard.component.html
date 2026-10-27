@@ -5,7 +5,8 @@
         <span class="ui-field-label">Employee<span class="ui-field-required" aria-hidden="true">*</span></span>
         <button type="button" class="nlw-picker-trigger" (click)="pickerOpen.set(true)">{{ employeeId() ? 'Employee selected' : 'Choose employee' }}</button>
       </div>
-      <app-employee-picker [open]="pickerOpen()" (selected)="onEmployeePicked($event)" (closed)="pickerOpen.set(false)" />
+      <app-person-picker-dialog [open]="pickerOpen()" title="Choose employee" icon="user" [multiple]="false"
+        (confirmed)="onEmployeePicked($event[0])" (closed)="pickerOpen.set(false)" />
     }
 
     <app-select

@@ -1,16 +1,16 @@
-<div class="pcm-backdrop" (click)="close.emit()">
-  <div class="pcm-modal ui-scroll-open" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+<div class="pcm-backdrop">
+  <aside class="pcm-modal ui-scroll-open" role="dialog" aria-modal="false" aria-label="Position details">
 
     <!-- Header -->
     <div class="pcm-header ui-popup-header">
       <span class="ui-popup-icon" data-icon="briefcase" aria-hidden="true"></span>
       <div>
         <div class="pcm-title-row">
-          <h2 class="pcm-title">Management Coverage</h2>
-          <span class="pcm-position-chip">{{ position.name }}</span>
+          <h2 class="pcm-title">{{ position.name }}</h2>
+          <span class="pcm-position-chip">{{ position.code || 'Position' }}</span>
         </div>
         <p class="pcm-subtitle">
-          Controls what this position can manage for visibility and approval routing.
+          {{ position.departmentName || 'Position management' }}
         </p>
       </div>
       <button type="button" class="pcm-close-btn" (click)="close.emit()" aria-label="Close">
@@ -21,8 +21,113 @@
       </button>
     </div>
 
+    <div class="pcm-tabs" role="tablist" aria-label="Position information">
+      <button type="button" role="tab" [attr.aria-selected]="panelTab() === 'details'" [class.pcm-tab--active]="panelTab() === 'details'" (click)="panelTab.set('details')">Details</button>
+      <button type="button" role="tab" [attr.aria-selected]="panelTab() === 'coverage'" [class.pcm-tab--active]="panelTab() === 'coverage'" (click)="panelTab.set('coverage')">Coverage</button>
+      <button type="button" role="tab" [attr.aria-selected]="panelTab() === 'holders'" [class.pcm-tab--active]="panelTab() === 'holders'" (click)="panelTab.set('holders')">Holders ({{ ownerHolders.length }})</button>
+    </div>
+
     <!-- Body -->
     <div class="pcm-body scroll-fade">
+
+      @if (panelTab() === 'details') {
+        <form [formGroup]="detailsForm" (ngSubmit)="onDetailsSubmit()" class="pcm-details-form">
+          <h3 class="pcm-details-title">Position details</h3>
+
+          @if (detailsError || accessError) {
+            <div class="pcm-error-alert" role="alert">{{ detailsError || accessError }}</div>
+          }
+
+          <div class="pcm-details-grid">
+            <app-input
+              label="Position name *"
+              [disabled]="!canManage"
+              [value]="detailsForm.controls.name.value || ''"
+              (valueChange)="detailsForm.controls.name.setValue($event)"
+              (blurred)="detailsForm.controls.name.markAsTouched()"
+              [error]="detailsForm.controls.name.touched && detailsForm.controls.name.invalid ? 'Position name is required (max 100 characters).' : ''"
+            />
+            <app-input
+              label="Position code (optional)"
+              [disabled]="!canManage"
+              [maxlength]="5"
+              [value]="detailsForm.controls.code.value || ''"
+              (valueChange)="detailsForm.controls.code.setValue($event)"
+              (blurred)="detailsForm.controls.code.markAsTouched()"
+              [error]="detailsForm.controls.code.touched && detailsForm.controls.code.invalid ? 'Use up to 5 letters, numbers, hyphens, or underscores.' : ''"
+            />
+            <app-select
+              label="Department *"
+              [disabled]="!canManage"
+              [options]="positionDepartmentOptions"
+              [value]="detailsForm.controls.departmentId.value || ''"
+              (valueChange)="detailsForm.controls.departmentId.setValue($event)"
+              [error]="detailsForm.controls.departmentId.touched && detailsForm.controls.departmentId.invalid ? 'Department is required.' : ''"
+            />
+            <app-select
+              label="Reports to position"
+              [disabled]="!canManage"
+              [options]="reportsToOptions"
+              [value]="detailsForm.controls.reportsToPositionId.value || ''"
+              (valueChange)="detailsForm.controls.reportsToPositionId.setValue($event)"
+            />
+            <app-input
+              label="Capacity *"
+              type="number"
+              [disabled]="!canManage"
+              [value]="detailsForm.controls.maxOccupancy.value?.toString() || '1'"
+              (valueChange)="detailsForm.controls.maxOccupancy.setValue(+$event)"
+              (blurred)="detailsForm.controls.maxOccupancy.markAsTouched()"
+              [error]="detailsForm.controls.maxOccupancy.touched && detailsForm.controls.maxOccupancy.invalid ? 'Capacity must be at least 1.' : ''"
+            />
+            <app-select
+              label="Default system role"
+              [disabled]="!canConfigureAccess || accessLoading"
+              [options]="roleOptions"
+              [value]="detailsForm.controls.roleId.value || ''"
+              (valueChange)="detailsForm.controls.roleId.setValue($event)"
+            />
+          </div>
+
+          <label class="pcm-approval-check" [class.pcm-approval-check--disabled]="!canConfigureAccess">
+            <input type="checkbox" [disabled]="!canConfigureAccess || accessLoading" [checked]="detailsForm.controls.requiresApproval.value" (change)="detailsForm.controls.requiresApproval.setValue($any($event.target).checked)" />
+            <span>Require approval before granting system access</span>
+          </label>
+
+          @if (!canConfigureAccess) {
+            <div class="pcm-access-notice">Role access permission is required to change the default system role.</div>
+          }
+
+          <div class="pcm-status-section">
+            <div class="pcm-status-heading">
+              <h3>Position status</h3>
+              <span [class.pcm-status-active]="position.isActive" [class.pcm-status-archived]="!position.isActive">{{ position.isActive ? 'Active' : 'Archived' }}</span>
+            </div>
+            <p>{{ position.isActive ? 'This position is active and visible in the organisation structure.' : 'This position is archived and hidden from the active organisation structure.' }}</p>
+            @if (canManage) {
+              @if (position.isActive) {
+                <button type="button" class="pcm-status-action pcm-status-action--danger" (click)="archivePosition.emit(position)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  Archive position
+                </button>
+              } @else {
+                <button type="button" class="pcm-status-action" (click)="restorePosition.emit(position)">Restore position</button>
+              }
+            }
+          </div>
+        </form>
+      } @else if (panelTab() === 'holders') {
+        <div class="pcm-holder-list">
+          @for (holder of ownerHolders; track holder.employeeId) {
+            <div class="pcm-holder-row">
+              <span class="pcm-holder-avatar">{{ getInitial(holder.firstName) }}{{ getInitial(holder.lastName) }}</span>
+              <span><strong>{{ holder.firstName }} {{ holder.lastName }}</strong><small>{{ holder.workEmail }}</small></span>
+            </div>
+          } @empty {
+            <div class="pcm-empty-state">This position has no active holder. Its coverage cannot currently resolve to a person.</div>
+          }
+        </div>
+      } @else {
 
       @if (error) {
         <div class="pcm-error-alert" role="alert">
@@ -38,13 +143,27 @@
         </div>
       } @else {
 
+        @if (visualization) {
+          <div class="pcm-overview" aria-label="Coverage summary">
+            <div><strong>{{ visualization.coveredPositionCount }}</strong><span>Positions</span></div>
+            <div><strong>{{ visualization.coveredEmployeeCount }}</strong><span>Employees</span></div>
+            <div [class.pcm-overview__warning]="visualization.unresolvedRuleCount > 0"><strong>{{ visualization.unresolvedRuleCount }}</strong><span>Need attention</span></div>
+          </div>
+          @if (visualization.unresolvedRuleCount > 0) {
+            <div class="pcm-attention" role="alert">
+              <span>!</span>
+              <p><strong>{{ visualization.unresolvedRuleCount }} coverage assignment{{ visualization.unresolvedRuleCount === 1 ? '' : 's' }} need attention.</strong><small>Choose a valid responsible position holder to resolve them.</small></p>
+            </div>
+          }
+        }
+
         <!-- Add Manual Coverage AT THE TOP -->
         @if (canManage) {
           <div class="pcm-add-section">
             @if (!showAddForm.value) {
               <button type="button" class="pcm-toggle-add-btn" (click)="toggleAddForm()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Add manual coverage
+                Add coverage
               </button>
             } @else {
               <form [formGroup]="addForm" (ngSubmit)="onAddSubmit()" class="pcm-add-form">
@@ -101,6 +220,8 @@
                       [options]="ownerOrderOptions"
                       [value]="addForm.controls.ownerOrder.value?.toString() || '1'"
                       (valueChange)="addForm.controls.ownerOrder.setValue(+($event || 1))"
+                      panelActionLabel="+ Add another level"
+                      (panelAction)="addAnotherLevel()"
                     />
                     @if (occupiedLevelHints.length > 0) {
                       <div class="pcm-level-hints">
@@ -112,9 +233,6 @@
                         }
                       </div>
                     }
-                    <button type="button" class="pcm-text-btn pcm-add-level-btn" (click)="addAnotherLevel()">
-                      + Add another level
-                    </button>
                   </div>
 
                   @if (needsResponsiblePersonPick) {
@@ -147,13 +265,15 @@
             @for (cov of automaticRecords; track cov.id) {
               <div class="pcm-card pcm-card--automatic">
                 <div class="pcm-card-main">
-                  <span class="pcm-badge pcm-badge--automatic">Automatic</span>
                   <span class="pcm-card-target">{{ targetName(cov) }}</span>
                   <span class="pcm-card-target-type">{{ cov.coveredTargetType }}</span>
                 </div>
                 <span class="pcm-responsibility-chip" [class.pcm-responsibility-chip--primary]="cov.ownerOrder === 1">
-                  {{ formatResponsibilityLabel(cov.ownerOrder) }}
+                  {{ formatResponsibilityChip(cov.ownerOrder) }}
                 </span>
+                @if (isUnresolved(cov)) {
+                  <span class="pcm-unresolved" [title]="resolutionReason(cov)">Needs attention</span>
+                }
               </div>
             } @empty {
               <div class="pcm-empty-state">No automatic reporting coverage for this position.</div>
@@ -168,7 +288,6 @@
             @for (cov of manualRecords; track cov.id) {
               <div class="pcm-card">
                 <div class="pcm-card-main">
-                  <span class="pcm-badge pcm-badge--manual">Manual</span>
                   <span class="pcm-card-target">{{ targetName(cov) }}</span>
                   <span class="pcm-card-target-type">{{ cov.coveredTargetType }}</span>
                   @if (isSelfCoverage(cov)) {
@@ -185,7 +304,16 @@
                       [options]="editOwnerOrderOptions(cov)"
                       [value]="editOwnerOrderValue().toString()"
                       (valueChange)="onEditOwnerOrderChange($event)"
+                      panelActionLabel="+ Add another level"
+                      (panelAction)="addAnotherLevel()"
                     />
+                    @if (needsResponsiblePersonPick) {
+                      <app-select
+                        [options]="responsiblePersonOptions"
+                        [value]="editResponsibleEmployeeId()"
+                        (valueChange)="editResponsibleEmployeeId.set($event)"
+                      />
+                    }
                     <app-button type="button" (click)="saveEdit(cov)" [disabled]="saving">Save</app-button>
                     <app-button type="button" variant="secondary" (click)="cancelEdit()" [disabled]="saving">Cancel</app-button>
                   </div>
@@ -199,13 +327,10 @@
                       }
                     </div>
                   }
-                  <button type="button" class="pcm-text-btn pcm-add-level-btn" (click)="addAnotherLevel()">
-                    + Add another level
-                  </button>
                 } @else {
                   <div class="pcm-card-actions">
                     <span class="pcm-responsibility-chip" [class.pcm-responsibility-chip--primary]="cov.ownerOrder === 1">
-                      {{ formatResponsibilityLabel(cov.ownerOrder) }}
+                      {{ formatResponsibilityChip(cov.ownerOrder) }}
                     </span>
                     @if (cov.responsibleEmployeeName) {
                       <span class="pcm-responsible-person">{{ cov.responsibleEmployeeName }}</span>
@@ -214,12 +339,24 @@
                         Needs a responsible person
                       </span>
                     }
+                    @if (isUnresolved(cov) && !isAmbiguousOwner(cov)) {
+                      <span class="pcm-self-warning" [title]="resolutionReason(cov)">Needs attention</span>
+                    }
                     @if (canManage && !isSelfCoverage(cov)) {
-                      <button type="button" class="pcm-text-btn" (click)="startEdit(cov)" [disabled]="saving">Edit level</button>
-                      <button type="button" class="pcm-delete-btn" (click)="onDelete(cov)" [disabled]="saving" title="Remove manual coverage rule">
+                      <button type="button" class="pcm-icon-btn" (click)="startEdit(cov)" [disabled]="saving" title="Edit coverage" aria-label="Edit coverage">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                      </button>
+                      <button type="button" class="pcm-icon-btn pcm-icon-btn--danger pcm-delete-btn" (click)="onDelete(cov)" [disabled]="saving" title="Delete coverage" aria-label="Delete coverage">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                       </button>
                     }
+                  </div>
+                }
+                @if (removingCoverageId() === cov.id) {
+                  <div class="pcm-remove-confirm" role="alert">
+                    <p><strong>Remove {{ targetName(cov) }} — {{ formatResponsibilityLabel(cov.ownerOrder) }}?</strong><span>Management visibility and approval routing may change.</span></p>
+                    <button type="button" (click)="cancelDelete()">Cancel</button>
+                    <button type="button" class="pcm-remove-confirm__danger" (click)="confirmDelete(cov)" [disabled]="saving">Remove</button>
                   </div>
                 }
               </div>
@@ -231,12 +368,17 @@
 
       }
 
+      }
+
     </div>
 
     <!-- Footer -->
     <div class="pcm-footer">
-      <app-button type="button" variant="secondary" (click)="close.emit()">Close</app-button>
+      <app-button type="button" variant="secondary" (click)="close.emit()">{{ panelTab() === 'details' ? 'Cancel' : 'Close' }}</app-button>
+      @if (panelTab() === 'details' && canManage) {
+        <app-button type="button" (click)="onDetailsSubmit()" [loading]="detailsSaving" [disabled]="detailsSaving || detailsForm.invalid">Save changes</app-button>
+      }
     </div>
 
-  </div>
+  </aside>
 </div>

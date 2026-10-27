@@ -7,7 +7,7 @@ import { TimePickerComponent } from '../../../../shared/ui/time-picker/time-pick
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { EmployeePickerComponent } from '../../../work/ui/employee-picker/employee-picker.component';
+import { PersonPickerDialogComponent } from '../../../../shared/ui/person-picker-dialog/person-picker-dialog.component';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveRequestResponse, LeaveUploadedDocument, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
@@ -30,7 +30,7 @@ function emptyDraft(): LeaveRequestDraft {
 @Component({
   selector: 'app-new-leave-request-wizard',
   standalone: true,
-  imports: [CommonModule, ModalComponent, DatePickerComponent, TimePickerComponent, EmployeePickerComponent, SelectComponent, InputComponent, ButtonComponent],
+  imports: [CommonModule, ModalComponent, DatePickerComponent, TimePickerComponent, PersonPickerDialogComponent, SelectComponent, InputComponent, ButtonComponent],
   templateUrl: './new-leave-request-wizard.component.html',
   styleUrl: './new-leave-request-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

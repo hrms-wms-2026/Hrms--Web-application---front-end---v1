@@ -5,6 +5,7 @@ import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { NavigationStateService } from '../../../../layouts/main-layout/nav/navigation-state.service';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
@@ -12,6 +13,7 @@ import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service'
 import { InboxChatRowDto } from '../../models/inbox-chat.dto';
 import { InboxChatsStore } from '../../state/inbox-chats.store';
 import { InboxKindsStore } from '../../state/inbox-kinds.store';
+import { chatTimeLabel } from '../chat-list/chat-list.component';
 import { InboxChatSidebarComponent } from './inbox-chat-sidebar.component';
 
 function row(id: string, extra: Partial<InboxChatRowDto> = {}): InboxChatRowDto {
@@ -40,10 +42,10 @@ describe('InboxChatSidebarComponent', () => {
         {
           provide: InboxChatsApiService, useValue: {
             list: vi.fn(() => of([
-              row('c1', { unread: 2 }),
-              row('c2', { title: 'Kiru', unread: 3, pending: [{ source: 'leave', kind: 'request', id: 'l1', title: 'Annual leave' }] }),
+              row('c1', { unread: 2, lastMessageAt: '2026-10-19T08:00:00Z' }),
+              row('c2', { title: 'Kiru', unread: 3, lastMessageAt: '2026-10-20T10:00:00Z', pending: [{ source: 'leave', kind: 'request', id: 'l1', title: 'Annual leave' }] }),
               row('g2', { source: 'group', kind: 'group', subjectId: 'g2', type: 'group', title: 'Ops huddle', otherEmployeeId: null, isFavorite: true }),
-              row('g1', { source: 'group', kind: 'group', subjectId: 'g1', type: 'group', title: 'Payroll review', otherEmployeeId: null }),
+              row('g1', { source: 'group', kind: 'group', subjectId: 'g1', type: 'group', title: 'Payroll review', otherEmployeeId: null, lastMessageAt: '2026-10-20T11:00:00Z' }),
               row('k1', { source: 'monitoring', kind: 'exception_case', subjectId: 'x1', type: 'case', title: 'Face check - Priya', otherEmployeeId: null })
             ])),
             openDirect: vi.fn(() => of({ conversationId: 'c9', source: 'direct', kind: 'direct', subjectId: 'pair-c9' })),
@@ -57,7 +59,8 @@ describe('InboxChatSidebarComponent', () => {
         { provide: Router, useValue: router },
         { provide: NavigationStateService, useValue: { collapseSubSidebar: collapse } },
         { provide: InboxKindsStore, useValue: { kinds: signal([]), ensureLoaded: vi.fn(() => Promise.resolve()) } },
-        { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } }
+        { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } },
+        { provide: PermissionService, useValue: { hasPermission: () => true } }
       ]
     });
   });
@@ -71,17 +74,17 @@ describe('InboxChatSidebarComponent', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const q = (id: string) => el.querySelector(`[data-testid="${id}"]`) as HTMLElement;
-    const names = (section: string) => Array.from(q(section).querySelectorAll('[data-testid="chat-row"]')).map((r) => r.textContent!.trim());
+    const names = (list: string) => Array.from(q(list).querySelectorAll('[data-testid="chat-row"]')).map((r) => r.textContent!.trim());
     return { fixture, el, q, names };
   }
 
-  it('lists groups (named and case groups) apart from direct messages, each with an always-shown "+"', async () => {
+  it('lists groups and direct messages together, newest last message first, with a "+" menu for new chats', async () => {
     const { q, names } = await render();
 
-    expect(names('chat-section-groups')).toEqual([expect.stringContaining('Ops huddle'), expect.stringContaining('Payroll review'), expect.stringContaining('Face check - Priya')]);
-    expect(names('chat-section-direct')).toEqual([expect.stringContaining('Person c1'), expect.stringContaining('Kiru')]);
-    expect(q('chat-new-group')).not.toBeNull();
-    expect(q('chat-new-direct')).not.toBeNull();
+    // Ops huddle is a favorite (pinned on top); the rest by last message.
+    expect(names('chat-rows')).toEqual([expect.stringContaining('Ops huddle'), expect.stringContaining('Payroll review'),
+      expect.stringContaining('Kiru'), expect.stringContaining('Face check - Priya'), expect.stringContaining('Person c1')]);
+    expect(q('chat-new')).not.toBeNull();
   });
 
   it('marks the open chat and never shows it as unread', async () => {
@@ -92,14 +95,14 @@ describe('InboxChatSidebarComponent', () => {
     expect(active.querySelector('.cl__unread')).toBeNull();
   });
 
-  it('a favorite moves to the top of its own section and is saved on the server', async () => {
+  it('a favorite moves to the top and is saved on the server', async () => {
     const { fixture, names } = await render();
 
-    expect(names('chat-section-groups')[0]).toContain('Ops huddle');
+    expect(names('chat-rows')[0]).toContain('Ops huddle');
     await TestBed.inject(InboxChatsStore).toggleFavorite('c2');
     fixture.detectChanges();
 
-    expect(names('chat-section-direct')[0]).toContain('Kiru');
+    expect(names('chat-rows').slice(0, 2)).toEqual([expect.stringContaining('Kiru'), expect.stringContaining('Ops huddle')]);
     expect(setFavorite).toHaveBeenCalledWith('c2', true);
   });
 
@@ -118,8 +121,7 @@ describe('InboxChatSidebarComponent', () => {
     (q('chat-filter-pending') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    expect(names('chat-section-direct')).toEqual([expect.stringContaining('Kiru')]);
-    expect(names('chat-section-groups')).toEqual([]);
+    expect(names('chat-rows')).toEqual([expect.stringContaining('Kiru')]);
     expect(fixture.nativeElement.querySelector('input[type="checkbox"]')).toBeNull();
   });
 
@@ -143,7 +145,7 @@ describe('InboxChatSidebarComponent', () => {
     await vi.advanceTimersByTimeAsync(300);
     fixture.detectChanges();
 
-    expect(names('chat-section-direct')).toEqual([expect.stringContaining('Kiru')]);
+    expect(names('chat-rows')).toEqual([expect.stringContaining('Kiru')]);
     expect(searchPeople).toHaveBeenCalledWith('kir');
     (q('chat-person') as HTMLButtonElement).click();
     await vi.advanceTimersByTimeAsync(0);
@@ -158,5 +160,16 @@ describe('InboxChatSidebarComponent', () => {
 
     (el.querySelector('[aria-label="Close sidebar"]') as HTMLButtonElement).click();
     expect(collapse).toHaveBeenCalled();
+  });
+});
+
+describe('chatTimeLabel', () => {
+  const now = new Date(2026, 9, 27, 18, 0);
+
+  it('shows the time today, "Yesterday", then the date (with the year for other years)', () => {
+    expect(chatTimeLabel(new Date(2026, 9, 27, 17, 28).toISOString(), now)).toBe('5:28 PM');
+    expect(chatTimeLabel(new Date(2026, 9, 26, 9, 0).toISOString(), now)).toBe('Yesterday');
+    expect(chatTimeLabel(new Date(2026, 9, 25, 9, 0).toISOString(), now)).toBe('Oct 25');
+    expect(chatTimeLabel(new Date(2025, 9, 25, 9, 0).toISOString(), now)).toBe('Oct 25, 2025');
   });
 });

@@ -1,10 +1,10 @@
-import { Component, OnInit, effect, inject, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
-import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
+import { PersonPickerDialogComponent, PersonPickerOption } from '../../../../shared/ui/person-picker-dialog/person-picker-dialog.component';
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
 import { CreateProjectPayload } from '../../models/project.model';
 import { ColorSwatchPickerComponent } from '../color-swatch-picker/color-swatch-picker.component';
@@ -21,7 +21,7 @@ const STEP_ITEMS = [
   selector: 'app-project-form-modal',
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [InputComponent, ButtonComponent, DateRangePickerComponent, EmployeePickerComponent, ColorSwatchPickerComponent],
+  imports: [InputComponent, ButtonComponent, DateRangePickerComponent, PersonPickerDialogComponent, ColorSwatchPickerComponent],
   template: `
     @if (open()) {
       <div class="proj-modal-backdrop" animate.leave="ui-popup-leave" (click)="closed.emit()">
@@ -361,9 +361,12 @@ const STEP_ITEMS = [
       </div>
     }
 
-    <app-employee-picker
+    <app-person-picker-dialog
       [open]="pickerOpen()"
-      (selected)="onMemberPicked($event)"
+      title="Add members"
+      subtitle="People who will work on this project"
+      [disabledPeople]="stagedMembers()"
+      (confirmed)="onMembersPicked($event)"
       (closed)="pickerOpen.set(false)"
     />
   `,
@@ -795,11 +798,16 @@ export class ProjectFormModalComponent implements OnInit {
     this.bannerFile.set(input.files?.[0] ?? null);
   }
 
-  onMemberPicked(employeeId: string): void {
+  /** Members already staged: listed as added in the picker. */
+  protected readonly stagedMembers = computed<PersonPickerOption[]>(() =>
+    this.memberEmployeeIds().map((id) => ({ id, name: this.directory.get(id)?.name ?? 'Employee' })));
+
+  onMembersPicked(employeeIds: string[]): void {
     this.pickerOpen.set(false);
-    if (this.memberEmployeeIds().includes(employeeId)) return;
-    this.memberEmployeeIds.update((ids) => [...ids, employeeId]);
-    void this.directory.ensureLoaded([employeeId]);
+    const fresh = employeeIds.filter((id) => !this.memberEmployeeIds().includes(id));
+    if (fresh.length === 0) return;
+    this.memberEmployeeIds.update((ids) => [...ids, ...fresh]);
+    void this.directory.ensureLoaded(fresh);
   }
 
   removeMember(employeeId: string): void {

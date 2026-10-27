@@ -1,38 +1,117 @@
-@if (visibleItems().length > 0) {
+@if (barItems().length > 0) {
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-
-    @if (activeChildren().length > 1) {
-      <div class="mobile-sub-nav">
-        @for (child of activeChildren(); track child.id) {
-          <a
-            [routerLink]="child.path"
-            class="mobile-sub-nav__item"
-            [class.mobile-sub-nav__item--active]="isChildActive(child.path)"
-          >
-            {{ child.label }}
-          </a>
-        }
-      </div>
-    }
-
     <div class="mobile-bottom-nav__bar">
-      @for (item of visibleItems(); track item.id) {
+      @for (item of barItems(); track item.id) {
         <a
           [routerLink]="entryPath(item)"
           class="mobile-nav-item"
-          [class.mobile-nav-item--active]="activeItem()?.id === item.id"
+          [class.mobile-nav-item--active]="!moreOpen() && activeId() === item.id"
           [attr.aria-label]="item.label"
-          [attr.aria-current]="activeItem()?.id === item.id ? 'page' : null"
+          [attr.aria-current]="activeId() === item.id ? 'page' : null"
+          [title]="item.label"
+          (click)="closeMore()"
         >
-          <div class="mobile-nav-item__icon">
-            <app-nav-icon [name]="item.icon!" [active]="activeItem()?.id === item.id" />
-          </div>
-          @if (activeItem()?.id === item.id) {
-            <span class="mobile-nav-item__label">{{ item.label }}</span>
+          <app-nav-icon [name]="item.icon!" [active]="!moreOpen() && activeId() === item.id" />
+          @if (item.id === 'inbox' && inboxBadge()) {
+            <b class="mobile-nav-item__badge" aria-hidden="true">{{ inboxBadge() }}</b>
+          }
+          @if (!moreOpen() && activeId() === item.id) {
+            <span class="mobile-nav-item__label" aria-hidden="true">{{ item.label }}</span>
           }
         </a>
       }
+      @if (hasMore()) {
+        <button
+          type="button"
+          class="mobile-nav-item"
+          [class.mobile-nav-item--active]="moreActive()"
+          aria-label="More"
+          title="More"
+          aria-haspopup="dialog"
+          [attr.aria-expanded]="moreOpen()"
+          (click)="toggleMore()"
+        >
+          <app-nav-icon name="more" [active]="moreActive()" />
+          @if (moreActive()) {
+            <span class="mobile-nav-item__label" aria-hidden="true">More</span>
+          }
+        </button>
+      }
     </div>
-
   </nav>
 }
+
+@if (moreOpen()) {
+  <div class="more-sheet__backdrop" (click)="closeMore()" aria-hidden="true"></div>
+  <section class="more-sheet" role="dialog" aria-modal="true" aria-labelledby="more-sheet-title">
+    <div class="more-sheet__handle" aria-hidden="true"></div>
+    <header class="more-sheet__header">
+      <h2 id="more-sheet-title" class="more-sheet__title">More</h2>
+      <button
+        type="button"
+        class="more-sheet__icon-btn"
+        [class.more-sheet__icon-btn--on]="showBarItems()"
+        [attr.aria-pressed]="showBarItems()"
+        aria-label="Show modules on your bar"
+        title="Modules on your bar"
+        (click)="toggleBarItems()"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 17v5" />
+          <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+        </svg>
+      </button>
+      <button type="button" class="more-sheet__icon-btn" aria-label="Close" (click)="closeMore()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </header>
+
+    <ul class="more-sheet__list">
+      @for (item of moreItems(); track item.id) {
+        <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: item }" />
+      }
+    </ul>
+
+    @if (showBarItems()) {
+      <h3 class="more-sheet__group-title">On your bar</h3>
+      <ul class="more-sheet__list">
+        @for (item of pinnableBarItems(); track item.id) {
+          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: item }" />
+        }
+      </ul>
+      <p class="more-sheet__hint">Pin up to {{ maxPins }} to keep them on your bar · {{ pinCount() }} of {{ maxPins }} pinned</p>
+    }
+  </section>
+}
+
+<ng-template #row let-item>
+  <li class="more-row" [class.more-row--current]="activeId() === item.id">
+    <a class="more-row__link" [routerLink]="entryPath(item)" (click)="closeMore()">
+      <span class="more-row__icon"><app-nav-icon [name]="item.icon!" /></span>
+      <span class="more-row__text">
+        <span class="more-row__label">{{ item.label }}</span>
+        @if (item.description) {
+          <span class="more-row__description">{{ item.description }}</span>
+        }
+      </span>
+    </a>
+    <button
+      type="button"
+      class="more-row__pin"
+      [class.more-row__pin--on]="isPinned(item)"
+      [disabled]="!canPin(item)"
+      [attr.aria-pressed]="isPinned(item)"
+      [attr.aria-label]="(isPinned(item) ? 'Unpin ' : 'Pin ') + item.label"
+      [title]="canPin(item) ? (isPinned(item) ? 'Unpin from bar' : 'Pin to bar') : 'Unpin one to pin this'"
+      (click)="togglePin(item)"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" [attr.fill]="isPinned(item) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 17v5" />
+        <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+      </svg>
+    </button>
+  </li>
+</ng-template>

@@ -3,11 +3,11 @@
     <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" currentLabel="Team Calendar" icon="time-off" />
     <h1 class="to-sr-only">Team Calendar</h1>
     <div class="to-header-actions">
-      <app-select
+      <app-filter-bar
         data-testid="calendar-department"
-        [options]="departmentSelectOptions()"
-        [value]="store.departmentId() ?? ''"
-        (valueChange)="onDepartmentChange($event)"
+        [fields]="filterFields()"
+        [values]="filterValues()"
+        (fieldChanged)="onFilterFieldChanged($event)"
       />
       <label class="to-filter">
         <input type="checkbox" data-testid="calendar-include-pending" [checked]="store.includeTentative()" (change)="store.setIncludeTentative($any($event.target).checked)" />

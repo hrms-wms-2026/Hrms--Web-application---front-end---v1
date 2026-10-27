@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./app/shared/styles/theme-tokens.css";
 @import "./app/shared/styles/fields.css";
+@import "./app/shared/styles/toolbar-buttons.css";
 @import "leaflet/dist/leaflet.css";
 @import "@angular/cdk/overlay-prebuilt.css";
 
@@ -528,3 +529,11 @@ html.dark .greeting-card-bg {
 .ui-popup-icon[data-icon="briefcase"] { --popup-icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%222%22 y=%227%22 width=%2220%22 height=%2214%22 rx=%222%22/%3E%3Cpath d=%22M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16%22/%3E%3C/svg%3E"); }
 .ui-popup-icon[data-icon="edit"] { --popup-icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z%22/%3E%3C/svg%3E"); }
 .ui-popup-icon[data-icon="info"] { --popup-icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cpath d=%22M12 16v-4M12 8h.01%22/%3E%3C/svg%3E"); }
+
+/* Mobile: the layout back bar names the page (MobileSectionNavComponent). A page header that held nothing but that
+   repeated breadcrumb would be left as an empty bordered strip, so it goes too. Headers with controls stay. */
+@media (max-width: 768px) {
+  header:has(app-breadcrumb-header.bh--repeats-back-bar):not(:has(:is(button, a[href], input, select):not(app-breadcrumb-header *))) {
+    display: none !important;
+  }
+}
