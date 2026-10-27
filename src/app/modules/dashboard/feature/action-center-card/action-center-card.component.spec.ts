@@ -135,17 +135,19 @@ describe('ActionCenterCardComponent', () => {
 
   describe('one inbox with filters', () => {
     it('lists approvals, exceptions and overdue work together, oldest first, each tagged with its type', async () => {
-      const { el } = await setup({ caps: MIXED_CAPS, actionItems: MIXED, ledProgress: MIXED_PROGRESS });
-      expect(tags(el)).toEqual(['Overdue', 'Objective', 'Task creation', 'Leave', 'Exception']);
+      const { fixture, el } = await setup({ caps: MIXED_CAPS, actionItems: MIXED, ledProgress: MIXED_PROGRESS });
+      expect(tags(el)).toEqual(['Overdue', 'Objective', 'Task creation', 'Leave']);
       expect(rows(el)[0]).toContain('7d late');
       expect(rows(el)[1]).toContain('6d ago');
+      click(fixture, el, '[data-testid="action-center-show-more"]');
+      expect(tags(el)).toEqual(['Overdue', 'Objective', 'Task creation', 'Leave', 'Alert']);
     });
 
     it('counts each filter from the real pending totals, and shows each type separately', async () => {
       const { fixture, el } = await setup({ caps: MIXED_CAPS, actionItems: MIXED, ledProgress: MIXED_PROGRESS });
       expect(chipText(el, 'all')).toBe('All 23');
       expect(chipText(el, 'approval')).toBe('Approvals 21');
-      expect(chipText(el, 'exception')).toBe('Exceptions 1');
+      expect(chipText(el, 'exception')).toBe('Alerts 1');
       expect(chipText(el, 'overdue')).toBe('Overdue 1');
 
       click(fixture, el, '[data-testid="action-center-filter-approval"]');
@@ -161,13 +163,13 @@ describe('ActionCenterCardComponent', () => {
       expect(getActionItems).toHaveBeenCalledWith(ACTION_ITEMS_PER_SOURCE);
     });
 
-    it('shows 5 rows on the card and pops out every row via "View all", back with "Show less"', async () => {
+    it('shows 4 rows on the card and pops out every row via "View all", back with "Show less"', async () => {
       const many: TeamActionItemsResponse = {
         legalEntityId: 'le-1',
         sources: [source({ pendingCount: 7, topItems: Array.from({ length: 7 }, (_, i) => item('leave.approval', `r${i}`, i)) })]
       };
       const { fixture, el } = await setup({ caps: capabilities({ canReviewPeopleApprovals: true }), actionItems: many });
-      expect(rows(el).length).toBe(5);
+      expect(rows(el).length).toBe(4);
       const showMore = el.querySelector('[data-testid="action-center-show-more"]') as HTMLButtonElement;
       expect(showMore.textContent!.trim()).toBe('View all (7)');
 
@@ -177,7 +179,7 @@ describe('ActionCenterCardComponent', () => {
       expect(el.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open')).toBe(true);
 
       click(fixture, el, '[data-testid="action-center-show-less"]');
-      expect(rows(el).length).toBe(5);
+      expect(rows(el).length).toBe(4);
     });
 
     it('says how many it could not list when more are pending than were sent', async () => {
@@ -188,6 +190,20 @@ describe('ActionCenterCardComponent', () => {
       const { fixture, el } = await setup({ caps: capabilities({ canReviewPeopleApprovals: true }), actionItems: truncated });
       click(fixture, el, '[data-testid="action-center-show-more"]');
       expect(el.querySelector('[data-testid="action-center-not-loaded"]')!.textContent).toContain('Showing the oldest 6 of 40');
+    });
+
+    it('keeps "View all" with the real total when the backend sends only the 4 oldest rows', async () => {
+      const capped: TeamActionItemsResponse = {
+        legalEntityId: 'le-1',
+        sources: [source({ pendingCount: 20, topItems: Array.from({ length: 4 }, (_, i) => item('leave.approval', `r${i}`, i)) })]
+      };
+      const { fixture, el } = await setup({ caps: capabilities({ canReviewPeopleApprovals: true }), actionItems: capped });
+      expect(rows(el).length).toBe(4);
+      const showMore = el.querySelector('[data-testid="action-center-show-more"]') as HTMLButtonElement;
+      expect(showMore.textContent!.trim()).toBe('View all (20)');
+      click(fixture, el, '[data-testid="action-center-show-more"]');
+      expect(rows(el).length).toBe(4);
+      expect(el.querySelector('[data-testid="action-center-not-loaded"]')!.textContent).toContain('Showing the oldest 4 of 20');
     });
   });
 
@@ -201,7 +217,7 @@ describe('ActionCenterCardComponent', () => {
 
     it('offers Approve and Reject only on approvals; every row has the open arrow', async () => {
       const { el } = await setup({ caps: MIXED_CAPS, actionItems: MIXED, ledProgress: MIXED_PROGRESS });
-      expect(el.querySelectorAll('[data-testid="action-center-arrow"]').length).toBe(5);
+      expect(el.querySelectorAll('[data-testid="action-center-arrow"]').length).toBe(4);
       expect(el.querySelectorAll('[data-testid="action-center-approve"]').length).toBe(3);
       expect(el.querySelectorAll('[data-testid="action-center-reject"]').length).toBe(3);
       const overdueRow = el.querySelectorAll('[data-testid="action-center-inbox-row"]')[0];
@@ -295,7 +311,7 @@ describe('ActionCenterCardComponent', () => {
       expect(tags(el)).toEqual(['Overdue']);
     });
 
-    it('hides the Exceptions filter when the viewer gets no exceptions', async () => {
+    it('hides the Alerts filter when the viewer gets no exceptions', async () => {
       const { el } = await setup({ caps: capabilities({ canReviewPeopleApprovals: true }), actionItems: { legalEntityId: 'le-1', sources: [source()] } });
       expect(el.querySelector('[data-testid="action-center-filter-approval"]')).toBeTruthy();
       expect(el.querySelector('[data-testid="action-center-filter-exception"]')).toBeNull();

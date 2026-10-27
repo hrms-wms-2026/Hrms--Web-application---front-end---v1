@@ -13,6 +13,7 @@ interface Row { id: string; name: string; locked?: boolean; }
       [rows]="rows()"
       [trackBy]="trackBy"
       [rowTestId]="rowTestId"
+      [rowTitle]="rowTitle"
       [activeRowId]="activeId()"
       [selectable]="selectable()"
       [selectedIds]="selectedIds()"
@@ -52,6 +53,7 @@ class HostComponent {
   loading = signal(false);
   trackBy = (r: Row) => r.id;
   rowTestId = (r: Row) => 'row-' + r.id;
+  rowTitle = (r: Row) => r.locked ? 'Locked row' : null;
   selectTestId = (r: Row) => 'select-' + r.id;
   canSelect = (r: Row) => !r.locked;
   clicked: Row | null = null;
@@ -101,6 +103,11 @@ describe('DataTableComponent', () => {
     fixture.detectChanges();
     expect(q('[data-testid="row-b"]')!.classList).toContain('data-table__row--active');
     expect(q('[data-testid="row-a"]')!.classList).not.toContain('data-table__row--active');
+  });
+
+  it('applies optional native hover text to individual rows', () => {
+    expect(q('[data-testid="row-a"]')!.getAttribute('title')).toBeNull();
+    expect(q('[data-testid="row-b"]')!.getAttribute('title')).toBe('Locked row');
   });
 
   it('selection column: per-row checkbox only for selectable rows, select-all state and events', () => {

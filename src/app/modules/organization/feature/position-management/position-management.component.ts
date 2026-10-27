@@ -5,13 +5,17 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
-import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
+import { ViewModeOption, ViewModeToggleComponent } from '../../../../shared/ui/view-mode-toggle/view-mode-toggle.component';
 import { LegalEntityStore } from '../../state/legal-entity.store';
 import { PositionStore } from '../../state/position.store';
 import { DepartmentStore } from '../../state/department.store';
 import { RoleStore } from '../../state/role.store';
 import {
   AddCoverageRecordRequest,
+  CoverageCardVisual,
+  CoverageVisualizationResponse,
+  CoverageVisualizationRule,
   CreatePositionRequest,
   POSITION_TEMPLATE_DRAG_MIME_TYPE,
   PositionListItemResponse,
@@ -47,8 +51,7 @@ import { toSafeErrorMessage } from '../../../../core/services/error-handler.serv
 import { PositionListTableComponent } from '../../ui/position-list-table/position-list-table.component';
 import { PositionFormModalComponent, PositionFormSubmitValue } from '../../ui/position-form-modal/position-form-modal.component';
 import { PositionArchiveModalComponent } from '../../ui/position-archive-modal/position-archive-modal.component';
-import { PositionCoverageModalComponent, TargetOccupancyRequest, UpdateCoverageEvent } from '../../ui/position-coverage-modal/position-coverage-modal.component';
-import { PositionAccessModalComponent } from '../../ui/position-access-modal/position-access-modal.component';
+import { PositionCoverageModalComponent, PositionDetailsSaveEvent, TargetOccupancyRequest, UpdateCoverageEvent } from '../../ui/position-coverage-modal/position-coverage-modal.component';
 import { PositionTemplateDrawerComponent, TemplatePositionSelectedEvent } from '../../ui/position-template-drawer/position-template-drawer.component';
 
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
@@ -61,7 +64,8 @@ import { PanZoomCanvasComponent } from '../../../../shared/ui/pan-zoom-canvas/pa
     CommonModule,
     BreadcrumbHeaderComponent,
     ButtonComponent,
-    SelectComponent,
+    FilterBarComponent,
+    ViewModeToggleComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     PositionTreeNodeComponent,
@@ -70,7 +74,6 @@ import { PanZoomCanvasComponent } from '../../../../shared/ui/pan-zoom-canvas/pa
     PositionFormModalComponent,
     PositionArchiveModalComponent,
     PositionCoverageModalComponent,
-    PositionAccessModalComponent,
     PositionTemplateDrawerComponent,
     ReportingLineReviewModalComponent,
     PanZoomCanvasComponent,
@@ -102,6 +105,44 @@ export class PositionManagementComponent {
   readonly reportingMoveSaving = signal(false);
   private peopleRequestKey: string | null = null;
   private selectionAnchorEmployeeId: string | null = null;
+  private coverageRequestSequence = 0;
+
+  /** Coverage focus is independent from whether the management drawer is open. */
+  readonly coverageSelectedPosition = signal<PositionListItemResponse | PositionTreeNodeResponse | null>(null);
+  readonly selectedCoverageEmployeeId = signal<string | null>(null);
+  readonly coverageVisualization = signal<CoverageVisualizationResponse | null>(null);
+  readonly coverageVisualizationLoading = signal(false);
+  readonly coverageVisualizationError = signal<string | null>(null);
+  readonly coverageSelectionActive = computed(() => this.coverageSelectedPosition() !== null);
+
+  readonly positionCoverageVisuals = computed<ReadonlyMap<string, CoverageCardVisual>>(() => {
+    const selected = this.coverageSelectedPosition();
+    if (!selected) return new Map<string, CoverageCardVisual>();
+    return this.buildCoverageVisuals(
+      this.positionStore.allPositionsList().map((position) => position.id),
+      selected.id,
+      (rule, id) => rule.coveredPositionIds.includes(id)
+    );
+  });
+
+  readonly peopleCoverageVisuals = computed<ReadonlyMap<string, CoverageCardVisual>>(() => {
+    const selected = this.coverageSelectedPosition();
+    const selectedEmployeeId = this.selectedCoverageEmployeeId();
+    if (!selected) return new Map<string, CoverageCardVisual>();
+    const rules = this.rulesForCurrentCoverageFocus();
+    return this.buildCoverageVisuals(
+      (this.peopleNodes() ?? []).map((node) => node.id),
+      selectedEmployeeId ? `e:${selectedEmployeeId}` : '',
+      (rule, nodeId) => {
+        const node = (this.peopleNodes() ?? []).find((candidate) => candidate.id === nodeId);
+        if (!node) return false;
+        return node.employeeId
+          ? rule.coveredEmployeeIds.includes(node.employeeId)
+          : rule.coveredPositionIds.includes(node.positionId);
+      },
+      rules
+    );
+  });
 
   /** Flat nodes (parentId links) -> forest; people first by position then name, vacant last. */
   readonly peopleTree = computed<readonly PeopleChartTreeNode[]>(() => {
@@ -245,15 +286,24 @@ export class PositionManagementComponent {
     this.searchExpanded.update((v) => !v);
   }
 
-  readonly departmentOptions = computed(() => {
-    const list = this.departmentStore.allFlatList();
-    const opts: { value: string; label: string }[] = [
-      { value: '', label: 'All departments' }
-    ];
-    for (const d of list) {
-      opts.push({ value: d.id, label: d.name });
+  readonly viewModes: readonly ViewModeOption[] = [
+    { value: 'tree', label: 'Tree', icon: 'tree' },
+    { value: 'list', label: 'List', icon: 'list' }
+  ];
+
+  readonly filterFields = computed<FilterFieldConfig[]>(() => [
+    {
+      key: 'department',
+      label: 'Department',
+      icon: 'department',
+      kind: 'single',
+      options: this.departmentStore.allFlatList().map((d) => ({ value: d.id, label: d.name }))
     }
-    return opts;
+  ]);
+
+  readonly filterValues = computed<Record<string, string[]>>(() => {
+    const deptId = this.positionStore.departmentFilterId();
+    return { department: deptId ? [deptId] : [] };
   });
 
   readonly departmentNameMap = computed<Record<string, string>>(() => {
@@ -294,14 +344,6 @@ export class PositionManagementComponent {
   readonly peopleChartReady = computed(
     () => !(this.peopleLoading() && !this.peopleNodes()) && !this.peopleError() && this.peopleTree().length > 0
   );
-
-  /** A press on empty chart space (pan/zoom live in app-pan-zoom-canvas) clears the people selection. */
-  onCanvasBackgroundPressed(): void {
-    if (this.chartMode() === 'people' && this.peopleSelectionActive() && !this.choosingReportingManager()) {
-      this.clearPeopleSelection();
-    }
-  }
-
 
   constructor() {
     effect(() => {
@@ -349,11 +391,21 @@ export class PositionManagementComponent {
   }
 
   onPeopleSelected(event: PeopleCardSelectionEvent): void {
-    if (!this.hasManageAccess() || !event.node.employeeId || event.node.isPending) return;
+    if (!event.node.employeeId || event.node.isPending) return;
 
     const employeeId = event.node.employeeId;
     const current = this.selectedPeopleIds();
     const additive = event.ctrlKey || event.metaKey;
+
+    // A normal card click is the read-only coverage interaction. The explicit checkbox and
+    // modifier/shift clicks retain the existing reporting-line multi-select behavior.
+    if (!event.fromCheckbox && !additive && !event.shiftKey && !this.choosingReportingManager()) {
+      const position = this.positionStore.allPositionsList().find((candidate) => candidate.id === event.node.positionId);
+      if (position) void this.selectCoverage(position, employeeId);
+      return;
+    }
+
+    if (!this.hasManageAccess()) return;
 
     // Checking someone checks everyone below them; unchecking does the same in reverse. Untick
     // individual reports afterwards to leave them where they are - only checked people move.
@@ -386,6 +438,113 @@ export class PositionManagementComponent {
     this.selectionAnchorEmployeeId = null;
     this.draggingPeople.set(false);
     this.choosingReportingManager.set(false);
+  }
+
+  private rulesForCurrentCoverageFocus(): readonly CoverageVisualizationRule[] {
+    const visualization = this.coverageVisualization();
+    if (!visualization) return [];
+    const employeeId = this.selectedCoverageEmployeeId();
+    if (!employeeId) return visualization.rules;
+    // Unresolved rules remain visible in amber because nobody can honestly claim them yet.
+    return visualization.rules.filter(
+      (rule) => rule.resolutionStatus === 'Unresolved' || rule.resolvedEmployeeId === employeeId
+    );
+  }
+
+  private buildCoverageVisuals(
+    nodeIds: readonly string[],
+    selectedNodeId: string,
+    isCovered: (rule: CoverageVisualizationRule, nodeId: string) => boolean,
+    rules: readonly CoverageVisualizationRule[] = this.rulesForCurrentCoverageFocus()
+  ): ReadonlyMap<string, CoverageCardVisual> {
+    const map = new Map<string, CoverageCardVisual>();
+    const hasAuthoritativeResult = this.coverageVisualization() !== null && !this.coverageVisualizationLoading();
+    for (const id of nodeIds) {
+      map.set(id, {
+        state: id === selectedNodeId ? 'selected' : hasAuthoritativeResult ? 'outside' : 'default',
+        levels: [],
+        accessibleLabel: null
+      });
+    }
+
+    if (!hasAuthoritativeResult) return map;
+    for (const id of nodeIds) {
+      if (id === selectedNodeId) continue;
+      const applicable = rules.filter((rule) => isCovered(rule, id));
+      if (applicable.length === 0) continue;
+      const unresolved = applicable.some((rule) => rule.resolutionStatus === 'Unresolved');
+      const levels = [...new Set(applicable.map((rule) => this.coverageLevelLabel(rule.ownerOrder)))];
+      map.set(id, {
+        state: unresolved ? 'unresolved' : 'resolved',
+        levels,
+        accessibleLabel: `${unresolved ? 'Coverage needs attention' : 'Covered'}, ${levels.join(', ')}`
+      });
+    }
+    return map;
+  }
+
+  coverageLevelLabel(ownerOrder: number): string {
+    return ownerOrder === 1 ? 'Primary' : String(ownerOrder - 1);
+  }
+
+  positionCoverageVisual(positionId: string): CoverageCardVisual {
+    return this.positionCoverageVisuals().get(positionId)
+      ?? { state: 'default', levels: [], accessibleLabel: null };
+  }
+
+  peopleCoverageVisual(nodeId: string): CoverageCardVisual {
+    return this.peopleCoverageVisuals().get(nodeId)
+      ?? { state: 'default', levels: [], accessibleLabel: null };
+  }
+
+  async selectCoverage(
+    position: PositionListItemResponse | PositionTreeNodeResponse,
+    employeeId: string | null = null,
+    openDrawer = this.coverageModalOpen()
+  ): Promise<void> {
+    const legalEntity = this.selectedLegalEntity();
+    if (!legalEntity) return;
+
+    const requestSequence = ++this.coverageRequestSequence;
+    this.coverageSelectedPosition.set(position);
+    this.selectedCoverageEmployeeId.set(employeeId);
+    this.coverageVisualization.set(null);
+    this.coverageVisualizationError.set(null);
+    this.coverageVisualizationLoading.set(true);
+    if (openDrawer) {
+      this.coverageModalOpen.set(true);
+      if (this.hasRoleReadAccess()) void this.roleStore.loadRolesOnly();
+      void Promise.all([
+        this.positionStore.loadCoverage(legalEntity.id, position),
+        this.positionStore.loadCoverageOwnerHolders(legalEntity.id, position.id),
+        this.hasRoleReadAccess() ? this.positionStore.loadAccess(legalEntity.id, position) : Promise.resolve(null)
+      ]);
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.positionApi.getCoverageVisualization(legalEntity.id, position.id)
+      );
+      if (requestSequence === this.coverageRequestSequence) this.coverageVisualization.set(response);
+    } catch (error: unknown) {
+      if (requestSequence === this.coverageRequestSequence) {
+        this.coverageVisualizationError.set(
+          toSafeErrorMessage(error, 'Could not load management coverage for this chart.')
+        );
+      }
+    } finally {
+      if (requestSequence === this.coverageRequestSequence) this.coverageVisualizationLoading.set(false);
+    }
+  }
+
+  clearCoverageSelection(): void {
+    this.coverageRequestSequence++;
+    this.coverageSelectedPosition.set(null);
+    this.selectedCoverageEmployeeId.set(null);
+    this.coverageVisualization.set(null);
+    this.coverageVisualizationError.set(null);
+    this.coverageVisualizationLoading.set(false);
+    this.positionStore.clearCoverage();
   }
 
   beginManagerSelection(): void {
@@ -499,16 +658,18 @@ export class PositionManagementComponent {
     }
   }
 
-  onDepartmentFilterChange(deptId: string): void {
-    this.positionStore.setDepartmentFilter(deptId ? deptId : null);
+  onFilterFieldChanged(event: { key: string; values: string[] }): void {
+    if (event.key === 'department') {
+      this.positionStore.setDepartmentFilter(event.values[0] ?? null);
+    }
   }
 
   onSearchChange(query: string): void {
     this.positionStore.setSearch(query);
   }
 
-  onViewModeToggle(mode: 'tree' | 'list'): void {
-    this.positionStore.setViewMode(mode);
+  onViewModeToggle(mode: string): void {
+    this.positionStore.setViewMode(mode === 'list' ? 'list' : 'tree');
   }
 
   onFilterToggle(event?: Event): void {
@@ -850,12 +1011,14 @@ export class PositionManagementComponent {
     if (success) {
       this.notificationService.success(`Position '${pos.name}' archived successfully.`);
       this.closeArchiveModal();
+      this.closeCoverageModal();
+      this.clearCoverageSelection();
     } else {
       this.notificationService.error(this.positionStore.actionError() ?? 'Failed to archive position.');
     }
   }
 
-  async onRestorePosition(pos: PositionListItemResponse): Promise<void> {
+  async onRestorePosition(pos: PositionListItemResponse | PositionTreeNodeResponse): Promise<void> {
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to restore positions.");
       return;
@@ -866,25 +1029,48 @@ export class PositionManagementComponent {
     const success = await this.positionStore.restorePosition(le.id, pos.id);
     if (success) {
       this.notificationService.success(`Position '${pos.name}' restored successfully.`);
+      await this.selectCoverage({ ...pos, isActive: true }, this.selectedCoverageEmployeeId(), true);
     } else {
       this.notificationService.error(this.positionStore.actionError() ?? 'Failed to restore position.');
     }
   }
 
   async openCoverageModal(pos: PositionListItemResponse | PositionTreeNodeResponse): Promise<void> {
-    const le = this.selectedLegalEntity();
-    if (!le) return;
-
-    this.coverageModalOpen.set(true);
-    await Promise.all([
-      this.positionStore.loadCoverage(le.id, pos),
-      this.positionStore.loadCoverageOwnerHolders(le.id, pos.id)
-    ]);
+    await this.selectCoverage(pos, null, true);
   }
 
   closeCoverageModal(): void {
     this.coverageModalOpen.set(false);
-    this.positionStore.clearCoverage();
+    this.positionStore.clearAccess();
+    // Closing management returns to graph-only coverage focus. The selection is cleared from
+    // the legend's Clear action or replaced by selecting another card.
+  }
+
+  async onSavePanelDetails(event: PositionDetailsSaveEvent): Promise<void> {
+    if (!this.hasManageAccess()) {
+      this.notificationService.error("You don't have permission to edit positions.");
+      return;
+    }
+    const legalEntity = this.selectedLegalEntity();
+    const position = this.positionStore.selectedCoveragePosition();
+    if (!legalEntity || !position) return;
+
+    const positionSaved = await this.positionStore.updatePosition(legalEntity.id, position.id, event.details);
+    if (!positionSaved) {
+      this.notificationService.error(this.positionStore.actionError() ?? 'Failed to update position.');
+      return;
+    }
+
+    const refreshedPosition = { ...position, ...event.details };
+    const accessSaved = !event.access
+      || await this.positionStore.setPositionAccess(legalEntity.id, position.id, event.access);
+    await this.selectCoverage(refreshedPosition, this.selectedCoverageEmployeeId(), true);
+    if (!accessSaved) {
+      this.notificationService.warning('Position details were saved, but its system access settings could not be updated.');
+      return;
+    }
+
+    this.notificationService.success(`Position '${event.details.name}' updated successfully.`);
   }
 
   async onAddCoverage(req: AddCoverageRecordRequest): Promise<void> {
@@ -895,6 +1081,7 @@ export class PositionManagementComponent {
     const success = await this.positionStore.addCoverage(le.id, pos.id, req);
     if (success) {
       this.notificationService.success('Management coverage rule added successfully.');
+      await this.refreshCoverageVisualization();
     } else {
       this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to add management coverage rule.');
     }
@@ -908,6 +1095,7 @@ export class PositionManagementComponent {
     const success = await this.positionStore.updateCoverage(le.id, pos.id, event.coverageId, event.payload);
     if (success) {
       this.notificationService.success('Management coverage level updated successfully.');
+      await this.refreshCoverageVisualization();
     } else {
       this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to update management coverage level.');
     }
@@ -921,6 +1109,7 @@ export class PositionManagementComponent {
     const success = await this.positionStore.removeCoverage(le.id, pos.id, coverageId);
     if (success) {
       this.notificationService.success('Management coverage rule removed successfully.');
+      await this.refreshCoverageVisualization();
     } else {
       this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to remove management coverage rule.');
     }
@@ -937,5 +1126,11 @@ export class PositionManagementComponent {
       req.coveredDepartmentId,
       req.excludingRecordId
     );
+  }
+
+  private async refreshCoverageVisualization(): Promise<void> {
+    const position = this.coverageSelectedPosition();
+    if (!position) return;
+    await this.selectCoverage(position, this.selectedCoverageEmployeeId(), this.coverageModalOpen());
   }
 }

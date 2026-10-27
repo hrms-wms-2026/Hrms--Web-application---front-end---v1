@@ -68,7 +68,12 @@
         }
       </div>
     } @else {
-      <span class="bh-breadcrumb__item bh-breadcrumb__item--current" aria-current="page">{{ currentLabel() }}</span>
+      @if (currentClickable()) {
+        <button type="button" class="bh-breadcrumb__item bh-breadcrumb__item--current bh-breadcrumb__current-btn" aria-current="page"
+          data-testid="breadcrumb-current" [attr.title]="currentTitle() || null" (click)="currentClicked.emit()">{{ currentLabel() }}</button>
+      } @else {
+        <span class="bh-breadcrumb__item bh-breadcrumb__item--current" aria-current="page">{{ currentLabel() }}</span>
+      }
     }
   </nav>
 </header>

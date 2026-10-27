@@ -45,7 +45,8 @@ describe('PositionCoverageModalComponent', () => {
     // selected/edited - it's what actually drives occupied-level disabling now (see the
     // "sees coverage owned by a DIFFERENT position" regression test below). Defaulting it to equal
     // coverageRecords keeps every existing single-owner test scenario's semantics unchanged.
-    targetOccupancy: readonly ManagementCoverageRecordResponse[] = coverageRecords
+    targetOccupancy: readonly ManagementCoverageRecordResponse[] = coverageRecords,
+    openCoverageTab = true
   ): Promise<{ component: PositionCoverageModalComponent; fixture: ReturnType<typeof TestBed.createComponent> }> {
     await TestBed.configureTestingModule({ imports: [PositionCoverageModalComponent] }).compileComponents();
     const fixture = TestBed.createComponent(PositionCoverageModalComponent);
@@ -59,9 +60,45 @@ describe('PositionCoverageModalComponent', () => {
     ]);
     fixture.componentRef.setInput('availableDepartments', [{ id: 'dept-1', name: 'Support' }]);
     fixture.componentRef.setInput('canManage', canManage);
+    if (openCoverageTab) fixture.componentInstance.panelTab.set('coverage');
     fixture.detectChanges();
     return { component: fixture.componentInstance, fixture };
   }
+
+  it('opens on Details and combines position fields, access settings, and archive action in one panel', async () => {
+    const { component, fixture } = await createComponent([], true, [], false);
+    fixture.componentRef.setInput('canConfigureAccess', true);
+    fixture.componentRef.setInput('availableRoles', [{ id: 'role-1', name: 'Manager' }]);
+    fixture.componentRef.setInput('accessTemplate', {
+      positionId: ownerPosition.id,
+      roleId: 'role-1',
+      roleName: 'Manager',
+      requiresApproval: true,
+      isActive: true
+    });
+    fixture.detectChanges();
+
+    expect(component.panelTab()).toBe('details');
+    expect(fixture.nativeElement.querySelector('.pcm-details-form')).not.toBeNull();
+    expect(component.detailsForm.controls.name.value).toBe('Owner Manager');
+    expect(component.detailsForm.controls.roleId.value).toBe('role-1');
+    expect(fixture.nativeElement.querySelector('.pcm-status-action--danger')?.textContent).toContain('Archive position');
+
+    const saved: unknown[] = [];
+    component.saveDetails.subscribe((event) => saved.push(event));
+    component.detailsForm.patchValue({ name: 'Updated Manager', code: 'UPD', maxOccupancy: 2 });
+    component.onDetailsSubmit();
+    expect(saved).toEqual([{
+      details: {
+        departmentId: 'dept-1',
+        name: 'Updated Manager',
+        code: 'UPD',
+        maxOccupancy: 2,
+        reportsToPositionId: null
+      },
+      access: { roleId: 'role-1', requiresApproval: true }
+    }]);
+  });
 
   it('formats ownerOrder 1 as Primary Manager and N>1 as Backup Manager N-1, with occupied suffix when occupied', async () => {
     const { component } = await createComponent();
@@ -219,15 +256,17 @@ describe('PositionCoverageModalComponent', () => {
     expect(values).toContain('target-1');
   });
 
-  it('renders locked records under the automatic section and unlocked ones under manual', async () => {
+  it('uses section headings without repeating Automatic or Manual badges inside each row', async () => {
     const automatic = makeRecord({ id: 'auto-1', isLocked: true, source: 'ReportingStructure' });
     const manual = makeRecord({ id: 'manual-1', isLocked: false, source: 'Manual' });
     const { fixture } = await createComponent([automatic, manual], true);
 
     const automaticBadges = fixture.debugElement.queryAll(By.css('.pcm-badge--automatic'));
     const manualBadges = fixture.debugElement.queryAll(By.css('.pcm-badge--manual'));
-    expect(automaticBadges.length).toBe(1);
-    expect(manualBadges.length).toBe(1);
+    expect(automaticBadges.length).toBe(0);
+    expect(manualBadges.length).toBe(0);
+    expect(fixture.nativeElement.textContent).toContain('Primary');
+    expect(fixture.nativeElement.textContent).not.toContain('Primary Manager');
   });
 
   it('does not show edit or remove actions on locked/automatic records', async () => {
@@ -242,7 +281,7 @@ describe('PositionCoverageModalComponent', () => {
     const manual = makeRecord({ id: 'manual-1', isLocked: false, source: 'Manual' });
     const { fixture } = await createComponent([manual], true);
 
-    expect(fixture.debugElement.queryAll(By.css('.pcm-text-btn')).length).toBe(1);
+    expect(fixture.debugElement.queryAll(By.css('.pcm-icon-btn[aria-label="Edit coverage"]')).length).toBe(1);
     expect(fixture.debugElement.queryAll(By.css('.pcm-delete-btn')).length).toBe(1);
   });
 
@@ -385,13 +424,14 @@ describe('PositionCoverageModalComponent', () => {
       'error',
       'Primary Manager is already assigned.'
     );
+    fixture.componentInstance.panelTab.set('coverage');
     fixture.detectChanges();
 
     const alert = fixture.debugElement.query(By.css('.pcm-error-alert'));
     expect(alert.nativeElement.textContent).toContain('Primary Manager is already assigned.');
   });
 
-  it('onDelete emits removeCoverage for unlocked manual records', async () => {
+  it('confirms before emitting removeCoverage for unlocked manual records', async () => {
     const record = makeRecord({ id: 'manual-1', isLocked: false });
     const { component } = await createComponent([record]);
 
@@ -399,7 +439,9 @@ describe('PositionCoverageModalComponent', () => {
     component.removeCoverage.subscribe((id) => emitted.push(id));
 
     component.onDelete(record);
-
+    expect(emitted).toEqual([]);
+    expect(component.removingCoverageId()).toBe(record.id);
+    component.confirmDelete(record);
     expect(emitted).toEqual(['manual-1']);
   });
 

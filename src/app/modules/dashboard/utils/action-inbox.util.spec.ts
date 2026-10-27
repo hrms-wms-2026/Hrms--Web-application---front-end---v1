@@ -48,21 +48,26 @@ describe('buildActionInbox', () => {
       ['Overdue', '7d late'],
       ['Objective', '6d ago'],
       ['Leave', '2d ago'],
-      ['Exception', '1d ago']
+      ['Alert', '1d ago']
     ]);
     expect(inbox[0].subject).toBe('Name e1');
   });
 
-  it('pins escalated exceptions on top whatever their age', () => {
+  it('lists strictly by waiting time, longest first - escalated alerts are not pinned, and hours count', () => {
     const inbox = buildActionInbox(
       actionItems([
-        { pendingCount: 1, topItems: [item('leave.approval', 'l1', 9)] },
-        { sourceKey: 'monitoring.exception', pendingCount: 1, topItems: [item('monitoring.exception', 'x', 0, { exceptionStatus: 'Escalated' })] }
+        { pendingCount: 2, topItems: [item('leave.approval', 'fresh', 0.1), item('leave.approval', 'l1', 9)] },
+        { sourceKey: 'monitoring.exception', pendingCount: 2, topItems: [
+          item('monitoring.exception', 'x', 0, { exceptionStatus: 'Escalated' }),
+          item('monitoring.exception', 'older', 0.5)
+        ] }
       ]),
       null,
       NOW
     );
-    expect(inbox.map((i) => i.key)).toEqual(['monitoring.exception:x', 'leave.approval:l1']);
+    expect(inbox.map((i) => i.key)).toEqual([
+      'leave.approval:l1', 'monitoring.exception:older', 'leave.approval:fresh', 'monitoring.exception:x'
+    ]);
   });
 
   it('skips sources that failed to load and the caller\'s own overdue tasks', () => {

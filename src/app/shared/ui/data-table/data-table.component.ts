@@ -128,6 +128,7 @@ export class DataTableRowAfterDirective {
                 [class.data-table__row--muted]="rowMuted()(row)"
                 [attr.data-testid]="rowTestId()?.(row) ?? null"
                 [attr.data-id]="id"
+                [attr.title]="rowTitle()(row)"
                 [attr.tabindex]="rowFocusable() ? 0 : null"
                 [attr.aria-selected]="activeRowId() !== null ? id === activeRowId() : null"
                 (click)="rowClicked.emit(row)"
@@ -257,6 +258,8 @@ export class DataTableComponent<T> {
   readonly busyRowId = input<string | null>(null);
   /** Extra caller classes per row (style them with ::ng-deep from the caller). */
   readonly rowClass = input<(row: T) => string>(() => '');
+  /** Optional native hover text for the row. Return null when no tooltip is needed. */
+  readonly rowTitle = input<(row: T) => string | null>(() => null);
   /** Faded rows - archived / inactive records. */
   readonly rowMuted = input<(row: T) => boolean>(() => false);
   /** Rows show a pointer and hover border; set when (rowClicked) does something. */

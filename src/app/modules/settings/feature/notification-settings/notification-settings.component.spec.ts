@@ -7,6 +7,7 @@ import { NotificationSettingsApiService } from '../../data-access/notification-s
 import { NotificationSetting } from '../../models/notification-setting.model';
 import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { unsavedChangesGuard } from '../../../../core/guards/unsaved-changes.guard';
+import { openSelect } from '../../../../shared/ui/select/select.testing';
 
 function setting(overrides: Partial<NotificationSetting> = {}): NotificationSetting {
   return {
@@ -108,12 +109,11 @@ describe('NotificationSettingsComponent', () => {
   });
 
   it('only offers published templates for the event', () => {
-    const select = el.querySelector<HTMLSelectElement>('[data-testid="template-work_approval_requested"] select')!;
-    const labels = Array.from(select.options).map((o) => o.textContent?.trim());
-    expect(labels).toEqual(['Default', 'Friendly']);
+    const field = el.querySelector('[data-testid="template-work_approval_requested"]')!;
+    const options = openSelect(field, () => fixture.detectChanges());
+    expect(options.map((o) => o.textContent?.trim())).toEqual(['Default', 'Friendly']);
 
-    select.value = 'tpl-friendly';
-    select.dispatchEvent(new Event('change'));
+    options[1].click();
     fixture.detectChanges();
     button('save-work_approval_requested').click();
 

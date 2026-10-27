@@ -173,7 +173,9 @@ describe('ProjectListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    (fixture.nativeElement.querySelector('[data-testid="employee-picker-row"]') as HTMLButtonElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="person-picker-row-e2"] input') as HTMLInputElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="person-picker-confirm"]') as HTMLButtonElement).click();
     await fixture.whenStable();
 
     expect(storeStub.addProjectMember).toHaveBeenCalledWith('p1', 'e2');

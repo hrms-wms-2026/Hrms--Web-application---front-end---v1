@@ -420,9 +420,9 @@
                     </div>
                   </header>
 
-                  <div class="aw-search">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                    <input
+                  <div class="aw-search ui-field">
+                    <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+                    <input class="ui-field__control"
                       type="text"
                       placeholder="Search by name, position or department…"
                       aria-label="Search for a reporting manager"
@@ -963,7 +963,7 @@
                                 min="0"
                                 step="1"
                                 [id]="'task-due-' + task.clientId"
-                                class="task-edit-due__input"
+                                class="ui-input ui-input--sm task-edit-due__input"
                                 [value]="task.dueDays"
                                 (change)="onTaskDueDaysChange(task.clientId, $any($event.target).value)"
                               />

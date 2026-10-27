@@ -62,7 +62,7 @@ describe('CategoryListEditorComponent', () => {
     (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector('.category-list__new-input') as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('.category-list__add-form input') as HTMLInputElement;
     input.value = 'Feature';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();

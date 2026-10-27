@@ -3,7 +3,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
@@ -52,7 +53,7 @@ function displayDate(iso: string): string {
   selector: 'app-leave-policy-form-wizard',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, FormsModule, ProgressBarComponent, DatePickerComponent, SelectComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, InputComponent, DatePickerComponent, SelectComponent],
   templateUrl: './leave-policy-form-wizard.component.html',
   styleUrl: './leave-policy-form-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -66,15 +67,21 @@ export class LeavePolicyFormWizardComponent {
   readonly policy = input<LeavePolicyDetail | null>(null);
   readonly conflicts = input<readonly LeavePolicyAssignmentConflict[]>([]);
   readonly saving = input(false);
+  /** Leave type picked up front when creating (e.g. from a leave type card). */
+  readonly initialLeaveTypeId = input<string | null>(null);
 
   readonly create = output<CreateLeavePolicyRequest>();
   readonly saveEdit = output<LeavePolicyWizardEdit>();
   readonly cancel = output<void>();
 
   readonly steps = ['Basics', 'Amount', 'Rules & assignment'] as const;
+  readonly stepHints = [
+    'Pick the leave type and name this policy.',
+    'How many hours it gives, carry-over and new joiners.',
+    'Booking rules, blackout dates and who it applies to.'
+  ] as const;
   readonly totalSteps = 3;
   readonly step = signal(1);
-  readonly stepProgress = computed(() => (this.step() / this.totalSteps) * 100);
   readonly validationErrors = signal<readonly string[]>([]);
   readonly today = localToday();
 
@@ -151,6 +158,10 @@ export class LeavePolicyFormWizardComponent {
       const entities = this.legalEntities();
       if (entities.length === 1 && !untracked(() => this.isEdit()))
         untracked(() => this.companyIds.set([entities[0].id]));
+    });
+    effect(() => {
+      const id = this.initialLeaveTypeId();
+      if (id && !untracked(() => this.isEdit() || this.leaveTypeId())) untracked(() => this.leaveTypeId.set(id));
     });
     // Prefill once per opening: a later policy input (e.g. a reload) must not overwrite what was typed.
     effect(() => {

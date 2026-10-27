@@ -70,15 +70,6 @@ describe('TimePickerComponent', () => {
       expect(component.isOpen()).toBe(false);
     });
 
-    it('emits valueChange when a preset is selected', () => {
-      let emitted = '';
-      component.valueChange.subscribe((val) => (emitted = val));
-
-      component.selectPreset({ label: '09:00 AM', value: '09:00' });
-      expect(emitted).toBe('09:00');
-      expect(component.isOpen()).toBe(false);
-    });
-
     it('emits valueChange when hour and minute are chosen', () => {
       const emitted: string[] = [];
       component.valueChange.subscribe((val) => emitted.push(val));

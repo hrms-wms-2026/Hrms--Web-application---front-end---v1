@@ -101,32 +101,32 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
               @if (editable() && c.editable) {
                 @switch (c.kind) {
                   @case ('date') {
-                    <app-date-picker class="ics__control" [value]="editValue(c)" [showQuickPresets]="false" [ariaLabel]="c.label"
+                    <app-date-picker class="ics__control" size="sm" [value]="editValue(c)" [showQuickPresets]="false" [ariaLabel]="c.label"
                       [inputTestId]="'inbox-edit-' + c.field" (valueChange)="setEdit(c, $event)" />
                   }
                   @case ('datetime') {
-                    <input class="ics__input" type="datetime-local" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
+                    <input class="ui-input ui-input--sm" type="datetime-local" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
                       [value]="localValue(editValue(c))" (input)="setEdit(c, fromLocal($any($event.target).value))" />
                   }
                   @case ('time') {
-                    <input class="ics__input" type="time" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
+                    <input class="ui-input ui-input--sm" type="time" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
                       [value]="editValue(c)" (input)="setEdit(c, $any($event.target).value)" />
                   }
                   @case ('priority') {
-                    <app-select class="ics__select" [attr.data-testid]="'inbox-edit-' + c.field" [ariaLabel]="c.label"
+                    <app-select class="ics__select" size="sm" [attr.data-testid]="'inbox-edit-' + c.field" [ariaLabel]="c.label"
                       [options]="priorityOptions" [value]="editValue(c)" [searchable]="false" (valueChange)="setEdit(c, $event)" />
                   }
                   @case ('longtext') {
-                    <textarea class="ics__input ics__textarea" rows="3" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
+                    <textarea class="ui-input" rows="3" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
                       [value]="editValue(c)" (input)="setEdit(c, $any($event.target).value)"></textarea>
                   }
                   @case ('breaks') {
                     <div class="ics__breaks" [attr.data-testid]="'inbox-edit-' + c.field">
                       @for (b of breaksOf(c); track $index; let i = $index) {
                         <div class="ics__break" data-testid="inbox-break-row">
-                          <input class="ics__input" type="datetime-local" aria-label="Break start" [attr.data-testid]="'inbox-break-start-' + i"
+                          <input class="ui-input ui-input--sm" type="datetime-local" aria-label="Break start" [attr.data-testid]="'inbox-break-start-' + i"
                             [value]="localValue(b.breakStart)" (input)="setBreak(c, i, 'breakStart', fromLocal($any($event.target).value))" />
-                          <input class="ics__input" type="datetime-local" aria-label="Break end" [attr.data-testid]="'inbox-break-end-' + i"
+                          <input class="ui-input ui-input--sm" type="datetime-local" aria-label="Break end" [attr.data-testid]="'inbox-break-end-' + i"
                             [value]="localValue(b.breakEnd)" (input)="setBreak(c, i, 'breakEnd', fromLocal($any($event.target).value))" />
                           <button type="button" class="ics__icon-btn" aria-label="Remove break" [attr.data-testid]="'inbox-break-remove-' + i"
                             (click)="removeBreak(c, i)">×</button>
@@ -137,14 +137,14 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
                   }
                   @default {
                     @if (c.kind === 'select' || (c.kind === 'employee' && c.options?.length)) {
-                      <app-select class="ics__select" [attr.data-testid]="'inbox-edit-' + c.field" [ariaLabel]="c.label"
+                      <app-select class="ics__select" size="sm" [attr.data-testid]="'inbox-edit-' + c.field" [ariaLabel]="c.label"
                         [options]="c.options ?? []" [value]="editValue(c)" (valueChange)="setEdit(c, $event)" />
                     } @else {
-                      <span class="ics__input-wrap">
-                        <input class="ics__input ics__input--bare" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
+                      <span class="ui-field ui-field--sm" [class.ui-field--error]="!!errors()[c.field]">
+                        <input class="ui-field__control" [attr.data-testid]="'inbox-edit-' + c.field" [attr.aria-label]="c.label"
                           [type]="c.kind === 'number' || c.kind === 'hours' ? 'number' : 'text'"
                           [value]="editValue(c)" (input)="setEdit(c, $any($event.target).value)" />
-                        @if (c.kind === 'hours') { <span class="ics__suffix">h</span> }
+                        @if (c.kind === 'hours') { <span class="ui-field__trailing">h</span> }
                       </span>
                     }
                   }
@@ -177,15 +177,7 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
     .ics__was { margin-top: 2px; color: var(--color-text-secondary); font-size: 10px; overflow-wrap: anywhere; }
     .ics__control { display: block; width: 100%; min-width: 0; }
     .ics__control ::ng-deep .dp-input { height: 32px; padding: 0 30px 0 8px; border-radius: 8px; font-size: 12px; }
-    .ics__input-wrap { display: flex; height: 32px; width: 100%; min-width: 0; align-items: center; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); }
-    .ics__input-wrap:focus-within, .ics__input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
-    .ics__input { width: 100%; min-width: 0; height: 32px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 12px; outline: none; }
-    /* The shared dropdown, sized like the inline inputs beside it. */
     .ics__select { width: 100%; min-width: 0; }
-    .ics__select ::ng-deep .app-select__trigger { height: 32px; padding: 6px 8px; border-radius: 8px; font-size: 12px; }
-    .ics__input--bare { height: auto; border: 0; background: transparent; box-shadow: none !important; }
-    .ics__textarea { height: auto; min-height: 64px; resize: vertical; }
-    .ics__suffix { padding-right: 8px; color: var(--color-text-secondary); font-size: 12px; }
     .ics__error { display: block; margin-top: 3px; color: var(--color-danger); font-size: 11px; }
     .ics__breaks { display: flex; flex-direction: column; gap: 6px; }
     .ics__break { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; align-items: center; }

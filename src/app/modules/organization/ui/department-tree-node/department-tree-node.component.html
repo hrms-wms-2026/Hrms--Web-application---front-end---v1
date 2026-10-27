@@ -1,4 +1,5 @@
-<div class="dtn-node-wrapper" [style.paddingLeft.px]="level * 24">
+<!-- The indent is set in CSS from the level, so phones can indent less. -->
+<div class="dtn-node-wrapper" [style.--dtn-level]="level">
 
   <div class="dtn-node-row" [class.dtn-node-row--inactive]="!node.isActive">
     

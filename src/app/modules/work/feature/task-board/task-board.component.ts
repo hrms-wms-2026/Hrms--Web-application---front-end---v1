@@ -36,16 +36,16 @@ import { NotificationService } from '../../../../core/services/notification.serv
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
         @if (searchExpanded()) {
-          <div class="relative flex h-[30px] w-80 items-center" data-testid="board-search">
-            <svg class="pointer-events-none absolute left-2.5 text-[var(--color-text-secondary)]" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <div class="ui-field ui-field--sm w-80" data-testid="board-search">
+            <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
+            </svg></span>
             <input autofocus type="search" placeholder="Search work items…" [value]="searchTerm()"
               (input)="onSearchChanged($any($event.target).value)"
-              class="h-[30px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-8 text-[13px] text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]" />
-            <button type="button" data-testid="board-search-close" aria-label="Close search" title="Close search"
-              class="absolute right-1.5 inline-flex h-5 w-5 items-center justify-center rounded text-base leading-none text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
-              (click)="toggleSearch()">&times;</button>
+              class="ui-field__control" />
+            <span class="ui-field__trailing"><button type="button" data-testid="board-search-close" aria-label="Close search" title="Close search"
+              class="ui-field__icon-btn h-5 w-5 text-base leading-none"
+              (click)="toggleSearch()">&times;</button></span>
           </div>
         } @else {
           <button type="button" data-testid="board-search-toggle" aria-label="Search board" title="Search board"

@@ -1,0 +1,48 @@
+/*
+ * The one square icon button for page-header toolbars (view toggle, search, etc.),
+ * taken from the Work > Projects header so every screen's controls line up with the
+ * shared Filter trigger (app-filter-bar) and app-button: 30px tall, 8px radius, bordered.
+ *
+ *   <button type="button" class="ui-square-btn" [class.ui-square-btn--active]="..." aria-label="Search">…</button>
+ *
+ * app-view-mode-toggle renders this class; use it directly for other icon-only header buttons.
+ * Kept in @layer components so a host's scoped CSS or a Tailwind utility can still adjust it.
+ */
+@layer components {
+  .ui-square-btn {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .ui-square-btn:hover {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-primary);
+  }
+
+  .ui-square-btn:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
+  }
+
+  .ui-square-btn--active {
+    background: var(--color-accent-subtle);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .ui-square-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+}

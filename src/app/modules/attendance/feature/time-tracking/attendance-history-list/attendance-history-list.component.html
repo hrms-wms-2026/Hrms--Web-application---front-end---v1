@@ -17,7 +17,7 @@
     <p class="empty-copy">{{ emptyMessage() }}</p>
   </div>
 } @else {
-  <app-data-table [columns]="columns()" [rows]="rows()" [trackBy]="trackByRecord" caption="Attendance history" [rowClass]="rowClass" (rowClicked)="selectRow($event)">
+  <app-data-table [columns]="columns()" [rows]="rows()" [trackBy]="trackByRecord" caption="Attendance history" minWidth="420px" [rowClass]="rowClass" (rowClicked)="selectRow($event)">
     <ng-template appDataTableCell="employee" let-row>
       <span class="table-primary">{{ employeeLabel(row) }}</span>
       @if (row.employee?.employeeNumber) { <span class="table-secondary">{{ row.employee?.employeeNumber }}</span> }

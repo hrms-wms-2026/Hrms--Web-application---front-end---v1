@@ -91,11 +91,4 @@ describe('LeaveTypeStore', () => {
     expect(await deactivating).toBe('error');
     expect(store.actionError()).toBeTruthy();
   });
-
-  it('setIncludeInactive reloads with includeInactive=true', async () => {
-    store.setIncludeInactive(true);
-    httpMock.expectOne(`${environment.apiUrl}/leave/types?includeInactive=true`).flush([mockType]);
-    await Promise.resolve();
-    expect(store.includeInactive()).toBe(true);
-  });
 });

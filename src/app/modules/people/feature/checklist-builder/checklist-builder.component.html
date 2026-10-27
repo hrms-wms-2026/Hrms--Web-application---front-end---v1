@@ -498,7 +498,7 @@
                       type="number"
                       min="0"
                       step="1"
-                      class="cb-due-field__input"
+                      class="ui-input ui-input--sm cb-due-field__input"
                       [attr.aria-label]="'Due for task ' + (idx + 1)"
                       [value]="taskGroup.get('dueOffsetDays')?.value ?? 0"
                       (input)="taskGroup.get('dueOffsetDays')?.setValue($any($event.target).value)"

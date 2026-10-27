@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { nextUniqueId } from '../../utils/unique-id';
+import { FieldIcon, FieldIconComponent } from '../field-icon/field-icon.component';
 
 export interface SelectOption {
   value: string;
@@ -17,15 +18,8 @@ export interface SelectOption {
   disabled?: boolean;
 }
 
-export type SelectIcon = 'module' | 'status' | 'category' | 'sprint' | 'filter';
-
-const SELECT_ICON_PATHS: Record<SelectIcon, string> = {
-  module: 'M4 5h16v14H4z M8 9h8M8 13h5',
-  status: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z M12 8v4l2.5 2',
-  category: 'M4 6h16M7 12h10M10 18h4',
-  sprint: 'M4 5h16v14H4z M8 9h8M8 13h5',
-  filter: 'M3 7h18M6 7v10M18 7v10M9 17h6'
-};
+/** Kept for existing callers; any field icon works. */
+export type SelectIcon = FieldIcon;
 
 /** Below the trigger first, flipping above when there isn't room. */
 const MENU_POSITIONS: ConnectionPositionPair[] = [
@@ -50,23 +44,33 @@ interface DisplayOption extends SelectOption {
 @Component({
   selector: 'app-select',
   standalone: true,
-  imports: [OverlayModule],
+  imports: [OverlayModule, FieldIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Fill the container, even when a host lays it out as a flex item, so the chevron sits at the field's end.
   host: { class: 'block min-w-0' },
   template: `
-    <div class="app-select flex w-full min-w-0 flex-col gap-1">
+    <div class="app-select flex w-full min-w-0 flex-col gap-1.5">
       @if (label()) {
-        <label [for]="selectId" class="app-select__label text-xs font-medium text-[var(--color-text-secondary)]">{{ label() }}</label>
+        <label [for]="selectId" class="app-select__label ui-field-label">{{ label() }}@if (required()) {<span class="ui-field-required" aria-hidden="true">*</span>}</label>
       }
-      <div class="app-select__control relative" cdkOverlayOrigin #origin="cdkOverlayOrigin">
+      <div
+        class="app-select__control ui-field"
+        [class.ui-field--sm]="size() === 'sm'"
+        [class.ui-field--error]="!!error()"
+        [class.ui-field--success]="success() && !error()"
+        [class.ui-field--disabled]="disabled()"
+        cdkOverlayOrigin
+        #origin="cdkOverlayOrigin"
+      >
+        @if (icon(); as iconName) {
+          <span data-testid="select-leading-icon" class="ui-field__addon" aria-hidden="true"><app-field-icon [name]="iconName" /></span>
+        }
         <button
           #trigger
           type="button"
           [id]="selectId"
           data-testid="select-trigger"
-          class="app-select__trigger flex w-full items-center justify-between gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-left text-sm text-[var(--color-text-primary)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
-          [class.pl-10]="icon()"
+          class="app-select__trigger ui-field__control flex items-center justify-between gap-2 cursor-pointer disabled:cursor-not-allowed"
           [disabled]="disabled()"
           aria-haspopup="listbox"
           [attr.aria-expanded]="open()"
@@ -76,21 +80,6 @@ interface DisplayOption extends SelectOption {
           (click)="toggle()"
           (keydown)="onTriggerKeydown($event)"
         >
-          @if (icon(); as iconName) {
-            <svg
-              data-testid="select-leading-icon"
-              class="pointer-events-none absolute left-3 h-4 w-4 text-[var(--color-accent)]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path [attr.d]="selectIconPath(iconName)" />
-            </svg>
-          }
           <span class="app-select__value truncate" [class.text-[var(--color-text-secondary)]]="!selectedOption()">{{ selectedOption()?.text || placeholder() }}</span>
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
@@ -101,7 +90,7 @@ interface DisplayOption extends SelectOption {
         </button>
       </div>
       @if (error()) {
-        <span [id]="errorId" class="text-xs text-[var(--color-danger-text)]">{{ error() }}</span>
+        <span [id]="errorId" class="ui-field-error">{{ error() }}</span>
       }
     </div>
 
@@ -174,19 +163,35 @@ interface DisplayOption extends SelectOption {
             <li class="px-2.5 py-2 text-xs text-[var(--color-text-secondary)]">{{ options().length ? 'No matches' : 'No options' }}</li>
           }
         </ul>
+        @if (panelActionLabel()) {
+          <div class="border-t border-[var(--color-border)] p-1">
+            <button
+              type="button"
+              data-testid="select-panel-action"
+              class="flex w-full items-center rounded px-2.5 py-1.5 text-left text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)] focus-visible:bg-[var(--color-accent-subtle)] focus-visible:outline-none"
+              (click)="runPanelAction()"
+            >
+              {{ panelActionLabel() }}
+            </button>
+          </div>
+        }
       </div>
     </ng-template>
   `
 })
 export class SelectComponent {
   label = input<string>('');
+  /** Shows a red asterisk after the label. */
+  required = input(false);
   placeholder = input<string>('Select…');
   options = input<readonly SelectOption[]>([]);
   disabled = input(false);
   value = input<string | null | undefined>('');
   error = input<string>('');
   ariaLabel = input<string>('');
-  icon = input<SelectIcon | undefined>(undefined);
+  icon = input<FieldIcon | undefined>(undefined);
+  size = input<'md' | 'sm'>('md');
+  success = input(false);
   /** The search box at the top of the open list; on by default, like the Time zone dropdown. */
   searchable = input(true);
   searchPlaceholder = input<string>('Search…');
@@ -195,8 +200,11 @@ export class SelectComponent {
   /** Element the open list aligns to and matches in width - e.g. a host frame that wraps an icon
    * plus this select. Defaults to the select's own field. */
   panelAnchor = input<HTMLElement | null>(null);
+  /** Optional action rendered below the options inside the open panel. */
+  panelActionLabel = input('');
 
   valueChange = output<string>();
+  panelAction = output<void>();
   /** Fires whenever the open list closes - by picking, Escape, or a click outside. */
   closed = output<void>();
 
@@ -229,10 +237,6 @@ export class SelectComponent {
     );
   });
 
-  selectIconPath(icon: SelectIcon): string {
-    return SELECT_ICON_PATHS[icon];
-  }
-
   toggle(): void {
     if (this.open()) this.close();
     else this.openPanel();
@@ -241,7 +245,7 @@ export class SelectComponent {
   /** Opens the list with the current value in view. */
   openPanel(): void {
     if (this.disabled()) return;
-    const anchor = this.panelAnchor() ?? this.trigger()?.nativeElement;
+    const anchor = this.panelAnchor() ?? this.trigger()?.nativeElement.parentElement;
     const width = anchor?.getBoundingClientRect().width ?? 0;
     this.menuWidth.set(width > 0 ? width : 'auto');
     this.query.set('');
@@ -266,6 +270,17 @@ export class SelectComponent {
     this.valueChange.emit(option.value);
     this.close();
     this.trigger()?.nativeElement.focus();
+  }
+
+  runPanelAction(): void {
+    this.panelAction.emit();
+    this.query.set('');
+    setTimeout(() => {
+      const options = this.optionButtons();
+      const lastOption = options.at(-1);
+      lastOption?.scrollIntoView?.({ block: 'nearest' });
+      lastOption?.focus();
+    }, 0);
   }
 
   onTriggerKeydown(event: KeyboardEvent): void {

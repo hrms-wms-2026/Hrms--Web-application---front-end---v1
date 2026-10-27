@@ -12,6 +12,34 @@ describe('LeaveTypeFormModalComponent', () => {
       expect(text).not.toContain(removed);
   });
 
+  it('takes the description in a multi-line box with a 500-character counter', () => {
+    const fixture = TestBed.createComponent(LeaveTypeFormModalComponent);
+    fixture.detectChanges();
+    const textarea = fixture.nativeElement.querySelector('.ltfm-counted textarea') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+    expect(textarea.getAttribute('maxlength')).toBe('500');
+    textarea.value = 'Paid time off';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.form.controls.description.value).toBe('Paid time off');
+    expect((fixture.nativeElement.querySelector('.ltfm-counter') as HTMLElement).textContent?.trim()).toBe('13 / 500');
+  });
+
+  it('picks a custom colour from its own picker, with no RGB boxes', () => {
+    const fixture = TestBed.createComponent(LeaveTypeFormModalComponent);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.ltfm-swatch--custom') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const picker = fixture.nativeElement.querySelector('.ltfm-picker') as HTMLElement;
+    expect(picker).toBeTruthy();
+    expect(picker.querySelectorAll('input:not([type="range"])').length).toBe(0);
+    fixture.componentInstance.sat.set(1);
+    fixture.componentInstance.val.set(1);
+    fixture.componentInstance.setHue(0);
+    expect(fixture.componentInstance.form.controls.color.value).toBe('#FF0000');
+    expect(fixture.componentInstance.isCustomColor).toBe(true);
+  });
+
   it('emits the kind fields only, with the chosen colour', () => {
     const fixture = TestBed.createComponent(LeaveTypeFormModalComponent);
     const emit = vi.spyOn(fixture.componentInstance.save, 'emit');

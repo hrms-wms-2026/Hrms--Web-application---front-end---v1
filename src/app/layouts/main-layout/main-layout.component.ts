@@ -16,6 +16,7 @@ import { FileApiService } from '../../shared/data-access/file-api.service';
 
 import { ToastHostComponent } from '../../shared/ui/toast/toast-host.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.component';
+import { MobileSectionNavComponent } from './mobile-section-nav/mobile-section-nav.component';
 import { UnsavedChangesDialogComponent } from '../../shared/ui/unsaved-changes-dialog/unsaved-changes-dialog.component';
 import { DraftsBarComponent } from './drafts-bar/drafts-bar.component';
 import { DraftModalHostComponent } from './draft-modal-host/draft-modal-host.component';
@@ -23,7 +24,7 @@ import { DraftModalHostComponent } from './draft-modal-host/draft-modal-host.com
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, InboxChatSidebarComponent, ToastHostComponent, MobileBottomNavComponent, DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
+  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, InboxChatSidebarComponent, ToastHostComponent, MobileBottomNavComponent, MobileSectionNavComponent,DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

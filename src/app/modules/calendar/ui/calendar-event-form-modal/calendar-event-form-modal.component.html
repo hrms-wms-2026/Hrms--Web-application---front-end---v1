@@ -319,7 +319,7 @@
                 <textarea
                   data-testid="calendar-form-resolution-reason"
                   placeholder="Why do you need help resolving this conflict?"
-                  class="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-sm"
+                  class="ui-input"
                   rows="2"
                   [value]="reasonText()"
                   (input)="setReasonText($any($event.target).value)"
@@ -419,7 +419,7 @@
             <div class="min-w-0 flex-1">
               <input
                 type="url"
-                class="event-plain-input"
+                class="ui-input"
                 placeholder="Paste a meeting link"
                 aria-label="Meeting link"
                 [value]="form.controls.meetingLink.value ?? ''"
@@ -511,7 +511,7 @@
       <div class="min-w-0 flex-1">
         <input
           type="text"
-          class="event-plain-input"
+          class="ui-input"
           placeholder="Add location"
           aria-label="Location"
           [value]="form.controls.location.value ?? ''"

@@ -40,6 +40,7 @@ import { DirtyFormHandle, UnsavedChangesService } from '../../../../shared/servi
 import { DraftsStore } from '../../../../shared/state/drafts.store';
 import { TaskDraftApiService } from '../../data-access/task-draft-api.service';
 import { TaskDraft, TaskDraftPayload } from '../../models/task-draft.model';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 export type TaskFormMode = 'create' | 'edit';
 
@@ -3075,7 +3076,7 @@ export class TaskFormModalComponent {
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       const msg = detail || 'Failed to delete the task.';
       this.deleteLoading.set(false);
       this.deleteError.set(msg);
@@ -3106,7 +3107,7 @@ export class TaskFormModalComponent {
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       const msg = detail || 'Failed to duplicate the task.';
       this.duplicateLoading.set(false);
       this.duplicateError.set(msg);
@@ -3137,7 +3138,7 @@ export class TaskFormModalComponent {
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       const msg = detail || 'Failed to convert the task into a subtask.';
       this.convertToSubtaskLoading.set(false);
       this.convertToSubtaskError.set(msg);
@@ -3548,7 +3549,7 @@ export class TaskFormModalComponent {
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       const msg = detail || 'Failed to save.';
       this.errorMessage.set(msg);
       this.notificationService.error(msg);

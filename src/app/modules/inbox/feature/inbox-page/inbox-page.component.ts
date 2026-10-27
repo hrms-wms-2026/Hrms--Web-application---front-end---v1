@@ -4,12 +4,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ExceptionEvidenceResponse } from '../../../../shared/models/exception-evidence.model';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { TabOption, TabsComponent } from '../../../../shared/ui/tabs/tabs.component';
-import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { PeoplePickerOption } from '../../../../shared/ui/people-picker/people-picker.component';
 import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { InboxChatRowDto, chatRef, isPeopleChatSource } from '../../models/inbox-chat.dto';
@@ -25,15 +23,16 @@ import { CaseCardAction } from '../../ui/case-card/case-card.component';
 import { InboxChatSidebarComponent } from '../../ui/chat-sidebar/inbox-chat-sidebar.component';
 import { ConversationPanelComponent } from '../../ui/conversation-panel/conversation-panel.component';
 import { InboxCardAction, InboxItemCardComponent } from '../../ui/inbox-item-card/inbox-item-card.component';
+import { ChatInfoPanelComponent } from '../../ui/chat-info-panel/chat-info-panel.component';
 import { NewGroupChoice, NewGroupDialogComponent } from '../../ui/new-group-dialog/new-group-dialog.component';
 import { ForwardDialogComponent, ForwardTargets } from '../../ui/forward-dialog/forward-dialog.component';
 import { PersonCasesViewComponent } from '../../ui/person-cases/person-cases-view.component';
 import { inboxTitle, isCaseClosed } from '../../utils/inbox-item.util';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 /** Whether the details panel is collapsed - a per-viewer preference. */
 const DETAILS_HIDDEN_KEY = 'inbox.detailsHidden';
 const NARROW_QUERY = '(max-width: 1023px)';
-const LEAVE_APPROVE = 'leave:approve';
 
 function readDetailsHidden(): boolean {
   try {
@@ -75,7 +74,7 @@ export function faceEvidenceFor(
   selector: 'app-inbox-page',
   standalone: true,
   imports: [
-    DatePipe, BreadcrumbHeaderComponent, DropdownMenuComponent, ApprovalDelegateModalComponent,
+    DatePipe, BreadcrumbHeaderComponent, ApprovalDelegateModalComponent, ChatInfoPanelComponent,
     InboxChatSidebarComponent, ConversationPanelComponent, InboxItemCardComponent,
     NewGroupDialogComponent, PersonCasesViewComponent, ForwardDialogComponent, TabsComponent
   ],
@@ -84,26 +83,18 @@ export function faceEvidenceFor(
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="inbox">
+      <!-- On phones an open chat has its own header (back, name, settings): the breadcrumb row is not shown then. -->
+      @if (!narrow() || chatRefValue() === null || history()) {
       <header class="work-page-header inbox__page-header">
         <div class="inbox__header-row">
           <app-breadcrumb-header parentLabel="Inbox" [middleLabel]="crumbChat() ? 'Chats' : undefined"
-            [currentLabel]="history() ? 'History' : (crumbChat() ?? 'Chats')" icon="inbox" />
-          <!-- The open chat's tools (wide screens - phones keep them in the chat's own header), then History and
-               delegation under the same "⋯". -->
+            [currentLabel]="history() ? 'History' : (crumbChat() ?? 'Chats')" icon="inbox"
+            [currentClickable]="!!crumbChat() && !!activeRow()" [currentTitle]="infoTitle()" (currentClicked)="toggleInfo()" />
+          <!-- A group's info shows in the details panel; History and delegation live in the sidebar's "+" menu. -->
           <div class="inbox__header-tools">
-            @if (chatTools(); as panel) {
-              @if (!panel.isDirect()) {
-                <button type="button" class="inbox__icon-btn" data-testid="inbox-chat-add" aria-label="Add people" title="Add people"
-                  [disabled]="conversation.removed()" (click)="panel.onSlashCommand('add')">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 20a6 6 0 0 0-12 0" /><circle cx="9" cy="8" r="4" /><path d="M19 8v6M16 11h6" /></svg>
-                </button>
-              }
+            @if (history()) {
+              <button type="button" class="inbox__chip" data-testid="inbox-history-back" (click)="toggleHistory()">Back to chats</button>
             }
-            <app-dropdown-menu [items]="headerMenu()" ariaLabel="Inbox options" (selected)="onHeaderMenu($event)">
-              <button menu-trigger type="button" class="inbox__icon-btn" data-testid="inbox-menu" aria-label="Inbox options" title="More">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01" /></svg>
-              </button>
-            </app-dropdown-menu>
             @if (chatTools()) {
               <button type="button" class="inbox__icon-btn" data-testid="inbox-toggle-details" [attr.aria-pressed]="detailsShown()"
                 [attr.aria-label]="detailsShown() ? 'Hide details' : 'Show details'" [attr.title]="detailsShown() ? 'Hide details' : 'Show details'"
@@ -114,6 +105,7 @@ export function faceEvidenceFor(
           </div>
         </div>
       </header>
+      }
 
       <div class="inbox__workspace" data-testid="inbox-workspace"
         [class.inbox__workspace--open]="chatRefValue() !== null || history()"
@@ -180,6 +172,7 @@ export function faceEvidenceFor(
               (renamed)="chats.load()"
               (toggleDetails)="toggleDetails()"
               (back)="closeChat()"
+              (openInfo)="toggleInfo()"
             />
           } @else {
             <div class="inbox__chat-empty" data-testid="inbox-chat-empty">
@@ -197,6 +190,10 @@ export function faceEvidenceFor(
         @if (chatRefValue() !== null) {
           <div class="inbox__scrim" aria-hidden="true" (click)="toggleDetails()"></div>
           <aside class="inbox__panel inbox__details" aria-label="Details">
+            @if (infoShown() && activeRow(); as row) {
+              <app-chat-info-panel [row]="row" [members]="conversation.participants()" [myEmployeeId]="myEmployeeId()"
+                (closed)="closeInfo()" (addPeople)="addPeople()" (openHistory)="openHistoryFromInfo()" (jump)="jumpTo($event)" />
+            } @else {
             @if (activeRow()?.type === 'direct') {
               <div class="inbox__detail-tabs">
                 <app-tabs class="inbox__detail-tablist" data-testid="inbox-detail-tabs" ariaLabel="Details view"
@@ -236,17 +233,7 @@ export function faceEvidenceFor(
               } @else {
                 <p class="inbox__detail-empty" data-testid="inbox-detail-empty">Pick a case in the chat or from the month to see its details.</p>
               }
-            } @else {
-              <section class="inbox__members" data-testid="inbox-members">
-                <h3>Members · {{ conversation.participants().length }}</h3>
-                <ul>
-                  @for (p of conversation.participants(); track p.employeeId) {
-                    <li>{{ p.employeeId === myEmployeeId() ? 'You' : p.name }}
-                      @if (p.joinReason === 'viewer') { <span class="inbox__secondary">· escalation</span> }
-                    </li>
-                  }
-                </ul>
-              </section>
+            }
             }
           </aside>
         }
@@ -272,7 +259,7 @@ export function faceEvidenceFor(
       (send)="forward($event)"
       (closed)="forwarding.set(null)"
     />
-    <app-approval-delegate-modal [open]="delegateOpen()" (closed)="delegateOpen.set(false)" />
+    <app-approval-delegate-modal [open]="delegateOpen()" (closed)="chats.setDelegateOpen(false)" />
   `,
   styles: [`
     :host { display: block; height: 100%; min-height: 0; }
@@ -312,7 +299,8 @@ export function faceEvidenceFor(
     .inbox__scrim { display: none; }
     .inbox__members { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
     .inbox__members h3 { margin: 0; font-size: 13px; font-weight: 650; }
-    .inbox__members ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+    .inbox__members ul { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+    .inbox__members li { display: flex; align-items: center; gap: 8px; }
 
     .inbox__state { display: flex; align-items: center; gap: 8px; margin: 0; padding: 24px 8px; color: var(--color-text-secondary); font-size: 13px; }
     .inbox__state--error { color: var(--color-danger); }
@@ -360,7 +348,6 @@ export class InboxPageComponent implements OnInit {
   readonly card = viewChild<InboxItemCardComponent>('card');
   private readonly panel = viewChild<ConversationPanelComponent>('panel');
 
-  protected readonly canDelegate = inject(PermissionService).hasPermission(LEAVE_APPROVE);
   protected readonly chatRef = chatRef;
 
   /** The open chat's subject (from the URL). */
@@ -370,9 +357,10 @@ export class InboxPageComponent implements OnInit {
   /** A link to a case the user has no chat for. */
   protected readonly resolveError = signal<string | null>(null);
   /** A 1-on-1 chat just started from the search: shown in the header until the list has it. */
-  protected readonly history = signal(false);
+  /** History replaces the chat (the sidebar's "+" menu or a chat's info panel opens it). */
+  protected readonly history = this.chats.history;
   protected readonly caseVersion = signal(0);
-  protected readonly delegateOpen = signal(false);
+  protected readonly delegateOpen = this.chats.delegateOpen;
   protected readonly groupDialog = signal<{ caseRef: InboxItemRef | null; caseTitle: string | null; people: PeoplePickerOption[] } | null>(null);
   protected readonly groupBusy = signal(false);
   protected readonly groupError = signal<string | null>(null);
@@ -436,11 +424,21 @@ export class InboxPageComponent implements OnInit {
     this.history() || this.chatRefValue() === null ? null : this.activeRow()?.title ?? (this.conversation.title() || null));
   /** The open chat, whose tools sit in the header row on wide screens (phones show them in the chat's own header). */
   protected readonly chatTools = computed(() => (this.history() || this.narrow() ? null : this.panel() ?? null));
-  protected readonly headerMenu = computed<MenuItem[]>(() => {
-    const chatItems = this.chatTools()?.menuItems() ?? [];
-    const items: MenuItem[] = [...chatItems, { id: 'history', label: this.history() ? 'Back to chats' : 'History', dividerBefore: chatItems.length > 0 }];
-    if (this.canDelegate) items.push({ id: 'delegate', label: 'Delegate my approvals' });
-    return items;
+  /** The info panel was opened from the settings button (a group shows it by default when no case is picked). */
+  protected readonly infoOpen = signal(false);
+  /** The breadcrumb's chat name opens (or closes) the chat's info. */
+  protected readonly infoTitle = computed(() => {
+    const type = this.activeRow()?.type;
+    return type === 'direct' ? 'Contact info' : type === 'case' ? 'Case group info' : 'Group info';
+  });
+  protected readonly infoShown = computed(() => {
+    const row = this.activeRow();
+    return !!row && (this.infoOpen() || (row.type !== 'direct' && !this.selectedCase()));
+  });
+  /** Another chat closes the info panel opened for the previous one. */
+  private readonly resetInfo = effect(() => {
+    const ref = this.chatRefValue();
+    untracked(() => { if (ref) this.infoOpen.set(false); });
   });
   /** The details panel's person: the other person of a 1-on-1 chat. */
   private readonly loadPerson = effect(() => {
@@ -472,6 +470,8 @@ export class InboxPageComponent implements OnInit {
     const onMedia = (event: MediaQueryListEvent) => this.narrow.set(event.matches);
     this.media?.addEventListener?.('change', onMedia);
     this.destroyRef.onDestroy(() => this.media?.removeEventListener?.('change', onMedia));
+    // History is shared with the sidebar: leaving the inbox closes it, so coming back shows the chats.
+    this.destroyRef.onDestroy(() => this.chats.setHistory(false));
 
     // The URL is the source of truth for the open chat and case, so back/forward and deep links work.
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -529,7 +529,7 @@ export class InboxPageComponent implements OnInit {
 
   /** History and links: open the chat that carries the item. */
   protected openItem(ref: InboxItemRef): void {
-    this.history.set(false);
+    this.chats.setHistory(false);
     void this.router.navigate(['/inbox', ref.source, ref.kind, ref.id]);
   }
 
@@ -574,14 +574,17 @@ export class InboxPageComponent implements OnInit {
     this.groupBusy.set(true);
     this.groupError.set(null);
     try {
+      const avatarFileId = choice.photo ? await firstValueFrom(this.chatsApi.uploadGroupPhoto(choice.photo)) : null;
+      // A case group keeps its case title unless the user named it something else.
+      const name = choice.name && choice.name !== dialog.caseTitle ? choice.name : null;
       const chat = dialog.caseRef
-        ? await firstValueFrom(this.chatsApi.startCaseGroup(dialog.caseRef, choice.employeeIds))
-        : await firstValueFrom(this.chatsApi.createGroup(choice.name, choice.employeeIds));
+        ? await firstValueFrom(this.chatsApi.startCaseGroup(dialog.caseRef, choice.employeeIds, name, avatarFileId))
+        : await firstValueFrom(this.chatsApi.createGroup(choice.name, choice.employeeIds, avatarFileId));
       this.groupDialog.set(null);
       await this.chats.load();
       this.openChat(chatRef(chat));
     } catch (err) {
-      this.groupError.set((err as { error?: { detail?: string } })?.error?.detail ?? 'The group could not be created.');
+      this.groupError.set(safeServerDetail(err) ?? 'The group could not be created.');
     } finally {
       this.groupBusy.set(false);
     }
@@ -604,19 +607,50 @@ export class InboxPageComponent implements OnInit {
       this.notifications.success(count === 1 ? 'Forwarded' : `Forwarded to ${count} chats`);
       void this.chats.load();
     } catch (err) {
-      this.forwardError.set((err as { error?: { detail?: string } })?.error?.detail ?? (what.type === 'case' ? 'The case could not be forwarded.' : 'The message could not be forwarded.'));
+      this.forwardError.set(safeServerDetail(err) ?? (what.type === 'case' ? 'The case could not be forwarded.' : 'The message could not be forwarded.'));
     } finally {
       this.forwardBusy.set(false);
     }
   }
 
-  /** Hide/show the details: a remembered preference on wide screens, a drawer on narrow ones. */
-  protected onHeaderMenu(id: string): void {
-    if (id === 'history') this.toggleHistory();
-    else if (id === 'delegate') this.delegateOpen.set(true);
-    else this.panel()?.onSlashCommand(id);
+  /** The settings button: shows the chat's info in the details panel, or closes it when it is already shown. */
+  protected toggleInfo(): void {
+    if (this.detailsShown() && this.infoShown()) {
+      this.closeInfo();
+      return;
+    }
+    this.infoOpen.set(true);
+    if (this.narrow()) this.drawerOpen.set(true);
+    else if (this.detailsHidden()) this.setDetailsHidden(false);
   }
 
+  /** A group's info is its default panel, so closing it hides the panel; other chats go back to their own view. */
+  protected closeInfo(): void {
+    const row = this.activeRow();
+    this.infoOpen.set(false);
+    if (row && row.type !== 'direct' && !this.selectedCase()) {
+      if (this.narrow()) this.drawerOpen.set(false);
+      else this.setDetailsHidden(true);
+    }
+  }
+
+  /** "Add" in the info panel opens the chat's own add-people panel. */
+  protected addPeople(): void {
+    if (this.narrow()) this.drawerOpen.set(false);
+    this.panel()?.onSlashCommand('add');
+  }
+
+  protected openHistoryFromInfo(): void {
+    if (!this.history()) this.toggleHistory();
+  }
+
+  /** A search result: the chat scrolls to it when it is loaded. */
+  protected jumpTo(messageId: string): void {
+    if (this.narrow()) this.drawerOpen.set(false);
+    if (!this.panel()?.jumpTo(messageId)) this.notifications.info('That message is further back in the chat - scroll up to load it.');
+  }
+
+  /** Hide/show the details: a remembered preference on wide screens, a drawer on narrow ones. */
   protected toggleDetails(): void {
     if (this.narrow()) {
       this.drawerOpen.update((open) => !open);
@@ -635,13 +669,13 @@ export class InboxPageComponent implements OnInit {
   }
 
   protected toggleHistory(): void {
-    const next = !this.history();
-    this.history.set(next);
-    if (next) {
-      this.drawerOpen.set(false);
-      void this.store.loadHistory({});
-    }
+    this.chats.setHistory(!this.history());
   }
+
+  /** History loads whenever it opens (from the sidebar's "+" menu, a chat's info panel or the page). */
+  private readonly loadHistory = effect(() => {
+    if (this.history()) untracked(() => { this.drawerOpen.set(false); void this.store.loadHistory({}); });
+  });
 
   // ---- Case actions ----------------------------------------------------------------------------------
 

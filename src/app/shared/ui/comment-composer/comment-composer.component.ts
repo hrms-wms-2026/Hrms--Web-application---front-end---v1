@@ -4,6 +4,7 @@ import { TaskApiService } from '../../../modules/work/data-access/task-api.servi
 import { EmojiPickerComponent } from '../../../modules/work/ui/emoji-picker/emoji-picker.component';
 import { TaskAttachmentListComponent, AttachmentPill } from '../../../modules/work/ui/task-attachment-list/task-attachment-list.component';
 import { HostSlashCommand, MentionCandidate, RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 /** A host's own upload for composer attachments (e.g. chat files), with optional count and size limits. */
 export interface ComposerUploader {
@@ -259,8 +260,7 @@ export class CommentComposerComponent {
         const uploaded = await firstValueFrom(uploader.upload(file));
         this.attachedFiles.update(current => [...current, { fileId: uploaded.fileId, name: uploaded.originalFileName, sizeBytes: uploaded.fileSizeBytes }]);
       } catch (err) {
-        const e = err as { error?: { detail?: string; message?: string } };
-        this.uploadError.set(e?.error?.detail || e?.error?.message || `Could not attach "${file.name}". Try again.`);
+        this.uploadError.set(toSafeErrorMessage(err,`Could not attach "${file.name}". Try again.`));
       }
     }
   }

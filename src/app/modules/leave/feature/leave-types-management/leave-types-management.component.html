@@ -11,12 +11,6 @@
   @if (!store.loading() && !store.loadError() && store.items().length > 0) {
     <app-kpi-tiles ariaLabel="Leave type totals" [tiles]="typeKpiTiles()" />
   }
-  <div class="to-toolbar">
-    <label class="to-filter">
-      <input type="checkbox" [checked]="store.includeInactive()" (change)="store.setIncludeInactive($any($event.target).checked)" />
-      Show inactive
-    </label>
-  </div>
   @if (store.loading()) {
     <div class="to-loading"><app-loader /></div>
   } @else if (store.loadError()) {
@@ -31,7 +25,7 @@
     </div>
   } @else {
     <div class="to-table-card">
-      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" />
+      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" (viewPolicies)="viewPolicies($event)" (addPolicy)="addPolicy($event)" />
     </div>
   }
 </section>

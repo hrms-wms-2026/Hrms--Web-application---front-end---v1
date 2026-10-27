@@ -4,6 +4,7 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -26,6 +27,7 @@ import { LeaveTypeFormModalComponent, LeaveTypeFormValue } from '../../ui/leave-
 export class LeaveTypesManagementComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly permissionService = inject(PermissionService);
+  private readonly router = inject(Router);
   readonly store = inject(LeaveTypeStore);
   readonly hasManageAccess = computed(() => this.permissionService.hasPermission('leave:manage'));
   readonly typeSummary = computed(() => {
@@ -98,4 +100,9 @@ export class LeaveTypesManagementComponent {
     const { code: _code, ...update } = value;
     return update;
   }
+
+  /** Leave Policies, filtered to this type. */
+  viewPolicies(type: LeaveTypeResponse): void { void this.router.navigate(['/time-off/policies'], { queryParams: { type: type.id } }); }
+  /** Leave Policies, filtered to this type, with the policy wizard open and the type picked. */
+  addPolicy(type: LeaveTypeResponse): void { void this.router.navigate(['/time-off/policies'], { queryParams: { type: type.id, new: 1 } }); }
 }

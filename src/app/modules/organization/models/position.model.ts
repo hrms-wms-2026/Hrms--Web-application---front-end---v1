@@ -147,6 +147,39 @@ export interface CoverageResolutionLevel {
   employeeName: string | null;
 }
 
+export type CoverageResolutionStatus = 'Resolved' | 'Unresolved';
+
+export interface CoverageVisualizationRule {
+  readonly coverageId: string;
+  readonly coveredTargetType: 'Position' | 'Department' | 'Company';
+  readonly coveredPositionId: string | null;
+  readonly coveredDepartmentId: string | null;
+  readonly ownerOrder: number;
+  readonly source: 'ReportingStructure' | 'Manual';
+  readonly isLocked: boolean;
+  readonly resolutionStatus: CoverageResolutionStatus;
+  readonly resolutionReason: string | null;
+  readonly resolvedEmployeeId: string | null;
+  readonly coveredPositionIds: readonly string[];
+  readonly coveredEmployeeIds: readonly string[];
+}
+
+export interface CoverageVisualizationResponse {
+  readonly ownerPositionId: string;
+  readonly coveredPositionCount: number;
+  readonly coveredEmployeeCount: number;
+  readonly unresolvedRuleCount: number;
+  readonly rules: readonly CoverageVisualizationRule[];
+}
+
+export type CoverageCardState = 'default' | 'selected' | 'resolved' | 'unresolved' | 'outside';
+
+export interface CoverageCardVisual {
+  readonly state: CoverageCardState;
+  readonly levels: readonly string[];
+  readonly accessibleLabel: string | null;
+}
+
 export interface CreatePositionRequest {
   departmentId: string;
   name: string;

@@ -1,18 +1,10 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { DashboardGreetingComponent } from '../dashboard-greeting/dashboard-greeting.component';
-import { ActivityTimelineApiService } from '../../data-access/activity-timeline-api.service';
-import { ActivityTimelineSegment } from '../../models/activity-timeline.model';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
-import {
-  SEGMENT_COLORS,
-  SEGMENT_LABELS,
-  SEGMENT_OPACITY,
-  TimelineSegment,
-  buildTimelineSegments,
-  formatMinutes
-} from '../../util/timeline-segments.util';
+import { LeaveRequestApiService } from '../../../leave/data-access/leave-request-api.service';
+import { formatMinutes } from '../../util/timeline-segments.util';
 import { getTimeOfDayInfo, TimeOfDayInfo } from '../../util/time-of-day.util';
+import { DayBlock, DayBlockType, ShiftAxis, TimeInterval, buildDayBlocks, buildShiftAxis } from '../../util/shift-axis.util';
 
 const CLOCK_FORMAT = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 
@@ -20,6 +12,33 @@ const CLOCK_FORMAT = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute:
 function formatClock(date: Date): string | null {
   return Number.isNaN(date.getTime()) ? null : CLOCK_FORMAT.format(date);
 }
+
+/** The activity bar's legend, in the design's order; Upcoming is the bar's own background. */
+const BLOCK_LEGEND: readonly { type: DayBlockType | 'upcoming'; label: string; dotClass: string }[] = [
+  { type: 'working', label: 'Working', dotClass: 'bg-blue-600' },
+  { type: 'break', label: 'Break', dotClass: 'bg-amber-400' },
+  { type: 'leave', label: 'Leave', dotClass: 'bg-red-500' },
+  { type: 'upcoming', label: 'Upcoming', dotClass: 'bg-slate-200' }
+];
+
+const BLOCK_CLASS: Record<DayBlockType, string> = {
+  working: 'bg-gradient-to-r from-blue-600 to-sky-500',
+  break: 'bg-amber-400',
+  leave: 'bg-red-500'
+};
+
+function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The design's own size. The card is always laid out at (at least) this size - the full design: picture
+ * top right, tiles side by side, every hour on the bar - and then scaled to fit whatever size the card has.
+ */
+const DESIGN_WIDTH = 800;
+const DESIGN_HEIGHT = 620;
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: 'Not clocked in',
@@ -31,17 +50,35 @@ const STATUS_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-today-at-a-glance-card',
   standalone: true,
-  imports: [RouterLink, DashboardGreetingComponent],
-  // A size container: the layout inside follows the card's own width (Small / Large on the grid).
-  host: { class: '@container block' },
+  imports: [DashboardGreetingComponent],
+  // The card clips the scaled design canvas inside it (see DESIGN_WIDTH).
+  host: { class: 'relative block h-full overflow-hidden rounded-2xl' },
   templateUrl: './today-at-a-glance-card.component.html',
+  // On a wide card the illustration sits top right and fades out to the left and to the bottom.
+  styles: `
+    @container (min-width: 32rem) {
+      .greeting-art {
+        -webkit-mask-image: linear-gradient(to right, transparent, #000 45%), linear-gradient(to bottom, #000 50%, transparent);
+        -webkit-mask-composite: source-in;
+        mask-image: linear-gradient(to right, transparent, #000 45%), linear-gradient(to bottom, #000 50%, transparent);
+        mask-composite: intersect;
+      }
+    }
+  `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TodayAtAGlanceCardComponent implements OnInit {
   private readonly store = inject(TimeTrackingStore);
-  private readonly activityApi = inject(ActivityTimelineApiService);
+  private readonly leaveApi = inject(LeaveRequestApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private tickTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * The design canvas: at least DESIGN_WIDTH x DESIGN_HEIGHT, stretched to the card's shape so the card is
+   * always filled, and scaled by `scale` to the card's real size.
+   */
+  protected readonly canvas = signal({ width: DESIGN_WIDTH, height: DESIGN_HEIGHT, scale: 1 });
   // Ticks every minute so greeting/timeline/"last updated" labels stay live without a manual
   // page reload - the greeting/timeline calculations below read this instead of calling
   // `new Date()`/`Date.now()` directly so they re-run on each tick.
@@ -51,8 +88,9 @@ export class TodayAtAGlanceCardComponent implements OnInit {
   protected readonly loading = this.store.todayLoading;
   protected readonly timeOfDayInfo = computed<TimeOfDayInfo>(() => getTimeOfDayInfo(new Date(this.now())));
 
-  private readonly activitySegments = signal<ActivityTimelineSegment[]>([]);
-  private activityRequested = false;
+  /** Approved leave around today, as start/end; drawn red on the activity bar. */
+  private readonly leaves = signal<TimeInterval[]>([]);
+  private leaveRequestedFor: string | null = null;
 
   protected readonly statusLabel = computed(() => {
     const today = this.today();
@@ -95,60 +133,62 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     return `Finish at ${formatClock(new Date(from + left * 60_000))}`;
   });
 
-  protected readonly legendTypes: TimelineSegment['type'][] = ['working', 'focus', 'break', 'idle'];
+  /** Clocked in and not yet out - whatever the backend's status label says. */
+  protected readonly isActive = computed(() => !!this.today()?.clockInAt && !this.today()?.clockOutAt);
 
-  protected readonly timelineSegments = computed<TimelineSegment[]>(() => {
+  /** On a break right now: a break with no end yet (or the backend's on_break status). */
+  protected readonly onBreak = computed(() => {
     const today = this.today();
-    if (!today?.clockInAt) {
-      return [];
-    }
-    const start = new Date(today.clockInAt).getTime();
-    const end = today.clockOutAt ? new Date(today.clockOutAt).getTime() : this.now();
-    if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-      return [];
-    }
-    // The today-summary endpoint sometimes omits `breaks` entirely (seen live for an
-    // in-progress break with no completed break intervals yet) rather than sending an
-    // empty array - guard so the timeline still renders instead of throwing in buildTimelineSegments.
-    return buildTimelineSegments(start, end, today.breaks ?? [], this.activitySegments());
+    return !!today && (today.attendanceStatus === 'on_break' || (today.breaks ?? []).some((b) => !b.endedAt));
   });
 
-  protected readonly timelineEndLabel = computed(() => {
+  protected readonly workedDurationLabel = computed(() => formatMinutes(this.today()?.totalWorkedMinutes ?? null));
+
+  /** The activity bar's scale: the scheduled shift, stretched for an early start or overtime. */
+  protected readonly shiftAxis = computed<ShiftAxis | null>(() => {
     const today = this.today();
-    if (!today?.clockInAt) {
-      return null;
-    }
-    return formatClock(today.clockOutAt ? new Date(today.clockOutAt) : new Date(this.now()));
+    return today ? buildShiftAxis(today, this.now()) : null;
+  });
+
+  protected readonly nowLabel = computed(() => formatClock(new Date(this.now())));
+
+  protected readonly legend = BLOCK_LEGEND;
+
+  /** Working, Break and Leave as solid blocks on the shift bar; the rest of the bar is Upcoming. */
+  protected readonly dayBlocks = computed<DayBlock[]>(() => {
+    const today = this.today();
+    const axis = this.shiftAxis();
+    if (!today || !axis) return [];
+    // The today-summary can omit `breaks` entirely (seen live during an in-progress break).
+    const breaks = (today.breaks ?? []).map((b) => ({ start: b.startedAt, end: b.endedAt }));
+    return buildDayBlocks(axis, today, breaks, this.leaves(), this.now());
   });
 
   private readonly lastUpdated = signal<Date | null>(null);
 
-  protected readonly lastUpdatedLabel = computed(() => {
-    const updated = this.lastUpdated();
-    if (!updated) {
-      return null;
-    }
-    const diffMinutes = Math.floor((this.now() - updated.getTime()) / 60_000);
-    if (diffMinutes < 1) return 'Last updated: just now';
-    if (diffMinutes === 1) return 'Last updated: 1 min ago';
-    return `Last updated: ${diffMinutes} min ago`;
-  });
-
   constructor() {
+    afterNextRender(() => {
+      const el = this.host.nativeElement;
+      this.fitCanvas(el.clientWidth, el.clientHeight);
+      if (typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(([entry]) => this.fitCanvas(entry.contentRect.width, entry.contentRect.height));
+      observer.observe(el);
+      this.destroyRef.onDestroy(() => observer.disconnect());
+    });
+
     this.tickTimer = setInterval(() => this.now.set(Date.now()), 60_000);
     this.destroyRef.onDestroy(() => {
       if (this.tickTimer !== null) clearInterval(this.tickTimer);
     });
 
+    // Approved leave touching today (a day either side covers the timezone offset), once per work date.
     effect(() => {
-      const today = this.today();
-      if (!today?.allowedClockInMethods.desktopTray || this.activityRequested) {
-        return;
-      }
-      this.activityRequested = true;
-      this.activityApi.getMyTimeline().subscribe({
-        next: (response) => this.activitySegments.set(response.segments),
-        error: () => this.activitySegments.set([])
+      const workDate = this.today()?.workDate;
+      if (!workDate || this.leaveRequestedFor === workDate) return;
+      this.leaveRequestedFor = workDate;
+      this.leaveApi.listMine({ status: 'approved', fromDate: addDays(workDate, -1), toDate: addDays(workDate, 1) }).subscribe({
+        next: (rows) => this.leaves.set(rows.map((r) => ({ start: r.startAt, end: r.endAt }))),
+        error: () => this.leaves.set([])
       });
     });
   }
@@ -157,15 +197,19 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     void this.store.loadToday().then(() => this.lastUpdated.set(new Date()));
   }
 
-  protected segmentLabel(type: TimelineSegment['type']): string {
-    return SEGMENT_LABELS[type];
+  private fitCanvas(width: number, height: number): void {
+    if (width <= 0 || height <= 0) return;
+    const scale = Math.min(width / DESIGN_WIDTH, height / DESIGN_HEIGHT);
+    this.canvas.set({ width: width / scale, height: height / scale, scale });
   }
 
-  protected segmentColor(type: TimelineSegment['type']): string {
-    return SEGMENT_COLORS[type];
+  /** Hour labels: first and last always; every other hour from a mid-size card; all on a wide one. */
+  protected tickClass(index: number, count: number): string {
+    if (index === 0 || index === count - 1) return 'flex';
+    return index % 2 === 0 && index < count - 2 ? 'hidden @lg:flex' : 'hidden @2xl:flex';
   }
 
-  protected segmentOpacity(type: TimelineSegment['type']): number {
-    return SEGMENT_OPACITY[type];
+  protected blockClass(type: DayBlockType): string {
+    return BLOCK_CLASS[type];
   }
 }

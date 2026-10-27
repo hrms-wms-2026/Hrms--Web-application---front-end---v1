@@ -5,6 +5,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { TaskCategoryColumn } from '../../models/task-category.model';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 interface DraftRow {
   id: string;
@@ -21,7 +22,7 @@ interface DraftRow {
         @if (addingNew()) {
           <div class="category-list__add-form">
             <input
-              class="category-list__new-input"
+              class="ui-input ui-input--sm"
               placeholder="Category name"
               [value]="newCategoryName()"
               (input)="newCategoryName.set($any($event.target).value)"
@@ -145,7 +146,7 @@ interface DraftRow {
       background: color-mix(in srgb, var(--color-border) 25%, transparent);
       border-color: color-mix(in srgb, var(--color-border) 50%, var(--color-accent, #2563eb));
     }
-    .category-list__new-input, .category-list__rename-input {
+    .category-list__rename-input {
       width: 100%;
       border: 1px solid var(--color-border);
       border-radius: 6px;
@@ -156,11 +157,11 @@ interface DraftRow {
       outline: none;
       transition: border-color 120ms ease, box-shadow 120ms ease;
     }
-    .category-list__new-input:focus, .category-list__rename-input:focus {
+    .category-list__rename-input:focus {
       border-color: var(--color-accent, #2563eb);
       box-shadow: 0 0 0 1px var(--color-accent, #2563eb);
     }
-    .category-list__new-input { flex: 1; }
+
     .category-list__rename-container { display: flex; flex-direction: column; gap: 10px; }
     .category-list__list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; min-height: 28px; }
     .category-list__row {
@@ -407,7 +408,7 @@ export class CategoryListEditorComponent {
   }
 
   private getErrorDetail(err: unknown): string | null {
-    return (err as { error?: { detail?: string } })?.error?.detail ?? null;
+    return safeServerDetail(err) ?? null;
   }
 }
 

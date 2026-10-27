@@ -62,7 +62,7 @@ describe('SubModuleFormComponent', () => {
       component.startDate.set('2026-10-05');
       component.endDate.set('2026-10-16');
       component.allocatedHours.set(500);
-      component.onMemberPicked('emp-1');
+      component.onMembersPicked(['emp-1']);
       fixture.detectChanges();
 
       expect(monitorApi.checkModule).not.toHaveBeenCalled();
@@ -104,8 +104,8 @@ describe('SubModuleFormComponent', () => {
     component.startDate.set('2026-04-01');
     component.endDate.set('2026-05-01');
     component.allocatedHours.set(12);
-    component.onMemberPicked('emp-1');
-    component.onMemberPicked('emp-2');
+    component.onMembersPicked(['emp-1']);
+    component.onMembersPicked(['emp-2']);
     component.onSetOwner('emp-2');
     const created = vi.fn();
     component.created.subscribe(created);
