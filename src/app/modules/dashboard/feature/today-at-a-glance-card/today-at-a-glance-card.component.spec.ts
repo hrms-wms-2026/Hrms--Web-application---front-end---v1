@@ -151,6 +151,25 @@ describe('TodayAtAGlanceCardComponent', () => {
     }
   });
 
+  it('draws a running break, even a 2-minute one, and turns the now marker grey', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-26T06:17:00Z'));
+    try {
+      const { fixture } = await setup({
+        attendanceStatus: 'on_break',
+        attendanceStatusLabel: 'On break',
+        clockInAt: '2026-08-26T03:57:00Z',
+        breaks: [{ startedAt: '2026-08-26T06:15:00Z', endedAt: null }]
+      });
+      const el: HTMLElement = fixture.nativeElement;
+      const types = Array.from(el.querySelectorAll('[data-testid="today-activity-segment"]')).map((s) => s.getAttribute('data-segment-type'));
+      expect(types).toEqual(['working', 'break']);
+      expect(el.querySelector('[data-testid="today-activity-now-dot"]')!.getAttribute('data-state')).toBe('break');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('drops the active dot once clocked out', async () => {
     const { fixture } = await setup({ attendanceStatus: 'clocked_out', clockOutAt: '2026-08-26T12:00:00Z' });
     expect(fixture.nativeElement.querySelector('[data-testid="status-active-dot"]')).toBeNull();
