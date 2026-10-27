@@ -1,5 +1,5 @@
 import { CalendarEventResponse } from '../models/calendar-event.model';
-import { layoutDayEvents } from './calendar-hour-grid.util';
+import { layoutDayEvents, layoutDayItems } from './calendar-hour-grid.util';
 
 function makeEvent(id: string, startHHmm: string, endHHmm: string, isAllDay = false): CalendarEventResponse {
   return {
@@ -64,5 +64,27 @@ describe('layoutDayEvents', () => {
     const result = layoutDayEvents([makeEvent('late', '14:00', '15:00'), makeEvent('early', '09:00', '10:00')], dayStart);
     expect(result[0].event.id).toBe('early');
     expect(result[1].event.id).toBe('late');
+  });
+});
+
+describe('layoutDayItems', () => {
+  it('puts an overlapping planner block and event side by side', () => {
+    const event = makeEvent('meeting', '10:00', '11:00');
+    const block = { id: 'b1', startAt: '2026-09-01T09:00:00Z', endAt: '2026-09-01T10:30:00Z' };
+
+    const result = layoutDayItems([
+      { kind: 'event', event, start: event.startDate, end: event.endDate },
+      { kind: 'block', block: block as never, start: block.startAt, end: block.endAt },
+    ], dayStart);
+
+    expect(result.map((p) => [p.item.kind, p.left, p.width])).toEqual([['block', 0, 0.5], ['event', 0.5, 0.5]]);
+  });
+
+  it('lays out blocks alone the same way as events alone', () => {
+    const event = makeEvent('e', '09:00', '10:00');
+    const asEvent = layoutDayEvents([event], dayStart)[0];
+    const asBlock = layoutDayItems([{ kind: 'block', block: {} as never, start: event.startDate, end: event.endDate }], dayStart)[0];
+
+    expect([asBlock.top, asBlock.height, asBlock.left, asBlock.width]).toEqual([asEvent.top, asEvent.height, asEvent.left, asEvent.width]);
   });
 });

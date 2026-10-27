@@ -20,6 +20,15 @@
         } @else {
           <span class="flex h-7 w-7 items-center justify-center text-sm text-[var(--color-text-primary)]">{{ column.dayNumber }}</span>
         }
+        @if (column.load; as load) {
+          <div data-testid="planner-load" [attr.data-over]="load.over" class="mt-0.5 flex w-full flex-col gap-0.5 px-2 text-center text-[10px]"
+            [ngClass]="load.over ? 'text-amber-700' : 'text-[var(--color-text-secondary)]'">
+            <span class="h-1 w-full overflow-hidden rounded bg-[var(--color-surface-secondary)]">
+              <span class="block h-full" [ngClass]="load.over ? 'bg-amber-500' : 'bg-teal-600'" [style.width.%]="load.widthPct"></span>
+            </span>
+            <span>{{ load.label }}</span>
+          </div>
+        }
       </div>
     }
   </div>
@@ -63,7 +72,9 @@
     </div>
 
     @for (column of columns(); track column.date) {
-      <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" class="relative h-[72rem] flex-1 border-r border-[var(--color-border)] last:border-r-0">
+      <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" [attr.data-rest-day]="column.restDay"
+        class="relative h-[72rem] flex-1 border-r border-[var(--color-border)] last:border-r-0"
+        [ngClass]="column.restDay ? 'bg-[var(--color-surface-secondary)]' : ''">
         <div
           data-testid="calendar-hour-slots"
           class="absolute inset-0 touch-none select-none"
@@ -73,6 +84,16 @@
             <div class="h-12 border-b border-[var(--color-border)]"></div>
           }
         </div>
+
+        @for (off of column.offHours; track $index) {
+          <div data-testid="planner-off-hours" class="pointer-events-none absolute left-0 right-0 bg-[var(--color-surface-secondary)] opacity-70"
+            [style.top.%]="off.topPct" [style.height.%]="off.heightPct"></div>
+        }
+        @if (column.breakBand; as br) {
+          <div data-testid="planner-break" class="pointer-events-none absolute left-0 right-0 opacity-60"
+            style="background-image: repeating-linear-gradient(45deg, var(--color-border) 0 6px, transparent 6px 12px)"
+            [style.top.%]="br.topPct" [style.height.%]="br.heightPct"></div>
+        }
 
         @if (dragSelection(); as sel) {
           @if (sel.date === column.date) {
@@ -108,6 +129,75 @@
             }
             <span class="truncate">{{ positioned.event.title }}</span>
           </button>
+        }
+
+        @for (vm of column.blocks; track vm.block.id) {
+          <div
+            data-testid="planner-block"
+            role="button"
+            tabindex="0"
+            class="absolute z-[5] flex touch-none select-none flex-col overflow-hidden rounded border border-teal-700 bg-teal-50 px-1 text-left text-[11px] leading-tight text-teal-900"
+            [ngClass]="column.editable ? 'cursor-grab' : 'cursor-pointer'"
+            [attr.title]="vm.tooltip"
+            [style.top.%]="vm.top * 100"
+            [style.height.%]="vm.height * 100"
+            [style.left.%]="vm.left * 100"
+            [style.width.%]="vm.width * 100"
+            (pointerdown)="onBlockPointerDown(vm, column.date, 'move', $event)"
+            (click)="onBlockClick(vm, column.date)"
+            (keydown.enter)="blockOpen.emit(vm.block)"
+          >
+            <span class="flex items-start gap-1">
+              <span class="truncate font-medium">{{ vm.block.taskTitle }}</span>
+              @if (column.editable) {
+                <button type="button" data-testid="planner-block-menu" aria-label="Block actions" class="ml-auto shrink-0 px-1"
+                  (pointerdown)="stopPointer($event)" (click)="toggleMenu(vm.block.id, $event)">⋯</button>
+              }
+            </span>
+            @if (!vm.short) {
+              <span class="truncate">{{ vm.times }} · {{ vm.duration }}</span>
+            }
+            @if (vm.clash) {
+              @if (column.editable) {
+                <button type="button" data-testid="planner-overlap-pill"
+                  class="mt-0.5 self-start truncate rounded-full bg-amber-100 px-1.5 text-[10px] text-amber-800"
+                  (pointerdown)="stopPointer($event)" (click)="moveAfter(vm, column.date, $event)">Overlaps {{ vm.clash.title }} · Move after</button>
+              } @else {
+                <span class="mt-0.5 self-start truncate rounded-full bg-amber-100 px-1.5 text-[10px] text-amber-800">Overlaps {{ vm.clash.title }}</span>
+              }
+            }
+            @if (column.editable) {
+              <span data-testid="planner-block-resize" class="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize"
+                (pointerdown)="onBlockPointerDown(vm, column.date, 'resize', $event)"></span>
+            }
+          </div>
+          @for (o of vm.overlaps; track $index) {
+            <div data-testid="planner-overlap" class="pointer-events-none absolute z-[6] rounded bg-amber-300 opacity-50"
+              [style.top.%]="o.topPct" [style.height.%]="o.heightPct" [style.left.%]="vm.left * 100" [style.width.%]="vm.width * 100"></div>
+          }
+          @if (openMenu() === vm.block.id && column.editable) {
+            <div data-testid="planner-block-actions" role="menu"
+              class="absolute z-30 flex flex-col rounded border border-[var(--color-border)] bg-[var(--color-surface)] p-1 text-[11px] shadow"
+              [style.top.%]="vm.top * 100" [style.left.%]="vm.left * 100">
+              <button type="button" role="menuitem" data-testid="planner-menu-earlier" (click)="nudge(vm, column.date, -15, 0)">Earlier 15 min</button>
+              <button type="button" role="menuitem" data-testid="planner-menu-later" (click)="nudge(vm, column.date, 15, 0)">Later 15 min</button>
+              <button type="button" role="menuitem" data-testid="planner-menu-shorter" (click)="nudge(vm, column.date, 0, -15)">Shorter 15 min</button>
+              <button type="button" role="menuitem" data-testid="planner-menu-longer" (click)="nudge(vm, column.date, 0, 15)">Longer 15 min</button>
+              @if (vm.clash) {
+                <button type="button" role="menuitem" data-testid="planner-menu-move-after" (click)="moveAfter(vm, column.date, $event)">Move after meeting</button>
+              }
+              <button type="button" role="menuitem" data-testid="planner-menu-remove" (click)="remove(vm, $event)">Remove</button>
+            </div>
+          }
+        }
+
+        @if (plannerPreview(); as p) {
+          @if (p.date === column.date) {
+            <div data-testid="planner-drop-preview" [attr.data-invalid]="p.invalid"
+              class="pointer-events-none absolute left-0.5 right-0.5 z-20 rounded border-2 border-dashed"
+              [ngClass]="p.invalid ? 'border-red-500 bg-red-50' : 'border-teal-600 bg-teal-50'"
+              [style.top.%]="(p.start / 1440) * 100" [style.height.%]="((p.end - p.start) / 1440) * 100"></div>
+          }
         }
       </div>
     }
