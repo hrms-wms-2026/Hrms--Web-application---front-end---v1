@@ -34,6 +34,7 @@ describe('TeamAttendanceStore', () => {
 
     expect(store.data()?.rangeStart).toBe('2026-10-26');
     expect(store.query()).toEqual({ mode: 'week', anchor: '2026-10-26', departmentId: null });
+    expect(store.loadedAt()).toBeInstanceOf(Date);
     expect(getSummary).not.toHaveBeenCalled();
   });
 

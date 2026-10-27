@@ -14,13 +14,16 @@ interface TeamAttendanceState {
   readonly data: TeamAttendanceSummaryResponse | null;
   readonly loading: boolean;
   readonly error: string | null;
+  /** When the backend last answered successfully - drives the card's "Refreshed ..." label. */
+  readonly loadedAt: Date | null;
 }
 
 const initialState: TeamAttendanceState = {
   query: { mode: 'week', anchor: null, departmentId: null },
   data: null,
   loading: false,
-  error: null
+  error: null,
+  loadedAt: null
 };
 
 function extractError(err: any, fallback: string): string {
@@ -47,7 +50,7 @@ export const TeamAttendanceStore = signalStore(
       inFlight?.unsubscribe();
       patchState(store, { query, loading: true, error: null });
       inFlight = api.getSummary(query).subscribe({
-        next: (data) => patchState(store, { data, loading: false }),
+        next: (data) => patchState(store, { data, loading: false, loadedAt: new Date() }),
         error: (err) => patchState(store, { error: extractError(err, 'Failed to load team attendance.'), loading: false })
       });
     };
@@ -63,7 +66,7 @@ export const TeamAttendanceStore = signalStore(
           return;
         }
         inFlight?.unsubscribe();
-        patchState(store, { data, loading: false, error: null, query: { ...q, anchor: data.rangeStart } });
+        patchState(store, { data, loading: false, error: null, loadedAt: new Date(), query: { ...q, anchor: data.rangeStart } });
       },
       markLoading(): void {
         patchState(store, { loading: true, error: null });
