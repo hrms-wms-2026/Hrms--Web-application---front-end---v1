@@ -121,7 +121,7 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
 
         <div class="flex justify-end gap-2">
           <button type="button" class="rounded-md border px-3 py-1" (click)="closed.emit()">Cancel</button>
-          <button type="submit" data-testid="meeting-save" class="rounded-md bg-[var(--color-primary)] px-3 py-1 text-white"
+          <button type="submit" data-testid="meeting-save" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[var(--color-accent-contrast)] disabled:cursor-not-allowed disabled:opacity-50"
             [disabled]="saving() || !canSave()">{{ mode() === 'create' ? 'Create' : 'Save' }}</button>
         </div>
       </form>

@@ -67,6 +67,14 @@ describe('MeetingFormModalComponent', () => {
     });
   });
 
+  it('the save button is drawn in the theme accent, so it shows on the white dialog', () => {
+    build({ mode: 'create' });
+
+    const save: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="meeting-save"]');
+    expect(save.className).toContain('bg-[var(--color-accent)]');
+    expect(save.className).toContain('text-[var(--color-accent-contrast)]');
+  });
+
   it('created outcome toasts and emits so the caller can open the drawer', async () => {
     build({ mode: 'create' });
     fillOffice();

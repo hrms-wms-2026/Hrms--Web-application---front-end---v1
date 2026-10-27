@@ -79,6 +79,17 @@ describe('MeetingBulkInvitePanelComponent', () => {
     expect(added).toEqual(['a', 'c']);
   });
 
+  it('the add button is drawn in the theme accent, so it shows on the white dialog', async () => {
+    bulkPreview.mockReturnValue(of(preview()));
+    panel.toggleDepartment('d1');
+    await panel.preview();
+    fixture.detectChanges();
+
+    const add: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="bulk-add"]');
+    expect(add.className).toContain('bg-[var(--color-accent)]');
+    expect(add.className).toContain('text-[var(--color-accent-contrast)]');
+  });
+
   it('capacity warning does not block', async () => {
     bulkPreview.mockReturnValue(of(preview({ capacityWarning: 'This meeting will have 304 people; Zoom meetings support up to 300.' })));
     panel.toggleDepartment('d1');
