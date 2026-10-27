@@ -616,7 +616,7 @@ describe('TaskBacklogComponent', () => {
 
   it('renders tasks with sprintId: null in an "Unsorted" section, clickable via the same onTaskViewed path', async () => {
     const tasks = [makeTask('t-1', 'sp-1'), makeTask('t-unsorted', null)];
-    const { fixture, navigate } = setup({ tasks });
+    const { fixture } = setup({ tasks });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -828,7 +828,7 @@ describe('TaskBacklogComponent', () => {
       fixture.detectChanges();
 
       const inst = fixture.componentInstance as unknown as {
-        selectedTaskIds: { (): ReadonlySet<string> };
+        selectedTaskIds: () => ReadonlySet<string>;
         onTasksMoved: (sprintId: string) => Promise<void>;
         undoMove: () => Promise<void>;
       };

@@ -3,7 +3,8 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "analytics": false
+    "analytics": false,
+    "schematicCollections": ["angular-eslint"]
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -25,15 +26,8 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.css",
-              "@angular/cdk/overlay-prebuilt.css"
-            ],
-            "allowedCommonJsDependencies": [
-              "qrcode",
-              "leaflet",
-              "i18n-iso-countries"
-            ]
+            "styles": ["src/styles.css", "@angular/cdk/overlay-prebuilt.css"],
+            "allowedCommonJsDependencies": ["qrcode", "leaflet", "i18n-iso-countries"]
           },
           "configurations": {
             "production": {
@@ -102,6 +96,12 @@
         },
         "test": {
           "builder": "@angular/build:unit-test"
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+          }
         }
       }
     }

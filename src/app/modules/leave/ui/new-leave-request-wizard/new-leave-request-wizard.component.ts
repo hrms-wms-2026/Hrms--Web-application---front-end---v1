@@ -1,5 +1,5 @@
 /** New leave request: one form (type, From/To, reason) whose policy warnings preview as soon as the dates are valid. */
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, effect, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, effect, signal, untracked, OnChanges, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
@@ -35,7 +35,7 @@ function emptyDraft(): LeaveRequestDraft {
   styleUrl: './new-leave-request-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class NewLeaveRequestWizardComponent {
+export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
   @Input({ required: true }) open = false;
   @Input({ required: true }) leaveTypes: readonly LeaveTypeResponse[] = [];
   @Input({ required: true }) balances: readonly LeaveBalanceResponse[] = [];

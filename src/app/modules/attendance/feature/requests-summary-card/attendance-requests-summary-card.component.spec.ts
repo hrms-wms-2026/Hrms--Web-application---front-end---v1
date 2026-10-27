@@ -5,8 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TimeTrackingStore } from '../../state/time-tracking.store';
 import { AttendanceRequestsSummaryCardComponent } from './attendance-requests-summary-card.component';
 
-type CorrectionFixture = { status: string; correctionType?: string; workDate?: string };
-type WorkAreaFixture = { status: string; date?: string };
+interface CorrectionFixture { status: string; correctionType?: string; workDate?: string }
+interface WorkAreaFixture { status: string; date?: string }
 
 describe('AttendanceRequestsSummaryCardComponent', () => {
   afterEach(() => TestBed.resetTestingModule());

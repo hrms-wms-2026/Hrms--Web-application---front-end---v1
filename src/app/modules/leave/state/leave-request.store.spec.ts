@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
-import { CancelLeaveRequestRequest, CancelLeaveRequestResponse, LeaveRequestListItemResponse, LeaveRequestResponse, SubmitLeaveRequestRequest } from '../models/leave-request.model';
+import { CancelLeaveRequestResponse, LeaveRequestListItemResponse, LeaveRequestResponse, SubmitLeaveRequestRequest } from '../models/leave-request.model';
 import { LeaveRequestStore } from './leave-request.store';
 
 describe('LeaveRequestStore', () => {

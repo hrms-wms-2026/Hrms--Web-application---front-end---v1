@@ -2,7 +2,7 @@ import { Component, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';

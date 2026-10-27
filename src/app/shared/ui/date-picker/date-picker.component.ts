@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { nextUniqueId } from '../../utils/unique-id';
-import { getTaskDueDateInfo, TaskDueDateInfo } from '../../utils/date-format.util';
+import { getTaskDueDateInfo } from '../../utils/date-format.util';
 
 export interface CalendarDay {
   year: number;

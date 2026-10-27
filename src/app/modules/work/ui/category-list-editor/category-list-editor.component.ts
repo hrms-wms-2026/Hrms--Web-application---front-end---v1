@@ -28,7 +28,7 @@ interface DraftRow {
               (input)="newCategoryName.set($any($event.target).value)"
               (keydown.enter)="confirmAdd()"
               (keydown.escape)="cancelAdd()"
-              autofocus
+             
             />
             <div class="category-list__add-buttons">
               <app-button variant="primary" [loading]="adding()" (pressed)="confirmAdd()">Add</app-button>
@@ -105,7 +105,7 @@ interface DraftRow {
           [value]="editingName()"
           (input)="editingName.set($any($event.target).value)"
           (keydown.enter)="confirmRename()"
-          autofocus
+         
         />
         @if (renameError()) {
           <p class="category-list__error" role="alert">

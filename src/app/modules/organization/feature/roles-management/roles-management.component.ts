@@ -98,7 +98,7 @@ export class RolesManagementComponent {
 
   async onSaveRole(val: RoleFormSubmitValue): Promise<void> {
     const editing = this.editingRole();
-    let success = false;
+    let success: boolean;
 
     if (editing) {
       if (!this.hasManageAccess() || editing.isSystem) {

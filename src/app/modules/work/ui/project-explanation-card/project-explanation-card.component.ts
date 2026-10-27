@@ -174,7 +174,7 @@ export class ProjectExplanationCardComponent {
 
   constructor() {
     effect(() => {
-      this.project().id;
+      this.project();
       this.logoBroken.set(false);
     });
   }

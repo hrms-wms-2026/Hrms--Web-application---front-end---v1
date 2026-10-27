@@ -10,7 +10,7 @@ export type PopupIcon =
   | 'save' | 'settings' | 'checklist' | 'hierarchy' | 'briefcase' | 'edit' | 'info';
 
 /** Title keywords -> icon, first match wins. Keeps every titled modal iconned without per-call config. */
-const TITLE_ICON_RULES: ReadonlyArray<readonly [RegExp, PopupIcon]> = [
+const TITLE_ICON_RULES: readonly (readonly [RegExp, PopupIcon])[] = [
   [/\b(delete|remove)\b/, 'trash'],
   [/\barchive/, 'archive'],
   [/\b(deactivate|reject|escalate|alert|discard|cancel)/, 'alert'],

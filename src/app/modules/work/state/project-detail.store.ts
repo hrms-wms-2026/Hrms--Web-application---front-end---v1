@@ -12,7 +12,7 @@ import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milesto
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { CompleteSprintRequestDto } from '../models/dto/sprint.dto';
 import { isPendingApproval } from '../models/dto/work-approval.dto';
-import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
+import { ObjectiveMemberItemDto } from '../models/dto/objective-invitation.dto';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface ProjectDetailState {

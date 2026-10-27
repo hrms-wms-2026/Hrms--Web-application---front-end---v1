@@ -312,7 +312,7 @@ export class WorkNetworkDetailPanelComponent {
   constructor() {
     // A different selection starts on Overview.
     effect(() => {
-      this.selected().id;
+      this.selected();
       untracked(() => this.tab.set('overview'));
     });
   }

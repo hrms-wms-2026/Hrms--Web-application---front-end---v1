@@ -8,9 +8,6 @@ describe('ATTENDANCE_ROUTES', () => {
   const timeTracking = () => ATTENDANCE_ROUTES.find((route) => route.path === 'time-tracking')!;
   const requests = () => ATTENDANCE_ROUTES.find((route) => route.path === 'time-tracking/requests')!;
 
-  const approvals = () => ATTENDANCE_ROUTES.find((route) => route.path === 'corrections/approvals')!;
-  const workAreaApprovals = () => ATTENDANCE_ROUTES.find((route) => route.path === 'work-area-change-requests/approvals')!;
-
     it('redirects the empty path to overview', () => {
     const emptyRoute = ATTENDANCE_ROUTES.find((route) => route.path === '');
     expect(emptyRoute?.redirectTo).toBe('overview');

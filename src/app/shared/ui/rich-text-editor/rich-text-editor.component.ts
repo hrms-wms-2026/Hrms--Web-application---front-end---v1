@@ -1206,7 +1206,7 @@ export class RichTextEditorComponent {
     const range = sel.getRangeAt(0);
     if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return;
 
-    const slices: Array<{ node: Text; start: number; end: number }> = [];
+    const slices: { node: Text; start: number; end: number }[] = [];
     const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
     let current = walker.nextNode();
     while (current) {
@@ -2582,7 +2582,7 @@ export class RichTextEditorComponent {
     chip.setAttribute('data-employee-id', person.id);
     chip.setAttribute('contenteditable', 'false');
     chip.textContent = `@${person.name}`;
-    const trailing = document.createTextNode(` ${after}`);
+    const trailing = document.createTextNode(`\u00A0${after}`);
     const parent = ctx.textNode.parentNode!;
     parent.insertBefore(trailing, ctx.textNode.nextSibling);
     parent.insertBefore(chip, trailing);
