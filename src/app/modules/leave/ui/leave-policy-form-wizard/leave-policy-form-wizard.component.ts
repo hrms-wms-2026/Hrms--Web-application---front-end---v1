@@ -67,6 +67,8 @@ export class LeavePolicyFormWizardComponent {
   readonly policy = input<LeavePolicyDetail | null>(null);
   readonly conflicts = input<readonly LeavePolicyAssignmentConflict[]>([]);
   readonly saving = input(false);
+  /** Leave type picked up front when creating (e.g. from a leave type card). */
+  readonly initialLeaveTypeId = input<string | null>(null);
 
   readonly create = output<CreateLeavePolicyRequest>();
   readonly saveEdit = output<LeavePolicyWizardEdit>();
@@ -156,6 +158,10 @@ export class LeavePolicyFormWizardComponent {
       const entities = this.legalEntities();
       if (entities.length === 1 && !untracked(() => this.isEdit()))
         untracked(() => this.companyIds.set([entities[0].id]));
+    });
+    effect(() => {
+      const id = this.initialLeaveTypeId();
+      if (id && !untracked(() => this.isEdit() || this.leaveTypeId())) untracked(() => this.leaveTypeId.set(id));
     });
     // Prefill once per opening: a later policy input (e.g. a reload) must not overwrite what was typed.
     effect(() => {

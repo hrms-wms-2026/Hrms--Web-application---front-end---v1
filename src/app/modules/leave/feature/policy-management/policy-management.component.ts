@@ -2,6 +2,7 @@
  * edits are saved as dated versions. */
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
@@ -47,6 +48,8 @@ export class PolicyManagementComponent implements OnInit {
   private readonly legalEntityApi = inject(LegalEntityApiService);
   private readonly departmentApi = inject(DepartmentApiService);
   private readonly positionApi = inject(PositionApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   readonly policyStore = inject(LeavePolicyStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
 
@@ -58,6 +61,20 @@ export class PolicyManagementComponent implements OnInit {
   readonly detailOpen = signal(false);
   readonly cloneSource = signal<LeavePolicyListItem | null>(null);
   readonly cloneName = signal('');
+  /** Set from ?type= (a leave type card's View / Add policy); null lists every policy. */
+  readonly leaveTypeFilter = signal<string | null>(null);
+  readonly visiblePolicies = computed(() => {
+    const type = this.leaveTypeFilter();
+    const items = this.policyStore.items();
+    return type ? items.filter((p) => p.leaveTypeId === type) : items;
+  });
+  readonly leaveTypeFilterName = computed(() => {
+    const type = this.leaveTypeFilter();
+    if (!type) return '';
+    return this.leaveTypeStore.items().find((t) => t.id === type)?.name
+      ?? this.policyStore.items().find((p) => p.leaveTypeId === type)?.leaveTypeName
+      ?? 'this leave type';
+  });
   /** The policy the user clicked; the panel and Edit only use the loaded policy once it is this one. */
   private readonly viewingId = signal<string | null>(null);
   readonly viewedPolicy = computed(() => {
@@ -66,7 +83,7 @@ export class PolicyManagementComponent implements OnInit {
   });
 
   readonly policyKpiTiles = computed<readonly KpiTile[]>(() => {
-    const items = this.policyStore.items();
+    const items = this.visiblePolicies();
     return [
       { label: 'Policies', value: items.length, icon: 'clipboard-list' },
       { label: 'Active', value: items.filter((p) => p.isActive).length, icon: 'check-circle', tone: 'success' },
@@ -74,7 +91,22 @@ export class PolicyManagementComponent implements OnInit {
     ];
   });
 
-  ngOnInit(): void { if (this.hasManageAccess()) void this.loadInitialData(); }
+  ngOnInit(): void {
+    if (!this.hasManageAccess()) return;
+    const params = this.route.snapshot.queryParamMap;
+    this.leaveTypeFilter.set(params.get('type'));
+    if (params.has('new')) {
+      this.openCreate();
+      // Drop ?new so a reload or Back does not open the wizard again.
+      void this.router.navigate([], { relativeTo: this.route, queryParams: { new: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
+    void this.loadInitialData();
+  }
+
+  clearLeaveTypeFilter(): void {
+    this.leaveTypeFilter.set(null);
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { type: null }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
 
   async loadInitialData(): Promise<void> {
     await Promise.all([this.policyStore.loadPolicies(), this.leaveTypeStore.load(), this.loadOrg()]);

@@ -23,10 +23,20 @@
           }
         </div>
       </header>
-      <p class="ltt-days">
-        <span>{{ type.policyCount }}</span>
-        <small>{{ type.policyCount === 1 ? 'policy' : 'policies' }}</small>
-      </p>
+      <div class="ltt-count-row">
+        <p class="ltt-days">
+          <span>{{ type.policyCount }}</span>
+          <small>{{ type.policyCount === 1 ? 'policy' : 'policies' }}</small>
+        </p>
+        @if (canManage) {
+          <div class="ltt-actions">
+            <app-button variant="secondary" size="sm" [disabled]="type.policyCount === 0" (pressed)="viewPolicies.emit(type)">View policies</app-button>
+            @if (type.isActive) {
+              <app-button size="sm" (pressed)="addPolicy.emit(type)">+ Add policy</app-button>
+            }
+          </div>
+        }
+      </div>
       @if (type.description) {
         <p class="ltt-desc">{{ type.description }}</p>
       }
