@@ -150,9 +150,10 @@
   .ltt-grid { padding: 0.75rem; grid-template-columns: 1fr; }
 }
 .ltt-dot { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 999px; vertical-align: middle; }
-/* Policy count on the left, View / add policy actions on the right. */
-.ltt-count-row {
+/* Paid / unpaid tags on the left, View / add policy actions on the right. */
+.ltt-tag-row {
   display: flex;
+  margin-top: auto;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;

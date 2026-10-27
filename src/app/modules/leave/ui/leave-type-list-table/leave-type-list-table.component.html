@@ -23,11 +23,19 @@
           }
         </div>
       </header>
-      <div class="ltt-count-row">
-        <p class="ltt-days">
-          <span>{{ type.policyCount }}</span>
-          <small>{{ type.policyCount === 1 ? 'policy' : 'policies' }}</small>
-        </p>
+      <p class="ltt-days">
+        <span>{{ type.policyCount }}</span>
+        <small>{{ type.policyCount === 1 ? 'policy' : 'policies' }}</small>
+      </p>
+      @if (type.description) {
+        <p class="ltt-desc">{{ type.description }}</p>
+      }
+      <div class="ltt-tag-row">
+        <div class="ltt-chips">
+          <span [class.ltt-chip--muted]="!type.isPaid">{{ type.isPaid ? 'Paid' : 'Unpaid' }}</span>
+          @if (type.applicableGender !== 'all') { <span>{{ type.applicableGender === 'female' ? 'Women only' : 'Men only' }}</span> }
+          @if (type.requiresDocument) { <span>Document</span> }
+        </div>
         @if (canManage) {
           <div class="ltt-actions">
             <app-button variant="secondary" size="sm" [disabled]="type.policyCount === 0" (pressed)="viewPolicies.emit(type)">View policies</app-button>
@@ -36,14 +44,6 @@
             }
           </div>
         }
-      </div>
-      @if (type.description) {
-        <p class="ltt-desc">{{ type.description }}</p>
-      }
-      <div class="ltt-chips">
-        <span [class.ltt-chip--muted]="!type.isPaid">{{ type.isPaid ? 'Paid' : 'Unpaid' }}</span>
-        @if (type.applicableGender !== 'all') { <span>{{ type.applicableGender === 'female' ? 'Women only' : 'Men only' }}</span> }
-        @if (type.requiresDocument) { <span>Document</span> }
       </div>
     </article>
   }
