@@ -54,7 +54,13 @@ describe('TeamAttendanceCardComponent', () => {
     getSummary = vi.fn(() => of(data));
     TestBed.configureTestingModule({
       imports: [TeamAttendanceCardComponent],
-      providers: [TeamAttendanceStore, { provide: TeamAttendanceApiService, useValue: { getSummary, getEmployees: vi.fn() } }]
+      providers: [
+        TeamAttendanceStore,
+        {
+          provide: TeamAttendanceApiService,
+          useValue: { getSummary, getEmployees: vi.fn(() => of({ items: [], pageNumber: 1, pageSize: 20, totalCount: 0, totalPages: 0, hasNext: false, hasPrevious: false })) }
+        }
+      ]
     });
     store = TestBed.inject(TeamAttendanceStore);
     fixture = TestBed.createComponent(TeamAttendanceCardComponent);
@@ -170,5 +176,20 @@ describe('TeamAttendanceCardComponent', () => {
 
     expect(q(el, 'ta-no-days')).toBeTruthy();
     expect(el.querySelector('app-attendance-day-chart')).toBeNull();
+  });
+
+  it('View all opens the detail dialog, which closes back to the card', () => {
+    setup();
+    const el = resize(760, 640);
+
+    (q(el, 'ta-view-all') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.detailOpen()).toBe(true);
+    expect(document.body.querySelector('[data-testid=tad-controls]')).toBeTruthy();
+
+    fixture.componentInstance.closeDetail();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.detailOpen()).toBe(false);
   });
 });

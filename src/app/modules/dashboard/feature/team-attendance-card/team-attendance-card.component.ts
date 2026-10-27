@@ -5,60 +5,22 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
-import {
-  TeamAttendanceBucket,
-  TeamAttendancePeriodMode,
-  TeamAttendanceSummaryResponse
-} from '../../models/team-attendance.model';
+import { TeamAttendanceBucket, TeamAttendanceSummaryResponse } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
 import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/attendance-day-chart.component';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import { TeamAttendanceDetailDialogComponent } from '../team-attendance-detail-dialog/team-attendance-detail-dialog.component';
+import { TEAM_ATTENDANCE_COLORS, TEAM_ATTENDANCE_LABELS, teamAttendanceDelta, teamAttendanceRangeLabel } from '../../utils/team-attendance-format.util';
 import { TeamAttendanceView, resolveTeamAttendanceView } from '../../utils/team-attendance-layout.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 
 const REFRESH_INTERVAL_MS = 60_000;
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const LONG_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-/** Status colours, the same palette as the day chart. */
-export const TEAM_ATTENDANCE_COLORS: Record<Exclude<TeamAttendanceBucket, 'off'>, string> = {
-  present: '#34d399',
-  late: '#fbbf24',
-  absent: '#f87171',
-  leave: '#60a5fa',
-  pending: '#cbd5e1'
-};
-
-export const TEAM_ATTENDANCE_LABELS: Record<TeamAttendanceBucket, string> = {
-  present: 'Present',
-  late: 'Late',
-  absent: 'Absent',
-  leave: 'On leave',
-  pending: 'Not in yet',
-  off: 'Off'
-};
-
 interface LegendRow {
   readonly key: Exclude<TeamAttendanceBucket, 'off' | 'pending'>;
   readonly label: string;
   readonly count: number;
   readonly percent: number;
   readonly color: string;
-}
-
-/** "26 Oct – 1 Nov" for a week, "October 2026" for a month; dates are read without a time zone. */
-export function teamAttendanceRangeLabel(mode: TeamAttendancePeriodMode, start: string, end: string): string {
-  const [sy, sm, sd] = start.split('-').map(Number);
-  const [, em, ed] = end.split('-').map(Number);
-  if (mode === 'month') return `${LONG_MONTHS[sm - 1]} ${sy}`;
-  return sm === em ? `${sd} – ${ed} ${MONTHS[em - 1]}` : `${sd} ${MONTHS[sm - 1]} – ${ed} ${MONTHS[em - 1]}`;
-}
-
-/** "↑ 4 pp vs last week"; null when there is nothing to compare. */
-export function teamAttendanceDelta(deltaPp: number | null, mode: TeamAttendancePeriodMode): { text: string; down: boolean } | null {
-  if (deltaPp === null) return null;
-  const arrow = deltaPp > 0 ? '↑' : deltaPp < 0 ? '↓' : '±';
-  return { text: `${arrow} ${Math.abs(deltaPp)} pp vs last ${mode}`, down: deltaPp < 0 };
 }
 
 /**
@@ -76,7 +38,8 @@ export function teamAttendanceDelta(deltaPp: number | null, mode: TeamAttendance
     PopoutHeaderActionsComponent,
     KpiTilesComponent,
     AvatarComponent,
-    AttendanceDayChartComponent
+    AttendanceDayChartComponent,
+    TeamAttendanceDetailDialogComponent
   ],
   templateUrl: './team-attendance-card.component.html',
   styleUrl: './team-attendance-card.component.css',
