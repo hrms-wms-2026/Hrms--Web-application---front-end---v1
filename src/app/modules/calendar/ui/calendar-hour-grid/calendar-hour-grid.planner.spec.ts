@@ -213,4 +213,13 @@ describe('CalendarHourGridComponent planner layer', () => {
     (q('[data-testid="planner-menu-remove"]') as HTMLButtonElement).click();
     expect(remove).toHaveBeenCalledWith('a');
   });
+
+  it('tints a block just after midnight that a meeting from the evening before still covers', () => {
+    const late = { ...meeting('Late sync', PAST, '23:00', '23:59'), endDate: at(TODAY, '01:00') };
+    render({ [TODAY]: [block('early', TODAY, '00:00', '00:30')] }, [late]);
+
+    const column = q(`[data-date="${TODAY}"]`)!;
+    expect(column.querySelectorAll('[data-testid="planner-overlap"]').length).toBe(1);
+    expect(column.querySelector('[data-testid="planner-overlap-pill"]')!.textContent).toContain('Overlaps Late sync');
+  });
 });

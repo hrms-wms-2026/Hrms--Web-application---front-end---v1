@@ -224,7 +224,8 @@ export class CalendarHourGridComponent {
         ...dayBlocks.map((block): GridItem => ({ kind: 'block', block, start: block.startAt, end: block.endAt })),
       ];
       const laidOut = layoutDayItems(items, dayStart);
-      const busy = busyIntervals(dayEvents, employeeId, date, timezone);
+      // Every event, not only those starting this day: a meeting from the evening before can still cover early blocks.
+      const busy = busyIntervals(this.events(), employeeId, date, timezone);
       const window = windows.get(date) ?? null;
       const minutes = window ? windowMinutes(window) : null;
       const load = loads.get(date);

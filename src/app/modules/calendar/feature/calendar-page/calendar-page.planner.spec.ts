@@ -202,4 +202,50 @@ describe('CalendarPageComponent planner layer', () => {
       .map((e) => Array.from((e as HTMLElement).querySelectorAll('span')).map((s) => s.textContent!.trim()).filter(Boolean).join(' '));
     expect(rows.slice(0, 3)).toEqual(['09:00 Planned task Task a', '09:30 Standup', '10:00 Planned task Task b']);
   });
+
+  it('writes block times in the planner zone even before the calendar knows it', async () => {
+    setup();
+    fixture.componentInstance.setView('day');
+    const date = fixture.componentInstance.dayDate();
+    await new Promise((resolve) => setTimeout(resolve));
+    http.match((r) => r.url === `${base}/me/range`).forEach((req) => req.flush({
+      timezone: 'Asia/Colombo', today: date,
+      days: [{ date, editable: true, workWindow: null, blocks: [], blockMinutes: 0, workingMinutes: 0 }],
+    }));
+    http.match(`${base}/me/focus`).forEach((r) => r.flush(focus));
+    await new Promise((resolve) => setTimeout(resolve));
+
+    fixture.componentInstance.onBlockCreate({ taskId: 't1', date, startMinutes: 600, endMinutes: 660 });
+
+    const post = http.expectOne(`${base}/me/blocks`);
+    expect(post.request.body).toEqual({ taskId: 't1', startAt: new Date(`${date}T10:00:00+05:30`).toISOString(),
+      endAt: new Date(`${date}T11:00:00+05:30`).toISOString() });
+    post.flush(null);
+    await settle();
+  });
+
+  it('Day totals follow the shown day when an earlier day read answers last', async () => {
+    setup();
+    fixture.componentInstance.setView('day');
+    await settle();
+    const first = fixture.componentInstance.dayDate();
+    fixture.componentInstance.next();
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+    http.match((r) => r.url === `${base}/me/range`).forEach(answerRange);
+    http.match(`${base}/me/focus`).forEach((r) => r.flush(focus));
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    const second = fixture.componentInstance.dayDate();
+    const reads = http.match((r) => r.url === `${base}/me`);
+    const day = (date: string, actual: number) => ({ date, timezone: 'UTC', editable: true, blocks: [], meetings: [], dueTasks: [],
+      totals: { plannedMinutes: 0, actualMinutes: actual }, attendanceMinutes: 0 });
+    reads.find((r) => r.request.params.get('date') === second)!.flush(day(second, 30));
+    await new Promise((resolve) => setTimeout(resolve));
+    // A late answer for the day shown before.
+    fixture.componentInstance.plannerDayFor(first, day(first, 300));
+    fixture.detectChanges();
+
+    expect(q('planner-day-totals')!.textContent).toContain('30m / 0m');
+  });
 });

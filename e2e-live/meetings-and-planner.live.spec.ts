@@ -88,7 +88,7 @@ test('planner: a Focus task dragged onto tomorrow becomes a block that can grow,
 
   await expect(block.getByTestId('planner-overlap-pill')).toContainText(`Overlaps ${meetingTitle} · Move after`);
   await block.getByTestId('planner-overlap-pill').click();
-  await expect(column.getByTestId('planner-overlap')).toHaveCount(0);
+  await expect(block.getByTestId('planner-overlap-pill')).toHaveCount(0);
   await expect(block).not.toContainText('10:00–');
 
   // Clean up: remove the block, cancel the meeting.

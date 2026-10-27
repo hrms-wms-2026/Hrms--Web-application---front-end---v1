@@ -104,6 +104,20 @@ describe('PlannerLayerStore', () => {
     expect(store.error()).toBe('This overlaps another planned block.');
     expect(notify.error).toHaveBeenCalledWith('This overlaps another planned block.');
   });
+  it('keeps the newest range when an older response arrives last', async () => {
+    const older = store.load('2026-10-26', '2026-11-01');
+    const newer = store.load('2026-11-02', '2026-11-08');
+    const [oldRange, newRange] = http.match((r) => r.url === `${base}/me/range`);
+    const [oldFocus, newFocus] = http.match(`${base}/me/focus`);
+    newRange.flush(range);
+    newFocus.flush(focus);
+    await newer;
+    oldRange.flush({ ...range, days: [{ ...range.days[0], date: '2026-10-26' }] });
+    oldFocus.flush(focus);
+    await older;
+
+    expect([...store.dayByDate().keys()]).toEqual(['2026-11-02']);
+  });
 });
 
 describe('PlannerDragService', () => {

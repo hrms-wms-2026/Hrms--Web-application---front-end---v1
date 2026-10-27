@@ -1,5 +1,5 @@
 import { MeetingCreatedEvent, drawerKeyForCreated } from '../../../work/meetings/utils/meeting-created-drawer.util';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -215,10 +215,17 @@ export class CalendarPageComponent {
       this.plannerDay.set(null);
       return;
     }
+    // The day shown before keeps no numbers on this one while its own read is on the way.
+    untracked(() => this.plannerDay.set(null));
     firstValueFrom(this.plannerApi.getMyDay(date))
-      .then((day) => this.plannerDay.set(day))
-      .catch(() => this.plannerDay.set(null));
+      .then((day) => this.plannerDayFor(date, day))
+      .catch(() => this.plannerDayFor(date, null));
   });
+
+  /** A day read lands only if that day is still the one shown. */
+  plannerDayFor(date: string, day: PlannerDayResponse | null): void {
+    if (date === this.dayDate()) this.plannerDay.set(day);
+  }
 
   // actionError was already tracked in store state but never surfaced anywhere - a failed
   // create/update/delete/respond/meeting action silently did nothing visible. NotificationService
@@ -389,7 +396,8 @@ export class CalendarPageComponent {
     const day = minutes >= 24 * 60 ? addDays(date, 1) : date;
     const m = minutes % (24 * 60);
     const clock = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-    return localPartsToUtcIso(day, clock, this.store.myTimezone());
+    // The planner's own zone: the calendar's may still be its UTC default for a moment after the page opens.
+    return localPartsToUtcIso(day, clock, this.planner.range()?.timezone ?? this.store.myTimezone());
   }
 
   previous(): void {

@@ -35,7 +35,12 @@ export const PlannerLayerStore = signalStore(
   })),
   withMethods((store, api = inject(PlannerApiService), availability = inject(PlannerAvailabilityService),
     notify = inject(NotificationService)) => {
+    // Only the newest load may land: paging quickly, or a write's refetch racing a navigation, must not leave another
+    // range on screen.
+    let latest = 0;
+
     async function load(from: string, to: string): Promise<void> {
+      const mine = ++latest;
       patchState(store, { from, to });
       if (availability.state() !== 'on') {
         patchState(store, { active: false });
@@ -43,8 +48,10 @@ export const PlannerLayerStore = signalStore(
       }
       try {
         const [range, focus] = await Promise.all([firstValueFrom(api.getRange(from, to)), firstValueFrom(api.getFocus())]);
+        if (mine !== latest) return;
         patchState(store, { active: true, range, focus, error: null });
       } catch (err) {
+        if (mine !== latest) return;
         if (errorCode(err) === 'planner_disabled') {
           availability.markAvailable(false);
           patchState(store, { active: false, range: null, focus: null });
