@@ -1,4 +1,4 @@
-import { test, expect } from './live.fixture';
+import { test, expect, TENANT } from './live.fixture';
 import type { Page } from '@playwright/test';
 
 /**
@@ -19,34 +19,99 @@ function tomorrow(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-test('planner: a due task dropped on the timeline becomes a block that can grow and be removed', async ({ app: page }) => {
+/** The hour-grid column of `date`, scrolled so `minute` is on screen, and the screen point of that minute in it. */
+async function pointIn(page: Page, date: string, minute: number): Promise<{ x: number; y: number }> {
+  const column = page.locator(`[data-testid="calendar-hour-day-column"][data-date="${date}"]`);
+  await column.evaluate((el, m) => {
+    const scroller = el.parentElement!;
+    scroller.scrollTop = (m / 1440) * el.scrollHeight - 80;
+  }, minute);
+  const box = (await column.boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + (minute / 1440) * box.height + 2 };
+}
+
+/** Planner = Calendar: the Week view with all seven days, showing tomorrow. */
+async function openPlannerWeek(page: Page): Promise<string> {
   await openFromNav(page, 'Planner');
-  const task = page.getByTestId('planner-due-task').first();
-  const title = (await task.innerText()).split('\n')[0].trim();
-  // 06:00 + 16 half hours = 14:00.
-  const slot = page.getByTestId('planner-slot').nth(16);
+  await page.getByTestId('calendar-view-week').click();
+  const weekend = page.getByTestId('planner-show-weekend');
+  if ((await weekend.innerText()).includes('Show')) await weekend.click();
+  const date = tomorrow();
+  if (await page.locator(`[data-testid="calendar-hour-day-column"][data-date="${date}"]`).count() === 0) {
+    await page.getByRole('button', { name: '›' }).click();
+  }
+  await expect(page.locator(`[data-testid="calendar-hour-day-column"][data-date="${date}"]`)).toBeVisible();
+  return date;
+}
 
-  // The planner uses native HTML5 drag and drop; one DataTransfer carries the task id from dragstart to drop, as in
-  // a real browser drag (Playwright's mouse-driven dragTo does not deliver it here).
-  const transfer = await page.evaluateHandle(() => new DataTransfer());
-  await task.dispatchEvent('dragstart', { dataTransfer: transfer });
-  await slot.dispatchEvent('dragover', { dataTransfer: transfer });
-  await slot.dispatchEvent('drop', { dataTransfer: transfer });
+test('planner: a Focus task dragged onto tomorrow becomes a block that can grow, clash with a meeting, move after it and go', async ({ app: page }) => {
+  const date = await openPlannerWeek(page);
+  const card = page.getByTestId('planner-focus-card').first();
+  const title = (await card.locator('button').first().innerText()).trim();
 
-  const block = page.getByTestId('planner-block').filter({ hasText: title });
+  // Drag the card onto tomorrow 10:00 (pointer events, as a mouse does).
+  const from = (await card.boundingBox())!;
+  await page.mouse.move(from.x + 20, from.y + 10);
+  await page.mouse.down();
+  const to = await pointIn(page, date, 600);
+  await page.mouse.move(to.x, to.y, { steps: 5 });
+  await page.mouse.up();
+
+  const column = page.locator(`[data-testid="calendar-hour-day-column"][data-date="${date}"]`);
+  const block = column.getByTestId('planner-block').filter({ hasText: title });
   await expect(block).toBeVisible();
-  await expect(block).toContainText('1h 0m');
+  await expect(block).toContainText('10:00–');
 
-  await block.getByTestId('planner-block-longer').click();
-  await expect(block).toContainText('1h 15m');
+  // Make it 30 minutes longer by its bottom edge.
+  const before = (await block.boundingBox())!.height;
+  const edge = (await block.getByTestId('planner-block-resize').boundingBox())!;
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2 + (30 / 1440) * (await column.boundingBox())!.height, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await block.boundingBox())!.height).toBeGreaterThan(before + 10);
 
-  await block.getByTestId('planner-block-delete').click();
-  await expect(page.getByTestId('planner-block').filter({ hasText: title })).toHaveCount(0);
+  // A meeting at 10:15 clashes with it; "Move after" clears the clash.
+  const meetingTitle = `E2E clash ${RUN}`;
+  await page.getByTestId('calendar-new-meeting').click();
+  await page.getByTestId('meeting-project').selectOption({ label: 'The Hardware integration portal' });
+  const module = page.getByTestId('meeting-module');
+  await expect(module.locator('option')).not.toHaveCount(1);
+  await module.selectOption({ index: 1 });
+  await page.getByTestId('meeting-title').fill(meetingTitle);
+  await page.locator('input[formcontrolname="date"]').fill(date);
+  await page.locator('input[formcontrolname="time"]').fill('10:15');
+  await page.locator('input[formcontrolname="durationMinutes"]').fill('30');
+  await page.getByTestId('meeting-save').click();
+  await expect(page.getByTestId('meeting-drawer-title')).toHaveText(meetingTitle);
+  await page.keyboard.press('Escape');
+
+  await expect(block.getByTestId('planner-overlap-pill')).toContainText(`Overlaps ${meetingTitle} · Move after`);
+  await block.getByTestId('planner-overlap-pill').click();
+  await expect(column.getByTestId('planner-overlap')).toHaveCount(0);
+  await expect(block).not.toContainText('10:00–');
+
+  // Clean up: remove the block, cancel the meeting.
+  await block.getByTestId('planner-block-menu').click();
+  await column.getByTestId('planner-menu-remove').click();
+  await expect(column.getByTestId('planner-block').filter({ hasText: title })).toHaveCount(0);
+  await column.getByTestId('calendar-hour-event-block').filter({ hasText: meetingTitle }).click();
+  await page.getByTestId('meeting-cancel').click();
+  await expect(page.getByTestId('meeting-status-pill')).toHaveText('Cancelled');
+});
+
+test('nav: the calendar item reads Planner, and old /calendar links still open it', async ({ app: page }) => {
+  await expect(page.getByRole('link', { name: 'Planner', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Calendar', exact: true })).toHaveCount(0);
+
+  await page.goto(`${TENANT}/calendar`);
+  await expect(page.getByTestId('calendar-view-week')).toBeVisible();
+  await expect(page.getByTestId('planner-focus-toggle')).toBeVisible();
 });
 
 test('meeting: created from the calendar with a group invite, opens in its drawer, edits and cancels', async ({ app: page }) => {
   const title = `E2E sync ${RUN}`;
-  await openFromNav(page, 'Calendar');
+  await openFromNav(page, 'Planner');
   await page.getByTestId('calendar-new-meeting').click();
 
   await page.getByTestId('meeting-project').selectOption({ label: 'The Hardware integration portal' });
@@ -82,7 +147,7 @@ test('meeting: created from the calendar with a group invite, opens in its drawe
 });
 
 test('meeting form: a duration under 15 minutes cannot be saved', async ({ app: page }) => {
-  await openFromNav(page, 'Calendar');
+  await openFromNav(page, 'Planner');
   await page.getByTestId('calendar-new-meeting').click();
   await page.getByTestId('meeting-title').fill(`E2E short ${RUN}`);
   await page.locator('input[formcontrolname="date"]').fill(tomorrow());

@@ -10,7 +10,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'inbox', label: 'Inbox', icon: 'inbox', path: '/inbox', customSubSidebar: 'inbox' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar', path: '/calendar', requiredModules: ['calendar'] },
   // Day planner: plans the employee's own tasks, so it follows the Work modules (the API answers 503 while it is off).
-  { id: 'planner', label: 'Planner', icon: 'calendar', path: '/planner', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
   {
     id: 'time-off', label: 'Time Off', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
     children: [
