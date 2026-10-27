@@ -2,6 +2,7 @@ import { Component, DestroyRef, ElementRef, computed, effect, inject, input, out
 import { Observable, Subscription, firstValueFrom } from 'rxjs';
 import { PendingUploadPurpose, TaskApiService } from '../../../modules/work/data-access/task-api.service';
 import { ColorSwatchPopoverComponent } from '../../../modules/work/ui/color-swatch-popover/color-swatch-popover.component';
+import { sanitizeEditableHtml } from '../../utils/editable-html.util';
 
 export interface SlashCommandItem {
   id: string;
@@ -746,7 +747,8 @@ export class RichTextEditorComponent {
       const html = this.initialHtml();
       const el = this.contentEditor()?.nativeElement;
       if (el && !el.innerHTML && html) {
-        el.innerHTML = html;
+        // Stored HTML can come from another user; innerHTML skips Angular's sanitizer.
+        el.innerHTML = sanitizeEditableHtml(html);
         this.normalizeBlockLines(el);
         const empty = this.isElementVisuallyEmpty(el);
         untracked(() => {
@@ -792,7 +794,7 @@ export class RichTextEditorComponent {
   setHtml(html: string): void {
     const el = this.contentEditor()?.nativeElement;
     if (!el) return;
-    el.innerHTML = html ?? '';
+    el.innerHTML = sanitizeEditableHtml(html);
     if (html) this.normalizeBlockLines(el);
     const empty = this.isElementVisuallyEmpty(el);
     this.contentEmpty.set(empty);
@@ -1766,7 +1768,8 @@ export class RichTextEditorComponent {
     const raw = el.innerHTML.trim();
     const empty = this.isElementVisuallyEmpty(el);
     this.contentEmpty.set(empty);
-    const html = empty ? '' : raw;
+    // Pasted web content can carry <svg>/<style> or handlers the backend rejects; emit it cleaned.
+    const html = empty ? '' : sanitizeEditableHtml(raw);
     if (!this.restoringHistory) this.recordHistory(html);
     this.htmlChange.emit(html);
     this.checkSlashMenuTrigger();
