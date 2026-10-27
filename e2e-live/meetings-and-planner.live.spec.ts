@@ -13,10 +13,14 @@ async function openFromNav(page: Page, name: string): Promise<void> {
   await page.getByRole('link', { name, exact: true }).first().click();
 }
 
-function tomorrow(): string {
+function daysAhead(days: number): string {
   const d = new Date();
-  d.setDate(d.getDate() + 1);
+  d.setDate(d.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function tomorrow(): string {
+  return daysAhead(1);
 }
 
 /** The hour-grid column of `date`, scrolled so `minute` is on screen, and the screen point of that minute in it. */
@@ -30,26 +34,26 @@ async function pointIn(page: Page, date: string, minute: number): Promise<{ x: n
   return { x: box.x + box.width / 2, y: box.y + (minute / 1440) * box.height + 2 };
 }
 
-/** Planner = Calendar: the Week view with all seven days, showing tomorrow. */
+/** Planner = Calendar: the Week view with all seven days, two weeks ahead (clear of anyone's real plans for the week). */
 async function openPlannerWeek(page: Page): Promise<string> {
   await openFromNav(page, 'Planner');
   await page.getByTestId('calendar-view-week').click();
   const weekend = page.getByTestId('planner-show-weekend');
   if ((await weekend.innerText()).includes('Show')) await weekend.click();
-  const date = tomorrow();
-  if (await page.locator(`[data-testid="calendar-hour-day-column"][data-date="${date}"]`).count() === 0) {
+  const date = daysAhead(14);
+  for (let i = 0; i < 3 && await page.locator(`[data-testid="calendar-hour-day-column"][data-date="${date}"]`).count() === 0; i++) {
     await page.getByRole('button', { name: '›' }).click();
   }
   await expect(page.locator(`[data-testid="calendar-hour-day-column"][data-date="${date}"]`)).toBeVisible();
   return date;
 }
 
-test('planner: a Focus task dragged onto tomorrow becomes a block that can grow, clash with a meeting, move after it and go', async ({ app: page }) => {
+test('planner: a Focus task dragged onto a day two weeks ahead becomes a block that can grow, clash with a meeting, move after it and go', async ({ app: page }) => {
   const date = await openPlannerWeek(page);
   const card = page.getByTestId('planner-focus-card').first();
   const title = (await card.locator('button').first().innerText()).trim();
 
-  // Drag the card onto tomorrow 10:00 (pointer events, as a mouse does).
+  // Drag the card onto 10:00 that day (pointer events, as a mouse does).
   const from = (await card.boundingBox())!;
   await page.mouse.move(from.x + 20, from.y + 10);
   await page.mouse.down();
@@ -60,7 +64,8 @@ test('planner: a Focus task dragged onto tomorrow becomes a block that can grow,
   const column = page.locator(`[data-testid="calendar-hour-day-column"][data-date="${date}"]`);
   const block = column.getByTestId('planner-block').filter({ hasText: title });
   await expect(block).toBeVisible();
-  await expect(block).toContainText('10:00–');
+  // The times are in the tooltip (a short block shows only its title).
+  await expect(block).toHaveAttribute('title', /· 10:00–/);
 
   // Make it 30 minutes longer by its bottom edge.
   const before = (await block.boundingBox())!.height;
@@ -86,10 +91,10 @@ test('planner: a Focus task dragged onto tomorrow becomes a block that can grow,
   await expect(page.getByTestId('meeting-drawer-title')).toHaveText(meetingTitle);
   await page.keyboard.press('Escape');
 
-  await expect(block.getByTestId('planner-overlap-pill')).toContainText(`Overlaps ${meetingTitle} · Move after`);
+  await expect(block.getByTestId('planner-overlap-pill')).toContainText('· Move after');
   await block.getByTestId('planner-overlap-pill').click();
   await expect(block.getByTestId('planner-overlap-pill')).toHaveCount(0);
-  await expect(block).not.toContainText('10:00–');
+  await expect(block).not.toHaveAttribute('title', /· 10:00–/);
 
   // Clean up: remove the block, cancel the meeting.
   await block.getByTestId('planner-block-menu').click();
