@@ -1,0 +1,299 @@
+/* The app-modal panel is rendered inside this component's view; the doubled class outranks app-modal's size rule. */
+:host ::ng-deep .team-attendance-detail.team-attendance-detail {
+  width: 100%;
+  max-width: min(1280px, 100%);
+  max-height: 92vh;
+}
+
+.tad {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.tad-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tad-range {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.tad-range-label { font-weight: 600; color: var(--color-text-primary); }
+
+.tad-nav {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  font-size: 1.125rem;
+  color: var(--color-text-secondary);
+}
+
+.tad-nav:hover:not(:disabled) { background: var(--color-surface-secondary); }
+.tad-nav:disabled { opacity: 0.35; cursor: default; }
+
+.tad-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tad-select { min-width: 9rem; }
+
+.tad-muted {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.tad-pad { padding: 0.75rem; }
+
+.tad-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .tad-charts { grid-template-columns: 1fr; }
+}
+
+.tad-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+
+.tad-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.tad-delta {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(5 150 105);
+}
+
+.tad-delta--down { color: rgb(220 38 38); }
+
+.tad-chart { height: 11rem; }
+
+.tad-distribution-body {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tad-donut {
+  width: 7.5rem;
+  height: 7.5rem;
+  flex: none;
+}
+
+.tad-legend {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.tad-legend li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tad-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+
+.tad-legend-label { color: var(--color-text-secondary); }
+.tad-legend-count { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-text-primary); }
+
+.tad-table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tad-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tad-search { width: 14rem; max-width: 100%; }
+
+.tad-button {
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.tad-button:hover:not(:disabled) { background: var(--color-surface-secondary); }
+.tad-button:disabled { opacity: 0.5; cursor: default; }
+
+/* The matrix scrolls sideways on its own; the page never does. */
+.tad-scroll {
+  max-width: 100%;
+  max-height: 26rem;
+  overflow: auto;
+  border-radius: 0.5rem;
+}
+
+.tad-table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+}
+
+.tad-table th,
+.tad-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.375rem 0.25rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tad-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface-secondary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.tad-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-surface);
+}
+
+.tad-table thead .tad-sticky { z-index: 2; }
+
+.tad-sticky--name {
+  min-width: 11rem;
+  max-width: 14rem;
+  padding-left: 0.5rem !important;
+  text-align: left !important;
+}
+
+.tad-date { min-width: 1.75rem; }
+
+.tad-date span { display: block; line-height: 1.1; }
+.tad-weekday { font-weight: 400; opacity: 0.7; }
+
+.tad-person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tad-person-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.tad-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.tad-dept {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.tad-cell {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 9999px;
+  vertical-align: middle;
+}
+
+.tad-cell--present { background: #34d399; }
+.tad-cell--late { background: #fbbf24; border-radius: 0.1875rem; }
+.tad-cell--absent { background: #f87171; border-radius: 0.1875rem; transform: rotate(45deg) scale(0.85); }
+.tad-cell--leave { background: #60a5fa; }
+.tad-cell--pending { background: transparent; border: 2px solid #cbd5e1; }
+.tad-cell--off { width: 0.5rem; height: 2px; border-radius: 1px; background: #cbd5e1; }
+
+.tad-rate-col { min-width: 3.5rem; }
+
+.tad-rate {
+  border-radius: 9999px;
+  background: var(--color-surface-secondary);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.tad-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.tad-legend-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+}
+
+.tad-legend-line .tad-cell { margin-right: -0.375rem; }
+
+.tad-error {
+  font-size: 0.75rem;
+  color: var(--color-danger-text);
+}

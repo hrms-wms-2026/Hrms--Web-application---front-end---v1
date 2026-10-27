@@ -1,0 +1,81 @@
+:host {
+  position: relative;
+  min-height: 0;
+}
+
+.wc-chart {
+  display: flex;
+  height: 100%;
+  min-height: 4.5rem;
+  align-items: stretch;
+  gap: 0.375rem;
+}
+
+.wc-col {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.wc-value {
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  color: rgb(51 65 85);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wc-value--zero {
+  color: rgb(203 213 225);
+}
+
+.wc-track {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 0;
+  align-items: flex-end;
+  border-bottom: 1px solid rgb(226 232 240);
+}
+
+.wc-bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: #10b981;
+}
+
+/* The current week is still running: lighter so it doesn't read as a full week. */
+.wc-bar--current {
+  background: repeating-linear-gradient(135deg, #6ee7b7 0 4px, #a7f3d0 4px 8px);
+}
+
+.wc-label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.625rem;
+  line-height: 1;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wc-label--current {
+  font-weight: 600;
+  color: rgb(5 150 105);
+}
+
+.wc-empty {
+  position: absolute;
+  inset: 0 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+  pointer-events: none;
+}

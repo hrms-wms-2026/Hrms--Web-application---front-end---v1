@@ -35,8 +35,6 @@ describe('SprintCompleteDialogComponent', () => {
       openClockSessionEmployeeId: null,
       openClockSessionClockInAt: null,
       totalLoggedMinutes: 0,
-      activeEventId: null,
-      activeEventName: null,
       attachments: [],
       assignees: [],
       parentTaskId: null,

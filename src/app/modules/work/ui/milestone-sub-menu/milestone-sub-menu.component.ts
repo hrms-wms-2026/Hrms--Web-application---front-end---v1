@@ -12,8 +12,7 @@ interface SubMenuTab {
 const BASE_TABS: SubMenuTab[] = [
   { label: 'Tree', segment: 'tree' },
   { label: 'Board', segment: 'board', projectLevel: true },
-  { label: 'Backlog', segment: 'backlog', projectLevel: true },
-  { label: 'Milestones', segment: 'calendar', projectLevel: true }
+  { label: 'Backlog', segment: 'backlog', projectLevel: true }
 
 
 ];
@@ -49,11 +48,6 @@ const SETTINGS_TAB: SubMenuTab = { label: 'Settings', segment: 'settings', proje
                 }
                 @case ('backlog') {
                   <path d="M4 6h16M4 12h16M4 18h10" />
-                }
-                @case ('calendar') {
-                  <rect x="3" y="4" width="18" height="16" rx="2" />
-                  <path d="M3 10h18" />
-                  <path d="M8 4v-2M16 4v-2" />
                 }
                 @case ('settings') {
                   <circle cx="12" cy="12" r="3" />
