@@ -67,6 +67,17 @@ describe('home-screen packing', () => {
     expect(anyOverlap(out)).toBe(false);
   });
 
+  it('packs around reserved cells (the pinned corner), using the space beside them', () => {
+    const corner = r(8, 0, 4, 1);
+    const out = pack([item('a', r(0, 0, 4, 3)), item('b', r(0, 0, 4, 3)), item('c', r(0, 0, 4, 2))], 12, [corner]);
+    expect(out.map(i => i.rect)).toEqual([r(0, 0, 4, 3), r(4, 0, 4, 3), r(8, 1, 4, 2)]);
+    expect(out.some(i => overlaps(i.rect, corner))).toBe(false);
+    const moved = reorderTo(out, 'c', 0, 12, [corner]);
+    expect(moved.some(i => overlaps(i.rect, corner))).toBe(false);
+    const resized = resizePacked(out, 'a', 8, 2, size, 12, [corner]);
+    expect(resized.some(i => overlaps(i.rect, corner))).toBe(false);
+  });
+
   it('dropping a widget onto an earlier place pushes the others along instead of covering them', () => {
     const items = [item('a', r(0, 0, 4, 2)), item('b', r(4, 0, 4, 2)), item('c', r(8, 0, 4, 2))];
     const out = reorderTo(items, 'c', 0, 12);

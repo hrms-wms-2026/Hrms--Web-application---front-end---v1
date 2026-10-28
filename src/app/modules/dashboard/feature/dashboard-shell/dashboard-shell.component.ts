@@ -5,7 +5,8 @@ import { PageToolbarService } from '../../../../shared/state/page-toolbar.servic
 import { breakpointForWidth, injectBreakpoint } from '../../grid/breakpoint';
 import { DashboardKey } from '../../models/dashboard-layout.model';
 import { DashboardStore } from '../../state/dashboard.store';
-import { DashboardGridComponent, GridReorderEvent, GridResizeEvent } from '../../ui/dashboard-grid/dashboard-grid.component';
+import { DashboardGridComponent, GridReorderEvent, GridResizeEvent, PinnedSize } from '../../ui/dashboard-grid/dashboard-grid.component';
+import { QuickActionsCardComponent } from '../quick-actions-card/quick-actions-card.component';
 import { WidgetStoreDrawerComponent } from '../widget-store-drawer/widget-store-drawer.component';
 
 /** localStorage key prefixes written by the pre-server-side customize implementation; cleared once. */
@@ -40,7 +41,7 @@ function clearLegacyDashboardStorage(): void {
   selector: 'app-dashboard-shell',
   standalone: true,
   providers: [DashboardStore],
-  imports: [DashboardGridComponent, WidgetStoreDrawerComponent, ConfirmModalComponent, LoaderComponent],
+  imports: [DashboardGridComponent, WidgetStoreDrawerComponent, ConfirmModalComponent, LoaderComponent, QuickActionsCardComponent],
   host: { class: 'block', '(document:keydown.escape)': 'onEscape($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -73,11 +74,21 @@ function clearLegacyDashboardStorage(): void {
           [rowHeight]="boot.grid.rowHeight"
           [gap]="boot.grid.gap"
           [editing]="store.editing()"
+          [pinnedSize]="quickActionsSize()"
           (reordered)="onReordered($event)"
           (resized)="onResized($event)"
           (removed)="store.remove($event)"
+          (pinnedChange)="store.setReserved($event)"
           (focusOutside)="focusAddWidget()"
-        />
+        >
+          <!-- Pinned to the grid's top-right corner on both dashboards: never dragged, resized or removed. -->
+          <app-quick-actions-card
+            gridPinned
+            data-testid="dashboard-pinned-quick-actions"
+            [onTeamDashboard]="dashboardKey() === 'my-team'"
+            (naturalSize)="quickActionsSize.set($event)"
+          />
+        </app-dashboard-grid>
         @if (boot.capabilitiesUnavailable) {
           <!-- "Try again" reloads the dashboard, which must not happen under an open draft. -->
           @if (!store.editing()) {
@@ -149,6 +160,8 @@ export class DashboardShellComponent {
   private readonly addWidgetBtn = viewChild<ElementRef<HTMLButtonElement>>('addWidgetBtn');
 
   protected readonly drawerOpen = signal(false);
+  /** The pinned Quick Actions card's natural size; the grid turns it into the cells of its top-right corner. */
+  protected readonly quickActionsSize = signal<PinnedSize | null>(null);
   protected readonly confirmingReset = signal(false);
 
   constructor() {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterRenderEffect, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, afterRenderEffect, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { BootstrapWidget, GridRect } from '../../models/dashboard-layout.model';
 import { GridItem, pixelToCell, readingOrder, reorderTo, resizePacked } from '../../grid/grid-math';
 import { WidgetFrameComponent } from '../widget-frame/widget-frame.component';
@@ -7,6 +7,12 @@ export interface GridReorderEvent {
   id: string;
   /** The widget's new position in reading order (top to bottom, left to right) among the grid's widgets. */
   index: number;
+}
+
+/** The pinned card's natural size in px: as wide as its tiles in one row, as tall as its content at that width. */
+export interface PinnedSize {
+  width: number;
+  height: number;
 }
 
 export interface GridResizeEvent {
@@ -113,6 +119,10 @@ const FALLBACK_EASING = 'cubic-bezier(0.2, 0.9, 0.3, 1.1)';
           [style.grid-row]="gridRow(g)"
         ></div>
       }
+      <!-- The pinned corner (Quick Actions): never dragged, resized or removed; the widgets pack around it. -->
+      <div class="relative min-w-0" data-testid="grid-pinned" [style.grid-column]="gridColumn(pinned())" [style.grid-row]="gridRow(pinned())">
+        <ng-content select="[gridPinned]" />
+      </div>
       @for (c of cells(); track c.w.instanceId) {
         @let w = c.w;
         @let dragged = drag()?.id === w.instanceId;
@@ -156,10 +166,14 @@ export class DashboardGridComponent {
   readonly rowHeight = input.required<number>();
   readonly gap = input.required<number>();
   readonly editing = input(false);
+  /** Natural size of the projected [gridPinned] card; null until it has measured itself. */
+  readonly pinnedSize = input<PinnedSize | null>(null);
 
   readonly reordered = output<GridReorderEvent>();
   readonly resized = output<GridResizeEvent>();
   readonly removed = output<string>();
+  /** The cells the pinned card takes (top-right corner); the owner packs the widgets around them. */
+  readonly pinnedChange = output<GridRect>();
   /** Emitted when a keyboard removal leaves no other widget to focus; the owner moves focus elsewhere. */
   readonly focusOutside = output<void>();
 
@@ -168,6 +182,26 @@ export class DashboardGridComponent {
   private pendingAnnouncement: PendingAnnouncement | null = null;
 
   private readonly gridEl = viewChild.required<ElementRef<HTMLElement>>('grid');
+  private readonly gridWidth = signal(0);
+
+  /**
+   * The pinned corner: enough columns for the card's tiles in one row (all columns when it can't fit, and the tiles
+   * wrap), enough rows for its content, flush with the right edge of the first row.
+   */
+  protected readonly pinned = computed<GridRect>(() => {
+    const cols = this.columns();
+    const gap = this.gap();
+    const size = this.pinnedSize();
+    const width = this.gridWidth();
+    if (!size || width <= 0) {
+      const w = Math.min(3, cols);
+      return { x: cols - w, y: 0, w, h: 1 };
+    }
+    const cellPx = (width - gap * (cols - 1)) / cols;
+    const w = Math.min(cols, Math.max(1, Math.ceil((size.width + gap) / (cellPx + gap) - 0.001)));
+    const h = Math.max(1, Math.ceil((size.height + gap) / (this.rowHeight() + gap) - 0.001));
+    return { x: cols - w, y: 0, w, h };
+  });
   protected readonly drag = signal<ActiveDrag | null>(null);
 
   /** Each widget with the rect it is drawn at: its layout, or during a gesture the previewed result. */
@@ -194,8 +228,24 @@ export class DashboardGridComponent {
 
   private cleanup: (() => void) | null = null;
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor() {
     inject(DestroyRef).onDestroy(() => this.stopListening());
+
+    afterNextRender(() => {
+      const el = this.gridEl().nativeElement;
+      this.gridWidth.set(el.clientWidth);
+      if (typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(() => this.gridWidth.set(el.clientWidth));
+      observer.observe(el);
+      this.destroyRef.onDestroy(() => observer.disconnect());
+    });
+
+    effect(() => {
+      const rect = this.pinned();
+      untracked(() => this.pinnedChange.emit(rect));
+    });
 
     afterRenderEffect(() => {
       this.cells();
@@ -263,10 +313,10 @@ export class DashboardGridComponent {
     let next: GridItem[];
     if (d.kind === 'move') {
       if (d.index === d.fromIndex) return null;
-      next = reorderTo(items, d.id, d.index, this.columns());
+      next = reorderTo(items, d.id, d.index, this.columns(), [this.pinned()]);
     } else {
       if (d.target.w === d.origin.w && d.target.h === d.origin.h) return null;
-      next = resizePacked(items, d.id, d.target.w, d.target.h, d.size, this.columns());
+      next = resizePacked(items, d.id, d.target.w, d.target.h, d.size, this.columns(), [this.pinned()]);
     }
     return new Map(next.map(i => [i.id, i.rect]));
   }

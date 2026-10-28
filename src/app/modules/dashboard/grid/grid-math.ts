@@ -46,11 +46,11 @@ export function readingOrder<T extends GridItem>(items: T[]): T[] {
 /**
  * Home-screen packing: the items keep the given order and each takes the first free slot at or after the previous
  * item's slot (row by row, left to right). Moving one item earlier in the order pushes the later ones along instead
- * of covering them, the way icons make room on a phone's home screen. Never overlaps. Returns the items in `ordered`
- * order with their new rects.
+ * of covering them, the way icons make room on a phone's home screen. Never overlaps. `reserved` cells (the pinned
+ * Quick Actions corner) count as taken. Returns the items in `ordered` order with their new rects.
  */
-export function pack<T extends GridItem>(ordered: T[], cols: number): T[] {
-  const placed: GridRect[] = [];
+export function pack<T extends GridItem>(ordered: T[], cols: number, reserved: readonly GridRect[] = []): T[] {
+  const placed: GridRect[] = [...reserved];
   let cursorY = 0;
   let cursorX = 0;
   return ordered.map(item => {
@@ -72,8 +72,8 @@ export function pack<T extends GridItem>(ordered: T[], cols: number): T[] {
 }
 
 /** Packs the items in their reading order. The result keeps the input array order. */
-export function packInPlace<T extends GridItem>(items: T[], cols: number): T[] {
-  const byId = new Map(pack(readingOrder(items), cols).map(i => [i.id, i]));
+export function packInPlace<T extends GridItem>(items: T[], cols: number, reserved: readonly GridRect[] = []): T[] {
+  const byId = new Map(pack(readingOrder(items), cols, reserved).map(i => [i.id, i]));
   return items.map(i => byId.get(i.id) as T);
 }
 
@@ -81,13 +81,19 @@ export function packInPlace<T extends GridItem>(items: T[], cols: number): T[] {
  * Moves an item to position `index` of the reading order (clamped), then packs: the items between its old and new
  * place shift by one slot to make room. The result keeps the input array order.
  */
-export function reorderTo<T extends GridItem>(items: T[], id: string, index: number, cols: number): T[] {
+export function reorderTo<T extends GridItem>(
+  items: T[],
+  id: string,
+  index: number,
+  cols: number,
+  reserved: readonly GridRect[] = []
+): T[] {
   const order = readingOrder(items);
   const from = order.findIndex(i => i.id === id);
   if (from < 0) return items;
   const [moving] = order.splice(from, 1);
   order.splice(clamp(Math.round(index), 0, order.length), 0, moving);
-  const byId = new Map(pack(order, cols).map(i => [i.id, i]));
+  const byId = new Map(pack(order, cols, reserved).map(i => [i.id, i]));
   return items.map(i => byId.get(i.id) as T);
 }
 
@@ -98,12 +104,13 @@ export function resizePacked<T extends GridItem>(
   w: number,
   h: number,
   size: WidgetSize,
-  cols: number
+  cols: number,
+  reserved: readonly GridRect[] = []
 ): T[] {
   const current = items.find(i => i.id === id);
   if (!current) return items;
   const rect = clampSize({ ...current.rect, w, h }, size, cols);
-  return packInPlace(items.map(i => (i.id === id ? { ...i, rect } : i)), cols);
+  return packInPlace(items.map(i => (i.id === id ? { ...i, rect } : i)), cols, reserved);
 }
 
 /** Snaps a pixel distance/offset to the nearest whole number of cells (cell pitch = cell size + gap). */

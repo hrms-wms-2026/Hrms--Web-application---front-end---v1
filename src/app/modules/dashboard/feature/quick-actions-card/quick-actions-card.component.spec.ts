@@ -2,13 +2,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { describe, expect, it, vi } from 'vitest';
-import { ProjectApiService } from '../../../work/data-access/project-api.service';
-import { of } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { AttendanceTodayResponse } from '../../../attendance/models/time-tracking.model';
 import { QuickActionsCardComponent } from './quick-actions-card.component';
-import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
 
 function makeToday(overrides: Partial<AttendanceTodayResponse> = {}): AttendanceTodayResponse {
   return {
@@ -42,7 +39,7 @@ describe('QuickActionsCardComponent', () => {
     const storeStub = {
       today: signal(today),
       actionLoading: signal(false),
-      activeAction: signal(null),
+      activeAction: signal<string | null>(null),
       loadToday,
       startBreak,
       endBreak
@@ -53,8 +50,7 @@ describe('QuickActionsCardComponent', () => {
       providers: [
         provideRouter([]),
         { provide: TimeTrackingStore, useValue: storeStub },
-        { provide: PermissionService, useValue: { hasAnyModule: () => canAccess, hasAnyPermission: () => canAccess } },
-        { provide: ProjectApiService, useValue: { listMine: () => of({ items: [], pageNumber: 1, pageSize: 100, totalCount: 0, totalPages: 0, hasNext: false, hasPrevious: false }) } }
+        { provide: PermissionService, useValue: { hasAnyModule: () => canAccess, hasAnyPermission: () => canAccess } }
       ]
     }).compileComponents();
 
@@ -64,29 +60,24 @@ describe('QuickActionsCardComponent', () => {
     return { fixture, loadToday, startBreak, endBreak };
   }
 
-  it('a 2x2 card shows icon-only tiles that keep their names for screen readers and as tooltips', async () => {
-    stubResizeObserver();
-    try {
-      const { fixture } = await setup(makeToday(), true);
-      const el: HTMLElement = fixture.nativeElement;
-      const section = el.querySelector('[data-purpose="quick-actions"]')!;
-      expect(section.getAttribute('data-compact')).toBe('false');
+  it('builds one tile per action, in order, on My Team', async () => {
+    const { fixture } = await setup(makeToday(), true);
+    const ids = Array.from(fixture.nativeElement.querySelectorAll('.qa-btn')).map((el) => (el as HTMLElement).dataset['testid']);
+    expect(ids).toEqual(['quick-action-break', 'quick-action-my-work', 'quick-action-settings']);
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-settings"]').getAttribute('data-tone')).toBe('slate');
+  });
 
-      FakeResizeObserver.instances[0].trigger(206, 204);
-      fixture.detectChanges();
-      expect(section.getAttribute('data-compact')).toBe('true');
-      const timeline = el.querySelector('[data-testid="quick-action-activity-timeline"]')!;
-      expect(timeline.getAttribute('title')).toBe('Activity Timeline');
-      expect(timeline.textContent).toContain('Activity Timeline');
-      expect(el.querySelector('[data-testid="quick-action-break"]')!.getAttribute('title')).toBe('Start Break');
-
-      FakeResizeObserver.instances[0].trigger(315, 312);
-      fixture.detectChanges();
-      expect(section.getAttribute('data-compact')).toBe('false');
-      expect(timeline.getAttribute('title')).toBeNull();
-    } finally {
-      vi.unstubAllGlobals();
-    }
+  it('shows a busy, disabled break tile while a break action runs', async () => {
+    const { fixture } = await setup(makeToday());
+    const store = TestBed.inject(TimeTrackingStore) as unknown as { actionLoading: ReturnType<typeof signal<boolean>>; activeAction: ReturnType<typeof signal<string | null>> };
+    store.actionLoading.set(true);
+    store.activeAction.set('startBreak');
+    fixture.detectChanges();
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="quick-action-break"]');
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.querySelector('.qa-spinner')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-break-label"]').textContent.trim()).toBe('Working…');
   });
 
   it('loads today on init', async () => {
@@ -119,57 +110,32 @@ describe('QuickActionsCardComponent', () => {
     expect(button.disabled).toBe(true);
   });
 
-  it('links My Team and Activity Timeline to their dashboard routes', async () => {
+  it('links My Team to the team dashboard', async () => {
     const { fixture } = await setup(makeToday());
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-my-team"]').getAttribute('href')).toBe('/dashboard/my-team');
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-my-work"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-activity-timeline"]').getAttribute('href')).toBe(
-      '/dashboard/activity-timeline'
-    );
   });
 
-  it('links back to My Work on the My Team dashboard, keeping Start Break and Activity Timeline', async () => {
+  it('links back to My Work on the My Team dashboard, keeping Start Break', async () => {
     const { fixture } = await setup(makeToday(), true);
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-my-work"]').getAttribute('href')).toBe('/dashboard');
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-my-team"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-break"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-activity-timeline"]').getAttribute('href')).toBe(
-      '/dashboard/activity-timeline'
-    );
   });
 
-  it('shows only Start Break, My Team and Activity Timeline on My Work', async () => {
+  it('shows Start Break, My Team and Settings on My Work', async () => {
     const { fixture } = await setup(makeToday());
     const ids = Array.from(fixture.nativeElement.querySelectorAll('[data-testid^="quick-action-"]'))
       .map((el) => (el as HTMLElement).dataset['testid'])
-      .filter((id) => id !== 'quick-action-break-label');
-    expect(ids).toEqual(['quick-action-break', 'quick-action-my-team', 'quick-action-activity-timeline']);
+      .filter((id) => !id?.endsWith('-label'));
+    expect(ids).toEqual(['quick-action-break', 'quick-action-my-team', 'quick-action-settings']);
   });
 
-  it('links Create Ticket to the Inbox and Settings to settings on My Team', async () => {
-    const { fixture } = await setup(makeToday(), true);
-    const href = (id: string): string | null =>
-      fixture.nativeElement.querySelector(`[data-testid="quick-action-${id}"]`)?.getAttribute('href') ?? null;
-    expect(href('create-ticket')).toBe('/inbox');
-    expect(href('settings')).toBe('/settings');
-  });
-
-  it('opens the Create Task popup over the page (attached to body), once, until it closes', async () => {
-    const { fixture } = await setup(makeToday(), true);
-    const button: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="quick-action-create-task"]');
-    button.click();
-    button.click();
-    fixture.detectChanges();
-    expect(document.querySelectorAll('.cdk-overlay-container app-quick-create-task').length).toBe(1);
-    expect(fixture.nativeElement.querySelector('app-quick-create-task')).toBeNull();
-    fixture.destroy();
-    expect(document.querySelector('.cdk-overlay-container app-quick-create-task')).toBeNull();
-  });
-
-  it('hides Create Task and Settings from a viewer who cannot open Work or any settings page', async () => {
+  it('links Settings to settings, and hides it from a viewer who cannot open any settings page', async () => {
+    const allowed = await setup(makeToday(), true);
+    expect(allowed.fixture.nativeElement.querySelector('[data-testid="quick-action-settings"]').getAttribute('href')).toBe('/settings');
+    TestBed.resetTestingModule();
     const { fixture } = await setup(makeToday(), true, false);
-    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-create-ticket"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('[data-testid="quick-action-create-task"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="quick-action-settings"]')).toBeNull();
   });
 });
