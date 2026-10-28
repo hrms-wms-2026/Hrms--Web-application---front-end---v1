@@ -6,39 +6,63 @@ const STATUS_LABELS: Record<MeetingStatus, string> = {
 };
 const RESPONSE_LABELS: Record<string, string> = { accepted: 'Accepted', rejected: 'Declined', pending: 'Not answered' };
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
 /**
- * A meeting on the board, the Work Tree (variant "row", with the "M" badge) or My Work. Its status is derived and it is
- * not a status column card: it is never draggable (spec 5.9). Clicking opens the occurrence by its key.
+ * A meeting among the tasks: a card in its board status column (variant "card") or a row in the Work Tree laid out like
+ * a task row (variant "row"). Both carry the "M" badge. Its status follows the clock, so it is never draggable (D10).
+ * Clicking opens the occurrence by its key.
  */
 @Component({
   selector: 'app-meeting-card',
   standalone: true,
   template: `
-    <button type="button" data-testid="meeting-card" (click)="open.emit({ seriesId: item().seriesId, originalStart: item().originalStart })"
-      class="flex w-full items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-left text-xs hover:bg-[var(--color-surface-secondary)]"
-      [class.flex-col]="variant() === 'card'" [class.items-start]="variant() === 'card'">
-      <span class="flex w-full items-center gap-2">
-        @if (variant() === 'row') {
+    @if (variant() === 'row') {
+      <button type="button" data-testid="meeting-card" (click)="emitOpen()"
+        class="grid w-full grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 text-left tree-row hover:bg-[var(--color-surface-secondary)]">
+        <span data-testid="meeting-card-name-cell" class="flex min-w-0 items-center gap-1.5" [style.paddingLeft.px]="depth() * 20">
+          <span class="h-4 w-4 shrink-0"></span>
+          <span data-testid="meeting-card-badge" class="shrink-0 rounded bg-[var(--color-accent)] px-1 text-[10px] font-bold text-[var(--color-accent-contrast)]">M</span>
+          <span data-testid="meeting-card-title" class="min-w-0 truncate text-sm text-[var(--color-text-primary)]">{{ title() }}</span>
+          <span data-testid="meeting-card-shortid" class="shrink-0 text-xs text-[var(--color-text-secondary)]">{{ item().shortId }}</span>
+          <span data-testid="meeting-card-status" [attr.data-status]="item().status"
+            class="shrink-0 rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">{{ statusLabel() }}</span>
+        </span>
+        <span class="truncate text-xs text-[var(--color-text-secondary)]">{{ clock() }}</span>
+        <span class="text-xs text-[var(--color-text-secondary)]">—</span>
+        <span data-testid="meeting-card-date" class="text-xs text-[var(--color-text-secondary)]">{{ date() }}</span>
+        <span class="text-right text-xs text-[var(--color-text-secondary)]">
+          @if (item().myResponse) {
+            <span data-testid="meeting-card-response">{{ responseLabel() }}</span>
+          }
+        </span>
+      </button>
+    } @else {
+      <button type="button" data-testid="meeting-card" (click)="emitOpen()"
+        class="flex w-full flex-col gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3 text-left shadow-sm hover:border-[var(--color-accent)]">
+        <span class="flex w-full items-center gap-2 text-[11px] text-[var(--color-text-secondary)]">
           <span data-testid="meeting-card-badge" class="rounded bg-[var(--color-accent)] px-1 text-[10px] font-bold text-[var(--color-accent-contrast)]">M</span>
-        }
-        <span data-testid="meeting-card-title" class="truncate font-medium">{{ title() }}</span>
-        <span data-testid="meeting-card-shortid" class="shrink-0 text-[var(--color-text-secondary)]">{{ item().shortId }}</span>
-      </span>
-      <span class="flex w-full items-center gap-2 text-[var(--color-text-secondary)]">
-        <span>{{ time() }}</span>
-        <span data-testid="meeting-card-status" [attr.data-status]="item().status"
-          class="rounded-full bg-[var(--color-surface-secondary)] px-1.5">{{ statusLabel() }}</span>
-        @if (item().myResponse) {
-          <span data-testid="meeting-card-response">{{ responseLabel() }}</span>
-        }
-      </span>
-    </button>
+          <span data-testid="meeting-card-shortid">{{ item().shortId }}</span>
+        </span>
+        <span data-testid="meeting-card-title" class="w-full truncate text-[13px] font-medium text-[var(--color-text-primary)]">{{ title() }}</span>
+        <span class="flex w-full flex-wrap items-center gap-2 text-[11.5px] text-[var(--color-text-secondary)]">
+          <span>{{ time() }}</span>
+          <span data-testid="meeting-card-status" [attr.data-status]="item().status"
+            class="rounded-full bg-[var(--color-surface-secondary)] px-1.5">{{ statusLabel() }}</span>
+          @if (item().myResponse) {
+            <span data-testid="meeting-card-response">{{ responseLabel() }}</span>
+          }
+        </span>
+      </button>
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MeetingCardComponent {
   readonly item = input.required<MeetingListItem>();
   readonly variant = input<'card' | 'row'>('card');
+  /** Tree depth of the row, indented like a task row at the same depth. */
+  readonly depth = input(0);
   readonly open = output<{ seriesId: string; originalStart: string }>();
 
   /** Listing a private meeting implies a role; without one, show it as "Private meeting" rather than leak its title. */
@@ -51,4 +75,20 @@ export class MeetingCardComponent {
     const day = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
     return day.format(new Date(item.startAt));
   });
+  /** Start to end time for the tree row; the date sits in its own column. */
+  readonly clock = computed(() => {
+    const item = this.item();
+    if (item.isAllDay) return 'All day';
+    const format = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+    return `${format.format(new Date(item.startAt))} – ${format.format(new Date(item.endAt))}`;
+  });
+  /** The start's local date as YYYY-MM-DD, the form the task rows show their dates in. */
+  readonly date = computed(() => {
+    const start = new Date(this.item().startAt);
+    return `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+  });
+
+  protected emitOpen(): void {
+    this.open.emit({ seriesId: this.item().seriesId, originalStart: this.item().originalStart });
+  }
 }

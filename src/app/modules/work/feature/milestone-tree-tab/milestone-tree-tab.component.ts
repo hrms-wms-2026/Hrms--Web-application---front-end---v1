@@ -2,6 +2,7 @@ import { MeetingApiService } from '../../meetings/data-access/meeting-api.servic
 import { MeetingOccurrenceDrawerComponent } from '../../meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { MeetingListItem } from '../../meetings/models/meeting.models';
 import { meetingListWindow } from '../../meetings/utils/meeting-time';
+import { visibleMeetings } from '../../meetings/utils/meeting-board';
 import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
 import { AfterViewInit, Component, OnDestroy, TemplateRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
@@ -126,7 +127,8 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
     this.meetingApi.list(from, to, projectId).subscribe({
       next: (items) => {
         const byModule = new Map<string, MeetingListItem[]>();
-        for (const item of items) {
+        // Cancelled meetings stay on the Calendar only; the rest take their status from the clock, in start order.
+        for (const item of visibleMeetings(items, new Date())) {
           if (!item.objectiveId) continue;
           byModule.set(item.objectiveId, [...(byModule.get(item.objectiveId) ?? []), item]);
         }

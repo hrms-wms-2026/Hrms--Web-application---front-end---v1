@@ -111,11 +111,11 @@ const NO_MEETINGS: ReadonlyMap<string, readonly MeetingListItem[]> = new Map();
       }
 
       @if (moduleMeetings().length > 0 && (expanded() || node().children.length === 0)) {
-        <!-- A meeting is a leaf work item under its module (D2), never a status card: no drag, no status column. -->
-        <div class="flex flex-col gap-0.5" [style.padding-left.px]="(depth() + 1) * 16">
+        <!-- A meeting is a leaf work item under its module (D2), shown as a row beside its tasks; its status follows the clock. -->
+        <div class="flex flex-col gap-0.5">
           @for (meeting of moduleMeetings(); track meeting.taskId) {
             <div data-testid="tree-meeting-row">
-              <app-meeting-card variant="row" [item]="meeting" (open)="meetingOpened.emit($event)" />
+              <app-meeting-card variant="row" [depth]="depth() + 1" [item]="meeting" (open)="meetingOpened.emit($event)" />
             </div>
           }
         </div>

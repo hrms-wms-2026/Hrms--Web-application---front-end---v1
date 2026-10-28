@@ -57,4 +57,23 @@ describe('MeetingCardComponent', () => {
     build(item(), 'row');
     expect(testId('meeting-card-badge')?.textContent?.trim()).toBe('M');
   });
+
+  it('a board card carries the "M" badge too, so it reads as a meeting among the task cards', () => {
+    build(item(), 'card');
+    expect(testId('meeting-card-badge')?.textContent?.trim()).toBe('M');
+  });
+
+  it('a tree row uses the task row columns and indents by depth like a task row', () => {
+    fixture = TestBed.createComponent(MeetingCardComponent);
+    fixture.componentRef.setInput('item', item());
+    fixture.componentRef.setInput('variant', 'row');
+    fixture.componentRef.setInput('depth', 2);
+    fixture.detectChanges();
+    expect(testId('meeting-card')?.className).toContain('grid-cols-[1fr_112px_40px_88px_140px]');
+    expect(testId('meeting-card-name-cell')?.style.paddingLeft).toBe('40px');
+    // The start's local date, in the YYYY-MM-DD form the task rows use.
+    const start = new Date('2026-11-02T03:30:00Z');
+    const local = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+    expect(testId('meeting-card-date')?.textContent?.trim()).toBe(local);
+  });
 });

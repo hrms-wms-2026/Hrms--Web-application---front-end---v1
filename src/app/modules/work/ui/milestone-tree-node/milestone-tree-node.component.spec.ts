@@ -392,6 +392,8 @@ describe('MilestoneTreeNodeComponent - meetings', () => {
     const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tree-meeting-row"]'));
     expect(rows.length).toBe(1);
     expect(rows[0].querySelector('[data-testid="meeting-card-badge"]')?.textContent?.trim()).toBe('M');
+    // A row one level below its module, laid out like the task rows there (the module "Child" is at depth 1).
+    expect((rows[0].querySelector('[data-testid="meeting-card-name-cell"]') as HTMLElement).style.paddingLeft).toBe('40px');
 
     let opened: unknown;
     fixture.componentInstance.meetingOpened.subscribe((key) => (opened = key));
