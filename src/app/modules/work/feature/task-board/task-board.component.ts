@@ -4,8 +4,6 @@ import { MeetingOccurrenceDrawerComponent } from '../../meetings/feature/meeting
 import { MeetingListItem } from '../../meetings/models/meeting.models';
 import { meetingListWindow } from '../../meetings/utils/meeting-time';
 import { meetingsByStatusColumn, visibleMeetings } from '../../meetings/utils/meeting-board';
-import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
-import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
 import { AfterViewChecked, AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute } from '@angular/router';
@@ -39,7 +37,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent, MeetingFormModalComponent, MeetingOccurrenceDrawerComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent, MeetingOccurrenceDrawerComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
@@ -73,9 +71,6 @@ import { NotificationService } from '../../../../core/services/notification.serv
         <app-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
         @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="goToCreate()">Create work item</app-button>
-          @if (meetingsAvailability.canCreate()) {
-            <app-button variant="secondary" data-testid="board-new-meeting" (pressed)="meetingFormOpen.set(true)">New meeting</app-button>
-          }
         }
       </div>
     </ng-template>
@@ -117,11 +112,6 @@ import { NotificationService } from '../../../../core/services/notification.serv
       <app-meeting-occurrence-drawer [key]="key" (closed)="onMeetingDrawerClosed()" />
     }
 
-    @if (meetingFormOpen()) {
-      <app-meeting-form-modal [open]="true" mode="create" [placement]="{ projectId: projectId(), objectiveId: null }"
-        (saved)="onMeetingSaved($any($event))" (closed)="meetingFormOpen.set(false)" />
-    }
-
     <app-task-form-modal
       [open]="taskModalOpen()"
       [mode]="taskModalMode()"
@@ -129,7 +119,9 @@ import { NotificationService } from '../../../../core/services/notification.serv
       [taskId]="taskModalTaskId()"
       [prefillModuleId]="modalPrefillModuleId()"
       [prefillSprintId]="modalPrefillSprintId()"
+      [allowMeeting]="true"
       (taskSelected)="taskModalTaskId.set($event)"
+      (meetingCreated)="onMeetingSaved($event)"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
       (changed)="reload()"
@@ -167,8 +159,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
   protected readonly projectId = signal('');
-  protected readonly meetingFormOpen = signal(false);
-  protected readonly meetingsAvailability = inject(MeetingsAvailabilityService);
   protected readonly meetings = signal<readonly MeetingListItem[]>([]);
   /** Ticks every minute so a meeting moves from To Do to In Process to Done as its time passes. */
   private readonly now = signal(new Date());
@@ -504,10 +494,9 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     return '';
   });
 
-  /** A meeting was created (or sent for approval) from the board: close the form, refresh the board and open the new
-   *  meeting's drawer. */
+  /** A meeting was created (or sent for approval) from the work item form (category "meeting"): refresh the board and
+   *  open the new meeting's drawer. */
   protected onMeetingSaved(event: MeetingCreatedEvent): void {
-    this.meetingFormOpen.set(false);
     void this.store.loadBoard(this.projectId());
     this.loadMeetings();
     const key = drawerKeyForCreated(event);

@@ -73,9 +73,6 @@
     @if (canCreateModule()) {
     <app-button variant="primary" (pressed)="onCreateModuleRequested()">Create module</app-button>
     }
-    @if (meetingsAvailability.canCreate()) {
-    <app-button variant="secondary" data-testid="tree-new-meeting" (pressed)="meetingFormOpen.set(true)">New meeting</app-button>
-    }
   </div>
 </ng-template>
 
@@ -202,7 +199,9 @@
   [taskId]="taskModalTaskId()"
   [prefillModuleId]="taskModalPrefillModule()"
   [prefillSprintId]="taskModalPrefillSprint()"
+  [allowMeeting]="true"
   (taskSelected)="taskModalTaskId.set($event)"
+  (meetingCreated)="loadMeetings()"
   (created)="onTaskModalDone()"
   (saved)="onTaskModalDone()"
   (changed)="onTaskModalChanged()"
@@ -216,11 +215,6 @@
   (closed)="allocationNode.set(null)"
   (submitted)="onAllocationSubmitted()"
 />
-
-@if (meetingFormOpen()) {
-  <app-meeting-form-modal [open]="true" mode="create" [placement]="{ projectId: projectId(), objectiveId: renderedTree()?.id ?? null }"
-    (saved)="meetingFormOpen.set(false); loadMeetings()" (closed)="meetingFormOpen.set(false)" />
-}
 
 @if (openMeeting(); as key) {
   <app-meeting-occurrence-drawer [key]="key" (closed)="openMeeting.set(null); loadMeetings()" />

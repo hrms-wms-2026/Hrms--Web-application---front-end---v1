@@ -3,8 +3,6 @@ import { MeetingOccurrenceDrawerComponent } from '../../meetings/feature/meeting
 import { MeetingListItem } from '../../meetings/models/meeting.models';
 import { meetingListWindow } from '../../meetings/utils/meeting-time';
 import { visibleMeetings } from '../../meetings/utils/meeting-board';
-import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
-import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
 import { AfterViewInit, Component, OnDestroy, TemplateRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
@@ -84,7 +82,7 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
   imports: [
     MilestoneTreeNodeComponent, FilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
-    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent, MeetingFormModalComponent, MeetingOccurrenceDrawerComponent,
+    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent, MeetingOccurrenceDrawerComponent,
     TaskAssigneeAvatarFilterComponent, AllocationRequestModalComponent, ProjectNetworkViewComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
@@ -113,8 +111,6 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   private currentMilestoneId = '';
   private currentProjectId = '';
   protected readonly projectId = signal('');
-  protected readonly meetingFormOpen = signal(false);
-  protected readonly meetingsAvailability = inject(MeetingsAvailabilityService);
   private readonly meetingApi = inject(MeetingApiService);
   /** The project's meetings in the board/tree window (past day to 7 days ahead), by module id. */
   protected readonly meetingsByModule = signal<ReadonlyMap<string, readonly MeetingListItem[]>>(new Map());

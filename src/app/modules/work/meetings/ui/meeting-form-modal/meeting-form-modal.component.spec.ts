@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { vi } from 'vitest';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
@@ -50,7 +51,8 @@ describe('MeetingFormModalComponent', () => {
         { provide: ProjectApiService, useValue: { listMine: () => of({ items: [], totalCount: 0 }), getProjectTree: () => of([]) } },
       ],
     });
-    TestBed.overrideComponent(MeetingFormModalComponent, { set: { imports: [], schemas: [NO_ERRORS_SCHEMA] } });
+    // NgTemplateOutlet stays: the form is one template, rendered in the modal or embedded in the work item form.
+    TestBed.overrideComponent(MeetingFormModalComponent, { set: { imports: [NgTemplateOutlet], schemas: [NO_ERRORS_SCHEMA] } });
   });
 
   function fillOffice(): void {
@@ -354,5 +356,21 @@ describe('MeetingFormModalComponent', () => {
       expect(notify.error).not.toHaveBeenCalled();
       expect((fixture.nativeElement.querySelector('[data-testid="meeting-save"]') as HTMLButtonElement).disabled).toBe(false);
     });
+  });
+
+  it('embedded in the work item form: no modal of its own, and it keeps what the work item form had typed', () => {
+    build({ mode: 'create', embedded: true, placement: { projectId: 'p1', objectiveId: 'o1' },
+      carryOver: { title: 'Sprint review', description: '<p>Agenda</p>' } });
+
+    expect(fixture.nativeElement.querySelector('app-modal')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="meeting-title"]')).not.toBeNull();
+    expect(form.form.controls.title.value).toBe('Sprint review');
+    expect(form.form.controls.description.value).toBe('<p>Agenda</p>');
+    expect(form.objectiveId()).toBe('o1');
+  });
+
+  it('an empty description carried over stays empty', () => {
+    build({ mode: 'create', embedded: true, carryOver: { title: '', description: '<p></p>' } });
+    expect(form.form.controls.description.value).toBeNull();
   });
 });

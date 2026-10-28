@@ -1,5 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
+import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { TaskFormModalComponent } from './task-form-modal.component';
@@ -625,13 +629,17 @@ describe('TaskFormModalComponent - create mode', () => {
   let api: Record<string, ReturnType<typeof vi.fn>>;
   let createTask: ReturnType<typeof vi.fn>;
 
-  async function build(opts: { module?: string; sprint?: string; isOwner?: boolean; draftId?: string } = {}): Promise<void> {
+  async function build(opts: { module?: string; sprint?: string; isOwner?: boolean; draftId?: string; allowMeeting?: boolean;
+    categories?: unknown[] } = {}): Promise<void> {
     api = baseApi();
+    if (opts.categories) api['getCategories'] = vi.fn().mockReturnValue(of(opts.categories));
     createTask = vi.fn().mockResolvedValue({ id: 't-new', objectiveId: 'o1' });
 
     await TestBed.configureTestingModule({
       imports: [TaskFormModalComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: TaskApiService, useValue: api },
         { provide: ProjectApiService, useValue: {
           getMyMilestones: vi.fn().mockReturnValue(of([{ objectiveId: 'o1', title: 'Mod 1', isOwner: opts.isOwner ?? true }]))
@@ -653,9 +661,70 @@ describe('TaskFormModalComponent - create mode', () => {
     if (opts.module) fixture.componentRef.setInput('prefillModuleId', opts.module);
     if (opts.sprint) fixture.componentRef.setInput('prefillSprintId', opts.sprint);
     if (opts.draftId) fixture.componentRef.setInput('draftId', opts.draftId);
+    if (opts.allowMeeting) fixture.componentRef.setInput('allowMeeting', true);
     fixture.componentRef.setInput('open', true);
     await flush(fixture);
   }
+
+  describe('the "meeting" category', () => {
+    const categories = [
+      { id: 'c-meeting', name: 'meeting', displayOrder: 0, systemKey: 'meeting' },
+      { id: 'c-task', name: 'task', displayOrder: 1 },
+    ];
+    const el = (testId: string) => fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+
+    it('never opens on "meeting", even when it is the first category', async () => {
+      await build({ allowMeeting: true, categories });
+      expect(fixture.componentInstance.categoryId()).toBe('c-task');
+      expect(el('embedded-meeting-form')).toBeNull();
+    });
+
+    it('turns the form into the meeting form, keeping the title, and back again', async () => {
+      await build({ allowMeeting: true, categories, module: 'o1' });
+      fixture.componentInstance.title.set('Sprint review');
+      fixture.componentInstance.categoryId.set('c-meeting');
+      fixture.detectChanges();
+
+      const meeting = fixture.debugElement.query(By.css('app-meeting-form-modal'));
+      expect(meeting).not.toBeNull();
+      expect(meeting.componentInstance.embedded()).toBe(true);
+      expect(meeting.componentInstance.placement()).toEqual({ projectId: 'p1', objectiveId: 'o1' });
+      expect(meeting.componentInstance.form.controls.title.value).toBe('Sprint review');
+      // The meeting form brings its own Cancel and Create; the task footer steps aside.
+      expect((fixture.nativeElement.querySelector('.tfm__foot') as HTMLElement).style.display).toBe('none');
+      expect(el('add-subtask-button')).toBeNull();
+
+      fixture.componentInstance.categoryId.set('c-task');
+      fixture.detectChanges();
+      expect(fixture.debugElement.query(By.css('app-meeting-form-modal'))).toBeNull();
+      expect(el('add-subtask-button')).not.toBeNull();
+    });
+
+    it('is not offered where meetings are not allowed (other screens, edit), so no plain task becomes a "meeting"', async () => {
+      await build({ categories });
+      expect(fixture.componentInstance.pickableCategories().map((c) => c.id)).toEqual(['c-task']);
+    });
+
+    it('is not offered once the server says meetings are off', async () => {
+      await build({ allowMeeting: true, categories });
+      TestBed.inject(MeetingsAvailabilityService).noteError(new HttpErrorResponse({ status: 503, error: { code: 'meetings_disabled' } }));
+      expect(fixture.componentInstance.pickableCategories().map((c) => c.id)).toEqual(['c-task']);
+    });
+
+    it('hands a created meeting to the host and closes', async () => {
+      await build({ allowMeeting: true, categories });
+      const created = vi.fn();
+      const closed = vi.fn();
+      fixture.componentInstance.meetingCreated.subscribe(created);
+      fixture.componentInstance.closed.subscribe(closed);
+      const event = { outcome: 'created', seriesId: 's1', occurrenceTaskId: 'm1', originalStart: '2026-11-02T03:30:00Z' };
+
+      fixture.componentInstance.onMeetingCreated(event as never);
+
+      expect(created).toHaveBeenCalledWith(event);
+      expect(closed).toHaveBeenCalled();
+    });
+  });
 
   it('starts with an empty title and never loads a task', async () => {
     await build();

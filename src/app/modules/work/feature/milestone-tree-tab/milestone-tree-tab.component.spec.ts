@@ -1,5 +1,4 @@
-import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
-import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -229,31 +228,14 @@ describe('MilestoneTreeTabComponent', () => {
       .toEqual([['past', 'completed']]);
   });
 
-  it('offers New meeting in the toolbar, placed in the routed module', () => {
+  it('has no New meeting in the toolbar: a meeting is made from the work item form, category "meeting"', () => {
     setup('o1');
-    fixture.detectChanges();
-
-    const toolbar = renderToolbar();
-    const button = Array.from(toolbar.host.querySelectorAll('button'))
-      .find((b) => b.textContent?.trim() === 'New meeting') as HTMLButtonElement;
-    expect(button).toBeTruthy();
-    button.click();
-    fixture.detectChanges();
-
-    const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
-    expect(form).not.toBeNull();
-    expect(form.componentInstance.placement()).toEqual({ projectId: 'p1', objectiveId: 'o1' });
-    toolbar.view.destroy();
-  });
-
-  it('hides New meeting once the server says meetings are off', () => {
-    setup('o1');
-    TestBed.inject(MeetingsAvailabilityService).noteError(new HttpErrorResponse({ status: 503, error: { code: 'meetings_disabled' } }));
     fixture.detectChanges();
 
     const toolbar = renderToolbar();
     const button = Array.from(toolbar.host.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'New meeting');
     expect(button).toBeUndefined();
+    expect(fixture.debugElement.query(By.css('app-task-form-modal')).componentInstance.allowMeeting()).toBe(true);
     toolbar.view.destroy();
   });
 
