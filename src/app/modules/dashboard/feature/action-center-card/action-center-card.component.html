@@ -7,7 +7,7 @@
   expandedMaxHeight="min(85vh, 56rem)"
   (closed)="collapse()"
 >
-  <section
+  <section role="button" tabindex="0" appKeyboardClick
     class="group flex h-full flex-col rounded-2xl border border-[#fef08a] bg-gradient-to-b from-amber-100 via-amber-50/70 to-[#fefce8] p-5"
     [class.cursor-pointer]="!showAll() && canExpand()"
     [class.ac-fit]="!showAll()"
@@ -77,7 +77,7 @@
       } @else {
         <ul class="divide-y divide-amber-200/70" data-testid="action-center-inbox">
           @for (item of visibleRows(); track item.key) {
-            <li class="ac-row py-2.5" data-testid="action-center-inbox-row" (click)="$event.stopPropagation()">
+            <li class="ac-row py-2.5" data-testid="action-center-inbox-row" appStopClickPropagation>
               <div class="flex items-center gap-3">
                 <span class="inbox-person">
                   <app-avatar size="sm" [avatarUrl]="avatarUrl(item)" [userName]="item.subject" />

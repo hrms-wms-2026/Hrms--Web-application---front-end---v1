@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CoverageCardVisual, POSITION_TEMPLATE_DRAG_MIME_TYPE, PositionTemplatePackPositionResponse, PositionTreeNodeResponse } from '../../models/position.model';
 import { PositionOccupancyDisplay, resolvePositionOccupancy } from '../../utils/position-occupancy';
 import { PositionSeatPreviewComponent } from '../position-seat-preview/position-seat-preview.component';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 export interface ReparentPositionEvent {
   position: PositionTreeNodeResponse;
@@ -24,7 +25,7 @@ export interface TemplateDropOnPositionEvent {
 @Component({
   selector: 'app-position-tree-node',
   standalone: true,
-  imports: [CommonModule, PositionSeatPreviewComponent],
+  imports: [KeyboardClickDirective, CommonModule, PositionSeatPreviewComponent],
   templateUrl: './position-tree-node.component.html',
   styleUrl: './position-tree-node.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

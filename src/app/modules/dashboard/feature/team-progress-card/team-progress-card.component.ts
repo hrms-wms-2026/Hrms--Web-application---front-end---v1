@@ -25,6 +25,7 @@ import {
   resolveTeamProgressMode
 } from '../../utils/team-progress-layout.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -172,7 +173,7 @@ const EMPTY_PLAN: TeamProgressPlan = { miniLegend: 'none', legend: false, tileRo
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [
+  imports: [StopClickPropagationDirective, 
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,

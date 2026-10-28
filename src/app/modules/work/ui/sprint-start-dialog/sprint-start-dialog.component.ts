@@ -25,7 +25,7 @@ import { GeneralSettingsStore } from '../../../organization/state/general-settin
         </p>
 
         <div class="sprint-start-dialog__date-range" data-testid="sprint-date-range">
-          <label class="sprint-start-dialog__label">Sprint dates *</label>
+          <span class="sprint-start-dialog__label">Sprint dates *</span>
           <app-date-range-picker
             [from]="startDate()"
             [to]="endDate()"

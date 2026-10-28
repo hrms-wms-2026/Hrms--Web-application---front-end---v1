@@ -3,6 +3,7 @@ import { Observable, Subscription, firstValueFrom } from 'rxjs';
 import { PendingUploadPurpose, TaskApiService } from '../../../modules/work/data-access/task-api.service';
 import { ColorSwatchPopoverComponent } from '../../../modules/work/ui/color-swatch-popover/color-swatch-popover.component';
 import { sanitizeEditableHtml } from '../../utils/editable-html.util';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export interface SlashCommandItem {
   id: string;
@@ -71,7 +72,7 @@ export interface SlashMenuCoords {
 @Component({
   selector: 'app-rich-text-editor',
   standalone: true,
-  imports: [ColorSwatchPopoverComponent],
+  imports: [StopClickPropagationDirective, ColorSwatchPopoverComponent],
   host: {
     '[class.rte--compact]': 'compact()',
     '[class.rte--borderless]': 'borderless()',
@@ -79,7 +80,7 @@ export interface SlashMenuCoords {
   },
   template: `
               <div class="tfm-editor">
-                <div class="tfm-editor__toolbar" (click)="$event.stopPropagation()">
+                <div class="tfm-editor__toolbar" appStopClickPropagation>
                   <div class="tfm-editor__tools-left">
                     <button
                       type="button"
@@ -226,7 +227,7 @@ export interface SlashMenuCoords {
                       </button>
 
                       @if (showLinkPopover()) {
-                        <div class="tfm-link-popover" (click)="$event.stopPropagation()">
+                        <div class="tfm-link-popover" appStopClickPropagation>
                           <div class="tfm-link-popover__row">
                             <input
                               type="text"

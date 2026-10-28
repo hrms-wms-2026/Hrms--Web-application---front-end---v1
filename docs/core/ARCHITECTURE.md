@@ -1207,6 +1207,18 @@ export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
 
 > ⚠️ **Removed:** The v1 `X-Requested-With: XMLHttpRequest` header was a weak CSRF mitigation. It is replaced by the double-submit pattern above.
 
+#### 6.2.1 Keyboard and screen-reader access (enforced by lint, 2026-10-28)
+
+The angular-eslint accessibility template rules run as errors. The shared patterns that satisfy them:
+
+| Situation | Pattern |
+|---|---|
+| Clickable card, row or tab that is not a `<button>` | `role="button" tabindex="0" appKeyboardClick` — `shared/directives/keyboard-click.directive.ts` fires the element's own `(click)` on Enter/Space, only when the element itself has focus |
+| Backdrop, scrim, or a box whose click only focuses its input | `role="presentation"` (mouse convenience; Escape or the close button is the keyboard path) |
+| Popover or menu that must not let clicks reach the parent's click-outside handler | `appStopClickPropagation` — `shared/directives/stop-click-propagation.directive.ts` |
+| Heading over a group of buttons or a custom picker | `<span>` (not `<label>`), with `aria-label` on the group |
+| Component outputs | Never a DOM event name: `cancelled` / `closed`, not `cancel` / `close` |
+
 ### 6.3 Correlation ID Interceptor
 
 Every outbound HTTP request receives a unique `X-Correlation-ID` header. This allows frontend errors to be traced to backend logs during debugging and support.

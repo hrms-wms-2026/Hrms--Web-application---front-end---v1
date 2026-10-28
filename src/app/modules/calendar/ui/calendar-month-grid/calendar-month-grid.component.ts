@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarGridDay, buildMonthGrid } from '../../utils/calendar-grid.util';
 import { dateOnlyInTimezone } from '../../../../shared/utils/timezone.util';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 const MAX_VISIBLE_PER_DAY = 3;
 
@@ -15,7 +16,7 @@ interface DayCellViewModel {
 @Component({
   selector: 'app-calendar-month-grid',
   standalone: true,
-  imports: [CommonModule],
+  imports: [KeyboardClickDirective, CommonModule],
   templateUrl: './calendar-month-grid.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

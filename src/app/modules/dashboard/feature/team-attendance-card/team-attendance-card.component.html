@@ -15,7 +15,7 @@
         data-testid="ta-mode"
         aria-label="Period"
         [value]="data.mode"
-        (click)="$event.stopPropagation()"
+        appStopClickPropagation
         (change)="onModeSelect($event)"
       >
         <option value="week" [selected]="data.mode === 'week'">Week</option>

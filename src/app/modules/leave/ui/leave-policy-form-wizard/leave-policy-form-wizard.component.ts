@@ -25,6 +25,7 @@ import {
   LeavePolicyVersion
 } from '../../models/leave-policy.model';
 import { LeavePolicyEdit } from '../../state/leave-policy.store';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export interface LeavePolicyWizardEntity { readonly id: string; readonly name: string; }
 export interface LeavePolicyWizardEdit { readonly policyId: string; readonly edit: LeavePolicyEdit; }
@@ -53,7 +54,7 @@ function displayDate(iso: string): string {
   selector: 'app-leave-policy-form-wizard',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent, InputComponent, DatePickerComponent, SelectComponent],
+  imports: [StopClickPropagationDirective, CommonModule, FormsModule, ButtonComponent, InputComponent, DatePickerComponent, SelectComponent],
   templateUrl: './leave-policy-form-wizard.component.html',
   styleUrl: './leave-policy-form-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -72,7 +73,7 @@ export class LeavePolicyFormWizardComponent {
 
   readonly create = output<CreateLeavePolicyRequest>();
   readonly saveEdit = output<LeavePolicyWizardEdit>();
-  readonly cancel = output<void>();
+  readonly cancelled = output<void>();
 
   readonly steps = ['Basics', 'Amount', 'Rules & assignment'] as const;
   readonly stepHints = [

@@ -7,6 +7,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { CreateLeaveTypeRequest, LEAVE_TYPE_COLORS, LeaveTypeResponse } from '../../models/leave-type.model';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export type LeaveTypeFormValue = CreateLeaveTypeRequest;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -29,13 +30,13 @@ function hexToHsv(hex: string): [number, number, number] {
   return [Math.round((h * 60 + 360) % 360), max ? d / max : 0, max];
 }
 
-@Component({ selector: 'app-leave-type-form-modal', host: { 'animate.leave': 'ui-popup-leave' }, standalone: true, imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent], templateUrl: './leave-type-form-modal.component.html', styleUrl: './leave-type-form-modal.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-leave-type-form-modal', host: { 'animate.leave': 'ui-popup-leave' }, standalone: true, imports: [StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent], templateUrl: './leave-type-form-modal.component.html', styleUrl: './leave-type-form-modal.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeaveTypeFormModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   @Input() leaveType: LeaveTypeResponse | null = null;
   @Input() loading = false;
   @Output() save = new EventEmitter<LeaveTypeFormValue>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 
   readonly colors = LEAVE_TYPE_COLORS;
   readonly descriptionMaxLength = 500;

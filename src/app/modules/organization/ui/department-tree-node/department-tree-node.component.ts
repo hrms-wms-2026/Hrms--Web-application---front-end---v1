@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DepartmentTreeNodeResponse } from '../../models/department.model';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-department-tree-node',
   standalone: true,
-  imports: [CommonModule],
+  imports: [StopClickPropagationDirective, CommonModule],
   templateUrl: './department-tree-node.component.html',
   styleUrl: './department-tree-node.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -41,6 +41,7 @@ import { DraftsStore } from '../../../../shared/state/drafts.store';
 import { TaskDraftApiService } from '../../data-access/task-draft-api.service';
 import { TaskDraft, TaskDraftPayload } from '../../models/task-draft.model';
 import { safeServerDetail } from '../../../../core/services/error-handler.service';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export type TaskFormMode = 'create' | 'edit';
 
@@ -48,10 +49,10 @@ export type TaskFormMode = 'create' | 'edit';
   selector: 'app-task-form-modal',
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
+  imports: [StopClickPropagationDirective, NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
   template: `
     @if (open()) {
-      <div class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop()">
+      <div role="presentation" class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop()">
         <div
           #tfm
           class="tfm ui-scroll-open"
@@ -60,7 +61,7 @@ export type TaskFormMode = 'create' | 'edit';
           aria-modal="true"
           tabindex="-1"
           [attr.aria-label]="currentEffectiveMode() === 'create' ? 'Create work item' : task()?.title"
-          (click)="$event.stopPropagation()"
+          appStopClickPropagation
           (keydown.escape)="onEscape()"
         >
 
@@ -90,7 +91,7 @@ export type TaskFormMode = 'create' | 'edit';
                     <span data-testid="header-module-name">{{ selectedModuleTitle() }}</span>
                   </button>
                   @if (activePopover() === 'headerModule') {
-                    <div class="tfm-popover" role="dialog" aria-label="Select module" (click)="$event.stopPropagation()">
+                    <div class="tfm-popover" role="dialog" aria-label="Select module" appStopClickPropagation>
                       @if (modules().length > 4) {
                         <div class="tfm-popover__search-box">
                           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
@@ -167,7 +168,7 @@ export type TaskFormMode = 'create' | 'edit';
                       <span>{{ categoryName() || 'Task' }}</span>
                     </button>
                     @if (activePopover() === 'headerCategory') {
-                      <div class="tfm-popover" role="dialog" aria-label="Select work item type" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover" role="dialog" aria-label="Select work item type" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           @for (c of categories(); track c.id) {
                             <button
@@ -213,7 +214,7 @@ export type TaskFormMode = 'create' | 'edit';
                     </svg>
                   </button>
                   @if (activePopover() === 'headerMore') {
-                    <div class="tfm-popover tfm-popover--right" role="menu" aria-label="Task actions" (click)="$event.stopPropagation()">
+                    <div class="tfm-popover tfm-popover--right" role="menu" aria-label="Task actions" appStopClickPropagation>
                       <div class="tfm-popover__list">
                         <button type="button" class="tfm-popover__item" data-testid="task-duplicate-action" (click)="openDuplicateDialog()">
                           <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg>
@@ -246,7 +247,7 @@ export type TaskFormMode = 'create' | 'edit';
             }
           </header>
 
-          <div class="tfm__body scroll-fade" (click)="closePopover()">
+          <div role="presentation" class="tfm__body scroll-fade" (click)="closePopover()">
             <ng-template #descriptionEditorTpl>
               <app-rich-text-editor
                 #descRte
@@ -347,7 +348,7 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ selectedAssigneeName() }}</span>
                     </button>
                     @if (activePopover() === 'assignee') {
-                      <div class="tfm-popover-container" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover-container" appStopClickPropagation>
                         <app-task-assignee-dropdown
                           [members]="assignableMembers()"
                           [selectedId]="assigneeEmployeeId()"
@@ -374,7 +375,7 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ priorityDetails().label }}</span>
                     </button>
                     @if (activePopover() === 'priority') {
-                      <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover" role="dialog" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           @for (opt of priorityOptionsList; track opt.value) {
                             <button
@@ -420,7 +421,7 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ selectedModuleTitle() }}</span>
                     </button>
                     @if (activePopover() === 'module') {
-                      <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover" role="dialog" appStopClickPropagation>
                         @if (modules().length > 4) {
                           <div class="tfm-popover__search-box">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
@@ -462,7 +463,7 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ selectedSprintTitle() }}</span>
                     </button>
                     @if (activePopover() === 'sprint') {
-                      <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover" role="dialog" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           <button
                             type="button"
@@ -507,7 +508,7 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ selectedCategoryTitle() }}</span>
                     </button>
                     @if (activePopover() === 'category') {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover tfm-popover--up" role="dialog" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           @for (c of categories(); track c.id) {
                             <button
@@ -664,7 +665,7 @@ export type TaskFormMode = 'create' | 'edit';
                           <span class="tfm-status-pill__text">{{ currentStatusName() }}</span>
                         </button>
                         @if (activePopover() === 'status') {
-                          <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                          <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
                               @for (s of availableStatuses(); track s.id) {
                                 <button
@@ -720,7 +721,7 @@ export type TaskFormMode = 'create' | 'edit';
                           <span class="tfm-chip-label">{{ sprintId() ? selectedSprintTitle() : 'Empty' }}</span>
                         </button>
                         @if (activePopover() === 'sprint') {
-                          <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                          <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
                               <button
                                 type="button"
@@ -761,7 +762,7 @@ export type TaskFormMode = 'create' | 'edit';
                         <span>Time estimate</span>
                       </span>
                       <div class="tfm-prop-value">
-                        <div class="tfm-inline-prop-box" (click)="timeEstimateInput.focus()">
+                        <div role="presentation" class="tfm-inline-prop-box" (click)="timeEstimateInput.focus()">
                           <input
                             #timeEstimateInput
                             type="number"
@@ -834,7 +835,7 @@ export type TaskFormMode = 'create' | 'edit';
                             }
                           </button>
                           @if (activePopover() === 'assignee') {
-                            <div class="tfm-popover-container" (click)="$event.stopPropagation()">
+                            <div class="tfm-popover-container" appStopClickPropagation>
                               <app-task-assignee-dropdown
                                 [members]="assignableMembers()"
                                 [selectedId]="assigneeEmployeeId()"
@@ -874,7 +875,7 @@ export type TaskFormMode = 'create' | 'edit';
                           <span class="tfm-chip-label">{{ priorityDetails().label }}</span>
                         </button>
                         @if (activePopover() === 'priority') {
-                          <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                          <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
                               @for (opt of priorityOptionsList; track opt.value) {
                                 <button
@@ -903,7 +904,7 @@ export type TaskFormMode = 'create' | 'edit';
                         <span>Story points</span>
                       </span>
                       <div class="tfm-prop-value">
-                        <div class="tfm-inline-prop-box" (click)="storyPointsInput.focus()">
+                        <div role="presentation" class="tfm-inline-prop-box" (click)="storyPointsInput.focus()">
                           <input
                             #storyPointsInput
                             type="number"
@@ -937,7 +938,7 @@ export type TaskFormMode = 'create' | 'edit';
                           <span class="tfm-chip-label">{{ categoryName() || 'Empty' }}</span>
                         </button>
                         @if (activePopover() === 'category') {
-                          <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                          <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
                               @for (c of categories(); track c.id) {
                                 <button
@@ -963,7 +964,7 @@ export type TaskFormMode = 'create' | 'edit';
                         <span>Progress</span>
                       </span>
                       <div class="tfm-prop-value">
-                        <div class="tfm-inline-prop-box" (click)="progressPercentInput.focus()">
+                        <div role="presentation" class="tfm-inline-prop-box" (click)="progressPercentInput.focus()">
                           <input
                             #progressPercentInput
                             type="number"
@@ -1191,7 +1192,7 @@ export type TaskFormMode = 'create' | 'edit';
             <app-button variant="secondary" (pressed)="onCancel()">Cancel</app-button>
 
             @if (currentEffectiveMode() === 'create') {
-              <div class="tfm-split-action" (click)="$event.stopPropagation()">
+              <div class="tfm-split-action" appStopClickPropagation>
                 <div class="tfm-split-btn">
                   <button
                     type="button"
@@ -1349,7 +1350,7 @@ export type TaskFormMode = 'create' | 'edit';
                             }
                           </button>
                           @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'assignee') {
-                            <div class="tfm-popover-container" (click)="$event.stopPropagation()">
+                            <div class="tfm-popover-container" appStopClickPropagation>
                               <app-task-assignee-dropdown
                                 [members]="assignableMembers()"
                                 [selectedId]="subtask.assigneeEmployeeIds[0]"
@@ -1385,7 +1386,7 @@ export type TaskFormMode = 'create' | 'edit';
                             }
                           </button>
                           @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'priority') {
-                            <div class="tfm-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+                            <div class="tfm-popover" role="dialog" aria-label="Change priority" appStopClickPropagation>
                               <div class="tfm-popover__list">
                                 @for (opt of priorityOptionsList; track opt.value) {
                                   <button
@@ -1421,7 +1422,7 @@ export type TaskFormMode = 'create' | 'edit';
                             </svg>
                           </button>
                           @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'status') {
-                            <div class="tfm-popover tfm-popover--right" role="dialog" aria-label="Change status" (click)="$event.stopPropagation()">
+                            <div class="tfm-popover tfm-popover--right" role="dialog" aria-label="Change status" appStopClickPropagation>
                               <div class="tfm-popover__list">
                                 @for (s of availableStatuses(); track s.id) {
                                   <button
@@ -1486,7 +1487,7 @@ export type TaskFormMode = 'create' | 'edit';
 
             <!-- ClickUp Inline Subtask Creation Row (Single row) -->
             <ng-template #subtaskCreateRowTpl let-parentTaskId="parentTaskId">
-              <div class="tfm-subtask-inline-create" (click)="$event.stopPropagation()">
+              <div class="tfm-subtask-inline-create" appStopClickPropagation>
                 <div class="tfm-subtask-create-left">
                   <span class="tfm-subtask-create-status-icon" aria-hidden="true">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2" class="tfm-subtask-dashed-circle">
@@ -1523,7 +1524,7 @@ export type TaskFormMode = 'create' | 'edit';
                       </svg>
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'module') {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Choose module" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Choose module" appStopClickPropagation>
                         @if (modules().length > 4) {
                           <div class="tfm-popover__search-box">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
@@ -1577,7 +1578,7 @@ export type TaskFormMode = 'create' | 'edit';
                       </svg>
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && (activeSubtaskPopover()?.type === 'tag' || activeSubtaskPopover()?.type === 'category')) {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Select work item type" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Select work item type" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           @for (c of categories(); track c.id) {
                             <button
@@ -1620,7 +1621,7 @@ export type TaskFormMode = 'create' | 'edit';
                       }
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'assignee') {
-                      <div class="tfm-popover-container tfm-popover-container--up" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover-container tfm-popover-container--up" appStopClickPropagation>
                         <app-task-assignee-dropdown
                           [members]="assignableMembers()"
                           [selectedId]="newSubtaskAssigneeId()"
@@ -1654,7 +1655,7 @@ export type TaskFormMode = 'create' | 'edit';
                       </svg>
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'priority') {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Change priority" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           @for (opt of priorityOptionsList; track opt.value) {
                             <button

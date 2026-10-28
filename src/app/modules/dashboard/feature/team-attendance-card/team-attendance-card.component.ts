@@ -13,6 +13,7 @@ import { TeamAttendanceDetailDialogComponent } from '../team-attendance-detail-d
 import { TEAM_ATTENDANCE_COLORS, TEAM_ATTENDANCE_LABELS, teamAttendanceDelta, teamAttendanceRangeLabel } from '../../utils/team-attendance-format.util';
 import { TeamAttendanceView, resolveTeamAttendanceView } from '../../utils/team-attendance-layout.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 const REFRESH_INTERVAL_MS = 60_000;
 interface LegendRow {
@@ -32,7 +33,7 @@ interface LegendRow {
 @Component({
   selector: 'app-team-attendance-card',
   standalone: true,
-  imports: [
+  imports: [StopClickPropagationDirective, 
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,

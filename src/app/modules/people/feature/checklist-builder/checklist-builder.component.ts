@@ -53,6 +53,7 @@ import { ChecklistTemplateStore } from '../../state/checklist-template.store';
 import { ChecklistTaskDetailDialogComponent } from '../../ui/checklist-task-detail-dialog/checklist-task-detail-dialog.component';
 import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { AttachmentPill } from '../../../work/ui/task-attachment-list/task-attachment-list.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 const TASK_PLACEHOLDERS: readonly string[] = [
   'Collect signed contract',
@@ -99,7 +100,7 @@ export interface ChecklistTaskFormValue {
   selector: 'app-checklist-builder',
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [
+  imports: [StopClickPropagationDirective, 
     ReactiveFormsModule,
     ButtonComponent,
     InputComponent,

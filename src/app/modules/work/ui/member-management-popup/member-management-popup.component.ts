@@ -39,7 +39,7 @@ export interface ProjectMemberPopupItem {
             <p data-testid="members-loading">Loading members…</p>
           }
           @if (canManage()) {
-            <span data-testid="add-member-button" (click)="pickerOpen.set('member')">
+            <span role="presentation" data-testid="add-member-button" (click)="pickerOpen.set('member')">
               <app-button variant="secondary" size="sm">+ Add member</app-button>
             </span>
           }
@@ -61,25 +61,25 @@ export interface ProjectMemberPopupItem {
               </div>
               @if (canManage() && !member.pending && !member.isHead) {
                 <div class="flex items-center gap-1">
-                  <span data-testid="remove-button" (click)="removeRequested.emit(member.employeeId)">
+                  <span role="presentation" data-testid="remove-button" (click)="removeRequested.emit(member.employeeId)">
                     <app-button variant="secondary" size="sm">Remove</app-button>
                   </span>
-                  <span data-testid="transfer-button" (click)="pickerOpen.set('leader')">
+                  <span role="presentation" data-testid="transfer-button" (click)="pickerOpen.set('leader')">
                     <app-button variant="secondary" size="sm">Make leader</app-button>
                   </span>
                 </div>
               }
               @if (member.pending && member.employeeId === currentEmployeeId()) {
                 <div class="flex items-center gap-1">
-                  <span data-testid="accept-invitation-button" (click)="invitationAcceptRequested.emit(member.invitationId!)">
+                  <span role="presentation" data-testid="accept-invitation-button" (click)="invitationAcceptRequested.emit(member.invitationId!)">
                     <app-button variant="primary" size="sm">Accept</app-button>
                   </span>
-                  <span data-testid="decline-invitation-button" (click)="invitationDeclineRequested.emit(member.invitationId!)">
+                  <span role="presentation" data-testid="decline-invitation-button" (click)="invitationDeclineRequested.emit(member.invitationId!)">
                     <app-button variant="secondary" size="sm">Decline</app-button>
                   </span>
                 </div>
               } @else if (canManage() && member.pending) {
-                <span data-testid="remove-button" (click)="removeRequested.emit(member.employeeId)">
+                <span role="presentation" data-testid="remove-button" (click)="removeRequested.emit(member.employeeId)">
                   <app-button variant="secondary" size="sm">Cancel</app-button>
                 </span>
               }

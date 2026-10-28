@@ -22,7 +22,7 @@ export interface BulkAction {
   imports: [DropdownMenuComponent],
   template: `
     @if (count() > 0) {
-      <div class="bulk-bar" role="toolbar" aria-label="Bulk actions" data-testid="bulk-action-bar" (keydown.escape)="cleared.emit()">
+      <div tabindex="-1" class="bulk-bar" role="toolbar" aria-label="Bulk actions" data-testid="bulk-action-bar" (keydown.escape)="cleared.emit()">
         <span class="bulk-bar__count" aria-live="polite">
           <svg class="bulk-bar__check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
           {{ label() }}

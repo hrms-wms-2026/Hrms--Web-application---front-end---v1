@@ -1,5 +1,7 @@
 import { Component, ElementRef, Injector, OnDestroy, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { PopoverComponent } from '../popover/popover.component';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
+import { KeyboardClickDirective } from '../../directives/keyboard-click.directive';
 
 export interface MenuItem {
   id: string;
@@ -23,17 +25,17 @@ const openMenu = signal<DropdownMenuComponent | null>(null);
 @Component({
   selector: 'app-dropdown-menu',
   standalone: true,
-  imports: [PopoverComponent],
+  imports: [KeyboardClickDirective, StopClickPropagationDirective, PopoverComponent],
   host: {
     class: 'dropdown-menu',
     '[class.dropdown-menu--up]': "direction() === 'up' || flipped()"
   },
   template: `
     <app-popover [open]="isOpen()" [align]="align()" [ariaLabel]="ariaLabel()" (closed)="close()">
-      <span popover-trigger #trigger class="dropdown-menu__trigger" (click)="onTriggerClick($event)">
+      <span role="button" tabindex="0" appKeyboardClick popover-trigger #trigger class="dropdown-menu__trigger" (click)="onTriggerClick($event)">
         <ng-content select="[menu-trigger]" />
       </span>
-      <div popover-panel #panel class="dropdown-menu__panel" (keydown)="onKeydown($event)" (click)="$event.stopPropagation()">
+      <div tabindex="-1" popover-panel #panel class="dropdown-menu__panel" (keydown)="onKeydown($event)" appStopClickPropagation>
         @for (item of items(); track item.id) {
           @if (item.dividerBefore) {
             <div class="dropdown-menu__divider" role="separator"></div>

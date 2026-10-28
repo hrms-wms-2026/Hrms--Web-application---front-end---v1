@@ -75,7 +75,7 @@ export class AllocationRequestModalComponent {
     try {
       await firstValueFrom(this.api.createAllocationRequest(this.moduleId(), { requestedAdditionalHours: hours, reason: this.reason().trim() }));
       this.submitted.emit();
-    } catch (err: any) {
+    } catch (err) {
       this.error.set(toSafeErrorMessage(err, 'Failed to send the request.'));
     } finally {
       this.saving.set(false);

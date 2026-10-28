@@ -47,7 +47,7 @@ const initialState: ProjectDetailState = {
   projectMembers: [], projectMembersLoading: false
 };
 
-function extractError(err: any, fallback: string): string {
+function extractError(err: unknown, fallback: string): string {
   return toSafeErrorMessage(err, fallback);
 }
 

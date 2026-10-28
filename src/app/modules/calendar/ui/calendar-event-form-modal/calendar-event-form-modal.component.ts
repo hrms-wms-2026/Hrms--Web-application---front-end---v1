@@ -190,7 +190,7 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   @Output() removeExistingParticipant = new EventEmitter<string>();
   @Output() addGuestsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingGuest = new EventEmitter<string>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 
   private readonly authStore = inject(AuthStore);
   private conflictCheckTimer: ReturnType<typeof setTimeout> | null = null;
@@ -757,13 +757,13 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
       this.discardConfirmOpen.set(true);
     }
     void this.unsaved.requestClose(this.guardHandle).then((ok) => {
-      if (ok) this.cancel.emit();
+      if (ok) this.cancelled.emit();
     });
   }
 
   confirmDiscard(): void {
     this.discardConfirmOpen.set(false);
-    this.cancel.emit();
+    this.cancelled.emit();
   }
 
   cancelDiscard(): void {

@@ -15,6 +15,7 @@ import {
   DataTableColumn,
   DataTableComponent
 } from '../../../../shared/ui/data-table/data-table.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export interface RoleFormSubmitValue {
   name: string;
@@ -30,7 +31,7 @@ export interface RoleFormSubmitValue {
   selector: 'app-role-form-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
+  imports: [StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './role-form-modal.component.html',
   styleUrl: './role-form-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -49,7 +50,7 @@ export class RoleFormModalComponent implements OnChanges {
   @Input() saving = false;
 
   @Output() save = new EventEmitter<RoleFormSubmitValue>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 
   readonly selectedIds = signal<Set<string>>(new Set<string>());
 

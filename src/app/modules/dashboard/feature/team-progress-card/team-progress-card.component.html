@@ -17,7 +17,7 @@
         data-testid="team-progress-period"
         aria-label="Period"
         [value]="period()"
-        (click)="$event.stopPropagation()"
+        appStopClickPropagation
         (change)="onPeriodSelect($event)"
       >
         @for (option of periods; track option.value) {

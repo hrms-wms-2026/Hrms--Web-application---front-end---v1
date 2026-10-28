@@ -31,6 +31,8 @@ import {
 } from '../../utils/action-inbox.util';
 import { actionCenterRailVisible } from '../../utils/my-team-widget-visibility.util';
 import { safeServerDetail } from '../../../../core/services/error-handler.service';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 const REFRESH_INTERVAL_MS = 60_000;
 /** Inbox rows on the compact card; "View all" pops out the rest. */
@@ -58,7 +60,7 @@ interface DecisionForm {
 @Component({
   selector: 'app-action-center-card',
   standalone: true,
-  imports: [AvatarComponent, ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [KeyboardClickDirective, StopClickPropagationDirective, AvatarComponent, ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
   templateUrl: './action-center-card.component.html',
   styleUrl: './action-center-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -42,10 +42,6 @@ module.exports = defineConfig([
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
       ],
-      // Existing outputs named like DOM events (close, change, ...) are public component API; renaming them
-      // touches every parent template. Kept visible as warnings so new code avoids the pattern.
-      '@angular-eslint/no-output-native': 'warn',
-      '@typescript-eslint/no-explicit-any': 'warn',
       // Fire-and-forget cleanup (`.catch(() => {})`) and no-op callbacks are deliberate; empty methods are not.
       '@typescript-eslint/no-empty-function': ['error', { allow: ['arrowFunctions'] }],
       // Best-effort DOM calls (execCommand, selection APIs) may throw in some browsers and are safe to ignore.
@@ -66,12 +62,11 @@ module.exports = defineConfig([
     rules: {
       // `x != null` is the idiomatic "neither null nor undefined" check.
       '@angular-eslint/template/eqeqeq': ['error', { allowNullOrUndefined: true }],
-      // Accessibility backlog (keyboard support on clickable non-button elements). Visible as warnings
-      // and tracked in docs/reports/code-quality/; new templates should use <button> or add key handlers.
-      '@angular-eslint/template/click-events-have-key-events': 'warn',
-      '@angular-eslint/template/interactive-supports-focus': 'warn',
-      '@angular-eslint/template/label-has-associated-control': 'warn',
-      '@angular-eslint/template/no-autofocus': 'warn',
+      // A <label> may label a <button> (e.g. a switch); clicking the label text then toggles it.
+      '@angular-eslint/template/label-has-associated-control': ['error', { controlComponents: ['button'] }],
+      // Clickable non-button elements: use <button>, or role="button" + tabindex="0" + appKeyboardClick.
+      // Backdrops and click-to-focus boxes are mouse conveniences: role="presentation".
+      // Click shields around popovers: appStopClickPropagation instead of (click)="$event.stopPropagation()".
     },
   },
 ]);

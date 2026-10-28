@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 const TICK_MS = 30_000;
 
@@ -21,13 +22,14 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
  */
 @Component({
   selector: 'app-popout-header-actions',
+  imports: [StopClickPropagationDirective],
   standalone: true,
   template: `
     <div
       class="flex items-center gap-1"
       [class.reveal]="revealOnHover()"
       data-testid="popout-header-actions"
-      (click)="$event.stopPropagation()"
+      appStopClickPropagation
     >
       @if (refreshedAt(); as at) {
         <span class="mr-1 whitespace-nowrap text-xs text-slate-500" data-testid="refreshed-label" [title]="'Last loaded ' + at.toLocaleString()">

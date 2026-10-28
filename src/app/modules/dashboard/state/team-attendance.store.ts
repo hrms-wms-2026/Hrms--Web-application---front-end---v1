@@ -26,8 +26,14 @@ const initialState: TeamAttendanceState = {
   loadedAt: null
 };
 
-function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+interface HttpErrorLike {
+  error?: { detail?: string; message?: string } | null;
+  message?: string;
+}
+
+function extractError(err: unknown, fallback: string): string {
+  const e = err as HttpErrorLike | null | undefined;
+  return e?.error?.detail || e?.error?.message || e?.message || fallback;
 }
 
 /** yyyy-MM-dd plus a number of days or months, in UTC so no time zone can shift the date. Month steps land on the 1st. */
