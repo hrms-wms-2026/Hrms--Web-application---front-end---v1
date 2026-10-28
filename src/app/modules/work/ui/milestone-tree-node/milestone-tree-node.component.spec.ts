@@ -360,3 +360,42 @@ describe('MilestoneTreeNodeComponent', () => {
     });
   });
 });
+
+describe('MilestoneTreeNodeComponent - meetings', () => {
+  const meeting = {
+    taskId: 'm1', shortId: 'P-M1', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
+    endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Standup', status: 'scheduled' as const, isPrivate: false,
+    projectId: 'p1', objectiveId: 'o2', myRole: 'attendee' as const, myResponse: 'accepted' as const
+  };
+  const child: MilestoneTreeNode = {
+    id: 'o2', title: 'Child', description: null, startDate: null, endDate: null, progress: 0, allocatedHours: 0, completedHours: 0,
+    isActive: true, isAchieved: false, ownerName: null, isOwner: false, children: []
+  };
+  const parent: MilestoneTreeNode = { ...child, id: 'o1', title: 'Root', isOwner: true, children: [child] };
+
+  it('lists a module\'s meetings under it with the M badge, at any depth, and opens them by key', () => {
+    TestBed.configureTestingModule({
+      imports: [MilestoneTreeNodeComponent],
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'A', avatarFileId: null })) } }]
+    });
+    const fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
+    fixture.componentRef.setInput('node', parent);
+    fixture.componentRef.setInput('expandedByDefault', true);
+    fixture.componentRef.setInput('meetingsByModule', new Map([['o2', [meeting]]]));
+    fixture.detectChanges();
+    // The child module starts collapsed; expand it.
+    const childNode = fixture.debugElement.queryAll((d) => d.componentInstance instanceof MilestoneTreeNodeComponent)
+      .map((d) => d.componentInstance as MilestoneTreeNodeComponent).find((c) => c.node().id === 'o2')!;
+    childNode.expanded.set(true);
+    fixture.detectChanges();
+
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tree-meeting-row"]'));
+    expect(rows.length).toBe(1);
+    expect(rows[0].querySelector('[data-testid="meeting-card-badge"]')?.textContent?.trim()).toBe('M');
+
+    let opened: unknown;
+    fixture.componentInstance.meetingOpened.subscribe((key) => (opened = key));
+    (rows[0].querySelector('[data-testid="meeting-card"]') as HTMLElement).click();
+    expect(opened).toEqual({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+  });
+});

@@ -2,6 +2,8 @@ export interface TaskCategoryDto {
   id: string;
   name: string;
   displayOrder: number;
+  systemKey?: string | null;
+  isSystem?: boolean;
 }
 
 export interface CreateTaskCategoryRequestDto {

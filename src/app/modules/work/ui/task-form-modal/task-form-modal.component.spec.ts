@@ -777,6 +777,27 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(draftsStoreStub.load).toHaveBeenCalled();
   });
 
+  it('an action item create carries the meeting occurrence it was raised from', async () => {
+    taskDraftApiStub.get.mockReturnValue(of(savedDraft));
+    await build({ draftId: 'd1' });
+    fixture.componentRef.setInput('sourceMeetingOccurrenceId', 'occ-1');
+
+    await fixture.componentInstance.submitCreateWithAction('create_and_close');
+    await settle();
+
+    expect(createTask).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ sourceMeetingOccurrenceId: 'occ-1' }));
+  });
+
+  it('an ordinary create sends no source occurrence', async () => {
+    taskDraftApiStub.get.mockReturnValue(of(savedDraft));
+    await build({ draftId: 'd1' });
+
+    await fixture.componentInstance.submitCreateWithAction('create_and_close');
+    await settle();
+
+    expect(createTask.mock.calls[0][1].sourceMeetingOccurrenceId).toBeUndefined();
+  });
+
   it('a create sent for approval detaches the draft attachments before deleting the draft', async () => {
     taskDraftApiStub.get.mockReturnValue(of(savedDraft));
     await build({ draftId: 'd1', isOwner: false });

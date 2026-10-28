@@ -1,3 +1,7 @@
+import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { By } from '@angular/platform-browser';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -80,7 +84,9 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: WorkApprovalsApiService, useValue: approvalsApiStub },
         { provide: EmployeeDirectoryStore, useValue: directoryStub },
         { provide: FileApiService, useValue: { getFileUrl: (fileId: string) => `/cached/${fileId}` } },
-        { provide: Router, useValue: routerStub }
+        { provide: Router, useValue: routerStub },
+        provideHttpClient(),
+        provideHttpClientTesting()
       ]
     }).compileComponents();
 
@@ -182,6 +188,51 @@ describe('MilestoneTreeTabComponent', () => {
     createButton.click();
     expect(fixture.componentInstance.createModalOpen()).toBe(true);
     expect(fixture.componentInstance.createModalParentId()).toBe('o1');
+    toolbar.view.destroy();
+  });
+
+  it("loads this project's meetings for the board/tree window and hands them to the tree by module", () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    const req = http.expectOne((r) => r.url.endsWith('/meetings') && r.params.get('projectId') === 'p1');
+    req.flush([{
+      taskId: 'm1', shortId: 'P-M1', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
+      endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Standup', status: 'scheduled', isPrivate: false,
+      projectId: 'p1', objectiveId: 'o1', myRole: 'attendee', myResponse: 'accepted'
+    }]);
+    fixture.detectChanges();
+
+    const root = fixture.debugElement.query(By.css('app-milestone-tree-node'));
+    expect(root.componentInstance.meetingsByModule().get('o1')?.map((m: { taskId: string }) => m.taskId)).toEqual(['m1']);
+  });
+
+  it('offers New meeting in the toolbar, placed in the routed module', () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    const toolbar = renderToolbar();
+    const button = Array.from(toolbar.host.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'New meeting') as HTMLButtonElement;
+    expect(button).toBeTruthy();
+    button.click();
+    fixture.detectChanges();
+
+    const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
+    expect(form).not.toBeNull();
+    expect(form.componentInstance.placement()).toEqual({ projectId: 'p1', objectiveId: 'o1' });
+    toolbar.view.destroy();
+  });
+
+  it('hides New meeting once the server says meetings are off', () => {
+    setup('o1');
+    TestBed.inject(MeetingsAvailabilityService).noteError(new HttpErrorResponse({ status: 503, error: { code: 'meetings_disabled' } }));
+    fixture.detectChanges();
+
+    const toolbar = renderToolbar();
+    const button = Array.from(toolbar.host.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'New meeting');
+    expect(button).toBeUndefined();
     toolbar.view.destroy();
   });
 

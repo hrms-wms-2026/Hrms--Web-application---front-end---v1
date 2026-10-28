@@ -15,6 +15,12 @@
         {{ cell.day.date.slice(-2) }}
       </span>
 
+      @if (summaryText(cell.day.date); as summary) {
+        <button type="button" data-testid="planner-month-summary"
+          class="truncate rounded bg-teal-50 px-1.5 py-0.5 text-left text-[10px] text-teal-800"
+          (click)="$event.stopPropagation(); dayClick.emit(cell.day.date)">{{ summary }}</button>
+      }
+
       @for (event of cell.visible; track event.id) {
         <button
           type="button"

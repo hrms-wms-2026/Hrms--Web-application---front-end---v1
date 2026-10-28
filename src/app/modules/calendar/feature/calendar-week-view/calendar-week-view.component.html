@@ -1,1 +1,5 @@
-<app-calendar-hour-grid [days]="days()" [events]="events()" [timezone]="timezone()" (eventClick)="eventClick.emit($event)" (slotClick)="slotClick.emit($event)" (slotRange)="slotRange.emit($event)" />
+<app-calendar-hour-grid [days]="days()" [events]="events()" [timezone]="timezone()"
+  [blocks]="blocks()" [workWindows]="workWindows()" [editableDates]="editableDates()" [loads]="loads()" [employeeId]="employeeId()"
+  (eventClick)="eventClick.emit($event)" (slotClick)="slotClick.emit($event)" (slotRange)="slotRange.emit($event)"
+  (blockCreate)="blockCreate.emit($event)" (blockMove)="blockMove.emit($event)" (blockOpen)="blockOpen.emit($event)"
+  (blockMoveAfter)="blockMoveAfter.emit($event)" (blockRemove)="blockRemove.emit($event)" />

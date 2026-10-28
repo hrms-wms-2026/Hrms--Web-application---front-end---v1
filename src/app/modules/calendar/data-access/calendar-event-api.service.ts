@@ -5,7 +5,7 @@ import { environment } from '../../../../environments/environment';
 import {
   CalendarConflictsResponse, CalendarEventGuestsResponse, CalendarEventParticipantsResponse, CalendarEventResponse, CalendarEventsResponse,
   CheckCalendarConflictsRequest, CreateCalendarEventRequest, CreateEventMeetingResponse,
-  EditRecurringOccurrenceRequest, GetEligibleNomineesResponse, MeetingAttendanceResponse, MeetingProvider,
+  EditRecurringOccurrenceRequest, EventMeetingStatusResponse, GetEligibleNomineesResponse, MeetingAttendanceResponse, MeetingProvider,
   RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
@@ -65,6 +65,18 @@ export class CalendarEventApiService {
 
   removeMeeting(eventId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${eventId}/meeting`);
+  }
+
+  getMeeting(eventId: string): Observable<EventMeetingStatusResponse> {
+    return this.http.get<EventMeetingStatusResponse>(`${this.baseUrl}/${eventId}/meeting`);
+  }
+
+  retryMeeting(eventId: string): Observable<CreateEventMeetingResponse> {
+    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting/retry`, {});
+  }
+
+  confirmMeetingCleanup(eventId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${eventId}/meeting/confirm-cleanup`, {});
   }
 
   getMeetingAttendance(eventId: string): Observable<MeetingAttendanceResponse> {

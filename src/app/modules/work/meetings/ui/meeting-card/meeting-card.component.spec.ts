@@ -1,0 +1,60 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { MeetingListItem, MeetingStatus } from '../../models/meeting.models';
+import { MeetingCardComponent } from './meeting-card.component';
+
+describe('MeetingCardComponent', () => {
+  let fixture: ComponentFixture<MeetingCardComponent>;
+
+  const item = (over: Partial<MeetingListItem> = {}): MeetingListItem => ({
+    taskId: 't1', shortId: 'ACME-M12', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
+    endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Weekly delivery sync', status: 'scheduled', isPrivate: false,
+    projectId: 'p1', objectiveId: 'o1', myRole: 'attendee', myResponse: 'accepted', ...over,
+  });
+  const testId = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+
+  function build(value: MeetingListItem, variant: 'card' | 'row' = 'card'): void {
+    fixture = TestBed.createComponent(MeetingCardComponent);
+    fixture.componentRef.setInput('item', value);
+    fixture.componentRef.setInput('variant', variant);
+    fixture.detectChanges();
+  }
+
+  beforeEach(() => TestBed.configureTestingModule({}));
+
+  it('status pill follows status', () => {
+    const labels: Record<MeetingStatus, string> = {
+      scheduled: 'Scheduled', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled',
+    };
+    for (const [status, label] of Object.entries(labels) as [MeetingStatus, string][]) {
+      build(item({ status }));
+      expect(testId('meeting-card-status')?.textContent?.trim()).toBe(label);
+      expect(testId('meeting-card-status')?.getAttribute('data-status')).toBe(status);
+    }
+  });
+
+  it('shows the title, the ShortId and my response', () => {
+    build(item({ myResponse: 'rejected' }));
+    expect(testId('meeting-card-title')?.textContent?.trim()).toBe('Weekly delivery sync');
+    expect(testId('meeting-card-shortid')?.textContent?.trim()).toBe('ACME-M12');
+    expect(testId('meeting-card-response')?.textContent?.trim()).toBe('Declined');
+  });
+
+  it('reads "Private meeting" when a private item comes without a role (defensive)', () => {
+    build(item({ isPrivate: true, myRole: undefined as unknown as MeetingListItem['myRole'] }));
+    expect(testId('meeting-card-title')?.textContent?.trim()).toBe('Private meeting');
+  });
+
+  it('opens by series and original start', () => {
+    build(item());
+    let opened: unknown;
+    fixture.componentInstance.open.subscribe((key) => (opened = key));
+    testId('meeting-card')!.click();
+    expect(opened).toEqual({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+  });
+
+  it('a tree row carries the "M" badge', () => {
+    build(item(), 'row');
+    expect(testId('meeting-card-badge')?.textContent?.trim()).toBe('M');
+  });
+});

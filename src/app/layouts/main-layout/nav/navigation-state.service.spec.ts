@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { AuthStore } from '../../../core/auth/state/auth.store';
+import { signal } from '@angular/core';
+import { PlannerAvailability, PlannerAvailabilityService } from '../../../modules/work/planner/state/planner-availability.service';
 import { NavigationStateService } from './navigation-state.service';
 
 @Component({ standalone: true, template: '' })
@@ -155,6 +157,39 @@ describe('NavigationStateService', () => {
       expect(full.canPin(item('home'))).toBe(false);
       full.togglePin(item('home'));
       expect(full.pinnedIds()).toEqual([]);
+    });
+  });
+
+  describe('Planner = Calendar', () => {
+    const state = signal<PlannerAvailability>('off');
+
+    beforeEach(() => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([{ path: '**', component: BlankComponent }]),
+          { provide: AuthStore, useValue: { permissions: () => ['calendar:read'], activeModules: () => ['calendar', 'worksync_foundation',
+            'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] } },
+          { provide: PlannerAvailabilityService, useValue: { state } },
+        ],
+      });
+      service = TestBed.inject(NavigationStateService);
+      router = TestBed.inject(Router);
+    });
+
+    const calendarItems = () => service.visibleItems().filter((item) => item.id === 'calendar' || item.id === ('planner' as never));
+
+    it('shows one item, "Calendar" at /calendar, while the planner is off', () => {
+      state.set('off');
+      expect(calendarItems().map((i) => [i.label, i.path])).toEqual([['Calendar', '/calendar']]);
+    });
+
+    it('shows one item, "Planner" at /planner, while it is on, still active on /calendar links', async () => {
+      state.set('on');
+      expect(calendarItems().map((i) => [i.label, i.path])).toEqual([['Planner', '/planner']]);
+
+      await router.navigateByUrl('/calendar?connected=google');
+      expect(service.activeItem()?.label).toBe('Planner');
     });
   });
 });

@@ -10,7 +10,8 @@ describe('CategoryListEditorComponent', () => {
   const categories: TaskCategoryColumn[] = [
     { id: 'c3', name: 'Story', displayOrder: 2 },
     { id: 'c1', name: 'Task', displayOrder: 0 },
-    { id: 'c2', name: 'Bug', displayOrder: 1 }
+    { id: 'c2', name: 'Bug', displayOrder: 1 },
+    { id: 'c9', name: 'meeting', displayOrder: 3, systemKey: 'meeting', isSystem: true }
   ];
 
   function setup() {
@@ -34,9 +35,9 @@ describe('CategoryListEditorComponent', () => {
     fixture.detectChanges();
 
     const rows = fixture.nativeElement.querySelectorAll('.category-list__row');
-    expect(rows.length).toBe(3);
+    expect(rows.length).toBe(4);
     expect(Array.from(rows as NodeListOf<HTMLElement>).map((row) => row.querySelector('.category-list__name')?.textContent?.trim()))
-      .toEqual(['Task', 'Bug', 'Story']);
+      .toEqual(['Task', 'Bug', 'Story', 'meeting']);
   });
 
   it('saves the current row order through reorderTaskCategories', async () => {
@@ -52,7 +53,8 @@ describe('CategoryListEditorComponent', () => {
     expect(reorderTaskCategories).toHaveBeenCalledWith('project-1', [
       { categoryId: 'c2', displayOrder: 0 },
       { categoryId: 'c3', displayOrder: 1 },
-      { categoryId: 'c1', displayOrder: 2 }
+      { categoryId: 'c1', displayOrder: 2 },
+      { categoryId: 'c9', displayOrder: 3 }
     ]);
   });
 
@@ -71,7 +73,7 @@ describe('CategoryListEditorComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(createCategory).toHaveBeenCalledWith('project-1', { name: 'Feature', displayOrder: 3 });
+    expect(createCategory).toHaveBeenCalledWith('project-1', { name: 'Feature', displayOrder: 4 });
     expect(Array.from(fixture.nativeElement.querySelectorAll('.category-list__name') as NodeListOf<HTMLElement>)
       .map((element) => element.textContent?.trim())).toContain('Feature');
   });
@@ -105,7 +107,29 @@ describe('CategoryListEditorComponent', () => {
 
     expect(deleteCategory).toHaveBeenCalledWith('c1');
     expect(Array.from(fixture.nativeElement.querySelectorAll('.category-list__name') as NodeListOf<HTMLElement>)
-      .map((element) => element.textContent?.trim())).toEqual(['Bug', 'Story']);
+      .map((element) => element.textContent?.trim())).toEqual(['Bug', 'Story', 'meeting']);
+  });
+
+  it('shows a lock badge and no edit or delete buttons on system categories', () => {
+    const { fixture } = setup();
+    fixture.detectChanges();
+
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('.category-list__row') as NodeListOf<HTMLElement>);
+    const meetingRow = rows.find((row) => row.querySelector('.category-list__name')?.textContent?.trim() === 'meeting')!;
+    expect(meetingRow.querySelector('.category-list__system-badge')).not.toBeNull();
+    expect(meetingRow.querySelector('.category-list__edit-icon')).toBeNull();
+    expect(meetingRow.querySelector('.category-list__delete-icon')).toBeNull();
+  });
+
+  it('keeps system categories in the saved order', async () => {
+    const { fixture, reorderTaskCategories } = setup();
+    fixture.detectChanges();
+
+    Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((button) => button.textContent?.includes('Update'))!.click();
+    await fixture.whenStable();
+
+    expect(reorderTaskCategories).toHaveBeenCalledWith('project-1', expect.arrayContaining([{ categoryId: 'c9', displayOrder: 3 }]));
   });
 });
 

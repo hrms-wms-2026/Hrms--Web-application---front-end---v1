@@ -191,3 +191,44 @@ describe('InboxItemCardComponent (FS1 standard)', () => {
     expect(actions).toEqual([{ key: 'cancel', body: { comment: 'Plans changed', effectiveDate: '2026-10-21' } }]);
   });
 });
+
+describe('InboxItemCardComponent - meeting approvals', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const snapshot = {
+    title: 'Design review', description: null, start: '2026-11-02T03:30:00Z', durationMinutes: 45, timezone: 'UTC',
+    recurrenceSummary: 'Does not repeat', organizerName: 'Bala K.', modulePath: 'Apollo / Design', participantNames: ['Anu S.'],
+    guestEmails: [], platform: null
+  };
+  const meetingDetail = (actionType: string) => detail(
+    { extraJson: JSON.stringify({ snapshot }) },
+    { actionType, title: 'Design review', availableActions: [APPROVE] });
+  const editBeforeApprove: InboxKindDescriptorDto = {
+    source: 'work', kind: 'approval', label: 'Work approval', category: 'request', capabilities: InboxCapability.EditBeforeApprove, detailRenderer: null
+  };
+
+  function render(d: InboxItemDetailDto) {
+    TestBed.configureTestingModule({ imports: [InboxItemCardComponent], providers: [{ provide: INBOX_DETAIL_RENDERERS, useValue: {} }] });
+    const fixture = TestBed.createComponent(InboxItemCardComponent);
+    fixture.componentRef.setInput('detail', d);
+    fixture.componentRef.setInput('descriptor', editBeforeApprove);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('no edit-payload control for meeting actions', () => {
+    // The approver decides exactly what was submitted (D5): even with editable rows and a payload, no edit form.
+    for (const actionType of ['meeting.create', 'meeting.move']) {
+      const fixture = render(meetingDetail(actionType));
+      expect(fixture.componentInstance.canEdit(), actionType).toBe(false);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('renders the meeting snapshot for a meeting request', () => {
+    const fixture = render(meetingDetail('meeting.create'));
+    const el = fixture.nativeElement.querySelector('[data-testid="meeting-approval-snapshot"]') as HTMLElement | null;
+    expect(el).not.toBeNull();
+    expect(el!.textContent).toContain('Apollo / Design');
+  });
+});
