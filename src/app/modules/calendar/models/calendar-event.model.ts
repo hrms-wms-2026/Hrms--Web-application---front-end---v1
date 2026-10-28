@@ -18,6 +18,12 @@ export interface CalendarEventParticipantsResponse {
 
 export interface CalendarEventResponse {
   id: string;
+  /** "meeting" for a meetings-as-tasks occurrence merged into the calendar (backend Plan C); absent or "event" otherwise. */
+  itemKind?: 'event' | 'meeting';
+  /** Task meetings only: the series and, once materialized, the occurrence task; open with series + originalStart. */
+  meetingSeriesId?: string | null;
+  meetingTaskId?: string | null;
+  meetingStatus?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | null;
   title: string;
   description: string | null;
   startDate: string;
@@ -111,19 +117,30 @@ export interface GetEligibleNomineesResponse {
   nominees: readonly EligibleNominee[];
 }
 
+/** What a conflict row is about (meeting availability warnings, 2026-10-28). A missing kind is an event. */
+export type CalendarConflictKind = 'event' | 'leave' | 'holiday' | 'outside_hours';
+
 export interface CalendarConflict {
   employeeId: string;
   employeeName: string;
   conflictingEventId: string;
   conflictingEventTitle: string;
+  /** A task meeting the caller may not see: only its time is known, and it reads "Busy" (meetings-as-tasks 5.9). */
+  isBusyOnly?: boolean;
   overlapStart: string;
   overlapEnd: string;
+  kind?: CalendarConflictKind;
 }
 
 export interface CheckCalendarConflictsRequest {
   participantEmployeeIds: readonly string[];
   startDate: string;
   endDate: string;
+  isAllDay?: boolean;
+  /** The meeting's zone: used for a participant whose own zone is unknown. */
+  timeZone?: string;
+  /** The meeting being edited: its occurrences are not conflicts. */
+  excludeMeetingSeriesId?: string;
 }
 
 export interface CalendarConflictsResponse {
@@ -132,6 +149,15 @@ export interface CalendarConflictsResponse {
 
 /** Matches backend ONEVO.Domain.Features.Calendar.Entities.CalendarEventMeetingProviders. */
 export type MeetingProvider = 'microsoft_teams' | 'zoom';
+
+export type EventMeetingStatus = 'none' | 'active' | 'cancelled' | 'failed' | 'provisioning' | 'provisioning_unknown' | 'unresolved';
+
+export interface EventMeetingStatusResponse {
+  status: EventMeetingStatus;
+  provider: MeetingProvider | null;
+  joinUrl: string | null;
+  failureReason: string | null;
+}
 
 export interface CreateEventMeetingResponse {
   joinUrl: string;
@@ -145,6 +171,8 @@ export interface MeetingAttendeeResponse {
   durationSeconds: number | null;
 }
 
+export type MeetingAttendanceSyncStatus = 'none' | 'pending' | 'synced' | 'attendance_unavailable' | 'sync_failed';
+
 /** An incident the meeting raised for a participant (organizer view; rule and occurrence only). */
 export interface MeetingIncidentResponse {
   employeeName: string;
@@ -157,6 +185,7 @@ export interface MeetingIncidentResponse {
 export interface MeetingAttendanceResponse {
   available: boolean;
   attendees: readonly MeetingAttendeeResponse[];
+  syncStatus?: MeetingAttendanceSyncStatus;
   /** Filled for the organizer only. */
   incidents?: readonly MeetingIncidentResponse[];
 }

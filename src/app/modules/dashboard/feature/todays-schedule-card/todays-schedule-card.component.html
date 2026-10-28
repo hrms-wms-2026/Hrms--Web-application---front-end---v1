@@ -29,7 +29,7 @@
         <div class="h-10 w-full rounded-lg bg-slate-100"></div>
       }
     </div>
-  } @else if (agendaItems().length === 0) {
+  } @else if (agendaItems().length === 0 && todaysMeetings().length === 0) {
     <div class="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center" data-testid="todays-schedule-empty">
       <p class="text-sm font-semibold text-slate-800">No events scheduled today</p>
       <p class="text-xs text-slate-400">Your calendar is clear for the day.</p>
@@ -39,6 +39,16 @@
       >+ Add Quick Event</a>
     </div>
   } @else {
+    @if (todaysMeetings().length > 0) {
+      <div class="mb-2 flex flex-col gap-1" data-testid="todays-meetings">
+        <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Today's meetings</div>
+        @for (meeting of todaysMeetings(); track meeting.taskId) {
+          <div data-testid="todays-meetings-item">
+            <app-meeting-card [item]="meeting" (open)="openMeeting.set($event)" />
+          </div>
+        }
+      </div>
+    }
     <ol class="rounded-xl bg-slate-50/70 px-3 py-1">
       @for (item of agendaItems(); track item.event.id; let last = $last) {
         <li class="relative flex items-center gap-3 py-2.5" [class.border-b]="!last" [class.border-slate-200/70]="!last" data-testid="todays-schedule-item" [attr.data-status]="item.status">
@@ -54,7 +64,9 @@
 
           <div class="min-w-0 flex-1">
             <a routerLink="/calendar" class="block truncate text-sm font-semibold text-slate-800 hover:text-blue-600">{{ item.event.title }}</a>
-            <p class="truncate text-xs text-slate-500">{{ subtitle(item.event) }}</p>
+            <p class="truncate text-xs text-slate-500">
+              <span data-testid="todays-schedule-kind" class="mr-1 rounded bg-slate-100 px-1 text-[10px] font-semibold text-slate-600">Calendar event</span>{{ subtitle(item.event) }}
+            </p>
           </div>
 
           @if (getMeetingLink(item.event); as meetingUrl) {
@@ -76,5 +88,8 @@
         </li>
       }
     </ol>
+  }
+  @if (openMeeting(); as key) {
+    <app-meeting-occurrence-drawer [key]="key" (closed)="openMeeting.set(null)" />
   }
 </section>

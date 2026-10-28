@@ -13,6 +13,9 @@ const loadPlaceholder = () =>
   import('./shared/feature/placeholder-page/placeholder-page.component').then((module) => module.PlaceholderPageComponent);
 
 
+/** One loader for /calendar and /planner, so both are the same lazy chunk. */
+const loadCalendarRoutes = () => import('./modules/calendar/calendar.routes').then((module) => module.CALENDAR_ROUTES);
+
 export const routes: Routes = [
   {
     path: '',
@@ -96,7 +99,14 @@ export const routes: Routes = [
         path: 'calendar',
         canActivate: [permissionGuard],
         data: { permissions: ['calendar:read'], modules: ['calendar'] },
-        loadChildren: () => import('./modules/calendar/calendar.routes').then((module) => module.CALENDAR_ROUTES)
+        loadChildren: loadCalendarRoutes
+      },
+      {
+        // Planner = Calendar (2026-10-27 design): the calendar page is the planner; the nav calls it Planner when it is on.
+        path: 'planner',
+        canActivate: [permissionGuard],
+        data: { permissions: ['calendar:read'], modules: ['calendar'] },
+        loadChildren: loadCalendarRoutes
       },
       {
         path: 'time-off',

@@ -1,3 +1,6 @@
+import { of } from 'rxjs';
+import { PlannerApiService } from '../../../modules/work/planner/data-access/planner-api.service';
+import { PlannerAvailabilityService } from '../../../modules/work/planner/state/planner-availability.service';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component } from '@angular/core';
@@ -17,21 +20,35 @@ class BlankComponent {}
 
 const inboxBadge = signal('');
 
-function setup(permissions: string[], activeModules: string[], managesPeople = false) {
+function setup(permissions: string[], activeModules: string[], managesPeople = false, plannerOn = true) {
   TestBed.configureTestingModule({
     imports: [SideNavbarComponent],
     providers: [
       provideRouter([{ path: '**', component: BlankComponent }]),
       { provide: AuthStore, useValue: { permissions: () => permissions, activeModules: () => activeModules, managesPeople: () => managesPeople } },
-      { provide: InboxStore, useValue: { badgeLabel: inboxBadge } }
+      { provide: InboxStore, useValue: { badgeLabel: inboxBadge } },
+      { provide: PlannerApiService, useValue: { getMyDay: () => of({}) } }
     ]
   });
+  if (plannerOn) TestBed.inject(PlannerAvailabilityService).markAvailable(true);
   const fixture = TestBed.createComponent(SideNavbarComponent);
   fixture.detectChanges();
   return fixture;
 }
 
 describe('SideNavbarComponent', () => {
+  it('calls the calendar item Planner only once the planner is known to be on (Planner = Calendar)', () => {
+    const fixture = setup([], ['calendar'], false, false);
+    TestBed.inject(PlannerAvailabilityService).markAvailable(false);
+    fixture.detectChanges();
+    const labels = () => Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
+
+    expect(labels()).toEqual(['Home', 'Inbox', 'Calendar']);
+    TestBed.inject(PlannerAvailabilityService).markAvailable(true);
+    fixture.detectChanges();
+    expect(labels()).toEqual(['Home', 'Inbox', 'Planner']);
+  });
+
   it('always shows Home for an authenticated user with no other modules/permissions', () => {
     const fixture = setup([], []);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
@@ -43,7 +60,7 @@ describe('SideNavbarComponent', () => {
     // no permission gate of its own - self-service attendance/leave access is not an employees
     // permission, and the real /people route guard requires managing people or employees:write,
     // so People must stay hidden for this user even though core_hr is active.
-    const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
+    const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance'], false, false);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'Inbox', 'Calendar', 'Time Off', 'Attendance']);
   });
@@ -52,7 +69,8 @@ describe('SideNavbarComponent', () => {
     const fixture = setup(
       ['attendance:read-own', 'leave:read-own'],
       ['core_hr', 'calendar', 'leave', 'time_attendance'],
-      true
+      true,
+      false
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'Inbox', 'Calendar', 'Time Off', 'Attendance', 'Org']);
@@ -96,7 +114,7 @@ describe('SideNavbarComponent', () => {
       'Home',
       'Work',
       'Inbox',
-      'Calendar',
+      'Planner',
       'Time Off',
       'Attendance',
       'Org',

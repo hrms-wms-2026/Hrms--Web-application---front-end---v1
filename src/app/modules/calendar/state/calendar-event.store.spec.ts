@@ -122,6 +122,17 @@ describe('CalendarEventStore', () => {
     expect(store.checkingConflicts()).toBe(false);
   });
 
+  it('checkConflicts sends the all-day flag and time zone', async () => {
+    const work = store.checkConflicts(['emp-1'], '2026-09-01T00:00:00Z', '2026-09-02T00:00:00Z', { isAllDay: true, timeZone: 'Asia/Colombo' });
+    const req = http.expectOne(`${environment.apiUrl}/calendar/check-conflicts`);
+    expect(req.request.body).toEqual({
+      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T00:00:00Z', endDate: '2026-09-02T00:00:00Z',
+      isAllDay: true, timeZone: 'Asia/Colombo',
+    });
+    req.flush({ conflicts: [] });
+    await work;
+  });
+
   it('checkConflicts clears conflicts on failure rather than surfacing actionError', async () => {
     const work = store.checkConflicts(['emp-1'], '2026-09-01T09:00:00Z', '2026-09-01T10:00:00Z');
     http.expectOne(`${environment.apiUrl}/calendar/check-conflicts`).flush({ detail: 'boom' }, { status: 500, statusText: 'Error' });

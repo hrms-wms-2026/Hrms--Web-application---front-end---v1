@@ -1,3 +1,4 @@
+import { PlannerAvailabilityService } from '../../modules/work/planner/state/planner-availability.service';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
@@ -8,6 +9,9 @@ import { NavigationStateService } from './nav/navigation-state.service';
 import { ProfileStore } from '@modules/profile/state/profile.store';
 import { FileApiService } from '../../shared/data-access/file-api.service';
 import { MyProfile } from '@modules/profile/models/profile.model';
+
+/** The planner probe is a real HTTP call in the layout; these specs are not about it. */
+const plannerAvailabilityStub = { probe: () => Promise.resolve(), state: () => 'off' as const, markAvailable: () => undefined };
 
 const authStoreStub = {
   email: () => 'asha@onevo.test',
@@ -47,6 +51,7 @@ describe('MainLayoutComponent', () => {
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([]),
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
@@ -69,6 +74,7 @@ describe('MainLayoutComponent', () => {
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([]),
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
@@ -101,6 +107,7 @@ describe('MainLayoutComponent', () => {
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([]),
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: { profile: signal<MyProfile | null>(profile), loadProfile: vi.fn() } },
@@ -128,6 +135,7 @@ describe('MainLayoutComponent', () => {
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([]),
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
