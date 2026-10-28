@@ -1,6 +1,10 @@
+import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { CalendarPageComponent } from './calendar-page.component';
@@ -81,6 +85,16 @@ describe('CalendarPageComponent - create submission', () => {
     expect(store.createMeeting).toHaveBeenCalledWith(createdEvent().id, 'microsoft_teams', true);
   });
 
+  it('a meeting created right after its event says the invites were held back for the link', async () => {
+    const page = setup();
+    store.createEvent.mockResolvedValue(createdEvent());
+    store.createMeeting.mockResolvedValue(true);
+
+    await page.onSave({ create: createRequest(), meetingProvider: 'zoom' });
+
+    expect(store.createMeeting).toHaveBeenCalledWith(createdEvent().id, 'zoom', true);
+  });
+
   it('keeps the form busy for the whole create + meeting chain, not just the event POST', async () => {
     const page = setup();
     let releaseMeeting!: () => void;
@@ -150,5 +164,90 @@ describe('CalendarPageComponent - create submission', () => {
     await page.onSave(submission);
 
     expect(store.createEvent).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('CalendarPageComponent - new meeting (work item)', () => {
+  it('offers "Meeting (work item)" next to New event and opens the meeting form as an Office meeting', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
+    });
+    const fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-meeting-form-modal')).toBeNull();
+
+    const button: HTMLElement = fixture.nativeElement.querySelector('[data-testid="calendar-new-meeting"]');
+    expect(button.textContent?.trim()).toBe('Meeting (work item)');
+    button.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-meeting-form-modal')).not.toBeNull();
+    expect(fixture.componentInstance.meetingFormOpen()).toBe(true);
+  });
+
+  it('a new event with people hands over to the meeting form with its title and time', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
+    });
+    const fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+    const page = fixture.componentInstance;
+    page.formOpen.set(true);
+
+    page.onConvertToMeeting({ title: 'Design review', start: '2026-11-02T10:00', end: '2026-11-02T11:30' });
+    fixture.detectChanges();
+
+    expect(page.formOpen()).toBe(false);
+    expect(page.meetingFormOpen()).toBe(true);
+    const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
+    expect(form.componentInstance.prefill()).toEqual({ title: 'Design review', start: '2026-11-02T10:00', end: '2026-11-02T11:30' });
+  });
+
+  it('hides "Meeting (work item)" once the server says meetings are off', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
+    });
+    TestBed.inject(MeetingsAvailabilityService).noteError(new HttpErrorResponse({ status: 503, error: { code: 'meetings_disabled' } }));
+    const fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-new-meeting"]')).toBeNull();
+  });
+});
+
+describe('CalendarPageComponent - task meetings', () => {
+  // A virtual occurrence: not materialized yet, so it has no task id; `id` is the id it will get.
+  const meetingItem = {
+    id: 'future-task-id', title: 'Weekly delivery sync', startDate: '2026-11-09T03:30:00Z', endDate: '2026-11-09T04:00:00Z',
+    itemKind: 'meeting', meetingSeriesId: 's1', meetingTaskId: null, meetingStatus: 'scheduled', originalStart: '2026-11-09T03:30:00Z'
+  } as CalendarEventResponse;
+
+  function setup() {
+    const store = buildFakeStore();
+    store.events.set([meetingItem]);
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: store }]
+    });
+    const fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+    const week = fixture.debugElement.query(By.directive(CalendarWeekViewComponent));
+    week.componentInstance.eventClick.emit('future-task-id');
+    fixture.detectChanges();
+    return { fixture, http: TestBed.inject(HttpTestingController) };
+  }
+
+  it('opens a virtual occurrence by series and original start', () => {
+    const { fixture, http } = setup();
+
+    expect(fixture.nativeElement.querySelector('app-meeting-occurrence-drawer')).not.toBeNull();
+    http.expectOne((r) => r.url.endsWith(`/meetings/series/s1/occurrences/${encodeURIComponent('2026-11-09T03:30:00.000Z')}`));
+  });
+
+  it('meeting items do not use legacy event actions', () => {
+    const { fixture, http } = setup();
+
+    expect(fixture.componentInstance.formOpen()).toBe(false);
+    expect(fixture.componentInstance.editingEvent()).toBeNull();
+    expect(http.match((r) => /\/calendar\/future-task-id/.test(r.url)).length).toBe(0);
   });
 });

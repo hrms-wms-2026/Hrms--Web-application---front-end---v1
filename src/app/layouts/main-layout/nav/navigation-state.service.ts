@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs/operators';
 import { PermissionService } from '../../../core/auth/state/permission.service';
+import { PlannerAvailabilityService } from '../../../modules/work/planner/state/planner-availability.service';
 import { canAccessNavItem } from './nav-access';
 import { NavItem } from './nav-item.model';
 import { NAV_ITEMS } from './nav-items.config';
@@ -19,6 +20,7 @@ export class NavigationStateService {
 
   private readonly router = inject(Router);
   private readonly permissionService = inject(PermissionService);
+  private readonly plannerAvailability = inject(PlannerAvailabilityService);
 
   private readonly currentUrl = toSignal(
     this.router.events.pipe(
@@ -28,7 +30,15 @@ export class NavigationStateService {
     { initialValue: this.router.url }
   );
 
-  readonly visibleItems = computed(() => NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService)));
+  // Planner = Calendar (2026-10-27 design): once the planner is known on (Planner:Enabled), the Calendar item is the
+  // Planner, at /planner and still active on /calendar links (OAuth and email links point there).
+  readonly visibleItems = computed(() => {
+    const plannerOn = this.plannerAvailability.state() === 'on';
+    return NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService))
+      .map((item): NavItem => item.id === 'calendar' && plannerOn
+        ? { ...item, label: 'Planner', path: '/planner', alsoMatches: [...(item.alsoMatches ?? []), '/calendar'] }
+        : item);
+  });
 
   readonly activeItem = computed(() => {
     const rawUrl = this.currentUrl();

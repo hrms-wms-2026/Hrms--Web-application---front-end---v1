@@ -13,6 +13,20 @@ interface DayCellViewModel {
   readonly overflowCount: number;
 }
 
+/** One day's planner summary chip (2026-10-27 Planner = Calendar design, section 4.5). */
+export interface PlannerMonthSummary {
+  readonly tasks: number;
+  readonly meetings: number;
+  readonly plannedMinutes: number;
+}
+
+function duration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 @Component({
   selector: 'app-calendar-month-grid',
   standalone: true,
@@ -25,9 +39,18 @@ export class CalendarMonthGridComponent {
   month = input.required<number>();
   events = input<readonly CalendarEventResponse[]>([]);
   timezone = input<string>('UTC');
+  /** Planner layer: a chip per day with blocks or meetings; empty while the planner is off. */
+  summaries = input<ReadonlyMap<string, PlannerMonthSummary>>(new Map());
 
   dayClick = output<string>();
   eventClick = output<string>();
+
+  summaryText(date: string): string | null {
+    const s = this.summaries().get(date);
+    if (!s) return null;
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    return `${plural(s.tasks, 'task')} · ${plural(s.meetings, 'meeting')} · ${duration(s.plannedMinutes)}`;
+  }
 
   readonly cells = computed<readonly DayCellViewModel[]>(() => {
     const grid = buildMonthGrid(this.year(), this.month());

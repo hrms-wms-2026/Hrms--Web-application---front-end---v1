@@ -1,3 +1,5 @@
+import { MeetingListItem } from '../../meetings/models/meeting.models';
+import { MeetingCardComponent } from '../../meetings/ui/meeting-card/meeting-card.component';
 import { Component, OnInit, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { isLeafObjective } from '../../utils/project.mapper';
@@ -12,11 +14,12 @@ export type TreeExpandCommand =
   | { seq: number; mode: 'keys'; keys: ReadonlySet<string> };
 
 const NO_KEYS: ReadonlySet<string> = new Set();
+const NO_MEETINGS: ReadonlyMap<string, readonly MeetingListItem[]> = new Map();
 
 @Component({
   selector: 'app-milestone-tree-node',
   standalone: true,
-  imports: [MilestoneTreeNodeComponent, ModuleTreeRowComponent, SprintTreeRowComponent, TaskTreeRowComponent],
+  imports: [MilestoneTreeNodeComponent, ModuleTreeRowComponent, SprintTreeRowComponent, TaskTreeRowComponent, MeetingCardComponent],
   template: `
     <div>
       <div
@@ -29,7 +32,7 @@ const NO_KEYS: ReadonlySet<string> = new Set();
       @if ((node().kind ?? 'objective') === 'objective') {
         <app-module-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
           [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           [showChevron]="showChevron()"
@@ -47,7 +50,7 @@ const NO_KEYS: ReadonlySet<string> = new Set();
       } @else if (node().kind === 'sprint') {
         <app-sprint-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
           [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           [showChevron]="showChevron()"
@@ -64,7 +67,7 @@ const NO_KEYS: ReadonlySet<string> = new Set();
       } @else {
         <app-task-tree-row
           [node]="node()"
-          [selected]="isSelected()"
+          [selected]="isSelected()"
           [alerts]="monitor.alertsFor(node().id)"
           [depth]="depth()"
           (selectedRow)="selected.emit($event)"
@@ -100,7 +103,20 @@ const NO_KEYS: ReadonlySet<string> = new Set();
               (completeSprintRequested)="completeSprintRequested.emit($event)"
               (deleteSprintRequested)="deleteSprintRequested.emit($event)"
               (deleteRequested)="deleteRequested.emit($event)"
+              [meetingsByModule]="meetingsByModule()"
+              (meetingOpened)="meetingOpened.emit($event)"
             />
+          }
+        </div>
+      }
+
+      @if (moduleMeetings().length > 0 && (expanded() || node().children.length === 0)) {
+        <!-- A meeting is a leaf work item under its module (D2), never a status card: no drag, no status column. -->
+        <div class="flex flex-col gap-0.5" [style.padding-left.px]="(depth() + 1) * 16">
+          @for (meeting of moduleMeetings(); track meeting.taskId) {
+            <div data-testid="tree-meeting-row">
+              <app-meeting-card variant="row" [item]="meeting" (open)="meetingOpened.emit($event)" />
+            </div>
           }
         </div>
       }
@@ -138,6 +154,11 @@ export class MilestoneTreeNodeComponent implements OnInit {
   completeSprintRequested = output<MilestoneTreeNode>();
   deleteSprintRequested = output<MilestoneTreeNode>();
   deleteRequested = output<MilestoneTreeNode>();
+  /** The project's meetings in the board/tree window, by module (objective) id; passed down the whole tree. */
+  meetingsByModule = input<ReadonlyMap<string, readonly MeetingListItem[]>>(NO_MEETINGS);
+  meetingOpened = output<{ seriesId: string; originalStart: string }>();
+  protected readonly moduleMeetings = computed(() =>
+    (this.node().kind ?? 'objective') === 'objective' ? this.meetingsByModule().get(this.node().id) ?? [] : []);
 
   expanded = signal(true);
   private appliedCommandSeq: number | null = null;

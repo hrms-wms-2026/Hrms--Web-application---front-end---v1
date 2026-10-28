@@ -4,6 +4,10 @@ import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse } from '../../../calendar/models/calendar-event.model';
+import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
+import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
+import { MeetingListItem } from '../../../work/meetings/models/meeting.models';
+import { MeetingCardComponent } from '../../../work/meetings/ui/meeting-card/meeting-card.component';
 
 const MAX_AGENDA_ITEMS = 5;
 
@@ -18,7 +22,7 @@ const STATUS_META: Record<ScheduleItemStatus, { label: string; chip: string; dot
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, MeetingCardComponent, MeetingOccurrenceDrawerComponent],
   // A size container: the row layout follows the card's own width (Small / Large on the grid).
   host: { class: '@container block' },
   templateUrl: './todays-schedule-card.component.html',
@@ -28,12 +32,29 @@ export class TodaysScheduleCardComponent implements OnInit {
   private readonly api = inject(CalendarEventApiService);
   private readonly authStore = inject(AuthStore, { optional: true });
 
+  private readonly meetings = inject(MeetingApiService);
+
   private readonly rawEvents = signal<readonly CalendarEventResponse[]>([]);
+  private readonly rawMeetings = signal<readonly MeetingListItem[]>([]);
+  private readonly todayWindow = signal<{ from: string; to: string } | null>(null);
   protected readonly loading = signal(true);
+  protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
+
+  /** Today's meetings-as-tasks occurrences, in start order. */
+  protected readonly todaysMeetings = computed(() => {
+    const window = this.todayWindow();
+    if (!window) return [];
+    const from = Date.parse(window.from);
+    const to = Date.parse(window.to);
+    return this.rawMeetings()
+      .filter((m) => Date.parse(m.startAt) >= from && Date.parse(m.startAt) <= to)
+      .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
+  });
 
   protected readonly agendaItems = computed(() => {
     const now = Date.now();
-    return [...this.rawEvents()]
+    // A task meeting also comes back on the calendar feed (itemKind "meeting"); it is listed once, under Today's meetings.
+    return this.rawEvents().filter((event) => event.itemKind !== 'meeting')
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
       .map((event) => ({ event, status: scheduleItemStatus(event, now) }))
       .slice(0, MAX_AGENDA_ITEMS);
@@ -127,6 +148,11 @@ export class TodaysScheduleCardComponent implements OnInit {
     const today = dateOnlyInTimezone(new Date().toISOString(), timezone);
     const from = localPartsToUtcIso(today, '00:00', timezone);
     const to = localPartsToUtcIso(today, '23:59', timezone);
+    this.todayWindow.set({ from, to });
+    this.meetings.list(from, to).subscribe({
+      next: (items) => this.rawMeetings.set(items),
+      error: () => this.rawMeetings.set([])
+    });
 
     this.api.getEvents(from, to).subscribe({
       next: (response) => {

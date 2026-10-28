@@ -19,6 +19,7 @@ import {
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
 import { CalendarEventAttendanceComponent } from '../calendar-event-attendance/calendar-event-attendance.component';
+import { CalendarEventMeetingStatusComponent } from '../calendar-event-meeting-status/calendar-event-meeting-status.component';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { timezoneDisplayLabel } from '../../../../shared/utils/timezone-label.util';
@@ -107,7 +108,7 @@ interface AddedPerson {
   imports: [
     CommonModule, ReactiveFormsModule, RouterLink, ButtonComponent,
     ModalComponent, DatePickerComponent, DateRangePickerComponent, TimePickerComponent, AvatarComponent, AvatarStackComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
-    SelectComponent, CalendarEventAttendanceComponent
+    SelectComponent, CalendarEventAttendanceComponent, CalendarEventMeetingStatusComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
   styles: [`
@@ -179,18 +180,24 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   /** Whether the organizer has an active Zoom connection that can host a Zoom meeting. */
   @Input() hasZoomCapableConnection = false;
   @Input() meetingActionSaving = false;
+  /** Meetings-as-tasks on: a new event cannot carry people or a link; it hands over to the Meeting (work item) form. */
+  @Input() meetingsAsWorkItems = false;
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
   @Output() respond = new EventEmitter<RespondToCalendarEventPayload>();
-  @Output() checkConflicts = new EventEmitter<{ participantEmployeeIds: readonly string[]; startDate: string; endDate: string }>();
+  @Output() checkConflicts = new EventEmitter<{
+    participantEmployeeIds: readonly string[]; startDate: string; endDate: string; isAllDay: boolean; timeZone: string;
+  }>();
   @Output() loadEligibleNominees = new EventEmitter<void>();
   @Output() addMeeting = new EventEmitter<MeetingProvider>();
   @Output() removeMeeting = new EventEmitter<void>();
+  @Output() meetingStatusChanged = new EventEmitter<void>();
   @Output() addParticipantsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingParticipant = new EventEmitter<string>();
   @Output() addGuestsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingGuest = new EventEmitter<string>();
   @Output() cancelled = new EventEmitter<void>();
+  @Output() convertToMeeting = new EventEmitter<{ title: string; start: string; end: string }>();
 
   private readonly authStore = inject(AuthStore);
   private conflictCheckTimer: ReturnType<typeof setTimeout> | null = null;
@@ -265,6 +272,11 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   });
 
   private readonly formChangeSubscription = this.form.valueChanges.subscribe(() => this.scheduleConflictCheck());
+
+  onConvertToMeeting(): void {
+    const v = this.form.getRawValue();
+    this.convertToMeeting.emit({ title: (v.title ?? '').trim(), start: `${v.startDate}T${v.startTime}`, end: `${v.endDate}T${v.endTime}` });
+  }
 
   get isEdit(): boolean {
     return !!this.event;
@@ -790,7 +802,9 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
       this.checkConflicts.emit({
         participantEmployeeIds: ids,
         startDate: localPartsToUtcIso(raw.startDate, raw.startTime!, this.currentTimezone()),
-        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.currentTimezone())
+        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.currentTimezone()),
+        isAllDay: !!raw.isAllDay,
+        timeZone: this.currentTimezone()
       });
     }, 400);
   }

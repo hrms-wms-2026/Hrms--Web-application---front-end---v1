@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 import { CalendarConnectionApiService } from '../../settings/data-access/calendar-connection-api.service';
 import { CalendarEventApiService } from '../data-access/calendar-event-api.service';
+import { meetingErrorMessage } from '../utils/meeting-error-message';
 import {
   CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
   EditRecurringOccurrenceRequest, EligibleNominee, MeetingProvider, RespondToCalendarEventStatus,
@@ -134,10 +135,13 @@ export const CalendarEventStore = signalStore(
     clearEligibleNominees(): void {
       patchState(store, { eligibleNominees: [] });
     },
-    async checkConflicts(participantEmployeeIds: readonly string[], startDate: string, endDate: string): Promise<void> {
+    async checkConflicts(
+      participantEmployeeIds: readonly string[], startDate: string, endDate: string,
+      options: { isAllDay?: boolean; timeZone?: string } = {},
+    ): Promise<void> {
       patchState(store, { checkingConflicts: true });
       try {
-        const response = await firstValueFrom(api.checkConflicts({ participantEmployeeIds, startDate, endDate }));
+        const response = await firstValueFrom(api.checkConflicts({ participantEmployeeIds, startDate, endDate, ...options }));
         patchState(store, { checkingConflicts: false, conflicts: response.conflicts });
       } catch {
         // Conflict-checking is informational only - a failed check should never block or alarm
@@ -181,7 +185,7 @@ export const CalendarEventStore = signalStore(
         });
         return true;
       } catch (err) {
-        patchState(store, { meetingActionSaving: false, actionError: toSafeErrorMessage(err, 'Failed to add the meeting.') });
+        patchState(store, { meetingActionSaving: false, actionError: meetingErrorMessage(err, provider) });
         return false;
       }
     },

@@ -78,6 +78,8 @@ export interface CreateTaskRequestDto {
   storyPoints?: number;
   sprintId: string | null;
   attachmentFileIds?: string[];
+  /** An action item: the meeting occurrence (task id) it was raised from. Left out for every ordinary task. */
+  sourceMeetingOccurrenceId?: string;
 }
 
 export interface CreateSubtaskRequestDto {
