@@ -311,3 +311,37 @@ describe('TaskBoardColumnComponent', () => {
   });
 });
 
+
+describe('TaskBoardColumnComponent - meetings', () => {
+  const meeting = {
+    taskId: 'm1', shortId: 'P-M1', seriesId: 'series-1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
+    endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Standup', status: 'scheduled' as const, isPrivate: false,
+    projectId: 'p1', objectiveId: 'o1', myRole: 'attendee' as const, myResponse: 'accepted' as const
+  };
+  let fixture: ComponentFixture<TaskBoardColumnComponent>;
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [TaskBoardColumnComponent, HttpClientTestingModule] });
+    fixture = TestBed.createComponent(TaskBoardColumnComponent);
+    fixture.componentRef.setInput('status', status);
+    fixture.componentRef.setInput('tasks', [task]);
+    fixture.componentRef.setInput('meetings', [meeting]);
+    fixture.detectChanges();
+  });
+
+  it('shows the column\'s meetings with its tasks, outside every drag list, and counts them', () => {
+    const cards: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('app-meeting-card'));
+    expect(cards.length).toBe(1);
+    expect(cards[0].closest('.cdk-drag, .cdk-drop-list')).toBeNull();
+    expect(cards[0].closest('.task-board-column')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.task-board-column__count')?.textContent?.trim()).toBe('2');
+  });
+
+  it('opens a meeting by its key', () => {
+    let opened: unknown;
+    fixture.componentInstance.meetingOpened.subscribe((key) => (opened = key));
+    (fixture.nativeElement.querySelector('[data-testid="meeting-card"]') as HTMLElement).click();
+    expect(opened).toEqual({ seriesId: 'series-1', originalStart: '2026-11-02T03:30:00Z' });
+  });
+});

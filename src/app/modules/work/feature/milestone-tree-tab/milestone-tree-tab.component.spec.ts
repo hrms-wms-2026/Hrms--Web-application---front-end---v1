@@ -208,6 +208,27 @@ describe('MilestoneTreeTabComponent', () => {
     expect(root.componentInstance.meetingsByModule().get('o1')?.map((m: { taskId: string }) => m.taskId)).toEqual(['m1']);
   });
 
+  it('leaves cancelled meetings out of the tree and takes the status from the clock', () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    const base = {
+      shortId: 'P-M1', seriesId: 's1', originalStart: '2000-01-01T09:00:00Z', startAt: '2000-01-01T09:00:00Z',
+      endAt: '2000-01-01T10:00:00Z', isAllDay: false, title: 'Standup', isPrivate: false,
+      projectId: 'p1', objectiveId: 'o1', myRole: 'attendee', myResponse: 'accepted'
+    };
+    http.expectOne((r) => r.url.endsWith('/meetings')).flush([
+      { ...base, taskId: 'past', status: 'scheduled' },
+      { ...base, taskId: 'gone', status: 'cancelled' }
+    ]);
+    fixture.detectChanges();
+
+    const root = fixture.debugElement.query(By.css('app-milestone-tree-node'));
+    expect(root.componentInstance.meetingsByModule().get('o1')?.map((m: { taskId: string; status: string }) => [m.taskId, m.status]))
+      .toEqual([['past', 'completed']]);
+  });
+
   it('offers New meeting in the toolbar, placed in the routed module', () => {
     setup('o1');
     fixture.detectChanges();

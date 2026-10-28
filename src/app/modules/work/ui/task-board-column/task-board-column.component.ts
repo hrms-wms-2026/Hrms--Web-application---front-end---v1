@@ -8,6 +8,8 @@ import { TaskCardComponent } from '../task-card/task-card.component';
 import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { MeetingCardComponent } from '../../meetings/ui/meeting-card/meeting-card.component';
+import { MeetingListItem } from '../../meetings/models/meeting.models';
 
 export interface QuickTaskCreatedEvent {
   title: string;
@@ -25,7 +27,7 @@ export interface QuickTaskCreatedEvent {
 @Component({
   selector: 'app-task-board-column',
   standalone: true,
-  imports: [StopClickPropagationDirective, CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent, TaskAssigneeDropdownComponent, DatePickerComponent],
+  imports: [StopClickPropagationDirective, CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent, TaskAssigneeDropdownComponent, DatePickerComponent, MeetingCardComponent],
   host: {
     '[class.task-board-column-host--collapsed]': 'isCollapsed()'
   },
@@ -67,7 +69,7 @@ export interface QuickTaskCreatedEvent {
 
           <span class="task-board-column__collapsed-title">{{ status().name }}</span>
 
-          <span class="task-board-column__collapsed-count">{{ tasks().length }}</span>
+          <span class="task-board-column__collapsed-count">{{ itemCount() }}</span>
         </div>
       </div>
     } @else {
@@ -141,7 +143,7 @@ export interface QuickTaskCreatedEvent {
                   [class.task-board-column__status-dot--done]="status().category === 'done'" aria-hidden="true">@if(status().category === 'done'){<svg viewBox="0 0 12 12"><path d="m3 6 2 2 4-4" fill="none" stroke="white" stroke-width="2" /></svg>}</span>
                 <span class="task-board-column__title-text">{{ status().name }}</span>
               </span>
-              <span class="task-board-column__count">{{ tasks().length }}</span>
+              <span class="task-board-column__count">{{ itemCount() }}</span>
             </h3>
           }
 
@@ -398,6 +400,15 @@ export interface QuickTaskCreatedEvent {
 
           @if (errorMessage()) {
             <p class="quick-task-card__error">{{ errorMessage() }}</p>
+          }
+        </div>
+      }
+
+      @if (meetings().length > 0) {
+        <!-- Meetings sit with the tasks of the status their time puts them in, outside the drop list: they move by the clock, never by drag (D10). -->
+        <div class="task-board-column__meetings">
+          @for (meeting of meetings(); track meeting.taskId) {
+            <app-meeting-card [item]="meeting" (open)="meetingOpened.emit($event)" />
           }
         </div>
       }
@@ -1119,6 +1130,7 @@ export interface QuickTaskCreatedEvent {
       min-height: 8px;
     }
     .task-board-column__drag-item { display: block; }
+    .task-board-column__meetings { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
     .task-board-column__drag-preview {
       display: flex;
       width: 260px;
@@ -1191,6 +1203,8 @@ export interface QuickTaskCreatedEvent {
 export class TaskBoardColumnComponent {
   status = input.required<TaskStatusColumn>();
   tasks = input.required<WorkTask[]>();
+  /** The meetings whose current status falls in this column; shown with the tasks but never draggable. */
+  meetings = input<readonly MeetingListItem[]>([]);
   connectedListIds = input<string[]>([]);
   allStatuses = input<readonly TaskStatusColumn[]>([]);
   currentEmployeeId = input('');
@@ -1205,6 +1219,7 @@ export class TaskBoardColumnComponent {
   isProjectMember = input(false);
 
   taskDropped = output<{ taskId: string; newStatusId: string }>();
+  meetingOpened = output<{ seriesId: string; originalStart: string }>();
   taskViewed = output<WorkTask>();
   taskChanged = output<void>();
   quickTaskCreated = output<QuickTaskCreatedEvent>();
@@ -1212,6 +1227,7 @@ export class TaskBoardColumnComponent {
   statusUpdated = output<void>();
 
   private readonly taskApi = inject(TaskApiService);
+  protected readonly itemCount = computed(() => this.tasks().length + this.meetings().length);
 
   // 3-dot Menu & Rename state
   isMenuOpen = signal(false);
