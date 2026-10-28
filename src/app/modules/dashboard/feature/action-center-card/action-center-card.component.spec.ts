@@ -28,7 +28,7 @@ function capabilities(overrides: Partial<MyTeamCapabilitiesResponse> = {}): MyTe
   return {
     isAvailable: true, canViewPeopleStatus: false, canReviewPeopleApprovals: false,
     canReviewExceptions: false, hasWorkApprovals: false, leadsWork: false,
-    canViewLiveActivity: false, legalEntityId: 'le-1',
+    canViewLiveActivity: false, hasReports: false, legalEntityId: 'le-1',
     ...overrides
   };
 }

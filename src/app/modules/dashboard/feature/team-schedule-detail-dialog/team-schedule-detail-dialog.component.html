@@ -1,0 +1,165 @@
+<!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS. -->
+<app-modal [open]="open()" title="Today's team schedule" size="2xl" panelClass="team-schedule-detail" (closed)="close()">
+  <div class="tsd-head">
+    <div class="tsd-head__row">
+      <div class="tsd-head__title">
+        <h2>Today's team schedule</h2>
+        <p>What your team planned, what they worked and what happened off-plan</p>
+      </div>
+      <div class="tsd-head__controls">
+        <div class="tsd-range" data-testid="tsd-range">
+          <button type="button" class="tsd-nav" aria-label="Previous day" data-testid="tsd-prev" (click)="shiftDay(-1)">‹</button>
+          <span class="tsd-range-label" data-testid="tsd-date">{{ dateLabel() }}</span>
+          <button type="button" class="tsd-nav" aria-label="Next day" data-testid="tsd-next" [disabled]="isToday()" (click)="shiftDay(1)">›</button>
+        </div>
+        <button type="button" class="tsd-close" aria-label="Close" data-testid="tsd-close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (store.data(); as data) {
+    <div class="tsd">
+      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="6" ariaLabel="Today" />
+
+      @if (!data.plannerEnabled) {
+        <p class="tsd-note" data-testid="tsd-planner-off">Planner is off · no plans, schedule coverage or ranking. Meetings and clocked time still show.</p>
+      }
+
+      <section class="tsd-panel">
+        <div class="tsd-table-head">
+          <p class="tsd-title">Timeline</p>
+          <button type="button" class="tsd-button" data-testid="tsd-export" (click)="exportCsv()">Export CSV</button>
+        </div>
+        <div class="tsd-scroll">
+          <table class="tsd-table">
+            <thead>
+              <tr>
+                <th class="tsd-sticky" scope="col">Person</th>
+                <th scope="col" class="tsd-track-col">
+                  <div class="tsd-axis">
+                    @for (t of ticks(); track t.left) {
+                      <span class="tsd-tick" [style.left.%]="t.left">{{ t.label }}</span>
+                    }
+                  </div>
+                </th>
+                <th scope="col" class="tsd-num">Planned</th>
+                <th scope="col" class="tsd-num">Clocked</th>
+                <th scope="col" class="tsd-num">Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of data.members; track m.employeeId) {
+                <tr data-testid="tsd-row">
+                  <th class="tsd-sticky" scope="row">
+                    <span class="tsd-person">
+                      <app-avatar size="xs" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                      <span class="tsd-name">{{ m.displayName }}</span>
+                    </span>
+                  </th>
+                  <td class="tsd-track-col">
+                    <div class="tsd-track">
+                      @for (item of m.items; track item.taskId + item.start) {
+                        @if (position(item.start, item.end); as pos) {
+                          <span
+                            class="tsd-block"
+                            data-testid="tsd-block"
+                            [class.tsd-block--cancelled]="item.status === 'cancelled'"
+                            [style.left.%]="pos.left"
+                            [style.width.%]="pos.width"
+                            [style.background]="itemColor(item)"
+                            [attr.title]="itemTitle(item)"
+                            [attr.aria-label]="itemTitle(item)"
+                            role="img"
+                          ></span>
+                        }
+                      }
+                      @for (seg of m.unscheduled; track seg.start) {
+                        @if (position(seg.start, seg.end); as pos) {
+                          <span class="tsd-unscheduled" [style.left.%]="pos.left" [style.width.%]="pos.width" [attr.title]="seg.title + ' · unscheduled'"></span>
+                        }
+                      }
+                    </div>
+                  </td>
+                  <td class="tsd-num">{{ data.plannerEnabled ? minutes(m.plannedTaskMinutes) : '—' }}</td>
+                  <td class="tsd-num">{{ minutes(m.clockedMinutes) }}</td>
+                  <td class="tsd-num" data-testid="tsd-score">{{ percent(m.score) }}</td>
+                </tr>
+              } @empty {
+                <tr><td class="tsd-muted" colspan="5">No one reports to you</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="tsd-grid">
+        <section class="tsd-panel">
+          <p class="tsd-title">Execution ranking (today)</p>
+          <p class="tsd-muted">Score = 60% items done of those due so far + 40% planned time covered so far. Unscheduled time is shown, never subtracted.</p>
+          <ol class="tsd-ranking" data-testid="tsd-ranking">
+            @for (m of data.members; track m.employeeId) {
+              <li class="tsd-rank-row" data-testid="tsd-rank-row">
+                <span class="tsd-rank" [class.tsd-rank--top]="m.rank !== null && m.rank <= 3">{{ m.rank ?? '—' }}</span>
+                <span class="tsd-name">{{ m.displayName }}</span>
+                @if (m.score !== null) {
+                  <span class="tsd-parts">Items {{ percent(m.itemCompletionPercent) }} · Time {{ percent(m.timeCoveragePercent) }}</span>
+                  <span class="tsd-score">{{ percent(m.score) }}</span>
+                } @else {
+                  <span class="tsd-parts">
+                    @if (m.itemCompletionPercent !== null || m.timeCoveragePercent !== null) {
+                      Items {{ percent(m.itemCompletionPercent) }} · Time {{ percent(m.timeCoveragePercent) }} ·
+                    }
+                    {{ hasPlan(m) || m.notRankedReason === 'on_leave' || m.notRankedReason === 'planner_off' ? '' : 'No plan · ' }}
+                  </span>
+                  <span class="tsd-not-ranked" data-testid="tsd-not-ranked">Not ranked · {{ reason(m) }}</span>
+                }
+                @if (data.plannerEnabled && unscheduled(m) > 0) {
+                  <span class="tsd-badge">Unscheduled {{ minutes(unscheduled(m)) }}</span>
+                }
+              </li>
+            }
+          </ol>
+        </section>
+
+        <div class="tsd-stack">
+          <section class="tsd-panel" data-testid="tsd-unscheduled-panel">
+            <p class="tsd-title">Unscheduled work <span class="tsd-muted">· Worked without a matching Planner slot.</span></p>
+            @if (!data.plannerEnabled) {
+              <p class="tsd-muted">Planner is off.</p>
+            } @else {
+              <ul class="tsd-list">
+                @for (u of unscheduledRows(); track u.member.employeeId + u.row.start) {
+                  <li>
+                    <span class="tsd-name">{{ u.member.displayName }}</span>
+                    <span class="tsd-muted">{{ u.row.title }} · {{ range(u.row.start, u.row.end) }} · {{ u.row.kind === 'no_plan' ? 'No plan' : 'Outside slot' }}</span>
+                    <span class="tsd-badge">{{ minutes(u.row.minutes) }}</span>
+                  </li>
+                } @empty {
+                  <li class="tsd-muted">Nothing worked off-plan.</li>
+                }
+              </ul>
+            }
+          </section>
+          <section class="tsd-panel" data-testid="tsd-conflicts-panel">
+            <p class="tsd-title">Conflicts</p>
+            <ul class="tsd-list">
+              @for (c of conflictRows(); track c.member.employeeId + c.row.start + c.row.kind) {
+                <li>
+                  <span class="tsd-name">{{ c.member.displayName }}</span>
+                  <span class="tsd-muted">
+                    {{ c.row.kind === 'block_meeting' ? 'Planned task during a meeting' : 'Clocked on two tasks at once' }} ·
+                    {{ c.row.firstTitle }} / {{ c.row.secondTitle }} · {{ range(c.row.start, c.row.end) }}
+                  </span>
+                </li>
+              } @empty {
+                <li class="tsd-muted">No conflicts.</li>
+              }
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  }
+</app-modal>

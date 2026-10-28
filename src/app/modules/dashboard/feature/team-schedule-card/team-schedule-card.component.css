@@ -1,0 +1,261 @@
+/* Today's team schedule: the Team Attendance card's visual tokens (slate text scale, 140px donut, 40px rows). */
+.tsc-mini {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.tsc-donut {
+  position: relative;
+  flex: none;
+}
+
+.tsc-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.125rem;
+  line-height: 1;
+}
+
+.tsc-donut-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.tsc-donut-of {
+  font-size: 0.6875rem;
+  color: rgb(100 116 139);
+}
+
+.tsc-alert {
+  border-radius: 0.5rem;
+  background: rgb(255 251 235);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(180 83 9);
+  text-align: center;
+}
+
+.tsc-note {
+  border-radius: 0.5rem;
+  background: rgb(248 250 252);
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  color: rgb(71 85 105);
+}
+
+.tsc {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.tsc-rows {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tsc-row {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgb(248 250 252);
+  padding: 0.25rem 0;
+}
+
+.tsc-row:last-child { border-bottom: 0; }
+
+.tsc-row-main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tsc-row-top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.tsc-name {
+  overflow: hidden;
+  color: rgb(15 23 42);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tsc-chip {
+  --tone: #64748b;
+  flex: none;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tone) 12%, #fff);
+  padding: 0.0625rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--tone) 80%, rgb(15 23 42));
+}
+
+.tsc-badge {
+  flex: none;
+  border-radius: 9999px;
+  background: rgb(254 243 199);
+  padding: 0.0625rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgb(180 83 9);
+}
+
+.tsc-sub {
+  font-size: 0.6875rem;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+}
+
+.tsc-plan-bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(241 245 249);
+}
+
+.tsc-plan-seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 9999px;
+}
+
+.tsc-plan-seg--cancelled { opacity: 0.3; }
+
+.tsc-completion {
+  flex: none;
+  width: 3.5rem;
+  text-align: right;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.tsc-completion--none {
+  font-weight: 500;
+  color: rgb(100 116 139);
+}
+
+.tsc-link {
+  flex: none;
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(37 99 235);
+}
+
+.tsc-link:hover { text-decoration: underline; }
+
+.tsc-timeline {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.tsc-axis,
+.tsc-line {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tsc-axis {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 1.5rem;
+  background: #fff;
+}
+
+.tsc-axis-name {
+  position: sticky;
+  left: 0;
+  font-size: 0.8125rem;
+}
+
+.tsc-axis-track {
+  position: relative;
+  height: 100%;
+}
+
+.tsc-tick {
+  position: absolute;
+  top: 0.25rem;
+  transform: translateX(-50%);
+  font-size: 0.625rem;
+  color: rgb(100 116 139);
+  font-variant-numeric: tabular-nums;
+}
+
+.tsc-line {
+  height: 40px;
+  border-bottom: 1px solid rgb(248 250 252);
+}
+
+.tsc-track {
+  position: relative;
+  height: 22px;
+  border-radius: 0.375rem;
+  background: rgb(248 250 252);
+}
+
+.tsc-block {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  min-width: 3px;
+  border-radius: 0.25rem;
+}
+
+.tsc-block--cancelled { opacity: 0.3; }
+.tsc-block--conflict { outline: 2px solid #ef4444; outline-offset: 1px; }
+
+.tsc-unscheduled {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  min-width: 3px;
+  border-radius: 0.25rem;
+  background: repeating-linear-gradient(135deg, #f59e0b 0 4px, #fde68a 4px 8px);
+}
+
+.tsc-now {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: #ef4444;
+}
