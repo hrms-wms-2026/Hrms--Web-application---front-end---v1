@@ -1,8 +1,8 @@
 <aside data-testid="planner-focus-panel" class="flex flex-col gap-1 rounded-lg border border-[var(--color-border)] p-2 text-xs">
   <div class="flex items-center gap-2">
-    <h2 class="text-sm font-semibold">Focus</h2>
+    <h2 class="text-sm font-semibold">Task queue</h2>
     @if (closable()) {
-      <button type="button" data-testid="planner-focus-close" aria-label="Close Focus" class="ml-auto px-1 text-[var(--color-text-secondary)]"
+      <button type="button" data-testid="planner-focus-close" aria-label="Close Task queue" class="ml-auto px-1 text-[var(--color-text-secondary)]"
         (click)="closed.emit()">✕</button>
     }
   </div>
@@ -15,7 +15,7 @@
   </p>
 
   @if (empty()) {
-    <p data-testid="planner-focus-empty" class="py-2 text-[var(--color-text-secondary)]">Nothing to focus on.</p>
+    <p data-testid="planner-focus-empty" class="py-2 text-[var(--color-text-secondary)]">Nothing in the queue.</p>
   }
 
   @for (group of groups(); track group.reason) {
