@@ -28,20 +28,10 @@
 .tp-head__title p { margin: 2px 0 0; font-size: 12px; color: var(--color-text-secondary); }
 .tp-head__controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 
-/* Compact "This Month ▾" style dropdowns (app-select restyled through its documented hooks). */
-.tp-compact-select { width: 150px; }
-.tp-compact-select--period { width: 136px; }
-.tp-compact-select--wide { width: 180px; }
-:host ::ng-deep .tp-compact-select .app-select__trigger {
-  height: 32px;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: 32px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-}
-:host ::ng-deep .tp-compact-select [data-testid='select-leading-icon'] { left: 10px; width: 14px; height: 14px; }
+/* Compact "This Month ▾" style dropdowns: app-select at size="sm" (icon in its own addon, value beside it). */
+.tp-compact-select { width: 170px; }
+.tp-compact-select--period { width: 140px; }
+.tp-compact-select--wide { width: 190px; }
 
 .tp-close {
   display: inline-flex;

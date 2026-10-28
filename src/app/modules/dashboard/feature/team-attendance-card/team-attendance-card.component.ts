@@ -1,17 +1,29 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { NgTemplateOutlet } from '@angular/common';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
-import { TeamAttendanceBucket, TeamAttendanceSummaryResponse } from '../../models/team-attendance.model';
+import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.service';
+import { TeamAttendanceBucket, TeamAttendanceEmployeeRow, TeamAttendanceSummaryResponse } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
 import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/attendance-day-chart.component';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import { TeamAttendanceDetailDialogComponent } from '../team-attendance-detail-dialog/team-attendance-detail-dialog.component';
 import { TEAM_ATTENDANCE_COLORS, TEAM_ATTENDANCE_LABELS, teamAttendanceDelta, teamAttendanceRangeLabel } from '../../utils/team-attendance-format.util';
-import { TeamAttendanceView, resolveTeamAttendanceView } from '../../utils/team-attendance-layout.util';
+import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import {
+  EMPTY_TEAM_ATTENDANCE_PLAN,
+  TEAM_ATTENDANCE_BREAKPOINTS,
+  TEAM_ATTENDANCE_CARD_CHROME,
+  TEAM_ATTENDANCE_HERO_LEGEND_WIDTH_PX,
+  TEAM_ATTENDANCE_MAX_RANKING_ROWS,
+  TeamAttendancePlan,
+  TeamAttendanceView,
+  planTeamAttendanceLayout,
+  resolveTeamAttendanceView
+} from '../../utils/team-attendance-layout.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
@@ -25,9 +37,10 @@ interface LegendRow {
 }
 
 /**
- * My Team "Team attendance". One card, three views chosen from its own rendered size (small: today's rate and
- * ring; medium: donut, status legend and the period's trend; large: status tiles, trend and today's list); the
- * expand button opens the detail dialog. The Week / Month switch and the ‹ › navigation live in the store, so a
+ * My Team "Team attendance". One card whose layout comes from its own rendered size: a 2-row card shows the
+ * donut (or, stretched sideways, a stacked bar); taller cards keep the donut in one place and add today's
+ * status tiles, then the period's trend chart, then a summary of the employee ranking as they grow. The expand
+ * button opens the popup with the full ranking. The Week / Month switch and the ‹ › navigation live in the store, so a
  * resize or the dialog never resets them. Today's figures are a snapshot; the trend covers the selected period.
  */
 @Component({
@@ -37,7 +50,6 @@ interface LegendRow {
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
-    KpiTilesComponent,
     AvatarComponent,
     AttendanceDayChartComponent,
     TeamAttendanceDetailDialogComponent
@@ -56,17 +68,36 @@ export class TeamAttendanceCardComponent implements OnInit {
   });
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly api = inject(TeamAttendanceApiService);
 
   private pollId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
   private resizeObserver: ResizeObserver | null = null;
   private frameId: number | null = null;
   private pendingSize: { width: number; height: number } | null = null;
+  /** Whether a size has been applied yet: the first measurement picks its view with no hysteresis. */
+  private measured = false;
 
-  /** The view for the card's current size; 'small' until the first measurement. */
-  readonly view = signal<TeamAttendanceView>('small');
+  /** The view for the card's current size; 'standard' until the first measurement. */
+  readonly view = signal<TeamAttendanceView>('standard');
+  /** The sections under the donut at the current size (tiles, trend, ranking rows). */
+  readonly plan = signal<TeamAttendancePlan>(EMPTY_TEAM_ATTENDANCE_PLAN);
+  /** standard: whether today's status legend fits beside the donut and the rate. */
+  readonly heroLegend = signal(false);
+  /** mini: a wide card shows the stacked bar instead of the donut. */
+  readonly miniBar = signal(false);
+  /** mini with the donut: whether attended-of-eligible fits beside it. */
+  readonly miniFigure = signal(false);
   readonly detailOpen = signal(false);
 
+  /** The top of the employee ranking (best rate first), loaded only while the card is tall enough to show it. */
+  protected readonly ranking = signal<readonly TeamAttendanceEmployeeRow[] | null>(null);
+  protected readonly rankingError = signal(false);
+  private rankingKey = '';
+  private rankingSub: Subscription | null = null;
+  protected readonly rankingShown = computed(() => (this.ranking() ?? []).slice(0, this.plan().rankingRows));
+
+  protected readonly donutPx = DASHBOARD_DONUT_PX;
   protected readonly labels = TEAM_ATTENDANCE_LABELS;
   protected readonly colors = TEAM_ATTENDANCE_COLORS;
 
@@ -123,25 +154,25 @@ export class TeamAttendanceCardComponent implements OnInit {
     (this.store.data()?.todayCounts.pending ? `, ${this.store.data()?.todayCounts.pending} not in yet` : '')
   );
 
-  protected readonly tiles = computed<KpiTile[]>(() => {
-    const rows = this.legend();
-    const pending = this.store.data()?.todayCounts.pending ?? 0;
-    const tone = { present: 'success', absent: 'danger', late: 'warning', leave: 'accent' } as const;
-    const icon = { present: 'check-circle', absent: 'alert-triangle', late: 'clock', leave: 'users' } as const;
-    return rows.map((r) => ({
-      label: r.label,
-      value: r.count,
-      hint: r.key === 'present' && pending > 0 ? `${r.percent}% · ${pending} not in yet` : `${r.percent}% today`,
-      icon: icon[r.key],
-      tone: tone[r.key],
-      testId: `ta-tile-${r.key}`
-    }));
-  });
-
   /** True when no day of the period had anyone expected: the chart would be empty. */
   protected readonly noWorkingDays = computed(() =>
     (this.store.data()?.trend ?? []).every((p) => p.present + p.late + p.absent + p.onLeave === 0)
   );
+
+  constructor() {
+    // Load the ranking for the shown period and department once the card is tall enough to show it.
+    effect(() => {
+      const data = this.store.data();
+      const departmentId = this.store.query().departmentId;
+      const wanted = this.plan().rankingRows > 0;
+      if (!data || !wanted) return;
+      const key = `${data.mode}|${data.rangeStart}|${departmentId ?? ''}|${data.calculatedAtUtc}`;
+      if (key === this.rankingKey) return;
+      this.rankingKey = key;
+      untracked(() => this.loadRanking(data.mode, data.rangeStart, departmentId));
+    });
+    inject(DestroyRef).onDestroy(() => this.rankingSub?.unsubscribe());
+  }
 
   ngOnInit(): void {
     this.feed.start();
@@ -163,16 +194,25 @@ export class TeamAttendanceCardComponent implements OnInit {
     return fileId ? buildFileUrl(fileId) : null;
   }
 
-  /** Clock-in time in the team's schedule time zone, 24-hour. */
-  protected clockIn(at: string | null): string {
-    const timezone = this.store.data()?.timezone;
-    if (!at) return '–';
-    try {
-      return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: timezone || undefined })
-        .format(new Date(at));
-    } catch {
-      return new Date(at).toISOString().slice(11, 16);
-    }
+  retryRanking(event?: Event): void {
+    event?.stopPropagation();
+    const data = this.store.data();
+    if (data) this.loadRanking(data.mode, data.rangeStart, this.store.query().departmentId);
+  }
+
+  private loadRanking(mode: 'week' | 'month', anchor: string, departmentId: string | null): void {
+    this.rankingSub?.unsubscribe();
+    this.rankingError.set(false);
+    this.rankingSub = this.api
+      .getEmployees({ mode, anchor, departmentId, page: 1, pageSize: TEAM_ATTENDANCE_MAX_RANKING_ROWS, sort: 'rate' })
+      .subscribe({
+        next: (page) => this.ranking.set(page.items),
+        error: () => {
+          this.ranking.set(null);
+          this.rankingError.set(true);
+          this.rankingKey = '';
+        }
+      });
   }
 
   onModeSelect(event: Event): void {
@@ -222,8 +262,23 @@ export class TeamAttendanceCardComponent implements OnInit {
     const size = this.pendingSize;
     if (!size) return;
     this.pendingSize = null;
-    const view = resolveTeamAttendanceView(size.width, size.height, this.view());
+    const view = resolveTeamAttendanceView(size.width, size.height, this.measured ? this.view() : null);
+    if (size.width > 0 && size.height > 0) this.measured = true;
     if (view !== this.view()) this.view.set(view);
+    const plan = planTeamAttendanceLayout(view, size.width, size.height);
+    const current = this.plan();
+    if (
+      plan.heroTrend !== current.heroTrend ||
+      plan.tiles !== current.tiles ||
+      plan.tileColumns !== current.tileColumns ||
+      plan.trend !== current.trend ||
+      plan.rankingRows !== current.rankingRows
+    ) {
+      this.plan.set(plan);
+    }
+    this.heroLegend.set(size.width - TEAM_ATTENDANCE_CARD_CHROME.width >= TEAM_ATTENDANCE_HERO_LEGEND_WIDTH_PX);
+    this.miniBar.set(size.width >= TEAM_ATTENDANCE_BREAKPOINTS.miniBarWidth);
+    this.miniFigure.set(size.width >= TEAM_ATTENDANCE_BREAKPOINTS.miniFigureWidth);
   }
 
   private stopObservingSize(): void {

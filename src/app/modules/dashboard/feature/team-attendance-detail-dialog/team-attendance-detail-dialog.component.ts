@@ -36,7 +36,8 @@ function dateHeader(iso: string): { day: number; weekday: string } {
 }
 
 /**
- * The Team attendance widget's fourth view: the selected week or month in full. Period tiles count employee-days;
+ * The Team attendance widget's popup, in the Team Progress popup's shell: the selected week or month in full,
+ * with the employee matrix ranked by attendance rate. Period tiles count employee-days;
  * the matrix has one column per date of the period (7, or 28-31) and scrolls sideways with the name column pinned.
  * Period, mode and department are the card's own store state, so opening and closing never resets them.
  */
@@ -131,7 +132,7 @@ export class TeamAttendanceDetailDialogComponent {
           return;
         }
       }
-      untracked(() => this.loadRows({ mode: data.mode, anchor: data.rangeStart, departmentId, search, page, pageSize: PAGE_SIZE }));
+      untracked(() => this.loadRows({ mode: data.mode, anchor: data.rangeStart, departmentId, search, page, pageSize: PAGE_SIZE, sort: 'rate' }));
     });
 
     this.destroyRef.onDestroy(() => {
@@ -195,7 +196,8 @@ export class TeamAttendanceDetailDialogComponent {
         anchor: data.rangeStart,
         departmentId: this.store.query().departmentId,
         search: this.search(),
-        pageSize: EXPORT_PAGE_SIZE
+        pageSize: EXPORT_PAGE_SIZE,
+        sort: 'rate'
       };
       const items: TeamAttendanceEmployeeRow[] = [];
       for (let page = 1; ; page++) {
@@ -203,8 +205,9 @@ export class TeamAttendanceDetailDialogComponent {
         items.push(...result.items);
         if (page >= result.totalPages || result.items.length === 0) break;
       }
-      const header = ['Name', 'Department', ...data.trend.map((p) => p.date), 'Attended', 'Eligible days', 'Rate %'];
+      const header = ['Rank', 'Name', 'Department', ...data.trend.map((p) => p.date), 'Attended', 'Eligible days', 'Rate %'];
       const lines = items.map((r) => [
+        r.rank === null ? '' : String(r.rank),
         r.name,
         r.department ?? '',
         ...r.days.map((d) => this.labels[d.bucket]),
