@@ -10,6 +10,8 @@
 >
   <div widget-actions class="flex min-w-0 items-center gap-1">
     @if (store.data(); as data) {
+      <!-- The mini view has no room for the switch next to the title; its delta still names the period. -->
+      @if (view() !== 'mini') {
       <select
         class="ta-period"
         data-testid="ta-mode"
@@ -21,6 +23,7 @@
         <option value="week" [selected]="data.mode === 'week'">Week</option>
         <option value="month" [selected]="data.mode === 'month'">Month</option>
       </select>
+      }
     }
     <app-popout-header-actions
       [refreshedAt]="store.loadedAt()"
@@ -52,7 +55,7 @@
       </div>
     </ng-template>
 
-    <ng-template #donutTpl let-size="size">
+    <ng-template #donutTpl let-size="size" let-bare="bare">
       <div class="ta-donut" [style.width.px]="size" [style.height.px]="size" data-testid="ta-donut">
         <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
           <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
@@ -69,10 +72,12 @@
             />
           }
         </svg>
-        <p class="ta-donut-center" data-testid="ta-ring-center">
-          <span class="ta-donut-value">{{ attendedToday() }}</span>
-          <span class="ta-donut-of">/ {{ data.eligibleToday }}</span>
-        </p>
+        @if (!bare) {
+          <p class="ta-donut-center" data-testid="ta-ring-center">
+            <span class="ta-donut-value">{{ attendedToday() }}</span>
+            <span class="ta-donut-of">/ {{ data.eligibleToday }}</span>
+          </p>
+        }
       </div>
     </ng-template>
 
@@ -85,6 +90,18 @@
     </ng-template>
 
     @switch (view()) {
+      @case ('mini') {
+        <div class="ta-mini" data-testid="ta-mini">
+          <div class="min-w-0">
+            <p class="ta-rate ta-rate--mini" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</p>
+            <p class="ta-caption">{{ attendedToday() }}/{{ data.eligibleToday }} in today</p>
+            @if (delta(); as d) {
+              <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
+            }
+          </div>
+          <ng-container [ngTemplateOutlet]="donutTpl" [ngTemplateOutletContext]="{ size: 52, bare: true }" />
+        </div>
+      }
       @case ('small') {
         <div class="ta-small" data-testid="ta-small">
           <ng-container [ngTemplateOutlet]="rangeTpl" />

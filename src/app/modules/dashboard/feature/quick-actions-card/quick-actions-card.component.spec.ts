@@ -8,6 +8,7 @@ import { PermissionService } from '../../../../core/auth/state/permission.servic
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { AttendanceTodayResponse } from '../../../attendance/models/time-tracking.model';
 import { QuickActionsCardComponent } from './quick-actions-card.component';
+import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
 
 function makeToday(overrides: Partial<AttendanceTodayResponse> = {}): AttendanceTodayResponse {
   return {
@@ -62,6 +63,31 @@ describe('QuickActionsCardComponent', () => {
     fixture.detectChanges();
     return { fixture, loadToday, startBreak, endBreak };
   }
+
+  it('a 2x2 card shows icon-only tiles that keep their names for screen readers and as tooltips', async () => {
+    stubResizeObserver();
+    try {
+      const { fixture } = await setup(makeToday(), true);
+      const el: HTMLElement = fixture.nativeElement;
+      const section = el.querySelector('[data-purpose="quick-actions"]')!;
+      expect(section.getAttribute('data-compact')).toBe('false');
+
+      FakeResizeObserver.instances[0].trigger(206, 204);
+      fixture.detectChanges();
+      expect(section.getAttribute('data-compact')).toBe('true');
+      const timeline = el.querySelector('[data-testid="quick-action-activity-timeline"]')!;
+      expect(timeline.getAttribute('title')).toBe('Activity Timeline');
+      expect(timeline.textContent).toContain('Activity Timeline');
+      expect(el.querySelector('[data-testid="quick-action-break"]')!.getAttribute('title')).toBe('Start Break');
+
+      FakeResizeObserver.instances[0].trigger(315, 312);
+      fixture.detectChanges();
+      expect(section.getAttribute('data-compact')).toBe('false');
+      expect(timeline.getAttribute('title')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 
   it('loads today on init', async () => {
     const { loadToday } = await setup(null);

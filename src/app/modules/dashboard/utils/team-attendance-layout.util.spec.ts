@@ -10,7 +10,11 @@ describe('team attendance layout', () => {
     [760, 640, 'large'],
     [1200, 800, 'large'],
     [500, 640, 'medium'],
-    [760, 240, 'small']
+    [760, 240, 'mini'],
+    [206, 204, 'mini'],
+    [292, 204, 'mini'],
+    [206, 420, 'mini'],
+    [315, 312, 'small']
   ] as const)('%ix%i is %s', (w, h, view) => {
     expect(classifyTeamAttendanceSize(w, h)).toBe(view);
   });

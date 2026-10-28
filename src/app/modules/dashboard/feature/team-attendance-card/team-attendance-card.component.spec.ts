@@ -96,6 +96,18 @@ describe('TeamAttendanceCardComponent', () => {
     expect(getSummary).toHaveBeenCalledTimes(1);
   });
 
+  it('a 2x2 card (or any 2-column or 2-row card) shows the mini view: rate, attended of eligible and a bare ring', () => {
+    setup();
+    for (const [w, h] of [[206, 204], [292, 204], [206, 420], [760, 204]]) {
+      const el = resize(w, h);
+      expect(q(el, 'ta-mini')).toBeTruthy();
+      expect(q(el, 'ta-today-rate')?.textContent?.trim()).toBe('96%');
+      expect(el.textContent).toContain('24/25 in today');
+      expect(q(el, 'ta-donut')).toBeTruthy();
+      expect(q(el, 'ta-ring-center')).toBeNull();
+    }
+  });
+
   it('shows today\'s rate, attended of eligible and the change in points on the small view', () => {
     setup();
     const el = resize(350, 350);

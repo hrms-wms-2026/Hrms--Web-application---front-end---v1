@@ -1,20 +1,26 @@
-<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-purpose="quick-actions">
-  <h2 class="text-sm font-bold text-slate-800 mb-3">Quick Actions</h2>
-  <div class="grid grid-cols-2 gap-2.5 @xs:grid-cols-3">
+<section
+  class="qa-card h-full rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+  [class.qa-compact]="compact()"
+  data-purpose="quick-actions"
+  [attr.data-compact]="compact()"
+>
+  <h2 class="qa-heading text-sm font-bold text-slate-800 mb-3">Quick Actions</h2>
+  <div class="qa-grid grid grid-cols-2 gap-2.5 @xs:grid-cols-3">
     <!-- Action 1: Start Break -->
     <button
       type="button"
       data-testid="quick-action-break"
-      class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all text-center cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+      [attr.title]="compact() ? breakLabel() : null"
+      class="qa-tile group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all text-center cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
       [disabled]="breakDisabled() || breakBusy()"
       (click)="toggleBreak()"
     >
-      <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+      <div class="qa-icon w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
         </svg>
       </div>
-      <span class="text-xs font-bold text-slate-800 leading-tight" data-testid="quick-action-break-label">
+      <span class="qa-label text-xs font-bold text-slate-800 leading-tight" data-testid="quick-action-break-label">
         {{ breakBusy() ? 'Working…' : breakLabel() }}
       </span>
       <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Take a pause</span>
@@ -25,28 +31,30 @@
       <a
         routerLink="/dashboard"
         data-testid="quick-action-my-work"
-        class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-center cursor-pointer"
+        [attr.title]="compact() ? 'My Work' : null"
+        class="qa-tile group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-center cursor-pointer"
       >
-        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+        <div class="qa-icon w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M3 12l9-8 9 8M5 10v10h5v-6h4v6h5V10" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
           </svg>
         </div>
-        <span class="text-xs font-bold text-slate-800 leading-tight">My Work</span>
+        <span class="qa-label text-xs font-bold text-slate-800 leading-tight">My Work</span>
         <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">My dashboard</span>
       </a>
     } @else {
       <a
         routerLink="/dashboard/my-team"
         data-testid="quick-action-my-team"
-        class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-center cursor-pointer"
+        [attr.title]="compact() ? 'My Team' : null"
+        class="qa-tile group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-blue-300 hover:bg-blue-50/30 transition-all text-center cursor-pointer"
       >
-        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+        <div class="qa-icon w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M17 20h5v-2a3 3 0 00-5.36-1.86M17 20H7m10 0v-2c0-.66-.13-1.28-.36-1.86M7 20H2v-2a3 3 0 015.36-1.86M7 20v-2c0-.66.13-1.28.36-1.86m0 0a5 5 0 019.28 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
           </svg>
         </div>
-        <span class="text-xs font-bold text-slate-800 leading-tight">My Team</span>
+        <span class="qa-label text-xs font-bold text-slate-800 leading-tight">My Team</span>
         <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Team dashboard</span>
       </a>
     }
@@ -55,15 +63,16 @@
     <a
       routerLink="/dashboard/activity-timeline"
       data-testid="quick-action-activity-timeline"
-      class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-purple-300 hover:bg-purple-50/30 transition-all text-center cursor-pointer"
+        [attr.title]="compact() ? 'Activity Timeline' : null"
+      class="qa-tile group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-purple-300 hover:bg-purple-50/30 transition-all text-center cursor-pointer"
     >
-      <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+      <div class="qa-icon w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="9" stroke-width="1.8"></circle>
           <path d="M12 7v5l3 2" stroke-linecap="round" stroke-width="1.8"></path>
         </svg>
       </div>
-      <span class="text-xs font-bold text-slate-800 leading-tight">Activity Timeline</span>
+      <span class="qa-label text-xs font-bold text-slate-800 leading-tight">Activity Timeline</span>
       <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Full activity</span>
     </a>
 
@@ -73,15 +82,16 @@
       <a
         routerLink="/inbox"
         data-testid="quick-action-create-ticket"
-        class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-amber-300 hover:bg-amber-50/30 transition-all text-center cursor-pointer"
+        [attr.title]="compact() ? 'Create Ticket' : null"
+        class="qa-tile group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-amber-300 hover:bg-amber-50/30 transition-all text-center cursor-pointer"
       >
-        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+        <div class="qa-icon w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M4 7a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2a2 2 0 000-4V7z" stroke-linejoin="round" stroke-width="1.8"></path>
             <path d="M12 9v4M10 11h4" stroke-linecap="round" stroke-width="1.8"></path>
           </svg>
         </div>
-        <span class="text-xs font-bold text-slate-800 leading-tight">Create Ticket</span>
+        <span class="qa-label text-xs font-bold text-slate-800 leading-tight">Create Ticket</span>
         <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Raise a request</span>
       </a>
 
@@ -90,16 +100,17 @@
         <button
           type="button"
           data-testid="quick-action-create-task"
+        [attr.title]="compact() ? 'Create Task' : null"
           (click)="openCreateTask()"
-          class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all text-center cursor-pointer"
+          class="qa-tile group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all text-center cursor-pointer"
         >
-          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+          <div class="qa-icon w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <rect height="16" rx="2.5" stroke-width="1.8" width="16" x="4" y="4"></rect>
               <path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
             </svg>
           </div>
-          <span class="text-xs font-bold text-slate-800 leading-tight">Create Task</span>
+          <span class="qa-label text-xs font-bold text-slate-800 leading-tight">Create Task</span>
           <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Add work item</span>
         </button>
       }
@@ -109,15 +120,16 @@
         <a
           routerLink="/settings"
           data-testid="quick-action-settings"
-          class="group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:bg-slate-50/30 transition-all text-center cursor-pointer"
+        [attr.title]="compact() ? 'Settings' : null"
+          class="qa-tile group flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:bg-slate-50/30 transition-all text-center cursor-pointer"
         >
-          <div class="w-9 h-9 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
+          <div class="qa-icon w-9 h-9 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform shadow-2xs">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M10.3 4.3c.4-1.7 3-1.7 3.4 0a1.7 1.7 0 002.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 001 2.5c1.8.5 1.8 3 0 3.5a1.7 1.7 0 00-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 00-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 00-2.6-1c-1.5.9-3.3-.9-2.4-2.4a1.7 1.7 0 00-1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 001-2.6c-.9-1.5.9-3.3 2.4-2.4a1.7 1.7 0 002.6-1.1z" stroke-linejoin="round" stroke-width="1.8"></path>
               <circle cx="12" cy="12" r="3" stroke-width="1.8"></circle>
             </svg>
           </div>
-          <span class="text-xs font-bold text-slate-800 leading-tight">Settings</span>
+          <span class="qa-label text-xs font-bold text-slate-800 leading-tight">Settings</span>
           <span class="hidden text-[10px] text-slate-400 mt-0.5 @md:block">Preferences</span>
         </a>
       }

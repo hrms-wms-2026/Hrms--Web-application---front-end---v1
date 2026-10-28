@@ -7,6 +7,10 @@ import { canAccessNavItem } from '../../../../layouts/main-layout/nav/nav-access
 import { NAV_ITEMS } from '../../../../layouts/main-layout/nav/nav-items.config';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { QuickCreateTaskComponent } from '../quick-create-task/quick-create-task.component';
+import { injectHostSize, isCompactSize } from '../../utils/host-size.util';
+
+/** Below this width or height (between 2 and 3 grid columns/rows) the card shows icon-only tiles. */
+const COMPACT_MIN_PX = 260;
 
 @Component({
   selector: 'app-quick-actions-card',
@@ -15,6 +19,7 @@ import { QuickCreateTaskComponent } from '../quick-create-task/quick-create-task
   // A size container: the layout inside follows the card's own width (Small / Large on the grid).
   host: { class: '@container block' },
   templateUrl: './quick-actions-card.component.html',
+  styleUrl: './quick-actions-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class QuickActionsCardComponent implements OnInit {
@@ -27,6 +32,10 @@ export class QuickActionsCardComponent implements OnInit {
   /** Which dashboard the card sits on: the middle action links to the other one - My Team on the
    * personal dashboard, My Work on the My Team dashboard. */
   readonly onTeamDashboard = input(false);
+
+  private readonly size = injectHostSize();
+  /** A 2-column or 2-row card: the tiles drop their labels and sit three to a row. */
+  protected readonly compact = computed(() => isCompactSize(this.size(), COMPACT_MIN_PX, COMPACT_MIN_PX));
 
   protected readonly today = this.store.today;
   protected readonly actionLoading = this.store.actionLoading;
