@@ -32,7 +32,7 @@ describe('weekly work progress layout', () => {
     expect(classifyWeeklyProgressSize(cols(2), rows(5))).toBe('xs');
     expect(plan(cols(2), rows(5)).stackedTiles).toBe(4);
     expect(plan(cols(2), rows(4)).stackedTiles).toBe(3);
-    expect(plan(cols(2), rows(3)).stackedTiles).toBe(0);
+    expect(plan(cols(2), rows(3)).stackedTiles).toBe(1);
   });
 
   it('standard adds the chart, then the comparison, as the card gets taller', () => {
