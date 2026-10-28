@@ -865,7 +865,7 @@ describe('TaskBoardComponent', () => {
 
 
 describe('TaskBoardComponent - new meeting', () => {
-  it('offers New meeting next to Create work item and opens the meeting form placed in this project', async () => {
+  it('has no New meeting button; the work item form offers the "meeting" category instead', async () => {
     TestBed.configureTestingModule({
       imports: [TaskBoardComponent],
       providers: [
@@ -898,16 +898,12 @@ describe('TaskBoardComponent - new meeting', () => {
     // The toolbar is a template the project page renders (WorkPageToolbarStore), not part of the board's own view.
     const toolbar = TestBed.inject(WorkPageToolbarStore).template()!.createEmbeddedView(null);
     toolbar.detectChanges();
-    const button = toolbar.rootNodes
-      .map((node: Node) => (node instanceof HTMLElement ? node.querySelector('[data-testid="board-new-meeting"]') : null))
-      .find((el: Element | null) => el !== null) as HTMLElement | undefined;
-    expect(button).toBeDefined();
-    (button!.querySelector('button') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
-    expect(form).not.toBeNull();
-    expect(form.componentInstance.placement()).toEqual({ projectId: 'project-1', objectiveId: null });
+    const labels = toolbar.rootNodes
+      .flatMap((node: Node) => (node instanceof HTMLElement ? Array.from(node.querySelectorAll('button')) : []))
+      .map((b: HTMLButtonElement) => b.textContent?.trim());
+    expect(labels).toContain('Create work item');
+    expect(labels).not.toContain('New meeting');
+    expect(fixture.debugElement.query(By.css('app-task-form-modal')).componentInstance.allowMeeting()).toBe(true);
   });
 
   function routeStub() {
