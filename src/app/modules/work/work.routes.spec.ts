@@ -18,9 +18,9 @@ describe('WORK_ROUTES', () => {
     expect(milestoneRoute.children!.map((route) => route.path)).toEqual(['', 'tree']);
   });
 
-  it('registers the Approvals redirect, Board, Backlog, Calendar, and Settings as project-level siblings', () => {
+  it('registers the Approvals redirect, Board, Backlog, and Settings as project-level siblings', () => {
     const idRoute = WORK_ROUTES.find((r) => r.path === ':id')!;
-    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'approvals', 'board', 'backlog', 'calendar', 'settings']);
+    expect(idRoute.children!.map((route) => route.path)).toEqual(['milestones/:milestoneId', 'approvals', 'board', 'backlog', 'settings']);
     // The Approvals tab moved to the Inbox; old links (dashboard, bookmarks) redirect there.
     const approvals = idRoute.children!.find((r) => r.path === 'approvals')!;
     expect(approvals.loadComponent).toBeUndefined();
@@ -29,7 +29,6 @@ describe('WORK_ROUTES', () => {
     expect(redirect({ queryParams: {} })).toBe('/inbox');
     expect(idRoute.children!.find((r) => r.path === 'board')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'backlog')!.loadComponent).toBeTruthy();
-    expect(idRoute.children!.find((r) => r.path === 'calendar')!.loadComponent).toBeTruthy();
     expect(idRoute.children!.find((r) => r.path === 'settings')!.loadComponent).toBeTruthy();
   });
 

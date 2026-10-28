@@ -14,6 +14,8 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { toEditTaskRequest } from '../../utils/task.mapper';
 import { getTaskDueDateInfo } from '../../utils/task-date.util';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 const ASSIGNEE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
@@ -29,9 +31,9 @@ export interface TaskCardAssignableMember {
 @Component({
   selector: 'app-task-card',
   standalone: true,
-  imports: [TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule, DatePickerComponent, TaskAssigneeDropdownComponent],
+  imports: [KeyboardClickDirective, StopClickPropagationDirective, TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule, DatePickerComponent, TaskAssigneeDropdownComponent],
   template: `
-      <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
+      <div role="button" tabindex="0" appKeyboardClick class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
         <div class="task-card__header">
           <span class="task-card__short-id">{{ task().shortId }}</span>
           @if (task().hasPendingApproval) {
@@ -121,7 +123,7 @@ export interface TaskCardAssignableMember {
             (backdropClick)="priorityPopoverOpen.set(false)"
             (detach)="priorityPopoverOpen.set(false)"
           >
-            <div class="task-card__popover task-card__priority-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+            <div class="task-card__popover task-card__priority-popover" role="dialog" aria-label="Change priority" appStopClickPropagation>
               <div class="task-card__popover-title">Priority</div>
               <div class="task-card__popover-list">
                 @for (opt of priorityOptions; track opt.value) {
@@ -152,11 +154,8 @@ export interface TaskCardAssignableMember {
             (valueChange)="onDateChange($event)"
           />
 
-          @if (task().activeEventName) {
-            <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
-          }
           @if (isAssignee()) {
-            <div class="task-card__clock" (click)="$event.stopPropagation()">
+            <div class="task-card__clock" appStopClickPropagation>
               <app-task-clock-widget
                 [task]="task()"
                 [isAssignee]="isAssignee()"
@@ -171,7 +170,7 @@ export interface TaskCardAssignableMember {
         </div>
 
         @if (task().subtaskTotalCount > 0) {
-          <div
+          <div role="button" tabindex="0" appKeyboardClick
             class="task-card__subtask-bar"
             data-testid="task-card-subtask-bar"
             (click)="toggleSubtasks($event)"
@@ -198,7 +197,7 @@ export interface TaskCardAssignableMember {
       @if (subtasksExpanded()) {
         <div class="task-card__subtask-cards" data-testid="task-card-subtasks">
           @for (subtask of subtasks(); track subtask.id) {
-            <div
+            <div role="button" tabindex="0" appKeyboardClick
               class="task-card task-card--subtask"
               [attr.data-testid]="'task-card-subtask-' + subtask.id"
               (click)="onSubtaskRowClick($event, subtask)"
@@ -247,7 +246,7 @@ export interface TaskCardAssignableMember {
                   </span>
                 }
                 @if (isSubtaskAssignee(subtask)) {
-                  <div class="task-card__clock" (click)="$event.stopPropagation()">
+                  <div class="task-card__clock" appStopClickPropagation>
                     <app-task-clock-widget
                       [task]="subtask"
                       [isAssignee]="true"
@@ -382,7 +381,6 @@ export interface TaskCardAssignableMember {
     .task-card__priority-icon[data-priority="medium"] { color: #3b82f6; fill: #3b82f6; }
     .task-card__priority[data-priority="low"] .task-card__priority-icon,
     .task-card__priority-icon[data-priority="low"] { color: #94a3b8; fill: #94a3b8; }
-    .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__clock { min-width: 0; margin-left: auto; flex-shrink: 0; }
 
     .task-card__popover {

@@ -2,7 +2,7 @@ import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { ChangeDetectionStrategy, Component, OnDestroy, inject, input, output, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
-import { PeopleChartTreeNode } from '../../models/position.model';
+import { CoverageCardVisual, PeopleChartTreeNode } from '../../models/position.model';
 
 /** Beside the card first (right, then left), then below/above - like a contact hover card. */
 const HOVER_POSITIONS: ConnectionPositionPair[] = [
@@ -47,7 +47,12 @@ export const PEOPLE_CARD_HEIGHT = 64;
   template: `
     <div class="pcn-branch">
       @if (node().kind === 'vacant') {
-        <div class="pcn-card pcn-card--vacant">
+        <div
+          class="pcn-card pcn-card--vacant"
+          [class.pcn-card--coverage-resolved]="coverageVisual().state === 'resolved'"
+          [class.pcn-card--coverage-unresolved]="coverageVisual().state === 'unresolved'"
+          [class.pcn-card--coverage-outside]="coverageVisual().state === 'outside'"
+        >
           <span class="pcn-avatar pcn-avatar--vacant" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </span>
@@ -56,6 +61,13 @@ export const PEOPLE_CARD_HEIGHT = 64;
             <span class="pcn-meta">{{ node().departmentName || 'No department' }}</span>
           </span>
           <span class="pcn-chip pcn-chip--vacant">Vacant</span>
+          @if (coverageVisual().levels.length > 0) {
+            <span class="pcn-coverage-levels">
+              @for (levelLabel of coverageVisual().levels; track levelLabel) {
+                <span class="pcn-coverage-level">{{ levelLabel }}</span>
+              }
+            </span>
+          }
         </div>
       } @else {
         <div
@@ -69,6 +81,10 @@ export const PEOPLE_CARD_HEIGHT = 64;
           [class.pcn-card--custom]="node().reportingLine === 'custom'"
           [class.pcn-card--pending]="node().isPending"
           [class.pcn-card--selected]="selectedEmployeeIds().has(node().employeeId!)"
+          [class.pcn-card--coverage-selected]="coverageVisual().state === 'selected'"
+          [class.pcn-card--coverage-resolved]="coverageVisual().state === 'resolved'"
+          [class.pcn-card--coverage-unresolved]="coverageVisual().state === 'unresolved'"
+          [class.pcn-card--coverage-outside]="coverageVisual().state === 'outside'"
           [class.pcn-card--staying]="stayingEmployeeIds().has(node().employeeId!)"
           [class.pcn-card--dragging]="dragging() && selectedEmployeeIds().has(node().employeeId!)"
           [class.pcn-card--drop-valid]="targetMode() && !blockedTargetEmployeeIds().has(node().employeeId!)"
@@ -113,6 +129,16 @@ export const PEOPLE_CARD_HEIGHT = 64;
           }
           @if (dragging() && selectedEmployeeIds().has(node().employeeId!) && selectedCount() > 1) {
             <span class="pcn-drag-count">{{ selectedCount() }}</span>
+          }
+          @if (coverageVisual().levels.length > 0) {
+            <span class="pcn-coverage-levels" aria-label="Coverage responsibility levels">
+              @for (levelLabel of coverageVisual().levels; track levelLabel) {
+                <span class="pcn-coverage-level">{{ levelLabel }}</span>
+              }
+            </span>
+          }
+          @if (coverageVisual().state === 'unresolved') {
+            <span class="pcn-coverage-warning" title="This coverage needs attention" aria-label="Coverage needs attention">!</span>
           }
         </div>
 
@@ -203,6 +229,10 @@ export const PEOPLE_CARD_HEIGHT = 64;
     .pcn-card:hover { border-color: var(--color-sidebar-active-bg, #2563eb); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); }
     .pcn-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus-ring); }
     .pcn-card--selected { border-color: var(--color-accent) !important; background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 24%, transparent); }
+    .pcn-card--coverage-selected { border: 2px solid #2563eb !important; background: color-mix(in srgb, #2563eb 7%, var(--color-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #2563eb 18%, transparent), 0 8px 22px rgba(37, 99, 235, 0.14); }
+    .pcn-card--coverage-resolved { border-color: #10b981 !important; background: color-mix(in srgb, #10b981 10%, var(--color-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #10b981 16%, transparent), 0 8px 22px rgba(16, 185, 129, 0.14); }
+    .pcn-card--coverage-unresolved { border-color: #f59e0b !important; background: color-mix(in srgb, #f59e0b 12%, var(--color-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #f59e0b 18%, transparent), 0 8px 22px rgba(245, 158, 11, 0.16); }
+    .pcn-card--coverage-outside { opacity: 0.44; filter: grayscale(0.35); box-shadow: none; }
     .pcn-card--staying { border-style: dashed; border-color: color-mix(in srgb, var(--color-text-secondary) 45%, var(--color-border)); }
     .pcn-card--dragging { opacity: 0.66; }
     .pcn-card--drop-valid { border-color: #10b981 !important; box-shadow: 0 0 0 3px color-mix(in srgb, #10b981 22%, transparent); }
@@ -242,6 +272,10 @@ export const PEOPLE_CARD_HEIGHT = 64;
     .pcn-card--selected .pcn-check { border-color: var(--color-accent); background: var(--color-accent); }
     .pcn-check svg { width: 13px; height: 13px; }
     .pcn-drag-count { position: absolute; right: -8px; top: -9px; min-width: 22px; height: 22px; padding: 0 5px; display: grid; place-items: center; border: 2px solid var(--color-surface); border-radius: 999px; background: var(--color-accent); color: white; font-size: 0.625rem; font-weight: 700; }
+    .pcn-coverage-levels { position: absolute; right: 7px; bottom: 5px; display: flex; gap: 3px; }
+    .pcn-coverage-level { min-width: 1.25rem; padding: 1px 5px; border-radius: 999px; background: color-mix(in srgb, #059669 14%, var(--color-surface)); color: #047857; font-size: 0.6rem; font-weight: 800; line-height: 1.35; text-align: center; }
+    .pcn-card--coverage-unresolved .pcn-coverage-level { background: color-mix(in srgb, #f59e0b 18%, var(--color-surface)); color: #92400e; }
+    .pcn-coverage-warning { position: absolute; top: -8px; right: -8px; display: grid; place-items: center; width: 21px; height: 21px; border: 2px solid var(--color-surface); border-radius: 999px; background: #f59e0b; color: white; font-size: 0.7rem; font-weight: 900; }
 
     /* Hover card */
     .pcn-hover {
@@ -293,6 +327,7 @@ export class PeopleChartNodeComponent implements OnDestroy {
   readonly dragging = input(false);
   readonly choosingManager = input(false);
   readonly selectedCount = input(0);
+  readonly coverageVisual = input<CoverageCardVisual>({ state: 'default', levels: [], accessibleLabel: null });
 
   readonly personSelected = output<PeopleCardSelectionEvent>();
   readonly managerChosen = output<PeopleChartTreeNode>();

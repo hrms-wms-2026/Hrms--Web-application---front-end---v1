@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
@@ -14,6 +15,7 @@ import {
   rejectReasonRequired
 } from '../../data-access/action-center-decision.service';
 import { MyTeamDeepLinkService } from '../../data-access/my-team-deep-link.service';
+import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 import { MyTeamActionItemsStore } from '../../state/my-team-action-items.store';
 import { MyTeamCapabilitiesStore } from '../../state/my-team-capabilities.store';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
@@ -23,16 +25,18 @@ import {
   buildActionInbox,
   filterInbox,
   inboxAgeClass,
+  inboxBadge,
   inboxCounts,
-  inboxTagClass,
   isExceptionSource
 } from '../../utils/action-inbox.util';
 import { actionCenterRailVisible } from '../../utils/my-team-widget-visibility.util';
 import { safeServerDetail } from '../../../../core/services/error-handler.service';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 const REFRESH_INTERVAL_MS = 60_000;
 /** Inbox rows on the compact card; "View all" pops out the rest. */
-const CARD_ROW_LIMIT = 5;
+const CARD_ROW_LIMIT = 4;
 
 interface FilterChip {
   key: InboxFilter;
@@ -47,7 +51,8 @@ interface DecisionForm {
 
 /**
  * The Action Center as one inbox: every pending approval, open exception and overdue task in a
- * single list, oldest first, each tagged with its type, with All / Approvals / Exceptions / Overdue
+ * single list, longest-waiting first, each showing the person's photo with a small type icon, with
+ * All / Approvals / Alerts / Overdue
  * filters to look at each separately. Approvals can be approved or rejected in place (through the
  * request's own module API, after a confirm); every row's arrow opens its own screen. Polls the
  * action-items response every 60s; led-progress is owned and polled by Team Progress.
@@ -55,7 +60,7 @@ interface DecisionForm {
 @Component({
   selector: 'app-action-center-card',
   standalone: true,
-  imports: [ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [KeyboardClickDirective, StopClickPropagationDirective, AvatarComponent, ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
   templateUrl: './action-center-card.component.html',
   styleUrl: './action-center-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -70,6 +75,7 @@ export class ActionCenterCardComponent implements OnInit {
   private readonly decisions = inject(ActionCenterDecisionService);
   private readonly notifications = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly directory = inject(EmployeeDirectoryStore);
 
   private readonly now = signal(new Date());
   private pollId: ReturnType<typeof setInterval> | null = null;
@@ -110,7 +116,7 @@ export class ActionCenterCardComponent implements OnInit {
     const sources = this.store.data()?.sources ?? [];
     const chips: FilterChip[] = [{ key: 'all', label: 'All', count: counts.all }];
     if (sources.some((s) => !isExceptionSource(s.sourceKey))) chips.push({ key: 'approval', label: 'Approvals', count: counts.approval });
-    if (sources.some((s) => isExceptionSource(s.sourceKey))) chips.push({ key: 'exception', label: 'Exceptions', count: counts.exception });
+    if (sources.some((s) => isExceptionSource(s.sourceKey))) chips.push({ key: 'exception', label: 'Alerts', count: counts.exception });
     if (this.ledProgressStore.data() && this.capabilitiesStore.capabilities()?.leadsWork) {
       chips.push({ key: 'overdue', label: 'Overdue', count: counts.overdue });
     }
@@ -121,8 +127,14 @@ export class ActionCenterCardComponent implements OnInit {
   protected readonly visibleRows = computed(() =>
     this.showAll() ? this.filtered() : this.filtered().slice(0, CARD_ROW_LIMIT)
   );
-  protected readonly hiddenCount = computed(() => Math.max(0, this.filtered().length - CARD_ROW_LIMIT));
-  protected readonly canExpand = computed(() => this.inbox().length > CARD_ROW_LIMIT);
+  /** The real pending total for the active filter - the backend sends only the oldest few rows. */
+  protected readonly filterTotal = computed(() => {
+    const counts = this.counts();
+    const filter = this.filter();
+    return Math.max(filter === 'all' ? counts.all : counts[filter], this.filtered().length);
+  });
+  protected readonly hiddenCount = computed(() => Math.max(0, this.filterTotal() - CARD_ROW_LIMIT));
+  protected readonly canExpand = computed(() => Math.max(this.counts().all, this.inbox().length) > CARD_ROW_LIMIT);
   /** More are pending than the backend sent rows for - said in the pop-out, never hidden. */
   protected readonly notLoadedCount = computed(() => Math.max(0, this.counts().all - this.inbox().length));
   /** A type that failed to load: its items are missing, so say so. */
@@ -148,7 +160,24 @@ export class ActionCenterCardComponent implements OnInit {
   }
 
   ageClass = inboxAgeClass;
-  tagClass = inboxTagClass;
+  badge = inboxBadge;
+
+  /** Who each row is about, as a stable string, so the photo lookup reruns only when the people change. */
+  private readonly subjectIds = computed(
+    () => [...new Set(this.inbox().map((item) => item.subjectEmployeeId).filter((id): id is string => !!id))].sort().join(','),
+    { equal: (a, b) => a === b }
+  );
+
+  constructor() {
+    effect(() => {
+      const ids = this.subjectIds();
+      if (ids) void this.directory.ensureLoaded(ids.split(','));
+    });
+  }
+
+  avatarUrl(item: InboxItem): string | null {
+    return item.subjectEmployeeId ? this.directory.get(item.subjectEmployeeId)?.avatarUrl ?? null : null;
+  }
 
   // --- Approve / Reject ---
 

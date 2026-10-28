@@ -89,7 +89,7 @@ export function isMachineValue(str: string): boolean {
   // Exception names or stack traces
   if (
     /\b(Exception|Error|Fault|System\.|Microsoft\.|Npgsql\.|EFCore|StackTrace|Traceback)\b/i.test(trimmed) ||
-    /\bat\s+[a-zA-Z0-9_\.]+\(/i.test(trimmed)
+    /\bat\s+[a-zA-Z0-9_.]+\(/i.test(trimmed)
   ) {
     return true;
   }

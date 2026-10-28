@@ -46,11 +46,11 @@ function formatSize(bytes: number): string {
           </div>
           <div class="flex items-center gap-1">
             @if (row.status === 'error') {
-              <span data-testid="asset-retry-button" (click)="retryRequested.emit(row.id)">
+              <span role="presentation" data-testid="asset-retry-button" (click)="retryRequested.emit(row.id)">
                 <app-button variant="secondary" size="sm">Retry</app-button>
               </span>
             }
-            <span data-testid="asset-remove-button" (click)="removeRequested.emit(row.id)">
+            <span role="presentation" data-testid="asset-remove-button" (click)="removeRequested.emit(row.id)">
               <app-button variant="secondary" size="sm">Remove</app-button>
             </span>
           </div>

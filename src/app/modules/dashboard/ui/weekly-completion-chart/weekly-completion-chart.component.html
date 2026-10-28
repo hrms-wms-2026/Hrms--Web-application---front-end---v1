@@ -1,0 +1,16 @@
+<div class="wc-chart" role="img" [attr.aria-label]="summary()" data-testid="weekly-completion-chart">
+  @for (bar of bars(); track bar.key) {
+    <div class="wc-col" [title]="bar.tooltip" data-testid="weekly-completion-bar">
+      @if (!compact()) {
+        <span class="wc-value" [class.wc-value--zero]="bar.height === 0">{{ bar.hoursText }}</span>
+      }
+      <div class="wc-track">
+        <div class="wc-bar" [class.wc-bar--current]="bar.current" [style.height.%]="bar.height"></div>
+      </div>
+      <span class="wc-label" [class.wc-label--current]="bar.current">{{ bar.label }}</span>
+    </div>
+  }
+</div>
+@if (total() === 0) {
+  <p class="wc-empty" data-testid="weekly-completion-empty">No tasks completed in these weeks</p>
+}

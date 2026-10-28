@@ -1,7 +1,7 @@
-<div [class]="isModal() ? 'add-emp-modal-backdrop' : 'add-emp-standalone-wrapper'" (click)="isModal() ? onBackdropClick($event) : null">
+<div role="presentation" [class]="isModal() ? 'add-emp-modal-backdrop' : 'add-emp-standalone-wrapper'" (click)="isModal() ? onBackdropClick($event) : null">
   <div
     [class]="isModal() ? 'add-emp-modal ui-scroll-open' : 'add-emp-standalone-container'"
-    (click)="$event.stopPropagation()"
+    appStopClickPropagation
     role="dialog"
     [attr.aria-modal]="isModal()"
     aria-labelledby="modal-add-emp-title"
@@ -806,7 +806,7 @@
                                 </button>
                               } @else {
                                 <div class="task-pill-row">
-                                  <button type="button" class="task-pill task-pill--position" (click)="openTaskPositionPicker(task.clientId)">
+                                  <button (keydown.delete)="clearTaskAssignment(task)" (keydown.backspace)="clearTaskAssignment(task)" type="button" class="task-pill task-pill--position" (click)="openTaskPositionPicker(task.clientId)">
                                     <span class="task-pill__icon" aria-hidden="true">
                                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M3 7h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path>
@@ -814,10 +814,10 @@
                                       </svg>
                                     </span>
                                     <span>{{ positionLabel(task.assigneePositionId) }}</span>
-                                    <span class="task-pill__remove" (click)="$event.stopPropagation(); clearTaskAssignment(task)">×</span>
+                                    <span aria-hidden="true" class="task-pill__remove" (click)="$event.stopPropagation(); clearTaskAssignment(task)">×</span>
                                   </button>
                                   @if (task.selectedAssigneeUserId) {
-                                    <button type="button" class="task-pill task-pill--employee" (click)="openTaskEmployeePicker(task.clientId)">
+                                    <button (keydown.delete)="clearTaskEmployee(task)" (keydown.backspace)="clearTaskEmployee(task)" type="button" class="task-pill task-pill--employee" (click)="openTaskEmployeePicker(task.clientId)">
                                       <span class="task-pill__icon" aria-hidden="true">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -825,7 +825,7 @@
                                         </svg>
                                       </span>
                                       <span>{{ selectedTaskAssigneeName(task) }}</span>
-                                      <span class="task-pill__remove" (click)="$event.stopPropagation(); clearTaskEmployee(task)">×</span>
+                                      <span aria-hidden="true" class="task-pill__remove" (click)="$event.stopPropagation(); clearTaskEmployee(task)">×</span>
                                     </button>
                                   } @else {
                                     <button type="button" class="task-pill-link" (click)="openTaskEmployeePicker(task.clientId)">

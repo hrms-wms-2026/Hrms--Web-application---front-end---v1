@@ -11,7 +11,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 export function getTaskDueDateInfo(
   dueDate: Date | string | null | undefined,
-  isCompleted: boolean = false,
+  isCompleted = false,
   now: Date = new Date()
 ): TaskDueDateInfo | null {
   if (!dueDate) return null;

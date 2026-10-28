@@ -82,7 +82,7 @@ export interface UpdatePersonalInformationRequest {
   gender: string | null;
   nationalityId: string | null;
   displayTimezone: string | null;
-  addresses: Array<{ addressType: 'permanent' | 'current'; addressJson: string; isPrimary: boolean }>;
+  addresses: { addressType: 'permanent' | 'current'; addressJson: string; isPrimary: boolean }[];
   version: string;
 }
 

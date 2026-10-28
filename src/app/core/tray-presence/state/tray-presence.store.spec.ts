@@ -53,7 +53,7 @@ describe('TrayPresenceStore', () => {
     return TestBed.inject(TrayPresenceStore);
   }
 
-  function setup(statuses: Array<TrayPresenceResponse | Error> = []) {
+  function setup(statuses: (TrayPresenceResponse | Error)[] = []) {
     const getStatus = vi.fn();
     for (const status of statuses) {
       getStatus.mockReturnValueOnce(

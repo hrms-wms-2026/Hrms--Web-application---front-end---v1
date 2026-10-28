@@ -2,6 +2,8 @@ import { Component, DestroyRef, ElementRef, computed, effect, inject, input, out
 import { Observable, Subscription, firstValueFrom } from 'rxjs';
 import { PendingUploadPurpose, TaskApiService } from '../../../modules/work/data-access/task-api.service';
 import { ColorSwatchPopoverComponent } from '../../../modules/work/ui/color-swatch-popover/color-swatch-popover.component';
+import { sanitizeEditableHtml } from '../../utils/editable-html.util';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export interface SlashCommandItem {
   id: string;
@@ -70,7 +72,7 @@ export interface SlashMenuCoords {
 @Component({
   selector: 'app-rich-text-editor',
   standalone: true,
-  imports: [ColorSwatchPopoverComponent],
+  imports: [StopClickPropagationDirective, ColorSwatchPopoverComponent],
   host: {
     '[class.rte--compact]': 'compact()',
     '[class.rte--borderless]': 'borderless()',
@@ -78,7 +80,7 @@ export interface SlashMenuCoords {
   },
   template: `
               <div class="tfm-editor">
-                <div class="tfm-editor__toolbar" (click)="$event.stopPropagation()">
+                <div class="tfm-editor__toolbar" appStopClickPropagation>
                   <div class="tfm-editor__tools-left">
                     <button
                       type="button"
@@ -225,7 +227,7 @@ export interface SlashMenuCoords {
                       </button>
 
                       @if (showLinkPopover()) {
-                        <div class="tfm-link-popover" (click)="$event.stopPropagation()">
+                        <div class="tfm-link-popover" appStopClickPropagation>
                           <div class="tfm-link-popover__row">
                             <input
                               type="text"
@@ -746,7 +748,8 @@ export class RichTextEditorComponent {
       const html = this.initialHtml();
       const el = this.contentEditor()?.nativeElement;
       if (el && !el.innerHTML && html) {
-        el.innerHTML = html;
+        // Stored HTML can come from another user; innerHTML skips Angular's sanitizer.
+        el.innerHTML = sanitizeEditableHtml(html);
         this.normalizeBlockLines(el);
         const empty = this.isElementVisuallyEmpty(el);
         untracked(() => {
@@ -792,7 +795,7 @@ export class RichTextEditorComponent {
   setHtml(html: string): void {
     const el = this.contentEditor()?.nativeElement;
     if (!el) return;
-    el.innerHTML = html ?? '';
+    el.innerHTML = sanitizeEditableHtml(html);
     if (html) this.normalizeBlockLines(el);
     const empty = this.isElementVisuallyEmpty(el);
     this.contentEmpty.set(empty);
@@ -1206,7 +1209,7 @@ export class RichTextEditorComponent {
     const range = sel.getRangeAt(0);
     if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return;
 
-    const slices: Array<{ node: Text; start: number; end: number }> = [];
+    const slices: { node: Text; start: number; end: number }[] = [];
     const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
     let current = walker.nextNode();
     while (current) {
@@ -1766,7 +1769,8 @@ export class RichTextEditorComponent {
     const raw = el.innerHTML.trim();
     const empty = this.isElementVisuallyEmpty(el);
     this.contentEmpty.set(empty);
-    const html = empty ? '' : raw;
+    // Pasted web content can carry <svg>/<style> or handlers the backend rejects; emit it cleaned.
+    const html = empty ? '' : sanitizeEditableHtml(raw);
     if (!this.restoringHistory) this.recordHistory(html);
     this.htmlChange.emit(html);
     this.checkSlashMenuTrigger();
@@ -2582,7 +2586,7 @@ export class RichTextEditorComponent {
     chip.setAttribute('data-employee-id', person.id);
     chip.setAttribute('contenteditable', 'false');
     chip.textContent = `@${person.name}`;
-    const trailing = document.createTextNode(` ${after}`);
+    const trailing = document.createTextNode(`\u00A0${after}`);
     const parent = ctx.textNode.parentNode!;
     parent.insertBefore(trailing, ctx.textNode.nextSibling);
     parent.insertBefore(chip, trailing);

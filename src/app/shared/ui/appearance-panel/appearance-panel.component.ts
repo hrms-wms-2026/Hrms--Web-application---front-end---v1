@@ -14,7 +14,7 @@ import { THEME_PRESETS, ThemePresetId } from '../../../core/theme/models/theme-p
       </div>
 
       <div class="theme-presets-container">
-        <label class="preset-group-label">Theme Presets</label>
+        <span class="preset-group-label">Theme Presets</span>
         <div class="theme-presets-grid" role="radiogroup" aria-label="Theme Presets">
           @for (preset of themePresets; track preset.id) {
             <button

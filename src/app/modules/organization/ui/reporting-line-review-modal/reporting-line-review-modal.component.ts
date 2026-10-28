@@ -2,12 +2,13 @@ import { ChangeDetectionStrategy, Component, input, output, signal } from '@angu
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ReportingLineMoveImpact } from '../../models/position.model';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-reporting-line-review-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [ButtonComponent],
+  imports: [StopClickPropagationDirective, ButtonComponent],
   templateUrl: './reporting-line-review-modal.component.html',
   styleUrl: './reporting-line-review-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -7,6 +7,7 @@ import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.s
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeListItemResponse } from '../../models/employee.model';
 import { EmployeeReportingHierarchyModalComponent } from './employee-reporting-hierarchy-modal.component';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 /** The card only needs the direct-report count, so the page load asks for a single row. */
 export const REPORTS_COUNT_PAGE_SIZE = 1;
@@ -23,9 +24,9 @@ type ReportsState = 'loading' | 'ready' | 'forbidden' | 'error';
 @Component({
   selector: 'app-employee-reporting-structure',
   standalone: true,
-  imports: [AvatarComponent, PopoutHeaderActionsComponent, EmployeeReportingHierarchyModalComponent],
+  imports: [KeyboardClickDirective, AvatarComponent, PopoutHeaderActionsComponent, EmployeeReportingHierarchyModalComponent],
   template: `
-    <section
+    <section role="button" tabindex="0" appKeyboardClick
       data-testid="reporting-structure-card"
       class="group flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs"
       [class.cursor-pointer]="canOpen()"

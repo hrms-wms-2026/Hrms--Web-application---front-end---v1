@@ -96,7 +96,7 @@
     [loading]="!!editingRole() && roleStore.detailLoading()"
     [saving]="roleStore.saving()"
     (save)="onSaveRole($event)"
-    (cancel)="closeFormModal()"
+    (cancelled)="closeFormModal()"
   />
 }
 
@@ -105,6 +105,6 @@
     [role]="archivingRole()!"
     [saving]="roleStore.saving()"
     (confirmArchive)="onConfirmArchive()"
-    (cancel)="closeArchiveModal()"
+    (cancelled)="closeArchiveModal()"
   />
 }

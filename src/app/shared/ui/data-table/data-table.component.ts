@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, contentChild, contentChildren, Directive, inject, input, output, TemplateRef } from '@angular/core';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export interface DataTableColumn {
   key: string;
@@ -47,7 +48,7 @@ export class DataTableRowAfterDirective {
 @Component({
   selector: 'app-data-table',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [StopClickPropagationDirective, NgTemplateOutlet],
   template: `
     @if (loading()) {
       <div class="data-table__loading" data-testid="data-table-loading" aria-busy="true" [attr.aria-label]="loadingLabel()">
@@ -80,7 +81,7 @@ export class DataTableRowAfterDirective {
                     [checked]="allSelected()"
                     [indeterminate]="someSelected()"
                     [disabled]="selectionDisabled()"
-                    (click)="$event.stopPropagation()"
+                    appStopClickPropagation
                     (change)="selectAllChanged.emit($any($event.target).checked)"
                   />
                 </th>
@@ -128,13 +129,14 @@ export class DataTableRowAfterDirective {
                 [class.data-table__row--muted]="rowMuted()(row)"
                 [attr.data-testid]="rowTestId()?.(row) ?? null"
                 [attr.data-id]="id"
+                [attr.title]="rowTitle()(row)"
                 [attr.tabindex]="rowFocusable() ? 0 : null"
                 [attr.aria-selected]="activeRowId() !== null ? id === activeRowId() : null"
                 (click)="rowClicked.emit(row)"
                 (keydown.enter)="rowFocusable() && $event.target === $event.currentTarget && rowClicked.emit(row)"
               >
                 @if (selectable()) {
-                  <td class="data-table__select-cell" (click)="$event.stopPropagation()">
+                  <td class="data-table__select-cell" appStopClickPropagation>
                     @if (isRowSelectable()(row)) {
                       <input
                         type="checkbox"
@@ -257,6 +259,8 @@ export class DataTableComponent<T> {
   readonly busyRowId = input<string | null>(null);
   /** Extra caller classes per row (style them with ::ng-deep from the caller). */
   readonly rowClass = input<(row: T) => string>(() => '');
+  /** Optional native hover text for the row. Return null when no tooltip is needed. */
+  readonly rowTitle = input<(row: T) => string | null>(() => null);
   /** Faded rows - archived / inactive records. */
   readonly rowMuted = input<(row: T) => boolean>(() => false);
   /** Rows show a pointer and hover border; set when (rowClicked) does something. */

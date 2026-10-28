@@ -128,8 +128,12 @@
 
           @if (axis.nowPct !== null) {
             <span
-              class="absolute top-[0.4375rem] z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-blue-600 bg-white @lg:top-3 @lg:h-4 @lg:w-4 @xl:top-3.5 @xl:h-5 @xl:w-5"
+              class="absolute top-[0.4375rem] z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] bg-white @lg:top-3 @lg:h-4 @lg:w-4 @xl:top-3.5 @xl:h-5 @xl:w-5"
+              [class.border-blue-600]="!onBreak()"
+              [class.border-amber-500]="onBreak()"
               [style.left.%]="axis.nowPct"
+              [attr.data-state]="onBreak() ? 'break' : 'working'"
+              data-testid="today-activity-now-dot"
               aria-hidden="true"
             ></span>
           }

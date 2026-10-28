@@ -38,7 +38,7 @@ export class ProjectDetailComponent {
   isProjectSettings = signal(false);
 
   // Board/Backlog/Settings are project-level routes with no milestoneId of their own, but the
-  // sub-menu bar (and its Tree/Calendar links, which are still
+  // sub-menu bar (and its Tree link, which is still
   // milestone-scoped) must stay visible on every tab - falls back to the first module so those
   // links have somewhere valid to point when the user isn't currently inside a specific module.
   subMenuMilestoneId = computed(() => this.activeMilestoneId() ?? this.store.milestones()[0]?.objectiveId ?? '');

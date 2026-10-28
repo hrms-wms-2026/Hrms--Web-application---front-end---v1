@@ -2,8 +2,10 @@ import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, injec
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, firstValueFrom, map } from 'rxjs';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { NavigationStateService } from '../../../../layouts/main-layout/nav/navigation-state.service';
+import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { InboxChatRowDto, chatRef } from '../../models/inbox-chat.dto';
@@ -22,13 +24,14 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
 
 /**
  * The inbox's chat list in the app's sub-sidebar (next to the rail, like Organization's sub-navigation): a header whose
- * search and collapse buttons show on hover, All / Pending (+ type), and the Groups and Direct messages sections.
+ * "+" menu (new message / new group) plus search and collapse buttons that show on hover, All / Pending (+ type), and one
+ * list of groups and direct messages, newest last message first.
  * On phones (no sub-sidebar) the inbox page shows it full width instead ("embedded").
  */
 @Component({
   selector: 'app-inbox-chat-sidebar',
   standalone: true,
-  imports: [ChatListComponent, NewGroupDialogComponent, SelectComponent],
+  imports: [ChatListComponent, DropdownMenuComponent, NewGroupDialogComponent, SelectComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav class="ics" [class.ics--embedded]="embedded()" aria-label="Inbox chats" data-testid="inbox-chat-sidebar">
@@ -44,6 +47,12 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
               <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="11 17 6 12 11 7" /><polyline points="18 17 13 12 18 7" /></svg>
             </button>
           }
+          <app-dropdown-menu [items]="newMenu" ariaLabel="New chat" (selected)="onNew($event)">
+            <button menu-trigger type="button" class="ics__new" data-testid="chat-new" title="New chat" aria-label="New chat">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              <svg class="ics__chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+          </app-dropdown-menu>
         </div>
       </div>
 
@@ -83,9 +92,6 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
           [roomy]="embedded()"
           (openRow)="openRow($event)"
           (openPerson)="openPerson($event)"
-          (newGroup)="groupOpen.set(true)"
-          (newDirect)="startNewMessage()"
-          (toggleFavorite)="store.toggleFavorite($event)"
         />
       </div>
     </nav>
@@ -95,14 +101,21 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
   `,
   styles: [`
     :host { display: block; height: 100%; min-height: 0; }
-    /* Same shell as the app's sub-sidebar, a little wider for names. */
-    .ics { box-sizing: border-box; display: flex; width: 16rem; height: calc(100% - .5rem); min-height: 0; flex-direction: column; gap: 10px;
+    /* Same shell as the app's sub-sidebar, wider so each chat shows its last message and time. */
+    .ics { box-sizing: border-box; display: flex; width: 21rem; height: calc(100% - .5rem); min-height: 0; flex-direction: column; gap: 10px;
       margin: 0 0 .5rem .25rem; padding: 1rem .625rem; border: 1px solid var(--color-border); border-right: none; border-radius: 0 0 0 14px;
       background: var(--color-surface-secondary); box-shadow: 0 1px 3px rgb(0 0 0 / 3%); }
     .ics--embedded { width: 100%; height: 100%; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
     .ics__header { display: flex; min-height: 24px; align-items: center; justify-content: space-between; margin: 0 .25rem 0 .5rem; }
     .ics__heading { margin: 0; color: var(--color-text-secondary); font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-    .ics__tools { display: flex; gap: 2px; }
+    .ics__tools { display: flex; align-items: center; gap: 2px; }
+    /* "+ v" (new message / new group) is always shown at the far right, like ClickUp's; search and collapse show on hover beside it. */
+    .ics__new { display: inline-flex; height: 26px; align-items: center; gap: 2px; margin-left: 4px; padding: 0 6px; border: 1px solid var(--color-border);
+      border-radius: 7px; background: var(--color-surface); color: var(--color-text-primary); cursor: pointer; box-shadow: 0 1px 2px rgb(0 0 0 / 4%); }
+    .ics__new:hover { background: var(--color-surface-secondary); }
+    .ics__new:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+    .ics__new svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .ics__new .ics__chevron { width: 12px; height: 12px; color: var(--color-text-secondary); }
     /* Search and collapse show when the sidebar is hovered (like the other sub-sidebars' collapse button). */
     .ics__tool { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; padding: 0; border: 1px solid transparent;
       border-radius: 6px; background: transparent; color: var(--color-text-secondary); cursor: pointer; opacity: 0; pointer-events: none;
@@ -182,9 +195,29 @@ export class InboxChatSidebarComponent implements OnInit {
     this.search.set('');
   }
 
-  /** "+" on Direct messages: the search is how a new chat starts. */
-  protected startNewMessage(): void {
-    this.openSearch();
+  private readonly canDelegate = inject(PermissionService).hasPermission('leave:approve');
+  /** New message / New group, then the inbox-wide History and (approvers) Delegate my approvals. */
+  protected readonly newMenu: MenuItem[] = [
+    { id: 'message', label: 'New message', iconPath: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+    { id: 'group', label: 'New group', iconPath: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+    { id: 'history', label: 'History', iconPath: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2', dividerBefore: true },
+    ...(this.canDelegate
+      ? [{ id: 'delegate', label: 'Delegate my approvals', iconPath: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M17 11l2 2 4-4' }]
+      : [])
+  ];
+
+  /** "New message" opens the search (that is how a new 1-on-1 chat starts); "New group" opens the group dialog. */
+  protected onNew(id: string): void {
+    if (id === 'group') this.groupOpen.set(true);
+    else if (id === 'history') this.openHistory();
+    else if (id === 'delegate') this.store.setDelegateOpen(true);
+    else this.openSearch();
+  }
+
+  /** History shows on the inbox page (in place of a chat). */
+  private openHistory(): void {
+    this.store.setHistory(true);
+    if (!this.router.url.startsWith('/inbox')) void this.router.navigate(['/inbox']);
   }
 
   protected collapse(): void {
@@ -192,6 +225,7 @@ export class InboxChatSidebarComponent implements OnInit {
   }
 
   protected openRow(row: InboxChatRowDto): void {
+    this.store.setHistory(false);
     void this.router.navigate(['/inbox', row.source, row.kind, row.subjectId]);
   }
 
@@ -204,6 +238,7 @@ export class InboxChatSidebarComponent implements OnInit {
         lastMessageAt: null, unread: 0, pending: [], caseItem: null
       });
       this.closeSearch();
+      this.store.setHistory(false);
       void this.router.navigate(['/inbox', chat.source, chat.kind, chat.subjectId]);
     } catch {
       this.notifications.error(`Could not start a chat with ${person.name}.`);
@@ -214,7 +249,8 @@ export class InboxChatSidebarComponent implements OnInit {
     this.groupBusy.set(true);
     this.groupError.set(null);
     try {
-      const chat = await firstValueFrom(this.api.createGroup(choice.name, choice.employeeIds));
+      const avatarFileId = choice.photo ? await firstValueFrom(this.api.uploadGroupPhoto(choice.photo)) : null;
+      const chat = await firstValueFrom(this.api.createGroup(choice.name, choice.employeeIds, avatarFileId));
       this.groupOpen.set(false);
       await this.store.load();
       void this.router.navigate(['/inbox', chat.source, chat.kind, chat.subjectId]);

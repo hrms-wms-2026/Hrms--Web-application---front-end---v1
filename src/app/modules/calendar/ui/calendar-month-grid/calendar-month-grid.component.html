@@ -1,6 +1,6 @@
 <div class="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-border)]">
   @for (cell of cells(); track cell.day.date) {
-    <div
+    <div role="button" tabindex="0" appKeyboardClick
       data-testid="calendar-day-cell"
       [attr.data-date]="cell.day.date"
       class="flex min-h-24 flex-col gap-1 bg-[var(--color-surface)] p-1.5"

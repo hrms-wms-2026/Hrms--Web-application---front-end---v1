@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDayBlocks, buildShiftAxis } from './shift-axis.util';
+import { MIN_BLOCK_PCT, buildDayBlocks, buildShiftAxis } from './shift-axis.util';
 
 // Fixed UTC instants, timezone UTC, so nothing depends on the machine's clock or zone.
 const at = (hhmm: string) => new Date(`2026-10-22T${hhmm}:00Z`).getTime();
@@ -89,6 +89,24 @@ describe('buildDayBlocks', () => {
   it('runs an open break to now and shows leave later in the day as well', () => {
     const blocks = buildDayBlocks(axis, shift, [{ start: iso('14:30'), end: null }], [{ start: iso('16:00'), end: iso('18:00') }], at('15:00'));
     expect(simple(blocks)).toEqual(['working:0.0+61.1', 'break:61.1+5.6', 'leave:77.8+22.2']);
+  });
+
+  it('keeps a short break visible: at least the minimum width, an open one growing left from now', () => {
+    // A 2-minute break that is still running at 11:47 (0.4% of the bar on its own).
+    const open = buildDayBlocks(axis, shift, [{ start: iso('11:45'), end: null }], [], at('11:47'));
+    const openBreak = open.find((b) => b.type === 'break')!;
+    expect(openBreak.widthPct).toBeCloseTo(MIN_BLOCK_PCT, 5);
+    expect(openBreak.leftPct + openBreak.widthPct).toBeCloseTo(((at('11:47') - at('09:00')) / (9 * 3600_000)) * 100, 5);
+    // A 2-minute break that ended: grows to the right from its start, and working is cut around it.
+    const closed = buildDayBlocks(axis, shift, [{ start: iso('10:00'), end: iso('10:02') }], [], at('15:00'));
+    expect(closed.map((b) => b.type)).toEqual(['working', 'break', 'working']);
+    expect(closed[1].widthPct).toBeCloseTo(MIN_BLOCK_PCT, 5);
+    expect(closed[2].leftPct).toBeCloseTo(closed[1].leftPct + MIN_BLOCK_PCT, 5);
+  });
+
+  it('keeps a short leave visible at the minimum width', () => {
+    const blocks = buildDayBlocks(axis, shift, [], [{ start: iso('16:00'), end: iso('16:05') }], at('15:00'));
+    expect(blocks.find((b) => b.type === 'leave')!.widthPct).toBeCloseTo(MIN_BLOCK_PCT, 5);
   });
 
   it('shows leave but no working before clock-in, and clips leave to the bar', () => {

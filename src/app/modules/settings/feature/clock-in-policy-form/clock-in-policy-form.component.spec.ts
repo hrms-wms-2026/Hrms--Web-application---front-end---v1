@@ -26,7 +26,6 @@ import { ClockInPolicyFormComponent } from './clock-in-policy-form.component';
 import {
   LATE_DEDUCTION_RULES_DISABLED_MESSAGE,
   LATE_DEDUCTION_RULES_EDITABLE,
-  validateClockInPolicyForm
 } from '../../utils/clock-in-policy-form.utils';
 
 describe('ClockInPolicyFormComponent', () => {

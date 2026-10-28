@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, ElementRef, HostListener, computed,
 import { RouterLink } from '@angular/router';
 import { NavIconComponent } from '../../../layouts/main-layout/side-navbar/nav-icon.component';
 import { NavIconName } from '../../../layouts/main-layout/nav/nav-item.model';
+import { MobileBackBarState } from '../../../layouts/main-layout/nav/mobile-back-bar.state';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export interface BreadcrumbSwitcherItem {
   id: string;
@@ -11,12 +13,14 @@ export interface BreadcrumbSwitcherItem {
 @Component({
   selector: 'app-breadcrumb-header',
   standalone: true,
-  imports: [NavIconComponent, RouterLink],
+  imports: [StopClickPropagationDirective, NavIconComponent, RouterLink],
   templateUrl: './breadcrumb-header.component.html',
   styleUrl: './breadcrumb-header.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.bh--repeats-back-bar]': 'repeatsMobileBackBar()' }
 })
 export class BreadcrumbHeaderComponent {
+  private readonly backBar = inject(MobileBackBarState);
   parentLabel = input.required<string>();
   currentLabel = input.required<string>();
   /** An optional level between the parent and the current page (Inbox › Chats › Priya). */
@@ -29,6 +33,10 @@ export class BreadcrumbHeaderComponent {
   switcherActiveId = input<string>('');
   switcherGroupLabel = input<string>('');
   switcherSelected = output<string>();
+  /** Opt-in: the current-page segment becomes a button (e.g. the inbox's chat name opens that chat's info). */
+  currentClickable = input(false);
+  currentTitle = input<string>('');
+  currentClicked = output<void>();
 
   protected readonly open = signal(false);
   protected readonly search = signal('');
@@ -39,6 +47,15 @@ export class BreadcrumbHeaderComponent {
     const items = this.switcherItems();
     return q ? items.filter((item) => item.label.toLowerCase().includes(q)) : items;
   });
+
+  /** On phones the layout's back bar already names this page (MobileSectionNavComponent), so a plain
+   *  "Section › Page" crumb would say it twice. Crumbs that add something (a middle level, a switcher) stay. */
+  protected readonly repeatsMobileBackBar = computed(
+    () =>
+      this.backBar.label() === this.currentLabel() &&
+      !this.middleLabel() &&
+      this.switcherItems().length === 0
+  );
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {

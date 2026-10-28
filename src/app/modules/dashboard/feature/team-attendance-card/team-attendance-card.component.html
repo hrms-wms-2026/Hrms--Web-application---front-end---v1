@@ -1,0 +1,171 @@
+<app-widget-card
+  class="group block h-full"
+  data-testid="team-attendance-card"
+  title="Team attendance"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load team attendance."
+  emptyMessage="No one in your team yet."
+  (retry)="retry()"
+>
+  <div widget-actions class="flex min-w-0 items-center gap-1">
+    @if (store.data(); as data) {
+      <select
+        class="ta-period"
+        data-testid="ta-mode"
+        aria-label="Period"
+        [value]="data.mode"
+        appStopClickPropagation
+        (change)="onModeSelect($event)"
+      >
+        <option value="week" [selected]="data.mode === 'week'">Week</option>
+        <option value="month" [selected]="data.mode === 'month'">Month</option>
+      </select>
+    }
+    <app-popout-header-actions
+      [refreshedAt]="store.loadedAt()"
+      [refreshing]="refreshing()"
+      [expanded]="false"
+      [canExpand]="true"
+      [revealOnHover]="true"
+      (refresh)="retry()"
+      (expand)="openDetail()"
+    />
+  </div>
+
+  @if (store.data(); as data) {
+    <ng-template #rangeTpl>
+      <div class="ta-range">
+        <button type="button" class="ta-nav" aria-label="Previous period" data-testid="ta-prev" (click)="shift(-1, $event)">‹</button>
+        <span class="ta-range-label" data-testid="ta-range">{{ rangeLabel() }}</span>
+        <button
+          type="button"
+          class="ta-nav"
+          aria-label="Next period"
+          data-testid="ta-next"
+          [disabled]="data.isProvisional"
+          (click)="shift(1, $event)"
+        >›</button>
+        @if (data.isProvisional) {
+          <span class="ta-provisional">Today in progress</span>
+        }
+      </div>
+    </ng-template>
+
+    <ng-template #donutTpl let-size="size">
+      <div class="ta-donut" [style.width.px]="size" [style.height.px]="size" data-testid="ta-donut">
+        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+          @for (arc of donut(); track arc.key) {
+            <circle
+              cx="21"
+              cy="21"
+              r="15.9155"
+              fill="none"
+              stroke-width="6"
+              [attr.stroke]="arc.color"
+              [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+              [attr.stroke-dashoffset]="arc.offset"
+            />
+          }
+        </svg>
+        <p class="ta-donut-center" data-testid="ta-ring-center">
+          <span class="ta-donut-value">{{ attendedToday() }}</span>
+          <span class="ta-donut-of">/ {{ data.eligibleToday }}</span>
+        </p>
+      </div>
+    </ng-template>
+
+    <ng-template #chartTpl let-compact="compact">
+      @if (noWorkingDays()) {
+        <p class="ta-no-days" data-testid="ta-no-days">No working days in this period</p>
+      } @else {
+        <app-attendance-day-chart class="ta-chart" [points]="data.trend" [compact]="compact" />
+      }
+    </ng-template>
+
+    @switch (view()) {
+      @case ('small') {
+        <div class="ta-small" data-testid="ta-small">
+          <ng-container [ngTemplateOutlet]="rangeTpl" />
+          <div class="ta-small-body">
+            <div class="min-w-0">
+              <p class="ta-rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</p>
+              <p class="ta-caption">Attendance today</p>
+              @if (delta(); as d) {
+                <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
+              }
+            </div>
+            <ng-container [ngTemplateOutlet]="donutTpl" [ngTemplateOutletContext]="{ size: 104 }" />
+          </div>
+        </div>
+      }
+      @case ('medium') {
+        <div class="ta-medium" data-testid="ta-medium">
+          <ng-container [ngTemplateOutlet]="rangeTpl" />
+          <div class="ta-medium-body">
+            <div class="ta-today">
+              <ng-container [ngTemplateOutlet]="donutTpl" [ngTemplateOutletContext]="{ size: 120 }" />
+              <ul class="ta-legend" aria-label="Today">
+                @for (row of legend(); track row.key) {
+                  <li class="ta-legend-row" data-testid="ta-legend-row">
+                    <span class="ta-dot" [style.background]="row.color"></span>
+                    <span class="ta-legend-label">{{ row.label }}</span>
+                    <span class="ta-legend-count">{{ row.count }}</span>
+                    <span class="ta-legend-pct" [style.color]="row.color">{{ row.percent }}%</span>
+                  </li>
+                }
+              </ul>
+            </div>
+            <div class="ta-trend">
+              <p class="ta-section-title">
+                Trend · {{ percentText(data.periodRate) }}
+                @if (delta(); as d) {
+                  <span class="ta-delta ta-delta--inline" [class.ta-delta--down]="d.down">{{ d.text }}</span>
+                }
+              </p>
+              <ng-container [ngTemplateOutlet]="chartTpl" [ngTemplateOutletContext]="{ compact: true }" />
+            </div>
+          </div>
+        </div>
+      }
+      @case ('large') {
+        <div class="ta-large" data-testid="ta-large">
+          <ng-container [ngTemplateOutlet]="rangeTpl" />
+          <app-kpi-tiles [tiles]="tiles()" ariaLabel="Today's attendance" />
+          <div class="ta-large-body">
+            <section class="ta-panel ta-trend">
+              <p class="ta-section-title">
+                Attendance trend · {{ percentText(data.periodRate) }}
+                @if (delta(); as d) {
+                  <span class="ta-delta ta-delta--inline" [class.ta-delta--down]="d.down">{{ d.text }}</span>
+                }
+              </p>
+              <ng-container [ngTemplateOutlet]="chartTpl" [ngTemplateOutletContext]="{ compact: false }" />
+            </section>
+            <section class="ta-panel ta-list">
+              <div class="ta-list-head">
+                <p class="ta-section-title">Today – Employee status</p>
+                <button type="button" class="ta-link" data-testid="ta-view-all" (click)="openDetail($event)">View all ›</button>
+              </div>
+              <ul>
+                @for (row of data.todayPreview; track row.employeeId) {
+                  <li class="ta-row" data-testid="ta-preview-row">
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(row.avatarFileId)" [userName]="row.name" />
+                    <span class="ta-row-name">{{ row.name }}</span>
+                    <span class="ta-chip" [class]="'ta-chip ta-chip--' + row.bucket" data-testid="ta-chip">{{ labels[row.bucket] }}</span>
+                    <span class="ta-row-time">{{ clockIn(row.clockInAt) }}</span>
+                  </li>
+                } @empty {
+                  <li class="ta-row-empty">No one is scheduled today</li>
+                }
+              </ul>
+            </section>
+          </div>
+        </div>
+      }
+    }
+  }
+</app-widget-card>
+
+<app-team-attendance-detail-dialog [open]="detailOpen()" (closed)="closeDetail()" />

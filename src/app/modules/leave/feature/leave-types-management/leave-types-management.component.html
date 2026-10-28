@@ -25,11 +25,11 @@
     </div>
   } @else {
     <div class="to-table-card">
-      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" />
+      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" (viewPolicies)="viewPolicies($event)" (addPolicy)="addPolicy($event)" />
     </div>
   }
 </section>
-@if (formModalOpen()) { <app-leave-type-form-modal [leaveType]="editingType()" [loading]="store.saving()" (save)="onSave($event)" (cancel)="closeFormModal()" /> }
+@if (formModalOpen()) { <app-leave-type-form-modal [leaveType]="editingType()" [loading]="store.saving()" (save)="onSave($event)" (cancelled)="closeFormModal()" /> }
 <app-modal [open]="pendingDeactivateType() !== null" [title]="'Deactivate ' + (pendingDeactivateType()?.name ?? '') + '?'" (closed)="cancelDeactivate()">
   <p>Pending requests that use this type will be cancelled.</p>
   <div class="to-modal-actions">

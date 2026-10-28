@@ -137,8 +137,66 @@ function genericSections(detail: InboxItemDetailDto): TicketSections {
   };
 }
 
+/** Project monitor alert facts (the backend's explanationDetails), in reading order. Keys not listed here (ids, anything
+ *  new) are not shown. */
+const MONITOR_ROWS: Record<string, { label: string; icon: TicketRowIcon; format: (v: string) => string | null; tone?: 'warning' } | undefined> = {
+  endDate: { label: 'Deadline', icon: 'calendar', format: (v) => isoDay(v) },
+  dueDate: { label: 'Due date', icon: 'calendar', format: (v) => isoDay(v) },
+  expectedFinish: { label: 'Expected finish', icon: 'calendar', format: (v) => isoDay(v), tone: 'warning' },
+  lateDays: { label: 'Late by', icon: 'timer', format: (v) => count(v, 'working day', 'working days'), tone: 'warning' },
+  remainingHours: { label: 'Work remaining', icon: 'timer', format: hours },
+  demandHours: { label: 'Work due', icon: 'timer', format: hours },
+  allocatedHours: { label: 'Allocated', icon: 'timer', format: hours },
+  estimatedHours: { label: 'Estimate', icon: 'timer', format: hours },
+  clockedHours: { label: 'Clocked', icon: 'clock', format: hours, tone: 'warning' },
+  capacityHours: { label: 'Time available', icon: 'clock', format: hours },
+  shortfallHours: { label: 'Short by', icon: 'timer', format: hours, tone: 'warning' },
+  openTasks: { label: 'Open tasks', icon: 'tag', format: (v) => v },
+  memberCount: { label: 'Team size', icon: 'info', format: (v) => count(v, 'person', 'people') }
+};
+const MONITOR_ORDER = Object.keys(MONITOR_ROWS);
+
+/** What a monitor rule is about, from its action type ("monitor.module_capacity_shortfall" → Module). */
+function monitorTargetLabel(actionType: string): string {
+  if (actionType.includes('sprint_')) return 'Sprint';
+  if (actionType.includes('module_')) return 'Module';
+  return 'Task';
+}
+
+/** "2026-10-16" as Oct 16, 2026 - read as a calendar day, never shifted by the time zone. */
+function isoDay(value: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', DATE) : value || null;
+}
+
+function count(value: string, one: string, many: string): string | null {
+  const n = Number(value);
+  return value === '' || isNaN(n) ? null : `${n} ${n === 1 ? one : many}`;
+}
+
+/** A project monitor alert: what it is about and the figures that tripped it. */
+function monitorAlertSections(detail: InboxItemDetailDto): TicketSections {
+  const item = detail.item;
+  const rows: TicketRow[] = [];
+  if (item.title) rows.push({ key: 'target', label: monitorTargetLabel(item.actionType), value: item.title, icon: 'tag' });
+  if (item.contextName) rows.push({ key: 'project', label: 'Project', value: item.contextName, icon: 'tag' });
+  const facts = detail.explanationDetails ?? {};
+  for (const key of MONITOR_ORDER) {
+    const spec = MONITOR_ROWS[key];
+    const raw = facts[key];
+    const value = spec && raw !== undefined ? spec.format(raw) : null;
+    if (spec && value) rows.push({ key, label: spec.label, value, icon: spec.icon, tone: spec.tone });
+  }
+  return { title: 'Evidence & details', rows, outcome: null, note: null };
+}
+
+export function isMonitorAlert(detail: InboxItemDetailDto): boolean {
+  return detail.item.source === 'work' && detail.item.kind === 'monitor_alert';
+}
+
 /** The Ticket details sections of one item - attendance alerts, leave and every other request share one layout. */
 export function ticketSections(detail: InboxItemDetailDto): TicketSections {
+  if (isMonitorAlert(detail)) return monitorAlertSections(detail);
   if (detail.item.source === 'attendance' && detail.item.kind === 'alert') return attendanceSections(detail);
   if (detail.item.source === 'leave') return leaveSections(detail);
   return genericSections(detail);

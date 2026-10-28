@@ -16,14 +16,14 @@ function formatClock(date: Date): string | null {
 /** The activity bar's legend, in the design's order; Upcoming is the bar's own background. */
 const BLOCK_LEGEND: readonly { type: DayBlockType | 'upcoming'; label: string; dotClass: string }[] = [
   { type: 'working', label: 'Working', dotClass: 'bg-blue-600' },
-  { type: 'break', label: 'Break', dotClass: 'bg-slate-400' },
+  { type: 'break', label: 'Break', dotClass: 'bg-amber-400' },
   { type: 'leave', label: 'Leave', dotClass: 'bg-red-500' },
   { type: 'upcoming', label: 'Upcoming', dotClass: 'bg-slate-200' }
 ];
 
 const BLOCK_CLASS: Record<DayBlockType, string> = {
   working: 'bg-gradient-to-r from-blue-600 to-sky-500',
-  break: 'bg-slate-400',
+  break: 'bg-amber-400',
   leave: 'bg-red-500'
 };
 
@@ -135,6 +135,12 @@ export class TodayAtAGlanceCardComponent implements OnInit {
 
   /** Clocked in and not yet out - whatever the backend's status label says. */
   protected readonly isActive = computed(() => !!this.today()?.clockInAt && !this.today()?.clockOutAt);
+
+  /** On a break right now: a break with no end yet (or the backend's on_break status). */
+  protected readonly onBreak = computed(() => {
+    const today = this.today();
+    return !!today && (today.attendanceStatus === 'on_break' || (today.breaks ?? []).some((b) => !b.endedAt));
+  });
 
   protected readonly workedDurationLabel = computed(() => formatMinutes(this.today()?.totalWorkedMinutes ?? null));
 

@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { MemberManagementPopupComponent } from './member-management-popup.component';
+import { of } from 'rxjs';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
 
 describe('MemberManagementPopupComponent', () => {
   let fixture: ComponentFixture<MemberManagementPopupComponent>;
@@ -9,7 +11,10 @@ describe('MemberManagementPopupComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [MemberManagementPopupComponent],
-      providers: [{ provide: FileApiService, useValue: { getFileUrl: (id: string) => `https://api.test/files/${id}` } }]
+      providers: [
+        { provide: FileApiService, useValue: { getFileUrl: (id: string) => `https://api.test/files/${id}` } },
+        { provide: PeopleApiService, useValue: { listEmployees: vi.fn(() => of({ items: [], totalCount: 0, page: 1, pageSize: 50 })) } }
+      ]
     });
     fixture = TestBed.createComponent(MemberManagementPopupComponent);
     fixture.componentRef.setInput('open', true);
@@ -28,12 +33,12 @@ describe('MemberManagementPopupComponent', () => {
     const addRequested = vi.fn();
     fixture.componentInstance.addRequested.subscribe(addRequested);
     (fixture.componentInstance as any).pickerOpen.set('member');
-    fixture.componentInstance.onEmployeePicked('u2');
+    fixture.componentInstance.onPeoplePicked(['u2']);
 
     expect(addRequested).toHaveBeenCalledWith('u2');
   });
 
-  it('shows the add-member picker inline in the same dialog, not as a stacked second modal', () => {
+  it('adding members swaps the list for the shared picker - one popup at a time, never stacked', () => {
     fixture.componentRef.setInput('scope', 'objective');
     fixture.componentRef.setInput('objectiveMembers', []);
     fixture.componentRef.setInput('canManage', true);
@@ -42,9 +47,9 @@ describe('MemberManagementPopupComponent', () => {
     (fixture.componentInstance as any).pickerOpen.set('member');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('app-modal').length).toBe(1);
-    expect(fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('Choose a person');
+    expect(fixture.nativeElement.querySelector('[data-testid="person-picker-search"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="add-member-button"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Add members');
   });
 
   it('reopening the popup lands back on the member list, not wherever the add/transfer picker was left open', () => {
@@ -54,14 +59,14 @@ describe('MemberManagementPopupComponent', () => {
     fixture.detectChanges();
     (fixture.componentInstance as any).pickerOpen.set('member');
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="person-picker-search"]')).not.toBeNull();
 
     fixture.componentRef.setInput('open', false);
     fixture.detectChanges();
     fixture.componentRef.setInput('open', true);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="employee-picker-search"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="person-picker-search"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="add-member-button"]')).not.toBeNull();
   });
 
@@ -83,7 +88,7 @@ describe('MemberManagementPopupComponent', () => {
     fixture.componentInstance.transferRequested.subscribe(transferRequested);
     (fixture.componentInstance as any).removeRequested.emit('e2');
     (fixture.componentInstance as any).pickerOpen.set('leader');
-    fixture.componentInstance.onEmployeePicked('e3');
+    fixture.componentInstance.onPeoplePicked(['e3']);
 
     expect(removeRequested).toHaveBeenCalledWith('e2');
     expect(transferRequested).toHaveBeenCalledWith('e3');

@@ -68,7 +68,7 @@ export const ATTENDANCE_ROUTES: Routes = [
   {
     // Same component as 'time-tracking' - Requests has no standalone page yet (its
     // correction/work-area draft-form state still lives on TimeTrackingComponent itself, see
-    // docs/superpowers/plans/2026-09-08-attendance-overview-redesign.md, "Deferred"). The
+    // docs/superpowers/plans/finished/2026-09-08/2026-09-08-attendance-overview-redesign.md, "Deferred"). The
     // sidebar no longer lists Requests; this route stays as the target of the Overview
     // requests card's "View all requests" link.
     path: 'time-tracking/requests',

@@ -47,7 +47,7 @@ describe('CreateCompanyModalComponent', () => {
   it('emits cancel on Escape keydown', async () => {
     const { fixture } = await setup();
     const cancelSpy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(cancelSpy);
+    fixture.componentInstance.cancelled.subscribe(cancelSpy);
 
     const dialog: HTMLElement = fixture.nativeElement.querySelector('[role="dialog"]');
     dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -59,7 +59,7 @@ describe('CreateCompanyModalComponent', () => {
   it('emits cancel when the Cancel button is clicked', async () => {
     const { fixture } = await setup();
     const cancelSpy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(cancelSpy);
+    fixture.componentInstance.cancelled.subscribe(cancelSpy);
 
     const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
     buttons.find((b) => b.textContent?.trim() === 'Cancel')?.click();

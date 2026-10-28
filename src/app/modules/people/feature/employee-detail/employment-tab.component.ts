@@ -68,10 +68,11 @@ export function formatJoinedAgo(hireDate: string | null | undefined, now: Date =
  * the direct-reports list) never affects the others.
  */
 import { EmployeeLeavePoliciesComponent } from '../../ui/employee-leave-policies/employee-leave-policies.component';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 @Component({
   selector: 'app-employee-employment-tab',
   standalone: true,
-  imports: [
+  imports: [KeyboardClickDirective, 
     EmployeeLeavePoliciesComponent,
     ErrorStateComponent,
     PopoutHeaderActionsComponent,
@@ -152,7 +153,7 @@ import { EmployeeLeavePoliciesComponent } from '../../ui/employee-leave-policies
           />
         </div>
         <div class="xl:col-span-2">
-          <section
+          <section role="button" tabindex="0" appKeyboardClick
             data-testid="work-network-card"
             class="group flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs"
             [class.cursor-pointer]="graphState() === 'ready'"

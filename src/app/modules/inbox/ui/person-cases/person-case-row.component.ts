@@ -20,7 +20,7 @@ export function personCaseLabel(item: InboxItemDto): string {
     @let row = case();
     <button type="button" class="pcr" [class.pcr--muted]="muted()" [class.pcr--locked]="!row.canOpen"
             [disabled]="!row.canOpen"
-            [title]="row.canOpen ? '' : 'You can\\'t open this case'" (click)="onClick()">
+            [title]="row.canOpen ? '' : 'You can’t open this case'" (click)="onClick()">
       <app-inbox-type-icon class="pcr__icon" [icon]="meta().icon" [tone]="iconTone()" />
       <span class="pcr__type" data-testid="pcr-type">{{ label() }}</span>
       <span class="pcr__date" data-testid="pcr-date">{{ row.item.createdAt | date: 'd MMM' }}</span>

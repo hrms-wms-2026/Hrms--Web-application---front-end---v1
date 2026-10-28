@@ -16,6 +16,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { ViewModeOption, ViewModeToggleComponent } from '../../../../shared/ui/view-mode-toggle/view-mode-toggle.component';
 import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from '../../models/project.model';
 
 export type ProjectViewMode = 'table' | 'list' | 'card';
@@ -26,7 +27,7 @@ export type ProjectViewMode = 'table' | 'list' | 'card';
   imports: [
     ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
     ProjectListRowComponent, ProjectExplanationCardComponent, ProjectTableViewComponent, ProjectCardComponent,
-    MemberManagementPopupComponent, BreadcrumbHeaderComponent, ButtonComponent,
+    MemberManagementPopupComponent, BreadcrumbHeaderComponent, ButtonComponent, ViewModeToggleComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './project-list.component.html',
@@ -37,6 +38,11 @@ export class ProjectListComponent implements OnInit {
   readonly categoryStore = inject(ProjectCategoryStore);
   private readonly router = inject(Router);
 
+  readonly viewModes: readonly ViewModeOption[] = [
+    { value: 'list', label: 'List', icon: 'list' },
+    { value: 'card', label: 'Card', icon: 'card' },
+    { value: 'table', label: 'Table', icon: 'table' }
+  ];
   viewMode = signal<ProjectViewMode>(this.loadInitialViewMode());
   expandedCardIds = signal<Set<string>>(new Set());
 
@@ -66,32 +72,9 @@ export class ProjectListComponent implements OnInit {
     }
   }
 
-  cycleViewMode(): void {
-    const current = this.viewMode();
-    let next: ProjectViewMode = 'list';
-    if (current === 'list') {
-      next = 'card';
-    } else if (current === 'card') {
-      next = 'table';
-    } else {
-      next = 'list';
-    }
-    this.setViewMode(next);
+  onViewModeChange(mode: string): void {
+    this.setViewMode(mode as ProjectViewMode);
   }
-
-  readonly viewModeTitle = computed(() => {
-    const mode = this.viewMode();
-    if (mode === 'list') return 'List view (click to switch to Card)';
-    if (mode === 'card') return 'Card view (click to switch to Table)';
-    return 'Table view (click to switch to List)';
-  });
-
-  readonly viewModeAriaLabel = computed(() => {
-    const mode = this.viewMode();
-    if (mode === 'list') return 'List view, switch to Card view';
-    if (mode === 'card') return 'Card view, switch to Table view';
-    return 'Table view, switch to List view';
-  });
 
   toggleCardExpand(id: string): void {
     this.expandedCardIds.update((set) => {

@@ -194,7 +194,7 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   @Output() removeExistingParticipant = new EventEmitter<string>();
   @Output() addGuestsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingGuest = new EventEmitter<string>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
   @Output() convertToMeeting = new EventEmitter<{ title: string; start: string; end: string }>();
 
   private readonly authStore = inject(AuthStore);
@@ -767,13 +767,13 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
       this.discardConfirmOpen.set(true);
     }
     void this.unsaved.requestClose(this.guardHandle).then((ok) => {
-      if (ok) this.cancel.emit();
+      if (ok) this.cancelled.emit();
     });
   }
 
   confirmDiscard(): void {
     this.discardConfirmOpen.set(false);
-    this.cancel.emit();
+    this.cancelled.emit();
   }
 
   cancelDiscard(): void {

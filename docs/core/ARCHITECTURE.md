@@ -1,9 +1,10 @@
 # ONEVO HRMS — Frontend Architecture Document
 
 > **Product:** ONEVO HRMS — Multi-Tenant B2B SaaS Platform  
-> **Stack:** Angular 21.x · TypeScript ≥5.9 <6 · Node.js ^20.19 | ^22.12 | ^24 · RxJS · NgRx Signal Store · Tailwind CSS · Custom CSS  
+> **Stack:** Angular 21.2 · TypeScript ≥5.9 <6 · Node.js ^20.19 | ^22.12 | ^24 · RxJS · NgRx Signal Store · SignalR (`@microsoft/signalr`) · Tailwind CSS 4 · Custom CSS · DOMPurify · Leaflet · d3-force  
+> **Tooling:** Vitest via `@angular/build:unit-test` · Playwright e2e · ESLint (angular-eslint, flat config `eslint.config.js`) · Prettier  
 > **Scale:** Large-scale · ~1000 users · Long-term maintained  
-> **Version:** 2.1 | Last Updated: July 2026 | Gap-analysis improvements applied (v1 → v2 → v2.1: circuit breaker, zoneless, security headers, consent gate)
+> **Version:** 2.2 | Last Updated: 2026-10-27 | v2.2: reconciled §2 core tree, §5.2, §5.4 and §6.2 with the code; earlier: circuit breaker, zoneless, security headers, consent gate
 
 ---
 
@@ -67,36 +68,43 @@ Lower layers must **never** import from upper layers. This prevents circular dep
 
 ## 2. Folder Structure
 
-> **Note (2026-08-10):** `work/` below is kept in sync with the actual built module (see rule 6 in `docs/superpowers/rules/PROCESS_RULES.md`) — same for `auth/`, `dashboard/`, `core/`, and `shared/`. `organization/` and `public/` also exist in the real codebase today but aren't reflected in this tree yet. `employees/`, `leave/`, `attendance/`, `payroll/`, `recruitment/`, `performance/`, `reports/`, `tenant-admin/`, and `settings/` below are the **original planning-time module skeletons** — none of them exist under `src/app/modules/` yet; treat them as a proposed shape for future modules, not a current-state description. Don't assume a listing here means the code exists — check `src/app/modules/` directly for what's actually built.
+> **Current state (verified 2026-10-27):** `src/app/` holds `core/`, `layouts/`, `modules/` and `shared/`. The modules that exist under `src/app/modules/` are: `attendance`, `calendar`, `dashboard`, `device-activation`, `inbox`, `leave`, `organization`, `people`, `profile`, `public`, `settings`, `work`. The `core/` tree below matches the code. `work/` was kept in sync up to 2026-08 (see rule 6 in `docs/superpowers/rules/PROCESS_RULES.md`). `employees/`, `payroll/`, `recruitment/`, `performance/`, `reports/` and `tenant-admin/` in the tree are **planning-time skeletons that were never built** (employee features live in `people/`); `leave/`, `attendance/` and `settings/` exist but have a different internal layout from the skeleton. Always check `src/app/modules/` for what is actually built; [MODULE_MAP.md](MODULE_MAP.md) lists every module with its pages and docs.
 
 ```
 src/
 ├── core/
-│   ├── auth/
-│   │   ├── auth.service.ts
-│   │   ├── session.service.ts
-│   │   └── token.service.ts
+│   ├── auth/                               ← login, invitation, password, legal-consent, session-exchange
+│   │   ├── data-access/auth-api.service.ts
+│   │   ├── feature/                        ← login, accept-invitation, forgot/reset-password, legal-consent, session-exchange
+│   │   ├── models/dto/
+│   │   └── utils/safe-return-path.ts
+│   ├── config/
+│   │   ├── app.config.ts                   ← runtime config (the Angular ApplicationConfig is src/app/app.config.ts)
+│   │   ├── api-endpoints.ts
+│   │   ├── build-info.ts
+│   │   ├── feature-flags.ts
+│   │   └── runtime-config.model.ts
 │   ├── guards/
 │   │   ├── auth.guard.ts
-│   │   └── role.guard.ts
+│   │   ├── permission.guard.ts
+│   │   ├── redirect-if-authenticated.guard.ts
+│   │   └── unsaved-changes.guard.ts
 │   ├── interceptors/
 │   │   ├── auth.interceptor.ts
 │   │   ├── correlation.interceptor.ts      ← adds X-Correlation-ID per request
-│   │   ├── csrf.interceptor.ts             ← double-submit XSRF-TOKEN pattern
-│   │   ├── error.interceptor.ts            ← 401 refresh+retry, taxonomy, retry backoff
-│   │   └── logging.interceptor.ts
-│   ├── permissions/
-│   │   ├── employee.permissions.ts
-│   │   └── payroll.permissions.ts
-│   ├── config/
-│   │   ├── app.config.ts
-│   │   ├── api-endpoints.ts
-│   │   └── feature-flags.ts
-│   └── services/
-│       ├── error-handler.service.ts        ← unified error taxonomy (HTTP code → action)
-│       ├── notification.service.ts
-│       ├── storage.service.ts
-│       └── dialog.service.ts
+│   │   ├── csrf.interceptor.ts             ← double-submit onevo_csrf cookie → X-CSRF-Token
+│   │   └── error.interceptor.ts            ← error taxonomy and retry
+│   ├── realtime/
+│   │   └── inbox-realtime.service.ts       ← SignalR connection to /hubs/inbox
+│   ├── services/
+│   │   ├── error-handler.service.ts        ← unified error taxonomy (HTTP code → action)
+│   │   ├── logger.service.ts
+│   │   ├── notification.service.ts
+│   │   ├── notification-api.service.ts
+│   │   └── notification-navigation.service.ts
+│   ├── state/notifications.store.ts
+│   ├── theme/                              ← theme presets + theme.store.ts
+│   └── tray-presence/                      ← tray agent activation gate and presence store
 │
 ├── shared/
 │   ├── ui/
@@ -902,20 +910,19 @@ export class EmployeeListComponent implements OnInit {
 
 ### 4.4 Migration Rule: Retiring BehaviorSubject
 
-> Any `BehaviorSubject` in a module store is a code smell in v2. ESLint rule to catch it:
+> Any `BehaviorSubject` in a module store is a code smell in v2. ESLint (flat config, `eslint.config.js`, run with `npm run lint`) can enforce it by adding this rule to the `**/*.ts` block — not enabled yet:
 
-```json
-// .eslintrc.json — add to rules
-"no-restricted-imports": ["error", {
-  "paths": [{
-    "name": "rxjs",
-    "importNames": ["BehaviorSubject"],
-    "message": "Use NgRx Signal Store withState() instead of BehaviorSubject in module stores."
+```js
+'no-restricted-imports': ['error', {
+  paths: [{
+    name: 'rxjs',
+    importNames: ['BehaviorSubject'],
+    message: 'Use NgRx Signal Store withState() instead of BehaviorSubject in module stores.'
   }]
 }]
 ```
 
-`BehaviorSubject` remains allowed **only** in `WebSocketService` and other infrastructure services where a stream semantic is genuinely needed.
+`BehaviorSubject` remains allowed **only** in infrastructure services (such as the realtime connection) where a stream semantic is genuinely needed.
 
 ### 4.5 Cache Invalidation Strategy
 
@@ -1013,33 +1020,27 @@ export class EmployeeApiService {
 
 ### 5.2 Interceptor Chain — Registration Order
 
-All interceptors must be registered in this exact order in `app.config.ts`:
+All interceptors are registered in this order in `src/app/app.config.ts` (verified 2026-10-27; there is no logging interceptor):
 
 ```typescript
-// core/config/app.config.ts
+// src/app/app.config.ts
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { authInterceptor } from '@core/interceptors/auth.interceptor';
-import { correlationInterceptor } from '@core/interceptors/correlation.interceptor';
-import { csrfInterceptor } from '@core/interceptors/csrf.interceptor';
-import { errorInterceptor } from '@core/interceptors/error.interceptor';
-import { loggingInterceptor } from '@core/interceptors/logging.interceptor';
+import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { correlationInterceptor } from './core/interceptors/correlation.interceptor';
+import { csrfInterceptor } from './core/interceptors/csrf.interceptor';
+import { errorInterceptor } from './core/interceptors/error.interceptor';
 
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideHttpClient(withInterceptors([
-      authInterceptor,        // 1. Attach credentials (cookie)
-      correlationInterceptor, // 2. Attach X-Correlation-ID
-      csrfInterceptor,        // 3. Attach X-XSRF-TOKEN on mutations
-      errorInterceptor,       // 4. Handle errors (refresh, retry, taxonomy)
-      loggingInterceptor      // 5. Log outbound requests
-    ]))
-  ]
-};
+provideHttpClient(withInterceptors([
+  authInterceptor,        // 1. Attach credentials (cookie)
+  correlationInterceptor, // 2. Attach X-Correlation-ID
+  csrfInterceptor,        // 3. Attach X-CSRF-Token on mutations
+  errorInterceptor        // 4. Handle errors (taxonomy, retry)
+]))
 ```
 
 ### 5.3 Error Handling & Loading States
 
-Global error interceptor with **token refresh + retry + exponential backoff**:
+Global error interceptor with **retry + backoff for safe reads**. The sample below is the original v2 design; the shipped interceptor has no token refresh (see §7.3 for what it actually does):
 
 ```typescript
 // core/interceptors/error.interceptor.ts
@@ -1110,40 +1111,11 @@ export class EmployeeListPageComponent {
 }
 ```
 
-### 5.4 Real-Time Data with WebSockets
+### 5.4 Real-Time Data with SignalR
 
-```typescript
-// core/services/websocket.service.ts
-import { Injectable, signal } from '@angular/core';
-import { Observable, Subject, EMPTY } from 'rxjs';
-import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { catchError, switchAll } from 'rxjs/operators';
-import { environment } from '@environments/environment';
+Realtime uses ASP.NET Core SignalR through `@microsoft/signalr`, not raw WebSockets. `core/realtime/inbox-realtime.service.ts` (`InboxRealtimeService`) opens one connection to the backend's `/hubs/inbox` hub with `HubConnectionBuilder().withUrl(...).withAutomaticReconnect()`. It authenticates with the tenant session cookie, so no token is held in the frontend. Inbox and conversation events are pushed to the stores, which stay the source of truth: a missed event is recovered by the next normal API load, never by trusting the socket alone.
 
-@Injectable({ providedIn: 'root' })
-export class WebSocketService {
-  private socket$: WebSocketSubject<unknown> | null = null;
-  private messagesSubject$ = new Subject<Observable<unknown>>();
-
-  messages$ = this.messagesSubject$.pipe(switchAll());
-  connected = signal(false);
-
-  connect(): void {
-    if (!this.socket$ || this.socket$.closed) {
-      this.socket$ = webSocket({
-        url: environment.wsUrl,
-        openObserver: { next: () => this.connected.set(true) },
-        closeObserver: { next: () => { this.connected.set(false); this.reconnect(); } }
-      });
-      this.messagesSubject$.next(this.socket$.pipe(catchError(() => EMPTY)));
-    }
-  }
-
-  send(message: unknown): void { this.socket$?.next(message); }
-  private reconnect(): void { setTimeout(() => this.connect(), 3000); }
-  disconnect(): void { this.socket$?.complete(); }
-}
-```
+The backend's other hub, `/hubs/agent-commands`, serves the tray/monitoring agent and is not used by the web app.
 
 ---
 
@@ -1191,11 +1163,6 @@ export class AuthService {
       }));
   }
 
-  // Called by error interceptor on 401 — attempts silent token refresh
-  refresh(): Observable<void> {
-    return this.http.post<void>('/api/v1/auth/refresh', {}, { withCredentials: true });
-  }
-
   clearSession(): void {
     this.currentUser.set(null);
     this.isAuthenticated.set(false);
@@ -1214,36 +1181,43 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
 ### 6.2 XSS & CSRF Protection
 
-Angular's template engine auto-escapes interpolated values. Never use `innerHTML` or `bypassSecurityTrustHtml` unless absolutely required.
+Angular's template engine auto-escapes interpolated values, and `[innerHTML]` bindings go through Angular's HTML sanitizer. Never use `bypassSecurityTrustHtml` (the codebase has none).
 
-CSRF: Use the **double-submit cookie pattern** — backend sets `XSRF-TOKEN` cookie, frontend reads it and sends as `X-XSRF-TOKEN` header. Backend verifies both match.
+**Rich text written with raw DOM APIs.** The shared rich-text editor (`shared/ui/rich-text-editor`) loads stored HTML (task descriptions, comments, checklist task descriptions) with `element.innerHTML = ...`, which bypasses Angular's sanitizer. Every such write must go through `sanitizeEditableHtml()` (`shared/utils/editable-html.util.ts`, DOMPurify). It removes scripts, embedded frames, inline event handlers and script URLs but keeps the editor's own markup (mention chips, checkboxes, inline colours). The editor also emits sanitized HTML, so pasted web content cannot carry active content to the API. The backend rejects active content on write as well (`RichTextRules`). Any new component that assigns `innerHTML` from data must use the same helper.
+
+CSRF: **double-submit cookie pattern** — the backend sets a readable `onevo_csrf` cookie (`onevo_legal_csrf` during the pending-legal login step), and the frontend sends it back as the `X-CSRF-Token` header on state-changing requests. `CsrfProtectionMiddleware` hashes the header and compares it with the hash stored on the server-side session, so the token is bound to that session (a copied CSRF value without the matching session cookie fails).
 
 ```typescript
 // core/interceptors/csrf.interceptor.ts
-import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { DOCUMENT } from '@angular/common';
+const CSRF_HEADER = 'X-CSRF-Token';
+const CSRF_COOKIE_NAMES = ['onevo_csrf', 'onevo_legal_csrf'];
+const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 
 export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
-  // Only apply to state-mutating methods
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+  if (SAFE_METHODS.includes(req.method)) {
     return next(req);
   }
-
-  const document = inject(DOCUMENT);
-  const cookies = document.cookie.split(';');
-  const xsrfCookie = cookies.find(c => c.trim().startsWith('XSRF-TOKEN='));
-  const xsrfToken = xsrfCookie ? xsrfCookie.split('=')[1]?.trim() : null;
-
-  if (!xsrfToken) return next(req);
-
-  return next(req.clone({
-    setHeaders: { 'X-XSRF-TOKEN': xsrfToken }
-  }));
+  const token = readCsrfToken(inject(DOCUMENT)); // first cookie found in CSRF_COOKIE_NAMES
+  if (!token) {
+    return next(req);
+  }
+  return next(req.clone({ setHeaders: { [CSRF_HEADER]: token } }));
 };
 ```
 
 > ⚠️ **Removed:** The v1 `X-Requested-With: XMLHttpRequest` header was a weak CSRF mitigation. It is replaced by the double-submit pattern above.
+
+#### 6.2.1 Keyboard and screen-reader access (enforced by lint, 2026-10-28)
+
+The angular-eslint accessibility template rules run as errors. The shared patterns that satisfy them:
+
+| Situation | Pattern |
+|---|---|
+| Clickable card, row or tab that is not a `<button>` | `role="button" tabindex="0" appKeyboardClick` — `shared/directives/keyboard-click.directive.ts` fires the element's own `(click)` on Enter/Space, only when the element itself has focus |
+| Backdrop, scrim, or a box whose click only focuses its input | `role="presentation"` (mouse convenience; Escape or the close button is the keyboard path) |
+| Popover or menu that must not let clicks reach the parent's click-outside handler | `appStopClickPropagation` — `shared/directives/stop-click-propagation.directive.ts` |
+| Heading over a group of buttons or a custom picker | `<span>` (not `<label>`), with `aria-label` on the group |
+| Component outputs | Never a DOM event name: `cancelled` / `closed`, not `cancel` / `close` |
 
 ### 6.3 Correlation ID Interceptor
 
@@ -1310,8 +1284,10 @@ export const authGuard: CanActivateFn = () => {
 };
 ```
 
+> The shipped guard is permission-based, not role-based: `core/guards/permission.guard.ts` (`permissionGuard`) checks the route's required permissions against the session's permission list. The role-guard sample below is the original design.
+
 ```typescript
-// core/guards/role.guard.ts
+// core/guards/role.guard.ts (design sample, not in the codebase)
 import { inject } from '@angular/core';
 import { CanActivateFn, ActivatedRouteSnapshot } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
@@ -1363,7 +1339,7 @@ All HTTP error codes must map to exactly one action. This table is the source of
 
 | HTTP Code | User Message | Behaviour | Telemetry Event |
 |---|---|---|---|
-| `401` | *(silent — refresh attempted first)* | Refresh → retry → redirect `/login` | `auth_session_expired` |
+| `401` | *(session ended)* | No retry (no refresh token) → redirect to login with return path | `auth_session_expired` |
 | `403` | "You don't have access to this." | Banner notification | `auth_forbidden` |
 | `404` | "This record no longer exists." | Inline message | `resource_not_found` |
 | `409` | "This record was just updated by someone else. Please refresh." | Inline message | `data_conflict` |
@@ -1441,17 +1417,9 @@ retry({
 
 ### 7.3 Token Refresh Flow
 
-When a `401` is received mid-session:
+**There is no token refresh (verified 2026-10-27).** The backend uses a single session cookie with sliding expiry and no refresh token (`SessionPolicy.cs`). A `401` mid-session means the session itself is gone (idle past the window, revoked, or signed out elsewhere), so `error.interceptor.ts` does not retry it: the user is sent to log in again with a return path.
 
-```
-Request → 401 received
-  → isRefreshing? NO → call /auth/refresh
-      → Refresh OK  → retry original request → continue
-      → Refresh FAIL → clearSession() → navigate /login?returnTo=<current>
-  → isRefreshing? YES → queue request, wait for refresh to complete
-```
-
-The `isRefreshing` flag prevents multiple simultaneous refresh calls when parallel requests all return 401.
+What the interceptor does retry: `GET`/`HEAD` requests that fail with a 5xx or a dropped connection, up to 3 times with 250/500/1000 ms delays. Writes are never retried automatically, because a failed response does not prove the write was not applied (retrying once duplicated calendar events).
 
 ### 7.4 Error States in Components — Required Pattern
 
