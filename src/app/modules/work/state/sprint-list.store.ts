@@ -24,7 +24,7 @@ const initialState: SprintListState = { sprints: [], loading: false, error: null
 
 const SENT_FOR_APPROVAL = 'Sent for approval.';
 
-function extractError(err: any, fallback: string): string {
+function extractError(err: unknown, fallback: string): string {
   return toSafeErrorMessage(err, fallback);
 }
 

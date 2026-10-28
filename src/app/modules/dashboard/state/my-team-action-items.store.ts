@@ -20,13 +20,13 @@ const initialState: MyTeamActionItemsState = {
   loadedAt: null
 };
 
-function extractError(err: any, fallback: string): string {
+function extractError(err: unknown, fallback: string): string {
   return toSafeErrorMessage(err, fallback);
 }
 
-/** Rows per source the Action Center inbox lists - enough for a real team's queue; the chip
- * counts always use the backend's pendingCount totals. */
-export const ACTION_ITEMS_PER_SOURCE = 25;
+/** Rows the Action Center asks for - the backend returns only the 4 longest-waiting items across all
+ * sources anyway; the chip counts always use the backend's pendingCount totals. */
+export const ACTION_ITEMS_PER_SOURCE = 4;
 
 export const MyTeamActionItemsStore = signalStore(
   { providedIn: 'root' },

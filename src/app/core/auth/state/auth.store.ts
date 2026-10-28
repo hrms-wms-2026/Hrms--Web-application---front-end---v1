@@ -10,7 +10,7 @@ import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employe
 import { toCurrentUserViewModel } from '../utils/auth.mapper';
 import { safeServerDetail } from '../../services/error-handler.service';
 
-type AuthState = {
+interface AuthState {
   authenticated: boolean;
   email: string | null;
   employeeId: string | null;
@@ -24,7 +24,7 @@ type AuthState = {
   continueUrl: string | null;
   loading: boolean;
   error: string | null;
-};
+}
 
 const initialState: AuthState = {
   authenticated: false,

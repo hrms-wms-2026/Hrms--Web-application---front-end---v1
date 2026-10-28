@@ -1,0 +1,164 @@
+<app-modal [open]="open()" title="Team attendance" icon="" size="2xl" panelClass="team-attendance-detail" (closed)="close()">
+  @if (store.data(); as data) {
+    <div class="tad">
+      <div class="tad-controls" data-testid="tad-controls">
+        <div class="tad-range">
+          <button type="button" class="tad-nav" aria-label="Previous period" (click)="shift(-1)">‹</button>
+          <span class="tad-range-label" data-testid="tad-range">{{ rangeLabel() }}</span>
+          <button type="button" class="tad-nav" aria-label="Next period" [disabled]="data.isProvisional" (click)="shift(1)">›</button>
+          @if (data.isProvisional) {
+            <span class="tad-muted">Today in progress</span>
+          }
+        </div>
+        <div class="tad-filters">
+          <app-select
+            class="tad-select"
+            ariaLabel="Period"
+            [searchable]="false"
+            [options]="[{ value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]"
+            [value]="data.mode"
+            (valueChange)="onModeSelect($event)"
+          />
+          @if (data.departments.length > 0) {
+            <app-select
+              class="tad-select"
+              ariaLabel="Department"
+              [searchable]="false"
+              [options]="departmentOptions()"
+              [value]="store.query().departmentId ?? ''"
+              (valueChange)="onDepartment($event)"
+            />
+          }
+        </div>
+      </div>
+
+      <app-kpi-tiles [tiles]="tiles()" ariaLabel="Period attendance" />
+
+      <div class="tad-charts">
+        <section class="tad-panel">
+          <p class="tad-title">
+            Daily attendance · {{ percentText(data.periodRate) }}
+            @if (delta(); as d) {
+              <span class="tad-delta" [class.tad-delta--down]="d.down">{{ d.text }}</span>
+            }
+          </p>
+          <app-attendance-day-chart class="tad-chart" [points]="data.trend" />
+        </section>
+        <section class="tad-panel tad-distribution">
+          <p class="tad-title">Distribution</p>
+          <div class="tad-distribution-body">
+            <svg viewBox="0 0 42 42" class="tad-donut" role="img" aria-label="Attendance distribution for the period">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+              @for (arc of distribution().arcs; track arc.key) {
+                <circle
+                  cx="21"
+                  cy="21"
+                  r="15.9155"
+                  fill="none"
+                  stroke-width="6"
+                  [attr.stroke]="arc.color"
+                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+                  [attr.stroke-dashoffset]="arc.offset"
+                />
+              }
+            </svg>
+            <ul class="tad-legend">
+              @for (row of distribution().rows; track row.key) {
+                <li>
+                  <span class="tad-dot" [style.background]="row.color"></span>
+                  <span class="tad-legend-label">{{ row.label }}</span>
+                  <span class="tad-legend-count">{{ row.count }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        </section>
+      </div>
+
+      <section class="tad-panel">
+        <div class="tad-table-head">
+          <p class="tad-title">Employee attendance details</p>
+          <div class="tad-table-actions">
+            <app-input class="tad-search" placeholder="Search employee…" [value]="search()" (valueChange)="onSearch($event)" />
+            <button type="button" class="tad-button" data-testid="tad-export" [disabled]="exporting()" (click)="exportCsv()">
+              {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+            </button>
+          </div>
+        </div>
+
+        @if (exportError()) {
+          <p class="tad-error" role="alert" data-testid="tad-export-error">Couldn't export the list. Please try again.</p>
+        }
+        @if (rowsError()) {
+          <p class="tad-muted tad-pad">Couldn't load the employee list.</p>
+        } @else {
+          <div class="tad-scroll">
+            <table class="tad-table">
+              <thead>
+                <tr>
+                  <th class="tad-sticky tad-sticky--name" scope="col">Employee</th>
+                  @for (d of dates(); track d.date) {
+                    <th class="tad-date" scope="col" data-testid="tad-date-col" [attr.title]="d.date">
+                      <span>{{ d.day }}</span><span class="tad-weekday">{{ d.weekday }}</span>
+                    </th>
+                  }
+                  <th class="tad-rate-col" scope="col">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of rows()?.items ?? []; track r.employeeId) {
+                  <tr>
+                    <th class="tad-sticky tad-sticky--name" scope="row">
+                      <span class="tad-person">
+                        <app-avatar size="xs" [avatarUrl]="avatarUrl(r.avatarFileId)" [userName]="r.name" />
+                        <span class="tad-person-text">
+                          <span class="tad-name">{{ r.name }}</span>
+                          @if (r.department) {
+                            <span class="tad-dept">{{ r.department }}</span>
+                          }
+                        </span>
+                      </span>
+                    </th>
+                    @for (cell of r.days; track cell.date) {
+                      <td class="tad-cell-td">
+                        <span
+                          [class]="'tad-cell tad-cell--' + cell.bucket"
+                          data-testid="tad-cell"
+                          role="img"
+                          [attr.aria-label]="cellLabel(cell.bucket)"
+                          [attr.title]="cell.date + ': ' + cellLabel(cell.bucket)"
+                        ></span>
+                      </td>
+                    }
+                    <td class="tad-rate-col">
+                      <span class="tad-rate">{{ percentText(r.rate) }}</span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="tad-muted tad-pad" [attr.colspan]="dates().length + 2">No employees match.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if ((rows()?.totalPages ?? 1) > 1) {
+            <div class="tad-pager">
+              <button type="button" class="tad-button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Previous</button>
+              <span class="tad-muted">Page {{ page() }} of {{ rows()?.totalPages }}</span>
+              <button type="button" class="tad-button" [disabled]="page() >= (rows()?.totalPages ?? 1)" (click)="goToPage(page() + 1)">Next</button>
+            </div>
+          }
+        }
+        <p class="tad-legend-line">
+          <span class="tad-cell tad-cell--present"></span> Present
+          <span class="tad-cell tad-cell--late"></span> Late
+          <span class="tad-cell tad-cell--absent"></span> Absent
+          <span class="tad-cell tad-cell--leave"></span> On leave
+          <span class="tad-cell tad-cell--pending"></span> Not in yet
+          <span class="tad-cell tad-cell--off"></span> Off
+        </p>
+      </section>
+    </div>
+  }
+</app-modal>

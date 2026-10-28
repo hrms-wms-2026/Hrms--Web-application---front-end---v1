@@ -42,3 +42,41 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Dashboard — 4-column grid, Small/Large cards | implemented | `next/2026-10-19-dashboard-four-column-grid.md` | 2026-10-19 |
 
 **Note on "finished" here:** all of the above are implementation reports or already-executed plans as of the 2026-08-06 restructure — cross-checked against `src/app/` (auth, dashboard-home, organization/general-settings are all present in code). None were currently in-progress/pending at restructure time except the Project Management context file.
+
+## 2026-10-28 migration of loose files
+
+31 files had been added loose in `plans/`, against FILE_CREATION_RULES rule 1. They were moved with `git mv` on 2026-10-28. Status was decided from the code, not from the file: **finished** means the feature's endpoints/components exist in `src/`; **pending** means they do not. Finished files sit under `finished/<date>/` using the date in the file name (the plan/design date; the completion date was not recorded).
+
+| File | Location | Status | Note |
+|---|---|---|---|
+| General Settings Design Refresh Implementation Plan | `finished/2026-08-13/2026-08-13-general-settings-design-refresh.md` | finished |  |
+| Employee Self-Service Profile (Frontend) Implementation Plan | `finished/2026-08-15/2026-08-15-employee-self-service-profile-frontend.md` | finished |  |
+| Employee Detail Screen — Frontend Implementation Plan | `finished/2026-08-16/2026-08-16-employee-detail-screen-frontend.md` | finished |  |
+| Employee Offboarding Execution — Frontend Implementation Plan | `finished/2026-08-17/2026-08-17-employee-offboarding-execution-frontend.md` | finished |  |
+| Sensitive Position Approval — Frontend Implementation Plan | `finished/2026-08-17/2026-08-17-sensitive-position-approval-frontend.md` | finished |  |
+| Bulk Employee Onboarding (Frontend) Implementation Plan | `finished/2026-08-18/2026-08-18-bulk-employee-onboarding-frontend.md` | finished |  |
+| Connect Desktop Agent (Settings → Devices) Implementation Plan | `finished/2026-08-25/2026-08-25-connect-desktop-agent-frontend.md` | finished |  |
+| Time Tracking Date-Range Picker Implementation Plan | `finished/2026-08-25/2026-08-25-time-tracking-date-range-picker.md` | finished |  |
+| Tray App Employee Access Toggle (Phase A, Frontend) Implementation Plan | `next/2026-08-25-tray-app-employee-access-toggle-frontend.md` | pending | only the API method exists (people-api.service setTrayAppAccess, unused); no UI and no backend endpoint |
+| Attendance Team Approvals Consolidation Implementation Plan | `finished/2026-08-26/2026-08-26-attendance-team-approvals-consolidation.md` | finished |  |
+| Calendar Frontend Module Implementation Plan | `finished/2026-08-31/2026-08-31-calendar-frontend-module.md` | finished |  |
+| Calendar Invites, RSVP, and Conflict Detection — Frontend Implementation Plan | `finished/2026-08-31/2026-08-31-calendar-invites-rsvp-conflicts-frontend.md` | finished |  |
+| Calendar Week/Day/Agenda Views Implementation Plan | `finished/2026-08-31/2026-08-31-calendar-week-day-agenda-views.md` | finished |  |
+| Calendar Timezone Correctness and Unsaved-Changes Guard — Frontend Implementation Plan | `finished/2026-09-01/2026-09-01-calendar-timezone-frontend.md` | finished |  |
+| Module Creation Screen — Assets, Members, Date Range Picker (Frontend) Implementation Plan | `finished/2026-09-02/2026-09-02-module-creation-assets-members-frontend.md` | finished | frontend done; backend asset endpoints built 2026-10-28|
+| Attendance Overview Redesign Implementation Plan | `finished/2026-09-08/2026-09-08-attendance-overview-redesign.md` | finished |  |
+| ClickUp-style Task Status Groups Implementation Plan | `finished/2026-09-18/2026-09-18-task-status-groups.md` | finished |  |
+| Employee List Redesign + Bulk Actions (Sub-project B) Implementation Plan | `finished/2026-09-28/2026-09-28-employee-list-bulk-actions.md` | finished |  |
+| Shared Bulk-Action Primitives (Sub-project A) Implementation Plan | `finished/2026-09-28/2026-09-28-shared-bulk-action-primitives.md` | finished |  |
+| Task Backlog Bulk Actions (Sub-project C) Implementation Plan | `finished/2026-09-28/2026-09-28-task-backlog-bulk-actions.md` | finished |  |
+| Drafts Bar + Unsaved Changes Guard (Sub-project D) Implementation Plan | `finished/2026-09-29/2026-09-29-drafts-bar-and-unsaved-changes-guard.md` | finished |  |
+| Employee Detail — Employment Tab & Work Network (Plan 1, frontend half) | `finished/2026-09-30/2026-09-30-employee-detail-employment-tab-frontend.md` | finished |  |
+| Employee Overview — Attendance, Discipline & Time-Off (Plan 2, frontend half) | `finished/2026-09-30/2026-09-30-employee-overview-attendance-timeoff-frontend.md` | finished |  |
+| Employee Overview — Insights, Approvals & Layout (Plan 3B, frontend) | `finished/2026-09-30/2026-09-30-employee-overview-insights-approvals-frontend.md` | finished |  |
+| Employee Overview — Recent Activity & Final Layout (Plan 4B, frontend) | `finished/2026-09-30/2026-09-30-employee-overview-recent-activity-frontend.md` | finished |  |
+| Employee Overview — Upcoming, Checklists & History (Plan 4A, frontend) | `finished/2026-09-30/2026-09-30-employee-overview-upcoming-checklists-history-frontend.md` | finished |  |
+| Employee Overview — Foundations, Work & Delivery (Plan 3A, frontend) | `finished/2026-09-30/2026-09-30-employee-overview-work-delivery-frontend.md` | finished |  |
+| Needs Attention Drill-down — Frontend Implementation Plan | `finished/2026-10-01/2026-10-01-needs-attention-drilldown-frontend.md` | finished |  |
+| Inbox Case History Implementation Plan | `finished/2026-10-19/2026-10-19-inbox-case-history.md` | finished |  |
+| WM Project Network View Implementation Plan | `finished/2026-10-19/2026-10-19-wm-project-network-view.md` | finished |  |
+| Attendance Late/Early Deductions Implementation Plan | `finished/2026-10-20/2026-10-20-attendance-late-early-deductions.md` | finished |  |

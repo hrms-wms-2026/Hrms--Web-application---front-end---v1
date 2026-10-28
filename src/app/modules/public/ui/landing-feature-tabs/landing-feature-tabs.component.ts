@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 export type FeatureTabId = 'workday' | 'hr' | 'intelligence' | 'worksync';
 
 @Component({
   selector: 'app-landing-feature-tabs',
+  imports: [KeyboardClickDirective],
   standalone: true,
   templateUrl: './landing-feature-tabs.component.html',
   styleUrl: './landing-feature-tabs.component.css',

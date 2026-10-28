@@ -1,0 +1,48 @@
+<app-modal [open]="open()" [title]="title()" [icon]="icon()" [subtitle]="subtitle()" size="lg" (closed)="closed.emit()">
+  <div class="ppd" data-testid="person-picker">
+    <label class="ppd__search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+      <input type="search" placeholder="Search people…" aria-label="Search people" data-testid="person-picker-search" [value]="text()"
+        (input)="onType($any($event.target).value)" />
+    </label>
+
+    <ul class="ppd__list" data-testid="person-picker-list">
+      @for (p of rows(); track p.id) {
+        <li>
+          @if (multiple()) {
+            <label class="ppd__row" [class.ppd__row--disabled]="p.disabled" [attr.data-testid]="'person-picker-row-' + p.id">
+              <input type="checkbox" class="ppd__check" [checked]="p.disabled || isChosen(p.id)" [disabled]="p.disabled" (change)="toggle(p.id)" />
+              <app-avatar [userName]="p.name" [avatarUrl]="avatarUrl(p.avatarFileId)" size="lg" />
+              <span class="ppd__text">
+                <span class="ppd__name">{{ p.name }}</span>
+                @if (p.disabled) { <span class="ppd__sub ppd__sub--note">{{ disabledLabel() }}</span> }
+                @else if (p.detail) { <span class="ppd__sub">{{ p.detail }}</span> }
+              </span>
+            </label>
+          } @else {
+            <button type="button" class="ppd__row" [class.ppd__row--disabled]="p.disabled" [disabled]="p.disabled || busy()"
+              [attr.data-testid]="'person-picker-row-' + p.id" (click)="pickOne(p.id)">
+              <app-avatar [userName]="p.name" [avatarUrl]="avatarUrl(p.avatarFileId)" size="lg" />
+              <span class="ppd__text">
+                <span class="ppd__name">{{ p.name }}</span>
+                @if (p.disabled) { <span class="ppd__sub ppd__sub--note">{{ disabledLabel() }}</span> }
+                @else if (p.detail) { <span class="ppd__sub">{{ p.detail }}</span> }
+              </span>
+            </button>
+          }
+        </li>
+      } @empty {
+        <li class="ppd__empty">{{ loading() ? 'Loading people…' : text().trim() ? 'No one matches that name' : 'No people to show' }}</li>
+      }
+    </ul>
+
+    @if (multiple()) {
+      <div class="ppd__actions">
+        <span class="ppd__count">{{ chosen().length === 0 ? 'No one selected' : chosen().length + ' selected' }}</span>
+        <button type="button" class="ppd__btn" (click)="closed.emit()">Cancel</button>
+        <button type="button" class="ppd__btn ppd__btn--primary" data-testid="person-picker-confirm" [disabled]="chosen().length === 0 || busy()"
+          (click)="confirm()">{{ chosen().length > 1 ? confirmLabel() + ' ' + chosen().length + ' people' : confirmLabel() }}</button>
+      </div>
+    }
+  </div>
+</app-modal>

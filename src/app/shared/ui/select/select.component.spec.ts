@@ -97,4 +97,29 @@ describe('SelectComponent', () => {
     fixture.componentInstance.openPanel();
     expect(fixture.componentInstance.open()).toBe(false);
   });
+
+  it('renders an optional panel action below the options without changing or closing the selection', async () => {
+    const fixture = create({
+      options: COUNTRIES,
+      value: 'in',
+      panelActionLabel: '+ Add another level',
+      searchable: false
+    });
+    let actionCount = 0;
+    let emittedValue: string | undefined;
+    fixture.componentInstance.panelAction.subscribe(() => actionCount++);
+    fixture.componentInstance.valueChange.subscribe((value) => (emittedValue = value));
+    openSelect(fixture.nativeElement, () => fixture.detectChanges());
+
+    const action = document.querySelector<HTMLButtonElement>('[data-testid="select-panel-action"]');
+    expect(action?.textContent?.trim()).toBe('+ Add another level');
+    action?.click();
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(actionCount).toBe(1);
+    expect(emittedValue).toBeUndefined();
+    expect(fixture.componentInstance.open()).toBe(true);
+    expect(selectDisplayText(fixture.nativeElement)).toBe('India');
+  });
 });

@@ -41,6 +41,9 @@ class ToastHostStubComponent {}
 @Component({ selector: 'app-mobile-bottom-nav', standalone: true, template: '' })
 class MobileBottomNavStubComponent {}
 
+@Component({ selector: 'app-mobile-section-nav', standalone: true, template: '' })
+class MobileSectionNavStubComponent {}
+
 @Component({ selector: 'app-drafts-bar', standalone: true, template: '' })
 class DraftsBarStubComponent {}
 
@@ -53,6 +56,7 @@ class UnsavedChangesDialogStubComponent {}
 @Component({ selector: 'app-locked-workspace-preview', standalone: true, template: '' })
 class LockedWorkspacePreviewStubComponent {}
 
+// eslint-disable-next-line @angular-eslint/component-selector -- the stub must match the real <router-outlet> selector
 @Component({ selector: 'router-outlet', standalone: true, template: '' })
 class RouterOutletStubComponent {}
 
@@ -120,6 +124,7 @@ describe('MainLayoutComponent tray activation gate', () => {
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          MobileSectionNavStubComponent,
           DraftsBarStubComponent,
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
@@ -207,6 +212,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          MobileSectionNavStubComponent,
           DraftsBarStubComponent,
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,

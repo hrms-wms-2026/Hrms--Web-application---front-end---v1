@@ -44,11 +44,6 @@ export const WORK_ROUTES: Routes = [
           import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
       },
       {
-        path: 'calendar',
-        loadComponent: () =>
-          import('./feature/project-calendar/project-calendar.component').then((m) => m.ProjectCalendarComponent)
-      },
-      {
         path: 'settings',
         loadComponent: () =>
           import('./feature/project-settings/project-settings.component').then((m) => m.ProjectSettingsComponent)

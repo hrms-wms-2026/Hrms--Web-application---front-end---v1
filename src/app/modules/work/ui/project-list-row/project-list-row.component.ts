@@ -3,13 +3,14 @@ import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.comp
 import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
 import { ProjectApiService } from '../../data-access/project-api.service';
 import { Project } from '../../models/project.model';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 @Component({
   selector: 'app-project-list-row',
   standalone: true,
-  imports: [EmployeeAvatarComponent, ProgressBarComponent],
+  imports: [KeyboardClickDirective, EmployeeAvatarComponent, ProgressBarComponent],
   template: `
-    <div
+    <div role="button" tabindex="0" appKeyboardClick
       data-testid="project-list-row"
       class="group flex w-full items-center gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-150 cursor-pointer min-h-[4.25rem]"
       [class]="selected()

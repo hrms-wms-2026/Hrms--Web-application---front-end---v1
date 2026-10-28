@@ -50,7 +50,7 @@ describe('BoardStructureEditorComponent', () => {
       color: '#2563EB',
     },
   ];
-  type Access = { canEditDirectly: boolean; canRequest: boolean };
+  interface Access { canEditDirectly: boolean; canRequest: boolean }
   const direct: Access = { canEditDirectly: true, canRequest: false };
   function changeRequestApiMock(access: Access) {
     return {

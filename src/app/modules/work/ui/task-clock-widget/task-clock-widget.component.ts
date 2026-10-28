@@ -5,9 +5,11 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { WorkTask } from '../../models/task.model';
 import { toWorkTask } from '../../utils/task.mapper';
 import { safeServerDetail } from '../../../../core/services/error-handler.service';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-task-clock-widget',
+  imports: [StopClickPropagationDirective],
   standalone: true,
     template: `
     <div class="task-clock-widget" [class.task-clock-widget--compact]="compact()">
@@ -30,7 +32,7 @@ import { safeServerDetail } from '../../../../core/services/error-handler.servic
 
         @if (pushPopupOpen()) {
           <div class="task-clock-widget__overlay" aria-hidden="true" (click)="closePushPopup()"></div>
-          <div class="task-clock-widget__popup" role="dialog" aria-modal="true" aria-label="Pause task progress" (click)="$event.stopPropagation()">
+          <div class="task-clock-widget__popup" role="dialog" aria-modal="true" aria-label="Pause task progress" appStopClickPropagation>
             <p data-testid="push-current-percent">Current: {{ task().progressPercent }}%</p>
             <input class="ui-input ui-input--sm"
               data-testid="push-percent-input"

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Subject, of, throwError } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
@@ -243,22 +243,9 @@ describe('ConversationPanelComponent (FS3)', () => {
     click.mockRestore();
   });
 
-  it('only the subject may mark a message as a justification, and it is sent with the tag', async () => {
-    expect((await render()).q('conversation-justification')).toBeNull();
-  });
-
-  it('the subject sends a justification', async () => {
+  it('has no "Mark as justification" checkbox, even for the employee the case is about', async () => {
     me = 'pat';
-    const { q, settle, fixture } = await render();
-    const toggle = q('conversation-justification') as HTMLInputElement;
-    toggle.click();
-    await settle();
-
-    await (fixture.componentInstance as unknown as { send(html: string, mentions: string[], files: string[]): Promise<void> })
-      .send('<p>I was at the clinic</p>', [], ['f1']);
-    await settle();
-
-    expect(api['post']).toHaveBeenCalledWith('c1', '<p>I was at the clinic</p>', [], ['f1'], 'justification', null);
+    expect((await render()).q('conversation-justification')).toBeNull();
   });
 
   it('uploads chat attachments as conversation_attachment, at most 5 and 25 MB each', async () => {
@@ -274,7 +261,7 @@ describe('ConversationPanelComponent (FS3)', () => {
     expect(files.upload).toHaveBeenCalledWith(file, 'conversation_attachment');
     expect(uploaded).toEqual({ fileId: 'f1', originalFileName: 'a.pdf', fileSizeBytes: 10 });
     expect([uploader.maxFiles, uploader.maxBytes]).toEqual([5, 25 * 1024 * 1024]);
-    expect((uploader as unknown as { accept: string }).accept).toBe('.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip');
+    expect((uploader as unknown as { accept: string }).accept).toBe('.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip,.mp4,.webm,.mov,.mp3,.wav,.m4a,.ogg');
   });
 
   it('replies to a message like a messenger: Reply shows a bar over the composer, the send carries the quoted id', async () => {

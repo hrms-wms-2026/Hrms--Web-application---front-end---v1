@@ -47,3 +47,7 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat �
 - `2026-09-30-employee-detail-tabs.md` — status: Phases 1-2 implemented (tabbed shell, profile header, read-only Employment/Personal parity,
   routed tabs, `EmployeeDetailStore`, period filter); Phases 2-5 pending. Phase 3 needs new employee-scoped
   backend aggregates, and Phase 5 (Attendance tab) is blocked on a design.
+
+## Added 2026-10-28 (migrated from loose `plans/` files)
+
+- `2026-08-25-tray-app-employee-access-toggle-frontend.md` — Tray App Employee Access Toggle (Phase A, Frontend) Implementation Plan — **pending**: only the API method exists (people-api.service setTrayAppAccess, unused); no UI and no backend endpoint

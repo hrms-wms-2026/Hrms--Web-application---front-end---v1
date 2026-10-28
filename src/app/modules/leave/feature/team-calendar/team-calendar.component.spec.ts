@@ -21,6 +21,21 @@ describe('TeamCalendarComponent', () => {
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar`).flush({ year: 2026, month: 9, monthStart: '2026-09-01', monthEnd: '2026-09-30', includesTentativeBlocks: false, isEmpty: true, days: [] });
   });
 
+  it('filters by department through the shared filter bar', async () => {
+    fixture.detectChanges();
+    const empty = { year: 2026, month: 9, monthStart: '2026-09-01', monthEnd: '2026-09-30', includesTentativeBlocks: false, isEmpty: true, days: [] };
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar`).flush(empty);
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-department"] [data-testid="filter-trigger"]')).not.toBeNull();
+
+    fixture.componentInstance.onFilterFieldChanged({ key: 'department', values: ['dept-1'] });
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar` && r.params.get('departmentId') === 'dept-1').flush(empty);
+    expect(fixture.componentInstance.filterValues()).toEqual({ department: ['dept-1'] });
+
+    fixture.componentInstance.onFilterFieldChanged({ key: 'department', values: [] });
+    httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar` && !r.params.has('departmentId')).flush(empty);
+    expect(fixture.componentInstance.filterValues()).toEqual({ department: [] });
+  });
+
   it('opens the day detail when a day is clicked', async () => {
     fixture.detectChanges();
     httpMock.expectOne((r) => r.url === `${environment.apiUrl}/leave/calendar`).flush({

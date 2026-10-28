@@ -5,8 +5,6 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthApiService } from '../../data-access/auth-api.service';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { safeServerDetail } from '../../../services/error-handler.service';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not reach the server. Please try again.';

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { signal } from '@angular/core';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LegalEntityApiService } from '../../../organization/data-access/legal-entity-api.service';
@@ -12,7 +13,7 @@ import { PolicyManagementComponent } from './policy-management.component';
 
 describe('PolicyManagementComponent', () => {
   const departmentList = vi.fn(() => of({ items: [{ id: 'd1', name: 'Sales' }] }));
-  function setup() {
+  function setup(query: Record<string, string> = {}) {
     const policy = {
       items: signal([]), selectedPolicy: signal(null), loading: signal(false), loadError: signal(null),
       saving: signal(false), actionError: signal(null), conflicts: signal([]),
@@ -22,6 +23,8 @@ describe('PolicyManagementComponent', () => {
     };
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } },
         { provide: PermissionService, useValue: { hasPermission: () => true } },
         { provide: NotificationService, useValue: { error: vi.fn(), success: vi.fn() } },
         { provide: LegalEntityApiService, useValue: { getLegalEntities: () => of([{ id: 'le1', name: 'Dapi Technologies' }]) } },
@@ -31,6 +34,7 @@ describe('PolicyManagementComponent', () => {
         { provide: LeaveTypeStore, useValue: { items: signal([]), load: async () => {} } }
       ]
     });
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = TestBed.createComponent(PolicyManagementComponent);
     fixture.detectChanges();
     return { fixture, policy };
@@ -72,5 +76,19 @@ describe('PolicyManagementComponent', () => {
     policy.selectedPolicy.set({ id: 'p-new' } as never);
     fixture.componentInstance.openEdit();
     expect(fixture.componentInstance.wizardMode()).toBe('edit');
+  });
+
+  it('filters to the leave type from ?type= and opens the wizard for ?new', () => {
+    const { fixture, policy } = setup({ type: 'lt1', new: '1' });
+    policy.items.set([
+      { id: 'a', name: 'Annual', leaveTypeId: 'lt1', leaveTypeName: 'Annual Leave' },
+      { id: 'b', name: 'Sick', leaveTypeId: 'lt2', leaveTypeName: 'Sick Leave' }
+    ] as never);
+    const page = fixture.componentInstance;
+    expect(page.visiblePolicies().map((p) => p.id)).toEqual(['a']);
+    expect(page.leaveTypeFilterName()).toBe('Annual Leave');
+    expect(page.wizardMode()).toBe('create');
+    page.clearLeaveTypeFilter();
+    expect(page.visiblePolicies()).toHaveLength(2);
   });
 });

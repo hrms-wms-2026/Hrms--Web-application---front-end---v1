@@ -40,3 +40,62 @@ All 2026-08-06 dates inferred from git history except the one plan file that alr
 
 ## 2026-09-21/
 - `2026-09-21-task-subtasks-frontend.md` — Task detail panel Subtasks section (add/list/assign/due date/priority), Board card + Backlog row progress badge (completed/total) and lazy expandable nested subtasks, WorkTask model/DTO/mapper updates, and TaskBoardStore lazy loading. Design: `specs/finished/2026-09-21/2026-09-21-task-subtasks-design.md`. Companion backend: `HRMS-Backend-v1/docs/superpowers/plans/finished/2026-09-21/2026-09-21-task-subtasks-backend.md`. All 5 tasks executed 2026-09-21, full suite green (2,601/2,601 tests across 321 test files).
+
+## Added 2026-10-28 (migrated from loose `plans/` files)
+
+- `2026-08-13/2026-08-13-general-settings-design-refresh.md` — General Settings Design Refresh Implementation Plan
+- `2026-08-15/2026-08-15-employee-self-service-profile-frontend.md` — Employee Self-Service Profile (Frontend) Implementation Plan
+- `2026-08-16/2026-08-16-employee-detail-screen-frontend.md` — Employee Detail Screen — Frontend Implementation Plan
+- `2026-08-17/2026-08-17-employee-offboarding-execution-frontend.md` — Employee Offboarding Execution — Frontend Implementation Plan
+- `2026-08-17/2026-08-17-sensitive-position-approval-frontend.md` — Sensitive Position Approval — Frontend Implementation Plan
+- `2026-08-18/2026-08-18-bulk-employee-onboarding-frontend.md` — Bulk Employee Onboarding (Frontend) Implementation Plan
+- `2026-08-25/2026-08-25-connect-desktop-agent-frontend.md` — Connect Desktop Agent (Settings → Devices) Implementation Plan
+- `2026-08-25/2026-08-25-time-tracking-date-range-picker.md` — Time Tracking Date-Range Picker Implementation Plan
+- `2026-08-26/2026-08-26-attendance-team-approvals-consolidation.md` — Attendance Team Approvals Consolidation Implementation Plan
+- `2026-08-31/2026-08-31-calendar-frontend-module.md` — Calendar Frontend Module Implementation Plan
+- `2026-08-31/2026-08-31-calendar-invites-rsvp-conflicts-frontend.md` — Calendar Invites, RSVP, and Conflict Detection — Frontend Implementation Plan
+- `2026-08-31/2026-08-31-calendar-week-day-agenda-views.md` — Calendar Week/Day/Agenda Views Implementation Plan
+- `2026-09-01/2026-09-01-calendar-timezone-frontend.md` — Calendar Timezone Correctness and Unsaved-Changes Guard — Frontend Implementation Plan
+- `2026-09-02/2026-09-02-module-creation-assets-members-frontend.md` — Module Creation Screen — Assets, Members, Date Range Picker (Frontend) Implementation Plan (frontend done; backend asset endpoints built 2026-10-28)
+- `2026-09-08/2026-09-08-attendance-overview-redesign.md` — Attendance Overview Redesign Implementation Plan
+- `2026-09-18/2026-09-18-task-status-groups.md` — ClickUp-style Task Status Groups Implementation Plan
+- `2026-09-28/2026-09-28-employee-list-bulk-actions.md` — Employee List Redesign + Bulk Actions (Sub-project B) Implementation Plan
+- `2026-09-28/2026-09-28-shared-bulk-action-primitives.md` — Shared Bulk-Action Primitives (Sub-project A) Implementation Plan
+- `2026-09-28/2026-09-28-task-backlog-bulk-actions.md` — Task Backlog Bulk Actions (Sub-project C) Implementation Plan
+- `2026-09-29/2026-09-29-drafts-bar-and-unsaved-changes-guard.md` — Drafts Bar + Unsaved Changes Guard (Sub-project D) Implementation Plan
+- `2026-09-30/2026-09-30-employee-detail-employment-tab-frontend.md` — Employee Detail — Employment Tab & Work Network (Plan 1, frontend half)
+- `2026-09-30/2026-09-30-employee-overview-attendance-timeoff-frontend.md` — Employee Overview — Attendance, Discipline & Time-Off (Plan 2, frontend half)
+- `2026-09-30/2026-09-30-employee-overview-insights-approvals-frontend.md` — Employee Overview — Insights, Approvals & Layout (Plan 3B, frontend)
+- `2026-09-30/2026-09-30-employee-overview-recent-activity-frontend.md` — Employee Overview — Recent Activity & Final Layout (Plan 4B, frontend)
+- `2026-09-30/2026-09-30-employee-overview-upcoming-checklists-history-frontend.md` — Employee Overview — Upcoming, Checklists & History (Plan 4A, frontend)
+- `2026-09-30/2026-09-30-employee-overview-work-delivery-frontend.md` — Employee Overview — Foundations, Work & Delivery (Plan 3A, frontend)
+- `2026-10-01/2026-10-01-needs-attention-drilldown-frontend.md` — Needs Attention Drill-down — Frontend Implementation Plan
+- `2026-10-19/2026-10-19-inbox-case-history.md` — Inbox Case History Implementation Plan
+- `2026-10-19/2026-10-19-wm-project-network-view.md` — WM Project Network View Implementation Plan
+- `2026-10-20/2026-10-20-attendance-late-early-deductions.md` — Attendance Late/Early Deductions Implementation Plan
+
+## Moved out of `finished/` root on 2026-10-28
+
+FILE_CREATION_RULES rule 1 allows nothing loose in `finished/`. Point-in-time reports went to `docs/reports/<area>/`, the convention in `docs/README.md`; dated plans went to their date folder. Names mentioned above without a path now live here:
+
+| File | New location |
+|---|---|
+| `CHECKLIST_TEMPLATE_FRONTEND_CORRECTION_REPORT.md` | `docs/reports/employee-onboarding/CHECKLIST_TEMPLATE_FRONTEND_CORRECTION_REPORT.md` |
+| `CHECKLIST_TEMPLATE_FRONTEND_UX_CORRECTION_REPORT.md` | `docs/reports/employee-onboarding/CHECKLIST_TEMPLATE_FRONTEND_UX_CORRECTION_REPORT.md` |
+| `CHECKLIST_TEMPLATES_FRONTEND_PART1_REPORT.md` | `docs/reports/employee-onboarding/CHECKLIST_TEMPLATES_FRONTEND_PART1_REPORT.md` |
+| `CREATE_COMPANY_FRONTEND_IMPLEMENTATION_REPORT.md` | `docs/reports/legal-entity/CREATE_COMPANY_FRONTEND_IMPLEMENTATION_REPORT.md` |
+| `EMPLOYEE_MANAGEMENT_FRONTEND_IMPLEMENTATION_REPORT.md` | `docs/reports/employee/EMPLOYEE_MANAGEMENT_FRONTEND_IMPLEMENTATION_REPORT.md` |
+| `EMPLOYEE_ONBOARDING_FINALIZED_DRAFT_FRONTEND_FIX_REPORT.md` | `docs/reports/employee-onboarding/EMPLOYEE_ONBOARDING_FINALIZED_DRAFT_FRONTEND_FIX_REPORT.md` |
+| `EMPLOYEE_ONBOARDING_FRONTEND_CONTRACT_AUDIT.md` | `docs/reports/employee-onboarding/EMPLOYEE_ONBOARDING_FRONTEND_CONTRACT_AUDIT.md` |
+| `EMPLOYEE_ONBOARDING_FRONTEND_PART2_CONTRACT_REPORT.md` | `docs/reports/employee-onboarding/EMPLOYEE_ONBOARDING_FRONTEND_PART2_CONTRACT_REPORT.md` |
+| `EMPLOYEE_ONBOARDING_FRONTEND_PART3_WIZARD_FINALIZE_REPORT.md` | `docs/reports/employee-onboarding/EMPLOYEE_ONBOARDING_FRONTEND_PART3_WIZARD_FINALIZE_REPORT.md` |
+| `EMPLOYEE_ONBOARDING_FRONTEND_PART4_APPROVAL_ACTIONS_REPORT.md` | `docs/reports/employee-onboarding/EMPLOYEE_ONBOARDING_FRONTEND_PART4_APPROVAL_ACTIONS_REPORT.md` |
+| `GENERAL_SETTINGS_DESIGN_REFRESH_REPORT.md` | `docs/reports/legal-entity/GENERAL_SETTINGS_DESIGN_REFRESH_REPORT.md` |
+| `POSITION_CAPACITY_CODE_FRONTEND_CORRECTION_REPORT.md` | `docs/reports/organization/POSITION_CAPACITY_CODE_FRONTEND_CORRECTION_REPORT.md` |
+| `POSITION_FRONTEND_CREATE_ACCESS_CONTRACT_REPORT.md` | `docs/reports/organization/POSITION_FRONTEND_CREATE_ACCESS_CONTRACT_REPORT.md` |
+| `POSITION_MANAGEMENT_COVERAGE_FRONTEND_EXCLUSIVITY_REPORT.md` | `docs/reports/organization/POSITION_MANAGEMENT_COVERAGE_FRONTEND_EXCLUSIVITY_REPORT.md` |
+| `POSITION_OCCUPANCY_DISPLAY_FIX_REPORT.md` | `docs/reports/organization/POSITION_OCCUPANCY_DISPLAY_FIX_REPORT.md` |
+| `POSITION_OCCUPANT_PREVIEW_FRONTEND_REPORT.md` | `docs/reports/organization/POSITION_OCCUPANT_PREVIEW_FRONTEND_REPORT.md` |
+| `POSITION_TEMPLATE_PACKS_FRONTEND_REPORT.md` | `docs/reports/organization/POSITION_TEMPLATE_PACKS_FRONTEND_REPORT.md` |
+| `PROFILE_POPOVER_LOGOUT_FRONTEND_REPORT.md` | `docs/reports/auth/PROFILE_POPOVER_LOGOUT_FRONTEND_REPORT.md` |
+| `USER_FACING_ERROR_AND_TOAST_REMEDIATION_REPORT.md` | `docs/reports/code-quality/USER_FACING_ERROR_AND_TOAST_REMEDIATION_REPORT.md` |

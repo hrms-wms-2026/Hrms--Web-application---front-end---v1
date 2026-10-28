@@ -660,7 +660,7 @@ export class TimeTrackingComponent implements OnInit {
   }
 }
 
-type CorrectionBreakDraft = { start: string; end: string };
+interface CorrectionBreakDraft { start: string; end: string }
 
 function localDateTimeToIso(workDate: string, time: string, timezone: string): string | null {
   const [year, month, day] = workDate.split('-').map(Number);

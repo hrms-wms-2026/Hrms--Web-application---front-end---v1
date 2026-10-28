@@ -53,7 +53,7 @@ const SHORT_RESULTS: Record<string, string | undefined> = {
         </ul>
       </div>
 
-      <dialog #viewer class="fec__viewer" data-testid="face-photo-viewer" aria-label="Face check photo"
+      <dialog tabindex="-1" #viewer class="fec__viewer" data-testid="face-photo-viewer" aria-label="Face check photo"
               (close)="viewing.set(null)" (click)="onViewerClick($event)" (keydown)="onViewerKey($event)">
         @if (current(); as row) {
           <div class="fec__viewer-bar">

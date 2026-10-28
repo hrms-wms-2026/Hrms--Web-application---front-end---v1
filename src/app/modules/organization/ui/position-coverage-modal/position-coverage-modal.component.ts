@@ -4,13 +4,19 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   ActiveHolder,
   AddCoverageRecordRequest,
+  CoverageVisualizationResponse,
+  CoverageVisualizationRule,
   ManagementCoverageRecordResponse,
+  PositionAccessTemplateResponse,
   PositionListItemResponse,
+  SetPositionAccessRequest,
   PositionTreeNodeResponse,
   UpdateCoverageRecordRequest
 } from '../../models/position.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { RoleSummaryResponse } from '../../models/role.model';
 
 export interface UpdateCoverageEvent {
   coverageId: string;
@@ -24,11 +30,22 @@ export interface TargetOccupancyRequest {
   excludingRecordId?: string;
 }
 
+export interface PositionDetailsSaveEvent {
+  details: {
+    departmentId: string;
+    name: string;
+    code: string;
+    maxOccupancy: number;
+    reportsToPositionId: string | null;
+  };
+  access: SetPositionAccessRequest | null;
+}
+
 @Component({
   selector: 'app-position-coverage-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent, SelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, ButtonComponent, SelectComponent, InputComponent],
   templateUrl: './position-coverage-modal.component.html',
   styleUrl: './position-coverage-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -52,13 +69,24 @@ export class PositionCoverageModalComponent implements OnChanges {
    */
   @Input() targetOccupancy: readonly ManagementCoverageRecordResponse[] = [];
   @Input() ownerHolders: readonly ActiveHolder[] = [];
+  @Input() visualization: CoverageVisualizationResponse | null = null;
+  @Input() availableRoles: readonly RoleSummaryResponse[] = [];
+  @Input() accessTemplate: PositionAccessTemplateResponse | null = null;
+  @Input() accessLoading = false;
+  @Input() detailsSaving = false;
+  @Input() detailsError: string | null = null;
+  @Input() accessError: string | null = null;
+  @Input() canConfigureAccess = false;
 
   @Output() addCoverage = new EventEmitter<AddCoverageRecordRequest>();
   @Output() updateCoverage = new EventEmitter<UpdateCoverageEvent>();
   @Output() removeCoverage = new EventEmitter<string>();
-  @Output() close = new EventEmitter<void>();
+  @Output() closed = new EventEmitter<void>();
   /** Emitted whenever the selected/edited target changes so the parent can (re)fetch targetOccupancy. */
   @Output() targetOccupancyRequested = new EventEmitter<TargetOccupancyRequest>();
+  @Output() saveDetails = new EventEmitter<PositionDetailsSaveEvent>();
+  @Output() archivePosition = new EventEmitter<PositionListItemResponse | PositionTreeNodeResponse>();
+  @Output() restorePosition = new EventEmitter<PositionListItemResponse | PositionTreeNodeResponse>();
 
   readonly showAddForm = this.fb.control(false);
 
@@ -70,9 +98,22 @@ export class PositionCoverageModalComponent implements OnChanges {
     responsibleEmployeeId: ['']
   });
 
+  readonly detailsForm = this.fb.group({
+    departmentId: ['', [Validators.required]],
+    name: ['', [Validators.required, Validators.maxLength(100)]],
+    code: ['', [Validators.maxLength(5), Validators.pattern(/^[A-Za-z0-9_-]{0,5}$/)]],
+    maxOccupancy: [1, [Validators.required, Validators.min(1)]],
+    reportsToPositionId: ['' as string | null],
+    roleId: [''],
+    requiresApproval: [false]
+  });
+
   /** Coverage record id currently showing its inline "Edit level" form, or null when none is. */
   readonly editingCoverageId = signal<string | null>(null);
   readonly editOwnerOrderValue = signal(1);
+  readonly editResponsibleEmployeeId = signal('');
+  readonly panelTab = signal<'details' | 'coverage' | 'holders'>('details');
+  readonly removingCoverageId = signal<string | null>(null);
 
   /**
    * Set when a submit is in flight, cleared once the resulting saving:true->false transition is
@@ -92,6 +133,21 @@ export class PositionCoverageModalComponent implements OnChanges {
    * another owner. Also watches `saving` to resolve a pending submit (see pendingSubmit above).
    */
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['position'] && this.position) {
+      this.detailsForm.patchValue({
+        departmentId: this.position.departmentId || '',
+        name: this.position.name,
+        code: this.position.code || '',
+        maxOccupancy: this.position.maxOccupancy,
+        reportsToPositionId: this.position.reportsToPositionId || ''
+      });
+    }
+    if (changes['accessTemplate']) {
+      this.detailsForm.patchValue({
+        roleId: this.accessTemplate?.roleId || '',
+        requiresApproval: !!this.accessTemplate?.requiresApproval
+      });
+    }
     if (changes['targetOccupancy']) {
       if (this.showAddForm.value) {
         this.resetOwnerOrderToFirstAvailable();
@@ -136,9 +192,68 @@ export class PositionCoverageModalComponent implements OnChanges {
     }
   }
 
+  get positionDepartmentOptions(): readonly SelectOption[] {
+    return [
+      { value: '', label: 'Select department' },
+      ...this.availableDepartments.map((department) => ({ value: department.id, label: department.name }))
+    ];
+  }
+
+  get reportsToOptions(): readonly SelectOption[] {
+    return [
+      { value: '', label: 'Root position' },
+      ...this.availablePositions
+        .filter((candidate) => candidate.id !== this.position.id)
+        .map((candidate) => ({ value: candidate.id, label: candidate.name }))
+    ];
+  }
+
+  get roleOptions(): readonly SelectOption[] {
+    return [
+      { value: '', label: 'No system role' },
+      ...this.availableRoles.map((role) => ({ value: role.id, label: role.name }))
+    ];
+  }
+
+  onDetailsSubmit(): void {
+    if (!this.canManage || this.detailsForm.invalid || !Number.isInteger(Number(this.detailsForm.controls.maxOccupancy.value))) {
+      this.detailsForm.markAllAsTouched();
+      return;
+    }
+    const value = this.detailsForm.getRawValue();
+    this.saveDetails.emit({
+      details: {
+        departmentId: value.departmentId || '',
+        name: (value.name || '').trim(),
+        code: (value.code || '').trim().toUpperCase(),
+        maxOccupancy: Number(value.maxOccupancy) || 1,
+        reportsToPositionId: value.reportsToPositionId || null
+      },
+      access: this.canConfigureAccess
+        ? { roleId: value.roleId || '', requiresApproval: !!value.requiresApproval }
+        : null
+    });
+  }
+
   formatResponsibilityLabel(ownerOrder: number, isOccupied = false): string {
     const baseLabel = ownerOrder === 1 ? 'Primary Manager' : `Backup Manager ${ownerOrder - 1}`;
     return isOccupied ? `${baseLabel} — already assigned` : baseLabel;
+  }
+
+  formatResponsibilityChip(ownerOrder: number): string {
+    return ownerOrder === 1 ? 'Primary' : `Backup ${ownerOrder - 1}`;
+  }
+
+  visualizationRule(record: ManagementCoverageRecordResponse): CoverageVisualizationRule | null {
+    return this.visualization?.rules.find((rule) => rule.coverageId === record.id) ?? null;
+  }
+
+  isUnresolved(record: ManagementCoverageRecordResponse): boolean {
+    return this.visualizationRule(record)?.resolutionStatus === 'Unresolved';
+  }
+
+  resolutionReason(record: ManagementCoverageRecordResponse): string {
+    return this.visualizationRule(record)?.resolutionReason ?? 'This coverage assignment needs attention.';
   }
 
   readonly activeTab = signal<'all' | 'automatic' | 'manual'>('all');
@@ -389,6 +504,7 @@ export class PositionCoverageModalComponent implements OnChanges {
   startEdit(record: ManagementCoverageRecordResponse): void {
     this.editingCoverageId.set(record.id);
     this.editOwnerOrderValue.set(record.ownerOrder);
+    this.editResponsibleEmployeeId.set(record.responsibleEmployeeId ?? '');
     this.extraLevelsRequested.set(0);
     this.targetOccupancyRequested.emit({
       coveredTargetType: record.coveredTargetType as 'Position' | 'Department',
@@ -400,6 +516,7 @@ export class PositionCoverageModalComponent implements OnChanges {
 
   cancelEdit(): void {
     this.editingCoverageId.set(null);
+    this.editResponsibleEmployeeId.set('');
   }
 
   onEditOwnerOrderChange(value: string): void {
@@ -421,7 +538,11 @@ export class PositionCoverageModalComponent implements OnChanges {
     // See onAddSubmit: don't close the edit row here - wait for the saving:true->false
     // transition in ngOnChanges so a failed save leaves the row (and the error) visible together.
     this.pendingSubmit = 'edit';
-    this.updateCoverage.emit({ coverageId: record.id, payload: { ownerOrder: newOrder } });
+    const payload: UpdateCoverageRecordRequest = { ownerOrder: newOrder };
+    if (this.needsResponsiblePersonPick) {
+      payload.responsibleEmployeeId = this.editResponsibleEmployeeId() || null;
+    }
+    this.updateCoverage.emit({ coverageId: record.id, payload });
   }
 
   get needsResponsiblePersonPick(): boolean {
@@ -445,6 +566,16 @@ export class PositionCoverageModalComponent implements OnChanges {
 
   onDelete(cov: ManagementCoverageRecordResponse): void {
     if (cov.isLocked) return;
+    this.removingCoverageId.set(cov.id);
+  }
+
+  confirmDelete(cov: ManagementCoverageRecordResponse): void {
+    if (cov.isLocked || this.removingCoverageId() !== cov.id) return;
+    this.removingCoverageId.set(null);
     this.removeCoverage.emit(cov.id);
+  }
+
+  cancelDelete(): void {
+    this.removingCoverageId.set(null);
   }
 }

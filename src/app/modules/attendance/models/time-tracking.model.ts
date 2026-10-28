@@ -163,10 +163,10 @@ export interface ClockInRequest {
   source: 'web';
 }
 
-export type TimeTrackingRange = {
+export interface TimeTrackingRange {
   from: string;
   to: string;
-};
+}
 
 export interface PagedResultDto<T> {
   items: T[];

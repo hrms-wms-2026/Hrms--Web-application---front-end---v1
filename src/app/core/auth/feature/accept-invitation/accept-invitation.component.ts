@@ -6,8 +6,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../state/auth.store';
 import { AuthApiService } from '../../data-access/auth-api.service';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { InvitationPreviewDto } from '../../models/dto/invitation-preview.dto';
 import { PublishedLegalDocumentDto } from '../../models/dto/published-legal-document.dto';
 import { safeServerDetail } from '../../../services/error-handler.service';

@@ -33,8 +33,8 @@
           } @else {
             <button
               type="button"
-              class="pm-icon-btn"
-              [class.pm-icon-btn--active]="positionStore.searchQuery()"
+              class="ui-square-btn"
+              [class.ui-square-btn--active]="positionStore.searchQuery()"
               (click)="toggleSearch()"
               title="Search positions"
               aria-label="Search positions"
@@ -46,38 +46,17 @@
           }
         </div>
 
-        <!-- Department Select Filter -->
-        <div class="pm-dept-select-wrap">
-          <app-select
-            [options]="departmentOptions()"
-            [value]="positionStore.departmentFilterId() || ''"
-            (valueChange)="onDepartmentFilterChange($event)"
-          />
-        </div>
+        <app-view-mode-toggle
+          [modes]="viewModes"
+          [value]="positionStore.viewMode()"
+          (valueChange)="onViewModeToggle($event)"
+        />
 
-        <!-- View Switcher Toggle -->
-        <div class="pm-view-toggle">
-          <button
-            type="button"
-            class="pm-toggle-btn"
-            [class.pm-toggle-btn--active]="positionStore.viewMode() === 'tree'"
-            (click)="onViewModeToggle('tree')"
-            title="Tree view"
-            aria-label="Tree view"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          </button>
-          <button
-            type="button"
-            class="pm-toggle-btn"
-            [class.pm-toggle-btn--active]="positionStore.viewMode() === 'list'"
-            (click)="onViewModeToggle('list')"
-            title="List view"
-            aria-label="List view"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          </button>
-        </div>
+        <app-filter-bar
+          [fields]="filterFields()"
+          [values]="filterValues()"
+          (fieldChanged)="onFilterFieldChanged($event)"
+        />
 
         <!-- Templates Button -->
         <button
@@ -134,7 +113,6 @@
             class="pm-tree-container"
             [class.pm-tree-container--drop-active]="canvasDragOver()"
             [label]="chartMode() === 'people' ? 'People hierarchy' : 'Position hierarchy'"
-            (backgroundPointerDown)="onCanvasBackgroundPressed()"
             (dragover)="onCanvasDragOver($event)"
             (dragleave)="onCanvasDragLeave()"
             (drop)="onCanvasDrop($event)"
@@ -187,6 +165,21 @@
                 </div>
               </div>
             }
+            @if (coverageSelectionActive()) {
+              <div class="pm-coverage-legend" role="status" aria-live="polite">
+                @if (coverageVisualizationLoading()) {
+                  <span class="pm-coverage-legend__message">Loading coverage…</span>
+                } @else if (coverageVisualizationError()) {
+                  <span class="pm-coverage-legend__message pm-coverage-legend__message--error">{{ coverageVisualizationError() }}</span>
+                } @else {
+                  <span><i class="pm-coverage-dot pm-coverage-dot--selected"></i>Selected</span>
+                  <span><i class="pm-coverage-dot pm-coverage-dot--resolved"></i>Covered</span>
+                  <span><i class="pm-coverage-dot pm-coverage-dot--unresolved"></i>Needs attention</span>
+                  <span><i class="pm-coverage-dot pm-coverage-dot--outside"></i>Outside scope</span>
+                  <button type="button" class="pm-coverage-clear" (click)="clearCoverageSelection()">Clear</button>
+                }
+              </div>
+            }
             @if (canvasDragOver()) {
               <div class="pm-canvas-drop-overlay">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
@@ -236,6 +229,7 @@
                         [dragging]="draggingPeople()"
                         [choosingManager]="choosingReportingManager()"
                         [selectedCount]="selectedPeopleIds().size"
+                        [coverageVisual]="peopleCoverageVisual(node.id)"
                         (personSelected)="onPeopleSelected($event)"
                         (managerChosen)="onReportingManagerChosen($event)"
                         (personDragStarted)="onPeopleDragStarted($event)"
@@ -264,13 +258,11 @@
                       [level]="depth"
                       [isRoot]="depth === 0"
                       [canManage]="hasManageAccess()"
-                      [canConfigureAccess]="canConfigureAccess()"
                       [departmentNameMap]="departmentNameMap()"
+                      [coverageVisual]="positionCoverageVisual(node.id)"
+                      (selectPosition)="selectCoverage($event)"
                       (addSubPosition)="openCreateModal($event)"
-                      (editPosition)="openEditModal($event)"
-                      (viewAccess)="openAccessModal($event)"
                       (viewCoverage)="openCoverageModal($event)"
-                      (archivePosition)="openArchiveModal($event)"
                       (reparentPosition)="onReparentPosition($event)"
                       (templateDropped)="onTemplateDroppedOnPosition($event)"
                     />
@@ -288,14 +280,9 @@
           <app-position-list-table
             [positions]="positionStore.flatItems()"
             [canManage]="hasManageAccess()"
-            [canConfigureAccess]="canConfigureAccess()"
             [departmentNameMap]="departmentNameMap()"
             [positionNameMap]="positionNameMap()"
-            (editPosition)="openEditModal($event)"
-            (viewAccess)="openAccessModal($event)"
             (viewCoverage)="openCoverageModal($event)"
-            (archivePosition)="openArchiveModal($event)"
-            (restorePosition)="onRestorePosition($event)"
           />
 
         }
@@ -336,7 +323,7 @@
     [loading]="positionStore.saving()"
     [actionError]="positionStore.actionError()"
     (save)="onSavePosition($event)"
-    (cancel)="closeFormModal()"
+    (cancelled)="closeFormModal()"
   />
 }
 
@@ -347,7 +334,7 @@
     [checking]="positionStore.archiveChecking()"
     [saving]="positionStore.saving()"
     (confirmArchive)="onConfirmArchive()"
-    (cancel)="closeArchiveModal()"
+    (cancelled)="closeArchiveModal()"
   />
 }
 
@@ -363,26 +350,22 @@
     [canManage]="hasManageAccess()"
     [targetOccupancy]="positionStore.targetOccupancy()"
     [ownerHolders]="positionStore.coverageOwnerHolders()"
+    [visualization]="coverageVisualization()"
+    [availableRoles]="roleStore.roles()"
+    [accessTemplate]="positionStore.accessTemplate()"
+    [accessLoading]="positionStore.accessLoading()"
+    [detailsSaving]="positionStore.saving() || positionStore.accessSaving()"
+    [detailsError]="positionStore.actionError()"
+    [accessError]="positionStore.accessError()"
+    [canConfigureAccess]="canConfigureAccess()"
     (addCoverage)="onAddCoverage($event)"
     (updateCoverage)="onUpdateCoverage($event)"
     (removeCoverage)="onRemoveCoverage($event)"
     (targetOccupancyRequested)="onTargetOccupancyRequested($event)"
-    (close)="closeCoverageModal()"
-  />
-}
-
-@if (accessModalOpen() && positionStore.selectedAccessPosition()) {
-  <app-position-access-modal
-    [position]="positionStore.selectedAccessPosition()!"
-    [accessTemplate]="positionStore.accessTemplate()"
-    [availableRoles]="roleStore.roles()"
-    [loading]="positionStore.accessLoading()"
-    [saving]="positionStore.accessSaving()"
-    [error]="positionStore.accessError()"
-    [hasRoleReadAccess]="hasRoleReadAccess()"
-    [canManage]="hasManageAccess()"
-    (saveAccess)="onSaveAccess($event)"
-    (close)="closeAccessModal()"
+    (saveDetails)="onSavePanelDetails($event)"
+    (archivePosition)="openArchiveModal($event)"
+    (restorePosition)="onRestorePosition($event)"
+    (closed)="closeCoverageModal()"
   />
 }
 

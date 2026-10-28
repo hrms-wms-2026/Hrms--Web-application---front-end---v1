@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
-import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { LeaveCalendarStore } from '../../state/leave-calendar.store';
 import { LeaveBalanceStore } from '../../state/leave-balance.store';
@@ -24,7 +24,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 @Component({
   selector: 'app-team-calendar',
   standalone: true,
-  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent, NewLeaveRequestWizardComponent, LeaveHolidayModalComponent],
+  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, FilterBarComponent, LeaveCalendarGridComponent, LeaveCalendarDayDetailComponent, NewLeaveRequestWizardComponent, LeaveHolidayModalComponent],
   templateUrl: './team-calendar.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './team-calendar.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -48,10 +48,19 @@ export class TeamCalendarComponent {
   readonly selectedDay = computed(() =>
     this.store.month()?.days.find((d) => d.date === this.selectedDate()) ?? null
   );
-  readonly departmentSelectOptions = computed<SelectOption[]>(() => [
-    { value: '', label: 'All departments' },
-    ...this.departmentOptions().map((dept) => ({ value: dept.id, label: dept.name }))
+  readonly filterFields = computed<FilterFieldConfig[]>(() => [
+    {
+      key: 'department',
+      label: 'Department',
+      icon: 'department',
+      kind: 'single',
+      options: this.departmentOptions().map((dept) => ({ value: dept.id, label: dept.name }))
+    }
   ]);
+  readonly filterValues = computed<Record<string, string[]>>(() => {
+    const departmentId = this.store.departmentId();
+    return { department: departmentId ? [departmentId] : [] };
+  });
   readonly departmentOptions = computed(() => {
     const map = new Map<string, string>();
     for (const day of this.store.month()?.days ?? []) {
@@ -122,8 +131,10 @@ export class TeamCalendarComponent {
     this.detailOpen.set(false);
   }
 
-  onDepartmentChange(departmentId: string): void {
-    void this.store.setDepartmentFilter(departmentId || null);
+  onFilterFieldChanged(event: { key: string; values: string[] }): void {
+    if (event.key === 'department') {
+      void this.store.setDepartmentFilter(event.values[0] ?? null);
+    }
   }
 
   onRequestLeave(date: string): void {

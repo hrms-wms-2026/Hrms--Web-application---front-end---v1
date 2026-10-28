@@ -1,6 +1,7 @@
 import { Component, ElementRef, HostListener, computed, inject, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { getInitials } from '../../../../shared/utils/avatar.utils';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export interface TaskAssigneeAvatarMember {
   employeeId: string;
@@ -18,9 +19,9 @@ const MAX_VISIBLE_AVATARS = 5;
 @Component({
   selector: 'app-task-assignee-avatar-filter',
   standalone: true,
-  imports: [AvatarComponent],
+  imports: [StopClickPropagationDirective, AvatarComponent],
   template: `
-    <div class="taaf" (click)="$event.stopPropagation()">
+    <div class="taaf" appStopClickPropagation>
       <div class="taaf__stack">
         @for (member of visibleMembers(); track member.employeeId) {
           <button

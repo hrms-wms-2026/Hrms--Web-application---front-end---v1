@@ -1,5 +1,6 @@
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { nextUniqueId } from '../../utils/unique-id';
+import { KeyboardClickDirective } from '../../directives/keyboard-click.directive';
 
 export type ModalSize = 'md' | 'lg' | 'xl' | '2xl';
 
@@ -10,7 +11,7 @@ export type PopupIcon =
   | 'save' | 'settings' | 'checklist' | 'hierarchy' | 'briefcase' | 'edit' | 'info';
 
 /** Title keywords -> icon, first match wins. Keeps every titled modal iconned without per-call config. */
-const TITLE_ICON_RULES: ReadonlyArray<readonly [RegExp, PopupIcon]> = [
+const TITLE_ICON_RULES: readonly (readonly [RegExp, PopupIcon])[] = [
   [/\b(delete|remove)\b/, 'trash'],
   [/\barchive/, 'archive'],
   [/\b(deactivate|reject|escalate|alert|discard|cancel)/, 'alert'],
@@ -36,12 +37,13 @@ const TITLE_ICON_RULES: ReadonlyArray<readonly [RegExp, PopupIcon]> = [
 
 @Component({
   selector: 'app-modal',
+  imports: [KeyboardClickDirective],
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
   template: `
     @if (open()) {
       <div class="fixed inset-0 z-[1200] flex items-center justify-center p-4" animate.leave="ui-popup-leave">
-        <div [class]="dimBackdrop() ? 'ui-fade-in absolute inset-0 bg-black/50' : 'absolute inset-0'" (click)="onBackdropClick()"></div>
+        <div role="button" tabindex="0" appKeyboardClick [class]="dimBackdrop() ? 'ui-fade-in absolute inset-0 bg-black/50' : 'absolute inset-0'" (click)="onBackdropClick()"></div>
         <div
           #dialog
           [class]="dialogClass()"

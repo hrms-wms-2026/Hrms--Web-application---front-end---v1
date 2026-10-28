@@ -6,6 +6,7 @@ import {
   ActiveHolder,
   AddCoverageRecordRequest,
   CoverageResolutionLevel,
+  CoverageVisualizationResponse,
   CreatePositionRequest,
   ListPositionsQueryParams,
   ManagementCoverageRecordResponse,
@@ -146,6 +147,15 @@ export class PositionApiService {
   ): Observable<readonly ManagementCoverageRecordResponse[]> {
     return this.http.get<readonly ManagementCoverageRecordResponse[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/coverage`
+    );
+  }
+
+  getCoverageVisualization(
+    legalEntityId: string,
+    positionId: string
+  ): Observable<CoverageVisualizationResponse> {
+    return this.http.get<CoverageVisualizationResponse>(
+      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/coverage-visualization`
     );
   }
 

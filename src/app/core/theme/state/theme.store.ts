@@ -3,9 +3,9 @@ import { DEFAULT_THEME_PRESET, THEME_PRESETS, ThemePresetId } from '../models/th
 
 const STORAGE_KEY = 'onevo.theme.preset';
 
-type ThemeState = {
+interface ThemeState {
   preset: ThemePresetId;
-};
+}
 
 function isValidPreset(value: string | null): value is ThemePresetId {
   return !!value && THEME_PRESETS.some((option) => option.id === value);

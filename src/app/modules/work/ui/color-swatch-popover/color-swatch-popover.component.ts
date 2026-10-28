@@ -1,10 +1,12 @@
 import { Component, input, output } from '@angular/core';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-color-swatch-popover',
+  imports: [StopClickPropagationDirective],
   standalone: true,
   template: `
-    <div class="csp-popover" role="dialog" (click)="$event.stopPropagation()">
+    <div class="csp-popover" role="dialog" appStopClickPropagation>
       <button type="button" class="csp-remove" (mousedown)="$event.preventDefault()" (click)="colorSelected.emit(null)">{{ label() }}</button>
       <div class="csp-grid">
         @for (swatch of swatches(); track swatch.hex) {

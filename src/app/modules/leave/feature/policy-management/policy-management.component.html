@@ -21,10 +21,26 @@
       </app-empty-state>
     </div>
   } @else {
+    @if (leaveTypeFilter()) {
+      <div class="to-toolbar">
+        <span class="lpm-filter-chip">
+          Leave type: <strong>{{ leaveTypeFilterName() }}</strong>
+          <button type="button" (click)="clearLeaveTypeFilter()" aria-label="Show all leave types">×</button>
+        </span>
+      </div>
+    }
     <app-kpi-tiles ariaLabel="Policy totals" [tiles]="policyKpiTiles()" />
     <div class="to-workspace" [class.to-workspace--detail]="detailOpen()">
       <div class="to-table-card">
-        <app-leave-policy-list-table [policies]="policyStore.items()" [canManage]="hasManageAccess()" (viewPolicy)="viewPolicy($event)" (clonePolicy)="openClone($event)" />
+        @if (!visiblePolicies().length) {
+          <div class="to-empty">
+            <app-empty-state [title]="'No ' + leaveTypeFilterName() + ' policies yet'" description="Create a policy so employees can request this leave.">
+              <app-button (click)="openCreate()">+ Add policy</app-button>
+            </app-empty-state>
+          </div>
+        } @else {
+          <app-leave-policy-list-table [policies]="visiblePolicies()" [canManage]="hasManageAccess()" (viewPolicy)="viewPolicy($event)" (clonePolicy)="openClone($event)" />
+        }
       </div>
       @if (detailOpen()) {
         <div class="lpm-detail">
@@ -49,11 +65,12 @@
     [departmentOptions]="departmentOptions()"
     [positionOptions]="positionOptions()"
     [policy]="mode === 'edit' ? viewedPolicy() : null"
+    [initialLeaveTypeId]="mode === 'create' ? leaveTypeFilter() : null"
     [conflicts]="policyStore.conflicts()"
     [saving]="policyStore.saving()"
     (create)="onCreate($event)"
     (saveEdit)="onSaveEdit($event)"
-    (cancel)="closeWizard()"
+    (cancelled)="closeWizard()"
   />
 }
 

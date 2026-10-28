@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { nextUniqueId } from '../../utils/unique-id';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export function parseHHMM(str: string): { hour: number; minute: number } | null {
   if (!str || !/^([01]\d|2[0-3]):[0-5]\d$/.test(str.trim())) {
@@ -76,7 +77,7 @@ const POSITIONS_UP: ConnectionPositionPair[] = [
 @Component({
   selector: 'app-time-picker',
   standalone: true,
-  imports: [OverlayModule],
+  imports: [StopClickPropagationDirective, OverlayModule],
   templateUrl: './time-picker.component.html',
   styleUrl: './time-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

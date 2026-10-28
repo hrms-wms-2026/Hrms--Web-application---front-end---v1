@@ -3,7 +3,7 @@
     <label [for]="inputId" class="tp-label ui-field-label">{{ label() }}@if (required()) {<span class="ui-field-required" aria-hidden="true">*</span>}</label>
   }
 
-  <div
+  <div role="presentation"
     class="tp-input-wrapper ui-field"
       [class.ui-field--sm]="size() === 'sm'"
     [class.ui-field--error]="!!error()"
@@ -25,7 +25,7 @@
       class="tp-input ui-field__control"
     />
 
-    <div class="tp-actions ui-field__trailing" (click)="$event.stopPropagation()">
+    <div class="tp-actions ui-field__trailing" appStopClickPropagation>
       <button
         type="button"
         class="tp-icon-trigger ui-field__icon-btn"

@@ -1,5 +1,5 @@
 /** New leave request: one form (type, From/To, reason) whose policy warnings preview as soon as the dates are valid. */
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, effect, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, effect, signal, untracked, OnChanges, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
@@ -7,7 +7,7 @@ import { TimePickerComponent } from '../../../../shared/ui/time-picker/time-pick
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { EmployeePickerComponent } from '../../../work/ui/employee-picker/employee-picker.component';
+import { PersonPickerDialogComponent } from '../../../../shared/ui/person-picker-dialog/person-picker-dialog.component';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveRequestResponse, LeaveUploadedDocument, SubmitLeaveRequestOnBehalfRequest, SubmitLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
@@ -30,12 +30,12 @@ function emptyDraft(): LeaveRequestDraft {
 @Component({
   selector: 'app-new-leave-request-wizard',
   standalone: true,
-  imports: [CommonModule, ModalComponent, DatePickerComponent, TimePickerComponent, EmployeePickerComponent, SelectComponent, InputComponent, ButtonComponent],
+  imports: [CommonModule, ModalComponent, DatePickerComponent, TimePickerComponent, PersonPickerDialogComponent, SelectComponent, InputComponent, ButtonComponent],
   templateUrl: './new-leave-request-wizard.component.html',
   styleUrl: './new-leave-request-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class NewLeaveRequestWizardComponent {
+export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
   @Input({ required: true }) open = false;
   @Input({ required: true }) leaveTypes: readonly LeaveTypeResponse[] = [];
   @Input({ required: true }) balances: readonly LeaveBalanceResponse[] = [];

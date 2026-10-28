@@ -17,7 +17,7 @@ import { InboxDetailRendererRegistry, parseExtra } from '../../renderers/inbox-d
 import { MeetingApprovalSnapshot } from '../../../work/meetings/models/meeting.models';
 import { MeetingApprovalSnapshotComponent } from '../../../work/meetings/ui/meeting-approval-snapshot/meeting-approval-snapshot.component';
 import { inboxStatusLabel, inboxStatusTone, inboxSubtitle, inboxTitle, inboxTypeMeta, isAlert, isWorkActionType } from '../../utils/inbox-item.util';
-import { TicketRowIcon, decisionLine, ticketSections } from '../../utils/ticket-details.util';
+import { TicketRowIcon, decisionLine, isMonitorAlert, ticketSections } from '../../utils/ticket-details.util';
 import { FaceEvidenceCardComponent } from '../face-evidence-card/face-evidence-card.component';
 import { InboxEscalateCandidate, InboxEscalateChoice, InboxEscalateContext, InboxEscalateDialogComponent } from '../inbox-action-dialogs/inbox-escalate-dialog.component';
 import { InboxOutcomeChoice, InboxOutcomeDialogComponent } from '../inbox-action-dialogs/inbox-outcome-dialog.component';
@@ -356,8 +356,12 @@ export class InboxItemCardComponent {
   });
   /** "Approved on ..." under a decided request's subtitle. */
   protected readonly decided = computed(() => (this.detail() && !this.alert() ? decisionLine(this.detail()!) : null));
-  /** A monitoring exception's description (its explanation); other kinds' explanation is the employee's note, shown below. */
-  protected readonly description = computed(() => (this.evidenceRenderer() ? this.detail()?.explanation ?? null : null));
+  /** Why a monitoring exception or a project monitor alert fired (its explanation); other kinds' explanation is the
+   *  employee's note, shown below. */
+  protected readonly description = computed(() => {
+    const d = this.detail();
+    return d && (this.evidenceRenderer() || isMonitorAlert(d)) ? d.explanation : null;
+  });
   /** An identity case's face checks - present only in a reviewer's own detail. */
   protected readonly faceEvidence = computed<ExceptionEvidenceResponse | null>(() => {
     if (this.descriptor()?.detailRenderer !== 'exception-evidence') return null;
@@ -382,7 +386,7 @@ export class InboxItemCardComponent {
   constructor() {
     // A different item starts with no edits and no open dialog.
     effect(() => {
-      this.item()?.id;
+      this.item();
       this.edits.set({});
       this.editErrors.set({});
       this.commentAction.set(null);

@@ -46,6 +46,30 @@
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.15);
 }
 
+.ptn-node-card--coverage-selected {
+  border: 2px solid #2563eb;
+  background: color-mix(in srgb, #2563eb 7%, var(--color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, #2563eb 18%, transparent), 0 8px 24px rgba(37, 99, 235, 0.14);
+}
+
+.ptn-node-card--coverage-resolved {
+  border-color: #10b981;
+  background: color-mix(in srgb, #10b981 10%, var(--color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, #10b981 16%, transparent), 0 8px 22px rgba(16, 185, 129, 0.14);
+}
+
+.ptn-node-card--coverage-unresolved {
+  border-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 12%, var(--color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, #f59e0b 18%, transparent), 0 8px 22px rgba(245, 158, 11, 0.16);
+}
+
+.ptn-node-card--coverage-outside {
+  opacity: 0.46;
+  filter: grayscale(0.35);
+  box-shadow: none;
+}
+
 .ptn-node-card--inactive {
   opacity: 0.65;
   background: color-mix(in srgb, var(--color-surface-secondary) 50%, transparent);
@@ -120,6 +144,48 @@
   flex-wrap: wrap;
   gap: 0.25rem 0.5rem;
   margin-top: 0.125rem;
+}
+
+.ptn-coverage-levels {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.35rem;
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.125rem;
+}
+
+.ptn-coverage-level {
+  min-width: 1.35rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #059669 14%, var(--color-surface));
+  color: #047857;
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.ptn-node-card--coverage-unresolved .ptn-coverage-level {
+  background: color-mix(in srgb, #f59e0b 18%, var(--color-surface));
+  color: #92400e;
+}
+
+.ptn-coverage-warning {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-surface);
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 900;
 }
 
 .ptn-capacity {
