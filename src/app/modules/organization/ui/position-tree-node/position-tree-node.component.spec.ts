@@ -94,7 +94,20 @@ describe('PositionTreeNodeComponent', () => {
     const text = cardText(fixture);
 
     expect(text).not.toContain('Unassigned');
-    expect(text).toContain('Occupied');
+    expect(text).not.toContain('Occupied');
+    expect(fixture.nativeElement.querySelector('.ptn-status-pill')).toBeNull();
+  });
+
+  it('shows only a yellow vacancy pill when seats are open', async () => {
+    const fixture = await createComponent(makeNode({ positionType: 'pooled', maxOccupancy: 4, assignedCount: 1 } as Partial<PositionTreeNodeResponse>));
+    const pill = fixture.nativeElement.querySelector('.ptn-status-pill--vacant') as HTMLElement | null;
+    expect(pill?.textContent?.trim()).toBe('3 vacancies');
+  });
+
+  it('hides the pill when a pooled position is full', async () => {
+    const fixture = await createComponent(makeNode({ positionType: 'pooled', maxOccupancy: 2, assignedCount: 2 } as Partial<PositionTreeNodeResponse>));
+    expect(fixture.nativeElement.querySelector('.ptn-status-pill')).toBeNull();
+    expect(cardText(fixture)).not.toContain('Full');
   });
 
   it('gives Archived precedence and the status pill shows Archived, not Unassigned', async () => {

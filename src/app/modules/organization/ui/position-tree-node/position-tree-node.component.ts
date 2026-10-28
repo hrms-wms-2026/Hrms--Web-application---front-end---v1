@@ -70,7 +70,16 @@ export class PositionTreeNodeComponent {
     });
   }
 
-  get iconCategory(): 'ceo' | 'finance' | 'hr' | 'ops' | 'general' {
+  /** Only open seats get a pill (same rule as the list view's yellow vacant rows). */
+  get vacancyLabel(): string | null {
+    const occupancy = this.occupancy;
+    if (!this.node.isActive || !occupancy.occupancyKnown) return null;
+    const assigned = this.node.assignedCount ?? this.node.currentOccupancy ?? 0;
+    const count = Math.max(0, this.node.maxOccupancy - Math.max(0, assigned));
+    return count > 0 ? `${count} ${count === 1 ? 'vacancy' : 'vacancies'}` : null;
+  }
+
+  get iconCategory():'ceo' | 'finance' | 'hr' | 'ops' | 'general' {
     const name = (this.node.name || '').toLowerCase();
     const code = (this.node.code || '').toLowerCase();
     const dept = (this.resolvedDepartmentName || '').toLowerCase();

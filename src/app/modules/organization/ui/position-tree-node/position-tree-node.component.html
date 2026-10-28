@@ -55,17 +55,8 @@
           [occupantPreview]="node.occupantPreview ?? []"
           [remainingAssignedCount]="node.remainingAssignedCount ?? 0"
         />
-        @if (occupancy.statusType !== 'archived' && occupancy.statusType !== 'unknown') {
-          <span
-            class="ptn-status-pill"
-            [class.ptn-status-pill--occupied]="occupancy.statusType === 'occupied'"
-            [class.ptn-status-pill--vacant]="occupancy.statusType === 'vacant'"
-            [class.ptn-status-pill--available]="occupancy.statusType === 'available'"
-            [class.ptn-status-pill--full]="occupancy.statusType === 'full'"
-            [class.ptn-status-pill--unknown]="occupancy.statusType === 'unassigned'"
-          >
-            {{ occupancy.statusLabel }}
-          </span>
+        @if (vacancyLabel; as label) {
+          <span class="ptn-status-pill ptn-status-pill--vacant">{{ label }}</span>
         }
       </div>
 
