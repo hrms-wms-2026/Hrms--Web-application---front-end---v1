@@ -1,4 +1,23 @@
-<div class="flex h-full flex-col gap-4 p-4">
+<div class="flex h-full flex-col gap-3">
+  <!-- One slim line in the band that used to be empty padding: the page name and how the shown period looks. -->
+  <header data-testid="planner-header" class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <h1 class="text-xl font-semibold text-[var(--color-text-primary)]">{{ planner.active() ? 'Planner' : 'Calendar' }}</h1>
+    @if (periodSummary(); as s) {
+      <p data-testid="planner-summary" class="flex flex-wrap items-baseline gap-x-2 text-sm text-[var(--color-text-secondary)]">
+        <span>{{ s.label }}:</span>
+        <span data-testid="planner-summary-planned" [ngClass]="s.over ? 'text-amber-700' : ''">
+          <span class="font-semibold" [ngClass]="s.over ? '' : 'text-[var(--color-text-primary)]'">{{ s.planned }}</span> planned{{ s.working ? ' / ' + s.working : '' }}{{ s.over ? ' · over' : '' }}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span data-testid="planner-summary-meetings">{{ s.meetings }}</span>
+        @if (s.overdue > 0) {
+          <span aria-hidden="true">·</span>
+          <button type="button" data-testid="planner-summary-overdue" class="text-[var(--color-danger)] hover:underline"
+            (click)="openTaskQueue()">{{ s.overdue }} overdue</button>
+        }
+      </p>
+    }
+  </header>
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div class="flex items-center gap-2">
       <app-button type="button" variant="secondary" (click)="previous()">&lsaquo;</app-button>

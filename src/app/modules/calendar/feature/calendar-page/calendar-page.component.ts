@@ -188,6 +188,53 @@ export class CalendarPageComponent {
     };
   });
 
+  /**
+   * The page header's one-line summary of the shown period: planned against working time, meetings, and overdue tasks.
+   * It adds up the same day loads the grid header shows, over the days on screen. Agenda has no fixed period, so none.
+   */
+  readonly periodSummary = computed(() => {
+    if (!this.planner.active()) return null;
+    let label: string;
+    let dates: readonly string[];
+    switch (this.view()) {
+      case 'week':
+        label = 'This week';
+        dates = this.weekDays() ?? Array.from({ length: 7 }, (_, i) => addDays(this.weekStart(), i));
+        break;
+      case 'day':
+        label = 'This day';
+        dates = [this.dayDate()];
+        break;
+      case 'month': {
+        label = 'This month';
+        const prefix = `${this.year()}-${String(this.month()).padStart(2, '0')}-`;
+        dates = [...this.plannerLoads().keys()].filter((date) => date.startsWith(prefix));
+        break;
+      }
+      default:
+        return null;
+    }
+    const loads = dates.map((date) => this.plannerLoads().get(date)).filter((l) => l !== undefined);
+    const planned = loads.reduce((sum, l) => sum + l.plannedMinutes, 0);
+    const working = loads.reduce((sum, l) => sum + l.workingMinutes, 0);
+    const overdue = this.planner.focus()?.groups.find((g) => g.reason === 'overdue')?.count ?? 0;
+    const meetings = loads.reduce((sum, l) => sum + l.meetingCount, 0);
+    return {
+      label, planned: duration(planned), working: working > 0 ? duration(working) : null, over: working > 0 && planned > working,
+      meetings: `${meetings} ${meetings === 1 ? 'meeting' : 'meetings'}`, overdue,
+    };
+  });
+
+  /** "N overdue" in the header opens the Task queue, where those tasks are listed first. */
+  openTaskQueue(): void {
+    if (this.view() === 'week') {
+      this.focusOpen.set(true);
+      writeFlag('planner.focusOpen', true);
+    } else if (this.view() !== 'day') {
+      this.focusOpenElsewhere.set(true);
+    }
+  }
+
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
   readonly weekStart = computed(() => toDateString(startOfWeek(this.cursor())));
