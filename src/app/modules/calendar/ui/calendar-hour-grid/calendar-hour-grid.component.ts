@@ -64,7 +64,6 @@ interface DayColumnViewModel {
   readonly blocks: readonly PlannerBlockViewModel[];
   readonly editable: boolean;
   readonly offHours: readonly Band[];
-  readonly breakBand: Band | null;
   /** A non-working day by the legal entity's schedule; still plannable. */
   readonly restDay: boolean;
   readonly load: { readonly label: string; readonly widthPct: number; readonly over: boolean } | null;
@@ -254,7 +253,6 @@ export class CalendarHourGridComponent {
         }),
         editable: editable.has(date),
         offHours: minutes ? [band(0, minutes.start), band(minutes.end, 1440)].filter((b) => b.heightPct > 0) : [],
-        breakBand: minutes?.breakStart != null && minutes.breakEnd != null ? band(minutes.breakStart, minutes.breakEnd) : null,
         restDay: window !== null && !window.isWorkingDay,
         load: load ? {
           label: `${duration(load.plannedMinutes)} / ${duration(load.workingMinutes)}${load.over ? ' · over' : ''}`,
