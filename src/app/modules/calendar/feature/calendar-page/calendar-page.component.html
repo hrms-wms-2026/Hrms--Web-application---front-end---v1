@@ -148,6 +148,11 @@
     (closed)="meetingFormOpen.set(false); meetingPrefill.set(null)" />
 }
 
+@if (openedTask(); as task) {
+  <app-task-form-modal [open]="true" mode="edit" [projectId]="task.projectId" [taskId]="task.taskId"
+    (saved)="onTaskSaved()" (closed)="closeTask()" />
+}
+
 @if (openMeeting(); as key) {
   <app-meeting-occurrence-drawer [key]="key" (closed)="onMeetingDrawerClosed()" />
 }

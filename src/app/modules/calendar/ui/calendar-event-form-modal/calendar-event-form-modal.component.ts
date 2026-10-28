@@ -185,7 +185,9 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
   @Output() respond = new EventEmitter<RespondToCalendarEventPayload>();
-  @Output() checkConflicts = new EventEmitter<{ participantEmployeeIds: readonly string[]; startDate: string; endDate: string }>();
+  @Output() checkConflicts = new EventEmitter<{
+    participantEmployeeIds: readonly string[]; startDate: string; endDate: string; isAllDay: boolean; timeZone: string;
+  }>();
   @Output() loadEligibleNominees = new EventEmitter<void>();
   @Output() addMeeting = new EventEmitter<MeetingProvider>();
   @Output() removeMeeting = new EventEmitter<void>();
@@ -800,7 +802,9 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
       this.checkConflicts.emit({
         participantEmployeeIds: ids,
         startDate: localPartsToUtcIso(raw.startDate, raw.startTime!, this.currentTimezone()),
-        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.currentTimezone())
+        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.currentTimezone()),
+        isAllDay: !!raw.isAllDay,
+        timeZone: this.currentTimezone()
       });
     }, 400);
   }

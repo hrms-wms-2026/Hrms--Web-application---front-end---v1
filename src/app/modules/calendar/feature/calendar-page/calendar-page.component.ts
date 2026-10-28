@@ -25,6 +25,8 @@ import {
   PlannerDayResponse, PlannerFocusItem, PlannerRangeBlockView, PlannerRangeDay
 } from '../../../work/planner/models/planner.models';
 import { PlannerLayerStore } from '../../state/planner-layer.store';
+import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
+import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { PlannerDayLoad } from '../../ui/calendar-hour-grid/calendar-hour-grid.component';
 import { PlannerFocusPanelComponent } from '../../ui/planner-focus-panel/planner-focus-panel.component';
 import { PlannerBlockPickerComponent } from '../../ui/planner-block-picker/planner-block-picker.component';
@@ -84,7 +86,7 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   imports: [
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
-    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent
+    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
   providers: [PlannerLayerStore],
@@ -95,6 +97,9 @@ export class CalendarPageComponent {
   readonly store = inject(CalendarEventStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly projects = inject(ProjectDetailStore);
+  /** A task opened from a block or a Focus card: shown over the planner, so closing it stays here. */
+  readonly openedTask = signal<{ projectId: string; taskId: string } | null>(null);
   private readonly notificationService = inject(NotificationService);
 
   readonly view = signal<CalendarView>('week');
@@ -377,8 +382,27 @@ export class CalendarPageComponent {
     void this.planner.moveBlock(e.block.id, this.toIso(e.date, start), this.toIso(e.date, start + own.end - own.start));
   }
 
-  openTask(projectId: string, taskId: string): void {
-    void this.router.navigate(['/work', projectId, 'board'], { queryParams: { taskId } });
+  async openTask(projectId: string, taskId: string): Promise<void> {
+    // The task form reads its project from ProjectDetailStore (as the people drill-down does).
+    await this.projects.loadProject(projectId);
+    if (this.projects.projectError()) {
+      void this.router.navigate(['/work', projectId, 'board'], { queryParams: { taskId } });
+      return;
+    }
+    await this.projects.loadMyMilestones(projectId);
+    this.openedTask.set({ projectId, taskId });
+  }
+
+  closeTask(): void {
+    this.openedTask.set(null);
+  }
+
+  /** A saved task may change its estimate, due date or title: refresh the Focus list, blocks and events. */
+  onTaskSaved(): void {
+    const { from, to } = this.plannerRange();
+    void this.planner.load(from, to);
+    const range = this.currentRange();
+    this.store.loadEvents(range.from, range.to);
   }
 
   onPickerSubmitted(e: { date: string; startMinutes: number; minutes: number }): void {
@@ -559,8 +583,11 @@ export class CalendarPageComponent {
     this.closeForm();
   }
 
-  onCheckConflicts(payload: { participantEmployeeIds: readonly string[]; startDate: string; endDate: string }): void {
-    this.store.checkConflicts(payload.participantEmployeeIds, payload.startDate, payload.endDate);
+  onCheckConflicts(payload: {
+    participantEmployeeIds: readonly string[]; startDate: string; endDate: string; isAllDay?: boolean; timeZone?: string;
+  }): void {
+    this.store.checkConflicts(payload.participantEmployeeIds, payload.startDate, payload.endDate,
+      { isAllDay: payload.isAllDay, timeZone: payload.timeZone });
   }
 
   async onRespond(payload: RespondToCalendarEventPayload): Promise<void> {

@@ -36,8 +36,10 @@ const PAGE_SIZE = 100;
         <app-calendar-participant-picker [selectedIds]="managerIds()" [guestEmails]="[]" (selectedIdsChange)="managerIds.set($event)" />
         <button type="button" data-testid="bulk-preview"
           class="self-start rounded-md border px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-          [disabled]="loading() || nothingPicked()" (click)="preview()">Preview</button>
-        @if (nothingPicked()) {
+          [disabled]="loading() || nothingPicked() || moduleMissing()" (click)="preview()">Preview</button>
+        @if (moduleMissing()) {
+          <p data-testid="bulk-preview-hint" class="text-xs text-[var(--color-text-secondary)]">Choose a module first, then preview.</p>
+        } @else if (nothingPicked()) {
           <p data-testid="bulk-preview-hint" class="text-xs text-[var(--color-text-secondary)]">Pick a department or a manager to preview who will be invited.</p>
         }
         @if (error()) {
@@ -86,6 +88,8 @@ export class MeetingBulkInvitePanelComponent implements OnInit {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly unavailable = signal(false);
+  /** A project meeting needs its module before the server can check who may be invited (the create gate). */
+  readonly moduleMissing = computed(() => !!this.projectId() && !this.objectiveId());
   readonly nothingPicked = computed(() => this.departmentIds().length === 0 && this.managerIds().length === 0);
   readonly kept = computed(() => (this.result()?.people ?? []).filter((p) => !this.removed().has(p.employeeId)));
 

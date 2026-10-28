@@ -135,10 +135,13 @@ export const CalendarEventStore = signalStore(
     clearEligibleNominees(): void {
       patchState(store, { eligibleNominees: [] });
     },
-    async checkConflicts(participantEmployeeIds: readonly string[], startDate: string, endDate: string): Promise<void> {
+    async checkConflicts(
+      participantEmployeeIds: readonly string[], startDate: string, endDate: string,
+      options: { isAllDay?: boolean; timeZone?: string } = {},
+    ): Promise<void> {
       patchState(store, { checkingConflicts: true });
       try {
-        const response = await firstValueFrom(api.checkConflicts({ participantEmployeeIds, startDate, endDate }));
+        const response = await firstValueFrom(api.checkConflicts({ participantEmployeeIds, startDate, endDate, ...options }));
         patchState(store, { checkingConflicts: false, conflicts: response.conflicts });
       } catch {
         // Conflict-checking is informational only - a failed check should never block or alarm

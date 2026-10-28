@@ -56,6 +56,21 @@ describe('MeetingBulkInvitePanelComponent', () => {
     expect(hint()).toBeNull();
   });
 
+  it('waits for a module when a project is picked, instead of failing with "module unavailable"', () => {
+    const button = () => fixture.nativeElement.querySelector('[data-testid="bulk-preview"]') as HTMLButtonElement;
+    const hint = () => fixture.nativeElement.querySelector('[data-testid="bulk-preview-hint"]') as HTMLElement | null;
+    fixture.componentRef.setInput('objectiveId', null);
+    panel.toggleDepartment('d1');
+    fixture.detectChanges();
+
+    expect(button().disabled).toBe(true);
+    expect(hint()?.textContent).toContain('Choose a module first');
+
+    fixture.componentRef.setInput('projectId', null);
+    fixture.detectChanges();
+    expect(button().disabled).toBe(false);
+  });
+
   it('bulk preview merges only the kept people and shows the counts line', async () => {
     bulkPreview.mockReturnValue(of(preview()));
     panel.toggleDepartment('d1');
