@@ -19,6 +19,9 @@
         <polyline points="6 17 11 12 6 7"></polyline>
       </svg>
     </button>
+  } @else {
+    <!-- Holds the button's place, so the rail items below don't jump when a section has no sub-sidebar to open. -->
+    <div class="nav-rail__expand-slot" aria-hidden="true"></div>
   }
 
   @for (item of visibleItems(); track item.id) {
