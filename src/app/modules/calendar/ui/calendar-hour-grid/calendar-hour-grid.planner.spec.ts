@@ -82,12 +82,12 @@ describe('CalendarHourGridComponent planner layer', () => {
     expect(el.getAttribute('title')).toBe('Block a · 09:00–10:30 · 1h 30m planned · 15m actual');
   });
 
-  it('shades outside working hours and hatches the break', () => {
+  it('shades outside working hours, and draws no break band (its time is only a guess from the schedule)', () => {
     render({});
 
     const column = q(`[data-date="${TODAY}"]`)!;
     expect(column.querySelectorAll('[data-testid="planner-off-hours"]').length).toBe(2);
-    expect((column.querySelector('[data-testid="planner-break"]') as HTMLElement).style.top).toBe(`${(750 / 1440) * 100}%`);
+    expect(column.querySelector('[data-testid="planner-break"]')).toBeNull();
   });
 
   it('tints the overlapping part amber and offers Move after, only when a meeting overlaps', () => {

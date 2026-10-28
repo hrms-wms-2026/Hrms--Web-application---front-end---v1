@@ -89,11 +89,6 @@
           <div data-testid="planner-off-hours" class="pointer-events-none absolute left-0 right-0 bg-[var(--color-surface-secondary)] opacity-70"
             [style.top.%]="off.topPct" [style.height.%]="off.heightPct"></div>
         }
-        @if (column.breakBand; as br) {
-          <div data-testid="planner-break" class="pointer-events-none absolute left-0 right-0 opacity-60"
-            style="background-image: repeating-linear-gradient(45deg, var(--color-border) 0 6px, transparent 6px 12px)"
-            [style.top.%]="br.topPct" [style.height.%]="br.heightPct"></div>
-        }
 
         @if (dragSelection(); as sel) {
           @if (sel.date === column.date) {
