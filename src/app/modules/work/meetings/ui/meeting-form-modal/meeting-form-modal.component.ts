@@ -1,9 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { MeetingCreatedEvent } from '../../utils/meeting-created-drawer.util';
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, merge } from 'rxjs';
+import { AuthStore } from '../../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../../core/services/notification.service';
+import { CalendarEventApiService } from '../../../../calendar/data-access/calendar-event-api.service';
+import { CalendarConflict } from '../../../../calendar/models/calendar-event.model';
+import { AvailabilityWarningsComponent } from '../../../../calendar/ui/availability-warnings/availability-warnings.component';
 import { ModalComponent } from '../../../../../shared/ui/modal/modal.component';
 import { RichTextEditorComponent } from '../../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { CalendarParticipantPickerComponent } from '../../../../calendar/ui/calendar-participant-picker/calendar-participant-picker.component';
@@ -41,7 +46,7 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
   selector: 'app-meeting-form-modal',
   standalone: true,
   imports: [ReactiveFormsModule, ModalComponent, RichTextEditorComponent, CalendarParticipantPickerComponent, MeetingBulkInvitePanelComponent,
-    MeetingScopeDialogComponent],
+    MeetingScopeDialogComponent, AvailabilityWarningsComponent],
   template: `
     <app-modal [open]="open()" [title]="mode() === 'create' ? 'New meeting' : 'Edit meeting'" size="lg" (closed)="closed.emit()">
       <form [formGroup]="form" class="flex flex-col gap-3 text-sm" (ngSubmit)="save()">
@@ -113,10 +118,15 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
           </label>
           <div class="flex flex-col gap-1">Participants
             <app-calendar-participant-picker [selectedIds]="participantIds()" [guestEmails]="guestEmails()"
-              (selectedIdsChange)="participantIds.set($event)" (guestEmailsChange)="guestEmails.set($event)" />
+              (selectedIdsChange)="onParticipantsChange($event)" (guestEmailsChange)="guestEmails.set($event)" />
           </div>
           <app-meeting-bulk-invite-panel [projectId]="projectId()" [objectiveId]="objectiveId()" [platform]="platformValue()"
             (added)="mergeParticipants($event)" />
+        }
+
+        @if (!notesOnly()) {
+          <app-availability-warnings [conflicts]="availability()" [checking]="checkingAvailability()"
+            [repeating]="form.controls.recurrence.value !== 'none'" [timezone]="form.controls.timezone.value" />
         }
 
         <div class="flex justify-end gap-2">
@@ -136,6 +146,9 @@ export class MeetingFormModalComponent implements OnInit {
   private readonly meetings = inject(MeetingApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly notify = inject(NotificationService);
+  private readonly calendarApi = inject(CalendarEventApiService);
+  private readonly auth = inject(AuthStore);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly open = input(false);
   readonly mode = input<'create' | 'edit'>('create');
@@ -169,6 +182,11 @@ export class MeetingFormModalComponent implements OnInit {
   readonly modules = signal<readonly { id: string; title: string }[]>([]);
   readonly scopeDialogOpen = signal(false);
   readonly saving = signal(false);
+  /** Who cannot make the chosen time and why (availability warnings, 2026-10-28). Advisory: never blocks Save. */
+  readonly availability = signal<readonly CalendarConflict[]>([]);
+  readonly checkingAvailability = signal(false);
+  private availabilityTimer: ReturnType<typeof setTimeout> | null = null;
+  private availabilityRequest = 0;
   private readonly current = signal<MeetingOccurrenceResponse | null>(null);
   private initial: MeetingFormValue | null = null;
 
@@ -179,6 +197,12 @@ export class MeetingFormModalComponent implements OnInit {
 
   ngOnInit(): void {
     this.form.controls.platform.valueChanges.subscribe((p) => this.platformChoice.set(p));
+    // Only the fields that move the meeting in time re-check availability (design 4.3), not the title or agenda.
+    const c = this.form.controls;
+    merge(c.date.valueChanges, c.time.valueChanges, c.durationMinutes.valueChanges, c.isAllDay.valueChanges, c.timezone.valueChanges)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.scheduleAvailabilityCheck());
+    this.destroyRef.onDestroy(() => { if (this.availabilityTimer) clearTimeout(this.availabilityTimer); });
     const occ = this.occurrence();
     if (this.mode() === 'edit' && occ) {
       this.load(occ);
@@ -222,6 +246,62 @@ export class MeetingFormModalComponent implements OnInit {
 
   mergeParticipants(ids: readonly string[]): void {
     this.participantIds.update((current) => [...new Set([...current, ...ids])]);
+    this.scheduleAvailabilityCheck();
+  }
+
+  onParticipantsChange(ids: readonly string[]): void {
+    this.participantIds.set(ids);
+    this.scheduleAvailabilityCheck();
+  }
+
+  scheduleAvailabilityCheck(): void {
+    if (this.availabilityTimer) clearTimeout(this.availabilityTimer);
+    this.availabilityTimer = setTimeout(() => this.checkAvailability(), 400);
+  }
+
+  /** The participants, the meeting's organizer in edit, and the caller (the organizer in create). Guests have no data. */
+  private availabilityPeople(): readonly string[] {
+    const occ = this.current();
+    const people = this.mode() === 'edit' && occ
+      ? [...occ.attendees.map((a) => a.employeeId), occ.organizer.employeeId]
+      : [...this.participantIds()];
+    const me = this.auth.employeeId();
+    return [...new Set([...people, me].filter((id): id is string => !!id))];
+  }
+
+  private checkAvailability(): void {
+    this.availabilityTimer = null;
+    const v = this.form.getRawValue();
+    const people = this.availabilityPeople();
+    const request = ++this.availabilityRequest;
+    const timed = !v.isAllDay;
+    const badTime = timed && (!v.time || !(v.durationMinutes > 0) || this.form.controls.durationMinutes.invalid);
+    if (!v.date || badTime || people.length === 0 || this.notesOnly()) {
+      this.availability.set([]);
+      this.checkingAvailability.set(false);
+      return;
+    }
+    const startDate = toOffsetIso(v.date, v.isAllDay ? '00:00' : v.time, v.timezone);
+    const minutes = v.isAllDay ? 24 * 60 : v.durationMinutes;
+    const endDate = new Date(Date.parse(startDate) + minutes * 60000).toISOString();
+    const seriesId = this.mode() === 'edit' ? this.current()?.seriesId : null;
+    this.checkingAvailability.set(true);
+    this.calendarApi.checkConflicts({
+      participantEmployeeIds: people, startDate, endDate, isAllDay: v.isAllDay, timeZone: v.timezone,
+      ...(seriesId ? { excludeMeetingSeriesId: seriesId } : {}),
+    }).subscribe({
+      next: (res) => {
+        if (request !== this.availabilityRequest) return;
+        this.availability.set(res.conflicts);
+        this.checkingAvailability.set(false);
+      },
+      error: (err: unknown) => {
+        if (request !== this.availabilityRequest) return;
+        console.warn('Availability check failed', err);
+        this.availability.set([]);
+        this.checkingAvailability.set(false);
+      },
+    });
   }
 
   buildCreateRequest(): CreateMeetingRequest {

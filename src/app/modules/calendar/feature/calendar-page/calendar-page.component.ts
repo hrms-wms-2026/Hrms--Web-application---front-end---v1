@@ -559,8 +559,11 @@ export class CalendarPageComponent {
     this.closeForm();
   }
 
-  onCheckConflicts(payload: { participantEmployeeIds: readonly string[]; startDate: string; endDate: string }): void {
-    this.store.checkConflicts(payload.participantEmployeeIds, payload.startDate, payload.endDate);
+  onCheckConflicts(payload: {
+    participantEmployeeIds: readonly string[]; startDate: string; endDate: string; isAllDay?: boolean; timeZone?: string;
+  }): void {
+    this.store.checkConflicts(payload.participantEmployeeIds, payload.startDate, payload.endDate,
+      { isAllDay: payload.isAllDay, timeZone: payload.timeZone });
   }
 
   async onRespond(payload: RespondToCalendarEventPayload): Promise<void> {

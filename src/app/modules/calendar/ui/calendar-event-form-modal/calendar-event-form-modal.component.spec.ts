@@ -410,8 +410,22 @@ describe('CalendarEventFormModalComponent', () => {
 
     vi.advanceTimersByTime(400);
     expect(spy).toHaveBeenCalledWith({
-      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00.000Z', endDate: '2026-09-01T10:00:00.000Z'
+      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00.000Z', endDate: '2026-09-01T10:00:00.000Z',
+      isAllDay: false, timeZone: fixture.componentInstance.currentTimezone()
     });
+    vi.useRealTimers();
+  });
+
+  it('an all-day event tells the conflict check it is all day', () => {
+    vi.useFakeTimers();
+    const spy = vi.fn();
+    fixture.componentInstance.checkConflicts.subscribe(spy);
+
+    fixture.componentInstance.form.patchValue({ startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '10:00', isAllDay: true });
+    fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+    vi.advanceTimersByTime(400);
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ isAllDay: true }));
     vi.useRealTimers();
   });
 
@@ -443,6 +457,24 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy from 9:00 AM to 9:30 AM (Standup)');
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
+  });
+
+  it('renders leave kind label', () => {
+    fixture.componentRef.setInput('conflicts', [
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: '00000000-0000-0000-0000-000000000000',
+        conflictingEventTitle: 'On leave', kind: 'leave', overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T09:30:00Z'
+      },
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: '00000000-0000-0000-0000-000000000000',
+        conflictingEventTitle: 'Public holiday: Deepavali', kind: 'holiday', overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T09:30:00Z'
+      }
+    ]);
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Ada Lovelace: On leave · from 9:00 AM to 9:30 AM.');
+    expect(text).toContain('Ada Lovelace: Public holiday: Deepavali · from 9:00 AM to 9:30 AM.');
+    expect(text).not.toContain('is busy');
   });
 
   it('busy-only conflicts show Busy and no title', () => {
