@@ -323,7 +323,7 @@
     [loading]="positionStore.saving()"
     [actionError]="positionStore.actionError()"
     (save)="onSavePosition($event)"
-    (cancel)="closeFormModal()"
+    (cancelled)="closeFormModal()"
   />
 }
 
@@ -334,7 +334,7 @@
     [checking]="positionStore.archiveChecking()"
     [saving]="positionStore.saving()"
     (confirmArchive)="onConfirmArchive()"
-    (cancel)="closeArchiveModal()"
+    (cancelled)="closeArchiveModal()"
   />
 }
 
@@ -365,7 +365,7 @@
     (saveDetails)="onSavePanelDetails($event)"
     (archivePosition)="openArchiveModal($event)"
     (restorePosition)="onRestorePosition($event)"
-    (close)="closeCoverageModal()"
+    (closed)="closeCoverageModal()"
   />
 }
 

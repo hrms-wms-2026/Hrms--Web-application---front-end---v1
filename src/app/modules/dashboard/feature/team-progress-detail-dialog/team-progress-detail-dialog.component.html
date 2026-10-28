@@ -1,0 +1,290 @@
+<!-- app-modal's own header (icon tile + title) is hidden by this component's CSS; its title still names
+     the dialog for screen readers. The header below follows the reference design: title on the left,
+     period / project / module dropdowns and the close button on the right. -->
+<app-modal
+  [open]="open()"
+  title="Team Progress"
+  size="2xl"
+  panelClass="team-progress-detail"
+  (closed)="close()"
+>
+  <div class="tp-head">
+    <div class="tp-head__row">
+      <div class="tp-head__title">
+        <h2>Team Progress</h2>
+        <p>Detailed view of task weightage distribution</p>
+      </div>
+      <div class="tp-head__controls" data-testid="tp-filters">
+        @if (summary()) {
+          <app-select
+            class="tp-compact-select tp-compact-select--period"
+            data-testid="tp-period-filter"
+            ariaLabel="Period"
+            icon="status"
+            [searchable]="false"
+            [options]="periodOptions"
+            [value]="period()"
+            (valueChange)="setPeriod($event)"
+          />
+          <app-select
+            class="tp-compact-select"
+            data-testid="tp-project-filter"
+            ariaLabel="Project"
+            icon="filter"
+            [options]="projectOptions()"
+            [value]="projectFilter()"
+            (valueChange)="setProject($event)"
+          />
+          <app-select
+            class="tp-compact-select tp-compact-select--wide"
+            data-testid="tp-module-filter"
+            ariaLabel="Module"
+            icon="module"
+            [options]="moduleOptions()"
+            [value]="moduleFilter()"
+            (valueChange)="setModule($event)"
+          />
+          @if (hasFilters()) {
+            <button type="button" class="tp-link-button" data-testid="tp-clear-filters" (click)="clearFilters()">Clear</button>
+          }
+        }
+        <button type="button" class="tp-close" aria-label="Close" data-testid="tp-close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (summary(); as data) {
+    <div class="tp-body" data-testid="team-progress-detail">
+      <div class="tp-overview">
+        <!-- Stat tiles + total -->
+        @if (overview(); as ov) {
+          <div class="tp-stats" [class.tp-stats--period]="isPeriod()" data-testid="tp-overview-tiles">
+            @for (tile of ov.tiles; track tile.meta.key) {
+              <div class="tp-stat" [class]="'tp-stat--' + tile.meta.key" [attr.data-testid]="'tp-tile-' + tile.meta.key">
+                <div class="min-w-0">
+                  <div class="tp-stat__value">{{ formatHours(tile.hours) }} <small>h</small></div>
+                  <div class="tp-stat__label">
+                    {{ tile.meta.label }}
+                    <span class="tp-stat__pct">{{ tile.percent }}</span>
+                    @if (tile.taskCount !== null) {
+                      <span class="tp-stat__count" [attr.data-testid]="'tp-tile-count-' + tile.meta.key">· {{ tile.taskCount }} {{ tile.taskCount === 1 ? 'task' : 'tasks' }}</span>
+                    }
+                  </div>
+                </div>
+                <span class="tp-stat__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    @switch (tile.meta.key) {
+                      @case ('completed') { <path d="m7 12.5 3.2 3.2L17 9" /> }
+                      @case ('inProgress') { <path d="M12 7v5l3 2" /> }
+                      @case ('notStarted') { <path d="M10 8v8M14 8v8" /> }
+                      @default { <path d="M8 6h8M8 18h8M9 6c0 4 6 4 6 6s-6 2-6 6M15 6c0 4-6 4-6 6" /> }
+                    }
+                  </svg>
+                </span>
+              </div>
+            }
+            <div class="tp-total" data-testid="tp-tile-total">
+              <div class="tp-total__value" data-testid="tp-tile-allocated">{{ formatHours(ov.totalHours) }} <small>h</small></div>
+              <div class="tp-total__label" data-testid="tp-total-label">{{ ov.totalLabel }}</div>
+              <div class="tp-total__meta">
+                <span data-testid="tp-completion">{{ ov.completion }}</span> completed · {{ ov.taskCount }} {{ ov.taskCount === 1 ? 'task' : 'tasks' }}
+              </div>
+            </div>
+          </div>
+        } @else if (periodSummary().status === 'error') {
+          <app-error-state message="Couldn't load this period's progress." [retryable]="true" retryLabel="Retry" (retry)="retryPeriod()" />
+        } @else {
+          <div class="tp-stats tp-stats--period" aria-busy="true" data-testid="tp-period-loading">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <div class="tp-stat tp-stat--skeleton"></div>
+            }
+          </div>
+        }
+
+        <!-- Three panels: Status Distribution | Weekly completion | Employee Breakdown -->
+        <div class="tp-panels">
+          <section class="tp-panel" aria-labelledby="tp-dist-heading" data-testid="tp-distribution">
+            <h3 id="tp-dist-heading" class="tp-panel__title">Status Distribution</h3>
+            @if (overview(); as ov) {
+              <div class="tp-dist">
+                <div class="tp-donut">
+                  <svg viewBox="0 0 42 42" role="img" [attr.aria-label]="ov.chartLabel" data-testid="tp-donut">
+                    <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--color-surface-secondary)" stroke-width="5"></circle>
+                    @for (slice of donutSlices(); track slice.meta.key) {
+                      <circle
+                        cx="21" cy="21" r="15.915" fill="none" stroke-width="5"
+                        [attr.stroke]="slice.meta.color"
+                        [attr.stroke-dasharray]="slice.dash"
+                        [attr.stroke-dashoffset]="slice.offset"
+                      ></circle>
+                    }
+                  </svg>
+                  <div class="tp-donut__center" aria-hidden="true">
+                    <strong>{{ formatHours(ov.totalHours) }} h</strong>
+                    <span>{{ isPeriod() ? periodCaption() : 'Total' }}</span>
+                  </div>
+                </div>
+                <ul class="tp-legend" aria-hidden="true">
+                  @for (tile of ov.tiles; track tile.meta.key) {
+                    <li>
+                      <span class="tp-dot" [class]="tile.meta.bgClass"></span>
+                      <span class="tp-legend__label">{{ tile.meta.label }}</span>
+                      <span class="tp-legend__hours">{{ formatHours(tile.hours) }} h</span>
+                      <span class="tp-legend__pct">({{ tile.percent }})</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+              <ul class="tp-notes" data-testid="tp-overview-notes">
+                @if (ov.overTaskedHours > 0) {
+                  <li data-testid="tp-note-overtasked">Task estimates exceed the allocation by {{ formatHours(ov.overTaskedHours) }} h (over-tasked).</li>
+                }
+                @if (ov.unestimatedTaskCount > 0) {
+                  <li data-testid="tp-note-unestimated">{{ ov.unestimatedTaskCount }} {{ ov.unestimatedTaskCount === 1 ? 'task has' : 'tasks have' }} no estimate and add no hours.</li>
+                }
+                <li data-testid="tp-note-risk">
+                  <span class="font-semibold" [class.text-[var(--color-danger-text)]]="modulesAtRisk() > 0">{{ modulesAtRisk() }}</span>
+                  {{ modulesAtRisk() === 1 ? 'module' : 'modules' }} at risk (overdue work in the subtree).
+                </li>
+              </ul>
+            } @else {
+              <div class="tp-skeleton tp-skeleton--donut" aria-hidden="true"></div>
+            }
+          </section>
+
+          <section class="tp-panel" aria-labelledby="tp-weekly-heading" data-testid="tp-weekly">
+            <div class="tp-panel__head">
+              <h3 id="tp-weekly-heading" class="tp-panel__title">Weekly completion</h3>
+              <span class="tp-tag" data-testid="tp-weekly-range">Last {{ weekCount }} weeks</span>
+            </div>
+            <p class="tp-muted">Allocated task hours completed per week</p>
+            @if (weekly().status === 'error') {
+              <div class="tp-inline-error" role="alert" data-testid="tp-weekly-error">
+                Couldn't load the weekly completion.
+                <button type="button" class="tp-text-button" data-testid="tp-weekly-retry" (click)="retryWeekly()">Retry</button>
+              </div>
+            } @else if (weekly().status === 'ready' && weekly().data; as wc) {
+              <app-weekly-completion-chart class="tp-weekly__chart" data-testid="tp-weekly-chart" [weeks]="wc.weeks" [allocatedHours]="wc.allocatedHours" />
+              @if (wc.undatedCompletedHours > 0) {
+                <p class="tp-footnote" data-testid="tp-weekly-undated">
+                  Plus {{ formatHours(wc.undatedCompletedHours) }} h ({{ wc.undatedCompletedTaskCount }}
+                  {{ wc.undatedCompletedTaskCount === 1 ? 'task' : 'tasks' }}) completed without a completion date, not shown in any week.
+                </p>
+              }
+            } @else {
+              <div class="tp-skeleton tp-weekly__chart" aria-busy="true" data-testid="tp-weekly-loading"></div>
+            }
+          </section>
+
+          <section class="tp-panel tp-panel--employees" aria-labelledby="tp-ov-emp-heading" data-testid="tp-ov-employees">
+            <div class="tp-panel__head">
+              <h3 id="tp-ov-emp-heading" class="tp-panel__title">Employee Breakdown</h3>
+              <label class="tp-search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input
+                  type="search"
+                  placeholder="Search employee..."
+                  aria-label="Search employees"
+                  data-testid="tp-ov-employee-search"
+                  [value]="overviewEmployeeSearchText()"
+                  (input)="onOverviewEmployeeSearch($any($event.target).value)"
+                />
+              </label>
+            </div>
+            @if (overviewEmployees().status === 'error') {
+              <div class="tp-inline-error" role="alert">
+                Couldn't load employees.
+                <button type="button" class="tp-text-button" (click)="retryOverviewEmployees()">Retry</button>
+              </div>
+            } @else {
+              <div class="tp-mini-table-wrap" [attr.aria-busy]="overviewEmployees().status === 'loading'">
+                <table class="tp-mini-table">
+                  <caption class="sr-only">Top employees by estimated hours</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Employee</th>
+                      <th scope="col">Completed</th>
+                      <th scope="col">In progress</th>
+                      <th scope="col">Not started</th>
+                      <th scope="col">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @if (overviewEmployees().data; as page) {
+                      @for (row of page.items; track row.employeeId) {
+                        <tr [attr.data-testid]="'tp-ov-employee-' + row.employeeId">
+                          <td>
+                            <span class="tp-person">
+                              <span class="tp-avatar" aria-hidden="true">{{ initials(row.displayName) }}</span>
+                              <span class="truncate" [title]="row.displayName">{{ row.displayName }}</span>
+                            </span>
+                          </td>
+                          <td>{{ formatHours(row.completedHours) }} h</td>
+                          <td>{{ formatHours(row.inProgressHours) }} h</td>
+                          <td>{{ formatHours(row.notStartedHours) }} h</td>
+                          <td class="font-semibold">{{ formatHours(row.totalHours) }} h</td>
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="5" class="tp-mini-table__empty">No employees match.</td></tr>
+                      }
+                    } @else {
+                      <tr><td colspan="5" class="tp-mini-table__empty">Loading employees...</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (overviewEmployees().data; as page) {
+                <div class="tp-panel__foot">
+                  <span class="tp-muted" title="A task assigned to several people counts its full estimate for each of them, so employee totals can add up to more than the team total." data-testid="tp-ov-shared-note">
+                    Shared tasks count for each assignee
+                  </span>
+                  <nav class="tp-mini-pager" aria-label="Employee breakdown pages" data-testid="tp-ov-employee-pager">
+                    <span data-testid="tp-ov-employee-range">{{ rangeLabel(page) }}</span>
+                    <button type="button" aria-label="Previous employees" data-testid="tp-ov-employee-prev" [disabled]="!page.hasPrevious || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber - 1)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
+                    </button>
+                    <button type="button" aria-label="Next employees" data-testid="tp-ov-employee-next" [disabled]="!page.hasNext || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber + 1)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+                    </button>
+                  </nav>
+                </div>
+              }
+            }
+          </section>
+        </div>
+
+        <!-- Overdue (always as of today, whatever the period); hidden when nothing is overdue. -->
+        @if (overdueTasks().length > 0) {
+          <section class="tp-panel" aria-labelledby="tp-overdue-heading" data-testid="tp-overdue">
+            <h3 id="tp-overdue-heading" class="tp-panel__title">
+              Overdue tasks
+              <span class="font-normal text-[var(--color-text-secondary)]" data-testid="tp-overdue-count">
+                @if (hasFilters()) {
+                  {{ overdueTasks().length }} of the {{ data.overdueTasks.length }} listed match the filter
+                } @else {
+                  {{ overdueTasks().length }} of {{ overdueTotal() }}
+                }
+              </span>
+            </h3>
+            <ul class="tp-overdue-list" data-testid="tp-overdue-list">
+              @for (task of overdueTasks(); track task.taskId) {
+                <li>
+                  <button type="button" class="tp-overdue" [attr.data-testid]="'tp-overdue-' + task.taskId" (click)="openTask(task)">
+                    <span class="tp-short-id">{{ task.shortId }}</span>
+                    <span class="min-w-0 flex-1 truncate">{{ task.title }}</span>
+                    <span class="hidden max-w-[10rem] truncate text-xs text-[var(--color-text-secondary)] sm:inline">{{ assigneeNames(task.assignees) || 'Unassigned' }}</span>
+                    <span class="tp-overdue__days">{{ task.daysOverdue }}d · {{ task.dueDate | date: 'd MMM y' }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+    </div>
+  } @else {
+    <app-empty-state title="No team progress yet" description="The Team Progress data hasn't loaded, or you don't lead any modules." />
+  }
+</app-modal>

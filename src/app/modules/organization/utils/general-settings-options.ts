@@ -52,7 +52,7 @@ export const TIMEZONE_OPTIONS: readonly SelectOption[] = Intl.supportedValuesOf(
  * firstDayOfWeek/standardWorkingDays InclusiveBetween(1,7) range. The backend
  * does not itself document which integer maps to which day - this is the
  * ISO-8601 convention, called out in the Part 2C report as an assumption. */
-export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: number; label: string; shortLabel: string }> = [
+export const WEEKDAY_OPTIONS: readonly { value: number; label: string; shortLabel: string }[] = [
   { value: 1, label: 'Monday', shortLabel: 'Mon' },
   { value: 2, label: 'Tuesday', shortLabel: 'Tue' },
   { value: 3, label: 'Wednesday', shortLabel: 'Wed' },

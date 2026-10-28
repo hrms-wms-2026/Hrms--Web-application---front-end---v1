@@ -123,6 +123,6 @@
     [availableParents]="store.companies()"
     [saving]="store.saving()"
     (save)="onCreateCompany($event)"
-    (cancel)="closeCreateModal()"
+    (cancelled)="closeCreateModal()"
   />
 }

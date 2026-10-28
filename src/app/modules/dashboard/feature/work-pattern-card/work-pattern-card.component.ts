@@ -8,7 +8,7 @@ const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
 export type WorkPatternPeriod = 'this-week' | 'last-week' | 'this-month' | 'last-month';
 
-export const WORK_PATTERN_PERIOD_OPTIONS: ReadonlyArray<{ value: WorkPatternPeriod; label: string }> = [
+export const WORK_PATTERN_PERIOD_OPTIONS: readonly { value: WorkPatternPeriod; label: string }[] = [
   { value: 'this-week', label: 'This Week' },
   { value: 'last-week', label: 'Last Week' },
   { value: 'this-month', label: 'This Month' },

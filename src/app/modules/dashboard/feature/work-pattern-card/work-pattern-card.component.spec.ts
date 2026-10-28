@@ -38,12 +38,12 @@ function historyRow(totalWorkedMinutes: number): AttendanceHistoryRow {
   };
 }
 
-type StoreMock = {
+interface StoreMock {
   history: ReturnType<typeof signal<readonly AttendanceHistoryRow[]>>;
   historyLoading: ReturnType<typeof signal<boolean>>;
   historyError: ReturnType<typeof signal<string | null>>;
   loadMyHistory: ReturnType<typeof vi.fn>;
-};
+}
 
 describe('WorkPatternCardComponent', () => {
   afterEach(() => TestBed.resetTestingModule());

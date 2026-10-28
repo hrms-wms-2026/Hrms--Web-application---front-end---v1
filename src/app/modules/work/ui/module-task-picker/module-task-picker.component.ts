@@ -124,7 +124,7 @@ export class ModuleTaskPickerComponent {
   private async ensureTasks(objectiveId: string): Promise<PickerTask[]> {
     const cached = this.moduleTasks()[objectiveId];
     if (cached) return cached;
-    let tasks: PickerTask[] = [];
+    let tasks: PickerTask[];
     try {
       const dtos = await firstValueFrom(this.taskApi.getTasks(objectiveId));
       tasks = dtos.map((d) => ({ id: d.id, title: d.title, objectiveId: d.objectiveId, sprintId: d.sprintId, shortId: d.shortId }));

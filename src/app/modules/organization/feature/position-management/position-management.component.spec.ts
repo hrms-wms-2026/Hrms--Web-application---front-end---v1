@@ -1,5 +1,5 @@
 import { provideRouter } from '@angular/router';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -1042,7 +1042,6 @@ describe('PositionManagementComponent - System Access Flow', () => {
   describe('Toolbar Controls', () => {
     it('renders breadcrumb and controls on the same horizontal header line (pm-header-row) with expandable search icon', async () => {
       const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
       fixture.detectChanges();
 
       const pageHeader = fixture.nativeElement.querySelector('.pm-page-header');

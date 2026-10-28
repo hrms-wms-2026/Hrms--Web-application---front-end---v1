@@ -14,7 +14,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
   imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-modal [open]="true" title="Add company" (closed)="cancel.emit()">
+    <app-modal [open]="true" title="Add company" (closed)="cancelled.emit()">
       <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-3">
         <app-input
           label="Company name *"
@@ -68,7 +68,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
         />
 
         <div class="mt-2 flex justify-end gap-2">
-          <app-button type="button" variant="secondary" [disabled]="saving" (click)="cancel.emit()">Cancel</app-button>
+          <app-button type="button" variant="secondary" [disabled]="saving" (click)="cancelled.emit()">Cancel</app-button>
           <app-button type="submit" [loading]="saving" [disabled]="saving">Create company</app-button>
         </div>
       </form>
@@ -82,7 +82,7 @@ export class CreateCompanyModalComponent {
   @Input() saving = false;
 
   @Output() save = new EventEmitter<CreateLegalEntityRequest>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 
   readonly countryOptions = COUNTRY_CODE_OPTIONS;
   readonly currencyOptions = CURRENCY_CODE_OPTIONS;

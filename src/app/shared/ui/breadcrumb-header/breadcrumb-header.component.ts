@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { NavIconComponent } from '../../../layouts/main-layout/side-navbar/nav-icon.component';
 import { NavIconName } from '../../../layouts/main-layout/nav/nav-item.model';
 import { MobileBackBarState } from '../../../layouts/main-layout/nav/mobile-back-bar.state';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export interface BreadcrumbSwitcherItem {
   id: string;
@@ -12,7 +13,7 @@ export interface BreadcrumbSwitcherItem {
 @Component({
   selector: 'app-breadcrumb-header',
   standalone: true,
-  imports: [NavIconComponent, RouterLink],
+  imports: [StopClickPropagationDirective, NavIconComponent, RouterLink],
   templateUrl: './breadcrumb-header.component.html',
   styleUrl: './breadcrumb-header.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

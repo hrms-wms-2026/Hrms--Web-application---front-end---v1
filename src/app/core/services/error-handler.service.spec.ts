@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ErrorHandlerService, isMachineValue, toSafeErrorMessage } from './error-handler.service';
+import { ErrorHandlerService, toSafeErrorMessage } from './error-handler.service';
 import { NotificationService } from './notification.service';
 import { LoggerService } from './logger.service';
 

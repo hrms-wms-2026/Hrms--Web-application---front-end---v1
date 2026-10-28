@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Subject, of, throwError } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';

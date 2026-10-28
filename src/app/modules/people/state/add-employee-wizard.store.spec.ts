@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
 import { OnboardingDraftResponse } from '../models/onboarding-draft.model';
-import { ChecklistTemplateDetailResponse, OnboardingChecklistTemplateMatchResponse } from '../models/checklist-template.model';
+import { ChecklistTemplateDetailResponse } from '../models/checklist-template.model';
 import { AddEmployeeWizardStore } from './add-employee-wizard.store';
 
 describe('AddEmployeeWizardStore', () => {

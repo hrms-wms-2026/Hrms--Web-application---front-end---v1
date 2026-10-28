@@ -58,7 +58,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
             <ul class="wge-results" role="listbox" data-testid="work-network-results">
               @for (hit of hits(); track hit.node.id) {
                 <li>
-                  <button type="button" role="option" (click)="pick(hit)">
+                  <button type="button" role="option" aria-selected="false" (click)="pick(hit)">
                     <span [class]="'wge-dot wge-dot--' + hit.node.kind"></span>
                     <span class="wge-result-label">{{ hit.node.label }}</span>
                     <span class="wge-result-kind">{{ hit.kindLabel }}</span>

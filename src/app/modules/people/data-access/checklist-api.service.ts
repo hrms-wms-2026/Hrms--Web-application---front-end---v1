@@ -4,12 +4,11 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   ChecklistTemplateDetailResponse,
-  ChecklistTemplateListItemResponse,
   ChecklistTemplateListPageResponse,
   ChecklistTemplateListParams,
   CreateChecklistTemplateRequest,
   OnboardingChecklistTemplateMatchResponse,
-  UpdateChecklistTemplateRequest
+  UpdateChecklistTemplateRequest,
 } from '../models/checklist-template.model';
 
 @Injectable({ providedIn: 'root' })

@@ -464,7 +464,7 @@ describe('CalendarEventFormModalComponent', () => {
 
   it('emits cancel immediately when the form is not dirty', async () => {
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
     fixture.componentInstance.attemptClose();
     await flush();
     expect(spy).toHaveBeenCalledTimes(1);
@@ -473,7 +473,7 @@ describe('CalendarEventFormModalComponent', () => {
   it('asks through the shared dialog instead of emitting cancel when the form is dirty', async () => {
     fixture.componentInstance.setTitle('Something typed');
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
 
     fixture.componentInstance.attemptClose();
     await flush();
@@ -489,7 +489,7 @@ describe('CalendarEventFormModalComponent', () => {
   it('emits cancel after the discard is chosen', async () => {
     fixture.componentInstance.setTitle('Something typed');
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
 
     fixture.componentInstance.attemptClose();
     TestBed.inject(UnsavedChangesService).choose('discard');
@@ -502,7 +502,7 @@ describe('CalendarEventFormModalComponent', () => {
   it('treats a non-empty participant selection as dirty even with an untouched form', async () => {
     fixture.componentInstance.onParticipantIdsChange(['emp-1']);
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
 
     fixture.componentInstance.attemptClose();
     await flush();
@@ -525,7 +525,7 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
 
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
     fixture.componentInstance.attemptClose();
     await flush();
 
@@ -1098,7 +1098,7 @@ describe('CalendarEventFormModalComponent', () => {
     it('counts picked guests as unsaved changes', () => {
       fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
       const spy = vi.fn();
-      fixture.componentInstance.cancel.subscribe(spy);
+      fixture.componentInstance.cancelled.subscribe(spy);
 
       fixture.componentInstance.attemptClose();
 
@@ -1241,7 +1241,7 @@ describe('CalendarEventFormModalComponent', () => {
       trigger().click();
       fixture.detectChanges();
       const cancelSpy = vi.fn();
-      fixture.componentInstance.cancel.subscribe(cancelSpy);
+      fixture.componentInstance.cancelled.subscribe(cancelSpy);
 
       (fixture.nativeElement.querySelector('input[placeholder="Add location"]') as HTMLElement).click();
       fixture.detectChanges();
@@ -1254,7 +1254,7 @@ describe('CalendarEventFormModalComponent', () => {
       trigger().click();
       fixture.detectChanges();
       const cancelSpy = vi.fn();
-      fixture.componentInstance.cancel.subscribe(cancelSpy);
+      fixture.componentInstance.cancelled.subscribe(cancelSpy);
       trigger().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       fixture.detectChanges();
 

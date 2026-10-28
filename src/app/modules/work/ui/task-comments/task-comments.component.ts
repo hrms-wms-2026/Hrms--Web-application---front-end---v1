@@ -10,11 +10,12 @@ import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.comp
 import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
 import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-link.util';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-task-comments',
   standalone: true,
-  imports: [EmployeeAvatarComponent, NgTemplateOutlet, DatePipe, CommentComposerComponent, EmojiPickerComponent, OverlayModule],
+  imports: [StopClickPropagationDirective, EmployeeAvatarComponent, NgTemplateOutlet, DatePipe, CommentComposerComponent, EmojiPickerComponent, OverlayModule],
   template: `
     <div class="tc-composer-row">
       <div class="tc-current-user-avatar">
@@ -175,7 +176,7 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
                   (backdropClick)="closeReactors()"
                   (detach)="closeReactors()"
                 >
-                  <div class="tc-popover" role="dialog" [attr.aria-label]="'People who reacted with ' + r.emoji" data-testid="reactors-popover" (click)="$event.stopPropagation()">
+                  <div class="tc-popover" role="dialog" [attr.aria-label]="'People who reacted with ' + r.emoji" data-testid="reactors-popover" appStopClickPropagation>
                     <div class="tc-popover-title">{{ r.emoji }} Reactions · {{ r.count }}</div>
                     <div class="tc-popover-list scroll-fade">
                       @for (person of reactorsFor(comment, r.emoji); track person.employeeId) {
@@ -266,7 +267,7 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
                 </button>
 
                 @if (moreMenuOpenFor() === comment.id) {
-                  <div class="tc-more-menu" (click)="$event.stopPropagation()">
+                  <div class="tc-more-menu" appStopClickPropagation>
                     <button type="button" class="tc-more-item" (click)="copyCommentLink(comment.id); closeMoreMenu()">
                       <span>Copy link</span>
                     </button>

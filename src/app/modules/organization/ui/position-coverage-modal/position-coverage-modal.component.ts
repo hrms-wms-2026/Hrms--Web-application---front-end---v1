@@ -81,7 +81,7 @@ export class PositionCoverageModalComponent implements OnChanges {
   @Output() addCoverage = new EventEmitter<AddCoverageRecordRequest>();
   @Output() updateCoverage = new EventEmitter<UpdateCoverageEvent>();
   @Output() removeCoverage = new EventEmitter<string>();
-  @Output() close = new EventEmitter<void>();
+  @Output() closed = new EventEmitter<void>();
   /** Emitted whenever the selected/edited target changes so the parent can (re)fetch targetOccupancy. */
   @Output() targetOccupancyRequested = new EventEmitter<TargetOccupancyRequest>();
   @Output() saveDetails = new EventEmitter<PositionDetailsSaveEvent>();

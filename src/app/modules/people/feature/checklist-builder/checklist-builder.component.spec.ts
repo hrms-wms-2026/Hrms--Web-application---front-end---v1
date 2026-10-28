@@ -80,8 +80,8 @@ describe('ChecklistBuilderComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { paramMap: { get: (key: string) => null } },
-            paramMap: of({ get: (key: string) => null })
+            snapshot: { paramMap: { get: () => null } },
+            paramMap: of({ get: () => null })
           }
         }
       ]

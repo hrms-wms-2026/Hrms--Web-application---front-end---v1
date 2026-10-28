@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import { By } from '@angular/platform-browser';
 import { PositionTreeNodeComponent } from './position-tree-node.component';
 import { PositionListTableComponent } from '../position-list-table/position-list-table.component';
 import { POSITION_TEMPLATE_DRAG_MIME_TYPE, OccupantPreviewItem, PositionListItemResponse, PositionTreeNodeResponse } from '../../models/position.model';

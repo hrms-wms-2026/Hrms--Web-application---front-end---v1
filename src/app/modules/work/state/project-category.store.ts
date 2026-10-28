@@ -27,7 +27,7 @@ export const ProjectCategoryStore = signalStore(
           loading: false,
           loaded: true
         });
-      } catch (err: any) {
+      } catch (err) {
         patchState(store, {
           error: toSafeErrorMessage(err, 'Failed to load project categories.'),
           loading: false,

@@ -31,6 +31,7 @@ import {
   isValidEmployeeNumberFormat,
   normalizeEmployeeNumber
 } from '../../utils/employee-number.utils';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 const MATCH_LEVEL_LABELS: Record<ChecklistTemplateMatchLevel, string> = {
   company: 'Company default',
@@ -71,7 +72,7 @@ const IDENTITY_CONTROLS = [
   selector: 'app-add-employee-wizard',
   host: { '[animate.leave]': "isModal() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [
+  imports: [StopClickPropagationDirective, 
     HasPermissionDirective,
     RouterLink,
     ButtonComponent,

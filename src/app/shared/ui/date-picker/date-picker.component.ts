@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { nextUniqueId } from '../../utils/unique-id';
-import { getTaskDueDateInfo, TaskDueDateInfo } from '../../utils/date-format.util';
+import { getTaskDueDateInfo } from '../../utils/date-format.util';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export interface CalendarDay {
   year: number;
@@ -51,7 +52,7 @@ function parseYYYYMMDD(str: string): { year: number; month: number; date: number
 @Component({
   selector: 'app-date-picker',
   standalone: true,
-  imports: [OverlayModule],
+  imports: [StopClickPropagationDirective, OverlayModule],
   templateUrl: './date-picker.component.html',
   styleUrl: './date-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

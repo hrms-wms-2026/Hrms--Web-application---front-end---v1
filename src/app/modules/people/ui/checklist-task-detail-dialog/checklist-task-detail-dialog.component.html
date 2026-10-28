@@ -1,5 +1,5 @@
 <ng-template #panel>
-  <div class="ctd-scrim" (click)="cancel()">
+  <div role="presentation" class="ctd-scrim" (click)="cancel()">
     <div
       class="ctd ui-scroll-open"
       role="dialog"
@@ -70,7 +70,7 @@
                   <span class="ctd-chip-label">{{ priorityDetails().label }}</span>
                 </button>
                 @if (activePopover() === 'priority') {
-                  <div class="ctd-popover" role="listbox" aria-label="Priority" (click)="$event.stopPropagation()">
+                  <div class="ctd-popover" role="listbox" aria-label="Priority" appStopClickPropagation>
                     @for (opt of priorityOptions; track opt.value) {
                       <button
                         type="button"
@@ -133,7 +133,7 @@
                     <span class="ctd-chip-label">{{ categoryLabel() || 'Empty' }}</span>
                   </button>
                   @if (activePopover() === 'category') {
-                    <div class="ctd-popover" role="listbox" aria-label="Category" (click)="$event.stopPropagation()">
+                    <div class="ctd-popover" role="listbox" aria-label="Category" appStopClickPropagation>
                       @for (opt of categoryOptions(); track opt.value) {
                         <button
                           type="button"

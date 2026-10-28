@@ -3,13 +3,14 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
 import { MonitorAlertDto } from '../../models/dto/monitor.dto';
 import { TreeAlertMarkComponent } from '../tree-alert-mark/tree-alert-mark.component';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 @Component({
   selector: 'app-task-tree-row',
   standalone: true,
-  imports: [EmployeeAvatarComponent, TreeAlertMarkComponent],
+  imports: [KeyboardClickDirective, EmployeeAvatarComponent, TreeAlertMarkComponent],
   template: `
-    <div
+    <div role="button" tabindex="0" appKeyboardClick
       class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
       data-testid="tree-row"
       (click)="selectedRow.emit(node())"

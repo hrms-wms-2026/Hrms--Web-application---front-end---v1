@@ -1,5 +1,5 @@
-<div class="lpw-backdrop" (click)="cancel.emit()">
-  <section class="lpw-modal ui-scroll-open" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="isEdit() ? 'Edit leave policy' : 'Create leave policy'">
+<div role="presentation" class="lpw-backdrop" (click)="cancelled.emit()">
+  <section class="lpw-modal ui-scroll-open" appStopClickPropagation role="dialog" aria-modal="true" [attr.aria-label]="isEdit() ? 'Edit leave policy' : 'Create leave policy'">
     <header class="lpw-header ui-popup-header">
       <div class="lpw-header-top">
         <span class="ui-popup-icon" data-icon="sun" aria-hidden="true"></span>
@@ -8,7 +8,7 @@
           <h2>{{ isEdit() ? 'Edit leave policy' : 'Create leave policy' }}</h2>
           <p>{{ stepHints[step() - 1] }}</p>
         </div>
-        <button type="button" class="lpw-close" (click)="cancel.emit()" aria-label="Close dialog">
+        <button type="button" class="lpw-close" (click)="cancelled.emit()" aria-label="Close dialog">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
@@ -213,7 +213,7 @@
       <footer class="lpw-footer">
         <span class="lpw-footer-step">Step {{ step() }} of {{ totalSteps }}</span>
         <div class="lpw-footer-actions">
-          <app-button variant="secondary" (pressed)="step() === 1 ? cancel.emit() : back()">{{ step() === 1 ? 'Cancel' : 'Back' }}</app-button>
+          <app-button variant="secondary" (pressed)="step() === 1 ? cancelled.emit() : back()">{{ step() === 1 ? 'Cancel' : 'Back' }}</app-button>
           @if (step() < totalSteps) {
             <app-button (pressed)="next()">Continue</app-button>
           } @else {

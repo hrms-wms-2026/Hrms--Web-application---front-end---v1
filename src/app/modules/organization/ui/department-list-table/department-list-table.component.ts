@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
 import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 import { DepartmentListItemResponse } from '../../models/department.model';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-department-list-table',
   standalone: true,
-  imports: [DataTableComponent, DataTableCellDirective],
+  imports: [StopClickPropagationDirective, DataTableComponent, DataTableCellDirective],
   templateUrl: './department-list-table.component.html',
   styleUrl: './department-list-table.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

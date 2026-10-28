@@ -50,10 +50,10 @@
 </section>
 
 @if (isModalOpen()) {
-  <div class="today-modal-backdrop" animate.leave="ui-popup-leave" (click)="closeModal()">
+  <div role="presentation" class="today-modal-backdrop" animate.leave="ui-popup-leave" (click)="closeModal()">
     <div
       class="today-modal ui-scroll-open"
-      (click)="$event.stopPropagation()"
+      appStopClickPropagation
       role="dialog"
       aria-modal="true"
       aria-labelledby="today-modal-title"

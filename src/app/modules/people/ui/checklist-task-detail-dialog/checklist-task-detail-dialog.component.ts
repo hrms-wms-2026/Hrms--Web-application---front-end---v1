@@ -29,6 +29,7 @@ import {
 import { ChecklistApiService } from '../../data-access/checklist-api.service';
 import { ChecklistTaskPriority } from '../../models/checklist-template.model';
 import { ChecklistTaskCategory } from '../../models/offboarding.model';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 type DetailPopover = 'priority' | 'category' | null;
 
@@ -53,7 +54,7 @@ const PRIORITY_OPTIONS: readonly PriorityOption[] = [
 @Component({
   selector: 'app-checklist-task-detail-dialog',
   standalone: true,
-  imports: [CdkTrapFocus, ButtonComponent, RichTextEditorComponent, TaskAttachmentListComponent],
+  imports: [StopClickPropagationDirective, CdkTrapFocus, ButtonComponent, RichTextEditorComponent, TaskAttachmentListComponent],
   templateUrl: './checklist-task-detail-dialog.component.html',
   styleUrl: './checklist-task-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

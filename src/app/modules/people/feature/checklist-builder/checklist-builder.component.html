@@ -1,12 +1,12 @@
 @if (open()) {
-  <div class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop($event)">
+  <div role="presentation" class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop($event)">
     <div
       class="tfm tfm--create ui-scroll-open"
       role="dialog"
       aria-modal="true"
       tabindex="-1"
       [attr.aria-label]="isEdit() ? 'Edit checklist' : 'Create checklist'"
-      (click)="$event.stopPropagation()"
+      appStopClickPropagation
       (keydown.escape)="onEscape()"
     >
       <header class="tfm__head ui-popup-header">
@@ -51,7 +51,7 @@
 
           <!-- Checklist Type Segmented Control -->
           <div class="flex flex-col gap-1">
-            <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Checklist type *</label>
+            <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Checklist type *</span>
             <div class="cb-segmented" role="radiogroup" aria-label="Checklist type">
               <button
                 type="button"
@@ -94,9 +94,9 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             <!-- Scope Selector (Left Column) -->
             <div class="flex flex-col gap-1">
-              <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
+              <span class="text-xs font-semibold text-[var(--color-text-secondary)]">
                 Use this checklist for
-              </label>
+              </span>
               <div class="cb-segmented" role="radiogroup" aria-label="Use this checklist for">
                 <button
                   type="button"
@@ -321,7 +321,7 @@
                     </button>
                   } @else {
                     <div class="cb-assignment__pills">
-                      <button
+                      <button (keydown.delete)="clearTaskAssignment(idx)" (keydown.backspace)="clearTaskAssignment(idx)"
                         type="button"
                         class="cb-pill cb-pill--position"
                         [attr.aria-label]="'Selected position for task ' + (idx + 1)"
@@ -334,10 +334,10 @@
                           </svg>
                         </span>
                         <span>{{ assignmentPositionLabel(taskGroup) }}</span>
-                        <span class="cb-pill__remove" (click)="$event.stopPropagation(); clearTaskAssignment(idx)">×</span>
+                        <span aria-hidden="true" class="cb-pill__remove" (click)="$event.stopPropagation(); clearTaskAssignment(idx)">×</span>
                       </button>
                       @if (taskGroup.value.selectedAssigneeUserId || taskGroup.value.originalAssignedToId) {
-                        <button
+                        <button (keydown.delete)="removeSelectedEmployee(idx)" (keydown.backspace)="removeSelectedEmployee(idx)"
                           type="button"
                           class="cb-pill cb-pill--employee"
                           [attr.aria-label]="'Selected employee for task ' + (idx + 1)"
@@ -350,7 +350,7 @@
                             </svg>
                           </span>
                           <span>{{ assignmentEmployeeLabel(taskGroup) }}</span>
-                          <span class="cb-pill__remove" (click)="$event.stopPropagation(); removeSelectedEmployee(idx)">×</span>
+                          <span aria-hidden="true" class="cb-pill__remove" (click)="$event.stopPropagation(); removeSelectedEmployee(idx)">×</span>
                         </button>
                       } @else {
                         <button

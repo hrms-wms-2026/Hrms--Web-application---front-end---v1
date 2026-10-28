@@ -18,12 +18,18 @@ interface TaskBoardState {
 
 const initialState: TaskBoardState = { statuses: [], tasks: [], subtasksByParentId: {}, loading: false, error: null };
 
-function extractError(err: any, fallback: string): string {
+function extractError(err: unknown, fallback: string): string {
   return toSafeErrorMessage(err, fallback);
 }
 
-function tryParseInsufficientAllocation(err: any): InsufficientAllocationErrorDto | null {
-  const body = err?.error;
+interface AllocationErrorBody {
+  suggestedAction?: unknown;
+  availableSlackHours?: unknown;
+  detail?: unknown;
+}
+
+function tryParseInsufficientAllocation(err: unknown): InsufficientAllocationErrorDto | null {
+  const body = (err as { error?: AllocationErrorBody | null } | null)?.error;
   if (body && typeof body === 'object' && body.suggestedAction === 'extend_allocation' && typeof body.availableSlackHours === 'number') {
     return { availableSlackHours: body.availableSlackHours, suggestedAction: 'extend_allocation' };
   }

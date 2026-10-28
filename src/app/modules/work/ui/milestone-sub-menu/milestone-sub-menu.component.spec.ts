@@ -16,11 +16,11 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
   });
 
-    it('renders all four base tabs in order for non-owners', () => {
+    it('renders all three base tabs in order for non-owners', () => {
 
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Milestones']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog']);
 
   });
 
@@ -29,13 +29,13 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Milestones', 'Settings']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Settings']);
 
   });
 
   it('renders an icon inside every tab link', () => {
     const icons = fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"] svg');
-        expect(icons.length).toBe(4);
+        expect(icons.length).toBe(3);
 
   });
 
@@ -45,8 +45,7 @@ describe('MilestoneSubMenuComponent', () => {
     expect(hrefs).toEqual([
       '/milestones/o1/tree',
       '/board',
-      '/backlog',
-      '/calendar'
+      '/backlog'
     ]);
   });
 

@@ -561,7 +561,7 @@ describe('TaskBoardComponent', () => {
   it('shows store.error() as a retryable error state, and Retry calls loadBoard again', async () => {
     const loadBoard = vi.fn().mockResolvedValue(undefined);
     const errorValues = ['Failed to load the board.', null] as const;
-    let errorIndex = 0;
+    const errorIndex = 0;
     const storeStub = {
       loadBoard,
       columnsWithTasks: () => [],

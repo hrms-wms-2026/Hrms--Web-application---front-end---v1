@@ -4,7 +4,7 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { ModalComponent, ModalSize, PopupIcon } from '../../../../shared/ui/modal/modal.component';
+import { ModalSize, PopupIcon } from '../../../../shared/ui/modal/modal.component';
 import { PreferencesModalComponent, PreferenceTab } from '../../../../shared/ui/preferences-modal/preferences-modal.component';
 import { AppearancePanelComponent } from '../../../../shared/ui/appearance-panel/appearance-panel.component';
 import { ProfileTabComponent } from '@modules/profile/feature/profile-tab/profile-tab.component';

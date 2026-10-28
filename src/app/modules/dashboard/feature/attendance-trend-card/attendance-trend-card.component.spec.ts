@@ -28,13 +28,13 @@ function row(workDate: string, totalWorkedMinutes: number): AttendanceHistoryRow
   };
 }
 
-type StoreMock = {
+interface StoreMock {
   history: ReturnType<typeof signal<readonly AttendanceHistoryRow[]>>;
   historyLoading: ReturnType<typeof signal<boolean>>;
   historyError: ReturnType<typeof signal<string | null>>;
   today: ReturnType<typeof signal<AttendanceTodayResponse | null>>;
   loadMyHistory: ReturnType<typeof vi.fn>;
-};
+}
 
 function currentMonday(reference = new Date()): string {
   const day = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());

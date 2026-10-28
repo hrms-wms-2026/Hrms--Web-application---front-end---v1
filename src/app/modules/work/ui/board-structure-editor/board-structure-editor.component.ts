@@ -245,7 +245,7 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
                   (input)="newStatusName.set($any($event.target).value)"
                   (keydown.enter)="confirmAdd()"
                   (keydown.escape)="cancelAdd()"
-                  autofocus
+                 
                 />
                 <div class="board-structure__add-buttons">
                   <button

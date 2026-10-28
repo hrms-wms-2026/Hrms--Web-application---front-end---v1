@@ -12,15 +12,20 @@ import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 import { SignalItemsListComponent } from '../signal-items-list/signal-items-list.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 @Component({
   selector: 'app-overview-needs-attention',
   standalone: true,
-  imports: [DeltaBadgeComponent, SignalItemsListComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [KeyboardClickDirective, StopClickPropagationDirective, DeltaBadgeComponent, SignalItemsListComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
   template: `
     @if (signals().length > 0) {
       <app-popout-panel [open]="popped()" label="Needs Attention" (closed)="collapse()">
       <div
+        role="button"
+        tabindex="0"
+        appKeyboardClick
         data-testid="needs-attention"
         class="group rounded-2xl border border-[#fef08a] bg-[#fefce8] p-5"
         [class.cursor-pointer]="!popped() && signals().length > collapsedLimit"
@@ -78,7 +83,7 @@ import { SignalItemsListComponent } from '../signal-items-list/signal-items-list
             </button>
             @if (drilldown.openKey() === signal.key) {
               <app-signal-items-list
-                (click)="$event.stopPropagation()"
+                appStopClickPropagation
                 [response]="drilldown.openResponse()"
                 [loading]="drilldown.loadingKey() === signal.key"
                 [error]="drilldown.errorKey() === signal.key"

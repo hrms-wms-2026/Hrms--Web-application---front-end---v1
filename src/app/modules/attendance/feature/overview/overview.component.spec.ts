@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AttendanceTodayResponse } from '../../models/time-tracking.model';
 import { TimeTrackingStore } from '../../state/time-tracking.store';

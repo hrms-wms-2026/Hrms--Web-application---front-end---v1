@@ -87,7 +87,7 @@ const coveredRow: AttendanceHistoryRow = {
   isOverBreakAllowance: false
 };
 
-type StoreMock = {
+interface StoreMock {
   today: ReturnType<typeof signal<AttendanceTodayResponse | null>>;
   todayLoading: ReturnType<typeof signal<boolean>>;
   todayError: ReturnType<typeof signal<string | null>>;
@@ -170,7 +170,7 @@ type StoreMock = {
   clearWorkAreaPreview: ReturnType<typeof vi.fn>;
   previewWorkAreaChange: ReturnType<typeof vi.fn>;
   submitWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
-};
+}
 
 describe('TimeTrackingComponent', () => {
   afterEach(() => TestBed.resetTestingModule());

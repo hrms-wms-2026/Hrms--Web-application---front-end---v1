@@ -186,7 +186,7 @@ export class DepartmentManagementComponent {
     if (!le) return;
 
     const editing = this.editingDepartment();
-    let success = false;
+    let success: boolean;
 
     if (editing) {
       success = await this.departmentStore.updateDepartment(le.id, editing.id, {

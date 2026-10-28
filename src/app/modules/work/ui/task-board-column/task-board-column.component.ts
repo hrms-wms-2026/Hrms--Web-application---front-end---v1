@@ -7,6 +7,7 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCardComponent } from '../task-card/task-card.component';
 import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export interface QuickTaskCreatedEvent {
   title: string;
@@ -24,7 +25,7 @@ export interface QuickTaskCreatedEvent {
 @Component({
   selector: 'app-task-board-column',
   standalone: true,
-  imports: [CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent, TaskAssigneeDropdownComponent, DatePickerComponent],
+  imports: [StopClickPropagationDirective, CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent, TaskAssigneeDropdownComponent, DatePickerComponent],
   host: {
     '[class.task-board-column-host--collapsed]': 'isCollapsed()'
   },
@@ -74,7 +75,7 @@ export interface QuickTaskCreatedEvent {
         <!-- Status Header with hover '<' collapse, '...' menu, and '+' add button -->
         <div class="task-board-column__header">
           @if (isRenaming()) {
-            <div class="task-board-column__rename-wrap" (click)="$event.stopPropagation()">
+            <div class="task-board-column__rename-wrap" appStopClickPropagation>
               <div class="task-board-column__rename-box">
                 <!-- Color Swatch Button -->
                 <button
@@ -88,7 +89,7 @@ export interface QuickTaskCreatedEvent {
 
                 <!-- Color Picker Popover -->
                 @if (isRenameColorPickerOpen()) {
-                  <div class="task-board-column__color-popover" role="dialog" (click)="$event.stopPropagation()">
+                  <div class="task-board-column__color-popover" role="dialog" appStopClickPropagation>
                     <span class="task-board-column__color-popover-title">Status color</span>
                     <div class="task-board-column__color-palette">
                       @for (preset of baseColorPresets; track preset.value) {
@@ -176,7 +177,7 @@ export interface QuickTaskCreatedEvent {
                 </button>
 
                 @if (isMenuOpen()) {
-                  <div class="task-board-column__menu" role="menu" (click)="$event.stopPropagation()">
+                  <div class="task-board-column__menu" role="menu" appStopClickPropagation>
                     <div class="task-board-column__menu-heading">Group options</div>
                     <button
                       type="button"
@@ -234,7 +235,7 @@ export interface QuickTaskCreatedEvent {
 
       <!-- Quick Task Creation Card -->
       @if (isQuickCreateOpen()) {
-        <div class="quick-task-card" (click)="$event.stopPropagation()">
+        <div class="quick-task-card" appStopClickPropagation>
           <div class="quick-task-card__top">
             <input
               #quickTitleInput
@@ -276,7 +277,7 @@ export interface QuickTaskCreatedEvent {
               </button>
 
               @if (activePopover() === 'assignee') {
-                <div class="quick-popover-container" (click)="$event.stopPropagation()">
+                <div class="quick-popover-container" appStopClickPropagation>
                   <app-task-assignee-dropdown
                     [members]="assignableMembers()"
                     [selectedId]="quickAssigneeId()"
@@ -318,7 +319,7 @@ export interface QuickTaskCreatedEvent {
               </button>
 
               @if (activePopover() === 'priority') {
-                <div class="quick-popover" role="dialog" (click)="$event.stopPropagation()">
+                <div class="quick-popover" role="dialog" appStopClickPropagation>
                   <div class="quick-popover__list">
                     @for (opt of priorityOptions; track opt.value) {
                       <button
@@ -353,7 +354,7 @@ export interface QuickTaskCreatedEvent {
                   placeholder="Points"
                   data-testid="quick-task-story-points-input"
                   [value]="quickStoryPoints() ?? ''"
-                  (click)="$event.stopPropagation()"
+                  appStopClickPropagation
                   (input)="setStoryPoints($any($event.target).value)"
                 />
               </div>
@@ -376,7 +377,7 @@ export interface QuickTaskCreatedEvent {
                 </button>
 
                 @if (activePopover() === 'module') {
-                  <div class="quick-popover" role="dialog" (click)="$event.stopPropagation()">
+                  <div class="quick-popover" role="dialog" appStopClickPropagation>
                     <div class="quick-popover__list">
                       @for (m of modules(); track m.objectiveId) {
                         <button

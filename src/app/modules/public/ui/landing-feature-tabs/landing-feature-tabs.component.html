@@ -8,7 +8,7 @@
   </div>
 
   <div class="tabs-sec__nav">
-    <div
+    <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'workday'" appKeyboardClick
       class="tabs-sec__tab-item"
       [class.tabs-sec__tab-item--active]="activeTab() === 'workday'"
       (click)="selectTab('workday')"
@@ -20,7 +20,7 @@
       }
     </div>
 
-    <div
+    <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'hr'" appKeyboardClick
       class="tabs-sec__tab-item"
       [class.tabs-sec__tab-item--active]="activeTab() === 'hr'"
       (click)="selectTab('hr')"
@@ -32,7 +32,7 @@
       }
     </div>
 
-    <div
+    <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'intelligence'" appKeyboardClick
       class="tabs-sec__tab-item"
       [class.tabs-sec__tab-item--active]="activeTab() === 'intelligence'"
       (click)="selectTab('intelligence')"
@@ -44,7 +44,7 @@
       }
     </div>
 
-    <div
+    <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'worksync'" appKeyboardClick
       class="tabs-sec__tab-item"
       [class.tabs-sec__tab-item--active]="activeTab() === 'worksync'"
       (click)="selectTab('worksync')"
@@ -74,19 +74,19 @@
 
       <div class="tabs-sec__app-body">
         <aside class="tabs-sec__app-sidebar">
-          <div class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'workday'" (click)="setTab('workday')">
+          <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'workday'" appKeyboardClick class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'workday'" (click)="setTab('workday')">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             <span>Workday</span>
           </div>
-          <div class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'hr'" (click)="setTab('hr')">
+          <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'hr'" appKeyboardClick class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'hr'" (click)="setTab('hr')">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
             <span>Employees</span>
           </div>
-          <div class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'intelligence'" (click)="setTab('intelligence')">
+          <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'intelligence'" appKeyboardClick class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'intelligence'" (click)="setTab('intelligence')">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             <span>WorkPulse</span>
           </div>
-          <div class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'worksync'" (click)="setTab('worksync')">
+          <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'worksync'" appKeyboardClick class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'worksync'" (click)="setTab('worksync')">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
             <span>WorkSync</span>
           </div>

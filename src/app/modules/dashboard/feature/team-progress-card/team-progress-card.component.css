@@ -1,41 +1,652 @@
-.team-progress-segment--completed {
-  background: var(--color-success);
+/* Every component has ONE fixed size in every view: the donut is always 128px and type never scales.
+ * A bigger card shows more sections and list rows (see team-progress-layout.util), never bigger
+ * graphics. The fixed heights here are the ones the layout util budgets with. */
+
+/* ---- Header period switch ---- */
+.tp-period {
+  flex: none;
+  max-width: 7.5rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.5rem;
+  background-color: #fff;
+  padding: 0.25rem 0.375rem 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: rgb(51 65 85);
+  cursor: pointer;
 }
 
-.team-progress-segment--in-progress {
-  background: var(--color-accent);
+.tp-period:hover {
+  border-color: rgb(203 213 225);
 }
 
-.team-progress-segment--not-started {
-  background: #cbd5e1;
+.tp-period:focus-visible {
+  outline: 2px solid rgb(59 130 246);
+  outline-offset: 1px;
 }
 
-.team-progress-segment--untasked {
-  background: #fcd34d;
+/* ---- Body ---- */
+.tp-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
 }
 
-/* Popped out: pie + legend + rates share one row, so the module list starts higher. */
-.progress-layout--wide {
+/* The xs and small views are short: their content sits in the middle of the card. */
+.tp-body[data-mode='xs'],
+.tp-body[data-mode='small'] {
+  justify-content: center;
+}
+
+/* ---- Donut: 128px in every view ---- */
+.tp-donut {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  flex: none;
+}
+
+.tp-donut-center {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.tp-donut-caption {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgb(100 116 139);
+}
+
+.tp-donut-skeleton {
+  width: 128px;
+  height: 128px;
+  border: 21px solid rgb(241 245 249);
+  border-radius: 9999px;
+}
+
+/* ---- XS: donut over the completion figure ---- */
+.tp-xs {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tp-completion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.tp-completion-big {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.tp-completion-caption {
+  font-size: 0.8125rem;
+  color: rgb(71 85 105);
+}
+
+/* ---- Mini (2x2 minimum): completion figure, stacked bar, optional legend ---- */
+.tp-mini {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Stretched sideways: donut + figure on the left, the stacked bar and legend fill the rest. */
+.tp-mini--wide {
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.tp-mini-bar {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.tp-mini-top {
+  flex: none;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* The one view where the donut is smaller than 128px: a 2-row card has no room for it under the
+ * title. The total moves out of the ring into the figure beside it. */
+.tp-mini .tp-donut {
+  width: 80px;
+  height: 80px;
+}
+
+.tp-mini .tp-donut-center {
+  display: none;
+}
+
+.tp-mini-figure {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.tp-mini-legend {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  column-gap: 0.875rem;
+  row-gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.tp-mini-legend-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.tp-mini-legend-label {
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(71 85 105);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tp-mini-legend-hours {
+  flex: none;
+  font-weight: 600;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Small: donut (with the completion line) beside the two-line legend ---- */
+.tp-small {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  column-gap: 2.5rem;
+  gap: 1.25rem;
 }
 
-.progress-layout--wide > section {
-  grid-column: 1 / -1;
-}
-
-.progress-layout--wide [data-testid='team-progress-legend'] {
-  max-width: 20rem;
-}
-
-.progress-layout--wide .progress-rates {
-  border-top: 0;
-  padding-top: 0;
-  padding-left: 2.5rem;
-  border-left: 1px solid rgb(241 245 249);
-  column-gap: 2.5rem;
-  align-self: stretch;
+.tp-small-side {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 0.25rem;
+}
+
+/* ---- Status legend / rows ---- */
+.tp-legend {
+  display: flex;
+  min-width: 0;
+  flex: none;
+  flex-direction: column;
+}
+
+.tp-legend-row {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  column-gap: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.15;
+}
+
+/* Compact (small): dot, label, bold hours with the share under it. 36px per row. */
+.tp-legend--compact .tp-legend-row {
+  height: 36px;
+  grid-template-columns: 0.625rem minmax(0, 1fr) auto;
+}
+
+.tp-legend--compact .tp-legend-pct {
+  grid-column: 3;
+  font-size: 0.75rem;
+}
+
+/* List (xs, tall): dot, label, hours, share on one 28px line. */
+.tp-legend--list .tp-legend-row {
+  height: 28px;
+  grid-template-columns: 0.625rem minmax(0, 1fr) auto 3.25rem;
+}
+
+/* 2-column cards (under 300px): no room for a share column beside the hours, so the list keeps
+ * label + hours; the completion figure under the donut and the row tooltip carry the share. */
+.tp-body--narrow .tp-legend--list .tp-legend-row {
+  grid-template-columns: 0.625rem minmax(0, 1fr) auto;
+}
+
+.tp-body--narrow .tp-legend--list .tp-legend-pct {
+  display: none;
+}
+
+/* Bars (wide, large, maximum): dot, label, hours, share, then a bar filling the rest. 28px rows. */
+.tp-legend--bars {
+  flex: 1 1 0;
+}
+
+.tp-legend--bars .tp-legend-row {
+  height: 28px;
+  grid-template-columns: 0.625rem minmax(5.5rem, 8rem) 5rem 3.25rem minmax(3rem, 1fr);
+}
+
+.tp-legend-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(51 65 85);
+}
+
+.tp-legend--compact .tp-legend-label {
+  white-space: normal;
+}
+
+.tp-legend-hours {
+  text-align: right;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-legend-pct {
+  text-align: right;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-legend-bar {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(241 245 249);
+}
+
+.tp-legend-bar > span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: 9999px;
+}
+
+/* ---- Hero: donut beside the rows (wide, large) ---- */
+.tp-hero {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* ---- Maximum: donut | rows | tiles in one 132px band ---- */
+.tp-max-top {
+  display: grid;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* ---- Tall: donut over the status list (beside it on a wider card) ---- */
+.tp-tall-hero {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tp-tall-side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tp-tall-hero .tp-legend {
+  width: 100%;
+}
+
+.tp-tall-hero--row {
+  flex-direction: row;
+  gap: 1.5rem;
+}
+
+.tp-tall-hero--row .tp-legend {
+  width: auto;
+  flex: 1 1 0;
+}
+
+/* ---- Medium: stacked bar, total, status tiles (176px) ---- */
+.tp-medium {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tp-status-bar {
+  display: flex;
+  height: 14px;
+  width: 100%;
+  flex: none;
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background: rgb(241 245 249);
+}
+
+.tp-status-bar > span + span {
+  border-left: 2px solid #fff;
+}
+
+.tp-headline {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-status-tiles {
+  display: grid;
+  height: 88px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.tp-status-tiles--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tp-status-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.125rem;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  padding: 0.375rem 0.75rem;
+}
+
+.tp-status-tile-hours {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-status-tile-pct {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Tinted metric tiles: 60px ---- */
+.tp-tiles {
+  display: grid;
+  flex: none;
+  grid-auto-rows: 60px;
+  gap: 0.625rem;
+}
+
+.tp-max-top .tp-tiles {
+  grid-auto-rows: 58px;
+  gap: 0.5rem;
+}
+
+/* The label comes first in the markup (dt before dd); the value shows on top. */
+.tp-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column-reverse;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  padding: 0.375rem 0.75rem;
+}
+
+.tp-tile-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-tile-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+
+.tone-green { background: rgb(236 253 245); border-color: rgb(209 250 229); }
+.tone-green .tp-tone-text { color: rgb(5 150 105); }
+.tone-blue { background: rgb(239 246 255); border-color: rgb(219 234 254); }
+.tone-blue .tp-tone-text { color: rgb(37 99 235); }
+.tone-gray { background: rgb(248 250 252); border-color: rgb(241 245 249); }
+.tone-gray .tp-tone-text { color: rgb(51 65 85); }
+.tone-amber { background: rgb(255 251 235); border-color: rgb(254 243 199); }
+.tone-amber .tp-tone-text { color: rgb(217 119 6); }
+.tone-rose { background: rgb(255 241 242); border-color: rgb(255 228 230); }
+.tone-rose .tp-tone-text { color: rgb(225 29 72); }
+
+/* ---- Panels (lists, weekly chart, top members) ---- */
+.tp-panels {
+  display: grid;
+  flex: none;
+  gap: 0.75rem;
+}
+
+/* The weekly chart / top members row: one fixed height (TEAM_PROGRESS_WEEKLY_PANEL_PX). */
+.tp-panels--fixed {
+  height: 196px;
+}
+
+.tp-panels--weekly-members {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+}
+
+/* The last list row takes the rest of the card; its rows stay compact at the top. */
+.tp-panels--grow {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.tp-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(241 245 249);
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.625rem;
+}
+
+.team-progress-heading {
+  margin-bottom: 0.25rem;
+  display: flex;
+  height: 1.25rem;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(30 41 59);
+}
+
+/* ---- Weekly completion ---- */
+.tp-weekly {
+  height: 196px;
+  flex: none;
+}
+
+.tp-panels--fixed .tp-weekly {
+  height: auto;
+}
+
+.tp-weekly-chart {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.tp-footnote {
+  margin-top: 0.25rem;
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  color: rgb(100 116 139);
+}
+
+.tp-weekly-skeleton {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  align-items: flex-end;
+  gap: 0.375rem;
+  padding-bottom: 1rem;
+}
+
+.tp-weekly-skeleton > span {
+  flex: 1 1 0;
+  border-radius: 4px 4px 0 0;
+  background: rgb(241 245 249);
+  animation: tp-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes tp-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* One list row (module, project or overdue task): 42px, see TEAM_PROGRESS_LIST_ROW_PX. */
+.team-progress-row {
+  display: block;
+  height: 2.625rem;
+  width: 100%;
+  min-width: 0;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.375rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.team-progress-row:hover {
+  background: rgb(239 246 255 / 0.6);
+}
+
+.team-progress-row:focus-visible,
+.team-progress-link:focus-visible,
+.tp-view-details:focus-visible {
+  outline: 2px solid rgb(59 130 246);
+  outline-offset: 2px;
+}
+
+/* Top members: name, blue bar, hours (like the reference). 30px rows. */
+.tp-member {
+  display: grid;
+  height: 1.875rem;
+  grid-template-columns: minmax(0, 7.5rem) minmax(2rem, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.375rem;
+}
+
+.tp-member-bar {
+  height: 0.625rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(241 245 249);
+}
+
+.tp-member-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: rgb(96 165 250);
+}
+
+.team-progress-link {
+  border-radius: 0.25rem;
+  color: rgb(37 99 235);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.team-progress-link:hover {
+  color: rgb(29 78 216);
+  text-decoration: underline;
+}
+
+.tp-view-details {
+  display: flex;
+  height: 36px;
+  width: 100%;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.5rem;
+  background: rgb(248 250 252);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(37 99 235);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.tp-view-details:hover {
+  background: rgb(239 246 255);
+}
+
+/* In the tall view the button sits at the bottom even when the lists end early. */
+.tp-body[data-mode='tall'] .tp-view-details {
+  margin-top: auto;
+}
+
+.tp-message {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgb(100 116 139);
 }

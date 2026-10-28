@@ -177,8 +177,8 @@
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       </span>
-      <div class="relative flex min-w-0 flex-1 flex-col gap-2" (keydown.escape)="onParticipantPickerEscape($event)">
-        <div
+      <div role="presentation" class="relative flex min-w-0 flex-1 flex-col gap-2" (keydown.escape)="onParticipantPickerEscape($event)">
+        <div role="presentation"
           data-picker-trigger
           data-testid="calendar-form-participant-box"
           class="flex h-10 cursor-text items-center gap-2"
@@ -441,7 +441,7 @@
             </p>
           }
         } @else {
-          <div #meetingMenu class="relative" (keydown.escape)="onMeetingMenuEscape($event)">
+          <div role="presentation" #meetingMenu class="relative" (keydown.escape)="onMeetingMenuEscape($event)">
             <button
               type="button"
               data-testid="calendar-form-meeting-trigger"

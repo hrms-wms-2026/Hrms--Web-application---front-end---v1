@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
@@ -14,7 +14,6 @@ describe('ChecklistTemplatesComponent', () => {
   let fixture: ComponentFixture<ChecklistTemplatesComponent>;
   let permissionService: PermissionService;
   let legalEntityStore: InstanceType<typeof LegalEntityStore>;
-  let router: Router;
   let httpMock: HttpTestingController;
 
   const listUrl = `${environment.apiUrl}/people/checklist-templates`;
@@ -51,7 +50,6 @@ describe('ChecklistTemplatesComponent', () => {
 
     permissionService = TestBed.inject(PermissionService);
     legalEntityStore = TestBed.inject(LegalEntityStore);
-    router = TestBed.inject(Router);
     httpMock = TestBed.inject(HttpTestingController);
 
     vi.spyOn(legalEntityStore, 'selectedLegalEntity').mockReturnValue(mockCompany);

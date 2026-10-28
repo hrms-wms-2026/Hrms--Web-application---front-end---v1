@@ -9,7 +9,7 @@
       <label [for]="inputId" class="dp-label ui-field-label">{{ label() }}@if (required()) {<span class="ui-field-required" aria-hidden="true">*</span>}</label>
     }
 
-    <div
+    <div role="presentation"
       class="dp-input-wrapper ui-field"
       [class.ui-field--sm]="size() === 'sm'"
       [class.ui-field--error]="!!error()"
@@ -91,7 +91,7 @@
       [class.dp-popover--up]="openUpward()"
       role="dialog"
       aria-label="Change due date"
-      (click)="$event.stopPropagation()"
+      appStopClickPropagation
       (wheel)="onWheel($event)"
     >
       @if (showQuickPresets()) {

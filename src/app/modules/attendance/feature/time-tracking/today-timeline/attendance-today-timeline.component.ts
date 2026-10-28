@@ -8,6 +8,7 @@ import {
   statusLabel,
   timelineEventLabel
 } from '../../../utils/attendance-formatters';
+import { StopClickPropagationDirective } from '../../../../../shared/directives/stop-click-propagation.directive';
 
 const LIVE_STATUSES = new Set(['working', 'clocked_in', 'on_break']);
 const CIRCLE_RADIUS = 60;
@@ -47,7 +48,7 @@ export interface EnrichedTimelineItem {
 @Component({
   selector: 'app-attendance-today-timeline',
   standalone: true,
-  imports: [],
+  imports: [StopClickPropagationDirective],
   templateUrl: './attendance-today-timeline.component.html',
   styleUrl: './attendance-today-timeline.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -1,6 +1,7 @@
 const ACTIVATION_PATH = '/device/activate';
 
 export function parseSafeReturnPath(value: string | null): string | null {
+  // eslint-disable-next-line no-control-regex -- rejecting control characters is the point (header/redirect injection guard)
   if (!value || value.includes('\\') || /[\u0000-\u001F\u007F]/.test(value)) return null;
   let parsed: URL;
   try {

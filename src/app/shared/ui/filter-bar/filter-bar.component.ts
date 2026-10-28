@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, computed, inject, input, output, signal } from '@angular/core';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../../modules/work/ui/work-dropdown/work-dropdown.component';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export type FilterFieldIcon = 'module' | 'status' | 'category' | 'sprint' | 'people' | 'priority' | 'calendar' | 'department' | 'position' | 'type';
 
@@ -31,9 +32,9 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
   // popover (teammate-owned; imports via modules/work/ui/task-filter-bar). New code uses app-filter-bar.
   selector: 'app-filter-bar, app-task-filter-bar',
   standalone: true,
-  imports: [WorkDropdownComponent],
+  imports: [StopClickPropagationDirective, WorkDropdownComponent],
   template: `
-    <div class="tfb" (click)="$event.stopPropagation()">
+    <div class="tfb" appStopClickPropagation>
       <div class="tfb__trigger" [class.tfb__trigger--active]="activeCount() > 0">
         <button
           type="button"

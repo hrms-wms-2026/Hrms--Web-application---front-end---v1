@@ -195,7 +195,7 @@
     [companyName]="selectedLegalEntity()?.name || ''"
     [loading]="departmentStore.saving()"
     (save)="onSaveDepartment($event)"
-    (cancel)="closeFormModal()"
+    (cancelled)="closeFormModal()"
   />
 }
 
@@ -206,6 +206,6 @@
     [checking]="departmentStore.archiveChecking()"
     [saving]="departmentStore.saving()"
     (confirmArchive)="onConfirmArchive()"
-    (cancel)="closeArchiveModal()"
+    (cancelled)="closeArchiveModal()"
   />
 }

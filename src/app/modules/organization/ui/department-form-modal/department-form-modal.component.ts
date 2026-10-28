@@ -5,6 +5,7 @@ import { DepartmentListItemResponse, DepartmentTreeNodeResponse } from '../../mo
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export interface DepartmentFormValue {
   name: string;
@@ -23,7 +24,7 @@ export interface HeadPositionOption {
   selector: 'app-department-form-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
+  imports: [StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
   templateUrl: './department-form-modal.component.html',
   styleUrl: './department-form-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -39,7 +40,7 @@ export class DepartmentFormModalComponent implements OnInit {
   @Input() loading = false;
 
   @Output() save = new EventEmitter<DepartmentFormValue>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 
   readonly form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(200)]],
