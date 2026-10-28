@@ -57,6 +57,8 @@ const band = (start: number, end: number): Band => ({ topPct: (start / 1440) * 1
 interface DayColumnViewModel {
   readonly date: string;
   readonly isToday: boolean;
+  /** Day and short month, e.g. '26 Oct'; today shows its day number in a circle instead. */
+  readonly dayLabel: string;
   readonly weekdayLabel: string; // e.g. "SUN"
   readonly dayNumber: number; // 1-31
   readonly allDayEvents: readonly CalendarEventResponse[];
@@ -91,6 +93,8 @@ interface DragSelection {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './calendar-hour-grid.component.html',
+  // Today's column (header and grid) under the blocks, so the week shows where now is at a glance.
+  styles: ['.today-tint { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); }'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalendarHourGridComponent {
@@ -231,8 +235,9 @@ export class CalendarHourGridComponent {
       return {
         date,
         isToday,
-        weekdayLabel: local.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+        weekdayLabel: local.toLocaleDateString('en-US', { weekday: 'short' }),
         dayNumber: d,
+        dayLabel: `${d} ${local.toLocaleDateString('en-US', { month: 'short' })}`,
         allDayEvents: dayEvents.filter((e) => e.isAllDay),
         positioned: laidOut.flatMap((p) => p.item.kind === 'event'
           ? [{ event: p.item.event, top: p.top, height: p.height, left: p.left, width: p.width }] : []),
@@ -255,7 +260,7 @@ export class CalendarHourGridComponent {
         offHours: minutes ? [band(0, minutes.start), band(minutes.end, 1440)].filter((b) => b.heightPct > 0) : [],
         restDay: window !== null && !window.isWorkingDay,
         load: load ? {
-          label: `${duration(load.plannedMinutes)} / ${duration(load.workingMinutes)}${load.over ? ' · over' : ''}`,
+          label: `${duration(load.plannedMinutes)} / ${duration(load.workingMinutes)}${load.over ? ' · Over' : ''}`,
           widthPct: load.workingMinutes > 0 ? Math.min(100, (load.plannedMinutes / load.workingMinutes) * 100) : 0,
           over: load.over,
         } : null,

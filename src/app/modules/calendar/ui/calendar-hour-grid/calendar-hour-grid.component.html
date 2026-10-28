@@ -9,24 +9,27 @@
     @for (column of columns(); track column.date) {
       <div
         data-testid="calendar-hour-header-cell"
+        [attr.data-today]="column.isToday || null"
         class="flex flex-1 flex-col items-center gap-0.5 border-r border-[var(--color-border)] py-1.5 last:border-r-0"
+        [class.today-tint]="column.isToday"
       >
-        <span class="text-[10px] font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">{{ column.weekdayLabel }}</span>
+        <span data-testid="calendar-hour-weekday" class="text-xs font-medium"
+          [ngClass]="column.isToday ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'">{{ column.weekdayLabel }}</span>
         @if (column.isToday) {
           <span
             data-testid="calendar-hour-header-today"
             class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)] text-sm font-semibold text-[var(--color-accent-contrast)]"
           >{{ column.dayNumber }}</span>
         } @else {
-          <span class="flex h-7 w-7 items-center justify-center text-sm text-[var(--color-text-primary)]">{{ column.dayNumber }}</span>
+          <span data-testid="calendar-hour-daylabel" class="flex h-7 items-center justify-center text-sm font-medium text-[var(--color-text-primary)]">{{ column.dayLabel }}</span>
         }
         @if (column.load; as load) {
-          <div data-testid="planner-load" [attr.data-over]="load.over" class="mt-0.5 flex w-full flex-col gap-0.5 px-2 text-center text-[10px]"
-            [ngClass]="load.over ? 'text-amber-700' : 'text-[var(--color-text-secondary)]'">
+          <div data-testid="planner-load" [attr.data-over]="load.over" class="mt-0.5 flex w-full flex-col gap-0.5 px-2 text-center text-[10px]">
             <span class="h-1 w-full overflow-hidden rounded bg-[var(--color-surface-secondary)]">
-              <span class="block h-full" [ngClass]="load.over ? 'bg-amber-500' : 'bg-teal-600'" [style.width.%]="load.widthPct"></span>
+              <span class="block h-full" [ngClass]="load.over ? 'bg-[var(--color-danger)]' : 'bg-teal-600'" [style.width.%]="load.widthPct"></span>
             </span>
-            <span>{{ load.label }}</span>
+            <span data-testid="planner-load-label"
+              [ngClass]="load.over ? 'font-semibold text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'">{{ load.label }}</span>
           </div>
         }
       </div>
@@ -73,8 +76,9 @@
 
     @for (column of columns(); track column.date) {
       <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" [attr.data-rest-day]="column.restDay"
+        [attr.data-today]="column.isToday || null"
         class="relative h-[72rem] flex-1 border-r border-[var(--color-border)] last:border-r-0"
-        [ngClass]="column.restDay ? 'bg-[var(--color-surface-secondary)]' : ''">
+        [ngClass]="column.restDay ? 'bg-[var(--color-surface-secondary)]' : ''" [class.today-tint]="column.isToday">
         <div
           data-testid="calendar-hour-slots"
           class="absolute inset-0 touch-none select-none"

@@ -184,7 +184,7 @@ describe('CalendarHourGridComponent planner layer', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('shows each day\'s load under its date, amber when over', () => {
+  it('shows each day\'s load under its date, red with "· Over" when over', () => {
     fixture.componentRef.setInput('loads', new Map([
       [TODAY, { plannedMinutes: 450, workingMinutes: 420, over: true }],
       [PAST, { plannedMinutes: 330, workingMinutes: 420, over: false }],
@@ -193,8 +193,47 @@ describe('CalendarHourGridComponent planner layer', () => {
 
     const loads = qa('[data-testid="planner-load"]');
     expect(loads[0].textContent).toContain('5h 30m / 7h');
-    expect(loads[1].textContent).toContain('7h 30m / 7h · over');
+    expect(loads[0].querySelector('[data-testid="planner-load-label"]')!.className).not.toContain('color-danger');
+    expect(loads[1].textContent).toContain('7h 30m / 7h · Over');
     expect(loads[1].getAttribute('data-over')).toBe('true');
+    expect(loads[1].querySelector('[data-testid="planner-load-label"]')!.className).toContain('text-[var(--color-danger)]');
+  });
+
+  describe('day headers and today', () => {
+    afterEach(() => vi.useRealTimers());
+
+    function renderAt(nowIso: string): void {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(nowIso));
+      fixture = TestBed.createComponent(CalendarHourGridComponent);
+      fixture.componentRef.setInput('days', [PAST, TODAY]);
+      fixture.componentRef.setInput('timezone', 'UTC');
+      fixture.componentRef.setInput('workWindows', new Map([[TODAY, window9to17], [PAST, window9to17]]));
+      fixture.detectChanges();
+    }
+
+    it('each header reads the weekday, then the day and month', () => {
+      renderAt('2026-11-02T10:00:00Z');
+
+      const past = qa('[data-testid="calendar-hour-header-cell"]')[0];
+      expect(past.querySelector('[data-testid="calendar-hour-weekday"]')!.textContent!.trim()).toBe('Sun');
+      expect(past.querySelector('[data-testid="calendar-hour-daylabel"]')!.textContent!.trim()).toBe('1 Nov');
+    });
+
+    it("today's column and header are tinted, and its date sits in an accent circle", () => {
+      renderAt('2026-11-02T10:00:00Z');
+
+      const tinted = qa('[data-testid="calendar-hour-day-column"][data-today="true"]');
+      expect(tinted.map((c) => c.getAttribute('data-date'))).toEqual([TODAY]);
+      expect(qa('[data-testid="calendar-hour-header-cell"][data-today="true"]').length).toBe(1);
+      expect(q('[data-testid="calendar-hour-header-today"]')!.textContent!.trim()).toBe('2');
+    });
+
+    it('no column is tinted on a week without today', () => {
+      renderAt('2026-12-15T10:00:00Z');
+
+      expect(qa('[data-today="true"]').length).toBe(0);
+    });
   });
 
   it('the block menu moves, resizes and removes on editable days', () => {
