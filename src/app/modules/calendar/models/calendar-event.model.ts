@@ -117,6 +117,9 @@ export interface GetEligibleNomineesResponse {
   nominees: readonly EligibleNominee[];
 }
 
+/** What a conflict row is about (meeting availability warnings, 2026-10-28). A missing kind is an event. */
+export type CalendarConflictKind = 'event' | 'leave' | 'holiday' | 'outside_hours';
+
 export interface CalendarConflict {
   employeeId: string;
   employeeName: string;
@@ -126,12 +129,18 @@ export interface CalendarConflict {
   isBusyOnly?: boolean;
   overlapStart: string;
   overlapEnd: string;
+  kind?: CalendarConflictKind;
 }
 
 export interface CheckCalendarConflictsRequest {
   participantEmployeeIds: readonly string[];
   startDate: string;
   endDate: string;
+  isAllDay?: boolean;
+  /** The meeting's zone: used for a participant whose own zone is unknown. */
+  timeZone?: string;
+  /** The meeting being edited: its occurrences are not conflicts. */
+  excludeMeetingSeriesId?: string;
 }
 
 export interface CalendarConflictsResponse {

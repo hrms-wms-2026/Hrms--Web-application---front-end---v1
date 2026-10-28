@@ -445,6 +445,24 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
   });
 
+  it('renders leave kind label', () => {
+    fixture.componentRef.setInput('conflicts', [
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: '00000000-0000-0000-0000-000000000000',
+        conflictingEventTitle: 'On leave', kind: 'leave', overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T09:30:00Z'
+      },
+      {
+        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: '00000000-0000-0000-0000-000000000000',
+        conflictingEventTitle: 'Public holiday: Deepavali', kind: 'holiday', overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T09:30:00Z'
+      }
+    ]);
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Ada Lovelace: On leave · from 9:00 AM to 9:30 AM.');
+    expect(text).toContain('Ada Lovelace: Public holiday: Deepavali · from 9:00 AM to 9:30 AM.');
+    expect(text).not.toContain('is busy');
+  });
+
   it('busy-only conflicts show Busy and no title', () => {
     // A task meeting the caller may not see comes back with its time only (meetings-as-tasks spec 5.9).
     fixture.componentRef.setInput('conflicts', [
