@@ -164,25 +164,12 @@ describe('CalendarPageComponent planner layer', () => {
     expect(q('planner-focus-toggle')!.textContent).toContain('Task queue · 3');
   });
 
-  it('the page header names the Planner and sums up the week; "overdue" opens the Task queue', async () => {
+  it('the page header names the Planner, with no summary line', async () => {
     setup();
     fixture.componentInstance.setView('week');
     await settle();
 
-    expect(q('planner-header')!.querySelector('h1')!.textContent!.trim()).toBe('Planner');
-    const summary = q('planner-summary')!.textContent!.replace(/\s+/g, ' ');
-    expect(summary).toContain('This week:');
-    // Five working days of 7h: the week's working time.
-    expect(summary).toContain('/ 35h');
-    expect(summary).toMatch(/\d+ meetings?/);
-
-    q('planner-focus-close')!.click();
-    fixture.detectChanges();
-    expect(q('planner-focus-panel')).toBeNull();
-    q('planner-summary-overdue')!.click();
-    fixture.detectChanges();
-    expect(q('planner-summary-overdue')!.textContent!.trim()).toBe('2 overdue');
-    expect(q('planner-focus-panel')).not.toBeNull();
+    expect(q('planner-header')!.textContent!.trim()).toBe('Planner');
   });
 
   it('Week view shows the panel until it is closed, and remembers that', async () => {
