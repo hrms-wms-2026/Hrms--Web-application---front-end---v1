@@ -161,7 +161,7 @@ describe('CalendarPageComponent planner layer', () => {
     expect(totals).toContain('Actual / attendance 45m / 2h');
     expect(q('planner-focus-panel')).not.toBeNull();
     expect(q('planner-focus-close')).toBeNull();
-    expect(q('planner-focus-toggle')!.textContent).toContain('Focus · 3');
+    expect(q('planner-focus-toggle')!.textContent).toContain('Task queue · 3');
   });
 
   it('Week view shows the panel until it is closed, and remembers that', async () => {

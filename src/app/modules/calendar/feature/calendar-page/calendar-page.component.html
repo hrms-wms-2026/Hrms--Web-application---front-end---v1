@@ -40,7 +40,7 @@
             [attr.aria-pressed]="showWeekend()" (click)="toggleWeekend()">{{ showWeekend() ? 'Hide weekend' : 'Show weekend' }}</button>
         }
         <button type="button" data-testid="planner-focus-toggle" class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
-          [attr.aria-pressed]="showPanel()" (click)="toggleFocus()">Focus · {{ planner.focusCount() }}</button>
+          [attr.aria-pressed]="showPanel()" (click)="toggleFocus()">Task queue · {{ planner.focusCount() }}</button>
       }
       <app-button type="button" (click)="openCreate()">New event</app-button>
     </div>
