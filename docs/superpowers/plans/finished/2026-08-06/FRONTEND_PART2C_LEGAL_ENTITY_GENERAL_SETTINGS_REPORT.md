@@ -17,7 +17,7 @@
 - `src/app/modules/organization/feature/general-settings/general-settings.component.css`
 - `src/app/modules/organization/feature/general-settings/general-settings.component.spec.ts`
 - `src/app/app.routes.spec.ts` — no such file existed before this task.
-- `docs/superpowers/plans/2026-08-06-legal-entity-general-settings.md` — implementation plan used to build this feature.
+- `docs/superpowers/plans/finished/2026-08-06/2026-08-06-legal-entity-general-settings.md` — implementation plan used to build this feature.
 - This report.
 
 **Modified:**
