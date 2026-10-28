@@ -130,11 +130,17 @@ export class WeeklyWorkProgressDetailDialogComponent {
   });
 
   constructor() {
-    // A new current week from the card (a refresh) drops a stale last-week copy.
+    // The card refreshes the current week every minute; only a new week (Monday rolled over) makes the cached last
+    // week stale. Reloading on every refresh would flash this week while last week is on show.
+    let shownWeekStart: string | null = null;
     effect(() => {
-      this.initial();
-      untracked(() => this.lastWeek.set(null));
-      if (untracked(this.selectedWeek) === 'last') untracked(() => this.loadLastWeek());
+      const weekStart = this.initial().weekStart;
+      if (weekStart === shownWeekStart) return;
+      shownWeekStart = weekStart;
+      untracked(() => {
+        this.lastWeek.set(null);
+        if (this.selectedWeek() === 'last') this.loadLastWeek();
+      });
     });
   }
 

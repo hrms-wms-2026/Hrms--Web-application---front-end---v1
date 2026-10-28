@@ -106,6 +106,18 @@ describe('WeeklyWorkProgressDetailDialogComponent', () => {
     expect(text(f, 'wwp-range')).toBe('Oct 19 – Oct 25, 2026');
   });
 
+  it('keeps last week on show when the card refreshes the same current week', () => {
+    const f = render();
+    f.componentInstance.onWeekSelect('last');
+    f.detectChanges();
+
+    f.componentRef.setInput('initial', payload());
+    f.detectChanges();
+
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(text(f, 'wwp-range')).toBe('Oct 19 – Oct 25, 2026');
+  });
+
   it('hides scheduled figures and adherence without the planner', () => {
     const f = render(payload({ plannerEnabled: false }));
     expect(text(f, 'wwp-kpis')).not.toContain('Scheduled');
