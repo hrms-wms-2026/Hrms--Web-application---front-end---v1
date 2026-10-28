@@ -3,7 +3,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { AuthStore } from '../../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../../core/services/notification.service';
+import { CalendarEventApiService } from '../../../../calendar/data-access/calendar-event-api.service';
 import { ProjectApiService } from '../../../data-access/project-api.service';
 import { MeetingApiService } from '../../data-access/meeting-api.service';
 import { MeetingCreatedResponse, MeetingEditResponse, MeetingOccurrenceResponse } from '../../models/meeting.models';
@@ -14,6 +16,7 @@ describe('MeetingFormModalComponent', () => {
   let form: MeetingFormModalComponent;
   const api = { create: vi.fn(), edit: vi.fn(), getOccurrenceAt: vi.fn() };
   const notify = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() };
+  const calendarApi = { checkConflicts: vi.fn() };
 
   const occurrence = (over: Partial<MeetingOccurrenceResponse> = {}): MeetingOccurrenceResponse => ({
     taskId: 't1', shortId: 'ACME-M1', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z',
@@ -36,10 +39,14 @@ describe('MeetingFormModalComponent', () => {
   beforeEach(() => {
     Object.values(api).forEach((f) => f.mockReset());
     Object.values(notify).forEach((f) => f.mockReset());
+    calendarApi.checkConflicts.mockReset();
+    calendarApi.checkConflicts.mockReturnValue(of({ conflicts: [] }));
     TestBed.configureTestingModule({
       providers: [
         { provide: MeetingApiService, useValue: api },
         { provide: NotificationService, useValue: notify },
+        { provide: CalendarEventApiService, useValue: calendarApi },
+        { provide: AuthStore, useValue: { employeeId: () => 'me' } },
         { provide: ProjectApiService, useValue: { listMine: () => of({ items: [], totalCount: 0 }), getProjectTree: () => of([]) } },
       ],
     });
@@ -245,5 +252,79 @@ describe('MeetingFormModalComponent', () => {
     await form.save();
 
     expect(api.edit).toHaveBeenCalledWith('s1', '2026-11-02T03:30:00Z', { scope: 'this', revision: 3, durationMinutes: 60 });
+  });
+  describe('availability warnings', () => {
+    afterEach(() => vi.useRealTimers());
+
+    it('checks availability debounced with organiser included', () => {
+      vi.useFakeTimers();
+      build({ mode: 'create' });
+      form.onParticipantsChange(['e2', 'me']);
+      form.form.patchValue({ date: '2026-11-03', time: '10:00', durationMinutes: 30, timezone: 'Asia/Colombo' });
+      vi.advanceTimersByTime(399);
+      expect(calendarApi.checkConflicts).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1);
+
+      expect(calendarApi.checkConflicts).toHaveBeenCalledTimes(1);
+      expect(calendarApi.checkConflicts).toHaveBeenCalledWith({
+        participantEmployeeIds: ['e2', 'me'], startDate: '2026-11-03T10:00:00+05:30', endDate: '2026-11-03T05:00:00.000Z',
+        isAllDay: false, timeZone: 'Asia/Colombo',
+      });
+    });
+
+    it('does not check without a valid time', () => {
+      vi.useFakeTimers();
+      build({ mode: 'create' });
+      form.onParticipantsChange(['e2']);
+      form.form.patchValue({ date: '' });
+      vi.advanceTimersByTime(400);
+      form.form.patchValue({ date: '2026-11-03', durationMinutes: 5 });
+      vi.advanceTimersByTime(400);
+
+      expect(calendarApi.checkConflicts).not.toHaveBeenCalled();
+    });
+
+    it('edit sends series to exclude', () => {
+      vi.useFakeTimers();
+      build({ mode: 'edit', occurrence: occurrence({ attendees: [
+        { kind: 'employee', employeeId: 'e7', name: 'Ravi', email: null, response: 'accepted', responseReason: null, source: 'series' },
+        { kind: 'guest', employeeId: null, name: null, email: 'g@x.com', response: null, responseReason: null, source: 'series' },
+      ] }) });
+      form.form.patchValue({ time: '11:00' });
+      vi.advanceTimersByTime(400);
+
+      expect(calendarApi.checkConflicts).toHaveBeenLastCalledWith(expect.objectContaining({
+        participantEmployeeIds: ['e7', 'e1', 'me'], excludeMeetingSeriesId: 's1',
+      }));
+    });
+
+    it('create stays enabled with warnings', () => {
+      build({ mode: 'create' });
+      fillOffice();
+      form.availability.set([{
+        employeeId: 'e2', employeeName: 'Ravi', conflictingEventId: '00000000-0000-0000-0000-000000000000',
+        conflictingEventTitle: 'On leave', kind: 'leave', overlapStart: '2026-11-02T03:30:00Z', overlapEnd: '2026-11-02T04:15:00Z',
+      }]);
+      fixture.detectChanges();
+
+      expect((fixture.nativeElement.querySelector('[data-testid="meeting-save"]') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it('failed check does not block', () => {
+      vi.useFakeTimers();
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      calendarApi.checkConflicts.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      build({ mode: 'create' });
+      fillOffice();
+      form.scheduleAvailabilityCheck();
+      vi.advanceTimersByTime(400);
+      fixture.detectChanges();
+
+      expect(form.checkingAvailability()).toBe(false);
+      expect(form.availability()).toEqual([]);
+      expect(notify.error).not.toHaveBeenCalled();
+      expect((fixture.nativeElement.querySelector('[data-testid="meeting-save"]') as HTMLButtonElement).disabled).toBe(false);
+    });
   });
 });
