@@ -1,0 +1,101 @@
+<!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS (its title still
+     names the dialog for screen readers); the header below has the title on the left and the close button on the right. -->
+<app-modal [open]="open()" title="Working / Break / Leave" size="2xl" panelClass="team-status-detail" (closed)="close()">
+  <div class="wbld-head">
+    <div class="wbld-head__row">
+      <div class="wbld-head__title">
+        <h2>Working / Break / Leave</h2>
+        <p>Who in your team is working, on a break or on leave right now</p>
+      </div>
+      <button type="button" class="wbld-close" aria-label="Close" data-testid="wbld-close" (click)="close()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+      </button>
+    </div>
+  </div>
+
+  @if (store.data(); as data) {
+    <div class="wbld">
+      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="4" ariaLabel="Right now" />
+
+      <div class="wbld-charts">
+        <section class="wbld-panel">
+          <p class="wbld-title">Right now <span class="wbld-muted">· {{ data.totalMembers }} people</span></p>
+          <div class="wbld-distribution">
+            <svg viewBox="0 0 42 42" [style.width.px]="donutPx" [style.height.px]="donutPx" role="img" aria-label="Working, break and leave right now">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+              @for (arc of donut(); track arc.key) {
+                <circle
+                  cx="21"
+                  cy="21"
+                  r="15.9155"
+                  fill="none"
+                  stroke-width="6"
+                  [attr.stroke]="arc.color"
+                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+                  [attr.stroke-dashoffset]="arc.offset"
+                />
+              }
+            </svg>
+            <ul class="wbld-legend">
+              @for (row of legend(); track row.key) {
+                <li>
+                  <span class="wbld-dot" [style.background]="row.color"></span>
+                  <span class="wbld-legend-label">{{ row.label }}</span>
+                  <span class="wbld-legend-count">{{ row.count }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        </section>
+        <section class="wbld-panel">
+          <p class="wbld-title">Working hours this week <span class="wbld-muted">· attendance time, breaks on top</span></p>
+          @if (weekError()) {
+            <p class="wbld-muted">
+              Couldn't load the working hours.
+              <button type="button" class="wbld-link" (click)="retryWeek()">Try again</button>
+            </p>
+          } @else if (week(); as w) {
+            <app-working-hours-chart class="wbld-chart" [days]="w.days" />
+          } @else {
+            <p class="wbld-muted" aria-busy="true">Loading…</p>
+          }
+        </section>
+      </div>
+
+      <section class="wbld-panel">
+        <div class="wbld-table-head">
+          <p class="wbld-title">
+            Team
+            @if (data.totalMembers > data.members.length) {
+              <span class="wbld-muted">· showing {{ data.members.length }} of {{ data.totalMembers }}</span>
+            }
+          </p>
+          <button type="button" class="wbld-button" data-testid="wbld-export" (click)="exportCsv()">Export CSV</button>
+        </div>
+        <app-data-table
+          [columns]="columns"
+          [rows]="members()"
+          [trackBy]="trackByMember"
+          caption="Team members right now"
+          minWidth="760px"
+          emptyMessage="No one to show."
+        >
+          <ng-template appDataTableCell="name" let-row>
+            <span class="wbld-person">
+              <app-avatar size="xs" [avatarUrl]="avatarUrl(row)" [userName]="row.displayName" />
+              <span class="wbld-name">{{ row.displayName }}</span>
+            </span>
+          </ng-template>
+          <ng-template appDataTableCell="state" let-row>
+            <span class="wbld-chip" [class.wbld-chip--neutral]="!stateColor(row)" [style.--tone]="stateColor(row)">{{ stateLabel(row) }}</span>
+          </ng-template>
+          <ng-template appDataTableCell="since" let-row>{{ sinceText(row) }}</ng-template>
+          <ng-template appDataTableCell="elapsed" let-row>{{ elapsedText(row) }}</ng-template>
+          <ng-template appDataTableCell="remaining" let-row><span data-testid="wbld-remaining">{{ remainingText(row) }}</span></ng-template>
+          <ng-template appDataTableCell="attendance" let-row>{{ attendanceText(row) }}</ng-template>
+          <ng-template appDataTableCell="attention" let-row><span class="wbld-attention">{{ attentionText(row) }}</span></ng-template>
+        </app-data-table>
+      </section>
+    </div>
+  }
+</app-modal>

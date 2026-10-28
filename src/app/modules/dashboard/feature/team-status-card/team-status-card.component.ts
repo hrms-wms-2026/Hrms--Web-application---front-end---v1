@@ -1,77 +1,53 @@
-import { NgClass, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
-import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
-import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
-import { MyTeamTodayStore } from '../../state/my-team-today.store';
-import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamTodayMember, TeamTodayResponse } from '../../models/my-team-today.model';
-import { TeamStatusFilter, TeamStatusGroup, partitionTeamMembers } from '../../utils/team-status-groups.util';
-import { injectHostSize, isCompactSize } from '../../utils/host-size.util';
+import { MyTeamTodayStore } from '../../state/my-team-today.store';
+import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { injectHostSize } from '../../utils/host-size.util';
+import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import {
+  PRESENCE_COLORS,
+  PRESENCE_LABELS,
+  PresenceState,
+  clockTime,
+  minutesSince,
+  minutesText,
+  neutralLine,
+  orderPresence,
+  presenceFromSummary,
+  presenceState,
+  timeLeft
+} from '../../utils/team-presence-format.util';
+import { PRESENCE_MEDIUM_ROWS, PresenceView, presenceView } from '../../utils/team-presence-layout.util';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
+import { TeamStatusDetailDialogComponent } from '../team-status-detail-dialog/team-status-detail-dialog.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
-/** Rows shown per exception group before "+N more" - keeps a 25-absent day scannable. */
-const GROUP_PREVIEW_LIMIT = 5;
+/** Elapsed times tick between refreshes; the counts only change when the data reloads. */
+const TICK_MS = 30_000;
 
-const OTHERS_STATUS_LABEL: Record<string, string> = {
-  working: 'working',
-  on_break: 'on break',
-  clocked_out: 'clocked out',
-  on_leave: 'on leave',
-  not_scheduled: 'not scheduled'
-};
-
-const STATUS_PILL_CLASS: Record<string, string> = {
-  working: 'team-status-pill--working',
-  on_break: 'team-status-pill--on-break',
-  clocked_out: 'team-status-pill--clocked-out',
-  absent: 'team-status-pill--absent',
-  late: 'team-status-pill--absent',
-  not_started: 'team-status-pill--not-started',
-  on_leave: 'team-status-pill--on-leave',
-  not_scheduled: 'team-status-pill--not-scheduled'
-};
-
-const STATUS_DOT_CLASS: Record<string, string> = {
-  working: 'team-status-dot--working',
-  on_break: 'team-status-dot--on-break',
-  absent: 'team-status-dot--absent',
-  late: 'team-status-dot--late',
-  on_leave: 'team-status-dot--on-leave',
-  not_started: 'team-status-dot--not-started'
-};
-
-/** Below this width or height (between 3 and 4 grid columns or rows; the full view needs 4 rows) the card shows only the
- * head-count, the strip and the exception counts. */
-const MINI_MIN_WIDTH_PX = 360;
-const MINI_MIN_HEIGHT_PX = 370;
-
-/** People previewed on the compact card before "View team" opens the full list. */
-const CARD_PREVIEW_LIMIT = 3;
-
-export interface TeamStripSegment {
-  key: 'present' | 'absent' | 'on_leave' | 'not_started';
-  label: string;
-  count: number;
+interface Counter {
+  readonly key: PresenceState;
+  readonly label: string;
+  readonly count: number;
+  readonly color: string;
 }
 
-/** Card + pop-out in the Employee Detail style (widget-card / popout-panel / popout-header-actions):
- * the card answers "who is in today" in four numbers and the first few people to follow up on; the
- * pop-out holds the filterable, exceptions-first list of everyone. */
+/**
+ * My Team "Working / Break / Leave" (key team-status; replaces Team Status, My Team widgets design 2026-10-29 section
+ * 6.4). Who is working, on a break or on approved leave right now, since when and for how long. The population, the
+ * statuses and the leave masking are Team Status's own: a person whose leave the viewer may not see arrives as absent
+ * and stays in the neutral line. A schedule never makes anyone Working. The view comes from the card's own size: mini =
+ * the donut and three counts, medium = counters and the first rows, large = counters and a table. The popup has the
+ * week's working hours and the full member table.
+ */
 @Component({
   selector: 'app-team-status-card',
   standalone: true,
-  imports: [
-    NgClass,
-    NgTemplateOutlet,
-    AvatarComponent,
-    WidgetCardComponent,
-    PopoutPanelComponent,
-    PopoutHeaderActionsComponent
-  ],
+  imports: [AvatarComponent, WidgetCardComponent, PopoutHeaderActionsComponent, TeamStatusDetailDialogComponent],
   templateUrl: './team-status-card.component.html',
   styleUrl: './team-status-card.component.css',
   host: { class: 'block h-full' },
@@ -86,18 +62,26 @@ export class TeamStatusCardComponent implements OnInit {
     fetch: () => void this.store.load(),
     refreshing: () => this.store.markLoading()
   });
-  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly size = injectHostSize();
 
   private pollId: ReturnType<typeof setInterval> | null = null;
+  private tickId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
+  private lastView: PresenceView | null = null;
 
-  protected readonly showAll = signal(false);
-  private readonly size = injectHostSize();
-  /** A 2-row or narrow card: the mini view (the pop-out still opens the full list). */
-  protected readonly compact = computed(() => isCompactSize(this.size(), MINI_MIN_WIDTH_PX, MINI_MIN_HEIGHT_PX));
+  protected readonly donutPx = DASHBOARD_DONUT_PX;
+  protected readonly colors = PRESENCE_COLORS;
+  protected readonly now = signal(new Date());
+  readonly detailOpen = signal(false);
 
-  /** Polls set `loading` every minute; only a first load (no data yet) shows the skeleton. */
+  /** The view for the card's current size, with ~20px hysteresis; 'medium' until the first measurement. */
+  readonly view = computed<PresenceView>(() => {
+    const { width, height } = this.size();
+    this.lastView = presenceView(width, height, this.lastView);
+    return this.lastView;
+  });
+
   protected readonly widgetState = computed<WidgetState>(() => {
     const data = this.store.data();
     if (!data) return this.store.error() ? 'error' : 'loading';
@@ -105,115 +89,101 @@ export class TeamStatusCardComponent implements OnInit {
   });
   protected readonly refreshing = computed(() => this.store.loading() && !!this.store.data());
 
-  protected readonly presentCount = computed(() => {
-    const s = this.store.data()?.summary;
-    return s ? s.working + s.onBreak + s.clockedOut : 0;
-  });
-  protected readonly expectedCount = computed(() => {
-    const s = this.store.data()?.summary;
-    return s ? Math.max(0, s.total - s.onLeave - s.notScheduled) : 0;
-  });
-
-  /** One bar for the whole team, sized by head-count (late people are inside "present"). */
-  protected readonly stripSegments = computed<TeamStripSegment[]>(() => {
-    const s = this.store.data()?.summary;
-    if (!s) return [];
-    const segments: TeamStripSegment[] = [
-      { key: 'present', label: 'Present', count: s.working + s.onBreak + s.clockedOut },
-      { key: 'absent', label: 'Absent', count: s.absent },
-      { key: 'on_leave', label: 'On leave', count: s.onLeave },
-      { key: 'not_started', label: 'Not started', count: s.notStarted }
-    ];
-    return segments.filter((segment) => segment.count > 0);
-  });
-
-  /** The first few people needing follow-up, in the backend's attention order. */
-  protected readonly previewMembers = computed(() =>
-    partitionTeamMembers(this.store.data()?.members ?? [], null)
-      .exceptionGroups.flatMap((group) => group.members)
-      .slice(0, CARD_PREVIEW_LIMIT)
-  );
-  protected readonly followUpCount = computed(() =>
-    partitionTeamMembers(this.store.data()?.members ?? [], null)
-      .exceptionGroups.reduce((sum, group) => sum + group.members.length, 0)
-  );
-
-  protected readonly filter = signal<TeamStatusFilter | null>(null);
-  protected readonly othersExpanded = signal(false);
-  private readonly expandedGroups = signal<ReadonlySet<string>>(new Set());
-
-  protected readonly summaryStats = computed<{ key: TeamStatusFilter; label: string; count: number }[]>(() => {
+  protected readonly groups = computed(() => {
     const summary = this.store.data()?.summary;
-    if (!summary) return [];
+    return summary ? presenceFromSummary(summary) : null;
+  });
+
+  protected readonly counters = computed<Counter[]>(() => {
+    const g = this.groups();
+    if (!g) return [];
     return [
-      { key: 'working', label: 'Working', count: summary.working },
-      { key: 'on_break', label: 'On Break', count: summary.onBreak },
-      { key: 'late', label: 'Late', count: summary.late },
-      { key: 'absent', label: 'Absent', count: summary.absent },
-      { key: 'on_leave', label: 'On Leave', count: summary.onLeave },
-      { key: 'not_started', label: 'Not Started', count: summary.notStarted }
+      { key: 'working', label: PRESENCE_LABELS.working, count: g.working, color: PRESENCE_COLORS.working },
+      { key: 'break', label: PRESENCE_LABELS.break, count: g.onBreak, color: PRESENCE_COLORS.break },
+      { key: 'leave', label: PRESENCE_LABELS.leave, count: g.onLeave, color: PRESENCE_COLORS.leave }
     ];
   });
 
-  protected readonly partition = computed(() => {
-    const filter = this.filter();
-    const label = this.summaryStats().find((stat) => stat.key === filter)?.label ?? '';
-    return partitionTeamMembers(this.store.data()?.members ?? [], filter, label);
+  protected readonly donut = computed<DonutArc[]>(() => donutArcs(this.counters()));
+  /** At work right now (working or on a break) of the whole team. */
+  protected readonly atWork = computed(() => {
+    const g = this.groups();
+    return g ? g.working + g.onBreak : 0;
   });
-
-  /** With no exceptions there is nothing to fold - show everyone. */
-  protected readonly showOthers = computed(
-    () => this.othersExpanded() || this.partition().exceptionGroups.length === 0
+  protected readonly donutLabel = computed(
+    () => `${this.counters().map((c) => `${c.count} ${c.label.toLowerCase()}`).join(', ')} of ${this.store.data()?.totalMembers ?? 0}`
   );
-
-  protected readonly othersCaption = computed(() => {
-    const counts = new Map<string, number>();
-    for (const member of this.partition().others) {
-      const label = OTHERS_STATUS_LABEL[member.status] ?? member.statusLabel.toLowerCase();
-      counts.set(label, (counts.get(label) ?? 0) + 1);
-    }
-    if (counts.size === 1) return [...counts.keys()][0];
-    return `others · ${[...counts.entries()].map(([label, count]) => `${count} ${label}`).join(' · ')}`;
+  protected readonly neutral = computed(() => {
+    const g = this.groups();
+    return g ? neutralLine(g.neutral) : '';
   });
 
-  toggleFilter(key: TeamStatusFilter, event?: Event): void {
-    event?.stopPropagation();
-    this.filter.update((current) => (current === key ? null : key));
-  }
-
-  visibleGroupMembers(group: TeamStatusGroup): TeamTodayMember[] {
-    if (this.filter() || this.expandedGroups().has(group.key)) return group.members;
-    return group.members.slice(0, GROUP_PREVIEW_LIMIT);
-  }
-
-  hiddenGroupCount(group: TeamStatusGroup): number {
-    return group.members.length - this.visibleGroupMembers(group).length;
-  }
-
-  expandGroup(key: string, event?: Event): void {
-    event?.stopPropagation();
-    this.expandedGroups.update((keys) => new Set([...keys, key]));
-  }
-
-  /** Time context first; otherwise the backend's attention reason when it adds something the pill
-   * doesn't already say (replaces the old duplicate red dot). */
-  rowCaption(member: TeamTodayMember): string | null {
-    const timing = this.sinceOrEndsLabel(member);
-    if (timing) return timing;
-    if (member.attentionLabel && member.attentionLabel.toLowerCase() !== member.statusLabel.toLowerCase()) {
-      return member.attentionLabel;
-    }
-    return null;
-  }
+  protected readonly ordered = computed(() => orderPresence(this.store.data()?.members ?? []));
+  /** Medium lists the people in the three states first; the neutral ones only fill what is left. */
+  protected readonly mediumRows = computed(() => this.ordered().slice(0, PRESENCE_MEDIUM_ROWS));
 
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
     if (document.visibilityState === 'visible') this.startPolling();
+    this.tickId = setInterval(() => this.now.set(new Date()), TICK_MS);
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
       this.stopPolling();
+      if (this.tickId) clearInterval(this.tickId);
     });
+  }
+
+  protected state(member: TeamTodayMember): PresenceState | null {
+    return presenceState(member.status);
+  }
+
+  protected stateLabel(member: TeamTodayMember): string {
+    const state = presenceState(member.status);
+    return state ? PRESENCE_LABELS[state] : member.statusLabel;
+  }
+
+  protected stateColor(member: TeamTodayMember): string | null {
+    const state = presenceState(member.status);
+    return state ? PRESENCE_COLORS[state] : null;
+  }
+
+  protected sinceText(member: TeamTodayMember): string {
+    return member.stateSince ? `Since ${clockTime(member.stateSince)}` : '';
+  }
+
+  protected elapsedText(member: TeamTodayMember): string {
+    return member.stateSince ? minutesText(minutesSince(member.stateSince, this.now())) : '—';
+  }
+
+  protected left(member: TeamTodayMember): { text: string; usedPercent: number } | null {
+    return timeLeft(member, this.now());
+  }
+
+  /** Leave never counts down: its type and end only where Team Status shows them (leave-authorized viewers). */
+  protected leaveText(member: TeamTodayMember): string {
+    return member.leave ? `${member.leave.leaveTypeName} · until ${member.leave.endsOn}` : '';
+  }
+
+  protected attendanceText(member: TeamTodayMember): string {
+    return member.attendanceMinutes > 0 ? minutesText(member.attendanceMinutes) : '—';
+  }
+
+  protected avatarUrl(member: TeamTodayMember): string | null {
+    return member.avatarFileId ? buildFileUrl(member.avatarFileId) : null;
+  }
+
+  retry(): void {
+    this.feed.reload();
+  }
+
+  openDetail(event?: Event): void {
+    event?.stopPropagation();
+    if (this.store.data()) this.detailOpen.set(true);
+  }
+
+  closeDetail(): void {
+    this.detailOpen.set(false);
   }
 
   private onVisibilityChange(): void {
@@ -236,63 +206,4 @@ export class TeamStatusCardComponent implements OnInit {
       this.pollId = null;
     }
   }
-
-  retry(): void {
-    this.feed.reload();
-  }
-
-  /** A click anywhere on the card pops out the full team list. */
-  expand(): void {
-    if (this.showAll() || !this.store.data()) return;
-    this.showAll.set(true);
-  }
-
-  collapse(): void {
-    this.showAll.set(false);
-  }
-
-  onToggleClick(event: Event): void {
-    event.stopPropagation();
-    if (this.showAll()) this.collapse();
-    else this.expand();
-  }
-
-  avatarUrl(member: TeamTodayMember): string | null {
-    return member.avatarFileId ? buildFileUrl(member.avatarFileId) : null;
-  }
-
-  pillClass(status: string): string {
-    return STATUS_PILL_CLASS[status] ?? 'team-status-pill--not-scheduled';
-  }
-
-  dotClass(status: string): string {
-    return STATUS_DOT_CLASS[status] ?? 'team-status-dot--not-started';
-  }
-
-  sinceOrEndsLabel(member: TeamTodayMember): string | null {
-    if (member.leave) return `ends ${member.leave.endsOn}`;
-    if (member.status === 'working' || member.status === 'on_break') {
-      return member.clockInAt ? `since ${formatTime(member.clockInAt)}` : null;
-    }
-    if (member.status === 'clocked_out' && member.clockOutAt) {
-      return `until ${formatTime(member.clockOutAt)}`;
-    }
-    return null;
-  }
-
-  openMember(member: TeamTodayMember, event?: Event): void {
-    event?.stopPropagation();
-    void this.router.navigate(['/attendance/time-tracking'], {
-      queryParams: { view: 'team', employeeId: member.employeeId }
-    });
-  }
-
-  viewAll(event?: Event): void {
-    event?.stopPropagation();
-    void this.router.navigate(['/attendance/time-tracking'], { queryParams: { view: 'team' } });
-  }
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }

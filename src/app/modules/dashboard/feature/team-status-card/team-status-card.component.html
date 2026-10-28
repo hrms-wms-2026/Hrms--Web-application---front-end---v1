@@ -1,279 +1,149 @@
-<app-popout-panel
-  class="block h-full"
-  [open]="showAll()"
-  label="Team status"
-  expandedWidth="64rem"
-  [growLeft]="true"
-  expandedMaxHeight="min(85vh, 56rem)"
-  (closed)="collapse()"
+<app-widget-card
+  class="group block h-full"
+  data-testid="team-status-card"
+  title="Working / Break / Leave"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load who is working."
+  emptyMessage="No one in your team to show."
+  (retry)="retry()"
 >
-  <app-widget-card
-    class="group block h-full"
-    data-testid="team-status-card"
-    [class.cursor-pointer]="!showAll()"
-    (click)="expand()"
-    title="Team Status"
-    [nowrapTitle]="true"
-    [state]="widgetState()"
-    errorMessage="Couldn't load team status."
-    emptyMessage="No one in your coverage is scheduled today"
-    (retry)="retry()"
-  >
-    <app-popout-header-actions
-      widget-actions
-      [refreshedAt]="store.loadedAt()"
-      [refreshing]="refreshing()"
-      [expanded]="showAll()"
-      [canExpand]="true"
-      [revealOnHover]="!showAll()"
-      (refresh)="retry()"
-      (expand)="expand()"
-      (closed)="collapse()"
-    />
+  <app-popout-header-actions
+    widget-actions
+    [refreshedAt]="view() === 'mini' ? null : store.loadedAt()"
+    [refreshing]="refreshing()"
+    [expanded]="false"
+    [canExpand]="true"
+    [revealOnHover]="true"
+    (refresh)="retry()"
+    (expand)="openDetail()"
+  />
 
-    @if (store.data(); as data) {
-      @if (compact() && !showAll()) {
-        <div class="flex h-full min-h-0 flex-col justify-center gap-2" data-testid="team-status-mini">
-          <div>
-            <p class="text-3xl font-bold leading-none text-slate-900 tabular-nums" data-testid="team-mini-present">
-              {{ presentCount() }}<span class="text-base font-semibold text-slate-400">/{{ expectedCount() }}</span>
+  @if (store.data(); as data) {
+    @switch (view()) {
+      @case ('mini') {
+        <div class="wbl-mini" data-testid="wbl-mini">
+          <div class="wbl-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="wbl-donut">
+            <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+              @for (arc of donut(); track arc.key) {
+                <circle
+                  cx="21"
+                  cy="21"
+                  r="15.9155"
+                  fill="none"
+                  stroke-width="6"
+                  [attr.stroke]="arc.color"
+                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+                  [attr.stroke-dashoffset]="arc.offset"
+                />
+              }
+            </svg>
+            <p class="wbl-donut-center" data-testid="wbl-center">
+              <span class="wbl-donut-value">{{ atWork() }}</span>
+              <span class="wbl-donut-of">/ {{ data.totalMembers }}</span>
             </p>
-            <p class="mt-1 text-xs text-slate-500">in today</p>
           </div>
-          <div
-            class="flex h-2 gap-[2px] overflow-hidden rounded-full bg-slate-100"
-            role="img"
-            [attr.aria-label]="presentCount() + ' of ' + expectedCount() + ' in today'"
-          >
-            @for (segment of stripSegments(); track segment.key) {
-              <span
-                class="team-strip-segment"
-                [ngClass]="'team-strip-segment--' + segment.key"
-                [style.flex-grow]="segment.count"
-              ></span>
+          <ul class="wbl-mini-counts" aria-label="Right now">
+            @for (c of counters(); track c.key) {
+              <li [attr.data-testid]="'wbl-count-' + c.key">
+                <span class="wbl-dot" [style.background]="c.color"></span>
+                <span class="wbl-count-label">{{ c.label }}</span>
+                <span class="wbl-count">{{ c.count }}</span>
+              </li>
             }
-          </div>
-          <p class="truncate text-xs text-slate-600" data-testid="team-mini-exceptions">
-            <span class="font-semibold text-amber-600 tabular-nums">{{ data.summary.late }}</span> late ·
-            <span class="font-semibold text-rose-600 tabular-nums">{{ data.summary.absent }}</span> absent ·
-            <span class="font-semibold text-slate-700 tabular-nums">{{ data.summary.onLeave }}</span> leave
-          </p>
+          </ul>
         </div>
-      } @else {
-      <div class="flex flex-col" data-testid="team-status-body">
-        <dl class="grid grid-cols-4 gap-2 text-center" data-testid="team-status-stats">
-          <div>
-            <dd class="text-xl font-bold text-slate-900 tabular-nums" data-testid="team-stat-present">{{ presentCount() }}</dd>
-            <dt class="mt-0.5 text-[11px] text-slate-500">Present</dt>
-          </div>
-          <div>
-            <dd class="text-xl font-bold text-amber-600 tabular-nums" data-testid="team-stat-late">{{ data.summary.late }}</dd>
-            <dt class="mt-0.5 text-[11px] text-slate-500">Late</dt>
-          </div>
-          <div>
-            <dd class="text-xl font-bold text-rose-600 tabular-nums" data-testid="team-stat-absent">{{ data.summary.absent }}</dd>
-            <dt class="mt-0.5 text-[11px] text-slate-500">Absent</dt>
-          </div>
-          <div>
-            <dd class="text-xl font-bold text-slate-900 tabular-nums" data-testid="team-stat-leave">{{ data.summary.onLeave }}</dd>
-            <dt class="mt-0.5 text-[11px] text-slate-500">On leave</dt>
-          </div>
-        </dl>
-
-        @if (!showAll()) {
-          <div class="mt-4 rounded-lg bg-slate-50 px-3 py-2.5" data-testid="team-status-preview">
-            <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">
-              @if (followUpCount() > 0) {
-                Follow up · {{ followUpCount() }}
-              } @else {
-                Follow up
-              }
-            </p>
-            @for (member of previewMembers(); track member.employeeId) {
-              <ng-container *ngTemplateOutlet="memberRow; context: { $implicit: member, compact: true }" />
-            } @empty {
-              <p class="py-1.5 text-xs text-slate-500" data-testid="team-status-all-clear">
-                <span class="text-emerald-600" aria-hidden="true">✓</span> Everyone is on track today.
-              </p>
+      }
+      @default {
+        <div class="wbl" data-testid="wbl-layout" [attr.data-view]="view()">
+          <ul class="wbl-pills" aria-label="Right now">
+            @for (c of counters(); track c.key) {
+              <li class="wbl-pill" [style.--tone]="c.color" [attr.data-testid]="'wbl-count-' + c.key">
+                <span class="wbl-pill-count">{{ c.count }}</span>
+                <span class="wbl-pill-label">{{ c.label }}</span>
+              </li>
             }
-          </div>
-        }
+          </ul>
+          @if (neutral()) {
+            <p class="wbl-neutral" data-testid="wbl-neutral">{{ neutral() }}</p>
+          }
 
-        <div class="mt-4 border-t border-slate-100 pt-3">
-          <div
-            class="flex h-2 gap-[2px] overflow-hidden rounded-full"
-            role="img"
-            [attr.aria-label]="presentCount() + ' of ' + expectedCount() + ' in today'"
-            data-testid="team-status-strip"
-          >
-            @for (segment of stripSegments(); track segment.key) {
-              <span
-                class="team-strip-segment"
-                [ngClass]="'team-strip-segment--' + segment.key"
-                [style.flex-grow]="segment.count"
-                [attr.title]="segment.count + ' ' + segment.label.toLowerCase()"
-              ></span>
-            }
-          </div>
-          <div class="mt-2.5 flex items-center justify-between gap-3">
-            <p class="text-xs text-slate-500">{{ presentCount() }} of {{ expectedCount() }} in today</p>
-            @if (!showAll()) {
-              <button
-                type="button"
-                class="shrink-0 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                data-testid="team-status-toggle"
-                (click)="onToggleClick($event)"
-              >
-                View team ({{ data.totalMembers }})
-              </button>
-            }
-          </div>
-        </div>
-
-        @if (showAll()) {
-          <section class="mt-4 border-t border-slate-100 pt-4" aria-label="Team members">
-            <div class="mb-3 flex flex-wrap items-center gap-1.5" data-testid="team-status-summary">
-              @for (stat of summaryStats(); track stat.key) {
-                <button
-                  type="button"
-                  class="team-status-filter"
-                  [class.team-status-filter--active]="filter() === stat.key"
-                  [disabled]="stat.count === 0 && filter() !== stat.key"
-                  [attr.aria-pressed]="filter() === stat.key"
-                  [attr.data-testid]="'team-status-filter-' + stat.key"
-                  (click)="toggleFilter(stat.key, $event)"
-                >
-                  <span class="h-1.5 w-1.5 shrink-0 rounded-full" [ngClass]="dotClass(stat.key)"></span>
-                  <span class="font-semibold tabular-nums">{{ stat.count }}</span>
-                  <span>{{ stat.label }}</span>
-                </button>
-              }
-            </div>
-
-            <div class="flex flex-col gap-3" data-testid="team-status-members">
-              @for (group of partition().exceptionGroups; track group.key) {
-                <div [attr.data-testid]="'team-status-group-' + group.key">
-                  @if (!filter()) {
-                    <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                      {{ group.label }} · {{ group.members.length }}
-                    </p>
-                  }
-                  <ul class="space-y-2">
-                    @for (member of visibleGroupMembers(group); track member.employeeId) {
-                      <li>
-                        <ng-container *ngTemplateOutlet="memberRow; context: { $implicit: member, compact: false }" />
-                      </li>
-                    }
-                  </ul>
-                  @if (hiddenGroupCount(group) > 0) {
-                    <button
-                      type="button"
-                      class="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                      [attr.data-testid]="'team-status-more-' + group.key"
-                      (click)="expandGroup(group.key, $event)"
-                    >
-                      +{{ hiddenGroupCount(group) }} more {{ group.label.toLowerCase() }}
-                    </button>
-                  }
-                </div>
-              } @empty {
-                @if (filter()) {
-                  <p class="py-4 text-center text-sm text-slate-500">No one matches this filter.</p>
-                }
-              }
-
-              @if (data.members.length < data.totalMembers) {
-                <p class="text-[11px] text-slate-400" data-testid="team-status-truncated">
-                  Showing {{ data.members.length }} of {{ data.totalMembers }} - open Attendance for everyone.
-                </p>
-              }
-
-              @if (partition().others.length > 0) {
-                @if (showOthers()) {
-                  <div data-testid="team-status-others">
-                    @if (partition().exceptionGroups.length > 0) {
-                      <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                        Everyone else · {{ partition().others.length }}
-                      </p>
-                    }
-                    <ul class="space-y-2">
-                      @for (member of partition().others; track member.employeeId) {
-                        <li>
-                          <ng-container *ngTemplateOutlet="memberRow; context: { $implicit: member, compact: false }" />
-                        </li>
+          @if (view() === 'medium') {
+            <ul class="wbl-rows" data-testid="wbl-rows">
+              @for (m of mediumRows(); track m.employeeId) {
+                <li class="wbl-row" data-testid="wbl-row">
+                  <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                  <div class="wbl-row-main">
+                    <p class="wbl-row-top">
+                      <span class="wbl-name">{{ m.displayName }}</span>
+                      <span class="wbl-chip" [class.wbl-chip--neutral]="!state(m)" [style.--tone]="stateColor(m)">{{ stateLabel(m) }}</span>
+                      @if (m.isLate) {
+                        <span class="wbl-late" data-testid="wbl-late">Late</span>
                       }
-                    </ul>
+                    </p>
+                    @if (state(m) === 'leave') {
+                      <p class="wbl-sub">{{ leaveText(m) }}</p>
+                    } @else if (m.stateSince) {
+                      <p class="wbl-sub">{{ sinceText(m) }} · {{ elapsedText(m) }}</p>
+                    }
+                    @if (left(m); as l) {
+                      <div class="wbl-left" [attr.title]="l.text" data-testid="wbl-left">
+                        <span class="wbl-left-bar" aria-hidden="true">
+                          <span [style.width.%]="l.usedPercent" [style.background]="stateColor(m)"></span>
+                        </span>
+                        <span class="wbl-left-text">{{ l.text }}</span>
+                      </div>
+                    }
                   </div>
-                } @else {
-                  <button
-                    type="button"
-                    class="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-200 px-4 py-3 text-left text-sm text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
-                    data-testid="team-status-others-toggle"
-                    (click)="$event.stopPropagation(); othersExpanded.set(true)"
-                  >
-                    <span class="text-emerald-600" aria-hidden="true">✓</span>
-                    <span><span class="font-semibold text-slate-700">{{ partition().others.length }}</span> {{ othersCaption() }}</span>
-                    <span class="ml-auto text-xs font-semibold text-blue-600">Show</span>
-                  </button>
-                }
+                </li>
               }
+            </ul>
+            @if (data.totalMembers > mediumRows().length) {
+              <button type="button" class="wbl-link" data-testid="wbl-view-all" (click)="openDetail($event)">View all {{ data.totalMembers }} ›</button>
+            }
+          } @else {
+            <div class="wbl-table-wrap">
+              <table class="wbl-table" data-testid="wbl-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">State</th>
+                    <th scope="col">Since</th>
+                    <th scope="col">Elapsed</th>
+                    <th scope="col">Remaining</th>
+                    <th scope="col" class="wbl-num">Attendance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (m of ordered(); track m.employeeId) {
+                    <tr data-testid="wbl-table-row">
+                      <td>
+                        <span class="wbl-person">
+                          <app-avatar size="xs" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                          <span class="wbl-name">{{ m.displayName }}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span class="wbl-chip" [class.wbl-chip--neutral]="!state(m)" [style.--tone]="stateColor(m)">{{ stateLabel(m) }}</span>
+                        @if (m.isLate) {
+                          <span class="wbl-late">Late</span>
+                        }
+                      </td>
+                      <td>{{ state(m) === 'leave' ? leaveText(m) : m.stateSince ? sinceText(m) : '—' }}</td>
+                      <td>{{ elapsedText(m) }}</td>
+                      <td data-testid="wbl-remaining">{{ left(m)?.text ?? '—' }}</td>
+                      <td class="wbl-num">{{ attendanceText(m) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
-
-            <div class="mt-4 flex items-center justify-between">
-              <button
-                type="button"
-                class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                data-testid="team-status-view-all"
-                (click)="viewAll($event)"
-              >
-                Open in Attendance
-              </button>
-              <button
-                type="button"
-                class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                data-testid="team-status-toggle"
-                (click)="onToggleClick($event)"
-              >
-                Show less
-              </button>
-            </div>
-          </section>
-        }
-      </div>
+          }
+        </div>
       }
     }
-  </app-widget-card>
-</app-popout-panel>
+  }
+</app-widget-card>
 
-<ng-template #memberRow let-member let-compact="compact">
-  <button
-    type="button"
-    [class]="compact
-      ? 'group/row flex w-full items-center gap-2.5 rounded-lg py-1.5 text-left cursor-pointer'
-      : 'group/row flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-2.5 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40 cursor-pointer'"
-    data-testid="team-status-member"
-    [attr.aria-label]="'Open ' + member.displayName"
-    (click)="openMember(member, $event)"
-  >
-    <app-avatar [avatarUrl]="avatarUrl(member)" [userName]="member.displayName" size="sm" />
-    <div class="min-w-0 flex-1">
-      <p class="truncate text-sm font-semibold text-slate-900 transition-colors group-hover/row:text-blue-600">
-        {{ member.displayName }}
-      </p>
-      @if (member.positionTitle) {
-        <p class="truncate text-xs text-slate-500">{{ member.positionTitle }}</p>
-      }
-    </div>
-    <div class="flex shrink-0 items-center gap-2">
-      @if (rowCaption(member); as caption) {
-        <span class="hidden text-xs text-slate-500 tabular-nums sm:inline">{{ caption }}</span>
-      }
-      <span class="team-status-pill" [ngClass]="pillClass(member.status)">
-        {{ member.statusLabel }}{{ member.isLate ? ' · Late' : '' }}
-      </span>
-      @if (!compact) {
-        <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      }
-    </div>
-  </button>
-</ng-template>
+<app-team-status-detail-dialog [open]="detailOpen()" (closed)="closeDetail()" />

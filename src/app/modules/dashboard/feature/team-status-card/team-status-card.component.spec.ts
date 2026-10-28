@@ -1,420 +1,162 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.service';
-import { TeamTodayMember, TeamTodayResponse } from '../../models/my-team-today.model';
+import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours-api.service';
+import { TeamTodayResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
-import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
+import { presenceMember, presenceResponse } from '../../utils/team-presence.testing';
+import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamStatusCardComponent } from './team-status-card.component';
 
-function member(overrides: Partial<TeamTodayMember> = {}): TeamTodayMember {
-  return {
-    employeeId: 'emp-1',
-    displayName: 'Priya K',
-    avatarFileId: null,
-    positionTitle: 'Engineer',
-    status: 'working',
-    statusLabel: 'Working',
-    isLate: false,
-    clockInAt: '2026-09-30T04:00:00Z',
-    clockOutAt: null,
-    attentionType: null,
-    attentionLabel: null,
-    attentionSeverity: null,
-    leave: null,
-    ...overrides
-  };
-}
+const cols = (n: number) => n * 97 + (n - 1) * 12;
+const rows = (n: number) => n * 96 + (n - 1) * 12;
 
-function response(members: TeamTodayMember[]): TeamTodayResponse {
-  return {
-    workDate: '2026-09-30',
-    timezone: 'UTC',
-    legalEntityId: 'le-1',
-    summary: {
-      total: members.length,
-      working: members.filter((m) => m.status === 'working').length,
-      onBreak: 0, clockedOut: 0, late: members.filter((m) => m.isLate).length,
-      absent: 0, notStarted: 0, onLeave: 0, notScheduled: 0, needsAttention: 0
-    },
-    members,
-    totalMembers: members.length
-  };
-}
+const TEAM = [
+  presenceMember('working', { displayName: 'Ada', stateSince: '2026-10-29T03:30:00Z', shiftEndsAt: '2026-10-29T12:00:00Z', attendanceMinutes: 300, isLate: true }),
+  presenceMember('on_break', { displayName: 'Bob', stateSince: '2026-10-29T09:50:00Z', breakRemainingMinutes: null }),
+  presenceMember('on_leave', { displayName: 'Cat', leave: { leaveTypeName: 'Annual Leave', endsOn: '2026-10-30' } }),
+  presenceMember('absent', { displayName: 'Dan' }),
+  presenceMember('not_started', { displayName: 'Eve' }),
+  presenceMember('clocked_out', { displayName: 'Fay' })
+];
 
-describe('TeamStatusCardComponent', () => {
-  let navigate: ReturnType<typeof vi.fn>;
-
+describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
   async function setup(
-    result: TeamTodayResponse | 'error' = response([member()])
-  ): Promise<{ fixture: ComponentFixture<TeamStatusCardComponent>; getTeamToday: ReturnType<typeof vi.fn> }> {
+    result: TeamTodayResponse | 'error' = presenceResponse(TEAM),
+    size: { width: number; height: number } | null = null,
+    extraProviders: unknown[] = []
+  ): Promise<{ fixture: ComponentFixture<TeamStatusCardComponent>; getTeamToday: ReturnType<typeof vi.fn>; el: HTMLElement }> {
+    stubResizeObserver();
     const getTeamToday = vi.fn(() => (result === 'error' ? throwError(() => new Error('network error')) : of(result)));
-    navigate = vi.fn();
-
     await TestBed.configureTestingModule({
       imports: [TeamStatusCardComponent],
       providers: [
         MyTeamTodayStore,
         { provide: MyTeamTodayApiService, useValue: { getTeamToday } },
-        { provide: Router, useValue: { navigate } }
+        { provide: TeamWorkingHoursApiService, useValue: { getWeek: vi.fn(() => of({ weekStart: '2026-10-26', weekEnd: '2026-11-01', days: [] })) } },
+        ...(extraProviders as never[])
       ]
     }).compileComponents();
-
     const fixture = TestBed.createComponent(TeamStatusCardComponent);
     fixture.detectChanges();
     await fixture.whenStable();
+    if (size) FakeResizeObserver.instances[0].trigger(size.width, size.height);
     fixture.detectChanges();
-    return { fixture, getTeamToday };
+    return { fixture, getTeamToday, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('loads team status on init', async () => {
+  const text = (el: HTMLElement, testId: string) => el.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? null;
+
+  it('loads on init and is titled Working / Break / Leave', async () => {
+    const { el, getTeamToday } = await setup();
+
+    expect(getTeamToday).toHaveBeenCalledOnce();
+    expect(el.textContent).toContain('Working / Break / Leave');
+  });
+
+  it('shows the error state when loading fails', async () => {
+    const { el } = await setup('error');
+    expect(el.textContent).toContain("Couldn't load who is working");
+  });
+
+  it('shows the empty state for an empty team', async () => {
+    const { el } = await setup(presenceResponse([]));
+    expect(el.textContent).toContain('No one in your team to show.');
+  });
+
+  it('2x2 is the mini view: the 140px donut with at-work of team and the three counts', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: cols(2), height: rows(2) });
+
+    expect(el.querySelector('[data-testid="wbl-mini"]')).toBeTruthy();
+    expect((el.querySelector('[data-testid="wbl-donut"]') as HTMLElement).style.width).toBe('140px');
+    expect(text(el, 'wbl-center')!.replace(/\s+/g, '')).toBe('2/6');
+    expect(text(el, 'wbl-count-working')).toContain('1');
+    expect(text(el, 'wbl-count-break')).toContain('1');
+    expect(text(el, 'wbl-count-leave')).toContain('1');
+  });
+
+  it('a masked leave (absent) is never counted under Leave', async () => {
+    const { el } = await setup(presenceResponse([presenceMember('absent'), presenceMember('working')]), { width: cols(4), height: rows(4) });
+
+    expect(text(el, 'wbl-count-leave')).toContain('0');
+    expect(text(el, 'wbl-neutral')).toBe('1 absent');
+  });
+
+  it('4x4 is the medium view: counters, the neutral line, rows in working-break-leave order and a late tag', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: cols(4), height: rows(4) });
+
+    expect(el.querySelector('[data-testid="wbl-layout"]')!.getAttribute('data-view')).toBe('medium');
+    expect(text(el, 'wbl-neutral')).toBe('1 not clocked in · 1 clocked out · 1 absent');
+    const names = [...el.querySelectorAll('[data-testid="wbl-row"] .wbl-name')].map((n) => n.textContent!.trim());
+    expect(names.slice(0, 3)).toEqual(['Ada', 'Bob', 'Cat']);
+    expect(el.querySelectorAll('[data-testid="wbl-late"]').length).toBe(1);
+  });
+
+  it('medium shows a time-left bar only where a denominator exists', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: cols(4), height: rows(4) });
+
+    // Ada has a scheduled end; Bob's break has no configured allowance.
+    expect(el.querySelectorAll('[data-testid="wbl-left"]').length).toBe(1);
+  });
+
+  it('8x6 is the large view: a table with "—" for a remaining time without a denominator', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: cols(8), height: rows(6) });
+
+    expect(el.querySelector('[data-testid="wbl-table"]')).toBeTruthy();
+    const remaining = [...el.querySelectorAll('[data-testid="wbl-remaining"]')].map((c) => c.textContent!.trim());
+    expect(remaining[1]).toBe('—');
+    expect(remaining[2]).toBe('—');
+    expect(el.textContent).toContain('Annual Leave · until 2026-10-30');
+  });
+
+  it('opens the popup from the expand action', async () => {
+    const { fixture, el } = await setup(presenceResponse(TEAM), { width: cols(8), height: rows(6) });
+
+    fixture.componentInstance.openDetail();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.detailOpen()).toBe(true);
+    expect(el.ownerDocument.body.textContent).toContain('Working hours this week');
+  });
+
+  it('polls every 60 seconds while visible', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
     const { getTeamToday } = await setup();
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(getTeamToday).toHaveBeenCalledTimes(2);
+  });
+
+  it('a clock tick changes elapsed times but not the counts or the order', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T10:00:00Z'));
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true, writable: true });
+    const { fixture, el, getTeamToday } = await setup(presenceResponse(TEAM), { width: cols(8), height: rows(6) });
+    const before = [...el.querySelectorAll('[data-testid="wbl-table-row"]')].map((r) => r.querySelector('.wbl-name')!.textContent);
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    fixture.detectChanges();
+
+    const after = [...el.querySelectorAll('[data-testid="wbl-table-row"]')].map((r) => r.querySelector('.wbl-name')!.textContent);
+    expect(after).toEqual(before);
     expect(getTeamToday).toHaveBeenCalledOnce();
   });
 
-  it('shows the error state with retry when loading fails', async () => {
-    const { fixture, getTeamToday } = await setup('error');
-    expect(fixture.nativeElement.textContent).toContain("Couldn't load team status");
+  it('inside a dashboard frame it uses the bootstrap payload without calling its api', async () => {
+    const payload = presenceResponse(TEAM);
+    const widget = fakeWidgetData('success', payload);
+    const { getTeamToday } = await setup(presenceResponse([]), null, [widget.provider]);
 
-    const retryButton: HTMLButtonElement = fixture.nativeElement.querySelector('app-error-state button');
-    expect(retryButton).toBeTruthy();
-    retryButton.click();
-    await fixture.whenStable();
-    expect(getTeamToday).toHaveBeenCalledTimes(2);
-  });
-
-  it('shows the empty state when totalMembers is zero', async () => {
-    const { fixture } = await setup(response([]));
-    expect(fixture.nativeElement.textContent).toContain('No one in your coverage is scheduled today');
-  });
-
-  function openTeam(fixture: ComponentFixture<TeamStatusCardComponent>): HTMLElement {
-    const el: HTMLElement = fixture.nativeElement;
-    (el.querySelector('[data-testid="team-status-toggle"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    return el;
-  }
-
-  const isOpen = (el: HTMLElement): boolean =>
-    el.querySelector('[data-testid="popout-panel"]')!.classList.contains('popout-panel--open');
-
-  it('shows present / late / absent / on-leave counts on the card', async () => {
-    const { fixture } = await setup({
-      ...response([member()]),
-      summary: {
-        total: 10, working: 5, onBreak: 1, clockedOut: 1, late: 2, absent: 2,
-        notStarted: 0, onLeave: 1, notScheduled: 0, needsAttention: 2
-      }
-    });
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('[data-testid="team-stat-present"]')!.textContent!.trim()).toBe('7');
-    expect(el.querySelector('[data-testid="team-stat-late"]')!.textContent!.trim()).toBe('2');
-    expect(el.querySelector('[data-testid="team-stat-absent"]')!.textContent!.trim()).toBe('2');
-    expect(el.querySelector('[data-testid="team-stat-leave"]')!.textContent!.trim()).toBe('1');
-    expect(el.textContent).toContain('7 of 9 in today');
-  });
-
-  it('a 2x2 card shows the mini view (head-count, strip, exceptions) and still pops out to the full list', async () => {
-    stubResizeObserver();
-    try {
-      const { fixture } = await setup({
-        ...response([member()]),
-        summary: {
-          total: 10, working: 5, onBreak: 1, clockedOut: 1, late: 2, absent: 2,
-          notStarted: 0, onLeave: 1, notScheduled: 0, needsAttention: 2
-        }
-      });
-      const el: HTMLElement = fixture.nativeElement;
-      expect(el.querySelector('[data-testid="team-status-body"]')).toBeTruthy();
-
-      FakeResizeObserver.instances[0].trigger(206, 204);
-      fixture.detectChanges();
-      expect(el.querySelector('[data-testid="team-status-body"]')).toBeNull();
-      expect(el.querySelector('[data-testid="team-mini-present"]')!.textContent!.replace(/\s+/g, '')).toBe('7/9');
-      expect(el.querySelector('[data-testid="team-mini-exceptions"]')!.textContent!.replace(/\s+/g, ' ').trim())
-        .toBe('2 late · 2 absent · 1 leave');
-
-      (el.querySelector('[data-testid="team-status-card"]') as HTMLElement).click();
-      fixture.detectChanges();
-      expect(isOpen(el)).toBe(true);
-      expect(el.querySelector('[data-testid="team-status-members"]')).toBeTruthy();
-
-      FakeResizeObserver.instances[0].trigger(640, 420);
-      fixture.detectChanges();
-      expect(el.querySelector('[data-testid="team-status-mini"]')).toBeNull();
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it('previews the first people to follow up on, or says everyone is on track', async () => {
-    const clear = await setup(response([member({ displayName: 'Arjun M', statusLabel: 'On Break', status: 'on_break' })]));
-    expect(clear.fixture.nativeElement.querySelector('[data-testid="team-status-all-clear"]')).toBeTruthy();
-    TestBed.resetTestingModule();
-
-    const absentees = Array.from({ length: 4 }, (_, i) =>
-      member({ employeeId: `a${i}`, displayName: `Absent ${i}`, status: 'absent', statusLabel: 'Absent' })
-    );
-    const { fixture } = await setup(response(absentees));
-    const preview: HTMLElement = fixture.nativeElement.querySelector('[data-testid="team-status-preview"]');
-    expect(preview.querySelectorAll('[data-testid="team-status-member"]').length).toBe(3);
-    expect(preview.textContent).toContain('Follow up · 4');
-  });
-
-  it('renders each member with their status label in the full team list', async () => {
-    const { fixture } = await setup(response([member({ displayName: 'Arjun M', statusLabel: 'On Break', status: 'on_break' })]));
-    const el = openTeam(fixture);
-    expect(isOpen(el)).toBe(true);
-    const list = el.querySelector('[data-testid="team-status-members"]')!.textContent!;
-    expect(list).toContain('Arjun M');
-    expect(list).toContain('On Break');
-  });
-
-  it('appends a Late suffix to the pill when isLate is true', async () => {
-    const { fixture } = await setup(response([member({ isLate: true })]));
-    const pill: HTMLElement = fixture.nativeElement.querySelector('.team-status-pill');
-    expect(pill.textContent).toContain('Late');
-  });
-
-  it('navigates to the team member detail on row click without popping the card out', async () => {
-    const { fixture } = await setup(response([member({ employeeId: 'emp-42', status: 'absent', statusLabel: 'Absent' })]));
-    const el: HTMLElement = fixture.nativeElement;
-    (el.querySelector('[data-testid="team-status-preview"] [data-testid="team-status-member"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(navigate).toHaveBeenCalledWith(['/attendance/time-tracking'], {
-      queryParams: { view: 'team', employeeId: 'emp-42' }
-    });
-    expect(isOpen(el)).toBe(false);
-  });
-
-  it('navigates to the team view without an employeeId from the pop-out', async () => {
-    const { fixture } = await setup();
-    const el = openTeam(fixture);
-    (el.querySelector('[data-testid="team-status-view-all"]') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/attendance/time-tracking'], { queryParams: { view: 'team' } });
-  });
-
-  it('pops out on a card click and closes again with Show less', async () => {
-    const { fixture } = await setup();
-    const el: HTMLElement = fixture.nativeElement;
-    (el.querySelector('[data-testid="team-status-card"]') as HTMLElement).click();
-    fixture.detectChanges();
-    expect(isOpen(el)).toBe(true);
-
-    const showLess = Array.from(el.querySelectorAll('[data-testid="team-status-toggle"]')).find(
-      (b) => b.textContent!.trim() === 'Show less'
-    ) as HTMLButtonElement;
-    showLess.click();
-    fixture.detectChanges();
-    expect(el.querySelector('[data-testid="team-status-members"]')).toBeNull();
-  });
-
-  it('lists exceptions first and folds people working normally into one line', async () => {
-    const { fixture } = await setup(
-      response([
-        member({ employeeId: 'a1', displayName: 'Absent One', status: 'absent', statusLabel: 'Absent' }),
-        member({ employeeId: 'w1', displayName: 'Working One' }),
-        member({ employeeId: 'w2', displayName: 'Working Two' })
-      ])
-    );
-    const el = openTeam(fixture);
-    expect(el.querySelector('[data-testid="team-status-group-absent"]')?.textContent).toContain('Absent One');
-    expect(el.textContent).not.toContain('Working One');
-    const toggle: HTMLButtonElement = el.querySelector('[data-testid="team-status-others-toggle"]')!;
-    expect(toggle.textContent).toContain('2');
-
-    toggle.click();
-    fixture.detectChanges();
-    expect(el.querySelector('[data-testid="team-status-others"]')?.textContent).toContain('Working One');
-  });
-
-  it('breaks the folded line down by status when it mixes more than one', async () => {
-    const { fixture } = await setup(
-      response([
-        member({ employeeId: 'a1', status: 'absent', statusLabel: 'Absent' }),
-        member({ employeeId: 'w1' }),
-        member({ employeeId: 'w2' }),
-        member({ employeeId: 'v1', status: 'on_leave', statusLabel: 'On Leave' })
-      ])
-    );
-    const el = openTeam(fixture);
-    const toggle: HTMLElement = el.querySelector('[data-testid="team-status-others-toggle"]')!;
-    expect(toggle.textContent!.replace(/\s+/g, ' ')).toContain('3 others · 2 working · 1 on leave');
-  });
-
-  it('caps a large exception group at 5 rows with a "+N more" expander', async () => {
-    const absentees = Array.from({ length: 8 }, (_, i) =>
-      member({ employeeId: `a${i}`, displayName: `Absent ${i}`, status: 'absent', statusLabel: 'Absent' })
-    );
-    const { fixture } = await setup(response(absentees));
-    const el = openTeam(fixture);
-    const group = (): HTMLElement => el.querySelector('[data-testid="team-status-group-absent"]')!;
-    expect(group().querySelectorAll('li').length).toBe(5);
-
-    const more: HTMLButtonElement = el.querySelector('[data-testid="team-status-more-absent"]')!;
-    expect(more.textContent?.trim()).toBe('+3 more absent');
-    more.click();
-    fixture.detectChanges();
-    expect(group().querySelectorAll('li').length).toBe(8);
-  });
-
-  it('filters the list to one status from the summary chips and clears on a second click', async () => {
-    const { fixture } = await setup(
-      response([member({ employeeId: 'w1', displayName: 'On Time' }), member({ employeeId: 'l1', displayName: 'Came Late', isLate: true })])
-    );
-    const el = openTeam(fixture);
-    const lateChip: HTMLButtonElement = el.querySelector('[data-testid="team-status-filter-late"]')!;
-    lateChip.click();
-    fixture.detectChanges();
-    expect(lateChip.getAttribute('aria-pressed')).toBe('true');
-    expect(el.querySelector('[data-testid="team-status-members"]')?.textContent).toContain('Came Late');
-    expect(el.querySelector('[data-testid="team-status-members"]')?.textContent).not.toContain('On Time');
-
-    lateChip.click();
-    fixture.detectChanges();
-    expect(lateChip.getAttribute('aria-pressed')).toBe('false');
-  });
-
-  it('shows the attention reason as a caption only when it adds to the status pill', async () => {
-    const { fixture } = await setup(
-      response([
-        member({ employeeId: 'x', status: 'absent', statusLabel: 'Absent', clockInAt: null, attentionLabel: 'No clock-in after shift start', attentionSeverity: 'critical' }),
-        member({ employeeId: 'y', status: 'absent', statusLabel: 'Absent', clockInAt: null, attentionLabel: 'Absent', attentionSeverity: 'critical' })
-      ])
-    );
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('No clock-in after shift start');
-    expect(fixture.nativeElement.querySelector('.team-status-attention-dot')).toBeNull();
-  });
-
-  it('polls every 60 seconds while the document is visible', async () => {
-    vi.useFakeTimers();
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
-    const { getTeamToday } = await setup();
-    expect(getTeamToday).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(getTeamToday).toHaveBeenCalledTimes(2);
-
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(getTeamToday).toHaveBeenCalledTimes(3);
-  });
-
-  it('stops polling while hidden and refetches immediately when visible again', async () => {
-    vi.useFakeTimers();
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
-    const { getTeamToday } = await setup();
-    expect(getTeamToday).toHaveBeenCalledTimes(1);
-
-    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true, writable: true });
-    document.dispatchEvent(new Event('visibilitychange'));
-    await vi.advanceTimersByTimeAsync(120_000);
-    expect(getTeamToday).toHaveBeenCalledTimes(1);
-
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
-    document.dispatchEvent(new Event('visibilitychange'));
-    expect(getTeamToday).toHaveBeenCalledTimes(2);
-
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(getTeamToday).toHaveBeenCalledTimes(3);
-  });
-
-  it('removes the visibilitychange listener and clears the interval on destroy', async () => {
-    vi.useFakeTimers();
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
-    const removeSpy = vi.spyOn(document, 'removeEventListener');
-    const { fixture, getTeamToday } = await setup();
-
-    fixture.destroy();
-    expect(removeSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
-
-    await vi.advanceTimersByTimeAsync(120_000);
-    expect(getTeamToday).toHaveBeenCalledTimes(1);
-  });
-  describe('inside a dashboard frame', () => {
-    async function setupInFrame(widget: ReturnType<typeof fakeWidgetData>, result: TeamTodayResponse | 'error') {
-      const getTeamToday = vi.fn(() => (result === 'error' ? throwError(() => new Error('network error')) : of(result)));
-      navigate = vi.fn();
-      await TestBed.configureTestingModule({
-        imports: [TeamStatusCardComponent],
-        providers: [
-          MyTeamTodayStore,
-          { provide: MyTeamTodayApiService, useValue: { getTeamToday } },
-          { provide: Router, useValue: { navigate } },
-          widget.provider
-        ]
-      }).compileComponents();
-      const fixture = TestBed.createComponent(TeamStatusCardComponent);
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      return { fixture, getTeamToday, store: TestBed.inject(MyTeamTodayStore) };
-    }
-
-    it('uses_bootstrap_payload_without_calling_its_api', async () => {
-      const payload = response([member({ displayName: 'Bootstrap Bea' })]);
-      const widget = fakeWidgetData('success', payload);
-      const { fixture, getTeamToday, store } = await setupInFrame(widget, response([]));
-
-      expect(getTeamToday).not.toHaveBeenCalled();
-      expect(widget.refresh).not.toHaveBeenCalled();
-      expect(store.data()).toEqual(payload);
-      expect(store.loadedAt()).toBeInstanceOf(Date);
-      expect(fixture.nativeElement.querySelector('[data-testid="team-stat-present"]')!.textContent!.trim()).toBe('1');
-    });
-
-    it('falls_back_to_own_api_outside_dashboard', async () => {
-      const { getTeamToday, fixture } = await setup(response([member()]));
-      expect(getTeamToday).toHaveBeenCalledOnce();
-      expect(fixture.nativeElement.querySelector('[data-testid="team-stat-present"]')!.textContent!.trim()).toBe('1');
-    });
-
-    it('falls back to its own api, with its own error state, when the bootstrap state is an error', async () => {
-      const { fixture, getTeamToday } = await setupInFrame(fakeWidgetData('error'), 'error');
-      expect(getTeamToday).toHaveBeenCalledOnce();
-      expect(fixture.nativeElement.textContent).toContain("Couldn't load team status");
-    });
-
-    it('polls through the widget context every 60 seconds and feeds the result into the store', async () => {
-      vi.useFakeTimers();
-      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
-      const widget = fakeWidgetData('success', response([member()]));
-      const { fixture, getTeamToday, store } = await setupInFrame(widget, response([]));
-
-      await vi.advanceTimersByTimeAsync(60_000);
-      expect(widget.refresh).toHaveBeenCalledOnce();
-      expect(getTeamToday).not.toHaveBeenCalled();
-      expect(store.loading()).toBe(true);
-
-      const next = response([member(), member({ employeeId: 'emp-2' })]);
-      widget.resolve(next);
-      fixture.detectChanges();
-      expect(store.data()).toEqual(next);
-      expect(store.loading()).toBe(false);
-    });
-
-    it('falls back to its own api when a context refresh fails', async () => {
-      vi.useFakeTimers();
-      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
-      const widget = fakeWidgetData('success', response([member()]));
-      const next = response([member(), member({ employeeId: 'emp-3' })]);
-      const { fixture, getTeamToday, store } = await setupInFrame(widget, next);
-
-      await vi.advanceTimersByTimeAsync(60_000);
-      widget.fail();
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      expect(getTeamToday).toHaveBeenCalledOnce();
-      expect(store.data()).toEqual(next);
-    });
+    expect(getTeamToday).not.toHaveBeenCalled();
+    expect(TestBed.inject(MyTeamTodayStore).data()).toEqual(payload);
   });
 });

@@ -1,116 +1,280 @@
-.team-status-pill {
-  display: inline-flex;
+/* Working / Break / Leave: the Team Attendance card's visual tokens (slate text scale, tone tiles, 140px donut). */
+.wbl-mini {
+  display: flex;
+  height: 100%;
+  min-height: 0;
   align-items: center;
-  border-radius: 999px;
-  padding: 1.5px 7px;
-  font-size: 11px;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.wbl-donut {
+  position: relative;
+  flex: none;
+}
+
+.wbl-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.125rem;
+  line-height: 1;
+}
+
+.wbl-donut-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-donut-of {
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+
+.wbl-mini-counts {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+}
+
+.wbl-mini-counts li {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.wbl-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  border-radius: 9999px;
+}
+
+.wbl-count-label { color: rgb(51 65 85); }
+
+.wbl-count {
   font-weight: 600;
-  line-height: 1.35;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.wbl-pills {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.wbl-pill {
+  --tone: #3b82f6;
+  display: flex;
+  height: 52px;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, #fff);
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--tone) 8%, #fff);
+  padding: 0 0.625rem;
+}
+
+.wbl-pill-count {
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--tone) 75%, rgb(15 23 42));
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-pill-label {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-neutral {
+  flex: none;
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-rows {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wbl-row {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgb(248 250 252);
+  padding: 0.25rem 0;
+}
+
+.wbl-row:last-child { border-bottom: 0; }
+
+.wbl-row-main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.wbl-row-top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.wbl-name {
+  overflow: hidden;
+  color: rgb(15 23 42);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-chip {
+  --tone: #64748b;
+  flex: none;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tone) 12%, #fff);
+  padding: 0.0625rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--tone) 80%, rgb(15 23 42));
+}
+
+.wbl-chip--neutral {
+  background: rgb(241 245 249);
+  color: rgb(100 116 139);
+}
+
+.wbl-late {
+  flex: none;
+  border-radius: 0.25rem;
+  background: rgb(254 243 199);
+  padding: 0 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: rgb(180 83 9);
+}
+
+.wbl-sub {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-left {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.wbl-left-bar {
+  display: block;
+  height: 4px;
+  max-width: 6rem;
+  flex: 1 1 0;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(241 245 249);
+}
+
+.wbl-left-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.wbl-left-text {
+  font-size: 0.6875rem;
+  color: rgb(71 85 105);
   white-space: nowrap;
 }
 
-.team-status-pill--working {
-  background: color-mix(in srgb, var(--color-success) 14%, white);
-  color: var(--color-success);
+.wbl-link {
+  flex: none;
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(37 99 235);
 }
 
-.team-status-pill--on-break {
-  background: color-mix(in srgb, var(--color-warning) 16%, white);
-  color: var(--color-warning);
+.wbl-link:hover { text-decoration: underline; }
+
+.wbl-table-wrap {
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: auto;
 }
 
-.team-status-pill--clocked-out,
-.team-status-pill--not-started,
-.team-status-pill--not-scheduled {
-  background: #f1f5f9;
-  color: #64748b;
+.wbl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
 }
 
-.team-status-pill--absent {
-  background: color-mix(in srgb, var(--color-danger) 14%, white);
-  color: var(--color-danger);
+.wbl-table th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  padding: 0.375rem 0.5rem;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgb(100 116 139);
 }
 
-.team-status-pill--on-leave {
-  background: #ede9fe;
-  color: #6d28d9;
+.wbl-table td {
+  height: 40px;
+  border-top: 1px solid rgb(248 250 252);
+  padding: 0 0.5rem;
+  color: rgb(51 65 85);
+  white-space: nowrap;
 }
 
-.team-status-dot--working {
-  background: var(--color-success);
+.wbl-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-.team-status-dot--on-break {
-  background: var(--color-warning);
-}
+.wbl-table th.wbl-num { text-align: right; }
 
-.team-status-dot--absent {
-  background: var(--color-danger);
-}
-
-.team-status-dot--late {
-  background: var(--color-warning);
-}
-
-.team-status-dot--on-leave {
-  background: #7c3aed;
-}
-
-.team-status-dot--not-started {
-  background: #94a3b8;
-}
-
-
-.team-status-filter {
-  display: inline-flex;
+.wbl-person {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #475569;
-  padding: 3px 9px;
-  font-size: 11px;
-  line-height: 1.35;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.team-status-filter:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #1e293b;
-}
-
-.team-status-filter:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.team-status-filter--active {
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #1e3a8a;
-}
-
-.team-strip-segment {
-  min-width: 3px;
-  height: 100%;
-  border-radius: 2px;
-}
-
-.team-strip-segment--present {
-  background: #16a34a;
-}
-
-.team-strip-segment--absent {
-  background: #f43f5e;
-}
-
-.team-strip-segment--on_leave {
-  background: #3b82f6;
-}
-
-.team-strip-segment--not_started {
-  background: var(--color-border, #e2e8f0);
+  gap: 0.5rem;
 }

@@ -1,0 +1,15 @@
+<div class="whc-chart" role="img" [attr.aria-label]="summary()" data-testid="working-hours-chart">
+  @for (bar of bars(); track bar.date) {
+    <div class="whc-col" [title]="bar.tooltip" data-testid="hours-bar">
+      <div class="whc-track">
+        @if (bar.worked > 0) {
+          <div class="whc-seg whc-seg--worked" data-segment="worked" [style.height.%]="bar.worked"></div>
+        }
+        @if (bar.break > 0) {
+          <div class="whc-seg whc-seg--break" data-segment="break" [style.height.%]="bar.break"></div>
+        }
+      </div>
+      <span class="whc-label">{{ bar.label }}</span>
+    </div>
+  }
+</div>
