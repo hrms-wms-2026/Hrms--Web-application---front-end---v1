@@ -1,7 +1,7 @@
 <div class="ptn-org-branch" [class.ptn-org-branch--root]="isRoot">
 
   <!-- Position Node Box -->
-  <div
+  <div role="button" tabindex="0" appKeyboardClick
     class="ptn-node-card"
     [class.ptn-node-card--inactive]="!node.isActive"
     [class.ptn-node-card--highlight]="highlightPositionId === node.id"

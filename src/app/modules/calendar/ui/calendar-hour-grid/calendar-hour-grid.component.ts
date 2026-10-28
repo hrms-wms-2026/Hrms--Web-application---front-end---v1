@@ -176,7 +176,7 @@ export class CalendarHourGridComponent {
     if (!date) return;
 
     if (this.dragMoved) {
-      let start = Math.min(a, b);
+      const start = Math.min(a, b);
       let end = Math.max(a, b);
       if (end - start < SNAP_MINUTES) end = Math.min(start + SNAP_MINUTES, DAY_MINUTES);
       this.slotRange.emit({ date, startMinutes: start, endMinutes: end });

@@ -9,6 +9,7 @@ import { validateProjectForm, ProjectFormFields } from '../../utils/project-form
 import { CreateProjectPayload } from '../../models/project.model';
 import { ColorSwatchPickerComponent } from '../color-swatch-picker/color-swatch-picker.component';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 const STEP_ITEMS = [
   { id: 1, label: 'Category', desc: 'Select category' },
@@ -21,16 +22,16 @@ const STEP_ITEMS = [
   selector: 'app-project-form-modal',
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [InputComponent, ButtonComponent, DateRangePickerComponent, PersonPickerDialogComponent, ColorSwatchPickerComponent],
+  imports: [StopClickPropagationDirective, InputComponent, ButtonComponent, DateRangePickerComponent, PersonPickerDialogComponent, ColorSwatchPickerComponent],
   template: `
     @if (open()) {
-      <div class="proj-modal-backdrop" animate.leave="ui-popup-leave" (click)="closed.emit()">
+      <div role="presentation" class="proj-modal-backdrop" animate.leave="ui-popup-leave" (click)="closed.emit()">
         <div
           class="proj-modal ui-scroll-open"
           role="dialog"
           aria-modal="true"
           aria-labelledby="proj-modal-title"
-          (click)="$event.stopPropagation()"
+          appStopClickPropagation
           (keydown.escape)="closed.emit()"
           tabindex="-1"
         >
@@ -180,7 +181,7 @@ const STEP_ITEMS = [
 
                   <!-- Date Range Picker (Single input for start & target date) -->
                   <div class="proj-date-range-field flex flex-col gap-1" data-testid="date-range-field">
-                    <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Dates *</label>
+                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Dates *</span>
                     <app-date-range-picker
                       [from]="startDate()"
                       [to]="targetDate()"
@@ -208,7 +209,7 @@ const STEP_ITEMS = [
                   </span>
 
                   <span data-testid="color-field" class="col-span-2 flex flex-col gap-1">
-                    <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Color</label>
+                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Color</span>
                     <app-color-swatch-picker [presets]="colorPresets" [selected]="color()" (colorChange)="color.set($event)" />
                     <!-- Hidden input so tests or form helpers can set color-field input directly -->
                     <input
@@ -227,18 +228,18 @@ const STEP_ITEMS = [
                 </span>
                 <div class="grid grid-cols-2 gap-3">
                   <span data-testid="logo-field" class="flex flex-col gap-1">
-                    <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Logo</label>
+                    <label for="project-logo-input" class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Logo</label>
                     <div class="proj-file-input">
-                      <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                      <input id="project-logo-input" type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                       <svg class="h-3.5 w-3.5 text-[var(--color-accent)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                       <span class="truncate text-xs text-[var(--color-text-secondary)]">{{ logoFile() ? logoFile()!.name : 'Choose logo' }}</span>
                       <span class="text-[10px] font-bold text-[var(--color-accent)] uppercase shrink-0">Browse</span>
                     </div>
                   </span>
                   <span data-testid="banner-field" class="flex flex-col gap-1">
-                    <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Banner</label>
+                    <label for="project-banner-input" class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Banner</label>
                     <div class="proj-file-input">
-                      <input type="file" accept="image/png,image/jpeg,image/webp" (change)="onBannerFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                      <input id="project-banner-input" type="file" accept="image/png,image/jpeg,image/webp" (change)="onBannerFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                       <svg class="h-3.5 w-3.5 text-[var(--color-accent)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                       <span class="truncate text-xs text-[var(--color-text-secondary)]">{{ bannerFile() ? bannerFile()!.name : 'Choose banner' }}</span>
                       <span class="text-[10px] font-bold text-[var(--color-accent)] uppercase shrink-0">Browse</span>
@@ -768,7 +769,7 @@ export class ProjectFormModalComponent implements OnInit {
       this.categoryId.set(category.id);
       this.addingCategory.set(false);
       this.newCategoryName.set('');
-    } catch (err: any) {
+    } catch (err) {
       this.addCategoryError.set(toSafeErrorMessage(err, 'Failed to create category.'));
     } finally {
       this.creatingCategory.set(false);

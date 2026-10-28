@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, input, output, si
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 /** Entries on the compact card: the most recent ones, current position last. */
 export const JOURNEY_PREVIEW_LIMIT = 3;
@@ -27,10 +28,10 @@ export function formatJourneyDate(value: string | null | undefined): string {
 @Component({
   selector: 'app-employee-job-journey',
   standalone: true,
-  imports: [PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [KeyboardClickDirective, PopoutPanelComponent, PopoutHeaderActionsComponent],
   template: `
     <app-popout-panel class="block h-full" [open]="showAll()" label="Career Journey" (closed)="showAll.set(false)">
-      <section
+      <section role="button" tabindex="0" appKeyboardClick
         data-testid="career-journey-card"
         class="group flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs"
         [class.cursor-pointer]="canExpand() && !showAll()"

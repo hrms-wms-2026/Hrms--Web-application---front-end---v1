@@ -18,7 +18,7 @@ const initialState: NotificationsState = {
   error: null
 };
 
-function extractError(err: any, fallback: string): string {
+function extractError(err: unknown, fallback: string): string {
   return toSafeErrorMessage(err, fallback);
 }
 

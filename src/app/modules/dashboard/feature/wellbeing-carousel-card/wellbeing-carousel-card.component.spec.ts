@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { FocusStatusApiService } from '../../data-access/focus-status-api.service';
 import { FocusStatus } from '../../models/focus-status.model';

@@ -187,7 +187,7 @@ export const TrayPresenceStore = signalStore(
         wasConnected = connected;
 
         schedulePoll(connected ? 15_000 : 5_000);
-      } catch (error) {
+      } catch {
         if (!started || requestGeneration !== statusRequestGeneration) return;
         const transitionedToLocked = wasConnected;
         patchState(store, {

@@ -30,7 +30,7 @@
         <circle cx="11" cy="11" r="8" />
         <path d="m21 21-4.35-4.35" />
       </svg></span>
-      <input #treeSearchInput autofocus type="search" placeholder="Search modules, sprints, tasks…"
+      <input #treeSearchInput type="search" placeholder="Search modules, sprints, tasks…"
         [value]="searchTerm()" (input)="onSearchChanged($any($event.target).value)"
         class="ui-field__control" />
       <span class="ui-field__trailing"><button type="button" data-testid="tree-search-close" aria-label="Close search" title="Close search"

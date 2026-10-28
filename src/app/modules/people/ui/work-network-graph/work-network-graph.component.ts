@@ -13,13 +13,14 @@ import { EmployeeWorkGraphResponse, WorkGraphNode } from '../../models/work-grap
 import { filterWorkGraph } from './work-graph-layout';
 import { WorkNetworkCanvasComponent } from './work-network-canvas.component';
 import { WorkNetworkExplorerComponent } from './explorer/work-network-explorer.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 const MAX_PREVIEW_NODES = 8;
 
 @Component({
   selector: 'app-work-network-graph',
   standalone: true,
-  imports: [WorkNetworkCanvasComponent, WorkNetworkExplorerComponent],
+  imports: [StopClickPropagationDirective, WorkNetworkCanvasComponent, WorkNetworkExplorerComponent],
   template: `
     <div class="wg-preview" [class.wg-preview--plain]="!showToolbar()">
       @if (showToolbar()) {
@@ -47,7 +48,7 @@ const MAX_PREVIEW_NODES = 8;
 
     @if (expanded()) {
       <!-- stopPropagation: a card around the preview may open the graph on click; closing must not reopen it -->
-      <div class="wg-overlay" animate.leave="ui-popup-leave" data-testid="work-network-overlay" (pointerdown)="onBackdropPointerDown($event)" (click)="$event.stopPropagation()">
+      <div class="wg-overlay" animate.leave="ui-popup-leave" data-testid="work-network-overlay" (pointerdown)="onBackdropPointerDown($event)" appStopClickPropagation>
         <section
           #dialog
           class="wg-dialog ui-scroll-open"

@@ -23,3 +23,7 @@
 - `2026-09-21-task-subtasks-design.md` moved to `specs/finished/2026-09-21/` on 2026-09-21 — both backend and frontend plans finished. See `specs/SUMMARY.md`.
 
 This folder exists ready for the next not-yet-implemented design, per the finished/next convention in `../../rules/FILE_CREATION_RULES.md`.
+
+## Added 2026-10-28 (migrated from loose `specs/` files)
+
+- `2026-08-25-tray-app-employee-access-toggle-frontend-design.md` — Tray App Employee Access Toggle — Frontend Design — **pending**: only the API method exists; no UI and no backend endpoint

@@ -40,7 +40,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
             <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
             </svg></span>
-            <input autofocus type="search" placeholder="Search work items…" [value]="searchTerm()"
+            <input type="search" placeholder="Search work items…" [value]="searchTerm()"
               (input)="onSearchChanged($any($event.target).value)"
               class="ui-field__control" />
             <span class="ui-field__trailing"><button type="button" data-testid="board-search-close" aria-label="Close search" title="Close search"

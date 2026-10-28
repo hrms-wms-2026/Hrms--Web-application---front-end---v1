@@ -1,10 +1,10 @@
-<div class="rlm-backdrop" (click)="cancelled.emit()">
+<div role="presentation" class="rlm-backdrop" (click)="cancelled.emit()">
   <section
     class="rlm-modal ui-scroll-open"
     role="dialog"
     aria-modal="true"
     aria-labelledby="reporting-move-title"
-    (click)="$event.stopPropagation()"
+    appStopClickPropagation
   >
     <header class="rlm-header ui-popup-header">
       <span class="ui-popup-icon" data-icon="hierarchy" aria-hidden="true"></span>

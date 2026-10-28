@@ -51,12 +51,12 @@ const baseToday: AttendanceTodayResponse = {
   messages: []
 };
 
-type StoreMock = {
+interface StoreMock {
   today: ReturnType<typeof signal<AttendanceTodayResponse | null>>;
   todayLoading: ReturnType<typeof signal<boolean>>;
   todayError: ReturnType<typeof signal<string | null>>;
   loadToday: ReturnType<typeof vi.fn>;
-};
+}
 
 function leave(startAt: string, endAt: string): LeaveRequestListItemResponse {
   return { startAt, endAt, status: 'approved' } as LeaveRequestListItemResponse;

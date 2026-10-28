@@ -129,7 +129,7 @@ export const BulkOnboardingStore = signalStore(
 
     async pollUntilTerminal(batchId: string): Promise<void> {
       patchState(store, { polling: true });
-      // eslint-disable-next-line no-constant-condition
+       
       while (true) {
         const detail = await firstValueFrom(api.getBatch(batchId));
         patchState(store, { detail });

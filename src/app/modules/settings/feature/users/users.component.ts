@@ -43,7 +43,7 @@ const STATUS_ORDER: readonly UserAccountStatus[] = [
 ];
 
 /** Filter values: status codes and role names, keyed like app-task-filter-bar's fields. */
-type UserFilters = { readonly statuses: readonly string[]; readonly roles: readonly string[] };
+interface UserFilters { readonly statuses: readonly string[]; readonly roles: readonly string[] }
 const NO_FILTERS: UserFilters = { statuses: [], roles: [] };
 
 const CONFIRM_COPY: Record<'revoke' | 'suspend' | 'sign-out', { title: string; label: string; message: (u: UserAccount) => string }> = {

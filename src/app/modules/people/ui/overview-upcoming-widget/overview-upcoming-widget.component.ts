@@ -8,6 +8,7 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeUpcomingItem, EmployeeUpcomingKind } from '../../models/employee-overview.model';
 import { UpcomingDateBlock, upcomingDateBlock } from '../../utils/employee-overview.utils';
 import { UpcomingItemDetailComponent } from '../upcoming-item-detail/upcoming-item-detail.component';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 const UPCOMING_DAYS = 14;
 /** Rows on the compact card; the page load asks the API for only these (plus the window's total). */
@@ -32,10 +33,10 @@ type FullListState = 'idle' | 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-overview-upcoming-widget',
   standalone: true,
-  imports: [ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent, UpcomingItemDetailComponent],
+  imports: [KeyboardClickDirective, ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent, UpcomingItemDetailComponent],
   template: `
     <app-popout-panel class="block h-full" [open]="showAll()" label="Upcoming" (closed)="showAll.set(false)">
-      <section
+      <section role="button" tabindex="0" appKeyboardClick
         data-testid="upcoming-card"
         class="group flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
         [class.cursor-pointer]="canExpand() && !showAll()"

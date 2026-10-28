@@ -68,11 +68,11 @@ interface SelectedMember {
                   @if (member.isOwner) {
                     <span data-testid="owner-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Owner invite pending</span>
                   } @else {
-                    <span data-testid="make-owner-button" (click)="onSetOwner(member.employeeId)">
+                    <span role="presentation" data-testid="make-owner-button" (click)="onSetOwner(member.employeeId)">
                       <app-button variant="secondary" size="sm">Invite as owner</app-button>
                     </span>
                   }
-                  <span data-testid="remove-member-button" (click)="onMemberRemove(member.employeeId)">
+                  <span role="presentation" data-testid="remove-member-button" (click)="onMemberRemove(member.employeeId)">
                     <app-button variant="secondary" size="sm">Remove</app-button>
                   </span>
                 </div>

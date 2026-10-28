@@ -4,6 +4,7 @@ import { ActiveProjectsCardComponent } from '../feature/active-projects-card/act
 import { DashboardNotificationsCardComponent } from '../feature/dashboard-notifications-card/dashboard-notifications-card.component';
 import { MyTasksCardComponent } from '../feature/my-tasks-card/my-tasks-card.component';
 import { QuickActionsCardComponent } from '../feature/quick-actions-card/quick-actions-card.component';
+import { TeamAttendanceCardComponent } from '../feature/team-attendance-card/team-attendance-card.component';
 import { TeamProgressCardComponent } from '../feature/team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../feature/team-status-card/team-status-card.component';
 import { TodayAtAGlanceCardComponent } from '../feature/today-at-a-glance-card/today-at-a-glance-card.component';
@@ -39,5 +40,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
   'action-center': { component: ActionCenterCardComponent },
   'team-status': { component: TeamStatusCardComponent },
   'team-progress': { component: TeamProgressCardComponent },
+  'team-attendance': { component: TeamAttendanceCardComponent },
   'team-quick-actions': { component: QuickActionsCardComponent, inputs: { onTeamDashboard: true } }
 };

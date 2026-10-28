@@ -30,7 +30,7 @@ import {
   validDisplayTimezone
 } from '../../utils/attendance-formatters';
 
-export type CorrectionBreakDraft = { start: string; end: string };
+export interface CorrectionBreakDraft { start: string; end: string }
 
 @Component({
   selector: 'app-attendance-correction-modal',

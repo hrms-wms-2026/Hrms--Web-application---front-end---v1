@@ -4,7 +4,6 @@ import { NotificationService } from '../../../core/services/notification.service
 import { By } from '@angular/platform-browser';
 
 describe('ToastHostComponent', () => {
-  let component: ToastHostComponent;
   let fixture: ComponentFixture<ToastHostComponent>;
   let notificationService: NotificationService;
 
@@ -15,7 +14,6 @@ describe('ToastHostComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(ToastHostComponent);
-    component = fixture.componentInstance;
     notificationService = TestBed.inject(NotificationService);
     fixture.detectChanges();
   });

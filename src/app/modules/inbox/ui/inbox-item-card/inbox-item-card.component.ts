@@ -365,7 +365,7 @@ export class InboxItemCardComponent {
   constructor() {
     // A different item starts with no edits and no open dialog.
     effect(() => {
-      this.item()?.id;
+      this.item();
       this.edits.set({});
       this.editErrors.set({});
       this.commentAction.set(null);

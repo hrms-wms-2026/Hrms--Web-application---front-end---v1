@@ -13,7 +13,7 @@
           {{ position.departmentName || 'Position management' }}
         </p>
       </div>
-      <button type="button" class="pcm-close-btn" (click)="close.emit()" aria-label="Close">
+      <button type="button" class="pcm-close-btn" (click)="closed.emit()" aria-label="Close">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
@@ -171,7 +171,7 @@
 
                 <div class="pcm-form-grid">
                   <div class="pcm-field">
-                    <label class="pcm-label">Covered Target Type</label>
+                    <span class="pcm-label">Covered Target Type</span>
                     <div class="pcm-segmented-control">
                       <button
                         type="button"
@@ -374,7 +374,7 @@
 
     <!-- Footer -->
     <div class="pcm-footer">
-      <app-button type="button" variant="secondary" (click)="close.emit()">{{ panelTab() === 'details' ? 'Cancel' : 'Close' }}</app-button>
+      <app-button type="button" variant="secondary" (click)="closed.emit()">{{ panelTab() === 'details' ? 'Cancel' : 'Close' }}</app-button>
       @if (panelTab() === 'details' && canManage) {
         <app-button type="button" (click)="onDetailsSubmit()" [loading]="detailsSaving" [disabled]="detailsSaving || detailsForm.invalid">Save changes</app-button>
       }

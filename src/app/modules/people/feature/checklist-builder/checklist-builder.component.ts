@@ -3,7 +3,6 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
-  OnInit,
   computed,
   effect,
   inject,
@@ -54,6 +53,7 @@ import { ChecklistTemplateStore } from '../../state/checklist-template.store';
 import { ChecklistTaskDetailDialogComponent } from '../../ui/checklist-task-detail-dialog/checklist-task-detail-dialog.component';
 import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { AttachmentPill } from '../../../work/ui/task-attachment-list/task-attachment-list.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 const TASK_PLACEHOLDERS: readonly string[] = [
   'Collect signed contract',
@@ -100,7 +100,7 @@ export interface ChecklistTaskFormValue {
   selector: 'app-checklist-builder',
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [
+  imports: [StopClickPropagationDirective, 
     ReactiveFormsModule,
     ButtonComponent,
     InputComponent,
@@ -117,7 +117,7 @@ export interface ChecklistTaskFormValue {
   styleUrl: './checklist-builder.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ChecklistBuilderComponent implements OnInit {
+export class ChecklistBuilderComponent {
   readonly taskCategoryOptions: readonly SelectOption[] = [
     { value: '', label: 'No category' },
     { value: 'asset_return', label: 'Asset Return' },
@@ -129,6 +129,8 @@ export class ChecklistBuilderComponent implements OnInit {
   ];
 
   readonly open = input<boolean>(true);
+  // Aliased because `templateId` is the internal signal that also tracks the route parameter.
+  // eslint-disable-next-line @angular-eslint/no-input-rename
   readonly templateIdInput = input<string | null>(null, { alias: 'templateId' });
 
   readonly closed = output<void>();
@@ -256,10 +258,6 @@ export class ChecklistBuilderComponent implements OnInit {
         this.resetCreateForm();
       }
     });
-  }
-
-  async ngOnInit(): Promise<void> {
-    // Initial loading is reactively handled by constructor effect
   }
 
   private resetCreateForm(): void {
@@ -556,7 +554,7 @@ export class ChecklistBuilderComponent implements OnInit {
     void this.router.navigate(['/people/checklists']);
   }
 
-  onBackdrop(event?: MouseEvent): void {
+  onBackdrop(_event?: MouseEvent): void {
     // The task detail popup sits above the builder; it handles its own dismissal.
     if (this.openTaskDetailIndex() !== null) return;
     this.cancel();
@@ -612,7 +610,7 @@ export class ChecklistBuilderComponent implements OnInit {
       this.mapTaskFormToRequest(grp.value as ChecklistTaskFormValue, idx)
     );
 
-    let success = false;
+    let success: boolean;
     if (this.isEdit() && this.templateId()) {
       const updatePayload: UpdateChecklistTemplateRequest = {
         name: val.name!,

@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, contentChild, contentChildren, Directive, inject, input, output, TemplateRef } from '@angular/core';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export interface DataTableColumn {
   key: string;
@@ -47,7 +48,7 @@ export class DataTableRowAfterDirective {
 @Component({
   selector: 'app-data-table',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [StopClickPropagationDirective, NgTemplateOutlet],
   template: `
     @if (loading()) {
       <div class="data-table__loading" data-testid="data-table-loading" aria-busy="true" [attr.aria-label]="loadingLabel()">
@@ -80,7 +81,7 @@ export class DataTableRowAfterDirective {
                     [checked]="allSelected()"
                     [indeterminate]="someSelected()"
                     [disabled]="selectionDisabled()"
-                    (click)="$event.stopPropagation()"
+                    appStopClickPropagation
                     (change)="selectAllChanged.emit($any($event.target).checked)"
                   />
                 </th>
@@ -135,7 +136,7 @@ export class DataTableRowAfterDirective {
                 (keydown.enter)="rowFocusable() && $event.target === $event.currentTarget && rowClicked.emit(row)"
               >
                 @if (selectable()) {
-                  <td class="data-table__select-cell" (click)="$event.stopPropagation()">
+                  <td class="data-table__select-cell" appStopClickPropagation>
                     @if (isRowSelectable()(row)) {
                       <input
                         type="checkbox"

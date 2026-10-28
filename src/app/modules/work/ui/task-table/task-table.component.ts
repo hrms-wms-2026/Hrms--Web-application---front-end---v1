@@ -11,6 +11,7 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { DataTableCellDirective, DataTableColumn, DataTableComponent, DataTableRowAfterDirective } from '../../../../shared/ui/data-table/data-table.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
 
@@ -36,7 +37,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
 @Component({
   selector: 'app-task-table',
   standalone: true,
-  imports: [OverlayModule, TaskClockWidgetComponent, AvatarComponent, DatePickerComponent, DataTableComponent, DataTableCellDirective, DataTableRowAfterDirective],
+  imports: [StopClickPropagationDirective, OverlayModule, TaskClockWidgetComponent, AvatarComponent, DatePickerComponent, DataTableComponent, DataTableCellDirective, DataTableRowAfterDirective],
   template: `
     <app-data-table
       minWidth="986px"
@@ -111,7 +112,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
             (backdropClick)="closePopovers()"
             (detach)="closePopovers()"
           >
-            <div class="task-table__popover" role="dialog" aria-label="Change status" (click)="$event.stopPropagation()">
+            <div class="task-table__popover" role="dialog" aria-label="Change status" appStopClickPropagation>
               <div class="task-table__popover-title">Status</div>
               <div class="task-table__popover-list">
                 @for (opt of availableStatuses(task); track opt.id) {
@@ -162,7 +163,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
           (backdropClick)="closePopovers()"
           (detach)="closePopovers()"
         >
-          <div class="task-table__popover task-table__priority-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+          <div class="task-table__popover task-table__priority-popover" role="dialog" aria-label="Change priority" appStopClickPropagation>
             <div class="task-table__popover-title">Priority</div>
             <div class="task-table__popover-list">
               @for (opt of priorityOptions; track opt.value) {

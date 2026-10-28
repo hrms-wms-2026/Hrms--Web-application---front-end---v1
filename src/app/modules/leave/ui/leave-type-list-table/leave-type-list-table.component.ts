@@ -3,8 +3,9 @@ import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, 
 import { CommonModule } from '@angular/common';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
-@Component({ selector: 'app-leave-type-list-table', standalone: true, imports: [CommonModule, ButtonComponent], templateUrl: './leave-type-list-table.component.html', styleUrl: './leave-type-list-table.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-leave-type-list-table', standalone: true, imports: [StopClickPropagationDirective, CommonModule, ButtonComponent], templateUrl: './leave-type-list-table.component.html', styleUrl: './leave-type-list-table.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeaveTypeListTableComponent {
   @Input({ required: true }) leaveTypes: readonly LeaveTypeResponse[] = [];
   @Input() canManage = false;

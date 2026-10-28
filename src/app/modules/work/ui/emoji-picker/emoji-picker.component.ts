@@ -1,4 +1,5 @@
 import { Component, output } from '@angular/core';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 const CURATED_EMOJI = [
   '😀', '😂', '😅', '😊', '😍', '🥳', '😎', '🤔', '😢', '😮', '😡', '🥺', '👀', '🙌',
@@ -11,9 +12,10 @@ const CURATED_EMOJI = [
 
 @Component({
   selector: 'app-emoji-picker',
+  imports: [StopClickPropagationDirective],
   standalone: true,
   template: `
-    <div class="ep-popover" role="dialog" (click)="$event.stopPropagation()">
+    <div class="ep-popover" role="dialog" appStopClickPropagation>
       <div class="ep-grid scroll-fade">
         @for (emoji of emojis; track emoji) {
           <button type="button" class="ep-emoji" (mousedown)="$event.preventDefault()" (click)="emojiSelected.emit(emoji)">{{ emoji }}</button>

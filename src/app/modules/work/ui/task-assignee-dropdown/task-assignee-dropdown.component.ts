@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export interface TaskAssigneeOption {
   employeeId: string;
@@ -11,13 +12,13 @@ export interface TaskAssigneeOption {
 @Component({
   selector: 'app-task-assignee-dropdown',
   standalone: true,
-  imports: [AvatarComponent],
+  imports: [StopClickPropagationDirective, AvatarComponent],
   template: `
     <div
       class="task-assignee-dropdown task-card__assignee-popover tfm-popover"
       role="dialog"
       aria-label="Change assignee"
-      (click)="$event.stopPropagation()"
+      appStopClickPropagation
     >
       <div class="task-assignee-dropdown__search">
         <svg viewBox="0 0 24 24" aria-hidden="true" class="task-assignee-dropdown__search-icon">

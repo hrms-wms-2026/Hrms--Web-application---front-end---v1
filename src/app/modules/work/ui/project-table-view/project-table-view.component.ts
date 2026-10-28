@@ -5,7 +5,6 @@ import { getDeadlineStatus, DeadlineStatus } from '../../utils/deadline.util';
 import { AvatarStackComponent } from '../../../../shared/ui/avatar-stack/avatar-stack.component';
 import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
-import { ProjectApiService } from '../../data-access/project-api.service';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 

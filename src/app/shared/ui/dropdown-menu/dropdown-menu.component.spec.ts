@@ -6,7 +6,7 @@ import { DropdownMenuComponent, MenuItem } from './dropdown-menu.component';
   standalone: true,
   imports: [DropdownMenuComponent],
   template: `
-    <div class="row" (click)="rowClicks = rowClicks + 1">
+    <div role="presentation" class="row" (click)="rowClicks = rowClicks + 1">
       <app-dropdown-menu [items]="items" ariaLabel="Row actions" (selected)="picked.push($event)">
         <button menu-trigger type="button" class="trigger-a">⋯</button>
       </app-dropdown-menu>

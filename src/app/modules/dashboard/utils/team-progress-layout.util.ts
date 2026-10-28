@@ -1,0 +1,213 @@
+/** How the Team Progress card lays itself out at its current rendered size. Eight views (mini at
+ * the 2x2 minimum, then the seven of the reference design); the detail dialog is one more. Components keep one fixed size in every view (the donut is always
+ * TEAM_PROGRESS_DONUT_PX): a bigger card shows more detail, never bigger graphics. */
+export type TeamProgressMode = 'mini' | 'xs' | 'small' | 'medium' | 'wide' | 'tall' | 'large' | 'maximum';
+
+/** The donut's diameter in every view. */
+export const TEAM_PROGRESS_DONUT_PX = 128;
+
+/**
+ * Size thresholds in CSS pixels, measured on the card host. The dashboard grid uses 96px rows with a
+ * 12px gap, so 3 rows = 312px, 4 = 420, 5 = 528, 6 = 636, 7 = 744 and 8 = 852; each height threshold
+ * sits in the middle of a gap between two row counts (2 rows = 204px). Column widths depend on the screen (about 97px
+ * per column at a 1440px viewport, about 140px at 1920px), so the width thresholds sit between the
+ * column counts of the common screens rather than on a grid line.
+ */
+export const TEAM_PROGRESS_BREAKPOINTS = {
+  /** Below this height (between 2 and 3 rows) the donut doesn't fit under the title: the mini layout
+   * shows the completion figure and one stacked bar. Narrow cards with more height keep the donut,
+   * which fits from the 2-column width up. */
+  miniHeight: 260,
+  /** Below this width only the extra-small layout (donut over the completion figure) fits. */
+  smallWidth: 370,
+  /** From this width a short card shows the wide layout (donut beside bars, tiles under them) and a
+   * mid-height card the medium layout (stacked bar and tinted tiles). */
+  mediumWidth: 560,
+  /** From this width a mid-height card shows the wide layout, and a tall card the large layout. */
+  wideWidth: 780,
+  /** From this width (and maximumHeight) the maximum layout applies. */
+  maximumWidth: 1150,
+  /** From this height (between 3 and 4 rows) the medium layout has room. */
+  mediumHeight: 370,
+  /** From this height (between 5 and 6 rows) the tall and large layouts have room. */
+  tallHeight: 580,
+  /** From this height (between 7 and 8 rows, with maximumWidth) the maximum layout applies. */
+  maximumHeight: 800
+} as const;
+
+/** How far past a threshold the size must move before the mode changes back, so a card resized
+ * slowly across a threshold doesn't flip between layouts on every frame. */
+export const TEAM_PROGRESS_HYSTERESIS = 20;
+
+/** The mode for a size, with no hysteresis. */
+export function classifyTeamProgressSize(width: number, height: number): TeamProgressMode {
+  const b = TEAM_PROGRESS_BREAKPOINTS;
+  if (height < b.miniHeight) return 'mini';
+  if (height >= b.tallHeight) {
+    if (width < b.wideWidth) return 'tall';
+    if (width < b.maximumWidth) return 'large';
+    return height >= b.maximumHeight ? 'maximum' : 'large';
+  }
+  if (width < b.smallWidth) return 'xs';
+  if (width < b.mediumWidth) return 'small';
+  if (height < b.mediumHeight) return 'wide';
+  return width < b.wideWidth ? 'medium' : 'wide';
+}
+
+/**
+ * The mode for a rendered size. The previous mode is kept while the size is within
+ * TEAM_PROGRESS_HYSTERESIS of a size that would still give it. A size of zero (not laid out yet, or
+ * hidden) keeps the previous mode, or 'small' when there is none.
+ */
+export function resolveTeamProgressMode(
+  width: number,
+  height: number,
+  previous: TeamProgressMode | null = null
+): TeamProgressMode {
+  if (!(width > 0) || !(height > 0)) return previous ?? 'small';
+  const next = classifyTeamProgressSize(width, height);
+  if (!previous || next === previous) return next;
+  const h = TEAM_PROGRESS_HYSTERESIS;
+  // Thresholds are far more than 2 * h apart, so probing the corners and edges of the tolerance box
+  // is enough to tell whether the previous mode is still "close enough".
+  for (const dw of [-h, 0, h]) {
+    for (const dh of [-h, 0, h]) {
+      if (classifyTeamProgressSize(width + dw, height + dh) === previous) return previous;
+    }
+  }
+  return next;
+}
+
+/** Height of one module / project / overdue list row (title line + thin bar). */
+export const TEAM_PROGRESS_LIST_ROW_PX = 42;
+
+/** What a list panel costs besides its rows: border, padding and heading. */
+const PANEL_CHROME_PX = 44;
+
+/** Gap between the card's sections. */
+const GAP_PX = 12;
+
+/** Card padding plus its title header: the host size minus this is the body. */
+export const TEAM_PROGRESS_CARD_CHROME = { width: 40, height: 80 } as const;
+
+/** Height of the weekly completion panel (heading, chart and footnote) in the views that show it. */
+export const TEAM_PROGRESS_WEEKLY_PANEL_PX = 196;
+
+/** Width from which the tall view puts the donut beside its status list instead of over it. */
+export const TEAM_PROGRESS_TALL_SIDE_BY_SIDE_PX = 560;
+
+const TILE_ROW_PX = 60 + GAP_PX;
+/** Height of the mini legend line. */
+const MINI_LEGEND_ROW_PX = 22;
+/** Body width from which a 2-row card swaps its small donut for the stacked status bar and its
+ * legend beside the completion figure (from 4 columns at 1440px, 3 at 1920px). */
+const MINI_INLINE_LEGEND_WIDTH_PX = 320;
+const VIEW_DETAILS_PX = 36 + GAP_PX;
+
+/** The optional sections a view shows at a size. Everything here has a fixed height, so a larger
+ * card adds sections and list rows instead of growing what is already there. */
+export interface TeamProgressPlan {
+  /** mini only: 'inline' on a card stretched sideways - the stacked status bar and its legend take the
+   * donut's place beside the figure; 'none' keeps the small donut. */
+  miniLegend: 'none' | 'inline';
+  /** xs only: the four-status legend under the completion figure. */
+  legend: boolean;
+  /** xs / small / medium: rows of extra metric tiles. */
+  tileRows: number;
+  /** The full-width "View details" button at the bottom. */
+  viewDetails: boolean;
+  /** Rows each list panel (modules, projects, overdue tasks) shows; 0 hides the panels. */
+  listRows: number;
+  /** Extra list rows to use when the weekly completion panel is not shown (failed / unavailable). */
+  weeklyFallbackRows: number;
+}
+
+/** Fixed height of each view's always-shown content (body pixels, before optional sections). */
+function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
+  switch (mode) {
+    // The small (80px) donut, or the bar and legend, beside the completion figure.
+    case 'mini':
+      return 80;
+    // Donut, the big completion figure and its caption.
+    case 'xs':
+      return 190;
+    // Donut (with the completion line under it) beside the two-line legend.
+    case 'small':
+      return 160;
+    // Stacked bar, total line and the four status tiles.
+    case 'medium':
+      return 176;
+    // Donut beside the status rows, metric tiles under them.
+    case 'wide':
+      return 128 + GAP_PX + 60;
+    // Donut over (or beside) the status list, the weekly chart and the View details button.
+    case 'tall':
+      return (
+        (bodyWidth >= TEAM_PROGRESS_TALL_SIDE_BY_SIDE_PX ? 150 : 150 + GAP_PX + 120) +
+        GAP_PX +
+        TEAM_PROGRESS_WEEKLY_PANEL_PX +
+        VIEW_DETAILS_PX
+      );
+    // Donut + rows, tiles, then weekly chart beside the top members.
+    case 'large':
+      return 128 + GAP_PX + 60 + GAP_PX + TEAM_PROGRESS_WEEKLY_PANEL_PX;
+    // Donut | rows | tiles band, then weekly chart beside the top members.
+    case 'maximum':
+      return 132 + GAP_PX + TEAM_PROGRESS_WEEKLY_PANEL_PX;
+  }
+}
+
+function rowsFor(space: number): number {
+  return Math.max(0, Math.min(20, Math.floor((space - PANEL_CHROME_PX) / TEAM_PROGRESS_LIST_ROW_PX)));
+}
+
+/** The sections and list rows a view shows at a host size. */
+export function planTeamProgressLayout(mode: TeamProgressMode, width: number, height: number): TeamProgressPlan {
+  const plan: TeamProgressPlan = { miniLegend: 'none', legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0 };
+  if (!(width > 0) || !(height > 0)) return plan;
+  const bodyWidth = width - TEAM_PROGRESS_CARD_CHROME.width;
+  let rest = height - TEAM_PROGRESS_CARD_CHROME.height - baseHeight(mode, bodyWidth);
+
+  switch (mode) {
+    case 'mini':
+      if (bodyWidth >= MINI_INLINE_LEGEND_WIDTH_PX && rest >= MINI_LEGEND_ROW_PX) plan.miniLegend = 'inline';
+      return plan;
+    case 'xs':
+      if (rest >= 112) {
+        plan.legend = true;
+        rest -= 112;
+      }
+      if (plan.legend && rest >= TILE_ROW_PX) {
+        plan.tileRows = 1;
+        rest -= TILE_ROW_PX;
+      }
+      plan.viewDetails = plan.tileRows > 0 && rest >= VIEW_DETAILS_PX;
+      return plan;
+    case 'small':
+      while (plan.tileRows < 2 && rest >= TILE_ROW_PX) {
+        plan.tileRows++;
+        rest -= TILE_ROW_PX;
+      }
+      plan.viewDetails = plan.tileRows === 2 && rest >= VIEW_DETAILS_PX;
+      return plan;
+    case 'medium':
+      if (rest >= TILE_ROW_PX) {
+        plan.tileRows = 1;
+        rest -= TILE_ROW_PX;
+      }
+      plan.listRows = rowsFor(rest - GAP_PX);
+      plan.viewDetails = plan.listRows === 0 && plan.tileRows > 0 && rest >= VIEW_DETAILS_PX;
+      return plan;
+    case 'wide':
+    case 'large':
+    case 'maximum':
+      plan.listRows = rowsFor(rest - GAP_PX);
+      plan.weeklyFallbackRows = mode === 'wide' ? 0 : rowsFor(rest + TEAM_PROGRESS_WEEKLY_PANEL_PX) - plan.listRows;
+      return plan;
+    case 'tall':
+      plan.viewDetails = true;
+      plan.listRows = rowsFor(rest - GAP_PX);
+      plan.weeklyFallbackRows = rowsFor(rest + TEAM_PROGRESS_WEEKLY_PANEL_PX) - plan.listRows;
+      return plan;
+  }
+}
