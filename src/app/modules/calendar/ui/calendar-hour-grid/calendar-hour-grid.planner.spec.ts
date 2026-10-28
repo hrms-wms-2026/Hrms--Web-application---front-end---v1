@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { vi } from 'vitest';
+import { of } from 'rxjs';
+import { vi } from 'vitest';
+import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { PlannerRangeBlockView, PlannerWorkWindow } from '../../../work/planner/models/planner.models';
 import { PlannerDragService } from '../../state/planner-drag.service';
@@ -61,7 +63,10 @@ describe('CalendarHourGridComponent planner layer', () => {
   }
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [CalendarHourGridComponent] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [CalendarHourGridComponent],
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn((id: string) => of({ id, name: id, avatarFileId: null })) } }],
+    }).compileComponents();
     drag = TestBed.inject(PlannerDragService);
     drag.end();
     fixture = TestBed.createComponent(CalendarHourGridComponent);
@@ -80,6 +85,44 @@ describe('CalendarHourGridComponent planner layer', () => {
     expect(el.textContent).toContain('09:00–10:30');
     expect(el.textContent).toContain('1h 30m');
     expect(el.getAttribute('title')).toBe('Block a · 09:00–10:30 · 1h 30m planned · 15m actual');
+  });
+
+  it('a task block carries a left accent bar, its time on top, then title and project', () => {
+    render({ [TODAY]: [block('a', TODAY, '09:00', '10:30', { projectName: 'Portal' })] });
+
+    const el = q('[data-testid="planner-block"]')!;
+    expect(el.querySelector('[data-testid="planner-block-accent"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="block-time"]')!.textContent).toContain('09:00–10:30');
+    expect(el.querySelector('[data-testid="planner-block-project"]')!.textContent!.trim()).toBe('Portal');
+  });
+
+  it('a block from an older API without a project name draws no project line', () => {
+    render({ [TODAY]: [block('a', TODAY, '09:00', '10:30')] });
+
+    expect(q('[data-testid="planner-block-project"]')).toBeNull();
+  });
+
+  it('a meeting block shows its time, title, location and its people as avatars', () => {
+    const m = { ...meeting('Product review', TODAY, '14:00', '15:00'), location: 'Room 4',
+      participants: [{ employeeId: 'e1', employeeName: 'A', responseStatus: 'accepted' }, { employeeId: 'e2', employeeName: 'B', responseStatus: 'pending' }] };
+    const opened = vi.fn();
+    fixture.componentInstance.eventClick.subscribe(opened);
+    render({}, [m as CalendarEventResponse]);
+
+    const el = q('[data-testid="calendar-meeting-block"]')!;
+    expect(el.querySelector('[data-testid="block-time"]')!.textContent).toContain('14:00–15:00');
+    expect(el.textContent).toContain('Product review');
+    expect(el.textContent).toContain('Room 4');
+    expect(el.querySelectorAll('app-employee-avatar').length).toBe(2);
+    expect(el.querySelector('[data-testid="avatar-stack-more"]')).toBeNull();
+    el.click();
+    expect(opened).toHaveBeenCalledWith('Product review');
+  });
+
+  it('a meeting with no participants draws no avatar row', () => {
+    render({}, [meeting('Solo', TODAY, '14:00', '15:00')]);
+
+    expect(q('[data-testid="calendar-meeting-block"] [data-testid="avatar-stack"]')).toBeNull();
   });
 
   it('shades outside working hours, and draws no break band (its time is only a guess from the schedule)', () => {

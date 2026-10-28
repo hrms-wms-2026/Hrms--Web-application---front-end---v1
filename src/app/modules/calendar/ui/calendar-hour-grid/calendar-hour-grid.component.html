@@ -112,22 +112,55 @@
         }
 
         @for (positioned of column.positioned; track positioned.event.id) {
-          <button
-            type="button"
-            data-testid="calendar-hour-event-block"
-            class="absolute flex items-center gap-1 overflow-hidden rounded px-1 text-left text-[11px] text-white"
-            [style.top.%]="positioned.top * 100"
-            [style.height.%]="positioned.height * 100"
-            [style.left.%]="positioned.left * 100"
-            [style.width.%]="positioned.width * 100"
-            [style.background-color]="positioned.event.color || 'var(--color-accent)'"
-            (click)="$event.stopPropagation(); eventClick.emit(positioned.event.id)"
-          >
-            @if (positioned.event.hasConflict) {
-              <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
-            }
-            <span class="truncate">{{ positioned.event.title }}</span>
-          </button>
+          @if (positioned.event.itemKind === 'meeting') {
+            <!-- A meeting: its time on top, the title, where, and who attends. The whole block opens its drawer. -->
+            <button
+              type="button"
+              data-testid="calendar-hour-event-block"
+              class="absolute flex flex-col items-stretch gap-0.5 overflow-hidden rounded-md px-1.5 py-1 text-left text-[11px] leading-tight text-white"
+              [attr.data-kind]="'meeting'"
+              [style.top.%]="positioned.top * 100"
+              [style.height.%]="positioned.height * 100"
+              [style.left.%]="positioned.left * 100"
+              [style.width.%]="positioned.width * 100"
+              [style.background-color]="positioned.event.color || 'var(--color-accent)'"
+              (click)="$event.stopPropagation(); eventClick.emit(positioned.event.id)"
+            >
+              <span data-testid="calendar-meeting-block" class="contents">
+                <span class="flex items-center gap-1 opacity-90">
+                  @if (positioned.event.hasConflict) {
+                    <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+                  }
+                  <span data-testid="block-time" class="truncate">{{ positioned.times }}</span>
+                  <span data-testid="meeting-block-menu" class="ml-auto shrink-0" aria-hidden="true">⋯</span>
+                </span>
+                <span class="truncate font-semibold">{{ positioned.event.title }}</span>
+                @if (positioned.event.location) {
+                  <span class="truncate opacity-80">{{ positioned.event.location }}</span>
+                }
+                @if (positioned.attendeeIds.length > 0) {
+                  <span class="mt-0.5"><app-planner-avatar-stack [employeeIds]="positioned.attendeeIds" /></span>
+                }
+              </span>
+            </button>
+          } @else {
+            <button
+              type="button"
+              data-testid="calendar-hour-event-block"
+              class="absolute flex items-center gap-1 overflow-hidden rounded px-1 text-left text-[11px] text-white"
+              [style.top.%]="positioned.top * 100"
+              [style.height.%]="positioned.height * 100"
+              [style.left.%]="positioned.left * 100"
+              [style.width.%]="positioned.width * 100"
+              [style.background-color]="positioned.event.color || 'var(--color-accent)'"
+              (click)="$event.stopPropagation(); eventClick.emit(positioned.event.id)"
+            >
+              @if (positioned.event.hasConflict) {
+                <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+              }
+              <span class="truncate">{{ positioned.event.title }}</span>
+            </button>
+          }
         }
 
         @for (vm of column.blocks; track vm.block.id) {
@@ -135,7 +168,7 @@
             data-testid="planner-block"
             role="button"
             tabindex="0"
-            class="absolute z-[5] flex touch-none select-none flex-col overflow-hidden rounded border border-teal-700 bg-teal-50 px-1 text-left text-[11px] leading-tight text-teal-900"
+            class="absolute z-[5] flex touch-none select-none flex-col overflow-hidden rounded-r-md border border-l-0 border-teal-700/40 bg-teal-50 py-0.5 pl-2 pr-1 text-left text-[11px] leading-tight text-teal-900"
             [ngClass]="column.editable ? 'cursor-grab' : 'cursor-pointer'"
             [attr.title]="vm.tooltip"
             [style.top.%]="vm.top * 100"
@@ -146,15 +179,23 @@
             (click)="onBlockClick(vm, column.date)"
             (keydown.enter)="blockOpen.emit(vm.block)"
           >
+            <span data-testid="planner-block-accent" class="absolute inset-y-0 left-0 w-[3px] bg-teal-600" aria-hidden="true"></span>
             <span class="flex items-start gap-1">
-              <span class="truncate font-medium">{{ vm.block.taskTitle }}</span>
+              @if (vm.short) {
+                <span class="truncate font-semibold">{{ vm.block.taskTitle }}</span>
+              } @else {
+                <span data-testid="block-time" class="truncate opacity-80">{{ vm.times }} · {{ vm.duration }}</span>
+              }
               @if (column.editable) {
                 <button type="button" data-testid="planner-block-menu" aria-label="Block actions" class="ml-auto shrink-0 px-1"
                   (pointerdown)="stopPointer($event)" (click)="toggleMenu(vm.block.id, $event)">⋯</button>
               }
             </span>
             @if (!vm.short) {
-              <span class="truncate">{{ vm.times }} · {{ vm.duration }}</span>
+              <span class="truncate font-semibold">{{ vm.block.taskTitle }}</span>
+              @if (vm.block.projectName) {
+                <span data-testid="planner-block-project" class="truncate opacity-80">{{ vm.block.projectName }}</span>
+              }
             }
             @if (vm.clash) {
               @if (column.editable) {

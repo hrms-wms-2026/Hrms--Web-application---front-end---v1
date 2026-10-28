@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
+import { PlannerAvatarStackComponent } from '../planner-avatar-stack/planner-avatar-stack.component';
 import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { GridItem, PositionedEvent, layoutDayItems } from '../../utils/calendar-hour-grid.util';
@@ -62,7 +63,8 @@ interface DayColumnViewModel {
   readonly weekdayLabel: string; // e.g. "SUN"
   readonly dayNumber: number; // 1-31
   readonly allDayEvents: readonly CalendarEventResponse[];
-  readonly positioned: readonly PositionedEvent[];
+  /** Events with their local "HH:mm–HH:mm" and, for a meeting, who attends (organizer first). */
+  readonly positioned: readonly (PositionedEvent & { readonly times: string; readonly attendeeIds: readonly string[] })[];
   readonly blocks: readonly PlannerBlockViewModel[];
   readonly editable: boolean;
   readonly offHours: readonly Band[];
@@ -91,7 +93,7 @@ interface DragSelection {
 @Component({
   selector: 'app-calendar-hour-grid',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PlannerAvatarStackComponent],
   templateUrl: './calendar-hour-grid.component.html',
   // Today's column (header and grid) under the blocks, so the week shows where now is at a glance.
   styles: ['.today-tint { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); }'],
@@ -240,7 +242,9 @@ export class CalendarHourGridComponent {
         dayLabel: `${d} ${local.toLocaleDateString('en-US', { month: 'short' })}`,
         allDayEvents: dayEvents.filter((e) => e.isAllDay),
         positioned: laidOut.flatMap((p) => p.item.kind === 'event'
-          ? [{ event: p.item.event, top: p.top, height: p.height, left: p.left, width: p.width }] : []),
+          ? [{ event: p.item.event, top: p.top, height: p.height, left: p.left, width: p.width,
+            times: `${utcIsoToLocalParts(p.item.event.startDate, timezone).time.slice(0, 5)}–${utcIsoToLocalParts(p.item.event.endDate, timezone).time.slice(0, 5)}`,
+            attendeeIds: (p.item.event.participants ?? []).map((x) => x.employeeId) }] : []),
         blocks: laidOut.flatMap((p) => {
           if (p.item.kind !== 'block') return [];
           const block = p.item.block;
