@@ -56,7 +56,7 @@ All 2026-08-06 dates inferred from git history except the one plan file that alr
 - `2026-08-31/2026-08-31-calendar-invites-rsvp-conflicts-frontend.md` — Calendar Invites, RSVP, and Conflict Detection — Frontend Implementation Plan
 - `2026-08-31/2026-08-31-calendar-week-day-agenda-views.md` — Calendar Week/Day/Agenda Views Implementation Plan
 - `2026-09-01/2026-09-01-calendar-timezone-frontend.md` — Calendar Timezone Correctness and Unsaved-Changes Guard — Frontend Implementation Plan
-- `2026-09-02/2026-09-02-module-creation-assets-members-frontend.md` — Module Creation Screen — Assets, Members, Date Range Picker (Frontend) Implementation Plan (frontend done; backend asset endpoints missing - POST/DELETE /work/objectives/{id}/assets were never built; the frontend store already calls them, so module file upload returns 404)
+- `2026-09-02/2026-09-02-module-creation-assets-members-frontend.md` — Module Creation Screen — Assets, Members, Date Range Picker (Frontend) Implementation Plan (frontend done; backend asset endpoints built 2026-10-28)
 - `2026-09-08/2026-09-08-attendance-overview-redesign.md` — Attendance Overview Redesign Implementation Plan
 - `2026-09-18/2026-09-18-task-status-groups.md` — ClickUp-style Task Status Groups Implementation Plan
 - `2026-09-28/2026-09-28-employee-list-bulk-actions.md` — Employee List Redesign + Bulk Actions (Sub-project B) Implementation Plan

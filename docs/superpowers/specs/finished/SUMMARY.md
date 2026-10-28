@@ -35,7 +35,7 @@ One subfolder per completion date. Master status table: `../SUMMARY.md`.
 - `2026-08-31/2026-08-31-calendar-invites-rsvp-conflicts-design.md` — Calendar Invites, RSVP, and Conflict Detection Design
 - `2026-08-31/2026-08-31-calendar-r1-recurrence-and-frontend-design.md` — Calendar R1: Recurrence Engine + Frontend Design
 - `2026-09-01/2026-09-01-calendar-timezone-and-unsaved-guard-design.md` — Calendar Timezone Correctness and Unsaved-Changes Guard Design
-- `2026-09-02/2026-09-02-module-creation-assets-members-design.md` — Module / Sub-Module Creation Screen — Assets, Members, Date Range Picker (frontend done; backend asset endpoints missing (see backend plans/next))
+- `2026-09-02/2026-09-02-module-creation-assets-members-design.md` — Module / Sub-Module Creation Screen — Assets, Members, Date Range Picker (frontend done; backend asset endpoints built 2026-10-28))
 - `2026-09-18/2026-09-18-task-status-groups-design.md` — ClickUp-style Task Status Groups Design
 - `2026-09-28/2026-09-28-employee-list-bulk-actions-design.md` — Employee List Redesign + Bulk Actions (Sub-project B) — Design
 - `2026-09-28/2026-09-28-shared-bulk-action-primitives-design.md` — Shared Bulk-Action Primitives (Sub-project A) — Design
