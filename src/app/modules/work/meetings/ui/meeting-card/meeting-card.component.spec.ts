@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { of } from 'rxjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PeopleApiService } from '../../../../people/data-access/people-api.service';
 import { MeetingListItem, MeetingStatus } from '../../models/meeting.models';
 import { MeetingCardComponent } from './meeting-card.component';
 
@@ -75,5 +77,26 @@ describe('MeetingCardComponent', () => {
     const start = new Date('2026-11-02T03:30:00Z');
     const local = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
     expect(testId('meeting-card-date')?.textContent?.trim()).toBe(local);
+  });
+
+  it('a tree row shows the organiser in the assignee column, and "—" when the API sends none', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e9', name: 'Priya K', avatarFileId: null })) } }]
+    });
+    build(item({ organizerEmployeeId: 'e9' }), 'row');
+    expect(testId('meeting-card-organizer')?.querySelector('app-employee-avatar')).not.toBeNull();
+
+    build(item(), 'row');
+    expect(testId('meeting-card-organizer')?.querySelector('app-employee-avatar')).toBeNull();
+    expect(testId('meeting-card-organizer')?.textContent?.trim()).toBe('—');
+  });
+
+  it('a tree row has a view button that opens the meeting once', () => {
+    build(item(), 'row');
+    const opened: unknown[] = [];
+    fixture.componentInstance.open.subscribe((key) => opened.push(key));
+    testId('meeting-card-view')!.click();
+    expect(opened).toEqual([{ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' }]);
   });
 });
