@@ -36,8 +36,17 @@
       </div>
       @if (planner.active()) {
         @if (view() === 'week') {
-          <button type="button" data-testid="planner-show-weekend" class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
-            [attr.aria-pressed]="showWeekend()" (click)="toggleWeekend()">{{ showWeekend() ? 'Hide weekend' : 'Show weekend' }}</button>
+          <!-- A small switch, like "Full day" in the event form: on shows all seven days, off only the working days. -->
+          <button type="button" role="switch" data-testid="planner-show-weekend" aria-label="Show weekend"
+            [attr.aria-checked]="showWeekend()" (click)="toggleWeekend()"
+            class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]">
+            <span class="relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors"
+              [style.background-color]="showWeekend() ? 'var(--color-accent)' : 'var(--color-border)'">
+              <span class="inline-block h-3 w-3 rounded-full bg-white shadow-sm transition-transform"
+                [style.transform]="showWeekend() ? 'translateX(14px)' : 'translateX(2px)'"></span>
+            </span>
+            <span [class.text-[var(--color-text-primary)]]="showWeekend()">Weekend</span>
+          </button>
         }
         <button type="button" data-testid="planner-focus-toggle" class="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
           [attr.aria-pressed]="showPanel()" (click)="toggleFocus()">Task queue · {{ planner.focusCount() }}</button>

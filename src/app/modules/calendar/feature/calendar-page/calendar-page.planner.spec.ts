@@ -188,9 +188,12 @@ describe('CalendarPageComponent planner layer', () => {
     const grid = () => fixture.debugElement.query((de) => de.name === 'app-calendar-hour-grid').componentInstance;
 
     expect(grid().days().length).toBe(5);
+    expect(q('planner-show-weekend')!.getAttribute('role')).toBe('switch');
+    expect(q('planner-show-weekend')!.getAttribute('aria-checked')).toBe('false');
     q('planner-show-weekend')!.click();
     fixture.detectChanges();
     expect(grid().days().length).toBe(7);
+    expect(q('planner-show-weekend')!.getAttribute('aria-checked')).toBe('true');
     expect(week()).toBeTruthy();
   });
 
