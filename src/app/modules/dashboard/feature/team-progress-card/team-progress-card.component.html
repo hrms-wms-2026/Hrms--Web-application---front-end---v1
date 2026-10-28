@@ -306,6 +306,19 @@
       }
     </ng-template>
 
+    <ng-template #timeTpl>
+      @if (plan().timeBand || plan().timeCallout || plan().workloadRows > 0) {
+        <app-team-progress-time
+          data-testid="team-progress-time"
+          [time]="store.time()"
+          [error]="store.timeError()"
+          [band]="plan().timeBand"
+          [callout]="plan().timeCallout"
+          [workloadRows]="plan().workloadRows"
+        />
+      }
+    </ng-template>
+
     <ng-template #viewDetailsTpl>
       <button type="button" class="tp-view-details" data-testid="team-progress-view-details" (click)="openDetail($event)">
         View details <span aria-hidden="true">→</span>
@@ -439,6 +452,7 @@
             @if (visibleExtraTiles().length > 0) {
               <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: visibleExtraTiles().length }" />
             }
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <ng-container *ngTemplateOutlet="listPairTpl" />
             } @else if (plan().viewDetails) {
@@ -453,6 +467,7 @@
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
             <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: wideTiles(), columns: wideTiles().length }" />
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <ng-container *ngTemplateOutlet="listPairTpl" />
             }
@@ -470,6 +485,7 @@
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
             <ng-container *ngTemplateOutlet="weeklyTpl" />
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <div class="tp-panels tp-panels--grow">
                 <ng-container *ngTemplateOutlet="modulesTpl" />
@@ -493,6 +509,7 @@
                 }
               </div>
             }
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <ng-container *ngTemplateOutlet="listPairTpl" />
             }
@@ -514,6 +531,7 @@
                 }
               </div>
             }
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <!-- Overdue tasks only take a column when there are some. -->
               <div class="tp-panels tp-panels--grow" [style.grid-template-columns]="'repeat(' + maximumPanelCount() + ', minmax(0, 1fr))'">

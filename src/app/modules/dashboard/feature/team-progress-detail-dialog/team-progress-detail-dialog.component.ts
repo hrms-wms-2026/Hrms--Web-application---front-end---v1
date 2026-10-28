@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Observable, Subject, catchError, debounceTime, map, of, switchMap, tap } from 'rxjs';
+import { Observable, Subject, Subscription, catchError, debounceTime, map, of, switchMap, tap } from 'rxjs';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
@@ -34,8 +34,11 @@ import {
   LedPeriodProgress,
   LedProgressPeriod,
   LedTaskStatus,
+  LedTimeProgress,
   LedWeeklyCompletion
 } from '../../models/team-progress-detail.model';
+import { TeamProgressTimeDetailComponent } from '../../ui/team-progress-time-detail/team-progress-time-detail.component';
+import { timePeriodFor } from '../../utils/team-progress-time-format.util';
 import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
 import {
   PROGRESS_STATUSES,
@@ -121,7 +124,7 @@ const TASK_STATUS_META: Readonly<Record<LedTaskStatus, ProgressStatusMeta>> = {
 @Component({
   selector: 'app-team-progress-detail-dialog',
   standalone: true,
-  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent],
+  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent, TeamProgressTimeDetailComponent],
   templateUrl: './team-progress-detail-dialog.component.html',
   styleUrl: './team-progress-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -168,6 +171,15 @@ export class TeamProgressDetailDialogComponent {
 
   // ---- Weekly completion (server, last 10 weeks, never filtered by the period) ----
   protected readonly weekly = signal<RemoteState<LedWeeklyCompletion>>({ status: 'idle', data: null });
+
+  // ---- Planned vs worked (server, the period's week / month - All time reads the week - and the filters) ----
+  protected readonly time = signal<RemoteState<LedTimeProgress>>({ status: 'idle', data: null });
+  protected readonly timeStatus = computed<'loading' | 'ready' | 'error'>(() => {
+    const status = this.time().status;
+    return status === 'idle' ? 'loading' : status;
+  });
+  private timeKey: string | null = null;
+  private timeSub: Subscription | null = null;
 
   // ---- Filters (options from the summary) ----
 
@@ -322,6 +334,18 @@ export class TeamProgressDetailDialogComponent {
   private cacheFor: LedWorkProgressResponse | null = null;
 
   constructor() {
+    // The period select drives both the allocation-period and the time calls.
+    effect(() => {
+      if (!this.open() || !this.summary()) return;
+      const period = timePeriodFor(this.period());
+      const filters = this.serverFilters();
+      const key = JSON.stringify({ period, filters });
+      if (key === this.timeKey) return;
+      this.timeKey = key;
+      untracked(() => this.loadTime(period, filters));
+    });
+    inject(DestroyRef).onDestroy(() => this.timeSub?.unsubscribe());
+
     this.connect(
       this.overviewEmployeeRequests,
       (q) => this.api.getEmployees(q),
@@ -387,6 +411,23 @@ export class TeamProgressDetailDialogComponent {
 
   /** switchMap: a newer query cancels the one in flight. A failed query forgets its key so a
    * reopen or Retry fetches it again. */
+  retryTime(): void {
+    const period = timePeriodFor(this.period());
+    this.loadTime(period, this.serverFilters());
+  }
+
+  private loadTime(period: 'week' | 'month', filters: ScopeFilters): void {
+    this.timeSub?.unsubscribe();
+    this.time.set({ status: 'loading', data: null });
+    this.timeSub = this.api.getTimeProgress(period, filters).subscribe({
+      next: (data) => this.time.set({ status: 'ready', data }),
+      error: () => {
+        this.timeKey = null;
+        this.time.set({ status: 'error', data: null });
+      }
+    });
+  }
+
   private connect<Q, R>(
     requests: Subject<Q>,
     fetch: (q: Q) => Observable<R>,

@@ -3,6 +3,7 @@ import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@a
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ledTime, workloadRow } from '../../utils/team-progress-time.testing';
 import { environment } from '../../../../../environments/environment';
 import { pickSelectOption } from '../../../../shared/ui/select/select.testing';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
@@ -103,6 +104,10 @@ describe('TeamProgressDetailDialogComponent', () => {
   });
 
   afterEach(() => {
+    // The planned-vs-worked call is covered by its own tests below; the older tests answer it here.
+    http.match(isTime).forEach((r) => {
+      if (!r.cancelled) r.flush(ledTime());
+    });
     http.verify();
     vi.useRealTimers();
     TestBed.resetTestingModule();
@@ -120,6 +125,7 @@ describe('TeamProgressDetailDialogComponent', () => {
   const isEmployees = (r: { url: string }): boolean => r.url === `${BASE}/employees`;
   const isWeekly = (r: { url: string }): boolean => r.url === `${BASE}/weekly-completion`;
   const isPeriod = (r: { url: string }): boolean => r.url === `${BASE}/period`;
+  const isTime = (r: { url: string }): boolean => r.url === `${BASE}/time`;
   const expectEmployees = (): TestRequest => http.expectOne(isEmployees);
   const expectWeekly = (): TestRequest => http.expectOne(isWeekly);
   const expectPeriod = (): TestRequest => http.expectOne(isPeriod);
@@ -146,7 +152,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     fixture.componentRef.setInput('open', false);
     render();
     expect(el().querySelector('[role="dialog"]')).toBeNull();
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
   });
 
   it('is Overview only: no tabs, no project/module status panel, no task list', () => {
@@ -188,7 +194,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-ov-employee-range')?.textContent?.trim()).toBe('1–2 of 45');
     expect(q('tp-overdue-count')?.textContent).toContain('2 of 9');
     expect(q('tp-overdue-t1')?.textContent).toContain('10 Jan 2026');
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
   });
 
   it('hides the overdue section when nothing is overdue', () => {
@@ -333,7 +339,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     input.value = 'bo';
     input.dispatchEvent(new Event('input'));
     render();
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
     vi.advanceTimersByTime(300);
     render();
     req = expectEmployees();
@@ -345,7 +351,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-ov-employee-e2')?.querySelector('button')).toBeNull();
     q('tp-ov-employee-e2')!.click();
     render();
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
     expect(closedCount).toBe(0);
   });
 
@@ -367,7 +373,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     openWith();
     pickSelectOption(q('tp-period-filter')!, 'This week', () => render());
     expect(periodChanges).toEqual(['week']);
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
     expect(q('tp-tile-untasked')).not.toBeNull();
   });
 
@@ -463,7 +469,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     openWith(null);
     expect(el().textContent).toContain('No team progress yet');
     expect(q('team-progress-detail')).toBeNull();
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
   });
 
   it('filters the overview client-side by project and module', () => {
@@ -484,7 +490,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-overdue-t1')).not.toBeNull();
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
   });
 
   it('closes on Escape (from app-modal) and on the close button', () => {
@@ -500,5 +506,59 @@ describe('TeamProgressDetailDialogComponent', () => {
     q('tp-overdue-t2')!.click();
     expect(closedCount).toBe(1);
     expect(navigate).toHaveBeenCalledWith(['/work', 'p2', 'milestones', 'm2', 'board'], { queryParams: { highlightTaskId: 't2' } });
+  });
+
+  describe('planned vs worked sections', () => {
+    it('loads the week for All time and draws planned vs worked, unscheduled work and the workload ranking', () => {
+      openWith(summary(), 'all');
+      const req = http.expectOne(isTime);
+      expect(req.request.params.get('period')).toBe('week');
+      req.flush(ledTime({
+        plannedMinutes: 600, clockedMinutes: 540, scheduledMinutes: 360, outsideSlotMinutes: 60, noPlanMinutes: 120, coveragePercent: 80,
+        buckets: [{ from: '2026-10-26', to: '2026-10-26', plannedMinutes: 120, scheduledMinutes: 60, unscheduledMinutes: 30 }],
+        workload: [workloadRow({ displayName: 'Ada', plannedMinutes: 600, utilizationPercent: 125, expectedMinutes: 480 })],
+        unscheduled: [{ employeeId: 'e1', displayName: 'Ada', taskId: 't1', shortId: 'T-1', title: 'Fix bug', start: '2026-10-26T09:00:00Z', end: '2026-10-26T10:30:00Z', minutes: 90, kind: 'no_plan' }],
+        unscheduledTotal: 1
+      }));
+      render();
+
+      expect(q('tptd-coverage')!.textContent).toContain('80%');
+      expect(q('tptd-unscheduled')!.textContent).toContain('Worked without a matching Planner slot.');
+      expect(el().querySelectorAll('[data-testid="tptd-unscheduled-row"]').length).toBe(1);
+      expect(q('tptd-util')!.textContent!.trim()).toBe('125%');
+    });
+
+    it('the period select drives the time call too', () => {
+      openWith(summary(), 'week');
+      http.match(isPeriod).forEach((r) => r.flush({}));
+      http.expectOne(isTime).flush(ledTime());
+      fixture.componentRef.setInput('period', 'month');
+      render();
+      http.match(isEmployees).forEach((r) => r.flush(employeePage()));
+      http.match(isPeriod).forEach((r) => r.flush({}));
+
+      expect(http.expectOne(isTime).request.params.get('period')).toBe('month');
+    });
+
+    it('coverage is "—" without a plan, and Planner off hides the plan sections', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush(ledTime({ plannerEnabled: false, clockedMinutes: 120 }));
+      render();
+
+      expect(q('tptd-planner-off')!.textContent).toContain('2h clocked');
+      expect(q('tptd-unscheduled')).toBeNull();
+      expect(q('tptd-coverage')).toBeNull();
+    });
+
+    it('shows a retry on failure', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush('boom', { status: 500, statusText: 'Server Error' });
+      render();
+
+      expect(q('tptd-error')).not.toBeNull();
+      (q('tptd-error')!.querySelector('button') as HTMLButtonElement).click();
+      render();
+      expect(http.expectOne(isTime).request.params.get('period')).toBe('week');
+    });
   });
 });

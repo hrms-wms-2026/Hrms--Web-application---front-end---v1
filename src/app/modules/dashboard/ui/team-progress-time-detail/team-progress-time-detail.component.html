@@ -1,0 +1,182 @@
+<section class="tptd-panel" aria-labelledby="tptd-heading" data-testid="tptd-planned">
+  <div class="tptd-head">
+    <h3 id="tptd-heading" class="tptd-title">Planned vs worked</h3>
+    <span class="tptd-tag">{{ periodLabel() }}</span>
+  </div>
+  <p class="tptd-muted">
+    Planner blocks and clocked task time on the work you lead, in minutes. Not estimate hours.
+  </p>
+  @if (status() === 'error') {
+    <p class="tptd-error" role="alert" data-testid="tptd-error">
+      Couldn't load planned vs worked time.
+      <button type="button" class="tptd-link" (click)="retried.emit()">Retry</button>
+    </p>
+  } @else if (time(); as t) {
+    @if (!t.plannerEnabled) {
+      <p class="tptd-note" data-testid="tptd-planner-off">
+        Planner is off · {{ minutes(t.clockedMinutes) }} clocked on these tasks. Plans, coverage and
+        unscheduled work need the Planner.
+      </p>
+    } @else {
+      <p class="tptd-figures">
+        <span
+          >Planned <b>{{ minutes(t.plannedMinutes) }}</b></span
+        >
+        <span
+          >Worked <b>{{ minutes(t.clockedMinutes) }}</b></span
+        >
+        <span
+          >In plan <b>{{ minutes(t.scheduledMinutes) }}</b></span
+        >
+        <span class="tptd-cover" [attr.title]="tooltip()" data-testid="tptd-coverage"
+          >Coverage <b>{{ percentText(t.coveragePercent) }}</b></span
+        >
+        @if (comparison(); as c) {
+          <span class="tptd-muted">{{ c }}</span>
+        }
+      </p>
+      <div
+        class="tptd-chart"
+        role="img"
+        aria-label="Planned, in-plan and unscheduled minutes per period"
+        data-testid="tptd-chart"
+      >
+        @for (b of buckets(); track b.key) {
+          <div class="tptd-col" [attr.title]="b.tooltip">
+            <div class="tptd-bars">
+              <span class="tptd-bar tptd-bar--planned" [style.height.%]="b.planned"></span>
+              <span class="tptd-bar tptd-bar--worked">
+                <span class="tptd-bar--unscheduled" [style.height.%]="b.unscheduled"></span>
+                <span class="tptd-bar--scheduled" [style.height.%]="b.scheduled"></span>
+              </span>
+            </div>
+            <span class="tptd-label">{{ b.label }}</span>
+          </div>
+        }
+      </div>
+      <p class="tptd-legend">
+        <span><i class="tptd-dot tptd-bar--planned"></i>Planned</span>
+        <span><i class="tptd-dot tptd-bar--scheduled"></i>Worked in plan</span>
+        <span><i class="tptd-dot tptd-bar--unscheduled"></i>Unscheduled</span>
+      </p>
+    }
+  } @else {
+    <div class="tptd-skeleton" aria-busy="true"></div>
+  }
+</section>
+
+@if (time(); as t) {
+  @if (t.plannerEnabled) {
+    <section class="tptd-panel" aria-labelledby="tptd-un-heading" data-testid="tptd-unscheduled">
+      <div class="tptd-head">
+        <h3 id="tptd-un-heading" class="tptd-title">Unscheduled work</h3>
+        <button
+          type="button"
+          class="tptd-button"
+          data-testid="tptd-unscheduled-export"
+          (click)="exportUnscheduled()"
+        >
+          Export CSV
+        </button>
+      </div>
+      <p class="tptd-muted">
+        Worked without a matching Planner slot.
+        @if (t.unscheduledTotal > t.unscheduled.length) {
+          Showing the newest {{ t.unscheduled.length }} of {{ t.unscheduledTotal }}.
+        }
+      </p>
+      <div class="tptd-scroll">
+        <table class="tptd-table">
+          <thead>
+            <tr>
+              <th scope="col">Person</th>
+              <th scope="col">Task</th>
+              <th scope="col">When</th>
+              <th scope="col" class="tptd-num">Minutes</th>
+              <th scope="col">Kind</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of t.unscheduled; track u.employeeId + u.start + u.taskId) {
+              <tr data-testid="tptd-unscheduled-row">
+                <td>{{ u.displayName }}</td>
+                <td>
+                  <span class="tptd-muted">{{ u.shortId }}</span> {{ u.title }}
+                </td>
+                <td>{{ range(u.start, u.end) }}</td>
+                <td class="tptd-num">{{ minutes(u.minutes) }}</td>
+                <td>
+                  <span class="tptd-kind">{{
+                    u.kind === 'no_plan' ? 'No plan' : 'Outside slot'
+                  }}</span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="tptd-muted">Nothing was worked off-plan.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <section class="tptd-panel" aria-labelledby="tptd-wl-heading" data-testid="tptd-workload">
+    <div class="tptd-head">
+      <h3 id="tptd-wl-heading" class="tptd-title">Workload ranking</h3>
+      <button
+        type="button"
+        class="tptd-button"
+        data-testid="tptd-workload-export"
+        (click)="exportWorkload()"
+      >
+        Export CSV
+      </button>
+    </div>
+    <p class="tptd-muted">
+      By planned commitment, then time worked. More workload is not better performance.
+    </p>
+    <div class="tptd-scroll">
+      <table class="tptd-table">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Person</th>
+            <th scope="col" class="tptd-num">Planned</th>
+            <th scope="col" class="tptd-num">Worked</th>
+            <th scope="col" class="tptd-num">Unscheduled</th>
+            <th scope="col" class="tptd-num">Capacity used</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (w of t.workload; track w.employeeId) {
+            <tr data-testid="tptd-workload-row">
+              <td>{{ w.rank }}</td>
+              <td>{{ w.displayName }}</td>
+              <td class="tptd-num">{{ t.plannerEnabled ? hours(w.plannedMinutes) : '—' }}</td>
+              <td class="tptd-num">{{ hours(w.clockedMinutes) }}</td>
+              <td class="tptd-num">{{ t.plannerEnabled ? hours(w.unscheduledMinutes) : '—' }}</td>
+              <td
+                class="tptd-num"
+                [class.tptd-over]="w.utilizationPercent !== null && w.utilizationPercent > 100"
+                [attr.title]="
+                  w.expectedMinutes === null
+                    ? 'No working hours set for their legal entity'
+                    : 'Planned of ' + minutes(w.expectedMinutes) + ' expected'
+                "
+                data-testid="tptd-util"
+              >
+                {{ percentText(w.utilizationPercent) }}
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="tptd-muted">No one has work in scope.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}

@@ -181,6 +181,8 @@
             }
           </section>
 
+          <app-team-progress-time-detail [time]="time().data" [status]="timeStatus()" (retried)="retryTime()" />
+
           <section class="tp-panel tp-panel--employees" aria-labelledby="tp-ov-emp-heading" data-testid="tp-ov-employees">
             <div class="tp-panel__head">
               <h3 id="tp-ov-emp-heading" class="tp-panel__title">Employee Breakdown</h3>

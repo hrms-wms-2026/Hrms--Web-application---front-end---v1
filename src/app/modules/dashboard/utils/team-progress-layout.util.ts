@@ -126,7 +126,23 @@ export interface TeamProgressPlan {
   listRows: number;
   /** Extra list rows to use when the weekly completion panel is not shown (failed / unavailable). */
   weeklyFallbackRows: number;
+  /** The planned-vs-worked band (tall / large / maximum). */
+  timeBand: boolean;
+  /** The amber unscheduled-work callout (wide). */
+  timeCallout: boolean;
+  /** Workload ranking rows: 3 in medium, 5 in tall / large / maximum; 0 hides the panel. */
+  workloadRows: number;
 }
+
+/** Fixed heights of the planned-vs-worked sections (they match team-progress-time's CSS). */
+export const TEAM_PROGRESS_TIME_PX = {
+  band: 84,
+  callout: 36,
+  workloadRow: 40
+} as const;
+
+/** The list panels keep at least this many rows when a time section wants their space. */
+const MIN_LIST_ROWS_KEPT = 2;
 
 /** Fixed height of each view's always-shown content (body pixels, before optional sections). */
 function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
@@ -169,7 +185,10 @@ function rowsFor(space: number): number {
 
 /** The sections and list rows a view shows at a host size. */
 export function planTeamProgressLayout(mode: TeamProgressMode, width: number, height: number): TeamProgressPlan {
-  const plan: TeamProgressPlan = { miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0 };
+  const plan: TeamProgressPlan = {
+    miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
+    timeBand: false, timeCallout: false, workloadRows: 0
+  };
   if (!(width > 0) || !(height > 0)) return plan;
   const bodyWidth = width - TEAM_PROGRESS_CARD_CHROME.width;
   let rest = height - TEAM_PROGRESS_CARD_CHROME.height - baseHeight(mode, bodyWidth);
@@ -203,19 +222,51 @@ export function planTeamProgressLayout(mode: TeamProgressMode, width: number, he
         plan.tileRows = 1;
         rest -= TILE_ROW_PX;
       }
+      rest = reserveWorkload(plan, rest, 3);
       plan.listRows = rowsFor(rest - GAP_PX);
       plan.viewDetails = plan.listRows === 0 && plan.tileRows > 0 && rest >= VIEW_DETAILS_PX;
       return plan;
     case 'wide':
     case 'large':
     case 'maximum':
+      if (mode === 'wide') {
+        if (canReserve(rest, TEAM_PROGRESS_TIME_PX.callout)) {
+          plan.timeCallout = true;
+          rest -= GAP_PX + TEAM_PROGRESS_TIME_PX.callout;
+        }
+      } else {
+        rest = reserveBandAndWorkload(plan, rest);
+      }
       plan.listRows = rowsFor(rest - GAP_PX);
       plan.weeklyFallbackRows = mode === 'wide' ? 0 : rowsFor(rest + TEAM_PROGRESS_WEEKLY_PANEL_PX) - plan.listRows;
       return plan;
     case 'tall':
       plan.viewDetails = true;
+      rest = reserveBandAndWorkload(plan, rest);
       plan.listRows = rowsFor(rest - GAP_PX);
       plan.weeklyFallbackRows = rowsFor(rest + TEAM_PROGRESS_WEEKLY_PANEL_PX) - plan.listRows;
       return plan;
   }
+}
+
+/** A time section of `px` may take the space when it fits and the list panels keep MIN_LIST_ROWS_KEPT rows (or as many
+ * as they had, when that was fewer). */
+function canReserve(rest: number, px: number): boolean {
+  if (rest < GAP_PX + px) return false;
+  return rowsFor(rest - GAP_PX - px - GAP_PX) >= Math.min(MIN_LIST_ROWS_KEPT, rowsFor(rest - GAP_PX));
+}
+
+function reserveWorkload(plan: TeamProgressPlan, rest: number, rows: number): number {
+  const px = PANEL_CHROME_PX + rows * TEAM_PROGRESS_TIME_PX.workloadRow;
+  if (!canReserve(rest, px)) return rest;
+  plan.workloadRows = rows;
+  return rest - GAP_PX - px;
+}
+
+function reserveBandAndWorkload(plan: TeamProgressPlan, rest: number): number {
+  if (canReserve(rest, TEAM_PROGRESS_TIME_PX.band)) {
+    plan.timeBand = true;
+    rest -= GAP_PX + TEAM_PROGRESS_TIME_PX.band;
+  }
+  return reserveWorkload(plan, rest, 5);
 }

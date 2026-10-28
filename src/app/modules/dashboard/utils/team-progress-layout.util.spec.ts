@@ -185,7 +185,8 @@ describe('team-progress-layout.util', () => {
 
     it('shows nothing optional for a zero size', () => {
       expect(planTeamProgressLayout('tall', 0, 0)).toEqual({
-        miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0
+        miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
+        timeBand: false, timeCallout: false, workloadRows: 0
       });
     });
 
@@ -231,7 +232,9 @@ describe('team-progress-layout.util', () => {
       expect(plan(4, 8).listRows).toBeGreaterThan(plan(4, 6).listRows);
       expect(plan(8, 6).listRows).toBeGreaterThanOrEqual(1);
       expect(plan(8, 8).listRows).toBeGreaterThan(plan(8, 6).listRows);
-      expect(plan(12, 8).listRows).toBeGreaterThanOrEqual(8);
+      // The planned-vs-worked band takes about two rows of a 12x8 card (My Team widgets 2026-10-29).
+      expect(plan(12, 8)).toMatchObject({ timeBand: true });
+      expect(plan(12, 8).listRows).toBeGreaterThanOrEqual(6);
       for (const [c, r] of [[4, 6], [8, 6], [12, 8]]) {
         expect(plan(c, r).weeklyFallbackRows).toBeGreaterThanOrEqual(3);
       }
