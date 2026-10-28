@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterRenderEffect, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { BootstrapWidget, GridRect } from '../../models/dashboard-layout.model';
-import { GridItem, moveTo, pixelToCell, resizeTo } from '../../grid/grid-math';
+import { GridItem, pixelToCell, readingOrder, reorderTo, resizePacked } from '../../grid/grid-math';
 import { WidgetFrameComponent } from '../widget-frame/widget-frame.component';
 
-export interface GridMoveEvent {
+export interface GridReorderEvent {
   id: string;
-  x: number;
-  y: number;
+  /** The widget's new position in reading order (top to bottom, left to right) among the grid's widgets. */
+  index: number;
 }
 
 export interface GridResizeEvent {
@@ -37,7 +37,13 @@ interface ActiveDrag {
   origin: GridRect;
   size: BootstrapWidget['size'];
   cellPx: number;
+  /** Resize: the snapped size. Move: unused (the widget's slot comes from `index`). */
   target: GridRect;
+  /** Move: where the widget sits in reading order now, and where it started. */
+  index: number;
+  fromIndex: number;
+  /** Move: the widget the pointer last reordered against; it must leave and re-enter before it counts again. */
+  overId: string | null;
   /** Pointer travel since the gesture started, in px: a dragged widget follows the pointer. */
   dxPx: number;
   dyPx: number;
@@ -48,17 +54,41 @@ interface GridCell {
   rect: GridRect;
 }
 
-/** How long the other widgets take to slide into their new places. */
-const REFLOW_MS = 180;
+/** How long a widget takes to settle into its new place. */
+const SETTLE_MS = 420;
 
 /**
- * Renders widgets on a CSS grid. In edit mode a widget can be dragged (its frame's [data-drag-handle]),
- * resized (its [data-resize-handle]) or moved/resized/removed from the keyboard. The grid never
- * mutates the layout: it emits moved/resized/removed and the owner (layout store) recomputes the layout.
- * While a pointer gesture runs, the grid previews that same recomputation (grid-math moveTo / resizeTo):
- * the other widgets step out of the way, a resized widget changes size live and a dragged one follows
- * the pointer, so nothing overlaps and the drop lands exactly where the preview showed. Widgets that
- * change place slide there (FLIP), unless the viewer prefers reduced motion.
+ * A spring (stiffness 220, damping 22, mass 1) sampled into a CSS linear() easing: a quick start and a soft
+ * landing with a hint of overshoot, the way icons settle on a phone's home screen.
+ */
+const SPRING_EASING = (() => {
+  const k = 220;
+  const c = 22;
+  const steps = 48;
+  const dt = SETTLE_MS / 1000 / steps;
+  let x = 0;
+  let v = 0;
+  const points: string[] = ['0'];
+  for (let i = 1; i <= steps; i++) {
+    for (let j = 0; j < 8; j++) {
+      const a = k * (1 - x) - c * v;
+      v += a * (dt / 8);
+      x += v * (dt / 8);
+    }
+    points.push((i === steps ? 1 : x).toFixed(4));
+  }
+  return `linear(${points.join(', ')})`;
+})();
+
+const FALLBACK_EASING = 'cubic-bezier(0.2, 0.9, 0.3, 1.1)';
+
+/**
+ * Renders widgets on a CSS grid. In edit mode it works like a phone's home screen: drag a widget by its frame's
+ * [data-drag-handle] over another and the others move out of its way (they shift along in reading order, never
+ * hidden underneath); resize from [data-resize-handle] and the widgets after it re-pack; or use the keyboard. The
+ * grid never mutates the layout: it emits reordered/resized/removed and the owner (layout store) re-packs with the
+ * same grid-math (reorderTo / resizePacked) the grid previews with, so the drop lands exactly where the preview
+ * showed. Every widget that changes place springs there (FLIP), unless the viewer prefers reduced motion.
  */
 @Component({
   selector: 'app-dashboard-grid',
@@ -67,20 +97,33 @@ const REFLOW_MS = 180;
   template: `
     <div
       #grid
-      class="grid w-full min-w-0"
+      class="relative grid w-full min-w-0"
       data-testid="dashboard-grid"
       [style.grid-template-columns]="'repeat(' + columns() + ', minmax(0, 1fr))'"
       [style.grid-auto-rows.px]="rowHeight()"
       [style.gap.px]="gap()"
     >
+      <!-- First in the DOM so widgets sliding across the landing slot are drawn over it. -->
+      @if (ghost(); as g) {
+        <div
+          class="pointer-events-none rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/60"
+          data-testid="grid-ghost"
+          aria-hidden="true"
+          [style.grid-column]="gridColumn(g)"
+          [style.grid-row]="gridRow(g)"
+        ></div>
+      }
       @for (c of cells(); track c.w.instanceId) {
         @let w = c.w;
+        @let dragged = drag()?.id === w.instanceId;
         <div
           class="relative min-w-0 scroll-mt-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-          [class.z-30]="drag()?.id === w.instanceId"
-          [class.shadow-2xl]="drag()?.id === w.instanceId"
+          [class.z-30]="dragged"
           [class.rounded-2xl]="editing()"
+          [class.shadow-2xl]="dragged && drag()?.kind === 'move'"
+          [class.cursor-grabbing]="dragged && drag()?.kind === 'move'"
           [style.transform]="dragTransform(c)"
+          [style.transition]="dragged && drag()?.kind === 'move' ? 'box-shadow 150ms ease' : null"
           [attr.id]="anchorId(w)"
           [attr.data-instance-id]="w.instanceId"
           [attr.tabindex]="editing() ? 0 : null"
@@ -96,19 +139,10 @@ const REFLOW_MS = 180;
           <app-widget-frame [widget]="w" [editing]="editing()" (remove)="removed.emit(w.instanceId)" />
         </div>
       }
-      @if (ghost(); as g) {
-        <div
-          class="pointer-events-none z-0 rounded-2xl border-2 border-dashed border-blue-400 bg-blue-100/40"
-          data-testid="grid-ghost"
-          aria-hidden="true"
-          [style.grid-column]="gridColumn(g)"
-          [style.grid-row]="gridRow(g)"
-        ></div>
-      }
     </div>
     @if (editing()) {
       <p class="sr-only" [id]="helpId">
-        Use the arrow keys to move this widget, Shift plus the arrow keys to resize it, and Delete to remove it.
+        Use the arrow keys to move this widget earlier or later, Shift plus the arrow keys to resize it, and Delete to remove it.
       </p>
       <div class="sr-only" aria-live="polite" aria-atomic="true" data-testid="grid-live">{{ announcement() }}</div>
     }
@@ -123,7 +157,7 @@ export class DashboardGridComponent {
   readonly gap = input.required<number>();
   readonly editing = input(false);
 
-  readonly moved = output<GridMoveEvent>();
+  readonly reordered = output<GridReorderEvent>();
   readonly resized = output<GridResizeEvent>();
   readonly removed = output<string>();
   /** Emitted when a keyboard removal leaves no other widget to focus; the owner moves focus elsewhere. */
@@ -151,8 +185,12 @@ export class DashboardGridComponent {
     return this.cells().find(c => c.w.instanceId === d.id)?.rect ?? null;
   });
 
-  /** Each cell's last drawn position relative to the grid, for the FLIP slide. */
+  /** Each cell's last settled position relative to the grid, for the FLIP slide. */
   private lastPositions = new Map<string, { left: number; top: number }>();
+  private readonly easing =
+    typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('animation-timing-function', 'linear(0, 1)')
+      ? SPRING_EASING
+      : FALLBACK_EASING;
 
   private cleanup: (() => void) | null = null;
 
@@ -162,11 +200,10 @@ export class DashboardGridComponent {
     afterRenderEffect(() => {
       this.cells();
       const animate = this.editing();
-      untracked(() => this.slideMovedCells(animate));
+      untracked(() => this.settleMovedCells(animate));
     });
 
-    // After a keyboard move/resize the owner recomputes the layout (compaction may differ from the request);
-    // announce where the widget actually settled.
+    // After a keyboard move/resize the owner re-packs the layout; announce where the widget actually settled.
     effect(() => {
       const widgets = this.widgets();
       untracked(() => {
@@ -193,7 +230,7 @@ export class DashboardGridComponent {
     return `${r.y + 1} / span ${r.h}`;
   }
 
-  /** A dragged widget is drawn at its previewed slot, then shifted to sit under the pointer. */
+  /** A dragged widget is laid out at its previewed slot, then shifted (and lifted) to sit under the pointer. */
   protected dragTransform(c: GridCell): string | null {
     const d = this.drag();
     if (!d || d.kind !== 'move' || d.id !== c.w.instanceId) return null;
@@ -201,48 +238,7 @@ export class DashboardGridComponent {
     const pitchY = this.rowHeight() + this.gap();
     const x = (d.origin.x - c.rect.x) * pitchX + d.dxPx;
     const y = (d.origin.y - c.rect.y) * pitchY + d.dyPx;
-    return `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
-  }
-
-  private preview(widgets: BootstrapWidget[], d: ActiveDrag): Map<string, GridRect> | null {
-    const o = d.origin;
-    const t = d.target;
-    const items: GridItem[] = widgets.map(w => ({ id: w.instanceId, rect: w.layout }));
-    let next: GridItem[];
-    if (d.kind === 'move') {
-      if (t.x === o.x && t.y === o.y) return null;
-      next = moveTo(items, d.id, t.x, t.y, this.columns());
-    } else {
-      if (t.w === o.w && t.h === o.h) return null;
-      next = resizeTo(items, d.id, t.w, t.h, d.size, this.columns());
-    }
-    return new Map(next.map(i => [i.id, i.rect]));
-  }
-
-  /** FLIP: every cell (other than one under the pointer) that changed place slides from where it was drawn. */
-  private slideMovedCells(animate: boolean): void {
-    const grid = this.gridEl().nativeElement;
-    const origin = grid.getBoundingClientRect();
-    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const dragging = this.drag();
-    const next = new Map<string, { left: number; top: number }>();
-    for (const el of Array.from(grid.querySelectorAll<HTMLElement>('[data-instance-id]'))) {
-      const id = el.dataset['instanceId'] ?? '';
-      const r = el.getBoundingClientRect();
-      const pos = { left: r.left - origin.left, top: r.top - origin.top };
-      next.set(id, pos);
-      const prev = this.lastPositions.get(id);
-      if (!animate || reduced || !prev || typeof el.animate !== 'function') continue;
-      if (dragging?.kind === 'move' && dragging.id === id) continue;
-      const dx = prev.left - pos.left;
-      const dy = prev.top - pos.top;
-      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
-      el.animate(
-        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
-        { duration: REFLOW_MS, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }
-      );
-    }
-    this.lastPositions = next;
+    return `translate(${Math.round(x)}px, ${Math.round(y)}px) scale(1.02)`;
   }
 
   protected anchorId(w: BootstrapWidget): string | null {
@@ -252,6 +248,61 @@ export class DashboardGridComponent {
   protected ariaLabel(w: BootstrapWidget): string {
     const l = w.layout;
     return `${w.title}, column ${l.x + 1}, row ${l.y + 1}, width ${l.w}, height ${l.h}`;
+  }
+
+  private items(widgets: BootstrapWidget[]): GridItem[] {
+    return widgets.map(w => ({ id: w.instanceId, rect: w.layout }));
+  }
+
+  private orderOf(widgets: BootstrapWidget[]): string[] {
+    return readingOrder(this.items(widgets)).map(i => i.id);
+  }
+
+  private preview(widgets: BootstrapWidget[], d: ActiveDrag): Map<string, GridRect> | null {
+    const items = this.items(widgets);
+    let next: GridItem[];
+    if (d.kind === 'move') {
+      if (d.index === d.fromIndex) return null;
+      next = reorderTo(items, d.id, d.index, this.columns());
+    } else {
+      if (d.target.w === d.origin.w && d.target.h === d.origin.h) return null;
+      next = resizePacked(items, d.id, d.target.w, d.target.h, d.size, this.columns());
+    }
+    return new Map(next.map(i => [i.id, i.rect]));
+  }
+
+  /**
+   * FLIP: every cell (other than the one under the pointer) that changed place springs from where it was drawn.
+   * A cell still mid-flight starts from where it is on screen, so quick successive moves stay continuous.
+   */
+  private settleMovedCells(animate: boolean): void {
+    const grid = this.gridEl().nativeElement;
+    const origin = grid.getBoundingClientRect();
+    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const dragging = this.drag();
+    const next = new Map<string, { left: number; top: number }>();
+    for (const el of Array.from(grid.querySelectorAll<HTMLElement>('[data-instance-id]'))) {
+      const id = el.dataset['instanceId'] ?? '';
+      const onScreen = el.getBoundingClientRect();
+      const running = typeof el.getAnimations === 'function' ? el.getAnimations() : [];
+      running.forEach(a => a.cancel());
+      const settled = running.length ? el.getBoundingClientRect() : onScreen;
+      const pos = { left: settled.left - origin.left, top: settled.top - origin.top };
+      next.set(id, pos);
+
+      const prev = this.lastPositions.get(id);
+      if (!animate || reduced || !prev || typeof el.animate !== 'function') continue;
+      if (dragging?.kind === 'move' && dragging.id === id) continue;
+      // Where the cell was drawn a moment ago: its last settled place plus any flight still in progress.
+      const fromX = prev.left + (onScreen.left - settled.left) - pos.left;
+      const fromY = prev.top + (onScreen.top - settled.top) - pos.top;
+      if (Math.abs(fromX) < 1 && Math.abs(fromY) < 1) continue;
+      el.animate([{ transform: `translate(${fromX}px, ${fromY}px)` }, { transform: 'translate(0, 0)' }], {
+        duration: SETTLE_MS,
+        easing: this.easing
+      });
+    }
+    this.lastPositions = next;
   }
 
   // ---- pointer ----
@@ -277,6 +328,7 @@ export class DashboardGridComponent {
     } catch {
       // Capture is best-effort; document-level listeners below carry the gesture anyway.
     }
+    const index = this.orderOf(this.widgets()).indexOf(w.instanceId);
     this.drag.set({
       id: w.instanceId,
       kind,
@@ -286,6 +338,9 @@ export class DashboardGridComponent {
       size: w.size,
       cellPx,
       target: { ...w.layout },
+      index,
+      fromIndex: index,
+      overId: null,
       dxPx: 0,
       dyPx: 0
     });
@@ -324,17 +379,43 @@ export class DashboardGridComponent {
   private onPointerMove(e: MouseEvent): void {
     const d = this.drag();
     if (!d) return;
-    const dx = pixelToCell(e.clientX - d.startX, d.cellPx, this.gap());
-    const dy = pixelToCell(e.clientY - d.startY, this.rowHeight(), this.gap());
-    const target = d.kind === 'move' ? this.clampMove(d.origin, dx, dy) : this.clampResize(d.origin, d.size, dx, dy);
-    const t = d.target;
     const dxPx = e.clientX - d.startX;
     const dyPx = e.clientY - d.startY;
-    const snapped = t.x !== target.x || t.y !== target.y || t.w !== target.w || t.h !== target.h;
-    // A dragged widget follows every pointer move; a resize only redraws when the size snaps to a new cell.
-    if (snapped || (d.kind === 'move' && (dxPx !== d.dxPx || dyPx !== d.dyPx))) {
-      this.drag.set({ ...d, target: snapped ? target : t, dxPx, dyPx });
+    if (d.kind === 'resize') {
+      const dx = pixelToCell(dxPx, d.cellPx, this.gap());
+      const dy = pixelToCell(dyPx, this.rowHeight(), this.gap());
+      const target = this.clampResize(d.origin, d.size, dx, dy);
+      // A resize redraws only when the size snaps to a new cell.
+      if (target.w !== d.target.w || target.h !== d.target.h) this.drag.set({ ...d, target, dxPx, dyPx });
+      return;
     }
+    const { index, overId } = this.reorderUnderPointer(d, e.clientX, e.clientY);
+    if (index !== d.index || overId !== d.overId || dxPx !== d.dxPx || dyPx !== d.dyPx) {
+      this.drag.set({ ...d, index, overId, dxPx, dyPx });
+    }
+  }
+
+  /**
+   * The dragged widget takes the place of the widget under the pointer (the others shift along, like icons on a
+   * phone). It only reacts when the pointer enters a widget, so a widget sliding under a still pointer can't make
+   * the order flip back and forth. Past the last widget, it goes to the end.
+   */
+  private reorderUnderPointer(d: ActiveDrag, clientX: number, clientY: number): { index: number; overId: string | null } {
+    const box = this.gridEl().nativeElement.getBoundingClientRect();
+    const col = Math.floor((clientX - box.left) / (d.cellPx + this.gap()));
+    const row = Math.floor((clientY - box.top) / (this.rowHeight() + this.gap()));
+    const cells = this.cells();
+    const over = cells.find(
+      c => c.w.instanceId !== d.id && col >= c.rect.x && col < c.rect.x + c.rect.w && row >= c.rect.y && row < c.rect.y + c.rect.h
+    );
+    if (over) {
+      if (over.w.instanceId === d.overId) return { index: d.index, overId: d.overId };
+      const order = readingOrder(cells.map(c => ({ id: c.w.instanceId, rect: c.rect }))).map(i => i.id);
+      return { index: order.indexOf(over.w.instanceId), overId: over.w.instanceId };
+    }
+    const bottom = Math.max(0, ...cells.filter(c => c.w.instanceId !== d.id).map(c => c.rect.y + c.rect.h));
+    if (row >= bottom) return { index: cells.length - 1, overId: null };
+    return { index: d.index, overId: null };
   }
 
   private onPointerUp(e: MouseEvent): void {
@@ -342,12 +423,10 @@ export class DashboardGridComponent {
     const d = this.drag();
     this.endDrag();
     if (!d) return;
-    const o = d.origin;
-    const t = d.target;
     if (d.kind === 'move') {
-      if (t.x !== o.x || t.y !== o.y) this.moved.emit({ id: d.id, x: t.x, y: t.y });
-    } else if (t.w !== o.w || t.h !== o.h) {
-      this.resized.emit({ id: d.id, w: t.w, h: t.h });
+      if (d.index !== d.fromIndex) this.reordered.emit({ id: d.id, index: d.index });
+    } else if (d.target.w !== d.origin.w || d.target.h !== d.origin.h) {
+      this.resized.emit({ id: d.id, w: d.target.w, h: d.target.h });
     }
   }
 
@@ -388,19 +467,22 @@ export class DashboardGridComponent {
       case 'ArrowUp':
       case 'ArrowDown': {
         event.preventDefault();
-        const dx = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
-        const dy = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
         if (event.shiftKey) {
+          const dx = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+          const dy = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
           const t = this.clampResize(l, w.size, dx, dy);
           if (t.w !== l.w || t.h !== l.h) {
             this.pendingAnnouncement = { id: w.instanceId, kind: 'resize' };
             this.resized.emit({ id: w.instanceId, w: t.w, h: t.h });
           }
         } else {
-          const t = this.clampMove(l, dx, dy);
-          if (t.x !== l.x || t.y !== l.y) {
+          const order = this.orderOf(this.widgets());
+          const from = order.indexOf(w.instanceId);
+          const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+          const to = Math.min(order.length - 1, Math.max(0, from + step));
+          if (to !== from) {
             this.pendingAnnouncement = { id: w.instanceId, kind: 'move' };
-            this.moved.emit({ id: w.instanceId, x: t.x, y: t.y });
+            this.reordered.emit({ id: w.instanceId, index: to });
           }
         }
         return;
@@ -415,15 +497,11 @@ export class DashboardGridComponent {
 
   // ---- clamping ----
 
-  private clampMove(origin: GridRect, dx: number, dy: number): GridRect {
-    const maxX = Math.max(0, this.columns() - origin.w);
-    return { ...origin, x: Math.min(maxX, Math.max(0, origin.x + dx)), y: Math.max(0, origin.y + dy) };
-  }
-
   private clampResize(origin: GridRect, size: BootstrapWidget['size'], dw: number, dh: number): GridRect {
     const cols = this.columns();
     const minW = Math.min(size.minW, cols);
-    const maxW = Math.max(minW, Math.min(size.maxW, cols - origin.x));
+    // Not limited by the widget's column: the layout re-packs, so a wider widget simply wraps to fit.
+    const maxW = Math.max(minW, Math.min(size.maxW, cols));
     const minH = size.minH;
     const maxH = Math.max(minH, size.maxH);
     return {

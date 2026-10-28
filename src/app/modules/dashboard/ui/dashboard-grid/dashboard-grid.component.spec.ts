@@ -36,7 +36,7 @@ function setup(widgets: BootstrapWidget[], editing = true) {
   const moved = vi.fn();
   const resized = vi.fn();
   const removed = vi.fn();
-  fixture.componentInstance.moved.subscribe((e) => moved(e.id, e.x, e.y));
+  fixture.componentInstance.reordered.subscribe((e) => moved(e.id, e.index));
   fixture.componentInstance.resized.subscribe((e) => resized(e.id, e.w, e.h));
   fixture.componentInstance.removed.subscribe((id) => removed(id));
   return { fixture, el, moved, resized, removed };
@@ -70,20 +70,22 @@ describe('DashboardGridComponent', () => {
     expect(grid.style.gap).toBe('12px');
   });
 
-  it('keyboard_arrow_emits_moved', () => {
-    const { fixture, el, moved } = setup([widget('a')]);
+  it('keyboard_arrows_move_a_widget_earlier_or_later_in_reading_order', () => {
+    const { el, moved } = setup([widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }), widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } })]);
     const a = cell(el, 'a');
     expect(a.getAttribute('tabindex')).toBe('0');
-    expect(a.getAttribute('aria-label')).toBe('Widget a, column 3, row 2, width 3, height 2');
-    key(a, 'ArrowRight');
-    expect(moved).toHaveBeenLastCalledWith('a', 3, 1);
-    key(a, 'ArrowDown');
-    expect(moved).toHaveBeenLastCalledWith('a', 2, 2);
+    expect(a.getAttribute('aria-label')).toBe('Widget a, column 1, row 1, width 3, height 2');
     key(a, 'ArrowLeft');
-    expect(moved).toHaveBeenLastCalledWith('a', 1, 1);
     key(a, 'ArrowUp');
-    expect(moved).toHaveBeenLastCalledWith('a', 2, 0);
-    fixture.detectChanges();
+    expect(moved).not.toHaveBeenCalled();
+    key(a, 'ArrowRight');
+    expect(moved).toHaveBeenLastCalledWith('a', 1);
+    key(a, 'ArrowDown');
+    expect(moved).toHaveBeenLastCalledWith('a', 1);
+    key(cell(el, 'b'), 'ArrowUp');
+    expect(moved).toHaveBeenLastCalledWith('b', 0);
+    key(cell(el, 'b'), 'ArrowRight');
+    expect(moved).toHaveBeenCalledTimes(3);
   });
 
   it('shift_arrow_emits_resized', () => {
@@ -119,29 +121,30 @@ describe('DashboardGridComponent', () => {
     expect(resized).not.toHaveBeenCalled();
   });
 
-  it('keyboard_respects_right_edge', () => {
+  it('keyboard_resize_wraps_instead_of_stopping_at_the_right_edge', () => {
     const { el, moved, resized } = setup([widget('b', { layout: { x: 9, y: 0, w: 3, h: 1 } })]);
     key(cell(el, 'b'), 'ArrowRight');
-    key(cell(el, 'b'), 'ArrowRight', true);
     expect(moved).not.toHaveBeenCalled();
-    expect(resized).not.toHaveBeenCalled();
+    key(cell(el, 'b'), 'ArrowRight', true);
+    expect(resized).toHaveBeenLastCalledWith('b', 4, 1);
   });
 
-  it('no_emit_during_pointer_move_only_on_up', () => {
-    const { fixture, el, moved } = setup([widget('a')]);
+  it('dragging_over_another_widget_takes_its_place_and_emits_only_on_up', () => {
+    const { fixture, el, moved } = setup([widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }), widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } })]);
     const handle = cell(el, 'a').querySelector('[data-drag-handle]') as HTMLElement;
-    ptr('pointerdown', 100, 100, handle);
-    ptr('pointermove', 302, 316, document);
+    ptr('pointerdown', 10, 10, handle);
+    ptr('pointermove', 353, 50, document);
     fixture.detectChanges();
     expect(moved).not.toHaveBeenCalled();
+    // b steps aside into a's old place; the ghost shows where a lands.
+    expect(cell(el, 'b').style.gridColumn).toBe('1 / span 3');
     const ghost = el.querySelector('[data-testid="grid-ghost"]') as HTMLElement;
-    // The ghost shows where the drop really lands: a lone widget settles to the top row.
-    expect(ghost.style.gridColumn).toBe('5 / span 3');
+    expect(ghost.style.gridColumn).toBe('4 / span 3');
     expect(ghost.style.gridRow).toBe('1 / span 2');
-    ptr('pointerup', 302, 316, document);
+    ptr('pointerup', 353, 50, document);
     fixture.detectChanges();
     expect(moved).toHaveBeenCalledTimes(1);
-    expect(moved).toHaveBeenCalledWith('a', 4, 3);
+    expect(moved).toHaveBeenCalledWith('a', 1);
     expect(el.querySelector('[data-testid="grid-ghost"]')).toBeNull();
   });
 
@@ -166,56 +169,53 @@ describe('DashboardGridComponent', () => {
     fixture.detectChanges();
   });
 
-  it('resize_previews_live_and_pushes_neighbours_out_of_the_way_before_the_drop', () => {
-    const { fixture, el, resized } = setup([
-      widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }),
-      widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } })
-    ]);
+  it('resize_previews_live_and_re_packs_the_neighbours_before_the_drop', () => {
+    const { fixture, el, resized } = setup([widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }), widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } })]);
     const handle = cell(el, 'a').querySelector('[data-resize-handle]') as HTMLElement;
     ptr('pointerdown', 0, 0, handle);
     ptr('pointermove', 101, 0, document);
     fixture.detectChanges();
     expect(resized).not.toHaveBeenCalled();
     expect(cell(el, 'a').style.gridColumn).toBe('1 / span 4');
-    expect(cell(el, 'b').style.gridColumn).toBe('4 / span 3');
-    expect(cell(el, 'b').style.gridRow).toBe('3 / span 2');
+    expect(cell(el, 'b').style.gridColumn).toBe('5 / span 3');
+    expect(cell(el, 'b').style.gridRow).toBe('1 / span 2');
     ptr('pointerup', 101, 0, document);
     fixture.detectChanges();
     expect(resized).toHaveBeenCalledWith('a', 4, 2);
     // Back to the stored layout until the owner applies the resize.
-    expect(cell(el, 'b').style.gridRow).toBe('1 / span 2');
+    expect(cell(el, 'b').style.gridColumn).toBe('4 / span 3');
   });
 
-  it('move_previews_the_reflow_and_the_dragged_widget_follows_the_pointer', () => {
-    const { fixture, el } = setup([
-      widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }),
-      widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } })
-    ]);
+  it('the_dragged_widget_follows_the_pointer_lifted_above_its_slot', () => {
+    const { fixture, el } = setup([widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }), widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } })]);
     const handle = cell(el, 'a').querySelector('[data-drag-handle]') as HTMLElement;
-    ptr('pointerdown', 0, 0, handle);
-    ptr('pointermove', 40, 30, document);
+    ptr('pointerdown', 10, 10, handle);
+    ptr('pointermove', 50, 40, document);
     fixture.detectChanges();
-    expect(cell(el, 'a').style.transform).toBe('translate(40px, 30px)');
-    expect(cell(el, 'b').style.gridRow).toBe('1 / span 2');
+    expect(cell(el, 'a').style.transform).toBe('translate(40px, 30px) scale(1.02)');
+    expect(cell(el, 'b').style.gridColumn).toBe('4 / span 3');
 
-    ptr('pointermove', 303, 0, document);
+    ptr('pointermove', 353, 50, document);
     fixture.detectChanges();
-    // a lands on b's columns, so b steps down below it; a is drawn at its slot shifted under the pointer.
+    // a is laid out in b's old slot and shifted back so it stays under the pointer.
     expect(cell(el, 'a').style.gridColumn).toBe('4 / span 3');
-    expect(cell(el, 'b').style.gridRow).toBe('3 / span 2');
-    expect(cell(el, 'a').style.transform).toBe('translate(0px, 0px)');
-    ptr('pointerup', 303, 0, document);
+    expect(cell(el, 'a').style.transform).toBe('translate(40px, 40px) scale(1.02)');
+    ptr('pointerup', 353, 50, document);
     fixture.detectChanges();
     expect(cell(el, 'a').style.transform).toBe('');
   });
 
-  it('move_clamps_to_columns_and_top', () => {
-    const { el, moved } = setup([widget('a')]);
+  it('dragging_below_every_widget_moves_it_to_the_end', () => {
+    const { el, moved } = setup([
+      widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }),
+      widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } }),
+      widget('c', { layout: { x: 6, y: 0, w: 3, h: 2 } })
+    ]);
     const handle = cell(el, 'a').querySelector('[data-drag-handle]') as HTMLElement;
-    ptr('pointerdown', 0, 0, handle);
-    ptr('pointermove', 5000, -5000, document);
-    ptr('pointerup', 5000, -5000, document);
-    expect(moved).toHaveBeenLastCalledWith('a', 9, 0);
+    ptr('pointerdown', 10, 10, handle);
+    ptr('pointermove', 10, 5000, document);
+    ptr('pointerup', 10, 5000, document);
+    expect(moved).toHaveBeenLastCalledWith('a', 2);
   });
 
   it('does_not_emit_when_cell_unchanged', () => {
@@ -299,16 +299,17 @@ describe('DashboardGridComponent', () => {
   });
 
   it('announces_the_new_position_and_size_after_keyboard_move_and_resize', () => {
-    const { fixture, el } = setup([widget('a')]);
+    const b = widget('b', { layout: { x: 0, y: 0, w: 2, h: 2 } });
+    const { fixture, el } = setup([widget('a'), b]);
     const live = () => (el.querySelector('[data-testid="grid-live"]') as HTMLElement);
     expect(live().getAttribute('aria-live')).toBe('polite');
-    key(cell(el, 'a'), 'ArrowDown');
-    // The owner recomputes the layout (compaction may differ from the request); announce what it settled on.
-    fixture.componentRef.setInput('widgets', [widget('a', { layout: { x: 2, y: 4, w: 3, h: 2 } })]);
+    key(cell(el, 'a'), 'ArrowUp');
+    // The owner re-packs the layout; announce where the widget settled.
+    fixture.componentRef.setInput('widgets', [widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }), { ...b, layout: { x: 3, y: 0, w: 2, h: 2 } }]);
     fixture.detectChanges();
-    expect(live().textContent).toContain('Widget a moved to column 3, row 5');
+    expect(live().textContent).toContain('Widget a moved to column 1, row 1');
     key(cell(el, 'a'), 'ArrowRight', true);
-    fixture.componentRef.setInput('widgets', [widget('a', { layout: { x: 2, y: 4, w: 4, h: 2 } })]);
+    fixture.componentRef.setInput('widgets', [widget('a', { layout: { x: 0, y: 0, w: 4, h: 2 } }), { ...b, layout: { x: 4, y: 0, w: 2, h: 2 } }]);
     fixture.detectChanges();
     expect(live().textContent).toContain('Widget a resized to width 4, height 2');
   });

@@ -5,7 +5,7 @@ import { PageToolbarService } from '../../../../shared/state/page-toolbar.servic
 import { breakpointForWidth, injectBreakpoint } from '../../grid/breakpoint';
 import { DashboardKey } from '../../models/dashboard-layout.model';
 import { DashboardStore } from '../../state/dashboard.store';
-import { DashboardGridComponent, GridMoveEvent, GridResizeEvent } from '../../ui/dashboard-grid/dashboard-grid.component';
+import { DashboardGridComponent, GridReorderEvent, GridResizeEvent } from '../../ui/dashboard-grid/dashboard-grid.component';
 import { WidgetStoreDrawerComponent } from '../widget-store-drawer/widget-store-drawer.component';
 
 /** localStorage key prefixes written by the pre-server-side customize implementation; cleared once. */
@@ -73,7 +73,7 @@ function clearLegacyDashboardStorage(): void {
           [rowHeight]="boot.grid.rowHeight"
           [gap]="boot.grid.gap"
           [editing]="store.editing()"
-          (moved)="onMoved($event)"
+          (reordered)="onReordered($event)"
           (resized)="onResized($event)"
           (removed)="store.remove($event)"
           (focusOutside)="focusAddWidget()"
@@ -194,8 +194,8 @@ export class DashboardShellComponent {
     void this.store.load(this.dashboardKey());
   }
 
-  protected onMoved(e: GridMoveEvent): void {
-    this.store.move(e.id, e.x, e.y);
+  protected onReordered(e: GridReorderEvent): void {
+    this.store.reorder(e.id, e.index);
   }
 
   protected onResized(e: GridResizeEvent): void {
