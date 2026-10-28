@@ -37,13 +37,16 @@ function setup(permissions: string[], activeModules: string[], managesPeople = f
 }
 
 describe('SideNavbarComponent', () => {
-  it('hides Planner until the planner is known to be on', () => {
-    const fixture = setup([], ['worksync_foundation'], false, false);
+  it('calls the calendar item Planner only once the planner is known to be on (Planner = Calendar)', () => {
+    const fixture = setup([], ['calendar'], false, false);
     TestBed.inject(PlannerAvailabilityService).markAvailable(false);
     fixture.detectChanges();
-    const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
+    const labels = () => Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
 
-    expect(labels).not.toContain('Planner');
+    expect(labels()).toEqual(['Home', 'Inbox', 'Calendar']);
+    TestBed.inject(PlannerAvailabilityService).markAvailable(true);
+    fixture.detectChanges();
+    expect(labels()).toEqual(['Home', 'Inbox', 'Planner']);
   });
 
   it('always shows Home for an authenticated user with no other modules/permissions', () => {
@@ -57,7 +60,7 @@ describe('SideNavbarComponent', () => {
     // no permission gate of its own - self-service attendance/leave access is not an employees
     // permission, and the real /people route guard requires managing people or employees:write,
     // so People must stay hidden for this user even though core_hr is active.
-    const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance']);
+    const fixture = setup(['attendance:read-own', 'leave:read-own'], ['core_hr', 'calendar', 'leave', 'time_attendance'], false, false);
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'Inbox', 'Calendar', 'Time Off', 'Attendance']);
   });
@@ -66,7 +69,8 @@ describe('SideNavbarComponent', () => {
     const fixture = setup(
       ['attendance:read-own', 'leave:read-own'],
       ['core_hr', 'calendar', 'leave', 'time_attendance'],
-      true
+      true,
+      false
     );
     const labels = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item span')).map((el) => (el as HTMLElement).textContent);
     expect(labels).toEqual(['Home', 'Inbox', 'Calendar', 'Time Off', 'Attendance', 'Org']);
@@ -100,7 +104,7 @@ describe('SideNavbarComponent', () => {
     expect(labels).not.toContain('Org');
   });
 
-  it('renders all 9 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
+  it('renders all 8 sidebar items in canonical order for a tenant owner with every Phase 1 module and org/roles permissions', () => {
     const fixture = setup(
       ['org:read', 'roles:manage', 'employees:write', 'attendance:read', 'leave:read-own'],
       ['worksync_foundation', 'core_hr', 'calendar', 'leave', 'time_attendance', 'org_structure']
@@ -110,7 +114,6 @@ describe('SideNavbarComponent', () => {
       'Home',
       'Work',
       'Inbox',
-      'Calendar',
       'Planner',
       'Time Off',
       'Attendance',
@@ -125,7 +128,7 @@ describe('SideNavbarComponent', () => {
     const links = Array.from(fixture.nativeElement.querySelectorAll('.nav-rail-item')) as HTMLElement[];
     const inbox = links.find((l) => l.textContent?.includes('Inbox'));
 
-    expect(links.map((l) => l.querySelector('span')?.textContent)).toEqual(['Home', 'Work', 'Inbox', 'Planner']);
+    expect(links.map((l) => l.querySelector('span')?.textContent)).toEqual(['Home', 'Work', 'Inbox']);
     expect(inbox?.getAttribute('href')).toBe('/inbox');
     expect(inbox?.querySelector('.nav-rail-item__badge')?.textContent?.trim()).toBe('9+');
     inboxBadge.set('');

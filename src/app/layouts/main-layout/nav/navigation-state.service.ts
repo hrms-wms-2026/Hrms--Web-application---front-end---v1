@@ -24,9 +24,15 @@ export class NavigationStateService {
     { initialValue: this.router.url }
   );
 
-  // The Planner item waits for the planner to be known on (Planner:Enabled), so nobody is sent to a page that answers 503.
-  readonly visibleItems = computed(() => NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService)
-    && (item.id !== 'planner' || this.plannerAvailability.state() === 'on')));
+  // Planner = Calendar (2026-10-27 design): once the planner is known on (Planner:Enabled), the Calendar item is the
+  // Planner, at /planner and still active on /calendar links (OAuth and email links point there).
+  readonly visibleItems = computed(() => {
+    const plannerOn = this.plannerAvailability.state() === 'on';
+    return NAV_ITEMS.filter((item) => canAccessNavItem(item, this.permissionService))
+      .map((item): NavItem => item.id === 'calendar' && plannerOn
+        ? { ...item, label: 'Planner', path: '/planner', alsoMatches: [...(item.alsoMatches ?? []), '/calendar'] }
+        : item);
+  });
 
   readonly activeItem = computed(() => {
     const rawUrl = this.currentUrl();

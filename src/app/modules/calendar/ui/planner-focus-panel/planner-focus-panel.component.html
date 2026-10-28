@@ -1,0 +1,42 @@
+<aside data-testid="planner-focus-panel" class="flex flex-col gap-1 rounded-lg border border-[var(--color-border)] p-2 text-xs">
+  <div class="flex items-center gap-2">
+    <h2 class="text-sm font-semibold">Focus</h2>
+    @if (closable()) {
+      <button type="button" data-testid="planner-focus-close" aria-label="Close Focus" class="ml-auto px-1 text-[var(--color-text-secondary)]"
+        (click)="closed.emit()">✕</button>
+    }
+  </div>
+  <p class="text-[var(--color-text-secondary)]">Drag a task onto a day and time</p>
+
+  @if (empty()) {
+    <p data-testid="planner-focus-empty" class="py-2 text-[var(--color-text-secondary)]">Nothing to focus on.</p>
+  }
+
+  @for (group of groups(); track group.reason) {
+    <h3 data-testid="planner-focus-group-title" class="mt-2 text-[11px] font-medium"
+      [ngClass]="group.reason === 'overdue' ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'">{{ group.title }}</h3>
+    @for (card of group.items; track card.item.taskId) {
+      <div data-testid="planner-focus-card" role="button" tabindex="0"
+        class="flex cursor-grab touch-none select-none flex-col gap-0.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1"
+        [ngClass]="card.item.fullyPlanned ? 'opacity-60' : ''"
+        [attr.data-fully-planned]="card.item.fullyPlanned"
+        (pointerdown)="onCardPointerDown(card.item, $event)" (click)="onCardClick(card.item)" (keydown.enter)="pick.emit(card.item)">
+        <span class="flex items-center gap-1">
+          @if (card.flagged) {
+            <span data-testid="planner-priority-dot" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]"
+              [attr.aria-label]="card.item.priority + ' priority'"></span>
+          }
+          <button type="button" class="truncate text-left font-medium" (click)="onTitleClick(card.item, $event)">{{ card.item.title }}</button>
+        </span>
+        <span class="truncate text-[var(--color-text-secondary)]">{{ card.item.projectName }}</span>
+        <span class="text-[var(--color-text-secondary)]">
+          {{ card.due }}@if (card.left) { · {{ card.left }} }@if (card.planned) { · <span class="text-teal-700">{{ card.planned }}</span> }
+        </span>
+      </div>
+    }
+    @if (group.more > 0) {
+      <button type="button" data-testid="planner-focus-more" class="self-start text-[var(--color-text-secondary)]"
+        (click)="expand(group.reason)">+ {{ group.more }} more</button>
+    }
+  }
+</aside>

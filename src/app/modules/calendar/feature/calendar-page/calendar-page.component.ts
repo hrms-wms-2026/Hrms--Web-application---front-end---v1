@@ -1,5 +1,5 @@
 import { MeetingCreatedEvent, drawerKeyForCreated } from '../../../work/meetings/utils/meeting-created-drawer.util';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -17,6 +17,19 @@ import { CalendarAgendaViewComponent } from '../calendar-agenda-view/calendar-ag
 import {
   CalendarEventFormModalComponent, CalendarEventFormSubmission, RespondToCalendarEventPayload
 } from '../../ui/calendar-event-form-modal/calendar-event-form-modal.component';
+import { firstValueFrom } from 'rxjs';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
+import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
+import {
+  PlannerDayResponse, PlannerFocusItem, PlannerRangeBlockView, PlannerRangeDay
+} from '../../../work/planner/models/planner.models';
+import { PlannerLayerStore } from '../../state/planner-layer.store';
+import { PlannerDayLoad } from '../../ui/calendar-hour-grid/calendar-hour-grid.component';
+import { PlannerFocusPanelComponent } from '../../ui/planner-focus-panel/planner-focus-panel.component';
+import { PlannerBlockPickerComponent } from '../../ui/planner-block-picker/planner-block-picker.component';
+import { PlannerMonthSummary } from '../../ui/calendar-month-grid/calendar-month-grid.component';
+import { MinuteRange, blockRange, busyIntervals, dayLoad, moveAfterSlot, windowMinutes } from '../../utils/planner-grid.util';
 
 export type CalendarView = 'month' | 'week' | 'day' | 'agenda';
 
@@ -30,6 +43,36 @@ function startOfWeek(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysBackToMonday);
 }
 
+/** h/m text: "1h 30m", "7h", "45m". */
+function duration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function addDays(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return toDateString(new Date(y, m - 1, d + days));
+}
+
+function readFlag(key: string, fallback: boolean): boolean {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value === 'true';
+  } catch {
+    return fallback;
+  }
+}
+
+function writeFlag(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    // Storage can be unavailable (private mode); the choice then lasts for this page only.
+  }
+}
+
 const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   google: 'Google Calendar',
   microsoft: 'Outlook'
@@ -41,8 +84,10 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   imports: [
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
-    MeetingOccurrenceDrawerComponent
+    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent
   ],
+  // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
+  providers: [PlannerLayerStore],
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -65,6 +110,79 @@ export class CalendarPageComponent {
   readonly meetingsAvailability = inject(MeetingsAvailabilityService);
   readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
 
+  // --- Planner layer (2026-10-27 Planner = Calendar design). Inert while the planner is off. ---
+  readonly planner = inject(PlannerLayerStore);
+  private readonly plannerApi = inject(PlannerApiService);
+  private readonly auth = inject(AuthStore);
+  readonly employeeId = computed(() => this.auth.employeeId());
+  /** Week view's Focus panel; Day view always shows it. */
+  readonly focusOpen = signal(readFlag('planner.focusOpen', true));
+  /** Month and Agenda show the panel only when asked. */
+  readonly focusOpenElsewhere = signal(false);
+  readonly showWeekend = signal(readFlag('planner.showWeekend', false));
+  readonly plannerDay = signal<PlannerDayResponse | null>(null);
+  readonly pickerItem = signal<PlannerFocusItem | PlannerRangeBlockView | null>(null);
+
+  readonly showPanel = computed(() => {
+    if (!this.planner.active()) return false;
+    switch (this.view()) {
+      case 'day': return true;
+      case 'week': return this.focusOpen();
+      default: return this.focusOpenElsewhere();
+    }
+  });
+
+  readonly plannerBlocks = computed(() => new Map([...this.planner.dayByDate()].map(([date, day]) => [date, day.blocks])));
+  readonly plannerWindows = computed(() => new Map([...this.planner.dayByDate()].map(([date, day]) => [date, day.workWindow])));
+  readonly plannerEditable = computed(() => new Set([...this.planner.dayByDate().values()].filter((d) => d.editable).map((d) => d.date)));
+  readonly editableDateList = computed(() => [...this.plannerEditable()].sort());
+
+  /** Each day's load: blocks and busy calendar items, overlapping time counted once (design call C2). */
+  readonly plannerLoads = computed(() => {
+    const loads = new Map<string, PlannerDayLoad & { readonly blockCount: number; readonly meetingCount: number }>();
+    const timezone = this.store.myTimezone();
+    for (const day of this.planner.dayByDate().values()) {
+      const busy = busyIntervals(this.store.events(), this.employeeId(), day.date, timezone);
+      const load = dayLoad(day.blocks.map((b) => blockRange(b, day.date, timezone)), busy, day.workingMinutes);
+      const meetingIds = new Set(this.store.events().filter((e) => e.itemKind === 'meeting').map((e) => e.id));
+      loads.set(day.date, {
+        plannedMinutes: load.plannedMinutes, workingMinutes: day.workingMinutes, over: load.over,
+        blockCount: day.blocks.length, meetingCount: busy.filter((b) => meetingIds.has(b.eventId)).length,
+      });
+    }
+    return loads;
+  });
+
+  /** The header load bar, for days with working hours. */
+  readonly gridLoads = computed(() => new Map([...this.plannerLoads()].filter(([, l]) => l.workingMinutes > 0)));
+
+  readonly monthSummaries = computed(() => new Map<string, PlannerMonthSummary>([...this.plannerLoads()]
+    .filter(([, l]) => l.blockCount > 0 || l.meetingCount > 0)
+    .map(([date, l]) => [date, { tasks: l.blockCount, meetings: l.meetingCount, plannedMinutes: l.plannedMinutes }])));
+
+  readonly agendaBlocks = computed(() => [...this.planner.dayByDate().values()].flatMap((d) => d.blocks));
+
+  /** Week view: the legal entity's working days unless "Show weekend" is on (all seven when the schedule is unknown). */
+  readonly weekDays = computed<readonly string[] | null>(() => {
+    if (!this.planner.active() || this.showWeekend()) return null;
+    const all = Array.from({ length: 7 }, (_, i) => addDays(this.weekStart(), i));
+    return all.filter((date) => this.planner.dayByDate().get(date)?.workWindow?.isWorkingDay !== false);
+  });
+
+  readonly dayTotals = computed(() => {
+    const day = this.planner.dayByDate().get(this.dayDate());
+    if (!day) return null;
+    const load = this.plannerLoads().get(day.date);
+    const planned = load?.plannedMinutes ?? 0;
+    const actual = this.plannerDay();
+    return {
+      working: day.workWindow ? duration(day.workingMinutes) : null,
+      planned: duration(planned),
+      free: duration(Math.max(0, day.workingMinutes - planned)),
+      actual: actual ? `${duration(actual.totals.actualMinutes)} / ${duration(actual.attendanceMinutes)}` : null,
+    };
+  });
+
   readonly year = computed(() => this.cursor().getFullYear());
   readonly month = computed(() => this.cursor().getMonth() + 1);
   readonly weekStart = computed(() => toDateString(startOfWeek(this.cursor())));
@@ -84,6 +202,30 @@ export class CalendarPageComponent {
     const { from, to } = this.currentRange();
     this.store.loadEvents(from, to);
   });
+
+  private readonly plannerRangeEffect = effect(() => {
+    const { from, to } = this.plannerRange();
+    void this.planner.load(from, to);
+  });
+
+  /** Day view's actual minutes and attendance come from the day read. */
+  private readonly plannerDayEffect = effect(() => {
+    const date = this.dayDate();
+    if (this.view() !== 'day' || !this.planner.active()) {
+      this.plannerDay.set(null);
+      return;
+    }
+    // The day shown before keeps no numbers on this one while its own read is on the way.
+    untracked(() => this.plannerDay.set(null));
+    firstValueFrom(this.plannerApi.getMyDay(date))
+      .then((day) => this.plannerDayFor(date, day))
+      .catch(() => this.plannerDayFor(date, null));
+  });
+
+  /** A day read lands only if that day is still the one shown. */
+  plannerDayFor(date: string, day: PlannerDayResponse | null): void {
+    if (date === this.dayDate()) this.plannerDay.set(day);
+  }
 
   // actionError was already tracked in store state but never surfaced anywhere - a failed
   // create/update/delete/respond/meeting action silently did nothing visible. NotificationService
@@ -152,8 +294,110 @@ export class CalendarPageComponent {
     }
   }
 
+  /** The planner's dates for the visible range (a month grid is at most 42 days). */
+  private plannerRange(): { from: string; to: string } {
+    switch (this.view()) {
+      case 'month': {
+        const grid = buildMonthGrid(this.year(), this.month());
+        return { from: grid[0].date, to: grid[Math.min(grid.length, 42) - 1].date };
+      }
+      case 'week':
+        return { from: this.weekStart(), to: addDays(this.weekStart(), 6) };
+      case 'day':
+        return { from: this.dayDate(), to: this.dayDate() };
+      case 'agenda': {
+        const start = toDateString(this.cursor());
+        return { from: start, to: addDays(start, 30) };
+      }
+    }
+  }
+
   setView(view: CalendarView): void {
     this.view.set(view);
+  }
+
+  openDay(date: string): void {
+    const [y, m, d] = date.split('-').map(Number);
+    this.cursor.set(new Date(y, m - 1, d));
+    this.view.set('day');
+  }
+
+  toggleFocus(): void {
+    if (this.view() === 'week') {
+      this.focusOpen.update((open) => !open);
+      writeFlag('planner.focusOpen', this.focusOpen());
+    } else if (this.view() !== 'day') {
+      this.focusOpenElsewhere.update((open) => !open);
+    }
+  }
+
+  closeFocus(): void {
+    if (this.view() === 'week') {
+      this.focusOpen.set(false);
+      writeFlag('planner.focusOpen', false);
+    } else {
+      this.focusOpenElsewhere.set(false);
+    }
+  }
+
+  toggleWeekend(): void {
+    this.showWeekend.update((show) => !show);
+    writeFlag('planner.showWeekend', this.showWeekend());
+  }
+
+  onBlockCreate(e: { taskId: string; date: string; startMinutes: number; endMinutes: number }): void {
+    void this.planner.createBlock(e.taskId, this.toIso(e.date, e.startMinutes), this.toIso(e.date, e.endMinutes));
+  }
+
+  onBlockMove(e: { blockId: string; date: string; startMinutes: number; endMinutes: number }): void {
+    void this.planner.moveBlock(e.blockId, this.toIso(e.date, e.startMinutes), this.toIso(e.date, e.endMinutes));
+  }
+
+  onBlockRemove(blockId: string): void {
+    void this.planner.removeBlock(blockId);
+  }
+
+  /** "Move after": the first free slot of the same length after the meeting, inside working hours, clear of everything. */
+  onBlockMoveAfter(e: { block: PlannerRangeBlockView; date: string; afterMinute: number }): void {
+    const timezone = this.store.myTimezone();
+    const day: PlannerRangeDay | undefined = this.planner.dayByDate().get(e.date);
+    const own = blockRange(e.block, e.date, timezone);
+    const taken: MinuteRange[] = [
+      ...(day?.blocks ?? []).filter((b) => b.id !== e.block.id).map((b) => blockRange(b, e.date, timezone)),
+      ...busyIntervals(this.store.events(), this.employeeId(), e.date, timezone),
+    ];
+    const window = day?.workWindow ? windowMinutes(day.workWindow) : null;
+    const start = moveAfterSlot(own.end - own.start, e.afterMinute, taken, window);
+    if (start === null) {
+      const [y, m, d] = e.date.split('-').map(Number);
+      const label = new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '');
+      this.notificationService.warning(`No free time left on ${label} for this block`);
+      return;
+    }
+    void this.planner.moveBlock(e.block.id, this.toIso(e.date, start), this.toIso(e.date, start + own.end - own.start));
+  }
+
+  openTask(projectId: string, taskId: string): void {
+    void this.router.navigate(['/work', projectId, 'board'], { queryParams: { taskId } });
+  }
+
+  onPickerSubmitted(e: { date: string; startMinutes: number; minutes: number }): void {
+    const item = this.pickerItem();
+    this.pickerItem.set(null);
+    if (!item) return;
+    const start = this.toIso(e.date, e.startMinutes);
+    const end = this.toIso(e.date, Math.min(e.startMinutes + e.minutes, 24 * 60));
+    if ('id' in item) void this.planner.moveBlock(item.id, start, end);
+    else void this.planner.createBlock(item.taskId, start, end);
+  }
+
+  /** Minutes from local midnight of `date` as an instant; 24:00 is the next day's midnight. */
+  private toIso(date: string, minutes: number): string {
+    const day = minutes >= 24 * 60 ? addDays(date, 1) : date;
+    const m = minutes % (24 * 60);
+    const clock = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    // The planner's own zone: the calendar's may still be its UTC default for a moment after the page opens.
+    return localPartsToUtcIso(day, clock, this.planner.range()?.timezone ?? this.store.myTimezone());
   }
 
   previous(): void {

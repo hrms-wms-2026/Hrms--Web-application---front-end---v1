@@ -59,7 +59,7 @@ const PAGE_SIZE = 100;
               </div>
             }
           </div>
-          <button type="button" data-testid="bulk-add" class="self-start rounded-md bg-[var(--color-primary)] px-3 py-1 text-xs text-white"
+          <button type="button" data-testid="bulk-add" class="self-start rounded-md bg-[var(--color-accent)] px-3 py-1 text-xs text-[var(--color-accent-contrast)] disabled:cursor-not-allowed disabled:opacity-50"
             [disabled]="kept().length === 0" (click)="add()">Add {{ kept().length }} people</button>
         }
       </div>

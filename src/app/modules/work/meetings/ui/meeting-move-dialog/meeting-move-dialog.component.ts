@@ -37,7 +37,7 @@ export interface MeetingMoveChoice { scope: 'this' | 'following'; projectId: str
         }
         <div class="flex justify-end gap-2">
           <button type="button" class="rounded-md border px-3 py-1" (click)="cancelled.emit()">Cancel</button>
-          <button type="button" data-testid="meeting-move-confirm" class="rounded-md bg-[var(--color-primary)] px-3 py-1 text-white"
+          <button type="button" data-testid="meeting-move-confirm" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[var(--color-accent-contrast)] disabled:cursor-not-allowed disabled:opacity-50"
             [disabled]="!projectId() || !objectiveId()" (click)="confirm()">Move</button>
         </div>
       </div>

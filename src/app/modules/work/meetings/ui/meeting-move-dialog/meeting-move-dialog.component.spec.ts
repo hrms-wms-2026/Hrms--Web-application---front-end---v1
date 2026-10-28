@@ -39,6 +39,12 @@ describe('MeetingMoveDialogComponent', () => {
     expect(chosen).toEqual({ scope: 'this', projectId: 'p1', objectiveId: 'o2' });
   });
 
+  it('the move button is drawn in the theme accent, so it shows on the white dialog', () => {
+    const move: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="meeting-move-confirm"]');
+    expect(move.className).toContain('bg-[var(--color-accent)]');
+    expect(move.className).toContain('text-[var(--color-accent-contrast)]');
+  });
+
   it('offers "this and following" only for a recurring meeting', () => {
     expect(dialog.scopes()).toEqual(['this']);
     fixture.componentRef.setInput('recurring', true);

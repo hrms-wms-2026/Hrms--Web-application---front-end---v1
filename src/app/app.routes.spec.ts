@@ -186,4 +186,16 @@ describe('app routes - already-authenticated tabs skip the login form', () => {
     expect(success).toBe(true);
     expect(router.url).toBe('/auth/login');
   });
+
+  it('serves the calendar page at /planner as well as /calendar, under the same gate (Planner = Calendar)', () => {
+    const shell = routes.find((route) => route.path === '' && route.canActivate?.includes(authGuard) && Array.isArray(route.children));
+    const children = shell?.children ?? [];
+    const calendar = children.find((route) => route.path === 'calendar');
+    const planner = children.find((route) => route.path === 'planner');
+
+    expect(planner?.loadChildren).toBe(calendar?.loadChildren);
+    expect(planner?.canActivate).toEqual(calendar?.canActivate);
+    expect(planner?.data).toEqual({ permissions: ['calendar:read'], modules: ['calendar'] });
+    expect(planner?.loadComponent).toBeUndefined();
+  });
 });
