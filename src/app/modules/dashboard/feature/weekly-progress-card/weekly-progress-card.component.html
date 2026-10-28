@@ -183,5 +183,6 @@
         }
       </div>
     }
+    <app-weekly-work-progress-detail-dialog [open]="detailOpen()" [initial]="current() ?? data" (closed)="detailOpen.set(false)" />
   }
 </app-widget-card>

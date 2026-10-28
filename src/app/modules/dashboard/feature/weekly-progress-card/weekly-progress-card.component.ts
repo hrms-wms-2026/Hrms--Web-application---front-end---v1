@@ -3,11 +3,11 @@ import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
-import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
+import { KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
 import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
-import { WeekProgress, WeeklyProgressStatus, WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
+import { WeekProgress, WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
 import { DailyWorkChartComponent } from '../../ui/daily-work-chart/daily-work-chart.component';
 import { formatMinutes } from '../../util/timeline-segments.util';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
@@ -19,68 +19,17 @@ import {
   planWeeklyProgressSections,
   resolveWeeklyProgressView
 } from '../../utils/weekly-work-progress-layout.util';
+import {
+  WEEKLY_STATUS_LABELS,
+  WeeklyDelta,
+  changeAgainst,
+  mondayBefore,
+  weeklyTiles
+} from '../../utils/weekly-work-progress-format.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
+import { WeeklyWorkProgressDetailDialogComponent } from '../weekly-work-progress-detail-dialog/weekly-work-progress-detail-dialog.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
-
-export const WEEKLY_STATUS_LABELS: Record<WeeklyProgressStatus, string> = {
-  ahead: 'Ahead',
-  on_track: 'On Track',
-  behind: 'Behind',
-  no_target: 'No target'
-};
-
-/** A tile of the card (KPI tile, stacked row or mini tile). */
-export interface WeeklyTile extends KpiTile {
-  readonly key: 'expected' | 'scheduled' | 'worked' | 'remaining';
-}
-
-/** "+12%" / "−5%" with its arrow, or null when there is nothing to compare with. */
-export interface WeeklyDelta {
-  readonly up: boolean;
-  readonly text: string;
-}
-
-function percentOf(part: number, whole: number): number {
-  return whole > 0 ? Math.round((part * 100) / whole) : 0;
-}
-
-/** The Monday a week before a yyyy-MM-dd Monday, without a time-zone shift. */
-export function mondayBefore(weekStart: string): string {
-  const [y, m, d] = weekStart.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d - 7)).toISOString().slice(0, 10);
-}
-
-/** Expected, Scheduled (planner only), Worked and Remaining, with their shares of Expected as hints. */
-export function weeklyTiles(week: WeekProgress, plannerEnabled: boolean): WeeklyTile[] {
-  const tiles: WeeklyTile[] = [
-    { key: 'expected', label: 'Expected', value: formatMinutes(week.expectedMinutes), icon: 'clipboard-list', tone: 'accent' }
-  ];
-  if (plannerEnabled) {
-    tiles.push({
-      key: 'scheduled', label: 'Scheduled', value: formatMinutes(week.scheduledMinutes),
-      hint: `(${Math.round(week.planningCoveragePercent)}%)`, icon: 'layers', tone: 'accent'
-    });
-  }
-  tiles.push(
-    {
-      key: 'worked', label: 'Worked', value: formatMinutes(week.workedMinutes),
-      hint: `(${Math.round(week.progressPercent)}%)`, icon: 'check-circle', tone: 'success'
-    },
-    {
-      key: 'remaining', label: 'Remaining', value: formatMinutes(week.remainingMinutes),
-      hint: `(${percentOf(week.remainingMinutes, week.expectedMinutes)}%)`, icon: 'clock', tone: 'warning'
-    }
-  );
-  return tiles;
-}
-
-/** Change of a figure against last week as a percentage of last week's; null when last week had none. */
-export function changeAgainst(current: number, previous: number): WeeklyDelta | null {
-  if (previous <= 0) return null;
-  const change = Math.round(((current - previous) * 100) / previous);
-  return { up: change >= 0, text: `${change >= 0 ? '+' : '−'}${Math.abs(change)}%` };
-}
 
 /**
  * My Work "Weekly Work Progress". One card whose layout follows its own rendered size (the dashboard widget
@@ -99,7 +48,8 @@ export function changeAgainst(current: number, previous: number): WeeklyDelta | 
     KpiTilesComponent,
     DailyWorkChartComponent,
     KeyboardClickDirective,
-    StopClickPropagationDirective
+    StopClickPropagationDirective,
+    WeeklyWorkProgressDetailDialogComponent
   ],
   templateUrl: './weekly-progress-card.component.html',
   styleUrl: './weekly-progress-card.component.css',
@@ -116,7 +66,7 @@ export class WeeklyProgressCardComponent implements OnInit {
     refreshing: () => this.loading.set(true)
   });
 
-  private readonly current = signal<WeeklyWorkProgressResponse | null>(null);
+  protected readonly current = signal<WeeklyWorkProgressResponse | null>(null);
   private readonly previous = signal<WeeklyWorkProgressResponse | null>(null);
   private readonly failed = signal(false);
   protected readonly loading = signal(false);

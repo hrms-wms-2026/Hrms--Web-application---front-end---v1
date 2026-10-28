@@ -160,6 +160,16 @@ describe('WeeklyProgressCardComponent', () => {
     expect(text(f)).toContain("Couldn't load this week's progress.");
   });
 
+  it('clicking the card body opens the detail popup', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(6), rows(5));
+    expect(document.querySelector('[data-testid="wwp-range"]')).toBeNull();
+
+    (f.nativeElement.querySelector('.wp-body') as HTMLElement).click();
+    f.detectChanges();
+
+    expect(document.querySelector('[data-testid="wwp-range"]')?.textContent).toContain('Oct 26');
+  });
+
   it('switching to last week loads that week by its Monday', () => {
     const f = render(fakeWidgetData('success', payload()), cols(6), rows(5));
     api.get.mockReturnValue(of(payload({ weekStart: '2026-10-19' }, { progressPercent: 56 })));
