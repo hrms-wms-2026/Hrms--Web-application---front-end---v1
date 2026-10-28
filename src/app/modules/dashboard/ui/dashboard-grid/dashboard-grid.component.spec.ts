@@ -135,8 +135,9 @@ describe('DashboardGridComponent', () => {
     fixture.detectChanges();
     expect(moved).not.toHaveBeenCalled();
     const ghost = el.querySelector('[data-testid="grid-ghost"]') as HTMLElement;
+    // The ghost shows where the drop really lands: a lone widget settles to the top row.
     expect(ghost.style.gridColumn).toBe('5 / span 3');
-    expect(ghost.style.gridRow).toBe('4 / span 2');
+    expect(ghost.style.gridRow).toBe('1 / span 2');
     ptr('pointerup', 302, 316, document);
     fixture.detectChanges();
     expect(moved).toHaveBeenCalledTimes(1);
@@ -163,6 +164,49 @@ describe('DashboardGridComponent', () => {
     ptr('pointerup', -2000, -2000, document);
     expect(resized).toHaveBeenLastCalledWith('a', 2, 1);
     fixture.detectChanges();
+  });
+
+  it('resize_previews_live_and_pushes_neighbours_out_of_the_way_before_the_drop', () => {
+    const { fixture, el, resized } = setup([
+      widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }),
+      widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } })
+    ]);
+    const handle = cell(el, 'a').querySelector('[data-resize-handle]') as HTMLElement;
+    ptr('pointerdown', 0, 0, handle);
+    ptr('pointermove', 101, 0, document);
+    fixture.detectChanges();
+    expect(resized).not.toHaveBeenCalled();
+    expect(cell(el, 'a').style.gridColumn).toBe('1 / span 4');
+    expect(cell(el, 'b').style.gridColumn).toBe('4 / span 3');
+    expect(cell(el, 'b').style.gridRow).toBe('3 / span 2');
+    ptr('pointerup', 101, 0, document);
+    fixture.detectChanges();
+    expect(resized).toHaveBeenCalledWith('a', 4, 2);
+    // Back to the stored layout until the owner applies the resize.
+    expect(cell(el, 'b').style.gridRow).toBe('1 / span 2');
+  });
+
+  it('move_previews_the_reflow_and_the_dragged_widget_follows_the_pointer', () => {
+    const { fixture, el } = setup([
+      widget('a', { layout: { x: 0, y: 0, w: 3, h: 2 } }),
+      widget('b', { layout: { x: 3, y: 0, w: 3, h: 2 } })
+    ]);
+    const handle = cell(el, 'a').querySelector('[data-drag-handle]') as HTMLElement;
+    ptr('pointerdown', 0, 0, handle);
+    ptr('pointermove', 40, 30, document);
+    fixture.detectChanges();
+    expect(cell(el, 'a').style.transform).toBe('translate(40px, 30px)');
+    expect(cell(el, 'b').style.gridRow).toBe('1 / span 2');
+
+    ptr('pointermove', 303, 0, document);
+    fixture.detectChanges();
+    // a lands on b's columns, so b steps down below it; a is drawn at its slot shifted under the pointer.
+    expect(cell(el, 'a').style.gridColumn).toBe('4 / span 3');
+    expect(cell(el, 'b').style.gridRow).toBe('3 / span 2');
+    expect(cell(el, 'a').style.transform).toBe('translate(0px, 0px)');
+    ptr('pointerup', 303, 0, document);
+    fixture.detectChanges();
+    expect(cell(el, 'a').style.transform).toBe('');
   });
 
   it('move_clamps_to_columns_and_top', () => {
