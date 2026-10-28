@@ -26,30 +26,33 @@ export const WEEKLY_PROGRESS_HYSTERESIS = 20;
 /** Card padding plus its title header: the host size minus this is the body. */
 export const WEEKLY_PROGRESS_CARD_CHROME = { width: 32, height: 68 } as const;
 
-/** Fixed heights the plan budgets with (they match the card's CSS). */
+/** Fixed heights the plan budgets with, measured in the browser on the rendered card (2026-10-29). */
 export const WEEKLY_PROGRESS_SECTION_PX = {
   gap: 12,
-  /** The change-vs-last-week line under the donut. */
-  delta: 28,
-  /** One row of KPI tiles. */
-  tileRow: 64,
-  /** The gap between the two rows of a two-by-two tile grid, and between stacked tiles. */
+  /** The change-vs-last-week line under the donut, with its gap. */
+  delta: 22,
+  /** The gap between stacked tiles. */
   tileGap: 8,
   /** One stacked tile in the xs view. */
   stackedTile: 52,
-  /** The Daily Work vs Schedule panel: title, legend and chart. */
-  chart: 190,
-  /** The Weekly Comparison row. */
-  comparison: 96
+  /** The Daily Work vs Schedule section: rule, title, legend and chart. */
+  chart: 186,
+  /** The Weekly Comparison section. */
+  comparison: 116
 } as const;
+
+/** Body width from which a narrow standard card lists the tiles as compact rows beside the donut. */
+const SIDE_TILES_BODY_WIDTH = 300;
 
 export interface WeeklyProgressSections {
   /** mini-wide: Expected / Scheduled / Worked tiles beside the bars. */
   miniTiles: boolean;
   /** xs: how many of Expected, Scheduled, Worked, Remaining stack under the donut. */
   stackedTiles: number;
-  /** standard: the four tiles on one row beside the donut (else two by two under it). */
+  /** standard: the KPI tiles on one row beside the donut. */
   tilesOneRow: boolean;
+  /** standard, narrower: how many tiles are listed as compact rows beside the donut (they never go under it). */
+  sideTiles: number;
   chart: boolean;
   comparison: boolean;
 }
@@ -89,7 +92,9 @@ export function planWeeklyProgressSections(
   bodyHeight: number
 ): WeeklyProgressSections {
   const s = WEEKLY_PROGRESS_SECTION_PX;
-  const none: WeeklyProgressSections = { miniTiles: false, stackedTiles: 0, tilesOneRow: false, chart: false, comparison: false };
+  const none: WeeklyProgressSections = {
+    miniTiles: false, stackedTiles: 0, tilesOneRow: false, sideTiles: 0, chart: false, comparison: false
+  };
   const hero = DASHBOARD_DONUT_PX + s.delta;
 
   if (view === 'mini') return none;
@@ -97,14 +102,15 @@ export function planWeeklyProgressSections(
     return { ...none, miniTiles: bodyWidth >= WEEKLY_PROGRESS_BREAKPOINTS.miniTilesWidth - WEEKLY_PROGRESS_CARD_CHROME.width };
   }
   if (view === 'xs') {
-    const room = bodyHeight - hero - s.gap;
-    const fit = Math.floor((room + s.tileGap) / (s.stackedTile + s.tileGap));
+    const fit = Math.floor((bodyHeight - hero - s.gap + s.tileGap) / (s.stackedTile + s.tileGap));
     return { ...none, stackedTiles: Math.max(0, Math.min(MAX_TILES, fit)) };
   }
 
+  // The tiles always sit beside the donut (one KPI row, or compact rows when narrower), so the top block is the hero's
+  // height; the chart and then the comparison are added only once the body is tall enough for them.
   const tilesOneRow = bodyWidth >= WEEKLY_PROGRESS_BREAKPOINTS.tilesOneRowBodyWidth;
-  const top = tilesOneRow ? hero : hero + s.gap + 2 * s.tileRow + s.tileGap;
-  const chart = bodyHeight >= top + s.gap + s.chart;
-  const comparison = chart && bodyHeight >= top + 2 * s.gap + s.chart + s.comparison;
-  return { ...none, tilesOneRow, chart, comparison };
+  const sideTiles = !tilesOneRow && bodyWidth >= SIDE_TILES_BODY_WIDTH ? MAX_TILES : 0;
+  const chart = bodyHeight >= hero + s.gap + s.chart;
+  const comparison = chart && bodyHeight >= hero + 2 * s.gap + s.chart + s.comparison;
+  return { ...none, tilesOneRow, sideTiles, chart, comparison };
 }

@@ -139,6 +139,15 @@ describe('WeeklyProgressCardComponent', () => {
     expect(q(f, 'wp-donut')?.style.width).toBe('140px');
   });
 
+  it('the default 4x3 slot lists the tiles beside the donut and adds nothing below', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(4), rows(3));
+
+    expect(qa(f, 'wp-side-tile').length).toBe(4);
+    expect(q(f, 'wp-side-tiles')?.textContent).toContain('Remaining');
+    expect(q(f, 'daily-work-chart')).toBeNull();
+    expect(f.nativeElement.querySelector('app-kpi-tiles')).toBeNull();
+  });
+
   it('a large card adds the daily chart, then the weekly comparison', () => {
     const f = render(fakeWidgetData('success', payload()), cols(6), rows(5));
     expect(q(f, 'daily-work-chart')).not.toBeNull();

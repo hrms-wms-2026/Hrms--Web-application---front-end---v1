@@ -130,17 +130,24 @@
           }
           @default {
             <div class="wp-standard">
-              <div class="wp-hero" [class.wp-hero--column]="!sections().tilesOneRow">
+              <!-- The tiles always sit beside the donut, so this block never grows; more sections appear only on taller cards. -->
+              <div class="wp-hero">
                 <div class="wp-hero-donut">
                   <ng-container [ngTemplateOutlet]="donut" />
                   <ng-container [ngTemplateOutlet]="deltaLine" />
                 </div>
-                <app-kpi-tiles
-                  class="wp-tiles"
-                  [tiles]="tiles()"
-                  [maxColumns]="sections().tilesOneRow ? 4 : 2"
-                  ariaLabel="This week"
-                />
+                @if (sections().tilesOneRow) {
+                  <app-kpi-tiles class="wp-tiles" [tiles]="tiles()" [maxColumns]="4" ariaLabel="This week" />
+                } @else if (sections().sideTiles > 0) {
+                  <ul class="wp-side-tiles" data-testid="wp-side-tiles" aria-label="This week">
+                    @for (tile of tiles().slice(0, sections().sideTiles); track tile.key) {
+                      <li [class]="'wp-side-tile wp-tone--' + tile.tone" data-testid="wp-side-tile">
+                        <span class="wp-stacked-label">{{ tile.label }}</span>
+                        <span class="wp-side-value">{{ tile.value }} @if (tile.hint) {<small>{{ tile.hint }}</small>}</span>
+                      </li>
+                    }
+                  </ul>
+                }
               </div>
               @if (sections().chart) {
                 <section class="wp-section">
