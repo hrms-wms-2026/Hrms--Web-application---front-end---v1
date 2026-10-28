@@ -3,7 +3,7 @@ import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@a
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { environment } from '../../../../../environments/environment';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -12,6 +12,7 @@ import { PlannerAvailability, PlannerAvailabilityService } from '../../../work/p
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
 import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
+import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { CalendarPageComponent } from './calendar-page.component';
 
 /** Planner = Calendar (2026-10-27 design): the calendar page with the planner layer on and off. */
@@ -52,6 +53,8 @@ describe('CalendarPageComponent planner layer', () => {
   const notify = { error: vi.fn(), warning: vi.fn(), success: vi.fn(), info: vi.fn() };
   const events = signal<readonly CalendarEventResponse[]>([]);
   let blocksFor: (date: string) => PlannerRangeBlockView[] = () => [];
+  const projectError = signal<string | null>(null);
+  const projects = { loadProject: vi.fn(async () => undefined), loadMyMilestones: vi.fn(async () => undefined), projectError };
 
   function fakeStore() {
     return {
@@ -99,14 +102,44 @@ describe('CalendarPageComponent planner layer', () => {
         { provide: CalendarEventStore, useValue: fakeStore() },
         { provide: PlannerAvailabilityService, useValue: { state, markAvailable: vi.fn(), probe: vi.fn() } },
         { provide: NotificationService, useValue: notify },
+        { provide: ProjectDetailStore, useValue: projects },
       ],
     });
+    projectError.set(null);
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(CalendarPageComponent);
     fixture.detectChanges();
   }
 
   const q = (testId: string): HTMLElement | null => fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+
+  it('opens a planned task over the planner, so closing it stays on the planner', async () => {
+    setup();
+    await settle();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+
+    await fixture.componentInstance.openTask('p1', 't1');
+
+    expect(projects.loadProject).toHaveBeenCalledWith('p1');
+    expect(fixture.componentInstance.openedTask()).toEqual({ projectId: 'p1', taskId: 't1' });
+    expect(navigate).not.toHaveBeenCalled();
+
+    fixture.componentInstance.closeTask();
+    expect(fixture.componentInstance.openedTask()).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the board when the task project cannot be opened here', async () => {
+    setup();
+    await settle();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    projects.loadProject.mockImplementationOnce(async () => { projectError.set('no access'); });
+
+    await fixture.componentInstance.openTask('p1', 't1');
+
+    expect(fixture.componentInstance.openedTask()).toBeNull();
+    expect(navigate).toHaveBeenCalledWith(['/work', 'p1', 'board'], { queryParams: { taskId: 't1' } });
+  });
 
   it('is the plain calendar while the planner is off', async () => {
     setup(false);
