@@ -7,6 +7,8 @@ const GROUP_TITLES: Record<PlannerFocusReason, string> = {
   overdue: 'Overdue', due_today: 'Due today', due_this_week: 'Due this week', backlog: 'Assigned backlog',
 };
 const CARDS_PER_GROUP = 5;
+/** How far a press must move before it is a drag rather than a click. */
+const DRAG_THRESHOLD_PX = 4;
 
 function duration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -22,7 +24,8 @@ function localDate(date: string): Date {
 
 /**
  * The Focus panel (2026-10-27 Planner = Calendar design, section 4.2): what to work on, in four groups. On a wide screen a
- * card is dragged onto the calendar grid; on a narrow one a tap asks for a day and time instead.
+ * card is dragged onto the calendar grid and a click opens the task; on a narrow one a tap asks for a day and time
+ * instead. Every card also has a Plan button, the keyboard's way to schedule.
  */
 @Component({
   selector: 'app-planner-focus-panel',
@@ -43,6 +46,10 @@ export class PlannerFocusPanelComponent {
 
   private readonly drag = inject(PlannerDragService);
   private readonly expanded = signal<ReadonlySet<PlannerFocusReason>>(new Set());
+  /** The card being dragged, drawn dimmed and dashed in the list. */
+  readonly draggingId = signal<string | null>(null);
+  readonly ghost = signal<{ title: string; length: string | null; x: number; y: number } | null>(null);
+  private justDragged = false;
 
   readonly groups = computed(() => (this.focus()?.groups ?? []).map((group) => {
     const all = this.expanded().has(group.reason);
@@ -58,20 +65,50 @@ export class PlannerFocusPanelComponent {
     this.expanded.update((set) => new Set([...set, reason]));
   }
 
+  /**
+   * A press becomes a drag only once the pointer moves past a few pixels, so a plain click still opens the task. While
+   * it drags, a ghost card follows the pointer, the source card dims and the cursor grabs.
+   */
   onCardPointerDown(item: PlannerFocusItem, event: PointerEvent): void {
     if (event.button !== 0 || this.narrow()) return;
-    this.drag.start(item);
-    document.addEventListener('pointerup', () => this.drag.end(), { once: true });
+    if ((event.target as HTMLElement | null)?.closest?.('[data-no-drag]')) return;
+    const from = { x: event.clientX, y: event.clientY };
+    let dragging = false;
+    const move = (e: PointerEvent) => {
+      if (!dragging) {
+        if (Math.hypot(e.clientX - from.x, e.clientY - from.y) < DRAG_THRESHOLD_PX) return;
+        dragging = true;
+        this.drag.start(item);
+        this.draggingId.set(item.taskId);
+        document.body.style.cursor = 'grabbing';
+      }
+      this.ghost.set({ title: item.title, length: item.remainingMinutes ? duration(item.remainingMinutes) : null, x: e.clientX, y: e.clientY });
+    };
+    const up = () => {
+      document.removeEventListener('pointermove', move);
+      if (!dragging) return;
+      // The release after a drag must not also count as a click on the card.
+      this.justDragged = true;
+      setTimeout(() => (this.justDragged = false));
+      this.drag.end();
+      this.draggingId.set(null);
+      this.ghost.set(null);
+      document.body.style.cursor = '';
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up, { once: true });
   }
 
+  /** A click anywhere on the card opens the task; on a narrow screen, where there is no drag, it asks for a time. */
   onCardClick(item: PlannerFocusItem): void {
+    if (this.justDragged) return;
     if (this.narrow()) this.pick.emit(item);
+    else this.open.emit(item);
   }
 
-  onTitleClick(item: PlannerFocusItem, event: Event): void {
-    if (this.narrow()) return;
+  onPlanClick(item: PlannerFocusItem, event: Event): void {
     event.stopPropagation();
-    this.open.emit(item);
+    this.pick.emit(item);
   }
 
   private narrow(): boolean {

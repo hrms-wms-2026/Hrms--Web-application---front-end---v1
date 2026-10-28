@@ -75,13 +75,85 @@ describe('PlannerFocusPanelComponent', () => {
     expect(backlog.querySelector('[data-testid="planner-priority-dot"]')).toBeNull();
   });
 
-  it('starts a drag from a card on a wide screen and ends it on release', () => {
+  const pointer = (type: string, x: number, y: number) =>
+    Object.assign(new Event(type, { bubbles: true }), { button: 0, clientX: x, clientY: y });
+
+  it('starts a drag once a pressed card moves, shows a ghost under the pointer, and ends it on release', () => {
     narrow(false);
 
-    cards()[0].dispatchEvent(Object.assign(new Event('pointerdown', { bubbles: true }), { button: 0 }));
-    expect(drag.dragging()?.taskId).toBe('t-Payroll export fix');
-    document.dispatchEvent(new Event('pointerup'));
+    cards()[0].dispatchEvent(pointer('pointerdown', 100, 100));
     expect(drag.dragging()).toBeNull();
+    document.dispatchEvent(pointer('pointermove', 102, 101));
+    expect(drag.dragging()).toBeNull();
+
+    document.dispatchEvent(pointer('pointermove', 140, 160));
+    fixture.detectChanges();
+    expect(drag.dragging()?.taskId).toBe('t-Payroll export fix');
+    expect(cards()[0].getAttribute('data-dragging')).toBe('true');
+    const ghost = fixture.nativeElement.querySelector('[data-testid="planner-focus-ghost"]') as HTMLElement;
+    expect(ghost.textContent).toContain('Payroll export fix');
+    expect(ghost.textContent).toContain('3h 30m');
+    expect(ghost.style.left).toBe('154px');
+
+    document.dispatchEvent(pointer('pointerup', 140, 160));
+    fixture.detectChanges();
+    expect(drag.dragging()).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="planner-focus-ghost"]')).toBeNull();
+    expect(cards()[0].getAttribute('data-dragging')).toBeNull();
+  });
+
+  it('a click anywhere on a card opens the task on a wide screen, without starting a drag', () => {
+    narrow(false);
+    const opened = vi.fn();
+    fixture.componentInstance.open.subscribe(opened);
+
+    cards()[1].dispatchEvent(pointer('pointerdown', 10, 10));
+    document.dispatchEvent(pointer('pointerup', 10, 10));
+    cards()[1].click();
+
+    expect(drag.dragging()).toBeNull();
+    expect(opened).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't-Release notes' }));
+  });
+
+  it('the release after a drag does not also open the task', () => {
+    narrow(false);
+    const opened = vi.fn();
+    fixture.componentInstance.open.subscribe(opened);
+
+    cards()[0].dispatchEvent(pointer('pointerdown', 0, 0));
+    document.dispatchEvent(pointer('pointermove', 50, 50));
+    document.dispatchEvent(pointer('pointerup', 50, 50));
+    cards()[0].click();
+
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it('the Plan button asks for a day and time, and neither opens the task nor drags', () => {
+    narrow(false);
+    const picked = vi.fn();
+    const opened = vi.fn();
+    fixture.componentInstance.pick.subscribe(picked);
+    fixture.componentInstance.open.subscribe(opened);
+    const plan = cards()[0].querySelector('[data-testid="planner-focus-plan"]') as HTMLButtonElement;
+
+    plan.dispatchEvent(pointer('pointerdown', 0, 0));
+    document.dispatchEvent(pointer('pointermove', 50, 50));
+    plan.click();
+
+    expect(drag.dragging()).toBeNull();
+    expect(picked).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't-Payroll export fix' }));
+    expect(opened).not.toHaveBeenCalled();
+    document.dispatchEvent(pointer('pointerup', 50, 50));
+  });
+
+  it('Enter on a focused card opens the task', () => {
+    narrow(false);
+    const opened = vi.fn();
+    fixture.componentInstance.open.subscribe(opened);
+
+    cards()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(opened).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't-Payroll export fix' }));
   });
 
   it('on a narrow screen a tap asks to pick a time instead', () => {
