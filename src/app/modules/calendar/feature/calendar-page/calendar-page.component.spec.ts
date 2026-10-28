@@ -1,5 +1,3 @@
-import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
-import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
@@ -168,21 +166,15 @@ describe('CalendarPageComponent - create submission', () => {
 });
 
 describe('CalendarPageComponent - new meeting (work item)', () => {
-  it('offers "Meeting (work item)" next to New event and opens the meeting form as an Office meeting', () => {
+  it('has no "Meeting (work item)" button: a meeting is made from the work item form, category "meeting"', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
     });
     const fixture = TestBed.createComponent(CalendarPageComponent);
     fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-new-meeting"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-meeting-form-modal')).toBeNull();
-
-    const button: HTMLElement = fixture.nativeElement.querySelector('[data-testid="calendar-new-meeting"]');
-    expect(button.textContent?.trim()).toBe('Meeting (work item)');
-    button.click();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('app-meeting-form-modal')).not.toBeNull();
-    expect(fixture.componentInstance.meetingFormOpen()).toBe(true);
   });
 
   it('a new event with people hands over to the meeting form with its title and time', () => {
@@ -201,17 +193,6 @@ describe('CalendarPageComponent - new meeting (work item)', () => {
     expect(page.meetingFormOpen()).toBe(true);
     const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
     expect(form.componentInstance.prefill()).toEqual({ title: 'Design review', start: '2026-11-02T10:00', end: '2026-11-02T11:30' });
-  });
-
-  it('hides "Meeting (work item)" once the server says meetings are off', () => {
-    TestBed.configureTestingModule({
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: CalendarEventStore, useValue: buildFakeStore() }]
-    });
-    TestBed.inject(MeetingsAvailabilityService).noteError(new HttpErrorResponse({ status: 503, error: { code: 'meetings_disabled' } }));
-    const fixture = TestBed.createComponent(CalendarPageComponent);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-new-meeting"]')).toBeNull();
   });
 });
 
