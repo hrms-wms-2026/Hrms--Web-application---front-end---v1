@@ -410,8 +410,22 @@ describe('CalendarEventFormModalComponent', () => {
 
     vi.advanceTimersByTime(400);
     expect(spy).toHaveBeenCalledWith({
-      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00.000Z', endDate: '2026-09-01T10:00:00.000Z'
+      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00.000Z', endDate: '2026-09-01T10:00:00.000Z',
+      isAllDay: false, timeZone: fixture.componentInstance.currentTimezone()
     });
+    vi.useRealTimers();
+  });
+
+  it('an all-day event tells the conflict check it is all day', () => {
+    vi.useFakeTimers();
+    const spy = vi.fn();
+    fixture.componentInstance.checkConflicts.subscribe(spy);
+
+    fixture.componentInstance.form.patchValue({ startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '10:00', isAllDay: true });
+    fixture.componentInstance.onParticipantIdsChange(['emp-1']);
+    vi.advanceTimersByTime(400);
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ isAllDay: true }));
     vi.useRealTimers();
   });
 

@@ -285,6 +285,34 @@ describe('MeetingFormModalComponent', () => {
       expect(calendarApi.checkConflicts).not.toHaveBeenCalled();
     });
 
+    it('typing in the title does not re-check availability', () => {
+      vi.useFakeTimers();
+      build({ mode: 'create' });
+      form.onParticipantsChange(['e2']);
+      form.form.patchValue({ date: '2026-11-03', time: '10:00' });
+      vi.advanceTimersByTime(400);
+      calendarApi.checkConflicts.mockClear();
+
+      form.form.patchValue({ title: 'Board review', location: 'Room 4', isPrivate: true });
+      vi.advanceTimersByTime(400);
+
+      expect(calendarApi.checkConflicts).not.toHaveBeenCalled();
+    });
+
+    it('an empty start time or duration clears the warnings without a request', () => {
+      vi.useFakeTimers();
+      build({ mode: 'create' });
+      form.onParticipantsChange(['e2']);
+      form.form.patchValue({ date: '2026-11-03', time: '' });
+      vi.advanceTimersByTime(400);
+      form.form.controls.durationMinutes.setValue(null as unknown as number);
+      form.form.patchValue({ time: '10:00' });
+      vi.advanceTimersByTime(400);
+
+      expect(calendarApi.checkConflicts).not.toHaveBeenCalled();
+      expect(form.checkingAvailability()).toBe(false);
+    });
+
     it('edit sends series to exclude', () => {
       vi.useFakeTimers();
       build({ mode: 'edit', occurrence: occurrence({ attendees: [

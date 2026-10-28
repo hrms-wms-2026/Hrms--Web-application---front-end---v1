@@ -3,7 +3,7 @@ import { MeetingCreatedEvent } from '../../utils/meeting-created-drawer.util';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, merge } from 'rxjs';
 import { AuthStore } from '../../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../../core/services/notification.service';
 import { CalendarEventApiService } from '../../../../calendar/data-access/calendar-event-api.service';
@@ -197,7 +197,11 @@ export class MeetingFormModalComponent implements OnInit {
 
   ngOnInit(): void {
     this.form.controls.platform.valueChanges.subscribe((p) => this.platformChoice.set(p));
-    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.scheduleAvailabilityCheck());
+    // Only the fields that move the meeting in time re-check availability (design 4.3), not the title or agenda.
+    const c = this.form.controls;
+    merge(c.date.valueChanges, c.time.valueChanges, c.durationMinutes.valueChanges, c.isAllDay.valueChanges, c.timezone.valueChanges)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.scheduleAvailabilityCheck());
     this.destroyRef.onDestroy(() => { if (this.availabilityTimer) clearTimeout(this.availabilityTimer); });
     const occ = this.occurrence();
     if (this.mode() === 'edit' && occ) {
@@ -270,7 +274,9 @@ export class MeetingFormModalComponent implements OnInit {
     const v = this.form.getRawValue();
     const people = this.availabilityPeople();
     const request = ++this.availabilityRequest;
-    if (!v.date || (!v.isAllDay && this.form.controls.durationMinutes.invalid) || people.length === 0 || this.notesOnly()) {
+    const timed = !v.isAllDay;
+    const badTime = timed && (!v.time || !(v.durationMinutes > 0) || this.form.controls.durationMinutes.invalid);
+    if (!v.date || badTime || people.length === 0 || this.notesOnly()) {
       this.availability.set([]);
       this.checkingAvailability.set(false);
       return;
