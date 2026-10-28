@@ -6,7 +6,6 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
 import { WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
 import { DailyWorkChartComponent } from '../../ui/daily-work-chart/daily-work-chart.component';
-import { formatMinutes } from '../../util/timeline-segments.util';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import { WeeklyInsight, buildWeeklyInsights, progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
@@ -14,6 +13,8 @@ import {
   WEEKLY_STATUS_LABELS,
   WeeklyDelta,
   changeAgainst,
+  deltaOf,
+  formatWeekHours,
   mondayBefore,
   weeklyTiles
 } from '../../utils/weekly-work-progress-format.util';
@@ -70,7 +71,7 @@ export class WeeklyWorkProgressDetailDialogComponent {
   ];
   protected readonly donutPx = DASHBOARD_DONUT_PX;
   protected readonly statusLabels = WEEKLY_STATUS_LABELS;
-  protected readonly formatMinutes = formatMinutes;
+  protected readonly formatMinutes = formatWeekHours;
   protected readonly colors = COLORS;
 
   protected readonly data = computed(() => (this.selectedWeek() === 'last' ? this.lastWeek() : null) ?? this.initial());
@@ -82,8 +83,7 @@ export class WeeklyWorkProgressDetailDialogComponent {
   protected readonly delta = computed<WeeklyDelta | null>(() => {
     const points = progressDeltaPoints(this.data());
     if (points === null) return null;
-    const rounded = Math.round(points);
-    return { up: rounded >= 0, text: `${rounded >= 0 ? '+' : '−'}${Math.abs(rounded)}%` };
+    return deltaOf(Math.round(points));
   });
 
   protected readonly workedChange = computed(() =>

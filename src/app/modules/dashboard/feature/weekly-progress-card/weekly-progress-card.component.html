@@ -76,7 +76,7 @@
         <ng-template #deltaLine>
           @if (delta(); as d) {
             <p class="wp-delta" data-testid="wp-delta">
-              <span class="wp-delta-value" [class.wp-delta-value--down]="!d.up">{{ d.up ? '↗' : '↘' }} {{ d.text }}</span>
+              <span class="wp-delta-value" [class.wp-delta-value--down]="!d.up">{{ d.arrow }} {{ d.text }}</span>
               <span class="wp-delta-caption">vs last week ({{ percentText(data.lastWeek) }})</span>
             </p>
           }
@@ -156,7 +156,7 @@
                       <div class="wp-compare-item">
                         <span class="wp-compare-label">Scheduled Hours</span>
                         <span class="wp-compare-value">{{ formatMinutes(data.thisWeek.scheduledMinutes) }}
-                          @if (scheduledChange(); as c) { <small [class.wp-down]="!c.up">{{ c.up ? '↗' : '↘' }} {{ c.text }}</small> }
+                          @if (scheduledChange(); as c) { <small [class.wp-down]="!c.up">{{ c.arrow }} {{ c.text }}</small> }
                         </span>
                         <span class="wp-compare-caption">vs last week ({{ formatMinutes(data.lastWeek.scheduledMinutes) }})</span>
                       </div>
@@ -164,14 +164,14 @@
                     <div class="wp-compare-item">
                       <span class="wp-compare-label">Worked Hours</span>
                       <span class="wp-compare-value">{{ formatMinutes(data.thisWeek.workedMinutes) }}
-                        @if (workedChange(); as c) { <small [class.wp-down]="!c.up">{{ c.up ? '↗' : '↘' }} {{ c.text }}</small> }
+                        @if (workedChange(); as c) { <small [class.wp-down]="!c.up">{{ c.arrow }} {{ c.text }}</small> }
                       </span>
                       <span class="wp-compare-caption">vs last week ({{ formatMinutes(data.lastWeek.workedMinutes) }})</span>
                     </div>
                     <div class="wp-compare-item">
                       <span class="wp-compare-label">Completion Rate</span>
                       <span class="wp-compare-value">{{ percentText(data.thisWeek) }}
-                        @if (delta(); as d) { <small [class.wp-down]="!d.up">{{ d.up ? '↗' : '↘' }} {{ d.text }}</small> }
+                        @if (delta(); as d) { <small [class.wp-down]="!d.up">{{ d.arrow }} {{ d.text }}</small> }
                       </span>
                       <span class="wp-compare-caption">vs last week ({{ percentText(data.lastWeek) }})</span>
                     </div>

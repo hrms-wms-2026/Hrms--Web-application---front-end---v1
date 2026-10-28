@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, linkedSignal, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
@@ -9,7 +9,6 @@ import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-c
 import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
 import { WeekProgress, WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
 import { DailyWorkChartComponent } from '../../ui/daily-work-chart/daily-work-chart.component';
-import { formatMinutes } from '../../util/timeline-segments.util';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { injectHostSize } from '../../utils/host-size.util';
 import { progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
@@ -23,6 +22,8 @@ import {
   WEEKLY_STATUS_LABELS,
   WeeklyDelta,
   changeAgainst,
+  deltaOf,
+  formatWeekHours,
   mondayBefore,
   weeklyTiles
 } from '../../utils/weekly-work-progress-format.util';
@@ -74,8 +75,12 @@ export class WeeklyProgressCardComponent implements OnInit {
   protected readonly selectedWeek = signal<'this' | 'last'>('this');
   readonly detailOpen = signal(false);
 
-  /** The view for the card's current size; 'standard' until the first measurement. */
-  readonly view = signal<WeeklyProgressView>('standard');
+  /** The view for the card's current size, keeping the previous one inside the hysteresis band; 'standard' until the
+   * first measurement. Derived (not set from an effect) so a resize re-renders the card straight away. */
+  readonly view = linkedSignal<{ width: number; height: number }, WeeklyProgressView>({
+    source: this.size,
+    computation: (size, previous) => resolveWeeklyProgressView(size.width, size.height, previous?.value ?? null)
+  });
   protected readonly sections = computed(() => {
     const { width, height } = this.size();
     return planWeeklyProgressSections(
@@ -87,7 +92,7 @@ export class WeeklyProgressCardComponent implements OnInit {
 
   protected readonly donutPx = DASHBOARD_DONUT_PX;
   protected readonly statusLabels = WEEKLY_STATUS_LABELS;
-  protected readonly formatMinutes = formatMinutes;
+  protected readonly formatMinutes = formatWeekHours;
 
   /** The week on show: this week, or last week once picked and loaded. */
   protected readonly shown = computed(() => (this.selectedWeek() === 'last' ? this.previous() : this.current()));
@@ -113,8 +118,7 @@ export class WeeklyProgressCardComponent implements OnInit {
     const data = this.shown();
     const points = data ? progressDeltaPoints(data) : null;
     if (points === null) return null;
-    const rounded = Math.round(points);
-    return { up: rounded >= 0, text: `${rounded >= 0 ? '+' : '−'}${Math.abs(rounded)}%` };
+    return deltaOf(Math.round(points));
   });
 
   protected readonly workedChange = computed(() => {
@@ -137,15 +141,6 @@ export class WeeklyProgressCardComponent implements OnInit {
 
   private pollId: ReturnType<typeof setInterval> | null = null;
   private readonly visibilityHandler = (): void => this.onVisibilityChange();
-
-  constructor() {
-    // The view follows the card's size, keeping the previous one inside the hysteresis band.
-    effect(() => {
-      const { width, height } = this.size();
-      const previous = untracked(this.view);
-      this.view.set(resolveWeeklyProgressView(width, height, previous));
-    });
-  }
 
   ngOnInit(): void {
     this.feed.start();

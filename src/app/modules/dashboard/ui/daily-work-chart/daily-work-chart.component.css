@@ -80,7 +80,8 @@
   align-items: flex-end;
   justify-content: center;
   gap: 2px;
-  padding: 0 12%;
+  /* Fixed, not a percentage: percentage padding is measured against the whole chart, not the column. */
+  padding: 0 4px;
 }
 
 .dw-bar {

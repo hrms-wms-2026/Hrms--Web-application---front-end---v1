@@ -97,6 +97,16 @@ describe('WeeklyProgressCardComponent', () => {
     expect(data.refresh).toHaveBeenCalledTimes(1);
   });
 
+  it('re-renders for a new size on its own, without a manual change detection', async () => {
+    const f = render(fakeWidgetData('success', payload()), cols(2), rows(2));
+    f.autoDetectChanges();
+
+    FakeResizeObserver.instances[0].trigger(cols(6), rows(5));
+    await f.whenStable();
+
+    expect(q(f, 'daily-work-chart')).not.toBeNull();
+  });
+
   it('2x2 shows the fixed-size donut with the percent and status only', () => {
     const f = render(fakeWidgetData('success', payload()), cols(2), rows(2));
 
@@ -137,6 +147,15 @@ describe('WeeklyProgressCardComponent', () => {
 
     const tall = render(fakeWidgetData('success', payload()), cols(6), rows(7));
     expect(q(tall, 'wp-comparison')?.textContent).toContain('vs last week (22h)');
+  });
+
+  it('shows zero hours as 0h and an unchanged week without an arrow up', () => {
+    const data = payload({ lastWeek: week({ progressPercent: 0, workedMinutes: 0 }) }, { progressPercent: 0, workedMinutes: 0 });
+    const f = render(fakeWidgetData('success', data), cols(7), rows(2));
+
+    expect(q(f, 'wp-week-bars')?.textContent).toContain('0h / 40h');
+    expect(q(f, 'wp-delta')?.textContent).toContain('→ 0%');
+    expect(q(f, 'wp-delta')?.textContent).not.toContain('↗');
   });
 
   it('hides scheduled figures when the planner is off', () => {
