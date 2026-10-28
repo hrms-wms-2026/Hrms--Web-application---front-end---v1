@@ -29,7 +29,7 @@ function weekday(iso: string): string {
   templateUrl: './working-hours-chart.component.html',
   styleUrl: './working-hours-chart.component.css',
   host: { class: 'block' },
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkingHoursChartComponent {
   readonly days = input.required<readonly TeamWorkingHoursDay[]>();
@@ -46,14 +46,18 @@ export class WorkingHoursChartComponent {
       tooltip:
         `${weekday(d.date)} ${d.date}: ${minutesText(d.workedMinutes)} worked, ${minutesText(d.breakMinutes)} break` +
         `, ${d.peopleWithRecord} clocked in` +
-        (d.onLeaveCount > 0 ? `, ${d.onLeaveCount} on leave` : '')
+        (d.onLeaveCount > 0 ? `, ${d.onLeaveCount} on leave` : ''),
     }));
   });
 
-  protected readonly summary = computed(() =>
-    'Team working hours by day. ' +
-    this.days()
-      .map((d) => `${weekday(d.date)}: ${minutesText(d.workedMinutes)} worked, ${minutesText(d.breakMinutes)} break`)
-      .join('; ')
+  protected readonly summary = computed(
+    () =>
+      'Team working hours by day. ' +
+      this.days()
+        .map(
+          (d) =>
+            `${weekday(d.date)}: ${minutesText(d.workedMinutes)} worked, ${minutesText(d.breakMinutes)} break`,
+        )
+        .join('; '),
   );
 }

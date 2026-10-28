@@ -1,8 +1,23 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { Subscription } from 'rxjs';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import {
+  DataTableCellDirective,
+  DataTableColumn,
+  DataTableComponent,
+} from '../../../../shared/ui/data-table/data-table.component';
 import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
@@ -22,7 +37,7 @@ import {
   orderPresence,
   presenceFromSummary,
   presenceState,
-  timeLeft
+  timeLeft,
 } from '../../utils/team-presence-format.util';
 
 /**
@@ -33,10 +48,17 @@ import {
 @Component({
   selector: 'app-team-status-detail-dialog',
   standalone: true,
-  imports: [ModalComponent, KpiTilesComponent, AvatarComponent, DataTableComponent, DataTableCellDirective, WorkingHoursChartComponent],
+  imports: [
+    ModalComponent,
+    KpiTilesComponent,
+    AvatarComponent,
+    DataTableComponent,
+    DataTableCellDirective,
+    WorkingHoursChartComponent,
+  ],
   templateUrl: './team-status-detail-dialog.component.html',
   styleUrl: './team-status-detail-dialog.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TeamStatusDetailDialogComponent {
   readonly open = input(false);
@@ -59,7 +81,7 @@ export class TeamStatusDetailDialogComponent {
     { key: 'elapsed', label: 'Elapsed', width: '10%' },
     { key: 'remaining', label: 'Remaining', width: '14%' },
     { key: 'attendance', label: 'Attendance', width: '10%', align: 'end' },
-    { key: 'attention', label: 'Attention', width: '10%', wrap: true }
+    { key: 'attention', label: 'Attention', width: '10%', wrap: true },
   ];
   protected readonly trackByMember = (m: TeamTodayMember): string => m.employeeId;
 
@@ -72,17 +94,36 @@ export class TeamStatusDetailDialogComponent {
     const g = this.groups();
     if (!g) return [];
     return [
-      { label: 'Working', value: g.working, icon: 'users', tone: 'accent', testId: 'wbld-tile-working' },
-      { label: 'Break', value: g.onBreak, icon: 'clock', tone: 'warning', testId: 'wbld-tile-break' },
-      { label: 'Leave', value: g.onLeave, hint: 'approved leave you can see', icon: 'layers', tone: 'danger', testId: 'wbld-tile-leave' },
+      {
+        label: 'Working',
+        value: g.working,
+        icon: 'users',
+        tone: 'accent',
+        testId: 'wbld-tile-working',
+      },
+      {
+        label: 'Break',
+        value: g.onBreak,
+        icon: 'clock',
+        tone: 'warning',
+        testId: 'wbld-tile-break',
+      },
+      {
+        label: 'Leave',
+        value: g.onLeave,
+        hint: 'approved leave you can see',
+        icon: 'layers',
+        tone: 'danger',
+        testId: 'wbld-tile-leave',
+      },
       {
         label: 'Not clocked in',
         value: g.neutral.notClockedIn + g.neutral.absent,
         hint: neutralLine(g.neutral) || 'everyone is accounted for',
         icon: 'alert-triangle',
         tone: 'neutral',
-        testId: 'wbld-tile-neutral'
-      }
+        testId: 'wbld-tile-neutral',
+      },
     ];
   });
 
@@ -90,9 +131,24 @@ export class TeamStatusDetailDialogComponent {
     const g = this.groups();
     if (!g) return [];
     return [
-      { key: 'working', label: PRESENCE_LABELS.working, count: g.working, color: PRESENCE_COLORS.working },
-      { key: 'break', label: PRESENCE_LABELS.break, count: g.onBreak, color: PRESENCE_COLORS.break },
-      { key: 'leave', label: PRESENCE_LABELS.leave, count: g.onLeave, color: PRESENCE_COLORS.leave }
+      {
+        key: 'working',
+        label: PRESENCE_LABELS.working,
+        count: g.working,
+        color: PRESENCE_COLORS.working,
+      },
+      {
+        key: 'break',
+        label: PRESENCE_LABELS.break,
+        count: g.onBreak,
+        color: PRESENCE_COLORS.break,
+      },
+      {
+        key: 'leave',
+        label: PRESENCE_LABELS.leave,
+        count: g.onLeave,
+        color: PRESENCE_COLORS.leave,
+      },
     ];
   });
   protected readonly donut = computed<DonutArc[]>(() => donutArcs(this.legend()));
@@ -120,7 +176,8 @@ export class TeamStatusDetailDialogComponent {
   }
 
   protected sinceText(m: TeamTodayMember): string {
-    if (presenceState(m.status) === 'leave') return m.leave ? `${m.leave.leaveTypeName} · until ${m.leave.endsOn}` : '—';
+    if (presenceState(m.status) === 'leave')
+      return m.leave ? `${m.leave.leaveTypeName} · until ${m.leave.endsOn}` : '—';
     return m.stateSince ? clockTime(m.stateSince) : '—';
   }
 
@@ -158,7 +215,18 @@ export class TeamStatusDetailDialogComponent {
     const data = this.store.data();
     if (!data) return;
     const now = new Date();
-    const header = ['Name', 'State', 'Since', 'Elapsed', 'Remaining', 'Attendance', 'Late', 'Attention', 'Leave type', 'Leave until'];
+    const header = [
+      'Name',
+      'State',
+      'Since',
+      'Elapsed',
+      'Remaining',
+      'Attendance',
+      'Late',
+      'Attention',
+      'Leave type',
+      'Leave until',
+    ];
     const lines = this.members().map((m) => [
       m.displayName,
       this.stateLabel(m),
@@ -169,7 +237,7 @@ export class TeamStatusDetailDialogComponent {
       m.isLate ? 'Yes' : '',
       m.attentionLabel ?? '',
       m.leave ? m.leave.leaveTypeName : '',
-      m.leave ? m.leave.endsOn : ''
+      m.leave ? m.leave.endsOn : '',
     ]);
     this.downloadFile(`working-break-leave-${data.workDate}.csv`, toCsv([header, ...lines]));
   }
@@ -179,7 +247,7 @@ export class TeamStatusDetailDialogComponent {
     this.weekError.set(false);
     this.weekSub = this.api.getWeek().subscribe({
       next: (week) => this.week.set(week),
-      error: () => this.weekError.set(true)
+      error: () => this.weekError.set(true),
     });
   }
 }

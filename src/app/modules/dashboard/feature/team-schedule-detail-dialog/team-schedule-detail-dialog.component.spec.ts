@@ -16,17 +16,43 @@ const ranked = scheduleMember({
   notRankedReason: 'none',
   plannedTaskMinutes: 60,
   items: [
-    { kind: 'task', taskId: 't1', title: 'Write report', start: at(9), end: at(10), status: 'completed', isPrivate: false },
-    { kind: 'meeting', taskId: 'm1', title: 'Private meeting', start: at(10), end: at(11), status: 'finished', isPrivate: true }
+    {
+      kind: 'task',
+      taskId: 't1',
+      title: 'Write report',
+      start: at(9),
+      end: at(10),
+      status: 'completed',
+      isPrivate: false,
+    },
+    {
+      kind: 'meeting',
+      taskId: 'm1',
+      title: 'Private meeting',
+      start: at(10),
+      end: at(11),
+      status: 'finished',
+      isPrivate: true,
+    },
   ],
-  conflicts: [{ kind: 'block_meeting', start: at(9, 30), end: at(10), firstTitle: 'Write report', secondTitle: 'Private meeting' }]
+  conflicts: [
+    {
+      kind: 'block_meeting',
+      start: at(9, 30),
+      end: at(10),
+      firstTitle: 'Write report',
+      secondTitle: 'Private meeting',
+    },
+  ],
 });
 const onLeave = scheduleMember({ displayName: 'Cat', notRankedReason: 'on_leave' });
 const noPlan = scheduleMember({
   displayName: 'Bob',
   clockedMinutes: 120,
   noPlanMinutes: 120,
-  unscheduled: [{ taskId: 't2', title: 'Fix bug', start: at(13), end: at(15), minutes: 120, kind: 'no_plan' }]
+  unscheduled: [
+    { taskId: 't2', title: 'Fix bug', start: at(13), end: at(15), minutes: 120, kind: 'no_plan' },
+  ],
 });
 
 describe('TeamScheduleDetailDialogComponent', () => {
@@ -36,7 +62,7 @@ describe('TeamScheduleDetailDialogComponent', () => {
     const getTeamDay = vi.fn((date: string | null) => of({ ...data, date: date ?? data.date }));
     await TestBed.configureTestingModule({
       imports: [TeamScheduleDetailDialogComponent],
-      providers: [TeamScheduleStore, { provide: TeamScheduleApiService, useValue: { getTeamDay } }]
+      providers: [TeamScheduleStore, { provide: TeamScheduleApiService, useValue: { getTeamDay } }],
     }).compileComponents();
     const store = TestBed.inject(TeamScheduleStore);
     store.seed(data);
@@ -67,7 +93,9 @@ describe('TeamScheduleDetailDialogComponent', () => {
   it('ranking shows both parts with the score, and "Not ranked · reason" otherwise', async () => {
     const { doc } = await setup(scheduleResponse([ranked, onLeave, noPlan]));
 
-    const rows = [...doc.querySelectorAll('[data-testid="tsd-rank-row"]')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
+    const rows = [...doc.querySelectorAll('[data-testid="tsd-rank-row"]')].map((r) =>
+      r.textContent!.replace(/\s+/g, ' ').trim(),
+    );
     expect(rows[0]).toContain('Items 50% · Time 100%');
     expect(rows[0]).toContain('70%');
     expect(rows[1]).toContain('Not ranked · On leave');
@@ -84,10 +112,14 @@ describe('TeamScheduleDetailDialogComponent', () => {
   it('lists unscheduled work and conflicts with masked titles', async () => {
     const { doc } = await setup(scheduleResponse([ranked, noPlan]));
 
-    expect(q(doc, 'tsd-unscheduled-panel')!.textContent).toContain('Worked without a matching Planner slot.');
+    expect(q(doc, 'tsd-unscheduled-panel')!.textContent).toContain(
+      'Worked without a matching Planner slot.',
+    );
     expect(q(doc, 'tsd-unscheduled-panel')!.textContent).toContain('Fix bug');
     expect(q(doc, 'tsd-conflicts-panel')!.textContent).toContain('Write report / Private meeting');
-    const blockTitles = [...doc.querySelectorAll('[data-testid="tsd-block"]')].map((b) => b.getAttribute('title') ?? '');
+    const blockTitles = [...doc.querySelectorAll('[data-testid="tsd-block"]')].map(
+      (b) => b.getAttribute('title') ?? '',
+    );
     expect(blockTitles.some((t) => t.startsWith('Private meeting'))).toBe(true);
   });
 

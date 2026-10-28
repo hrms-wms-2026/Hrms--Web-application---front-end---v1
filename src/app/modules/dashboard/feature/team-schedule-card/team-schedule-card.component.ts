@@ -1,14 +1,34 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
-import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
-import { TeamScheduleItem, TeamScheduleMember, TeamScheduleResponse } from '../../models/team-schedule.model';
+import {
+  WidgetCardComponent,
+  WidgetState,
+} from '../../../../shared/ui/widget-card/widget-card.component';
+import {
+  TeamScheduleItem,
+  TeamScheduleMember,
+  TeamScheduleResponse,
+} from '../../models/team-schedule.model';
 import { TeamScheduleStore } from '../../state/team-schedule.store';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { injectHostSize } from '../../utils/host-size.util';
-import { PRESENCE_COLORS, PRESENCE_LABELS, minutesText, presenceState } from '../../utils/team-presence-format.util';
+import {
+  PRESENCE_COLORS,
+  PRESENCE_LABELS,
+  minutesText,
+  presenceState,
+} from '../../utils/team-presence-format.util';
 import {
   SCHEDULE_COLORS,
   completionText,
@@ -19,9 +39,13 @@ import {
   spanPosition,
   taskStatusDonut,
   timelineSpan,
-  unscheduledMinutes
+  unscheduledMinutes,
 } from '../../utils/team-schedule-format.util';
-import { SCHEDULE_MEDIUM_ROWS, ScheduleView, scheduleView } from '../../utils/team-schedule-layout.util';
+import {
+  SCHEDULE_MEDIUM_ROWS,
+  ScheduleView,
+  scheduleView,
+} from '../../utils/team-schedule-layout.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamScheduleDetailDialogComponent } from '../team-schedule-detail-dialog/team-schedule-detail-dialog.component';
 
@@ -37,18 +61,24 @@ const REFRESH_INTERVAL_MS = 60_000;
 @Component({
   selector: 'app-team-schedule-card',
   standalone: true,
-  imports: [NgTemplateOutlet, AvatarComponent, WidgetCardComponent, PopoutHeaderActionsComponent, TeamScheduleDetailDialogComponent],
+  imports: [
+    NgTemplateOutlet,
+    AvatarComponent,
+    WidgetCardComponent,
+    PopoutHeaderActionsComponent,
+    TeamScheduleDetailDialogComponent,
+  ],
   templateUrl: './team-schedule-card.component.html',
   styleUrl: './team-schedule-card.component.css',
   host: { class: 'block h-full' },
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TeamScheduleCardComponent implements OnInit {
   protected readonly store = inject(TeamScheduleStore);
   private readonly feed = injectWidgetDataFeed<TeamScheduleResponse>({
     apply: (data) => this.store.seed(data),
     fetch: () => this.store.load(),
-    refreshing: () => this.store.markLoading()
+    refreshing: () => this.store.markLoading(),
   });
   private readonly destroyRef = inject(DestroyRef);
   private readonly size = injectHostSize();
@@ -80,11 +110,15 @@ export class TeamScheduleCardComponent implements OnInit {
   });
   protected readonly donutLabel = computed(() => {
     const s = this.store.data()?.summary;
-    return s ? `Tasks today: ${s.tasksCompleted} completed, ${s.tasksInProgress} in progress, ${s.tasksPending} pending` : '';
+    return s
+      ? `Tasks today: ${s.tasksCompleted} completed, ${s.tasksInProgress} in progress, ${s.tasksPending} pending`
+      : '';
   });
 
   /** Rows keep the backend's order (ranked, then by name); a clock tick never re-sorts them. */
-  protected readonly mediumRows = computed(() => (this.store.data()?.members ?? []).slice(0, SCHEDULE_MEDIUM_ROWS));
+  protected readonly mediumRows = computed(() =>
+    (this.store.data()?.members ?? []).slice(0, SCHEDULE_MEDIUM_ROWS),
+  );
   protected readonly span = computed(() => {
     const data = this.store.data();
     return timelineSpan(data?.members ?? [], data?.date ?? '1970-01-01');
@@ -94,7 +128,9 @@ export class TeamScheduleCardComponent implements OnInit {
     const data = this.store.data();
     if (!data || this.store.date() !== null) return null;
     const t = this.now().toISOString();
-    return spanPosition(t, new Date(this.now().getTime() + 1).toISOString(), this.span())?.left ?? null;
+    return (
+      spanPosition(t, new Date(this.now().getTime() + 1).toISOString(), this.span())?.left ?? null
+    );
   });
 
   ngOnInit(): void {

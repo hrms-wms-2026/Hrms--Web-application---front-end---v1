@@ -17,7 +17,7 @@ import {
   percentText,
   spanPosition,
   timelineSpan,
-  unscheduledMinutes
+  unscheduledMinutes,
 } from '../../utils/team-schedule-format.util';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -34,7 +34,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
   imports: [ModalComponent, KpiTilesComponent, AvatarComponent],
   templateUrl: './team-schedule-detail-dialog.component.html',
   styleUrl: './team-schedule-detail-dialog.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TeamScheduleDetailDialogComponent {
   readonly open = input(false);
@@ -57,19 +57,52 @@ export class TeamScheduleDetailDialogComponent {
     const s = this.store.data()?.summary;
     if (!s) return [];
     return [
-      { label: 'Tasks planned', value: s.tasksPlanned, icon: 'clipboard-list', tone: 'neutral', testId: 'tsd-tile-planned' },
-      { label: 'Completed', value: s.tasksCompleted, icon: 'check-circle', tone: 'success', testId: 'tsd-tile-completed' },
-      { label: 'In progress', value: s.tasksInProgress, icon: 'clock', tone: 'accent', testId: 'tsd-tile-progress' },
-      { label: 'Pending', value: s.tasksPending, icon: 'layers', tone: 'neutral', testId: 'tsd-tile-pending' },
-      { label: 'Meetings', value: s.meetings, icon: 'users', tone: 'neutral', testId: 'tsd-tile-meetings' },
+      {
+        label: 'Tasks planned',
+        value: s.tasksPlanned,
+        icon: 'clipboard-list',
+        tone: 'neutral',
+        testId: 'tsd-tile-planned',
+      },
+      {
+        label: 'Completed',
+        value: s.tasksCompleted,
+        icon: 'check-circle',
+        tone: 'success',
+        testId: 'tsd-tile-completed',
+      },
+      {
+        label: 'In progress',
+        value: s.tasksInProgress,
+        icon: 'clock',
+        tone: 'accent',
+        testId: 'tsd-tile-progress',
+      },
+      {
+        label: 'Pending',
+        value: s.tasksPending,
+        icon: 'layers',
+        tone: 'neutral',
+        testId: 'tsd-tile-pending',
+      },
+      {
+        label: 'Meetings',
+        value: s.meetings,
+        icon: 'users',
+        tone: 'neutral',
+        testId: 'tsd-tile-meetings',
+      },
       {
         label: 'Unscheduled people',
         value: s.peopleWithUnscheduledWork,
-        hint: s.peopleWithUnscheduledWork > 0 ? `${minutesText(s.unscheduledMinutes)} worked without a slot` : undefined,
+        hint:
+          s.peopleWithUnscheduledWork > 0
+            ? `${minutesText(s.unscheduledMinutes)} worked without a slot`
+            : undefined,
         icon: 'alert-triangle',
         tone: s.peopleWithUnscheduledWork > 0 ? 'warning' : 'neutral',
-        testId: 'tsd-tile-unscheduled'
-      }
+        testId: 'tsd-tile-unscheduled',
+      },
     ];
   });
 
@@ -80,10 +113,14 @@ export class TeamScheduleDetailDialogComponent {
   protected readonly ticks = computed(() => hourTicks(this.span()));
 
   protected readonly unscheduledRows = computed(() =>
-    (this.store.data()?.members ?? []).flatMap((m) => m.unscheduled.map((u) => ({ member: m, row: u })))
+    (this.store.data()?.members ?? []).flatMap((m) =>
+      m.unscheduled.map((u) => ({ member: m, row: u })),
+    ),
   );
   protected readonly conflictRows = computed(() =>
-    (this.store.data()?.members ?? []).flatMap((m) => m.conflicts.map((c) => ({ member: m, row: c })))
+    (this.store.data()?.members ?? []).flatMap((m) =>
+      m.conflicts.map((c) => ({ member: m, row: c })),
+    ),
   );
 
   protected position(startIso: string, endIso: string): { left: number; width: number } | null {
@@ -144,8 +181,19 @@ export class TeamScheduleDetailDialogComponent {
     const data = this.store.data();
     if (!data) return;
     const header = [
-      'Name', 'Planned task min', 'Planned meeting min', 'Clocked min', 'Scheduled min', 'Outside slot min', 'No plan min',
-      'Item completion %', 'Time coverage %', 'Execution score (today)', 'Rank', 'Not ranked', 'Items'
+      'Name',
+      'Planned task min',
+      'Planned meeting min',
+      'Clocked min',
+      'Scheduled min',
+      'Outside slot min',
+      'No plan min',
+      'Item completion %',
+      'Time coverage %',
+      'Execution score (today)',
+      'Rank',
+      'Not ranked',
+      'Items',
     ];
     const lines = data.members.map((m) => [
       m.displayName,
@@ -160,7 +208,7 @@ export class TeamScheduleDetailDialogComponent {
       m.score === null ? '' : String(m.score),
       m.rank === null ? '' : String(m.rank),
       notRankedText(m.notRankedReason),
-      m.items.map((i) => `${i.title} (${itemStatusLabel(i)})`).join('; ')
+      m.items.map((i) => `${i.title} (${itemStatusLabel(i)})`).join('; '),
     ]);
     this.downloadFile(`team-schedule-${data.date}.csv`, toCsv([header, ...lines]));
   }

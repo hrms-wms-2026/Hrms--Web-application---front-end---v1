@@ -1,10 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { completionText, hourTicks, notRankedText, percentText, spanPosition, taskStatusDonut, timelineSpan } from './team-schedule-format.util';
+import {
+  completionText,
+  hourTicks,
+  notRankedText,
+  percentText,
+  spanPosition,
+  taskStatusDonut,
+  timelineSpan,
+} from './team-schedule-format.util';
 import { at, scheduleMember, scheduleResponse } from './team-schedule.testing';
 
 describe("Today's team schedule format", () => {
   it('the donut never includes meetings', () => {
-    const summary = { ...scheduleResponse([]).summary, tasksCompleted: 1, tasksInProgress: 1, tasksPending: 2, meetings: 9 };
+    const summary = {
+      ...scheduleResponse([]).summary,
+      tasksCompleted: 1,
+      tasksInProgress: 1,
+      tasksPending: 2,
+      meetings: 9,
+    };
 
     const arcs = taskStatusDonut(summary);
 
@@ -14,13 +28,31 @@ describe("Today's team schedule format", () => {
   });
 
   it('a no-plan worker reads "No plan", never 0%', () => {
-    expect(completionText(scheduleMember({ noPlanMinutes: 120, clockedMinutes: 120 }))).toBe('No plan');
+    expect(completionText(scheduleMember({ noPlanMinutes: 120, clockedMinutes: 120 }))).toBe(
+      'No plan',
+    );
     expect(
       completionText(
-        scheduleMember({ plannedTaskMinutes: 60, itemCompletionPercent: null, items: [{ kind: 'task', taskId: 't', title: 'A', start: at(15), end: at(16), status: 'pending', isPrivate: false }] })
-      )
+        scheduleMember({
+          plannedTaskMinutes: 60,
+          itemCompletionPercent: null,
+          items: [
+            {
+              kind: 'task',
+              taskId: 't',
+              title: 'A',
+              start: at(15),
+              end: at(16),
+              status: 'pending',
+              isPrivate: false,
+            },
+          ],
+        }),
+      ),
     ).toBe('—');
-    expect(completionText(scheduleMember({ plannedTaskMinutes: 60, itemCompletionPercent: 50 }))).toBe('50%');
+    expect(
+      completionText(scheduleMember({ plannedTaskMinutes: 60, itemCompletionPercent: 50 })),
+    ).toBe('50%');
   });
 
   it('a missing percentage is "—" and every not-ranked reason has words', () => {
@@ -33,17 +65,53 @@ describe("Today's team schedule format", () => {
 
   it('timeline spans the items floored and ceiled to the hour, at least 8 hours, inside 06:00-22:00', () => {
     const member = scheduleMember({
-      items: [{ kind: 'task', taskId: 't', title: 'A', start: at(9, 30), end: at(11, 15), status: 'pending', isPrivate: false }],
-      unscheduled: [{ taskId: 't', title: 'A', start: at(12), end: at(12, 40), minutes: 40, kind: 'no_plan' }]
+      items: [
+        {
+          kind: 'task',
+          taskId: 't',
+          title: 'A',
+          start: at(9, 30),
+          end: at(11, 15),
+          status: 'pending',
+          isPrivate: false,
+        },
+      ],
+      unscheduled: [
+        { taskId: 't', title: 'A', start: at(12), end: at(12, 40), minutes: 40, kind: 'no_plan' },
+      ],
     });
     const span = timelineSpan([member], '2026-10-29');
     expect([span.start.getHours(), span.end.getHours()]).toEqual([9, 17]);
 
-    const late = scheduleMember({ items: [{ kind: 'meeting', taskId: 'm', title: 'M', start: at(5), end: at(23), status: 'upcoming', isPrivate: false }] });
+    const late = scheduleMember({
+      items: [
+        {
+          kind: 'meeting',
+          taskId: 'm',
+          title: 'M',
+          start: at(5),
+          end: at(23),
+          status: 'upcoming',
+          isPrivate: false,
+        },
+      ],
+    });
     const clamped = timelineSpan([late], '2026-10-29');
     expect([clamped.start.getHours(), clamped.end.getHours()]).toEqual([6, 22]);
 
-    const evening = scheduleMember({ items: [{ kind: 'task', taskId: 't', title: 'A', start: at(20), end: at(21), status: 'pending', isPrivate: false }] });
+    const evening = scheduleMember({
+      items: [
+        {
+          kind: 'task',
+          taskId: 't',
+          title: 'A',
+          start: at(20),
+          end: at(21),
+          status: 'pending',
+          isPrivate: false,
+        },
+      ],
+    });
     const shifted = timelineSpan([evening], '2026-10-29');
     expect([shifted.start.getHours(), shifted.end.getHours()]).toEqual([14, 22]);
 

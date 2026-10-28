@@ -1,8 +1,10 @@
 /** GET planner/team (Today's team schedule, My Team widgets design 2026-10-29 section 6.2). Minutes, never estimate hours. */
 
-export type TeamScheduleTaskStatus = 'completed' | 'in_progress' | 'pending' | 'scheduled_not_clocked';
+export type TeamScheduleTaskStatus =
+  'completed' | 'in_progress' | 'pending' | 'scheduled_not_clocked';
 export type TeamScheduleMeetingStatus = 'upcoming' | 'in_meeting' | 'finished' | 'cancelled';
-export type TeamScheduleNotRankedReason = 'none' | 'no_items_yet' | 'no_planned_task_time' | 'on_leave' | 'planner_off';
+export type TeamScheduleNotRankedReason =
+  'none' | 'no_items_yet' | 'no_planned_task_time' | 'on_leave' | 'planner_off';
 
 export interface TeamScheduleItem {
   kind: 'task' | 'meeting';

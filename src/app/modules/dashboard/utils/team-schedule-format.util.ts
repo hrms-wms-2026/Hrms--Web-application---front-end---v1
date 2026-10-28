@@ -2,7 +2,7 @@ import {
   TeamScheduleItem,
   TeamScheduleMember,
   TeamScheduleNotRankedReason,
-  TeamScheduleSummary
+  TeamScheduleSummary,
 } from '../models/team-schedule.model';
 import { DonutArc, donutArcs } from './status-donut.util';
 
@@ -13,7 +13,7 @@ export const SCHEDULE_COLORS = {
   pending: '#cbd5e1',
   meeting: '#8b5cf6',
   unscheduled: '#f59e0b',
-  conflict: '#ef4444'
+  conflict: '#ef4444',
 } as const;
 
 const STATUS_LABEL: Record<string, string | undefined> = {
@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<string, string | undefined> = {
   upcoming: 'Upcoming',
   in_meeting: 'In meeting',
   finished: 'Finished',
-  cancelled: 'Cancelled'
+  cancelled: 'Cancelled',
 };
 
 export function itemStatusLabel(item: TeamScheduleItem): string {
@@ -43,7 +43,7 @@ export function taskStatusDonut(summary: TeamScheduleSummary): DonutArc[] {
   return donutArcs([
     { key: 'completed', count: summary.tasksCompleted, color: SCHEDULE_COLORS.completed },
     { key: 'inProgress', count: summary.tasksInProgress, color: SCHEDULE_COLORS.inProgress },
-    { key: 'pending', count: summary.tasksPending, color: SCHEDULE_COLORS.pending }
+    { key: 'pending', count: summary.tasksPending, color: SCHEDULE_COLORS.pending },
   ]);
 }
 
@@ -52,7 +52,7 @@ const REASON_TEXT: Record<TeamScheduleNotRankedReason, string> = {
   no_items_yet: 'Nothing due yet',
   no_planned_task_time: 'No planned task time',
   on_leave: 'On leave',
-  planner_off: 'Planner is off'
+  planner_off: 'Planner is off',
 };
 
 export function notRankedText(reason: TeamScheduleNotRankedReason): string {
@@ -81,15 +81,21 @@ const HOUR = 3_600_000;
 
 /** The hours a timeline shows, in the viewer's local time: the earliest item or segment start floored to the hour to
  * the latest end ceiled, at least 8 hours, kept inside 06:00-22:00 of the day. */
-export function timelineSpan(members: readonly TeamScheduleMember[], day: string): { start: Date; end: Date } {
+export function timelineSpan(
+  members: readonly TeamScheduleMember[],
+  day: string,
+): { start: Date; end: Date } {
   const [y, m, d] = day.split('-').map(Number);
   const min = new Date(y, m - 1, d, 6).getTime();
   const max = new Date(y, m - 1, d, 22).getTime();
   const times = members.flatMap((member) => [
     ...member.items.flatMap((i) => [new Date(i.start).getTime(), new Date(i.end).getTime()]),
-    ...member.unscheduled.flatMap((s) => [new Date(s.start).getTime(), new Date(s.end).getTime()])
+    ...member.unscheduled.flatMap((s) => [new Date(s.start).getTime(), new Date(s.end).getTime()]),
   ]);
-  let start = times.length > 0 ? Math.floor(Math.min(...times) / HOUR) * HOUR : new Date(y, m - 1, d, 9).getTime();
+  let start =
+    times.length > 0
+      ? Math.floor(Math.min(...times) / HOUR) * HOUR
+      : new Date(y, m - 1, d, 9).getTime();
   let end = times.length > 0 ? Math.ceil(Math.max(...times) / HOUR) * HOUR : start + 8 * HOUR;
   start = Math.min(Math.max(start, min), max - 8 * HOUR);
   end = Math.max(Math.min(end, max), start + 8 * HOUR);
@@ -97,12 +103,19 @@ export function timelineSpan(members: readonly TeamScheduleMember[], day: string
 }
 
 /** Left offset and width (percent of the span) of an interval, clipped to the span; null when outside it. */
-export function spanPosition(startIso: string, endIso: string, span: { start: Date; end: Date }): { left: number; width: number } | null {
+export function spanPosition(
+  startIso: string,
+  endIso: string,
+  span: { start: Date; end: Date },
+): { left: number; width: number } | null {
   const total = span.end.getTime() - span.start.getTime();
   const from = Math.max(new Date(startIso).getTime(), span.start.getTime());
   const to = Math.min(new Date(endIso).getTime(), span.end.getTime());
   if (!(total > 0) || to <= from) return null;
-  return { left: ((from - span.start.getTime()) * 100) / total, width: ((to - from) * 100) / total };
+  return {
+    left: ((from - span.start.getTime()) * 100) / total,
+    width: ((to - from) * 100) / total,
+  };
 }
 
 /** Hour ticks of a span: every hour (or every 2 when it is long). */
@@ -111,7 +124,10 @@ export function hourTicks(span: { start: Date; end: Date }): { label: string; le
   const step = total > 10 * HOUR ? 2 : 1;
   const ticks: { label: string; left: number }[] = [];
   for (let t = span.start.getTime(); t <= span.end.getTime(); t += step * HOUR) {
-    ticks.push({ label: `${String(new Date(t).getHours()).padStart(2, '0')}:00`, left: ((t - span.start.getTime()) * 100) / total });
+    ticks.push({
+      label: `${String(new Date(t).getHours()).padStart(2, '0')}:00`,
+      left: ((t - span.start.getTime()) * 100) / total,
+    });
   }
   return ticks;
 }

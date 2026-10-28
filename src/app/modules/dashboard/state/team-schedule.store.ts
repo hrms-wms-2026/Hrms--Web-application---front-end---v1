@@ -17,7 +17,14 @@ interface TeamScheduleState {
   readonly loadedAt: Date | null;
 }
 
-const initialState: TeamScheduleState = { date: null, today: null, data: null, loading: false, error: null, loadedAt: null };
+const initialState: TeamScheduleState = {
+  date: null,
+  today: null,
+  data: null,
+  loading: false,
+  error: null,
+  loadedAt: null,
+};
 
 /** Today's Team Schedule, the same shape as TeamAttendanceStore. */
 export const TeamScheduleStore = signalStore(
@@ -31,8 +38,18 @@ export const TeamScheduleStore = signalStore(
       inFlight?.unsubscribe();
       patchState(store, { date, loading: true, error: null });
       inFlight = api.getTeamDay(date).subscribe({
-        next: (data) => patchState(store, { data, loading: false, loadedAt: new Date(), ...(date === null ? { today: data.date } : {}) }),
-        error: (err) => patchState(store, { error: toSafeErrorMessage(err, "Failed to load the team's schedule."), loading: false })
+        next: (data) =>
+          patchState(store, {
+            data,
+            loading: false,
+            loadedAt: new Date(),
+            ...(date === null ? { today: data.date } : {}),
+          }),
+        error: (err) =>
+          patchState(store, {
+            error: toSafeErrorMessage(err, "Failed to load the team's schedule."),
+            loading: false,
+          }),
       });
     };
 
@@ -44,7 +61,13 @@ export const TeamScheduleStore = signalStore(
           return;
         }
         inFlight?.unsubscribe();
-        patchState(store, { data, today: data.date, loading: false, error: null, loadedAt: new Date() });
+        patchState(store, {
+          data,
+          today: data.date,
+          loading: false,
+          error: null,
+          loadedAt: new Date(),
+        });
       },
       markLoading(): void {
         patchState(store, { loading: true, error: null });
@@ -63,7 +86,7 @@ export const TeamScheduleStore = signalStore(
       },
       retry(): void {
         fetch(store.date());
-      }
+      },
     };
-  })
+  }),
 );

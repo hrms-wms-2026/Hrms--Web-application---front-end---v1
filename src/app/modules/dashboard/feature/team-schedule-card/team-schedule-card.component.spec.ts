@@ -21,22 +21,58 @@ const planned = scheduleMember({
   plannedTaskMinutes: 120,
   presenceStatus: 'working',
   items: [
-    { kind: 'task', taskId: 't1', title: 'Write report', start: at(9), end: at(10), status: 'completed', isPrivate: false },
-    { kind: 'meeting', taskId: 'm1', title: 'Private meeting', start: at(9, 30), end: at(11), status: 'finished', isPrivate: true }
+    {
+      kind: 'task',
+      taskId: 't1',
+      title: 'Write report',
+      start: at(9),
+      end: at(10),
+      status: 'completed',
+      isPrivate: false,
+    },
+    {
+      kind: 'meeting',
+      taskId: 'm1',
+      title: 'Private meeting',
+      start: at(9, 30),
+      end: at(11),
+      status: 'finished',
+      isPrivate: true,
+    },
   ],
-  conflicts: [{ kind: 'block_meeting', start: at(9, 30), end: at(10), firstTitle: 'Write report', secondTitle: 'Private meeting' }]
+  conflicts: [
+    {
+      kind: 'block_meeting',
+      start: at(9, 30),
+      end: at(10),
+      firstTitle: 'Write report',
+      secondTitle: 'Private meeting',
+    },
+  ],
 });
 const noPlan = scheduleMember({
   displayName: 'Bob',
   clockedMinutes: 120,
   noPlanMinutes: 120,
-  unscheduled: [{ taskId: 't2', title: 'Fix bug', start: at(13), end: at(15), minutes: 120, kind: 'no_plan' }]
+  unscheduled: [
+    { taskId: 't2', title: 'Fix bug', start: at(13), end: at(15), minutes: 120, kind: 'no_plan' },
+  ],
 });
 
 function response(overrides: Partial<TeamScheduleResponse> = {}): TeamScheduleResponse {
   return scheduleResponse([planned, noPlan], {
-    summary: { people: 2, tasksPlanned: 4, tasksCompleted: 1, tasksInProgress: 1, tasksPending: 2, meetings: 1, peopleWithUnscheduledWork: 1, unscheduledMinutes: 120, conflicts: 1 },
-    ...overrides
+    summary: {
+      people: 2,
+      tasksPlanned: 4,
+      tasksCompleted: 1,
+      tasksInProgress: 1,
+      tasksPending: 2,
+      meetings: 1,
+      peopleWithUnscheduledWork: 1,
+      unscheduledMinutes: 120,
+      conflicts: 1,
+    },
+    ...overrides,
   });
 }
 
@@ -49,13 +85,19 @@ describe('TeamScheduleCardComponent', () => {
 
   async function setup(
     result: TeamScheduleResponse | 'error' = response(),
-    size: { width: number; height: number } | null = null
-  ): Promise<{ fixture: ComponentFixture<TeamScheduleCardComponent>; el: HTMLElement; getTeamDay: ReturnType<typeof vi.fn> }> {
+    size: { width: number; height: number } | null = null,
+  ): Promise<{
+    fixture: ComponentFixture<TeamScheduleCardComponent>;
+    el: HTMLElement;
+    getTeamDay: ReturnType<typeof vi.fn>;
+  }> {
     stubResizeObserver();
-    const getTeamDay = vi.fn(() => (result === 'error' ? throwError(() => new Error('x')) : of(result)));
+    const getTeamDay = vi.fn(() =>
+      result === 'error' ? throwError(() => new Error('x')) : of(result),
+    );
     await TestBed.configureTestingModule({
       imports: [TeamScheduleCardComponent],
-      providers: [TeamScheduleStore, { provide: TeamScheduleApiService, useValue: { getTeamDay } }]
+      providers: [TeamScheduleStore, { provide: TeamScheduleApiService, useValue: { getTeamDay } }],
     }).compileComponents();
     const fixture = TestBed.createComponent(TeamScheduleCardComponent);
     fixture.detectChanges();
@@ -85,9 +127,15 @@ describe('TeamScheduleCardComponent', () => {
   it('2x2 is the mini view: the task donut at 140px and the unscheduled-work alert', async () => {
     const { el } = await setup(response(), { width: cols(2), height: rows(2) });
 
-    expect((el.querySelector('[data-testid="tsc-donut"]') as HTMLElement).style.width).toBe('140px');
-    expect(el.querySelector('[data-testid="tsc-center"]')!.textContent!.replace(/\s+/g, '')).toBe('1/4tasks');
-    expect(el.querySelector('[data-testid="tsc-unscheduled-alert"]')!.textContent).toContain('1 person has');
+    expect((el.querySelector('[data-testid="tsc-donut"]') as HTMLElement).style.width).toBe(
+      '140px',
+    );
+    expect(el.querySelector('[data-testid="tsc-center"]')!.textContent!.replace(/\s+/g, '')).toBe(
+      '1/4tasks',
+    );
+    expect(el.querySelector('[data-testid="tsc-unscheduled-alert"]')!.textContent).toContain(
+      '1 person has',
+    );
   });
 
   it('hides the alert when no one worked off-plan', async () => {
@@ -98,9 +146,13 @@ describe('TeamScheduleCardComponent', () => {
   it('medium shows "No plan" for a no-plan worker with the amber unscheduled badge, and completion for the planned one', async () => {
     const { el } = await setup(response(), { width: cols(4), height: rows(4) });
 
-    const completion = [...el.querySelectorAll('[data-testid="tsc-completion"]')].map((c) => c.textContent!.trim());
+    const completion = [...el.querySelectorAll('[data-testid="tsc-completion"]')].map((c) =>
+      c.textContent!.trim(),
+    );
     expect(completion).toEqual(['75%', 'No plan']);
-    expect(el.querySelector('[data-testid="tsc-unscheduled"]')!.textContent).toContain('Unscheduled 2h');
+    expect(el.querySelector('[data-testid="tsc-unscheduled"]')!.textContent).toContain(
+      'Unscheduled 2h',
+    );
     expect(el.textContent).toContain('Working');
   });
 
@@ -111,7 +163,9 @@ describe('TeamScheduleCardComponent', () => {
     expect(el.querySelectorAll('[data-testid="tsc-block"]').length).toBe(2);
     expect(el.querySelectorAll('[data-testid="tsc-unscheduled-seg"]').length).toBe(1);
     expect(el.querySelectorAll('.tsc-block--conflict').length).toBe(2);
-    const titles = [...el.querySelectorAll('[data-testid="tsc-block"]')].map((b) => b.getAttribute('title'));
+    const titles = [...el.querySelectorAll('[data-testid="tsc-block"]')].map((b) =>
+      b.getAttribute('title'),
+    );
     expect(titles).toContain('Private meeting · Finished');
   });
 
@@ -135,13 +189,21 @@ describe('TeamScheduleCardComponent', () => {
 
   it('a poll tick keeps the row order (ranking re-sorts only when the data changes)', async () => {
     vi.useFakeTimers();
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+      writable: true,
+    });
     const { fixture, el } = await setup(response(), { width: cols(4), height: rows(4) });
-    const before = [...el.querySelectorAll('[data-testid="tsc-row"] .tsc-name')].map((n) => n.textContent);
+    const before = [...el.querySelectorAll('[data-testid="tsc-row"] .tsc-name')].map(
+      (n) => n.textContent,
+    );
 
     await vi.advanceTimersByTimeAsync(60_000);
     fixture.detectChanges();
 
-    expect([...el.querySelectorAll('[data-testid="tsc-row"] .tsc-name')].map((n) => n.textContent)).toEqual(before);
+    expect(
+      [...el.querySelectorAll('[data-testid="tsc-row"] .tsc-name')].map((n) => n.textContent),
+    ).toEqual(before);
   });
 });

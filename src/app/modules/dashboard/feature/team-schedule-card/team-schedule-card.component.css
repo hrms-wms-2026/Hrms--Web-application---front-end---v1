@@ -82,7 +82,9 @@
   padding: 0.25rem 0;
 }
 
-.tsc-row:last-child { border-bottom: 0; }
+.tsc-row:last-child {
+  border-bottom: 0;
+}
 
 .tsc-row-main {
   display: flex;
@@ -149,7 +151,9 @@
   border-radius: 9999px;
 }
 
-.tsc-plan-seg--cancelled { opacity: 0.3; }
+.tsc-plan-seg--cancelled {
+  opacity: 0.3;
+}
 
 .tsc-completion {
   flex: none;
@@ -174,7 +178,9 @@
   color: rgb(37 99 235);
 }
 
-.tsc-link:hover { text-decoration: underline; }
+.tsc-link:hover {
+  text-decoration: underline;
+}
 
 .tsc-timeline {
   display: flex;
@@ -240,8 +246,13 @@
   border-radius: 0.25rem;
 }
 
-.tsc-block--cancelled { opacity: 0.3; }
-.tsc-block--conflict { outline: 2px solid #ef4444; outline-offset: 1px; }
+.tsc-block--cancelled {
+  opacity: 0.3;
+}
+.tsc-block--conflict {
+  outline: 2px solid #ef4444;
+  outline-offset: 1px;
+}
 
 .tsc-unscheduled {
   position: absolute;

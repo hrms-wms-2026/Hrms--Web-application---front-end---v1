@@ -21,15 +21,27 @@
 
   @if (store.data(); as data) {
     <ng-template #plannerOff>
-      <p class="tsc-note" data-testid="tsc-planner-off">Planner is off · schedules aren't shown. Clocked time still counts.</p>
+      <p class="tsc-note" data-testid="tsc-planner-off">
+        Planner is off · schedules aren't shown. Clocked time still counts.
+      </p>
     </ng-template>
 
     @switch (view()) {
       @case ('mini') {
         <div class="tsc-mini" data-testid="tsc-mini">
           @if (data.plannerEnabled) {
-            <div class="tsc-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="tsc-donut">
-              <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
+            <div
+              class="tsc-donut"
+              [style.width.px]="donutPx"
+              [style.height.px]="donutPx"
+              data-testid="tsc-donut"
+            >
+              <svg
+                viewBox="0 0 42 42"
+                class="block h-full w-full"
+                role="img"
+                [attr.aria-label]="donutLabel()"
+              >
                 <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
                 @for (arc of donut(); track arc.key) {
                   <circle
@@ -54,7 +66,8 @@
           }
           @if (data.plannerEnabled && data.summary.peopleWithUnscheduledWork > 0) {
             <p class="tsc-alert" data-testid="tsc-unscheduled-alert">
-              {{ data.summary.peopleWithUnscheduledWork }} {{ data.summary.peopleWithUnscheduledWork === 1 ? 'person has' : 'people have' }}
+              {{ data.summary.peopleWithUnscheduledWork }}
+              {{ data.summary.peopleWithUnscheduledWork === 1 ? 'person has' : 'people have' }}
               unscheduled work
             </p>
           }
@@ -76,7 +89,9 @@
                       <span class="tsc-chip" [style.--tone]="presenceColor(m)">{{ p }}</span>
                     }
                     @if (data.plannerEnabled && unscheduled(m) > 0) {
-                      <span class="tsc-badge" data-testid="tsc-unscheduled">Unscheduled {{ minutes(unscheduled(m)) }}</span>
+                      <span class="tsc-badge" data-testid="tsc-unscheduled"
+                        >Unscheduled {{ minutes(unscheduled(m)) }}</span
+                      >
                     }
                   </p>
                   @if (data.plannerEnabled) {
@@ -98,13 +113,20 @@
                   }
                 </div>
                 @if (data.plannerEnabled) {
-                  <span class="tsc-completion" [class.tsc-completion--none]="!hasPlan(m)" data-testid="tsc-completion">{{ completion(m) }}</span>
+                  <span
+                    class="tsc-completion"
+                    [class.tsc-completion--none]="!hasPlan(m)"
+                    data-testid="tsc-completion"
+                    >{{ completion(m) }}</span
+                  >
                 }
               </li>
             }
           </ul>
           @if (data.members.length > mediumRows().length) {
-            <button type="button" class="tsc-link" (click)="openDetail($event)">View all {{ data.members.length }} ›</button>
+            <button type="button" class="tsc-link" (click)="openDetail($event)">
+              View all {{ data.members.length }} ›
+            </button>
           }
         </div>
       }
@@ -117,7 +139,9 @@
                 <li class="tsc-row" data-testid="tsc-row">
                   <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
                   <span class="tsc-name">{{ m.displayName }}</span>
-                  <span class="tsc-sub">{{ minutes(m.clockedMinutes) }} clocked · {{ m.items.length }} meetings</span>
+                  <span class="tsc-sub"
+                    >{{ minutes(m.clockedMinutes) }} clocked · {{ m.items.length }} meetings</span
+                  >
                 </li>
               }
             </ul>

@@ -8,7 +8,9 @@
 }
 
 /* Same shell as the Team Progress popup: app-modal's icon-tile header gives way to .wbld-head. */
-:host ::ng-deep .team-status-detail > .app-modal__header { display: none; }
+:host ::ng-deep .team-status-detail > .app-modal__header {
+  display: none;
+}
 
 @media (max-width: 639.98px) {
   :host ::ng-deep .team-status-detail.team-status-detail {
@@ -31,10 +33,27 @@
   border-top-left-radius: inherit;
   border-top-right-radius: inherit;
 }
-.wbld-head__row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.wbld-head__title { min-width: 0; }
-.wbld-head__title h2 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.25; color: var(--color-text-primary); }
-.wbld-head__title p { margin: 2px 0 0; font-size: 12px; color: var(--color-text-secondary); }
+.wbld-head__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.wbld-head__title {
+  min-width: 0;
+}
+.wbld-head__title h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-text-primary);
+}
+.wbld-head__title p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
 
 .wbld-close {
   display: inline-flex;
@@ -49,8 +68,18 @@
   color: var(--color-text-secondary);
   cursor: pointer;
 }
-.wbld-close:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-.wbld-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.wbld-close:hover {
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+}
+.wbld-close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
 
 .wbld {
   display: flex;
@@ -67,7 +96,9 @@
 }
 
 @media (max-width: 767px) {
-  .wbld-charts { grid-template-columns: 1fr; }
+  .wbld-charts {
+    grid-template-columns: 1fr;
+  }
 }
 
 .wbld-panel {
@@ -121,10 +152,18 @@
   border-radius: 9999px;
 }
 
-.wbld-legend-label { color: var(--color-text-secondary); }
-.wbld-legend-count { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-text-primary); }
+.wbld-legend-label {
+  color: var(--color-text-secondary);
+}
+.wbld-legend-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
 
-.wbld-chart { height: 11rem; }
+.wbld-chart {
+  height: 11rem;
+}
 
 .wbld-table-head {
   display: flex;
@@ -143,7 +182,9 @@
   color: var(--color-text-primary);
 }
 
-.wbld-button:hover { background: var(--color-surface-secondary); }
+.wbld-button:hover {
+  background: var(--color-surface-secondary);
+}
 
 .wbld-link {
   font-weight: 600;

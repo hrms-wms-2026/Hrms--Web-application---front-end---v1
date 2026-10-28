@@ -9,7 +9,7 @@ export const SCHEDULE_BREAKPOINTS = {
   mediumWidth: 300,
   mediumHeight: 300,
   largeWidth: 640,
-  largeHeight: 420
+  largeHeight: 420,
 } as const;
 
 /** How far past a threshold the size must move before the view changes back. */
@@ -25,7 +25,11 @@ export function classifyScheduleSize(width: number, height: number): ScheduleVie
 }
 
 /** The view for a rendered size, keeping the previous one inside the hysteresis band; a zero size keeps it too. */
-export function scheduleView(width: number, height: number, previous: ScheduleView | null = null): ScheduleView {
+export function scheduleView(
+  width: number,
+  height: number,
+  previous: ScheduleView | null = null,
+): ScheduleView {
   if (!(width > 0) || !(height > 0)) return previous ?? 'medium';
   const next = classifyScheduleSize(width, height);
   if (!previous || next === previous) return next;

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { SCHEDULE_BREAKPOINTS, classifyScheduleSize, scheduleView } from './team-schedule-layout.util';
+import {
+  SCHEDULE_BREAKPOINTS,
+  classifyScheduleSize,
+  scheduleView,
+} from './team-schedule-layout.util';
 
 const cols = (n: number) => n * 97 + (n - 1) * 12;
 const rows = (n: number) => n * 96 + (n - 1) * 12;
@@ -11,7 +15,7 @@ describe("Today's team schedule layout", () => {
     [cols(4), rows(4), 'medium'],
     [cols(8), rows(3), 'medium'],
     [cols(8), rows(4), 'large'],
-    [cols(12), rows(8), 'large']
+    [cols(12), rows(8), 'large'],
   ] as const)('%ix%i is %s', (w, h, view) => {
     expect(classifyScheduleSize(w, h)).toBe(view);
   });

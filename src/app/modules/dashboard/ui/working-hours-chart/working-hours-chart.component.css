@@ -37,8 +37,12 @@
   flex: none;
 }
 
-.whc-seg--worked { background: #3b82f6; }
-.whc-seg--break { background: #f59e0b; }
+.whc-seg--worked {
+  background: #3b82f6;
+}
+.whc-seg--break {
+  background: #f59e0b;
+}
 
 .whc-label {
   min-height: 0.75rem;

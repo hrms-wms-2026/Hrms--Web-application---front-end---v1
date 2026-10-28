@@ -9,10 +9,14 @@ export type PresenceState = 'working' | 'break' | 'leave';
 const STATE_OF: Record<string, PresenceState | undefined> = {
   working: 'working',
   on_break: 'break',
-  on_leave: 'leave'
+  on_leave: 'leave',
 };
 
-export const PRESENCE_LABELS: Record<PresenceState, string> = { working: 'Working', break: 'Break', leave: 'Leave' };
+export const PRESENCE_LABELS: Record<PresenceState, string> = {
+  working: 'Working',
+  break: 'Break',
+  leave: 'Leave',
+};
 
 export function presenceState(status: string): PresenceState | null {
   return STATE_OF[status] ?? null;
@@ -44,8 +48,8 @@ export function groupPresence(members: readonly TeamTodayMember[]): PresenceGrou
       notClockedIn: count('not_started'),
       clockedOut: count('clocked_out'),
       absent: count('absent'),
-      notScheduled: count('not_scheduled')
-    }
+      notScheduled: count('not_scheduled'),
+    },
   };
 }
 
@@ -59,8 +63,8 @@ export function presenceFromSummary(summary: TeamTodaySummary): PresenceGroups {
       notClockedIn: summary.notStarted,
       clockedOut: summary.clockedOut,
       absent: summary.absent,
-      notScheduled: summary.notScheduled
-    }
+      notScheduled: summary.notScheduled,
+    },
   };
 }
 
@@ -70,7 +74,7 @@ export function neutralLine(neutral: NeutralCounts): string {
     [neutral.notClockedIn, 'not clocked in'],
     [neutral.clockedOut, 'clocked out'],
     [neutral.absent, 'absent'],
-    [neutral.notScheduled, 'not scheduled']
+    [neutral.notScheduled, 'not scheduled'],
   ]
     .filter(([n]) => (n as number) > 0)
     .map(([n, label]) => `${n} ${label}`)
@@ -85,7 +89,9 @@ export function orderPresence(members: readonly TeamTodayMember[]): TeamTodayMem
     const state = presenceState(m.status);
     return state ? STATE_ORDER[state] : 3;
   };
-  return [...members].sort((a, b) => rank(a) - rank(b) || a.displayName.localeCompare(b.displayName));
+  return [...members].sort(
+    (a, b) => rank(a) - rank(b) || a.displayName.localeCompare(b.displayName),
+  );
 }
 
 /** "3h 20m", "45m", "0m". */
@@ -108,13 +114,16 @@ export function clockTime(iso: string): string {
 
 /** What is left of the current state, with the share already used for the time-left bar; null when there is no
  * denominator (no break allowance, no scheduled end) - the card then shows no bar and "—". */
-export function timeLeft(member: TeamTodayMember, now: Date): { text: string; usedPercent: number } | null {
+export function timeLeft(
+  member: TeamTodayMember,
+  now: Date,
+): { text: string; usedPercent: number } | null {
   if (member.status === 'on_break' && member.breakRemainingMinutes !== null) {
     const used = member.stateSince ? minutesSince(member.stateSince, now) : 0;
     const total = used + member.breakRemainingMinutes;
     return {
       text: `${minutesText(member.breakRemainingMinutes)} break left`,
-      usedPercent: total > 0 ? Math.min(100, (used * 100) / total) : 100
+      usedPercent: total > 0 ? Math.min(100, (used * 100) / total) : 100,
     };
   }
   if (member.status === 'working' && member.shiftEndsAt && member.stateSince) {
@@ -124,7 +133,8 @@ export function timeLeft(member: TeamTodayMember, now: Date): { text: string; us
     const span = end - start;
     return {
       text: `${minutesText(left)} of shift left`,
-      usedPercent: span > 0 ? Math.min(100, Math.max(0, ((now.getTime() - start) * 100) / span)) : 100
+      usedPercent:
+        span > 0 ? Math.min(100, Math.max(0, ((now.getTime() - start) * 100) / span)) : 100,
     };
   }
   return null;

@@ -11,7 +11,9 @@ describe('TeamWorkingHoursApiService', () => {
   const url = `${environment.apiUrl}/attendance/time-tracking/team/working-hours`;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(TeamWorkingHoursApiService);
     http = TestBed.inject(HttpTestingController);
   });

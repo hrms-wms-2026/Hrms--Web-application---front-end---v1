@@ -11,7 +11,7 @@ export const PRESENCE_BREAKPOINTS = {
   mediumHeight: 300,
   /** From this size the rows become a table with since / elapsed / remaining / attendance columns. */
   largeWidth: 640,
-  largeHeight: 480
+  largeHeight: 480,
 } as const;
 
 /** How far past a threshold the size must move before the view changes back. */
@@ -28,7 +28,11 @@ export function classifyPresenceSize(width: number, height: number): PresenceVie
 
 /** The view for a rendered size, keeping the previous one while the size is within the hysteresis band of it.
  * A zero size (not laid out yet, or hidden) keeps the previous view, or 'medium'. */
-export function presenceView(width: number, height: number, previous: PresenceView | null = null): PresenceView {
+export function presenceView(
+  width: number,
+  height: number,
+  previous: PresenceView | null = null,
+): PresenceView {
   if (!(width > 0) || !(height > 0)) return previous ?? 'medium';
   const next = classifyPresenceSize(width, height);
   if (!previous || next === previous) return next;

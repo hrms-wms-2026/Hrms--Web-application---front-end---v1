@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PRESENCE_BREAKPOINTS, classifyPresenceSize, presenceView } from './team-presence-layout.util';
+import {
+  PRESENCE_BREAKPOINTS,
+  classifyPresenceSize,
+  presenceView,
+} from './team-presence-layout.util';
 
 /** Card host size for grid columns / rows (about 97px columns at 1440px, 96px rows, 12px gaps). */
 const cols = (n: number) => n * 97 + (n - 1) * 12;
@@ -13,7 +17,7 @@ describe('Working / Break / Leave layout', () => {
     [cols(4), rows(4), 'medium'],
     [cols(8), rows(4), 'medium'],
     [cols(8), rows(6), 'large'],
-    [cols(12), rows(8), 'large']
+    [cols(12), rows(8), 'large'],
   ] as const)('%ix%i is %s', (w, h, view) => {
     expect(classifyPresenceSize(w, h)).toBe(view);
   });

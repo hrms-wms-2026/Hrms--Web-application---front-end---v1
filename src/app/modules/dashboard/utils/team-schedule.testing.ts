@@ -26,11 +26,14 @@ export function scheduleMember(overrides: Partial<TeamScheduleMember> = {}): Tea
     items: [],
     unscheduled: [],
     conflicts: [],
-    ...overrides
+    ...overrides,
   };
 }
 
-export function scheduleResponse(members: TeamScheduleMember[], overrides: Partial<TeamScheduleResponse> = {}): TeamScheduleResponse {
+export function scheduleResponse(
+  members: TeamScheduleMember[],
+  overrides: Partial<TeamScheduleResponse> = {},
+): TeamScheduleResponse {
   return {
     date: '2026-10-29',
     plannerEnabled: true,
@@ -42,11 +45,15 @@ export function scheduleResponse(members: TeamScheduleMember[], overrides: Parti
       tasksInProgress: 0,
       tasksPending: 0,
       meetings: 0,
-      peopleWithUnscheduledWork: members.filter((m) => m.outsideSlotMinutes + m.noPlanMinutes > 0).length,
-      unscheduledMinutes: members.reduce((sum, m) => sum + m.outsideSlotMinutes + m.noPlanMinutes, 0),
-      conflicts: members.reduce((sum, m) => sum + m.conflicts.length, 0)
+      peopleWithUnscheduledWork: members.filter((m) => m.outsideSlotMinutes + m.noPlanMinutes > 0)
+        .length,
+      unscheduledMinutes: members.reduce(
+        (sum, m) => sum + m.outsideSlotMinutes + m.noPlanMinutes,
+        0,
+      ),
+      conflicts: members.reduce((sum, m) => sum + m.conflicts.length, 0),
     },
     members,
-    ...overrides
+    ...overrides,
   };
 }

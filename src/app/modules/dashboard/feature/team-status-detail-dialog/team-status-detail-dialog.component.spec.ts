@@ -12,9 +12,15 @@ const WEEK = {
   weekStart: '2026-10-26',
   weekEnd: '2026-11-01',
   days: [
-    { date: '2026-10-26', workedMinutes: 900, breakMinutes: 120, onLeaveCount: 1, peopleWithRecord: 2 },
-    { date: '2026-10-27', workedMinutes: 0, breakMinutes: 0, onLeaveCount: 0, peopleWithRecord: 0 }
-  ]
+    {
+      date: '2026-10-26',
+      workedMinutes: 900,
+      breakMinutes: 120,
+      onLeaveCount: 1,
+      peopleWithRecord: 2,
+    },
+    { date: '2026-10-27', workedMinutes: 0, breakMinutes: 0, onLeaveCount: 0, peopleWithRecord: 0 },
+  ],
 };
 
 describe('TeamStatusDetailDialogComponent', () => {
@@ -30,8 +36,8 @@ describe('TeamStatusDetailDialogComponent', () => {
       providers: [
         MyTeamTodayStore,
         { provide: MyTeamTodayApiService, useValue: { getTeamToday: vi.fn() } },
-        { provide: TeamWorkingHoursApiService, useValue: { getWeek } }
-      ]
+        { provide: TeamWorkingHoursApiService, useValue: { getWeek } },
+      ],
     }).compileComponents();
     TestBed.inject(MyTeamTodayStore).seed(data);
     const fixture = TestBed.createComponent(TeamStatusDetailDialogComponent);
@@ -43,9 +49,18 @@ describe('TeamStatusDetailDialogComponent', () => {
   }
 
   const team = [
-    presenceMember('working', { displayName: 'Ada', stateSince: '2026-10-29T03:30:00Z', attendanceMinutes: 300, isLate: true, attentionLabel: 'Late arrival' }),
-    presenceMember('on_leave', { displayName: 'Cat', leave: { leaveTypeName: 'Annual Leave', endsOn: '2026-10-30' } }),
-    presenceMember('absent', { displayName: 'Dan', leave: null })
+    presenceMember('working', {
+      displayName: 'Ada',
+      stateSince: '2026-10-29T03:30:00Z',
+      attendanceMinutes: 300,
+      isLate: true,
+      attentionLabel: 'Late arrival',
+    }),
+    presenceMember('on_leave', {
+      displayName: 'Cat',
+      leave: { leaveTypeName: 'Annual Leave', endsOn: '2026-10-30' },
+    }),
+    presenceMember('absent', { displayName: 'Dan', leave: null }),
   ];
 
   it('shows one KPI row: Working, Break, Leave and Not clocked in', async () => {
@@ -92,7 +107,9 @@ describe('TeamStatusDetailDialogComponent', () => {
   it('remaining is "—" without a denominator', async () => {
     const { doc } = await setup(presenceResponse(team));
 
-    const remaining = [...doc.querySelectorAll('[data-testid="wbld-remaining"]')].map((c) => c.textContent!.trim());
+    const remaining = [...doc.querySelectorAll('[data-testid="wbld-remaining"]')].map((c) =>
+      c.textContent!.trim(),
+    );
     expect(remaining.every((r) => r === '—')).toBe(true);
   });
 

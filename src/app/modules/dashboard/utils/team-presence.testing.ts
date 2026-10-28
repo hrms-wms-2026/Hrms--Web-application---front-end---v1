@@ -1,7 +1,10 @@
 import { TeamTodayMember, TeamTodayResponse } from '../models/my-team-today.model';
 
 /** A Team Status member for specs; every new Working / Break / Leave field defaults to "no data". */
-export function presenceMember(status: string, overrides: Partial<TeamTodayMember> = {}): TeamTodayMember {
+export function presenceMember(
+  status: string,
+  overrides: Partial<TeamTodayMember> = {},
+): TeamTodayMember {
   return {
     employeeId: `${status}-${overrides.displayName ?? 'x'}`,
     displayName: status,
@@ -20,7 +23,7 @@ export function presenceMember(status: string, overrides: Partial<TeamTodayMembe
     breakRemainingMinutes: null,
     shiftEndsAt: null,
     attendanceMinutes: 0,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -41,10 +44,10 @@ export function presenceResponse(members: TeamTodayMember[]): TeamTodayResponse 
       notStarted: count('not_started'),
       onLeave: count('on_leave'),
       notScheduled: count('not_scheduled'),
-      needsAttention: members.filter((m) => m.attentionSeverity !== null).length
+      needsAttention: members.filter((m) => m.attentionSeverity !== null).length,
     },
     members,
     totalMembers: members.length,
-    asOf: '2026-10-29T10:00:00Z'
+    asOf: '2026-10-29T10:00:00Z',
   };
 }

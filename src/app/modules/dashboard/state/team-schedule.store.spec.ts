@@ -10,9 +10,13 @@ describe('TeamScheduleStore', () => {
 
   function setup(fail = false) {
     const getTeamDay = vi.fn((date: string | null) =>
-      fail ? throwError(() => new Error('boom')) : of(scheduleResponse([], { date: date ?? '2026-10-29' }))
+      fail
+        ? throwError(() => new Error('boom'))
+        : of(scheduleResponse([], { date: date ?? '2026-10-29' })),
     );
-    TestBed.configureTestingModule({ providers: [TeamScheduleStore, { provide: TeamScheduleApiService, useValue: { getTeamDay } }] });
+    TestBed.configureTestingModule({
+      providers: [TeamScheduleStore, { provide: TeamScheduleApiService, useValue: { getTeamDay } }],
+    });
     return { store: TestBed.inject(TeamScheduleStore), getTeamDay };
   }
 

@@ -11,7 +11,9 @@ describe('TeamScheduleApiService', () => {
   const url = `${environment.apiUrl}/planner/team`;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(TeamScheduleApiService);
     http = TestBed.inject(HttpTestingController);
   });
