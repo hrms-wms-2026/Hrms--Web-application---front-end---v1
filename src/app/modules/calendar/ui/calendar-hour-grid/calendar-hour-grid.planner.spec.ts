@@ -96,6 +96,25 @@ describe('CalendarHourGridComponent planner layer', () => {
     expect(el.querySelector('[data-testid="planner-block-project"]')!.textContent!.trim()).toBe('Portal');
   });
 
+  it('a block takes its kind: data-kind, the kind colour on its bar, the icon, and "category · project" below', () => {
+    render({ [TODAY]: [block('a', TODAY, '09:00', '10:30', { projectName: 'Portal', categoryName: 'bug', categoryKind: 'bug' })] });
+
+    const el = q('[data-testid="planner-block"]')!;
+    expect(el.getAttribute('data-kind')).toBe('bug');
+    expect(el.querySelector('[data-testid="planner-block-accent"]')!.className).toContain('bg-red-600');
+    expect(el.className).toContain('bg-red-50');
+    expect(el.querySelector('[data-testid="task-kind-icon"]')!.getAttribute('data-kind')).toBe('bug');
+    expect(el.querySelector('[data-testid="planner-block-project"]')!.textContent!.trim()).toBe('bug · Portal');
+  });
+
+  it('a block with no category is a plain task, and shows just its project', () => {
+    render({ [TODAY]: [block('a', TODAY, '09:00', '10:30', { projectName: 'Portal' })] });
+
+    const el = q('[data-testid="planner-block"]')!;
+    expect(el.getAttribute('data-kind')).toBe('task');
+    expect(el.querySelector('[data-testid="planner-block-project"]')!.textContent!.trim()).toBe('Portal');
+  });
+
   it('a block from an older API without a project name draws no project line', () => {
     render({ [TODAY]: [block('a', TODAY, '09:00', '10:30')] });
 

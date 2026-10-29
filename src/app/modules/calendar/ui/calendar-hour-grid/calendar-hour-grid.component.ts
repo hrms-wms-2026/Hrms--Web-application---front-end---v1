@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
 import { PlannerAvatarStackComponent } from '../planner-avatar-stack/planner-avatar-stack.component';
+import { KIND_META, TaskKind, TaskKindMeta, kindOf } from '../../../work/utils/task-kind';
+import { TaskKindIconComponent } from '../../../work/ui/task-kind-icon/task-kind-icon.component';
 import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { GridItem, PositionedEvent, layoutDayItems } from '../../utils/calendar-hour-grid.util';
@@ -29,6 +31,10 @@ interface PlannerBlockViewModel {
   readonly duration: string;
   readonly short: boolean;
   readonly tooltip: string;
+  /** The category's type, its look, and "category · project" (or just the project) under the title. */
+  readonly kind: TaskKind;
+  readonly meta: TaskKindMeta;
+  readonly subtitle: string;
   readonly overlaps: readonly Band[];
   /** The first meeting it overlaps, for the pill and "Move after meeting". */
   readonly clash: { readonly title: string; readonly end: number } | null;
@@ -93,7 +99,7 @@ interface DragSelection {
 @Component({
   selector: 'app-calendar-hour-grid',
   standalone: true,
-  imports: [CommonModule, PlannerAvatarStackComponent],
+  imports: [CommonModule, PlannerAvatarStackComponent, TaskKindIconComponent],
   templateUrl: './calendar-hour-grid.component.html',
   // Today's column (header and grid) under the blocks, so the week shows where now is at a glance.
   styles: ['.today-tint { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); }'],
@@ -255,6 +261,8 @@ export class CalendarHourGridComponent {
           return [{
             block, range, top: p.top, height: p.height, left: p.left, width: p.width, times,
             duration: duration(range.end - range.start), short: range.end - range.start < 30,
+            kind: kindOf(block.categoryKind), meta: KIND_META[kindOf(block.categoryKind)],
+            subtitle: [block.categoryName, block.projectName].filter((part) => !!part).join(' · '),
             tooltip: `${block.taskTitle} · ${times} · ${duration(block.plannedMinutes)} planned · ${duration(block.actualMinutes)} actual`,
             overlaps: segments.map((s) => band(s.start, s.end)),
             clash: first ? { title: first.title, end: first.end } : null,
