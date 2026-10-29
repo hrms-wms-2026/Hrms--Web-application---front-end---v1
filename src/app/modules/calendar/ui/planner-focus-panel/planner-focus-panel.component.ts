@@ -2,11 +2,31 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output, si
 import { CommonModule } from '@angular/common';
 import { PlannerFocusGroup, PlannerFocusItem, PlannerFocusReason, PlannerFocusResponse } from '../../../work/planner/models/planner.models';
 import { PlannerDragService } from '../../state/planner-drag.service';
+import { KIND_META, TASK_KINDS, TaskKind, kindOf } from '../../../work/utils/task-kind';
+import { TaskKindIconComponent } from '../../../work/ui/task-kind-icon/task-kind-icon.component';
 
 const GROUP_TITLES: Record<PlannerFocusReason, string> = {
   overdue: 'Overdue', due_today: 'Due today', due_this_week: 'Due this week', backlog: 'Assigned backlog',
 };
-const CARDS_PER_GROUP = 5;
+const REASONS: readonly PlannerFocusReason[] = ['overdue', 'due_today', 'due_this_week', 'backlog'];
+/** The section dot: red overdue, orange due today, grey otherwise. */
+const REASON_DOTS: Record<PlannerFocusReason, string> = {
+  overdue: 'bg-[var(--color-danger)]', due_today: 'bg-orange-500',
+  due_this_week: 'bg-[var(--color-text-secondary)]', backlog: 'bg-[var(--color-text-secondary)]',
+};
+/** Cards per section before "See all". */
+const SECTION_SIZE = 3;
+const GROUP_BY_KEY = 'planner.queueGroupBy';
+type GroupBy = 'due' | 'kind';
+
+function readGroupBy(): GroupBy {
+  try {
+    return localStorage.getItem(GROUP_BY_KEY) === 'kind' ? 'kind' : 'due';
+  } catch {
+    return 'due';
+  }
+}
+
 /** How far a press must move before it is a drag rather than a click. */
 const DRAG_THRESHOLD_PX = 4;
 
@@ -30,7 +50,7 @@ function localDate(date: string): Date {
 @Component({
   selector: 'app-planner-focus-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TaskKindIconComponent],
   templateUrl: './planner-focus-panel.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -45,24 +65,75 @@ export class PlannerFocusPanelComponent {
   open = output<PlannerFocusItem>();
 
   private readonly drag = inject(PlannerDragService);
-  private readonly expanded = signal<ReadonlySet<PlannerFocusReason>>(new Set());
+  /** Sections opened with "See all", by section key (a reason or a kind). */
+  private readonly expanded = signal<ReadonlySet<string>>(new Set());
   /** The card being dragged, drawn dimmed and dashed in the list. */
   readonly draggingId = signal<string | null>(null);
   readonly ghost = signal<{ title: string; length: string | null; x: number; y: number } | null>(null);
   private justDragged = false;
 
-  readonly groups = computed(() => (this.focus()?.groups ?? []).map((group) => {
-    const all = this.expanded().has(group.reason);
-    const items = all ? group.items : group.items.slice(0, CARDS_PER_GROUP);
-    return {
-      reason: group.reason, title: `${GROUP_TITLES[group.reason]} · ${group.count}`,
-      more: all ? 0 : group.count - items.length, items: items.map((item) => this.card(item)),
-    };
-  }));
+  /** Sections by due date (Overdue, Due today, ...) or by type; remembered per browser. */
+  readonly groupBy = signal<GroupBy>(readGroupBy());
+  readonly query = signal('');
+  /** Selected type chips; none selected is "All". */
+  readonly kinds = signal<ReadonlySet<TaskKind>>(new Set());
+
+  readonly total = computed(() => (this.focus()?.groups ?? []).reduce((sum, g) => sum + g.count, 0));
+  private readonly allItems = computed(() => (this.focus()?.groups ?? []).flatMap((g) => g.items));
+  /** The type chips: each kind present in the queue, with its count. */
+  readonly presentKinds = computed(() => TASK_KINDS
+    .map((kind) => ({ kind, label: KIND_META[kind].label, count: this.allItems().filter((i) => kindOf(i.categoryKind) === kind).length }))
+    .filter((k) => k.count > 0));
+  /** The type chips and the search, together. */
+  private readonly visibleItems = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    const selected = this.kinds();
+    return this.allItems().filter((i) => (selected.size === 0 || selected.has(kindOf(i.categoryKind)))
+      && (!q || i.title.toLowerCase().includes(q) || i.projectName.toLowerCase().includes(q)));
+  });
+  readonly sections = computed(() => {
+    const items = this.visibleItems();
+    const raw = this.groupBy() === 'due'
+      ? REASONS.map((r) => ({ key: r as string, testid: `queue-section-${r}`, title: GROUP_TITLES[r], dot: REASON_DOTS[r],
+          items: items.filter((i) => i.reason === r) }))
+      : TASK_KINDS.map((k) => ({ key: `kind-${k}`, testid: `queue-section-kind-${k}`, title: KIND_META[k].label, dot: KIND_META[k].bar,
+          items: items.filter((i) => kindOf(i.categoryKind) === k) }));
+    return raw.filter((section) => section.items.length > 0).map((section) => {
+      const all = this.expanded().has(section.key);
+      return {
+        key: section.key, testid: section.testid, title: section.title, dot: section.dot, count: section.items.length,
+        more: all ? 0 : Math.max(0, section.items.length - SECTION_SIZE),
+        cards: (all ? section.items : section.items.slice(0, SECTION_SIZE)).map((item) => this.card(item)),
+      };
+    });
+  });
+  readonly noMatch = computed(() => this.allItems().length > 0 && this.visibleItems().length === 0);
   readonly empty = computed(() => (this.focus()?.groups ?? []).every((g: PlannerFocusGroup) => g.count === 0));
 
-  expand(reason: PlannerFocusReason): void {
-    this.expanded.update((set) => new Set([...set, reason]));
+  expand(key: string): void {
+    this.expanded.update((set) => new Set([...set, key]));
+  }
+
+  setGroupBy(value: GroupBy): void {
+    this.groupBy.set(value);
+    try {
+      localStorage.setItem(GROUP_BY_KEY, value);
+    } catch {
+      // Storage can be unavailable (private mode); the choice then lasts for this page only.
+    }
+  }
+
+  toggleKind(kind: TaskKind): void {
+    this.kinds.update((set) => {
+      const next = new Set(set);
+      if (next.has(kind)) next.delete(kind);
+      else next.add(kind);
+      return next;
+    });
+  }
+
+  clearKinds(): void {
+    this.kinds.set(new Set());
   }
 
   /**
@@ -115,18 +186,44 @@ export class PlannerFocusPanelComponent {
     return typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 767px)').matches;
   }
 
+  /** A card's look and its meta line, which fits its group (redesign D20). */
   private card(item: PlannerFocusItem) {
-    let due = 'No due date';
-    if (item.reason === 'due_today') due = 'Today';
-    else if (item.dueDate) due = `Due ${localDate(item.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+    const left = item.remainingMinutes === null ? null : duration(item.remainingMinutes);
+    let detail: string;
+    let age: string | null = null;
+    switch (item.reason) {
+      case 'overdue':
+        age = item.createdAt ? this.openFor(item.createdAt) : null;
+        detail = age ? '' : this.dueLabel(item.dueDate);
+        break;
+      case 'due_today':
+        detail = left ? `${left} left` : 'Today';
+        break;
+      case 'due_this_week':
+        detail = [item.dueDate ? localDate(item.dueDate).toLocaleDateString('en-US', { weekday: 'short' }) : null, left]
+          .filter((part) => !!part).join(' · ');
+        break;
+      default:
+        detail = [this.dueLabel(item.dueDate), left].filter((part) => !!part).join(' · ');
+    }
     const planned = item.firstPlannedDate
-      ? `planned ${localDate(item.firstPlannedDate).toLocaleDateString('en-US', { weekday: 'short' })}`
+      ? `Planned ${localDate(item.firstPlannedDate).toLocaleDateString('en-US', { weekday: 'short' })}`
         + (item.plannedDayCount > 1 ? ` +${item.plannedDayCount - 1}` : '')
       : null;
-    return {
-      item, due, planned,
-      left: item.remainingMinutes === null ? null : `${duration(item.remainingMinutes)} left`,
-      flagged: item.priority === 'high' || item.priority === 'critical',
-    };
+    return { item, kind: kindOf(item.categoryKind), detail, age, planned };
+  }
+
+  private dueLabel(dueDate: string | null): string {
+    return dueDate ? `Due ${localDate(dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : 'No due date';
+  }
+
+  /** "Open N days": whole days from the task's creation to today (the queue's own today). */
+  private openFor(createdAt: string): string {
+    const created = new Date(createdAt);
+    const from = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+    const todayIso = this.focus()?.today;
+    const today = todayIso ? localDate(todayIso) : new Date();
+    const days = Math.max(0, Math.round((today.getTime() - from.getTime()) / 86_400_000));
+    return days === 0 ? 'Open today' : `Open ${days} ${days === 1 ? 'day' : 'days'}`;
   }
 }
