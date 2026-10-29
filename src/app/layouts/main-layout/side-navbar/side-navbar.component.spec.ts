@@ -277,4 +277,27 @@ describe('SideNavbarComponent', () => {
     expect(navState.isSubSidebarCollapsed()).toBe(false);
     expect(fixture.nativeElement.querySelector('.nav-rail__expand-btn')).toBeNull();
   });
+
+  it('keeps the place of the expand button when there is nothing to expand, so the rail items do not move', async () => {
+    localStorage.clear();
+    const fixture = setup(['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'], ['time_attendance']);
+    const router = TestBed.inject(Router);
+    const navState = TestBed.inject(NavigationStateService);
+    await router.navigateByUrl('/attendance/overview');
+    navState.collapseSubSidebar();
+    fixture.detectChanges();
+    const rail = fixture.nativeElement as HTMLElement;
+    expect(rail.querySelector('.nav-rail__expand-btn')).not.toBeNull();
+    expect(rail.querySelector('.nav-rail__expand-slot')).toBeNull();
+
+    navState.expandSubSidebar();
+    fixture.detectChanges();
+
+    expect(rail.querySelector('.nav-rail__expand-btn')).toBeNull();
+    const slot = rail.querySelector('.nav-rail__expand-slot') as HTMLElement;
+    expect(slot).not.toBeNull();
+    expect(slot.getAttribute('aria-hidden')).toBe('true');
+    // Both sit right before the first rail item, so swapping them leaves the items where they were.
+    expect(slot.nextElementSibling?.matches('a, .nav-rail-item')).toBe(true);
+  });
 });
