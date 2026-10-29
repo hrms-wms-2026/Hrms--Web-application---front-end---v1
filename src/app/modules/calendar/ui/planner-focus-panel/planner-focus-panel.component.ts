@@ -4,6 +4,7 @@ import { PlannerFocusGroup, PlannerFocusItem, PlannerFocusReason, PlannerFocusRe
 import { PlannerDragService } from '../../state/planner-drag.service';
 import { KIND_META, TASK_KINDS, TaskKind, kindOf } from '../../../work/utils/task-kind';
 import { TaskKindIconComponent } from '../../../work/ui/task-kind-icon/task-kind-icon.component';
+import { dateOnlyInTimezone } from '../../../../shared/utils/timezone.util';
 
 const GROUP_TITLES: Record<PlannerFocusReason, string> = {
   overdue: 'Overdue', due_today: 'Due today', due_this_week: 'Due this week', backlog: 'Assigned backlog',
@@ -57,6 +58,8 @@ function localDate(date: string): Date {
 export class PlannerFocusPanelComponent {
   focus = input<PlannerFocusResponse | null>(null);
   closable = input(true);
+  /** The planner's time zone, for the date a task was created on ("Open N days"); the browser's when null. */
+  timezone = input<string | null>(null);
 
   closed = output<void>();
   /** Narrow screens: plan this task with the picker. */
@@ -93,15 +96,18 @@ export class PlannerFocusPanelComponent {
   });
   readonly sections = computed(() => {
     const items = this.visibleItems();
+    // Unfiltered, a due-date section counts every task in its group; the server sends at most 50 of them.
+    const unfiltered = this.query().trim() === '' && this.kinds().size === 0;
+    const serverCount = (r: PlannerFocusReason) => (this.focus()?.groups ?? []).find((g) => g.reason === r)?.count;
     const raw = this.groupBy() === 'due'
       ? REASONS.map((r) => ({ key: r as string, testid: `queue-section-${r}`, title: GROUP_TITLES[r], dot: REASON_DOTS[r],
-          items: items.filter((i) => i.reason === r) }))
+          items: items.filter((i) => i.reason === r), count: unfiltered ? serverCount(r) : undefined }))
       : TASK_KINDS.map((k) => ({ key: `kind-${k}`, testid: `queue-section-kind-${k}`, title: KIND_META[k].label, dot: KIND_META[k].bar,
-          items: items.filter((i) => kindOf(i.categoryKind) === k) }));
+          items: items.filter((i) => kindOf(i.categoryKind) === k), count: undefined as number | undefined }));
     return raw.filter((section) => section.items.length > 0).map((section) => {
       const all = this.expanded().has(section.key);
       return {
-        key: section.key, testid: section.testid, title: section.title, dot: section.dot, count: section.items.length,
+        key: section.key, testid: section.testid, title: section.title, dot: section.dot, count: section.count ?? section.items.length,
         more: all ? 0 : Math.max(0, section.items.length - SECTION_SIZE),
         cards: (all ? section.items : section.items.slice(0, SECTION_SIZE)).map((item) => this.card(item)),
       };
@@ -219,8 +225,9 @@ export class PlannerFocusPanelComponent {
 
   /** "Open N days": whole days from the task's creation to today (the queue's own today). */
   private openFor(createdAt: string): string {
+    const tz = this.timezone();
     const created = new Date(createdAt);
-    const from = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+    const from = tz ? localDate(dateOnlyInTimezone(createdAt, tz)) : new Date(created.getFullYear(), created.getMonth(), created.getDate());
     const todayIso = this.focus()?.today;
     const today = todayIso ? localDate(todayIso) : new Date();
     const days = Math.max(0, Math.round((today.getTime() - from.getTime()) / 86_400_000));
