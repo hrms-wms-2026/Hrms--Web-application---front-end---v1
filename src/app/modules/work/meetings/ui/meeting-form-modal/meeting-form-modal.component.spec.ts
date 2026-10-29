@@ -11,6 +11,10 @@ import { ProjectApiService } from '../../../data-access/project-api.service';
 import { MeetingApiService } from '../../data-access/meeting-api.service';
 import { MeetingCreatedResponse, MeetingEditResponse, MeetingOccurrenceResponse } from '../../models/meeting.models';
 import { MeetingFormModalComponent } from './meeting-form-modal.component';
+import { toZonedParts } from '../../utils/meeting-time';
+
+/** The specs' clock: 2026-10-30 10:10 in Colombo, before the 2026-11-02 meetings they create. */
+const NOW = '2026-10-30T04:40:00Z';
 
 describe('MeetingFormModalComponent', () => {
   let fixture: ComponentFixture<MeetingFormModalComponent>;
@@ -38,6 +42,8 @@ describe('MeetingFormModalComponent', () => {
   }
 
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(NOW));
     Object.values(api).forEach((f) => f.mockReset());
     Object.values(notify).forEach((f) => f.mockReset());
     calendarApi.checkConflicts.mockReset();
@@ -74,6 +80,52 @@ describe('MeetingFormModalComponent', () => {
       start: '2026-11-02T09:00:00+05:30', durationMinutes: 45, isAllDay: false, timezone: 'Asia/Colombo', recurrenceRule: null,
       participantEmployeeIds: ['e2', 'e3'], guestEmails: ['client@example.com'], platform: 'zoom',
     });
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('a new meeting starts at the next half hour today, in the form\'s time zone', () => {
+    build({ mode: 'create' });
+
+    const tz = form.form.controls.timezone.value;
+    // 04:40Z is HH:10 in UTC and in Colombo alike; the next half hour is 05:00Z.
+    expect({ date: form.form.controls.date.value, time: form.form.controls.time.value })
+      .toEqual(toZonedParts('2026-10-30T05:00:00Z', tz));
+  });
+
+  it('a calendar handover keeps its own start', () => {
+    build({ mode: 'create', prefill: { title: 'Review', start: '2026-11-03T14:00', end: '2026-11-03T15:00' } });
+
+    expect([form.form.controls.date.value, form.form.controls.time.value]).toEqual(['2026-11-03', '14:00']);
+  });
+
+  it('a start that has already passed cannot be created, and the form says so', () => {
+    build({ mode: 'create' });
+    fillOffice();
+    const tz = form.form.controls.timezone.value;
+    const earlier = toZonedParts('2026-10-30T03:00:00Z', tz);
+
+    form.form.patchValue({ date: earlier.date, time: earlier.time, timezone: tz });
+    fixture.detectChanges();
+    expect(form.canSave()).toBe(false);
+    expect((fixture.nativeElement.querySelector('[data-testid="meeting-start-past"]') as HTMLElement).textContent)
+      .toContain('already passed');
+
+    const later = toZonedParts('2026-10-30T06:00:00Z', tz);
+    form.form.patchValue({ date: later.date, time: later.time });
+    fixture.detectChanges();
+    expect(form.canSave()).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="meeting-start-past"]')).toBeNull();
+  });
+
+  it('an all-day meeting today has already started, so it cannot be created', () => {
+    build({ mode: 'create' });
+    fillOffice();
+    const tz = form.form.controls.timezone.value;
+
+    form.form.patchValue({ date: toZonedParts(NOW, tz).date, isAllDay: true, timezone: tz });
+
+    expect(form.canSave()).toBe(false);
   });
 
   it('the save button is drawn in the theme accent, so it shows on the white dialog', () => {
