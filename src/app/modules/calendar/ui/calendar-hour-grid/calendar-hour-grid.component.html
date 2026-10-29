@@ -25,11 +25,27 @@
         }
         @if (column.load; as load) {
           <div data-testid="planner-load" [attr.data-over]="load.over" class="mt-0.5 flex w-full flex-col gap-0.5 px-2 text-center text-[10px]">
-            <span class="h-1 w-full overflow-hidden rounded bg-[var(--color-surface-secondary)]">
-              <span class="block h-full" [ngClass]="load.over ? 'bg-[var(--color-danger)]' : 'bg-teal-600'" [style.width.%]="load.widthPct"></span>
+            <!-- One segment per kind; "· Over" in red says when the day is over-full. -->
+            <span class="flex h-1 w-full overflow-hidden rounded bg-[var(--color-surface-secondary)]">
+              @for (segment of column.kindSegments; track segment.kind) {
+                <span data-testid="planner-load-segment" [attr.data-kind]="segment.kind" class="block h-full {{ segment.bar }}"
+                  [style.width.%]="segment.widthPct"></span>
+              }
             </span>
             <span data-testid="planner-load-label"
               [ngClass]="load.over ? 'font-semibold text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'">{{ load.label }}</span>
+            @if (column.kindChips.shown.length > 0) {
+              <span class="flex flex-wrap justify-center gap-x-1.5 text-[var(--color-text-secondary)]">
+                @for (chip of column.kindChips.shown; track chip.kind) {
+                  <span data-testid="planner-kind-chip" [attr.data-kind]="chip.kind" class="flex items-center gap-0.5">
+                    <app-task-kind-icon [kind]="chip.kind" />{{ chip.label }}
+                  </span>
+                }
+                @if (column.kindChips.more > 0) {
+                  <span data-testid="planner-kind-more">+{{ column.kindChips.more }}</span>
+                }
+              </span>
+            }
           </div>
         }
       </div>

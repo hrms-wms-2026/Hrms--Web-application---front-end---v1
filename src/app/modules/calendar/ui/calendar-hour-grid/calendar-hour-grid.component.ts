@@ -9,7 +9,9 @@ import { dateOnlyInTimezone, localPartsToUtcIso, utcIsoToLocalParts } from '../.
 import { gmtOffsetLabel } from '../../../../shared/utils/timezone-label.util';
 import { PlannerRangeBlockView, PlannerWorkWindow } from '../../../work/planner/models/planner.models';
 import { PlannerDragService } from '../../state/planner-drag.service';
-import { MinuteRange, blockRange, busyIntervals, dropLength, overlapSegments, windowMinutes } from '../../utils/planner-grid.util';
+import {
+  MinuteRange, blockRange, busyIntervals, dropLength, kindMinutes, kindSegments, overlapSegments, windowMinutes,
+} from '../../utils/planner-grid.util';
 
 /** A day's load for its header cell (2026-10-27 Planner = Calendar design, section 4.5). */
 export interface PlannerDayLoad {
@@ -48,6 +50,9 @@ interface PlannerPreview {
 }
 
 /** h/m text: "1h 30m", "7h", "45m". */
+/** How many kinds a day header lists before "+N". */
+const KIND_CHIPS_SHOWN = 3;
+
 function duration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -77,6 +82,9 @@ interface DayColumnViewModel {
   /** A non-working day by the legal entity's schedule; still plannable. */
   readonly restDay: boolean;
   readonly load: { readonly label: string; readonly widthPct: number; readonly over: boolean } | null;
+  /** The load bar split by kind, and up to three kinds with their planned time (redesign D17). */
+  readonly kindSegments: readonly { readonly kind: TaskKind; readonly widthPct: number; readonly bar: string }[];
+  readonly kindChips: { readonly shown: readonly { readonly kind: TaskKind; readonly label: string }[]; readonly more: number };
   readonly nowFraction: number | null; // 0-1, only set when isToday
   readonly nowLabel: string | null; // e.g. "9:36 AM", only set when isToday
 }
@@ -202,6 +210,16 @@ export class CalendarHourGridComponent {
     });
   }
 
+  private kindLoad(blocks: readonly PlannerRangeBlockView[], workingMinutes: number):
+    Pick<DayColumnViewModel, 'kindSegments' | 'kindChips'> {
+    const byKind = kindMinutes(blocks);
+    const chips = [...byKind.entries()].filter(([, m]) => m > 0).map(([kind, m]) => ({ kind, label: duration(m) }));
+    return {
+      kindSegments: kindSegments(byKind, workingMinutes).map((s) => ({ ...s, bar: KIND_META[s.kind].bar })),
+      kindChips: { shown: chips.slice(0, KIND_CHIPS_SHOWN), more: Math.max(0, chips.length - KIND_CHIPS_SHOWN) },
+    };
+  }
+
   readonly columns = computed<readonly DayColumnViewModel[]>(() => {
     const timezone = this.timezone();
     const nowIso = new Date(this.now()).toISOString();
@@ -271,6 +289,7 @@ export class CalendarHourGridComponent {
         editable: editable.has(date),
         offHours: minutes ? [band(0, minutes.start), band(minutes.end, 1440)].filter((b) => b.heightPct > 0) : [],
         restDay: window !== null && !window.isWorkingDay,
+        ...this.kindLoad(dayBlocks, load?.workingMinutes ?? 0),
         load: load ? {
           label: `${duration(load.plannedMinutes)} / ${duration(load.workingMinutes)}${load.over ? ' · Over' : ''}`,
           widthPct: load.workingMinutes > 0 ? Math.min(100, (load.plannedMinutes / load.workingMinutes) * 100) : 0,

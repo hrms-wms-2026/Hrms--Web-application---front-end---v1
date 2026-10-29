@@ -261,6 +261,35 @@ describe('CalendarHourGridComponent planner layer', () => {
     expect(loads[1].querySelector('[data-testid="planner-load-label"]')!.className).toContain('text-[var(--color-danger)]');
   });
 
+  it('splits the load bar by kind and lists up to three kinds with their time, then "+N"', () => {
+    fixture.componentRef.setInput('loads', new Map([[TODAY, { plannedMinutes: 255, workingMinutes: 420, over: false }]]));
+    render({ [TODAY]: [
+      block('a', TODAY, '09:00', '10:30', { categoryKind: 'task' }),
+      block('b', TODAY, '10:30', '11:30', { categoryKind: 'bug' }),
+      block('c', TODAY, '11:30', '12:15', { categoryKind: 'story' }),
+      block('d', TODAY, '13:00', '13:15', { categoryKind: 'testing' }),
+    ] });
+
+    const header = qa('[data-testid="calendar-hour-header-cell"]')[1];
+    const segments = Array.from(header.querySelectorAll('[data-testid="planner-load-segment"]')) as HTMLElement[];
+    expect(segments.map((s) => s.getAttribute('data-kind'))).toEqual(['task', 'bug', 'story', 'testing']);
+    expect(segments[0].style.width).toBe(`${(90 / 420) * 100}%`);
+    const chips = Array.from(header.querySelectorAll('[data-testid="planner-kind-chip"]')) as HTMLElement[];
+    expect(chips.map((c) => [c.getAttribute('data-kind'), c.textContent!.trim()])).toEqual([['task', '1h 30m'], ['bug', '1h'], ['story', '45m']]);
+    expect(header.querySelector('[data-testid="planner-kind-more"]')!.textContent!.trim()).toBe('+1');
+  });
+
+  it('an over-full day keeps the segments within the bar and still reads "· Over"', () => {
+    fixture.componentRef.setInput('loads', new Map([[TODAY, { plannedMinutes: 540, workingMinutes: 420, over: true }]]));
+    render({ [TODAY]: [block('a', TODAY, '08:00', '14:00', { categoryKind: 'task' }), block('b', TODAY, '14:00', '17:00', { categoryKind: 'bug' })] });
+
+    const header = qa('[data-testid="calendar-hour-header-cell"]')[1];
+    const total = (Array.from(header.querySelectorAll('[data-testid="planner-load-segment"]')) as HTMLElement[])
+      .reduce((sum, s) => sum + parseFloat(s.style.width), 0);
+    expect(total).toBeCloseTo(100);
+    expect(header.querySelector('[data-testid="planner-load-label"]')!.textContent).toContain('· Over');
+  });
+
   describe('day headers and today', () => {
     afterEach(() => vi.useRealTimers());
 
