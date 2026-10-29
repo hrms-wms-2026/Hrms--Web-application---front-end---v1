@@ -40,14 +40,14 @@ export class TodaysScheduleCardComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
 
-  /** Today's meetings-as-tasks occurrences, in start order. */
+  /** Today's meetings-as-tasks occurrences, in start order; a cancelled one is left out. */
   protected readonly todaysMeetings = computed(() => {
     const window = this.todayWindow();
     if (!window) return [];
     const from = Date.parse(window.from);
     const to = Date.parse(window.to);
     return this.rawMeetings()
-      .filter((m) => Date.parse(m.startAt) >= from && Date.parse(m.startAt) <= to)
+      .filter((m) => m.status !== 'cancelled' && Date.parse(m.startAt) >= from && Date.parse(m.startAt) <= to)
       .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
   });
 

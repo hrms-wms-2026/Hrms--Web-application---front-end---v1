@@ -198,6 +198,19 @@ describe('TodaysScheduleCardComponent - meetings', () => {
       .toEqual(['Morning standup', 'Afternoon review']);
   });
 
+  it('a cancelled meeting is left out of the meetings list', async () => {
+    const today = new Date();
+    const todayAt = (h: number) => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), h)).toISOString();
+    const { fixture } = await setup([], [
+      { ...meeting('c', 'Called off', todayAt(15), todayAt(16)), status: 'cancelled' },
+      meeting('a', 'Morning standup', todayAt(9), todayAt(10)),
+    ]);
+
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="todays-meetings-item"]'));
+    expect(rows.map((r) => r.querySelector('[data-testid="meeting-card-title"]')?.textContent?.trim()))
+      .toEqual(['Morning standup']);
+  });
+
   it('legacy events are labelled Calendar event', async () => {
     const { fixture } = await setup([event({ id: 'e1', title: 'Dentist', startDate: at(60), endDate: at(90) })], []);
     const row: HTMLElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-item"]');
