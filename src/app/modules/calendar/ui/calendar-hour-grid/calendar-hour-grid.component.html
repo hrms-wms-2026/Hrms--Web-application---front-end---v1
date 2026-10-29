@@ -9,24 +9,43 @@
     @for (column of columns(); track column.date) {
       <div
         data-testid="calendar-hour-header-cell"
+        [attr.data-today]="column.isToday || null"
         class="flex flex-1 flex-col items-center gap-0.5 border-r border-[var(--color-border)] py-1.5 last:border-r-0"
+        [class.today-tint]="column.isToday"
       >
-        <span class="text-[10px] font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">{{ column.weekdayLabel }}</span>
+        <span data-testid="calendar-hour-weekday" class="text-xs font-medium"
+          [ngClass]="column.isToday ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'">{{ column.weekdayLabel }}</span>
         @if (column.isToday) {
           <span
             data-testid="calendar-hour-header-today"
             class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)] text-sm font-semibold text-[var(--color-accent-contrast)]"
           >{{ column.dayNumber }}</span>
         } @else {
-          <span class="flex h-7 w-7 items-center justify-center text-sm text-[var(--color-text-primary)]">{{ column.dayNumber }}</span>
+          <span data-testid="calendar-hour-daylabel" class="flex h-7 items-center justify-center text-sm font-medium text-[var(--color-text-primary)]">{{ column.dayLabel }}</span>
         }
         @if (column.load; as load) {
-          <div data-testid="planner-load" [attr.data-over]="load.over" class="mt-0.5 flex w-full flex-col gap-0.5 px-2 text-center text-[10px]"
-            [ngClass]="load.over ? 'text-amber-700' : 'text-[var(--color-text-secondary)]'">
-            <span class="h-1 w-full overflow-hidden rounded bg-[var(--color-surface-secondary)]">
-              <span class="block h-full" [ngClass]="load.over ? 'bg-amber-500' : 'bg-teal-600'" [style.width.%]="load.widthPct"></span>
+          <div data-testid="planner-load" [attr.data-over]="load.over" class="mt-0.5 flex w-full flex-col gap-0.5 px-2 text-center text-[10px]">
+            <!-- One segment per kind; "· Over" in red says when the day is over-full. -->
+            <span class="flex h-1 w-full overflow-hidden rounded bg-[var(--color-surface-secondary)]">
+              @for (segment of column.kindSegments; track segment.kind) {
+                <span data-testid="planner-load-segment" [attr.data-kind]="segment.kind" class="block h-full {{ segment.bar }}"
+                  [style.width.%]="segment.widthPct"></span>
+              }
             </span>
-            <span>{{ load.label }}</span>
+            <span data-testid="planner-load-label"
+              [ngClass]="load.over ? 'font-semibold text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'">{{ load.label }}</span>
+            @if (column.kindChips.shown.length > 0) {
+              <span class="flex flex-wrap justify-center gap-x-1.5 text-[var(--color-text-secondary)]">
+                @for (chip of column.kindChips.shown; track chip.kind) {
+                  <span data-testid="planner-kind-chip" [attr.data-kind]="chip.kind" class="flex items-center gap-0.5">
+                    <app-task-kind-icon [kind]="chip.kind" />{{ chip.label }}
+                  </span>
+                }
+                @if (column.kindChips.more > 0) {
+                  <span data-testid="planner-kind-more">+{{ column.kindChips.more }}</span>
+                }
+              </span>
+            }
           </div>
         }
       </div>
@@ -73,8 +92,9 @@
 
     @for (column of columns(); track column.date) {
       <div data-testid="calendar-hour-day-column" [attr.data-date]="column.date" [attr.data-rest-day]="column.restDay"
+        [attr.data-today]="column.isToday || null"
         class="relative h-[72rem] flex-1 border-r border-[var(--color-border)] last:border-r-0"
-        [ngClass]="column.restDay ? 'bg-[var(--color-surface-secondary)]' : ''">
+        [ngClass]="column.restDay ? 'bg-[var(--color-surface-secondary)]' : ''" [class.today-tint]="column.isToday">
         <div
           data-testid="calendar-hour-slots"
           class="absolute inset-0 touch-none select-none"
@@ -108,22 +128,55 @@
         }
 
         @for (positioned of column.positioned; track positioned.event.id) {
-          <button
-            type="button"
-            data-testid="calendar-hour-event-block"
-            class="absolute flex items-center gap-1 overflow-hidden rounded px-1 text-left text-[11px] text-white"
-            [style.top.%]="positioned.top * 100"
-            [style.height.%]="positioned.height * 100"
-            [style.left.%]="positioned.left * 100"
-            [style.width.%]="positioned.width * 100"
-            [style.background-color]="positioned.event.color || 'var(--color-accent)'"
-            (click)="$event.stopPropagation(); eventClick.emit(positioned.event.id)"
-          >
-            @if (positioned.event.hasConflict) {
-              <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
-            }
-            <span class="truncate">{{ positioned.event.title }}</span>
-          </button>
+          @if (positioned.event.itemKind === 'meeting') {
+            <!-- A meeting: its time on top, the title, where, and who attends. The whole block opens its drawer. -->
+            <button
+              type="button"
+              data-testid="calendar-hour-event-block"
+              class="absolute flex flex-col items-stretch gap-0.5 overflow-hidden rounded-md px-1.5 py-1 text-left text-[11px] leading-tight text-white"
+              [attr.data-kind]="'meeting'"
+              [style.top.%]="positioned.top * 100"
+              [style.height.%]="positioned.height * 100"
+              [style.left.%]="positioned.left * 100"
+              [style.width.%]="positioned.width * 100"
+              [style.background-color]="positioned.event.color || 'var(--color-accent)'"
+              (click)="$event.stopPropagation(); eventClick.emit(positioned.event.id)"
+            >
+              <span data-testid="calendar-meeting-block" class="contents">
+                <span class="flex items-center gap-1 opacity-90">
+                  @if (positioned.event.hasConflict) {
+                    <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+                  }
+                  <span data-testid="block-time" class="truncate">{{ positioned.times }}</span>
+                  <span data-testid="meeting-block-menu" class="ml-auto shrink-0" aria-hidden="true">⋯</span>
+                </span>
+                <span class="truncate font-semibold">{{ positioned.event.title }}</span>
+                @if (positioned.event.location) {
+                  <span class="truncate opacity-80">{{ positioned.event.location }}</span>
+                }
+                @if (positioned.attendeeIds.length > 0) {
+                  <span class="mt-0.5"><app-planner-avatar-stack [employeeIds]="positioned.attendeeIds" /></span>
+                }
+              </span>
+            </button>
+          } @else {
+            <button
+              type="button"
+              data-testid="calendar-hour-event-block"
+              class="absolute flex items-center gap-1 overflow-hidden rounded px-1 text-left text-[11px] text-white"
+              [style.top.%]="positioned.top * 100"
+              [style.height.%]="positioned.height * 100"
+              [style.left.%]="positioned.left * 100"
+              [style.width.%]="positioned.width * 100"
+              [style.background-color]="positioned.event.color || 'var(--color-accent)'"
+              (click)="$event.stopPropagation(); eventClick.emit(positioned.event.id)"
+            >
+              @if (positioned.event.hasConflict) {
+                <span data-testid="calendar-conflict-marker" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]" aria-hidden="true"></span>
+              }
+              <span class="truncate">{{ positioned.event.title }}</span>
+            </button>
+          }
         }
 
         @for (vm of column.blocks; track vm.block.id) {
@@ -131,7 +184,8 @@
             data-testid="planner-block"
             role="button"
             tabindex="0"
-            class="absolute z-[5] flex touch-none select-none flex-col overflow-hidden rounded border border-teal-700 bg-teal-50 px-1 text-left text-[11px] leading-tight text-teal-900"
+            class="absolute z-[5] flex touch-none select-none flex-col overflow-hidden rounded-r-md border border-l-0 border-[var(--color-border)] py-0.5 pl-2 pr-1 text-left text-[11px] leading-tight text-[var(--color-text-primary)] {{ vm.meta.tint }}"
+            [attr.data-kind]="vm.kind"
             [ngClass]="column.editable ? 'cursor-grab' : 'cursor-pointer'"
             [attr.title]="vm.tooltip"
             [style.top.%]="vm.top * 100"
@@ -142,15 +196,27 @@
             (click)="onBlockClick(vm, column.date)"
             (keydown.enter)="blockOpen.emit(vm.block)"
           >
+            <span data-testid="planner-block-accent" class="absolute inset-y-0 left-0 w-[3px] {{ vm.meta.bar }}" aria-hidden="true"></span>
             <span class="flex items-start gap-1">
-              <span class="truncate font-medium">{{ vm.block.taskTitle }}</span>
+              @if (vm.short) {
+                <app-task-kind-icon [kind]="vm.kind" />
+                <span class="truncate font-semibold">{{ vm.block.taskTitle }}</span>
+              } @else {
+                <span data-testid="block-time" class="truncate opacity-80">{{ vm.times }} · {{ vm.duration }}</span>
+              }
               @if (column.editable) {
                 <button type="button" data-testid="planner-block-menu" aria-label="Block actions" class="ml-auto shrink-0 px-1"
                   (pointerdown)="stopPointer($event)" (click)="toggleMenu(vm.block.id, $event)">⋯</button>
               }
             </span>
             @if (!vm.short) {
-              <span class="truncate">{{ vm.times }} · {{ vm.duration }}</span>
+              <span class="flex items-center gap-1 font-semibold">
+                <app-task-kind-icon [kind]="vm.kind" />
+                <span class="truncate">{{ vm.block.taskTitle }}</span>
+              </span>
+              @if (vm.subtitle) {
+                <span data-testid="planner-block-project" class="truncate text-[var(--color-text-secondary)]">{{ vm.subtitle }}</span>
+              }
             }
             @if (vm.clash) {
               @if (column.editable) {

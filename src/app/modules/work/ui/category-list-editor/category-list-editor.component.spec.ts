@@ -10,8 +10,8 @@ describe('CategoryListEditorComponent', () => {
   const categories: TaskCategoryColumn[] = [
     { id: 'c3', name: 'Story', displayOrder: 2 },
     { id: 'c1', name: 'Task', displayOrder: 0 },
-    { id: 'c2', name: 'Bug', displayOrder: 1 },
-    { id: 'c9', name: 'meeting', displayOrder: 3, systemKey: 'meeting', isSystem: true }
+    { id: 'c2', name: 'Bug', displayOrder: 1, kind: 'bug' },
+    { id: 'c9', name: 'meeting', displayOrder: 3, systemKey: 'meeting', isSystem: true, kind: 'meeting' }
   ];
 
   function setup() {
@@ -130,6 +130,31 @@ describe('CategoryListEditorComponent', () => {
     await fixture.whenStable();
 
     expect(reorderTaskCategories).toHaveBeenCalledWith('project-1', expect.arrayContaining([{ categoryId: 'c9', displayOrder: 3 }]));
+  });
+  it('each row has a Type select; changing it saves the kind', async () => {
+    const { fixture, editCategory } = setup();
+    fixture.detectChanges();
+    const selects = fixture.nativeElement.querySelectorAll('[data-testid="category-kind-select"]') as NodeListOf<HTMLSelectElement>;
+    // Task, Bug, Story have a select; the system meeting row shows its type read-only.
+    expect(selects.length).toBe(3);
+    expect(selects[1].value).toBe('bug');
+    expect(selects[0].value).toBe('task');
+    expect(Array.from(selects[0].options).map((o) => o.value)).toEqual(['task', 'bug', 'story', 'feature', 'testing']);
+
+    selects[0].value = 'testing';
+    selects[0].dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    expect(editCategory).toHaveBeenCalledWith('c1', { name: 'Task', displayOrder: 0, kind: 'testing' });
+  });
+
+  it('a system category shows its type and cannot change it', () => {
+    const { fixture } = setup();
+    fixture.detectChanges();
+    const rows = fixture.nativeElement.querySelectorAll('.category-list__row') as NodeListOf<HTMLElement>;
+
+    expect(rows[3].querySelector('[data-testid="category-kind-select"]')).toBeNull();
+    expect(rows[3].querySelector('[data-testid="category-kind-readonly"]')!.textContent!.trim()).toBe('Meeting');
   });
 });
 

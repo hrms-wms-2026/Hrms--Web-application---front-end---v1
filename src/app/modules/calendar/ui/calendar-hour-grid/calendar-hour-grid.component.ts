@@ -1,4 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
+import { PlannerAvatarStackComponent } from '../planner-avatar-stack/planner-avatar-stack.component';
+import { KIND_META, TaskKind, TaskKindMeta, kindOf } from '../../../work/utils/task-kind';
+import { TaskKindIconComponent } from '../../../work/ui/task-kind-icon/task-kind-icon.component';
 import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { GridItem, PositionedEvent, layoutDayItems } from '../../utils/calendar-hour-grid.util';
@@ -6,7 +9,9 @@ import { dateOnlyInTimezone, localPartsToUtcIso, utcIsoToLocalParts } from '../.
 import { gmtOffsetLabel } from '../../../../shared/utils/timezone-label.util';
 import { PlannerRangeBlockView, PlannerWorkWindow } from '../../../work/planner/models/planner.models';
 import { PlannerDragService } from '../../state/planner-drag.service';
-import { MinuteRange, blockRange, busyIntervals, dropLength, overlapSegments, windowMinutes } from '../../utils/planner-grid.util';
+import {
+  MinuteRange, blockRange, busyIntervals, dropLength, kindMinutes, kindSegments, overlapSegments, windowMinutes,
+} from '../../utils/planner-grid.util';
 
 /** A day's load for its header cell (2026-10-27 Planner = Calendar design, section 4.5). */
 export interface PlannerDayLoad {
@@ -28,6 +33,10 @@ interface PlannerBlockViewModel {
   readonly duration: string;
   readonly short: boolean;
   readonly tooltip: string;
+  /** The category's type, its look, and "category · project" (or just the project) under the title. */
+  readonly kind: TaskKind;
+  readonly meta: TaskKindMeta;
+  readonly subtitle: string;
   readonly overlaps: readonly Band[];
   /** The first meeting it overlaps, for the pill and "Move after meeting". */
   readonly clash: { readonly title: string; readonly end: number } | null;
@@ -41,6 +50,9 @@ interface PlannerPreview {
 }
 
 /** h/m text: "1h 30m", "7h", "45m". */
+/** How many kinds a day header lists before "+N". */
+const KIND_CHIPS_SHOWN = 3;
+
 function duration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -57,16 +69,22 @@ const band = (start: number, end: number): Band => ({ topPct: (start / 1440) * 1
 interface DayColumnViewModel {
   readonly date: string;
   readonly isToday: boolean;
+  /** Day and short month, e.g. '26 Oct'; today shows its day number in a circle instead. */
+  readonly dayLabel: string;
   readonly weekdayLabel: string; // e.g. "SUN"
   readonly dayNumber: number; // 1-31
   readonly allDayEvents: readonly CalendarEventResponse[];
-  readonly positioned: readonly PositionedEvent[];
+  /** Events with their local "HH:mm–HH:mm" and, for a meeting, who attends (organizer first). */
+  readonly positioned: readonly (PositionedEvent & { readonly times: string; readonly attendeeIds: readonly string[] })[];
   readonly blocks: readonly PlannerBlockViewModel[];
   readonly editable: boolean;
   readonly offHours: readonly Band[];
   /** A non-working day by the legal entity's schedule; still plannable. */
   readonly restDay: boolean;
   readonly load: { readonly label: string; readonly widthPct: number; readonly over: boolean } | null;
+  /** The load bar split by kind, and up to three kinds with their planned time (redesign D17). */
+  readonly kindSegments: readonly { readonly kind: TaskKind; readonly widthPct: number; readonly bar: string }[];
+  readonly kindChips: { readonly shown: readonly { readonly kind: TaskKind; readonly label: string }[]; readonly more: number };
   readonly nowFraction: number | null; // 0-1, only set when isToday
   readonly nowLabel: string | null; // e.g. "9:36 AM", only set when isToday
 }
@@ -89,8 +107,10 @@ interface DragSelection {
 @Component({
   selector: 'app-calendar-hour-grid',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PlannerAvatarStackComponent, TaskKindIconComponent],
   templateUrl: './calendar-hour-grid.component.html',
+  // Today's column (header and grid) under the blocks, so the week shows where now is at a glance.
+  styles: ['.today-tint { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); }'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalendarHourGridComponent {
@@ -190,6 +210,16 @@ export class CalendarHourGridComponent {
     });
   }
 
+  private kindLoad(blocks: readonly PlannerRangeBlockView[], workingMinutes: number):
+    Pick<DayColumnViewModel, 'kindSegments' | 'kindChips'> {
+    const byKind = kindMinutes(blocks);
+    const chips = [...byKind.entries()].filter(([, m]) => m > 0).map(([kind, m]) => ({ kind, label: duration(m) }));
+    return {
+      kindSegments: kindSegments(byKind, workingMinutes).map((s) => ({ ...s, bar: KIND_META[s.kind].bar })),
+      kindChips: { shown: chips.slice(0, KIND_CHIPS_SHOWN), more: Math.max(0, chips.length - KIND_CHIPS_SHOWN) },
+    };
+  }
+
   readonly columns = computed<readonly DayColumnViewModel[]>(() => {
     const timezone = this.timezone();
     const nowIso = new Date(this.now()).toISOString();
@@ -231,11 +261,14 @@ export class CalendarHourGridComponent {
       return {
         date,
         isToday,
-        weekdayLabel: local.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+        weekdayLabel: local.toLocaleDateString('en-US', { weekday: 'short' }),
         dayNumber: d,
+        dayLabel: `${d} ${local.toLocaleDateString('en-US', { month: 'short' })}`,
         allDayEvents: dayEvents.filter((e) => e.isAllDay),
         positioned: laidOut.flatMap((p) => p.item.kind === 'event'
-          ? [{ event: p.item.event, top: p.top, height: p.height, left: p.left, width: p.width }] : []),
+          ? [{ event: p.item.event, top: p.top, height: p.height, left: p.left, width: p.width,
+            times: `${utcIsoToLocalParts(p.item.event.startDate, timezone).time.slice(0, 5)}–${utcIsoToLocalParts(p.item.event.endDate, timezone).time.slice(0, 5)}`,
+            attendeeIds: (p.item.event.participants ?? []).map((x) => x.employeeId) }] : []),
         blocks: laidOut.flatMap((p) => {
           if (p.item.kind !== 'block') return [];
           const block = p.item.block;
@@ -246,6 +279,8 @@ export class CalendarHourGridComponent {
           return [{
             block, range, top: p.top, height: p.height, left: p.left, width: p.width, times,
             duration: duration(range.end - range.start), short: range.end - range.start < 30,
+            kind: kindOf(block.categoryKind), meta: KIND_META[kindOf(block.categoryKind)],
+            subtitle: [block.categoryName, block.projectName].filter((part) => !!part).join(' · '),
             tooltip: `${block.taskTitle} · ${times} · ${duration(block.plannedMinutes)} planned · ${duration(block.actualMinutes)} actual`,
             overlaps: segments.map((s) => band(s.start, s.end)),
             clash: first ? { title: first.title, end: first.end } : null,
@@ -254,8 +289,9 @@ export class CalendarHourGridComponent {
         editable: editable.has(date),
         offHours: minutes ? [band(0, minutes.start), band(minutes.end, 1440)].filter((b) => b.heightPct > 0) : [],
         restDay: window !== null && !window.isWorkingDay,
+        ...this.kindLoad(dayBlocks, load?.workingMinutes ?? 0),
         load: load ? {
-          label: `${duration(load.plannedMinutes)} / ${duration(load.workingMinutes)}${load.over ? ' · over' : ''}`,
+          label: `${duration(load.plannedMinutes)} / ${duration(load.workingMinutes)}${load.over ? ' · Over' : ''}`,
           widthPct: load.workingMinutes > 0 ? Math.min(100, (load.plannedMinutes / load.workingMinutes) * 100) : 0,
           over: load.over,
         } : null,

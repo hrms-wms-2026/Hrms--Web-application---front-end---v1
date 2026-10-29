@@ -1,7 +1,7 @@
 import { CalendarEventResponse } from '../models/calendar-event.model';
 import { PlannerRangeBlockView, PlannerWorkWindow } from '../../work/planner/models/planner.models';
 import {
-  blockRange, busyIntervals, dayLoad, dropLength, moveAfterSlot, overlapSegments, windowMinutes,
+  blockRange, busyIntervals, dayLoad, dropLength, kindMinutes, kindSegments, moveAfterSlot, overlapSegments, windowMinutes,
 } from './planner-grid.util';
 
 const TZ = 'Asia/Colombo';
@@ -87,5 +87,35 @@ describe('planner grid maths', () => {
 
     expect(windowMinutes(w)).toEqual({ start: 540, end: 1020, breakStart: 750, breakEnd: 810 });
     expect(windowMinutes({ ...w, breakStart: null, breakMinutes: 0 })).toEqual({ start: 540, end: 1020, breakStart: null, breakEnd: null });
+  });
+});
+
+describe('planner load by kind', () => {
+  const b = (kind: string | undefined, minutes: number) =>
+    ({ plannedMinutes: minutes, categoryKind: kind }) as Pick<PlannerRangeBlockView, 'plannedMinutes' | 'categoryKind'>;
+
+  it('sums planned minutes by kind, in kind order, a missing kind counting as task', () => {
+    const byKind = kindMinutes([b('bug', 60), b(undefined, 30), b('task', 60), b('story', 45), b('bug', 15)]);
+
+    expect([...byKind.entries()]).toEqual([['task', 90], ['bug', 75], ['story', 45]]);
+  });
+
+  it('turns them into bar segments of the working day', () => {
+    const segments = kindSegments(new Map([['task', 90], ['bug', 60], ['story', 45]]), 480);
+
+    expect(segments).toEqual([
+      { kind: 'task', widthPct: 18.75 }, { kind: 'bug', widthPct: 12.5 }, { kind: 'story', widthPct: 9.375 },
+    ]);
+  });
+
+  it('scales an over-full day down to a full bar', () => {
+    const segments = kindSegments(new Map([['task', 480], ['bug', 240]]), 480);
+
+    expect(segments.reduce((sum, s) => sum + s.widthPct, 0)).toBeCloseTo(100);
+    expect(segments[0].widthPct).toBeCloseTo(66.667, 2);
+  });
+
+  it('draws nothing without working minutes', () => {
+    expect(kindSegments(new Map([['task', 60]]), 0)).toEqual([]);
   });
 });

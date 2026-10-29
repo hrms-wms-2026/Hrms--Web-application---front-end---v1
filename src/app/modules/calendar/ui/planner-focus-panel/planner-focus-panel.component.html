@@ -1,11 +1,48 @@
-<aside data-testid="planner-focus-panel" class="flex flex-col gap-1 rounded-lg border border-[var(--color-border)] p-2 text-xs">
+<aside data-testid="planner-focus-panel" class="flex flex-col gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-xs">
   <div class="flex items-center gap-2">
-    <h2 class="text-sm font-semibold">Task queue</h2>
+    <h2 data-testid="queue-title" class="text-base font-semibold">Task queue</h2>
+    <span data-testid="queue-total" class="rounded-full bg-[var(--color-surface-secondary)] px-2 text-xs font-semibold text-[var(--color-text-secondary)]">{{ total() }}</span>
     @if (closable()) {
       <button type="button" data-testid="planner-focus-close" aria-label="Close Task queue" class="ml-auto px-1 text-[var(--color-text-secondary)]"
         (click)="closed.emit()">✕</button>
     }
   </div>
+
+  <!-- Group by: due date (Overdue, Due today, ...) or type. -->
+  <div class="flex items-center gap-2">
+    <span class="text-[var(--color-text-secondary)]">Group by</span>
+    <div class="flex overflow-hidden rounded-md border border-[var(--color-border)]" role="group" aria-label="Group by">
+      <button type="button" data-testid="queue-group-by-due" class="px-2.5 py-1" [attr.aria-pressed]="groupBy() === 'due'"
+        [ngClass]="groupBy() === 'due' ? 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)]' : ''"
+        (click)="setGroupBy('due')">Due date</button>
+      <button type="button" data-testid="queue-group-by-kind" class="px-2.5 py-1" [attr.aria-pressed]="groupBy() === 'kind'"
+        [ngClass]="groupBy() === 'kind' ? 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)]' : ''"
+        (click)="setGroupBy('kind')">Type</button>
+    </div>
+  </div>
+
+  <label class="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-secondary)] px-2 py-1">
+    <svg class="h-3.5 w-3.5 shrink-0 text-[var(--color-text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+    <input data-testid="queue-search" type="search" class="w-full bg-transparent outline-none" placeholder="Search tasks..." aria-label="Search tasks"
+      [value]="query()" (input)="query.set($any($event.target).value)" />
+  </label>
+
+  @if (presentKinds().length > 0) {
+    <!-- Type chips: pick one or more types; All clears. -->
+    <div class="flex flex-wrap gap-1" role="group" aria-label="Filter by type">
+      <button type="button" data-testid="queue-kind-chip-all" class="flex items-center gap-1 rounded-full border px-2 py-0.5"
+        [attr.aria-pressed]="kinds().size === 0"
+        [ngClass]="kinds().size === 0 ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-accent-contrast)]' : 'border-[var(--color-border)]'"
+        (click)="clearKinds()">All <span class="opacity-80">{{ total() }}</span></button>
+      @for (chip of presentKinds(); track chip.kind) {
+        <button type="button" [attr.data-testid]="'queue-kind-chip-' + chip.kind" class="flex items-center gap-1 rounded-full border px-2 py-0.5"
+          [attr.aria-pressed]="kinds().has(chip.kind)"
+          [ngClass]="kinds().has(chip.kind) ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10' : 'border-[var(--color-border)]'"
+          (click)="toggleKind(chip.kind)"><app-task-kind-icon [kind]="chip.kind" />{{ chip.label }} <span class="text-[var(--color-text-secondary)]">{{ chip.count }}</span></button>
+      }
+    </div>
+  }
+
   <p data-testid="planner-focus-hint" class="flex items-center gap-1 text-[var(--color-text-secondary)]">
     <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" />
@@ -16,58 +53,59 @@
 
   @if (empty()) {
     <p data-testid="planner-focus-empty" class="py-2 text-[var(--color-text-secondary)]">Nothing in the queue.</p>
+  } @else if (noMatch()) {
+    <p data-testid="queue-no-match" class="py-2 text-[var(--color-text-secondary)]">No tasks match</p>
   }
 
-  @for (group of groups(); track group.reason) {
-    <h3 data-testid="planner-focus-group-title" class="mt-2 text-[11px] font-medium"
-      [ngClass]="group.reason === 'overdue' ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-secondary)]'">{{ group.title }}</h3>
-    @for (card of group.items; track card.item.taskId) {
-      <!-- The whole card opens the task; pressing and moving it drags it onto the calendar. -->
-      <div data-testid="planner-focus-card" role="button" tabindex="0"
-        [attr.aria-label]="'Open ' + card.item.title"
-        class="group relative flex cursor-grab touch-none select-none items-stretch gap-1.5 rounded-md border bg-[var(--color-surface)] py-1 pl-1 pr-2 transition-[box-shadow,transform,border-color,opacity] duration-150 hover:-translate-y-px hover:border-[var(--color-accent)] hover:shadow-md active:cursor-grabbing"
-        [ngClass]="draggingId() === card.item.taskId
-          ? 'border-dashed border-[var(--color-accent)] opacity-40'
-          : (card.item.fullyPlanned ? 'border-[var(--color-border)] opacity-60' : 'border-[var(--color-border)]')"
-        [attr.data-fully-planned]="card.item.fullyPlanned"
-        [attr.data-dragging]="draggingId() === card.item.taskId || null"
-        (pointerdown)="onCardPointerDown(card.item, $event)" (click)="onCardClick(card.item)"
-        (keydown.enter)="onCardClick(card.item)" (keydown.space)="$event.preventDefault(); onCardClick(card.item)">
-        <span data-testid="planner-focus-grip" aria-hidden="true"
-          class="flex w-3 shrink-0 items-center justify-center text-[var(--color-text-secondary)] opacity-40 transition-opacity group-hover:opacity-100">
-          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" />
-            <circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
-          </svg>
-        </span>
-        <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span class="flex items-center gap-1">
-            @if (card.flagged) {
-              <span data-testid="planner-priority-dot" class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-danger)]"
-                [attr.aria-label]="card.item.priority + ' priority'"></span>
-            }
-            <span data-testid="planner-focus-title" class="truncate font-medium group-hover:text-[var(--color-accent)]">{{ card.item.title }}</span>
-          </span>
-          <span class="truncate text-[var(--color-text-secondary)]">{{ card.item.projectName }}</span>
-          <span class="text-[var(--color-text-secondary)]">
-            {{ card.due }}@if (card.left) { · {{ card.left }} }@if (card.planned) { · <span class="text-teal-700">{{ card.planned }}</span> }
-          </span>
-        </span>
-        <!-- Plan with the day-and-time picker: the keyboard's way to schedule, since a drag needs a pointer. -->
-        <button type="button" data-testid="planner-focus-plan" data-no-drag
-          [attr.aria-label]="'Plan ' + card.item.title + ' on a day and time'" title="Plan on a day and time"
-          class="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-md text-[var(--color-text-secondary)] opacity-0 transition-opacity hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-accent)] focus-visible:opacity-100 group-hover:opacity-100"
-          (click)="onPlanClick(card.item, $event)">
-          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
-          </svg>
-        </button>
+  @for (section of sections(); track section.key) {
+    <section [attr.data-testid]="section.testid" class="flex flex-col gap-1">
+      <div class="mt-1 flex items-center gap-1.5">
+        <span class="h-2 w-2 shrink-0 rounded-full {{ section.dot }}" aria-hidden="true"></span>
+        <h3 data-testid="queue-section-title" class="flex items-center gap-1.5 text-sm font-semibold">
+          {{ section.title }}
+          <span class="rounded-full bg-[var(--color-surface-secondary)] px-1.5 text-xs font-medium text-[var(--color-text-secondary)]">{{ section.count }}</span>
+        </h3>
+        @if (section.more > 0) {
+          <button type="button" [attr.data-testid]="'queue-see-all-' + section.key" class="ml-auto text-[var(--color-accent)] hover:underline"
+            (click)="expand(section.key)">See all</button>
+        }
       </div>
-    }
-    @if (group.more > 0) {
-      <button type="button" data-testid="planner-focus-more" class="self-start text-[var(--color-text-secondary)]"
-        (click)="expand(group.reason)">+ {{ group.more }} more</button>
-    }
+      @for (card of section.cards; track card.item.taskId) {
+        <!-- The whole card opens the task; pressing and moving it drags it onto the calendar. -->
+        <div data-testid="planner-focus-card" role="button" tabindex="0"
+          [attr.aria-label]="'Open ' + card.item.title"
+          class="group relative flex cursor-grab touch-none select-none items-center gap-2 rounded-md border bg-[var(--color-surface)] py-1.5 pl-1 pr-1.5 transition-[box-shadow,transform,border-color,opacity] duration-150 hover:-translate-y-px hover:border-[var(--color-accent)] hover:shadow-md active:cursor-grabbing"
+          [ngClass]="draggingId() === card.item.taskId
+            ? 'border-dashed border-[var(--color-accent)] opacity-40'
+            : (card.item.fullyPlanned ? 'border-[var(--color-border)] opacity-60' : 'border-[var(--color-border)]')"
+          [attr.data-fully-planned]="card.item.fullyPlanned"
+          [attr.data-dragging]="draggingId() === card.item.taskId || null"
+          (pointerdown)="onCardPointerDown(card.item, $event)" (click)="onCardClick(card.item)"
+          (keydown.enter)="onCardClick(card.item)" (keydown.space)="$event.preventDefault(); onCardClick(card.item)">
+          <span data-testid="planner-focus-grip" aria-hidden="true"
+            class="flex w-3 shrink-0 items-center justify-center text-[var(--color-text-secondary)] opacity-40 transition-opacity group-hover:opacity-100">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" />
+              <circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
+            </svg>
+          </span>
+          <app-task-kind-icon [kind]="card.kind" [tile]="true" />
+          <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span data-testid="planner-focus-title" class="truncate font-medium group-hover:text-[var(--color-accent)]">{{ card.item.title }}</span>
+            <span data-testid="planner-focus-meta" class="truncate text-[var(--color-text-secondary)]">{{ card.item.projectName }}@if (card.age) { · <span data-testid="meta-age" class="text-[var(--color-danger)]">{{ card.age }}</span> }@if (card.detail) { · {{ card.detail }} }@if (card.planned) { · <span class="text-teal-700">{{ card.planned }}</span> }</span>
+          </span>
+          <!-- Plan with the day-and-time picker: the keyboard's way to schedule, since a drag needs a pointer. -->
+          <button type="button" data-testid="planner-focus-plan" data-no-drag
+            [attr.aria-label]="'Plan ' + card.item.title + ' on a day and time'" title="Plan on a day and time"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-accent)]"
+            (click)="onPlanClick(card.item, $event)">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
+            </svg>
+          </button>
+        </div>
+      }
+    </section>
   }
 
   <!-- The card under the pointer while it is dragged; the grid shows where it will land. -->
