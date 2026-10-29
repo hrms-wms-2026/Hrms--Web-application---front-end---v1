@@ -131,7 +131,7 @@
       }
     </div>
     @if (showPanel()) {
-      <app-planner-focus-panel [focus]="planner.focus()" [closable]="view() !== 'day'" (closed)="closeFocus()"
+      <app-planner-focus-panel [focus]="planner.focus()" [closable]="view() !== 'day'" [timezone]="planner.range()?.timezone ?? null" (closed)="closeFocus()"
         (pick)="pickerItem.set($event)" (open)="openTask($event.projectId, $event.taskId)" />
     }
   </div>

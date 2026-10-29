@@ -124,6 +124,30 @@ describe('PlannerFocusPanelComponent', () => {
     expect(cards()[1].getAttribute('data-fully-planned')).toBe('true');
   });
 
+  it('by due date with no filter, a section shows its full server count, past the 50 cards loaded', () => {
+    fixture.componentRef.setInput('focus', { ...focus, groups: [
+      { reason: 'overdue', count: 73, items: [item('A'), item('B')] },
+      { reason: 'due_today', count: 0, items: [] }, { reason: 'due_this_week', count: 0, items: [] }, { reason: 'backlog', count: 0, items: [] },
+    ] });
+    fixture.detectChanges();
+
+    expect(text('[data-testid="queue-section-title"]')).toEqual(['Overdue 73']);
+    search('B');
+    expect(text('[data-testid="queue-section-title"]')).toEqual(['Overdue 1']);
+  });
+
+  it('"Open N days" counts from the creation date in the planner time zone, not the browser\'s', () => {
+    fixture.componentRef.setInput('timezone', 'Asia/Colombo');
+    // 20:00 UTC on 1 Nov is already 01:30 on 2 Nov in Colombo: created today there.
+    fixture.componentRef.setInput('focus', { ...focus, groups: [
+      { reason: 'overdue', count: 1, items: [item('Late', { createdAt: '2026-11-01T20:00:00Z' })] },
+      { reason: 'due_today', count: 0, items: [] }, { reason: 'due_this_week', count: 0, items: [] }, { reason: 'backlog', count: 0, items: [] },
+    ] });
+    fixture.detectChanges();
+
+    expect(text('[data-testid="planner-focus-meta"]')).toEqual(['Portal · Open today']);
+  });
+
   it('the Plan button is always visible', () => {
     expect(cards()[0].querySelector('[data-testid="planner-focus-plan"]')!.className).not.toContain('opacity-0');
   });
