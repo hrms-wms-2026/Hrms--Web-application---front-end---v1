@@ -76,6 +76,8 @@ export interface TeamAttendanceEmployeeRow {
   readonly attended: number;
   readonly eligibleDays: number;
   readonly rate: number | null;
+  /** 1 = best rate in the team (ties share a rank); null with no eligible days. */
+  readonly rank: number | null;
 }
 
 /** The backend's PagedResult<T> JSON. */
@@ -93,4 +95,6 @@ export interface TeamAttendanceEmployeesQuery extends TeamAttendancePeriodQuery 
   readonly search?: string | null;
   readonly page: number;
   readonly pageSize: number;
+  /** 'rate': best attendance first (the ranking); the default is by name. */
+  readonly sort?: 'name' | 'rate';
 }

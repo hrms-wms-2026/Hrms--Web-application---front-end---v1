@@ -1,86 +1,213 @@
-import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TimeTrackingApiService } from '../../../attendance/data-access/time-tracking-api.service';
-import { AttendanceHistoryRow, AttendanceTodayResponse } from '../../../attendance/models/time-tracking.model';
-import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
-import { WeeklyProgressCardComponent, weekRange } from './weekly-progress-card.component';
+import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
+import { WeekDayProgress, WeekProgress, WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
+import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
+import { fakeWidgetData } from '../../widgets/widget-data.testing';
+import { WeeklyProgressCardComponent } from './weekly-progress-card.component';
 
-// Fixed clock: Thursday 22 October 2026, local time - nothing depends on the real date.
-const NOW = new Date(2026, 9, 22, 11, 0, 0);
+const DATES = ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01'];
+/** Card host sizes at 1440 px: columns about 97 px, rows 96 px with 12 px gaps. */
+const cols = (n: number) => n * 97 + (n - 1) * 12;
+const rows = (n: number) => n * 96 + (n - 1) * 12;
 
-function row(workDate: string, totalWorkedMinutes: number): AttendanceHistoryRow {
-  return { workDate, totalWorkedMinutes } as AttendanceHistoryRow;
+function days(): WeekDayProgress[] {
+  return DATES.map((date, i) => ({
+    date, isExpected: i < 5, isHoliday: false, leaveMinutes: 0, expectedMinutes: i < 5 ? 480 : 0,
+    scheduledMinutes: i < 4 ? 480 : 0, workedMinutes: i < 3 ? 540 : 0, attendanceMinutes: 0
+  }));
 }
 
-function paged(items: AttendanceHistoryRow[]) {
-  return { items, pageNumber: 1, pageSize: 7, totalCount: items.length, totalPages: 1, hasNext: false, hasPrevious: false };
+function week(patch: Partial<WeekProgress> = {}): WeekProgress {
+  return {
+    expectedMinutes: 2400, expectedToDateMinutes: 1600, scheduledTaskMinutes: 1920, scheduledMeetingMinutes: 0, scheduledMinutes: 1920,
+    loggedTaskMinutes: 1620, creditedMeetingMinutes: 0, workedMinutes: 1620, attendanceMinutes: 1700, remainingMinutes: 780,
+    progressPercent: 68, planningCoveragePercent: 80, scheduleAdherencePercent: 84.4, status: 'on_track', days: days(), ...patch
+  };
+}
+
+function payload(patch: Partial<WeeklyWorkProgressResponse> = {}, thisWeek: Partial<WeekProgress> = {}): WeeklyWorkProgressResponse {
+  return {
+    weekStart: DATES[0], weekEnd: DATES[6], today: DATES[3], timezone: 'Asia/Colombo', plannerEnabled: true,
+    thisWeek: week(thisWeek), lastWeek: week({ progressPercent: 56, workedMinutes: 1320 }),
+    tasks: { completedHours: 24, inProgressHours: 10, notStartedHours: 6, unestimatedCount: 0 }, ...patch
+  };
 }
 
 describe('WeeklyProgressCardComponent', () => {
+  let api: { get: ReturnType<typeof vi.fn> };
+
   beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(NOW);
+    stubResizeObserver();
+    api = { get: vi.fn(() => of(payload())) };
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
     TestBed.resetTestingModule();
   });
 
-  async function setup(
-    today: Partial<AttendanceTodayResponse> | null,
-    history: Observable<unknown> = of(paged([])),
-    summary: Observable<unknown> = of({ workingDays: 5 })
-  ): Promise<{ fixture: ComponentFixture<WeeklyProgressCardComponent>; api: { getMyHistory: ReturnType<typeof vi.fn>; getMyMonthlySummary: ReturnType<typeof vi.fn> } }> {
-    const api = { getMyHistory: vi.fn(() => history), getMyMonthlySummary: vi.fn(() => summary) };
-    await TestBed.configureTestingModule({
+  function render(data: ReturnType<typeof fakeWidgetData>, width = 0, height = 0): ComponentFixture<WeeklyProgressCardComponent> {
+    // Some tests render a second card at another size: start from a clean module and observer list.
+    TestBed.resetTestingModule();
+    FakeResizeObserver.instances = [];
+    TestBed.configureTestingModule({
       imports: [WeeklyProgressCardComponent],
-      providers: [
-        { provide: TimeTrackingStore, useValue: { today: signal(today as AttendanceTodayResponse | null), loadToday: vi.fn() } },
-        { provide: TimeTrackingApiService, useValue: api }
-      ]
-    }).compileComponents();
+      providers: [{ provide: WeeklyWorkProgressApiService, useValue: api }, data.provider]
+    });
     const fixture = TestBed.createComponent(WeeklyProgressCardComponent);
     fixture.detectChanges();
-    return { fixture, api };
+    if (width > 0) {
+      FakeResizeObserver.instances[0].trigger(width, height);
+      fixture.detectChanges();
+    }
+    return fixture;
   }
 
-  const text = (fixture: ComponentFixture<WeeklyProgressCardComponent>, id: string): string =>
-    fixture.nativeElement.querySelector(`[data-testid="${id}"]`).textContent.trim();
+  const q = (f: ComponentFixture<WeeklyProgressCardComponent>, id: string): HTMLElement | null =>
+    f.nativeElement.querySelector(`[data-testid="${id}"]`);
+  const qa = (f: ComponentFixture<WeeklyProgressCardComponent>, id: string): HTMLElement[] =>
+    Array.from(f.nativeElement.querySelectorAll(`[data-testid="${id}"]`));
+  const text = (f: ComponentFixture<WeeklyProgressCardComponent>) => (f.nativeElement as HTMLElement).textContent ?? '';
 
-  it('weekRange covers Monday to Sunday of the local week', () => {
-    expect(weekRange(NOW)).toEqual({ from: '2026-10-19', to: '2026-10-25', today: '2026-10-22' });
-    expect(weekRange(new Date(2026, 9, 25))).toEqual({ from: '2026-10-19', to: '2026-10-25', today: '2026-10-25' });
+  it('takes the bootstrap payload without calling the API', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(2), rows(2));
+
+    expect(api.get).not.toHaveBeenCalled();
+    expect(q(f, 'wp-percent')?.textContent).toContain('68%');
+    expect(text(f)).toContain('Weekly Work Progress');
   });
 
-  it('asks for this week only', async () => {
-    const { api } = await setup({ totalWorkedMinutes: 0, requiredWorkMinutes: 480 });
-    expect(api.getMyHistory).toHaveBeenCalledWith('2026-10-19', '2026-10-22', 1, 7);
-    expect(api.getMyMonthlySummary).toHaveBeenCalledWith('2026-10-19', '2026-10-25');
+  it('fetches the current week when the bootstrap has no data', () => {
+    render(fakeWidgetData('client'), cols(2), rows(2));
+
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith();
   });
 
-  it('adds earlier days to today and shows them against working days x required time', async () => {
-    const history = of(paged([row('2026-10-19', 480), row('2026-10-20', 480), row('2026-10-21', 420), row('2026-10-22', 999)]));
-    const { fixture } = await setup({ totalWorkedMinutes: 60, requiredWorkMinutes: 480 }, history);
-    // 480 + 480 + 420 earlier, today's history row ignored in favour of the live 60 => 24h of 40h.
-    expect(text(fixture, 'weekly-progress-hours')).toBe('24h / 40h');
-    expect(text(fixture, 'weekly-progress-percent')).toBe('60%');
-    expect(fixture.nativeElement.querySelector('[data-testid="weekly-progress-arc"]')).toBeTruthy();
+  it('refreshes through the dashboard every minute while visible', () => {
+    vi.useFakeTimers();
+    const data = fakeWidgetData('success', payload());
+    render(data, cols(2), rows(2));
+
+    vi.advanceTimersByTime(60_000);
+
+    expect(data.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('uses 8h per working day when today has no required time', async () => {
-    const { fixture } = await setup({ totalWorkedMinutes: 0, requiredWorkMinutes: 0 }, of(paged([])), of({ workingDays: 4 }));
-    expect(text(fixture, 'weekly-progress-hours')).toBe('0m / 32h');
-    expect(text(fixture, 'weekly-progress-percent')).toBe('0%');
-    expect(fixture.nativeElement.querySelector('[data-testid="weekly-progress-arc"]')).toBeNull();
+  it('re-renders for a new size on its own, without a manual change detection', async () => {
+    const f = render(fakeWidgetData('success', payload()), cols(2), rows(2));
+    f.autoDetectChanges();
+
+    FakeResizeObserver.instances[0].trigger(cols(6), rows(5));
+    await f.whenStable();
+
+    expect(q(f, 'daily-work-chart')).not.toBeNull();
   });
 
-  it('shows a message instead of the ring when the week cannot be loaded', async () => {
-    const { fixture } = await setup({ totalWorkedMinutes: 30 }, throwError(() => new Error('boom')));
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="weekly-progress-error"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('[data-testid="weekly-progress-ring"]')).toBeNull();
+  it('2x2 shows the fixed-size donut with the percent and status only', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(2), rows(2));
+
+    expect(q(f, 'wp-donut')?.style.width).toBe('140px');
+    expect(q(f, 'wp-status')?.textContent).toContain('On Track');
+    expect(q(f, 'wp-delta')).toBeNull();
+    expect(q(f, 'wp-week-bars')).toBeNull();
+  });
+
+  it('a wide 2-row card shows the change and both weeks, then tiles from 640 px', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(5), rows(2));
+
+    expect(q(f, 'wp-delta')?.textContent).toContain('+12%');
+    expect(q(f, 'wp-delta')?.textContent).toContain('vs last week (56%)');
+    expect(q(f, 'wp-week-bars')?.textContent).toContain('27h / 40h');
+    expect(q(f, 'wp-mini-tiles')).toBeNull();
+
+    const wide = render(fakeWidgetData('success', payload()), cols(7), rows(2));
+    expect(q(wide, 'wp-mini-tiles')).not.toBeNull();
+  });
+
+  it('a narrow tall card stacks the tiles under the donut', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(2), rows(5));
+
+    const tileText = (t: HTMLElement) =>
+      Array.from(t.children).map((c) => c.textContent?.replace(/\s+/g, ' ').trim()).join(' ');
+    expect(qa(f, 'wp-stacked-tile').map(tileText)).toEqual([
+      'Expected 40h', 'Scheduled 32h (80%)', 'Worked 27h (68%)', 'Remaining 13h (33%)'
+    ]);
+    expect(q(f, 'wp-donut')?.style.width).toBe('140px');
+  });
+
+  it('the default 4x3 slot lists the tiles beside the donut and adds nothing below', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(4), rows(3));
+
+    expect(qa(f, 'wp-side-tile').length).toBe(4);
+    expect(q(f, 'wp-side-tiles')?.textContent).toContain('Remaining');
+    expect(q(f, 'daily-work-chart')).toBeNull();
+    expect(f.nativeElement.querySelector('app-kpi-tiles')).toBeNull();
+  });
+
+  it('a large card adds the daily chart, then the weekly comparison', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(6), rows(5));
+    expect(q(f, 'daily-work-chart')).not.toBeNull();
+    expect(q(f, 'wp-comparison')).toBeNull();
+    expect(q(f, 'wp-donut')?.style.width).toBe('140px');
+
+    const tall = render(fakeWidgetData('success', payload()), cols(6), rows(7));
+    expect(q(tall, 'wp-comparison')?.textContent).toContain('vs last week (22h)');
+  });
+
+  it('shows zero hours as 0h and an unchanged week without an arrow up', () => {
+    const data = payload({ lastWeek: week({ progressPercent: 0, workedMinutes: 0 }) }, { progressPercent: 0, workedMinutes: 0 });
+    const f = render(fakeWidgetData('success', data), cols(7), rows(2));
+
+    expect(q(f, 'wp-week-bars')?.textContent).toContain('0h / 40h');
+    expect(q(f, 'wp-delta')?.textContent).toContain('→ 0%');
+    expect(q(f, 'wp-delta')?.textContent).not.toContain('↗');
+  });
+
+  it('hides scheduled figures when the planner is off', () => {
+    const f = render(fakeWidgetData('success', payload({ plannerEnabled: false })), cols(6), rows(5));
+
+    expect(text(f)).not.toContain('Scheduled');
+    expect(text(f)).toContain('Remaining');
+  });
+
+  it('says so when the legal entity has no working hours', () => {
+    const f = render(fakeWidgetData('success', payload({}, { status: 'no_target', expectedMinutes: 0 })), cols(6), rows(5));
+
+    expect(q(f, 'wp-no-target')?.textContent).toContain('No working hours set for your legal entity');
+    expect(q(f, 'wp-donut')).toBeNull();
+  });
+
+  it('shows an error with retry when its own load fails', () => {
+    api.get.mockReturnValue(throwError(() => new Error('boom')));
+    const f = render(fakeWidgetData('client'), cols(6), rows(5));
+
+    expect(text(f)).toContain("Couldn't load this week's progress.");
+  });
+
+  it('clicking the card body opens the detail popup', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(6), rows(5));
+    expect(document.querySelector('[data-testid="wwp-range"]')).toBeNull();
+
+    (f.nativeElement.querySelector('.wp-body') as HTMLElement).click();
+    f.detectChanges();
+
+    expect(document.querySelector('[data-testid="wwp-range"]')?.textContent).toContain('Oct 26');
+  });
+
+  it('switching to last week loads that week by its Monday', () => {
+    const f = render(fakeWidgetData('success', payload()), cols(6), rows(5));
+    api.get.mockReturnValue(of(payload({ weekStart: '2026-10-19' }, { progressPercent: 56 })));
+
+    const select = q(f, 'wp-week-select') as HTMLSelectElement;
+    select.value = 'last';
+    select.dispatchEvent(new Event('change'));
+    f.detectChanges();
+
+    expect(api.get).toHaveBeenCalledWith('2026-10-19');
+    expect(q(f, 'wp-percent')?.textContent).toContain('56%');
   });
 });

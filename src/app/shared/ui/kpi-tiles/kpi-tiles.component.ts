@@ -128,8 +128,10 @@ const TONE_COLOR: Record<KpiTileTone, string> = {
 export class KpiTilesComponent {
   readonly tiles = input.required<readonly KpiTile[]>();
   readonly ariaLabel = input('');
+  /** The most tiles one row holds before wrapping; a wide panel can raise it to keep them on one row. */
+  readonly maxColumns = input(4);
 
-  readonly columns = computed(() => Math.min(Math.max(this.tiles().length, 1), 4));
+  readonly columns = computed(() => Math.min(Math.max(this.tiles().length, 1), this.maxColumns()));
 
   toneColor(tone: KpiTileTone): string {
     return TONE_COLOR[tone];

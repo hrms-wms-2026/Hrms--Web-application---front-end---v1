@@ -26,6 +26,15 @@ export interface WidgetRegistryEntry {
  */
 export const HIDDEN_WIDGET_KEYS: ReadonlySet<string> = new Set(['my-tasks', 'work-pattern', 'notifications', 'wellbeing']);
 
+/**
+ * Quick Actions is pinned: the dashboard shell draws it in the top-right corner above the grid, so it can't be
+ * dragged, resized or removed. Its layout entry stays saved (as with the hidden widgets) but the grid skips it.
+ */
+export const PINNED_WIDGET_KEYS: ReadonlySet<string> = new Set(['quick-actions', 'team-quick-actions']);
+
+/** Widgets the grid never draws and the widget store never offers. */
+export const OFF_GRID_WIDGET_KEYS: ReadonlySet<string> = new Set([...HIDDEN_WIDGET_KEYS, ...PINNED_WIDGET_KEYS]);
+
 /** widgetKey (as stored by the backend registry) to the card component that renders it. */
 export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
   'today-at-a-glance': { component: TodayAtAGlanceCardComponent },

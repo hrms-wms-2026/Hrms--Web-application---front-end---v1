@@ -10,6 +10,7 @@ import { MyTeamTodayStore } from '../../state/my-team-today.store';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamTodayMember, TeamTodayResponse } from '../../models/my-team-today.model';
 import { TeamStatusFilter, TeamStatusGroup, partitionTeamMembers } from '../../utils/team-status-groups.util';
+import { injectHostSize, isCompactSize } from '../../utils/host-size.util';
 
 const REFRESH_INTERVAL_MS = 60_000;
 /** Rows shown per exception group before "+N more" - keeps a 25-absent day scannable. */
@@ -42,6 +43,11 @@ const STATUS_DOT_CLASS: Record<string, string> = {
   on_leave: 'team-status-dot--on-leave',
   not_started: 'team-status-dot--not-started'
 };
+
+/** Below this width or height (between 3 and 4 grid columns or rows; the full view needs 4 rows) the card shows only the
+ * head-count, the strip and the exception counts. */
+const MINI_MIN_WIDTH_PX = 360;
+const MINI_MIN_HEIGHT_PX = 370;
 
 /** People previewed on the compact card before "View team" opens the full list. */
 const CARD_PREVIEW_LIMIT = 3;
@@ -87,6 +93,9 @@ export class TeamStatusCardComponent implements OnInit {
   private visibilityHandler = (): void => this.onVisibilityChange();
 
   protected readonly showAll = signal(false);
+  private readonly size = injectHostSize();
+  /** A 2-row or narrow card: the mini view (the pop-out still opens the full list). */
+  protected readonly compact = computed(() => isCompactSize(this.size(), MINI_MIN_WIDTH_PX, MINI_MIN_HEIGHT_PX));
 
   /** Polls set `loading` every minute; only a first load (no data yet) shows the skeleton. */
   protected readonly widgetState = computed<WidgetState>(() => {
