@@ -161,7 +161,43 @@ describe('CalendarPageComponent planner layer', () => {
     expect(totals).toContain('Actual / attendance 45m / 2h');
     expect(q('planner-focus-panel')).not.toBeNull();
     expect(q('planner-focus-close')).toBeNull();
-    expect(q('planner-focus-toggle')!.textContent).toContain('Focus · 3');
+    expect(q('planner-focus-toggle')!.textContent).toContain('Task queue');
+    expect(q('planner-focus-count')!.textContent!.trim()).toBe('3');
+  });
+
+  it('the period label opens a date picker, and picking a date moves the week there', async () => {
+    setup();
+    fixture.componentInstance.setView('week');
+    await settle();
+    expect(q('planner-period-picker')).toBeNull();
+
+    q('planner-period-button')!.click();
+    fixture.detectChanges();
+    expect(q('planner-period-picker')).not.toBeNull();
+
+    fixture.componentInstance.jumpTo('2026-11-12');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.viewLabel()).toBe('Week of 2026-11-09');
+    expect(q('planner-period-picker')).toBeNull();
+  });
+
+  it('New event is a single primary button with a plus, and no menu', async () => {
+    setup();
+    await settle();
+
+    const button = q('calendar-new-event')!;
+    expect(button.textContent!.trim()).toBe('New event');
+    expect(button.querySelector('[data-testid="calendar-new-event-icon"]')).not.toBeNull();
+    expect(q('calendar-new-event-menu')).toBeNull();
+  });
+
+  it('the page header names the Planner, with no summary line', async () => {
+    setup();
+    fixture.componentInstance.setView('week');
+    await settle();
+
+    expect(q('planner-header')!.textContent!.trim()).toBe('Planner');
   });
 
   it('Week view shows the panel until it is closed, and remembers that', async () => {
@@ -188,9 +224,12 @@ describe('CalendarPageComponent planner layer', () => {
     const grid = () => fixture.debugElement.query((de) => de.name === 'app-calendar-hour-grid').componentInstance;
 
     expect(grid().days().length).toBe(5);
+    expect(q('planner-show-weekend')!.getAttribute('role')).toBe('switch');
+    expect(q('planner-show-weekend')!.getAttribute('aria-checked')).toBe('false');
     q('planner-show-weekend')!.click();
     fixture.detectChanges();
     expect(grid().days().length).toBe(7);
+    expect(q('planner-show-weekend')!.getAttribute('aria-checked')).toBe('true');
     expect(week()).toBeTruthy();
   });
 

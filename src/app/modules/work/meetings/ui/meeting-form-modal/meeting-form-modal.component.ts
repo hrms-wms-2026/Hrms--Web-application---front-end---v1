@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MeetingCreatedEvent } from '../../utils/meeting-created-drawer.util';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
@@ -15,7 +16,7 @@ import { CalendarParticipantPickerComponent } from '../../../../calendar/ui/cale
 import { ProjectApiService } from '../../../data-access/project-api.service';
 import { MeetingApiService } from '../../data-access/meeting-api.service';
 import {
-  CreateMeetingRequest, EditMeetingRequest, MeetingCreatedResponse, MeetingEditResponse, MeetingOccurrenceResponse, MeetingPlatform,
+  CreateMeetingRequest, EditMeetingRequest, MeetingEditResponse, MeetingOccurrenceResponse, MeetingPlatform,
   MeetingScope
 } from '../../models/meeting.models';
 import { meetingErrorMessage } from '../../utils/meeting-error-messages';
@@ -27,6 +28,8 @@ import { MeetingBulkInvitePanelComponent } from './meeting-bulk-invite-panel.com
 export interface MeetingPlacementInput { projectId: string | null; objectiveId: string | null; }
 /** What a calendar event handed over: its title and local start/end ('YYYY-MM-DDTHH:mm'). */
 export interface MeetingPrefill { title: string; start: string; end: string; }
+/** What the work item form had typed when its category turned to "meeting". */
+export interface MeetingCarryOver { title: string; description: string | null; }
 /** A saved edit, with the start it sent: after a split the occurrence lives at that start in the new series. */
 export interface MeetingEditSaved extends MeetingEditResponse { sentStart: string | null; }
 type PlatformChoice = 'none' | MeetingPlatform;
@@ -45,10 +48,10 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
 @Component({
   selector: 'app-meeting-form-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, ModalComponent, RichTextEditorComponent, CalendarParticipantPickerComponent, MeetingBulkInvitePanelComponent,
+  imports: [NgTemplateOutlet, ReactiveFormsModule, ModalComponent, RichTextEditorComponent, CalendarParticipantPickerComponent, MeetingBulkInvitePanelComponent,
     MeetingScopeDialogComponent, AvailabilityWarningsComponent],
   template: `
-    <app-modal [open]="open()" [title]="mode() === 'create' ? 'New meeting' : 'Edit meeting'" size="lg" (closed)="closed.emit()">
+    <ng-template #formTpl>
       <form [formGroup]="form" class="flex flex-col gap-3 text-sm" (ngSubmit)="save()">
         @if (mode() === 'create') {
           <div class="grid grid-cols-2 gap-2">
@@ -135,7 +138,15 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
             [disabled]="saving() || !canSave()">{{ mode() === 'create' ? 'Create' : 'Save' }}</button>
         </div>
       </form>
-    </app-modal>
+    </ng-template>
+    <!-- Embedded, the form sits inside the work item dialog (category "meeting"), which supplies the frame. -->
+    @if (embedded()) {
+      <ng-container [ngTemplateOutlet]="formTpl" />
+    } @else {
+      <app-modal [open]="open()" [title]="mode() === 'create' ? 'New meeting' : 'Edit meeting'" size="lg" (closed)="closed.emit()">
+        <ng-container [ngTemplateOutlet]="formTpl" />
+      </app-modal>
+    }
     <app-meeting-scope-dialog [open]="scopeDialogOpen()" title="Edit which occurrences?" (chosen)="applyScope($event)"
       (cancelled)="scopeDialogOpen.set(false)" />
   `,
@@ -155,6 +166,9 @@ export class MeetingFormModalComponent implements OnInit {
   readonly placement = input<MeetingPlacementInput | null>(null);
   readonly prefill = input<MeetingPrefill | null>(null);
   readonly occurrence = input<MeetingOccurrenceResponse | null>(null);
+  /** Render the form without its own modal: the work item dialog hosts it when the category is "meeting". */
+  readonly embedded = input(false);
+  readonly carryOver = input<MeetingCarryOver | null>(null);
   readonly saved = output<MeetingCreatedEvent | MeetingEditSaved>();
   readonly closed = output<void>();
 
@@ -213,6 +227,11 @@ export class MeetingFormModalComponent implements OnInit {
       const minutes = Math.round((Date.parse(prefill.end) - Date.parse(prefill.start)) / 60000);
       this.form.patchValue({ title: prefill.title, date: prefill.start.slice(0, 10), time: prefill.start.slice(11, 16),
         durationMinutes: minutes > 0 ? minutes : 30 });
+    }
+    const carried = this.carryOver();
+    if (carried) {
+      const description = carried.description && carried.description.replace(/<[^>]*>/g, '').trim() !== '' ? carried.description : null;
+      this.form.patchValue({ title: carried.title, description });
     }
     const placement = this.placement();
     this.projectId.set(placement?.projectId ?? null);

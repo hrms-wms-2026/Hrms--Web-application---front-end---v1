@@ -34,7 +34,7 @@ describe('CalendarHourGridComponent', () => {
     const cells = fixture.nativeElement.querySelectorAll('[data-testid="calendar-hour-header-cell"]');
     expect(cells.length).toBe(2);
     // 2026-09-01 is a Tuesday
-    expect(cells[0].textContent).toContain('TUE');
+    expect(cells[0].textContent).toContain('Tue');
     expect(cells[0].textContent).toContain('1');
     expect(cells[1].textContent).toContain('2');
   });

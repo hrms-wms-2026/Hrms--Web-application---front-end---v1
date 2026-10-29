@@ -28,6 +28,7 @@ import { PlannerLayerStore } from '../../state/planner-layer.store';
 import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { PlannerDayLoad } from '../../ui/calendar-hour-grid/calendar-hour-grid.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { PlannerFocusPanelComponent } from '../../ui/planner-focus-panel/planner-focus-panel.component';
 import { PlannerBlockPickerComponent } from '../../ui/planner-block-picker/planner-block-picker.component';
 import { PlannerMonthSummary } from '../../ui/calendar-month-grid/calendar-month-grid.component';
@@ -86,7 +87,7 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   imports: [
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
-    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent
+    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
   providers: [PlannerLayerStore],
@@ -452,6 +453,15 @@ export class CalendarPageComponent {
 
   goToToday(): void {
     this.cursor.set(new Date());
+  }
+
+  /** The period label's date picker: the view moves to the period that holds the picked date ('YYYY-MM-DD', local). */
+  readonly periodPickerOpen = signal(false);
+
+  jumpTo(date: string): void {
+    const [y, m, d] = date.split('-').map(Number);
+    if (y && m && d) this.cursor.set(new Date(y, m - 1, d));
+    this.periodPickerOpen.set(false);
   }
 
   /** A meeting may have been edited, moved or cancelled in its drawer: refresh the calendar. */
