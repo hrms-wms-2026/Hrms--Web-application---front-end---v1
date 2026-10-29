@@ -81,12 +81,42 @@ describe('DashboardStore', () => {
     expect(store.editing()).toBe(false);
   });
 
+  it('customizing_packs_like_a_home_screen_and_reorder_makes_the_others_shift_along', async () => {
+    const { store } = await loaded([
+      widget('i-a', 'a', 0, 0, 4, 2),
+      widget('i-b', 'b', 8, 0, 4, 2),
+      widget('i-c', 'c', 0, 5, 4, 2)
+    ]);
+    store.startEditing();
+    const at = (id: string) => store.draft().find(w => w.instanceId === id)!.layout;
+    // Gaps close in reading order as soon as customizing starts.
+    expect([at('i-a'), at('i-b'), at('i-c')]).toEqual([
+      { x: 0, y: 0, w: 4, h: 2 },
+      { x: 4, y: 0, w: 4, h: 2 },
+      { x: 8, y: 0, w: 4, h: 2 }
+    ]);
+    store.reorder('i-c', 0);
+    expect([at('i-c'), at('i-a'), at('i-b')]).toEqual([
+      { x: 0, y: 0, w: 4, h: 2 },
+      { x: 4, y: 0, w: 4, h: 2 },
+      { x: 8, y: 0, w: 4, h: 2 }
+    ]);
+    store.resize('i-c', 6, 2);
+    expect([at('i-c'), at('i-a'), at('i-b')]).toEqual([
+      { x: 0, y: 0, w: 6, h: 2 },
+      { x: 6, y: 0, w: 4, h: 2 },
+      { x: 0, y: 2, w: 4, h: 2 }
+    ]);
+    store.remove('i-a');
+    expect(at('i-b')).toEqual({ x: 6, y: 0, w: 4, h: 2 });
+  });
+
   it('cancel_discards_all_draft_changes', async () => {
     const { store } = await loaded();
     store.startEditing();
     store.remove('i-a');
     store.add('c');
-    store.move('i-b', 0, 5);
+    store.reorder('i-b', 0);
     expect(store.widgets().map(w => w.widgetKey).sort()).toEqual(['b', 'c']);
     store.cancel();
     expect(store.editing()).toBe(false);
@@ -111,7 +141,7 @@ describe('DashboardStore', () => {
     const { store, api } = await loaded();
     const calls = () => api.addWidget.mock.calls.length + api.removeWidget.mock.calls.length + api.saveLayout.mock.calls.length + api.reset.mock.calls.length;
     store.startEditing();
-    store.move('i-b', 0, 4);
+    store.reorder('i-b', 0);
     store.resize('i-a', 4, 3);
     store.add('c');
     store.remove('i-b');
@@ -207,7 +237,7 @@ describe('DashboardStore', () => {
     const { store, api, notifications } = await loaded();
     api.saveLayout.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
     store.startEditing();
-    store.move('i-b', 0, 3);
+    store.reorder('i-b', 0);
     await store.save();
     expect(store.editing()).toBe(true);
     expect(store.error()).not.toBeNull();
@@ -278,7 +308,7 @@ describe('DashboardStore', () => {
     const { store, api, notifications } = await loaded();
     api.saveLayout.mockReturnValue(of({ layoutVersion: 4 }));
     store.startEditing();
-    store.move('i-b', 0, 3);
+    store.reorder('i-b', 0);
     api.bootstrap.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
     await store.save();
     expect(store.editing()).toBe(false);
@@ -290,7 +320,7 @@ describe('DashboardStore', () => {
     const { store, api } = await loaded();
     api.saveLayout.mockReturnValue(of({ layoutVersion: 4 }));
     store.startEditing();
-    store.move('i-b', 0, 3);
+    store.reorder('i-b', 0);
     const savedLayout = store.draft().map(w => ({ id: w.instanceId, layout: w.layout }));
     const gate = new Subject<DashboardBootstrap>();
     api.bootstrap.mockReturnValue(gate);
@@ -324,7 +354,7 @@ describe('DashboardStore', () => {
     api.bootstrap.mockReturnValueOnce(slow);
     const crossing = store.setBreakpoint('tablet');
     store.startEditing(); // user clicks Customize before the tablet bootstrap returns
-    store.move('i-b', 0, 3);
+    store.reorder('i-b', 0);
     slow.next(bootstrapOf([widget('i-a', 'a', 0, 0, 6, 2), widget('i-b', 'b', 0, 2, 6, 2)], 8, 'tablet'));
     slow.complete();
     await crossing;
@@ -347,7 +377,7 @@ describe('DashboardStore', () => {
   it('a reload (My Team "Try again") while editing does not replace the bootstrap under the draft', async () => {
     const { store, api } = await loaded();
     store.startEditing();
-    store.move('i-b', 0, 3);
+    store.reorder('i-b', 0);
     api.listMine.mockClear();
     api.bootstrap.mockReturnValue(of(bootstrapOf([widget('i-a', 'a', 0, 0)], 9)));
     await store.load('my-work');
@@ -379,7 +409,7 @@ describe('DashboardStore', () => {
   it('moving a widget down one row (keyboard ArrowDown) swaps it with the neighbour below', async () => {
     const { store } = await loaded([widget('i-a', 'a', 0, 0, 12, 2), widget('i-b', 'b', 0, 2, 12, 3)]);
     store.startEditing();
-    store.move('i-a', 0, 1);
+    store.reorder('i-a', 1);
     expect(store.draft().map(w => [w.instanceId, w.layout.y])).toEqual([['i-a', 3], ['i-b', 0]]);
   });
 
@@ -395,7 +425,7 @@ describe('DashboardStore', () => {
       )
     );
     store.startEditing();
-    store.move('i-b', 0, 3);
+    store.reorder('i-b', 0);
     await store.save();
     const message = store.error()!;
     expect(message).not.toMatch(/OVERLAP|SIZE_NOT_ALLOWED|Unprocessable/);
@@ -409,7 +439,7 @@ describe('DashboardStore', () => {
       throwError(() => new HttpErrorResponse({ status: 422, error: { title: 'Unprocessable Entity', detail: 'SOMETHING_NEW', code: 'SOMETHING_NEW', codes: ['SOMETHING_NEW'] } }))
     );
     store.startEditing();
-    store.move('i-b', 0, 3);
+    store.reorder('i-b', 0);
     await store.save();
     expect(store.error()).toBe('Could not save the dashboard.');
     api.saveLayout.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403, error: { title: 'Forbidden' } })));
@@ -423,7 +453,7 @@ describe('DashboardStore', () => {
       throwError(() => new HttpErrorResponse({ status: 422, error: { detail: 'LAYOUT_SET_MISMATCH', code: 'LAYOUT_SET_MISMATCH', codes: ['LAYOUT_SET_MISMATCH'] } }))
     );
     store.startEditing();
-    store.move('i-b', 0, 3);
+    store.reorder('i-b', 0);
     await store.save();
     expect(notifications.warning).toHaveBeenCalledWith('Your available widgets changed — reloaded.');
     expect(notifications.error).not.toHaveBeenCalled();
@@ -439,7 +469,7 @@ describe('DashboardStore', () => {
     store.saving.set(true);
     store.add('c');
     store.remove('i-a');
-    store.move('i-b', 0, 4);
+    store.reorder('i-b', 0);
     store.resize('i-a', 4, 3);
     expect(store.draft()).toBe(before);
   });
@@ -461,7 +491,7 @@ describe('DashboardStore', () => {
 
     api.saveLayout.mockReturnValue(of({ layoutVersion: 4 }));
     store.startEditing();
-    store.move('i-a', 6, 0);
+    store.reorder('i-a', 1);
     await store.save();
     const items = api.saveLayout.mock.calls[0][3] as { instanceId: string }[];
     expect(items.map(i => i.instanceId).sort()).toEqual(['i-a', 'i-t', 'i-w']);
