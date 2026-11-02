@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   groupPresence,
+  minutesLeft,
   minutesText,
   neutralLine,
   orderPresence,
+  presenceFromSummary,
+  presencePill,
   presenceState,
   timeLeft,
+  todayHoursText,
+  todayProgress,
 } from './team-presence-format.util';
 import { presenceMember } from './team-presence.testing';
 
@@ -110,5 +115,37 @@ describe('Working / Break / Leave format (coverage audit)', () => {
         NOW2,
       ),
     ).toEqual({ text: '0m of shift left', usedPercent: 100 });
+  });
+
+  it('todayHoursText is attended of the work window, or attended alone without one', () => {
+    expect(todayHoursText(member('working', { attendanceMinutes: 360, expectedMinutes: 480 }))).toBe('6h / 8h');
+    expect(todayHoursText(member('working', { attendanceMinutes: 330, expectedMinutes: 480 }))).toBe('5h 30m / 8h');
+    expect(todayHoursText(member('working', { attendanceMinutes: 360, expectedMinutes: null }))).toBe('6h');
+    // Overtime stays uncapped in text.
+    expect(todayHoursText(member('working', { attendanceMinutes: 540, expectedMinutes: 480 }))).toBe('9h / 8h');
+  });
+
+  it('todayProgress is capped at 100 and null without a work window', () => {
+    expect(todayProgress(member('working', { attendanceMinutes: 360, expectedMinutes: 480 }))).toBe(75);
+    expect(todayProgress(member('working', { attendanceMinutes: 540, expectedMinutes: 480 }))).toBe(100);
+    expect(todayProgress(member('working', { attendanceMinutes: 60, expectedMinutes: null }))).toBeNull();
+    expect(todayProgress(member('on_leave', { attendanceMinutes: 0, expectedMinutes: 0 }))).toBeNull();
+  });
+
+  it('presencePill names the working count, singular and plural', () => {
+    const summary = { total: 9, working: 8, onBreak: 1, clockedOut: 0, late: 0, absent: 0, notStarted: 0, onLeave: 0, notScheduled: 0, needsAttention: 0 };
+    expect(presencePill(presenceFromSummary(summary))).toBe('8 employees are currently working');
+    expect(presencePill(presenceFromSummary({ ...summary, working: 1 }))).toBe('1 employee is currently working');
+    expect(presencePill(presenceFromSummary({ ...summary, working: 0 }))).toBe('No one is working right now');
+  });
+
+  it('minutesLeft matches the time-left figure and is null without a denominator', () => {
+    const working = member('working', {
+      stateSince: '2026-10-29T03:30:00Z',
+      shiftEndsAt: '2026-10-29T12:30:00Z',
+    });
+    expect(minutesLeft(working, NOW)).toBe(150);
+    expect(minutesLeft(member('on_break', { stateSince: '2026-10-29T09:50:00Z', breakRemainingMinutes: 20 }), NOW)).toBe(20);
+    expect(minutesLeft(member('on_break', { breakRemainingMinutes: null }), NOW)).toBeNull();
   });
 });

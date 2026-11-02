@@ -10,7 +10,7 @@
 >
   <app-popout-header-actions
     widget-actions
-    [refreshedAt]="view() === 'mini' ? null : store.loadedAt()"
+    [refreshedAt]="view() === 'standard' ? store.loadedAt() : null"
     [refreshing]="refreshing()"
     [expanded]="false"
     [canExpand]="true"
@@ -20,104 +20,141 @@
   />
 
   @if (store.data(); as data) {
+    <!-- One donut size (DASHBOARD_DONUT_PX) in every view: the team total in the middle. -->
+    <ng-template #donutTpl>
+      <div class="wbl-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="wbl-donut">
+        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+          @for (arc of donut(); track arc.key) {
+            <circle
+              cx="21"
+              cy="21"
+              r="15.9155"
+              fill="none"
+              stroke-width="6"
+              [attr.stroke]="arc.color"
+              [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+              [attr.stroke-dashoffset]="arc.offset"
+            />
+          }
+        </svg>
+        <p class="wbl-donut-center" data-testid="wbl-center">
+          <span class="wbl-donut-value">{{ data.totalMembers }}</span>
+          <span class="wbl-donut-of">Team members</span>
+        </p>
+      </div>
+    </ng-template>
+
+    <ng-template #countsTpl>
+      <ul class="wbl-counts" aria-label="Right now" data-testid="wbl-legend">
+        @for (c of counters(); track c.key) {
+          <li [attr.data-testid]="'wbl-count-' + c.key">
+            <span class="wbl-dot" [style.background]="c.color"></span>
+            <span class="wbl-count-label">{{ c.label }}</span>
+            <span class="wbl-count">{{ c.count }}</span>
+          </li>
+        }
+      </ul>
+    </ng-template>
+
+    <ng-template #pillTpl>
+      <button type="button" class="wbl-pill" data-testid="wbl-pill" (click)="openDetail($event)">
+        <span class="wbl-dot" [style.background]="counters()[0].color"></span>
+        <span class="wbl-pill-text">{{ pill() }}</span>
+        <span class="wbl-pill-chevron" aria-hidden="true">›</span>
+      </button>
+    </ng-template>
+
+    <ng-template #barTpl let-m>
+      @let p = progress(m);
+      <span class="wbl-bar" aria-hidden="true">
+        @if (p !== null) {
+          <span [style.width.%]="p" [style.background]="stateColor(m) ?? '#94a3b8'"></span>
+        }
+      </span>
+    </ng-template>
+
     @switch (view()) {
       @case ('mini') {
-        <div class="wbl-mini" data-testid="wbl-mini">
-          <div class="wbl-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="wbl-donut">
-            <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
-              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+        @if (plan().miniInline) {
+          <!-- Wide 2-row card: a stacked bar and the legend with counts, then the pill. -->
+          <div class="wbl-mini wbl-mini--inline" data-testid="wbl-mini">
+            <div class="wbl-stack" role="img" [attr.aria-label]="donutLabel()" data-testid="wbl-mini-bar">
               @for (arc of donut(); track arc.key) {
-                <circle
-                  cx="21"
-                  cy="21"
-                  r="15.9155"
-                  fill="none"
-                  stroke-width="6"
-                  [attr.stroke]="arc.color"
-                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-                  [attr.stroke-dashoffset]="arc.offset"
-                />
+                <span [style.background]="arc.color" [style.width.%]="arc.length"></span>
               }
-            </svg>
-            <p class="wbl-donut-center" data-testid="wbl-center">
-              <span class="wbl-donut-value">{{ atWork() }}</span>
-              <span class="wbl-donut-of">/ {{ data.totalMembers }}</span>
-            </p>
-          </div>
-          <ul class="wbl-mini-counts" aria-label="Right now">
-            @for (c of counters(); track c.key) {
-              <li [attr.data-testid]="'wbl-count-' + c.key">
-                <span class="wbl-dot" [style.background]="c.color"></span>
-                <span class="wbl-count-label">{{ c.label }}</span>
-                <span class="wbl-count">{{ c.count }}</span>
-              </li>
+            </div>
+            <ng-container [ngTemplateOutlet]="countsTpl" />
+            @if (plan().pill) {
+              <ng-container [ngTemplateOutlet]="pillTpl" />
             }
-          </ul>
-        </div>
+          </div>
+        } @else {
+          <div class="wbl-mini" data-testid="wbl-mini">
+            <div class="wbl-hero">
+              <ng-container [ngTemplateOutlet]="donutTpl" />
+              <ng-container [ngTemplateOutlet]="countsTpl" />
+            </div>
+            @if (plan().pill) {
+              <ng-container [ngTemplateOutlet]="pillTpl" />
+            }
+          </div>
+        }
       }
       @default {
         <div class="wbl" data-testid="wbl-layout" [attr.data-view]="view()">
-          <ul class="wbl-pills" aria-label="Right now">
-            @for (c of counters(); track c.key) {
-              <li class="wbl-pill" [style.--tone]="c.color" [attr.data-testid]="'wbl-count-' + c.key">
-                <span class="wbl-pill-count">{{ c.count }}</span>
-                <span class="wbl-pill-label">{{ c.label }}</span>
-              </li>
-            }
-          </ul>
-          @if (neutral()) {
-            <p class="wbl-neutral" data-testid="wbl-neutral">{{ neutral() }}</p>
+          @if (view() === 'xs') {
+            <div class="wbl-xs-head">
+              <ng-container [ngTemplateOutlet]="donutTpl" />
+              <ng-container [ngTemplateOutlet]="countsTpl" />
+            </div>
+            <ng-container [ngTemplateOutlet]="pillTpl" />
           }
 
-          @if (view() === 'xs') {
-            <ul class="wbl-rows" data-testid="wbl-rows">
-              @for (m of mediumRows(); track m.employeeId) {
-                <li class="wbl-row" data-testid="wbl-row">
-                  <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
-                  <div class="wbl-row-main">
-                    <p class="wbl-row-top">
-                      <span class="wbl-name">{{ m.displayName }}</span>
-                      <span class="wbl-chip" [class.wbl-chip--neutral]="!state(m)" [style.--tone]="stateColor(m)">{{ stateLabel(m) }}</span>
-                      @if (m.isLate) {
-                        <span class="wbl-late" data-testid="wbl-late">Late</span>
-                      }
-                    </p>
-                    @if (state(m) === 'leave') {
-                      <p class="wbl-sub">{{ leaveText(m) }}</p>
-                    } @else if (m.stateSince) {
-                      <p class="wbl-sub">{{ sinceText(m) }} · {{ elapsedText(m) }}</p>
-                    }
-                    @if (left(m); as l) {
-                      <div class="wbl-left" [attr.title]="l.text" data-testid="wbl-left">
-                        <span class="wbl-left-bar" aria-hidden="true">
-                          <span [style.width.%]="l.usedPercent" [style.background]="stateColor(m)"></span>
-                        </span>
-                        <span class="wbl-left-text">{{ l.text }}</span>
-                      </div>
-                    }
-                  </div>
+          @if (plan().tiles) {
+            <ul class="wbl-tiles" aria-label="Right now" data-testid="wbl-tiles">
+              @for (c of counters(); track c.key) {
+                <li class="wbl-tile" [style.--tone]="c.color" [attr.data-testid]="'wbl-tile-' + c.key">
+                  <span class="wbl-tile-icon" aria-hidden="true"><app-icon [name]="c.icon" /></span>
+                  <span class="wbl-tile-body">
+                    <span class="wbl-tile-count">{{ c.count }}</span>
+                    <span class="wbl-tile-label">{{ c.tileLabel }}</span>
+                  </span>
+                  <span class="wbl-tile-pct">{{ c.percent }}</span>
                 </li>
               }
             </ul>
-            @if (data.totalMembers > mediumRows().length) {
-              <button type="button" class="wbl-link" data-testid="wbl-view-all" (click)="openDetail($event)">View all {{ data.totalMembers }} ›</button>
-            }
-          } @else {
-            <div class="wbl-table-wrap">
+          }
+
+          @if (plan().rows > 0) {
+            @if (plan().table) {
               <table class="wbl-table" data-testid="wbl-table">
                 <thead>
                   <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">State</th>
-                    <th scope="col">Since</th>
-                    <th scope="col">Elapsed</th>
-                    <th scope="col">Remaining</th>
-                    <th scope="col" class="wbl-num">Attendance</th>
+                    <th scope="col" class="wbl-rank">#</th>
+                    <th scope="col">Employee</th>
+                    <th scope="col">Status</th>
+                    @if (hasColumn().has('start')) {
+                      <th scope="col">Start</th>
+                    }
+                    @if (hasColumn().has('elapsed')) {
+                      <th scope="col">Elapsed</th>
+                    }
+                    @if (hasColumn().has('remaining')) {
+                      <th scope="col">Remaining</th>
+                    }
+                    @if (hasColumn().has('todayHours')) {
+                      <th scope="col">Today hours</th>
+                    }
+                    @if (hasColumn().has('progress')) {
+                      <th scope="col" class="wbl-progress-col">Progress</th>
+                    }
                   </tr>
                 </thead>
                 <tbody>
-                  @for (m of ordered(); track m.employeeId) {
+                  @for (m of rows(); track m.employeeId; let i = $index) {
                     <tr data-testid="wbl-table-row">
+                      <td class="wbl-rank">{{ i + 1 }}</td>
                       <td>
                         <span class="wbl-person">
                           <app-avatar size="xs" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
@@ -125,20 +162,82 @@
                         </span>
                       </td>
                       <td>
-                        <span class="wbl-chip" [class.wbl-chip--neutral]="!state(m)" [style.--tone]="stateColor(m)">{{ stateLabel(m) }}</span>
+                        <span class="wbl-chip" [class.wbl-chip--neutral]="!state(m)" [style.--tone]="stateColor(m)">
+                          <span class="wbl-dot"></span>{{ stateLabel(m) }}
+                        </span>
                         @if (m.isLate) {
                           <span class="wbl-late">Late</span>
                         }
                       </td>
-                      <td>{{ state(m) === 'leave' ? leaveText(m) : m.stateSince ? sinceText(m) : '—' }}</td>
-                      <td>{{ elapsedText(m) }}</td>
-                      <td data-testid="wbl-remaining">{{ left(m)?.text ?? '—' }}</td>
-                      <td class="wbl-num">{{ attendanceText(m) }}</td>
+                      @if (hasColumn().has('start')) {
+                        <td>{{ startText(m) }}</td>
+                      }
+                      @if (hasColumn().has('elapsed')) {
+                        <td>{{ elapsedText(m) }}</td>
+                      }
+                      @if (hasColumn().has('remaining')) {
+                        <td data-testid="wbl-remaining">{{ leftText(m) ?? '—' }}</td>
+                      }
+                      @if (hasColumn().has('todayHours')) {
+                        <td data-testid="wbl-today-hours">{{ todayHours(m) }}</td>
+                      }
+                      @if (hasColumn().has('progress')) {
+                        <td>
+                          <span class="wbl-progress">
+                            <ng-container [ngTemplateOutlet]="barTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+                            <span class="wbl-pct" data-testid="wbl-progress">{{ progressText(m) }}</span>
+                          </span>
+                        </td>
+                      }
                     </tr>
                   }
                 </tbody>
               </table>
-            </div>
+            } @else {
+              <ul class="wbl-rows" data-testid="wbl-rows">
+                @for (m of rows(); track m.employeeId) {
+                  <li class="wbl-row" data-testid="wbl-row">
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                    <div class="wbl-row-main">
+                      <p class="wbl-name">{{ m.displayName }}</p>
+                      <p class="wbl-state" [style.--tone]="stateColor(m)">
+                        <span class="wbl-dot"></span>{{ stateLabel(m) }}
+                        @if (m.isLate) {
+                          <span class="wbl-late" data-testid="wbl-late">Late</span>
+                        }
+                      </p>
+                    </div>
+                    <span class="wbl-start">{{ startText(m) }}</span>
+                    <div class="wbl-row-bar">
+                      @if (state(m) === 'leave') {
+                        <span class="wbl-left" [style.color]="stateColor(m)">{{ leaveText(m) }}</span>
+                      } @else if (leftText(m); as left) {
+                        <span class="wbl-left" [style.color]="stateColor(m)" data-testid="wbl-left">{{ left }}</span>
+                      }
+                      <ng-container [ngTemplateOutlet]="barTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+                    </div>
+                    <span class="wbl-pct" data-testid="wbl-progress">{{ progressText(m) }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          }
+
+          @if (plan().viewAll) {
+            <button type="button" class="wbl-link" data-testid="wbl-view-all" (click)="openDetail($event)">
+              View all {{ data.totalMembers }} ›
+            </button>
+          }
+
+          @if (plan().trend) {
+            <section class="wbl-trend" data-testid="wbl-trend" aria-label="Working hours this week">
+              <p class="wbl-section-title">Working hours this week</p>
+              @if (trendDays(); as days) {
+                <app-working-hours-chart class="wbl-trend-chart" [days]="days" />
+              } @else {
+                <p class="wbl-trend-note">{{ trendFailed() ? "Couldn't load this week's hours." : 'Loading…' }}</p>
+              }
+            </section>
           }
         </div>
       }

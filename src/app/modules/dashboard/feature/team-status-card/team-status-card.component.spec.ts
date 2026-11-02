@@ -3,7 +3,7 @@ import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.service';
 import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours-api.service';
-import { TeamTodayResponse } from '../../models/my-team-today.model';
+import { TeamTodayMember, TeamTodayResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
 import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
 import { presenceMember, presenceResponse } from '../../utils/team-presence.testing';
@@ -14,13 +14,39 @@ const cols = (n: number) => n * 97 + (n - 1) * 12;
 const rows = (n: number) => n * 96 + (n - 1) * 12;
 
 const TEAM = [
-  presenceMember('working', { displayName: 'Ada', stateSince: '2026-10-29T03:30:00Z', shiftEndsAt: '2026-10-29T12:00:00Z', attendanceMinutes: 300, isLate: true }),
+  presenceMember('working', {
+    displayName: 'Ada',
+    clockInAt: '2026-10-29T03:30:00Z',
+    stateSince: '2026-10-29T03:30:00Z',
+    shiftEndsAt: '2026-10-29T12:00:00Z',
+    attendanceMinutes: 360,
+    expectedMinutes: 480,
+    isLate: true,
+  }),
   presenceMember('on_break', { displayName: 'Bob', stateSince: '2026-10-29T09:50:00Z', breakRemainingMinutes: null }),
-  presenceMember('on_leave', { displayName: 'Cat', leave: { leaveTypeName: 'Annual Leave', endsOn: '2026-10-30' } }),
+  presenceMember('on_leave', { displayName: 'Cat', expectedMinutes: 0, leave: { leaveTypeName: 'Annual Leave', endsOn: '2026-10-30' } }),
   presenceMember('absent', { displayName: 'Dan' }),
   presenceMember('not_started', { displayName: 'Eve' }),
-  presenceMember('clocked_out', { displayName: 'Fay' })
+  presenceMember('clocked_out', { displayName: 'Fay' }),
 ];
+
+function crowd(n: number): TeamTodayMember[] {
+  return Array.from({ length: n }, (_, i) =>
+    presenceMember('working', { displayName: `P${String(i).padStart(2, '0')}`, employeeId: `p-${i}` }),
+  );
+}
+
+const WEEK = {
+  weekStart: '2026-10-26',
+  weekEnd: '2026-11-01',
+  days: ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01'].map((date) => ({
+    date,
+    workedMinutes: 600,
+    breakMinutes: 60,
+    onLeaveCount: 0,
+    peopleWithRecord: 2,
+  })),
+};
 
 describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
   afterEach(() => {
@@ -33,28 +59,39 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
   async function setup(
     result: TeamTodayResponse | 'error' = presenceResponse(TEAM),
     size: { width: number; height: number } | null = null,
-    extraProviders: unknown[] = []
-  ): Promise<{ fixture: ComponentFixture<TeamStatusCardComponent>; getTeamToday: ReturnType<typeof vi.fn>; el: HTMLElement }> {
+    extraProviders: unknown[] = [],
+  ): Promise<{
+    fixture: ComponentFixture<TeamStatusCardComponent>;
+    getTeamToday: ReturnType<typeof vi.fn>;
+    getWeek: ReturnType<typeof vi.fn>;
+    el: HTMLElement;
+  }> {
     stubResizeObserver();
     const getTeamToday = vi.fn(() => (result === 'error' ? throwError(() => new Error('network error')) : of(result)));
+    const getWeek = vi.fn(() => of(WEEK));
     await TestBed.configureTestingModule({
       imports: [TeamStatusCardComponent],
       providers: [
         MyTeamTodayStore,
         { provide: MyTeamTodayApiService, useValue: { getTeamToday } },
-        { provide: TeamWorkingHoursApiService, useValue: { getWeek: vi.fn(() => of({ weekStart: '2026-10-26', weekEnd: '2026-11-01', days: [] })) } },
-        ...(extraProviders as never[])
-      ]
+        { provide: TeamWorkingHoursApiService, useValue: { getWeek } },
+        ...(extraProviders as never[]),
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(TeamStatusCardComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     if (size) FakeResizeObserver.instances[0].trigger(size.width, size.height);
     fixture.detectChanges();
-    return { fixture, getTeamToday, el: fixture.nativeElement as HTMLElement };
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, getTeamToday, getWeek, el: fixture.nativeElement as HTMLElement };
   }
 
-  const text = (el: HTMLElement, testId: string) => el.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? null;
+  const text = (el: HTMLElement, testId: string) =>
+    el.querySelector(`[data-testid="${testId}"]`)?.textContent?.replace(/\s+/g, ' ').trim() ?? null;
+  const has = (el: HTMLElement, testId: string) => !!el.querySelector(`[data-testid="${testId}"]`);
+  const all = (el: HTMLElement, testId: string) => [...el.querySelectorAll(`[data-testid="${testId}"]`)];
 
   it('loads on init and is titled Working / Break / Leave', async () => {
     const { el, getTeamToday } = await setup();
@@ -73,58 +110,127 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     expect(el.textContent).toContain('No one in your team to show.');
   });
 
-  it('2x2 is the mini view: the 140px donut with at-work of team and the three counts', async () => {
-    const { el } = await setup(presenceResponse(TEAM), { width: cols(2), height: rows(2) });
+  it('204x204 is mini: the 140px donut with the team total beside the three counts', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: 204, height: 204 });
 
-    expect(el.querySelector('[data-testid="wbl-mini"]')).toBeTruthy();
+    expect(has(el, 'wbl-mini')).toBe(true);
     expect((el.querySelector('[data-testid="wbl-donut"]') as HTMLElement).style.width).toBe('140px');
-    expect(text(el, 'wbl-center')!.replace(/\s+/g, '')).toBe('2/6');
+    expect(text(el, 'wbl-center')!.replace(/\s+/g, '')).toBe('6Teammembers');
     expect(text(el, 'wbl-count-working')).toContain('1');
     expect(text(el, 'wbl-count-break')).toContain('1');
     expect(text(el, 'wbl-count-leave')).toContain('1');
   });
 
-  it('a masked leave (absent) is never counted under Leave', async () => {
-    const { el } = await setup(presenceResponse([presenceMember('absent'), presenceMember('working')]), { width: cols(4), height: rows(4) });
+  it('420x204 is the inline mini: a stacked bar, the legend and the status pill', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: 420, height: 204 });
 
-    expect(text(el, 'wbl-count-leave')).toContain('0');
-    expect(text(el, 'wbl-neutral')).toBe('1 absent');
+    expect(has(el, 'wbl-mini-bar')).toBe(true);
+    expect(has(el, 'wbl-donut')).toBe(false);
+    expect(text(el, 'wbl-pill')).toContain('1 employee is currently working');
   });
 
-  it('4x4 is the medium view: counters, the neutral line, rows in working-break-leave order and a late tag', async () => {
-    const { el } = await setup(presenceResponse(TEAM), { width: cols(4), height: rows(4) });
+  it('300x636 is xs: the donut over its legend, the pill, then person rows', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: 300, height: 636 });
 
-    expect(el.querySelector('[data-testid="wbl-layout"]')!.getAttribute('data-view')).toBe('medium');
-    expect(text(el, 'wbl-neutral')).toBe('1 not clocked in · 1 clocked out · 1 absent');
-    const names = [...el.querySelectorAll('[data-testid="wbl-row"] .wbl-name')].map((n) => n.textContent!.trim());
+    expect(el.querySelector('[data-testid="wbl-layout"]')!.getAttribute('data-view')).toBe('xs');
+    expect(has(el, 'wbl-donut')).toBe(true);
+    expect(has(el, 'wbl-legend')).toBe(true);
+    expect(has(el, 'wbl-pill')).toBe(true);
+    expect(has(el, 'wbl-tiles')).toBe(false);
+    expect(all(el, 'wbl-row').length).toBeGreaterThan(0);
+  });
+
+  it('600x420 is standard: tiles with % of team, then person rows in working-break-leave order', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: 600, height: 420 });
+
+    expect(el.querySelector('[data-testid="wbl-layout"]')!.getAttribute('data-view')).toBe('standard');
+    expect(text(el, 'wbl-tile-working')).toContain('1');
+    expect(text(el, 'wbl-tile-working')).toContain('17%');
+    expect(text(el, 'wbl-tile-leave')).toContain('On leave');
+    const names = all(el, 'wbl-row').map((r) => r.querySelector('.wbl-name')!.textContent!.trim());
     expect(names.slice(0, 3)).toEqual(['Ada', 'Bob', 'Cat']);
-    expect(el.querySelectorAll('[data-testid="wbl-late"]').length).toBe(1);
+    expect(has(el, 'wbl-table')).toBe(false);
   });
 
-  it('medium shows a time-left bar only where a denominator exists', async () => {
-    const { el } = await setup(presenceResponse(TEAM), { width: cols(4), height: rows(4) });
+  it('a row shows the start time, the time left in the state colour and today hours progress', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T09:30:00Z'));
+    const { el } = await setup(presenceResponse(TEAM), { width: 600, height: 420 });
 
-    // Ada has a scheduled end; Bob's break has no configured allowance.
-    expect(el.querySelectorAll('[data-testid="wbl-left"]').length).toBe(1);
+    const ada = all(el, 'wbl-row')[0];
+    expect(ada.querySelector('[data-testid="wbl-left"]')!.textContent!.trim()).toBe('2h 30m left');
+    expect(ada.querySelector('[data-testid="wbl-progress"]')!.textContent!.trim()).toBe('75%');
+    // Bob's break has no allowance: no time left, no guessed bar.
+    expect(all(el, 'wbl-row')[1].querySelector('[data-testid="wbl-left"]')).toBeNull();
+    expect(all(el, 'wbl-row')[1].querySelector('[data-testid="wbl-progress"]')!.textContent!.trim()).toBe('—');
   });
 
-  it('8x6 is the large view: a table with "—" for a remaining time without a denominator', async () => {
-    const { el } = await setup(presenceResponse(TEAM), { width: cols(8), height: rows(6) });
+  it('a masked leave (absent) is never counted under Leave', async () => {
+    const { el } = await setup(presenceResponse([presenceMember('absent'), presenceMember('working')]), {
+      width: 600,
+      height: 420,
+    });
 
-    expect(el.querySelector('[data-testid="wbl-table"]')).toBeTruthy();
-    const remaining = [...el.querySelectorAll('[data-testid="wbl-remaining"]')].map((c) => c.textContent!.trim());
+    expect(text(el, 'wbl-tile-leave')).toContain('0');
+  });
+
+  it('900x636 is a table with every column and "—" for a remaining time without a denominator', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: 900, height: 636 });
+
+    expect(has(el, 'wbl-table')).toBe(true);
+    const heads = [...el.querySelectorAll('[data-testid="wbl-table"] th')].map((th) => th.textContent!.trim());
+    expect(heads).toEqual(['#', 'Employee', 'Status', 'Start', 'Elapsed', 'Remaining', 'Today hours', 'Progress']);
+    const remaining = all(el, 'wbl-remaining').map((c) => c.textContent!.trim());
     expect(remaining[1]).toBe('—');
     expect(remaining[2]).toBe('—');
-    expect(el.textContent).toContain('Annual Leave · until 2026-10-30');
+    expect(all(el, 'wbl-today-hours')[0].textContent!.trim()).toBe('6h / 8h');
   });
 
-  it('opens the popup from the expand action', async () => {
-    const { fixture, el } = await setup(presenceResponse(TEAM), { width: cols(8), height: rows(6) });
+  it('1300x852 adds the week trend under the table and loads it once', async () => {
+    const { el, getWeek } = await setup(presenceResponse(TEAM), { width: 1300, height: 852 });
 
-    fixture.componentInstance.openDetail();
+    expect(has(el, 'wbl-table')).toBe(true);
+    expect(has(el, 'wbl-trend')).toBe(true);
+    expect(getWeek).toHaveBeenCalledOnce();
+    expect(has(el, 'working-hours-chart')).toBe(true);
+  });
+
+  it('a smaller card never loads the trend', async () => {
+    const { getWeek } = await setup(presenceResponse(TEAM), { width: 600, height: 420 });
+    expect(getWeek).not.toHaveBeenCalled();
+  });
+
+  it('60 members at 600x420 show the rows that fit and "View all 60 ›"', async () => {
+    const { el } = await setup(presenceResponse(crowd(60)), { width: 600, height: 420 });
+
+    const shown = all(el, 'wbl-row').length;
+    expect(shown).toBeGreaterThan(0);
+    expect(shown).toBeLessThan(60);
+    expect(text(el, 'wbl-view-all')).toBe('View all 60 ›');
+  });
+
+  it('no "View all" when everyone fits', async () => {
+    const { el } = await setup(presenceResponse(TEAM), { width: 1300, height: 852 });
+    expect(has(el, 'wbl-view-all')).toBe(false);
+  });
+
+  it('the card body never scrolls: no element inside is a scroll container', async () => {
+    const { el } = await setup(presenceResponse(crowd(60)), { width: 900, height: 636 });
+
+    const scrollers = [...el.querySelectorAll<HTMLElement>('*')].filter((node) => {
+      const style = getComputedStyle(node);
+      return ['auto', 'scroll'].includes(style.overflowY) || ['auto', 'scroll'].includes(style.overflow);
+    });
+    expect(scrollers).toEqual([]);
+    expect(getComputedStyle(el.querySelector('[data-testid="wbl-layout"]')!).overflow).toBe('hidden');
+  });
+
+  it('opens the popup from the pill', async () => {
+    const { fixture, el } = await setup(presenceResponse(TEAM), { width: 300, height: 636 });
+
+    (el.querySelector('[data-testid="wbl-pill"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.componentInstance.detailOpen()).toBe(true);
-    expect(el.ownerDocument.body.textContent).toContain('Working hours this week');
   });
 
   it('polls every 60 seconds while visible', async () => {
@@ -140,14 +246,14 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-29T10:00:00Z'));
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true, writable: true });
-    const { fixture, el, getTeamToday } = await setup(presenceResponse(TEAM), { width: cols(8), height: rows(6) });
-    const before = [...el.querySelectorAll('[data-testid="wbl-table-row"]')].map((r) => r.querySelector('.wbl-name')!.textContent);
+    const { fixture, el, getTeamToday } = await setup(presenceResponse(TEAM), { width: 900, height: 636 });
+    const names = () => all(el, 'wbl-table-row').map((r) => r.querySelector('.wbl-name')!.textContent);
+    const before = names();
 
     await vi.advanceTimersByTimeAsync(30_000);
     fixture.detectChanges();
 
-    const after = [...el.querySelectorAll('[data-testid="wbl-table-row"]')].map((r) => r.querySelector('.wbl-name')!.textContent);
-    expect(after).toEqual(before);
+    expect(names()).toEqual(before);
     expect(getTeamToday).toHaveBeenCalledOnce();
   });
 

@@ -139,3 +139,34 @@ export function timeLeft(
   }
   return null;
 }
+
+/** Minutes left in the current state (break allowance or shift), the figure timeLeft's text shows; null without one. */
+export function minutesLeft(member: TeamTodayMember, now: Date): number | null {
+  if (member.status === 'on_break' && member.breakRemainingMinutes !== null) {
+    return member.breakRemainingMinutes;
+  }
+  if (member.status === 'working' && member.shiftEndsAt && member.stateSince) {
+    return Math.max(0, Math.round((new Date(member.shiftEndsAt).getTime() - now.getTime()) / 60_000));
+  }
+  return null;
+}
+
+/** "6h / 8h": attendance today of the work window, uncapped; just "6h" without a window. */
+export function todayHoursText(member: TeamTodayMember): string {
+  const attended = minutesText(member.attendanceMinutes);
+  return member.expectedMinutes ? `${attended} / ${minutesText(member.expectedMinutes)}` : attended;
+}
+
+/** Attendance of the work window for the bar, 0-100 (capped); null without a window (or on leave, a 0 window). */
+export function todayProgress(member: TeamTodayMember): number | null {
+  if (!member.expectedMinutes) return null;
+  return Math.min(100, Math.round((member.attendanceMinutes * 100) / member.expectedMinutes));
+}
+
+/** The status pill: "8 employees are currently working". */
+export function presencePill(groups: PresenceGroups): string {
+  if (groups.working === 0) return 'No one is working right now';
+  return groups.working === 1
+    ? '1 employee is currently working'
+    : `${groups.working} employees are currently working`;
+}
