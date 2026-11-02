@@ -73,9 +73,49 @@ describe('CategoryListEditorComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(createCategory).toHaveBeenCalledWith('project-1', { name: 'Feature', displayOrder: 4 });
+    expect(createCategory).toHaveBeenCalledWith('project-1', { name: 'Feature', displayOrder: 4, kind: 'task' });
     expect(Array.from(fixture.nativeElement.querySelectorAll('.category-list__name') as NodeListOf<HTMLElement>)
       .map((element) => element.textContent?.trim())).toContain('Feature');
+  });
+
+  it('the Add row has its own Type select (user types only, Task by default) and sends the chosen type', async () => {
+    const { fixture, createCategory } = setup();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const type = fixture.nativeElement.querySelector('[data-testid="category-add-kind-select"]') as HTMLSelectElement;
+    expect(type.value).toBe('task');
+    expect(Array.from(type.options).map((o) => o.value)).toEqual(['task', 'bug', 'story', 'feature', 'testing']);
+
+    type.value = 'bug';
+    type.dispatchEvent(new Event('change'));
+    const input = fixture.nativeElement.querySelector('.category-list__add-form input') as HTMLInputElement;
+    input.value = 'Hotfix';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((button) => button.textContent?.trim() === 'Add')!.click();
+    await fixture.whenStable();
+
+    expect(createCategory).toHaveBeenCalledWith('project-1', { name: 'Hotfix', displayOrder: 4, kind: 'bug' });
+  });
+
+  it('the Add row starts again at Task after a cancel', () => {
+    const { fixture } = setup();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const type = fixture.nativeElement.querySelector('[data-testid="category-add-kind-select"]') as HTMLSelectElement;
+    type.value = 'story';
+    type.dispatchEvent(new Event('change'));
+    Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((button) => button.textContent?.trim() === 'Cancel')!.click();
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('[data-testid="category-add-kind-select"]') as HTMLSelectElement).value).toBe('task');
   });
 
   it('renames a category through the edit endpoint', async () => {

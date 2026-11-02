@@ -10,8 +10,8 @@ export interface TaskCategoryDto {
 export interface CreateTaskCategoryRequestDto {
   name: string;
   displayOrder: number;
-  /** Omitted: the API infers it from the name. */
-  kind?: string;
+  /** Required: one of the user kinds (task, bug, story, feature, testing); the API never infers it from the name. */
+  kind: string;
 }
 
 export interface EditTaskCategoryRequestDto {

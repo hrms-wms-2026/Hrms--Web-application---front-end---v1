@@ -31,8 +31,15 @@ interface DraftRow {
               (input)="newCategoryName.set($any($event.target).value)"
               (keydown.enter)="confirmAdd()"
               (keydown.escape)="cancelAdd()"
-             
+
             />
+            <!-- The user picks the new category's type; its name never decides it. -->
+            <select data-testid="category-add-kind-select" class="category-list__kind" aria-label="Type"
+              [value]="newCategoryKind()" (change)="newCategoryKind.set($any($event.target).value)">
+              @for (kind of kinds; track kind) {
+                <option [value]="kind" [selected]="kind === newCategoryKind()">{{ kindLabel(kind) }}</option>
+              }
+            </select>
             <div class="category-list__add-buttons">
               <app-button variant="primary" [loading]="adding()" (pressed)="confirmAdd()">Add</app-button>
               <app-button variant="secondary" [disabled]="adding()" (pressed)="cancelAdd()">Cancel</app-button>
@@ -337,6 +344,7 @@ export class CategoryListEditorComponent {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly addingNew = signal(false);
   protected readonly newCategoryName = signal('');
+  protected readonly newCategoryKind = signal<TaskKind>('task');
   protected readonly adding = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly editingName = signal('');
@@ -353,8 +361,7 @@ export class CategoryListEditorComponent {
         );
         this.errorMessage.set(null);
       } else {
-        this.addingNew.set(false);
-        this.newCategoryName.set('');
+        this.cancelAdd();
         this.cancelRename();
       }
     });
@@ -369,6 +376,7 @@ export class CategoryListEditorComponent {
   cancelAdd(): void {
     this.addingNew.set(false);
     this.newCategoryName.set('');
+    this.newCategoryKind.set('task');
   }
 
   async confirmAdd(): Promise<void> {
@@ -379,7 +387,8 @@ export class CategoryListEditorComponent {
     try {
       const created = await firstValueFrom(this.taskApi.createCategory(this.projectId(), {
         name,
-        displayOrder: this.rows().length
+        displayOrder: this.rows().length,
+        kind: this.newCategoryKind()
       }));
       this.rows.set([...this.rows(), { id: created.id, name: created.name, isSystem: created.isSystem ?? false, kind: kindOf(created.kind) }]);
       this.cancelAdd();
