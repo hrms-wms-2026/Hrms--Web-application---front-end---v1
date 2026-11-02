@@ -170,3 +170,30 @@ export function presencePill(groups: PresenceGroups): string {
     ? '1 employee is currently working'
     : `${groups.working} employees are currently working`;
 }
+
+/** Today's break minutes from the break intervals; an open break runs to now. */
+export function breakMinutes(member: TeamTodayMember, now: Date): number {
+  return member.breaks.reduce((sum, b) => {
+    const end = b.end ? new Date(b.end).getTime() : now.getTime();
+    return sum + Math.max(0, Math.round((end - new Date(b.start).getTime()) / 60_000));
+  }, 0);
+}
+
+export interface PresenceHours {
+  readonly worked: number;
+  readonly break: number;
+  readonly leave: number;
+}
+
+/** The team's time today in minutes: worked (attendance, breaks excluded), break, and leave (the work window of
+ * visible leave). Time only, never people counts. */
+export function hoursBreakdown(members: readonly TeamTodayMember[], now: Date): PresenceHours {
+  return members.reduce<PresenceHours>(
+    (sum, m) => ({
+      worked: sum.worked + m.attendanceMinutes,
+      break: sum.break + breakMinutes(m, now),
+      leave: sum.leave + m.leaveMinutes,
+    }),
+    { worked: 0, break: 0, leave: 0 },
+  );
+}

@@ -18,7 +18,7 @@ describe('MyTeamTodayStore', () => {
       employeeId: 'emp-1', displayName: 'Priya K', avatarFileId: null, positionTitle: 'Engineer',
       status: 'working', statusLabel: 'Working', isLate: false, clockInAt: '2026-09-30T04:00:00Z',
       clockOutAt: null, attentionType: null, attentionLabel: null, attentionSeverity: null, leave: null,
-      stateSince: '2026-09-30T04:00:00Z', breakRemainingMinutes: null, shiftEndsAt: null, attendanceMinutes: 60, expectedMinutes: 480, breaks: []
+      stateSince: '2026-09-30T04:00:00Z', breakRemainingMinutes: null, shiftEndsAt: null, attendanceMinutes: 60, expectedMinutes: 480, breaks: [], leaveMinutes: 0
     }],
     totalMembers: 1,
     asOf: '2026-09-30T05:00:00Z'

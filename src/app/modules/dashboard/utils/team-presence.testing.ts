@@ -25,6 +25,7 @@ export function presenceMember(
     attendanceMinutes: 0,
     expectedMinutes: null,
     breaks: [],
+    leaveMinutes: 0,
     ...overrides,
   };
 }

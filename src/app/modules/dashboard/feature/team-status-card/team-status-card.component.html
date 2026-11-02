@@ -39,19 +39,19 @@
           }
         </svg>
         <p class="wbl-donut-center" data-testid="wbl-center">
-          <span class="wbl-donut-value">{{ data.totalMembers }}</span>
-          <span class="wbl-donut-of">Team members</span>
+          <span class="wbl-donut-value">{{ minutes(hours().worked) }}</span>
+          <span class="wbl-donut-of">Total working hours</span>
         </p>
       </div>
     </ng-template>
 
     <ng-template #countsTpl>
-      <ul class="wbl-counts" aria-label="Right now" data-testid="wbl-legend">
-        @for (c of counters(); track c.key) {
-          <li [attr.data-testid]="'wbl-count-' + c.key">
-            <span class="wbl-dot" [style.background]="c.color"></span>
-            <span class="wbl-count-label">{{ c.label }}</span>
-            <span class="wbl-count">{{ c.count }}</span>
+      <ul class="wbl-counts" aria-label="Team time today" data-testid="wbl-legend">
+        @for (row of hourLegend(); track row.key) {
+          <li [attr.data-testid]="'wbl-count-' + row.key">
+            <span class="wbl-dot" [style.background]="row.color"></span>
+            <span class="wbl-count-label">{{ row.label }}</span>
+            <span class="wbl-count">{{ minutes(row.minutes) }}</span>
           </li>
         }
       </ul>
@@ -109,6 +109,31 @@
               <ng-container [ngTemplateOutlet]="countsTpl" />
             </div>
             <ng-container [ngTemplateOutlet]="pillTpl" />
+            @if (plan().rows > 0) {
+              <!-- Under the donut: each employee's working hours, with their break and leave in the same bar. -->
+              <ul class="wbl-rows" aria-label="Working hours by employee">
+                @for (r of visibleHourRows(); track r.member.employeeId) {
+                  <li class="wbl-hours-row" data-testid="wbl-hours-row" [title]="r.member.displayName + ': ' + minutes(r.worked) + ' worked, ' + minutes(r.break) + ' break' + (r.leave > 0 ? ', ' + minutes(r.leave) + ' leave' : '')">
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(r.member)" [userName]="r.member.displayName" />
+                    <div class="wbl-row-main">
+                      <p class="wbl-name">{{ r.member.displayName }}</p>
+                      <span class="wbl-hours-bar" aria-hidden="true">
+                        @if (r.workedShare > 0) {
+                          <span data-segment="worked" [style.width.%]="r.workedShare" [style.background]="colors.working"></span>
+                        }
+                        @if (r.breakShare > 0) {
+                          <span data-segment="break" [style.width.%]="r.breakShare" [style.background]="colors.break"></span>
+                        }
+                        @if (r.leaveShare > 0) {
+                          <span data-segment="leave" [style.width.%]="r.leaveShare" [style.background]="colors.leave"></span>
+                        }
+                      </span>
+                    </div>
+                    <span class="wbl-pct" data-testid="wbl-hours-total">{{ r.total }}</span>
+                  </li>
+                }
+              </ul>
+            }
           }
 
           @if (plan().tiles) {
@@ -126,7 +151,7 @@
             </ul>
           }
 
-          @if (plan().rows > 0) {
+          @if (view() === 'standard' && plan().rows > 0) {
             @if (plan().table) {
               <table class="wbl-table" data-testid="wbl-table">
                 <thead>

@@ -21,8 +21,19 @@ const TEAM = [
     expectedMinutes: 480,
     isLate: true,
   }),
-  presenceMember('on_break', { displayName: 'Bob', stateSince: '2026-10-29T09:50:00Z', breakRemainingMinutes: null }),
-  presenceMember('on_leave', { displayName: 'Cat', expectedMinutes: 0, leave: { leaveTypeName: 'Annual Leave', endsOn: '2026-10-30' } }),
+  presenceMember('on_break', {
+    displayName: 'Bob',
+    stateSince: '2026-10-29T09:50:00Z',
+    breakRemainingMinutes: null,
+    attendanceMinutes: 120,
+    breaks: [{ start: '2026-10-29T08:00:00Z', end: '2026-10-29T08:15:00Z' }],
+  }),
+  presenceMember('on_leave', {
+    displayName: 'Cat',
+    expectedMinutes: 0,
+    leaveMinutes: 480,
+    leave: { leaveTypeName: 'Annual Leave', endsOn: '2026-10-30' },
+  }),
   presenceMember('absent', { displayName: 'Dan' }),
   presenceMember('not_started', { displayName: 'Eve' }),
   presenceMember('clocked_out', { displayName: 'Fay' }),
@@ -108,15 +119,24 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     expect(el.textContent).toContain('No one in your team to show.');
   });
 
-  it('204x204 is mini: the 140px donut with the team total beside the three counts', async () => {
+  it('204x204 is mini: the 140px donut with the team total working hours, its legend in hours', async () => {
     const { el } = await setup(presenceResponse(TEAM), { width: 204, height: 204 });
 
     expect(has(el, 'wbl-mini')).toBe(true);
     expect((el.querySelector('[data-testid="wbl-donut"]') as HTMLElement).style.width).toBe('140px');
-    expect(text(el, 'wbl-center')!.replace(/\s+/g, '')).toBe('6Teammembers');
-    expect(text(el, 'wbl-count-working')).toContain('1');
-    expect(text(el, 'wbl-count-break')).toContain('1');
-    expect(text(el, 'wbl-count-leave')).toContain('1');
+    // Ada 6h + Bob 2h worked; Bob's closed 15m break; Cat's 8h leave.
+    expect(text(el, 'wbl-center')!.replace(/\s+/g, '')).toBe('8hTotalworkinghours');
+    expect(text(el, 'wbl-count-working')).toContain('8h');
+    expect(text(el, 'wbl-count-break')).toContain('15m');
+    expect(text(el, 'wbl-count-leave')).toContain('8h');
+  });
+
+  it('a masked leave adds no leave hours', async () => {
+    const { el } = await setup(presenceResponse([presenceMember('absent', { leaveMinutes: 0 }), presenceMember('working', { attendanceMinutes: 60 })]), {
+      width: 204,
+      height: 204,
+    });
+    expect(text(el, 'wbl-count-leave')).toContain('0m');
   });
 
   it('420x204 is the inline mini: a stacked bar, the legend and the status pill', async () => {
@@ -135,7 +155,15 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     expect(has(el, 'wbl-legend')).toBe(true);
     expect(has(el, 'wbl-pill')).toBe(true);
     expect(has(el, 'wbl-tiles')).toBe(false);
-    expect(all(el, 'wbl-row').length).toBeGreaterThan(0);
+    // Under the donut: each employee's working hours, most worked first, with break and leave in the same bar.
+    const rows = all(el, 'wbl-hours-row');
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0].querySelector('.wbl-name')!.textContent!.trim()).toBe('Ada');
+    expect(rows[0].querySelector('[data-testid="wbl-hours-total"]')!.textContent!.trim()).toBe('6h');
+    const bob = rows.find((r) => r.querySelector('.wbl-name')!.textContent!.trim() === 'Bob')!;
+    expect(bob.querySelector('[data-segment="break"]')).not.toBeNull();
+    const cat = rows.find((r) => r.querySelector('.wbl-name')!.textContent!.trim() === 'Cat')!;
+    expect(cat.querySelector('[data-testid="wbl-hours-total"]')!.textContent!.trim()).toBe('Leave 8h');
   });
 
   it('600x420 is standard: tiles with % of team, then person rows in working-break-leave order', async () => {

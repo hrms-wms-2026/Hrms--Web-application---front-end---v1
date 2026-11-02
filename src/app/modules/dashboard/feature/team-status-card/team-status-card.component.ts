@@ -16,7 +16,9 @@ import {
   PRESENCE_COLORS,
   PRESENCE_LABELS,
   PresenceState,
+  breakMinutes,
   clockTime,
+  hoursBreakdown,
   minutesLeft,
   minutesSince,
   minutesText,
@@ -93,6 +95,7 @@ export class TeamStatusCardComponent implements OnInit {
   private trendRequested = false;
 
   protected readonly donutPx = DASHBOARD_DONUT_PX;
+  protected readonly colors = PRESENCE_COLORS;
   protected readonly now = signal(new Date());
   /** This week's working hours for the trend panel; loaded once, the first time a view has room for it. */
   protected readonly trendDays = signal<readonly TeamWorkingHoursDay[] | null>(null);
@@ -145,10 +148,46 @@ export class TeamStatusCardComponent implements OnInit {
     ];
   });
 
-  protected readonly donut = computed<DonutArc[]>(() => donutArcs(this.counters()));
-  protected readonly donutLabel = computed(
-    () => `${this.counters().map((c) => `${c.count} ${c.label.toLowerCase()}`).join(', ')} of ${this.store.data()?.totalMembers ?? 0}`
+  /** The team's time today: worked, break and leave minutes (the donut, its legend and the hours rows). */
+  protected readonly hours = computed(() => hoursBreakdown(this.store.data()?.members ?? [], this.now()));
+  protected readonly hourLegend = computed(() => {
+    const h = this.hours();
+    return [
+      { key: 'working' as const, label: PRESENCE_LABELS.working, minutes: h.worked, color: PRESENCE_COLORS.working },
+      { key: 'break' as const, label: PRESENCE_LABELS.break, minutes: h.break, color: PRESENCE_COLORS.break },
+      { key: 'leave' as const, label: PRESENCE_LABELS.leave, minutes: h.leave, color: PRESENCE_COLORS.leave }
+    ];
+  });
+  protected readonly donut = computed<DonutArc[]>(() =>
+    donutArcs(this.hourLegend().map((row) => ({ key: row.key, count: row.minutes, color: row.color })))
   );
+  protected readonly donutLabel = computed(
+    () =>
+      `Team time today: ${this.hourLegend()
+        .map((row) => `${minutesText(row.minutes)} ${row.label.toLowerCase()}`)
+        .join(', ')}`
+  );
+  /** Each employee's time today, most worked first: the bars share the largest worked + break + leave. */
+  protected readonly hourRows = computed(() => {
+    const now = this.now();
+    const rows = (this.store.data()?.members ?? []).map((m) => ({
+      member: m,
+      worked: m.attendanceMinutes,
+      break: breakMinutes(m, now),
+      leave: m.leaveMinutes
+    }));
+    rows.sort((a, b) => b.worked - a.worked || b.leave - a.leave || a.member.displayName.localeCompare(b.member.displayName));
+    const scale = Math.max(1, ...rows.map((r) => r.worked + r.break + r.leave));
+    const share = (n: number) => Math.round((n * 1000) / scale) / 10;
+    return rows.map((r) => ({
+      ...r,
+      workedShare: share(r.worked),
+      breakShare: share(r.break),
+      leaveShare: share(r.leave),
+      total: r.worked === 0 && r.leave > 0 ? `Leave ${minutesText(r.leave)}` : minutesText(r.worked)
+    }));
+  });
+  protected readonly visibleHourRows = computed(() => this.hourRows().slice(0, this.plan().rows));
   protected readonly pill = computed(() => {
     const g = this.groups();
     return g ? presencePill(g) : '';
@@ -198,6 +237,10 @@ export class TeamStatusCardComponent implements OnInit {
   protected startText(member: TeamTodayMember): string {
     if (member.clockInAt) return clockTime(member.clockInAt);
     return presenceState(member.status) === 'leave' ? 'All day' : '—';
+  }
+
+  protected minutes(m: number): string {
+    return minutesText(m);
   }
 
   protected elapsedText(member: TeamTodayMember): string {

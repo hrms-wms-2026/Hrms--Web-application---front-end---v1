@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  breakMinutes,
   groupPresence,
+  hoursBreakdown,
   minutesLeft,
   minutesText,
   neutralLine,
@@ -147,5 +149,27 @@ describe('Working / Break / Leave format (coverage audit)', () => {
     expect(minutesLeft(working, NOW)).toBe(150);
     expect(minutesLeft(member('on_break', { stateSince: '2026-10-29T09:50:00Z', breakRemainingMinutes: 20 }), NOW)).toBe(20);
     expect(minutesLeft(member('on_break', { breakRemainingMinutes: null }), NOW)).toBeNull();
+  });
+
+  it('breakMinutes sums closed breaks and runs an open one to now', () => {
+    const m = member('on_break', {
+      breaks: [
+        { start: '2026-10-29T08:00:00Z', end: '2026-10-29T08:15:00Z' },
+        { start: '2026-10-29T09:50:00Z', end: null },
+      ],
+    });
+    expect(breakMinutes(m, NOW)).toBe(25);
+  });
+
+  it('hoursBreakdown totals worked, break and leave minutes, never mixing people counts', () => {
+    const totals = hoursBreakdown(
+      [
+        member('working', { attendanceMinutes: 360 }),
+        member('on_break', { attendanceMinutes: 120, breaks: [{ start: '2026-10-29T08:00:00Z', end: '2026-10-29T08:15:00Z' }] }),
+        member('on_leave', { leaveMinutes: 480 }),
+      ],
+      NOW,
+    );
+    expect(totals).toEqual({ worked: 480, break: 15, leave: 480 });
   });
 });

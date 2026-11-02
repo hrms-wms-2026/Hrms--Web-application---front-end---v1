@@ -29,6 +29,8 @@ export interface TeamTodayMember {
   expectedMinutes: number | null;
   /** Today's breaks ordered by start; an open break has a null end. */
   breaks: TeamTodayBreak[];
+  /** On leave (only where the viewer may see it): the work window the leave takes; else 0. */
+  leaveMinutes: number;
 }
 
 export interface TeamTodayBreak {
