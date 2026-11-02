@@ -127,3 +127,16 @@
   font-weight: 600;
   color: rgb(180 83 9);
 }
+
+/* The workload ranking has seven columns: it takes two grid columns so the table fits without a sideways scroll. */
+.tptd-panel--wide {
+  grid-column: span 2;
+}
+.tptd-panel--wide .tptd-table {
+  table-layout: auto;
+}
+@media (max-width: 639.98px) {
+  .tptd-panel--wide {
+    grid-column: auto;
+  }
+}

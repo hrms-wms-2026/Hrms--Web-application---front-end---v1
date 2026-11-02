@@ -241,22 +241,34 @@ export class TeamProgressDetailDialogComponent {
     return ids;
   });
 
-  /** Project breakdown: the (filtered) projects, most allocated first; completed of allocated, "—" without allocation. */
+  /** Project breakdown chart: the (filtered) projects, most allocated first. Allocated and completed bars share one scale
+   * (the largest allocation, or completion when it is larger); % = completed of allocated, "—" without allocation. */
   protected readonly projectBreakdown = computed(() => {
     const summary = this.summary();
     if (!summary) return [];
     const selected = this.selectedProject();
-    return (selected ? [selected] : summary.projects)
+    const projects = selected ? [selected] : summary.projects;
+    const scale = Math.max(1, ...projects.map((p) => Math.max(p.hours.allocatedHours, p.hours.completedHours)));
+    const share = (h: number) => Math.round((h * 1000) / scale) / 10;
+    return projects
       .map((p) => ({
         id: p.projectId,
         name: p.projectName,
         allocated: p.hours.allocatedHours,
         completed: p.hours.completedHours,
         percent: p.hours.allocatedHours > 0 ? formatPercent(p.hours.completedHours, p.hours.allocatedHours) : '—',
-        share: p.hours.allocatedHours > 0 ? Math.min(100, (p.hours.completedHours * 100) / p.hours.allocatedHours) : 0,
+        allocatedShare: share(p.hours.allocatedHours),
+        completedShare: share(p.hours.completedHours),
       }))
       .sort((a, b) => b.allocated - a.allocated || a.name.localeCompare(b.name));
   });
+  protected readonly projectChartLabel = computed(
+    () =>
+      'Allocated vs completed hours by project. ' +
+      this.projectBreakdown()
+        .map((p) => `${p.name}: ${formatHourValue(p.completed)} h completed of ${formatHourValue(p.allocated)} h allocated (${p.percent})`)
+        .join('; ')
+  );
 
   protected readonly overviewHours = computed<LedHourTotals | null>(() => {
     const summary = this.summary();

@@ -493,16 +493,22 @@ describe('TeamProgressDetailDialogComponent', () => {
     http.expectNone((r) => !isTime(r));
   });
 
-  it('popup project breakdown rows: # · Project · Allocated · Completed · Progress, most allocated first', () => {
+  it('project breakdown is a bar chart of allocated vs completed hours, most allocated first, on one scale', () => {
     openWith();
 
-    const rows = [...el().querySelectorAll('[data-testid="tp-project-row"]')].map((r) =>
-      [...r.querySelectorAll('td')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim()),
-    );
-    expect(rows).toEqual([
-      ['1', 'Apollo', '120 h', '40 h', '33%'],
-      ['2', 'Zeus', '80 h', '10 h', '13%'],
+    const rows = [...el().querySelectorAll<HTMLElement>('[data-testid="tp-project-row"]')];
+    expect(rows.map((r) => r.querySelector('.tp-project-name')!.textContent!.trim())).toEqual(['Apollo', 'Zeus']);
+    expect(rows.map((r) => r.querySelector('.tp-project-figures')!.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
+      '40 h / 120 h · 33%',
+      '10 h / 80 h · 13%',
     ]);
+    const width = (r: HTMLElement, id: string) => (r.querySelector(`[data-testid="${id}"]`) as HTMLElement).style.width;
+    // The largest allocation (120 h) is the full track.
+    expect(width(rows[0], 'tp-project-allocated')).toBe('100%');
+    expect(width(rows[0], 'tp-project-completed')).toBe('33.3%');
+    expect(width(rows[1], 'tp-project-allocated')).toBe('66.7%');
+    expect(width(rows[1], 'tp-project-completed')).toBe('8.3%');
+    expect(q('tp-projects')!.querySelector('[role="img"]')!.getAttribute('aria-label')).toContain('Apollo: 40 h completed of 120 h allocated');
   });
 
   it('the project breakdown follows the project filter', () => {

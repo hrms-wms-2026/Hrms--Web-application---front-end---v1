@@ -186,34 +186,24 @@
           @if (!isPeriod() && projectBreakdown().length > 0) {
             <section class="tp-panel" aria-labelledby="tp-projects-heading" data-testid="tp-projects">
               <h3 id="tp-projects-heading" class="tp-panel__title">Project breakdown</h3>
-              <table class="tp-mini-table">
-                <caption class="sr-only">Allocated and completed hours by project</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">Project</th>
-                    <th scope="col">Allocated</th>
-                    <th scope="col">Completed</th>
-                    <th scope="col">Progress</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (p of projectBreakdown(); track p.id; let i = $index) {
-                    <tr data-testid="tp-project-row">
-                      <td>{{ i + 1 }}</td>
-                      <td>{{ p.name }}</td>
-                      <td>{{ formatHours(p.allocated) }} h</td>
-                      <td>{{ formatHours(p.completed) }} h</td>
-                      <td>
-                        <span class="tp-project-progress">
-                          <span class="tp-project-bar" aria-hidden="true"><span [style.width.%]="p.share"></span></span>
-                          <span>{{ p.percent }}</span>
-                        </span>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+              <div class="tp-project-chart" role="img" [attr.aria-label]="projectChartLabel()">
+                @for (p of projectBreakdown(); track p.id) {
+                  <div class="tp-project-row" data-testid="tp-project-row" [title]="p.name + ': ' + formatHours(p.completed) + ' h of ' + formatHours(p.allocated) + ' h'">
+                    <p class="tp-project-head">
+                      <span class="tp-project-name">{{ p.name }}</span>
+                      <span class="tp-project-figures">{{ formatHours(p.completed) }} h / {{ formatHours(p.allocated) }} h · {{ p.percent }}</span>
+                    </p>
+                    <span class="tp-project-track" aria-hidden="true">
+                      <span class="tp-project-allocated" data-testid="tp-project-allocated" [style.width.%]="p.allocatedShare"></span>
+                      <span class="tp-project-completed" data-testid="tp-project-completed" [style.width.%]="p.completedShare"></span>
+                    </span>
+                  </div>
+                }
+              </div>
+              <ul class="tp-project-legend" aria-hidden="true">
+                <li><span class="tp-project-key tp-project-key--allocated"></span>Allocated</li>
+                <li><span class="tp-project-key tp-project-key--completed"></span>Completed</li>
+              </ul>
             </section>
           }
 
