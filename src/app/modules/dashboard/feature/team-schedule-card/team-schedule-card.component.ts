@@ -41,15 +41,12 @@ import {
   timelineSpan,
   unscheduledMinutes,
 } from '../../utils/team-schedule-format.util';
-import {
-  SCHEDULE_MEDIUM_ROWS,
-  ScheduleView,
-  scheduleView,
-} from '../../utils/team-schedule-layout.util';
+import { ScheduleView, resolveScheduleView } from '../../utils/team-schedule-layout.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamScheduleDetailDialogComponent } from '../team-schedule-detail-dialog/team-schedule-detail-dialog.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
+const SCHEDULE_MEDIUM_ROWS = 5;
 
 /**
  * My Team "Today's team schedule" (key team-schedule, My Team widgets design 2026-10-29 section 6.2): each report's plan
@@ -93,7 +90,7 @@ export class TeamScheduleCardComponent implements OnInit {
 
   readonly view = computed<ScheduleView>(() => {
     const { width, height } = this.size();
-    this.lastView = scheduleView(width, height, this.lastView);
+    this.lastView = resolveScheduleView(width, height, this.lastView);
     return this.lastView;
   });
 
