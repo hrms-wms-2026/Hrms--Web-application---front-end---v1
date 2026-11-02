@@ -69,7 +69,7 @@
             <p class="wbl-neutral" data-testid="wbl-neutral">{{ neutral() }}</p>
           }
 
-          @if (view() === 'medium') {
+          @if (view() === 'xs') {
             <ul class="wbl-rows" data-testid="wbl-rows">
               @for (m of mediumRows(); track m.employeeId) {
                 <li class="wbl-row" data-testid="wbl-row">

@@ -21,11 +21,12 @@ import {
   presenceState,
   timeLeft
 } from '../../utils/team-presence-format.util';
-import { PRESENCE_MEDIUM_ROWS, PresenceView, presenceView } from '../../utils/team-presence-layout.util';
+import { PresenceView, resolvePresenceView } from '../../utils/team-presence-layout.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamStatusDetailDialogComponent } from '../team-status-detail-dialog/team-status-detail-dialog.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
+const PRESENCE_MEDIUM_ROWS = 5;
 /** Elapsed times tick between refreshes; the counts only change when the data reloads. */
 const TICK_MS = 30_000;
 
@@ -78,7 +79,7 @@ export class TeamStatusCardComponent implements OnInit {
   /** The view for the card's current size, with ~20px hysteresis; 'medium' until the first measurement. */
   readonly view = computed<PresenceView>(() => {
     const { width, height } = this.size();
-    this.lastView = presenceView(width, height, this.lastView);
+    this.lastView = resolvePresenceView(width, height, this.lastView);
     return this.lastView;
   });
 
