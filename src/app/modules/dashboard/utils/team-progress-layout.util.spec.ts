@@ -245,3 +245,42 @@ describe('team-progress-layout.util', () => {
     });
   });
 });
+
+describe('team progress layout: planned-vs-worked sections (coverage audit)', () => {
+  const rows = (n: number) => n * 96 + (n - 1) * 12;
+
+  it('medium adds the top-3 workload only when the lists keep two rows', () => {
+    expect(planTeamProgressLayout('medium', 700, rows(4)).workloadRows).toBe(0);
+    const tall = planTeamProgressLayout('medium', 700, rows(8));
+    expect(tall.workloadRows).toBe(3);
+    expect(tall.listRows).toBeGreaterThanOrEqual(2);
+  });
+
+  it('wide adds the unscheduled callout, never the band or workload', () => {
+    const plan = planTeamProgressLayout('wide', 900, rows(5));
+    expect(plan).toMatchObject({ timeCallout: true, timeBand: false, workloadRows: 0 });
+  });
+
+  it('large and maximum add the band, then the top-5 workload as they grow', () => {
+    expect(planTeamProgressLayout('large', 900, rows(6))).toMatchObject({ timeBand: false, workloadRows: 0 });
+    expect(planTeamProgressLayout('large', 900, rows(8))).toMatchObject({ timeBand: true });
+    expect(planTeamProgressLayout('large', 900, rows(8)).workloadRows).toBe(0);
+    expect(planTeamProgressLayout('maximum', 1300, rows(11))).toMatchObject({ timeBand: true, workloadRows: 5 });
+  });
+
+  it('a time section never takes the lists below two rows, or below what they had', () => {
+    for (const mode of ['medium', 'wide', 'tall', 'large', 'maximum'] as const) {
+      for (let r = 3; r <= 12; r++) {
+        const plan = planTeamProgressLayout(mode, 1300, rows(r));
+        const usesTime = plan.timeBand || plan.timeCallout || plan.workloadRows > 0;
+        if (usesTime && plan.listRows > 0) expect(plan.listRows, `${mode} ${r} rows`).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  it('mini, xs and small never show time sections', () => {
+    for (const mode of ['mini', 'xs', 'small'] as const) {
+      expect(planTeamProgressLayout(mode, 400, rows(8))).toMatchObject({ timeBand: false, timeCallout: false, workloadRows: 0 });
+    }
+  });
+});
