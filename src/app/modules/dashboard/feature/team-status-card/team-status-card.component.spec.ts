@@ -10,8 +10,6 @@ import { presenceMember, presenceResponse } from '../../utils/team-presence.test
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamStatusCardComponent } from './team-status-card.component';
 
-const cols = (n: number) => n * 97 + (n - 1) * 12;
-const rows = (n: number) => n * 96 + (n - 1) * 12;
 
 const TEAM = [
   presenceMember('working', {

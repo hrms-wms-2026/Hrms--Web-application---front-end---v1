@@ -27,18 +27,16 @@
 
   @if (store.data(); as data) {
     <div class="wbld">
-      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="4" ariaLabel="Right now" />
+      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Right now" />
 
       <div class="wbld-charts">
         <section class="wbld-panel">
-          <p class="wbld-title">
-            Right now <span class="wbld-muted">· {{ data.totalMembers }} people</span>
-          </p>
+          <p class="wbld-title">Status distribution</p>
           <div class="wbld-distribution">
+            <div class="wbld-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
             <svg
               viewBox="0 0 42 42"
-              [style.width.px]="donutPx"
-              [style.height.px]="donutPx"
+              class="block h-full w-full"
               role="img"
               aria-label="Working, break and leave right now"
             >
@@ -56,20 +54,29 @@
                 />
               }
             </svg>
+              <p class="wbld-donut-center">
+                <span class="wbld-donut-value">{{ data.totalMembers }}</span>
+                <span class="wbld-muted">Team members</span>
+              </p>
+            </div>
             <ul class="wbld-legend">
               @for (row of legend(); track row.key) {
                 <li>
                   <span class="wbld-dot" [style.background]="row.color"></span>
                   <span class="wbld-legend-label">{{ row.label }}</span>
                   <span class="wbld-legend-count">{{ row.count }}</span>
+                  <span class="wbld-muted">({{ pct(row.count, data.totalMembers) }})</span>
                 </li>
               }
             </ul>
           </div>
+          @if (neutral()) {
+            <p class="wbld-muted wbld-neutral" data-testid="wbld-neutral">{{ neutral() }}</p>
+          }
         </section>
         <section class="wbld-panel">
           <p class="wbld-title">
-            Working hours this week <span class="wbld-muted">· attendance time, breaks on top</span>
+            Working hours trend <span class="wbld-muted">· attendance time, breaks on top, dashed = average per person</span>
           </p>
           @if (weekError()) {
             <p class="wbld-muted">
@@ -77,7 +84,7 @@
               <button type="button" class="wbld-link" (click)="retryWeek()">Try again</button>
             </p>
           } @else if (week(); as w) {
-            <app-working-hours-chart class="wbld-chart" [days]="w.days" />
+            <app-working-hours-chart class="wbld-chart" [days]="w.days" [teamAverage]="true" [showLeave]="true" />
           } @else {
             <p class="wbld-muted" aria-busy="true">Loading…</p>
           }
@@ -87,7 +94,7 @@
       <section class="wbld-panel">
         <div class="wbld-table-head">
           <p class="wbld-title">
-            Team
+            Employee status (today)
             @if (data.totalMembers > data.members.length) {
               <span class="wbld-muted"
                 >· showing {{ data.members.length }} of {{ data.totalMembers }}</span
@@ -103,9 +110,10 @@
           [rows]="members()"
           [trackBy]="trackByMember"
           caption="Team members right now"
-          minWidth="760px"
+          minWidth="980px"
           emptyMessage="No one to show."
         >
+          <ng-template appDataTableCell="rank" let-row>{{ rank(row) }}</ng-template>
           <ng-template appDataTableCell="name" let-row>
             <span class="wbld-person">
               <app-avatar size="xs" [avatarUrl]="avatarUrl(row)" [userName]="row.displayName" />
@@ -120,17 +128,39 @@
               >{{ stateLabel(row) }}</span
             >
           </ng-template>
-          <ng-template appDataTableCell="since" let-row>{{ sinceText(row) }}</ng-template>
+          <ng-template appDataTableCell="start" let-row>{{ startText(row) }}</ng-template>
           <ng-template appDataTableCell="elapsed" let-row>{{ elapsedText(row) }}</ng-template>
           <ng-template appDataTableCell="remaining" let-row
             ><span data-testid="wbld-remaining">{{ remainingText(row) }}</span></ng-template
           >
-          <ng-template appDataTableCell="attendance" let-row>{{ attendanceText(row) }}</ng-template>
+          <ng-template appDataTableCell="todayHours" let-row>{{ todayHours(row) }}</ng-template>
+          <ng-template appDataTableCell="progress" let-row>
+            @let p = progress(row);
+            <span class="wbld-progress">
+              <span class="wbld-bar" aria-hidden="true">
+                @if (p !== null) {
+                  <span [style.width.%]="p" [style.background]="stateColor(row) ?? '#94a3b8'"></span>
+                }
+              </span>
+              <span class="wbld-pct">{{ progressText(row) }}</span>
+            </span>
+          </ng-template>
           <ng-template appDataTableCell="attention" let-row
             ><span class="wbld-attention">{{ attentionText(row) }}</span></ng-template
           >
         </app-data-table>
       </section>
+
+      @if (banners().length > 0) {
+        <ul class="wbld-banners" aria-label="Insights">
+          @for (b of banners(); track b.key) {
+            <li class="wbld-banner" [style.--tone]="b.color" [attr.data-testid]="'wbld-banner-' + b.key">
+              <p class="wbld-banner-text">{{ b.text }}</p>
+              <p class="wbld-muted">{{ b.detail }}</p>
+            </li>
+          }
+        </ul>
+      }
     </div>
   }
 </app-modal>

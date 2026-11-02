@@ -223,3 +223,70 @@
   font-size: 0.75rem;
   color: rgb(180 83 9);
 }
+
+.wbld-donut {
+  position: relative;
+  flex: none;
+}
+.wbld-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+.wbld-donut-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+.wbld-neutral {
+  margin-top: 8px;
+}
+.wbld-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wbld-bar {
+  display: block;
+  height: 6px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(226 232 240);
+}
+.wbld-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+}
+.wbld-pct {
+  width: 40px;
+  flex: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.wbld-banners {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wbld-banner {
+  --tone: #3b82f6;
+  border: 1px solid color-mix(in srgb, var(--tone) 22%, #fff);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tone) 8%, #fff);
+  padding: 12px 14px;
+}
+.wbld-banner-text {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--tone) 80%, rgb(15 23 42));
+}

@@ -21,6 +21,7 @@ import {
 import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
+import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.service';
 import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours-api.service';
 import { TeamTodayMember, TeamWorkingHoursResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
@@ -38,7 +39,35 @@ import {
   presenceFromSummary,
   presenceState,
   timeLeft,
+  todayHoursText,
 } from '../../utils/team-presence-format.util';
+import { formatPercent } from '../../utils/team-progress-format.util';
+
+/** The Team Attendance widget's week rate (the same source, so the two widgets agree); 'error' drops the tile. */
+type AttendanceRate = { readonly periodRate: number | null; readonly deltaPp: number | null } | 'error' | null;
+
+interface Banner {
+  readonly key: 'leave' | 'break' | 'working';
+  readonly text: string;
+  readonly detail: string;
+  readonly color: string;
+}
+
+/** Worked minutes per person with a record over a week; null without any record. */
+function averageWorked(week: TeamWorkingHoursResponse | null): number | null {
+  if (!week) return null;
+  const records = week.days.reduce((n, d) => n + d.peopleWithRecord, 0);
+  return records > 0 ? week.days.reduce((n, d) => n + d.workedMinutes, 0) / records : null;
+}
+
+function arrow(change: number): string {
+  return change > 0 ? '↑' : change < 0 ? '↓' : '→';
+}
+
+function mondayBefore(weekStart: string): string {
+  const [y, m, d] = weekStart.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d - 7)).toISOString().slice(0, 10);
+}
 
 /**
  * The Working / Break / Leave popup, in the Team Progress popup's shell: one KPI tile row, the right-now donut, the
@@ -66,22 +95,30 @@ export class TeamStatusDetailDialogComponent {
 
   protected readonly store = inject(MyTeamTodayStore);
   private readonly api = inject(TeamWorkingHoursApiService);
+  private readonly attendanceApi = inject(TeamAttendanceApiService);
   /** The file download; a field so a test can stand in for the browser download. */
   downloadFile = downloadCsv;
 
   protected readonly donutPx = DASHBOARD_DONUT_PX;
   protected readonly week = signal<TeamWorkingHoursResponse | null>(null);
   protected readonly weekError = signal(false);
+  /** The week before, for "vs last week" on the average working time. */
+  protected readonly lastWeek = signal<TeamWorkingHoursResponse | null>(null);
+  protected readonly attendanceRate = signal<AttendanceRate>(null);
   private weekSub: Subscription | null = null;
+  private lastWeekSub: Subscription | null = null;
+  private rateSub: Subscription | null = null;
 
   protected readonly columns: DataTableColumn[] = [
-    { key: 'name', label: 'Name', width: '24%' },
-    { key: 'state', label: 'State', width: '14%' },
-    { key: 'since', label: 'Since', width: '18%' },
-    { key: 'elapsed', label: 'Elapsed', width: '10%' },
-    { key: 'remaining', label: 'Remaining', width: '14%' },
-    { key: 'attendance', label: 'Attendance', width: '10%', align: 'end' },
-    { key: 'attention', label: 'Attention', width: '10%', wrap: true },
+    { key: 'rank', label: '#', width: '4%' },
+    { key: 'name', label: 'Employee', width: '18%' },
+    { key: 'state', label: 'Status', width: '11%' },
+    { key: 'start', label: 'Start', width: '9%' },
+    { key: 'elapsed', label: 'Elapsed', width: '8%' },
+    { key: 'remaining', label: 'Remaining', width: '12%' },
+    { key: 'todayHours', label: 'Today hours', width: '10%' },
+    { key: 'progress', label: 'Progress', width: '14%' },
+    { key: 'attention', label: 'Attention', width: '14%', wrap: true },
   ];
   protected readonly trackByMember = (m: TeamTodayMember): string => m.employeeId;
 
@@ -92,39 +129,78 @@ export class TeamStatusDetailDialogComponent {
 
   protected readonly tiles = computed<KpiTile[]>(() => {
     const g = this.groups();
+    const total = this.store.data()?.totalMembers ?? 0;
     if (!g) return [];
-    return [
+    const ofTeam = (n: number) => `${formatPercent(n, total)} of team`;
+    const average = this.average();
+    const tiles: KpiTile[] = [
+      { label: 'Working', value: g.working, hint: ofTeam(g.working), icon: 'users', tone: 'accent', testId: 'wbld-tile-working' },
+      { label: 'On break', value: g.onBreak, hint: ofTeam(g.onBreak), icon: 'clock', tone: 'warning', testId: 'wbld-tile-break' },
+      { label: 'On leave', value: g.onLeave, hint: ofTeam(g.onLeave), icon: 'layers', tone: 'danger', testId: 'wbld-tile-leave' },
       {
-        label: 'Working',
-        value: g.working,
-        icon: 'users',
-        tone: 'accent',
-        testId: 'wbld-tile-working',
-      },
-      {
-        label: 'Break',
-        value: g.onBreak,
+        label: 'Avg working time',
+        value: average === null ? '—' : minutesText(average),
+        hint: this.averageChange() ?? 'per person with a record this week',
         icon: 'clock',
-        tone: 'warning',
-        testId: 'wbld-tile-break',
-      },
-      {
-        label: 'Leave',
-        value: g.onLeave,
-        hint: 'approved leave you can see',
-        icon: 'layers',
-        tone: 'danger',
-        testId: 'wbld-tile-leave',
-      },
-      {
-        label: 'Not clocked in',
-        value: g.neutral.notClockedIn + g.neutral.absent,
-        hint: neutralLine(g.neutral) || 'everyone is accounted for',
-        icon: 'alert-triangle',
         tone: 'neutral',
-        testId: 'wbld-tile-neutral',
+        testId: 'wbld-tile-avg',
       },
     ];
+    const rate = this.attendanceRate();
+    if (rate !== 'error') {
+      tiles.push({
+        label: 'Attendance rate',
+        value: rate === null || rate.periodRate === null ? '—' : formatPercent(rate.periodRate, 100),
+        hint: rate === null ? 'Loading…' : rate.deltaPp === null ? 'this week' : `${arrow(rate.deltaPp)} ${Math.abs(Math.round(rate.deltaPp * 10) / 10)} pts vs last week`,
+        icon: 'check-circle',
+        tone: 'success',
+        testId: 'wbld-tile-rate',
+      });
+    }
+    return tiles;
+  });
+
+  /** This week's worked minutes per person with a record. */
+  protected readonly average = computed(() => averageWorked(this.week()));
+  /** "↑ 8% vs last week"; null until both weeks have an average. */
+  protected readonly averageChange = computed(() => {
+    const now = this.average();
+    const before = averageWorked(this.lastWeek());
+    if (now === null || before === null || before <= 0) return null;
+    const change = Math.round(((now - before) * 1000) / before) / 10;
+    return `${arrow(change)} ${Math.abs(change)}% vs last week`;
+  });
+
+  /** The neutral statuses (not clocked in, clocked out, absent), joined; '' when there are none. */
+  protected readonly neutral = computed(() => {
+    const g = this.groups();
+    return g ? neutralLine(g.neutral) : '';
+  });
+
+  /** Only counts above zero get a banner: who is on leave, on a break, and how many are working. */
+  protected readonly banners = computed<Banner[]>(() => {
+    const g = this.groups();
+    const total = this.store.data()?.totalMembers ?? 0;
+    if (!g) return [];
+    const names = (status: string) =>
+      this.members()
+        .filter((m) => m.status === status)
+        .map((m) => m.displayName)
+        .join(', ');
+    const people = (n: number) => (n === 1 ? '1 employee is' : `${n} employees are`);
+    const banners: Banner[] = [];
+    if (g.onLeave > 0)
+      banners.push({ key: 'leave', text: `${people(g.onLeave)} currently on leave`, detail: names('on_leave'), color: PRESENCE_COLORS.leave });
+    if (g.onBreak > 0)
+      banners.push({ key: 'break', text: `${people(g.onBreak)} on break`, detail: names('on_break'), color: PRESENCE_COLORS.break });
+    if (g.working > 0)
+      banners.push({
+        key: 'working',
+        text: `${people(g.working)} working`,
+        detail: `${formatPercent(g.working, total)} of the team`,
+        color: PRESENCE_COLORS.working,
+      });
+    return banners;
   });
 
   protected readonly legend = computed(() => {
@@ -153,6 +229,7 @@ export class TeamStatusDetailDialogComponent {
   });
   protected readonly donut = computed<DonutArc[]>(() => donutArcs(this.legend()));
   protected readonly members = computed(() => orderPresence(this.store.data()?.members ?? []));
+  private readonly rankOf = computed(() => new Map(this.members().map((m, i) => [m.employeeId, i + 1])));
 
   constructor() {
     // The week's working hours, fetched when the popup opens and again when the card's data refreshes.
@@ -162,7 +239,11 @@ export class TeamStatusDetailDialogComponent {
       if (!open || !asOf) return;
       untracked(() => this.loadWeek());
     });
-    inject(DestroyRef).onDestroy(() => this.weekSub?.unsubscribe());
+    inject(DestroyRef).onDestroy(() => {
+      this.weekSub?.unsubscribe();
+      this.lastWeekSub?.unsubscribe();
+      this.rateSub?.unsubscribe();
+    });
   }
 
   protected stateLabel(m: TeamTodayMember): string {
@@ -189,12 +270,38 @@ export class TeamStatusDetailDialogComponent {
     return timeLeft(m, new Date())?.text ?? '—';
   }
 
+  protected rank(m: TeamTodayMember): number | undefined {
+    return this.rankOf().get(m.employeeId);
+  }
+
+  protected startText(m: TeamTodayMember): string {
+    if (m.clockInAt) return clockTime(m.clockInAt);
+    return presenceState(m.status) === 'leave' ? 'All day' : '—';
+  }
+
+  protected todayHours(m: TeamTodayMember): string {
+    return todayHoursText(m);
+  }
+
+  /** Attendance of the work window for the bar (capped); null without a window. */
+  protected progress(m: TeamTodayMember): number | null {
+    return m.expectedMinutes ? Math.min(100, (m.attendanceMinutes * 100) / m.expectedMinutes) : null;
+  }
+
+  protected progressText(m: TeamTodayMember): string {
+    return m.expectedMinutes ? formatPercent(m.attendanceMinutes, m.expectedMinutes) : '—';
+  }
+
   protected attendanceText(m: TeamTodayMember): string {
     return m.attendanceMinutes > 0 ? minutesText(m.attendanceMinutes) : '—';
   }
 
   protected attentionText(m: TeamTodayMember): string {
     return [m.isLate ? 'Late' : '', m.attentionLabel ?? ''].filter((s) => s.length > 0).join(' · ');
+  }
+
+  protected pct(part: number, whole: number): string {
+    return formatPercent(part, whole);
   }
 
   protected avatarUrl(m: TeamTodayMember): string | null {
@@ -222,6 +329,9 @@ export class TeamStatusDetailDialogComponent {
       'Elapsed',
       'Remaining',
       'Attendance',
+      'Start',
+      'Today hours',
+      'Progress',
       'Late',
       'Attention',
       'Leave type',
@@ -234,6 +344,9 @@ export class TeamStatusDetailDialogComponent {
       m.stateSince ? minutesText(minutesSince(m.stateSince, now)) : '',
       timeLeft(m, now)?.text ?? '',
       m.attendanceMinutes > 0 ? minutesText(m.attendanceMinutes) : '',
+      m.clockInAt ? clockTime(m.clockInAt) : '',
+      todayHoursText(m),
+      m.expectedMinutes ? formatPercent(m.attendanceMinutes, m.expectedMinutes) : '',
       m.isLate ? 'Yes' : '',
       m.attentionLabel ?? '',
       m.leave ? m.leave.leaveTypeName : '',
@@ -245,9 +358,30 @@ export class TeamStatusDetailDialogComponent {
   private loadWeek(): void {
     this.weekSub?.unsubscribe();
     this.weekError.set(false);
-    this.weekSub = this.api.getWeek().subscribe({
-      next: (week) => this.week.set(week),
+    this.weekSub = this.api.getWeek(null).subscribe({
+      next: (week) => {
+        this.week.set(week);
+        this.loadLastWeek(mondayBefore(week.weekStart));
+      },
       error: () => this.weekError.set(true),
+    });
+    this.loadRate();
+  }
+
+  private loadLastWeek(weekStart: string): void {
+    this.lastWeekSub?.unsubscribe();
+    this.lastWeekSub = this.api.getWeek(weekStart).subscribe({
+      next: (week) => this.lastWeek.set(week),
+      error: () => this.lastWeek.set(null),
+    });
+  }
+
+  /** The Team Attendance summary for this week: the same population and rate as that widget. */
+  private loadRate(): void {
+    this.rateSub?.unsubscribe();
+    this.rateSub = this.attendanceApi.getSummary({ mode: 'week', anchor: null, departmentId: null }).subscribe({
+      next: (summary) => this.attendanceRate.set({ periodRate: summary.periodRate, deltaPp: summary.deltaPp }),
+      error: () => this.attendanceRate.set('error'),
     });
   }
 }
