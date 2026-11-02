@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   completionText,
   hourTicks,
+  itemColor,
   notRankedText,
   percentText,
   spanPosition,
@@ -126,5 +127,22 @@ describe("Today's team schedule format", () => {
     expect(spanPosition(at(7), at(8), span)).toBeNull();
     expect(spanPosition(at(16), at(19), span)).toEqual({ left: 87.5, width: 12.5 });
     expect(hourTicks(span)).toHaveLength(9);
+  });
+});
+
+describe("Today's team schedule format (coverage audit)", () => {
+  it('a meeting is purple whatever its status; a task colour follows its status', () => {
+    const item = (kind: 'task' | 'meeting', status: string) =>
+      ({ kind, taskId: 't', title: 'x', start: at(9), end: at(10), status, isPrivate: false }) as never;
+    expect(itemColor(item('meeting', 'finished'))).toBe('#8b5cf6');
+    expect(itemColor(item('task', 'completed'))).toBe('#10b981');
+    expect(itemColor(item('task', 'in_progress'))).toBe('#3b82f6');
+    expect(itemColor(item('task', 'scheduled_not_clocked'))).toBe('#cbd5e1');
+  });
+
+  it('every not-ranked reason reads as words, never a code', () => {
+    for (const reason of ['no_items_yet', 'no_planned_task_time', 'on_leave', 'planner_off'] as const) {
+      expect(notRankedText(reason)).toMatch(/^[A-Z][a-z ]+$/);
+    }
   });
 });

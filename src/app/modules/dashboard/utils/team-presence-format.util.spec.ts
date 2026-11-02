@@ -93,3 +93,22 @@ describe('Working / Break / Leave format', () => {
     expect(working).toEqual({ text: '4h of shift left', usedPercent: 50 });
   });
 });
+
+describe('Working / Break / Leave format (coverage audit)', () => {
+  const NOW2 = new Date('2026-10-29T10:00:00Z');
+
+  it('a break allowance used up shows 0m left and a full bar, never negative', () => {
+    expect(
+      timeLeft(presenceMember('on_break', { stateSince: '2026-10-29T09:00:00Z', breakRemainingMinutes: 0 }), NOW2),
+    ).toEqual({ text: '0m break left', usedPercent: 100 });
+  });
+
+  it('past the shift end shows 0m left, never a negative time', () => {
+    expect(
+      timeLeft(
+        presenceMember('working', { stateSince: '2026-10-29T01:00:00Z', shiftEndsAt: '2026-10-29T09:00:00Z' }),
+        NOW2,
+      ),
+    ).toEqual({ text: '0m of shift left', usedPercent: 100 });
+  });
+});
