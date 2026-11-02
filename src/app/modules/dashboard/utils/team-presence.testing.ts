@@ -23,6 +23,8 @@ export function presenceMember(
     breakRemainingMinutes: null,
     shiftEndsAt: null,
     attendanceMinutes: 0,
+    expectedMinutes: null,
+    breaks: [],
     ...overrides,
   };
 }

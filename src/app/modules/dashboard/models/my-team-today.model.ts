@@ -25,6 +25,15 @@ export interface TeamTodayMember {
   shiftEndsAt: string | null;
   /** Attendance minutes today (breaks excluded); 0 without a record. */
   attendanceMinutes: number;
+  /** The legal entity's work window today in minutes; 0 on leave, null without working hours. */
+  expectedMinutes: number | null;
+  /** Today's breaks ordered by start; an open break has a null end. */
+  breaks: TeamTodayBreak[];
+}
+
+export interface TeamTodayBreak {
+  start: string;
+  end: string | null;
 }
 
 export interface TeamTodaySummary {

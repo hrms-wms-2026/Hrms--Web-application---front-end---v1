@@ -39,4 +39,21 @@ describe('TeamScheduleApiService', () => {
     expect(req.request.params.get('date')).toBe('2026-10-28');
     req.flush({});
   });
+
+  it('GETs the team week for a Monday', () => {
+    service.getTeamWeek('2026-10-26').subscribe();
+
+    const req = http.expectOne((r) => r.url === `${url}/week`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('weekStart')).toBe('2026-10-26');
+    req.flush({});
+  });
+
+  it('GETs the current week without weekStart', () => {
+    service.getTeamWeek(null).subscribe();
+
+    const req = http.expectOne((r) => r.url === `${url}/week`);
+    expect(req.request.params.keys()).toEqual([]);
+    req.flush({});
+  });
 });

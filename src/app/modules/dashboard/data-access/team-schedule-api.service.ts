@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { TeamScheduleResponse } from '../models/team-schedule.model';
+import { TeamScheduleResponse, TeamScheduleWeekResponse } from '../models/team-schedule.model';
 
 @Injectable({ providedIn: 'root' })
 export class TeamScheduleApiService {
@@ -14,5 +14,12 @@ export class TeamScheduleApiService {
     let params = new HttpParams();
     if (date) params = params.set('date', date);
     return this.http.get<TeamScheduleResponse>(this.url, { params });
+  }
+
+  /** weekStart: a Monday (yyyy-MM-dd), this week or earlier; null = the viewer's current week. */
+  getTeamWeek(weekStart: string | null): Observable<TeamScheduleWeekResponse> {
+    let params = new HttpParams();
+    if (weekStart) params = params.set('weekStart', weekStart);
+    return this.http.get<TeamScheduleWeekResponse>(`${this.url}/week`, { params });
   }
 }

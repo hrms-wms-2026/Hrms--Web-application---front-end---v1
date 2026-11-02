@@ -55,6 +55,15 @@ export interface TeamScheduleMember {
   items: TeamScheduleItem[];
   unscheduled: TeamScheduleUnscheduled[];
   conflicts: TeamScheduleConflict[];
+  /** The work window today (Team Status); null without presence. */
+  expectedMinutes: number | null;
+  /** Today's breaks (Team Status); empty without presence. */
+  breaks: TeamScheduleBreak[];
+}
+
+export interface TeamScheduleBreak {
+  start: string;
+  end: string | null;
 }
 
 export interface TeamScheduleSummary {
@@ -75,4 +84,53 @@ export interface TeamScheduleResponse {
   asOf: string;
   summary: TeamScheduleSummary;
   members: TeamScheduleMember[];
+}
+
+/**
+ * GET planner/team/week (2026-11-02 design match section 7.4): the same population, each person's minutes on their own
+ * local days. Planner off = every plan field 0 and coverage null; clocked minutes still filled.
+ */
+export interface TeamWeekDay {
+  date: string;
+  plannedTaskMinutes: number;
+  plannedMeetingMinutes: number;
+  clockedMinutes: number;
+  scheduledMinutes: number;
+  outsideSlotMinutes: number;
+  noPlanMinutes: number;
+}
+
+export interface TeamWeekTotals {
+  /** Task + meeting minutes for the whole week (previous: planned task minutes of the elapsed span). */
+  plannedMinutes: number;
+  clockedMinutes: number;
+  scheduledMinutes: number;
+  /** Outside slot + no plan. */
+  unscheduledMinutes: number;
+  /** Scheduled / planned task minutes elapsed so far, capped at 100; null without elapsed plan. */
+  coveragePercent: number | null;
+}
+
+export interface TeamWeekMember {
+  employeeId: string;
+  displayName: string;
+  avatarFileId: string | null;
+  plannedMinutes: number;
+  clockedMinutes: number;
+  scheduledMinutes: number;
+  unscheduledMinutes: number;
+  coveragePercent: number | null;
+}
+
+export interface TeamScheduleWeekResponse {
+  weekStart: string;
+  weekEnd: string;
+  plannerEnabled: boolean;
+  asOf: string;
+  days: TeamWeekDay[];
+  totals: TeamWeekTotals;
+  /** The same elapsed span of the week before. */
+  previous: TeamWeekTotals;
+  /** Ordered by planned, then clocked, then name (the workload order). */
+  members: TeamWeekMember[];
 }
