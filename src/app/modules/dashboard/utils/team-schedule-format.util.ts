@@ -3,18 +3,26 @@ import {
   TeamScheduleMember,
   TeamScheduleNotRankedReason,
   TeamScheduleSummary,
+  TeamScheduleWeekResponse,
 } from '../models/team-schedule.model';
+import { PlannedActualDay, PlannedActualRow } from './planned-actual-format.util';
 import { DonutArc, donutArcs } from './status-donut.util';
 
-/** Item colours (My Team widgets design 2026-10-29). Unscheduled segments are amber stripes. */
+/** Item colours (2026-11-02 design match). Breaks are amber; unscheduled work is a red hatched strip. */
 export const SCHEDULE_COLORS = {
   completed: '#10b981',
   inProgress: '#3b82f6',
   pending: '#cbd5e1',
   meeting: '#8b5cf6',
-  unscheduled: '#f59e0b',
+  break: '#f59e0b',
+  unscheduled: '#ef4444',
   conflict: '#ef4444',
 } as const;
+
+/** Workload level thresholds over (planned task + meeting minutes) / the work window: High at 90% or more, Medium from
+ * 60%, else Low (2026-11-02 design match section 7.5). */
+export const WORKLOAD_HIGH = 0.9;
+export const WORKLOAD_MEDIUM = 0.6;
 
 const STATUS_LABEL: Record<string, string | undefined> = {
   completed: 'Completed',
@@ -130,4 +138,62 @@ export function hourTicks(span: { start: Date; end: Date }): { label: string; le
     });
   }
   return ticks;
+}
+
+/** The card's donut over every item today: completed, in progress and pending tasks, and meetings. */
+export function itemDonut(summary: TeamScheduleSummary): DonutArc[] {
+  return donutArcs([
+    { key: 'completed', count: summary.tasksCompleted, color: SCHEDULE_COLORS.completed },
+    { key: 'inProgress', count: summary.tasksInProgress, color: SCHEDULE_COLORS.inProgress },
+    { key: 'pending', count: summary.tasksPending, color: SCHEDULE_COLORS.pending },
+    { key: 'meetings', count: summary.meetings, color: SCHEDULE_COLORS.meeting },
+  ]);
+}
+
+/** What a labelled timeline block reads. */
+export function timelineLabel(item: TeamScheduleItem): 'Task' | 'Meeting' {
+  return item.kind === 'meeting' ? 'Meeting' : 'Task';
+}
+
+/** Each member as a planned-vs-actual row, in the backend's order. Planned = task + meeting minutes. */
+export function toPlannedActualRows(members: readonly TeamScheduleMember[]): PlannedActualRow[] {
+  return members.map((m) => ({
+    id: m.employeeId,
+    label: m.displayName,
+    avatarFileId: m.avatarFileId,
+    planned: m.plannedTaskMinutes + m.plannedMeetingMinutes,
+    scheduled: m.scheduledMinutes,
+    outside: m.outsideSlotMinutes,
+    noPlan: m.noPlanMinutes,
+    completion: m.itemCompletionPercent,
+  }));
+}
+
+/** Today's breaks as closed intervals: an open break runs to now. */
+export function breakSegments(member: TeamScheduleMember, now: Date): { start: string; end: string }[] {
+  return member.breaks.map((b) => ({ start: b.start, end: b.end ?? now.toISOString() }));
+}
+
+/** High / Medium / Low against the work window; null without one (never a guessed level). */
+export function workloadLevel(member: TeamScheduleMember): 'High' | 'Medium' | 'Low' | null {
+  if (!member.expectedMinutes) return null;
+  const share = (member.plannedTaskMinutes + member.plannedMeetingMinutes) / member.expectedMinutes;
+  if (share >= WORKLOAD_HIGH) return 'High';
+  return share >= WORKLOAD_MEDIUM ? 'Medium' : 'Low';
+}
+
+/** The week's days for app-planned-actual-week-chart. A day's coverage (in plan / planned task minutes, capped at 100)
+ * only once the day is over: today's plan has not all elapsed, and the response has no per-day elapsed plan. */
+export function toWeekChartDays(week: TeamScheduleWeekResponse, today: string | null): PlannedActualDay[] {
+  return week.days.map((d) => ({
+    date: d.date,
+    planned: d.plannedTaskMinutes + d.plannedMeetingMinutes,
+    scheduled: d.scheduledMinutes,
+    outside: d.outsideSlotMinutes,
+    noPlan: d.noPlanMinutes,
+    coveragePercent:
+      week.plannerEnabled && today !== null && d.date < today && d.plannedTaskMinutes > 0
+        ? Math.min(100, Math.round((d.scheduledMinutes * 1000) / d.plannedTaskMinutes) / 10)
+        : null,
+  }));
 }

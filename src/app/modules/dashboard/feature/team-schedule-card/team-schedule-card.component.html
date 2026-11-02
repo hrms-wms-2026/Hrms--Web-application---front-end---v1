@@ -8,189 +8,347 @@
   emptyMessage="No one reports to you"
   (retry)="retry()"
 >
-  <app-popout-header-actions
-    widget-actions
-    [refreshedAt]="view() === 'mini' ? null : store.loadedAt()"
-    [refreshing]="refreshing()"
-    [expanded]="false"
-    [canExpand]="true"
-    [revealOnHover]="true"
-    (refresh)="retry()"
-    (expand)="openDetail()"
-  />
+  <div widget-actions class="flex min-w-0 items-center gap-1">
+    @if (!plannerEnabled() && (drawn() === 'rows' || drawn() === 'timeline')) {
+      <!-- The rows view budgets no body height for the note, so it sits beside the title. -->
+      <span class="tsc-off-chip" data-testid="tsc-planner-off" title="Schedules aren't shown. Clocked time still counts.">Planner is off</span>
+    }
+    <app-popout-header-actions
+      [refreshedAt]="drawn() === 'rows' || drawn() === 'timeline' ? store.loadedAt() : null"
+      [refreshing]="refreshing()"
+      [expanded]="false"
+      [canExpand]="true"
+      [revealOnHover]="true"
+      (refresh)="retry()"
+      (expand)="openDetail()"
+    />
+  </div>
 
   @if (store.data(); as data) {
-    <ng-template #plannerOff>
-      <p class="tsc-note" data-testid="tsc-planner-off">
-        Planner is off · schedules aren't shown. Clocked time still counts.
-      </p>
+    <!-- One donut size (DASHBOARD_DONUT_PX): every item today, meetings included. -->
+    <ng-template #donutTpl>
+      <div class="tsc-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="tsc-donut">
+        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+          @for (arc of donut(); track arc.key) {
+            <circle
+              cx="21"
+              cy="21"
+              r="15.9155"
+              fill="none"
+              stroke-width="6"
+              [attr.stroke]="arc.color"
+              [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+              [attr.stroke-dashoffset]="arc.offset"
+            />
+          }
+        </svg>
+        <p class="tsc-donut-center" data-testid="tsc-center">
+          <span class="tsc-donut-value">{{ totalItems() }}</span>
+          <span class="tsc-donut-of">Total items</span>
+        </p>
+      </div>
     </ng-template>
 
-    @switch (view()) {
+    <ng-template #legendTpl>
+      <ul class="tsc-legend-list" aria-label="Items today">
+        @for (row of legend(); track row.key) {
+          <li class="tsc-legend-row" data-testid="tsc-legend-row" [attr.data-key]="row.key">
+            <span class="tsc-dot" [style.background]="row.color"></span>
+            <span class="tsc-legend-label">{{ row.label }}</span>
+            <span class="tsc-legend-count">{{ row.count }}</span>
+          </li>
+        }
+      </ul>
+    </ng-template>
+
+    <!-- Planner off: the team's clocked time stands in for the donut. -->
+    <ng-template #totalTpl>
+      <div class="tsc-total" data-testid="tsc-clocked-total">
+        <span class="tsc-total-value">{{ minutes(clockedTotal()) }}</span>
+        <span class="tsc-donut-of">clocked by the team today</span>
+      </div>
+    </ng-template>
+
+    <ng-template #pillTpl>
+      <button
+        type="button"
+        class="tsc-pill"
+        [class.tsc-pill--alert]="plannerEnabled() && data.summary.peopleWithUnscheduledWork > 0"
+        [attr.data-testid]="plannerEnabled() ? 'tsc-pill' : 'tsc-planner-off'"
+        (click)="openDetail($event)"
+      >
+        <span class="tsc-pill-text">{{ pillText() }}</span>
+        <span aria-hidden="true">›</span>
+      </button>
+    </ng-template>
+
+    <ng-template #avatarsTpl>
+      <div class="tsc-avatars" aria-label="Team">
+        @for (m of avatars(); track m.employeeId) {
+          <span class="tsc-avatar" data-testid="tsc-avatar" [title]="m.displayName">
+            <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+          </span>
+        }
+        @if (moreAvatars() > 0) {
+          <span class="tsc-avatar-more">+{{ moreAvatars() }}</span>
+        }
+      </div>
+    </ng-template>
+
+    <ng-template #rowsTpl>
+      <ul class="tsc-rows">
+        @for (m of rows(); track m.employeeId) {
+          <li class="tsc-row" data-testid="tsc-row">
+            <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+            <div class="tsc-row-main">
+              <p class="tsc-name">{{ m.displayName }}</p>
+              @if (presenceLabel(m); as p) {
+                <p class="tsc-presence" [style.--tone]="presenceColor(m)"><span class="tsc-dot"></span>{{ p }}</p>
+              } @else if (plannerEnabled() && unscheduled(m) > 0 && !hasPlan(m)) {
+                <p class="tsc-presence tsc-presence--alert"><span class="tsc-dot"></span>Unscheduled</p>
+              }
+            </div>
+            @if (plannerEnabled()) {
+              <div class="tsc-plan-bar" aria-hidden="true">
+                @for (item of m.items; track item.taskId + item.start) {
+                  @if (position(item.start, item.end); as pos) {
+                    <span
+                      class="tsc-plan-seg"
+                      [class.tsc-plan-seg--cancelled]="item.status === 'cancelled'"
+                      [style.left.%]="pos.left"
+                      [style.width.%]="pos.width"
+                      [style.background]="itemColor(item)"
+                    ></span>
+                  }
+                }
+                @for (b of breaks(m); track b.start) {
+                  @if (position(b.start, b.end); as pos) {
+                    <span class="tsc-plan-seg" data-testid="tsc-plan-break" [style.left.%]="pos.left" [style.width.%]="pos.width" [style.background]="colors.break"></span>
+                  }
+                }
+                @for (seg of m.unscheduled; track seg.start) {
+                  @if (position(seg.start, seg.end); as pos) {
+                    <span class="tsc-plan-seg tsc-hatch" data-testid="tsc-plan-unscheduled" [style.left.%]="pos.left" [style.width.%]="pos.width"></span>
+                  }
+                }
+              </div>
+              <span class="tsc-completion" [class.tsc-completion--none]="!hasPlan(m)" data-testid="tsc-completion">{{ completion(m) }}</span>
+            } @else {
+              @let share = clockedShare(m);
+              <span class="tsc-clocked">
+                <span class="tsc-clocked-track" aria-hidden="true">
+                  @if (share !== null) {
+                    <span data-testid="tsc-clocked-bar" [style.width.%]="share"></span>
+                  }
+                </span>
+              </span>
+              <span class="tsc-completion">{{ clockedText(m) }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </ng-template>
+
+    <ng-template #viewAllTpl>
+      @if (plan().viewAll) {
+        <button type="button" class="tsc-link" data-testid="tsc-view-all" (click)="openDetail($event)">
+          View all {{ data.members.length }} ›
+        </button>
+      }
+    </ng-template>
+
+    @switch (drawn()) {
       @case ('mini') {
         <div class="tsc-mini" data-testid="tsc-mini">
-          @if (data.plannerEnabled) {
-            <div
-              class="tsc-donut"
-              [style.width.px]="donutPx"
-              [style.height.px]="donutPx"
-              data-testid="tsc-donut"
-            >
-              <svg
-                viewBox="0 0 42 42"
-                class="block h-full w-full"
-                role="img"
-                [attr.aria-label]="donutLabel()"
-              >
-                <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
-                @for (arc of donut(); track arc.key) {
-                  <circle
-                    cx="21"
-                    cy="21"
-                    r="15.9155"
-                    fill="none"
-                    stroke-width="6"
-                    [attr.stroke]="arc.color"
-                    [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-                    [attr.stroke-dashoffset]="arc.offset"
-                  />
-                }
-              </svg>
-              <p class="tsc-donut-center" data-testid="tsc-center">
-                <span class="tsc-donut-value">{{ data.summary.tasksCompleted }}</span>
-                <span class="tsc-donut-of">/ {{ data.summary.tasksPlanned }} tasks</span>
-              </p>
+          @if (!plannerEnabled()) {
+            <ng-container [ngTemplateOutlet]="totalTpl" />
+            <ng-container [ngTemplateOutlet]="pillTpl" />
+          } @else if (plan().miniInline) {
+            <div class="tsc-stack" role="img" [attr.aria-label]="donutLabel()" data-testid="tsc-mini-bar">
+              @for (arc of donut(); track arc.key) {
+                <span [style.background]="arc.color" [style.width.%]="arc.length"></span>
+              }
             </div>
+            <ng-container [ngTemplateOutlet]="legendTpl" />
+            @if (plan().pill) {
+              <ng-container [ngTemplateOutlet]="pillTpl" />
+            }
           } @else {
-            <ng-container [ngTemplateOutlet]="plannerOff" />
-          }
-          @if (data.plannerEnabled && data.summary.peopleWithUnscheduledWork > 0) {
-            <p class="tsc-alert" data-testid="tsc-unscheduled-alert">
-              {{ data.summary.peopleWithUnscheduledWork }}
-              {{ data.summary.peopleWithUnscheduledWork === 1 ? 'person has' : 'people have' }}
-              unscheduled work
-            </p>
+            <div class="tsc-hero">
+              <ng-container [ngTemplateOutlet]="donutTpl" />
+              <ng-container [ngTemplateOutlet]="legendTpl" />
+            </div>
+            @if (plan().pill) {
+              <ng-container [ngTemplateOutlet]="pillTpl" />
+            }
           }
         </div>
       }
-      @case ('rows') {
-        <div class="tsc" data-testid="tsc-layout" data-view="medium">
-          @if (!data.plannerEnabled) {
-            <ng-container [ngTemplateOutlet]="plannerOff" />
-          }
-          <ul class="tsc-rows">
-            @for (m of mediumRows(); track m.employeeId) {
-              <li class="tsc-row" data-testid="tsc-row">
-                <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
-                <div class="tsc-row-main">
-                  <p class="tsc-row-top">
-                    <span class="tsc-name">{{ m.displayName }}</span>
-                    @if (presenceLabel(m); as p) {
-                      <span class="tsc-chip" [style.--tone]="presenceColor(m)">{{ p }}</span>
-                    }
-                    @if (data.plannerEnabled && unscheduled(m) > 0) {
-                      <span class="tsc-badge" data-testid="tsc-unscheduled"
-                        >Unscheduled {{ minutes(unscheduled(m)) }}</span
-                      >
-                    }
-                  </p>
-                  @if (data.plannerEnabled) {
-                    <div class="tsc-plan-bar" aria-hidden="true">
-                      @for (item of m.items; track item.taskId + item.start) {
-                        @if (position(item.start, item.end); as pos) {
-                          <span
-                            class="tsc-plan-seg"
-                            [class.tsc-plan-seg--cancelled]="item.status === 'cancelled'"
-                            [style.left.%]="pos.left"
-                            [style.width.%]="pos.width"
-                            [style.background]="itemColor(item)"
-                          ></span>
-                        }
-                      }
-                    </div>
-                  } @else {
-                    <p class="tsc-sub">{{ minutes(m.clockedMinutes) }} clocked</p>
-                  }
-                </div>
-                @if (data.plannerEnabled) {
-                  <span
-                    class="tsc-completion"
-                    [class.tsc-completion--none]="!hasPlan(m)"
-                    data-testid="tsc-completion"
-                    >{{ completion(m) }}</span
-                  >
-                }
-              </li>
+      @case ('xs') {
+        <div class="tsc" data-testid="tsc-layout" data-view="xs">
+          <div class="tsc-xs-head">
+            @if (plannerEnabled()) {
+              <ng-container [ngTemplateOutlet]="donutTpl" />
+              <ng-container [ngTemplateOutlet]="legendTpl" />
+            } @else {
+              <ng-container [ngTemplateOutlet]="totalTpl" />
             }
-          </ul>
-          @if (data.members.length > mediumRows().length) {
-            <button type="button" class="tsc-link" (click)="openDetail($event)">
-              View all {{ data.members.length }} ›
-            </button>
+          </div>
+          <ng-container [ngTemplateOutlet]="avatarsTpl" />
+          <ng-container [ngTemplateOutlet]="pillTpl" />
+          @if (plan().rows > 0) {
+            <ng-container [ngTemplateOutlet]="rowsTpl" />
           }
+          <ng-container [ngTemplateOutlet]="viewAllTpl" />
         </div>
       }
       @default {
-        <div class="tsc" data-testid="tsc-layout" data-view="large">
-          @if (!data.plannerEnabled) {
-            <ng-container [ngTemplateOutlet]="plannerOff" />
-            <ul class="tsc-rows">
-              @for (m of data.members; track m.employeeId) {
-                <li class="tsc-row" data-testid="tsc-row">
-                  <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
-                  <span class="tsc-name">{{ m.displayName }}</span>
-                  <span class="tsc-sub"
-                    >{{ minutes(m.clockedMinutes) }} clocked · {{ m.items.length }} meetings</span
-                  >
-                </li>
-              }
-            </ul>
-          } @else {
-            <div class="tsc-timeline" data-testid="tsc-timeline">
-              <div class="tsc-axis">
-                <span class="tsc-axis-name"></span>
-                <div class="tsc-axis-track">
-                  @for (t of ticks(); track t.left) {
-                    <span class="tsc-tick" [style.left.%]="t.left">{{ t.label }}</span>
-                  }
-                </div>
-              </div>
-              @for (m of data.members; track m.employeeId) {
-                <div class="tsc-line" data-testid="tsc-line">
-                  <span class="tsc-axis-name tsc-name">{{ m.displayName }}</span>
-                  <div class="tsc-track">
-                    @for (item of m.items; track item.taskId + item.start) {
-                      @if (position(item.start, item.end); as pos) {
-                        <span
-                          class="tsc-block"
-                          data-testid="tsc-block"
-                          [class.tsc-block--cancelled]="item.status === 'cancelled'"
-                          [class.tsc-block--conflict]="inConflict(m, item)"
-                          [style.left.%]="pos.left"
-                          [style.width.%]="pos.width"
-                          [style.background]="itemColor(item)"
-                          [attr.title]="itemTitle(item)"
-                        ></span>
-                      }
-                    }
-                    @for (seg of m.unscheduled; track seg.start) {
-                      @if (position(seg.start, seg.end); as pos) {
-                        <span
-                          class="tsc-unscheduled"
-                          data-testid="tsc-unscheduled-seg"
-                          [style.left.%]="pos.left"
-                          [style.width.%]="pos.width"
-                          [attr.title]="seg.title + ' · ' + minutes(seg.minutes) + ' unscheduled'"
-                        ></span>
-                      }
-                    }
-                    @if (nowLeft(); as left) {
-                      <span class="tsc-now" [style.left.%]="left" aria-hidden="true"></span>
+        <div class="tsc tsc--main" data-testid="tsc-layout" [attr.data-view]="drawn()">
+          <div class="tsc-column">
+            @if (drawn() === 'timeline') {
+              <div class="tsc-timeline" data-testid="tsc-timeline">
+                <div class="tsc-axis">
+                  <span class="tsc-axis-name"></span>
+                  <div class="tsc-axis-track">
+                    @for (t of ticks(); track t.left) {
+                      <span class="tsc-tick" [style.left.%]="t.left">{{ t.label }}</span>
                     }
                   </div>
                 </div>
-              }
-            </div>
+                @for (m of rows(); track m.employeeId) {
+                  <div class="tsc-line" data-testid="tsc-line">
+                    <span class="tsc-axis-name tsc-person">
+                      <app-avatar size="xs" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                      <span class="min-w-0">
+                        <span class="tsc-name">{{ m.displayName }}</span>
+                        @if (presenceLabel(m); as p) {
+                          <span class="tsc-presence" [style.--tone]="presenceColor(m)"><span class="tsc-dot"></span>{{ p }}</span>
+                        } @else if (unscheduled(m) > 0 && !hasPlan(m)) {
+                          <span class="tsc-presence tsc-presence--alert"><span class="tsc-dot"></span>Unscheduled</span>
+                        }
+                      </span>
+                    </span>
+                    <div class="tsc-track">
+                      @if (!hasPlan(m)) {
+                        <span class="tsc-no-plan tsc-hatch tsc-hatch--soft" data-testid="tsc-no-plan">No scheduled work</span>
+                      }
+                      @for (item of m.items; track item.taskId + item.start) {
+                        @if (position(item.start, item.end); as pos) {
+                          <span
+                            class="tsc-block"
+                            data-testid="tsc-block"
+                            [class.tsc-block--cancelled]="item.status === 'cancelled'"
+                            [class.tsc-block--conflict]="inConflict(m, item)"
+                            [style.left.%]="pos.left"
+                            [style.width.%]="pos.width"
+                            [style.background]="itemColor(item)"
+                            [attr.title]="itemTitle(item)"
+                          >
+                            @if (blockLabel(item, pos.width); as label) {
+                              <span class="tsc-block-label" data-testid="tsc-block-label">{{ label }}</span>
+                            }
+                          </span>
+                        }
+                      }
+                      @for (b of breaks(m); track b.start) {
+                        @if (position(b.start, b.end); as pos) {
+                          <span class="tsc-block tsc-block--break" [style.left.%]="pos.left" [style.width.%]="pos.width" title="Break">
+                            @if (breakLabel(pos.width)) {
+                              <span class="tsc-block-label">Break</span>
+                            }
+                          </span>
+                        }
+                      }
+                      @for (seg of m.unscheduled; track seg.start) {
+                        @if (position(seg.start, seg.end); as pos) {
+                          <span
+                            class="tsc-unscheduled tsc-hatch"
+                            data-testid="tsc-unscheduled-seg"
+                            [style.left.%]="pos.left"
+                            [style.width.%]="pos.width"
+                            [attr.title]="seg.title + ' · ' + minutes(seg.minutes) + ' unscheduled'"
+                          ></span>
+                        }
+                      }
+                      @if (nowLeft(); as left) {
+                        <span class="tsc-now" [style.left.%]="left" aria-hidden="true"></span>
+                      }
+                    </div>
+                  </div>
+                }
+                <ul class="tsc-legend" data-testid="tsc-legend" aria-hidden="true">
+                  <li><span class="tsc-key" [style.background]="colors.completed"></span>Completed</li>
+                  <li><span class="tsc-key" [style.background]="colors.inProgress"></span>In progress</li>
+                  <li><span class="tsc-key" [style.background]="colors.pending"></span>Pending</li>
+                  <li><span class="tsc-key" [style.background]="colors.meeting"></span>Meeting</li>
+                  <li><span class="tsc-key" [style.background]="colors.break"></span>Break</li>
+                  <li><span class="tsc-key tsc-hatch"></span>Unscheduled</li>
+                </ul>
+              </div>
+            } @else {
+              <ng-container [ngTemplateOutlet]="rowsTpl" />
+            }
+            <ng-container [ngTemplateOutlet]="viewAllTpl" />
+
+            @if (plan().dayChartRows > 0) {
+              <section class="tsc-panel tsc-day" data-testid="tsc-day-chart" aria-label="Planned vs actual today">
+                <div class="tsc-day-head">
+                  <p class="tsc-section-title">Planned vs actual today</p>
+                  <ul class="tsc-figures">
+                    @for (t of daySummary(); track t.label) {
+                      <li><span class="tsc-figure-value">{{ t.value }}</span><span class="tsc-donut-of">{{ t.label }}</span></li>
+                    }
+                  </ul>
+                </div>
+                <app-planned-actual-day-chart [rows]="plannedActualRows()" [maxRows]="plan().dayChartRows" />
+              </section>
+            }
+
+            @if (plan().weekChart) {
+              <section class="tsc-panel tsc-week" data-testid="tsc-week-chart" aria-label="This week, planned vs actual">
+                <p class="tsc-section-title">This week · planned vs actual</p>
+                @if (weekDays(); as days) {
+                  <app-planned-actual-week-chart class="tsc-week-chart" [days]="days" [today]="store.today()" />
+                } @else {
+                  <p class="tsc-muted-fill">{{ weekStore.error() ? "Couldn't load this week." : 'Loading…' }}</p>
+                }
+              </section>
+            }
+          </div>
+
+          @if (plan().side) {
+            <aside class="tsc-side" data-testid="tsc-side" [style.width.px]="sidePx">
+              <section class="tsc-panel">
+                <p class="tsc-section-title">Schedule summary</p>
+                <div class="tsc-hero">
+                  <ng-container [ngTemplateOutlet]="donutTpl" />
+                  <ng-container [ngTemplateOutlet]="legendTpl" />
+                </div>
+              </section>
+              <section class="tsc-panel">
+                <p class="tsc-section-title">Unscheduled work <span class="tsc-count">{{ data.summary.peopleWithUnscheduledWork }}</span></p>
+                @for (m of unscheduledTop(); track m.employeeId) {
+                  <p class="tsc-side-row">
+                    <span class="tsc-name">{{ m.displayName }}</span>
+                    <span class="tsc-side-meta">{{ minutes(unscheduled(m)) }} {{ hasPlan(m) ? 'outside the plan' : 'no planned tasks' }}</span>
+                  </p>
+                } @empty {
+                  <p class="tsc-side-meta">Everyone worked to plan.</p>
+                }
+              </section>
+              <section class="tsc-panel">
+                <p class="tsc-section-title">Schedule conflicts <span class="tsc-count">{{ data.summary.conflicts }}</span></p>
+                @for (c of conflictsTop(); track c.member.employeeId + c.conflict.start) {
+                  <p class="tsc-side-row">
+                    <span class="tsc-name">{{ c.member.displayName }}</span>
+                    <span class="tsc-side-meta tsc-side-meta--alert">{{ c.conflict.firstTitle }} · {{ c.conflict.secondTitle }}</span>
+                  </p>
+                } @empty {
+                  <p class="tsc-side-meta">No overlaps today.</p>
+                }
+              </section>
+            </aside>
           }
         </div>
       }

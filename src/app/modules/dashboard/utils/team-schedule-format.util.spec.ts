@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  WORKLOAD_HIGH,
+  WORKLOAD_MEDIUM,
+  breakSegments,
   completionText,
+  itemDonut,
+  timelineLabel,
+  toPlannedActualRows,
+  toWeekChartDays,
+  workloadLevel,
   hourTicks,
   itemColor,
   notRankedText,
@@ -9,7 +17,7 @@ import {
   taskStatusDonut,
   timelineSpan,
 } from './team-schedule-format.util';
-import { at, scheduleMember, scheduleResponse } from './team-schedule.testing';
+import { at, scheduleMember, scheduleResponse, weekResponse } from './team-schedule.testing';
 
 describe("Today's team schedule format", () => {
   it('the donut never includes meetings', () => {
@@ -144,5 +152,60 @@ describe("Today's team schedule format (coverage audit)", () => {
     for (const reason of ['no_items_yet', 'no_planned_task_time', 'on_leave', 'planner_off'] as const) {
       expect(notRankedText(reason)).toMatch(/^[A-Z][a-z ]+$/);
     }
+  });
+
+  it('itemDonut covers completed, in progress, pending and meetings', () => {
+    const summary = { ...scheduleResponse([]).summary, tasksCompleted: 5, tasksInProgress: 3, tasksPending: 0, meetings: 4 };
+    const arcs = itemDonut(summary);
+    // A zero count (pending) draws no arc.
+    expect(arcs.map((a) => a.key)).toEqual(['completed', 'inProgress', 'meetings']);
+    expect(arcs[2].length).toBeCloseTo(33.33, 1);
+  });
+
+  it('timelineLabel names the kind', () => {
+    const item = { kind: 'meeting' as const, taskId: 'm', title: 'x', start: at(9), end: at(10), status: 'upcoming' as const, isPrivate: false };
+    expect(timelineLabel(item)).toBe('Meeting');
+    expect(timelineLabel({ ...item, kind: 'task', status: 'pending' })).toBe('Task');
+  });
+
+  it('toPlannedActualRows keeps the backend order and sums task and meeting minutes as planned', () => {
+    const rows = toPlannedActualRows([
+      scheduleMember({ displayName: 'B', plannedTaskMinutes: 60, plannedMeetingMinutes: 30, scheduledMinutes: 40, outsideSlotMinutes: 5, noPlanMinutes: 10, itemCompletionPercent: 50 }),
+      scheduleMember({ displayName: 'A' }),
+    ]);
+    expect(rows.map((r) => r.label)).toEqual(['B', 'A']);
+    expect(rows[0]).toMatchObject({ planned: 90, scheduled: 40, outside: 5, noPlan: 10, completion: 50 });
+  });
+
+  it('breakSegments closes an open break at now', () => {
+    const now = new Date(at(15));
+    const segs = breakSegments(scheduleMember({ breaks: [{ start: at(12), end: at(12, 30) }, { start: at(14, 45), end: null }] }), now);
+    expect(segs).toEqual([
+      { start: at(12), end: at(12, 30) },
+      { start: at(14, 45), end: at(15) },
+    ]);
+  });
+
+  it('workloadLevel uses planned task + meeting minutes of the work window', () => {
+    expect(WORKLOAD_HIGH).toBe(0.9);
+    expect(WORKLOAD_MEDIUM).toBe(0.6);
+    expect(workloadLevel(scheduleMember({ plannedTaskMinutes: 400, plannedMeetingMinutes: 32, expectedMinutes: 480 }))).toBe('High');
+    expect(workloadLevel(scheduleMember({ plannedTaskMinutes: 288, expectedMinutes: 480 }))).toBe('Medium');
+    expect(workloadLevel(scheduleMember({ plannedTaskMinutes: 100, expectedMinutes: 480 }))).toBe('Low');
+    expect(workloadLevel(scheduleMember({ plannedTaskMinutes: 100, expectedMinutes: null }))).toBeNull();
+    expect(workloadLevel(scheduleMember({ plannedTaskMinutes: 100, expectedMinutes: 0 }))).toBeNull();
+  });
+
+  it('toWeekChartDays: planned is task + meeting, coverage only for finished days', () => {
+    const week = weekResponse({}, [
+      { plannedTaskMinutes: 240, plannedMeetingMinutes: 60, scheduledMinutes: 120, clockedMinutes: 150, noPlanMinutes: 30 },
+      { plannedTaskMinutes: 240, scheduledMinutes: 60 },
+      { plannedTaskMinutes: 120 },
+    ]);
+    const days = toWeekChartDays(week, '2026-10-27');
+    expect(days[0]).toEqual({ date: '2026-10-26', planned: 300, scheduled: 120, outside: 0, noPlan: 30, coveragePercent: 50 });
+    expect(days[1].coveragePercent).toBeNull();   // today: the day's plan has not all elapsed
+    expect(days[2].coveragePercent).toBeNull();
+    expect(days).toHaveLength(7);
   });
 });
