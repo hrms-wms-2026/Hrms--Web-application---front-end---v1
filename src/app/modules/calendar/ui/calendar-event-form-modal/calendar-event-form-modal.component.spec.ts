@@ -491,6 +491,15 @@ describe('CalendarEventFormModalComponent', () => {
     expect(text).not.toContain('(Busy)');
   });
 
+  it('gives the start and end time fields room for a full 12-hour time ("12:00 PM")', () => {
+    // Each field holds the clock addon, the text and the dropdown button; 8.5rem left the text cut to "12:0".
+    for (const id of ['calendar-form-start-time', 'calendar-form-end-time']) {
+      const field = fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement;
+      expect(field, id).not.toBeNull();
+      expect(field.classList.contains('w-[11rem]'), id).toBe(true);
+    }
+  });
+
   it('shows the overlap time range in the conflict warning', () => {
     fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
     fixture.componentRef.setInput('conflicts', [
