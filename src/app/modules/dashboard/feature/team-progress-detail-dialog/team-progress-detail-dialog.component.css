@@ -282,3 +282,26 @@
 .tp-project-key--completed {
   background: #10b981;
 }
+
+/* Overdue tasks (2026-11-02): total overdue hours on top, a pie by project beside a table of tasks with their hours. */
+.tp-overdue-total { margin: 0; font-size: 13px; color: var(--color-text-primary); }
+.tp-overdue-total strong { font-size: 18px; color: var(--color-danger-text); }
+.tp-overdue-body { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+.tp-overdue-chart { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.tp-overdue-pie { position: relative; flex: none; }
+.tp-overdue-pie__center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0; line-height: 1.1; font-size: 11px; color: var(--color-text-secondary); }
+.tp-overdue-pie__center strong { font-size: 18px; color: var(--color-text-primary); }
+.tp-overdue-legend { display: flex; width: 100%; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 12px; }
+.tp-overdue-legend li { display: flex; align-items: center; gap: 8px; }
+.tp-overdue-dot { width: 10px; height: 10px; flex: none; border-radius: 9999px; }
+.tp-overdue-legend__name { min-width: 0; flex: 1 1 auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tp-overdue-legend__hours { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tp-overdue-table-wrap { min-width: 0; max-height: 22rem; overflow-y: auto; }
+.tp-overdue-table { width: 100%; table-layout: fixed; }
+.tp-overdue-table th:nth-child(1) { width: 32px; }
+.tp-overdue-table th:nth-child(3) { width: 22%; }
+.tp-overdue-table th:nth-child(4) { width: 84px; }
+.tp-overdue-table th:nth-child(5) { width: 130px; }
+.tp-overdue-task { display: flex; width: 100%; min-width: 0; align-items: center; gap: 6px; text-align: left; color: var(--color-text-primary); }
+.tp-overdue-task:hover { color: var(--color-accent); }
+@media (max-width: 900px) { .tp-overdue-body { grid-template-columns: minmax(0, 1fr); } }

@@ -12,7 +12,7 @@ const detailApi = { provide: TeamProgressDetailApiService, useValue: { getTimePr
 
 describe('MyTeamLedProgressStore', () => {
   const sampleResponse: LedWorkProgressResponse = {
-    hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0,
+    hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [],
     projects: [],
     overdueTasks: [],
     overdueTotal: 0

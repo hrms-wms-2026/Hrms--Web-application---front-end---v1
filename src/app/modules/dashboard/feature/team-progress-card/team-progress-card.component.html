@@ -195,7 +195,8 @@
     <ng-template #overdueTpl>
       <section class="tp-panel" aria-label="Overdue tasks" data-testid="team-progress-overdue">
         <h3 class="team-progress-heading">
-          <span class="truncate">Overdue tasks ({{ data.overdueTotal }})</span>
+          <span class="truncate">Overdue tasks ({{ data.overdueTotal }})
+            · <span class="text-rose-600 tabular-nums" data-testid="team-progress-overdue-hours">{{ formatHourValue(data.overdueHours) }} h</span></span>
           <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenOverdueCount() }" />
         </h3>
         @if (visibleOverdue().length === 0) {
@@ -214,6 +215,7 @@
                     <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800" [title]="task.title">
                       @if (task.shortId) { <span class="mr-1 text-slate-400">{{ task.shortId }}</span> }{{ task.title }}
                     </span>
+                    <span class="shrink-0 text-xs text-slate-500 tabular-nums" data-testid="team-progress-overdue-task-hours">{{ task.estimatedHours === null ? '—' : formatHourValue(task.estimatedHours) + ' h' }}</span>
                     <span class="shrink-0 text-xs font-semibold text-rose-600 tabular-nums">{{ task.daysOverdue }}d overdue</span>
                   </span>
                   <span class="block truncate text-xs text-slate-500">{{ assigneeNames(task) || 'Unassigned' }}</span>

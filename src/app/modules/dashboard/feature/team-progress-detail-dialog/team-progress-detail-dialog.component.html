@@ -297,18 +297,76 @@
                 }
               </span>
             </h3>
-            <ul class="tp-overdue-list" data-testid="tp-overdue-list">
-              @for (task of overdueTasks(); track task.taskId) {
-                <li>
-                  <button type="button" class="tp-overdue" [attr.data-testid]="'tp-overdue-' + task.taskId" (click)="openTask(task)">
-                    <span class="tp-short-id">{{ task.shortId }}</span>
-                    <span class="min-w-0 flex-1 truncate">{{ task.title }}</span>
-                    <span class="hidden max-w-[10rem] truncate text-xs text-[var(--color-text-secondary)] sm:inline">{{ assigneeNames(task.assignees) || 'Unassigned' }}</span>
-                    <span class="tp-overdue__days">{{ task.daysOverdue }}d · {{ task.dueDate | date: 'd MMM y' }}</span>
-                  </button>
-                </li>
-              }
-            </ul>
+            @if (overdueHoursView(); as ov) {
+              <p class="tp-overdue-total" data-testid="tp-overdue-hours">
+                <strong>{{ formatHours(ov.total) }} h</strong> overdue{{ ov.listedOnly ? ' (listed tasks)' : '' }}
+                @if (ov.unestimated > 0) {
+                  <span class="tp-muted">· {{ ov.unestimated }} {{ ov.unestimated === 1 ? 'task' : 'tasks' }} without an estimate</span>
+                }
+              </p>
+              <div class="tp-overdue-body">
+                <div class="tp-overdue-chart">
+                  <div class="tp-overdue-pie" data-testid="tp-overdue-pie" [style.width.px]="overduePiePx" [style.height.px]="overduePiePx">
+                    <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" aria-label="Overdue hours by project">
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+                      @for (arc of ov.arcs; track arc.key) {
+                        <circle
+                          cx="21"
+                          cy="21"
+                          r="15.9155"
+                          fill="none"
+                          stroke-width="6"
+                          [attr.stroke]="arc.color"
+                          [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+                          [attr.stroke-dashoffset]="arc.offset"
+                        />
+                      }
+                    </svg>
+                    <p class="tp-overdue-pie__center"><strong>{{ formatHours(ov.total) }} h</strong><span>overdue</span></p>
+                  </div>
+                  <ul class="tp-overdue-legend" aria-label="Overdue hours by project">
+                    @for (s of ov.slices; track s.projectId) {
+                      <li data-testid="tp-overdue-slice">
+                        <span class="tp-overdue-dot" [style.background]="s.color"></span>
+                        <span class="tp-overdue-legend__name">{{ s.name }}</span>
+                        <span class="tp-overdue-legend__hours">{{ formatHours(s.hours) }} h</span>
+                        <span class="tp-muted">{{ s.percent }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+                <div class="tp-overdue-table-wrap">
+                  <table class="tp-mini-table tp-overdue-table" data-testid="tp-overdue-list">
+                    <caption class="sr-only">Overdue tasks with their allocated hours</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Task</th>
+                        <th scope="col">Assignee</th>
+                        <th scope="col">Allocated</th>
+                        <th scope="col">Overdue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (task of overdueTasks(); track task.taskId; let i = $index) {
+                        <tr>
+                          <td>{{ i + 1 }}</td>
+                          <td>
+                            <button type="button" class="tp-overdue-task" [attr.data-testid]="'tp-overdue-' + task.taskId" (click)="openTask(task)">
+                              <span class="tp-short-id">{{ task.shortId }}</span>
+                              <span class="truncate">{{ task.title }}</span>
+                            </button>
+                          </td>
+                          <td class="truncate">{{ assigneeNames(task.assignees) || 'Unassigned' }}</td>
+                          <td data-testid="tp-overdue-task-hours">{{ overdueTaskHours(task) }}</td>
+                          <td class="tp-overdue__days">{{ task.daysOverdue }}d · {{ task.dueDate | date: 'd MMM y' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
           </section>
         }
       </div>

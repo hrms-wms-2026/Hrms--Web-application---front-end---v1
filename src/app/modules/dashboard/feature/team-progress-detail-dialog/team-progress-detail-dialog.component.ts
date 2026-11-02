@@ -21,6 +21,8 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
+import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
   LedHourTotals,
   LedModuleProgress,
@@ -121,6 +123,18 @@ const TASK_STATUS_META: Readonly<Record<LedTaskStatus, ProgressStatusMeta>> = {
  * is open and cached until a filter changes (or the card hands in a new summary).
  * Hours are task estimates (weightage), never time worked.
  */
+/** The overdue pie's project colours (cycled past the sixth project). */
+const OVERDUE_PIE_COLORS = ['#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#10b981', '#64748b'];
+
+interface OverdueHoursView {
+  readonly total: number;
+  readonly unestimated: number;
+  /** Module filter: the figures cover only the listed overdue tasks. */
+  readonly listedOnly: boolean;
+  readonly slices: readonly { projectId: string; name: string; hours: number; color: string; percent: string }[];
+  readonly arcs: readonly DonutArc[];
+}
+
 @Component({
   selector: 'app-team-progress-detail-dialog',
   standalone: true,
@@ -313,6 +327,43 @@ export class TeamProgressDetailDialogComponent {
   });
 
   protected readonly overdueTotal = computed(() => this.summary()?.overdueTotal ?? 0);
+
+  protected readonly overduePiePx = DASHBOARD_DONUT_PX;
+
+  /** Overdue estimated hours, the pie by project and the unestimated count. Every overdue task (the server totals)
+   * with no filter or a project filter; with a module filter only the listed tasks of that subtree are known, so
+   * the figures say "of the listed tasks". */
+  protected readonly overdueHoursView = computed<OverdueHoursView | null>(() => {
+    const summary = this.summary();
+    if (!summary) return null;
+    let rows: { projectId: string; name: string; hours: number }[];
+    let unestimated: number;
+    let listedOnly = false;
+    if (this.selectedModule()) {
+      const tasks = this.overdueTasks();
+      const names = new Map(summary.projects.map((p) => [p.projectId, p.projectName]));
+      const byProject = new Map<string, number>();
+      for (const t of tasks) byProject.set(t.projectId, (byProject.get(t.projectId) ?? 0) + (t.estimatedHours ?? 0));
+      rows = [...byProject].map(([projectId, hours]) => ({ projectId, name: names.get(projectId) ?? 'Unknown project', hours }));
+      unestimated = tasks.filter((t) => t.estimatedHours === null).length;
+      listedOnly = true;
+    } else {
+      const project = this.selectedProject();
+      const all = summary.overdueByProject.filter((p) => !project || p.projectId === project.projectId);
+      rows = all.map((p) => ({ projectId: p.projectId, name: p.projectName, hours: p.hours }));
+      unestimated = all.reduce((sum, p) => sum + p.unestimatedTaskCount, 0);
+    }
+    const total = rows.reduce((sum, r) => sum + r.hours, 0);
+    const slices = rows
+      .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name))
+      .map((r, i) => ({ ...r, color: OVERDUE_PIE_COLORS[i % OVERDUE_PIE_COLORS.length], percent: formatPercent(r.hours, total) }));
+    const arcs: DonutArc[] = donutArcs(slices.map((s) => ({ key: s.projectId, count: s.hours, color: s.color })));
+    return { total, unestimated, listedOnly, slices, arcs };
+  });
+
+  protected overdueTaskHours(task: LedOverdueTask): string {
+    return task.estimatedHours === null ? '—' : `${formatHourValue(task.estimatedHours)} h`;
+  }
 
   // ---- Server queries ----
 

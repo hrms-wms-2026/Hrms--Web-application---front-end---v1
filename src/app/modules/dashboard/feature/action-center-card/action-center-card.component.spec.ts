@@ -20,7 +20,7 @@ import { ActionCenterCardComponent } from './action-center-card.component';
 const DAY = 86_400_000;
 
 const EMPTY_LED_PROGRESS: LedWorkProgressResponse = {
-  hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0,
+  hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [],
   projects: [], overdueTasks: [], overdueTotal: 0
 };
 
@@ -51,7 +51,7 @@ function item(sourceKey: string, id: string, daysAgo: number, overrides: Partial
 }
 
 function overdueTask(id: string, days: number) {
-  return { taskId: id, shortId: id.toUpperCase(), title: `Task ${id}`, projectId: 'p1', objectiveId: 'o1', dueDate: '2026-10-01', daysOverdue: days, assignees: [] };
+  return { taskId: id, shortId: id.toUpperCase(), title: `Task ${id}`, projectId: 'p1', objectiveId: 'o1', dueDate: '2026-10-01', daysOverdue: days, estimatedHours: null, assignees: [] };
 }
 
 describe('ActionCenterCardComponent', () => {

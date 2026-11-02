@@ -180,7 +180,7 @@ describe('TeamProgressCardComponent', () => {
     return {
       hours: total,
       projects: [{ projectId: 'p1', projectName: 'Core Platform', identifier: 'CP', hours: total, modules }],
-      overdueTasks: [], overdueTotal: 0, modulesAtRisk: heads.filter((m) => m.atRisk).length,
+      overdueTasks: [], overdueTotal: 0, modulesAtRisk: heads.filter((m) => m.atRisk).length, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [],
       ...extra
     };
   };
@@ -195,7 +195,7 @@ describe('TeamProgressCardComponent', () => {
     (fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) as HTMLElement).textContent!.replace(/\s+/g, ' ').trim();
 
   it('shows "you don\'t lead any active modules" when there are no projects', async () => {
-    const fixture = await setup({ hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0 });
+    const fixture = await setup({ hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [] });
     expect(fixture.nativeElement.textContent).toContain("You don't lead any active modules");
   });
 
@@ -306,7 +306,7 @@ describe('TeamProgressCardComponent', () => {
       ], {
         overdueTasks: [{
           taskId: 't1', shortId: 'CP-1', title: 'Ship it', projectId: 'p1', objectiveId: 'o1', dueDate: '2026-10-01',
-          daysOverdue: 3, assignees: [{ employeeId: 'e1', displayName: 'Kajaa Tharan' }]
+          daysOverdue: 3, estimatedHours: null, assignees: [{ employeeId: 'e1', displayName: 'Kajaa Tharan' }]
         }],
         overdueTotal: 1
       });
@@ -441,6 +441,22 @@ describe('TeamProgressCardComponent', () => {
       // Resizing within the large layouts does not refetch for the same period.
       resize(fixture, 1300, 852);
       expect(getEmployees).toHaveBeenCalledTimes(2);
+    });
+
+    it('the overdue panel shows the total overdue hours on top and each task hours', async () => {
+      const data = sample();
+      data.overdueTasks[0].estimatedHours = 4;
+      data.overdueHours = 12;
+      const fixture = await setup(data);
+      resize(fixture, 900, 636);
+      expect(text(fixture, 'team-progress-overdue-hours')).toBe('12 h');
+      expect(text(fixture, 'team-progress-overdue-task-hours')).toBe('4 h');
+    });
+
+    it('an overdue task without an estimate shows "—", never 0 h', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 900, 636);
+      expect(text(fixture, 'team-progress-overdue-task-hours')).toBe('—');
     });
 
     it('keeps the large layout working when the top team members fail to load', async () => {
@@ -716,7 +732,7 @@ describe('TeamProgressCardComponent', () => {
     });
   });
 
-  const EMPTY: LedWorkProgressResponse = { hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0 };
+  const EMPTY: LedWorkProgressResponse = { hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [] };
 
   it('polls every 60 seconds while the document is visible', async () => {
     vi.useFakeTimers();

@@ -42,11 +42,15 @@ function summary(extra: Partial<LedWorkProgressResponse> = {}): LedWorkProgressR
       }
     ],
     overdueTasks: [
-      { taskId: 't1', shortId: 'APO-1', title: 'Fix login', projectId: 'p1', objectiveId: 'm1a', dueDate: '2026-01-10', daysOverdue: 3, assignees: [{ employeeId: 'e1', displayName: 'Ann Lee' }] },
-      { taskId: 't2', shortId: 'ZEU-7', title: 'Polish header', projectId: 'p2', objectiveId: 'm2', dueDate: '2026-01-12', daysOverdue: 1, assignees: [] }
+      { taskId: 't1', shortId: 'APO-1', title: 'Fix login', projectId: 'p1', objectiveId: 'm1a', dueDate: '2026-01-10', daysOverdue: 3, estimatedHours: 6, assignees: [{ employeeId: 'e1', displayName: 'Ann Lee' }] },
+      { taskId: 't2', shortId: 'ZEU-7', title: 'Polish header', projectId: 'p2', objectiveId: 'm2', dueDate: '2026-01-12', daysOverdue: 1, estimatedHours: null, assignees: [] }
     ],
     overdueTotal: 9,
-    modulesAtRisk: 1,
+    modulesAtRisk: 1, overdueHours: 26, overdueUnestimatedTaskCount: 1,
+    overdueByProject: [
+      { projectId: 'p1', projectName: 'Apollo', hours: 20, taskCount: 6, unestimatedTaskCount: 0 },
+      { projectId: 'p2', projectName: 'Zeus', hours: 6, taskCount: 3, unestimatedTaskCount: 1 }
+    ],
     ...extra
   };
 }
@@ -193,7 +197,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-ov-employee-e1')?.textContent).toContain('24 h');
     expect(q('tp-ov-employee-range')?.textContent?.trim()).toBe('1–2 of 45');
     expect(q('tp-overdue-count')?.textContent).toContain('2 of 9');
-    expect(q('tp-overdue-t1')?.textContent).toContain('10 Jan 2026');
+    expect(q('tp-overdue-t1')?.closest('tr')?.textContent).toContain('10 Jan 2026');
     http.expectNone((r) => !isTime(r));
   });
 
@@ -516,6 +520,31 @@ describe('TeamProgressDetailDialogComponent', () => {
     fixture.componentInstance.setProject('p2');
     render();
     expect([...el().querySelectorAll('[data-testid="tp-project-row"]')].length).toBe(1);
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
+  });
+
+  it('overdue: total overdue hours on top, a pie by project, and a table with each task allocated hours', () => {
+    openWith();
+
+    expect(q('tp-overdue-hours')!.textContent!.replace(/\s+/g, ' ')).toContain('26 h overdue');
+    expect(q('tp-overdue-hours')!.textContent).toContain('1 task without an estimate');
+    const slices = [...el().querySelectorAll('[data-testid="tp-overdue-slice"]')].map((r) =>
+      [...r.children].map((c) => c.textContent!.trim()).filter((t) => t !== '').join(' '),
+    );
+    expect(slices).toEqual(['Apollo 20 h 77%', 'Zeus 6 h 23%']);
+    expect(q('tp-overdue-pie')).not.toBeNull();
+    const row = (id: string) => q(id)!.closest('tr')!.textContent!.replace(/\s+/g, ' ');
+    expect(row('tp-overdue-t1')).toContain('6 h');
+    expect(q('tp-overdue-t2')!.closest('tr')!.querySelector('[data-testid="tp-overdue-task-hours"]')!.textContent!.trim()).toBe('—');
+  });
+
+  it('the overdue total and pie follow the project filter', () => {
+    openWith();
+    fixture.componentInstance.setProject('p2');
+    render();
+    expect(q('tp-overdue-hours')!.textContent).toContain('6 h overdue');
+    expect(el().querySelectorAll('[data-testid="tp-overdue-slice"]').length).toBe(1);
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
   });

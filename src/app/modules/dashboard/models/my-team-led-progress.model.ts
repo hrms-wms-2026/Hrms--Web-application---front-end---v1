@@ -50,6 +50,17 @@ export interface LedOverdueTask {
   dueDate: string;
   daysOverdue: number;
   assignees: LedTaskAssignee[];
+  /** The task's estimate; null when it has none (it adds no hours). */
+  estimatedHours: number | null;
+}
+
+/** Every overdue top-level task of one project (not just the listed ones), summed. */
+export interface LedOverdueProject {
+  projectId: string;
+  projectName: string;
+  hours: number;
+  taskCount: number;
+  unestimatedTaskCount: number;
 }
 
 export interface LedWorkProgressResponse {
@@ -59,4 +70,10 @@ export interface LedWorkProgressResponse {
   overdueTotal: number;
   /** Led modules whose subtree has overdue work. */
   modulesAtRisk: number;
+  /** Estimated hours of every overdue top-level task (overdueTotal of them). */
+  overdueHours: number;
+  /** Overdue tasks with no estimate, so not in overdueHours. */
+  overdueUnestimatedTaskCount: number;
+  /** overdueHours by project, most hours first. */
+  overdueByProject: LedOverdueProject[];
 }
