@@ -1,0 +1,51 @@
+<div class="paw" role="img" [attr.aria-label]="summary()">
+  <div class="paw-plot">
+    @for (c of columns(); track c.date) {
+      <div
+        class="paw-col"
+        data-testid="paw-col"
+        [class.paw-col--today]="c.today"
+        [title]="c.tooltip"
+      >
+        <div class="paw-bars">
+          <span
+            class="paw-bar"
+            data-testid="paw-planned"
+            [style.height.%]="c.planned"
+            [style.background]="colors.planned"
+          ></span>
+          @if (!c.future) {
+            <span class="paw-bar paw-bar--actual" data-testid="paw-actual">
+              <span [style.height.%]="c.scheduled" [style.background]="colors.scheduled"></span>
+              <span [style.height.%]="c.outside" [style.background]="colors.outside"></span>
+              <span [style.height.%]="c.noPlan" [style.background]="colors.noPlan"></span>
+            </span>
+          }
+        </div>
+        <span class="paw-label">{{ c.label }}</span>
+      </div>
+    }
+    @if (coveragePoints().length > 0) {
+      <svg class="paw-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <polyline data-testid="paw-coverage" [attr.points]="coverageLinePoints()" />
+        @for (p of coveragePoints(); track p.x) {
+          <circle data-testid="paw-coverage-point" [attr.cx]="p.x" [attr.cy]="p.y" r="1.6" />
+        }
+      </svg>
+    }
+    @if (coverageLine()) {
+      <span class="paw-axis" aria-hidden="true"
+        ><span>100%</span><span>50%</span><span>0%</span></span
+      >
+    }
+  </div>
+  <ul class="paw-legend" aria-hidden="true">
+    <li><span class="paw-key" [style.background]="colors.planned"></span>Planned</li>
+    <li><span class="paw-key" [style.background]="colors.scheduled"></span>In plan</li>
+    <li><span class="paw-key" [style.background]="colors.outside"></span>Outside slot</li>
+    <li><span class="paw-key" [style.background]="colors.noPlan"></span>No plan</li>
+    @if (coverageLine()) {
+      <li><span class="paw-key paw-key--line"></span>Coverage %</li>
+    }
+  </ul>
+</div>
