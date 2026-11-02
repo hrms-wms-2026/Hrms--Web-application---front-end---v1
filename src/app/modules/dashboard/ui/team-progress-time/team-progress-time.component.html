@@ -7,7 +7,22 @@
       {{ periodLabel() }}
     </p>
   } @else {
-    @if (band()) {
+    @if (chart()) {
+      <section class="tpt-chart" data-testid="tpt-chart">
+        <p class="tpt-title">
+          Planned vs worked <span class="tpt-muted">· {{ periodLabel() }}</span>
+          <span class="tpt-coverage" [attr.title]="tooltip()" data-testid="tpt-coverage"
+            >{{ percentText(t.coveragePercent) }} covered</span
+          >
+          @if (comparison(); as c) {
+            <span class="tpt-muted">{{ c }}</span>
+          }
+        </p>
+        @if (chartData(); as c) {
+          <app-planned-actual-week-chart class="tpt-chart-plot" [days]="c.days" [labels]="c.labels" [today]="c.today" />
+        }
+      </section>
+    } @else if (band()) {
       <section class="tpt-band" data-testid="tpt-band">
         <p class="tpt-title">
           Planned vs worked <span class="tpt-muted">· {{ periodLabel() }}</span>
@@ -49,14 +64,19 @@
       </section>
     }
     @if (callout() && unscheduledMinutes() > 0) {
-      <p
-        class="tpt-callout"
-        data-testid="tpt-callout"
-        title="Worked without a matching Planner slot."
-      >
-        Unscheduled work · {{ minutes(unscheduledMinutes()) }} · {{ t.peopleWithUnscheduledWork }}
-        {{ t.peopleWithUnscheduledWork === 1 ? 'person' : 'people' }}
-      </p>
+      <section class="tpt-callout" data-testid="tpt-callout" title="Worked without a matching Planner slot.">
+        <p class="tpt-callout-title">
+          Unscheduled work · {{ minutes(unscheduledMinutes()) }} · {{ t.peopleWithUnscheduledWork }}
+          {{ t.peopleWithUnscheduledWork === 1 ? 'person' : 'people' }}
+        </p>
+        @for (u of unscheduledTop(); track u.row.employeeId) {
+          <p class="tpt-unscheduled-row" data-testid="tpt-unscheduled-row">
+            <span class="tpt-name">{{ u.row.displayName }}</span>
+            <span class="tpt-row-bar tpt-row-bar--red" aria-hidden="true"><span [style.width.%]="u.share"></span></span>
+            <span class="tpt-hours">{{ minutes(u.row.unscheduledMinutes) }}</span>
+          </p>
+        }
+      </section>
     }
     @if (workloadRows() > 0) {
       <section

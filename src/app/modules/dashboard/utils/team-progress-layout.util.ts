@@ -126,9 +126,11 @@ export interface TeamProgressPlan {
   listRows: number;
   /** Extra list rows to use when the weekly completion panel is not shown (failed / unavailable). */
   weeklyFallbackRows: number;
-  /** The planned-vs-worked band (tall / large / maximum). */
+  /** The planned-vs-worked band (tall / large / maximum, when the chart does not fit). */
   timeBand: boolean;
-  /** The amber unscheduled-work callout (wide). */
+  /** The planned-vs-worked bucket chart (tall / large / maximum); it replaces the band. */
+  timeChart: boolean;
+  /** The unscheduled-work panel with its top 3 people (wide). */
   timeCallout: boolean;
   /** Workload ranking rows: 3 in medium, 5 in tall / large / maximum; 0 hides the panel. */
   workloadRows: number;
@@ -137,7 +139,10 @@ export interface TeamProgressPlan {
 /** Fixed heights of the planned-vs-worked sections (they match team-progress-time's CSS). */
 export const TEAM_PROGRESS_TIME_PX = {
   band: 84,
-  callout: 36,
+  /** The bucket chart: title row, plot and legend (2026-11-02 design match). */
+  chart: 180,
+  /** The unscheduled-work panel: a 18px title and three 20px people rows (6px padding); the most a 5-row wide card spares. */
+  callout: 84,
   workloadRow: 40
 } as const;
 
@@ -187,7 +192,7 @@ function rowsFor(space: number): number {
 export function planTeamProgressLayout(mode: TeamProgressMode, width: number, height: number): TeamProgressPlan {
   const plan: TeamProgressPlan = {
     miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
-    timeBand: false, timeCallout: false, workloadRows: 0
+    timeBand: false, timeChart: false, timeCallout: false, workloadRows: 0
   };
   if (!(width > 0) || !(height > 0)) return plan;
   const bodyWidth = width - TEAM_PROGRESS_CARD_CHROME.width;
@@ -264,7 +269,10 @@ function reserveWorkload(plan: TeamProgressPlan, rest: number, rows: number): nu
 }
 
 function reserveBandAndWorkload(plan: TeamProgressPlan, rest: number): number {
-  if (canReserve(rest, TEAM_PROGRESS_TIME_PX.band)) {
+  if (canReserve(rest, TEAM_PROGRESS_TIME_PX.chart)) {
+    plan.timeChart = true;
+    rest -= GAP_PX + TEAM_PROGRESS_TIME_PX.chart;
+  } else if (canReserve(rest, TEAM_PROGRESS_TIME_PX.band)) {
     plan.timeBand = true;
     rest -= GAP_PX + TEAM_PROGRESS_TIME_PX.band;
   }

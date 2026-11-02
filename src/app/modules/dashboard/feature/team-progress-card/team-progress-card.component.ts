@@ -29,6 +29,7 @@ import {
 } from '../../utils/team-progress-layout.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -56,6 +57,13 @@ export interface MetricTile {
 }
 
 /** One of the hour states, ready for the donut, legends, tiles and bars. */
+const STATUS_ICON: Record<ProgressStatusKey, IconName> = {
+  completed: 'check-circle',
+  inProgress: 'clock',
+  notStarted: 'layers',
+  untasked: 'alert-triangle'
+};
+
 export interface StatusRow {
   key: ProgressStatusKey;
   label: string;
@@ -164,7 +172,7 @@ const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['
 
 const EMPTY_PLAN: TeamProgressPlan = {
   miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
-  timeBand: false, timeCallout: false, workloadRows: 0
+  timeBand: false, timeChart: false, timeCallout: false, workloadRows: 0
 };
 
 /**
@@ -179,7 +187,7 @@ const EMPTY_PLAN: TeamProgressPlan = {
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [StopClickPropagationDirective, TeamProgressTimeComponent, 
+  imports: [StopClickPropagationDirective, IconComponent, TeamProgressTimeComponent, 
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -381,6 +389,11 @@ export class TeamProgressCardComponent implements OnInit {
 
   /** Four states for All time (a zero state still shows "0 h · 0%"); for a dated period the three
    * task states against the hours due in it ("not yet tasked" has no date). */
+  /** The status tile's icon badge (2026-11-02 design match). */
+  protected statusIcon(key: ProgressStatusKey): IconName {
+    return STATUS_ICON[key];
+  }
+
   protected readonly statusRows = computed<StatusRow[]>(() => {
     if (this.period() !== 'all') {
       const p = this.periodData();

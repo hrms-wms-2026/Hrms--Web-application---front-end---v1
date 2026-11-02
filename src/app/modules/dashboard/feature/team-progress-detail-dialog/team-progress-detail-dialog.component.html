@@ -169,7 +169,7 @@
                 <button type="button" class="tp-text-button" data-testid="tp-weekly-retry" (click)="retryWeekly()">Retry</button>
               </div>
             } @else if (weekly().status === 'ready' && weekly().data; as wc) {
-              <app-weekly-completion-chart class="tp-weekly__chart" data-testid="tp-weekly-chart" [weeks]="wc.weeks" [allocatedHours]="wc.allocatedHours" />
+              <app-weekly-completion-chart class="tp-weekly__chart" data-testid="tp-weekly-chart" [weeks]="wc.weeks" [allocatedHours]="wc.allocatedHours" [percentLine]="true" />
               @if (wc.undatedCompletedHours > 0) {
                 <p class="tp-footnote" data-testid="tp-weekly-undated">
                   Plus {{ formatHours(wc.undatedCompletedHours) }} h ({{ wc.undatedCompletedTaskCount }}
@@ -182,6 +182,40 @@
           </section>
 
           <app-team-progress-time-detail [time]="time().data" [status]="timeStatus()" (retried)="retryTime()" />
+
+          @if (!isPeriod() && projectBreakdown().length > 0) {
+            <section class="tp-panel" aria-labelledby="tp-projects-heading" data-testid="tp-projects">
+              <h3 id="tp-projects-heading" class="tp-panel__title">Project breakdown</h3>
+              <table class="tp-mini-table">
+                <caption class="sr-only">Allocated and completed hours by project</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Project</th>
+                    <th scope="col">Allocated</th>
+                    <th scope="col">Completed</th>
+                    <th scope="col">Progress</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (p of projectBreakdown(); track p.id; let i = $index) {
+                    <tr data-testid="tp-project-row">
+                      <td>{{ i + 1 }}</td>
+                      <td>{{ p.name }}</td>
+                      <td>{{ formatHours(p.allocated) }} h</td>
+                      <td>{{ formatHours(p.completed) }} h</td>
+                      <td>
+                        <span class="tp-project-progress">
+                          <span class="tp-project-bar" aria-hidden="true"><span [style.width.%]="p.share"></span></span>
+                          <span>{{ p.percent }}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+          }
 
           <section class="tp-panel tp-panel--employees" aria-labelledby="tp-ov-emp-heading" data-testid="tp-ov-employees">
             <div class="tp-panel__head">

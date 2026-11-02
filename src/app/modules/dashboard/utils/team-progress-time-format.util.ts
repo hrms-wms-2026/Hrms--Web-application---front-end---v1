@@ -3,6 +3,7 @@ import {
   LedTimePeriod,
   LedTimeProgress,
 } from '../models/team-progress-detail.model';
+import { PlannedActualDay } from './planned-actual-format.util';
 
 export { minutesText } from './team-presence-format.util';
 
@@ -52,4 +53,40 @@ export function bandShares(time: LedTimeProgress): {
     noPlan: share(time.noPlanMinutes),
     plannedMarker: share(time.plannedMinutes),
   };
+}
+
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** A bucket's column label: the weekday for a one-day bucket (week), else "26–1" (a week of a month). */
+export function bucketLabel(from: string, to: string): string {
+  const [y, m, d] = from.split('-').map(Number);
+  if (from === to) return WEEKDAY_NAMES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${d}–${Number(to.split('-')[2])}`;
+}
+
+/**
+ * The time buckets as app-planned-actual-week-chart columns: planned against in plan + unscheduled (the buckets do not
+ * split outside slot from no plan, so all of it reads as no plan). A bucket's coverage (in plan / planned, capped at 100)
+ * only once it has ended before today; a later bucket is future (planned only).
+ */
+export function bucketChart(time: LedTimeProgress, today: string): { days: PlannedActualDay[]; labels: string[]; today: string } {
+  const days = time.buckets.map((b) => ({
+    date: b.from,
+    planned: b.plannedMinutes,
+    scheduled: b.scheduledMinutes,
+    outside: 0,
+    noPlan: b.unscheduledMinutes,
+    coveragePercent:
+      b.to < today && b.plannedMinutes > 0
+        ? Math.min(100, Math.round((b.scheduledMinutes * 1000) / b.plannedMinutes) / 10)
+        : null,
+  }));
+  // The chart treats a column dated after `today` as future; a month bucket that started already is not.
+  const current = time.buckets.find((b) => b.from <= today && today <= b.to);
+  return { days, labels: time.buckets.map((b) => bucketLabel(b.from, b.to)), today: current ? current.from : today };
+}
+
+/** Today in the viewer's zone, yyyy-MM-dd. */
+export function localToday(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }

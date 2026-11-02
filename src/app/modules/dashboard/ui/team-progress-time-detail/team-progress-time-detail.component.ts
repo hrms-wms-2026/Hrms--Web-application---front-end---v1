@@ -3,13 +3,14 @@ import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
 import { LedTimeProgress } from '../../models/team-progress-detail.model';
 import { clockTime } from '../../utils/team-presence-format.util';
 import {
+  bucketChart,
   comparisonText,
   coverageTooltip,
   hoursText,
+  localToday,
   minutesText,
 } from '../../utils/team-progress-time-format.util';
-
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+import { PlannedActualWeekChartComponent } from '../planned-actual-week-chart/planned-actual-week-chart.component';
 
 /**
  * The Team Progress popup's planned-vs-worked sections (My Team widgets design 2026-10-29, section 6.1): planned, in-plan
@@ -19,6 +20,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 @Component({
   selector: 'app-team-progress-time-detail',
   standalone: true,
+  imports: [PlannedActualWeekChartComponent],
   templateUrl: './team-progress-time-detail.component.html',
   styleUrl: './team-progress-time-detail.component.css',
   host: { class: 'contents' },
@@ -44,25 +46,10 @@ export class TeamProgressTimeDetailComponent {
     return t ? coverageTooltip(t) : '';
   });
 
-  /** One column per bucket; planned and worked bars scale against the busiest bucket. */
-  protected readonly buckets = computed(() => {
+  /** The buckets in the shared planned-vs-actual chart style (2026-11-02 design match section 8). */
+  protected readonly chart = computed(() => {
     const t = this.time();
-    if (!t) return [];
-    const max = Math.max(
-      0,
-      ...t.buckets.map((b) =>
-        Math.max(b.plannedMinutes, b.scheduledMinutes + b.unscheduledMinutes),
-      ),
-    );
-    const share = (n: number) => (max > 0 ? (n * 100) / max : 0);
-    return t.buckets.map((b) => ({
-      key: b.from,
-      label: this.bucketLabel(b.from, b.to),
-      planned: share(b.plannedMinutes),
-      scheduled: share(b.scheduledMinutes),
-      unscheduled: share(b.unscheduledMinutes),
-      tooltip: `${this.bucketLabel(b.from, b.to)}: planned ${minutesText(b.plannedMinutes)}, in plan ${minutesText(b.scheduledMinutes)}, unscheduled ${minutesText(b.unscheduledMinutes)}`,
-    }));
+    return t ? bucketChart(t, localToday()) : null;
   });
 
   protected minutes(m: number): string {
@@ -119,11 +106,5 @@ export class TeamProgressTimeDetailComponent {
       w.utilizationPercent === null ? '' : String(w.utilizationPercent),
     ]);
     this.downloadFile(`team-workload-${t.from}_${t.to}.csv`, toCsv([header, ...lines]));
-  }
-
-  private bucketLabel(from: string, to: string): string {
-    const [y, m, d] = from.split('-').map(Number);
-    if (from === to) return WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
-    return `${d}–${Number(to.split('-')[2])}`;
   }
 }

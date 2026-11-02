@@ -241,6 +241,23 @@ export class TeamProgressDetailDialogComponent {
     return ids;
   });
 
+  /** Project breakdown: the (filtered) projects, most allocated first; completed of allocated, "—" without allocation. */
+  protected readonly projectBreakdown = computed(() => {
+    const summary = this.summary();
+    if (!summary) return [];
+    const selected = this.selectedProject();
+    return (selected ? [selected] : summary.projects)
+      .map((p) => ({
+        id: p.projectId,
+        name: p.projectName,
+        allocated: p.hours.allocatedHours,
+        completed: p.hours.completedHours,
+        percent: p.hours.allocatedHours > 0 ? formatPercent(p.hours.completedHours, p.hours.allocatedHours) : '—',
+        share: p.hours.allocatedHours > 0 ? Math.min(100, (p.hours.completedHours * 100) / p.hours.allocatedHours) : 0,
+      }))
+      .sort((a, b) => b.allocated - a.allocated || a.name.localeCompare(b.name));
+  });
+
   protected readonly overviewHours = computed<LedHourTotals | null>(() => {
     const summary = this.summary();
     if (!summary) return null;

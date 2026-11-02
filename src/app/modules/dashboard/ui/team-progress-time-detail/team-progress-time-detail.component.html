@@ -35,30 +35,9 @@
           <span class="tptd-muted">{{ c }}</span>
         }
       </p>
-      <div
-        class="tptd-chart"
-        role="img"
-        aria-label="Planned, in-plan and unscheduled minutes per period"
-        data-testid="tptd-chart"
-      >
-        @for (b of buckets(); track b.key) {
-          <div class="tptd-col" [attr.title]="b.tooltip">
-            <div class="tptd-bars">
-              <span class="tptd-bar tptd-bar--planned" [style.height.%]="b.planned"></span>
-              <span class="tptd-bar tptd-bar--worked">
-                <span class="tptd-bar--unscheduled" [style.height.%]="b.unscheduled"></span>
-                <span class="tptd-bar--scheduled" [style.height.%]="b.scheduled"></span>
-              </span>
-            </div>
-            <span class="tptd-label">{{ b.label }}</span>
-          </div>
-        }
-      </div>
-      <p class="tptd-legend">
-        <span><i class="tptd-dot tptd-bar--planned"></i>Planned</span>
-        <span><i class="tptd-dot tptd-bar--scheduled"></i>Worked in plan</span>
-        <span><i class="tptd-dot tptd-bar--unscheduled"></i>Unscheduled</span>
-      </p>
+      @if (chart(); as c) {
+        <app-planned-actual-week-chart class="tptd-chart" data-testid="tptd-chart" [days]="c.days" [labels]="c.labels" [today]="c.today" />
+      }
     }
   } @else {
     <div class="tptd-skeleton" aria-busy="true"></div>

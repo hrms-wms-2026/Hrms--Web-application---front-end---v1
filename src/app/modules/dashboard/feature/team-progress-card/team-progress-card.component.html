@@ -290,6 +290,7 @@
               class="tp-weekly-chart"
               [weeks]="weekly.weeks"
               [allocatedHours]="weekly.allocatedHours"
+              [percentLine]="true"
               [compact]="mode() === 'tall' && widthStep() < 500"
             />
             @if (undatedText()) {
@@ -307,12 +308,13 @@
     </ng-template>
 
     <ng-template #timeTpl>
-      @if (plan().timeBand || plan().timeCallout || plan().workloadRows > 0) {
+      @if (plan().timeBand || plan().timeChart || plan().timeCallout || plan().workloadRows > 0) {
         <app-team-progress-time
           data-testid="team-progress-time"
           [time]="store.time()"
           [error]="store.timeError()"
           [band]="plan().timeBand"
+          [chart]="plan().timeChart"
           [callout]="plan().timeCallout"
           [workloadRows]="plan().workloadRows"
         />
@@ -441,9 +443,12 @@
               <ul class="tp-status-tiles" [class.tp-status-tiles--3]="statusRows().length === 3" data-testid="team-progress-tiles">
                 @for (row of statusRows(); track row.key) {
                   <li class="tp-status-tile" [class]="'tone-' + row.tone">
-                    <span class="tp-status-tile-hours tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
-                    <span class="truncate text-xs text-slate-500" [title]="row.label">{{ row.label }}</span>
-                    <span class="tp-status-tile-pct tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId + '-percent'">{{ row.percentText }}</span>
+                    <span class="tp-status-tile-text">
+                      <span class="tp-status-tile-hours tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
+                      <span class="truncate text-xs text-slate-500" [title]="row.label">{{ row.label }}</span>
+                      <span class="tp-status-tile-pct tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId + '-percent'">{{ row.percentText }}</span>
+                    </span>
+                    <span class="tp-status-tile-icon tp-tone-text" aria-hidden="true"><app-icon [name]="statusIcon(row.key)" /></span>
                   </li>
                 }
               </ul>

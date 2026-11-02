@@ -183,7 +183,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-total-label')?.textContent?.trim()).toBe('Total allocated');
     // Panel order: Status Distribution | Weekly completion | Employee Breakdown.
     const panels = Array.from(el().querySelectorAll('.tp-panels > section')).map((s) => s.getAttribute('data-testid'));
-    expect(panels).toEqual(['tp-distribution', 'tp-weekly', 'tp-ov-employees']);
+    expect(panels).toEqual(['tp-distribution', 'tp-weekly', 'tp-projects', 'tp-ov-employees']);
     expect(q('tp-weekly')?.textContent).toContain('Weekly completion');
     expect(q('tp-weekly-range')?.textContent?.trim()).toBe('Last 10 weeks');
     expect(q('tp-weekly')?.textContent).toContain('Allocated task hours completed per week');
@@ -491,6 +491,27 @@ describe('TeamProgressDetailDialogComponent', () => {
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
     http.expectNone((r) => !isTime(r));
+  });
+
+  it('popup project breakdown rows: # · Project · Allocated · Completed · Progress, most allocated first', () => {
+    openWith();
+
+    const rows = [...el().querySelectorAll('[data-testid="tp-project-row"]')].map((r) =>
+      [...r.querySelectorAll('td')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim()),
+    );
+    expect(rows).toEqual([
+      ['1', 'Apollo', '120 h', '40 h', '33%'],
+      ['2', 'Zeus', '80 h', '10 h', '13%'],
+    ]);
+  });
+
+  it('the project breakdown follows the project filter', () => {
+    openWith();
+    fixture.componentInstance.setProject('p2');
+    render();
+    expect([...el().querySelectorAll('[data-testid="tp-project-row"]')].length).toBe(1);
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
   });
 
   it('closes on Escape (from app-modal) and on the close button', () => {

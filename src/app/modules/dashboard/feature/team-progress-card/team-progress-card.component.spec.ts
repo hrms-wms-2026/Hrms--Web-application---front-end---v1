@@ -518,7 +518,8 @@ describe('TeamProgressCardComponent', () => {
         module('late', 'Late', hours(10, 2, 0, 3), { atRisk: true }),
         module('late-child', 'Late child', hours(5, 0, 0, 3), { parentObjectiveId: 'late', depth: 1, atRisk: true })
       ]));
-      resize(fixture, 900, 852);
+      // 10 rows: at 8 the bucket chart takes the third list row's height (2026-11-02 design match).
+      resize(fixture, 900, 1068);
       expect(text(fixture, 'team-progress-at-risk')).toBe('1');
       expect(text(fixture, 'team-progress-toggle')).toBe('View all (3)');
       const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="team-progress-module"]') as NodeListOf<HTMLElement>);
@@ -1022,6 +1023,8 @@ describe('TeamProgressCardComponent', () => {
       return fixture;
     }
 
+    const gridRows = (n: number) => n * 96 + (n - 1) * 12;
+
     const el = (fixture: ComponentFixture<TeamProgressCardComponent>, testId: string): HTMLElement | null =>
       fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
@@ -1038,12 +1041,14 @@ describe('TeamProgressCardComponent', () => {
       expect(getTimeProgress).toHaveBeenCalledWith('week');
     });
 
-    it('large shows the band with coverage and its change, and the workload with utilization over 100% kept', async () => {
+    it('maximum shows the bucket chart (not the band) with coverage and its change, and the workload with utilization over 100% kept', async () => {
       const fixture = await sized(1300, 1176);
 
-      expect(el(fixture, 'tpt-band')).not.toBeNull();
+      expect(el(fixture, 'tpt-band')).toBeNull();
+      expect(el(fixture, 'tpt-chart')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('app-planned-actual-week-chart')).not.toBeNull();
       expect(el(fixture, 'tpt-coverage')!.textContent!.trim()).toBe('80% covered');
-      expect(el(fixture, 'tpt-band')!.textContent).toContain('↑ 6 pp vs last week');
+      expect(el(fixture, 'tpt-chart')!.textContent).toContain('↑ 6 pp vs last week');
       expect(el(fixture, 'tpt-util')!.textContent!.trim()).toBe('125%');
       expect(el(fixture, 'tpt-workload')!.getAttribute('title')).toBe('More workload is not better performance.');
     });
@@ -1067,6 +1072,48 @@ describe('TeamProgressCardComponent', () => {
       fixture.detectChanges();
 
       expect(el(fixture, 'team-progress-completion')!.textContent).toBe(allocation);
+    });
+
+    it('status tiles carry an icon badge on the right, with hours, label and %', async () => {
+      const fixture = await sized(642, 420);
+      const tiles = [...fixture.nativeElement.querySelectorAll('[data-testid="team-progress-tiles"] .tp-status-tile')] as HTMLElement[];
+      expect(tiles.length).toBeGreaterThan(0);
+      for (const tile of tiles) {
+        expect(tile.lastElementChild!.classList.contains('tp-status-tile-icon')).toBe(true);
+        expect(tile.querySelector('app-icon')).not.toBeNull();
+      }
+    });
+
+    it('tall view shows bucket chart instead of band', async () => {
+      const fixture = await sized(500, gridRows(10));
+      expect(el(fixture, 'tpt-chart')).not.toBeNull();
+      expect(el(fixture, 'tpt-band')).toBeNull();
+    });
+
+    it('a view too short for the chart keeps the band', async () => {
+      const fixture = await sized(500, gridRows(9));
+      expect(el(fixture, 'tpt-band')).not.toBeNull();
+      expect(el(fixture, 'tpt-chart')).toBeNull();
+    });
+
+    it('unscheduled panel lists top 3 by unscheduled time, with bars', async () => {
+      const fixture = await sized(900, gridRows(5), () =>
+        ledTime({
+          ...weekTime,
+          workload: [
+            workloadRow({ displayName: 'Ada', unscheduledMinutes: 30 }),
+            workloadRow({ displayName: 'Bob', unscheduledMinutes: 240 }),
+            workloadRow({ displayName: 'Cat', unscheduledMinutes: 0 }),
+            workloadRow({ displayName: 'Dan', unscheduledMinutes: 120 }),
+            workloadRow({ displayName: 'Eve', unscheduledMinutes: 60 }),
+          ],
+        }),
+      );
+      const names = [...fixture.nativeElement.querySelectorAll('[data-testid="tpt-unscheduled-row"] .tpt-name')].map(
+        (n: Element) => n.textContent!.trim(),
+      );
+      expect(names).toEqual(['Bob', 'Dan', 'Eve']);
+      expect(el(fixture, 'tpt-callout')!.textContent).toContain('3h');
     });
 
     it('coverage is "—" when nothing is planned', async () => {
