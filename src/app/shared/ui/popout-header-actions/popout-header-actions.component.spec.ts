@@ -1,5 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { PopoutHeaderActionsComponent, formatRefreshedAgo, latestDate } from './popout-header-actions.component';
+import {
+  PopoutHeaderActionsComponent,
+  formatRefreshedAgo,
+  latestDate,
+  replayDashboardMotion,
+} from './popout-header-actions.component';
 
 describe('formatRefreshedAgo', () => {
   const now = new Date('2026-10-01T12:00:00Z');
@@ -63,5 +68,69 @@ describe('PopoutHeaderActionsComponent', () => {
     fixture.componentRef.setInput('refreshing', true);
     fixture.detectChanges();
     expect((el.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('replayDashboardMotion', () => {
+  /** Nests each tag in the one before it, inside a root div, and returns the root. */
+  function tree(...tags: string[]): HTMLElement {
+    const root = document.createElement('div');
+    tags.reduce<HTMLElement>((parent, tag) => {
+      const [name, cls] = tag.split('.');
+      const el = document.createElement(name);
+      if (cls) el.className = cls;
+      return parent.appendChild(el);
+    }, root);
+    return root;
+  }
+
+  it('alternates the widget between the two replay classes', () => {
+    const root = tree('div.dash-motion', 'button');
+    const widget = root.querySelector<HTMLElement>('.dash-motion')!;
+    const button = root.querySelector<HTMLElement>('button')!;
+
+    replayDashboardMotion(button);
+    expect(widget.className).toBe('dash-motion dash-replay-a');
+    replayDashboardMotion(button);
+    expect(widget.className).toBe('dash-motion dash-replay-b');
+    replayDashboardMotion(button);
+    expect(widget.className).toBe('dash-motion dash-replay-a');
+  });
+
+  it('inside a popup replays only the popup', () => {
+    const root = tree('div.dash-motion', 'app-modal', 'button');
+
+    replayDashboardMotion(root.querySelector<HTMLElement>('button')!);
+
+    expect(root.querySelector('app-modal')!.classList).toContain('dash-replay-a');
+    expect(root.querySelector('.dash-motion')!.className).toBe('dash-motion');
+  });
+
+  it('does nothing outside the dashboard', () => {
+    const root = tree('app-modal', 'button');
+
+    replayDashboardMotion(root.querySelector<HTMLElement>('button')!);
+
+    expect(root.querySelector('app-modal')!.className).toBe('');
+  });
+
+  it('a finished refresh replays the widget around the header', () => {
+    const widget = document.createElement('div');
+    widget.className = 'dash-motion';
+    document.body.appendChild(widget);
+    const fixture = TestBed.createComponent(PopoutHeaderActionsComponent);
+    widget.appendChild(fixture.nativeElement);
+
+    fixture.componentRef.setInput('refreshing', true);
+    fixture.detectChanges();
+    expect(widget.className).toBe('dash-motion');
+
+    fixture.componentRef.setInput('refreshing', false);
+    fixture.detectChanges();
+    expect(widget.className).toBe('dash-motion dash-replay-a');
+
+    fixture.destroy();
+    widget.remove();
+    TestBed.resetTestingModule();
   });
 });
