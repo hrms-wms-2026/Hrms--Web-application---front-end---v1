@@ -182,8 +182,7 @@
     @switch (createPop.active()) {
       @case ('event') {
         <app-planner-event-tab [slot]="slot" [shared]="createPop.shared" [timezone]="plannerZone()"
-          [canMeet]="createTabs().includes('meeting')" (created)="onCreateDone()"
-          (switchToMeeting)="createPop.active.set('meeting')" (moreOptions)="onEventMoreOptions($event)" />
+          (created)="onCreateDone()" (moreOptions)="onEventMoreOptions($event)" />
       }
       @case ('meeting') {
         <app-meeting-form-modal [open]="true" [embedded]="true" [compact]="true" mode="create"
