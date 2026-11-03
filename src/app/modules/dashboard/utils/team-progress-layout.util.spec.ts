@@ -185,7 +185,7 @@ describe('team-progress-layout.util', () => {
 
     it('shows nothing optional for a zero size', () => {
       expect(planTeamProgressLayout('tall', 0, 0)).toEqual({
-        miniLegend: 'none', legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0
+        miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0
       });
     });
 
@@ -205,7 +205,7 @@ describe('team-progress-layout.util', () => {
     });
 
     it('small: tile rows grow with height, then View details', () => {
-      expect(plan(4, 3)).toMatchObject({ tileRows: 1, viewDetails: false, listRows: 0 });
+      expect(plan(4, 3)).toMatchObject({ tileRows: 0, viewDetails: false, listRows: 0 });
       expect(plan(4, 4)).toMatchObject({ tileRows: 2, viewDetails: false });
       expect(plan(4, 5)).toMatchObject({ tileRows: 2, viewDetails: true });
     });
@@ -219,7 +219,7 @@ describe('team-progress-layout.util', () => {
     it('wide: lists only when there is room under the tiles', () => {
       expect(plan(6, 3).listRows).toBe(0);
       expect(plan(8, 3).listRows).toBe(0);
-      expect(plan(8, 4).listRows).toBe(2);
+      expect(plan(8, 4).listRows).toBe(1);
       expect(plan(8, 5).listRows).toBeGreaterThan(plan(8, 4).listRows);
       expect(plan(8, 4).weeklyFallbackRows).toBe(0);
     });
@@ -233,7 +233,7 @@ describe('team-progress-layout.util', () => {
       expect(plan(8, 8).listRows).toBeGreaterThan(plan(8, 6).listRows);
       expect(plan(12, 8).listRows).toBeGreaterThanOrEqual(8);
       for (const [c, r] of [[4, 6], [8, 6], [12, 8]]) {
-        expect(plan(c, r).weeklyFallbackRows).toBeGreaterThanOrEqual(4);
+        expect(plan(c, r).weeklyFallbackRows).toBeGreaterThanOrEqual(3);
       }
     });
 

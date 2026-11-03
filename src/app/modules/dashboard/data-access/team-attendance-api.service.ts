@@ -26,6 +26,7 @@ export class TeamAttendanceApiService {
     let params = periodParams(query).set('page', query.page).set('pageSize', query.pageSize);
     const search = query.search?.trim();
     if (search) params = params.set('search', search);
+    if (query.sort) params = params.set('sort', query.sort);
     return this.http.get<TeamAttendancePage<TeamAttendanceEmployeeRow>>(`${this.basePath}/attendance-employees`, { params });
   }
 }
