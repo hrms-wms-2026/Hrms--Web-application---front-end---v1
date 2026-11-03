@@ -23,6 +23,8 @@ import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
 import { EventTabComponent } from '../../ui/planner-create-popover/event-tab.component';
+import { WorkItemTabComponent, WorkItemToPlace } from '../../ui/planner-create-popover/work-item-tab.component';
+import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { EventDraft } from '../../utils/event-draft';
 import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
@@ -93,10 +95,10 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
     MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
-    PlannerCreatePopoverComponent, EventTabComponent
+    PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
-  providers: [PlannerLayerStore],
+  providers: [PlannerLayerStore, WorkItemPlanFlow],
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -571,6 +573,17 @@ export class CalendarPageComponent {
   }
 
   readonly clockOf = clock;
+
+  /** A work item was created but its block was refused: place it with the block picker instead. */
+  onPickAnotherTime(item: WorkItemToPlace): void {
+    this.closeCreate();
+    void this.planner.load(this.plannerRange().from, this.plannerRange().to);
+    this.pickerItem.set({
+      taskId: item.taskId, projectId: item.projectId, projectName: '', title: item.title, priority: 'medium', dueDate: null,
+      estimatedMinutes: item.estimatedMinutes, loggedMinutes: 0, remainingMinutes: item.estimatedMinutes, plannedAheadMinutes: 0,
+      firstPlannedDate: null, plannedDayCount: 0, fullyPlanned: false, reason: 'backlog',
+    });
+  }
 
   /** "More options" on the Meeting tab: today's full meeting form, filled with everything the tab held. */
   onMeetingMoreOptions(draft: MeetingDraft): void {

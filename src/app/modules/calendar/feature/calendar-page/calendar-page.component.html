@@ -190,7 +190,10 @@
           [prefill]="{ title: createPop.shared.title(), start: slot.date + 'T' + clockOf(slot.startMinutes), end: slot.date + 'T' + clockOf(slot.endMinutes) }"
           (saved)="closeCreate(); onMeetingSaved($any($event))" (moreOptions)="onMeetingMoreOptions($event)" />
       }
-      @case ('workItem') { <p data-testid="create-body-workItem"></p> }
+      @case ('workItem') {
+        <app-planner-work-item-tab [slot]="slot" [shared]="createPop.shared" [myBlocks]="plannerBlocks().get(slot.date) ?? []"
+          (done)="onCreateDone()" (pickAnotherTime)="onPickAnotherTime($event)" />
+      }
       @case ('timeOff') { <p data-testid="create-body-timeOff"></p> }
     }
   </app-planner-create-popover>
