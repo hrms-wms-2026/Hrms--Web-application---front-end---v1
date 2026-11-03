@@ -85,6 +85,20 @@ describe('CalendarEventFormModalComponent', () => {
       expect(fixture.componentInstance.currentTimezone()).toBe('Asia/Colombo');
     });
 
+    // Review finding 4: the conflict check toggles inputs while the user types; the prefill must not come back over it.
+    it('keeps what was typed when another input changes later', () => {
+      fixture.componentRef.setInput('prefill', draft);
+      fixture.detectChanges();
+      fixture.componentInstance.setTitle('Dentist');
+      fixture.componentInstance.form.controls.location.setValue('Town hall');
+
+      fixture.componentRef.setInput('checkingConflicts', true);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.controls.title.value).toBe('Dentist');
+      expect(fixture.componentInstance.form.controls.location.value).toBe('Town hall');
+    });
+
     it('sends the location it was given', () => {
       fixture.componentRef.setInput('prefill', draft);
       fixture.detectChanges();

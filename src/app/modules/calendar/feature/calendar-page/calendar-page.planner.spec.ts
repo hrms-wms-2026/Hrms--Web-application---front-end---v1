@@ -15,6 +15,8 @@ import { CalendarEventStore } from '../../state/calendar-event.store';
 import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
+import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
 import { CalendarPageComponent } from './calendar-page.component';
 
 /** Planner = Calendar (2026-10-27 design): the calendar page with the planner layer on and off. */
@@ -107,8 +109,7 @@ describe('CalendarPageComponent planner layer', () => {
         { provide: PlannerAvailabilityService, useValue: { state, markAvailable: vi.fn(), probe: vi.fn() } },
         { provide: NotificationService, useValue: notify },
         { provide: ProjectDetailStore, useValue: projects },
-        { provide: PermissionService, useValue: { hasModule: () => true, hasAnyModule: () => true, hasPermission: () => true, hasAnyPermission: () => true } },
-      ],
+        { provide: PermissionService, useValue: { hasModule: () => true, hasAnyModule: () => true, hasPermission: () => true, hasAnyPermission: () => true } },      ],
     });
     projectError.set(null);
     http = TestBed.inject(HttpTestingController);
@@ -519,6 +520,80 @@ describe('CalendarPageComponent planner layer', () => {
       fixture.componentInstance.onTimeOffSubmitted();
 
       expect(leaveReads().length).toBe(1);
+    });
+
+    // Review fixes (2026-11-03 final review).
+    const popover = () => fixture.debugElement.query(By.directive(PlannerCreatePopoverComponent)).componentInstance as PlannerCreatePopoverComponent;
+    const tab = async (name: string) => {
+      q(`create-tab-${name}`)!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    const type = (testId: string, value: string) => {
+      const el = q(testId) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+
+    it('the Meeting tab is created in the planner zone, with the shared all-day', async () => {
+      setup();
+      rangeZone = 'Pacific/Auckland';
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      fixture.detectChanges();
+      popover().shared.isAllDay.set(true);
+
+      await tab('meeting');
+
+      const form = fixture.debugElement.query(By.directive(MeetingFormModalComponent)).componentInstance as MeetingFormModalComponent;
+      expect(form.form.controls.timezone.value).toBe('Pacific/Auckland');
+      expect(form.form.controls.isAllDay.value).toBe(true);
+    });
+
+    it('a tab keeps what was typed when switching away and back', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      fixture.detectChanges();
+      type('event-tab-location', 'Clinic');
+
+      await tab('workItem');
+      await tab('event');
+
+      expect((q('event-tab-location') as HTMLInputElement).value).toBe('Clinic');
+    });
+
+    it('a title typed on the Meeting tab is the title on the other tabs', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      fixture.detectChanges();
+      await tab('meeting');
+      const form = fixture.debugElement.query(By.directive(MeetingFormModalComponent)).componentInstance as MeetingFormModalComponent;
+      form.form.controls.title.setValue('Sprint review');
+
+      await tab('event');
+
+      expect((q('event-tab-title') as HTMLInputElement).value).toBe('Sprint review');
+    });
+
+    it('opening the popover starts the work item flow fresh', async () => {
+      setup();
+      await settle();
+      const reset = vi.spyOn(fixture.debugElement.injector.get(WorkItemPlanFlow), 'reset');
+
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+      expect(reset).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not read my leave while the planner is off', async () => {
+      setup(false);
+      await settle();
+
+      expect(http.match((r) => r.url === `${environment.apiUrl}/leave/requests/my`).length).toBe(0);
     });
 
     it('offers Meeting only while meetings can be written, and Time off only with leave access', async () => {

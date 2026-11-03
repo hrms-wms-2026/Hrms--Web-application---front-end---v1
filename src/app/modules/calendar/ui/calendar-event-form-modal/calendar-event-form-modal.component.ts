@@ -441,7 +441,8 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
       this.endTimeTouched = !!this.prefillEnd;
     }
 
-    if (this.prefill) {
+    // Applied once, on open or when a new draft arrives: later input changes must not overwrite what was typed.
+    if (this.prefill && (justOpened || changes['prefill'])) {
       const p = this.prefill;
       const [startDate, startTime] = p.start.split('T');
       const [endDate, endTime] = p.end.split('T');

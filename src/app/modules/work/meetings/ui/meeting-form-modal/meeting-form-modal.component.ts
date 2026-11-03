@@ -1,7 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MeetingCreatedEvent } from '../../utils/meeting-created-drawer.util';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, WritableSignal, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom, merge } from 'rxjs';
@@ -26,8 +26,11 @@ import { MeetingScopeDialogComponent } from '../meeting-scope-dialog/meeting-sco
 import { MeetingBulkInvitePanelComponent } from './meeting-bulk-invite-panel.component';
 
 export interface MeetingPlacementInput { projectId: string | null; objectiveId: string | null; }
-/** What a calendar event handed over: its title and local start/end ('YYYY-MM-DDTHH:mm'). */
-export interface MeetingPrefill { title: string; start: string; end: string; }
+/**
+ * What a calendar event handed over: its title and local start/end ('YYYY-MM-DDTHH:mm'), in `timezone` when given
+ * (the Planner's zone), else the browser's.
+ */
+export interface MeetingPrefill { title: string; start: string; end: string; timezone?: string; isAllDay?: boolean; }
 /** What the work item form had typed when its category turned to "meeting". */
 export interface MeetingCarryOver { title: string; description: string | null; }
 /** A saved edit, with the start it sent: after a split the occurrence lives at that start in the new series. */
@@ -39,7 +42,7 @@ export interface MeetingDraft extends MeetingPrefill {
   projectId: string | null; objectiveId: string | null; participantIds: readonly string[];
 }
 function isDraft(prefill: MeetingPrefill | MeetingDraft): prefill is MeetingDraft {
-  return 'timezone' in prefill;
+  return 'participantIds' in prefill;
 }
 interface MeetingFormValue {
   title: string; description: string | null; location: string; isPrivate: boolean; date: string; time: string;
@@ -206,6 +209,8 @@ export class MeetingFormModalComponent implements OnInit {
   /** The Planner create popover's Meeting tab: the most used fields, and "More options" to the full form. */
   readonly compact = input(false);
   readonly moreOptions = output<MeetingDraft>();
+  /** The Planner create popover's shared title: kept in step both ways while the Meeting tab is open. */
+  readonly sharedTitle = input<WritableSignal<string> | null>(null);
   readonly occurrence = input<MeetingOccurrenceResponse | null>(null);
   /** Render the form without its own modal: the work item dialog hosts it when the category is "meeting". */
   readonly embedded = input(false);
@@ -250,8 +255,21 @@ export class MeetingFormModalComponent implements OnInit {
   readonly platformValue = computed<MeetingPlatform | null>(() => this.platformChoice() === 'none' ? null : this.platformChoice() as MeetingPlatform);
   private readonly platformChoice = signal<PlatformChoice>('none');
 
+  constructor() {
+    effect(() => {
+      const shared = this.sharedTitle();
+      if (!shared) return;
+      const title = shared();
+      untracked(() => {
+        if (this.form.controls.title.value !== title) this.form.controls.title.setValue(title, { emitEvent: false });
+      });
+    });
+  }
+
   ngOnInit(): void {
     this.form.controls.platform.valueChanges.subscribe((p) => this.platformChoice.set(p));
+    this.form.controls.title.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((title) => this.sharedTitle()?.set(title ?? ''));
     // Only the fields that move the meeting in time re-check availability (design 4.3), not the title or agenda.
     const c = this.form.controls;
     merge(c.date.valueChanges, c.time.valueChanges, c.durationMinutes.valueChanges, c.isAllDay.valueChanges, c.timezone.valueChanges)
@@ -268,6 +286,8 @@ export class MeetingFormModalComponent implements OnInit {
       const minutes = Math.round((Date.parse(prefill.end) - Date.parse(prefill.start)) / 60000);
       this.form.patchValue({ title: prefill.title, date: prefill.start.slice(0, 10), time: prefill.start.slice(11, 16),
         durationMinutes: minutes > 0 ? minutes : 30 });
+      if (prefill.timezone) this.form.patchValue({ timezone: prefill.timezone });
+      if (prefill.isAllDay !== undefined) this.form.patchValue({ isAllDay: prefill.isAllDay });
     } else {
       this.form.patchValue(nextHalfHour(new Date(), this.form.controls.timezone.value));
     }

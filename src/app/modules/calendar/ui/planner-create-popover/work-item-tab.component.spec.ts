@@ -145,6 +145,26 @@ describe('WorkItemTabComponent', () => {
       .toBe('We couldn\'t confirm the work item was created. Check your Task queue before trying again.');
   });
 
+  // Review finding 2: the item exists (or may) in these states, so Create & plan must not send it again.
+  it('Create & plan is disabled when notPlanned, pending or unknown', async () => {
+    const { fixture, q, choose, state } = await setup();
+    await choose('work-item-project', 'p1');
+    await choose('work-item-module', 'o1');
+    for (const s of [{ kind: 'notPlanned', taskId: 't1', shortId: 'WEB-7', reason: 'x' }, { kind: 'pending' }, { kind: 'unknown' }] as PlanFlowState[]) {
+      state.set(s);
+      fixture.detectChanges();
+      expect((q('work-item-create') as HTMLButtonElement).disabled).toBe(true);
+    }
+    state.set({ kind: 'error', message: 'Not enough hours left.' });
+    fixture.detectChanges();
+    expect((q('work-item-create') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('does not reset the flow when the tab is created (the page resets it when the popover opens)', async () => {
+    const { flow } = await setup();
+    expect(flow.reset).not.toHaveBeenCalled();
+  });
+
   it('emits done when the flow is done', async () => {
     const { fixture, state } = await setup();
     const done = vi.fn();

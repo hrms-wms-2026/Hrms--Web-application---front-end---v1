@@ -112,14 +112,14 @@
         }
         @case ('week') {
           <app-calendar-week-view [weekStart]="weekStart()" [visibleDays]="weekDays()" [events]="store.events()" [timezone]="store.myTimezone()"
-            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [leaves]="leaveLayer.leaves()" [loads]="gridLoads()" [employeeId]="employeeId()"
+            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [leaves]="plannerLeaves()" [loads]="gridLoads()" [employeeId]="employeeId()"
             (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)"
             (blockCreate)="onBlockCreate($event)" (blockMove)="onBlockMove($event)" (blockOpen)="openTask($event.projectId, $event.taskId)"
             (blockMoveAfter)="onBlockMoveAfter($event)" (blockRemove)="onBlockRemove($event)" />
         }
         @case ('day') {
           <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()"
-            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [leaves]="leaveLayer.leaves()" [loads]="gridLoads()" [employeeId]="employeeId()"
+            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [leaves]="plannerLeaves()" [loads]="gridLoads()" [employeeId]="employeeId()"
             (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)"
             (blockCreate)="onBlockCreate($event)" (blockMove)="onBlockMove($event)" (blockOpen)="openTask($event.projectId, $event.taskId)"
             (blockMoveAfter)="onBlockMoveAfter($event)" (blockRemove)="onBlockRemove($event)" />
@@ -179,23 +179,31 @@
 
 @if (createSlot(); as slot) {
   <app-planner-create-popover #createPop [slot]="slot" [tabs]="createTabs()" (closed)="closeCreate()">
-    @switch (createPop.active()) {
-      @case ('event') {
+    <!-- Each tab is created on first open and then kept (hidden), so switching tabs keeps what was typed. -->
+    @if (createPop.isRendered('event')) {
+      <div [hidden]="createPop.active() !== 'event'">
         <app-planner-event-tab [slot]="slot" [shared]="createPop.shared" [timezone]="plannerZone()"
           (created)="onCreateDone()" (moreOptions)="onEventMoreOptions($event)" />
-      }
-      @case ('meeting') {
-        <app-meeting-form-modal [open]="true" [embedded]="true" [compact]="true" mode="create"
-          [prefill]="{ title: createPop.shared.title(), start: slot.date + 'T' + clockOf(slot.startMinutes), end: slot.date + 'T' + clockOf(slot.endMinutes) }"
+      </div>
+    }
+    @if (createPop.isRendered('meeting')) {
+      <div [hidden]="createPop.active() !== 'meeting'">
+        <app-meeting-form-modal [open]="true" [embedded]="true" [compact]="true" mode="create" [sharedTitle]="createPop.shared.title"
+          [prefill]="{ title: createPop.shared.title(), start: slot.date + 'T' + clockOf(slot.startMinutes), end: slot.date + 'T' + clockOf(slot.endMinutes),
+            timezone: plannerZone(), isAllDay: createPop.shared.isAllDay() }"
           (saved)="closeCreate(); onMeetingSaved($any($event))" (moreOptions)="onMeetingMoreOptions($event)" />
-      }
-      @case ('workItem') {
+      </div>
+    }
+    @if (createPop.isRendered('workItem')) {
+      <div [hidden]="createPop.active() !== 'workItem'">
         <app-planner-work-item-tab [slot]="slot" [shared]="createPop.shared" [myBlocks]="plannerBlocks().get(slot.date) ?? []"
           (done)="onCreateDone()" (pickAnotherTime)="onPickAnotherTime($event)" (moreOptions)="onWorkItemMoreOptions($event)" />
-      }
-      @case ('timeOff') {
+      </div>
+    }
+    @if (createPop.isRendered('timeOff')) {
+      <div [hidden]="createPop.active() !== 'timeOff'">
         <app-planner-time-off-tab [slot]="slot" (submitted)="onTimeOffSubmitted()" (moreOptions)="onTimeOffMoreOptions($event)" />
-      }
+      </div>
     }
   </app-planner-create-popover>
 }
