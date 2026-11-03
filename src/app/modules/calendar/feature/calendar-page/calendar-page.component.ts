@@ -23,7 +23,9 @@ import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
 import { EventTabComponent } from '../../ui/planner-create-popover/event-tab.component';
-import { WorkItemTabComponent, WorkItemToPlace } from '../../ui/planner-create-popover/work-item-tab.component';
+import { WorkItemDraft, WorkItemTabComponent, WorkItemToPlace } from '../../ui/planner-create-popover/work-item-tab.component';
+import { TaskFormPrefill } from '../../../work/ui/task-form-modal/task-form-modal.component';
+import { plannerErrorMessage } from '../../../work/planner/utils/planner-error-messages';
 import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { EventDraft } from '../../utils/event-draft';
 import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
@@ -573,6 +575,39 @@ export class CalendarPageComponent {
   }
 
   readonly clockOf = clock;
+
+  /** "More options" on the Work item tab: the full Create work item form, filled, then the created item is planned. */
+  readonly workItemForm = signal<{ projectId: string; objectiveId: string; prefill: TaskFormPrefill; slot: CreateSlot; planned: boolean } | null>(null);
+  private readonly planFlow = inject(WorkItemPlanFlow);
+
+  async onWorkItemMoreOptions(draft: WorkItemDraft): Promise<void> {
+    if (!draft.projectId) {
+      this.notificationService.warning('Choose a project first.');
+      return;
+    }
+    // The task form reads its project from ProjectDetailStore (as openTask does).
+    await this.projects.loadProject(draft.projectId);
+    await this.projects.loadMyMilestones(draft.projectId);
+    this.closeCreate();
+    this.workItemForm.set({
+      projectId: draft.projectId, objectiveId: draft.objectiveId ?? '', slot: draft.slot, planned: false,
+      prefill: { title: draft.title, categoryId: draft.categoryId, priority: draft.priority, estimatedHours: draft.estimatedHours,
+        dueDate: draft.dueDate, assigneeEmployeeId: this.employeeId() },
+    });
+  }
+
+  /** The full form created an item: plan the first one it created directly ('' = sent for approval: nothing to plan). */
+  async onWorkItemFormCreated(taskId: string): Promise<void> {
+    const form = this.workItemForm();
+    if (!taskId || !form || form.planned) return;
+    this.workItemForm.set({ ...form, planned: true });
+    await this.planFlow.planExisting(taskId, '', form.slot);
+    const state = this.planFlow.state();
+    if (state.kind === 'notPlanned') {
+      const reason = state.reason === plannerErrorMessage('planner_task_not_plannable') ? 'assigned to someone else' : state.reason;
+      this.notificationService.warning(`Created, not planned: ${reason}`);
+    }
+  }
 
   /** A work item was created but its block was refused: place it with the block picker instead. */
   onPickAnotherTime(item: WorkItemToPlace): void {

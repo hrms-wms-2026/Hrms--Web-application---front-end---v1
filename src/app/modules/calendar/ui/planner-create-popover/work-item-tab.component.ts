@@ -153,7 +153,7 @@ export class WorkItemTabComponent implements OnInit {
   });
   readonly notPlannedMessage = computed(() => {
     const s = this.flow.state();
-    return s.kind === 'notPlanned' ? `Created ${s.shortId}, not planned: ${s.reason}` : '';
+    return s.kind === 'notPlanned' ? `Created${s.shortId ? ' ' + s.shortId : ''}, not planned: ${s.reason}` : '';
   });
   readonly errorMessage = computed(() => {
     const s = this.flow.state();

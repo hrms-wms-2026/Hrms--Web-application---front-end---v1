@@ -192,7 +192,7 @@
       }
       @case ('workItem') {
         <app-planner-work-item-tab [slot]="slot" [shared]="createPop.shared" [myBlocks]="plannerBlocks().get(slot.date) ?? []"
-          (done)="onCreateDone()" (pickAnotherTime)="onPickAnotherTime($event)" />
+          (done)="onCreateDone()" (pickAnotherTime)="onPickAnotherTime($event)" (moreOptions)="onWorkItemMoreOptions($event)" />
       }
       @case ('timeOff') { <p data-testid="create-body-timeOff"></p> }
     }
@@ -202,6 +202,11 @@
 @if (meetingFormOpen()) {
   <app-meeting-form-modal [open]="true" mode="create" [prefill]="meetingPrefill()" (saved)="onMeetingSaved($any($event))"
     (closed)="meetingFormOpen.set(false); meetingPrefill.set(null)" />
+}
+
+@if (workItemForm(); as wf) {
+  <app-task-form-modal [open]="true" mode="create" [projectId]="wf.projectId" [prefillModuleId]="wf.objectiveId"
+    [prefill]="wf.prefill" (created)="onWorkItemFormCreated($event)" (closed)="workItemForm.set(null); onTaskSaved()" />
 }
 
 @if (openedTask(); as task) {

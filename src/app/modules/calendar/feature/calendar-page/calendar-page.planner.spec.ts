@@ -11,6 +11,7 @@ import { PlannerFocusResponse, PlannerRangeBlockView, PlannerRangeDay, PlannerWo
 import { PlannerAvailability, PlannerAvailabilityService } from '../../../work/planner/state/planner-availability.service';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
+import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { CalendarPageComponent } from './calendar-page.component';
@@ -407,6 +408,75 @@ describe('CalendarPageComponent planner layer', () => {
       expect(fixture.componentInstance.createSlot()).toBeNull();
       expect(fixture.componentInstance.formOpen()).toBe(true);
       expect(fixture.componentInstance.eventPrefill()).toEqual(draft);
+    });
+
+    describe('Work item More options (full form)', () => {
+      const slotOf = (date: string) => ({ date, startMinutes: 540, endMinutes: 660, startIso: `${date}T09:00:00.000Z`, endIso: `${date}T11:00:00.000Z` });
+      const draftOf = (date: string) => ({ title: 'Fix login bug', projectId: 'p1', objectiveId: 'o1', categoryId: 'c2',
+        priority: 'high' as const, estimatedHours: 8, dueDate: null, slot: slotOf(date) });
+      const flow = () => fixture.debugElement.injector.get(WorkItemPlanFlow);
+
+      it('More options loads the project, then opens the form with projectId, prefillModuleId and prefill', async () => {
+        setup();
+        await settle();
+        fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+
+        expect(projects.loadProject).toHaveBeenCalledWith('p1');
+        expect(fixture.componentInstance.createSlot()).toBeNull();
+        expect(fixture.componentInstance.workItemForm()).toMatchObject({ projectId: 'p1', objectiveId: 'o1',
+          prefill: { title: 'Fix login bug', categoryId: 'c2', priority: 'high', estimatedHours: 8, dueDate: null } });
+      });
+
+      it('created(id) plans that id at the slot, once', async () => {
+        setup();
+        await settle();
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+        const plan = vi.spyOn(flow(), 'planExisting').mockResolvedValue();
+
+        await fixture.componentInstance.onWorkItemFormCreated('t-new');
+        await fixture.componentInstance.onWorkItemFormCreated('t-another');
+
+        expect(plan).toHaveBeenCalledTimes(1);
+        expect(plan).toHaveBeenCalledWith('t-new', '', slotOf(editableDate()));
+      });
+
+      it('created(\'\') (sent for approval) plans nothing', async () => {
+        setup();
+        await settle();
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+        const plan = vi.spyOn(flow(), 'planExisting').mockResolvedValue();
+
+        await fixture.componentInstance.onWorkItemFormCreated('');
+
+        expect(plan).not.toHaveBeenCalled();
+      });
+
+      it('a planning refusal because the assignee changed says it is assigned to someone else', async () => {
+        setup();
+        await settle();
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+
+        const planned = fixture.componentInstance.onWorkItemFormCreated('t-new');
+        await new Promise((resolve) => setTimeout(resolve));
+        http.expectOne(`${base}/me/blocks`).flush({ code: 'planner_task_not_plannable' }, { status: 400, statusText: 'Bad Request' });
+        await planned;
+
+        expect(notify.warning).toHaveBeenCalledWith('Created, not planned: assigned to someone else');
+      });
+
+      it('More options without a project asks for one and keeps the popover', async () => {
+        setup();
+        await settle();
+        fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+        await fixture.componentInstance.onWorkItemMoreOptions({ ...draftOf(editableDate()), projectId: null });
+
+        expect(notify.warning).toHaveBeenCalledWith('Choose a project first.');
+        expect(fixture.componentInstance.createSlot()).not.toBeNull();
+        expect(fixture.componentInstance.workItemForm()).toBeNull();
+      });
     });
 
     it('offers Meeting only while meetings can be written, and Time off only with leave access', async () => {
