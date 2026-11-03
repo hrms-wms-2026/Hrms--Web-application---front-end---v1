@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarHourGridComponent, PlannerDayLoad } from '../../ui/calendar-hour-grid/calendar-hour-grid.component';
 import { PlannerRangeBlockView, PlannerWorkWindow } from '../../../work/planner/models/planner.models';
+import { PlannerLeave } from '../../state/planner-leave-layer.store';
 
 @Component({
   selector: 'app-calendar-week-view',
@@ -26,6 +27,7 @@ export class CalendarWeekViewComponent {
   blocks = input<ReadonlyMap<string, readonly PlannerRangeBlockView[]>>(new Map());
   workWindows = input<ReadonlyMap<string, PlannerWorkWindow | null>>(new Map());
   editableDates = input<ReadonlySet<string>>(new Set());
+  leaves = input<readonly PlannerLeave[]>([]);
   loads = input<ReadonlyMap<string, PlannerDayLoad>>(new Map());
   employeeId = input<string | null>(null);
 

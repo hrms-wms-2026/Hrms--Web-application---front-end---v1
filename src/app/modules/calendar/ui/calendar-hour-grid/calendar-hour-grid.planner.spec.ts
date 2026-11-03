@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
-import { vi } from 'vitest';
+import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { PlannerRangeBlockView, PlannerWorkWindow } from '../../../work/planner/models/planner.models';
@@ -63,9 +63,9 @@ describe('CalendarHourGridComponent planner layer', () => {
   }
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [CalendarHourGridComponent],
-      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn((id: string) => of({ id, name: id, avatarFileId: null })) } }],
+    await TestBed.configureTestingModule({
+      imports: [CalendarHourGridComponent],
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn((id: string) => of({ id, name: id, avatarFileId: null })) } }],
     }).compileComponents();
     drag = TestBed.inject(PlannerDragService);
     drag.end();
@@ -74,6 +74,22 @@ describe('CalendarHourGridComponent planner layer', () => {
     fixture.componentRef.setInput('timezone', 'UTC');
     fixture.componentRef.setInput('editableDates', new Set([TODAY]));
     fixture.componentRef.setInput('workWindows', new Map([[TODAY, window9to17], [PAST, window9to17]]));
+  });
+
+  it('draws "Pending leave" outlined and "Leave" solid, with different labels', () => {
+    fixture.componentRef.setInput('leaves', [
+      { id: 'l1', startAt: `${TODAY}T09:00:00Z`, endAt: `${TODAY}T11:00:00Z`, status: 'pending', typeName: 'Annual' },
+      { id: 'l2', startAt: `${TODAY}T13:00:00Z`, endAt: `${TODAY}T14:00:00Z`, status: 'approved', typeName: 'Annual' },
+    ]);
+    render({});
+
+    const [pending, approved] = qa('[data-testid="planner-leave"]');
+    expect(pending.textContent!.trim()).toBe('Pending leave');
+    expect(pending.classList.contains('planner-leave--pending')).toBe(true);
+    expect(pending.style.top).toBe(`${(540 / 1440) * 100}%`);
+    expect(pending.style.height).toBe(`${(120 / 1440) * 100}%`);
+    expect(approved.textContent!.trim()).toBe('Leave');
+    expect(approved.classList.contains('planner-leave--pending')).toBe(false);
   });
 
   it('draws a block with a height proportional to its length and its times', () => {

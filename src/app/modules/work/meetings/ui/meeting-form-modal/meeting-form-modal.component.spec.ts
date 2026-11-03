@@ -93,6 +93,64 @@ describe('MeetingFormModalComponent', () => {
       .toEqual(toZonedParts('2026-10-30T05:00:00Z', tz));
   });
 
+  describe('compact, in the Planner create popover (2026-11-03)', () => {
+    const q = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+    const draft = {
+      title: 'Design review', start: '2026-11-03T14:00', end: '2026-11-03T15:30', description: '<p>Agenda</p>', isAllDay: false,
+      timezone: 'Asia/Colombo', recurrence: 'weekly' as const, platform: 'zoom' as const, projectId: null, objectiveId: null,
+      participantIds: ['e2'],
+    };
+
+    it('compact hides private, location, custom rule and bulk invite', () => {
+      build({ mode: 'create', embedded: true, compact: true });
+
+      expect(q('meeting-private')).toBeNull();
+      expect(q('meeting-location')).toBeNull();
+      expect(q('meeting-bulk-invite')).toBeNull();
+      expect(Array.from(fixture.nativeElement.querySelectorAll('[data-testid="meeting-recurrence"] option') as NodeListOf<HTMLOptionElement>)
+        .map((o) => o.value)).not.toContain('custom');
+      expect(q('meeting-more')).not.toBeNull();
+    });
+
+    it('the full form keeps private, location and bulk invite, and has no More options', () => {
+      build({ mode: 'create' });
+
+      expect(q('meeting-private')).not.toBeNull();
+      expect(q('meeting-location')).not.toBeNull();
+      expect(q('meeting-bulk-invite')).not.toBeNull();
+      expect(q('meeting-more')).toBeNull();
+    });
+
+    it('a MeetingDraft prefill fills every field', () => {
+      build({ mode: 'create', prefill: draft });
+
+      expect(form.form.getRawValue()).toMatchObject({
+        title: 'Design review', date: '2026-11-03', time: '14:00', durationMinutes: 90, description: '<p>Agenda</p>',
+        isAllDay: false, timezone: 'Asia/Colombo', recurrence: 'weekly', platform: 'zoom',
+      });
+      expect(form.participantIds()).toEqual(['e2']);
+    });
+
+    it('More options emits every filled field as MeetingDraft', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill: draft });
+      const spy = vi.fn();
+      form.moreOptions.subscribe(spy);
+
+      q('meeting-more')!.click();
+
+      expect(spy).toHaveBeenCalledWith(draft);
+    });
+
+    it('shows the past-start note for a slot that has started', () => {
+      const started = toZonedParts('2026-10-30T04:30:00Z', 'Asia/Colombo');
+      build({ mode: 'create', embedded: true, compact: true,
+        prefill: { ...draft, start: `${started.date}T${started.time}`, end: `${started.date}T23:00`, recurrence: 'none' } });
+
+      expect(q('meeting-start-past')).not.toBeNull();
+      expect(form.canSave()).toBe(false);
+    });
+  });
+
   it('a calendar handover keeps its own start', () => {
     build({ mode: 'create', prefill: { title: 'Review', start: '2026-11-03T14:00', end: '2026-11-03T15:00' } });
 
