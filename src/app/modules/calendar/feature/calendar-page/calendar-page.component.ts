@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { MeetingFormModalComponent, MeetingPrefill } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingDraft, MeetingFormModalComponent, MeetingPrefill } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -568,6 +568,15 @@ export class CalendarPageComponent {
     void this.reloadEvents();
     const { from, to } = this.plannerRange();
     void this.planner.load(from, to);
+  }
+
+  readonly clockOf = clock;
+
+  /** "More options" on the Meeting tab: today's full meeting form, filled with everything the tab held. */
+  onMeetingMoreOptions(draft: MeetingDraft): void {
+    this.closeCreate();
+    this.meetingPrefill.set(draft);
+    this.meetingFormOpen.set(true);
   }
 
   onEventMoreOptions(draft: EventDraft): void {
