@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError, Subject } from 'rxjs';
+import { defer, of, throwError, Subject, TimeoutError } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../core/auth/state/auth.store';
 import { TaskApiService } from '../../work/data-access/task-api.service';
@@ -119,6 +119,43 @@ describe('WorkItemPlanFlow', () => {
 
     expect(createBlock).not.toHaveBeenCalled();
     expect(flow.state()).toMatchObject({ kind: 'notPlanned', taskId: 't1', shortId: 'WEB-7' });
+  });
+
+  // Review finding 2: once the item exists (or may exist) nothing sends a second create.
+  it('createAndPlan after notPlanned, pending or unknown sends no second create', async () => {
+    for (const opts of [{ blocks: [false] }, { create: of({ approvalRequestId: 'r1' }) },
+      { create: throwError(() => new HttpErrorResponse({ status: 0 })) }]) {
+      TestBed.resetTestingModule();
+      const { flow, createTask } = setup(opts);
+      await flow.createAndPlan('o1', dto, slot);
+      await flow.createAndPlan('o1', dto, slot);
+      expect(createTask).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('a gateway error or a timeout may have created the item → unknown', async () => {
+    for (const err of [new HttpErrorResponse({ status: 502 }), new HttpErrorResponse({ status: 504 }), new TimeoutError()]) {
+      TestBed.resetTestingModule();
+      const { flow } = setup({ create: throwError(() => err) });
+      await flow.createAndPlan('o1', dto, slot);
+      expect(flow.state()).toEqual({ kind: 'unknown' });
+    }
+  });
+
+  // Review finding 7: a failed assign is retried by Retry planning, so the block is not refused as "not yours".
+  it('assign failed → retryPlanning assigns again, then plans', async () => {
+    let calls = 0;
+    const { flow, assignTask, createBlock, createTask } = setup({
+      assign: defer(() => (++calls === 1 ? throwError(() => new HttpErrorResponse({ status: 503 })) : of(undefined))),
+    });
+
+    await flow.createAndPlan('o1', dto, slot);
+    await flow.retryPlanning();
+
+    expect(createTask).toHaveBeenCalledTimes(1);
+    expect(assignTask).toHaveBeenCalledTimes(2);
+    expect(createBlock).toHaveBeenCalledTimes(1);
+    expect(flow.state()).toEqual({ kind: 'done', taskId: 't1' });
   });
 
   it('planExisting plans a task created elsewhere (the full form)', async () => {

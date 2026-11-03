@@ -19,7 +19,6 @@ describe('EventTabComponent', () => {
     fixture.componentRef.setInput('slot', slot);
     fixture.componentRef.setInput('shared', shared);
     fixture.componentRef.setInput('timezone', 'Asia/Colombo');
-    fixture.componentRef.setInput('canMeet', true);
     fixture.detectChanges();
     const q = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement;
     return { fixture, q, createEvent, shared };
@@ -60,13 +59,9 @@ describe('EventTabComponent', () => {
     expect(created).not.toHaveBeenCalled();
   });
 
-  it('the People/video note switches to the Meeting tab, keeping title and time', () => {
-    const { fixture, q, shared } = setup();
-    const spy = vi.fn();
-    fixture.componentInstance.switchToMeeting.subscribe(spy);
-    q('event-tab-to-meeting').click();
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(shared.title()).toBe('Doctor');
+  it('has no "People or a video call?" note (the Meeting tab is right there)', () => {
+    const { fixture } = setup();
+    expect(fixture.nativeElement.textContent).not.toContain('People or a video call');
   });
 
   it('More options emits the full EventDraft', () => {

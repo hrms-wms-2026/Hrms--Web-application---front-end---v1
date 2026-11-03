@@ -33,10 +33,6 @@ import { CreateSlot, SharedCreateDraft, clock } from './planner-create-draft';
         (input)="location.set($any($event.target).value)" />
       <textarea data-testid="event-tab-description" class="ui-input" rows="2" placeholder="Add description" [value]="description()"
         (input)="description.set($any($event.target).value)"></textarea>
-      @if (canMeet()) {
-        <button type="button" data-testid="event-tab-to-meeting" class="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-left text-xs"
-          (click)="switchToMeeting.emit()">People or a video call? → <strong>Meeting</strong> tab</button>
-      }
       <div class="flex justify-end gap-2 pt-1">
         <button type="button" data-testid="event-tab-more" class="rounded-md border px-3 py-1" (click)="moreOptions.emit(draft())">More options</button>
         <button type="button" data-testid="event-tab-save" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-white"
@@ -52,10 +48,7 @@ export class EventTabComponent {
   readonly shared = input.required<SharedCreateDraft>();
   /** The planner's zone: the slot's wall-clock times are in it. */
   readonly timezone = input.required<string>();
-  /** The Meeting tab is shown: offer the switch to it. */
-  readonly canMeet = input(false);
   readonly created = output<void>();
-  readonly switchToMeeting = output<void>();
   readonly moreOptions = output<EventDraft>();
 
   readonly repeats: readonly { value: RecurrenceFrequency; label: string }[] = [

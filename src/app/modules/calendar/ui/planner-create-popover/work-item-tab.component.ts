@@ -144,7 +144,8 @@ export class WorkItemTabComponent implements OnInit {
     const end = Date.parse(this.slot().endIso);
     return this.myBlocks().some((b) => Date.parse(b.startAt) < end && Date.parse(b.endAt) > start);
   });
-  readonly canCreate = computed(() => this.flow.state().kind !== 'busy' && !this.shared().isAllDay()
+  // Only before a create or after a refused one: in every other state the item exists or may exist.
+  readonly canCreate = computed(() => ['idle', 'error'].includes(this.flow.state().kind) && !this.shared().isAllDay()
     && this.shared().title().trim() !== '' && !!this.objectiveId() && !!this.categoryId());
   readonly pendingMessage = computed(() => {
     const [y, m, d] = this.slot().date.split('-').map(Number);
@@ -167,7 +168,6 @@ export class WorkItemTabComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.flow.reset();
     this.estimate.set(Math.round((this.planMinutes() / 60) * 4) / 4);
     void this.loadProjects();
   }

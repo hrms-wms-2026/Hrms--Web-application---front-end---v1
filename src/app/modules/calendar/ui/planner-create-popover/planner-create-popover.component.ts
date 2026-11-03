@@ -3,8 +3,9 @@ import { CREATE_TAB_LABELS, CREATE_TAB_ORDER, CreateSlot, CreateTab, SharedCreat
 
 /**
  * The Planner create popover (2026-11-03 design): one surface for a picked time, with Event, Meeting, Work item and
- * Time off tabs. The shell owns the tab bar, the shared draft (title, all-day) and closing; the page projects the
- * active tab's content, so each tab stays a small component over the existing stores and APIs.
+ * Time off tabs. The shell owns the tab bar, the shared draft (title, all-day) and closing; the page projects each
+ * opened tab's content (kept, hidden, while another is active), so each tab stays a small component over the
+ * existing stores and APIs.
  */
 @Component({
   selector: 'app-planner-create-popover',
@@ -17,7 +18,7 @@ import { CREATE_TAB_LABELS, CREATE_TAB_ORDER, CreateSlot, CreateTab, SharedCreat
         <div role="tablist" class="pcp-tablist">
           @for (tab of visibleTabs(); track tab) {
             <button type="button" role="tab" class="pcp-tab" [class.pcp-tab--on]="tab === active()"
-              [attr.aria-selected]="tab === active()" [attr.data-testid]="'create-tab-' + tab" (click)="active.set(tab)">
+              [attr.aria-selected]="tab === active()" [attr.data-testid]="'create-tab-' + tab" (click)="select(tab)">
               {{ labels[tab] }}
             </button>
           }
@@ -61,14 +62,26 @@ export class PlannerCreatePopoverComponent {
   readonly labels = CREATE_TAB_LABELS;
   readonly visibleTabs = computed(() => CREATE_TAB_ORDER.filter((tab) => this.tabs().includes(tab)));
   readonly active = signal<CreateTab>('event');
+  /** Tabs opened so far: the page keeps them rendered (hidden when not active), so switching keeps what was typed. */
+  readonly visited = signal<ReadonlySet<CreateTab>>(new Set<CreateTab>(['event']));
   readonly shared: SharedCreateDraft = { title: signal(''), isAllDay: signal(false) };
 
   constructor() {
     // A hidden tab can't stay active: fall back to the first one shown.
     effect(() => {
       const shown = this.visibleTabs();
-      untracked(() => { if (!shown.includes(this.active()) && shown.length > 0) this.active.set(shown[0]); });
+      untracked(() => { if (!shown.includes(this.active()) && shown.length > 0) this.select(shown[0]); });
     });
+  }
+
+  select(tab: CreateTab): void {
+    this.active.set(tab);
+    this.visited.update((tabs) => (tabs.has(tab) ? tabs : new Set([...tabs, tab])));
+  }
+
+  /** Rendered: opened at least once. Shown: the active one. */
+  isRendered(tab: CreateTab): boolean {
+    return this.visited().has(tab);
   }
 
   @HostListener('document:keydown.escape')

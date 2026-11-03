@@ -230,10 +230,12 @@ export class CalendarPageComponent {
   private readonly plannerRangeEffect = effect(() => {
     const { from, to } = this.plannerRange();
     void this.planner.load(from, to);
-    // Your own leave on the Planner (2026-11-03): only where you can ask for it.
-    if (this.createTabs().includes('timeOff')) {
+    // Your own leave on the Planner (2026-11-03): only while the Planner is on, and where you can ask for it.
+    if (this.planner.active() && this.createTabs().includes('timeOff')) {
       void untracked(() => this.leaveLayer.load(from, to));
       untracked(() => this.leaveLayer.startAutoRefresh());
+    } else {
+      untracked(() => this.leaveLayer.stopAutoRefresh());
     }
   });
 
@@ -553,6 +555,8 @@ export class CalendarPageComponent {
   }
 
   private openCreatePopover(date: string, startMinutes: number, endMinutes: number): void {
+    // A new popover is a new work item: the last one's state (created, refused, pending) stays with it.
+    this.planFlow.reset();
     this.createSlot.set({ date, startMinutes, endMinutes, startIso: this.toIso(date, startMinutes), endIso: this.toIso(date, endMinutes) });
   }
 
@@ -590,6 +594,8 @@ export class CalendarPageComponent {
 
   // --- Time off tab ---
   readonly leaveLayer = inject(PlannerLeaveLayerStore);
+  /** My leave on the grid: a Planner layer, so nothing while the Planner is off. */
+  readonly plannerLeaves = computed(() => (this.planner.active() ? this.leaveLayer.leaves() : []));
   readonly leaveTypes = inject(LeaveTypeStore);
   readonly leaveBalances = inject(LeaveBalanceStore);
   readonly leaveRequests = inject(LeaveRequestStore);
