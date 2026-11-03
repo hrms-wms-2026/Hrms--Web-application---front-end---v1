@@ -2,19 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { PlannerApiService } from '../../work/planner/data-access/planner-api.service';
-import { PlannerPersonDay, TeamPlannerMember, TeamPlannerResponse } from '../../work/planner/models/team-planner.models';
+import { TeamPlannerResponse } from '../../work/planner/models/team-planner.models';
+import { member, personDay } from './team-planner.testing';
 import { TeamPlannerStore } from './team-planner.store';
-
-export function personDay(date: string, over: Partial<PlannerPersonDay> = {}): PlannerPersonDay {
-  return {
-    date, workWindow: null, workStartAt: `${date}T03:30:00Z`, workEndAt: `${date}T11:30:00Z`, blocks: [], meetings: [], leaves: [],
-    blockMinutes: 0, meetingMinutes: 0, workingMinutes: 480, capacityMinutes: 480, onLeave: false, ...over,
-  };
-}
-
-export function member(id: string, name: string, days: PlannerPersonDay[], directReportCount = 0): TeamPlannerMember {
-  return { employeeId: id, name, directReportCount, timezone: 'Asia/Colombo', days };
-}
 
 describe('TeamPlannerStore', () => {
   const D = '2026-11-05'; // Thursday
