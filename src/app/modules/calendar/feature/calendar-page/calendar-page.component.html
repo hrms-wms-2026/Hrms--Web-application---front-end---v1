@@ -153,6 +153,7 @@
   [event]="editingEvent()"
   [prefillStart]="prefillStart()"
   [prefillEnd]="prefillEnd()"
+  [prefill]="eventPrefill()"
   [saving]="store.saving() || submitting()"
   [conflicts]="store.conflicts()"
   [checkingConflicts]="store.checkingConflicts()"
@@ -179,7 +180,11 @@
 @if (createSlot(); as slot) {
   <app-planner-create-popover #createPop [slot]="slot" [tabs]="createTabs()" (closed)="closeCreate()">
     @switch (createPop.active()) {
-      @case ('event') { <p data-testid="create-body-event"></p> }
+      @case ('event') {
+        <app-planner-event-tab [slot]="slot" [shared]="createPop.shared" [timezone]="plannerZone()"
+          [canMeet]="createTabs().includes('meeting')" (created)="onCreateDone()"
+          (switchToMeeting)="createPop.active.set('meeting')" (moreOptions)="onEventMoreOptions($event)" />
+      }
       @case ('meeting') { <p data-testid="create-body-meeting"></p> }
       @case ('workItem') { <p data-testid="create-body-workItem"></p> }
       @case ('timeOff') { <p data-testid="create-body-timeOff"></p> }

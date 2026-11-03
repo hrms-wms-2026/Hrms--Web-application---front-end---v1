@@ -22,6 +22,8 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
+import { EventTabComponent } from '../../ui/planner-create-popover/event-tab.component';
+import { EventDraft } from '../../utils/event-draft';
 import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 import {
@@ -91,7 +93,7 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
     MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
-    PlannerCreatePopoverComponent
+    PlannerCreatePopoverComponent, EventTabComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
   providers: [PlannerLayerStore],
@@ -555,6 +557,28 @@ export class CalendarPageComponent {
     this.createSlot.set(null);
   }
 
+  /** The planner's zone: the grid's wall-clock times and every tab's slot are in it. */
+  readonly plannerZone = computed(() => this.planner.range()?.timezone ?? this.store.myTimezone());
+  /** "More options" on the Event tab: the full event form, filled with everything the tab held. */
+  readonly eventPrefill = signal<EventDraft | null>(null);
+
+  /** A tab created its item: close the popover and show it. */
+  onCreateDone(): void {
+    this.closeCreate();
+    void this.reloadEvents();
+    const { from, to } = this.plannerRange();
+    void this.planner.load(from, to);
+  }
+
+  onEventMoreOptions(draft: EventDraft): void {
+    this.closeCreate();
+    this.editingEvent.set(null);
+    this.prefillStart.set(null);
+    this.prefillEnd.set(null);
+    this.eventPrefill.set(draft);
+    this.formOpen.set(true);
+  }
+
   openEdit(eventId: string): void {
     const found = this.store.events().find((e) => e.id === eventId) ?? null;
     // A task meeting opens its own drawer by series + original start (it may not be materialized yet, so it has no
@@ -571,6 +595,7 @@ export class CalendarPageComponent {
 
   closeForm(): void {
     this.formOpen.set(false);
+    this.eventPrefill.set(null);
     this.editingEvent.set(null);
     this.prefillStart.set(null);
     this.prefillEnd.set(null);

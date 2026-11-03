@@ -395,6 +395,20 @@ describe('CalendarPageComponent planner layer', () => {
       expect(fixture.componentInstance.createSlot()).toBeNull();
     });
 
+    it('More options on the Event tab opens the event form with the draft', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      const draft = { title: 'Doctor', description: null, start: `${editableDate()}T09:00`, end: `${editableDate()}T10:00`,
+        isAllDay: false, timezone: 'UTC', repeat: 'none' as const, location: 'Clinic' };
+
+      fixture.componentInstance.onEventMoreOptions(draft);
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+      expect(fixture.componentInstance.formOpen()).toBe(true);
+      expect(fixture.componentInstance.eventPrefill()).toEqual(draft);
+    });
+
     it('offers Meeting only while meetings can be written, and Time off only with leave access', async () => {
       setup();
       await settle();
