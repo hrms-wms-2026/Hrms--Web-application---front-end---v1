@@ -30,66 +30,41 @@
       <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Right now" />
 
       <div class="wbld-charts">
-        <section class="wbld-panel">
-          <p class="wbld-title">Status distribution</p>
-          <div class="wbld-distribution">
-            <div class="wbld-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
-            <svg
-              viewBox="0 0 42 42"
-              class="block h-full w-full"
-              role="img"
-              aria-label="Working, break and leave right now"
-            >
-              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
-              @for (arc of donut(); track arc.key) {
-                <circle
-                  cx="21"
-                  cy="21"
-                  r="15.9155"
-                  fill="none"
-                  stroke-width="6"
-                  [attr.stroke]="arc.color"
-                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-                  [attr.stroke-dashoffset]="arc.offset"
-                />
-              }
-            </svg>
-              <p class="wbld-donut-center">
-                <span class="wbld-donut-value">{{ data.totalMembers }}</span>
-                <span class="wbld-muted">Team members</span>
-              </p>
-            </div>
-            <ul class="wbld-legend">
-              @for (row of legend(); track row.key) {
-                <li>
-                  <span class="wbld-dot" [style.background]="row.color"></span>
-                  <span class="wbld-legend-label">{{ row.label }}</span>
-                  <span class="wbld-legend-count">{{ row.count }}</span>
-                  <span class="wbld-muted">({{ pct(row.count, data.totalMembers) }})</span>
-                </li>
-              }
-            </ul>
-          </div>
-          @if (neutral()) {
-            <p class="wbld-muted wbld-neutral" data-testid="wbld-neutral">{{ neutral() }}</p>
-          }
+        <section class="wbld-panel" data-testid="wbld-status-donut">
+          <p class="wbld-title">Status distribution <span class="wbld-muted">· right now</span></p>
+          <app-donut-breakdown
+            [slices]="statusSlices()"
+            [centerValue]="'' + data.totalMembers"
+            centerLabel="members"
+            ariaLabel="Team members by status right now"
+          />
         </section>
-        <section class="wbld-panel">
-          <p class="wbld-title">
-            Working hours trend <span class="wbld-muted">· attendance time, breaks on top, dashed = average per person</span>
-          </p>
-          @if (weekError()) {
-            <p class="wbld-muted">
-              Couldn't load the working hours.
-              <button type="button" class="wbld-link" (click)="retryWeek()">Try again</button>
-            </p>
-          } @else if (week(); as w) {
-            <app-working-hours-chart class="wbld-chart" [days]="w.days" [teamAverage]="true" [showLeave]="true" />
-          } @else {
-            <p class="wbld-muted" aria-busy="true">Loading…</p>
-          }
+        <section class="wbld-panel" data-testid="wbld-hours-donut">
+          <p class="wbld-title">Today's hours <span class="wbld-muted">· the team's scheduled time</span></p>
+          <app-donut-breakdown
+            [slices]="hoursSlices()"
+            [centerValue]="hoursWorkedText()"
+            [centerLabel]="hoursScheduledText()"
+            ariaLabel="Today's team hours: worked, break, leave and not worked yet"
+          />
         </section>
       </div>
+
+      <section class="wbld-panel">
+        <p class="wbld-title">
+          Working hours trend <span class="wbld-muted">· attendance time, breaks on top, dashed = average per person</span>
+        </p>
+        @if (weekError()) {
+          <p class="wbld-muted">
+            Couldn't load the working hours.
+            <button type="button" class="wbld-link" (click)="retryWeek()">Try again</button>
+          </p>
+        } @else if (week(); as w) {
+          <app-working-hours-chart class="wbld-chart" [days]="w.days" [teamAverage]="true" [showLeave]="true" />
+        } @else {
+          <p class="wbld-muted" aria-busy="true">Loading…</p>
+        }
+      </section>
 
       <section class="wbld-panel">
         <div class="wbld-table-head">

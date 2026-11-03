@@ -25,16 +25,14 @@ import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.
 import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours-api.service';
 import { TeamTodayMember, TeamWorkingHoursResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
+import { DonutBreakdownComponent, DonutSlice } from '../../ui/donut-breakdown/donut-breakdown.component';
 import { WorkingHoursChartComponent } from '../../ui/working-hours-chart/working-hours-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
   PRESENCE_COLORS,
   PRESENCE_LABELS,
   clockTime,
   minutesSince,
   minutesText,
-  neutralLine,
   orderPresence,
   presenceFromSummary,
   presenceState,
@@ -45,6 +43,30 @@ import { formatPercent } from '../../utils/team-progress-format.util';
 
 /** The Team Attendance widget's week rate (the same source, so the two widgets agree); 'error' drops the tile. */
 type AttendanceRate = { readonly periodRate: number | null; readonly deltaPp: number | null } | 'error' | null;
+
+/** The neutral statuses' slices: greys, darkest for the ones that worked today. */
+const NEUTRAL_COLORS = { clockedOut: '#64748b', notClockedIn: '#cbd5e1', absent: '#94a3b8', notScheduled: '#e2e8f0' } as const;
+/** Scheduled time nobody has worked yet today. */
+const NOT_WORKED_COLOR = '#cbd5e1';
+
+/** Today's team minutes: worked, on break, on leave, and the rest of the work windows not worked yet. */
+export function todayHours(members: readonly TeamTodayMember[], now: Date): Record<'worked' | 'break' | 'leave' | 'notWorked', number> {
+  let worked = 0;
+  let onBreak = 0;
+  let leave = 0;
+  let notWorked = 0;
+  for (const m of members) {
+    const breaks = m.breaks.reduce(
+      (n, b) => n + Math.max(0, ((b.end ? new Date(b.end) : now).getTime() - new Date(b.start).getTime()) / 60_000),
+      0,
+    );
+    worked += m.attendanceMinutes;
+    onBreak += breaks;
+    leave += m.leaveMinutes;
+    if (m.expectedMinutes) notWorked += Math.max(0, m.expectedMinutes - m.attendanceMinutes - breaks);
+  }
+  return { worked, break: onBreak, leave, notWorked };
+}
 
 interface Banner {
   readonly key: 'leave' | 'break' | 'working';
@@ -84,6 +106,7 @@ function mondayBefore(weekStart: string): string {
     DataTableComponent,
     DataTableCellDirective,
     WorkingHoursChartComponent,
+    DonutBreakdownComponent,
   ],
   templateUrl: './team-status-detail-dialog.component.html',
   styleUrl: './team-status-detail-dialog.component.css',
@@ -99,7 +122,6 @@ export class TeamStatusDetailDialogComponent {
   /** The file download; a field so a test can stand in for the browser download. */
   downloadFile = downloadCsv;
 
-  protected readonly donutPx = DASHBOARD_DONUT_PX;
   protected readonly week = signal<TeamWorkingHoursResponse | null>(null);
   protected readonly weekError = signal(false);
   /** The week before, for "vs last week" on the average working time. */
@@ -171,12 +193,6 @@ export class TeamStatusDetailDialogComponent {
     return `${arrow(change)} ${Math.abs(change)}% vs last week`;
   });
 
-  /** The neutral statuses (not clocked in, clocked out, absent), joined; '' when there are none. */
-  protected readonly neutral = computed(() => {
-    const g = this.groups();
-    return g ? neutralLine(g.neutral) : '';
-  });
-
   /** Only counts above zero get a banner: who is on leave, on a break, and how many are working. */
   protected readonly banners = computed<Banner[]>(() => {
     const g = this.groups();
@@ -203,31 +219,56 @@ export class TeamStatusDetailDialogComponent {
     return banners;
   });
 
-  protected readonly legend = computed(() => {
+  /** Everyone in the team, so the ring reads as shares of the whole team; neutral statuses only when present. */
+  protected readonly statusSlices = computed<DonutSlice[]>(() => {
     const g = this.groups();
     if (!g) return [];
+    const slice = (key: string, label: string, value: number, color: string): DonutSlice => ({
+      key,
+      label,
+      value,
+      valueText: String(value),
+      color,
+    });
+    const neutral = [
+      slice('clockedOut', 'Clocked out', g.neutral.clockedOut, NEUTRAL_COLORS.clockedOut),
+      slice('notClockedIn', 'Not clocked in', g.neutral.notClockedIn, NEUTRAL_COLORS.notClockedIn),
+      slice('absent', 'Absent', g.neutral.absent, NEUTRAL_COLORS.absent),
+      slice('notScheduled', 'Not scheduled', g.neutral.notScheduled, NEUTRAL_COLORS.notScheduled),
+    ].filter((s) => s.value > 0);
     return [
-      {
-        key: 'working',
-        label: PRESENCE_LABELS.working,
-        count: g.working,
-        color: PRESENCE_COLORS.working,
-      },
-      {
-        key: 'break',
-        label: PRESENCE_LABELS.break,
-        count: g.onBreak,
-        color: PRESENCE_COLORS.break,
-      },
-      {
-        key: 'leave',
-        label: PRESENCE_LABELS.leave,
-        count: g.onLeave,
-        color: PRESENCE_COLORS.leave,
-      },
+      slice('working', PRESENCE_LABELS.working, g.working, PRESENCE_COLORS.working),
+      slice('break', PRESENCE_LABELS.break, g.onBreak, PRESENCE_COLORS.break),
+      slice('leave', PRESENCE_LABELS.leave, g.onLeave, PRESENCE_COLORS.leave),
+      ...neutral,
     ];
   });
-  protected readonly donut = computed<DonutArc[]>(() => donutArcs(this.legend()));
+
+  /** Today's minutes across the team; recomputed when the card's data refreshes. */
+  private readonly hoursToday = computed(() => todayHours(this.store.data()?.members ?? [], new Date()));
+  protected readonly hoursSlices = computed<DonutSlice[]>(() => {
+    const h = this.hoursToday();
+    const slice = (key: string, label: string, value: number, color: string): DonutSlice => ({
+      key,
+      label,
+      value,
+      valueText: minutesText(value),
+      color,
+    });
+    return [
+      slice('worked', 'Worked', h.worked, PRESENCE_COLORS.working),
+      slice('break', 'Break', h.break, PRESENCE_COLORS.break),
+      slice('leave', 'Leave', h.leave, PRESENCE_COLORS.leave),
+      slice('notWorked', 'Not worked yet', h.notWorked, NOT_WORKED_COLOR),
+    ];
+  });
+  protected readonly hoursWorkedText = computed(() => minutesText(this.hoursToday().worked));
+  protected readonly hoursScheduledText = computed(() => {
+    const h = this.hoursToday();
+    const scheduled = h.worked + h.break + h.leave + h.notWorked;
+    return scheduled > 0 ? `of ${minutesText(scheduled)}` : 'worked';
+  });
+
   protected readonly members = computed(() => orderPresence(this.store.data()?.members ?? []));
   private readonly rankOf = computed(() => new Map(this.members().map((m, i) => [m.employeeId, i + 1])));
 

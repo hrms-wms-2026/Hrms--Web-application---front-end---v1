@@ -7,7 +7,7 @@ import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours
 import { TeamTodayResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
 import { presenceMember, presenceResponse } from '../../utils/team-presence.testing';
-import { TeamStatusDetailDialogComponent } from './team-status-detail-dialog.component';
+import { TeamStatusDetailDialogComponent, todayHours } from './team-status-detail-dialog.component';
 
 const WEEK = {
   weekStart: '2026-10-26',
@@ -177,5 +177,48 @@ describe('TeamStatusDetailDialogComponent', () => {
 
     (doc.querySelector('[data-testid="wbld-close"]') as HTMLButtonElement).click();
     expect(closed).toHaveBeenCalledOnce();
+  });
+
+  it('the status donut covers the whole team: absent gets its own slice', async () => {
+    const { doc } = await setup(presenceResponse(team));
+    const donut = doc.querySelector('[data-testid="wbld-status-donut"]')!;
+
+    expect(donut.querySelector('[data-testid="db-arc-working"]')).toBeTruthy();
+    expect(donut.querySelector('[data-testid="db-arc-leave"]')).toBeTruthy();
+    expect(donut.querySelector('[data-testid="db-arc-absent"]')).toBeTruthy();
+    expect(donut.querySelector('[data-testid="db-arc-break"]')).toBeNull();
+    expect(donut.querySelector('[data-testid="db-row-absent"]')!.textContent).toContain('33%');
+  });
+
+  it("the hours donut shows today's worked time in the centre", async () => {
+    const { doc } = await setup(presenceResponse(team));
+    const donut = doc.querySelector('[data-testid="wbld-hours-donut"]')!;
+
+    expect(donut.querySelector('[data-testid="db-center-value"]')!.textContent!.trim()).toBe('5h');
+    expect(donut.querySelector('[data-testid="db-arc-worked"]')).toBeTruthy();
+  });
+});
+
+describe('todayHours', () => {
+  const now = new Date('2026-10-29T08:00:00Z');
+
+  it('splits work windows into worked, break (open breaks run to now), leave and not worked yet', () => {
+    const working = presenceMember('working', {
+      attendanceMinutes: 120,
+      expectedMinutes: 480,
+      breaks: [
+        { start: '2026-10-29T05:00:00Z', end: '2026-10-29T05:30:00Z' },
+        { start: '2026-10-29T07:45:00Z', end: null },
+      ],
+    });
+    const leave = presenceMember('on_leave', { expectedMinutes: 0, leaveMinutes: 480 });
+    const noWindow = presenceMember('working', { attendanceMinutes: 60, expectedMinutes: null, breaks: [] });
+
+    expect(todayHours([working, leave, noWindow], now)).toEqual({
+      worked: 180,
+      break: 45,
+      leave: 480,
+      notWorked: 315,
+    });
   });
 });

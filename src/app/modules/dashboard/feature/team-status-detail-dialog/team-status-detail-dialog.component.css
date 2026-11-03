@@ -91,7 +91,7 @@
 
 .wbld-charts {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
@@ -125,40 +125,6 @@
   font-size: 0.75rem;
   font-weight: 400;
   color: var(--color-text-secondary);
-}
-
-.wbld-distribution {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.wbld-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  font-size: 0.8125rem;
-}
-
-.wbld-legend li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.wbld-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
-}
-
-.wbld-legend-label {
-  color: var(--color-text-secondary);
-}
-.wbld-legend-count {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary);
 }
 
 .wbld-chart {
@@ -224,27 +190,6 @@
   color: rgb(180 83 9);
 }
 
-.wbld-donut {
-  position: relative;
-  flex: none;
-}
-.wbld-donut-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.1;
-}
-.wbld-donut-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-.wbld-neutral {
-  margin-top: 8px;
-}
 .wbld-progress {
   display: flex;
   align-items: center;
