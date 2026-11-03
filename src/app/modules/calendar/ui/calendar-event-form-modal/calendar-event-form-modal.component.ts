@@ -18,6 +18,7 @@ import {
   EligibleNominee, MeetingProvider, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../../models/calendar-event.model';
 import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
+import { EventDraft, eventInstants } from '../../utils/event-draft';
 import { CalendarEventAttendanceComponent } from '../calendar-event-attendance/calendar-event-attendance.component';
 import { CalendarEventMeetingStatusComponent } from '../calendar-event-meeting-status/calendar-event-meeting-status.component';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
@@ -161,6 +162,8 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   @Input() event: CalendarEventResponse | null = null;
   @Input() prefillStart: string | null = null;
   @Input() prefillEnd: string | null = null;
+  /** Everything the Planner create popover's Event tab held ("More options"); wins over prefillStart/prefillEnd. */
+  @Input() prefill: EventDraft | null = null;
   @Input() saving = false;
   @Input() conflicts: readonly CalendarConflict[] = [];
   @Input() checkingConflicts = false;
@@ -436,6 +439,18 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
       });
       // a dragged range set the end explicitly - don't let a later start-time nudge override it
       this.endTimeTouched = !!this.prefillEnd;
+    }
+
+    if (this.prefill) {
+      const p = this.prefill;
+      const [startDate, startTime] = p.start.split('T');
+      const [endDate, endTime] = p.end.split('T');
+      this.form.patchValue({
+        title: p.title, description: p.description ?? '', startDate, startTime, endDate, endTime,
+        isAllDay: p.isAllDay, location: p.location ?? '', recurrenceFrequency: p.repeat
+      });
+      this.setTimezone(p.timezone);
+      this.endTimeTouched = true;
     }
 
     if (justOpened) {
@@ -824,11 +839,8 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     // The stored end is the day AFTER the last day the user picked, at 00:00 (exclusive) - the
     // same convention Google/Outlook all-day events already use when pulled in, so a manually
     // created all-day event lines up with a synced one instead of ending 1 minute before midnight.
-    const startTime = raw.isAllDay ? '00:00' : raw.startTime!;
-    const endTime = raw.isAllDay ? '00:00' : raw.endTime!;
-    const endDateOnly = raw.isAllDay ? addDays(raw.endDate!, 1) : raw.endDate!;
-    const startDate = localPartsToUtcIso(raw.startDate!, startTime, this.currentTimezone());
-    const endDate = localPartsToUtcIso(endDateOnly, endTime, this.currentTimezone());
+    const { startDate, endDate } = eventInstants(`${raw.startDate}T${raw.startTime}`, `${raw.endDate}T${raw.endTime}`,
+      !!raw.isAllDay, this.currentTimezone());
     const recurrence = raw.recurrenceFrequency ?? 'none';
     const recurrenceRule = buildRecurrenceRule(recurrence as RecurrenceFrequency, raw.recurrenceEndMode as RecurrenceEndMode, raw.recurrenceUntilDate || null);
 
