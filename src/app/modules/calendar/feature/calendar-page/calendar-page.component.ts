@@ -34,6 +34,9 @@ import { LeaveRequestStore } from '../../../leave/state/leave-request.store';
 import { LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../../leave/models/leave-request.model';
 import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { PlannerLeaveLayerStore } from '../../state/planner-leave-layer.store';
+import { TeamPlannerStore } from '../../state/team-planner.store';
+import { TeamPlannerComponent } from '../team-planner/team-planner.component';
+import { MyTeamCapabilitiesStore } from '../../../dashboard/state/my-team-capabilities.store';
 import { EventDraft } from '../../utils/event-draft';
 import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
@@ -104,10 +107,11 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
     MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
-    PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent, TimeOffTabComponent, NewLeaveRequestWizardComponent
+    PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent, TimeOffTabComponent, NewLeaveRequestWizardComponent,
+    TeamPlannerComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
-  providers: [PlannerLayerStore, WorkItemPlanFlow, PlannerLeaveLayerStore],
+  providers: [PlannerLayerStore, WorkItemPlanFlow, PlannerLeaveLayerStore, TeamPlannerStore],
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -270,7 +274,53 @@ export class CalendarPageComponent {
     this.store.loadMyTimezone();
     this.store.loadMeetingConnectionStatus();
     this.handleCalendarConnectionRedirect();
+    this.applyTeamParams();
   }
+
+  // --- Me / My team (team planner, Phase A, 2026-11-03) ---
+
+  readonly teamPlanner = inject(TeamPlannerStore);
+  private readonly myTeam = inject(MyTeamCapabilitiesStore);
+  readonly scope = signal<'me' | 'team'>('me');
+  /** My team is offered while the planner is on to someone with a direct report. */
+  readonly canViewTeam = computed(() => this.planner.active() && this.myTeam.capabilities()?.canViewTeamPlan === true);
+  /** The team view shows only while it is offered; a deep link waits for the capability check. */
+  readonly teamMode = computed(() => this.scope() === 'team' && this.canViewTeam());
+
+  setScope(scope: 'me' | 'team'): void {
+    this.closeCreate();
+    this.scope.set(scope);
+  }
+
+  /** ?scope=team&teamView=day|week&date=YYYY-MM-DD&person=<id>, as the My Team widget links. */
+  private applyTeamParams(): void {
+    if (!this.myTeam.loaded() && !this.myTeam.loading()) void this.myTeam.loadCapabilities();
+    const params = this.route.snapshot.queryParamMap;
+    if (params.get('scope') !== 'team') return;
+    this.scope.set('team');
+    const view = params.get('teamView');
+    if (view === 'day' || view === 'week') this.teamPlanner.mode.set(view);
+    const date = params.get('date');
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) this.teamPlanner.setDate(date);
+    const person = params.get('person');
+    if (person) void this.teamPlanner.openPerson(person);
+  }
+
+  /** Keeps the URL on the team view's state while it shows, so a refresh or a shared link reopens it. */
+  private readonly teamUrlEffect = effect(() => {
+    const team = this.teamMode();
+    const mode = this.teamPlanner.mode();
+    const date = this.teamPlanner.date();
+    const person = this.teamPlanner.person()?.employeeId ?? null;
+    untracked(() => {
+      const current = this.route.snapshot.queryParamMap;
+      if (!team && current.get('scope') !== 'team') return;
+      void this.router.navigate([], {
+        relativeTo: this.route, replaceUrl: true, queryParamsHandling: 'merge',
+        queryParams: team ? { scope: 'team', teamView: mode, date, person } : { scope: null, teamView: null, date: null, person: null },
+      });
+    });
+  });
 
   /**
    * The backend's OAuth callback (CalendarOAuthCallbackController) redirects the browser straight
