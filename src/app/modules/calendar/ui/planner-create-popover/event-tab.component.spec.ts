@@ -43,6 +43,12 @@ describe('EventTabComponent', () => {
     expect(created).toHaveBeenCalledTimes(1);
   });
 
+  it('shows the dragged time in the start and end inputs', () => {
+    const { q } = setup();
+    expect((q('event-tab-start') as HTMLInputElement).value).toBe('09:00');
+    expect((q('event-tab-end') as HTMLInputElement).value).toBe('11:00');
+  });
+
   it('Save needs a title', () => {
     const { fixture, q, shared } = setup();
     shared.title.set('  ');

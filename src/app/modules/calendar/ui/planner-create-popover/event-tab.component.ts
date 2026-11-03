@@ -16,9 +16,9 @@ import { CreateSlot, SharedCreateDraft, clock } from './planner-create-draft';
       <div class="flex flex-wrap items-center gap-2">
         <span>{{ slot().date }}</span>
         @if (!shared().isAllDay()) {
-          <input type="time" data-testid="event-tab-start" class="ui-input ui-input--sm" [value]="start()" (input)="start.set($any($event.target).value)" />
+          <input type="time" data-testid="event-tab-start" class="ui-input ui-input--sm" [value]="startShown()" (input)="start.set($any($event.target).value)" />
           <span>→</span>
-          <input type="time" data-testid="event-tab-end" class="ui-input ui-input--sm" [value]="end()" (input)="end.set($any($event.target).value)" />
+          <input type="time" data-testid="event-tab-end" class="ui-input ui-input--sm" [value]="endShown()" (input)="end.set($any($event.target).value)" />
         }
       </div>
       <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
@@ -62,12 +62,16 @@ export class EventTabComponent {
   readonly description = signal('');
   private readonly saving = signal(false);
 
+  /** The picked (dragged) time until the user changes it. */
+  readonly startShown = computed(() => this.start() || clock(this.slot().startMinutes));
+  readonly endShown = computed(() => this.end() || clock(Math.min(this.slot().endMinutes, 24 * 60 - 1)));
+
   readonly draft = computed<EventDraft>(() => {
     const date = this.slot().date;
     return {
       title: this.shared().title().trim(), description: this.description().trim() || null,
-      start: `${date}T${this.start() || clock(this.slot().startMinutes)}`,
-      end: `${date}T${this.end() || clock(Math.min(this.slot().endMinutes, 24 * 60 - 1))}`,
+      start: `${date}T${this.startShown()}`,
+      end: `${date}T${this.endShown()}`,
       isAllDay: this.shared().isAllDay(), timezone: this.timezone(), repeat: this.repeat(), location: this.location().trim() || null,
     };
   });
