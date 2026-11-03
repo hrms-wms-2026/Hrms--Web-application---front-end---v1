@@ -55,7 +55,7 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
 
       <div class="relative min-h-0 w-full flex-1">
         <div
-          class="h-full w-full [&>*]:block [&>*]:h-full"
+          class="dash-motion h-full w-full [&>*]:block [&>*]:h-full"
           data-testid="widget-content"
           [class.overflow-auto]="!overflowVisible() && !editing()"
           [class.overflow-hidden]="editing()"

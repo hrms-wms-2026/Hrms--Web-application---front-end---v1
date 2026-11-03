@@ -2,6 +2,7 @@
 @import "./app/shared/styles/theme-tokens.css";
 @import "./app/shared/styles/fields.css";
 @import "./app/shared/styles/toolbar-buttons.css";
+@import "./app/modules/dashboard/dashboard-motion.css";
 @import "leaflet/dist/leaflet.css";
 @import "@angular/cdk/overlay-prebuilt.css";
 

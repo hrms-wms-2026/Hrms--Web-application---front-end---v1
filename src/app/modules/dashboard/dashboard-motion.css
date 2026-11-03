@@ -1,0 +1,92 @@
+/*
+ * Dashboard motion: one place for every widget's load and refresh animation, so no chart template needs tagging.
+ *
+ * - On load, each widget fades up in turn (--dash-i is the widget's index, set by app-dashboard-grid).
+ * - Charts then draw in: bars grow from their axis, donut arcs sweep, trend lines fade in. Every keyframe has only a
+ *   `from`, so the end state is the element's own (data-bound) value.
+ * - On a refresh the same elements stay in the DOM and glide to their new values (the transitions below).
+ *
+ * Bars are found by what Angular renders for `[style.height.%]` / `[style.width.%]`; donut arcs by their
+ * `stroke-dasharray` attribute (the ring's background circle has none). Scoped to .dash-motion (the widget content
+ * in app-widget-frame), which also holds the widgets' detail popups.
+ */
+
+.dash-motion {
+  --dash-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dash-delay: calc(var(--dash-i, 0) * 60ms + 120ms);
+  animation: dash-rise 480ms var(--dash-ease) calc(var(--dash-i, 0) * 60ms) backwards;
+}
+
+/* A popup opens long after the dashboard loaded: its charts start at once. */
+.dash-motion app-modal {
+  --dash-i: 0;
+  --dash-delay: 80ms;
+}
+
+.dash-motion
+  [style*='height:'][style*='%']:not([style*='line-height']):not([style*='min-height']):not(
+    [style*='max-height']
+  ) {
+  animation: dash-grow-y 700ms var(--dash-ease) var(--dash-delay) backwards;
+  transition: height 600ms var(--dash-ease);
+}
+
+.dash-motion [style*='width:'][style*='%']:not([style*='min-width']):not([style*='max-width']) {
+  animation: dash-grow-x 700ms var(--dash-ease) var(--dash-delay) backwards;
+  transition:
+    width 600ms var(--dash-ease),
+    left 600ms var(--dash-ease);
+}
+
+.dash-motion circle[stroke-dasharray] {
+  animation: dash-sweep 900ms var(--dash-ease) var(--dash-delay) backwards;
+  /* opacity and stroke-width keep app-donut-breakdown's hover transitions. */
+  transition:
+    stroke-dasharray 600ms var(--dash-ease),
+    stroke-dashoffset 600ms var(--dash-ease),
+    opacity 150ms ease,
+    stroke-width 150ms ease;
+}
+
+.dash-motion polyline {
+  animation: dash-fade 500ms ease calc(var(--dash-delay) + 400ms) backwards;
+}
+
+@keyframes dash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes dash-grow-y {
+  from {
+    height: 0;
+  }
+}
+
+@keyframes dash-grow-x {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes dash-sweep {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+
+@keyframes dash-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-motion,
+  .dash-motion * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

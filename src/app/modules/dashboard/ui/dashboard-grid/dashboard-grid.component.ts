@@ -126,8 +126,10 @@ const FALLBACK_EASING = 'cubic-bezier(0.2, 0.9, 0.3, 1.1)';
       @for (c of cells(); track c.w.instanceId) {
         @let w = c.w;
         @let dragged = drag()?.id === w.instanceId;
+        <!-- --dash-i staggers the widget's entrance (dashboard-motion.css). -->
         <div
           class="relative min-w-0 scroll-mt-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          [style.--dash-i]="$index"
           [class.z-30]="dragged"
           [class.rounded-2xl]="editing()"
           [class.shadow-2xl]="dragged && drag()?.kind === 'move'"
