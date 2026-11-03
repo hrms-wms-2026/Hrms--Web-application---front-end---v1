@@ -7,6 +7,7 @@ import { Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { environment } from '../../../../../environments/environment';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { PlannerFocusResponse, PlannerRangeBlockView, PlannerRangeDay, PlannerWorkWindow } from '../../../work/planner/models/planner.models';
 import { PlannerAvailability, PlannerAvailabilityService } from '../../../work/planner/state/planner-availability.service';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
@@ -106,6 +107,7 @@ describe('CalendarPageComponent planner layer', () => {
         { provide: PlannerAvailabilityService, useValue: { state, markAvailable: vi.fn(), probe: vi.fn() } },
         { provide: NotificationService, useValue: notify },
         { provide: ProjectDetailStore, useValue: projects },
+        { provide: PermissionService, useValue: { hasModule: () => true, hasAnyModule: () => true, hasPermission: () => true, hasAnyPermission: () => true } },
       ],
     });
     projectError.set(null);
@@ -502,6 +504,21 @@ describe('CalendarPageComponent planner layer', () => {
 
       expect(fixture.componentInstance.createSlot()).toBeNull();
       expect(notify.success).toHaveBeenCalledWith('Leave request sent for approval.');
+    });
+
+    it('loads my leave for the visible range, and again after a Time off submit', async () => {
+      setup();
+      await settle();
+      const leaveReads = () => http.match((r) => r.url === `${environment.apiUrl}/leave/requests/my`);
+
+      const first = leaveReads();
+      expect(first.length).toBeGreaterThan(0);
+      expect(first[0].request.params.get('fromDate')).toBeTruthy();
+      expect(first[0].request.params.get('toDate')).toBeTruthy();
+
+      fixture.componentInstance.onTimeOffSubmitted();
+
+      expect(leaveReads().length).toBe(1);
     });
 
     it('offers Meeting only while meetings can be written, and Time off only with leave access', async () => {

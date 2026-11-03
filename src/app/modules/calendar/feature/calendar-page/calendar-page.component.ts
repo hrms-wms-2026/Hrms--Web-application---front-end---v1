@@ -33,6 +33,7 @@ import { LeaveBalanceStore } from '../../../leave/state/leave-balance.store';
 import { LeaveRequestStore } from '../../../leave/state/leave-request.store';
 import { LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../../leave/models/leave-request.model';
 import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
+import { PlannerLeaveLayerStore } from '../../state/planner-leave-layer.store';
 import { EventDraft } from '../../utils/event-draft';
 import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
@@ -106,7 +107,7 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
     PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent, TimeOffTabComponent, NewLeaveRequestWizardComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
-  providers: [PlannerLayerStore, WorkItemPlanFlow],
+  providers: [PlannerLayerStore, WorkItemPlanFlow, PlannerLeaveLayerStore],
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -229,6 +230,11 @@ export class CalendarPageComponent {
   private readonly plannerRangeEffect = effect(() => {
     const { from, to } = this.plannerRange();
     void this.planner.load(from, to);
+    // Your own leave on the Planner (2026-11-03): only where you can ask for it.
+    if (this.createTabs().includes('timeOff')) {
+      void untracked(() => this.leaveLayer.load(from, to));
+      untracked(() => this.leaveLayer.startAutoRefresh());
+    }
   });
 
   /** Day view's actual minutes and attendance come from the day read. */
@@ -583,6 +589,7 @@ export class CalendarPageComponent {
   readonly clockOf = clock;
 
   // --- Time off tab ---
+  readonly leaveLayer = inject(PlannerLeaveLayerStore);
   readonly leaveTypes = inject(LeaveTypeStore);
   readonly leaveBalances = inject(LeaveBalanceStore);
   readonly leaveRequests = inject(LeaveRequestStore);
@@ -594,6 +601,8 @@ export class CalendarPageComponent {
   onTimeOffSubmitted(): void {
     this.closeCreate();
     this.notificationService.success('Leave request sent for approval.');
+    const { from, to } = this.plannerRange();
+    void this.leaveLayer.load(from, to);
   }
 
   onTimeOffMoreOptions(draft: TimeOffDraft): void {
