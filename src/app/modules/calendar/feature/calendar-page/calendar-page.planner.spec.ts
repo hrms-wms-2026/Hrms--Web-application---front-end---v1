@@ -479,6 +479,31 @@ describe('CalendarPageComponent planner layer', () => {
       });
     });
 
+    it('More options on the Time off tab opens the leave form prefilled', async () => {
+      setup();
+      await settle();
+      const date = editableDate();
+      fixture.componentInstance.onSlotClick({ date, hour: 9 });
+
+      fixture.componentInstance.onTimeOffMoreOptions({ leaveTypeId: 'sick', startIso: `${date}T09:00:00.000Z`, endIso: `${date}T11:00:00.000Z`, reason: 'Doctor' });
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+      expect(fixture.componentInstance.leaveWizard()).toEqual({
+        leaveTypeId: 'sick', startDate: date, startTime: '09:00', endDate: date, endTime: '11:00', reason: 'Doctor',
+      });
+    });
+
+    it('a Time off submit closes the popover and says it was sent', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+      fixture.componentInstance.onTimeOffSubmitted();
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+      expect(notify.success).toHaveBeenCalledWith('Leave request sent for approval.');
+    });
+
     it('offers Meeting only while meetings can be written, and Time off only with leave access', async () => {
       setup();
       await settle();

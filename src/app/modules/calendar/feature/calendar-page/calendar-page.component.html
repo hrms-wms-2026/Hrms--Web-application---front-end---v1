@@ -194,7 +194,9 @@
         <app-planner-work-item-tab [slot]="slot" [shared]="createPop.shared" [myBlocks]="plannerBlocks().get(slot.date) ?? []"
           (done)="onCreateDone()" (pickAnotherTime)="onPickAnotherTime($event)" (moreOptions)="onWorkItemMoreOptions($event)" />
       }
-      @case ('timeOff') { <p data-testid="create-body-timeOff"></p> }
+      @case ('timeOff') {
+        <app-planner-time-off-tab [slot]="slot" (submitted)="onTimeOffSubmitted()" (moreOptions)="onTimeOffMoreOptions($event)" />
+      }
     }
   </app-planner-create-popover>
 }
@@ -202,6 +204,36 @@
 @if (meetingFormOpen()) {
   <app-meeting-form-modal [open]="true" mode="create" [prefill]="meetingPrefill()" (saved)="onMeetingSaved($any($event))"
     (closed)="meetingFormOpen.set(false); meetingPrefill.set(null)" />
+}
+
+@if (leaveWizard(); as lw) {
+  <app-new-leave-request-wizard
+    [open]="true"
+    [leaveTypes]="leaveTypes.items()"
+    [balances]="leaveBalances.my()"
+    [workStartTime]="leaveBalances.workWindow()?.workStartTime ?? null"
+    [workEndTime]="leaveBalances.workWindow()?.workEndTime ?? null"
+    [timezone]="leaveBalances.workWindow()?.timezone ?? plannerZone()"
+    [initialLeaveTypeId]="lw.leaveTypeId"
+    [initialStartDate]="lw.startDate"
+    [initialStartTime]="lw.startTime"
+    [initialEndDate]="lw.endDate"
+    [initialEndTime]="lw.endTime"
+    [initialReason]="lw.reason ?? ''"
+    [previewing]="leaveRequests.previewing()"
+    [previewResult]="leaveRequests.previewResult()"
+    [previewError]="leaveRequests.previewError()"
+    [submitting]="leaveRequests.submitting()"
+    [submitError]="leaveRequests.submitError()"
+    [uploadedDocuments]="leaveDocuments()"
+    [uploadingDocument]="leaveRequests.uploadingDocument()"
+    [documentUploadError]="leaveRequests.documentUploadError()"
+    (previewRequested)="leaveRequests.preview($event)"
+    (submitRequested)="onLeaveWizardSubmit($any($event))"
+    (documentSelected)="onLeaveDocumentSelected($event)"
+    (documentRemoved)="leaveDocuments.update((docs) => docs.filter((d) => d.id !== $event))"
+    (closed)="closeLeaveWizard()"
+  />
 }
 
 @if (workItemForm(); as wf) {

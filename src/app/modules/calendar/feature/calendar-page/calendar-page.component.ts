@@ -26,6 +26,12 @@ import { EventTabComponent } from '../../ui/planner-create-popover/event-tab.com
 import { WorkItemDraft, WorkItemTabComponent, WorkItemToPlace } from '../../ui/planner-create-popover/work-item-tab.component';
 import { TaskFormPrefill } from '../../../work/ui/task-form-modal/task-form-modal.component';
 import { plannerErrorMessage } from '../../../work/planner/utils/planner-error-messages';
+import { TimeOffDraft, TimeOffTabComponent } from '../../ui/planner-create-popover/time-off-tab.component';
+import { NewLeaveRequestWizardComponent } from '../../../leave/ui/new-leave-request-wizard/new-leave-request-wizard.component';
+import { LeaveTypeStore } from '../../../leave/state/leave-type.store';
+import { LeaveBalanceStore } from '../../../leave/state/leave-balance.store';
+import { LeaveRequestStore } from '../../../leave/state/leave-request.store';
+import { LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../../leave/models/leave-request.model';
 import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { EventDraft } from '../../utils/event-draft';
 import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
@@ -97,7 +103,7 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
     MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
-    PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent
+    PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent, TimeOffTabComponent, NewLeaveRequestWizardComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
   providers: [PlannerLayerStore, WorkItemPlanFlow],
@@ -575,6 +581,50 @@ export class CalendarPageComponent {
   }
 
   readonly clockOf = clock;
+
+  // --- Time off tab ---
+  readonly leaveTypes = inject(LeaveTypeStore);
+  readonly leaveBalances = inject(LeaveBalanceStore);
+  readonly leaveRequests = inject(LeaveRequestStore);
+  /** "More options" on the Time off tab: the full leave request form, filled with what the tab held. */
+  readonly leaveWizard = signal<{ leaveTypeId: string; startDate: string; startTime: string; endDate: string; endTime: string;
+    reason: string | null } | null>(null);
+  readonly leaveDocuments = signal<LeaveUploadedDocument[]>([]);
+
+  onTimeOffSubmitted(): void {
+    this.closeCreate();
+    this.notificationService.success('Leave request sent for approval.');
+  }
+
+  onTimeOffMoreOptions(draft: TimeOffDraft): void {
+    this.closeCreate();
+    void this.leaveBalances.loadWorkWindow();
+    if (this.leaveTypes.items().length === 0) void this.leaveTypes.load();
+    // The leave form works in the work-window zone; the slot's instants are shown there.
+    const zone = this.leaveBalances.workWindow()?.timezone ?? this.plannerZone();
+    const start = utcIsoToLocalParts(draft.startIso, zone);
+    const end = utcIsoToLocalParts(draft.endIso, zone);
+    this.leaveWizard.set({ leaveTypeId: draft.leaveTypeId, startDate: start.date, startTime: start.time, endDate: end.date,
+      endTime: end.time, reason: draft.reason });
+  }
+
+  async onLeaveWizardSubmit(payload: SubmitLeaveRequestRequest): Promise<void> {
+    if (await this.leaveRequests.submit(payload)) {
+      this.closeLeaveWizard();
+      this.onTimeOffSubmitted();
+    }
+  }
+
+  async onLeaveDocumentSelected(file: File): Promise<void> {
+    const uploaded = await this.leaveRequests.uploadDocument(file);
+    if (uploaded) this.leaveDocuments.update((docs) => [...docs, uploaded]);
+  }
+
+  closeLeaveWizard(): void {
+    this.leaveWizard.set(null);
+    this.leaveDocuments.set([]);
+    this.leaveRequests.clearPreview();
+  }
 
   /** "More options" on the Work item tab: the full Create work item form, filled, then the created item is planned. */
   readonly workItemForm = signal<{ projectId: string; objectiveId: string; prefill: TaskFormPrefill; slot: CreateSlot; planned: boolean } | null>(null);
