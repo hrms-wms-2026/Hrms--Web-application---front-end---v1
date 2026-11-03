@@ -17,7 +17,8 @@ describe('TeamPlannerComponent (team planner shell)', () => {
   const weekTeam: TeamPlannerResponse = { ...team, from: '2026-11-02', to: '2026-11-08',
     members: team.members.map((m) => ({ ...m, days: week.map((d) => personDay(d, { blockMinutes: 240 })) })) };
 
-  function setup(api: Partial<Record<'getTeamDay' | 'getTeamRange' | 'getEmployeeRange', ReturnType<typeof vi.fn>>> = {}) {
+  function setup(api: Partial<Record<'getTeamDay' | 'getTeamRange' | 'getEmployeeRange', ReturnType<typeof vi.fn>>> = {},
+    opts: { noDate?: boolean } = {}) {
     vi.stubGlobal('matchMedia', (q: string) => ({ matches: false, media: q, addEventListener: () => undefined, removeEventListener: () => undefined }));
     const fake = {
       getTeamDay: api.getTeamDay ?? vi.fn(() => of(team)),
@@ -27,7 +28,7 @@ describe('TeamPlannerComponent (team planner shell)', () => {
     };
     TestBed.configureTestingModule({ imports: [TeamPlannerComponent], providers: [TeamPlannerStore, { provide: PlannerApiService, useValue: fake }] });
     const store = TestBed.inject(TeamPlannerStore);
-    store.setDate(D);
+    if (!opts.noDate) store.setDate(D);
     const fixture = TestBed.createComponent(TeamPlannerComponent);
     fixture.componentRef.setInput('timezone', 'Asia/Colombo');
     const q = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
@@ -68,6 +69,32 @@ describe('TeamPlannerComponent (team planner shell)', () => {
     q('team-person-back')!.click();
     await settle();
     expect(q('team-person-title')).toBeNull();
+  });
+
+  // Review finding 1: the team toolbar would move the team, not the person on screen.
+  it('the person view hides the team toolbar', async () => {
+    const { q, all, settle } = setup();
+    await settle();
+    all('plan-col-open')[0].click();
+    await settle();
+    expect(q('team-person-title')).not.toBeNull();
+    expect(q('team-mode-day')).toBeNull();
+    expect(q('team-date')).toBeNull();
+    expect(q('team-filter-over')).toBeNull();
+  });
+
+  // Review finding 6: "today" is the viewer's today, as the widget's.
+  it('without a chosen date it opens on today in the viewer zone', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-04T20:00:00Z')); // 01:30 on 5 Nov in Colombo
+    try {
+      const { store, settle, api } = setup({}, { noDate: true });
+      await settle();
+      expect(store.date()).toBe('2026-11-05');
+      expect(api.getTeamDay).toHaveBeenLastCalledWith('2026-11-05', null);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('breadcrumb drill-down and back', async () => {

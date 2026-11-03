@@ -140,7 +140,8 @@ export class TeamWeekHeatmapComponent {
       const band = loadBand(minutes, cap, day?.onLeave ?? false);
       const { bg, fg } = LOAD_BAND_COLORS[band];
       if (band === 'leave') return { date, label: 'Leave', sub: '', bg, fg };
-      if (band === 'none') return { date, label: '—', sub: 'not planned', bg, fg };
+      // A working day with no capacity left (leave seen as busy) is unavailable, not unplanned.
+      if (band === 'none') return { date, label: '—', sub: cap === 0 && (day?.workingMinutes ?? 0) > 0 ? 'unavailable' : 'not planned', bg, fg };
       return { date, label: formatHours(minutes), sub: cap > 0 ? `${Math.round((minutes / cap) * 100)}%` : 'no hours', bg, fg };
     });
     const hours = (x: number) => (x > 0 ? formatHours(x) : '0h');

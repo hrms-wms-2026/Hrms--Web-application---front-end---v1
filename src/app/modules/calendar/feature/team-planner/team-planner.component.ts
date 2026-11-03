@@ -25,6 +25,8 @@ function fmt(date: string, options: Intl.DateTimeFormatOptions): string {
   imports: [PlanColumnsGridComponent, TeamWeekHeatmapComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <!-- The team's controls; a person's week has only "Back to team". -->
+    @if (!store.person()) {
     <div class="tp-toolbar">
       <div class="tp-seg" role="group" aria-label="View">
         <button type="button" data-testid="team-mode-day" [attr.aria-pressed]="store.mode() === 'day'" [class.tp-on]="store.mode() === 'day'"
@@ -56,6 +58,7 @@ function fmt(date: string, options: Intl.DateTimeFormatOptions): string {
           @if (!last) { <span aria-hidden="true">›</span> }
         }
       </nav>
+    }
     }
 
     @if (store.person(); as person) {
@@ -154,6 +157,7 @@ export class TeamPlannerComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.store.ensureToday(this.timezone());
     if (!this.store.response() && !this.store.loading()) void this.store.load();
   }
 

@@ -36,6 +36,11 @@ describe('TeamWeekHeatmap (team planner, approved heatmap)', () => {
     expect([zero.querySelector('strong')!.textContent!.trim(), zero.querySelector('span')!.textContent!.trim()]).toEqual(['—', 'not planned']);
   });
 
+  it('a working day with no capacity left reads unavailable, not "not planned"', () => {
+    const { all } = setup([member('m', 'Mohan P.', [personDay(days[0], { capacityMinutes: 0 }), personDay(days[1])])]);
+    expect(all('heat-cell')[0].querySelector('span')!.textContent!.trim()).toBe('unavailable');
+  });
+
   it('week total is load over capacity, orange when over', () => {
     const { all } = setup();
     expect(all('heat-total')[0].textContent!.replace(/\s+/g, ' ').trim()).toBe('15h / 16h');

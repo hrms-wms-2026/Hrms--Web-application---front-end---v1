@@ -118,8 +118,28 @@ export class PlanColumnsGridComponent {
 
   readonly narrow = signal(false);
 
-  readonly hours = computed(() => Array.from({ length: this.toHour() - this.fromHour() }, (_, i) => `${this.fromHour() + i}:00`));
-  readonly bodyHeight = computed(() => (this.toHour() - this.fromHour()) * HOUR_PX);
+  /** fromHour–toHour, widened to every item and work window in the viewer's zone so nothing falls off the grid. */
+  readonly range = computed(() => {
+    const zone = this.timezone();
+    let from = this.fromHour();
+    let to = this.toHour();
+    for (const col of this.columns()) {
+      const hourOf = (iso: string) => {
+        const parts = utcIsoToLocalParts(iso, zone);
+        if (parts.date < col.date) return 0;
+        if (parts.date > col.date) return 24;
+        const [h, m] = parts.time.split(':').map(Number);
+        return h + m / 60;
+      };
+      const starts = [...col.items.map((i) => i.startIso), ...(col.workStartIso ? [col.workStartIso] : [])];
+      const ends = [...col.items.map((i) => i.endIso), ...(col.workEndIso ? [col.workEndIso] : [])];
+      for (const s of starts) from = Math.min(from, Math.floor(hourOf(s)));
+      for (const e of ends) to = Math.max(to, Math.ceil(hourOf(e)));
+    }
+    return { from: Math.max(0, from), to: Math.min(24, to) };
+  });
+  readonly hours = computed(() => Array.from({ length: this.range().to - this.range().from }, (_, i) => `${this.range().from + i}:00`));
+  readonly bodyHeight = computed(() => (this.range().to - this.range().from) * HOUR_PX);
   readonly zoneName = computed(() => (this.timezone().split('/').pop() ?? '').replace(/_/g, ' '));
 
   readonly placed = computed<PlacedColumn[]>(() => {
@@ -127,7 +147,7 @@ export class PlanColumnsGridComponent {
     const total = this.bodyHeight();
     const pad = (h: number) => `${String(h).padStart(2, '0')}:00`;
     return this.columns().map((col) => {
-      const start = Date.parse(localPartsToUtcIso(col.date, pad(this.fromHour()), zone));
+      const start = Date.parse(localPartsToUtcIso(col.date, pad(this.range().from), zone));
       const px = (iso: string) => Math.min(total, Math.max(0, ((Date.parse(iso) - start) / 60000) * (HOUR_PX / 60)));
       const placed = col.items.map((item) => {
         const top = px(item.startIso);

@@ -77,8 +77,8 @@ export class TeamPlannerStore {
         over: bands.includes('over'),
         leave: days.some((d) => d.onLeave),
         under: load > 0 && capacity > 0 && load / capacity < 0.5,
-        // Nothing planned although at least one shown day is a working day not on leave.
-        notPlanned: load === 0 && days.some((d) => !d.onLeave && d.workingMinutes > 0),
+        // Nothing planned although at least one shown day still has hours (leave seen as busy leaves none).
+        notPlanned: load === 0 && days.some((d) => !d.onLeave && d.capacityMinutes > 0),
       }];
     }));
   });
@@ -131,17 +131,27 @@ export class TeamPlannerStore {
     return this.load();
   }
 
+  private dateChosen = false;
+
   /** Sets the date only; the caller loads (setMode, step and the shell do). */
   setDate(date: string): void {
+    this.dateChosen = true;
     this.date.set(date);
   }
 
+  /** Until a date is chosen (deep link, navigation), the view opens on today in the viewer's zone. */
+  ensureToday(timezone: string): void {
+    if (!this.dateChosen) this.date.set(utcIsoToLocalParts(new Date().toISOString(), timezone).date);
+  }
+
   step(direction: 1 | -1): Promise<void> {
+    this.dateChosen = true;
     this.date.set(addDays(this.date(), direction * (this.mode() === 'day' ? 1 : 7)));
     return this.load();
   }
 
   today(timezone: string): Promise<void> {
+    this.dateChosen = true;
     this.date.set(utcIsoToLocalParts(new Date().toISOString(), timezone).date);
     return this.load();
   }

@@ -44,6 +44,11 @@ describe('TeamPlanTodayCard (My Team widget, team planner 2026-11-03)', () => {
     expect(all('tpt-chip').map((e) => e.textContent!.trim())).toEqual(['On leave', 'Not planned']);
   });
 
+  it('no chip for a day with no capacity left (leave seen as busy)', async () => {
+    const { all } = await setup(vi.fn(() => of({ ...team, members: [member('m', 'Mohan P.', [personDay(D, { capacityMinutes: 0 })])] })));
+    expect(all('tpt-chip')).toHaveLength(0);
+  });
+
   it('open team planner link', async () => {
     const { q } = await setup();
     const link = q('tpt-open') as HTMLAnchorElement;

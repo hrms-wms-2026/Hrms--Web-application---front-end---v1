@@ -41,6 +41,17 @@ describe('PlanColumnsGrid (team planner)', () => {
     expect(item.style.height).toBe('144px');
   });
 
+  // Review finding 3: a late item (or a member far behind) must not vanish past 20:00.
+  it('grows the hours to show an item outside 07:00–20:00', () => {
+    const day = personDay(D, { blocks: [{ id: 'late', taskId: 't', projectId: 'p', taskTitle: 'Late call', startAt: `${D}T15:30:00Z`,
+      endAt: `${D}T16:30:00Z`, plannedMinutes: 60, actualMinutes: 0, stillAssigned: true }] }); // 21:00–22:00 Colombo
+    const { fixture, all } = setup([memberColumn(member('r', 'Ravi Kumar', [day]), D, 'Asia/Colombo')]);
+    expect(fixture.componentInstance.hours()).toContain('21:00');
+    const item = all('plan-item')[0];
+    expect(item.style.top).toBe(`${(21 - 7) * 72}px`);
+    expect(item.style.height).toBe('72px');
+  });
+
   it('draws a private meeting as Busy and a cancelled one not at all', () => {
     const items = planItemsOf(personDay(D, { meetings: [meeting({ isPrivate: true, title: 'Private meeting' }), meeting({ taskId: 'c', cancelled: true })] }));
     expect(items).toEqual([expect.objectContaining({ kind: 'busy', label: 'Busy' })]);

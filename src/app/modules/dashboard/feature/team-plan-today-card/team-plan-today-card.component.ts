@@ -105,7 +105,8 @@ export class TeamPlanTodayCardComponent implements OnInit {
     const load = day ? dayLoad(day) : 0;
     const capacity = day?.capacityMinutes ?? 0;
     const hours = (x: number) => (x > 0 ? formatHours(x) : '0h');
-    const chip = day?.onLeave ? 'On leave' : load === 0 && (day?.workingMinutes ?? 0) > 0 ? 'Not planned' : null;
+    // Leave seen as busy leaves a working day with no capacity: neither on leave nor "not planned".
+    const chip = day?.onLeave ? 'On leave' : load === 0 && capacity > 0 ? 'Not planned' : null;
     return {
       id: m.employeeId, name: m.name,
       initials: m.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join(''),

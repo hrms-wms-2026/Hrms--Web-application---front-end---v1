@@ -84,6 +84,14 @@ describe('TeamPlannerStore', () => {
     expect(store.visibleMembers().map((m) => m.employeeId)).toEqual(['a', 'm']);
   });
 
+  // Review finding 2: leave masked as busy (no leave:read) leaves a working day with no capacity; that is not "Not planned".
+  it('a working day with no capacity left is not counted as Not planned', async () => {
+    const masked = { ...team, members: [member('m', 'Mohan P.', [personDay(D, { capacityMinutes: 0 })])] };
+    const { store } = setup({ getTeamDay: vi.fn(() => of(masked)) });
+    await store.load();
+    expect(store.counts().notPlanned).toBe(0);
+  });
+
   it('sort loadDesc puts the fullest first; search is case-insensitive', async () => {
     const { store } = setup();
     await store.load();
