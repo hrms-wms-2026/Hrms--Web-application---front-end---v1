@@ -76,7 +76,7 @@
           <span data-testid="planner-focus-count" class="rounded-full bg-[var(--color-accent)]/10 px-1.5 text-xs font-semibold text-[var(--color-accent)]">{{ planner.focusCount() }}</span>
         </button>
       }
-      <app-button type="button" data-testid="calendar-new-event" (click)="openCreate()">
+      <app-button type="button" data-testid="calendar-new-event" (click)="onNewEvent()">
         <svg data-testid="calendar-new-event-icon" class="mr-1 inline h-4 w-4 align-[-2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New event
       </app-button>
     </div>
@@ -175,6 +175,17 @@
   (removeExistingGuest)="onRemoveExistingGuest($event)"
   (cancelled)="closeForm()"
 />
+
+@if (createSlot(); as slot) {
+  <app-planner-create-popover #createPop [slot]="slot" [tabs]="createTabs()" (closed)="closeCreate()">
+    @switch (createPop.active()) {
+      @case ('event') { <p data-testid="create-body-event"></p> }
+      @case ('meeting') { <p data-testid="create-body-meeting"></p> }
+      @case ('workItem') { <p data-testid="create-body-workItem"></p> }
+      @case ('timeOff') { <p data-testid="create-body-timeOff"></p> }
+    }
+  </app-planner-create-popover>
+}
 
 @if (meetingFormOpen()) {
   <app-meeting-form-modal [open]="true" mode="create" [prefill]="meetingPrefill()" (saved)="onMeetingSaved($any($event))"

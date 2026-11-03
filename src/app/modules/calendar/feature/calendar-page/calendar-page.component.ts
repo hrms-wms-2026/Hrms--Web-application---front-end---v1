@@ -19,7 +19,10 @@ import {
 } from '../../ui/calendar-event-form-modal/calendar-event-form-modal.component';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
+import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
+import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 import {
   PlannerDayResponse, PlannerFocusItem, PlannerRangeBlockView, PlannerRangeDay
@@ -87,7 +90,8 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   imports: [
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
-    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent
+    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
+    PlannerCreatePopoverComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
   providers: [PlannerLayerStore],
@@ -120,6 +124,7 @@ export class CalendarPageComponent {
   readonly planner = inject(PlannerLayerStore);
   private readonly plannerApi = inject(PlannerApiService);
   private readonly auth = inject(AuthStore);
+  private readonly permissions = inject(PermissionService);
   readonly employeeId = computed(() => this.auth.employeeId());
   /** Week view's Focus panel; Day view always shows it. */
   readonly focusOpen = signal(readFlag('planner.focusOpen', true));
@@ -319,10 +324,12 @@ export class CalendarPageComponent {
   }
 
   setView(view: CalendarView): void {
+    this.closeCreate();
     this.view.set(view);
   }
 
   openDay(date: string): void {
+    this.closeCreate();
     const [y, m, d] = date.split('-').map(Number);
     this.cursor.set(new Date(y, m - 1, d));
     this.view.set('day');
@@ -434,6 +441,7 @@ export class CalendarPageComponent {
   }
 
   private step(direction: 1 | -1): void {
+    this.closeCreate();
     const d = this.cursor();
     switch (this.view()) {
       case 'month':
@@ -452,6 +460,7 @@ export class CalendarPageComponent {
   }
 
   goToToday(): void {
+    this.closeCreate();
     this.cursor.set(new Date());
   }
 
@@ -460,6 +469,7 @@ export class CalendarPageComponent {
 
   jumpTo(date: string): void {
     const [y, m, d] = date.split('-').map(Number);
+    this.closeCreate();
     if (y && m && d) this.cursor.set(new Date(y, m - 1, d));
     this.periodPickerOpen.set(false);
   }
@@ -494,13 +504,55 @@ export class CalendarPageComponent {
   }
 
   onSlotClick(slot: { date: string; hour: number }): void {
+    if (this.canCreateHere(slot.date)) {
+      this.openCreatePopover(slot.date, slot.hour * 60, Math.min(slot.hour * 60 + 60, 24 * 60));
+      return;
+    }
     this.openCreate(`${slot.date}T${String(slot.hour).padStart(2, '0')}:00`);
   }
 
   onSlotRange(range: { date: string; startMinutes: number; endMinutes: number }): void {
-    const hhmm = (minutes: number) =>
-      `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-    this.openCreate(`${range.date}T${hhmm(range.startMinutes)}`, `${range.date}T${hhmm(range.endMinutes)}`);
+    if (this.canCreateHere(range.date)) {
+      this.openCreatePopover(range.date, range.startMinutes, range.endMinutes);
+      return;
+    }
+    this.openCreate(`${range.date}T${clock(range.startMinutes)}`, `${range.date}T${clock(range.endMinutes)}`);
+  }
+
+  // --- Planner create popover (2026-11-03 design) ---
+
+  /** The picked time while the create popover is open; null when closed. */
+  readonly createSlot = signal<CreateSlot | null>(null);
+  readonly createTabs = computed<readonly CreateTab[]>(() => CREATE_TAB_ORDER.filter((tab) => {
+    if (tab === 'meeting') return this.meetingsAvailability.canCreate();
+    if (tab === 'timeOff') return this.permissions.hasModule('leave') && this.permissions.hasPermission('leave:read-own');
+    return true;
+  }));
+
+  /** The popover belongs to the planner: it needs the planner's editable days. Elsewhere the event form stays. */
+  private canCreateHere(date: string): boolean {
+    return this.planner.active() && this.plannerEditable().has(date);
+  }
+
+  private openCreatePopover(date: string, startMinutes: number, endMinutes: number): void {
+    this.createSlot.set({ date, startMinutes, endMinutes, startIso: this.toIso(date, startMinutes), endIso: this.toIso(date, endMinutes) });
+  }
+
+  /** New event: the popover at the next half hour today (planner zone), for an hour; the event form when it can't. */
+  onNewEvent(): void {
+    const zone = this.planner.range()?.timezone ?? this.store.myTimezone();
+    const now = utcIsoToLocalParts(new Date().toISOString(), zone);
+    const [h, m] = now.time.split(':').map(Number);
+    const start = Math.ceil((h * 60 + m + 1) / 30) * 30;
+    if (start + 60 <= 24 * 60 && this.canCreateHere(now.date)) {
+      this.openCreatePopover(now.date, start, start + 60);
+      return;
+    }
+    this.openCreate();
+  }
+
+  closeCreate(): void {
+    this.createSlot.set(null);
   }
 
   openEdit(eventId: string): void {

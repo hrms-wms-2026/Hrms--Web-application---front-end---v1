@@ -53,6 +53,7 @@ describe('CalendarPageComponent planner layer', () => {
   const notify = { error: vi.fn(), warning: vi.fn(), success: vi.fn(), info: vi.fn() };
   const events = signal<readonly CalendarEventResponse[]>([]);
   let blocksFor: (date: string) => PlannerRangeBlockView[] = () => [];
+  let rangeZone = 'UTC';
   const projectError = signal<string | null>(null);
   const projects = { loadProject: vi.fn(async () => undefined), loadMyMilestones: vi.fn(async () => undefined), projectError };
 
@@ -73,7 +74,7 @@ describe('CalendarPageComponent planner layer', () => {
       return { date, editable: true, workWindow: window, blocks, blockMinutes: blocks.reduce((s, b) => s + b.plannedMinutes, 0),
         workingMinutes: window.workingMinutes };
     });
-    req.flush({ timezone: 'UTC', today: days[0].date, days });
+    req.flush({ timezone: rangeZone, today: days[0].date, days });
   }
 
   /** Answers every planner read the page has made so far. */
@@ -94,6 +95,7 @@ describe('CalendarPageComponent planner layer', () => {
     state.set(on ? 'on' : 'off');
     events.set([]);
     blocksFor = () => [];
+    rangeZone = 'UTC';
     Object.values(notify).forEach((f) => f.mockClear());
     try { localStorage.clear(); } catch { /* storage may be unavailable */ }
     TestBed.configureTestingModule({
@@ -319,5 +321,86 @@ describe('CalendarPageComponent planner layer', () => {
     fixture.detectChanges();
 
     expect(q('planner-day-totals')!.textContent).toContain('30m / 0m');
+  });
+
+  describe('create popover (2026-11-03)', () => {
+    const editableDate = () => fixture.componentInstance.editableDateList()[0];
+
+    it('slot click on an editable day opens the popover, not the event form', async () => {
+      setup();
+      await settle();
+
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      fixture.detectChanges();
+
+      expect(q('create-popover-panel')).not.toBeNull();
+      expect(fixture.componentInstance.formOpen()).toBe(false);
+      expect(fixture.componentInstance.createSlot()).toMatchObject({ date: editableDate(), startMinutes: 540, endMinutes: 600 });
+    });
+
+    it('slot click when the planner is off opens the event form', async () => {
+      setup(false);
+      await settle();
+
+      fixture.componentInstance.onSlotClick({ date: '2026-11-10', hour: 9 });
+      fixture.detectChanges();
+
+      expect(q('create-popover-panel')).toBeNull();
+      expect(fixture.componentInstance.formOpen()).toBe(true);
+    });
+
+    it('drag range fills start and end', async () => {
+      setup();
+      await settle();
+
+      fixture.componentInstance.onSlotRange({ date: editableDate(), startMinutes: 600, endMinutes: 690 });
+
+      expect(fixture.componentInstance.createSlot()).toMatchObject({ startMinutes: 600, endMinutes: 690 });
+    });
+
+    it('uses the planner zone for the slot', async () => {
+      setup();
+      rangeZone = 'Asia/Colombo';
+      await settle();
+
+      fixture.componentInstance.onSlotRange({ date: editableDate(), startMinutes: 540, endMinutes: 660 });
+
+      const slot = fixture.componentInstance.createSlot()!;
+      expect(Date.parse(slot.startIso)).toBe(Date.parse(`${editableDate()}T09:00:00+05:30`));
+      expect(Date.parse(slot.endIso)).toBe(Date.parse(`${editableDate()}T11:00:00+05:30`));
+    });
+
+    it('New event opens the popover at the next half hour, 1h', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-04T10:10:00Z'));
+      try {
+        setup();
+        await settle();
+
+        fixture.componentInstance.onNewEvent();
+
+        expect(fixture.componentInstance.createSlot()).toMatchObject({ date: '2026-11-04', startMinutes: 630, endMinutes: 690 });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('closes the popover when the range changes', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+      fixture.componentInstance.next();
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+    });
+
+    it('offers Meeting only while meetings can be written, and Time off only with leave access', async () => {
+      setup();
+      await settle();
+
+      expect(fixture.componentInstance.createTabs()).toContain('event');
+      expect(fixture.componentInstance.createTabs()).toContain('workItem');
+    });
   });
 });
