@@ -13,12 +13,13 @@ import { CreateSlot, SharedCreateDraft, clock } from './planner-create-draft';
     <div class="flex flex-col gap-2 text-sm">
       <input data-testid="event-tab-title" class="ui-input" placeholder="Add title" [value]="shared().title()"
         (input)="shared().title.set($any($event.target).value)" />
-      <div class="flex flex-wrap items-center gap-2">
-        <span>{{ slot().date }}</span>
+      <!-- Date, start → end on one line; the time inputs share what's left. -->
+      <div data-testid="event-tab-when" class="flex items-center gap-2">
+        <span class="shrink-0 whitespace-nowrap">{{ slot().date }}</span>
         @if (!shared().isAllDay()) {
-          <input type="time" data-testid="event-tab-start" class="ui-input ui-input--sm" [value]="startShown()" (input)="start.set($any($event.target).value)" />
-          <span>→</span>
-          <input type="time" data-testid="event-tab-end" class="ui-input ui-input--sm" [value]="endShown()" (input)="end.set($any($event.target).value)" />
+          <input type="time" data-testid="event-tab-start" class="ui-input ui-input--sm flex-1" [value]="startShown()" (input)="start.set($any($event.target).value)" />
+          <span class="shrink-0">→</span>
+          <input type="time" data-testid="event-tab-end" class="ui-input ui-input--sm flex-1" [value]="endShown()" (input)="end.set($any($event.target).value)" />
         }
       </div>
       <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
