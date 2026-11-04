@@ -36,18 +36,18 @@ describe('WorkItemPlanFlow', () => {
     return { flow: TestBed.inject(WorkItemPlanFlow), createTask, assignTask, createBlock };
   }
 
-  it('201 → assign me → block → done', async () => {
+  it('201 â†’ assign me â†’ block â†’ done', async () => {
     const { flow, createTask, assignTask, createBlock } = setup();
 
     await flow.createAndPlan('o1', dto, slot);
 
     expect(createTask).toHaveBeenCalledTimes(1);
     expect(assignTask).toHaveBeenCalledWith('t1', 'me');
-    expect(createBlock).toHaveBeenCalledWith('t1', slot.startIso, slot.endIso);
+    expect(createBlock).toHaveBeenCalledWith('t1', slot.startIso, slot.endIso, { quiet: true });
     expect(flow.state()).toEqual({ kind: 'done', taskId: 't1' });
   });
 
-  it('202 → pending, no assign/block call; dto carried assigneeEmployeeId=me and the slot', async () => {
+  it('202 â†’ pending, no assign/block call; dto carried assigneeEmployeeId=me and the slot', async () => {
     const { flow, createTask, assignTask, createBlock } = setup({ create: of({ approvalRequestId: 'r1' }) });
 
     await flow.createAndPlan('o1', dto, slot);
@@ -58,7 +58,7 @@ describe('WorkItemPlanFlow', () => {
     expect(flow.state()).toEqual({ kind: 'pending' });
   });
 
-  it('block refused → notPlanned with the store error; retryPlanning sends only createBlock for the same task, then done', async () => {
+  it('block refused â†’ notPlanned with the store error; retryPlanning sends only createBlock for the same task, then done', async () => {
     const { flow, createTask, createBlock } = setup({ blocks: [false, true] });
 
     await flow.createAndPlan('o1', dto, slot);
@@ -68,7 +68,7 @@ describe('WorkItemPlanFlow', () => {
 
     expect(createTask).toHaveBeenCalledTimes(1);
     expect(createBlock).toHaveBeenCalledTimes(2);
-    expect(createBlock).toHaveBeenLastCalledWith('t1', slot.startIso, slot.endIso);
+    expect(createBlock).toHaveBeenLastCalledWith('t1', slot.startIso, slot.endIso, { quiet: true });
     expect(flow.state()).toEqual({ kind: 'done', taskId: 't1' });
   });
 
@@ -85,7 +85,7 @@ describe('WorkItemPlanFlow', () => {
     expect(createTask).toHaveBeenCalledTimes(1);
   });
 
-  it('create fails without a status (network) → unknown, no second create', async () => {
+  it('create fails without a status (network) â†’ unknown, no second create', async () => {
     const { flow, createTask } = setup({ create: throwError(() => new HttpErrorResponse({ status: 0 })) });
 
     await flow.createAndPlan('o1', dto, slot);
@@ -94,7 +94,7 @@ describe('WorkItemPlanFlow', () => {
     expect(createTask).toHaveBeenCalledTimes(1);
   });
 
-  it('create refused by the server → error with its message', async () => {
+  it('create refused by the server â†’ error with its message', async () => {
     const { flow } = setup({ create: throwError(() => new HttpErrorResponse({ status: 409, error: { detail: 'Not enough hours left.' } })) });
 
     await flow.createAndPlan('o1', dto, slot);
@@ -112,7 +112,7 @@ describe('WorkItemPlanFlow', () => {
     expect(flow.state().kind).toBe('notPlanned');
   });
 
-  it('assign fails after 201 → notPlanned with the assign error, item kept', async () => {
+  it('assign fails after 201 â†’ notPlanned with the assign error, item kept', async () => {
     const { flow, createBlock } = setup({ assign: throwError(() => new HttpErrorResponse({ status: 403, error: { detail: 'Only this milestone\'s owner can assign tasks.' } })) });
 
     await flow.createAndPlan('o1', dto, slot);
@@ -133,7 +133,7 @@ describe('WorkItemPlanFlow', () => {
     }
   });
 
-  it('a gateway error or a timeout may have created the item → unknown', async () => {
+  it('a gateway error or a timeout may have created the item â†’ unknown', async () => {
     for (const err of [new HttpErrorResponse({ status: 502 }), new HttpErrorResponse({ status: 504 }), new TimeoutError()]) {
       TestBed.resetTestingModule();
       const { flow } = setup({ create: throwError(() => err) });
@@ -143,7 +143,7 @@ describe('WorkItemPlanFlow', () => {
   });
 
   // Review finding 7: a failed assign is retried by Retry planning, so the block is not refused as "not yours".
-  it('assign failed → retryPlanning assigns again, then plans', async () => {
+  it('assign failed â†’ retryPlanning assigns again, then plans', async () => {
     let calls = 0;
     const { flow, assignTask, createBlock, createTask } = setup({
       assign: defer(() => (++calls === 1 ? throwError(() => new HttpErrorResponse({ status: 503 })) : of(undefined))),
@@ -164,7 +164,7 @@ describe('WorkItemPlanFlow', () => {
     await flow.planExisting('t9', 'WEB-9', slot);
 
     expect(createTask).not.toHaveBeenCalled();
-    expect(createBlock).toHaveBeenCalledWith('t9', slot.startIso, slot.endIso);
+    expect(createBlock).toHaveBeenCalledWith('t9', slot.startIso, slot.endIso, { quiet: true });
     expect(flow.state()).toEqual({ kind: 'done', taskId: 't9' });
   });
 });

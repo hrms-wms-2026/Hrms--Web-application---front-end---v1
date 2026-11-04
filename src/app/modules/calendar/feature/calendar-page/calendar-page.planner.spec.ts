@@ -469,6 +469,24 @@ describe('CalendarPageComponent planner layer', () => {
         expect(notify.warning).toHaveBeenCalledWith('Created, not planned: assigned to someone else');
       });
 
+      // Follow-up 4: one message, and a way to plan it after all.
+      it('a refused plan shows one message and opens Pick another time for the created item', async () => {
+        setup();
+        await settle();
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+        notify.error.mockClear();
+        notify.warning.mockClear();
+
+        const planned = fixture.componentInstance.onWorkItemFormCreated('t-new');
+        await new Promise((resolve) => setTimeout(resolve));
+        http.expectOne(`${base}/me/blocks`).flush({ code: 'planner_block_overlap' }, { status: 409, statusText: 'Conflict' });
+        await planned;
+
+        expect(notify.error).not.toHaveBeenCalled();
+        expect(notify.warning).toHaveBeenCalledTimes(1);
+        expect(fixture.componentInstance.pickerItem()).toMatchObject({ taskId: 't-new', projectId: 'p1', title: 'Fix login bug', estimatedMinutes: 480 });
+      });
+
       it('More options without a project asks for one and keeps the popover', async () => {
         setup();
         await settle();
@@ -488,12 +506,34 @@ describe('CalendarPageComponent planner layer', () => {
       const date = editableDate();
       fixture.componentInstance.onSlotClick({ date, hour: 9 });
 
-      fixture.componentInstance.onTimeOffMoreOptions({ leaveTypeId: 'sick', startIso: `${date}T09:00:00.000Z`, endIso: `${date}T11:00:00.000Z`, reason: 'Doctor' });
-
+      const opened = fixture.componentInstance.onTimeOffMoreOptions({ leaveTypeId: 'sick', startIso: `${date}T09:00:00.000Z`,
+        endIso: `${date}T11:00:00.000Z`, reason: 'Doctor' });
       expect(fixture.componentInstance.createSlot()).toBeNull();
+      await new Promise((resolve) => setTimeout(resolve));
+      http.expectOne(`${environment.apiUrl}/leave/balances/work-window`)
+        .flush({ timezone: 'UTC', workStartTime: '09:00', workEndTime: '17:00' });
+      await opened;
+
       expect(fixture.componentInstance.leaveWizard()).toEqual({
         leaveTypeId: 'sick', startDate: date, startTime: '09:00', endDate: date, endTime: '11:00', reason: 'Doctor',
       });
+    });
+
+    // Follow-up 5: the leave form works in the work-window zone; wait for it rather than guess with the planner's.
+    it('Time off More options waits for the work window and converts into its zone', async () => {
+      setup();
+      await settle();
+      const date = editableDate();
+      fixture.componentInstance.onSlotClick({ date, hour: 9 });
+
+      const opened = fixture.componentInstance.onTimeOffMoreOptions({ leaveTypeId: 'sick', startIso: `${date}T09:00:00.000Z`,
+        endIso: `${date}T11:00:00.000Z`, reason: null });
+      await new Promise((resolve) => setTimeout(resolve));
+      http.expectOne(`${environment.apiUrl}/leave/balances/work-window`)
+        .flush({ timezone: 'Asia/Colombo', workStartTime: '09:00', workEndTime: '17:00' });
+      await opened;
+
+      expect(fixture.componentInstance.leaveWizard()).toMatchObject({ startDate: date, startTime: '14:30', endTime: '16:30' });
     });
 
     it('a Time off submit closes the popover and says it was sent', async () => {
