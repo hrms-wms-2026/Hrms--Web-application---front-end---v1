@@ -57,8 +57,8 @@ describe('PlannerFocusPanelComponent', () => {
     fixture.detectChanges();
   };
 
-  it('is headed "Task queue" with the total count', () => {
-    expect(q('[data-testid="queue-title"]')!.textContent!.trim()).toBe('Task queue');
+  it('is headed "Task list" with the total count', () => {
+    expect(q('[data-testid="queue-title"]')!.textContent!.trim()).toBe('Task list');
     expect(q('[data-testid="queue-total"]')!.textContent!.trim()).toBe('10');
   });
 

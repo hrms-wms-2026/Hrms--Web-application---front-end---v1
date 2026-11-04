@@ -86,7 +86,7 @@ function duration(minutes: number): string {
       @switch (flow.state().kind) {
         @case ('pending') { <p data-testid="work-item-pending" class="text-xs">{{ pendingMessage() }}</p> }
         @case ('unknown') {
-          <p data-testid="work-item-unknown" class="text-xs text-[var(--color-danger)]">We couldn't confirm the work item was created. Check your Task queue before trying again.</p>
+          <p data-testid="work-item-unknown" class="text-xs text-[var(--color-danger)]">We couldn't confirm the work item was created. Check your Task list before trying again.</p>
         }
         @case ('error') { <p data-testid="work-item-error" class="text-xs text-[var(--color-danger)]">{{ errorMessage() }}</p> }
         @case ('notPlanned') {

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { KIND_META, TaskKind } from '../../utils/task-kind';
 
-/** A work item type's icon in its colour; as a tile, on the type's light tint (Task queue cards). */
+/** A work item type's icon in its colour; as a tile, on the type's light tint (Task list cards). */
 @Component({
   selector: 'app-task-kind-icon',
   standalone: true,

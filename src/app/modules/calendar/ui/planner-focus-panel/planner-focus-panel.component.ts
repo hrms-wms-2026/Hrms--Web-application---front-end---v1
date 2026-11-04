@@ -44,7 +44,7 @@ function localDate(date: string): Date {
 }
 
 /**
- * The Focus panel, shown to users as "Task queue" (2026-10-27 Planner = Calendar design, section 4.2): what to work on, in four groups. On a wide screen a
+ * The Focus panel, shown to users as "Task list" (2026-10-27 Planner = Calendar design, section 4.2): what to work on, in four groups. On a wide screen a
  * card is dragged onto the calendar grid and a click opens the task; on a narrow one a tap asks for a day and time
  * instead. Every card also has a Plan button, the keyboard's way to schedule.
  */
