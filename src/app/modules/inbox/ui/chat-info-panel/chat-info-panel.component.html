@@ -14,6 +14,8 @@
           <ng-template #photoFace>
             @if (isDirect() || photoUrl()) {
               <app-avatar [userName]="row().title" [avatarUrl]="photoUrl()" size="xl" />
+            } @else if (row().icon) {
+              <app-entity-icon class="cip__entity-icon" shape="circle" [icon]="row().icon" [color]="row().color" [name]="row().title" />
             } @else {
               <span class="cip__photo-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
@@ -32,6 +34,8 @@
                 <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
               </span>
             </button>
+            <app-icon-picker class="cip__icon-picker" [linkLabel]="row().icon ? 'Change icon' : 'Use an icon or emoji instead'" [icon]="row().icon"
+              [color]="iconColor()" [name]="row().title" [disabled]="saving()" (iconChange)="saveIcon($event)" (colorChange)="saveIconColor($event)" />
             <input #photoInput type="file" class="cip__file" [accept]="photoAccept" tabindex="-1" aria-hidden="true" (change)="onPhotoPicked($event)" />
           }
 

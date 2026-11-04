@@ -15,6 +15,8 @@ export interface LeaveCalendarState {
   readonly includeTentative: boolean;
   readonly holidays: readonly LeaveHolidayResponse[];
   readonly holidaysError: string | null;
+  /** Settings → Time Off → Holidays lists a whole year; the calendar lists the month it shows. */
+  readonly holidayYear: number | null;
 }
 
 function currentYearMonth(): { year: number; monthNumber: number } {
@@ -30,7 +32,8 @@ const initialState: LeaveCalendarState = {
   departmentId: null,
   includeTentative: false,
   holidays: [],
-  holidaysError: null
+  holidaysError: null,
+  holidayYear: null
 };
 
 export const LeaveCalendarStore = signalStore(
@@ -66,6 +69,11 @@ export const LeaveCalendarStore = signalStore(
       patchState(store, { year, monthNumber });
       await this.load();
     },
+    /** Opens this month, unfiltered, in one request (Team Availability shows pending leave too). */
+    async openCurrentMonth(includeTentative: boolean): Promise<void> {
+      patchState(store, { ...currentYearMonth(), departmentId: null, includeTentative });
+      await this.load();
+    },
     async goToToday(): Promise<void> {
       patchState(store, currentYearMonth());
       await this.load();
@@ -85,8 +93,13 @@ export const LeaveCalendarStore = signalStore(
       const pad = (n: number) => String(n).padStart(2, '0');
       return { from: `${year}-${pad(month)}-01`, to: `${year}-${pad(month)}-${pad(last)}` };
     },
+    async loadHolidaysForYear(year: number): Promise<void> {
+      patchState(store, { holidayYear: year });
+      await this.loadHolidays();
+    },
     async loadHolidays(): Promise<void> {
-      const { from, to } = this.monthRange();
+      const holidayYear = store.holidayYear();
+      const { from, to } = holidayYear === null ? this.monthRange() : { from: `${holidayYear}-01-01`, to: `${holidayYear}-12-31` };
       try {
         const holidays = await firstValueFrom(api.listHolidays(from, to));
         patchState(store, { holidays, holidaysError: null });

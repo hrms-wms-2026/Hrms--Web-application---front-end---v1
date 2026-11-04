@@ -56,7 +56,8 @@ describe('LeaveTypeFormModalComponent', () => {
       applicableGender: 'all',
       requiresDocument: false,
       documentRequiredAfterHours: null,
-      acceptedDocumentTypes: []
+      acceptedDocumentTypes: [],
+      icon: ''
     });
   });
 

@@ -4,11 +4,12 @@ import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progres
 import { ProjectApiService } from '../../data-access/project-api.service';
 import { Project } from '../../models/project.model';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
 
 @Component({
   selector: 'app-project-list-row',
   standalone: true,
-  imports: [KeyboardClickDirective, EmployeeAvatarComponent, ProgressBarComponent],
+  imports: [KeyboardClickDirective, EmployeeAvatarComponent, ProgressBarComponent, EntityIconComponent],
   template: `
     <div role="button" tabindex="0" appKeyboardClick
       data-testid="project-list-row"
@@ -29,6 +30,8 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
           alt=""
           (error)="logoBroken.set(true)"
         />
+      } @else if (project().icon; as projectIcon) {
+        <app-entity-icon data-testid="project-row-icon" class="[--entity-icon-size:2.75rem]" [icon]="projectIcon" [color]="project().color" [name]="project().name" />
       } @else {
         <div
           class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-base transition-all"

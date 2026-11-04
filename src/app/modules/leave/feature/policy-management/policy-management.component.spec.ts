@@ -25,7 +25,7 @@ describe('PolicyManagementComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } },
-        { provide: PermissionService, useValue: { hasPermission: () => true } },
+        { provide: PermissionService, useValue: { hasPermission: () => true, hasAnyPermission: () => true } },
         { provide: NotificationService, useValue: { error: vi.fn(), success: vi.fn() } },
         { provide: LegalEntityApiService, useValue: { getLegalEntities: () => of([{ id: 'le1', name: 'Dapi Technologies' }]) } },
         { provide: DepartmentApiService, useValue: { listFlat: departmentList } },

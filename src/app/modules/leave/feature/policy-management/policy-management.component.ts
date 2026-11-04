@@ -41,7 +41,8 @@ async function loadAll<T>(page: (n: number) => Promise<{ readonly items: readonl
   }
 }
 
-@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrls: ['../../ui/time-off-chrome.css', './policy-management.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
+import { TimeOffSettingsTabsComponent } from '../../ui/time-off-settings-tabs/time-off-settings-tabs.component';
+@Component({ selector: 'app-policy-management', standalone: true, imports: [CommonModule, TimeOffSettingsTabsComponent, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, ModalComponent, LeavePolicyListTableComponent, LeavePolicyDetailPanelComponent, LeavePolicyFormWizardComponent], templateUrl: './policy-management.component.html', styleUrls: ['../../ui/time-off-chrome.css', './policy-management.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
 export class PolicyManagementComponent implements OnInit {
   private readonly permissionService = inject(PermissionService);
   private readonly notificationService = inject(NotificationService);

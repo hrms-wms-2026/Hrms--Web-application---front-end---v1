@@ -69,7 +69,7 @@ describe('MobileBottomNavComponent', () => {
     });
 
     it('lights More while the page open is one of its modules', async () => {
-      await router.navigateByUrl('/time-off/types');
+      await router.navigateByUrl('/time-off/requests');
       fixture.detectChanges();
       // Time Off moves onto the bar when there is an unpinned slot, so More is lit only once all slots are pinned.
       expect(fixture.componentInstance.moreActive()).toBe(false);

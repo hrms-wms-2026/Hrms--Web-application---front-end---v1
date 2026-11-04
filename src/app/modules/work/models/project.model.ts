@@ -32,6 +32,8 @@ export interface Project {
   members: ProjectMemberAvatar[];
   memberCount: number;
   systemPurpose?: string | null;
+  /** "lucide:{name}" or "emoji:{emoji}"; null shows the logo or initials. */
+  icon?: string | null;
 }
 
 export interface ProjectDetail extends Project {
@@ -52,6 +54,7 @@ export interface CreateProjectPayload {
   defaultObjectiveAllocatedHours: number;
   logoFile: File | null;
   bannerFile: File | null;
+  icon?: string | null;
   memberEmployeeIds: readonly string[];
 }
 
@@ -64,4 +67,6 @@ export interface EditProjectPayload {
   color: string;
   actualHours: number;
   allocatedHours: number;
+  /** Omitted keeps the current icon; '' clears it. */
+  icon?: string | null;
 }

@@ -86,16 +86,19 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(work, checker([], ['core_hr']))).toBe(false);
     });
 
-    it('grants Time Off on the "leave" module key, not "time_off", once a child is reachable', () => {
+    it('grants Time Off on the "leave" module key, not "time_off", to anyone with a leave permission', () => {
       const timeOff = NAV_ITEMS.find((item) => item.id === 'time-off')!;
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['leave']))).toBe(true);
       expect(canAccessNavItem(timeOff, checker(['leave:read-team'], ['leave']))).toBe(true);
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['time_off']))).toBe(false);
       expect(canAccessNavItem(timeOff, checker([], ['leave']))).toBe(false);
-      const balances = timeOff.children!.find((item) => item.id === 'time-off-balances')!;
-      expect(balances.label).toBe('Balances');
-      expect(timeOff.children!.some((item) => item.id === 'time-off-my-balances' || item.id === 'time-off-team-balances')).toBe(false);
-      expect(timeOff.children!.some((item) => item.id === 'time-off-calendar')).toBe(false);
+      // One hub page, no sub-sidebar; the admin screens are under Settings → Time Off.
+      expect(timeOff.children).toBeUndefined();
+      const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
+      const timeOffSettings = settings.children!.find((item) => item.id === 'settings-time-off')!;
+      expect(timeOffSettings.path).toBe('/settings/time-off');
+      expect(canAccessNavItem(timeOffSettings, checker(['leave:read'], ['leave']))).toBe(true);
+      expect(canAccessNavItem(timeOffSettings, checker(['leave:read-own'], ['leave']))).toBe(false);
     });
 
     it('grants Organization on the "org_structure" module key, not "org"', () => {

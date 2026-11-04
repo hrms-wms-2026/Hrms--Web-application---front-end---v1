@@ -1,6 +1,6 @@
 <section class="to-page">
   <header class="to-header">
-    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" currentLabel="Leave Policies" icon="time-off" />
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Settings" middleLabel="Time Off" currentLabel="Leave Policies" icon="settings" />
     <h1 class="to-sr-only">Leave Policies</h1>
     @if (hasManageAccess()) {
       <div class="to-header-actions">
@@ -8,6 +8,7 @@
       </div>
     }
   </header>
+  <app-time-off-settings-tabs />
   @if (policyStore.loading() && !policyStore.items().length) {
     <div class="to-loading"><app-loader /></div>
   } @else if (policyStore.loadError() && !policyStore.items().length) {

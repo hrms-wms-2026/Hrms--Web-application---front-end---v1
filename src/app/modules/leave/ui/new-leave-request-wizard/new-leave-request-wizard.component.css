@@ -49,3 +49,28 @@
   .nlw-body { min-width: 0; }
   .nlw-row { grid-template-columns: 1fr; }
 }
+
+/* Type chips, duration segments and the hours summary (2026-10-29 redesign). */
+.nlw-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.nlw-chip { display: inline-flex; align-items: center; gap: 0.45rem; height: 2.5rem; padding: 0 0.85rem 0 0.4rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+.nlw-chip__icon { --lti-size: 1.75rem; }
+.nlw-chip--active { border-color: var(--color-accent); background: var(--color-accent-subtle, color-mix(in srgb, var(--color-accent) 10%, transparent)); color: var(--color-accent); }
+.nlw-more-types { min-width: 9rem; flex: 1; }
+.nlw-segments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.nlw-segments--sub { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nlw-segment { height: 2.4rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.nlw-segments--sub .nlw-segment { height: 2.1rem; font-size: 0.75rem; }
+.nlw-segment--active { border-color: var(--color-accent); background: var(--color-accent-subtle, color-mix(in srgb, var(--color-accent) 10%, transparent)); color: var(--color-accent); }
+.nlw-chip:focus-visible, .nlw-segment:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.nlw-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.nlw-summary > div { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.7rem 0.9rem; border-radius: 10px; background: var(--color-surface-secondary); }
+.nlw-summary span { color: var(--color-text-secondary); font-size: 0.75rem; }
+.nlw-summary strong { color: var(--color-text-primary); font-size: 1.05rem; font-weight: 700; }
+.nlw-summary small { color: var(--color-text-secondary); font-size: 0.72rem; }
+.nlw-negative { color: var(--color-danger) !important; }
+.nlw-info { display: flex; align-items: center; gap: 0.6rem; margin: 0; padding: 0.65rem 0.9rem; border-radius: 10px; background: color-mix(in srgb, var(--color-accent) 8%, transparent); color: var(--color-accent); font-size: 0.78rem; }
+.nlw-info svg { flex: none; width: 1.1rem; height: 1.1rem; }
+
+@media (max-width: 480px) {
+  .nlw-segments, .nlw-segments--sub, .nlw-summary { grid-template-columns: 1fr; }
+}

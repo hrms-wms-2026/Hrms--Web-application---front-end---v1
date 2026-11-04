@@ -8,6 +8,8 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { CreateLeaveTypeRequest, LEAVE_TYPE_COLORS, LeaveTypeResponse } from '../../models/leave-type.model';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
+import { leaveTypeDefaultIcon } from '../../utils/leave-hub.util';
 
 export type LeaveTypeFormValue = CreateLeaveTypeRequest;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -30,7 +32,7 @@ function hexToHsv(hex: string): [number, number, number] {
   return [Math.round((h * 60 + 360) % 360), max ? d / max : 0, max];
 }
 
-@Component({ selector: 'app-leave-type-form-modal', host: { 'animate.leave': 'ui-popup-leave' }, standalone: true, imports: [StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent], templateUrl: './leave-type-form-modal.component.html', styleUrl: './leave-type-form-modal.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-leave-type-form-modal', host: { 'animate.leave': 'ui-popup-leave' }, standalone: true, imports: [StopClickPropagationDirective, IconPickerComponent, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent], templateUrl: './leave-type-form-modal.component.html', styleUrl: './leave-type-form-modal.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeaveTypeFormModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   @Input() leaveType: LeaveTypeResponse | null = null;
@@ -49,7 +51,8 @@ export class LeaveTypeFormModalComponent implements OnInit {
     isPaid: [true],
     applicableGender: ['all', Validators.required],
     requiresDocument: [false],
-    documentRequiredAfterHours: [null as number | null, Validators.min(0.5)]
+    documentRequiredAfterHours: [null as number | null, Validators.min(0.5)],
+    icon: [null as string | null]
   });
 
   get isEdit(): boolean { return !!this.leaveType; }
@@ -64,7 +67,8 @@ export class LeaveTypeFormModalComponent implements OnInit {
       isPaid: this.leaveType.isPaid,
       applicableGender: this.leaveType.applicableGender,
       requiresDocument: this.leaveType.requiresDocument,
-      documentRequiredAfterHours: this.leaveType.documentRequiredAfterHours
+      documentRequiredAfterHours: this.leaveType.documentRequiredAfterHours,
+      icon: this.leaveType.icon ?? null
     });
     this.form.controls.code.disable();
   }
@@ -73,6 +77,11 @@ export class LeaveTypeFormModalComponent implements OnInit {
   get isCustomColor(): boolean {
     const color = this.form.controls.color.value?.toUpperCase() ?? '';
     return !!color && !(this.colors as readonly string[]).includes(color);
+  }
+
+  /** The picture guessed from the name, shown until an icon is picked. */
+  get defaultIcon(): string {
+    return leaveTypeDefaultIcon(this.form.controls.name.value ?? '', this.form.controls.code.value ?? '');
   }
 
   pickColor(color: string): void {
@@ -134,7 +143,8 @@ export class LeaveTypeFormModalComponent implements OnInit {
       applicableGender: value.applicableGender as LeaveTypeFormValue['applicableGender'],
       requiresDocument,
       documentRequiredAfterHours: requiresDocument && afterHours != null && afterHours > 0 ? afterHours : null,
-      acceptedDocumentTypes: requiresDocument ? ['pdf', 'image'] : []
+      acceptedDocumentTypes: requiresDocument ? ['pdf', 'image'] : [],
+      icon: value.icon ?? ''
     });
   }
 }

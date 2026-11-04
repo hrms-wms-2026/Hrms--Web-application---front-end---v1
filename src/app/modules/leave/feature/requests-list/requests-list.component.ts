@@ -17,10 +17,11 @@ import { LeaveCancelConfirmDialogComponent } from '../../../../shared/ui/leave-c
 import { LeaveRequestAllTableComponent } from '../../ui/leave-request-all-table/leave-request-all-table.component';
 import { decisionMessage, LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
 
+import { TimeOffSettingsTabsComponent } from '../../ui/time-off-settings-tabs/time-off-settings-tabs.component';
 @Component({
   selector: 'app-requests-list',
   standalone: true,
-  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, TimeOffSettingsTabsComponent, BreadcrumbHeaderComponent, LoaderComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
   templateUrl: './requests-list.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './requests-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
