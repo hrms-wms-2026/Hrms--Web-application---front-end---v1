@@ -1,8 +1,22 @@
 <div class="flex h-full flex-col gap-3">
   <!-- The page name, in the band that used to be empty padding. -->
-  <header data-testid="planner-header">
+  <header data-testid="planner-header" class="flex flex-wrap items-center gap-3">
     <h1 class="text-xl font-semibold text-[var(--color-text-primary)]">{{ planner.active() ? 'Planner' : 'Calendar' }}</h1>
+    <!-- Team planner (2026-11-03): my plan or my team's, for someone with direct reports. -->
+    @if (canViewTeam()) {
+      <div role="group" aria-label="Whose plan" class="flex overflow-hidden rounded-md border border-[var(--color-border)]">
+        <button type="button" data-testid="planner-scope-me" class="px-3 py-1.5 text-sm" [attr.aria-pressed]="!teamMode()"
+          [style.background-color]="!teamMode() ? 'var(--color-accent)' : null" [style.color]="!teamMode() ? 'var(--color-accent-contrast)' : null"
+          (click)="setScope('me')">Me</button>
+        <button type="button" data-testid="planner-scope-team" class="px-3 py-1.5 text-sm" [attr.aria-pressed]="teamMode()"
+          [style.background-color]="teamMode() ? 'var(--color-accent)' : null" [style.color]="teamMode() ? 'var(--color-accent-contrast)' : null"
+          (click)="setScope('team')">My team</button>
+      </div>
+    }
   </header>
+  @if (teamMode()) {
+    <app-team-planner [timezone]="plannerZone()" />
+  } @else {
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div class="flex items-center gap-2">
       <app-button type="button" variant="secondary" (click)="previous()">&lsaquo;</app-button>
@@ -135,6 +149,7 @@
         (pick)="pickerItem.set($event)" (open)="openTask($event.projectId, $event.taskId)" />
     }
   </div>
+  }
 </div>
 
 @if (pickerItem(); as item) {

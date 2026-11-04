@@ -6,6 +6,7 @@ import { SILENT_HTTP_ERRORS } from '../../../../core/interceptors/error.intercep
 import {
   CreatePlannedBlockRequest, MovePlannedBlockRequest, PlannerDayResponse, PlannerFocusResponse, PlannerRangeResponse,
 } from '../models/planner.models';
+import { PlannerPersonRangeResponse, TeamPlannerResponse } from '../models/team-planner.models';
 
 /** Every /api/v1/planner call. Writes return the day they wrote. Every caller shows its own error copy (or hides itself on
  * 503 planner_disabled), so no call raises the global error toast. */
@@ -25,6 +26,27 @@ export class PlannerApiService {
 
   getRange(from: string, to: string): Observable<PlannerRangeResponse> {
     return this.http.get<PlannerRangeResponse>(`${this.baseUrl}/me/range`, {
+      params: new HttpParams().set('from', from).set('to', to), ...this.silent,
+    });
+  }
+
+  /** Team planner (2026-11-03): a manager's direct reports for one day, with detail. */
+  getTeamDay(date: string | null, managerId: string | null): Observable<TeamPlannerResponse> {
+    let params = this.dateParams(date);
+    if (managerId) params = params.set('managerId', managerId);
+    return this.http.get<TeamPlannerResponse>(`${this.baseUrl}/team`, { params, ...this.silent });
+  }
+
+  /** The same team over a range, minutes only. */
+  getTeamRange(from: string, to: string, managerId: string | null): Observable<TeamPlannerResponse> {
+    let params = new HttpParams().set('from', from).set('to', to);
+    if (managerId) params = params.set('managerId', managerId);
+    return this.http.get<TeamPlannerResponse>(`${this.baseUrl}/team/range`, { params, ...this.silent });
+  }
+
+  /** One person's days, read-only. */
+  getEmployeeRange(employeeId: string, from: string, to: string): Observable<PlannerPersonRangeResponse> {
+    return this.http.get<PlannerPersonRangeResponse>(`${this.baseUrl}/employees/${employeeId}/range`, {
       params: new HttpParams().set('from', from).set('to', to), ...this.silent,
     });
   }

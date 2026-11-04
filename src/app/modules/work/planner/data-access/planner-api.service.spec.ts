@@ -27,7 +27,26 @@ describe('PlannerApiService', () => {
     ['deleteBlock', (s) => s.deleteBlock('b1'), 'DELETE', `${base}/me/blocks/b1`],
     ['getRange', (s) => s.getRange('2026-11-02', '2026-11-08'), 'GET', `${base}/me/range`],
     ['getFocus', (s) => s.getFocus(), 'GET', `${base}/me/focus`],
+    ['getTeamDay', (s) => s.getTeamDay(null, null), 'GET', `${base}/team`],
+    ['getTeamRange', (s) => s.getTeamRange('2026-11-02', '2026-11-08', null), 'GET', `${base}/team/range`],
+    ['getEmployeeRange', (s) => s.getEmployeeRange('e1', '2026-11-02', '2026-11-08'), 'GET', `${base}/employees/e1/range`],
   ];
+
+  // Team planner (2026-11-03).
+  it('team reads send date, range and managerId only when given', () => {
+    service.getTeamDay('2026-11-05', 'm1').subscribe();
+    const day = http.expectOne((r) => r.url === `${base}/team`).request.params;
+    expect([day.get('date'), day.get('managerId')]).toEqual(['2026-11-05', 'm1']);
+    service.getTeamDay(null, null).subscribe();
+    const bare = http.expectOne((r) => r.url === `${base}/team`).request.params;
+    expect([bare.has('date'), bare.has('managerId')]).toEqual([false, false]);
+    service.getTeamRange('2026-11-02', '2026-11-08', null).subscribe();
+    const range = http.expectOne((r) => r.url === `${base}/team/range`).request.params;
+    expect([range.get('from'), range.get('to'), range.has('managerId')]).toEqual(['2026-11-02', '2026-11-08', false]);
+    service.getEmployeeRange('e1', '2026-11-02', '2026-11-08').subscribe();
+    const person = http.expectOne((r) => r.url === `${base}/employees/e1/range`).request.params;
+    expect([person.get('from'), person.get('to')]).toEqual(['2026-11-02', '2026-11-08']);
+  });
 
   it.each(cases)('%s calls its route and leaves its errors to the caller', (_name, call, method, url) => {
     call(service).subscribe({ error: () => undefined });

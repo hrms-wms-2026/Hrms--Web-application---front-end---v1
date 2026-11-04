@@ -17,6 +17,7 @@ import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-v
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
+import { MyTeamCapabilitiesStore } from '../../../dashboard/state/my-team-capabilities.store';
 import { CalendarPageComponent } from './calendar-page.component';
 
 /** Planner = Calendar (2026-10-27 design): the calendar page with the planner layer on and off. */
@@ -95,7 +96,13 @@ describe('CalendarPageComponent planner layer', () => {
     }
   }
 
-  function setup(on = true): void {
+  // Team planner (2026-11-03): the viewer's My Team capabilities; null = not loaded.
+  const teamCaps = signal<{ canViewTeamPlan?: boolean } | null>(null);
+  const loadCapabilities = vi.fn(async () => undefined);
+  let createAt: string | null = null;
+
+  function setup(on = true, canTeam = false): void {
+    teamCaps.set(canTeam ? { canViewTeamPlan: true } : null);
     state.set(on ? 'on' : 'off');
     events.set([]);
     blocksFor = () => [];
@@ -109,10 +116,37 @@ describe('CalendarPageComponent planner layer', () => {
         { provide: PlannerAvailabilityService, useValue: { state, markAvailable: vi.fn(), probe: vi.fn() } },
         { provide: NotificationService, useValue: notify },
         { provide: ProjectDetailStore, useValue: projects },
-        { provide: PermissionService, useValue: { hasModule: () => true, hasAnyModule: () => true, hasPermission: () => true, hasAnyPermission: () => true } },      ],
+        { provide: PermissionService, useValue: { hasModule: () => true, hasAnyModule: () => true, hasPermission: () => true, hasAnyPermission: () => true } },
+        { provide: MyTeamCapabilitiesStore, useValue: { capabilities: teamCaps, loaded: signal(true), loading: signal(false), loadCapabilities } },
+      ],
     });
     projectError.set(null);
     http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+  }
+
+  /** Starts the page at a URL (query params), as a deep link from the dashboard widget would. */
+  async function setupAt(url: string, canTeam = true): Promise<void> {
+    createAt = url;
+    teamCaps.set({ canViewTeamPlan: canTeam });
+    state.set('on');
+    events.set([]);
+    blocksFor = () => [];
+    rangeZone = 'UTC';
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '**', children: [] }]), provideHttpClient(), provideHttpClientTesting(),
+        { provide: CalendarEventStore, useValue: fakeStore() },
+        { provide: PlannerAvailabilityService, useValue: { state, markAvailable: vi.fn(), probe: vi.fn() } },
+        { provide: NotificationService, useValue: notify },
+        { provide: ProjectDetailStore, useValue: projects },
+        { provide: PermissionService, useValue: { hasModule: () => true, hasAnyModule: () => true, hasPermission: () => true, hasAnyPermission: () => true } },
+        { provide: MyTeamCapabilitiesStore, useValue: { capabilities: teamCaps, loaded: signal(true), loading: signal(false), loadCapabilities } },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    await TestBed.inject(Router).navigateByUrl(createAt);
     fixture = TestBed.createComponent(CalendarPageComponent);
     fixture.detectChanges();
   }
@@ -642,6 +676,60 @@ describe('CalendarPageComponent planner layer', () => {
 
       expect(fixture.componentInstance.createTabs()).toContain('event');
       expect(fixture.componentInstance.createTabs()).toContain('workItem');
+    });
+  });
+
+  describe('Me / My team (team planner, 2026-11-03)', () => {
+    const teamReads = () => http.match((r) => r.url.startsWith(`${base}/team`));
+
+    it('shows My team only when the planner is on and canViewTeamPlan', async () => {
+      setup(true, true);
+      await settle();
+      expect(q('planner-scope-team')).not.toBeNull();
+      TestBed.resetTestingModule();
+      setup(true, false);
+      await settle();
+      expect(q('planner-scope-team')).toBeNull();
+    });
+
+    it('hides My team when the planner is off', async () => {
+      setup(false, true);
+      await settle();
+      expect(q('planner-scope-team')).toBeNull();
+    });
+
+    it('switching to My team renders the team planner and closes the create popover', async () => {
+      setup(true, true);
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: fixture.componentInstance.editableDateList()[0], hour: 9 });
+      fixture.detectChanges();
+
+      q('planner-scope-team')!.click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-team-planner')).not.toBeNull();
+      expect(q('calendar-view-week')).toBeNull();
+      expect(teamReads().length).toBe(1);
+
+      q('planner-scope-me')!.click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('app-team-planner')).toBeNull();
+    });
+
+    it('?scope=team&teamView=week&date=2026-11-05 opens the team week', async () => {
+      await setupAt('/?scope=team&teamView=week&date=2026-11-05');
+      await settle();
+      const reads = teamReads();
+      expect(reads.map((r) => r.request.url)).toContain(`${base}/team/range`);
+      const range = reads.find((r) => r.request.url === `${base}/team/range`)!.request.params;
+      expect([range.get('from'), range.get('to')]).toEqual(['2026-11-02', '2026-11-08']);
+    });
+
+    it('?person=e1 opens that person\'s plan', async () => {
+      await setupAt('/?scope=team&date=2026-11-05&person=e1');
+      await settle();
+      expect(http.match((r) => r.url === `${base}/employees/e1/range`).length).toBe(1);
     });
   });
 });
