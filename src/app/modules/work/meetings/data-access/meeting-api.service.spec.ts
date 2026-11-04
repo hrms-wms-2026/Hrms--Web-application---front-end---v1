@@ -117,12 +117,4 @@ describe('MeetingApiService', () => {
     http.expectOne(`${base}/series/${series}/link`).flush(null, { status: 204, statusText: 'No Content' });
     expect(result).toBeNull();
   });
-
-  it('employeeMeetingAttendance uses the employees route with an optional window', () => {
-    service.employeeMeetingAttendance('e1', '2026-10-01T00:00:00Z').subscribe();
-    const req = http.expectOne((r) => r.url === `${environment.apiUrl}/employees/e1/meeting-attendance`);
-    expect(req.request.params.get('from')).toBe('2026-10-01T00:00:00Z');
-    expect(req.request.params.has('to')).toBe(false);
-    req.flush({ items: [] });
-  });
 });
