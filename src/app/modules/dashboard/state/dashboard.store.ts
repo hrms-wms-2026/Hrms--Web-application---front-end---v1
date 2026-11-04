@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DashboardLayoutApiService } from '../data-access/dashboard-layout-api.service';
-import { autoPlace, clampSize, compact, moveTo, resizeTo } from '../grid/grid-math';
+import { clampSize, pack, readingOrder } from '../grid/grid-math';
 import {
   AvailableWidget,
   BootstrapWidget,
@@ -13,7 +13,7 @@ import {
   GridRect,
   readLayoutProblem
 } from '../models/dashboard-layout.model';
-import { HIDDEN_WIDGET_KEYS } from '../widgets/widget-registry';
+import { OFF_GRID_WIDGET_KEYS } from '../widgets/widget-registry';
 
 const CONFLICT_MESSAGE = 'Your dashboard changed in another tab or device — reloaded.';
 const SET_MISMATCH_MESSAGE = 'Your available widgets changed — reloaded.';
@@ -39,6 +39,19 @@ interface Item {
 const toItems = (widgets: BootstrapWidget[]): Item[] => widgets.map(w => ({ id: w.instanceId, rect: w.layout, widget: w }));
 const fromItems = (items: Item[]): BootstrapWidget[] => items.map(i => ({ ...i.widget, layout: i.rect }));
 const sameRect = (a: GridRect, b: GridRect): boolean => a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+const isHidden = (i: Item): boolean => OFF_GRID_WIDGET_KEYS.has(i.widget.widgetKey);
+
+/**
+ * The draft's packing order: the widgets the grid shows in reading order, then the hidden ones, so an index the grid
+ * reports among its visible widgets is the same index here.
+ */
+const packingOrder = (items: Item[]): Item[] => [...readingOrder(items.filter(i => !isHidden(i))), ...readingOrder(items.filter(isHidden))];
+
+/** Packs in the given order (home-screen style) and returns the items in the draft's original order. */
+function packKeepingOrder(draftOrder: Item[], order: Item[], cols: number, reserved: readonly GridRect[]): Item[] {
+  const byId = new Map(pack(order, cols, reserved).map(i => [i.id, i]));
+  return draftOrder.map(i => byId.get(i.id) as Item);
+}
 
 /**
  * State for one dashboard page. Edits happen on a local draft (no API calls); Save replays the difference against the
@@ -63,17 +76,33 @@ export class DashboardStore {
   readonly serverAvailable = signal<AvailableWidget[]>([]);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
+  /** The grid cells the pinned Quick Actions card holds (top-right); every other widget packs around them. */
+  readonly reserved = signal<GridRect | null>(null);
+  private readonly reservedRects = computed<GridRect[]>(() => {
+    const r = this.reserved();
+    return r ? [r] : [];
+  });
 
   /** The draft while editing, otherwise the saved widgets. */
   readonly widgets = computed<BootstrapWidget[]>(() => (this.editing() ? this.draft() : (this.bootstrap()?.widgets ?? [])));
 
-  /** The widgets the grid renders: hidden catalog widgets are left out. */
-  readonly visibleWidgets = computed<BootstrapWidget[]>(() => this.widgets().filter(w => !HIDDEN_WIDGET_KEYS.has(w.widgetKey)));
+  /**
+   * The widgets the grid renders: hidden and pinned widgets are left out. Outside editing the rest are packed the way
+   * Customize packs them, around the pinned Quick Actions corner: a saved layout made for another corner size never
+   * overlaps the card or leaves a hole where the old Quick Actions cell was.
+   */
+  readonly visibleWidgets = computed<BootstrapWidget[]>(() => {
+    const visible = this.widgets().filter(w => !OFF_GRID_WIDGET_KEYS.has(w.widgetKey));
+    const boot = this.bootstrap();
+    if (this.editing() || !boot) return visible;
+    const items = toItems(visible);
+    return fromItems(packKeepingOrder(items, readingOrder(items), boot.grid.columns, this.reservedRects()));
+  });
 
   /** Catalog entries not currently on the board (placed ones removed in the draft count as available again). */
   readonly available = computed<AvailableWidget[]>(() => {
     const onBoard = new Set(this.widgets().map(w => w.widgetKey));
-    return this.serverAvailable().filter(a => !onBoard.has(a.key) && !HIDDEN_WIDGET_KEYS.has(a.key));
+    return this.serverAvailable().filter(a => !onBoard.has(a.key) && !OFF_GRID_WIDGET_KEYS.has(a.key));
   });
 
   async load(key: DashboardKey): Promise<void> {
@@ -111,11 +140,24 @@ export class DashboardStore {
     }
   }
 
+  /** Sets the pinned corner (the grid measures it); a draft in progress re-packs around the new size. */
+  setReserved(rect: GridRect | null): void {
+    const current = this.reserved();
+    if (current === rect || (current && rect && sameRect(current, rect))) return;
+    this.reserved.set(rect);
+    const boot = this.editBase;
+    if (!this.editing() || !boot) return;
+    const items = toItems(this.draft());
+    this.draft.set(fromItems(packKeepingOrder(items, packingOrder(items), boot.grid.columns, this.reservedRects())));
+  }
+
   startEditing(): void {
     const boot = this.bootstrap();
     if (!boot || this.editing()) return;
     this.editBase = boot;
-    this.draft.set(boot.widgets.map(w => ({ ...w, layout: { ...w.layout } })));
+    // Customizing works like a phone's home screen: the widgets settle into packed order straight away.
+    const items = toItems(boot.widgets.map(w => ({ ...w, layout: { ...w.layout } })));
+    this.draft.set(fromItems(packKeepingOrder(items, packingOrder(items), boot.grid.columns, this.reservedRects())));
     this.error.set(null);
     this.editing.set(true);
   }
@@ -131,35 +173,54 @@ export class DashboardStore {
     if (!this.editing() || this.saving() || !def || !boot || this.draft().some(w => w.widgetKey === key)) return;
     const cols = boot.grid.columns;
     const base = clampSize({ x: 0, y: 0, w: def.defaultW, h: def.defaultH }, def.size, cols);
-    const rect = autoPlace(this.draft().map(w => w.layout), base.w, base.h, cols);
     const added: BootstrapWidget = {
       instanceId: NEW_PREFIX + key,
       widgetKey: key,
       title: def.title,
-      layout: rect,
+      layout: base,
       size: def.size,
       dataState: { status: 'client', fetchedAt: null, error: null },
       data: null
     };
-    this.draft.set(fromItems(compact(toItems([...this.draft(), added]))));
+    // A new widget joins the end of the order, after every widget already shown.
+    const items = toItems(this.draft());
+    const order = packingOrder(items);
+    const firstHidden = order.findIndex(isHidden);
+    const addedItem = toItems([added])[0];
+    order.splice(firstHidden < 0 ? order.length : firstHidden, 0, addedItem);
+    this.draft.set(fromItems(packKeepingOrder([...items, addedItem], order, cols, this.reservedRects())));
   }
 
   remove(instanceId: string): void {
     if (!this.editing() || this.saving()) return;
-    this.draft.set(fromItems(compact(toItems(this.draft().filter(w => w.instanceId !== instanceId)))));
+    const boot = this.editBase;
+    const items = toItems(this.draft().filter(w => w.instanceId !== instanceId));
+    // The rest close the gap, in order.
+    this.draft.set(fromItems(boot ? packKeepingOrder(items, packingOrder(items), boot.grid.columns, this.reservedRects()) : items));
   }
 
-  move(instanceId: string, x: number, y: number): void {
+  /** Moves a widget to position `index` among the shown widgets (reading order); the others make room. */
+  reorder(instanceId: string, index: number): void {
     const boot = this.editBase;
     if (!this.editing() || this.saving() || !boot) return;
-    this.draft.set(fromItems(moveTo(toItems(this.draft()), instanceId, x, y, boot.grid.columns)));
+    const items = toItems(this.draft());
+    const order = packingOrder(items);
+    const from = order.findIndex(i => i.id === instanceId);
+    if (from < 0 || isHidden(order[from])) return;
+    const shown = order.filter(i => !isHidden(i)).length;
+    const [moving] = order.splice(from, 1);
+    order.splice(Math.min(Math.max(0, Math.round(index)), shown - 1), 0, moving);
+    this.draft.set(fromItems(packKeepingOrder(items, order, boot.grid.columns, this.reservedRects())));
   }
 
+  /** Resizes a widget within its limits; the widgets after it re-pack around the new size. */
   resize(instanceId: string, w: number, h: number): void {
     const boot = this.editBase;
     const target = this.draft().find(d => d.instanceId === instanceId);
     if (!this.editing() || this.saving() || !boot || !target) return;
-    this.draft.set(fromItems(resizeTo(toItems(this.draft()), instanceId, w, h, target.size, boot.grid.columns)));
+    const rect = clampSize({ ...target.layout, w, h }, target.size, boot.grid.columns);
+    const items = toItems(this.draft().map(d => (d.instanceId === instanceId ? { ...d, layout: rect } : d)));
+    this.draft.set(fromItems(packKeepingOrder(items, packingOrder(items), boot.grid.columns, this.reservedRects())));
   }
 
   async save(): Promise<void> {

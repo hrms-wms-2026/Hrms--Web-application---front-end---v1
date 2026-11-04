@@ -32,6 +32,34 @@
     />
 
     @if (store.data(); as data) {
+      @if (compact() && !showAll()) {
+        <div class="flex h-full min-h-0 flex-col justify-center gap-2" data-testid="team-status-mini">
+          <div>
+            <p class="text-3xl font-bold leading-none text-slate-900 tabular-nums" data-testid="team-mini-present">
+              {{ presentCount() }}<span class="text-base font-semibold text-slate-400">/{{ expectedCount() }}</span>
+            </p>
+            <p class="mt-1 text-xs text-slate-500">in today</p>
+          </div>
+          <div
+            class="flex h-2 gap-[2px] overflow-hidden rounded-full bg-slate-100"
+            role="img"
+            [attr.aria-label]="presentCount() + ' of ' + expectedCount() + ' in today'"
+          >
+            @for (segment of stripSegments(); track segment.key) {
+              <span
+                class="team-strip-segment"
+                [ngClass]="'team-strip-segment--' + segment.key"
+                [style.flex-grow]="segment.count"
+              ></span>
+            }
+          </div>
+          <p class="truncate text-xs text-slate-600" data-testid="team-mini-exceptions">
+            <span class="font-semibold text-amber-600 tabular-nums">{{ data.summary.late }}</span> late ·
+            <span class="font-semibold text-rose-600 tabular-nums">{{ data.summary.absent }}</span> absent ·
+            <span class="font-semibold text-slate-700 tabular-nums">{{ data.summary.onLeave }}</span> leave
+          </p>
+        </div>
+      } @else {
       <div class="flex flex-col" data-testid="team-status-body">
         <dl class="grid grid-cols-4 gap-2 text-center" data-testid="team-status-stats">
           <div>
@@ -212,6 +240,7 @@
           </section>
         }
       </div>
+      }
     }
   </app-widget-card>
 </app-popout-panel>

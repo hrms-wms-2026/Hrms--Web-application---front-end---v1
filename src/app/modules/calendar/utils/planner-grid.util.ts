@@ -1,6 +1,7 @@
 import { CalendarEventResponse } from '../models/calendar-event.model';
 import { PlannerRangeBlockView, PlannerWorkWindow } from '../../work/planner/models/planner.models';
 import { utcIsoToLocalParts } from '../../../shared/utils/timezone.util';
+import { TASK_KINDS, TaskKind, kindOf } from '../../work/utils/task-kind';
 
 /**
  * Planner grid maths (2026-10-27 Planner = Calendar design, sections 4.3-4.5). Every minute is counted from local midnight
@@ -103,4 +104,22 @@ export function windowMinutes(w: PlannerWorkWindow): { start: number; end: numbe
     start: clockMinutes(w.workStart), end: clockMinutes(w.workEnd),
     breakStart, breakEnd: breakStart === null ? null : breakStart + w.breakMinutes,
   };
+}
+
+/** A day's planned minutes by kind (redesign D17), in kind order; a block with no kind counts as a task. */
+export function kindMinutes(blocks: readonly Pick<PlannerRangeBlockView, 'plannedMinutes' | 'categoryKind'>[]): ReadonlyMap<TaskKind, number> {
+  const sums = new Map<TaskKind, number>();
+  for (const block of blocks) {
+    const kind = kindOf(block.categoryKind);
+    sums.set(kind, (sums.get(kind) ?? 0) + block.plannedMinutes);
+  }
+  return new Map(TASK_KINDS.filter((kind) => sums.has(kind)).map((kind) => [kind, sums.get(kind)!]));
+}
+
+/** The load bar's segments: each kind's share of the working day, scaled down to a full bar when the day is over-full. */
+export function kindSegments(minutes: ReadonlyMap<TaskKind, number>, workingMinutes: number): readonly { kind: TaskKind; widthPct: number }[] {
+  if (workingMinutes <= 0) return [];
+  const total = [...minutes.values()].reduce((sum, m) => sum + m, 0);
+  const scale = total > workingMinutes ? workingMinutes / total : 1;
+  return [...minutes.entries()].map(([kind, m]) => ({ kind, widthPct: (m / workingMinutes) * 100 * scale }));
 }

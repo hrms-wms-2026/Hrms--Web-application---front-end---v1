@@ -32,7 +32,7 @@ function summary(over: Partial<TeamAttendanceSummaryResponse> = {}): TeamAttenda
 function row(name: string, days: string[], bucket: (i: number) => TeamAttendanceBucket = () => 'present'): TeamAttendanceEmployeeRow {
   return {
     employeeId: name, name, avatarFileId: null, department: 'Development',
-    days: days.map((date, i) => ({ date, bucket: bucket(i) })), attended: 3, eligibleDays: 3, rate: 100
+    days: days.map((date, i) => ({ date, bucket: bucket(i) })), attended: 3, eligibleDays: 3, rate: 100, rank: 1
   };
 }
 
@@ -77,8 +77,27 @@ describe('TeamAttendanceDetailDialogComponent', () => {
   it('loads employees for the store\'s period, so opening keeps the selected mode', () => {
     setup(summary({ mode: 'month', rangeStart: '2026-10-01', rangeEnd: '2026-10-31', trend: dates('2026-10-01', 31).map((date) => ({ date, present: 1, late: 0, absent: 0, onLeave: 0, pending: 0, rate: 100 })) }));
 
-    expect(getEmployees).toHaveBeenCalledWith(expect.objectContaining({ mode: 'month', anchor: '2026-10-01', page: 1 }));
+    expect(getEmployees).toHaveBeenCalledWith(expect.objectContaining({ mode: 'month', anchor: '2026-10-01', page: 1, sort: 'rate' }));
     expect(one('tad-range')?.textContent?.trim()).toBe('October 2026');
+  });
+
+  it('ranks the employees: each row shows its rank, the top three marked', () => {
+    setup();
+    const rank = one('tad-rank');
+
+    expect(rank?.textContent?.trim()).toBe('1');
+    expect(rank?.classList).toContain('tad-rank--top');
+  });
+
+  it('uses the Team Progress popup shell: its own header and close button, all five tiles on one row', () => {
+    setup();
+    const close = vi.fn();
+    fixture.componentInstance.closed.subscribe(close);
+
+    expect(document.body.querySelector('.tad-head h2')?.textContent?.trim()).toBe('Team attendance');
+    expect((document.body.querySelector('.kpi-tiles') as HTMLElement).style.getPropertyValue('--kpi-cols')).toBe('5');
+    (one('tad-close') as HTMLButtonElement).click();
+    expect(close).toHaveBeenCalled();
   });
 
   it('a week renders 7 date columns and February 2028 renders 29', () => {
@@ -147,8 +166,8 @@ describe('TeamAttendanceDetailDialogComponent', () => {
     const [filename, text] = download.mock.calls[0];
     expect(filename).toBe('team-attendance-2026-10-26_2026-11-01.csv');
     const lines = text.split('\r\n');
-    expect(lines[0]).toBe('Name,Department,2026-10-26,2026-10-27,2026-10-28,2026-10-29,2026-10-30,2026-10-31,2026-11-01,Attended,Eligible days,Rate %');
-    expect(lines[1].startsWith(`"'=HYPERLINK(""x"")",Development,Present,Late,`)).toBe(true);
+    expect(lines[0]).toBe('Rank,Name,Department,2026-10-26,2026-10-27,2026-10-28,2026-10-29,2026-10-30,2026-10-31,2026-11-01,Attended,Eligible days,Rate %');
+    expect(lines[1].startsWith(`1,"'=HYPERLINK(""x"")",Development,Present,Late,`)).toBe(true);
     expect(lines[1]).toContain(',Off,');
     expect(lines).toHaveLength(3);
   });

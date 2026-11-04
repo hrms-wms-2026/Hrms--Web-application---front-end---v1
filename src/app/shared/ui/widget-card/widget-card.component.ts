@@ -13,10 +13,10 @@ export type WidgetState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden';
   imports: [ErrorStateComponent],
   template: `
     <section
-      class="flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-5"
+      class="flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3"
       [attr.aria-busy]="state() === 'loading'"
     >
-      <header class="mb-3 flex items-center justify-between gap-3">
+      <header class="mb-2 flex items-center justify-between gap-3">
         <h2
           class="text-base font-semibold text-[var(--color-text-primary)]"
           [class.whitespace-nowrap]="nowrapTitle()"

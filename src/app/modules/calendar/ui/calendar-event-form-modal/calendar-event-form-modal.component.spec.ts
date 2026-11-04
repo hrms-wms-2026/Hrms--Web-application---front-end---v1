@@ -68,6 +68,49 @@ describe('CalendarEventFormModalComponent', () => {
     });
   });
 
+  describe('prefill from the Planner create popover', () => {
+    const draft = {
+      title: 'Doctor', description: 'Bring the report', start: '2026-11-10T09:00', end: '2026-11-10T11:00',
+      isAllDay: false, timezone: 'Asia/Colombo', repeat: 'weekly' as const, location: 'Clinic',
+    };
+
+    it('fills every field from prefill', () => {
+      fixture.componentRef.setInput('prefill', draft);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.getRawValue()).toMatchObject({
+        title: 'Doctor', description: 'Bring the report', startDate: '2026-11-10', startTime: '09:00',
+        endDate: '2026-11-10', endTime: '11:00', isAllDay: false, location: 'Clinic', recurrenceFrequency: 'weekly',
+      });
+      expect(fixture.componentInstance.currentTimezone()).toBe('Asia/Colombo');
+    });
+
+    // Review finding 4: the conflict check toggles inputs while the user types; the prefill must not come back over it.
+    it('keeps what was typed when another input changes later', () => {
+      fixture.componentRef.setInput('prefill', draft);
+      fixture.detectChanges();
+      fixture.componentInstance.setTitle('Dentist');
+      fixture.componentInstance.form.controls.location.setValue('Town hall');
+
+      fixture.componentRef.setInput('checkingConflicts', true);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.controls.title.value).toBe('Dentist');
+      expect(fixture.componentInstance.form.controls.location.value).toBe('Town hall');
+    });
+
+    it('sends the location it was given', () => {
+      fixture.componentRef.setInput('prefill', draft);
+      fixture.detectChanges();
+      const spy = vi.fn();
+      fixture.componentInstance.save.subscribe(spy);
+
+      fixture.componentInstance.onSubmit(null);
+
+      expect(spy.mock.calls[0][0].create).toMatchObject({ location: 'Clinic', startDate: '2026-11-10T03:30:00.000Z' });
+    });
+  });
+
   it('marks the form invalid until title and dates are filled', () => {
     expect(fixture.componentInstance.form.invalid).toBe(true);
   });
