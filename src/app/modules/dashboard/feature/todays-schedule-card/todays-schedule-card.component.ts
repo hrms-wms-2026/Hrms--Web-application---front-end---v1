@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse } from '../../../calendar/models/calendar-event.model';
 import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { MeetingListItem } from '../../../work/meetings/models/meeting.models';
-import { MeetingCardComponent } from '../../../work/meetings/ui/meeting-card/meeting-card.component';
 
 const MAX_AGENDA_ITEMS = 5;
 
@@ -15,14 +15,17 @@ export type ScheduleItemStatus = 'completed' | 'inProgress' | 'upcoming';
 
 const STATUS_META: Record<ScheduleItemStatus, { label: string; chip: string; dot: string }> = {
   completed: { label: 'Completed', chip: 'bg-emerald-50 text-emerald-700', dot: '#10b981' },
-  inProgress: { label: 'In Progress', chip: 'bg-blue-50 text-blue-700', dot: '#2563eb' },
+  inProgress: { label: 'In progress', chip: 'bg-blue-50 text-blue-700', dot: '#2563eb' },
   upcoming: { label: 'Upcoming', chip: 'bg-slate-100 text-slate-600', dot: '#94a3b8' }
 };
+
+/** A calendar event with a meeting link is a Meeting; any other calendar event is an Event. Never guessed from the title. */
+export type AgendaItemKind = 'Meeting' | 'Event';
 
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
-  imports: [RouterLink, MeetingCardComponent, MeetingOccurrenceDrawerComponent],
+  imports: [RouterLink, KeyboardClickDirective, MeetingOccurrenceDrawerComponent],
   // A size container: the row layout follows the card's own width (Small / Large on the grid).
   host: { class: '@container block' },
   templateUrl: './todays-schedule-card.component.html',
@@ -40,25 +43,105 @@ export class TodaysScheduleCardComponent implements OnInit {
   protected readonly loading = signal(true);
   protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
 
-  /** Today's meetings-as-tasks occurrences, in start order. */
+  /** Today's meetings-as-tasks occurrences, in chronological start and end order; a cancelled one is left out. */
   protected readonly todaysMeetings = computed(() => {
     const window = this.todayWindow();
     if (!window) return [];
     const from = Date.parse(window.from);
     const to = Date.parse(window.to);
     return this.rawMeetings()
-      .filter((m) => Date.parse(m.startAt) >= from && Date.parse(m.startAt) <= to)
-      .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
+      .filter((m) => m.status !== 'cancelled' && Date.parse(m.startAt) >= from && Date.parse(m.startAt) <= to)
+      .sort((a, b) => {
+        const startDiff = Date.parse(a.startAt) - Date.parse(b.startAt);
+        if (startDiff !== 0) return startDiff;
+        const endDiff = Date.parse(a.endAt) - Date.parse(b.endAt);
+        if (endDiff !== 0) return endDiff;
+        return a.title.localeCompare(b.title);
+      });
   });
 
   protected readonly agendaItems = computed(() => {
     const now = Date.now();
     // A task meeting also comes back on the calendar feed (itemKind "meeting"); it is listed once, under Today's meetings.
     return this.rawEvents().filter((event) => event.itemKind !== 'meeting')
-      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+      .sort((a, b) => {
+        const startDiff = new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+        if (startDiff !== 0) return startDiff;
+        const endDiff = new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
+        if (endDiff !== 0) return endDiff;
+        return (a.title || '').localeCompare(b.title || '');
+      })
       .map((event) => ({ event, status: scheduleItemStatus(event, now) }))
       .slice(0, MAX_AGENDA_ITEMS);
   });
+
+  /** Everything listed today: the meetings plus the calendar events. */
+  protected readonly totalItemsCount = computed(() => this.todaysMeetings().length + this.agendaItems().length);
+
+  /** Today's meetings plus the calendar events that carry a meeting link. */
+  protected readonly meetingsCount = computed(() =>
+    this.todaysMeetings().length + this.agendaItems().filter((item) => this.itemKind(item.event) === 'Meeting').length);
+
+  /** Calendar events without a meeting link. */
+  protected readonly eventsCount = computed(() =>
+    this.agendaItems().filter((item) => this.itemKind(item.event) === 'Event').length);
+
+  /** Total scheduled time formatted, e.g. "8h" or "2h 30m" */
+  protected readonly totalTimeLabel = computed(() => {
+    let totalMinutes = 0;
+
+    for (const m of this.todaysMeetings()) {
+      if (m.startAt && m.endAt && !m.isAllDay) {
+        const start = new Date(m.startAt).getTime();
+        const end = new Date(m.endAt).getTime();
+        if (end > start) {
+          totalMinutes += Math.round((end - start) / 60_000);
+        }
+      }
+    }
+
+    for (const item of this.agendaItems()) {
+      const e = item.event;
+      if (e.startDate && e.endDate && !e.isAllDay) {
+        const start = new Date(e.startDate).getTime();
+        const end = new Date(e.endDate).getTime();
+        if (end > start) {
+          totalMinutes += Math.round((end - start) / 60_000);
+        }
+      }
+    }
+
+    if (totalMinutes <= 0) return '0m';
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${mins}m`;
+  });
+
+  protected meetingStatus(meeting: MeetingListItem): ScheduleItemStatus {
+    const now = Date.now();
+    const start = new Date(meeting.startAt).getTime();
+    const end = new Date(meeting.endAt).getTime();
+    if (meeting.status === 'completed' || (end <= now && end > start)) return 'completed';
+    if (meeting.status === 'in_progress' || (start <= now && now < end)) return 'inProgress';
+    return start > now ? 'upcoming' : 'completed';
+  }
+
+  protected meetingTitle(meeting: MeetingListItem): string {
+    return meeting.isPrivate && !meeting.myRole ? 'Private meeting' : meeting.title;
+  }
+
+  protected meetingTimeRange(meeting: MeetingListItem): string {
+    if (meeting.isAllDay) return 'All day';
+    const start = formatEventTimeLabel(meeting.startAt, false);
+    const end = formatEventTimeLabel(meeting.endAt, false);
+    return `${start} – ${end}`;
+  }
+
+  protected itemKind(event: CalendarEventResponse): AgendaItemKind {
+    return event.itemKind === 'meeting' || this.getMeetingLink(event) ? 'Meeting' : 'Event';
+  }
 
   ngOnInit(): void {
     this.api.getMyTimezone().subscribe({
