@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { vi } from 'vitest';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
@@ -56,7 +57,8 @@ describe('MeetingFormModalComponent', () => {
         { provide: ProjectApiService, useValue: { listMine: () => of({ items: [], totalCount: 0 }), getProjectTree: () => of([]) } },
       ],
     });
-    TestBed.overrideComponent(MeetingFormModalComponent, { set: { imports: [], schemas: [NO_ERRORS_SCHEMA] } });
+    // NgTemplateOutlet stays: the form is one template, rendered in the modal or embedded in the work item form.
+    TestBed.overrideComponent(MeetingFormModalComponent, { set: { imports: [NgTemplateOutlet], schemas: [NO_ERRORS_SCHEMA] } });
   });
 
   function fillOffice(): void {
@@ -89,6 +91,64 @@ describe('MeetingFormModalComponent', () => {
     // 04:40Z is HH:10 in UTC and in Colombo alike; the next half hour is 05:00Z.
     expect({ date: form.form.controls.date.value, time: form.form.controls.time.value })
       .toEqual(toZonedParts('2026-10-30T05:00:00Z', tz));
+  });
+
+  describe('compact, in the Planner create popover (2026-11-03)', () => {
+    const q = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+    const draft = {
+      title: 'Design review', start: '2026-11-03T14:00', end: '2026-11-03T15:30', description: '<p>Agenda</p>', isAllDay: false,
+      timezone: 'Asia/Colombo', recurrence: 'weekly' as const, platform: 'zoom' as const, projectId: null, objectiveId: null,
+      participantIds: ['e2'],
+    };
+
+    it('compact hides private, location, custom rule and bulk invite', () => {
+      build({ mode: 'create', embedded: true, compact: true });
+
+      expect(q('meeting-private')).toBeNull();
+      expect(q('meeting-location')).toBeNull();
+      expect(q('meeting-bulk-invite')).toBeNull();
+      expect(Array.from(fixture.nativeElement.querySelectorAll('[data-testid="meeting-recurrence"] option') as NodeListOf<HTMLOptionElement>)
+        .map((o) => o.value)).not.toContain('custom');
+      expect(q('meeting-more')).not.toBeNull();
+    });
+
+    it('the full form keeps private, location and bulk invite, and has no More options', () => {
+      build({ mode: 'create' });
+
+      expect(q('meeting-private')).not.toBeNull();
+      expect(q('meeting-location')).not.toBeNull();
+      expect(q('meeting-bulk-invite')).not.toBeNull();
+      expect(q('meeting-more')).toBeNull();
+    });
+
+    it('a MeetingDraft prefill fills every field', () => {
+      build({ mode: 'create', prefill: draft });
+
+      expect(form.form.getRawValue()).toMatchObject({
+        title: 'Design review', date: '2026-11-03', time: '14:00', durationMinutes: 90, description: '<p>Agenda</p>',
+        isAllDay: false, timezone: 'Asia/Colombo', recurrence: 'weekly', platform: 'zoom',
+      });
+      expect(form.participantIds()).toEqual(['e2']);
+    });
+
+    it('More options emits every filled field as MeetingDraft', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill: draft });
+      const spy = vi.fn();
+      form.moreOptions.subscribe(spy);
+
+      q('meeting-more')!.click();
+
+      expect(spy).toHaveBeenCalledWith(draft);
+    });
+
+    it('shows the past-start note for a slot that has started', () => {
+      const started = toZonedParts('2026-10-30T04:30:00Z', 'Asia/Colombo');
+      build({ mode: 'create', embedded: true, compact: true,
+        prefill: { ...draft, start: `${started.date}T${started.time}`, end: `${started.date}T23:00`, recurrence: 'none' } });
+
+      expect(q('meeting-start-past')).not.toBeNull();
+      expect(form.canSave()).toBe(false);
+    });
   });
 
   it('a calendar handover keeps its own start', () => {
@@ -406,5 +466,21 @@ describe('MeetingFormModalComponent', () => {
       expect(notify.error).not.toHaveBeenCalled();
       expect((fixture.nativeElement.querySelector('[data-testid="meeting-save"]') as HTMLButtonElement).disabled).toBe(false);
     });
+  });
+
+  it('embedded in the work item form: no modal of its own, and it keeps what the work item form had typed', () => {
+    build({ mode: 'create', embedded: true, placement: { projectId: 'p1', objectiveId: 'o1' },
+      carryOver: { title: 'Sprint review', description: '<p>Agenda</p>' } });
+
+    expect(fixture.nativeElement.querySelector('app-modal')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="meeting-title"]')).not.toBeNull();
+    expect(form.form.controls.title.value).toBe('Sprint review');
+    expect(form.form.controls.description.value).toBe('<p>Agenda</p>');
+    expect(form.objectiveId()).toBe('o1');
+  });
+
+  it('an empty description carried over stays empty', () => {
+    build({ mode: 'create', embedded: true, carryOver: { title: '', description: '<p></p>' } });
+    expect(form.form.controls.description.value).toBeNull();
   });
 });

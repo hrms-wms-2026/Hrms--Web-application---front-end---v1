@@ -1,6 +1,7 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MeetingCreatedEvent } from '../../utils/meeting-created-drawer.util';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, WritableSignal, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom, merge } from 'rxjs';
@@ -25,11 +26,24 @@ import { MeetingScopeDialogComponent } from '../meeting-scope-dialog/meeting-sco
 import { MeetingBulkInvitePanelComponent } from './meeting-bulk-invite-panel.component';
 
 export interface MeetingPlacementInput { projectId: string | null; objectiveId: string | null; }
-/** What a calendar event handed over: its title and local start/end ('YYYY-MM-DDTHH:mm'). */
-export interface MeetingPrefill { title: string; start: string; end: string; }
+/**
+ * What a calendar event handed over: its title and local start/end ('YYYY-MM-DDTHH:mm'), in `timezone` when given
+ * (the Planner's zone), else the browser's.
+ */
+export interface MeetingPrefill { title: string; start: string; end: string; timezone?: string; isAllDay?: boolean; }
+/** What the work item form had typed when its category turned to "meeting". */
+export interface MeetingCarryOver { title: string; description: string | null; }
 /** A saved edit, with the start it sent: after a split the occurrence lives at that start in the new series. */
 export interface MeetingEditSaved extends MeetingEditResponse { sentStart: string | null; }
-type PlatformChoice = 'none' | MeetingPlatform;
+export type PlatformChoice = 'none' | MeetingPlatform;
+/** Everything the Planner create popover's Meeting tab held: it prefills the full form ("More options"). */
+export interface MeetingDraft extends MeetingPrefill {
+  description: string | null; isAllDay: boolean; timezone: string; recurrence: RecurrencePreset; platform: PlatformChoice;
+  projectId: string | null; objectiveId: string | null; participantIds: readonly string[];
+}
+function isDraft(prefill: MeetingPrefill | MeetingDraft): prefill is MeetingDraft {
+  return 'participantIds' in prefill;
+}
 interface MeetingFormValue {
   title: string; description: string | null; location: string; isPrivate: boolean; date: string; time: string;
   durationMinutes: number; isAllDay: boolean; timezone: string; recurrence: RecurrencePreset; customRule: string; platform: PlatformChoice;
@@ -60,10 +74,10 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
 @Component({
   selector: 'app-meeting-form-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, ModalComponent, RichTextEditorComponent, CalendarParticipantPickerComponent, MeetingBulkInvitePanelComponent,
+  imports: [NgTemplateOutlet, ReactiveFormsModule, ModalComponent, RichTextEditorComponent, CalendarParticipantPickerComponent, MeetingBulkInvitePanelComponent,
     MeetingScopeDialogComponent, AvailabilityWarningsComponent],
   template: `
-    <app-modal [open]="open()" [title]="mode() === 'create' ? 'New meeting' : 'Edit meeting'" size="lg" (closed)="closed.emit()">
+    <ng-template #formTpl>
       <form [formGroup]="form" class="flex flex-col gap-3 text-sm" (ngSubmit)="save()">
         @if (mode() === 'create') {
           <div class="grid grid-cols-2 gap-2">
@@ -108,12 +122,14 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
           </div>
           <div class="flex flex-wrap items-center gap-4">
             <label class="flex items-center gap-2"><input type="checkbox" formControlName="isAllDay" /> All day</label>
-            <label class="flex items-center gap-2"><input type="checkbox" formControlName="isPrivate" /> Private</label>
-            <input formControlName="location" placeholder="Location" class="rounded-md border px-2 py-1" />
+            @if (!compact()) {
+              <label class="flex items-center gap-2"><input type="checkbox" data-testid="meeting-private" formControlName="isPrivate" /> Private</label>
+              <input data-testid="meeting-location" formControlName="location" placeholder="Location" class="rounded-md border px-2 py-1" />
+            }
           </div>
           <label class="flex flex-col gap-1">Repeats
-            <select formControlName="recurrence">
-              @for (preset of presets; track preset) { <option [value]="preset">{{ presetLabel(preset) }}</option> }
+            <select data-testid="meeting-recurrence" formControlName="recurrence">
+              @for (preset of shownPresets(); track preset) { <option [value]="preset">{{ presetLabel(preset) }}</option> }
             </select>
           </label>
           @if (form.controls.recurrence.value === 'custom') {
@@ -135,8 +151,10 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
             <app-calendar-participant-picker [selectedIds]="participantIds()" [guestEmails]="guestEmails()"
               (selectedIdsChange)="onParticipantsChange($event)" (guestEmailsChange)="guestEmails.set($event)" />
           </div>
-          <app-meeting-bulk-invite-panel [projectId]="projectId()" [objectiveId]="objectiveId()" [platform]="platformValue()"
-            (added)="mergeParticipants($event)" />
+          @if (!compact()) {
+            <app-meeting-bulk-invite-panel data-testid="meeting-bulk-invite" [projectId]="projectId()" [objectiveId]="objectiveId()"
+              [platform]="platformValue()" (added)="mergeParticipants($event)" />
+          }
         }
 
         @if (mode() === 'create' && startInPast()) {
@@ -152,12 +170,24 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
         }
 
         <div class="flex justify-end gap-2">
-          <button type="button" class="rounded-md border px-3 py-1" (click)="closed.emit()">Cancel</button>
+          @if (compact()) {
+            <button type="button" data-testid="meeting-more" class="rounded-md border px-3 py-1" (click)="moreOptions.emit(draft())">More options</button>
+          } @else {
+            <button type="button" class="rounded-md border px-3 py-1" (click)="closed.emit()">Cancel</button>
+          }
           <button type="submit" data-testid="meeting-save" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[var(--color-accent-contrast)] disabled:cursor-not-allowed disabled:opacity-50"
             [disabled]="saving() || !canSave()">{{ mode() === 'create' ? 'Create' : 'Save' }}</button>
         </div>
       </form>
-    </app-modal>
+    </ng-template>
+    <!-- Embedded, the form sits inside the work item dialog (category "meeting"), which supplies the frame. -->
+    @if (embedded()) {
+      <ng-container [ngTemplateOutlet]="formTpl" />
+    } @else {
+      <app-modal [open]="open()" [title]="mode() === 'create' ? 'New meeting' : 'Edit meeting'" size="lg" (closed)="closed.emit()">
+        <ng-container [ngTemplateOutlet]="formTpl" />
+      </app-modal>
+    }
     <app-meeting-scope-dialog [open]="scopeDialogOpen()" title="Edit which occurrences?" (chosen)="applyScope($event)"
       (cancelled)="scopeDialogOpen.set(false)" />
   `,
@@ -175,8 +205,16 @@ export class MeetingFormModalComponent implements OnInit {
   readonly open = input(false);
   readonly mode = input<'create' | 'edit'>('create');
   readonly placement = input<MeetingPlacementInput | null>(null);
-  readonly prefill = input<MeetingPrefill | null>(null);
+  readonly prefill = input<MeetingPrefill | MeetingDraft | null>(null);
+  /** The Planner create popover's Meeting tab: the most used fields, and "More options" to the full form. */
+  readonly compact = input(false);
+  readonly moreOptions = output<MeetingDraft>();
+  /** The Planner create popover's shared title: kept in step both ways while the Meeting tab is open. */
+  readonly sharedTitle = input<WritableSignal<string> | null>(null);
   readonly occurrence = input<MeetingOccurrenceResponse | null>(null);
+  /** Render the form without its own modal: the work item dialog hosts it when the category is "meeting". */
+  readonly embedded = input(false);
+  readonly carryOver = input<MeetingCarryOver | null>(null);
   readonly saved = output<MeetingCreatedEvent | MeetingEditSaved>();
   readonly closed = output<void>();
 
@@ -217,8 +255,21 @@ export class MeetingFormModalComponent implements OnInit {
   readonly platformValue = computed<MeetingPlatform | null>(() => this.platformChoice() === 'none' ? null : this.platformChoice() as MeetingPlatform);
   private readonly platformChoice = signal<PlatformChoice>('none');
 
+  constructor() {
+    effect(() => {
+      const shared = this.sharedTitle();
+      if (!shared) return;
+      const title = shared();
+      untracked(() => {
+        if (this.form.controls.title.value !== title) this.form.controls.title.setValue(title, { emitEvent: false });
+      });
+    });
+  }
+
   ngOnInit(): void {
     this.form.controls.platform.valueChanges.subscribe((p) => this.platformChoice.set(p));
+    this.form.controls.title.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((title) => this.sharedTitle()?.set(title ?? ''));
     // Only the fields that move the meeting in time re-check availability (design 4.3), not the title or agenda.
     const c = this.form.controls;
     merge(c.date.valueChanges, c.time.valueChanges, c.durationMinutes.valueChanges, c.isAllDay.valueChanges, c.timezone.valueChanges)
@@ -235,14 +286,44 @@ export class MeetingFormModalComponent implements OnInit {
       const minutes = Math.round((Date.parse(prefill.end) - Date.parse(prefill.start)) / 60000);
       this.form.patchValue({ title: prefill.title, date: prefill.start.slice(0, 10), time: prefill.start.slice(11, 16),
         durationMinutes: minutes > 0 ? minutes : 30 });
+      if (prefill.timezone) this.form.patchValue({ timezone: prefill.timezone });
+      if (prefill.isAllDay !== undefined) this.form.patchValue({ isAllDay: prefill.isAllDay });
     } else {
       this.form.patchValue(nextHalfHour(new Date(), this.form.controls.timezone.value));
     }
-    const placement = this.placement();
+    if (prefill && isDraft(prefill)) {
+      this.form.patchValue({ description: prefill.description, isAllDay: prefill.isAllDay, timezone: prefill.timezone,
+        recurrence: prefill.recurrence, platform: prefill.platform });
+      this.participantIds.set([...prefill.participantIds]);
+    }
+    const carried = this.carryOver();
+    if (carried) {
+      const description = carried.description && carried.description.replace(/<[^>]*>/g, '').trim() !== '' ? carried.description : null;
+      this.form.patchValue({ title: carried.title, description });
+    }
+    const placement = this.placement() ?? (prefill && isDraft(prefill) ? { projectId: prefill.projectId, objectiveId: prefill.objectiveId } : null);
     this.projectId.set(placement?.projectId ?? null);
     this.objectiveId.set(placement?.objectiveId ?? null);
     void this.loadProjects();
     if (placement?.projectId) void this.loadModules(placement.projectId);
+  }
+
+  /** Compact leaves the custom RRULE to the full form. */
+  readonly shownPresets = computed(() => (this.compact() ? this.presets.filter((p) => p !== 'custom') : this.presets));
+
+  /** What the form holds now, for the full form ("More options"); the end is the start plus the duration, wall-clock. */
+  draft(): MeetingDraft {
+    const v = this.form.getRawValue();
+    const [y, mo, d] = v.date.split('-').map(Number);
+    const [h, mi] = v.time.split(':').map(Number);
+    const end = new Date(Date.UTC(y, mo - 1, d, h, mi + v.durationMinutes));
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return {
+      title: v.title.trim(), start: `${v.date}T${v.time}`,
+      end: `${end.getUTCFullYear()}-${pad(end.getUTCMonth() + 1)}-${pad(end.getUTCDate())}T${pad(end.getUTCHours())}:${pad(end.getUTCMinutes())}`,
+      description: v.description, isAllDay: v.isAllDay, timezone: v.timezone, recurrence: v.recurrence, platform: v.platform,
+      projectId: this.projectId(), objectiveId: this.objectiveId(), participantIds: [...this.participantIds()],
+    };
   }
 
   canSave(): boolean {

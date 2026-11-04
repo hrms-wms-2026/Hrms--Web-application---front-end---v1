@@ -87,6 +87,8 @@ export interface MeetingListItem {
   objectiveId: string | null;
   myRole: MeetingRole;
   myResponse: MeetingResponseStatus | null;
+  /** Absent from an API that predates it; the tree row then shows "—" for the organiser. */
+  organizerEmployeeId?: string | null;
 }
 
 export interface MeetingSeriesResponse {

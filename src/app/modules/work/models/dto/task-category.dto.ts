@@ -4,16 +4,21 @@ export interface TaskCategoryDto {
   displayOrder: number;
   systemKey?: string | null;
   isSystem?: boolean;
+  kind?: string;
 }
 
 export interface CreateTaskCategoryRequestDto {
   name: string;
   displayOrder: number;
+  /** Required: one of the user kinds (task, bug, story, feature, testing); the API never infers it from the name. */
+  kind: string;
 }
 
 export interface EditTaskCategoryRequestDto {
   name: string;
   displayOrder: number;
+  /** Omitted: unchanged. */
+  kind?: string;
 }
 
 export interface ReorderTaskCategoriesRequestDto {

@@ -7,7 +7,8 @@ export function toTaskCategoryColumn(dto: TaskCategoryDto): TaskCategoryColumn {
     name: dto.name,
     displayOrder: dto.displayOrder,
     systemKey: dto.systemKey ?? null,
-    isSystem: dto.isSystem ?? false
+    isSystem: dto.isSystem ?? false,
+    kind: dto.kind ?? 'task'
   };
 }
 
