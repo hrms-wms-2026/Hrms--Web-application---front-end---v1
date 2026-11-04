@@ -9,6 +9,7 @@ import { TeamPlanTodayCardComponent } from '../feature/team-plan-today-card/team
 import { TeamScheduleCardComponent } from '../feature/team-schedule-card/team-schedule-card.component';
 import { TeamProgressCardComponent } from '../feature/team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../feature/team-status-card/team-status-card.component';
+import { TeamWorkTaskCardComponent } from '../feature/team-work-task-card/team-work-task-card.component';
 import { TodayAtAGlanceCardComponent } from '../feature/today-at-a-glance-card/today-at-a-glance-card.component';
 import { WeeklyProgressCardComponent } from '../feature/weekly-progress-card/weekly-progress-card.component';
 import { TodaysScheduleCardComponent } from '../feature/todays-schedule-card/todays-schedule-card.component';
@@ -34,6 +35,7 @@ describe('WIDGET_REGISTRY', () => {
       'team-attendance': TeamAttendanceCardComponent,
       'team-schedule': TeamScheduleCardComponent,
       'team-plan-today': TeamPlanTodayCardComponent,
+      'team-work-vs-task': TeamWorkTaskCardComponent,
       'team-quick-actions': QuickActionsCardComponent
     };
     expect(Object.keys(WIDGET_REGISTRY).sort()).toEqual(Object.keys(expected).sort());
