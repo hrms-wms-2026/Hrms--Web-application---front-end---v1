@@ -101,6 +101,16 @@ describe('schedule layout ladder', () => {
     expect(xs.rows).toBeGreaterThan(0);
   });
 
+  it('a 2-column, 4-row card is xs (donut over legend, then the pill) like the other widgets, even grown from mini', () => {
+    for (const width of [218, 2 * 140 + 12]) {
+      expect(resolveScheduleView(width, rows(4), 'mini')).toBe('xs');
+      const plan = planScheduleLayout('xs', width, rows(4), 8, true);
+      expect(plan).toMatchObject({ pill: true, avatars: false, rows: 0 });
+      expect(scheduleBodyUsed('xs', plan, true)).toBeLessThanOrEqual(rows(4) - SCHEDULE_CARD_CHROME.height);
+    }
+    expect(classifyScheduleSize(218, rows(3))).toBe('mini');
+  });
+
   it('"View all" is reserved only while rows hide someone', () => {
     expect(planScheduleLayout('timeline', 900, 852, 4, true).viewAll).toBe(false);
     expect(planScheduleLayout('rows', 500, 420, 60, true).viewAll).toBe(true);

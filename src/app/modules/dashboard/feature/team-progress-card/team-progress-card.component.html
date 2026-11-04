@@ -42,7 +42,7 @@
     <ng-template #donutTpl let-completionCenter="completionCenter">
       <div class="tp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="team-progress-donut">
         <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
-          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="7" />
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
           @for (seg of donutSegments(); track seg.key) {
             <circle
               data-testid="donut-segment"
@@ -50,7 +50,7 @@
               cy="21"
               r="15.9155"
               fill="none"
-              stroke-width="7"
+              stroke-width="6"
               [attr.stroke]="seg.color"
               [attr.stroke-dasharray]="seg.length + ' ' + (100 - seg.length)"
               [attr.stroke-dashoffset]="seg.offset"
@@ -400,16 +400,19 @@
           }
 
           @case ('xs') {
-            <!-- 3x3: donut over the completion figure; taller cards add the legend, tiles and View details. -->
+            <!-- Narrow cards: the donut, its legend right under it (like every widget), then the completion
+            figure; taller cards add tiles and View details. -->
             <div class="tp-xs">
               <ng-container *ngTemplateOutlet="donutTpl" />
+            </div>
+            @if (plan().legend) {
+              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'list' }" />
+            }
+            @if (plan().miniFigure) {
               <p class="tp-completion">
                 <span class="tp-completion-big text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
                 <span class="tp-completion-caption">Completed</span>
               </p>
-            </div>
-            @if (plan().legend) {
-              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'list' }" />
             }
             @if (visibleExtraTiles().length > 0) {
               <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: 2 }" />

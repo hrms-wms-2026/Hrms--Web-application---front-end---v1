@@ -44,7 +44,7 @@
           }
         </svg>
         <p class="tsc-donut-center" data-testid="tsc-center">
-          <span class="tsc-donut-value">{{ totalItems() }}</span>
+          <span class="tsc-donut-value" [style.font-size.px]="valueFontPx(totalItems() + '')">{{ totalItems() }}</span>
           <span class="tsc-donut-of">Total items</span>
         </p>
       </div>
@@ -195,8 +195,10 @@
               <ng-container [ngTemplateOutlet]="totalTpl" />
             }
           </div>
-          <ng-container [ngTemplateOutlet]="avatarsTpl" />
           <ng-container [ngTemplateOutlet]="pillTpl" />
+          @if (plan().avatars) {
+            <ng-container [ngTemplateOutlet]="avatarsTpl" />
+          }
           @if (plan().rows > 0) {
             <ng-container [ngTemplateOutlet]="rowsTpl" />
           }

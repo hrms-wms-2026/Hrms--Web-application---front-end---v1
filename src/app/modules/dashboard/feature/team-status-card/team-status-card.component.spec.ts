@@ -125,7 +125,7 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     expect(has(el, 'wbl-mini')).toBe(true);
     expect((el.querySelector('[data-testid="wbl-donut"]') as HTMLElement).style.width).toBe('140px');
     // Ada 6h + Bob 2h worked; Bob's closed 15m break; Cat's 8h leave.
-    expect(text(el, 'wbl-center')!.replace(/\s+/g, '')).toBe('8hTotalworkinghours');
+    expect(text(el, 'wbl-center')!.replace(/\s+/g, '')).toBe('8hWorkinghours');
     expect(text(el, 'wbl-count-working')).toContain('8h');
     expect(text(el, 'wbl-count-break')).toContain('15m');
     expect(text(el, 'wbl-count-leave')).toContain('8h');

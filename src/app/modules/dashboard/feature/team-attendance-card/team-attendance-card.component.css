@@ -212,7 +212,44 @@
 /* Narrow: the donut over the rate, centred, like Team Progress. */
 .ta-grow--xs .ta-hero {
   flex-direction: column;
-  gap: 0.5rem;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.ta-grow--xs .ta-donut {
+  align-self: center;
+}
+
+/* The donut legend every widget shares at this size: 28px rows of dot, label, value (see DASHBOARD_DONUT_LEGEND_ROW_PX). */
+.ta-xs-legend {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+.ta-xs-legend-row {
+  display: grid;
+  height: 28px;
+  grid-template-columns: 0.625rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.ta-xs-legend-row .ta-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.ta-xs-legend-row .ta-legend-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ta-xs-legend-row .ta-legend-count {
+  text-align: right;
+  font-weight: 700;
 }
 
 .ta-grow--xs .ta-hero-figure {

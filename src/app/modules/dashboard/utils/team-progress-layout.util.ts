@@ -3,7 +3,7 @@
  * TEAM_PROGRESS_DONUT_PX): a bigger card shows more detail, never bigger graphics. */
 export type TeamProgressMode = 'mini' | 'xs' | 'small' | 'medium' | 'wide' | 'tall' | 'large' | 'maximum';
 
-import { DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
 
 /** The donut's diameter in every view that shows it (the shared dashboard size). */
 export const TEAM_PROGRESS_DONUT_PX = DASHBOARD_DONUT_PX;
@@ -107,6 +107,10 @@ const MINI_INLINE_LEGEND_WIDTH_PX = 320;
 /** Body width from which a 2-row card with the donut has room for the total beside it. */
 const MINI_FIGURE_WIDTH_PX = TEAM_PROGRESS_DONUT_PX + 12 + 80;
 const VIEW_DETAILS_PX = 36 + GAP_PX;
+/** xs: the four-status legend under the donut (four shared legend rows). */
+const XS_LEGEND_PX = GAP_PX + 4 * DASHBOARD_DONUT_LEGEND_ROW_PX;
+/** xs: the completion figure and its caption under the legend. */
+const XS_FIGURE_PX = GAP_PX + 50;
 
 /** The optional sections a view shows at a size. Everything here has a fixed height, so a larger
  * card adds sections and list rows instead of growing what is already there. */
@@ -114,9 +118,9 @@ export interface TeamProgressPlan {
   /** mini only: 'inline' on a card stretched sideways - the stacked status bar and its legend sit
    * beside the figure; 'none' stacks the bar under the figure with no legend. */
   miniLegend: 'none' | 'inline';
-  /** mini with the donut: whether the total fits beside it. */
+  /** mini with the donut: whether the total fits beside it. xs: whether the completion figure fits under the legend. */
   miniFigure: boolean;
-  /** xs only: the four-status legend under the completion figure. */
+  /** xs only: the four-status legend right under the donut (the same place every widget puts its legend). */
   legend: boolean;
   /** xs / small / medium: rows of extra metric tiles. */
   tileRows: number;
@@ -155,9 +159,9 @@ function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
     // The donut, or (stretched sideways) the completion figure beside the stacked status bar.
     case 'mini':
       return TEAM_PROGRESS_DONUT_PX;
-    // Donut, the big completion figure and its caption.
+    // The donut; its legend and the completion figure follow when they fit.
     case 'xs':
-      return TEAM_PROGRESS_DONUT_PX + 62;
+      return TEAM_PROGRESS_DONUT_PX;
     // Donut (with the completion line under it) beside the two-line legend.
     case 'small':
       return TEAM_PROGRESS_DONUT_PX + 32;
@@ -205,11 +209,16 @@ export function planTeamProgressLayout(mode: TeamProgressMode, width: number, he
       else plan.miniFigure = bodyWidth >= MINI_FIGURE_WIDTH_PX;
       return plan;
     case 'xs':
-      if (rest >= 112) {
+      if (rest >= XS_LEGEND_PX) {
         plan.legend = true;
-        rest -= 112;
+        rest -= XS_LEGEND_PX;
       }
-      if (plan.legend && rest >= TILE_ROW_PX) {
+      // Under the legend when it fits; a card too short for the legend still shows the figure under the donut.
+      if (rest >= XS_FIGURE_PX) {
+        plan.miniFigure = true;
+        rest -= XS_FIGURE_PX;
+      }
+      if (plan.miniFigure && rest >= TILE_ROW_PX) {
         plan.tileRows = 1;
         rest -= TILE_ROW_PX;
       }

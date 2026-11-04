@@ -1,4 +1,4 @@
-import { DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
 
 /** How the Working / Break / Leave card lays itself out at its rendered size. The detail dialog is the popup. */
 export type PresenceView = 'mini' | 'xs' | 'standard';
@@ -13,7 +13,7 @@ export const PRESENCE_BREAKPOINTS = {
   /** Below this width the card shows the xs view: the donut over its legend, then rows. */
   xsWidth: 370,
   /** A narrow card needs this height for the donut, its legend and the pill; shorter, it stays mini. */
-  xsMinHeight: 340,
+  xsMinHeight: 360,
   /** From this body width a mini card swaps the donut for a stacked bar and legend. */
   miniInlineWidth: 320,
   /** From this card width the person rows become a table. */
@@ -31,7 +31,7 @@ export const PRESENCE_SECTION_PX = {
   /** "N employees are currently working ›". */
   pill: 36,
   /** The xs legend under the donut: three count rows. */
-  legend: 72,
+  legend: 3 * DASHBOARD_DONUT_LEGEND_ROW_PX,
   /** The three KPI tiles. */
   tiles: 72,
   /** One person row (list). */

@@ -9,7 +9,7 @@ import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours
 import { TeamTodayMember, TeamTodayResponse, TeamWorkingHoursDay } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
 import { WorkingHoursChartComponent } from '../../ui/working-hours-chart/working-hours-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, donutValueFontPx } from '../../utils/dashboard-donut.util';
 import { injectHostSize } from '../../utils/host-size.util';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
@@ -95,6 +95,7 @@ export class TeamStatusCardComponent implements OnInit {
   private trendRequested = false;
 
   protected readonly donutPx = DASHBOARD_DONUT_PX;
+  protected readonly valueFontPx = donutValueFontPx;
   protected readonly colors = PRESENCE_COLORS;
   protected readonly now = signal(new Date());
   /** This week's working hours for the trend panel; loaded once, the first time a view has room for it. */

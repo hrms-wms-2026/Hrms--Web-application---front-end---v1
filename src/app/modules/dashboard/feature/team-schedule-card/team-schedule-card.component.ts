@@ -26,7 +26,7 @@ import { TeamScheduleWeekStore } from '../../state/team-schedule-week.store';
 import { TeamScheduleStore } from '../../state/team-schedule.store';
 import { PlannedActualDayChartComponent } from '../../ui/planned-actual-day-chart/planned-actual-day-chart.component';
 import { PlannedActualWeekChartComponent } from '../../ui/planned-actual-week-chart/planned-actual-week-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, donutValueFontPx } from '../../utils/dashboard-donut.util';
 import { injectHostSize } from '../../utils/host-size.util';
 import { plannedActualTiles, summarizePlannedActual } from '../../utils/planned-actual-format.util';
 import {
@@ -125,6 +125,7 @@ export class TeamScheduleCardComponent implements OnInit {
   private weekRequested = false;
 
   protected readonly donutPx = DASHBOARD_DONUT_PX;
+  protected readonly valueFontPx = donutValueFontPx;
   protected readonly sidePx = SCHEDULE_SIDE_PX;
   protected readonly colors = SCHEDULE_COLORS;
   protected readonly now = signal(new Date());

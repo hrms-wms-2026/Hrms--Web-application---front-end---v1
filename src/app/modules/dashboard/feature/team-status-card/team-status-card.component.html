@@ -39,8 +39,9 @@
           }
         </svg>
         <p class="wbl-donut-center" data-testid="wbl-center">
-          <span class="wbl-donut-value">{{ minutes(hours().worked) }}</span>
-          <span class="wbl-donut-of">Total working hours</span>
+          @let worked = minutes(hours().worked);
+          <span class="wbl-donut-value" [style.font-size.px]="valueFontPx(worked)">{{ worked }}</span>
+          <span class="wbl-donut-of">Working hours</span>
         </p>
       </div>
     </ng-template>

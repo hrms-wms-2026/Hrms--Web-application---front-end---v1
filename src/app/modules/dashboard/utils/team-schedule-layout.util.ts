@@ -1,4 +1,4 @@
-import { DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
 
 /** How the Today's team schedule card lays itself out at its rendered size. The detail dialog is the popup. */
 export type ScheduleView = 'mini' | 'xs' | 'rows' | 'timeline';
@@ -10,10 +10,10 @@ export type ScheduleView = 'mini' | 'xs' | 'rows' | 'timeline';
 export const SCHEDULE_BREAKPOINTS = {
   /** Below this height only the mini view fits. */
   miniHeight: 260,
-  /** Below this width a card shows the xs view: the donut over its legend, avatars, the pill, then rows. */
+  /** Below this width a card shows the xs view: the donut over its legend, the pill, then avatars and rows. */
   xsWidth: 370,
-  /** A narrow card needs this height for the xs head; shorter, it stays mini. */
-  xsMinHeight: 412,
+  /** A narrow card needs this height for the xs head (donut, legend, pill: 4 grid rows have it); shorter, it stays mini. */
+  xsMinHeight: 380,
   /** From this body width a mini card swaps the donut for a stacked bar and legend. */
   miniInlineWidth: 320,
   /** From this card width the rows become a labelled timeline. */
@@ -35,8 +35,8 @@ export const SCHEDULE_CARD_CHROME = { width: 32, height: 68 } as const;
 export const SCHEDULE_SECTION_PX = {
   pill: 36,
   avatars: 36,
-  /** The xs legend under the donut: four items. */
-  xsLegend: 96,
+  /** The xs legend under the donut: four rows. */
+  xsLegend: 4 * DASHBOARD_DONUT_LEGEND_ROW_PX,
   /** The planner-off figure (team clocked total) that stands in for the donut. */
   total: 72,
   /** One person row (rows view, and every planner-off row). */
@@ -122,10 +122,11 @@ export function drawnScheduleView(view: ScheduleView, plannerEnabled: boolean): 
   return view === 'timeline' && !plannerEnabled ? 'rows' : view;
 }
 
+/** The xs head: the donut over its legend (or the clocked total), then the pill. Avatars follow when they fit. */
 function xsHeadPx(plannerEnabled: boolean): number {
   const s = SCHEDULE_SECTION_PX;
   const figure = plannerEnabled ? DASHBOARD_DONUT_PX + s.gap + s.xsLegend : s.total;
-  return figure + s.gap + s.avatars + s.gap + s.pill;
+  return figure + s.gap + s.pill;
 }
 
 /** The rows section: the timeline's axis and legend, the rows, and "View all" when someone is left out. */
@@ -166,8 +167,11 @@ export function planScheduleLayout(
     return { ...EMPTY_SCHEDULE_PLAN, miniInline, pill: miniInline || body >= DASHBOARD_DONUT_PX + s.gap + s.pill };
   }
   if (view === 'xs') {
-    const fit = fitRows(body - xsHeadPx(plannerEnabled) - s.gap, members, false);
-    return { ...EMPTY_SCHEDULE_PLAN, avatars: true, pill: true, ...fit };
+    let rest = body - xsHeadPx(plannerEnabled);
+    const avatars = rest >= s.gap + s.avatars;
+    if (avatars) rest -= s.gap + s.avatars;
+    const fit = fitRows(rest - s.gap, members, false);
+    return { ...EMPTY_SCHEDULE_PLAN, avatars, pill: true, ...fit };
   }
 
   const timeline = view === 'timeline' && plannerEnabled;
@@ -207,7 +211,7 @@ export function scheduleBodyUsed(view: ScheduleView, plan: SchedulePlan, planner
   if (view === 'mini') return 0;
   if (view === 'xs') {
     const rows = plan.rows > 0 ? s.gap + rowsSectionPx(false, plan.rows, plan.viewAll) : 0;
-    return xsHeadPx(plannerEnabled) + rows;
+    return xsHeadPx(plannerEnabled) + (plan.avatars ? s.gap + s.avatars : 0) + rows;
   }
   const timeline = view === 'timeline' && plannerEnabled;
   return (
