@@ -14,8 +14,8 @@ import { PlannedActualWeekChartComponent } from '../planned-actual-week-chart/pl
 
 /**
  * The Team Progress popup's planned-vs-worked sections (My Team widgets design 2026-10-29, section 6.1): planned, in-plan
- * and unscheduled minutes per day (week) or ISO week (month), the unscheduled work list and the workload ranking, each
- * list with CSV export. Minutes of planned / worked time only - never estimate hours, never on the allocation's axis.
+ * and unscheduled minutes per day (week) or ISO week (month) and the unscheduled work list with CSV export. Each person's
+ * planned / worked time sits in the dialog's Team members table. Minutes of planned / worked time only - never estimate hours, never on the allocation's axis.
  */
 @Component({
   selector: 'app-team-progress-time-detail',
@@ -82,29 +82,5 @@ export class TeamProgressTimeDetailComponent {
       u.kind === 'no_plan' ? 'No plan' : 'Outside slot',
     ]);
     this.downloadFile(`team-unscheduled-work-${t.from}_${t.to}.csv`, toCsv([header, ...lines]));
-  }
-
-  exportWorkload(): void {
-    const t = this.time();
-    if (!t) return;
-    const header = [
-      'Rank',
-      'Person',
-      'Planned min',
-      'Worked min',
-      'Unscheduled min',
-      'Expected min',
-      'Utilization %',
-    ];
-    const lines = t.workload.map((w) => [
-      String(w.rank),
-      w.displayName,
-      String(w.plannedMinutes),
-      String(w.clockedMinutes),
-      String(w.unscheduledMinutes),
-      w.expectedMinutes === null ? '' : String(w.expectedMinutes),
-      w.utilizationPercent === null ? '' : String(w.utilizationPercent),
-    ]);
-    this.downloadFile(`team-workload-${t.from}_${t.to}.csv`, toCsv([header, ...lines]));
   }
 }

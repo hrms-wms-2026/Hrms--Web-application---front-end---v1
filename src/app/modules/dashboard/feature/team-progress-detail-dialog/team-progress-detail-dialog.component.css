@@ -55,9 +55,9 @@
 /* ---------- Overview ---------- */
 .tp-overview { display: flex; flex-direction: column; gap: 12px; }
 
-.tp-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 12px; }
-.tp-stats--period { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.15fr); }
-.tp-stats--period[aria-busy='true'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tp-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 12px; }
+.tp-stats--period { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr); }
+.tp-stats--period[aria-busy='true'] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
 .tp-stat {
   --tone: #10b981;
@@ -76,6 +76,7 @@
 .tp-stat--inProgress { --tone: #3b82f6; }
 .tp-stat--notStarted { --tone: #94a3b8; }
 .tp-stat--untasked { --tone: #f59e0b; }
+.tp-stat--overdue { --tone: #ef4444; }
 .tp-stat--skeleton { --tone: #94a3b8; opacity: .6; }
 .tp-stat__value { font-size: 20px; font-weight: 700; line-height: 1.2; color: color-mix(in srgb, var(--tone) 72%, var(--color-text-primary)); white-space: nowrap; }
 .tp-stat__value small { font-size: 14px; font-weight: 600; }
@@ -97,6 +98,18 @@
 .tp-panel { display: flex; min-width: 0; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
 .tp-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tp-panel__title { margin: 0; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+/* Team members: one full-width table, estimate hours then the period's planned / worked time. */
+.tp-panel--employees { grid-column: 1 / -1; }
+/* Project breakdown fills its row: beside the unscheduled-work panel when the Planner shows it, else full width. */
+.tp-panel--projects { grid-column: 1 / -1; }
+.tp-panels:has([data-testid="tptd-unscheduled"]) .tp-panel--projects { grid-column: span 2; }
+.tp-members-tools { display: inline-flex; align-items: center; gap: 10px; }
+.tp-members-note { margin: -4px 0 0; font-size: 11px; }
+.tp-members-groups th { padding: 2px 8px 4px; background: transparent; font-size: 10px; font-weight: 600; letter-spacing: .02em; text-align: center; text-transform: uppercase; color: var(--color-text-secondary); }
+.tp-members-groups td { border: 0; }
+.tp-mini-table .tp-members-time { border-left: 1px solid var(--color-border); }
+.tp-mini-table td:first-child { width: 22%; }
+.tp-over { font-weight: 600; color: #b45309; }
 .tp-panel__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-top: auto; }
 
 /* Status distribution */
@@ -200,6 +213,7 @@
   .tp-total { grid-column: 1 / -1; }
   .tp-stats--period .tp-total { grid-column: auto; }
   .tp-panels { grid-template-columns: minmax(0, 1fr); }
+  .tp-panels .tp-panel--projects, .tp-panels:has([data-testid="tptd-unscheduled"]) .tp-panel--projects { grid-column: auto; }
   .tp-dist { flex-direction: column; align-items: stretch; }
   .tp-donut { align-self: center; }
   .tp-overdue-list { grid-template-columns: minmax(0, 1fr); }

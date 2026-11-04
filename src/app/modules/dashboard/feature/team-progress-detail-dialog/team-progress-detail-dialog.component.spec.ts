@@ -51,6 +51,10 @@ function summary(extra: Partial<LedWorkProgressResponse> = {}): LedWorkProgressR
       { projectId: 'p1', projectName: 'Apollo', hours: 20, taskCount: 6, unestimatedTaskCount: 0 },
       { projectId: 'p2', projectName: 'Zeus', hours: 6, taskCount: 3, unestimatedTaskCount: 1 }
     ],
+    overdueByModule: [
+      { projectId: 'p1', objectiveId: 'm1', inProgressHours: 12, notStartedHours: 8, taskCount: 6 },
+      { projectId: 'p2', objectiveId: 'm2', inProgressHours: 0, notStartedHours: 6, taskCount: 3 }
+    ],
     ...extra
   };
 }
@@ -539,10 +543,63 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-overdue-t2')!.closest('tr')!.querySelector('[data-testid="tp-overdue-task-hours"]')!.textContent!.trim()).toBe('—');
   });
 
+  it('an Overdue KPI tile sits in the tile row with the overdue hours and task count', () => {
+    openWith();
+    const tile = q('tp-tile-overdue')!;
+    expect(tile.parentElement!.getAttribute('data-testid')).toBe('tp-overview-tiles');
+    expect(tile.textContent!.replace(/\s+/g, ' ')).toContain('26 h');
+    expect(q('tp-tile-count-overdue')!.textContent).toContain('9 tasks');
+  });
+
+  /** The Status Distribution legend rows as [label, hours, percent]. */
+  const legendRows = () =>
+    [...el().querySelectorAll('[data-testid="tp-legend-row"]')].map((r) =>
+      [...r.children].map((c) => c.textContent!.trim()).filter((t) => t !== ''),
+    );
+
+  it('status distribution: overdue is its own slice, carved out of In progress / Not started so it still adds up', () => {
+    openWith();
+    expect(legendRows()).toEqual([
+      ['Completed', '50 h', '(25%)'],
+      ['In progress', '18 h', '(9%)'],
+      ['Overdue', '26 h', '(13%)'],
+      ['Not started', '6 h', '(3%)'],
+      ['Not yet tasked', '100 h', '(50%)'],
+    ]);
+    const slices = [...q('tp-donut')!.querySelectorAll('circle[stroke-dasharray]')];
+    expect(slices.map((c) => c.getAttribute('stroke'))).toContain('#ef4444');
+    expect(q('tp-donut-overdue')).toBeNull();
+    expect(q('tp-donut')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
+    expect(q('tp-legend-note')!.textContent).toContain('without the overdue');
+  });
+
+  it('the overdue slice follows the project filter', () => {
+    openWith();
+    fixture.componentInstance.setProject('p2');
+    render();
+    expect(legendRows()).toContainEqual(['Overdue', '6 h', '(7.5%)']);
+    expect(legendRows()).toContainEqual(['Not started', '4 h', '(5%)']);
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
+  });
+
+  it('no overdue slice when nothing is overdue', () => {
+    openWith(summary({ overdueTasks: [], overdueTotal: 0, overdueByProject: [], overdueByModule: [] }));
+    expect(legendRows().map((r) => r[0])).not.toContain('Overdue');
+    expect(q('tp-legend-note')).toBeNull();
+  });
+
+  it('the Overdue tile shows 0 h when nothing is overdue', () => {
+    openWith(summary({ overdueTasks: [], overdueTotal: 0, overdueByProject: [], overdueByModule: [] }));
+    expect(q('tp-tile-overdue')!.textContent!.replace(/\s+/g, ' ')).toContain('0 h');
+    expect(q('tp-tile-count-overdue')!.textContent).toContain('0 tasks');
+  });
+
   it('the overdue total and pie follow the project filter', () => {
     openWith();
     fixture.componentInstance.setProject('p2');
     render();
+    expect(q('tp-tile-count-overdue')!.textContent).toContain('3 tasks');
     expect(q('tp-overdue-hours')!.textContent).toContain('6 h overdue');
     expect(el().querySelectorAll('[data-testid="tp-overdue-slice"]').length).toBe(1);
     expectEmployees().flush(employeePage());
@@ -581,7 +638,41 @@ describe('TeamProgressDetailDialogComponent', () => {
       expect(q('tptd-coverage')!.textContent).toContain('80%');
       expect(q('tptd-unscheduled')!.textContent).toContain('Worked without a matching Planner slot.');
       expect(el().querySelectorAll('[data-testid="tptd-unscheduled-row"]').length).toBe(1);
-      expect(q('tptd-util')!.textContent!.trim()).toBe('125%');
+      expect(q('tptd-workload')).toBeNull();
+    });
+
+    it('one Team members table: estimate hours and this week time side by side, matched by employee', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush(ledTime({
+        workload: [
+          workloadRow({ employeeId: 'e1', displayName: 'Ann Lee', plannedMinutes: 600, clockedMinutes: 540, unscheduledMinutes: 30, utilizationPercent: 125, expectedMinutes: 480 })
+        ]
+      }));
+      render();
+
+      expect(q('tp-ov-employees')!.textContent).toContain('Team members');
+      expect(el().textContent).not.toContain('Workload ranking');
+      expect(el().textContent).not.toContain('Employee Breakdown');
+      const cells = (id: string) => [...q(id)!.querySelectorAll('td')].map((c) => c.textContent!.trim());
+      expect(cells('tp-ov-employee-e1')).toEqual(['ALAnn Lee', '10 h', '5 h', '9 h', '24 h', '10 h', '9 h', '0.5 h', '125%']);
+      expect(cells('tp-ov-employee-e2').slice(5)).toEqual(['—', '—', '—', '—']);
+      expect(q('tp-ov-employee-e1')!.querySelector('.tp-over')).not.toBeNull();
+    });
+
+    it('Export CSV downloads the team workload with each person\'s estimate hours when shown', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush(ledTime({ from: '2026-10-26', to: '2026-11-01', workload: [workloadRow({ employeeId: 'e1', displayName: 'Ann Lee', plannedMinutes: 600 })] }));
+      render();
+      const download = vi.fn();
+      fixture.componentInstance.downloadFile = download;
+
+      q('tp-members-export')!.click();
+
+      expect(download).toHaveBeenCalledOnce();
+      const [name, csv] = download.mock.calls[0] as [string, string];
+      expect(name).toBe('team-members-2026-10-26_2026-11-01.csv');
+      expect(csv.split(/\r?\n/)[0]).toContain('Person');
+      expect(csv).toContain('Ann Lee');
     });
 
     it('the period select drives the time call too', () => {

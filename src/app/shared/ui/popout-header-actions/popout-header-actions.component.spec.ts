@@ -106,6 +106,20 @@ describe('replayDashboardMotion', () => {
     expect(root.querySelector('.dash-motion')!.className).toBe('dash-motion');
   });
 
+  it('a card refresh under an open popup replays the popup, never fading the widget that holds it', () => {
+    const root = tree('div.dash-motion', 'header', 'button');
+    const widget = root.querySelector<HTMLElement>('.dash-motion')!;
+    const closed = widget.appendChild(document.createElement('app-modal'));
+    const open = widget.appendChild(document.createElement('app-modal'));
+    open.appendChild(document.createElement('div')).setAttribute('role', 'dialog');
+
+    replayDashboardMotion(root.querySelector<HTMLElement>('button')!);
+
+    expect(widget.className).toBe('dash-motion');
+    expect(closed.className).toBe('');
+    expect(open.classList).toContain('dash-replay-a');
+  });
+
   it('does nothing outside the dashboard', () => {
     const root = tree('app-modal', 'button');
 

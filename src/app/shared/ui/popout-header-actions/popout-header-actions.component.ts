@@ -6,9 +6,17 @@ const TICK_MS = 30_000;
 /** The two classes a refresh alternates between to restart the dashboard's load animation (dashboard-motion.css). */
 const REPLAY = ['dash-replay-a', 'dash-replay-b'] as const;
 
-/** Replays the load animation of the popup or dashboard widget around `el`; a no-op outside the dashboard. */
+/**
+ * Replays the load animation of the popup or dashboard widget around `el`; a no-op outside the dashboard.
+ * A card refreshing while its popup is open replays the popup's charts instead: the widget's rise (opacity +
+ * transform) would otherwise fade and shift the fixed popup it holds, so it looks like it closes and reopens.
+ */
 export function replayDashboardMotion(el: HTMLElement): void {
-  const target = el.closest<HTMLElement>('app-modal') ?? el.closest<HTMLElement>('.dash-motion');
+  const widget = el.closest<HTMLElement>('.dash-motion');
+  const openPopup = Array.from(widget?.querySelectorAll<HTMLElement>('app-modal') ?? []).find((m) =>
+    m.querySelector('[role="dialog"]'),
+  );
+  const target = el.closest<HTMLElement>('app-modal') ?? openPopup ?? widget;
   if (!target?.closest('.dash-motion')) return;
   const next = target.classList.contains(REPLAY[0]) ? REPLAY[1] : REPLAY[0];
   target.classList.remove(...REPLAY);

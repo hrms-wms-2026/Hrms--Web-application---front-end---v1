@@ -63,6 +63,15 @@ export interface LedOverdueProject {
   unestimatedTaskCount: number;
 }
 
+/** Every overdue top-level task of one module, split like the module hour totals (progress above 0% is in progress). */
+export interface LedOverdueModule {
+  projectId: string;
+  objectiveId: string;
+  inProgressHours: number;
+  notStartedHours: number;
+  taskCount: number;
+}
+
 export interface LedWorkProgressResponse {
   hours: LedHourTotals;
   projects: LedProjectProgress[];
@@ -76,4 +85,6 @@ export interface LedWorkProgressResponse {
   overdueUnestimatedTaskCount: number;
   /** overdueHours by project, most hours first. */
   overdueByProject: LedOverdueProject[];
+  /** Overdue hours by module, for the Status Distribution's overdue slice. Missing from an older API: no slice then. */
+  overdueByModule?: LedOverdueModule[];
 }
