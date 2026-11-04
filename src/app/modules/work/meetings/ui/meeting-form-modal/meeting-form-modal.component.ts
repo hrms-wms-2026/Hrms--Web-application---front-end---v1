@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { MeetingCreatedEvent } from '../../utils/meeting-created-drawer.util';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom, merge } from 'rxjs';
 import { AuthStore } from '../../../../../core/auth/state/auth.store';
@@ -15,7 +15,7 @@ import { CalendarParticipantPickerComponent } from '../../../../calendar/ui/cale
 import { ProjectApiService } from '../../../data-access/project-api.service';
 import { MeetingApiService } from '../../data-access/meeting-api.service';
 import {
-  CreateMeetingRequest, EditMeetingRequest, MeetingCreatedResponse, MeetingEditResponse, MeetingOccurrenceResponse, MeetingPlatform,
+  CreateMeetingRequest, EditMeetingRequest, MeetingEditResponse, MeetingOccurrenceResponse, MeetingPlatform,
   MeetingScope
 } from '../../models/meeting.models';
 import { meetingErrorMessage } from '../../utils/meeting-error-messages';
@@ -33,6 +33,21 @@ type PlatformChoice = 'none' | MeetingPlatform;
 interface MeetingFormValue {
   title: string; description: string | null; location: string; isPrivate: boolean; date: string; time: string;
   durationMinutes: number; isAllDay: boolean; timezone: string; recurrence: RecurrencePreset; customRule: string; platform: PlatformChoice;
+}
+
+/** The next half hour after `now`, as wall-clock date and time in `timeZone` (11:10 -> 11:30, 23:40 -> 00:00 tomorrow). */
+function nextHalfHour(now: Date, timeZone: string): { date: string; time: string } {
+  const { date, time } = toZonedParts(now.toISOString(), timeZone);
+  const [hh, mm] = time.split(':').map(Number);
+  const next = Math.floor((hh * 60 + mm) / 30) * 30 + 30;
+  const [y, m, d] = date.split('-').map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d + Math.floor(next / 1440)));
+  const minutes = next % 1440;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    date: `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}`,
+    time: `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`,
+  };
 }
 
 const RELOADED = 'Someone else changed this meeting. We reloaded it - check and save again.';
@@ -124,6 +139,13 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
             (added)="mergeParticipants($event)" />
         }
 
+        @if (mode() === 'create' && startInPast()) {
+          <!-- Caught here, before the server refuses it (meeting_start_in_past). -->
+          <p data-testid="meeting-start-past" role="alert" class="text-xs text-[var(--color-danger)]">
+            This time has already passed. Pick a later start.
+          </p>
+        }
+
         @if (!notesOnly()) {
           <app-availability-warnings [conflicts]="availability()" [checking]="checkingAvailability()"
             [repeating]="form.controls.recurrence.value !== 'none'" [timezone]="form.controls.timezone.value" />
@@ -213,6 +235,8 @@ export class MeetingFormModalComponent implements OnInit {
       const minutes = Math.round((Date.parse(prefill.end) - Date.parse(prefill.start)) / 60000);
       this.form.patchValue({ title: prefill.title, date: prefill.start.slice(0, 10), time: prefill.start.slice(11, 16),
         durationMinutes: minutes > 0 ? minutes : 30 });
+    } else {
+      this.form.patchValue(nextHalfHour(new Date(), this.form.controls.timezone.value));
     }
     const placement = this.placement();
     this.projectId.set(placement?.projectId ?? null);
@@ -224,8 +248,20 @@ export class MeetingFormModalComponent implements OnInit {
   canSave(): boolean {
     if (this.form.controls.title.value.trim() === '' || !this.form.controls.date.value) return false;
     if (!this.form.controls.isAllDay.value && this.form.controls.durationMinutes.invalid) return false;
+    if (this.mode() === 'create' && this.startInPast()) return false;
     return this.mode() === 'edit' || this.projectId() === null || this.objectiveId() !== null;
   }
+
+  /** Every change to the form, so the "already passed" note redraws under OnPush. */
+  private readonly formChanges = toSignal(this.form.valueChanges, { initialValue: null });
+
+  /** A new meeting must start after now, as the server checks; all day counts from midnight, so today has begun. */
+  readonly startInPast = computed(() => {
+    this.formChanges();
+    const v = this.form.getRawValue();
+    if (!v.date || (!v.isAllDay && !v.time)) return false;
+    return Date.parse(toOffsetIso(v.date, v.isAllDay ? '00:00' : v.time, v.timezone)) <= Date.now();
+  });
 
   setOffice(): void {
     this.projectId.set(null);
