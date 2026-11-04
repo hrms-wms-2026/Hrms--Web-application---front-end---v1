@@ -4,7 +4,7 @@ import { Observable, map, tap } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { SILENT_HTTP_ERRORS } from '../../../../core/interceptors/error.interceptor';
 import {
-  CreateMeetingRequest, EditMeetingRequest, EmployeeMeetingAttendanceResponse, MeetingActionItemView, MeetingAttendanceResponse,
+  CreateMeetingRequest, EditMeetingRequest, MeetingActionItemView, MeetingAttendanceResponse,
   MeetingAttendanceStatusResponse, MeetingAttendeesRequest, MeetingAttendeesResponse, MeetingBulkPreviewRequest,
   MeetingBulkPreviewResponse, MeetingCreatedResponse, MeetingEditResponse, MeetingLinkRequest, MeetingLinkResponse, MeetingListItem,
   MeetingMoveResponse, MeetingOccurrenceResponse, MeetingScope, MeetingSeriesLinkResponse, MeetingSeriesResponse, MoveMeetingRequest,
@@ -125,13 +125,6 @@ export class MeetingApiService {
 
   bulkPreview(request: MeetingBulkPreviewRequest): Observable<MeetingBulkPreviewResponse> {
     return this.watched(this.http.post<MeetingBulkPreviewResponse>(`${this.baseUrl}/bulk-preview`, request, this.silent));
-  }
-
-  employeeMeetingAttendance(employeeId: string, from?: string, to?: string): Observable<EmployeeMeetingAttendanceResponse> {
-    let params = new HttpParams();
-    if (from) params = params.set('from', from);
-    if (to) params = params.set('to', to);
-    return this.http.get<EmployeeMeetingAttendanceResponse>(`${environment.apiUrl}/employees/${employeeId}/meeting-attendance`, { params });
   }
 
   private watched<T>(request: Observable<T>): Observable<T> {
