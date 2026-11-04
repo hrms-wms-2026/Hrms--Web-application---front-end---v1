@@ -40,6 +40,18 @@ function addDays(isoDate: string, days: number): string {
 const DESIGN_WIDTH = 800;
 const DESIGN_HEIGHT = 620;
 
+/**
+ * Whether hour tick `index` of `count` is labelled when at most `max` labels fit: every `step`th hour
+ * from the first, plus the last - dropping the one before it if it would sit closer than a step.
+ */
+export function isTickShown(index: number, count: number, max: number): boolean {
+  if (count <= max) return true;
+  const last = count - 1;
+  if (index === last) return true;
+  const step = Math.ceil(last / (max - 1));
+  return index % step === 0 && last - index >= step;
+}
+
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: 'Not clocked in',
   clocked_in: 'Clocked in',
@@ -203,10 +215,16 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     this.canvas.set({ width: width / scale, height: height / scale, scale });
   }
 
-  /** Hour labels: first and last always; every other hour from a mid-size card; all on a wide one. */
+  /**
+   * Hour labels, thinned so they never run into each other: a long day (e.g. 9 AM to 11 PM after
+   * working late) has too many hours for the bar, so only every 2nd/3rd/... hour is labelled. How
+   * many fit depends on the card's width - just first and last on a narrow one.
+   */
   protected tickClass(index: number, count: number): string {
-    if (index === 0 || index === count - 1) return 'flex';
-    return index % 2 === 0 && index < count - 2 ? 'hidden @lg:flex' : 'hidden @2xl:flex';
+    const base = isTickShown(index, count, 2) ? 'flex' : 'hidden';
+    const lg = isTickShown(index, count, 6) ? '@lg:flex' : '@lg:hidden';
+    const xl2 = isTickShown(index, count, 10) ? '@2xl:flex' : '@2xl:hidden';
+    return `${base} ${lg} ${xl2}`;
   }
 
   protected blockClass(type: DayBlockType): string {
