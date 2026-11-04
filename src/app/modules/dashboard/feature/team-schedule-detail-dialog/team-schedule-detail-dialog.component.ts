@@ -76,6 +76,8 @@ function arrow(change: number): string {
  * A status filter and a search narrow both tables. Titles arrive masked ("Private meeting") from the backend and are used
  * as they are everywhere, CSV included. No "Add Schedule": a manager cannot plan for someone else.
  */
+const MAX_AXIS_LABELS = 7;
+
 @Component({
   selector: 'app-team-schedule-detail-dialog',
   standalone: true,
@@ -170,7 +172,8 @@ export class TeamScheduleDetailDialogComponent {
     const data = this.store.data();
     return timelineSpan(data?.members ?? [], data?.date ?? '1970-01-01');
   });
-  protected readonly ticks = computed(() => hourTicks(this.span()));
+  /** At most 7 hour labels: the schedule column is about 320-600px wide, room for 7 "09:00" labels. */
+  protected readonly ticks = computed(() => hourTicks(this.span(), MAX_AXIS_LABELS));
 
   protected readonly unscheduledRows = computed(() =>
     this.dayMembers().flatMap((m) => m.unscheduled.map((u) => ({ member: m, row: u }))),

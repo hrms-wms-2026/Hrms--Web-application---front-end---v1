@@ -135,6 +135,8 @@ describe("Today's team schedule format", () => {
     expect(spanPosition(at(7), at(8), span)).toBeNull();
     expect(spanPosition(at(16), at(19), span)).toEqual({ left: 87.5, width: 12.5 });
     expect(hourTicks(span)).toHaveLength(9);
+    // A narrow axis caps the labels: 8 hours in at most 5 labels means every 2 hours.
+    expect(hourTicks(span, 5).map((t) => t.left)).toEqual([0, 25, 50, 75, 100]);
   });
 });
 

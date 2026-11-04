@@ -99,11 +99,11 @@
                   <tr>
                     <th scope="col" class="tsd-num tsd-hash">#</th>
                     <th class="tsd-sticky" scope="col">Employee</th>
-                    <th scope="col">Workload</th>
+                    <th scope="col" class="tsd-workload-col">Workload</th>
                     <th scope="col" class="tsd-track-col">
                       <div class="tsd-axis">
                         @for (t of ticks(); track t.left) {
-                          <span class="tsd-tick" [style.left.%]="t.left">{{ t.label }}</span>
+                          <span class="tsd-tick" [class.tsd-tick--first]="t.left === 0" [class.tsd-tick--last]="t.left === 100" [style.left.%]="t.left">{{ t.label }}</span>
                         }
                       </div>
                     </th>
@@ -136,6 +136,9 @@
                       </td>
                       <td class="tsd-track-col">
                         <div class="tsd-track">
+                          @for (t of ticks(); track t.left) {
+                            <span class="tsd-gridline" aria-hidden="true" [style.left.%]="t.left"></span>
+                          }
                           @for (item of m.items; track item.taskId + item.start) {
                             @if (position(item.start, item.end); as pos) {
                               <span

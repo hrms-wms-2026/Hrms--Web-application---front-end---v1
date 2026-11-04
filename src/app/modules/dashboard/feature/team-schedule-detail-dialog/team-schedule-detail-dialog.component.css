@@ -195,7 +195,8 @@
 
 .tsd-table {
   width: 100%;
-  min-width: 760px;
+  /* # 32 + employee 176 + workload 88 + planned/actual 2 x 80 + completion 160 + the schedule's 320 minimum. */
+  min-width: 940px;
   border-collapse: collapse;
   font-size: 0.8125rem;
 }
@@ -205,6 +206,7 @@
   border-bottom: 1px solid var(--color-border);
   padding: 0 0.5rem;
   text-align: left;
+  vertical-align: middle;
 }
 .tsd-table thead th {
   height: 28px;
@@ -226,15 +228,39 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The schedule column takes every pixel the fixed columns leave, never less than 320px, so its hour labels
+   and blocks have room (without a width the table shrank it to its absolutely-positioned content: nothing). */
+.tsd-track-col {
+  width: 100%;
+  min-width: 320px;
+}
+.tsd-workload-col {
+  width: 5.5rem;
+}
 .tsd-axis {
   position: relative;
-  height: 100%;
+  height: 28px;
 }
 .tsd-tick {
   position: absolute;
-  top: 0.5rem;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* The first and last labels sit inside the column instead of hanging over its edges. */
+.tsd-tick--first {
+  transform: translate(0, -50%);
+}
+.tsd-tick--last {
+  transform: translate(-100%, -50%);
+}
+.tsd-gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgb(226 232 240);
 }
 
 .tsd-track {

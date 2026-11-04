@@ -126,10 +126,12 @@ export function spanPosition(
   };
 }
 
-/** Hour ticks of a span: every hour (or every 2 when it is long). */
-export function hourTicks(span: { start: Date; end: Date }): { label: string; left: number }[] {
+/** Hour ticks of a span: every hour (or every 2 when it is long). With maxLabels the step widens further so no
+ * more than that many labels are drawn (a narrow axis never overlaps them). */
+export function hourTicks(span: { start: Date; end: Date }, maxLabels?: number): { label: string; left: number }[] {
   const total = span.end.getTime() - span.start.getTime();
-  const step = total > 10 * HOUR ? 2 : 1;
+  let step = total > 10 * HOUR ? 2 : 1;
+  if (maxLabels && maxLabels > 1 && total > 0) step = Math.max(step, Math.ceil(total / HOUR / (maxLabels - 1)));
   const ticks: { label: string; left: number }[] = [];
   for (let t = span.start.getTime(); t <= span.end.getTime(); t += step * HOUR) {
     ticks.push({
