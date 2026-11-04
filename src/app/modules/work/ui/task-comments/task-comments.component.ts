@@ -396,7 +396,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
       border: 1px solid var(--color-border);
       border-radius: 8px;
       padding: 4px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      box-shadow: var(--shadow-popover);
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -456,7 +456,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 8px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       cursor: default;
       font-size: 12px;
       color: var(--color-text-primary);

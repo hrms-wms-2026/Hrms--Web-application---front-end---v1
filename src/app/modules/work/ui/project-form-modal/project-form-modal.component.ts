@@ -399,7 +399,7 @@ const STEP_ITEMS = [
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: 10px;
-      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.12), 0 8px 10px -6px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-modal);
       overflow: visible;
       outline: none;
     }
@@ -560,7 +560,7 @@ const STEP_ITEMS = [
       background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
       color: var(--color-accent);
       font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: var(--shadow-card);
     }
 
     .proj-category-card--add {

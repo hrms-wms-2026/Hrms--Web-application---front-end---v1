@@ -222,11 +222,11 @@ export const PEOPLE_CARD_HEIGHT = 64;
       width: 250px; height: 64px; padding: 0.625rem 0.875rem;
       border-radius: 10px; background: var(--color-surface);
       border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--shadow-popover);
       color: inherit; text-decoration: none; user-select: none; cursor: pointer;
       transition: border-color 150ms ease, box-shadow 150ms ease;
     }
-    .pcn-card:hover { border-color: var(--color-sidebar-active-bg, #2563eb); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); }
+    .pcn-card:hover { border-color: var(--color-sidebar-active-bg, #2563eb); box-shadow: var(--shadow-popover); }
     .pcn-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus-ring); }
     .pcn-card--selected { border-color: var(--color-accent) !important; background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 24%, transparent); }
     .pcn-card--coverage-selected { border: 2px solid #2563eb !important; background: color-mix(in srgb, #2563eb 7%, var(--color-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #2563eb 18%, transparent), 0 8px 22px rgba(37, 99, 235, 0.14); }
@@ -281,7 +281,7 @@ export const PEOPLE_CARD_HEIGHT = 64;
     .pcn-hover {
       width: 300px; border-radius: 14px; overflow: hidden;
       background: var(--color-surface); border: 1px solid var(--color-border);
-      box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.28), 0 4px 12px -4px rgba(15, 23, 42, 0.1);
+      box-shadow: var(--shadow-modal);
       animation: pcnHoverIn 120ms ease-out;
     }
     .pcn-hover__head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 1rem 1rem 0.875rem; }

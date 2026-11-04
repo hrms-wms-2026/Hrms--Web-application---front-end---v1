@@ -385,7 +385,7 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
         border: 1px solid var(--color-border);
         border-radius: 8px;
         background: var(--color-surface);
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        box-shadow: var(--shadow-card);
         transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
       }
       .board-structure__row:hover {
@@ -511,7 +511,7 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
         border: 1px solid var(--color-border);
         border-radius: 8px;
         padding: 4px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-popover);
       }
       .board-structure__menu-item {
         display: flex;
@@ -552,7 +552,7 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
         border: 1px solid var(--color-border);
         border-radius: 8px;
         background: var(--color-surface);
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        box-shadow: var(--shadow-card);
       }
       .board-structure__add-input {
         flex: 1;
@@ -678,7 +678,7 @@ const colors = { not_started: '#94A3B8', active: '#2563EB', done: '#16A34A' };
       .cdk-drag-preview {
         box-sizing: border-box;
         border-radius: 8px;
-        box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.18), 0 6px 10px -2px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-popover);
         background: var(--color-surface);
         border: 1px solid var(--color-border);
         display: flex;

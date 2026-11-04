@@ -109,7 +109,31 @@ Rule: no hex, `rgb()` or Tailwind gray/white/black utilities in components. Use 
   - Planner and Settings were checked live in dark mode.
   - **Not checked live:** the auth pages. That would need logging out, so it is left for the Phase 4 check.
 - **Left as is:** the public landing pages (`modules/public`), which already have their own dark mode handled by the landing header.
-- **Still to do in Phase 3:** the shadow cleanup (step 8) and the hard-coded-colour guard script.
+  - Committed in `b4a3a8ce`.
+- **Shadows: done.** 149 plain neutral drop shadows now use tokens:
+  - small → `--shadow-card`
+  - medium → `--shadow-popover`
+  - large → `--shadow-modal`, a new token with a dark value too
+  - Focus rings, coloured glows, inset, directional (neumorphic) and `none` shadows are unchanged.
+- **Guard: done.** `scripts/check-hardcoded-colors.mjs` runs in `npm run lint` and as `npm run check:colors`.
+  - It fails when a file has more hex values or palette Tailwind colour utilities than `scripts/hardcoded-colors-baseline.json` allows.
+  - The baseline starts at 102 files and 568 colours. These are mostly intentional data: chart series, task-kind palette, pickers and brand logos.
+  - Use `--update` only after removing colours, or for intentional data.
+
+**Phase 4: done (2026-11-05).**
+- `core/theme/models/theme-mode.model.ts`: `light | dark | system`, default light. The key is `onevo.color.mode`, shared with the landing page.
+- `ThemeStore` changes:
+  - adds `mode`, `resolvedMode` and `setMode()`
+  - System follows `prefers-color-scheme` live
+  - an explicit Light or Dark choice ignores OS changes
+  - sets both `data-mode` and `.dark` on the root
+- `src/index.html`: a pre-boot inline script applies the stored mode and preset before Angular starts, so there is no light flash.
+- Appearance panel: a Light / Dark / System segmented radiogroup above Theme Presets. When System is selected, a hint says what it currently resolves to.
+- Landing header: uses `ThemeStore` instead of its own DOM and localStorage code.
+- Verified live in Chrome:
+  - Dark applies app-wide and survives a reload.
+  - System resolves to the OS setting.
+  - Auth (forgot-password) renders dark.
 - What is left in shared code is data: the rich-text palette, filter-bar swatches, the entity-icon registry, and the canvas `fillStyle`.
 
 **Token mapping rules used (keep for the remaining batches):**

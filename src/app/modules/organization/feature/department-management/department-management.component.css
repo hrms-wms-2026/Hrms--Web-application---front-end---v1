@@ -88,7 +88,7 @@
   border-radius: 10px;
   background: var(--color-surface);
   border: 1.5px solid color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 30%, transparent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-popover);
 }
 
 .dm-company-icon {

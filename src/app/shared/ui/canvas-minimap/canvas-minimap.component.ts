@@ -83,7 +83,7 @@ export interface CanvasMinimapLink {
     :host {
       position: absolute; left: 1rem; bottom: 1rem; z-index: 6; display: flex; gap: 0.25rem;
       padding: 0.375rem; border-radius: 0.75rem; border: 1px solid var(--color-border);
-      background: var(--color-surface); box-shadow: 0 6px 18px rgb(15 23 42 / 0.08);
+      background: var(--color-surface); box-shadow: var(--shadow-popover);
       touch-action: none;
     }
     .cmm-map {

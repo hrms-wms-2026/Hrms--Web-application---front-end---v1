@@ -279,12 +279,12 @@ export interface TaskCardAssignableMember {
       border-radius: 12px;
       padding: 12px 14px;
       cursor: pointer;
-      box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+      box-shadow: var(--shadow-card);
       transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
     }
     .task-card:hover {
       border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border));
-      box-shadow: 0 5px 14px rgb(15 23 42 / 0.08);
+      box-shadow: var(--shadow-popover);
       transform: translateY(-1px);
     }
     .task-card__header {
@@ -321,14 +321,14 @@ export interface TaskCardAssignableMember {
       cursor: pointer;
       line-height: 1.3;
       transition: all 120ms ease;
-      box-shadow: 0 0.5px 1.5px rgb(15 23 42 / 0.04);
+      box-shadow: var(--shadow-card);
     }
     .task-card__meta-btn:hover,
     .task-card__meta-btn[aria-expanded="true"] {
       background: var(--color-surface-secondary);
       border-color: var(--color-accent);
       color: var(--color-text-primary);
-      box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+      box-shadow: var(--shadow-card);
     }
     .task-card__meta-btn--icon-only {
       width: 26px;
@@ -389,7 +389,7 @@ export interface TaskCardAssignableMember {
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 8px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       cursor: default;
       font-size: 12px;
       color: var(--color-text-primary);

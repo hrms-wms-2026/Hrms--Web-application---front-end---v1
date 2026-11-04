@@ -68,7 +68,7 @@ const EASING = 'cubic-bezier(0.16, 1, 0.3, 1)';
       position: absolute; top: 0; left: 0; right: 0; z-index: 61;
       max-height: min(70vh, 40rem); overflow-y: auto; overflow-x: hidden;
       border-radius: 1rem;
-      box-shadow: 0 24px 48px -12px rgb(15 23 42 / 0.28), 0 8px 16px -8px rgb(15 23 42 / 0.12);
+      box-shadow: var(--shadow-modal);
     }
   `,
   host: {

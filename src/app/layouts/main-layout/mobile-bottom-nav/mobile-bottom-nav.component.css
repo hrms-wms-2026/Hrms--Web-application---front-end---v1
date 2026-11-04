@@ -25,8 +25,7 @@
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 22px;
     box-shadow:
-      0 12px 30px rgba(0, 0, 0, 0.35),
-      0 2px 8px rgba(0, 0, 0, 0.2);
+      var(--shadow-popover);
     backdrop-filter: blur(16px);
   }
 
@@ -109,7 +108,7 @@
     padding: 0.5rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
     background: var(--color-surface);
     border-radius: 20px 20px 0 0;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--shadow-popover);
     animation: more-rise 220ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 

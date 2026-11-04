@@ -84,7 +84,7 @@ const BAR_OFFSET = '40px';
       align-items: center;
       background: var(--color-surface);
       border-top: 1px solid var(--color-border);
-      box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--shadow-card);
       padding: 0 12px;
       box-sizing: border-box;
       border-radius: 0 0 16px 16px;
@@ -114,7 +114,7 @@ const BAR_OFFSET = '40px';
       border: 1px solid var(--color-border);
       border-radius: 6px;
       background: var(--color-surface);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--shadow-card);
       transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
     }
     .drafts-bar__chip:hover {
@@ -208,7 +208,7 @@ const BAR_OFFSET = '40px';
         padding: 0 6px;
         border: 1px solid var(--color-border);
         border-radius: 9999px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        box-shadow: var(--shadow-popover);
         background: var(--color-surface);
         pointer-events: auto;
       }

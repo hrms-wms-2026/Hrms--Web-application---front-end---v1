@@ -41,7 +41,7 @@
 /* Lift on hover for nice interactivity */
 .psp-circle:hover {
   transform: translateY(-2px) scale(1.08);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-popover);
   z-index: 1;
 }
 

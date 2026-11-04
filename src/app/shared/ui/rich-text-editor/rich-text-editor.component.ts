@@ -463,7 +463,7 @@ export interface SlashMenuCoords {
     .tfm-editor__tool svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .tfm-link-anchor { position: relative; display: inline-flex; }
     .tfm-image-input-hidden { display: none; }
-    .tfm-link-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1050; width: 250px; padding: 10px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 12px 28px rgb(15 23 42 / .18); display: flex; flex-direction: column; gap: 8px; animation: tfm-popover-in 120ms ease-out; }
+    .tfm-link-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1050; width: 250px; padding: 10px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-popover); display: flex; flex-direction: column; gap: 8px; animation: tfm-popover-in 120ms ease-out; }
     .tfm-link-popover__row { display: flex; width: 100%; }
     .tfm-link-input { width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: 5px; background: var(--color-surface-secondary); font: inherit; font-size: 12px; color: var(--color-text-primary); outline: none; }
     .tfm-link-input:focus { border-color: var(--color-accent); background: var(--color-surface); }
@@ -544,7 +544,7 @@ export interface SlashMenuCoords {
     ::ng-deep .tfm-preview-link { color: var(--color-accent); text-decoration: underline; cursor: pointer; }
 
     /* Slash Command Palette */
-    .tfm-slash-menu { position: absolute; z-index: 1100; width: 300px; max-height: 310px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.08); animation: tfm-popover-in 120ms ease-out; display: flex; flex-direction: column; padding: 4px; transform-origin: top left; }
+    .tfm-slash-menu { position: absolute; z-index: 1100; width: 300px; max-height: 310px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-modal); animation: tfm-popover-in 120ms ease-out; display: flex; flex-direction: column; padding: 4px; transform-origin: top left; }
     .tfm-slash-menu--upward { animation: tfm-popover-in-up 120ms ease-out; transform-origin: bottom left; }
     .tfm-slash-menu--empty { padding: 14px; text-align: center; }
     .tfm-slash-empty-text { font-size: 12px; color: var(--color-text-secondary); font-style: italic; }

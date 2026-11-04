@@ -100,7 +100,7 @@ export const STEP_LABELS: Record<OffboardingWizardStep, string> = {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      box-shadow: var(--shadow-card);
       overflow-x: auto;
     }
     .ow-step-flow__item {
@@ -159,7 +159,7 @@ export const STEP_LABELS: Record<OffboardingWizardStep, string> = {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: 14px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+      box-shadow: var(--shadow-card);
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

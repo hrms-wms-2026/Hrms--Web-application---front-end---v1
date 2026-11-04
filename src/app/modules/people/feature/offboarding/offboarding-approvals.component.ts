@@ -133,7 +133,7 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      box-shadow: var(--shadow-card);
     }
     .ap-card__header {
       display: flex;

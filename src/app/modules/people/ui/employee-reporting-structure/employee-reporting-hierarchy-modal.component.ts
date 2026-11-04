@@ -124,7 +124,7 @@ export const PERSON_CARD_HEIGHT = 72;
       border-radius: 10px;
       background: var(--color-surface);
       border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--shadow-popover);
     }
     .rh-card--self {
       border: 2px solid var(--color-sidebar-active-bg, #2563eb);

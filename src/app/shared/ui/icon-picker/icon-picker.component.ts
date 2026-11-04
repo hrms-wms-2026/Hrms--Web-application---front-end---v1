@@ -152,7 +152,7 @@ const EMOJI_DATA_URL = '/emoji/data.json';
     .ip-panel {
       width: 22rem; max-width: calc(100vw - 1rem); display: flex; flex-direction: column;
       border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface);
-      box-shadow: 0 12px 32px rgb(15 23 42 / 0.14); overflow: hidden;
+      box-shadow: var(--shadow-modal); overflow: hidden;
     }
     .ip-head { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.625rem 0; }
     .ip-tabs { display: inline-flex; gap: 0.25rem; }

@@ -282,7 +282,7 @@ app-position-template-drawer {
 .pm-chart-switch__btn--active {
   background: var(--color-surface);
   color: var(--color-accent);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-card);
 }
 
 .pm-chart-switch__btn:focus-visible {
@@ -302,7 +302,7 @@ app-position-template-drawer {
   border: 1px solid color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
   border-radius: 10px;
   background: color-mix(in srgb, var(--color-accent) 5%, var(--color-surface));
-  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-popover);
 }
 
 .pm-selection-summary,
@@ -357,7 +357,7 @@ app-position-template-drawer {
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-popover);
   font-size: 0.6875rem;
   color: var(--color-text-secondary);
 }
