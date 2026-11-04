@@ -89,7 +89,7 @@ import { Component, input, output, signal } from '@angular/core';
       }
       .proj-color-swatch--custom {
         background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-        color: white;
+        color: var(--color-text-on-solid);
       }
       .proj-color-native {
         position: absolute;

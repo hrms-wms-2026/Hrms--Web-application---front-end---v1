@@ -605,7 +605,7 @@ export interface QuickTaskCreatedEvent {
       gap: 6px;
       padding: 3px 9px 3px 7px;
       border-radius: 6px;
-      color: #ffffff;
+      color: var(--color-text-on-solid);
       line-height: 1.2;
     }
     .task-board-column__status-dot {
@@ -615,14 +615,14 @@ export interface QuickTaskCreatedEvent {
       width: 11px;
       height: 11px;
       border-radius: 999px;
-      background: #ffffff;
-      border: 1.5px solid #ffffff;
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-surface);
       box-sizing: border-box;
       flex-shrink: 0;
     }
     .task-board-column__status-dot--not-started {
       background: transparent;
-      border: 1.5px solid #ffffff;
+      border: 1.5px solid var(--color-surface);
     }
     .task-board-column__status-dot--done {
       background: transparent;
@@ -635,7 +635,7 @@ export interface QuickTaskCreatedEvent {
     .task-board-column__title-text {
       font-size: 11px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--color-text-on-solid);
       text-transform: uppercase;
       letter-spacing: 0.4px;
       white-space: nowrap;
@@ -952,7 +952,7 @@ export interface QuickTaskCreatedEvent {
     }
     .quick-task-card__save-btn:hover:not(:disabled) {
       background: var(--color-accent);
-      color: #fff;
+      color: var(--color-text-on-solid);
     }
     .quick-task-card__save-btn:disabled {
       opacity: 0.45;

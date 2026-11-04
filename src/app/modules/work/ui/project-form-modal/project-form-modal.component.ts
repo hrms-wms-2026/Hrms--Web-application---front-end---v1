@@ -298,7 +298,7 @@ const STEP_ITEMS = [
                 <div class="rounded-lg border border-[var(--color-border)] overflow-hidden bg-[var(--color-surface)]">
                   <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]/40">
                     <div
-                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-white text-sm shadow-sm"
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-[var(--color-text-on-solid)] text-sm shadow-sm"
                       [style.background]="color() || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
                     >
                       {{ name().substring(0, 1).toUpperCase() || 'P' }}
@@ -331,7 +331,7 @@ const STEP_ITEMS = [
             }
 
             @if (errorMessage()) {
-              <p class="text-xs font-medium text-[var(--color-danger-text)] bg-red-50 p-2.5 rounded-lg border border-red-200 mt-2" role="alert">
+              <p class="text-xs font-medium text-[var(--color-danger-text)] bg-[var(--color-danger-subtle)] p-2.5 rounded-lg border border-[var(--color-danger-subtle)] mt-2" role="alert">
                 {{ errorMessage() }}
               </p>
             }
@@ -603,7 +603,7 @@ const STEP_ITEMS = [
     .proj-category-add-btn--confirm {
       border: none;
       background: var(--color-accent);
-      color: white;
+      color: var(--color-text-on-solid);
     }
     .proj-category-add-btn--cancel {
       border: 1px solid var(--color-border);

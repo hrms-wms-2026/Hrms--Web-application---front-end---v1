@@ -141,7 +141,7 @@ const openSprintMenuId = signal<string | null>(null);
     .sprint-tab__circle { width: 32px; height: 32px; border: 1px solid transparent; }
     .sprint-tab__circle svg, .sprint-tab__icon-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .sprint-tab__circle:active, .sprint-tab__icon-btn:active { transform: scale(0.94); }
-    .sprint-tab__primary { background: var(--color-accent); color: #fff; }
+    .sprint-tab__primary { background: var(--color-accent); color: var(--color-text-on-solid); }
     .sprint-tab__primary:hover { background: color-mix(in srgb, var(--color-accent) 86%, #000); }
     .sprint-tab__play { fill: currentColor; stroke: none; }
     .sprint-tab__more { background: var(--color-surface-secondary); border-color: var(--color-border); color: var(--color-text-secondary); }
@@ -155,7 +155,7 @@ const openSprintMenuId = signal<string | null>(null);
     .sprint-tab__icon-btn { width: 30px; height: 30px; border: none; background: transparent; color: var(--color-text-secondary); }
     .sprint-tab__icon-btn:hover { background: var(--color-surface-secondary); color: var(--color-accent); }
     .sprint-tab__close-sprint:hover { color: var(--color-success); }
-    [data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 10; padding: 4px 8px; border-radius: 6px; background: #1f2937; color: #fff; font-size: 11px; font-weight: 500; line-height: 1.3; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 3px); transition: opacity 120ms ease, transform 120ms ease; }
+    [data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 10; padding: 4px 8px; border-radius: 6px; background: #1f2937; color: var(--color-text-on-solid); font-size: 11px; font-weight: 500; line-height: 1.3; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 3px); transition: opacity 120ms ease, transform 120ms ease; }
     [data-tooltip]:hover::after, [data-tooltip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
     .sprint-tab__circle:focus-visible, .sprint-tab__icon-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .sprint-tab__progress-bar { height: 3px; background: var(--color-border); }

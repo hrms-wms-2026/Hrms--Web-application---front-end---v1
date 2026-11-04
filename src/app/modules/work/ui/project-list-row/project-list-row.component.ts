@@ -36,7 +36,7 @@ import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-ic
         <div
           class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-base transition-all"
           [class]="selected()
-            ? 'bg-[var(--color-accent)] text-white shadow-sm'
+            ? 'bg-[var(--color-accent)] text-[var(--color-text-on-solid)] shadow-sm'
             : 'border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-accent)]'"
           [style.background]="selected() && project().color ? project().color : null"
         >

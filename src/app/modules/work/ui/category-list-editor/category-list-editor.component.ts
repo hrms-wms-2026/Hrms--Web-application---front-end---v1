@@ -271,7 +271,7 @@ interface DraftRow {
     }
     .category-list__delete-icon:hover {
       color: var(--color-danger-text, #ef4444);
-      background: color-mix(in srgb, #ef4444 10%, transparent);
+      background: color-mix(in srgb, var(--color-danger) 10%, transparent);
     }
     .category-list__system-badge {
       display: inline-flex;

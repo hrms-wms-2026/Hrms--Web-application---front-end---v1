@@ -1186,7 +1186,7 @@ describe('MilestoneTreeTabComponent', () => {
 
       // The exact Tailwind class names - a backslash-escaped binding adds a class no rule matches.
       expect(network.classList.contains('bg-[var(--color-accent)]')).toBe(true);
-      expect(network.classList.contains('text-white')).toBe(true);
+      expect(network.classList.contains('text-[var(--color-text-on-solid)]')).toBe(true);
       expect(tree.classList.contains('text-[var(--color-text-secondary)]')).toBe(true);
       expect(tree.classList.contains('bg-[var(--color-accent)]')).toBe(false);
     });

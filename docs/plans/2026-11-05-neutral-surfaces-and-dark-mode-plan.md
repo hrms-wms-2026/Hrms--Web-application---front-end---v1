@@ -95,7 +95,13 @@ Rule: no hex, `rgb()` or Tailwind gray/white/black utilities in components. Use 
 - **Batch 3 (People) and Batch 4 (Attendance): done.** Employee detail and Attendance were checked live in both modes.
   - The script now also handles `[class.bg-white]` bindings, `-[#hex]` arbitrary classes, neutral SVG `stroke`/`fill`, and the `white` keyword.
   - Chart or graph files, and chart-like selectors (seg, bar, legend, dot, cell, swatch, fill), keep their colored values, so legends match their charts.
-  - Specs that asserted old class names were updated.
+  - Specs that asserted old class names were updated. Committed in `1dc4e9c2`.
+- **Batch 5 (Organization), Batch 6 (Leave) and Batch 7 (Work): done.** Work Tree and Org Positions were checked live in both modes.
+  - Kept fixed on purpose:
+    - the `task-kind.ts` identity palette (Task teal, Bug red, …)
+    - `project-card` hero overlays, which sit on a dark image in both modes
+    - the colour/hue pickers
+  - New rule: white elements on a selected accent row (`bg-white`, `bg-white/15`) map to `--color-text-on-solid`, never `--color-surface`.
 - What is left in shared code is data: the rich-text palette, filter-bar swatches, the entity-icon registry, and the canvas `fillStyle`.
 
 **Token mapping rules used (keep for the remaining batches):**

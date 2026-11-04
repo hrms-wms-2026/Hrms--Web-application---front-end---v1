@@ -357,7 +357,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
     .tc-text ::ng-deep a { color: var(--color-accent); text-decoration: underline; }
     .tc-text ::ng-deep .tfm-check-item { position: relative; display: block; padding-left: 24px; min-height: 22px; margin: 2px 0; }
     .tc-text ::ng-deep .tfm-check-item::before { content: ''; position: absolute; left: 2px; top: 4px; width: 13px; height: 13px; border: 1.5px solid var(--color-border); border-radius: 3px; background: var(--color-surface); }
-    .tc-text ::ng-deep .tfm-check-item.is-checked::before { content: '✓'; border-color: var(--color-accent); background: var(--color-accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center; }
+    .tc-text ::ng-deep .tfm-check-item.is-checked::before { content: '✓'; border-color: var(--color-accent); background: var(--color-accent); color: var(--color-text-on-solid); font-size: 10px; font-weight: 700; line-height: 13px; text-align: center; }
     .tc-text ::ng-deep .tfm-check-item.is-checked > .tfm-check-text { text-decoration: line-through; opacity: 0.6; }
     /* Action Bar */
     .tc-actions-bar {

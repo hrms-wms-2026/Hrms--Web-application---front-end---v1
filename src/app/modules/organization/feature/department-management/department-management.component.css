@@ -99,7 +99,7 @@
   height: 36px;
   border-radius: 8px;
   background: var(--color-sidebar-active-bg, #2563eb);
-  color: #ffffff;
+  color: var(--color-text-on-solid);
   flex-shrink: 0;
 }
 
