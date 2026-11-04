@@ -30,8 +30,8 @@ export interface TimeOffDraft { leaveTypeId: string; startIso: string; endIso: s
         <p class="text-xs text-[var(--color-text-secondary)]">Checking the policy…</p>
       } @else if (requests.previewError(); as error) {
         <p data-testid="time-off-preview-error" class="text-xs text-[var(--color-danger)]">{{ error }}</p>
-      } @else if (requests.previewResult(); as preview) {
-        <p data-testid="time-off-preview" class="rounded-md bg-blue-50 px-2 py-1 text-xs">Policy check: {{ preview.totalHours }}h · your manager approves</p>
+      } @else if (previewText(); as text) {
+        <p data-testid="time-off-preview" class="rounded-md bg-blue-50 px-2 py-1 text-xs" [class.text-amber-800]="overBalance()">{{ text }}</p>
       }
       @if (needsDocument()) {
         <p data-testid="time-off-document-note" class="text-xs text-amber-700">This leave needs a supporting document. Use More options to attach it.</p>
@@ -67,6 +67,19 @@ export class TimeOffTabComponent implements OnInit {
     const type = this.activeTypes().find((t) => t.id === this.leaveTypeId());
     if (!type?.requiresDocument) return false;
     return type.documentRequiredAfterHours === null || this.hours() > type.documentRequiredAfterHours;
+  });
+  readonly overBalance = computed(() => (this.requests.previewResult()?.exceedsBalanceByHours ?? 0) > 0);
+  /** The policy preview: hours, the balance left (or how far over it), and the approvers in their order. */
+  readonly previewText = computed(() => {
+    const preview = this.requests.previewResult();
+    if (!preview) return null;
+    const parts = [`${preview.totalHours}h`];
+    const over = preview.exceedsBalanceByHours ?? 0;
+    if (over > 0) parts.push(`${over}h over your balance`);
+    else if (preview.balanceImpact) parts.push(`${preview.balanceImpact.remainingAfterSubmitHours}h left after this`);
+    const approvers = [...(preview.approvers ?? [])].sort((a, b) => a.sequenceOrder - b.sequenceOrder).map((a) => a.approverName);
+    if (approvers.length > 0) parts.push(`Approved by ${approvers.join(', then ')}`);
+    return parts.join(' · ');
   });
   readonly canSubmit = computed(() => !!this.leaveTypeId() && !this.needsDocument() && !this.sending()
     && !this.requests.submitting() && !this.requests.previewing() && !this.requests.previewError());
