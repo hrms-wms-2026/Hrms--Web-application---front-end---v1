@@ -8,3 +8,9 @@ export function actionCenterRailVisible(capabilities: MyTeamCapabilitiesResponse
   if (!capabilities) return false;
   return capabilities.canReviewPeopleApprovals || capabilities.canReviewExceptions || capabilities.hasWorkApprovals;
 }
+
+/** Mirrors the backend gate of Today's team schedule (DashboardWidgetAccess): My Team is available and the viewer has
+ * at least one report. */
+export function teamScheduleVisible(capabilities: MyTeamCapabilitiesResponse | null): boolean {
+  return !!capabilities && capabilities.isAvailable && capabilities.hasReports;
+}

@@ -79,3 +79,48 @@
   color: rgb(100 116 139);
   pointer-events: none;
 }
+
+/* The completion % line (percentLine): over the tracks, beside a right 0-100% axis. */
+.wc-chart {
+  position: relative;
+}
+
+.wc-chart--line {
+  padding-right: 2rem;
+}
+
+.wc-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% - 2rem);
+  height: calc(100% - 1rem);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.wc-line polyline {
+  fill: none;
+  stroke: rgb(37 99 235);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.wc-line circle {
+  fill: rgb(37 99 235);
+}
+
+.wc-axis {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 1rem;
+  display: flex;
+  width: 1.875rem;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.5625rem;
+  line-height: 1;
+  color: rgb(100 116 139);
+  text-align: right;
+}

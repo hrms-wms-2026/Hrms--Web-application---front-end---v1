@@ -42,14 +42,25 @@ import { TaskDraftApiService } from '../../data-access/task-draft-api.service';
 import { TaskDraft, TaskDraftPayload } from '../../models/task-draft.model';
 import { safeServerDetail } from '../../../../core/services/error-handler.service';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
+import { MeetingCreatedEvent } from '../../meetings/utils/meeting-created-drawer.util';
 
 export type TaskFormMode = 'create' | 'edit';
+
+/** Create-mode values handed over by the Planner create popover's Work item tab ("More options"). */
+export interface TaskFormPrefill {
+  title: string; categoryId: string | null; priority: WorkTask['priority'] | null; estimatedHours: number | null;
+  dueDate: string | null; assigneeEmployeeId: string | null;
+}
+/** The system key of a project's "Meeting" category (TaskCategorySystemKeys.Meeting on the backend). */
+const TASK_CATEGORY_MEETING = 'meeting';
 
 @Component({
   selector: 'app-task-form-modal',
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [StopClickPropagationDirective, NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
+  imports: [MeetingFormModalComponent, StopClickPropagationDirective, NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
   template: `
     @if (open()) {
       <div role="presentation" class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop()">
@@ -170,7 +181,7 @@ export type TaskFormMode = 'create' | 'edit';
                     @if (activePopover() === 'headerCategory') {
                       <div class="tfm-popover" role="dialog" aria-label="Select work item type" appStopClickPropagation>
                         <div class="tfm-popover__list">
-                          @for (c of categories(); track c.id) {
+                          @for (c of pickableCategories(); track c.id) {
                             <button
                               type="button"
                               class="tfm-popover__item"
@@ -258,6 +269,42 @@ export type TaskFormMode = 'create' | 'edit';
                 (uploadFailed)="errorMessage.set($event)"
               />
             </ng-template>
+            <!-- The create form's category chip; picking "meeting" turns the form into the meeting form, and back again. -->
+            <ng-template #createCategoryChipTpl let-up="up">
+              <div class="tfm-chip-anchor">
+                <button
+                  type="button"
+                  class="tfm-chip"
+                  data-testid="create-category-chip"
+                  [class.tfm-chip--error]="errors()['categoryId']"
+                  [class.tfm-chip--active]="categoryId()"
+                  [attr.aria-expanded]="activePopover() === 'category'"
+                  (click)="togglePopover('category', $event)"
+                  [title]="errors()['categoryId'] || selectedCategoryTitle()"
+                >
+                  <svg class="tfm-chip-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
+                  <span class="tfm-chip-label">{{ selectedCategoryTitle() }}</span>
+                </button>
+                @if (activePopover() === 'category') {
+                  <div class="tfm-popover" [class.tfm-popover--up]="up" role="dialog" appStopClickPropagation>
+                    <div class="tfm-popover__list">
+                      @for (c of pickableCategories(); track c.id) {
+                        <button
+                          type="button"
+                          class="tfm-popover__item"
+                          [attr.data-testid]="'create-category-option-' + c.name"
+                          [class.tfm-popover__item--selected]="categoryId() === c.id"
+                          (click)="categoryId.set(c.id); clearError('categoryId'); activePopover.set(null)"
+                        >
+                          <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
+                          <span class="tfm-popover__name">{{ c.name }}</span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </ng-template>
             @if (loading()) {
               <div class="tfm-loading">
                 <span class="tfm-spinner"></span>
@@ -265,6 +312,20 @@ export type TaskFormMode = 'create' | 'edit';
               </div>
             } @else if (loadError()) {
               <p class="tfm__error" role="alert">{{ loadError() }}</p>
+            } @else if (meetingMode()) {
+              <!-- Category "meeting": the same dialog becomes the meeting form, keeping what was typed. -->
+              <div class="tfm-chips-row" data-testid="meeting-mode-type-row">
+                <ng-container [ngTemplateOutlet]="createCategoryChipTpl" [ngTemplateOutletContext]="{ up: false }" />
+              </div>
+              <app-meeting-form-modal
+                data-testid="embedded-meeting-form"
+                [embedded]="true"
+                mode="create"
+                [placement]="{ projectId: projectId(), objectiveId: selectedObjectiveId() || null }"
+                [carryOver]="{ title: title(), description: description() || null }"
+                (saved)="onMeetingCreated($any($event))"
+                (closed)="onMeetingCancelled()"
+              />
             } @else if (currentEffectiveMode() === 'create') {
               @if (successToastMessage()) {
                 <div class="tfm-success-toast" role="status">
@@ -494,37 +555,7 @@ export type TaskFormMode = 'create' | 'edit';
                   </div>
 
                   <!-- Category Chip -->
-                  <div class="tfm-chip-anchor">
-                    <button
-                      type="button"
-                      class="tfm-chip"
-                      [class.tfm-chip--error]="errors()['categoryId']"
-                      [class.tfm-chip--active]="categoryId()"
-                      [attr.aria-expanded]="activePopover() === 'category'"
-                      (click)="togglePopover('category', $event)"
-                      [title]="errors()['categoryId'] || selectedCategoryTitle()"
-                    >
-                      <svg class="tfm-chip-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
-                      <span class="tfm-chip-label">{{ selectedCategoryTitle() }}</span>
-                    </button>
-                    @if (activePopover() === 'category') {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" appStopClickPropagation>
-                        <div class="tfm-popover__list">
-                          @for (c of categories(); track c.id) {
-                            <button
-                              type="button"
-                              class="tfm-popover__item"
-                              [class.tfm-popover__item--selected]="categoryId() === c.id"
-                              (click)="categoryId.set(c.id); clearError('categoryId'); activePopover.set(null)"
-                            >
-                              <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
-                              <span class="tfm-popover__name">{{ c.name }}</span>
-                            </button>
-                          }
-                        </div>
-                      </div>
-                    }
-                  </div>
+                  <ng-container [ngTemplateOutlet]="createCategoryChipTpl" [ngTemplateOutletContext]="{ up: true }" />
                 </div>
 
                 @if (errors()['objectiveId']) {
@@ -942,7 +973,7 @@ export type TaskFormMode = 'create' | 'edit';
                         @if (activePopover() === 'category') {
                           <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
-                              @for (c of categories(); track c.id) {
+                              @for (c of pickableCategories(); track c.id) {
                                 <button
                                   type="button"
                                   class="tfm-popover__item"
@@ -1191,7 +1222,8 @@ export type TaskFormMode = 'create' | 'edit';
             }
           </div>
 
-          <footer class="tfm__foot">
+          <!-- The embedded meeting form brings its own Cancel and Create. Hidden, not removed: the footer holds templates the body uses. -->
+          <footer class="tfm__foot" [style.display]="meetingMode() ? 'none' : null">
             <app-button variant="secondary" (pressed)="onCancel()">Cancel</app-button>
 
             @if (currentEffectiveMode() === 'create') {
@@ -1583,7 +1615,7 @@ export type TaskFormMode = 'create' | 'edit';
                     @if (activeSubtaskPopover()?.id === 'new' && (activeSubtaskPopover()?.type === 'tag' || activeSubtaskPopover()?.type === 'category')) {
                       <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Select work item type" appStopClickPropagation>
                         <div class="tfm-popover__list">
-                          @for (c of categories(); track c.id) {
+                          @for (c of taskCategories(); track c.id) {
                             <button
                               type="button"
                               class="tfm-popover__item"
@@ -2158,9 +2190,18 @@ export class TaskFormModalComponent {
   readonly sourceMeetingOccurrenceId = input<string | null>(null);
   /** Create mode only: resume this saved draft instead of starting from a blank form. */
   readonly draftId = input<string>('');
+  /**
+   * Create mode only: offer the "meeting" category, which turns this form into the meeting form. The Work screens
+   * (Tree, Board, Backlog) set it; everywhere else the category is not offered, so no plain task is made a "meeting".
+   */
+  readonly allowMeeting = input(false);
+  /** Create mode only: what the Planner create popover's Work item tab held ("More options"). */
+  readonly prefill = input<TaskFormPrefill | null>(null);
 
   readonly closed = output<void>();
   readonly created = output<string>();
+  /** A meeting was created from the embedded meeting form (category "meeting"). The modal closes after it. */
+  readonly meetingCreated = output<MeetingCreatedEvent>();
   readonly saved = output<void>();
   /**
    * An in-place change made while the modal stays open (subtask edits, clock-in). Hosts should
@@ -2312,6 +2353,15 @@ export class TaskFormModalComponent {
   // of the viewer's milestone scope, unlike assignableMembers() which is scoped for the picker.
   private taskAssigneeIdentities = signal<readonly TaskAssigneeIdentity[]>([]);
   categoryId = signal('');
+  private readonly meetingsAvailability = inject(MeetingsAvailabilityService);
+  /** The categories a task can carry: the system "meeting" category belongs to real meetings only. */
+  readonly taskCategories = computed(() => this.categories().filter((c) => c.systemKey !== TASK_CATEGORY_MEETING));
+  /** Creating on a Work screen while meetings can be written: "meeting" is offered and switches to the meeting form. */
+  private readonly canSwitchToMeeting = computed(() =>
+    this.currentEffectiveMode() === 'create' && this.allowMeeting() && this.meetingsAvailability.canCreate());
+  readonly pickableCategories = computed(() => (this.canSwitchToMeeting() ? this.categories() : this.taskCategories()));
+  readonly meetingMode = computed(() => this.canSwitchToMeeting()
+    && this.categories().some((c) => c.id === this.categoryId() && c.systemKey === TASK_CATEGORY_MEETING));
   allocationHint = signal<InsufficientAllocationErrorDto | null>(null);
 
   submitting = signal(false);
@@ -2805,7 +2855,8 @@ export class TaskFormModalComponent {
       this.modules.set(Array.from(knownModules.values()));
       this.sprints.set(sprintDtos.map(toSprint));
       this.categories.set(categoryDtos.map(toTaskCategoryColumn));
-      this.categoryId.set(this.categories()[0]?.id ?? '');
+      // Never open on "meeting": that category turns the form into the meeting form.
+      this.categoryId.set(this.taskCategories()[0]?.id ?? '');
 
       // Smart Module Inheritance:
       if (this.prefillModuleId() && this.modules().some((m) => m.objectiveId === this.prefillModuleId())) {
@@ -2825,6 +2876,16 @@ export class TaskFormModalComponent {
       }
 
       await this.loadMembers();
+
+      const prefill = this.prefill();
+      if (prefill && this.currentEffectiveMode() === 'create') {
+        this.title.set(prefill.title);
+        if (prefill.categoryId && this.taskCategories().some((c) => c.id === prefill.categoryId)) this.categoryId.set(prefill.categoryId);
+        if (prefill.priority) this.priority.set(prefill.priority);
+        this.estimatedHours.set(prefill.estimatedHours);
+        this.dueDate.set(prefill.dueDate ?? '');
+        if (prefill.assigneeEmployeeId) this.assigneeEmployeeId.set(prefill.assigneeEmployeeId);
+      }
 
       const draftId = this.draftId();
       if (draftId) {
@@ -2927,6 +2988,19 @@ export class TaskFormModalComponent {
     } catch {
       return false;
     }
+  }
+
+  /** The embedded meeting form created a meeting: hand it to the host and close, with no task draft to keep. */
+  onMeetingCreated(event: MeetingCreatedEvent): void {
+    this.meetingCreated.emit(event);
+    this.cleanupUnsavedAttachments();
+    this.closed.emit();
+  }
+
+  /** Cancel on the meeting form closes outright: a task draft is no place to keep an unsaved meeting. */
+  onMeetingCancelled(): void {
+    this.cleanupUnsavedAttachments();
+    this.closed.emit();
   }
 
   private async attemptClose(): Promise<void> {

@@ -336,6 +336,7 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       [taskId]="taskModalTaskId()"
       [prefillModuleId]="modalPrefillModuleId()"
       [prefillSprintId]="modalPrefillSprintId()"
+      [allowMeeting]="true"
       [draftId]="taskModalDraftId()"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"

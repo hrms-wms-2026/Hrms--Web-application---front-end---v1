@@ -1,4 +1,5 @@
-/* Every component has ONE fixed size in every view: the donut is always 128px and type never scales.
+/* Every component has ONE fixed size in every view: the donut is always DASHBOARD_DONUT_PX (set from
+ * the template) and type never scales.
  * A bigger card shows more sections and list rows (see team-progress-layout.util), never bigger
  * graphics. The fixed heights here are the ones the layout util budgets with. */
 
@@ -36,17 +37,12 @@
   overflow: hidden;
 }
 
-/* The xs and small views are short: their content sits in the middle of the card. */
-.tp-body[data-mode='xs'],
-.tp-body[data-mode='small'] {
-  justify-content: center;
-}
+/* Every view starts at the top: the donut keeps its place as the card grows, and the extra
+ * sections fill in below it. */
 
-/* ---- Donut: 128px in every view ---- */
+/* ---- Donut: DASHBOARD_DONUT_PX in every view that has room for it ---- */
 .tp-donut {
   position: relative;
-  width: 128px;
-  height: 128px;
   flex: none;
 }
 
@@ -70,8 +66,6 @@
 }
 
 .tp-donut-skeleton {
-  width: 128px;
-  height: 128px;
   border: 21px solid rgb(241 245 249);
   border-radius: 9999px;
 }
@@ -112,7 +106,15 @@
   gap: 0.5rem;
 }
 
-/* Stretched sideways: donut + figure on the left, the stacked bar and legend fill the rest. */
+/* Narrow: the donut, with the total beside it when there is room. */
+.tp-mini--donut {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+/* Stretched sideways: the figure on the left, the stacked bar and legend fill the rest. */
 .tp-mini--wide {
   flex-direction: row;
   align-items: center;
@@ -127,26 +129,8 @@
   gap: 0.625rem;
 }
 
-.tp-mini-top {
-  flex: none;
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-/* The one view where the donut is smaller than 128px: a 2-row card has no room for it under the
- * title. The total moves out of the ring into the figure beside it. */
-.tp-mini .tp-donut {
-  width: 80px;
-  height: 80px;
-}
-
-.tp-mini .tp-donut-center {
-  display: none;
-}
-
 .tp-mini-figure {
+  flex: none;
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -386,9 +370,9 @@
 .tp-status-tile {
   display: flex;
   min-width: 0;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.125rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem;
   border: 1px solid transparent;
   border-radius: 0.625rem;
   padding: 0.375rem 0.75rem;
@@ -649,4 +633,30 @@
   text-align: center;
   font-size: 0.875rem;
   color: rgb(100 116 139);
+}
+
+/* 2026-11-02 design match: the status tile's text column and its icon badge on the right. */
+.tp-status-tile-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.125rem;
+}
+
+.tp-status-tile-icon {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: color-mix(in srgb, currentColor 14%, #fff);
+}
+
+@container (max-width: 480px) {
+  .tp-status-tile-icon {
+    display: none;
+  }
 }

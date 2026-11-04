@@ -1,0 +1,122 @@
+@if (error()) {
+  <p class="tpt-muted" data-testid="tpt-error">Couldn't load planned vs worked time.</p>
+} @else if (time(); as t) {
+  @if (!t.plannerEnabled) {
+    <p class="tpt-note" data-testid="tpt-planner-off">
+      Planner is off · {{ minutes(t.clockedMinutes) }} clocked on your team's tasks
+      {{ periodLabel() }}
+    </p>
+  } @else {
+    @if (chart()) {
+      <section class="tpt-chart" data-testid="tpt-chart">
+        <p class="tpt-title">
+          Planned vs worked <span class="tpt-muted">· {{ periodLabel() }}</span>
+          <span class="tpt-coverage" [attr.title]="tooltip()" data-testid="tpt-coverage"
+            >{{ percentText(t.coveragePercent) }} covered</span
+          >
+          @if (comparison(); as c) {
+            <span class="tpt-muted">{{ c }}</span>
+          }
+        </p>
+        @if (chartData(); as c) {
+          <app-planned-actual-week-chart class="tpt-chart-plot" [days]="c.days" [labels]="c.labels" [today]="c.today" />
+        }
+      </section>
+    } @else if (band()) {
+      <section class="tpt-band" data-testid="tpt-band">
+        <p class="tpt-title">
+          Planned vs worked <span class="tpt-muted">· {{ periodLabel() }}</span>
+          <span class="tpt-coverage" [attr.title]="tooltip()" data-testid="tpt-coverage"
+            >{{ percentText(t.coveragePercent) }} covered</span
+          >
+          @if (comparison(); as c) {
+            <span class="tpt-muted">{{ c }}</span>
+          }
+        </p>
+        @if (shares(); as s) {
+          <div
+            class="tpt-bar"
+            role="img"
+            [attr.aria-label]="
+              'Planned ' + minutes(t.plannedMinutes) + ', worked ' + minutes(t.clockedMinutes)
+            "
+          >
+            <span class="tpt-seg tpt-seg--scheduled" [style.width.%]="s.scheduled"></span>
+            <span class="tpt-seg tpt-seg--outside" [style.width.%]="s.outside"></span>
+            <span class="tpt-seg tpt-seg--noplan" [style.width.%]="s.noPlan"></span>
+            @if (t.plannedMinutes > 0) {
+              <span class="tpt-marker" [style.left.%]="s.plannedMarker" title="Planned"></span>
+            }
+          </div>
+        }
+        <p class="tpt-legend">
+          <span
+            ><i class="tpt-dot tpt-seg--scheduled"></i>In plan
+            {{ minutes(t.scheduledMinutes) }}</span
+          >
+          <span
+            ><i class="tpt-dot tpt-seg--outside"></i>Outside slot
+            {{ minutes(t.outsideSlotMinutes) }}</span
+          >
+          <span><i class="tpt-dot tpt-seg--noplan"></i>No plan {{ minutes(t.noPlanMinutes) }}</span>
+          <span class="tpt-muted">Planned {{ minutes(t.plannedMinutes) }}</span>
+        </p>
+      </section>
+    }
+    @if (callout() && unscheduledMinutes() > 0) {
+      <section class="tpt-callout" data-testid="tpt-callout" title="Worked without a matching Planner slot.">
+        <p class="tpt-callout-title">
+          Unscheduled work · {{ minutes(unscheduledMinutes()) }} · {{ t.peopleWithUnscheduledWork }}
+          {{ t.peopleWithUnscheduledWork === 1 ? 'person' : 'people' }}
+        </p>
+        @for (u of unscheduledTop(); track u.row.employeeId) {
+          <p class="tpt-unscheduled-row" data-testid="tpt-unscheduled-row">
+            <span class="tpt-name">{{ u.row.displayName }}</span>
+            <span class="tpt-row-bar tpt-row-bar--red" aria-hidden="true"><span [style.width.%]="u.share"></span></span>
+            <span class="tpt-hours">{{ minutes(u.row.unscheduledMinutes) }}</span>
+          </p>
+        }
+      </section>
+    }
+    @if (workloadRows() > 0) {
+      <section
+        class="tpt-panel"
+        data-testid="tpt-workload"
+        title="More workload is not better performance."
+      >
+        <p class="tpt-title">
+          Workload <span class="tpt-muted">· planned {{ periodLabel() }}</span>
+        </p>
+        <ol>
+          @for (w of workload(); track w.employeeId) {
+            <li class="tpt-row" data-testid="tpt-workload-row">
+              <span class="tpt-rank">{{ w.rank }}</span>
+              <span class="tpt-name">{{ w.displayName }}</span>
+              <span class="tpt-hours">{{ hours(w.plannedMinutes) }}</span>
+              <span class="tpt-row-bar" aria-hidden="true">
+                <span
+                  [style.width.%]="
+                    workloadScale() > 0 ? (w.plannedMinutes * 100) / workloadScale() : 0
+                  "
+                ></span>
+              </span>
+              <span
+                class="tpt-util"
+                [class.tpt-util--over]="w.utilizationPercent !== null && w.utilizationPercent > 100"
+                [attr.title]="
+                  w.expectedMinutes === null
+                    ? 'No working hours set for their legal entity'
+                    : 'Planned of ' + minutes(w.expectedMinutes) + ' expected'
+                "
+                data-testid="tpt-util"
+                >{{ percentText(w.utilizationPercent) }}</span
+              >
+            </li>
+          } @empty {
+            <li class="tpt-muted">No one has work in scope {{ periodLabel() }}.</li>
+          }
+        </ol>
+      </section>
+    }
+  }
+}

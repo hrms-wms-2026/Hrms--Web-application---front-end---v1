@@ -1,92 +1,238 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, linkedSignal, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin } from 'rxjs';
-import { TimeTrackingApiService } from '../../../attendance/data-access/time-tracking-api.service';
-import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
-import { formatMinutes } from '../../util/timeline-segments.util';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
+import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
+import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
+import { WeekProgress, WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
+import { DailyWorkChartComponent } from '../../ui/daily-work-chart/daily-work-chart.component';
+import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { injectHostSize } from '../../utils/host-size.util';
+import { progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
+import {
+  WEEKLY_PROGRESS_CARD_CHROME,
+  WeeklyProgressView,
+  planWeeklyProgressSections,
+  resolveWeeklyProgressView
+} from '../../utils/weekly-work-progress-layout.util';
+import {
+  WEEKLY_STATUS_LABELS,
+  WeeklyDelta,
+  changeAgainst,
+  deltaOf,
+  formatWeekHours,
+  mondayBefore,
+  weeklyTiles
+} from '../../utils/weekly-work-progress-format.util';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
+import { WeeklyWorkProgressDetailDialogComponent } from '../weekly-work-progress-detail-dialog/weekly-work-progress-detail-dialog.component';
 
-/** Used per working day when today carries no required time (a weekend or a day without a schedule). */
-const DEFAULT_DAY_MINUTES = 480;
-/** Ring circumference for r = 50. */
-const RING_LENGTH = 2 * Math.PI * 50;
-
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-/** Monday to Sunday of the browser-local week containing `now`, plus today, as yyyy-MM-dd. */
-export function weekRange(now: Date): { from: string; to: string; today: string } {
-  const sinceMonday = (now.getDay() + 6) % 7;
-  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - sinceMonday);
-  const sunday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - sinceMonday + 6);
-  return { from: isoDate(monday), to: isoDate(sunday), today: isoDate(now) };
-}
-
-function safeMinutes(value: number | null | undefined): number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
-}
+const REFRESH_INTERVAL_MS = 60_000;
 
 /**
- * Small card: a ring of the hours worked this week (Monday to Sunday) against the week's target.
- * Past days come from the attendance history, today from the live today-summary (so it keeps up with
- * the other cards). The target is the week's working days (the expected-workday calendar behind
- * monthly-summary: legal-entity week, holidays) times today's required time, 8h when today has none.
+ * My Work "Weekly Work Progress". One card whose layout follows its own rendered size (the dashboard widget
+ * standard): a 2x2 card shows the fixed-size donut; a wide 2-row card the figure beside this week / last week bars
+ * (and tiles once wide enough); a narrow tall card stacks the tiles under the donut; a large card adds the Daily Work
+ * vs Schedule chart and then the weekly comparison. Data comes from the dashboard bootstrap; the card only calls the
+ * API outside a dashboard, when the bootstrap had none, or for last week.
  */
 @Component({
   selector: 'app-weekly-progress-card',
   standalone: true,
+  imports: [
+    NgTemplateOutlet,
+    WidgetCardComponent,
+    PopoutHeaderActionsComponent,
+    KpiTilesComponent,
+    DailyWorkChartComponent,
+    KeyboardClickDirective,
+    StopClickPropagationDirective,
+    WeeklyWorkProgressDetailDialogComponent
+  ],
   templateUrl: './weekly-progress-card.component.html',
+  styleUrl: './weekly-progress-card.component.css',
+  host: { class: 'block h-full' },
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WeeklyProgressCardComponent implements OnInit {
-  private readonly store = inject(TimeTrackingStore);
-  private readonly api = inject(TimeTrackingApiService);
+  private readonly api = inject(WeeklyWorkProgressApiService);
   private readonly destroyRef = inject(DestroyRef);
-
-  protected readonly today = this.store.today;
-  /** Minutes worked this week before today. */
-  private readonly earlierMinutes = signal(0);
-  private readonly workingDays = signal<number | null>(null);
-  protected readonly failed = signal(false);
-
-  protected readonly workedMinutes = computed(() => this.earlierMinutes() + safeMinutes(this.today()?.totalWorkedMinutes));
-  protected readonly targetMinutes = computed(() => {
-    const days = this.workingDays();
-    if (days === null) return 0;
-    return days * (safeMinutes(this.today()?.requiredWorkMinutes) || DEFAULT_DAY_MINUTES);
+  private readonly size = injectHostSize();
+  private readonly feed = injectWidgetDataFeed<WeeklyWorkProgressResponse>({
+    apply: (data) => this.apply(data),
+    fetch: () => this.fetch(),
+    refreshing: () => this.loading.set(true)
   });
 
-  protected readonly workedLabel = computed(() => formatMinutes(this.workedMinutes()));
-  protected readonly targetLabel = computed(() => (this.targetMinutes() > 0 ? formatMinutes(this.targetMinutes()) : '—'));
-  protected readonly percent = computed(() => {
-    const target = this.targetMinutes();
-    return target > 0 ? Math.round((this.workedMinutes() / target) * 100) : 0;
+  protected readonly current = signal<WeeklyWorkProgressResponse | null>(null);
+  private readonly previous = signal<WeeklyWorkProgressResponse | null>(null);
+  private readonly failed = signal(false);
+  protected readonly loading = signal(false);
+  protected readonly loadedAt = signal<Date | null>(null);
+  protected readonly selectedWeek = signal<'this' | 'last'>('this');
+  readonly detailOpen = signal(false);
+
+  /** The view for the card's current size, keeping the previous one inside the hysteresis band; 'standard' until the
+   * first measurement. Derived (not set from an effect) so a resize re-renders the card straight away. */
+  readonly view = linkedSignal<{ width: number; height: number }, WeeklyProgressView>({
+    source: this.size,
+    computation: (size, previous) => resolveWeeklyProgressView(size.width, size.height, previous?.value ?? null)
+  });
+  protected readonly sections = computed(() => {
+    const { width, height } = this.size();
+    return planWeeklyProgressSections(
+      this.view(),
+      width - WEEKLY_PROGRESS_CARD_CHROME.width,
+      height - WEEKLY_PROGRESS_CARD_CHROME.height
+    );
   });
 
-  /** stroke-dasharray for the blue arc; a full week (or more) closes the ring. */
-  protected readonly ringDash = computed(() => {
-    const filled = (Math.min(100, this.percent()) / 100) * RING_LENGTH;
-    return `${filled} ${RING_LENGTH}`;
+  protected readonly donutPx = DASHBOARD_DONUT_PX;
+  protected readonly statusLabels = WEEKLY_STATUS_LABELS;
+  protected readonly formatMinutes = formatWeekHours;
+
+  /** The week on show: this week, or last week once picked and loaded. */
+  protected readonly shown = computed(() => (this.selectedWeek() === 'last' ? this.previous() : this.current()));
+
+  protected readonly widgetState = computed<WidgetState>(() => {
+    if (this.shown()) return 'ready';
+    return this.failed() ? 'error' : 'loading';
   });
+
+  protected readonly refreshing = computed(() => this.loading() && !!this.shown());
+
+  protected readonly tiles = computed(() => {
+    const data = this.shown();
+    return data ? weeklyTiles(data.thisWeek, data.plannerEnabled) : [];
+  });
+
+  /** mini-wide: three tiles beside the bars (Expected, Scheduled or Remaining without the planner, Worked). */
+  protected readonly miniTiles = computed(() => this.tiles().filter((t) => t.key !== 'remaining').slice(0, 3));
+
+  protected readonly stackedTiles = computed(() => this.tiles().slice(0, this.sections().stackedTiles));
+
+  protected readonly delta = computed<WeeklyDelta | null>(() => {
+    const data = this.shown();
+    const points = data ? progressDeltaPoints(data) : null;
+    if (points === null) return null;
+    return deltaOf(Math.round(points));
+  });
+
+  protected readonly workedChange = computed(() => {
+    const data = this.shown();
+    return data ? changeAgainst(data.thisWeek.workedMinutes, data.lastWeek.workedMinutes) : null;
+  });
+
+  protected readonly scheduledChange = computed(() => {
+    const data = this.shown();
+    return data ? changeAgainst(data.thisWeek.scheduledMinutes, data.lastWeek.scheduledMinutes) : null;
+  });
+
+  /** Arc length of the progress ring out of 100; a week at or past its target closes the ring. */
+  protected readonly ring = computed(() => Math.min(100, Math.max(0, this.shown()?.thisWeek.progressPercent ?? 0)));
+
+  protected readonly weekSelectShown = computed(() => {
+    const view = this.view();
+    return view === 'standard' || (view === 'mini-wide' && this.sections().miniTiles);
+  });
+
+  private pollId: ReturnType<typeof setInterval> | null = null;
+  private readonly visibilityHandler = (): void => this.onVisibilityChange();
 
   ngOnInit(): void {
-    void this.store.loadToday();
+    this.feed.start();
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+    if (document.visibilityState === 'visible') this.startPolling();
+    this.destroyRef.onDestroy(() => {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.stopPolling();
+    });
+  }
 
-    const week = weekRange(new Date());
-    forkJoin({
-      history: this.api.getMyHistory(week.from, week.today, 1, 7),
-      summary: this.api.getMyMonthlySummary(week.from, week.to)
-    })
+  protected percentText(week: WeekProgress): string {
+    return `${Math.round(week.progressPercent)}%`;
+  }
+
+  protected barWidth(week: WeekProgress): number {
+    return Math.min(100, Math.max(0, week.progressPercent));
+  }
+
+  onWeekSelect(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value === 'last' ? 'last' : 'this';
+    this.selectedWeek.set(value);
+    if (value === 'last' && !this.previous()) this.loadLastWeek();
+  }
+
+  retry(): void {
+    this.failed.set(false);
+    if (this.selectedWeek() === 'last') this.loadLastWeek();
+    else this.feed.reload();
+  }
+
+  openDetail(): void {
+    this.detailOpen.set(true);
+  }
+
+  private apply(data: WeeklyWorkProgressResponse): void {
+    this.current.set(data);
+    this.failed.set(false);
+    this.loading.set(false);
+    this.loadedAt.set(new Date());
+  }
+
+  private fetch(): void {
+    this.loading.set(true);
+    this.api
+      .get()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ history, summary }) => {
-          const earlier = (history.items ?? [])
-            .filter((row) => row.workDate.slice(0, 10) !== week.today)
-            .reduce((sum, row) => sum + safeMinutes(row.totalWorkedMinutes), 0);
-          this.earlierMinutes.set(earlier);
-          this.workingDays.set(safeMinutes(summary.workingDays));
-        },
-        error: () => this.failed.set(true)
+        next: (data) => this.apply(data),
+        error: () => {
+          this.failed.set(true);
+          this.loading.set(false);
+        }
       });
+  }
+
+  private loadLastWeek(): void {
+    const data = this.current();
+    if (!data) return;
+    this.loading.set(true);
+    this.api
+      .get(mondayBefore(data.weekStart))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (week) => {
+          this.previous.set(week);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.failed.set(true);
+          this.loading.set(false);
+        }
+      });
+  }
+
+  private onVisibilityChange(): void {
+    if (document.visibilityState === 'visible') {
+      this.feed.reload();
+      this.startPolling();
+    } else {
+      this.stopPolling();
+    }
+  }
+
+  private startPolling(): void {
+    if (this.pollId !== null) return;
+    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
+  }
+
+  private stopPolling(): void {
+    if (this.pollId === null) return;
+    clearInterval(this.pollId);
+    this.pollId = null;
   }
 }

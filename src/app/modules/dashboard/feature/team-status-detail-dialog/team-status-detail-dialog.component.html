@@ -1,0 +1,141 @@
+<!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS (its title still
+     names the dialog for screen readers); the header below has the title on the left and the close button on the right. -->
+<app-modal
+  [open]="open()"
+  title="Working / Break / Leave"
+  size="2xl"
+  panelClass="team-status-detail"
+  (closed)="close()"
+>
+  <div class="wbld-head">
+    <div class="wbld-head__row">
+      <div class="wbld-head__title">
+        <h2>Working / Break / Leave</h2>
+        <p>Who in your team is working, on a break or on leave right now</p>
+      </div>
+      <button
+        type="button"
+        class="wbld-close"
+        aria-label="Close"
+        data-testid="wbld-close"
+        (click)="close()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+      </button>
+    </div>
+  </div>
+
+  @if (store.data(); as data) {
+    <div class="wbld">
+      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Right now" />
+
+      <div class="wbld-charts">
+        <section class="wbld-panel" data-testid="wbld-status-donut">
+          <p class="wbld-title">Status distribution <span class="wbld-muted">· right now</span></p>
+          <app-donut-breakdown
+            [slices]="statusSlices()"
+            [centerValue]="'' + data.totalMembers"
+            centerLabel="members"
+            ariaLabel="Team members by status right now"
+          />
+        </section>
+        <section class="wbld-panel" data-testid="wbld-hours-donut">
+          <p class="wbld-title">Today's hours <span class="wbld-muted">· the team's scheduled time</span></p>
+          <app-donut-breakdown
+            [slices]="hoursSlices()"
+            [centerValue]="hoursWorkedText()"
+            [centerLabel]="hoursScheduledText()"
+            ariaLabel="Today's team hours: worked, break, leave and not worked yet"
+          />
+        </section>
+      </div>
+
+      <section class="wbld-panel">
+        <p class="wbld-title">
+          Working hours trend <span class="wbld-muted">· attendance time, breaks on top, dashed = average per person</span>
+        </p>
+        @if (weekError()) {
+          <p class="wbld-muted">
+            Couldn't load the working hours.
+            <button type="button" class="wbld-link" (click)="retryWeek()">Try again</button>
+          </p>
+        } @else if (week(); as w) {
+          <app-working-hours-chart class="wbld-chart" [days]="w.days" [teamAverage]="true" [showLeave]="true" />
+        } @else {
+          <p class="wbld-muted" aria-busy="true">Loading…</p>
+        }
+      </section>
+
+      <section class="wbld-panel">
+        <div class="wbld-table-head">
+          <p class="wbld-title">
+            Employee status (today)
+            @if (data.totalMembers > data.members.length) {
+              <span class="wbld-muted"
+                >· showing {{ data.members.length }} of {{ data.totalMembers }}</span
+              >
+            }
+          </p>
+          <button type="button" class="wbld-button" data-testid="wbld-export" (click)="exportCsv()">
+            Export CSV
+          </button>
+        </div>
+        <app-data-table
+          [columns]="columns"
+          [rows]="members()"
+          [trackBy]="trackByMember"
+          caption="Team members right now"
+          minWidth="980px"
+          emptyMessage="No one to show."
+        >
+          <ng-template appDataTableCell="rank" let-row>{{ rank(row) }}</ng-template>
+          <ng-template appDataTableCell="name" let-row>
+            <span class="wbld-person">
+              <app-avatar size="xs" [avatarUrl]="avatarUrl(row)" [userName]="row.displayName" />
+              <span class="wbld-name">{{ row.displayName }}</span>
+            </span>
+          </ng-template>
+          <ng-template appDataTableCell="state" let-row>
+            <span
+              class="wbld-chip"
+              [class.wbld-chip--neutral]="!stateColor(row)"
+              [style.--tone]="stateColor(row)"
+              >{{ stateLabel(row) }}</span
+            >
+          </ng-template>
+          <ng-template appDataTableCell="start" let-row>{{ startText(row) }}</ng-template>
+          <ng-template appDataTableCell="elapsed" let-row>{{ elapsedText(row) }}</ng-template>
+          <ng-template appDataTableCell="remaining" let-row
+            ><span data-testid="wbld-remaining">{{ remainingText(row) }}</span></ng-template
+          >
+          <ng-template appDataTableCell="todayHours" let-row>{{ todayHours(row) }}</ng-template>
+          <ng-template appDataTableCell="progress" let-row>
+            @let p = progress(row);
+            <span class="wbld-progress">
+              <span class="wbld-bar" aria-hidden="true">
+                @if (p !== null) {
+                  <span [style.width.%]="p" [style.background]="stateColor(row) ?? '#94a3b8'"></span>
+                }
+              </span>
+              <span class="wbld-pct">{{ progressText(row) }}</span>
+            </span>
+          </ng-template>
+          <ng-template appDataTableCell="attention" let-row
+            ><span class="wbld-attention">{{ attentionText(row) }}</span></ng-template
+          >
+        </app-data-table>
+      </section>
+
+      @if (banners().length > 0) {
+        <ul class="wbld-banners" aria-label="Insights">
+          @for (b of banners(); track b.key) {
+            <li class="wbld-banner" [style.--tone]="b.color" [attr.data-testid]="'wbld-banner-' + b.key">
+              <p class="wbld-banner-text">{{ b.text }}</p>
+              <p class="wbld-muted">{{ b.detail }}</p>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+</app-modal>

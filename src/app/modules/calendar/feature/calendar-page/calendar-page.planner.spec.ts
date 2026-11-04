@@ -7,12 +7,17 @@ import { Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { environment } from '../../../../../environments/environment';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { PlannerFocusResponse, PlannerRangeBlockView, PlannerRangeDay, PlannerWorkWindow } from '../../../work/planner/models/planner.models';
 import { PlannerAvailability, PlannerAvailabilityService } from '../../../work/planner/state/planner-availability.service';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
+import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
 import { ProjectDetailStore } from '../../../work/state/project-detail.store';
+import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
+import { MyTeamCapabilitiesStore } from '../../../dashboard/state/my-team-capabilities.store';
 import { CalendarPageComponent } from './calendar-page.component';
 
 /** Planner = Calendar (2026-10-27 design): the calendar page with the planner layer on and off. */
@@ -53,6 +58,7 @@ describe('CalendarPageComponent planner layer', () => {
   const notify = { error: vi.fn(), warning: vi.fn(), success: vi.fn(), info: vi.fn() };
   const events = signal<readonly CalendarEventResponse[]>([]);
   let blocksFor: (date: string) => PlannerRangeBlockView[] = () => [];
+  let rangeZone = 'UTC';
   const projectError = signal<string | null>(null);
   const projects = { loadProject: vi.fn(async () => undefined), loadMyMilestones: vi.fn(async () => undefined), projectError };
 
@@ -73,7 +79,7 @@ describe('CalendarPageComponent planner layer', () => {
       return { date, editable: true, workWindow: window, blocks, blockMinutes: blocks.reduce((s, b) => s + b.plannedMinutes, 0),
         workingMinutes: window.workingMinutes };
     });
-    req.flush({ timezone: 'UTC', today: days[0].date, days });
+    req.flush({ timezone: rangeZone, today: days[0].date, days });
   }
 
   /** Answers every planner read the page has made so far. */
@@ -90,10 +96,17 @@ describe('CalendarPageComponent planner layer', () => {
     }
   }
 
-  function setup(on = true): void {
+  // Team planner (2026-11-03): the viewer's My Team capabilities; null = not loaded.
+  const teamCaps = signal<{ canViewTeamPlan?: boolean } | null>(null);
+  const loadCapabilities = vi.fn(async () => undefined);
+  let createAt: string | null = null;
+
+  function setup(on = true, canTeam = false): void {
+    teamCaps.set(canTeam ? { canViewTeamPlan: true } : null);
     state.set(on ? 'on' : 'off');
     events.set([]);
     blocksFor = () => [];
+    rangeZone = 'UTC';
     Object.values(notify).forEach((f) => f.mockClear());
     try { localStorage.clear(); } catch { /* storage may be unavailable */ }
     TestBed.configureTestingModule({
@@ -103,10 +116,37 @@ describe('CalendarPageComponent planner layer', () => {
         { provide: PlannerAvailabilityService, useValue: { state, markAvailable: vi.fn(), probe: vi.fn() } },
         { provide: NotificationService, useValue: notify },
         { provide: ProjectDetailStore, useValue: projects },
+        { provide: PermissionService, useValue: { hasModule: () => true, hasAnyModule: () => true, hasPermission: () => true, hasAnyPermission: () => true } },
+        { provide: MyTeamCapabilitiesStore, useValue: { capabilities: teamCaps, loaded: signal(true), loading: signal(false), loadCapabilities } },
       ],
     });
     projectError.set(null);
     http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(CalendarPageComponent);
+    fixture.detectChanges();
+  }
+
+  /** Starts the page at a URL (query params), as a deep link from the dashboard widget would. */
+  async function setupAt(url: string, canTeam = true): Promise<void> {
+    createAt = url;
+    teamCaps.set({ canViewTeamPlan: canTeam });
+    state.set('on');
+    events.set([]);
+    blocksFor = () => [];
+    rangeZone = 'UTC';
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '**', children: [] }]), provideHttpClient(), provideHttpClientTesting(),
+        { provide: CalendarEventStore, useValue: fakeStore() },
+        { provide: PlannerAvailabilityService, useValue: { state, markAvailable: vi.fn(), probe: vi.fn() } },
+        { provide: NotificationService, useValue: notify },
+        { provide: ProjectDetailStore, useValue: projects },
+        { provide: PermissionService, useValue: { hasModule: () => true, hasAnyModule: () => true, hasPermission: () => true, hasAnyPermission: () => true } },
+        { provide: MyTeamCapabilitiesStore, useValue: { capabilities: teamCaps, loaded: signal(true), loading: signal(false), loadCapabilities } },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    await TestBed.inject(Router).navigateByUrl(createAt);
     fixture = TestBed.createComponent(CalendarPageComponent);
     fixture.detectChanges();
   }
@@ -161,7 +201,43 @@ describe('CalendarPageComponent planner layer', () => {
     expect(totals).toContain('Actual / attendance 45m / 2h');
     expect(q('planner-focus-panel')).not.toBeNull();
     expect(q('planner-focus-close')).toBeNull();
-    expect(q('planner-focus-toggle')!.textContent).toContain('Focus · 3');
+    expect(q('planner-focus-toggle')!.textContent).toContain('Task list');
+    expect(q('planner-focus-count')!.textContent!.trim()).toBe('3');
+  });
+
+  it('the period label opens a date picker, and picking a date moves the week there', async () => {
+    setup();
+    fixture.componentInstance.setView('week');
+    await settle();
+    expect(q('planner-period-picker')).toBeNull();
+
+    q('planner-period-button')!.click();
+    fixture.detectChanges();
+    expect(q('planner-period-picker')).not.toBeNull();
+
+    fixture.componentInstance.jumpTo('2026-11-12');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.viewLabel()).toBe('Week of 2026-11-09');
+    expect(q('planner-period-picker')).toBeNull();
+  });
+
+  it('New event is a single primary button with a plus, and no menu', async () => {
+    setup();
+    await settle();
+
+    const button = q('calendar-new-event')!;
+    expect(button.textContent!.trim()).toBe('New event');
+    expect(button.querySelector('[data-testid="calendar-new-event-icon"]')).not.toBeNull();
+    expect(q('calendar-new-event-menu')).toBeNull();
+  });
+
+  it('the page header names the Planner, with no summary line', async () => {
+    setup();
+    fixture.componentInstance.setView('week');
+    await settle();
+
+    expect(q('planner-header')!.textContent!.trim()).toBe('Planner');
   });
 
   it('Week view shows the panel until it is closed, and remembers that', async () => {
@@ -188,9 +264,12 @@ describe('CalendarPageComponent planner layer', () => {
     const grid = () => fixture.debugElement.query((de) => de.name === 'app-calendar-hour-grid').componentInstance;
 
     expect(grid().days().length).toBe(5);
+    expect(q('planner-show-weekend')!.getAttribute('role')).toBe('switch');
+    expect(q('planner-show-weekend')!.getAttribute('aria-checked')).toBe('false');
     q('planner-show-weekend')!.click();
     fixture.detectChanges();
     expect(grid().days().length).toBe(7);
+    expect(q('planner-show-weekend')!.getAttribute('aria-checked')).toBe('true');
     expect(week()).toBeTruthy();
   });
 
@@ -280,5 +359,377 @@ describe('CalendarPageComponent planner layer', () => {
     fixture.detectChanges();
 
     expect(q('planner-day-totals')!.textContent).toContain('30m / 0m');
+  });
+
+  describe('create popover (2026-11-03)', () => {
+    const editableDate = () => fixture.componentInstance.editableDateList()[0];
+
+    it('slot click on an editable day opens the popover, not the event form', async () => {
+      setup();
+      await settle();
+
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      fixture.detectChanges();
+
+      expect(q('create-popover-panel')).not.toBeNull();
+      expect(fixture.componentInstance.formOpen()).toBe(false);
+      expect(fixture.componentInstance.createSlot()).toMatchObject({ date: editableDate(), startMinutes: 540, endMinutes: 600 });
+    });
+
+    it('slot click when the planner is off opens the event form', async () => {
+      setup(false);
+      await settle();
+
+      fixture.componentInstance.onSlotClick({ date: '2026-11-10', hour: 9 });
+      fixture.detectChanges();
+
+      expect(q('create-popover-panel')).toBeNull();
+      expect(fixture.componentInstance.formOpen()).toBe(true);
+    });
+
+    it('drag range fills start and end', async () => {
+      setup();
+      await settle();
+
+      fixture.componentInstance.onSlotRange({ date: editableDate(), startMinutes: 600, endMinutes: 690 });
+
+      expect(fixture.componentInstance.createSlot()).toMatchObject({ startMinutes: 600, endMinutes: 690 });
+    });
+
+    it('uses the planner zone for the slot', async () => {
+      setup();
+      rangeZone = 'Asia/Colombo';
+      await settle();
+
+      fixture.componentInstance.onSlotRange({ date: editableDate(), startMinutes: 540, endMinutes: 660 });
+
+      const slot = fixture.componentInstance.createSlot()!;
+      expect(Date.parse(slot.startIso)).toBe(Date.parse(`${editableDate()}T09:00:00+05:30`));
+      expect(Date.parse(slot.endIso)).toBe(Date.parse(`${editableDate()}T11:00:00+05:30`));
+    });
+
+    it('New event opens the popover at the next half hour, 1h', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-04T10:10:00Z'));
+      try {
+        setup();
+        await settle();
+
+        fixture.componentInstance.onNewEvent();
+
+        expect(fixture.componentInstance.createSlot()).toMatchObject({ date: '2026-11-04', startMinutes: 630, endMinutes: 690 });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('closes the popover when the range changes', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+      fixture.componentInstance.next();
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+    });
+
+    it('More options on the Event tab opens the event form with the draft', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      const draft = { title: 'Doctor', description: null, start: `${editableDate()}T09:00`, end: `${editableDate()}T10:00`,
+        isAllDay: false, timezone: 'UTC', repeat: 'none' as const, location: 'Clinic' };
+
+      fixture.componentInstance.onEventMoreOptions(draft);
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+      expect(fixture.componentInstance.formOpen()).toBe(true);
+      expect(fixture.componentInstance.eventPrefill()).toEqual(draft);
+    });
+
+    describe('Work item More options (full form)', () => {
+      const slotOf = (date: string) => ({ date, startMinutes: 540, endMinutes: 660, startIso: `${date}T09:00:00.000Z`, endIso: `${date}T11:00:00.000Z` });
+      const draftOf = (date: string) => ({ title: 'Fix login bug', projectId: 'p1', objectiveId: 'o1', categoryId: 'c2',
+        priority: 'high' as const, estimatedHours: 8, dueDate: null, slot: slotOf(date) });
+      const flow = () => fixture.debugElement.injector.get(WorkItemPlanFlow);
+
+      it('More options loads the project, then opens the form with projectId, prefillModuleId and prefill', async () => {
+        setup();
+        await settle();
+        fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+
+        expect(projects.loadProject).toHaveBeenCalledWith('p1');
+        expect(fixture.componentInstance.createSlot()).toBeNull();
+        expect(fixture.componentInstance.workItemForm()).toMatchObject({ projectId: 'p1', objectiveId: 'o1',
+          prefill: { title: 'Fix login bug', categoryId: 'c2', priority: 'high', estimatedHours: 8, dueDate: null } });
+      });
+
+      it('created(id) plans that id at the slot, once', async () => {
+        setup();
+        await settle();
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+        const plan = vi.spyOn(flow(), 'planExisting').mockResolvedValue();
+
+        await fixture.componentInstance.onWorkItemFormCreated('t-new');
+        await fixture.componentInstance.onWorkItemFormCreated('t-another');
+
+        expect(plan).toHaveBeenCalledTimes(1);
+        expect(plan).toHaveBeenCalledWith('t-new', '', slotOf(editableDate()));
+      });
+
+      it('created(\'\') (sent for approval) plans nothing', async () => {
+        setup();
+        await settle();
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+        const plan = vi.spyOn(flow(), 'planExisting').mockResolvedValue();
+
+        await fixture.componentInstance.onWorkItemFormCreated('');
+
+        expect(plan).not.toHaveBeenCalled();
+      });
+
+      it('a planning refusal because the assignee changed says it is assigned to someone else', async () => {
+        setup();
+        await settle();
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+
+        const planned = fixture.componentInstance.onWorkItemFormCreated('t-new');
+        await new Promise((resolve) => setTimeout(resolve));
+        http.expectOne(`${base}/me/blocks`).flush({ code: 'planner_task_not_plannable' }, { status: 400, statusText: 'Bad Request' });
+        await planned;
+
+        expect(notify.warning).toHaveBeenCalledWith('Created, not planned: assigned to someone else');
+      });
+
+      // Follow-up 4: one message, and a way to plan it after all.
+      it('a refused plan shows one message and opens Pick another time for the created item', async () => {
+        setup();
+        await settle();
+        await fixture.componentInstance.onWorkItemMoreOptions(draftOf(editableDate()));
+        notify.error.mockClear();
+        notify.warning.mockClear();
+
+        const planned = fixture.componentInstance.onWorkItemFormCreated('t-new');
+        await new Promise((resolve) => setTimeout(resolve));
+        http.expectOne(`${base}/me/blocks`).flush({ code: 'planner_block_overlap' }, { status: 409, statusText: 'Conflict' });
+        await planned;
+
+        expect(notify.error).not.toHaveBeenCalled();
+        expect(notify.warning).toHaveBeenCalledTimes(1);
+        expect(fixture.componentInstance.pickerItem()).toMatchObject({ taskId: 't-new', projectId: 'p1', title: 'Fix login bug', estimatedMinutes: 480 });
+      });
+
+      it('More options without a project asks for one and keeps the popover', async () => {
+        setup();
+        await settle();
+        fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+        await fixture.componentInstance.onWorkItemMoreOptions({ ...draftOf(editableDate()), projectId: null });
+
+        expect(notify.warning).toHaveBeenCalledWith('Choose a project first.');
+        expect(fixture.componentInstance.createSlot()).not.toBeNull();
+        expect(fixture.componentInstance.workItemForm()).toBeNull();
+      });
+    });
+
+    it('More options on the Time off tab opens the leave form prefilled', async () => {
+      setup();
+      await settle();
+      const date = editableDate();
+      fixture.componentInstance.onSlotClick({ date, hour: 9 });
+
+      const opened = fixture.componentInstance.onTimeOffMoreOptions({ leaveTypeId: 'sick', startIso: `${date}T09:00:00.000Z`,
+        endIso: `${date}T11:00:00.000Z`, reason: 'Doctor' });
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+      await new Promise((resolve) => setTimeout(resolve));
+      http.expectOne(`${environment.apiUrl}/leave/balances/work-window`)
+        .flush({ timezone: 'UTC', workStartTime: '09:00', workEndTime: '17:00' });
+      await opened;
+
+      expect(fixture.componentInstance.leaveWizard()).toEqual({
+        leaveTypeId: 'sick', startDate: date, startTime: '09:00', endDate: date, endTime: '11:00', reason: 'Doctor',
+      });
+    });
+
+    // Follow-up 5: the leave form works in the work-window zone; wait for it rather than guess with the planner's.
+    it('Time off More options waits for the work window and converts into its zone', async () => {
+      setup();
+      await settle();
+      const date = editableDate();
+      fixture.componentInstance.onSlotClick({ date, hour: 9 });
+
+      const opened = fixture.componentInstance.onTimeOffMoreOptions({ leaveTypeId: 'sick', startIso: `${date}T09:00:00.000Z`,
+        endIso: `${date}T11:00:00.000Z`, reason: null });
+      await new Promise((resolve) => setTimeout(resolve));
+      http.expectOne(`${environment.apiUrl}/leave/balances/work-window`)
+        .flush({ timezone: 'Asia/Colombo', workStartTime: '09:00', workEndTime: '17:00' });
+      await opened;
+
+      expect(fixture.componentInstance.leaveWizard()).toMatchObject({ startDate: date, startTime: '14:30', endTime: '16:30' });
+    });
+
+    it('a Time off submit closes the popover and says it was sent', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+      fixture.componentInstance.onTimeOffSubmitted();
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+      expect(notify.success).toHaveBeenCalledWith('Leave request sent for approval.');
+    });
+
+    it('loads my leave for the visible range, and again after a Time off submit', async () => {
+      setup();
+      await settle();
+      const leaveReads = () => http.match((r) => r.url === `${environment.apiUrl}/leave/requests/my`);
+
+      const first = leaveReads();
+      expect(first.length).toBeGreaterThan(0);
+      expect(first[0].request.params.get('fromDate')).toBeTruthy();
+      expect(first[0].request.params.get('toDate')).toBeTruthy();
+
+      fixture.componentInstance.onTimeOffSubmitted();
+
+      expect(leaveReads().length).toBe(1);
+    });
+
+    // Review fixes (2026-11-03 final review).
+    const popover = () => fixture.debugElement.query(By.directive(PlannerCreatePopoverComponent)).componentInstance as PlannerCreatePopoverComponent;
+    const tab = async (name: string) => {
+      q(`create-tab-${name}`)!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    const type = (testId: string, value: string) => {
+      const el = q(testId) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+
+    it('the Meeting tab is created in the planner zone, with the shared all-day', async () => {
+      setup();
+      rangeZone = 'Pacific/Auckland';
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      fixture.detectChanges();
+      popover().shared.isAllDay.set(true);
+
+      await tab('meeting');
+
+      const form = fixture.debugElement.query(By.directive(MeetingFormModalComponent)).componentInstance as MeetingFormModalComponent;
+      expect(form.form.controls.timezone.value).toBe('Pacific/Auckland');
+      expect(form.form.controls.isAllDay.value).toBe(true);
+    });
+
+    it('a tab keeps what was typed when switching away and back', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      fixture.detectChanges();
+      type('event-tab-location', 'Clinic');
+
+      await tab('workItem');
+      await tab('event');
+
+      expect((q('event-tab-location') as HTMLInputElement).value).toBe('Clinic');
+    });
+
+    it('a title typed on the Meeting tab is the title on the other tabs', async () => {
+      setup();
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+      fixture.detectChanges();
+      await tab('meeting');
+      const form = fixture.debugElement.query(By.directive(MeetingFormModalComponent)).componentInstance as MeetingFormModalComponent;
+      form.form.controls.title.setValue('Sprint review');
+
+      await tab('event');
+
+      expect((q('event-tab-title') as HTMLInputElement).value).toBe('Sprint review');
+    });
+
+    it('opening the popover starts the work item flow fresh', async () => {
+      setup();
+      await settle();
+      const reset = vi.spyOn(fixture.debugElement.injector.get(WorkItemPlanFlow), 'reset');
+
+      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
+
+      expect(reset).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not read my leave while the planner is off', async () => {
+      setup(false);
+      await settle();
+
+      expect(http.match((r) => r.url === `${environment.apiUrl}/leave/requests/my`).length).toBe(0);
+    });
+
+    it('offers Meeting only while meetings can be written, and Time off only with leave access', async () => {
+      setup();
+      await settle();
+
+      expect(fixture.componentInstance.createTabs()).toContain('event');
+      expect(fixture.componentInstance.createTabs()).toContain('workItem');
+    });
+  });
+
+  describe('Me / My team (team planner, 2026-11-03)', () => {
+    const teamReads = () => http.match((r) => r.url.startsWith(`${base}/team`));
+
+    it('shows My team only when the planner is on and canViewTeamPlan', async () => {
+      setup(true, true);
+      await settle();
+      expect(q('planner-scope-team')).not.toBeNull();
+      TestBed.resetTestingModule();
+      setup(true, false);
+      await settle();
+      expect(q('planner-scope-team')).toBeNull();
+    });
+
+    it('hides My team when the planner is off', async () => {
+      setup(false, true);
+      await settle();
+      expect(q('planner-scope-team')).toBeNull();
+    });
+
+    it('switching to My team renders the team planner and closes the create popover', async () => {
+      setup(true, true);
+      await settle();
+      fixture.componentInstance.onSlotClick({ date: fixture.componentInstance.editableDateList()[0], hour: 9 });
+      fixture.detectChanges();
+
+      q('planner-scope-team')!.click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.createSlot()).toBeNull();
+      expect(fixture.nativeElement.querySelector('app-team-planner')).not.toBeNull();
+      expect(q('calendar-view-week')).toBeNull();
+      expect(teamReads().length).toBe(1);
+
+      q('planner-scope-me')!.click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('app-team-planner')).toBeNull();
+    });
+
+    it('?scope=team&teamView=week&date=2026-11-05 opens the team week', async () => {
+      await setupAt('/?scope=team&teamView=week&date=2026-11-05');
+      await settle();
+      const reads = teamReads();
+      expect(reads.map((r) => r.request.url)).toContain(`${base}/team/range`);
+      const range = reads.find((r) => r.request.url === `${base}/team/range`)!.request.params;
+      expect([range.get('from'), range.get('to')]).toEqual(['2026-11-02', '2026-11-08']);
+    });
+
+    it('?person=e1 opens that person\'s plan', async () => {
+      await setupAt('/?scope=team&date=2026-11-05&person=e1');
+      await settle();
+      expect(http.match((r) => r.url === `${base}/employees/e1/range`).length).toBe(1);
+    });
   });
 });

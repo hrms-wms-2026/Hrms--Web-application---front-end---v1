@@ -100,3 +100,71 @@ export interface LedWeeklyCompletion {
   undatedCompletedHours: number;
   undatedCompletedTaskCount: number;
 }
+
+/** GET led-progress/time (My Team widgets design 2026-10-29, section 6.1): Planner blocks and clocked task time on the led
+ * scope's tasks. Minutes of planned / worked time - never estimate hours, never added to them or drawn on their axis. */
+export type LedTimePeriod = 'week' | 'month';
+
+export interface LedTimeComparison {
+  /** Planned task minutes elapsed by the same point of the previous period. */
+  plannedMinutes: number;
+  clockedMinutes: number;
+  coveragePercent: number | null;
+}
+
+/** A day (week) or an ISO week clipped to the month (month). */
+export interface LedTimeBucket {
+  from: string;
+  to: string;
+  plannedMinutes: number;
+  scheduledMinutes: number;
+  unscheduledMinutes: number;
+}
+
+export interface LedWorkloadRow {
+  employeeId: string;
+  displayName: string;
+  rank: number;
+  plannedMinutes: number;
+  clockedMinutes: number;
+  unscheduledMinutes: number;
+  /** Null when the person's legal entity has no working hours. */
+  expectedMinutes: number | null;
+  /** Planned / expected; not capped. */
+  utilizationPercent: number | null;
+}
+
+export interface LedUnscheduledRow {
+  employeeId: string;
+  displayName: string;
+  taskId: string;
+  shortId: string;
+  title: string;
+  start: string;
+  end: string;
+  minutes: number;
+  kind: 'no_plan' | 'outside_slot';
+}
+
+export interface LedTimeProgress {
+  period: LedTimePeriod;
+  from: string;
+  to: string;
+  plannerEnabled: boolean;
+  asOf: string;
+  /** The whole period's planned commitment. */
+  plannedMinutes: number;
+  clockedMinutes: number;
+  scheduledMinutes: number;
+  outsideSlotMinutes: number;
+  noPlanMinutes: number;
+  /** Scheduled / planned task minutes elapsed so far; null without a plan. */
+  coveragePercent: number | null;
+  peopleWithUnscheduledWork: number;
+  previous: LedTimeComparison;
+  buckets: LedTimeBucket[];
+  workload: LedWorkloadRow[];
+  /** The newest 200; unscheduledTotal is the full count. */
+  unscheduled: LedUnscheduledRow[];
+  unscheduledTotal: number;
+}

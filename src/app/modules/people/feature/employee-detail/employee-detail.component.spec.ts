@@ -14,14 +14,13 @@ import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
+import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 
 describe('EmployeeDetailComponent', () => {
-  // The Meeting attendance tab asks the API whether this caller may see it; a 404 (the default here) hides it.
-  let meetingAttendance: () => Observable<unknown> = () =>
-    throwError(() => new HttpErrorResponse({ status: 404, error: { code: 'meeting_not_found' } }));
+  // The planner's day read for this employee; 404 by default.
+  let plannerDay: () => Observable<unknown> = () => throwError(() => new HttpErrorResponse({ status: 404 }));
   beforeEach(() => {
-    meetingAttendance = () => throwError(() => new HttpErrorResponse({ status: 404, error: { code: 'meeting_not_found' } }));
+    plannerDay = () => throwError(() => new HttpErrorResponse({ status: 404 }));
   });
   const detailFixture: EmployeeDetailResponse = {
     id: 'emp-1',
@@ -167,7 +166,7 @@ describe('EmployeeDetailComponent', () => {
         { provide: OffboardingApiService, useValue: { getOffboarding: () => of(null) } },
         { provide: WorkModeStore, useValue: workModeStoreStub },
         { provide: EmployeeDirectoryStore, useValue: employeeDirectoryStub },
-        { provide: MeetingApiService, useValue: { employeeMeetingAttendance: () => meetingAttendance() } }
+        { provide: PlannerApiService, useValue: { getEmployeeDay: () => plannerDay() } }
       ]
     });
 
@@ -180,21 +179,26 @@ describe('EmployeeDetailComponent', () => {
       .map((b) => b.textContent?.trim() ?? '');
   }
 
-  it('shows the Meeting attendance tab only when the API answers for this caller', async () => {
-    meetingAttendance = () => of({ items: [] });
+  // 2026-11-04: a meeting's attendance is read in its meeting drawer, so the profile has no Meeting attendance tab.
+  it('shows only the Overview, Employment, Work & Activity and Personal tabs', async () => {
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(tabLabels(fixture)).toContain('Meeting attendance');
+    expect(tabLabels(fixture)).toEqual(['Overview', 'Employment', 'Work & Activity', 'Personal']);
+    expect(fixture.nativeElement.querySelector('app-meeting-attendance-tab')).toBeNull();
   });
 
-  it('hides the Meeting attendance tab on 404 (not the employee or their reporting line)', async () => {
+  // Team planner (2026-11-03): a person's plan lives in Planner → My team only, so the profile has no "Today's plan" tab.
+  it('has no Today\'s plan tab even when the planner answers for this caller', async () => {
+    plannerDay = () => of({ date: '2026-11-05', timezone: 'UTC', editable: false, blocks: [], meetings: [], dueTasks: [],
+      totals: { plannedMinutes: 0, actualMinutes: 0 }, attendanceMinutes: 0 });
     const { fixture } = setup(detailFixture);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(tabLabels(fixture)).not.toContain('Meeting attendance');
+    expect(tabLabels(fixture)).not.toContain("Today's plan");
+    expect(fixture.nativeElement.querySelector('app-todays-plan-tab')).toBeNull();
   });
 
   it('loads the new employee when the id in the URL changes', () => {

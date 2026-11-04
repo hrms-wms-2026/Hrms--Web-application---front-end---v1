@@ -392,10 +392,50 @@ describe('MilestoneTreeNodeComponent - meetings', () => {
     const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tree-meeting-row"]'));
     expect(rows.length).toBe(1);
     expect(rows[0].querySelector('[data-testid="meeting-card-badge"]')?.textContent?.trim()).toBe('M');
+    // A row one level below its module, laid out like the task rows there (the module "Child" is at depth 1).
+    expect((rows[0].querySelector('[data-testid="meeting-card-name-cell"]') as HTMLElement).style.paddingLeft).toBe('40px');
 
     let opened: unknown;
     fixture.componentInstance.meetingOpened.subscribe((key) => (opened = key));
     (rows[0].querySelector('[data-testid="meeting-card"]') as HTMLElement).click();
     expect(opened).toEqual({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+  });
+
+  it('puts a module\'s meetings with its own tasks: after them, before its sprints and sub-modules', () => {
+    const task = (id: string): MilestoneTreeNode => ({ ...child, id, title: `Task ${id}`, kind: 'task' });
+    const sprint: MilestoneTreeNode = { ...child, id: 'sp1', title: 'Sprint 1', kind: 'sprint' };
+    const sub: MilestoneTreeNode = { ...child, id: 'o3', title: 'Sub module' };
+    const module: MilestoneTreeNode = { ...child, id: 'o2', children: [task('t1'), task('t2'), sprint, sub] };
+    TestBed.configureTestingModule({
+      imports: [MilestoneTreeNodeComponent],
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'A', avatarFileId: null })) } }]
+    });
+    const fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
+    fixture.componentRef.setInput('node', module);
+    fixture.componentRef.setInput('meetingsByModule', new Map([['o2', [meeting]]]));
+    fixture.detectChanges();
+
+    const order = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="title-text"], [data-testid="meeting-card-title"]'))
+      .map((el) => (el as HTMLElement).textContent?.trim());
+    expect(order.indexOf('Standup')).toBe(order.indexOf('Task t2') + 1);
+    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sprint 1'));
+    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sub module'));
+  });
+
+  it('lists the meetings of a module with no tasks before its sub-modules', () => {
+    const sub: MilestoneTreeNode = { ...child, id: 'o3', title: 'Sub module' };
+    const module: MilestoneTreeNode = { ...child, id: 'o2', children: [sub] };
+    TestBed.configureTestingModule({
+      imports: [MilestoneTreeNodeComponent],
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'A', avatarFileId: null })) } }]
+    });
+    const fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
+    fixture.componentRef.setInput('node', module);
+    fixture.componentRef.setInput('meetingsByModule', new Map([['o2', [meeting]]]));
+    fixture.detectChanges();
+
+    const order = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="title-text"], [data-testid="meeting-card-title"]'))
+      .map((el) => (el as HTMLElement).textContent?.trim());
+    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sub module'));
   });
 });

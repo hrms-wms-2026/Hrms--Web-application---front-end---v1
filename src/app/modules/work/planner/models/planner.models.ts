@@ -75,12 +75,17 @@ export interface PlannerRangeBlockView {
   id: string;
   taskId: string;
   projectId: string;
+  /** Absent from an API that predates the redesign (the block then shows no project line). */
+  projectName?: string;
   taskTitle: string;
   startAt: string;
   endAt: string;
   plannedMinutes: number;
   actualMinutes: number;
   stillAssigned: boolean;
+  /** The category's name and fixed type; absent from an older API (treated as a plain task). */
+  categoryName?: string;
+  categoryKind?: string;
 }
 
 export interface PlannerRangeDay {
@@ -117,6 +122,11 @@ export interface PlannerFocusItem {
   plannedDayCount: number;
   fullyPlanned: boolean;
   reason: PlannerFocusReason;
+  /** The category's name and fixed type; absent from an older API (treated as a plain task). */
+  categoryName?: string;
+  categoryKind?: string;
+  /** When the task was created: "Open N days" on an overdue card. */
+  createdAt?: string;
 }
 
 export interface PlannerFocusGroup {

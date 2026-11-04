@@ -72,6 +72,11 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
   @Input({ required: true }) leaveTypes: readonly LeaveTypeResponse[] = [];
   @Input({ required: true }) balances: readonly LeaveBalanceResponse[] = [];
   @Input() initialStartDate = '';
+  /** Planner create popover ("More options" on the Time off tab): the rest of what the tab held. */
+  @Input() initialLeaveTypeId = '';
+  @Input() initialStartTime = '';
+  @Input() initialEndTime = '';
+  @Input() initialReason = '';
   @Input() initialEndDate = '';
   @Input() workStartTime: string | null = null;
   @Input() workEndTime: string | null = null;
@@ -135,11 +140,14 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
   }
 
   ngOnInit(): void {
-    if (!this.initialStartDate && !this.initialEndDate) return;
     this.draft.update((d) => ({
       ...d,
+      leaveTypeId: this.initialLeaveTypeId || d.leaveTypeId,
       startDate: this.initialStartDate || d.startDate,
-      endDate: this.initialEndDate || d.endDate
+      startTime: this.initialStartTime || d.startTime,
+      endDate: this.initialEndDate || d.endDate,
+      endTime: this.initialEndTime || d.endTime,
+      reason: this.initialReason || d.reason
     }));
   }
 

@@ -1,0 +1,143 @@
+/* Fills its host's height: the plot takes what the legend leaves. */
+:host {
+  min-height: 0;
+}
+
+.paw {
+  display: flex;
+  height: 100%;
+  min-height: 7rem;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.paw-plot {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  gap: 0.25rem;
+  padding-right: 2rem;
+}
+
+.paw-col {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 0.375rem;
+}
+
+.paw-col--today {
+  background: rgb(239 246 255);
+}
+
+.paw-bars {
+  display: flex;
+  width: 100%;
+  max-width: 3rem;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+}
+
+.paw-bar {
+  display: block;
+  width: 45%;
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.paw-bar--actual {
+  display: flex;
+  height: 100%;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  background: transparent;
+}
+
+.paw-bar--actual span {
+  width: 100%;
+  flex: none;
+}
+
+.paw-label {
+  min-height: 0.75rem;
+  font-size: 0.625rem;
+  line-height: 1;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+}
+
+.paw-col--today .paw-label {
+  font-weight: 600;
+  color: rgb(30 64 175);
+}
+
+/* Over the bars only (the labels keep 1rem), left of the right axis. */
+.paw-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% - 2rem);
+  height: calc(100% - 1rem);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.paw-line polyline {
+  fill: none;
+  stroke: rgb(30 64 175);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.paw-line circle {
+  fill: rgb(30 64 175);
+}
+
+.paw-axis {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 1rem;
+  display: flex;
+  width: 1.875rem;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.5625rem;
+  line-height: 1;
+  color: rgb(100 116 139);
+  text-align: right;
+}
+
+.paw-legend {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.625rem;
+  color: rgb(71 85 105);
+}
+
+.paw-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.paw-key {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 0.125rem;
+}
+
+.paw-key--line {
+  height: 2px;
+  width: 0.75rem;
+  background: rgb(30 64 175);
+}

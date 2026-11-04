@@ -1,0 +1,208 @@
+/*
+ * Dashboard motion: one place for every widget's load and refresh animation, so no chart template needs tagging.
+ *
+ * - On load, each widget fades up in turn (--dash-i is the widget's index, set by app-dashboard-grid).
+ * - Charts then draw in: bars grow from their axis, donut arcs sweep, trend lines fade in. Every keyframe has only a
+ *   `from`, so the end state is the element's own (data-bound) value.
+ * - On a refresh the same elements stay in the DOM and glide to their new values (the transitions below).
+ *
+ * Bars are found by what Angular renders for `[style.height.%]` / `[style.width.%]`; donut arcs by their
+ * `stroke-dasharray` attribute (the ring's background circle has none). Scoped to .dash-motion (the widget content
+ * in app-widget-frame), which also holds the widgets' detail popups.
+ */
+
+.dash-motion {
+  /* The timings, in one place: tune the feel here. */
+  --dash-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dash-stagger: 90ms;
+  --dash-rise: 700ms;
+  --dash-grow: 1100ms;
+  --dash-sweep: 1400ms;
+  --dash-glide: 900ms;
+  --dash-delay: calc(var(--dash-i, 0) * var(--dash-stagger) + 180ms);
+  animation: dash-rise var(--dash-rise) var(--dash-ease)
+    calc(var(--dash-i, 0) * var(--dash-stagger)) backwards;
+}
+
+/* A popup opens long after the dashboard loaded: its charts start at once. */
+.dash-motion app-modal {
+  --dash-i: 0;
+  --dash-delay: 120ms;
+}
+
+.dash-motion
+  [style*='height:'][style*='%']:not([style*='line-height']):not([style*='min-height']):not(
+    [style*='max-height']
+  ) {
+  animation: dash-grow-y var(--dash-grow) var(--dash-ease) var(--dash-delay) backwards;
+  transition: height var(--dash-glide) var(--dash-ease);
+}
+
+.dash-motion [style*='width:'][style*='%']:not([style*='min-width']):not([style*='max-width']) {
+  animation: dash-grow-x var(--dash-grow) var(--dash-ease) var(--dash-delay) backwards;
+  transition:
+    width var(--dash-glide) var(--dash-ease),
+    left var(--dash-glide) var(--dash-ease);
+}
+
+.dash-motion circle[stroke-dasharray] {
+  animation: dash-sweep var(--dash-sweep) var(--dash-ease) var(--dash-delay) backwards;
+  /* opacity and stroke-width keep app-donut-breakdown's hover transitions. */
+  transition:
+    stroke-dasharray var(--dash-glide) var(--dash-ease),
+    stroke-dashoffset var(--dash-glide) var(--dash-ease),
+    opacity 150ms ease,
+    stroke-width 150ms ease;
+}
+
+.dash-motion polyline {
+  animation: dash-fade 800ms ease calc(var(--dash-delay) + 700ms) backwards;
+}
+
+@keyframes dash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes dash-grow-y {
+  from {
+    height: 0;
+  }
+}
+
+@keyframes dash-grow-x {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes dash-sweep {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+
+@keyframes dash-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/*
+ * A card's refresh button replays its load animation once the new data is in (app-popout-header-actions). It
+ * alternates the widget (or open popup) between .dash-replay-a and -b: each switch changes the keyframe names
+ * below, which restarts every animation inside, with no stagger.
+ */
+.dash-replay-a,
+.dash-replay-b {
+  --dash-i: 0;
+  --dash-delay: 60ms;
+}
+.dash-motion.dash-replay-a {
+  animation-name: dash-rise-a;
+}
+.dash-motion.dash-replay-b {
+  animation-name: dash-rise-b;
+}
+.dash-replay-a
+  [style*='height:'][style*='%']:not([style*='line-height']):not([style*='min-height']):not(
+    [style*='max-height']
+  ) {
+  animation-name: dash-grow-y-a;
+}
+.dash-replay-b
+  [style*='height:'][style*='%']:not([style*='line-height']):not([style*='min-height']):not(
+    [style*='max-height']
+  ) {
+  animation-name: dash-grow-y-b;
+}
+.dash-replay-a [style*='width:'][style*='%']:not([style*='min-width']):not([style*='max-width']) {
+  animation-name: dash-grow-x-a;
+}
+.dash-replay-b [style*='width:'][style*='%']:not([style*='min-width']):not([style*='max-width']) {
+  animation-name: dash-grow-x-b;
+}
+.dash-replay-a circle[stroke-dasharray] {
+  animation-name: dash-sweep-a;
+}
+.dash-replay-b circle[stroke-dasharray] {
+  animation-name: dash-sweep-b;
+}
+.dash-replay-a polyline {
+  animation-name: dash-fade-a;
+}
+.dash-replay-b polyline {
+  animation-name: dash-fade-b;
+}
+
+@keyframes dash-rise-a {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes dash-rise-b {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes dash-grow-y-a {
+  from {
+    height: 0;
+  }
+}
+
+@keyframes dash-grow-y-b {
+  from {
+    height: 0;
+  }
+}
+
+@keyframes dash-grow-x-a {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes dash-grow-x-b {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes dash-sweep-a {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+
+@keyframes dash-sweep-b {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+
+@keyframes dash-fade-a {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dash-fade-b {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-motion,
+  .dash-motion * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

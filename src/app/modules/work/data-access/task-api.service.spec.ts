@@ -225,7 +225,7 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
   });
 
   it('createCategory posts a category to the project endpoint', () => {
-    const request = { name: 'Bug', displayOrder: 1 };
+    const request = { name: 'Bug', displayOrder: 1, kind: 'bug' };
 
     service.createCategory('project-1', request).subscribe();
 

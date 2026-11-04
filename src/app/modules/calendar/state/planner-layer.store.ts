@@ -61,7 +61,8 @@ export const PlannerLayerStore = signalStore(
       }
     }
 
-    async function write(call: Observable<unknown>): Promise<boolean> {
+    /** quiet: the caller shows the refusal itself (the store still keeps it in `error`). */
+    async function write(call: Observable<unknown>, quiet = false): Promise<boolean> {
       patchState(store, { saving: true, error: null });
       try {
         await firstValueFrom(call);
@@ -72,14 +73,15 @@ export const PlannerLayerStore = signalStore(
       } catch (err) {
         const message = plannerErrorMessage(errorCode(err));
         patchState(store, { saving: false, error: message });
-        notify.error(message);
+        if (!quiet) notify.error(message);
         return false;
       }
     }
 
     return {
       load,
-      createBlock: (taskId: string, startAt: string, endAt: string) => write(api.createBlock({ taskId, startAt, endAt })),
+      createBlock: (taskId: string, startAt: string, endAt: string, opts?: { quiet?: boolean }) =>
+        write(api.createBlock({ taskId, startAt, endAt }), opts?.quiet ?? false),
       moveBlock: (blockId: string, startAt: string, endAt: string) => write(api.moveBlock(blockId, { startAt, endAt })),
       removeBlock: (blockId: string) => write(api.deleteBlock(blockId)),
     };

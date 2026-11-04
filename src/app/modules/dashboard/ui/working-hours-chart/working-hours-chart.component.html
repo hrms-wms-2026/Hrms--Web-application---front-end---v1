@@ -1,0 +1,34 @@
+<div class="whc-chart" role="img" [attr.aria-label]="summary()" data-testid="working-hours-chart">
+  @for (bar of bars(); track bar.date) {
+    <div class="whc-col" [title]="bar.tooltip" data-testid="hours-bar">
+      <div class="whc-track">
+        @if (bar.worked > 0) {
+          <div
+            class="whc-seg whc-seg--worked"
+            data-segment="worked"
+            [style.height.%]="bar.worked"
+          ></div>
+        }
+        @if (bar.break > 0) {
+          <div
+            class="whc-seg whc-seg--break"
+            data-segment="break"
+            [style.height.%]="bar.break"
+          ></div>
+        }
+        @if (showLeave() && bar.onLeave > 0) {
+          <span class="whc-leave" data-testid="hours-leave" [attr.title]="bar.onLeave + ' on leave'">{{ bar.onLeave }}</span>
+        }
+      </div>
+      <span class="whc-label">{{ bar.label }}</span>
+    </div>
+  }
+  @if (teamAverage() && averagePoints().length > 0) {
+    <svg class="whc-average" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <polyline data-testid="hours-average" [attr.points]="averageLine()" />
+      @for (p of averagePoints(); track p.x) {
+        <circle data-testid="hours-average-point" [attr.cx]="p.x" [attr.cy]="p.y" r="1.6" />
+      }
+    </svg>
+  }
+</div>

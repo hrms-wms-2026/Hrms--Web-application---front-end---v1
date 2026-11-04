@@ -28,20 +28,10 @@
 .tp-head__title p { margin: 2px 0 0; font-size: 12px; color: var(--color-text-secondary); }
 .tp-head__controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 
-/* Compact "This Month ▾" style dropdowns (app-select restyled through its documented hooks). */
-.tp-compact-select { width: 150px; }
-.tp-compact-select--period { width: 136px; }
-.tp-compact-select--wide { width: 180px; }
-:host ::ng-deep .tp-compact-select .app-select__trigger {
-  height: 32px;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: 32px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-}
-:host ::ng-deep .tp-compact-select [data-testid='select-leading-icon'] { left: 10px; width: 14px; height: 14px; }
+/* Compact "This Month ▾" style dropdowns: app-select at size="sm" (icon in its own addon, value beside it). */
+.tp-compact-select { width: 170px; }
+.tp-compact-select--period { width: 140px; }
+.tp-compact-select--wide { width: 190px; }
 
 .tp-close {
   display: inline-flex;
@@ -65,9 +55,9 @@
 /* ---------- Overview ---------- */
 .tp-overview { display: flex; flex-direction: column; gap: 12px; }
 
-.tp-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 12px; }
-.tp-stats--period { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.15fr); }
-.tp-stats--period[aria-busy='true'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tp-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 12px; }
+.tp-stats--period { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr); }
+.tp-stats--period[aria-busy='true'] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
 .tp-stat {
   --tone: #10b981;
@@ -86,6 +76,7 @@
 .tp-stat--inProgress { --tone: #3b82f6; }
 .tp-stat--notStarted { --tone: #94a3b8; }
 .tp-stat--untasked { --tone: #f59e0b; }
+.tp-stat--overdue { --tone: #ef4444; }
 .tp-stat--skeleton { --tone: #94a3b8; opacity: .6; }
 .tp-stat__value { font-size: 20px; font-weight: 700; line-height: 1.2; color: color-mix(in srgb, var(--tone) 72%, var(--color-text-primary)); white-space: nowrap; }
 .tp-stat__value small { font-size: 14px; font-weight: 600; }
@@ -107,6 +98,18 @@
 .tp-panel { display: flex; min-width: 0; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
 .tp-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tp-panel__title { margin: 0; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+/* Team members: one full-width table, estimate hours then the period's planned / worked time. */
+.tp-panel--employees { grid-column: 1 / -1; }
+/* Project breakdown fills its row: beside the unscheduled-work panel when the Planner shows it, else full width. */
+.tp-panel--projects { grid-column: 1 / -1; }
+.tp-panels:has([data-testid="tptd-unscheduled"]) .tp-panel--projects { grid-column: span 2; }
+.tp-members-tools { display: inline-flex; align-items: center; gap: 10px; }
+.tp-members-note { margin: -4px 0 0; font-size: 11px; }
+.tp-members-groups th { padding: 2px 8px 4px; background: transparent; font-size: 10px; font-weight: 600; letter-spacing: .02em; text-align: center; text-transform: uppercase; color: var(--color-text-secondary); }
+.tp-members-groups td { border: 0; }
+.tp-mini-table .tp-members-time { border-left: 1px solid var(--color-border); }
+.tp-mini-table td:first-child { width: 22%; }
+.tp-over { font-weight: 600; color: #b45309; }
 .tp-panel__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-top: auto; }
 
 /* Status distribution */
@@ -210,9 +213,109 @@
   .tp-total { grid-column: 1 / -1; }
   .tp-stats--period .tp-total { grid-column: auto; }
   .tp-panels { grid-template-columns: minmax(0, 1fr); }
+  .tp-panels .tp-panel--projects, .tp-panels:has([data-testid="tptd-unscheduled"]) .tp-panel--projects { grid-column: auto; }
   .tp-dist { flex-direction: column; align-items: stretch; }
   .tp-donut { align-self: center; }
   .tp-overdue-list { grid-template-columns: minmax(0, 1fr); }
   .tp-panel__head { flex-wrap: wrap; }
   .tp-search { width: 100%; max-width: none; }
 }
+
+/* Project breakdown (2026-11-02 design match): allocated vs completed hours, one bar row per project on one scale. */
+.tp-project-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tp-project-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+.tp-project-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tp-project-figures {
+  flex: none;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.tp-project-track {
+  position: relative;
+  display: block;
+  height: 14px;
+  border-radius: 4px;
+  background: rgb(248 250 252);
+}
+.tp-project-allocated,
+.tp-project-completed {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 4px;
+}
+.tp-project-allocated {
+  background: rgb(203 213 225);
+}
+.tp-project-completed {
+  top: 3px;
+  height: 8px;
+  background: #10b981;
+}
+.tp-project-legend {
+  display: flex;
+  gap: 14px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.tp-project-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tp-project-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.tp-project-key--allocated {
+  background: rgb(203 213 225);
+}
+.tp-project-key--completed {
+  background: #10b981;
+}
+
+/* Overdue tasks (2026-11-02): total overdue hours on top, a pie by project beside a table of tasks with their hours. */
+.tp-overdue-total { margin: 0; font-size: 13px; color: var(--color-text-primary); }
+.tp-overdue-total strong { font-size: 18px; color: var(--color-danger-text); }
+.tp-overdue-body { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+.tp-overdue-chart { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.tp-overdue-pie { position: relative; flex: none; }
+.tp-overdue-pie__center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0; line-height: 1.1; font-size: 11px; color: var(--color-text-secondary); }
+.tp-overdue-pie__center strong { font-size: 18px; color: var(--color-text-primary); }
+.tp-overdue-legend { display: flex; width: 100%; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 12px; }
+.tp-overdue-legend li { display: flex; align-items: center; gap: 8px; }
+.tp-overdue-dot { width: 10px; height: 10px; flex: none; border-radius: 9999px; }
+.tp-overdue-legend__name { min-width: 0; flex: 1 1 auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tp-overdue-legend__hours { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tp-overdue-table-wrap { min-width: 0; max-height: 22rem; overflow-y: auto; }
+.tp-overdue-table { width: 100%; table-layout: fixed; }
+.tp-overdue-table th:nth-child(1) { width: 32px; }
+.tp-overdue-table th:nth-child(3) { width: 22%; }
+.tp-overdue-table th:nth-child(4) { width: 84px; }
+.tp-overdue-table th:nth-child(5) { width: 130px; }
+.tp-overdue-task { display: flex; width: 100%; min-width: 0; align-items: center; gap: 6px; text-align: left; color: var(--color-text-primary); }
+.tp-overdue-task:hover { color: var(--color-accent); }
+@media (max-width: 900px) { .tp-overdue-body { grid-template-columns: minmax(0, 1fr); } }
