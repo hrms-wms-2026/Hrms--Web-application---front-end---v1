@@ -40,6 +40,19 @@ describe('ActiveProjectsCardComponent', () => {
   const q = (fixture: ComponentFixture<unknown>, id: string): HTMLElement | null =>
     (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 
+  it('the hover refresh button reloads the projects and keeps the list on screen', async () => {
+    const listMine = vi.fn(() => of(page([project('a', { isActive: true })])));
+    const fixture = await setup(listMine);
+    const el: HTMLElement = fixture.nativeElement;
+    const refresh = el.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement;
+    expect(el.querySelector('[data-testid="popout-expand"]')).toBeNull();
+    expect(el.querySelector('[data-testid="popout-close"]')).toBeNull();
+    refresh.click();
+    fixture.detectChanges();
+    expect(listMine).toHaveBeenCalledTimes(2);
+    expect(el.querySelector('[data-testid="refreshed-label"]')).toBeNull();
+  });
+
   it('counts only active, not-achieved projects and previews the first four', async () => {
     const listMine = vi
       .fn()

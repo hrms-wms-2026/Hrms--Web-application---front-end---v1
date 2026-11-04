@@ -71,7 +71,6 @@ export class WeeklyProgressCardComponent implements OnInit {
   private readonly previous = signal<WeeklyWorkProgressResponse | null>(null);
   private readonly failed = signal(false);
   protected readonly loading = signal(false);
-  protected readonly loadedAt = signal<Date | null>(null);
   protected readonly selectedWeek = signal<'this' | 'last'>('this');
   readonly detailOpen = signal(false);
 
@@ -180,7 +179,6 @@ export class WeeklyProgressCardComponent implements OnInit {
     this.current.set(data);
     this.failed.set(false);
     this.loading.set(false);
-    this.loadedAt.set(new Date());
   }
 
   private fetch(): void {

@@ -55,6 +55,7 @@ interface StoreMock {
   today: ReturnType<typeof signal<AttendanceTodayResponse | null>>;
   todayLoading: ReturnType<typeof signal<boolean>>;
   todayError: ReturnType<typeof signal<string | null>>;
+  todayLoadedAt: ReturnType<typeof signal<Date | null>>;
   loadToday: ReturnType<typeof vi.fn>;
 }
 
@@ -77,6 +78,7 @@ describe('TodayAtAGlanceCardComponent', () => {
       today: signal(overrides === null ? null : { ...baseToday, ...overrides }),
       todayLoading: signal(false),
       todayError: signal(null),
+      todayLoadedAt: signal<Date | null>(null),
       loadToday: vi.fn(() => Promise.resolve())
     };
 
@@ -98,6 +100,28 @@ describe('TodayAtAGlanceCardComponent', () => {
   it('loads today on init', async () => {
     const { store } = await setup();
     expect(store.loadToday).toHaveBeenCalled();
+  });
+
+  it('the corner refresh button reloads today, spins while it runs, and sits outside the scaled canvas', async () => {
+    const { fixture, store } = await setup();
+    store.loadToday.mockClear();
+    let finish!: () => void;
+    store.loadToday.mockImplementation(() => new Promise<void>((resolve) => (finish = resolve)));
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('[data-testid="today-at-a-glance-canvas"] [data-testid="popout-refresh"]')).toBeNull();
+    expect(el.querySelector('[data-testid="popout-expand"]')).toBeNull();
+    expect(el.querySelector('[data-testid="refreshed-label"]')).toBeNull();
+    const button = el.querySelector('[data-testid="today-refresh-corner"] [data-testid="popout-refresh"]') as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+    expect(store.loadToday).toHaveBeenCalledTimes(1);
+    expect(button.querySelector('svg')!.classList).toContain('animate-spin');
+
+    finish();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(button.querySelector('svg')!.classList).not.toContain('animate-spin');
   });
 
   it('shows clocked-in status and the time left to finish the required day', async () => {

@@ -46,6 +46,15 @@ describe('TodaysScheduleCardComponent', () => {
     return { fixture, getEvents, getMyTimezone };
   }
 
+  it('the hover refresh button fetches today again', async () => {
+    const { fixture, getEvents } = await setup();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('[data-testid="popout-expand"]')).toBeNull();
+    (el.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(getEvents).toHaveBeenCalledTimes(2);
+  });
+
   it('resolves the viewer timezone before fetching events, and requests a UTC range covering today', async () => {
     const { getEvents, getMyTimezone } = await setup();
     expect(getMyTimezone).toHaveBeenCalledOnce();

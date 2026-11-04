@@ -4,6 +4,7 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { LOAD_BAND_COLORS, dayLoad, formatHours, loadBand } from '../../../calendar/utils/team-load';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 import { TeamPlannerResponse } from '../../../work/planner/models/team-planner.models';
@@ -21,13 +22,24 @@ const COMPACT_ROWS = 4;
 @Component({
   selector: 'app-team-plan-today-card',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, PopoutHeaderActionsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="tpt">
+    <section class="tpt group">
       <header class="tpt-head">
         <h3>Team plan today</h3>
-        <a data-testid="tpt-open" routerLink="/planner" [queryParams]="{ scope: 'team', teamView: 'day' }">Open team planner ›</a>
+        <div class="tpt-actions">
+          <a data-testid="tpt-open" routerLink="/planner" [queryParams]="{ scope: 'team', teamView: 'day' }">Open team planner ›</a>
+          <!-- Refresh in the top-right corner, shown only while the card is hovered (or the button has focus) -->
+          <div class="opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+            <app-popout-header-actions
+              [refreshing]="loading() && rows().length > 0"
+              [expanded]="false"
+              [canExpand]="false"
+              (refresh)="load()"
+            />
+          </div>
+        </div>
       </header>
       @if (off()) {
         <p class="tpt-state" data-testid="tpt-off">Planner is off</p>
@@ -67,6 +79,7 @@ const COMPACT_ROWS = 4;
     :host { display: block; height: 100%; }
     .tpt { height: 100%; display: flex; flex-direction: column; gap: 8px; overflow: auto; }
     .tpt-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .tpt-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
     .tpt-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
     .tpt-head a { font-size: 13px; color: var(--color-accent, #1d4ed8); white-space: nowrap; }
     .tpt-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
