@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, effect, inject, input, output } from '@angular/core';
 import { BootstrapWidget } from '../../models/dashboard-layout.model';
 import { WIDGET_DATA, WidgetDataStore } from '../../widgets/widget-data';
 import { WIDGET_REGISTRY } from '../../widgets/widget-registry';
@@ -16,6 +16,11 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
   standalone: true,
   imports: [NgComponentOutlet, UnsupportedWidgetComponent],
   providers: [WidgetDataStore, { provide: WIDGET_DATA, useExisting: WidgetDataStore }],
+  // The dashboard's load / refresh motion (.dash-motion is this frame's content box). Loaded here, unencapsulated,
+  // instead of from the global styles.css, so it ships in the lazy dashboard chunk and not in the initial bundle.
+  // Every rule is scoped under .dash-motion / .dash-replay-*, so being global changes nothing outside the dashboard.
+  styleUrl: '../../dashboard-motion.css',
+  encapsulation: ViewEncapsulation.None,
   template: `
     <div
       class="relative flex h-full w-full flex-col"
