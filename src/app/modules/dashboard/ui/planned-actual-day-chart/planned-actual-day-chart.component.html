@@ -1,0 +1,22 @@
+<div class="pad" role="img" [attr.aria-label]="summary()">
+  @for (r of shown(); track r.id) {
+    <div class="pad-row" data-testid="pad-row" [title]="r.tooltip">
+      <span class="pad-label">{{ r.label }}</span>
+      <span class="pad-track">
+        <span
+          class="pad-planned"
+          data-testid="pad-planned"
+          [style.width.%]="r.planned"
+          [style.background]="colors.planned"
+        ></span>
+        <span class="pad-actual" data-testid="pad-actual">
+          <span [style.width.%]="r.scheduled" [style.background]="colors.scheduled"></span>
+          <span [style.width.%]="r.outside" [style.background]="colors.outside"></span>
+          <span [style.width.%]="r.noPlan" [style.background]="colors.noPlan"></span>
+        </span>
+      </span>
+      <span class="pad-num" data-testid="pad-actual-text">{{ r.actualText }}</span>
+      <span class="pad-num pad-pct" data-testid="pad-completion">{{ r.completion }}</span>
+    </div>
+  }
+</div>

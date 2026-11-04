@@ -1,7 +1,27 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
 import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 const TICK_MS = 30_000;
+
+/** The two classes a refresh alternates between to restart the dashboard's load animation (dashboard-motion.css). */
+const REPLAY = ['dash-replay-a', 'dash-replay-b'] as const;
+
+/**
+ * Replays the load animation of the popup or dashboard widget around `el`; a no-op outside the dashboard.
+ * A card refreshing while its popup is open replays the popup's charts instead: the widget's rise (opacity +
+ * transform) would otherwise fade and shift the fixed popup it holds, so it looks like it closes and reopens.
+ */
+export function replayDashboardMotion(el: HTMLElement): void {
+  const widget = el.closest<HTMLElement>('.dash-motion');
+  const openPopup = Array.from(widget?.querySelectorAll<HTMLElement>('app-modal') ?? []).find((m) =>
+    m.querySelector('[role="dialog"]'),
+  );
+  const target = el.closest<HTMLElement>('app-modal') ?? openPopup ?? widget;
+  if (!target?.closest('.dash-motion')) return;
+  const next = target.classList.contains(REPLAY[0]) ? REPLAY[1] : REPLAY[0];
+  target.classList.remove(...REPLAY);
+  target.classList.add(next);
+}
 
 /** 'just now' / '5 min ago' / '2 h ago' / 'Sep 30, 14:05' for when data last came from the backend. */
 export function formatRefreshedAgo(at: Date, now: Date): string {
@@ -121,6 +141,15 @@ export class PopoutHeaderActionsComponent {
   });
 
   constructor() {
+    // A refresh that finished (refreshing true -> false) plays the card's load animation again with the new data.
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    let wasRefreshing = false;
+    effect(() => {
+      const refreshing = this.refreshing();
+      if (wasRefreshing && !refreshing) replayDashboardMotion(host);
+      wasRefreshing = refreshing;
+    });
+
     const timer = setInterval(() => this.now.set(new Date()), TICK_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }

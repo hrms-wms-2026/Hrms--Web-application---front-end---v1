@@ -148,13 +148,27 @@
           }
           <div class="ta-hero" data-testid="ta-hero">
             <ng-container [ngTemplateOutlet]="donutTpl" />
-            <div class="ta-hero-figure">
-              <p class="ta-rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</p>
-              <p class="ta-caption">Attendance today</p>
-              @if (delta(); as d) {
-                <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
-              }
-            </div>
+            @if (view() === 'xs' && plan().legend) {
+              <!-- Narrow cards: the legend right under the donut, the same place every widget puts it. -->
+              <ul class="ta-xs-legend" aria-label="Today" data-testid="ta-xs-legend">
+                @for (row of legend(); track row.key) {
+                  <li class="ta-xs-legend-row" data-testid="ta-legend-row">
+                    <span class="ta-dot" [style.background]="row.color"></span>
+                    <span class="ta-legend-label">{{ row.label }}</span>
+                    <span class="ta-legend-count">{{ row.count }}</span>
+                  </li>
+                }
+              </ul>
+            }
+            @if (view() !== 'xs' || plan().figure) {
+              <div class="ta-hero-figure">
+                <p class="ta-rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</p>
+                <p class="ta-caption">Attendance today</p>
+                @if (delta(); as d) {
+                  <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
+                }
+              </div>
+            }
             @if (plan().heroTrend) {
               <!-- Wide card: the trend fills the row between the rate and the legend. -->
               <div class="ta-hero-trend" data-testid="ta-trend">

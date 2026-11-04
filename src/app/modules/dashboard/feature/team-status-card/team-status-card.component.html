@@ -1,279 +1,274 @@
-<app-popout-panel
-  class="block h-full"
-  [open]="showAll()"
-  label="Team status"
-  expandedWidth="64rem"
-  [growLeft]="true"
-  expandedMaxHeight="min(85vh, 56rem)"
-  (closed)="collapse()"
+<app-widget-card
+  class="group block h-full"
+  data-testid="team-status-card"
+  title="Working / Break / Leave"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load who is working."
+  emptyMessage="No one in your team to show."
+  (retry)="retry()"
 >
-  <app-widget-card
-    class="group block h-full"
-    data-testid="team-status-card"
-    [class.cursor-pointer]="!showAll()"
-    (click)="expand()"
-    title="Team Status"
-    [nowrapTitle]="true"
-    [state]="widgetState()"
-    errorMessage="Couldn't load team status."
-    emptyMessage="No one in your coverage is scheduled today"
-    (retry)="retry()"
-  >
-    <app-popout-header-actions
-      widget-actions
-      [refreshedAt]="store.loadedAt()"
-      [refreshing]="refreshing()"
-      [expanded]="showAll()"
-      [canExpand]="true"
-      [revealOnHover]="!showAll()"
-      (refresh)="retry()"
-      (expand)="expand()"
-      (closed)="collapse()"
-    />
+  <app-popout-header-actions
+    widget-actions
+    [refreshedAt]="view() === 'standard' ? store.loadedAt() : null"
+    [refreshing]="refreshing()"
+    [expanded]="false"
+    [canExpand]="true"
+    [revealOnHover]="true"
+    (refresh)="retry()"
+    (expand)="openDetail()"
+  />
 
-    @if (store.data(); as data) {
-      @if (compact() && !showAll()) {
-        <div class="flex h-full min-h-0 flex-col justify-center gap-2" data-testid="team-status-mini">
-          <div>
-            <p class="text-3xl font-bold leading-none text-slate-900 tabular-nums" data-testid="team-mini-present">
-              {{ presentCount() }}<span class="text-base font-semibold text-slate-400">/{{ expectedCount() }}</span>
-            </p>
-            <p class="mt-1 text-xs text-slate-500">in today</p>
-          </div>
-          <div
-            class="flex h-2 gap-[2px] overflow-hidden rounded-full bg-slate-100"
-            role="img"
-            [attr.aria-label]="presentCount() + ' of ' + expectedCount() + ' in today'"
-          >
-            @for (segment of stripSegments(); track segment.key) {
-              <span
-                class="team-strip-segment"
-                [ngClass]="'team-strip-segment--' + segment.key"
-                [style.flex-grow]="segment.count"
-              ></span>
-            }
-          </div>
-          <p class="truncate text-xs text-slate-600" data-testid="team-mini-exceptions">
-            <span class="font-semibold text-amber-600 tabular-nums">{{ data.summary.late }}</span> late ·
-            <span class="font-semibold text-rose-600 tabular-nums">{{ data.summary.absent }}</span> absent ·
-            <span class="font-semibold text-slate-700 tabular-nums">{{ data.summary.onLeave }}</span> leave
-          </p>
-        </div>
-      } @else {
-      <div class="flex flex-col" data-testid="team-status-body">
-        <dl class="grid grid-cols-4 gap-2 text-center" data-testid="team-status-stats">
-          <div>
-            <dd class="text-xl font-bold text-slate-900 tabular-nums" data-testid="team-stat-present">{{ presentCount() }}</dd>
-            <dt class="mt-0.5 text-[11px] text-slate-500">Present</dt>
-          </div>
-          <div>
-            <dd class="text-xl font-bold text-amber-600 tabular-nums" data-testid="team-stat-late">{{ data.summary.late }}</dd>
-            <dt class="mt-0.5 text-[11px] text-slate-500">Late</dt>
-          </div>
-          <div>
-            <dd class="text-xl font-bold text-rose-600 tabular-nums" data-testid="team-stat-absent">{{ data.summary.absent }}</dd>
-            <dt class="mt-0.5 text-[11px] text-slate-500">Absent</dt>
-          </div>
-          <div>
-            <dd class="text-xl font-bold text-slate-900 tabular-nums" data-testid="team-stat-leave">{{ data.summary.onLeave }}</dd>
-            <dt class="mt-0.5 text-[11px] text-slate-500">On leave</dt>
-          </div>
-        </dl>
-
-        @if (!showAll()) {
-          <div class="mt-4 rounded-lg bg-slate-50 px-3 py-2.5" data-testid="team-status-preview">
-            <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">
-              @if (followUpCount() > 0) {
-                Follow up · {{ followUpCount() }}
-              } @else {
-                Follow up
-              }
-            </p>
-            @for (member of previewMembers(); track member.employeeId) {
-              <ng-container *ngTemplateOutlet="memberRow; context: { $implicit: member, compact: true }" />
-            } @empty {
-              <p class="py-1.5 text-xs text-slate-500" data-testid="team-status-all-clear">
-                <span class="text-emerald-600" aria-hidden="true">✓</span> Everyone is on track today.
-              </p>
-            }
-          </div>
-        }
-
-        <div class="mt-4 border-t border-slate-100 pt-3">
-          <div
-            class="flex h-2 gap-[2px] overflow-hidden rounded-full"
-            role="img"
-            [attr.aria-label]="presentCount() + ' of ' + expectedCount() + ' in today'"
-            data-testid="team-status-strip"
-          >
-            @for (segment of stripSegments(); track segment.key) {
-              <span
-                class="team-strip-segment"
-                [ngClass]="'team-strip-segment--' + segment.key"
-                [style.flex-grow]="segment.count"
-                [attr.title]="segment.count + ' ' + segment.label.toLowerCase()"
-              ></span>
-            }
-          </div>
-          <div class="mt-2.5 flex items-center justify-between gap-3">
-            <p class="text-xs text-slate-500">{{ presentCount() }} of {{ expectedCount() }} in today</p>
-            @if (!showAll()) {
-              <button
-                type="button"
-                class="shrink-0 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                data-testid="team-status-toggle"
-                (click)="onToggleClick($event)"
-              >
-                View team ({{ data.totalMembers }})
-              </button>
-            }
-          </div>
-        </div>
-
-        @if (showAll()) {
-          <section class="mt-4 border-t border-slate-100 pt-4" aria-label="Team members">
-            <div class="mb-3 flex flex-wrap items-center gap-1.5" data-testid="team-status-summary">
-              @for (stat of summaryStats(); track stat.key) {
-                <button
-                  type="button"
-                  class="team-status-filter"
-                  [class.team-status-filter--active]="filter() === stat.key"
-                  [disabled]="stat.count === 0 && filter() !== stat.key"
-                  [attr.aria-pressed]="filter() === stat.key"
-                  [attr.data-testid]="'team-status-filter-' + stat.key"
-                  (click)="toggleFilter(stat.key, $event)"
-                >
-                  <span class="h-1.5 w-1.5 shrink-0 rounded-full" [ngClass]="dotClass(stat.key)"></span>
-                  <span class="font-semibold tabular-nums">{{ stat.count }}</span>
-                  <span>{{ stat.label }}</span>
-                </button>
-              }
-            </div>
-
-            <div class="flex flex-col gap-3" data-testid="team-status-members">
-              @for (group of partition().exceptionGroups; track group.key) {
-                <div [attr.data-testid]="'team-status-group-' + group.key">
-                  @if (!filter()) {
-                    <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                      {{ group.label }} · {{ group.members.length }}
-                    </p>
-                  }
-                  <ul class="space-y-2">
-                    @for (member of visibleGroupMembers(group); track member.employeeId) {
-                      <li>
-                        <ng-container *ngTemplateOutlet="memberRow; context: { $implicit: member, compact: false }" />
-                      </li>
-                    }
-                  </ul>
-                  @if (hiddenGroupCount(group) > 0) {
-                    <button
-                      type="button"
-                      class="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                      [attr.data-testid]="'team-status-more-' + group.key"
-                      (click)="expandGroup(group.key, $event)"
-                    >
-                      +{{ hiddenGroupCount(group) }} more {{ group.label.toLowerCase() }}
-                    </button>
-                  }
-                </div>
-              } @empty {
-                @if (filter()) {
-                  <p class="py-4 text-center text-sm text-slate-500">No one matches this filter.</p>
-                }
-              }
-
-              @if (data.members.length < data.totalMembers) {
-                <p class="text-[11px] text-slate-400" data-testid="team-status-truncated">
-                  Showing {{ data.members.length }} of {{ data.totalMembers }} - open Attendance for everyone.
-                </p>
-              }
-
-              @if (partition().others.length > 0) {
-                @if (showOthers()) {
-                  <div data-testid="team-status-others">
-                    @if (partition().exceptionGroups.length > 0) {
-                      <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                        Everyone else · {{ partition().others.length }}
-                      </p>
-                    }
-                    <ul class="space-y-2">
-                      @for (member of partition().others; track member.employeeId) {
-                        <li>
-                          <ng-container *ngTemplateOutlet="memberRow; context: { $implicit: member, compact: false }" />
-                        </li>
-                      }
-                    </ul>
-                  </div>
-                } @else {
-                  <button
-                    type="button"
-                    class="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-200 px-4 py-3 text-left text-sm text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
-                    data-testid="team-status-others-toggle"
-                    (click)="$event.stopPropagation(); othersExpanded.set(true)"
-                  >
-                    <span class="text-emerald-600" aria-hidden="true">✓</span>
-                    <span><span class="font-semibold text-slate-700">{{ partition().others.length }}</span> {{ othersCaption() }}</span>
-                    <span class="ml-auto text-xs font-semibold text-blue-600">Show</span>
-                  </button>
-                }
-              }
-            </div>
-
-            <div class="mt-4 flex items-center justify-between">
-              <button
-                type="button"
-                class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                data-testid="team-status-view-all"
-                (click)="viewAll($event)"
-              >
-                Open in Attendance
-              </button>
-              <button
-                type="button"
-                class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                data-testid="team-status-toggle"
-                (click)="onToggleClick($event)"
-              >
-                Show less
-              </button>
-            </div>
-          </section>
-        }
+  @if (store.data(); as data) {
+    <!-- One donut size (DASHBOARD_DONUT_PX) in every view: the team total in the middle. -->
+    <ng-template #donutTpl>
+      <div class="wbl-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="wbl-donut">
+        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+          @for (arc of donut(); track arc.key) {
+            <circle
+              cx="21"
+              cy="21"
+              r="15.9155"
+              fill="none"
+              stroke-width="6"
+              [attr.stroke]="arc.color"
+              [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+              [attr.stroke-dashoffset]="arc.offset"
+            />
+          }
+        </svg>
+        <p class="wbl-donut-center" data-testid="wbl-center">
+          @let worked = minutes(hours().worked);
+          <span class="wbl-donut-value" [style.font-size.px]="valueFontPx(worked)">{{ worked }}</span>
+          <span class="wbl-donut-of">Working hours</span>
+        </p>
       </div>
+    </ng-template>
+
+    <ng-template #countsTpl>
+      <ul class="wbl-counts" aria-label="Team time today" data-testid="wbl-legend">
+        @for (row of hourLegend(); track row.key) {
+          <li [attr.data-testid]="'wbl-count-' + row.key">
+            <span class="wbl-dot" [style.background]="row.color"></span>
+            <span class="wbl-count-label">{{ row.label }}</span>
+            <span class="wbl-count">{{ minutes(row.minutes) }}</span>
+          </li>
+        }
+      </ul>
+    </ng-template>
+
+    <ng-template #pillTpl>
+      <button type="button" class="wbl-pill" data-testid="wbl-pill" (click)="openDetail($event)">
+        <span class="wbl-dot" [style.background]="counters()[0].color"></span>
+        <span class="wbl-pill-text">{{ pill() }}</span>
+        <span class="wbl-pill-chevron" aria-hidden="true">›</span>
+      </button>
+    </ng-template>
+
+    <ng-template #barTpl let-m>
+      @let p = progress(m);
+      <span class="wbl-bar" aria-hidden="true">
+        @if (p !== null) {
+          <span [style.width.%]="p" [style.background]="stateColor(m) ?? '#94a3b8'"></span>
+        }
+      </span>
+    </ng-template>
+
+    @switch (view()) {
+      @case ('mini') {
+        @if (plan().miniInline) {
+          <!-- Wide 2-row card: a stacked bar and the legend with counts, then the pill. -->
+          <div class="wbl-mini wbl-mini--inline" data-testid="wbl-mini">
+            <div class="wbl-stack" role="img" [attr.aria-label]="donutLabel()" data-testid="wbl-mini-bar">
+              @for (arc of donut(); track arc.key) {
+                <span [style.background]="arc.color" [style.width.%]="arc.length"></span>
+              }
+            </div>
+            <ng-container [ngTemplateOutlet]="countsTpl" />
+            @if (plan().pill) {
+              <ng-container [ngTemplateOutlet]="pillTpl" />
+            }
+          </div>
+        } @else {
+          <div class="wbl-mini" data-testid="wbl-mini">
+            <div class="wbl-hero">
+              <ng-container [ngTemplateOutlet]="donutTpl" />
+              <ng-container [ngTemplateOutlet]="countsTpl" />
+            </div>
+            @if (plan().pill) {
+              <ng-container [ngTemplateOutlet]="pillTpl" />
+            }
+          </div>
+        }
+      }
+      @default {
+        <div class="wbl" data-testid="wbl-layout" [attr.data-view]="view()">
+          @if (view() === 'xs') {
+            <div class="wbl-xs-head">
+              <ng-container [ngTemplateOutlet]="donutTpl" />
+              <ng-container [ngTemplateOutlet]="countsTpl" />
+            </div>
+            <ng-container [ngTemplateOutlet]="pillTpl" />
+            @if (plan().rows > 0) {
+              <!-- Under the donut: each employee's working hours, with their break and leave in the same bar. -->
+              <ul class="wbl-rows" aria-label="Working hours by employee">
+                @for (r of visibleHourRows(); track r.member.employeeId) {
+                  <li class="wbl-hours-row" data-testid="wbl-hours-row" [title]="r.member.displayName + ': ' + minutes(r.worked) + ' worked, ' + minutes(r.break) + ' break' + (r.leave > 0 ? ', ' + minutes(r.leave) + ' leave' : '')">
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(r.member)" [userName]="r.member.displayName" />
+                    <div class="wbl-row-main">
+                      <p class="wbl-name">{{ r.member.displayName }}</p>
+                      <span class="wbl-hours-bar" aria-hidden="true">
+                        @if (r.workedShare > 0) {
+                          <span data-segment="worked" [style.width.%]="r.workedShare" [style.background]="colors.working"></span>
+                        }
+                        @if (r.breakShare > 0) {
+                          <span data-segment="break" [style.width.%]="r.breakShare" [style.background]="colors.break"></span>
+                        }
+                        @if (r.leaveShare > 0) {
+                          <span data-segment="leave" [style.width.%]="r.leaveShare" [style.background]="colors.leave"></span>
+                        }
+                      </span>
+                    </div>
+                    <span class="wbl-pct" data-testid="wbl-hours-total">{{ r.total }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          }
+
+          @if (plan().tiles) {
+            <ul class="wbl-tiles" aria-label="Right now" data-testid="wbl-tiles">
+              @for (c of counters(); track c.key) {
+                <li class="wbl-tile" [style.--tone]="c.color" [attr.data-testid]="'wbl-tile-' + c.key">
+                  <span class="wbl-tile-icon" aria-hidden="true"><app-icon [name]="c.icon" /></span>
+                  <span class="wbl-tile-body">
+                    <span class="wbl-tile-count">{{ c.count }}</span>
+                    <span class="wbl-tile-label">{{ c.tileLabel }}</span>
+                  </span>
+                  <span class="wbl-tile-pct">{{ c.percent }}</span>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (view() === 'standard' && plan().rows > 0) {
+            @if (plan().table) {
+              <table class="wbl-table" data-testid="wbl-table">
+                <thead>
+                  <tr>
+                    <th scope="col" class="wbl-rank">#</th>
+                    <th scope="col">Employee</th>
+                    <th scope="col">Status</th>
+                    @if (hasColumn().has('start')) {
+                      <th scope="col">Start</th>
+                    }
+                    @if (hasColumn().has('elapsed')) {
+                      <th scope="col">Elapsed</th>
+                    }
+                    @if (hasColumn().has('remaining')) {
+                      <th scope="col">Remaining</th>
+                    }
+                    @if (hasColumn().has('todayHours')) {
+                      <th scope="col">Today hours</th>
+                    }
+                    @if (hasColumn().has('progress')) {
+                      <th scope="col" class="wbl-progress-col">Progress</th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (m of rows(); track m.employeeId; let i = $index) {
+                    <tr data-testid="wbl-table-row">
+                      <td class="wbl-rank">{{ i + 1 }}</td>
+                      <td>
+                        <span class="wbl-person">
+                          <app-avatar size="xs" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                          <span class="wbl-name">{{ m.displayName }}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span class="wbl-chip" [class.wbl-chip--neutral]="!state(m)" [style.--tone]="stateColor(m)">
+                          <span class="wbl-dot"></span>{{ stateLabel(m) }}
+                        </span>
+                        @if (m.isLate) {
+                          <span class="wbl-late">Late</span>
+                        }
+                      </td>
+                      @if (hasColumn().has('start')) {
+                        <td>{{ startText(m) }}</td>
+                      }
+                      @if (hasColumn().has('elapsed')) {
+                        <td>{{ elapsedText(m) }}</td>
+                      }
+                      @if (hasColumn().has('remaining')) {
+                        <td data-testid="wbl-remaining">{{ leftText(m) ?? '—' }}</td>
+                      }
+                      @if (hasColumn().has('todayHours')) {
+                        <td data-testid="wbl-today-hours">{{ todayHours(m) }}</td>
+                      }
+                      @if (hasColumn().has('progress')) {
+                        <td>
+                          <span class="wbl-progress">
+                            <ng-container [ngTemplateOutlet]="barTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+                            <span class="wbl-pct" data-testid="wbl-progress">{{ progressText(m) }}</span>
+                          </span>
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <ul class="wbl-rows" data-testid="wbl-rows">
+                @for (m of rows(); track m.employeeId) {
+                  <li class="wbl-row" data-testid="wbl-row">
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                    <div class="wbl-row-main">
+                      <p class="wbl-name">{{ m.displayName }}</p>
+                      <p class="wbl-state" [style.--tone]="stateColor(m)">
+                        <span class="wbl-dot"></span>{{ stateLabel(m) }}
+                        @if (m.isLate) {
+                          <span class="wbl-late" data-testid="wbl-late">Late</span>
+                        }
+                      </p>
+                    </div>
+                    <span class="wbl-start">{{ startText(m) }}</span>
+                    <div class="wbl-row-bar">
+                      @if (state(m) === 'leave') {
+                        <span class="wbl-left" [style.color]="stateColor(m)">{{ leaveText(m) }}</span>
+                      } @else if (leftText(m); as left) {
+                        <span class="wbl-left" [style.color]="stateColor(m)" data-testid="wbl-left">{{ left }}</span>
+                      }
+                      <ng-container [ngTemplateOutlet]="barTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+                    </div>
+                    <span class="wbl-pct" data-testid="wbl-progress">{{ progressText(m) }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          }
+
+          @if (plan().viewAll) {
+            <button type="button" class="wbl-link" data-testid="wbl-view-all" (click)="openDetail($event)">
+              View all {{ data.totalMembers }} ›
+            </button>
+          }
+
+          @if (plan().trend) {
+            <section class="wbl-trend" data-testid="wbl-trend" aria-label="Working hours this week">
+              <p class="wbl-section-title">Working hours this week</p>
+              @if (trendDays(); as days) {
+                <app-working-hours-chart class="wbl-trend-chart" [days]="days" />
+              } @else {
+                <p class="wbl-trend-note">{{ trendFailed() ? "Couldn't load this week's hours." : 'Loading…' }}</p>
+              }
+            </section>
+          }
+        </div>
       }
     }
-  </app-widget-card>
-</app-popout-panel>
+  }
+</app-widget-card>
 
-<ng-template #memberRow let-member let-compact="compact">
-  <button
-    type="button"
-    [class]="compact
-      ? 'group/row flex w-full items-center gap-2.5 rounded-lg py-1.5 text-left cursor-pointer'
-      : 'group/row flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-2.5 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40 cursor-pointer'"
-    data-testid="team-status-member"
-    [attr.aria-label]="'Open ' + member.displayName"
-    (click)="openMember(member, $event)"
-  >
-    <app-avatar [avatarUrl]="avatarUrl(member)" [userName]="member.displayName" size="sm" />
-    <div class="min-w-0 flex-1">
-      <p class="truncate text-sm font-semibold text-slate-900 transition-colors group-hover/row:text-blue-600">
-        {{ member.displayName }}
-      </p>
-      @if (member.positionTitle) {
-        <p class="truncate text-xs text-slate-500">{{ member.positionTitle }}</p>
-      }
-    </div>
-    <div class="flex shrink-0 items-center gap-2">
-      @if (rowCaption(member); as caption) {
-        <span class="hidden text-xs text-slate-500 tabular-nums sm:inline">{{ caption }}</span>
-      }
-      <span class="team-status-pill" [ngClass]="pillClass(member.status)">
-        {{ member.statusLabel }}{{ member.isLate ? ' · Late' : '' }}
-      </span>
-      @if (!compact) {
-        <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      }
-    </div>
-  </button>
-</ng-template>
+<app-team-status-detail-dialog [open]="detailOpen()" (closed)="closeDetail()" />

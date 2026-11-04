@@ -1,116 +1,510 @@
-.team-status-pill {
-  display: inline-flex;
+/* Working / Break / Leave (2026-11-02 design match): the Team Attendance card's visual tokens (slate text scale, tone
+   tiles, 140px donut). Heights here are the ones PRESENCE_SECTION_PX budgets with; change both together. */
+.wbl-mini {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.wbl-mini--inline {
+  justify-content: flex-start;
+}
+
+.wbl-hero,
+.wbl-xs-head {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  border-radius: 999px;
-  padding: 1.5px 7px;
-  font-size: 11px;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.wbl-xs-head {
+  flex: none;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wbl-donut {
+  position: relative;
+  flex: none;
+}
+
+.wbl-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  line-height: 1;
+}
+
+.wbl-donut-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-donut-of {
+  font-size: 0.6875rem;
+  color: rgb(100 116 139);
+}
+
+.wbl-counts {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+}
+
+/* The donut legend every widget shares at this size: 28px rows of dot, label, value (see DASHBOARD_DONUT_LEGEND_ROW_PX). */
+.wbl-xs-head .wbl-counts {
+  width: 100%;
+  gap: 0;
+}
+
+.wbl-xs-head .wbl-counts li {
+  display: grid;
+  height: 28px;
+  grid-template-columns: 0.625rem minmax(0, 1fr) auto;
+  column-gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.wbl-xs-head .wbl-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.wbl-xs-head .wbl-count-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-xs-head .wbl-count {
+  text-align: right;
+  font-weight: 700;
+}
+
+.wbl-mini--inline .wbl-counts {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.wbl-counts li {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.wbl-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  border-radius: 9999px;
+  background: var(--tone, rgb(148 163 184));
+}
+
+.wbl-count-label {
+  flex: 1 1 auto;
+  color: rgb(51 65 85);
+}
+
+.wbl-count {
   font-weight: 600;
-  line-height: 1.35;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-stack {
+  display: flex;
+  height: 0.75rem;
+  flex: none;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(241 245 249);
+}
+
+.wbl-stack span {
+  height: 100%;
+}
+
+.wbl-pill {
+  display: flex;
+  height: 36px;
+  width: 100%;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.625rem;
+  background: rgb(240 249 255);
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  color: rgb(51 65 85);
+  text-align: left;
+}
+
+.wbl-pill:hover {
+  background: rgb(224 242 254);
+}
+
+.wbl-pill-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-pill-chevron {
+  color: rgb(100 116 139);
+}
+
+.wbl {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.wbl-tiles {
+  display: grid;
+  height: 72px;
+  flex: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.wbl-tile {
+  --tone: #3b82f6;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+  border: 1px solid color-mix(in srgb, var(--tone) 22%, #fff);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--tone) 8%, #fff);
+  padding: 0 0.75rem;
+}
+
+.wbl-tile-icon {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tone) 16%, #fff);
+  color: var(--tone);
+}
+
+.wbl-tile-body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.wbl-tile-count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--tone) 80%, rgb(15 23 42));
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-tile-label {
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--tone) 70%, rgb(51 65 85));
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-tile-pct {
+  flex: none;
+  align-self: flex-end;
+  padding-bottom: 0.75rem;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--tone) 70%, rgb(51 65 85));
+  font-variant-numeric: tabular-nums;
+}
+
+@container (max-width: 420px) {
+  .wbl-tile-icon,
+  .wbl-tile-pct {
+    display: none;
+  }
+}
+
+.wbl-rows {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+}
+
+.wbl-row {
+  display: grid;
+  height: 56px;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 4.5rem 7.5rem 2.75rem;
+  gap: 0.625rem;
+  border-bottom: 1px solid rgb(241 245 249);
+}
+
+@container (max-width: 460px) {
+  .wbl-row {
+    grid-template-columns: auto minmax(0, 1fr) 6rem 2.5rem;
+  }
+  .wbl-start {
+    display: none;
+  }
+}
+
+.wbl-row-main {
+  min-width: 0;
+}
+
+.wbl-name {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(15 23 42);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-state {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  color: rgb(100 116 139);
+}
+
+.wbl-start {
+  font-size: 0.75rem;
+  color: rgb(51 65 85);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.team-status-pill--working {
-  background: color-mix(in srgb, var(--color-success) 14%, white);
-  color: var(--color-success);
+.wbl-row-bar {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.team-status-pill--on-break {
-  background: color-mix(in srgb, var(--color-warning) 16%, white);
-  color: var(--color-warning);
+.wbl-left {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.team-status-pill--clocked-out,
-.team-status-pill--not-started,
-.team-status-pill--not-scheduled {
-  background: #f1f5f9;
-  color: #64748b;
+.wbl-bar {
+  display: block;
+  height: 0.375rem;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(226 232 240);
 }
 
-.team-status-pill--absent {
-  background: color-mix(in srgb, var(--color-danger) 14%, white);
-  color: var(--color-danger);
+.wbl-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
 }
 
-.team-status-pill--on-leave {
-  background: #ede9fe;
-  color: #6d28d9;
+.wbl-pct {
+  font-size: 0.75rem;
+  color: rgb(51 65 85);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-.team-status-dot--working {
-  background: var(--color-success);
+.wbl-late {
+  margin-left: 0.25rem;
+  border-radius: 0.25rem;
+  background: rgb(254 243 199);
+  padding: 0 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: rgb(146 64 14);
 }
 
-.team-status-dot--on-break {
-  background: var(--color-warning);
+.wbl-table {
+  width: 100%;
+  flex: none;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.75rem;
 }
 
-.team-status-dot--absent {
-  background: var(--color-danger);
+.wbl-table thead tr {
+  height: 32px;
+  background: rgb(248 250 252);
 }
 
-.team-status-dot--late {
-  background: var(--color-warning);
+.wbl-table th {
+  overflow: hidden;
+  padding: 0 0.5rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.team-status-dot--on-leave {
-  background: #7c3aed;
+.wbl-table tbody tr {
+  height: 40px;
+  border-bottom: 1px solid rgb(241 245 249);
 }
 
-.team-status-dot--not-started {
-  background: #94a3b8;
+.wbl-table td {
+  overflow: hidden;
+  padding: 0 0.5rem;
+  color: rgb(51 65 85);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 
+.wbl-table .wbl-rank {
+  width: 32px;
+  padding-right: 0;
+  color: rgb(100 116 139);
+}
 
-.team-status-filter {
+.wbl-table th:nth-child(2) {
+  width: 180px;
+}
+
+.wbl-table .wbl-progress-col {
+  width: 140px;
+}
+
+.wbl-person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wbl-chip {
+  --tone: #3b82f6;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #475569;
-  padding: 3px 9px;
-  font-size: 11px;
-  line-height: 1.35;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  gap: 0.25rem;
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, var(--tone) 12%, #fff);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--tone) 80%, rgb(15 23 42));
 }
 
-.team-status-filter:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #1e293b;
+.wbl-chip--neutral {
+  --tone: rgb(148 163 184);
 }
 
-.team-status-filter:disabled {
-  cursor: default;
-  opacity: 0.5;
+.wbl-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.team-status-filter--active {
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #1e3a8a;
+.wbl-progress .wbl-bar {
+  flex: 1 1 auto;
 }
 
-.team-strip-segment {
-  min-width: 3px;
+.wbl-progress .wbl-pct {
+  width: 2.75rem;
+  flex: none;
+}
+
+.wbl-link {
+  height: 28px;
+  flex: none;
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(37 99 235);
+}
+
+.wbl-link:hover {
+  text-decoration: underline;
+}
+
+.wbl-trend {
+  display: flex;
+  height: 150px;
+  flex: none;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid rgb(241 245 249);
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.75rem;
+}
+
+.wbl-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(30 41 59);
+}
+
+.wbl-trend-chart {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.wbl-trend-note {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+
+/* xs: one 56px row per employee - worked, break and leave time on one bar (PRESENCE_SECTION_PX.row). */
+.wbl-hours-row {
+  display: grid;
+  height: 56px;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 4.25rem;
+  gap: 0.625rem;
+  border-bottom: 1px solid rgb(241 245 249);
+}
+
+.wbl-hours-bar {
+  display: flex;
+  height: 0.5rem;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(241 245 249);
+}
+
+.wbl-hours-bar span {
   height: 100%;
-  border-radius: 2px;
-}
-
-.team-strip-segment--present {
-  background: #16a34a;
-}
-
-.team-strip-segment--absent {
-  background: #f43f5e;
-}
-
-.team-strip-segment--on_leave {
-  background: #3b82f6;
-}
-
-.team-strip-segment--not_started {
-  background: var(--color-border, #e2e8f0);
+  flex: none;
 }

@@ -7,11 +7,12 @@ const week = (weekStart: string, weekEnd: string, completedHours: number, comple
   weekStart, weekEnd, completedHours, completedTaskCount
 });
 
-function render(weeks: LedWeeklyCompletionWeek[], allocatedHours = 0, compact = false): ComponentFixture<WeeklyCompletionChartComponent> {
+function render(weeks: LedWeeklyCompletionWeek[], allocatedHours = 0, compact = false, percentLine = false): ComponentFixture<WeeklyCompletionChartComponent> {
   const fixture = TestBed.createComponent(WeeklyCompletionChartComponent);
   fixture.componentRef.setInput('weeks', weeks);
   fixture.componentRef.setInput('allocatedHours', allocatedHours);
   fixture.componentRef.setInput('compact', compact);
+  fixture.componentRef.setInput('percentLine', percentLine);
   fixture.detectChanges();
   return fixture;
 }
@@ -53,5 +54,19 @@ describe('WeeklyCompletionChartComponent', () => {
     const fixture = render([week('2026-10-12', '2026-10-18', 0, 0), week('2026-10-19', '2026-10-25', 0, 0)]);
     expect(fixture.nativeElement.querySelector('[data-testid="weekly-completion-empty"]')).not.toBeNull();
     expect((bars(fixture)[0].querySelector('.wc-bar') as HTMLElement).style.height).toBe('0%');
+  });
+
+  it('draws the completion % line: completed so far in these weeks as a share of the allocation, on a right axis', () => {
+    const fixture = render(weeks, 100, false, true);
+    const points = [...fixture.nativeElement.querySelectorAll('[data-testid="weekly-completion-point"]')] as SVGCircleElement[];
+    // Cumulative 20, 60, 70 of 100 allocated hours.
+    expect(points.map((p) => p.getAttribute('cy'))).toEqual(['80', '40', '30']);
+    expect(fixture.nativeElement.querySelector('[data-testid="weekly-completion-axis"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="img"]').getAttribute('aria-label')).toContain('70% of the allocation');
+  });
+
+  it('no % line without an allocation or when it is off', () => {
+    expect(render(weeks, 0, false, true).nativeElement.querySelector('[data-testid="weekly-completion-line"]')).toBeNull();
+    expect(render(weeks, 100, false, false).nativeElement.querySelector('[data-testid="weekly-completion-line"]')).toBeNull();
   });
 });

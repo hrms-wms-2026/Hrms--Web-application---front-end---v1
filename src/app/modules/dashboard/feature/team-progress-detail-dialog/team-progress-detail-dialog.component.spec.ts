@@ -3,6 +3,7 @@ import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@a
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ledTime, workloadRow } from '../../utils/team-progress-time.testing';
 import { environment } from '../../../../../environments/environment';
 import { pickSelectOption } from '../../../../shared/ui/select/select.testing';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
@@ -41,11 +42,19 @@ function summary(extra: Partial<LedWorkProgressResponse> = {}): LedWorkProgressR
       }
     ],
     overdueTasks: [
-      { taskId: 't1', shortId: 'APO-1', title: 'Fix login', projectId: 'p1', objectiveId: 'm1a', dueDate: '2026-01-10', daysOverdue: 3, assignees: [{ employeeId: 'e1', displayName: 'Ann Lee' }] },
-      { taskId: 't2', shortId: 'ZEU-7', title: 'Polish header', projectId: 'p2', objectiveId: 'm2', dueDate: '2026-01-12', daysOverdue: 1, assignees: [] }
+      { taskId: 't1', shortId: 'APO-1', title: 'Fix login', projectId: 'p1', objectiveId: 'm1a', dueDate: '2026-01-10', daysOverdue: 3, estimatedHours: 6, assignees: [{ employeeId: 'e1', displayName: 'Ann Lee' }] },
+      { taskId: 't2', shortId: 'ZEU-7', title: 'Polish header', projectId: 'p2', objectiveId: 'm2', dueDate: '2026-01-12', daysOverdue: 1, estimatedHours: null, assignees: [] }
     ],
     overdueTotal: 9,
-    modulesAtRisk: 1,
+    modulesAtRisk: 1, overdueHours: 26, overdueUnestimatedTaskCount: 1,
+    overdueByProject: [
+      { projectId: 'p1', projectName: 'Apollo', hours: 20, taskCount: 6, unestimatedTaskCount: 0 },
+      { projectId: 'p2', projectName: 'Zeus', hours: 6, taskCount: 3, unestimatedTaskCount: 1 }
+    ],
+    overdueByModule: [
+      { projectId: 'p1', objectiveId: 'm1', inProgressHours: 12, notStartedHours: 8, taskCount: 6 },
+      { projectId: 'p2', objectiveId: 'm2', inProgressHours: 0, notStartedHours: 6, taskCount: 3 }
+    ],
     ...extra
   };
 }
@@ -103,6 +112,10 @@ describe('TeamProgressDetailDialogComponent', () => {
   });
 
   afterEach(() => {
+    // The planned-vs-worked call is covered by its own tests below; the older tests answer it here.
+    http.match(isTime).forEach((r) => {
+      if (!r.cancelled) r.flush(ledTime());
+    });
     http.verify();
     vi.useRealTimers();
     TestBed.resetTestingModule();
@@ -120,6 +133,7 @@ describe('TeamProgressDetailDialogComponent', () => {
   const isEmployees = (r: { url: string }): boolean => r.url === `${BASE}/employees`;
   const isWeekly = (r: { url: string }): boolean => r.url === `${BASE}/weekly-completion`;
   const isPeriod = (r: { url: string }): boolean => r.url === `${BASE}/period`;
+  const isTime = (r: { url: string }): boolean => r.url === `${BASE}/time`;
   const expectEmployees = (): TestRequest => http.expectOne(isEmployees);
   const expectWeekly = (): TestRequest => http.expectOne(isWeekly);
   const expectPeriod = (): TestRequest => http.expectOne(isPeriod);
@@ -146,7 +160,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     fixture.componentRef.setInput('open', false);
     render();
     expect(el().querySelector('[role="dialog"]')).toBeNull();
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
   });
 
   it('is Overview only: no tabs, no project/module status panel, no task list', () => {
@@ -177,7 +191,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-total-label')?.textContent?.trim()).toBe('Total allocated');
     // Panel order: Status Distribution | Weekly completion | Employee Breakdown.
     const panels = Array.from(el().querySelectorAll('.tp-panels > section')).map((s) => s.getAttribute('data-testid'));
-    expect(panels).toEqual(['tp-distribution', 'tp-weekly', 'tp-ov-employees']);
+    expect(panels).toEqual(['tp-distribution', 'tp-weekly', 'tp-projects', 'tp-ov-employees']);
     expect(q('tp-weekly')?.textContent).toContain('Weekly completion');
     expect(q('tp-weekly-range')?.textContent?.trim()).toBe('Last 10 weeks');
     expect(q('tp-weekly')?.textContent).toContain('Allocated task hours completed per week');
@@ -187,8 +201,8 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-ov-employee-e1')?.textContent).toContain('24 h');
     expect(q('tp-ov-employee-range')?.textContent?.trim()).toBe('1–2 of 45');
     expect(q('tp-overdue-count')?.textContent).toContain('2 of 9');
-    expect(q('tp-overdue-t1')?.textContent).toContain('10 Jan 2026');
-    http.expectNone(() => true);
+    expect(q('tp-overdue-t1')?.closest('tr')?.textContent).toContain('10 Jan 2026');
+    http.expectNone((r) => !isTime(r));
   });
 
   it('hides the overdue section when nothing is overdue', () => {
@@ -333,7 +347,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     input.value = 'bo';
     input.dispatchEvent(new Event('input'));
     render();
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
     vi.advanceTimersByTime(300);
     render();
     req = expectEmployees();
@@ -345,7 +359,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-ov-employee-e2')?.querySelector('button')).toBeNull();
     q('tp-ov-employee-e2')!.click();
     render();
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
     expect(closedCount).toBe(0);
   });
 
@@ -367,7 +381,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     openWith();
     pickSelectOption(q('tp-period-filter')!, 'This week', () => render());
     expect(periodChanges).toEqual(['week']);
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
     expect(q('tp-tile-untasked')).not.toBeNull();
   });
 
@@ -463,7 +477,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     openWith(null);
     expect(el().textContent).toContain('No team progress yet');
     expect(q('team-progress-detail')).toBeNull();
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
   });
 
   it('filters the overview client-side by project and module', () => {
@@ -484,7 +498,112 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-overdue-t1')).not.toBeNull();
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
-    http.expectNone(() => true);
+    http.expectNone((r) => !isTime(r));
+  });
+
+  it('project breakdown is a bar chart of allocated vs completed hours, most allocated first, on one scale', () => {
+    openWith();
+
+    const rows = [...el().querySelectorAll<HTMLElement>('[data-testid="tp-project-row"]')];
+    expect(rows.map((r) => r.querySelector('.tp-project-name')!.textContent!.trim())).toEqual(['Apollo', 'Zeus']);
+    expect(rows.map((r) => r.querySelector('.tp-project-figures')!.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
+      '40 h / 120 h · 33%',
+      '10 h / 80 h · 13%',
+    ]);
+    const width = (r: HTMLElement, id: string) => (r.querySelector(`[data-testid="${id}"]`) as HTMLElement).style.width;
+    // The largest allocation (120 h) is the full track.
+    expect(width(rows[0], 'tp-project-allocated')).toBe('100%');
+    expect(width(rows[0], 'tp-project-completed')).toBe('33.3%');
+    expect(width(rows[1], 'tp-project-allocated')).toBe('66.7%');
+    expect(width(rows[1], 'tp-project-completed')).toBe('8.3%');
+    expect(q('tp-projects')!.querySelector('[role="img"]')!.getAttribute('aria-label')).toContain('Apollo: 40 h completed of 120 h allocated');
+  });
+
+  it('the project breakdown follows the project filter', () => {
+    openWith();
+    fixture.componentInstance.setProject('p2');
+    render();
+    expect([...el().querySelectorAll('[data-testid="tp-project-row"]')].length).toBe(1);
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
+  });
+
+  it('overdue: total overdue hours on top, a pie by project, and a table with each task allocated hours', () => {
+    openWith();
+
+    expect(q('tp-overdue-hours')!.textContent!.replace(/\s+/g, ' ')).toContain('26 h overdue');
+    expect(q('tp-overdue-hours')!.textContent).toContain('1 task without an estimate');
+    const slices = [...el().querySelectorAll('[data-testid="tp-overdue-slice"]')].map((r) =>
+      [...r.children].map((c) => c.textContent!.trim()).filter((t) => t !== '').join(' '),
+    );
+    expect(slices).toEqual(['Apollo 20 h 77%', 'Zeus 6 h 23%']);
+    expect(q('tp-overdue-pie')).not.toBeNull();
+    const row = (id: string) => q(id)!.closest('tr')!.textContent!.replace(/\s+/g, ' ');
+    expect(row('tp-overdue-t1')).toContain('6 h');
+    expect(q('tp-overdue-t2')!.closest('tr')!.querySelector('[data-testid="tp-overdue-task-hours"]')!.textContent!.trim()).toBe('—');
+  });
+
+  it('an Overdue KPI tile sits in the tile row with the overdue hours and task count', () => {
+    openWith();
+    const tile = q('tp-tile-overdue')!;
+    expect(tile.parentElement!.getAttribute('data-testid')).toBe('tp-overview-tiles');
+    expect(tile.textContent!.replace(/\s+/g, ' ')).toContain('26 h');
+    expect(q('tp-tile-count-overdue')!.textContent).toContain('9 tasks');
+  });
+
+  /** The Status Distribution legend rows as [label, hours, percent]. */
+  const legendRows = () =>
+    [...el().querySelectorAll('[data-testid="tp-legend-row"]')].map((r) =>
+      [...r.children].map((c) => c.textContent!.trim()).filter((t) => t !== ''),
+    );
+
+  it('status distribution: overdue is its own slice, carved out of In progress / Not started so it still adds up', () => {
+    openWith();
+    expect(legendRows()).toEqual([
+      ['Completed', '50 h', '(25%)'],
+      ['In progress', '18 h', '(9%)'],
+      ['Overdue', '26 h', '(13%)'],
+      ['Not started', '6 h', '(3%)'],
+      ['Not yet tasked', '100 h', '(50%)'],
+    ]);
+    const slices = [...q('tp-donut')!.querySelectorAll('circle[stroke-dasharray]')];
+    expect(slices.map((c) => c.getAttribute('stroke'))).toContain('#ef4444');
+    expect(q('tp-donut-overdue')).toBeNull();
+    expect(q('tp-donut')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
+    expect(q('tp-legend-note')!.textContent).toContain('without the overdue');
+  });
+
+  it('the overdue slice follows the project filter', () => {
+    openWith();
+    fixture.componentInstance.setProject('p2');
+    render();
+    expect(legendRows()).toContainEqual(['Overdue', '6 h', '(7.5%)']);
+    expect(legendRows()).toContainEqual(['Not started', '4 h', '(5%)']);
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
+  });
+
+  it('no overdue slice when nothing is overdue', () => {
+    openWith(summary({ overdueTasks: [], overdueTotal: 0, overdueByProject: [], overdueByModule: [] }));
+    expect(legendRows().map((r) => r[0])).not.toContain('Overdue');
+    expect(q('tp-legend-note')).toBeNull();
+  });
+
+  it('the Overdue tile shows 0 h when nothing is overdue', () => {
+    openWith(summary({ overdueTasks: [], overdueTotal: 0, overdueByProject: [], overdueByModule: [] }));
+    expect(q('tp-tile-overdue')!.textContent!.replace(/\s+/g, ' ')).toContain('0 h');
+    expect(q('tp-tile-count-overdue')!.textContent).toContain('0 tasks');
+  });
+
+  it('the overdue total and pie follow the project filter', () => {
+    openWith();
+    fixture.componentInstance.setProject('p2');
+    render();
+    expect(q('tp-tile-count-overdue')!.textContent).toContain('3 tasks');
+    expect(q('tp-overdue-hours')!.textContent).toContain('6 h overdue');
+    expect(el().querySelectorAll('[data-testid="tp-overdue-slice"]').length).toBe(1);
+    expectEmployees().flush(employeePage());
+    expectWeekly().flush(weekly());
   });
 
   it('closes on Escape (from app-modal) and on the close button', () => {
@@ -500,5 +619,93 @@ describe('TeamProgressDetailDialogComponent', () => {
     q('tp-overdue-t2')!.click();
     expect(closedCount).toBe(1);
     expect(navigate).toHaveBeenCalledWith(['/work', 'p2', 'milestones', 'm2', 'board'], { queryParams: { highlightTaskId: 't2' } });
+  });
+
+  describe('planned vs worked sections', () => {
+    it('loads the week for All time and draws planned vs worked, unscheduled work and the workload ranking', () => {
+      openWith(summary(), 'all');
+      const req = http.expectOne(isTime);
+      expect(req.request.params.get('period')).toBe('week');
+      req.flush(ledTime({
+        plannedMinutes: 600, clockedMinutes: 540, scheduledMinutes: 360, outsideSlotMinutes: 60, noPlanMinutes: 120, coveragePercent: 80,
+        buckets: [{ from: '2026-10-26', to: '2026-10-26', plannedMinutes: 120, scheduledMinutes: 60, unscheduledMinutes: 30 }],
+        workload: [workloadRow({ displayName: 'Ada', plannedMinutes: 600, utilizationPercent: 125, expectedMinutes: 480 })],
+        unscheduled: [{ employeeId: 'e1', displayName: 'Ada', taskId: 't1', shortId: 'T-1', title: 'Fix bug', start: '2026-10-26T09:00:00Z', end: '2026-10-26T10:30:00Z', minutes: 90, kind: 'no_plan' }],
+        unscheduledTotal: 1
+      }));
+      render();
+
+      expect(q('tptd-coverage')!.textContent).toContain('80%');
+      expect(q('tptd-unscheduled')!.textContent).toContain('Worked without a matching Planner slot.');
+      expect(el().querySelectorAll('[data-testid="tptd-unscheduled-row"]').length).toBe(1);
+      expect(q('tptd-workload')).toBeNull();
+    });
+
+    it('one Team members table: estimate hours and this week time side by side, matched by employee', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush(ledTime({
+        workload: [
+          workloadRow({ employeeId: 'e1', displayName: 'Ann Lee', plannedMinutes: 600, clockedMinutes: 540, unscheduledMinutes: 30, utilizationPercent: 125, expectedMinutes: 480 })
+        ]
+      }));
+      render();
+
+      expect(q('tp-ov-employees')!.textContent).toContain('Team members');
+      expect(el().textContent).not.toContain('Workload ranking');
+      expect(el().textContent).not.toContain('Employee Breakdown');
+      const cells = (id: string) => [...q(id)!.querySelectorAll('td')].map((c) => c.textContent!.trim());
+      expect(cells('tp-ov-employee-e1')).toEqual(['ALAnn Lee', '10 h', '5 h', '9 h', '24 h', '10 h', '9 h', '0.5 h', '125%']);
+      expect(cells('tp-ov-employee-e2').slice(5)).toEqual(['—', '—', '—', '—']);
+      expect(q('tp-ov-employee-e1')!.querySelector('.tp-over')).not.toBeNull();
+    });
+
+    it('Export CSV downloads the team workload with each person\'s estimate hours when shown', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush(ledTime({ from: '2026-10-26', to: '2026-11-01', workload: [workloadRow({ employeeId: 'e1', displayName: 'Ann Lee', plannedMinutes: 600 })] }));
+      render();
+      const download = vi.fn();
+      fixture.componentInstance.downloadFile = download;
+
+      q('tp-members-export')!.click();
+
+      expect(download).toHaveBeenCalledOnce();
+      const [name, csv] = download.mock.calls[0] as [string, string];
+      expect(name).toBe('team-members-2026-10-26_2026-11-01.csv');
+      expect(csv.split(/\r?\n/)[0]).toContain('Person');
+      expect(csv).toContain('Ann Lee');
+    });
+
+    it('the period select drives the time call too', () => {
+      openWith(summary(), 'week');
+      http.match(isPeriod).forEach((r) => r.flush({}));
+      http.expectOne(isTime).flush(ledTime());
+      fixture.componentRef.setInput('period', 'month');
+      render();
+      http.match(isEmployees).forEach((r) => r.flush(employeePage()));
+      http.match(isPeriod).forEach((r) => r.flush({}));
+
+      expect(http.expectOne(isTime).request.params.get('period')).toBe('month');
+    });
+
+    it('coverage is "—" without a plan, and Planner off hides the plan sections', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush(ledTime({ plannerEnabled: false, clockedMinutes: 120 }));
+      render();
+
+      expect(q('tptd-planner-off')!.textContent).toContain('2h clocked');
+      expect(q('tptd-unscheduled')).toBeNull();
+      expect(q('tptd-coverage')).toBeNull();
+    });
+
+    it('shows a retry on failure', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush('boom', { status: 500, statusText: 'Server Error' });
+      render();
+
+      expect(q('tptd-error')).not.toBeNull();
+      (q('tptd-error')!.querySelector('button') as HTMLButtonElement).click();
+      render();
+      expect(http.expectOne(isTime).request.params.get('period')).toBe('week');
+    });
   });
 });

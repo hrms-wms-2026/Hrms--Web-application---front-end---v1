@@ -16,6 +16,7 @@ import {
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { ledTime, workloadRow } from '../../utils/team-progress-time.testing';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 import { TEAM_PROGRESS_PERIOD_STORAGE_KEY, TeamProgressCardComponent } from './team-progress-card.component';
@@ -97,8 +98,10 @@ describe('TeamProgressCardComponent', () => {
   let getEmployees: ReturnType<typeof vi.fn>;
   let getPeriodProgress: ReturnType<typeof vi.fn>;
   let getWeeklyCompletion: ReturnType<typeof vi.fn>;
+  let getTimeProgress: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    getTimeProgress = vi.fn((period: 'week' | 'month') => of(ledTime({ period })));
     getEmployees = vi.fn(() => of(employeePage([])));
     getWeeklyCompletion = vi.fn(() => of(weeklyPayload()));
     getPeriodProgress = vi.fn((period: 'week' | 'month') => of(periodPayload(period)));
@@ -136,7 +139,7 @@ describe('TeamProgressCardComponent', () => {
         MyTeamLedProgressStore,
         { provide: MyTeamLedProgressApiService, useValue: { getLedProgress } },
         { provide: Router, useValue: { navigate } },
-        { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress, getWeeklyCompletion } }
+        { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress, getWeeklyCompletion, getTimeProgress } }
       ]
     })
       .overrideComponent(TeamProgressCardComponent, STUB_DIALOG)
@@ -177,7 +180,7 @@ describe('TeamProgressCardComponent', () => {
     return {
       hours: total,
       projects: [{ projectId: 'p1', projectName: 'Core Platform', identifier: 'CP', hours: total, modules }],
-      overdueTasks: [], overdueTotal: 0, modulesAtRisk: heads.filter((m) => m.atRisk).length,
+      overdueTasks: [], overdueTotal: 0, modulesAtRisk: heads.filter((m) => m.atRisk).length, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [],
       ...extra
     };
   };
@@ -192,7 +195,7 @@ describe('TeamProgressCardComponent', () => {
     (fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) as HTMLElement).textContent!.replace(/\s+/g, ' ').trim();
 
   it('shows "you don\'t lead any active modules" when there are no projects', async () => {
-    const fixture = await setup({ hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0 });
+    const fixture = await setup({ hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [] });
     expect(fixture.nativeElement.textContent).toContain("You don't lead any active modules");
   });
 
@@ -303,7 +306,7 @@ describe('TeamProgressCardComponent', () => {
       ], {
         overdueTasks: [{
           taskId: 't1', shortId: 'CP-1', title: 'Ship it', projectId: 'p1', objectiveId: 'o1', dueDate: '2026-10-01',
-          daysOverdue: 3, assignees: [{ employeeId: 'e1', displayName: 'Kajaa Tharan' }]
+          daysOverdue: 3, estimatedHours: null, assignees: [{ employeeId: 'e1', displayName: 'Kajaa Tharan' }]
         }],
         overdueTotal: 1
       });
@@ -440,6 +443,22 @@ describe('TeamProgressCardComponent', () => {
       expect(getEmployees).toHaveBeenCalledTimes(2);
     });
 
+    it('the overdue panel shows the total overdue hours on top and each task hours', async () => {
+      const data = sample();
+      data.overdueTasks[0].estimatedHours = 4;
+      data.overdueHours = 12;
+      const fixture = await setup(data);
+      resize(fixture, 900, 636);
+      expect(text(fixture, 'team-progress-overdue-hours')).toBe('12 h');
+      expect(text(fixture, 'team-progress-overdue-task-hours')).toBe('4 h');
+    });
+
+    it('an overdue task without an estimate shows "—", never 0 h', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 900, 636);
+      expect(text(fixture, 'team-progress-overdue-task-hours')).toBe('—');
+    });
+
     it('keeps the large layout working when the top team members fail to load', async () => {
       getEmployees = vi.fn(() => throwError(() => new Error('fail')));
       const fixture = await setup(sample());
@@ -515,7 +534,8 @@ describe('TeamProgressCardComponent', () => {
         module('late', 'Late', hours(10, 2, 0, 3), { atRisk: true }),
         module('late-child', 'Late child', hours(5, 0, 0, 3), { parentObjectiveId: 'late', depth: 1, atRisk: true })
       ]));
-      resize(fixture, 900, 852);
+      // 10 rows: at 8 the bucket chart takes the third list row's height (2026-11-02 design match).
+      resize(fixture, 900, 1068);
       expect(text(fixture, 'team-progress-at-risk')).toBe('1');
       expect(text(fixture, 'team-progress-toggle')).toBe('View all (3)');
       const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="team-progress-module"]') as NodeListOf<HTMLElement>);
@@ -712,7 +732,7 @@ describe('TeamProgressCardComponent', () => {
     });
   });
 
-  const EMPTY: LedWorkProgressResponse = { hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0 };
+  const EMPTY: LedWorkProgressResponse = { hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [] };
 
   it('polls every 60 seconds while the document is visible', async () => {
     vi.useFakeTimers();
@@ -769,7 +789,7 @@ describe('TeamProgressCardComponent', () => {
           MyTeamLedProgressStore,
           { provide: MyTeamLedProgressApiService, useValue: { getLedProgress } },
           { provide: Router, useValue: { navigate } },
-          { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress, getWeeklyCompletion } },
+          { provide: TeamProgressDetailApiService, useValue: { getEmployees, getPeriodProgress, getWeeklyCompletion, getTimeProgress } },
           widget.provider
         ]
       })
@@ -991,6 +1011,150 @@ describe('TeamProgressCardComponent', () => {
       (fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement).click();
       fixture.detectChanges();
       expect(dialog(fixture).open()).toBe(false);
+    });
+  });
+  describe('planned vs worked time', () => {
+    const payload = (): LedWorkProgressResponse => response([module('o1', 'Payments', hours(200, 40, 30, 70))]);
+    const weekTime = ledTime({
+      period: 'week', plannedMinutes: 600, clockedMinutes: 540, scheduledMinutes: 360, outsideSlotMinutes: 60, noPlanMinutes: 120,
+      coveragePercent: 80, peopleWithUnscheduledWork: 2, previous: { plannedMinutes: 400, clockedMinutes: 300, coveragePercent: 74 },
+      workload: [workloadRow({ displayName: 'Ada', rank: 1, plannedMinutes: 600, utilizationPercent: 125, expectedMinutes: 480 })]
+    });
+    const monthTime = ledTime({
+      period: 'month', plannedMinutes: 2400, coveragePercent: 50,
+      workload: [
+        workloadRow({ displayName: 'Bob', rank: 1, plannedMinutes: 2000 }),
+        workloadRow({ displayName: 'Ada', rank: 2, plannedMinutes: 400 })
+      ]
+    });
+
+    async function sized(width: number, height: number, time = (period: 'week' | 'month') => (period === 'week' ? weekTime : monthTime)) {
+      FakeResizeObserver.instances = [];
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+      vi.stubGlobal('requestAnimationFrame', undefined);
+      getTimeProgress = vi.fn((period: 'week' | 'month') => of(time(period)));
+      const { fixture } = await setupWithApi(payload());
+      FakeResizeObserver.instances[0].trigger(width, height);
+      fixture.detectChanges();
+      return fixture;
+    }
+
+    const gridRows = (n: number) => n * 96 + (n - 1) * 12;
+
+    const el = (fixture: ComponentFixture<TeamProgressCardComponent>, testId: string): HTMLElement | null =>
+      fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+
+    function choose(fixture: ComponentFixture<TeamProgressCardComponent>, value: string): void {
+      const select = el(fixture, 'team-progress-period') as HTMLSelectElement;
+      select.value = value;
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      fixture.detectChanges();
+    }
+
+    it('loads the week with the card (All time reads the week)', async () => {
+      await sized(1300, 1176);
+      expect(getTimeProgress).toHaveBeenCalledWith('week');
+    });
+
+    it('maximum shows the bucket chart (not the band) with coverage and its change, and the workload with utilization over 100% kept', async () => {
+      const fixture = await sized(1300, 1176);
+
+      expect(el(fixture, 'tpt-band')).toBeNull();
+      expect(el(fixture, 'tpt-chart')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('app-planned-actual-week-chart')).not.toBeNull();
+      expect(el(fixture, 'tpt-coverage')!.textContent!.trim()).toBe('80% covered');
+      expect(el(fixture, 'tpt-chart')!.textContent).toContain('↑ 6 pp vs last week');
+      expect(el(fixture, 'tpt-util')!.textContent!.trim()).toBe('125%');
+      expect(el(fixture, 'tpt-workload')!.getAttribute('title')).toBe('More workload is not better performance.');
+    });
+
+    it('Week to Month refetches the time figures and changes the ranking, not just the label', async () => {
+      const fixture = await sized(1300, 1176);
+      const names = () => [...fixture.nativeElement.querySelectorAll('[data-testid="tpt-workload-row"] .tpt-name')].map((n: Element) => n.textContent);
+      expect(names()).toEqual(['Ada']);
+
+      choose(fixture, 'month');
+
+      expect(getTimeProgress).toHaveBeenLastCalledWith('month');
+      expect(names()).toEqual(['Bob', 'Ada']);
+    });
+
+    it('the all-time allocation figures do not change with the time figures', async () => {
+      const fixture = await sized(1300, 1176);
+      const allocation = el(fixture, 'team-progress-completion')!.textContent;
+
+      TestBed.inject(MyTeamLedProgressStore).loadTime('month');
+      fixture.detectChanges();
+
+      expect(el(fixture, 'team-progress-completion')!.textContent).toBe(allocation);
+    });
+
+    it('status tiles carry an icon badge on the right, with hours, label and %', async () => {
+      const fixture = await sized(642, 420);
+      const tiles = [...fixture.nativeElement.querySelectorAll('[data-testid="team-progress-tiles"] .tp-status-tile')] as HTMLElement[];
+      expect(tiles.length).toBeGreaterThan(0);
+      for (const tile of tiles) {
+        expect(tile.lastElementChild!.classList.contains('tp-status-tile-icon')).toBe(true);
+        expect(tile.querySelector('app-icon')).not.toBeNull();
+      }
+    });
+
+    it('tall view shows bucket chart instead of band', async () => {
+      const fixture = await sized(500, gridRows(10));
+      expect(el(fixture, 'tpt-chart')).not.toBeNull();
+      expect(el(fixture, 'tpt-band')).toBeNull();
+    });
+
+    it('a view too short for the chart keeps the band', async () => {
+      const fixture = await sized(500, gridRows(9));
+      expect(el(fixture, 'tpt-band')).not.toBeNull();
+      expect(el(fixture, 'tpt-chart')).toBeNull();
+    });
+
+    it('unscheduled panel lists top 3 by unscheduled time, with bars', async () => {
+      const fixture = await sized(900, gridRows(5), () =>
+        ledTime({
+          ...weekTime,
+          workload: [
+            workloadRow({ displayName: 'Ada', unscheduledMinutes: 30 }),
+            workloadRow({ displayName: 'Bob', unscheduledMinutes: 240 }),
+            workloadRow({ displayName: 'Cat', unscheduledMinutes: 0 }),
+            workloadRow({ displayName: 'Dan', unscheduledMinutes: 120 }),
+            workloadRow({ displayName: 'Eve', unscheduledMinutes: 60 }),
+          ],
+        }),
+      );
+      const names = [...fixture.nativeElement.querySelectorAll('[data-testid="tpt-unscheduled-row"] .tpt-name')].map(
+        (n: Element) => n.textContent!.trim(),
+      );
+      expect(names).toEqual(['Bob', 'Dan', 'Eve']);
+      expect(el(fixture, 'tpt-callout')!.textContent).toContain('3h');
+    });
+
+    it('coverage is "—" when nothing is planned', async () => {
+      const fixture = await sized(1300, 1176, () => ledTime({ clockedMinutes: 90, noPlanMinutes: 90 }));
+      expect(el(fixture, 'tpt-coverage')!.textContent!.trim()).toBe('— covered');
+    });
+
+    it('Planner off: the note replaces the band, clocked time still shown', async () => {
+      const fixture = await sized(1300, 1176, () => ledTime({ plannerEnabled: false, clockedMinutes: 120 }));
+
+      expect(el(fixture, 'tpt-band')).toBeNull();
+      expect(el(fixture, 'tpt-planner-off')!.textContent).toContain('2h clocked');
+    });
+
+    it('a failed time load leaves the allocation card working', async () => {
+      FakeResizeObserver.instances = [];
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+      vi.stubGlobal('requestAnimationFrame', undefined);
+      getTimeProgress = vi.fn(() => throwError(() => new Error('x')));
+      const { fixture } = await setupWithApi(payload());
+      FakeResizeObserver.instances[0].trigger(1300, 1176);
+      fixture.detectChanges();
+
+      expect(el(fixture, 'tpt-error')).not.toBeNull();
+      expect(el(fixture, 'team-progress-completion')).not.toBeNull();
     });
   });
 });

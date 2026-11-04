@@ -15,12 +15,14 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Observable, Subject, catchError, debounceTime, map, of, switchMap, tap } from 'rxjs';
+import { Observable, Subject, Subscription, catchError, debounceTime, map, of, switchMap, tap } from 'rxjs';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
+import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
   LedHourTotals,
   LedModuleProgress,
@@ -34,8 +36,12 @@ import {
   LedPeriodProgress,
   LedProgressPeriod,
   LedTaskStatus,
+  LedTimeProgress,
   LedWeeklyCompletion
 } from '../../models/team-progress-detail.model';
+import { TeamProgressTimeDetailComponent } from '../../ui/team-progress-time-detail/team-progress-time-detail.component';
+import { hoursText, timePeriodFor } from '../../utils/team-progress-time-format.util';
+import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
 import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
 import {
   PROGRESS_STATUSES,
@@ -92,11 +98,19 @@ interface StatusSegment {
   percent: number;
 }
 
-interface DonutSlice {
-  meta: ProgressStatusMeta;
+/** One Status Distribution part: a status, or Overdue carved out of In progress / Not started. */
+interface DonutPart {
+  key: string;
+  label: string;
+  color: string;
+  bgClass: string;
+  hours: number;
+  percent: string;
   dash: string;
   offset: number;
 }
+
+const OVERDUE_PART = { key: 'overdue', label: 'Overdue', color: '#ef4444', bgClass: 'bg-red-500' } as const;
 
 /** Status of one server-backed section. */
 interface RemoteState<T> {
@@ -118,10 +132,24 @@ const TASK_STATUS_META: Readonly<Record<LedTaskStatus, ProgressStatusMeta>> = {
  * is open and cached until a filter changes (or the card hands in a new summary).
  * Hours are task estimates (weightage), never time worked.
  */
+/** The overdue pie's project colours (cycled past the sixth project). */
+const OVERDUE_PIE_COLORS = ['#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#10b981', '#64748b'];
+
+interface OverdueHoursView {
+  readonly total: number;
+  /** Overdue tasks in scope (the listed ones with a module filter). */
+  readonly taskCount: number;
+  readonly unestimated: number;
+  /** Module filter: the figures cover only the listed overdue tasks. */
+  readonly listedOnly: boolean;
+  readonly slices: readonly { projectId: string; name: string; hours: number; color: string; percent: string }[];
+  readonly arcs: readonly DonutArc[];
+}
+
 @Component({
   selector: 'app-team-progress-detail-dialog',
   standalone: true,
-  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent],
+  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent, TeamProgressTimeDetailComponent],
   templateUrl: './team-progress-detail-dialog.component.html',
   styleUrl: './team-progress-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -168,6 +196,23 @@ export class TeamProgressDetailDialogComponent {
 
   // ---- Weekly completion (server, last 10 weeks, never filtered by the period) ----
   protected readonly weekly = signal<RemoteState<LedWeeklyCompletion>>({ status: 'idle', data: null });
+
+  // ---- Planned vs worked (server, the period's week / month - All time reads the week - and the filters) ----
+  protected readonly time = signal<RemoteState<LedTimeProgress>>({ status: 'idle', data: null });
+
+  /** Team members table: each person's planned / worked time for the time period, by employee id. */
+  protected readonly memberTime = computed(() => new Map((this.time().data?.workload ?? []).map((w) => [w.employeeId, w])));
+  protected readonly plannerEnabled = computed(() => this.time().data?.plannerEnabled ?? false);
+  protected readonly timePeriodLabel = computed(() => (this.time().data?.period === 'month' ? 'This month' : 'This week'));
+
+  /** The file download; a field so a test can stand in for the browser download. */
+  downloadFile = downloadCsv;
+  protected readonly timeStatus = computed<'loading' | 'ready' | 'error'>(() => {
+    const status = this.time().status;
+    return status === 'idle' ? 'loading' : status;
+  });
+  private timeKey: string | null = null;
+  private timeSub: Subscription | null = null;
 
   // ---- Filters (options from the summary) ----
 
@@ -229,6 +274,35 @@ export class TeamProgressDetailDialogComponent {
     return ids;
   });
 
+  /** Project breakdown chart: the (filtered) projects, most allocated first. Allocated and completed bars share one scale
+   * (the largest allocation, or completion when it is larger); % = completed of allocated, "—" without allocation. */
+  protected readonly projectBreakdown = computed(() => {
+    const summary = this.summary();
+    if (!summary) return [];
+    const selected = this.selectedProject();
+    const projects = selected ? [selected] : summary.projects;
+    const scale = Math.max(1, ...projects.map((p) => Math.max(p.hours.allocatedHours, p.hours.completedHours)));
+    const share = (h: number) => Math.round((h * 1000) / scale) / 10;
+    return projects
+      .map((p) => ({
+        id: p.projectId,
+        name: p.projectName,
+        allocated: p.hours.allocatedHours,
+        completed: p.hours.completedHours,
+        percent: p.hours.allocatedHours > 0 ? formatPercent(p.hours.completedHours, p.hours.allocatedHours) : '—',
+        allocatedShare: share(p.hours.allocatedHours),
+        completedShare: share(p.hours.completedHours),
+      }))
+      .sort((a, b) => b.allocated - a.allocated || a.name.localeCompare(b.name));
+  });
+  protected readonly projectChartLabel = computed(
+    () =>
+      'Allocated vs completed hours by project. ' +
+      this.projectBreakdown()
+        .map((p) => `${p.name}: ${formatHourValue(p.completed)} h completed of ${formatHourValue(p.allocated)} h allocated (${p.percent})`)
+        .join('; ')
+  );
+
   protected readonly overviewHours = computed<LedHourTotals | null>(() => {
     const summary = this.summary();
     if (!summary) return null;
@@ -246,13 +320,61 @@ export class TeamProgressDetailDialogComponent {
     return h ? allTimeView(h) : null;
   });
 
-  protected readonly donutSlices = computed<DonutSlice[]>(() => {
+  /** All time: overdue hours (as of today) in the filtered scope, split like the hour totals. Null for a period view
+   * (its tasks are those due in the window) or when the API sends no split. */
+  private readonly overdueSplit = computed<{ inProgress: number; notStarted: number } | null>(() => {
+    const rows = this.summary()?.overdueByModule;
+    if (!rows || this.isPeriod()) return null;
+    const project = this.selectedProject();
+    const subtree = this.selectedSubtree();
+    let inProgress = 0;
+    let notStarted = 0;
+    for (const r of rows) {
+      if ((project && r.projectId !== project.projectId) || (subtree && !subtree.has(r.objectiveId))) continue;
+      inProgress += r.inProgressHours;
+      notStarted += r.notStartedHours;
+    }
+    return inProgress + notStarted > 0 ? { inProgress, notStarted } : null;
+  });
+
+  /** The donut and its legend. Overdue tasks are open work, so their hours come out of In progress / Not started and
+   * show as their own slice: the parts still add up to the total. */
+  protected readonly donutParts = computed<DonutPart[]>(() => {
+    const ov = this.overview();
+    if (!ov) return [];
+    const od = this.overdueSplit();
+    const rows: { key: string; label: string; color: string; bgClass: string; hours: number }[] = [];
+    let overdue = 0;
+    for (const t of ov.tiles) {
+      let hours = t.hours;
+      if (od && (t.meta.key === 'inProgress' || t.meta.key === 'notStarted')) {
+        const carve = Math.min(hours, t.meta.key === 'inProgress' ? od.inProgress : od.notStarted);
+        hours -= carve;
+        overdue += carve;
+      }
+      rows.push({ key: t.meta.key, label: t.meta.label, color: t.meta.color, bgClass: t.meta.bgClass, hours });
+      if (t.meta.key === 'notStarted' && overdue > 0) {
+        rows.splice(rows.length - 1, 0, { ...OVERDUE_PART, hours: overdue });
+      }
+    }
+    const scale = rows.reduce((sum, r) => sum + r.hours, 0);
     let cumulative = 0;
-    return (this.overview()?.segments ?? []).map((s) => {
-      const slice: DonutSlice = { meta: s.meta, dash: `${s.percent} ${100 - s.percent}`, offset: 25 - cumulative };
-      cumulative += s.percent;
-      return slice;
+    return rows.map((r) => {
+      const share = scale > 0 ? (r.hours / scale) * 100 : 0;
+      const part: DonutPart = { ...r, percent: formatPercent(r.hours, scale), dash: `${share} ${100 - share}`, offset: 25 - cumulative };
+      cumulative += share;
+      return part;
     });
+  });
+
+  protected readonly donutHasOverdue = computed(() => this.donutParts().some((p) => p.key === OVERDUE_PART.key));
+
+  protected readonly donutLabel = computed(() => {
+    const ov = this.overview();
+    if (!ov) return '';
+    if (!this.donutHasOverdue()) return ov.chartLabel;
+    const prefix = ov.chartLabel.slice(0, Math.max(0, ov.chartLabel.indexOf(':')));
+    return `${prefix}: ${this.donutParts().map((p) => `${p.label} ${formatHourValue(p.hours)} h (${p.percent})`).join(', ')}`;
   });
 
   protected readonly modulesAtRisk = computed(() => {
@@ -272,6 +394,46 @@ export class TeamProgressDetailDialogComponent {
   });
 
   protected readonly overdueTotal = computed(() => this.summary()?.overdueTotal ?? 0);
+
+  protected readonly overduePiePx = DASHBOARD_DONUT_PX;
+
+  /** Overdue estimated hours, the pie by project and the unestimated count. Every overdue task (the server totals)
+   * with no filter or a project filter; with a module filter only the listed tasks of that subtree are known, so
+   * the figures say "of the listed tasks". */
+  protected readonly overdueHoursView = computed<OverdueHoursView | null>(() => {
+    const summary = this.summary();
+    if (!summary) return null;
+    let rows: { projectId: string; name: string; hours: number }[];
+    let unestimated: number;
+    let taskCount: number;
+    let listedOnly = false;
+    if (this.selectedModule()) {
+      const tasks = this.overdueTasks();
+      const names = new Map(summary.projects.map((p) => [p.projectId, p.projectName]));
+      const byProject = new Map<string, number>();
+      for (const t of tasks) byProject.set(t.projectId, (byProject.get(t.projectId) ?? 0) + (t.estimatedHours ?? 0));
+      rows = [...byProject].map(([projectId, hours]) => ({ projectId, name: names.get(projectId) ?? 'Unknown project', hours }));
+      unestimated = tasks.filter((t) => t.estimatedHours === null).length;
+      taskCount = tasks.length;
+      listedOnly = true;
+    } else {
+      const project = this.selectedProject();
+      const all = summary.overdueByProject.filter((p) => !project || p.projectId === project.projectId);
+      rows = all.map((p) => ({ projectId: p.projectId, name: p.projectName, hours: p.hours }));
+      unestimated = all.reduce((sum, p) => sum + p.unestimatedTaskCount, 0);
+      taskCount = project ? all.reduce((sum, p) => sum + p.taskCount, 0) : summary.overdueTotal;
+    }
+    const total = rows.reduce((sum, r) => sum + r.hours, 0);
+    const slices = rows
+      .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name))
+      .map((r, i) => ({ ...r, color: OVERDUE_PIE_COLORS[i % OVERDUE_PIE_COLORS.length], percent: formatPercent(r.hours, total) }));
+    const arcs: DonutArc[] = donutArcs(slices.map((s) => ({ key: s.projectId, count: s.hours, color: s.color })));
+    return { total, taskCount, unestimated, listedOnly, slices, arcs };
+  });
+
+  protected overdueTaskHours(task: LedOverdueTask): string {
+    return task.estimatedHours === null ? '—' : `${formatHourValue(task.estimatedHours)} h`;
+  }
 
   // ---- Server queries ----
 
@@ -322,6 +484,18 @@ export class TeamProgressDetailDialogComponent {
   private cacheFor: LedWorkProgressResponse | null = null;
 
   constructor() {
+    // The period select drives both the allocation-period and the time calls.
+    effect(() => {
+      if (!this.open() || !this.summary()) return;
+      const period = timePeriodFor(this.period());
+      const filters = this.serverFilters();
+      const key = JSON.stringify({ period, filters });
+      if (key === this.timeKey) return;
+      this.timeKey = key;
+      untracked(() => this.loadTime(period, filters));
+    });
+    inject(DestroyRef).onDestroy(() => this.timeSub?.unsubscribe());
+
     this.connect(
       this.overviewEmployeeRequests,
       (q) => this.api.getEmployees(q),
@@ -387,6 +561,23 @@ export class TeamProgressDetailDialogComponent {
 
   /** switchMap: a newer query cancels the one in flight. A failed query forgets its key so a
    * reopen or Retry fetches it again. */
+  retryTime(): void {
+    const period = timePeriodFor(this.period());
+    this.loadTime(period, this.serverFilters());
+  }
+
+  private loadTime(period: 'week' | 'month', filters: ScopeFilters): void {
+    this.timeSub?.unsubscribe();
+    this.time.set({ status: 'loading', data: null });
+    this.timeSub = this.api.getTimeProgress(period, filters).subscribe({
+      next: (data) => this.time.set({ status: 'ready', data }),
+      error: () => {
+        this.timeKey = null;
+        this.time.set({ status: 'error', data: null });
+      }
+    });
+  }
+
   private connect<Q, R>(
     requests: Subject<Q>,
     fetch: (q: Q) => Observable<R>,
@@ -493,6 +684,26 @@ export class TeamProgressDetailDialogComponent {
   }
 
   /** "1–5 of 42" for the Employee Breakdown's compact pager. */
+  protected timeHours(minutes: number): string {
+    return hoursText(minutes);
+  }
+
+  /** Every person with time in the period (the whole team, ranked by planned then worked), with their estimate hours
+   * when they are on the Team members page shown. */
+  exportMembers(): void {
+    const t = this.time().data;
+    if (!t) return;
+    const estimates = new Map((this.overviewEmployees().data?.items ?? []).map((e) => [e.employeeId, e]));
+    const n = (v: number | null | undefined) => (v === null || v === undefined ? '' : String(v));
+    const header = ['Rank', 'Person', 'Completed h', 'In progress h', 'Not started h', 'Total h', 'Planned min', 'Worked min', 'Unscheduled min', 'Expected min', 'Capacity used %'];
+    const lines = t.workload.map((w) => {
+      const e = estimates.get(w.employeeId);
+      return [String(w.rank), w.displayName, n(e?.completedHours), n(e?.inProgressHours), n(e?.notStartedHours), n(e?.totalHours),
+        String(w.plannedMinutes), String(w.clockedMinutes), String(w.unscheduledMinutes), n(w.expectedMinutes), n(w.utilizationPercent)];
+    });
+    this.downloadFile(`team-members-${t.from}_${t.to}.csv`, toCsv([header, ...lines]));
+  }
+
   rangeLabel(page: { pageNumber: number; pageSize: number; totalCount: number; items: readonly unknown[] }): string {
     if (page.totalCount === 0) return '0 of 0';
     const start = (page.pageNumber - 1) * page.pageSize + 1;

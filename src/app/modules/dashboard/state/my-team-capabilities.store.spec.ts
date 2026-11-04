@@ -13,7 +13,7 @@ describe('MyTeamCapabilitiesStore', () => {
     canReviewExceptions: false,
     hasWorkApprovals: false,
     leadsWork: false,
-    canViewLiveActivity: false,
+    canViewLiveActivity: false, hasReports: false,
     legalEntityId: 'le-1'
   };
 
