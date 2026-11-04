@@ -201,7 +201,7 @@ describe('CalendarPageComponent planner layer', () => {
     expect(totals).toContain('Actual / attendance 45m / 2h');
     expect(q('planner-focus-panel')).not.toBeNull();
     expect(q('planner-focus-close')).toBeNull();
-    expect(q('planner-focus-toggle')!.textContent).toContain('Task queue');
+    expect(q('planner-focus-toggle')!.textContent).toContain('Task list');
     expect(q('planner-focus-count')!.textContent!.trim()).toBe('3');
   });
 
