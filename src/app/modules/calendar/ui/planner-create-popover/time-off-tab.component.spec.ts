@@ -18,7 +18,9 @@ describe('TimeOffTabComponent', () => {
   function setup() {
     const requests = {
       preview: vi.fn(async () => undefined), submit: vi.fn(async () => ({ id: 'lr1' })), clearPreview: vi.fn(),
-      previewing: signal(false), previewResult: signal<{ totalHours: number } | null>(null), previewError: signal<string | null>(null),
+      previewing: signal(false), previewError: signal<string | null>(null),
+      previewResult: signal<{ totalHours: number; exceedsBalanceByHours?: number; balanceImpact?: { remainingAfterSubmitHours: number };
+        approvers?: { approverName: string; sequenceOrder: number }[] } | null>(null),
       submitting: signal(false), submitError: signal<string | null>(null),
     };
     TestBed.configureTestingModule({
@@ -41,6 +43,23 @@ describe('TimeOffTabComponent', () => {
     };
     return { fixture, q, chooseType, requests };
   }
+
+  // Follow-up 6: the preview names the real approvers and the balance left, not a fixed "your manager approves".
+  it('the preview shows the hours, the balance left after it and who approves', () => {
+    const { fixture, q, requests } = setup();
+    requests.previewResult.set({ totalHours: 8, balanceImpact: { remainingAfterSubmitHours: 56 },
+      approvers: [{ approverName: 'Priya K.', sequenceOrder: 2 }, { approverName: 'Suresh M.', sequenceOrder: 1 }] });
+    fixture.detectChanges();
+    expect(q('time-off-preview')!.textContent!.trim()).toBe('8h · 56h left after this · Approved by Suresh M., then Priya K.');
+  });
+
+  it('the preview warns when it goes past the balance, and leaves the approver out when there is none', () => {
+    const { fixture, q, requests } = setup();
+    requests.previewResult.set({ totalHours: 8, exceedsBalanceByHours: 4, balanceImpact: { remainingAfterSubmitHours: 0 }, approvers: [] });
+    fixture.detectChanges();
+    expect(q('time-off-preview')!.textContent!.trim()).toBe('8h · 4h over your balance');
+    expect(q('time-off-preview')!.textContent).not.toContain('manager');
+  });
 
   it('lists active leave types with remaining hours', () => {
     const { q } = setup();
