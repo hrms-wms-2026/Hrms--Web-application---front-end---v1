@@ -16,6 +16,12 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* The global sticky-header rule (styles.css) adds a 1rem bottom margin on top of the page's 1rem gap;
+   Attendance keeps only the gap, halving the space under the header. */
+.time-tracking-page > .time-tracking-header {
+  margin-bottom: 0 !important;
+}
+
 .time-tracking-header-row {
   display: flex;
   align-items: center;
