@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
@@ -13,10 +14,24 @@ const MAX_AGENDA_ITEMS = 5;
 
 export type ScheduleItemStatus = 'completed' | 'inProgress' | 'upcoming';
 
-const STATUS_META: Record<ScheduleItemStatus, { label: string; chip: string; dot: string }> = {
-  completed: { label: 'Completed', chip: 'bg-emerald-50 text-emerald-700', dot: '#10b981' },
-  inProgress: { label: 'In progress', chip: 'bg-blue-50 text-blue-700', dot: '#2563eb' },
-  upcoming: { label: 'Upcoming', chip: 'bg-slate-100 text-slate-600', dot: '#94a3b8' }
+const STATUS_META: Record<ScheduleItemStatus, {
+  label: string; chip: string; dot: string; node: string; rail: string; card: string; step: string;
+}> = {
+  completed: {
+    label: 'Completed', chip: 'bg-emerald-50 text-emerald-700', dot: '#10b981',
+    node: 'bg-emerald-500 text-white shadow-xs font-bold', rail: 'bg-emerald-500',
+    card: 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs', step: 'Completed step'
+  },
+  inProgress: {
+    label: 'In progress', chip: 'bg-blue-50 text-blue-700', dot: '#2563eb',
+    node: 'bg-blue-600 text-white shadow-xs font-bold', rail: 'bg-blue-600',
+    card: 'border-blue-200 bg-blue-50/40 shadow-xs', step: 'In progress step'
+  },
+  upcoming: {
+    label: 'Upcoming', chip: 'bg-slate-100 text-slate-600', dot: '#94a3b8',
+    node: 'border border-slate-200 bg-white font-semibold text-slate-700 shadow-2xs', rail: 'bg-slate-200',
+    card: 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs', step: 'Step'
+  }
 };
 
 /** A calendar event with a meeting link is a Meeting; any other calendar event is an Event. Never guessed from the title. */
@@ -25,7 +40,7 @@ export type AgendaItemKind = 'Meeting' | 'Event';
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
-  imports: [RouterLink, KeyboardClickDirective, MeetingOccurrenceDrawerComponent],
+  imports: [NgTemplateOutlet, RouterLink, KeyboardClickDirective, MeetingOccurrenceDrawerComponent],
   // A size container: the row layout follows the card's own width (Small / Large on the grid).
   host: { class: '@container block' },
   templateUrl: './todays-schedule-card.component.html',
@@ -220,6 +235,22 @@ export class TodaysScheduleCardComponent implements OnInit {
 
   protected statusDotColor(status: ScheduleItemStatus): string {
     return STATUS_META[status].dot;
+  }
+
+  protected stepNodeClass(status: ScheduleItemStatus): string {
+    return STATUS_META[status].node;
+  }
+
+  protected stepAriaLabel(status: ScheduleItemStatus, step: number): string {
+    return `${STATUS_META[status].step} ${step}`;
+  }
+
+  protected railClass(status: ScheduleItemStatus): string {
+    return STATUS_META[status].rail;
+  }
+
+  protected cardClass(status: ScheduleItemStatus): string {
+    return STATUS_META[status].card;
   }
 
   /** Second line of a row: the description, else the place, else the time range. */
