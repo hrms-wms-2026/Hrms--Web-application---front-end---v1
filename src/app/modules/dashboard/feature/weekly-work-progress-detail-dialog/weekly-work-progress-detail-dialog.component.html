@@ -1,0 +1,154 @@
+<!-- Same shell as the Team Progress / Team Attendance popups: app-modal's own header is hidden by this component's CSS
+     (its title still names the dialog for screen readers); the header below has the title and week on the left and
+     the week switch and close button on the right. -->
+<app-modal [open]="open()" title="Weekly Work Progress" size="2xl" panelClass="weekly-work-progress-detail" (closed)="close()">
+  <div class="wwp-head">
+    <div class="wwp-head__row">
+      <div class="wwp-head__title">
+        <h2>Weekly Work Progress</h2>
+        <p data-testid="wwp-range">{{ rangeLabel() }}</p>
+      </div>
+      <div class="wwp-head__controls">
+        <app-select
+          class="wwp-select"
+          ariaLabel="Week"
+          icon="calendar"
+          size="sm"
+          [searchable]="false"
+          [options]="weekOptions"
+          [value]="selectedWeek()"
+          (valueChange)="onWeekSelect($event)"
+        />
+        <button type="button" class="wwp-close" aria-label="Close" data-testid="wwp-close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @let d = data();
+  <div class="wwp">
+    @if (loadFailed()) {
+      <p class="wwp-muted" role="alert">Couldn't load last week. Showing this week.</p>
+    }
+
+    <div class="wwp-top">
+      <div class="wwp-hero">
+        <div class="wwp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
+          <svg viewBox="0 0 42 42" class="block h-full w-full" aria-hidden="true">
+            <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#eef2f7" stroke-width="5" />
+            @if (ring() > 0) {
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round"
+                stroke-dashoffset="25" [attr.stroke-dasharray]="ring() + ' ' + (100 - ring())" />
+            }
+          </svg>
+          <p class="wwp-donut-center">
+            <span class="wwp-big">{{ percentText(d.thisWeek.progressPercent) }}</span>
+            <span class="wwp-status">{{ statusLabels[d.thisWeek.status] }}</span>
+          </p>
+        </div>
+        @if (delta(); as dl) {
+          <p class="wwp-delta">
+            <strong [class.wwp-down]="!dl.up">{{ dl.arrow }} {{ dl.text }}</strong>
+            <span>vs last week ({{ percentText(d.lastWeek.progressPercent) }})</span>
+          </p>
+        }
+      </div>
+      <app-kpi-tiles class="wwp-kpis" data-testid="wwp-kpis" [tiles]="tiles()" [maxColumns]="4" ariaLabel="This week" />
+    </div>
+
+    <div class="wwp-grid">
+      <section class="wwp-panel wwp-panel--wide">
+        <p class="wwp-title">Daily Work vs {{ d.plannerEnabled ? 'Schedule' : 'Expected' }}</p>
+        <app-daily-work-chart class="wwp-chart" [days]="d.thisWeek.days" [showScheduled]="d.plannerEnabled" />
+      </section>
+
+      @if (d.plannerEnabled) {
+        <section class="wwp-panel" data-testid="wwp-adherence">
+          <p class="wwp-title">Schedule Adherence</p>
+          <div class="wwp-split">
+            <div class="wwp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
+              <svg viewBox="0 0 42 42" class="block h-full w-full" aria-hidden="true">
+                <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#dbeafe" stroke-width="5" />
+                @for (arc of adherence().arcs; track arc.key) {
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke-width="5" [attr.stroke]="arc.color"
+                    [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)" [attr.stroke-dashoffset]="arc.offset" />
+                }
+              </svg>
+              <p class="wwp-donut-center">
+                <span class="wwp-mid">{{ adherence().coverage }}%</span>
+                <span class="wwp-status">Schedule Coverage</span>
+              </p>
+            </div>
+            <ul class="wwp-legend">
+              <li><span class="wwp-dot" [style.background]="colors.scheduled"></span>Scheduled <b>{{ formatMinutes(adherence().scheduled) }}</b></li>
+              <li><span class="wwp-dot" [style.background]="colors.worked"></span>Worked <b>{{ formatMinutes(adherence().worked) }}</b></li>
+              <li><span class="wwp-dot" [style.background]="colors.notWorked"></span>Not Worked <b>{{ formatMinutes(adherence().notWorked) }}</b></li>
+            </ul>
+          </div>
+        </section>
+      }
+
+      <section class="wwp-panel" data-testid="wwp-last-week">
+        <p class="wwp-title">Last Week Comparison</p>
+        <div class="wwp-compare">
+          <div class="wwp-stat">
+            <span class="wwp-stat-label">Worked Hours</span>
+            <span class="wwp-stat-value">{{ formatMinutes(d.thisWeek.workedMinutes) }}</span>
+            @if (workedChange(); as c) {
+              <strong [class.wwp-down]="!c.up">{{ c.arrow }} {{ c.text }}</strong>
+            }
+            <span class="wwp-muted">vs last week ({{ formatMinutes(d.lastWeek.workedMinutes) }})</span>
+          </div>
+          <div class="wwp-stat">
+            <span class="wwp-stat-label">Completion Rate</span>
+            <span class="wwp-stat-value">{{ percentText(d.thisWeek.progressPercent) }}</span>
+            @if (delta(); as dl) {
+              <strong [class.wwp-down]="!dl.up">{{ dl.arrow }} {{ dl.text }}</strong>
+            }
+            <span class="wwp-muted">vs last week ({{ percentText(d.lastWeek.progressPercent) }})</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="wwp-panel" data-testid="wwp-tasks">
+        <p class="wwp-title">Task Status (Weightage)</p>
+        <div class="wwp-split">
+          <div class="wwp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
+            <svg viewBox="0 0 42 42" class="block h-full w-full" aria-hidden="true">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="5" />
+              @for (arc of taskArcs(); track arc.key) {
+                <circle cx="21" cy="21" r="15.9155" fill="none" stroke-width="5" [attr.stroke]="arc.color"
+                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)" [attr.stroke-dashoffset]="arc.offset" />
+              }
+            </svg>
+            <p class="wwp-donut-center">
+              <span class="wwp-mid">{{ taskTotal() }}h</span>&ngsp;<span class="wwp-status">Total</span>
+            </p>
+          </div>
+          <ul class="wwp-legend">
+            @for (row of taskLegend(); track row.key) {
+              <li><span class="wwp-dot" [style.background]="row.color"></span>{{ row.label }} <b>{{ row.value }}</b>&ngsp;<small>{{ row.share }}</small></li>
+            }
+            @if (d.tasks.unestimatedCount > 0) {
+              <li class="wwp-muted">{{ d.tasks.unestimatedCount }} without an estimate</li>
+            }
+          </ul>
+        </div>
+      </section>
+
+      <section class="wwp-panel" data-testid="wwp-insights">
+        <p class="wwp-title">Key Insights</p>
+        @if (insights().length === 0) {
+          <p class="wwp-muted">Nothing to point out yet this week.</p>
+        } @else {
+          <ul class="wwp-insights">
+            @for (item of insights(); track item.text) {
+              <li [class]="'wwp-insight wwp-insight--' + item.tone">{{ item.text }}</li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+  </div>
+</app-modal>

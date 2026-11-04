@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { MeetingFormModalComponent, MeetingPrefill } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingDraft, MeetingFormModalComponent, MeetingPrefill } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -19,7 +19,26 @@ import {
 } from '../../ui/calendar-event-form-modal/calendar-event-form-modal.component';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
+import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
+import { EventTabComponent } from '../../ui/planner-create-popover/event-tab.component';
+import { WorkItemDraft, WorkItemTabComponent, WorkItemToPlace } from '../../ui/planner-create-popover/work-item-tab.component';
+import { TaskFormPrefill } from '../../../work/ui/task-form-modal/task-form-modal.component';
+import { plannerErrorMessage } from '../../../work/planner/utils/planner-error-messages';
+import { TimeOffDraft, TimeOffTabComponent } from '../../ui/planner-create-popover/time-off-tab.component';
+import { NewLeaveRequestWizardComponent } from '../../../leave/ui/new-leave-request-wizard/new-leave-request-wizard.component';
+import { LeaveTypeStore } from '../../../leave/state/leave-type.store';
+import { LeaveBalanceStore } from '../../../leave/state/leave-balance.store';
+import { LeaveRequestStore } from '../../../leave/state/leave-request.store';
+import { LeaveUploadedDocument, SubmitLeaveRequestRequest } from '../../../leave/models/leave-request.model';
+import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
+import { PlannerLeaveLayerStore } from '../../state/planner-leave-layer.store';
+import { TeamPlannerStore } from '../../state/team-planner.store';
+import { TeamPlannerComponent } from '../team-planner/team-planner.component';
+import { MyTeamCapabilitiesStore } from '../../../dashboard/state/my-team-capabilities.store';
+import { EventDraft } from '../../utils/event-draft';
+import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 import {
   PlannerDayResponse, PlannerFocusItem, PlannerRangeBlockView, PlannerRangeDay
@@ -87,10 +106,12 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   imports: [
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
     CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
-    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent
+    MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
+    PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent, TimeOffTabComponent, NewLeaveRequestWizardComponent,
+    TeamPlannerComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
-  providers: [PlannerLayerStore],
+  providers: [PlannerLayerStore, WorkItemPlanFlow, PlannerLeaveLayerStore, TeamPlannerStore],
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -120,6 +141,7 @@ export class CalendarPageComponent {
   readonly planner = inject(PlannerLayerStore);
   private readonly plannerApi = inject(PlannerApiService);
   private readonly auth = inject(AuthStore);
+  private readonly permissions = inject(PermissionService);
   readonly employeeId = computed(() => this.auth.employeeId());
   /** Week view's Focus panel; Day view always shows it. */
   readonly focusOpen = signal(readFlag('planner.focusOpen', true));
@@ -212,6 +234,13 @@ export class CalendarPageComponent {
   private readonly plannerRangeEffect = effect(() => {
     const { from, to } = this.plannerRange();
     void this.planner.load(from, to);
+    // Your own leave on the Planner (2026-11-03): only while the Planner is on, and where you can ask for it.
+    if (this.planner.active() && this.createTabs().includes('timeOff')) {
+      void untracked(() => this.leaveLayer.load(from, to));
+      untracked(() => this.leaveLayer.startAutoRefresh());
+    } else {
+      untracked(() => this.leaveLayer.stopAutoRefresh());
+    }
   });
 
   /** Day view's actual minutes and attendance come from the day read. */
@@ -245,7 +274,53 @@ export class CalendarPageComponent {
     this.store.loadMyTimezone();
     this.store.loadMeetingConnectionStatus();
     this.handleCalendarConnectionRedirect();
+    this.applyTeamParams();
   }
+
+  // --- Me / My team (team planner, Phase A, 2026-11-03) ---
+
+  readonly teamPlanner = inject(TeamPlannerStore);
+  private readonly myTeam = inject(MyTeamCapabilitiesStore);
+  readonly scope = signal<'me' | 'team'>('me');
+  /** My team is offered while the planner is on to someone with a direct report. */
+  readonly canViewTeam = computed(() => this.planner.active() && this.myTeam.capabilities()?.canViewTeamPlan === true);
+  /** The team view shows only while it is offered; a deep link waits for the capability check. */
+  readonly teamMode = computed(() => this.scope() === 'team' && this.canViewTeam());
+
+  setScope(scope: 'me' | 'team'): void {
+    this.closeCreate();
+    this.scope.set(scope);
+  }
+
+  /** ?scope=team&teamView=day|week&date=YYYY-MM-DD&person=<id>, as the My Team widget links. */
+  private applyTeamParams(): void {
+    if (!this.myTeam.loaded() && !this.myTeam.loading()) void this.myTeam.loadCapabilities();
+    const params = this.route.snapshot.queryParamMap;
+    if (params.get('scope') !== 'team') return;
+    this.scope.set('team');
+    const view = params.get('teamView');
+    if (view === 'day' || view === 'week') this.teamPlanner.mode.set(view);
+    const date = params.get('date');
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) this.teamPlanner.setDate(date);
+    const person = params.get('person');
+    if (person) void this.teamPlanner.openPerson(person);
+  }
+
+  /** Keeps the URL on the team view's state while it shows, so a refresh or a shared link reopens it. */
+  private readonly teamUrlEffect = effect(() => {
+    const team = this.teamMode();
+    const mode = this.teamPlanner.mode();
+    const date = this.teamPlanner.date();
+    const person = this.teamPlanner.person()?.employeeId ?? null;
+    untracked(() => {
+      const current = this.route.snapshot.queryParamMap;
+      if (!team && current.get('scope') !== 'team') return;
+      void this.router.navigate([], {
+        relativeTo: this.route, replaceUrl: true, queryParamsHandling: 'merge',
+        queryParams: team ? { scope: 'team', teamView: mode, date, person } : { scope: null, teamView: null, date: null, person: null },
+      });
+    });
+  });
 
   /**
    * The backend's OAuth callback (CalendarOAuthCallbackController) redirects the browser straight
@@ -319,10 +394,12 @@ export class CalendarPageComponent {
   }
 
   setView(view: CalendarView): void {
+    this.closeCreate();
     this.view.set(view);
   }
 
   openDay(date: string): void {
+    this.closeCreate();
     const [y, m, d] = date.split('-').map(Number);
     this.cursor.set(new Date(y, m - 1, d));
     this.view.set('day');
@@ -434,6 +511,7 @@ export class CalendarPageComponent {
   }
 
   private step(direction: 1 | -1): void {
+    this.closeCreate();
     const d = this.cursor();
     switch (this.view()) {
       case 'month':
@@ -452,6 +530,7 @@ export class CalendarPageComponent {
   }
 
   goToToday(): void {
+    this.closeCreate();
     this.cursor.set(new Date());
   }
 
@@ -460,6 +539,7 @@ export class CalendarPageComponent {
 
   jumpTo(date: string): void {
     const [y, m, d] = date.split('-').map(Number);
+    this.closeCreate();
     if (y && m && d) this.cursor.set(new Date(y, m - 1, d));
     this.periodPickerOpen.set(false);
   }
@@ -494,13 +574,185 @@ export class CalendarPageComponent {
   }
 
   onSlotClick(slot: { date: string; hour: number }): void {
+    if (this.canCreateHere(slot.date)) {
+      this.openCreatePopover(slot.date, slot.hour * 60, Math.min(slot.hour * 60 + 60, 24 * 60));
+      return;
+    }
     this.openCreate(`${slot.date}T${String(slot.hour).padStart(2, '0')}:00`);
   }
 
   onSlotRange(range: { date: string; startMinutes: number; endMinutes: number }): void {
-    const hhmm = (minutes: number) =>
-      `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-    this.openCreate(`${range.date}T${hhmm(range.startMinutes)}`, `${range.date}T${hhmm(range.endMinutes)}`);
+    if (this.canCreateHere(range.date)) {
+      this.openCreatePopover(range.date, range.startMinutes, range.endMinutes);
+      return;
+    }
+    this.openCreate(`${range.date}T${clock(range.startMinutes)}`, `${range.date}T${clock(range.endMinutes)}`);
+  }
+
+  // --- Planner create popover (2026-11-03 design) ---
+
+  /** The picked time while the create popover is open; null when closed. */
+  readonly createSlot = signal<CreateSlot | null>(null);
+  readonly createTabs = computed<readonly CreateTab[]>(() => CREATE_TAB_ORDER.filter((tab) => {
+    if (tab === 'meeting') return this.meetingsAvailability.canCreate();
+    if (tab === 'timeOff') return this.permissions.hasModule('leave') && this.permissions.hasPermission('leave:read-own');
+    return true;
+  }));
+
+  /** The popover belongs to the planner: it needs the planner's editable days. Elsewhere the event form stays. */
+  private canCreateHere(date: string): boolean {
+    return this.planner.active() && this.plannerEditable().has(date);
+  }
+
+  private openCreatePopover(date: string, startMinutes: number, endMinutes: number): void {
+    // A new popover is a new work item: the last one's state (created, refused, pending) stays with it.
+    this.planFlow.reset();
+    this.createSlot.set({ date, startMinutes, endMinutes, startIso: this.toIso(date, startMinutes), endIso: this.toIso(date, endMinutes) });
+  }
+
+  /** New event: the popover at the next half hour today (planner zone), for an hour; the event form when it can't. */
+  onNewEvent(): void {
+    const zone = this.planner.range()?.timezone ?? this.store.myTimezone();
+    const now = utcIsoToLocalParts(new Date().toISOString(), zone);
+    const [h, m] = now.time.split(':').map(Number);
+    const start = Math.ceil((h * 60 + m + 1) / 30) * 30;
+    if (start + 60 <= 24 * 60 && this.canCreateHere(now.date)) {
+      this.openCreatePopover(now.date, start, start + 60);
+      return;
+    }
+    this.openCreate();
+  }
+
+  closeCreate(): void {
+    this.createSlot.set(null);
+  }
+
+  /** The planner's zone: the grid's wall-clock times and every tab's slot are in it. */
+  readonly plannerZone = computed(() => this.planner.range()?.timezone ?? this.store.myTimezone());
+  /** "More options" on the Event tab: the full event form, filled with everything the tab held. */
+  readonly eventPrefill = signal<EventDraft | null>(null);
+
+  /** A tab created its item: close the popover and show it. */
+  onCreateDone(): void {
+    this.closeCreate();
+    void this.reloadEvents();
+    const { from, to } = this.plannerRange();
+    void this.planner.load(from, to);
+  }
+
+  readonly clockOf = clock;
+
+  // --- Time off tab ---
+  readonly leaveLayer = inject(PlannerLeaveLayerStore);
+  /** My leave on the grid: a Planner layer, so nothing while the Planner is off. */
+  readonly plannerLeaves = computed(() => (this.planner.active() ? this.leaveLayer.leaves() : []));
+  readonly leaveTypes = inject(LeaveTypeStore);
+  readonly leaveBalances = inject(LeaveBalanceStore);
+  readonly leaveRequests = inject(LeaveRequestStore);
+  /** "More options" on the Time off tab: the full leave request form, filled with what the tab held. */
+  readonly leaveWizard = signal<{ leaveTypeId: string; startDate: string; startTime: string; endDate: string; endTime: string;
+    reason: string | null } | null>(null);
+  readonly leaveDocuments = signal<LeaveUploadedDocument[]>([]);
+
+  onTimeOffSubmitted(): void {
+    this.closeCreate();
+    this.notificationService.success('Leave request sent for approval.');
+    const { from, to } = this.plannerRange();
+    void this.leaveLayer.load(from, to);
+  }
+
+  async onTimeOffMoreOptions(draft: TimeOffDraft): Promise<void> {
+    this.closeCreate();
+    if (this.leaveTypes.items().length === 0) void this.leaveTypes.load();
+    // Wait for the work window: converting with the planner's zone first would show other clock times.
+    await this.leaveBalances.loadWorkWindow();
+    // The leave form works in the work-window zone; the slot's instants are shown there.
+    const zone = this.leaveBalances.workWindow()?.timezone ?? this.plannerZone();
+    const start = utcIsoToLocalParts(draft.startIso, zone);
+    const end = utcIsoToLocalParts(draft.endIso, zone);
+    this.leaveWizard.set({ leaveTypeId: draft.leaveTypeId, startDate: start.date, startTime: start.time, endDate: end.date,
+      endTime: end.time, reason: draft.reason });
+  }
+
+  async onLeaveWizardSubmit(payload: SubmitLeaveRequestRequest): Promise<void> {
+    if (await this.leaveRequests.submit(payload)) {
+      this.closeLeaveWizard();
+      this.onTimeOffSubmitted();
+    }
+  }
+
+  async onLeaveDocumentSelected(file: File): Promise<void> {
+    const uploaded = await this.leaveRequests.uploadDocument(file);
+    if (uploaded) this.leaveDocuments.update((docs) => [...docs, uploaded]);
+  }
+
+  closeLeaveWizard(): void {
+    this.leaveWizard.set(null);
+    this.leaveDocuments.set([]);
+    this.leaveRequests.clearPreview();
+  }
+
+  /** "More options" on the Work item tab: the full Create work item form, filled, then the created item is planned. */
+  readonly workItemForm = signal<{ projectId: string; objectiveId: string; prefill: TaskFormPrefill; slot: CreateSlot; planned: boolean } | null>(null);
+  private readonly planFlow = inject(WorkItemPlanFlow);
+
+  async onWorkItemMoreOptions(draft: WorkItemDraft): Promise<void> {
+    if (!draft.projectId) {
+      this.notificationService.warning('Choose a project first.');
+      return;
+    }
+    // The task form reads its project from ProjectDetailStore (as openTask does).
+    await this.projects.loadProject(draft.projectId);
+    await this.projects.loadMyMilestones(draft.projectId);
+    this.closeCreate();
+    this.workItemForm.set({
+      projectId: draft.projectId, objectiveId: draft.objectiveId ?? '', slot: draft.slot, planned: false,
+      prefill: { title: draft.title, categoryId: draft.categoryId, priority: draft.priority, estimatedHours: draft.estimatedHours,
+        dueDate: draft.dueDate, assigneeEmployeeId: this.employeeId() },
+    });
+  }
+
+  /** The full form created an item: plan the first one it created directly ('' = sent for approval: nothing to plan). */
+  async onWorkItemFormCreated(taskId: string): Promise<void> {
+    const form = this.workItemForm();
+    if (!taskId || !form || form.planned) return;
+    this.workItemForm.set({ ...form, planned: true });
+    await this.planFlow.planExisting(taskId, '', form.slot);
+    const state = this.planFlow.state();
+    if (state.kind === 'notPlanned') {
+      const reason = state.reason === plannerErrorMessage('planner_task_not_plannable') ? 'assigned to someone else' : state.reason;
+      this.notificationService.warning(`Created, not planned: ${reason}`);
+      // The popover's Retry/Pick another time is gone here: open the block picker for the created item.
+      this.onPickAnotherTime({ taskId, shortId: '', projectId: form.projectId, title: form.prefill.title ?? '',
+        estimatedMinutes: Math.round((form.prefill.estimatedHours ?? 0) * 60) });
+    }
+  }
+
+  /** A work item was created but its block was refused: place it with the block picker instead. */
+  onPickAnotherTime(item: WorkItemToPlace): void {
+    this.closeCreate();
+    void this.planner.load(this.plannerRange().from, this.plannerRange().to);
+    this.pickerItem.set({
+      taskId: item.taskId, projectId: item.projectId, projectName: '', title: item.title, priority: 'medium', dueDate: null,
+      estimatedMinutes: item.estimatedMinutes, loggedMinutes: 0, remainingMinutes: item.estimatedMinutes, plannedAheadMinutes: 0,
+      firstPlannedDate: null, plannedDayCount: 0, fullyPlanned: false, reason: 'backlog',
+    });
+  }
+
+  /** "More options" on the Meeting tab: today's full meeting form, filled with everything the tab held. */
+  onMeetingMoreOptions(draft: MeetingDraft): void {
+    this.closeCreate();
+    this.meetingPrefill.set(draft);
+    this.meetingFormOpen.set(true);
+  }
+
+  onEventMoreOptions(draft: EventDraft): void {
+    this.closeCreate();
+    this.editingEvent.set(null);
+    this.prefillStart.set(null);
+    this.prefillEnd.set(null);
+    this.eventPrefill.set(draft);
+    this.formOpen.set(true);
   }
 
   openEdit(eventId: string): void {
@@ -519,6 +771,7 @@ export class CalendarPageComponent {
 
   closeForm(): void {
     this.formOpen.set(false);
+    this.eventPrefill.set(null);
     this.editingEvent.set(null);
     this.prefillStart.set(null);
     this.prefillEnd.set(null);

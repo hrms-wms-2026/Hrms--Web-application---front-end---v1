@@ -6,6 +6,7 @@ import { MyTeamTodayApiService } from '../../data-access/my-team-today-api.servi
 import { TeamTodayMember, TeamTodayResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
+import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
 import { TeamStatusCardComponent } from './team-status-card.component';
 
 function member(overrides: Partial<TeamTodayMember> = {}): TeamTodayMember {
@@ -119,6 +120,39 @@ describe('TeamStatusCardComponent', () => {
     expect(el.querySelector('[data-testid="team-stat-absent"]')!.textContent!.trim()).toBe('2');
     expect(el.querySelector('[data-testid="team-stat-leave"]')!.textContent!.trim()).toBe('1');
     expect(el.textContent).toContain('7 of 9 in today');
+  });
+
+  it('a 2x2 card shows the mini view (head-count, strip, exceptions) and still pops out to the full list', async () => {
+    stubResizeObserver();
+    try {
+      const { fixture } = await setup({
+        ...response([member()]),
+        summary: {
+          total: 10, working: 5, onBreak: 1, clockedOut: 1, late: 2, absent: 2,
+          notStarted: 0, onLeave: 1, notScheduled: 0, needsAttention: 2
+        }
+      });
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('[data-testid="team-status-body"]')).toBeTruthy();
+
+      FakeResizeObserver.instances[0].trigger(206, 204);
+      fixture.detectChanges();
+      expect(el.querySelector('[data-testid="team-status-body"]')).toBeNull();
+      expect(el.querySelector('[data-testid="team-mini-present"]')!.textContent!.replace(/\s+/g, '')).toBe('7/9');
+      expect(el.querySelector('[data-testid="team-mini-exceptions"]')!.textContent!.replace(/\s+/g, ' ').trim())
+        .toBe('2 late · 2 absent · 1 leave');
+
+      (el.querySelector('[data-testid="team-status-card"]') as HTMLElement).click();
+      fixture.detectChanges();
+      expect(isOpen(el)).toBe(true);
+      expect(el.querySelector('[data-testid="team-status-members"]')).toBeTruthy();
+
+      FakeResizeObserver.instances[0].trigger(640, 420);
+      fixture.detectChanges();
+      expect(el.querySelector('[data-testid="team-status-mini"]')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('previews the first people to follow up on, or says everyone is on track', async () => {

@@ -110,6 +110,14 @@
             [style.top.%]="off.topPct" [style.height.%]="off.heightPct"></div>
         }
 
+        <!-- Your own leave: pending is outlined and hatched, approved is solid; the labels differ too. -->
+        @for (leave of leaveBands(column.date); track leave.id) {
+          <div data-testid="planner-leave" class="planner-leave pointer-events-none absolute left-0 right-0 overflow-hidden rounded-sm px-1 text-[10px] font-semibold"
+            [class.planner-leave--pending]="leave.status === 'pending'" [style.top.%]="leave.topPct" [style.height.%]="leave.heightPct">
+            {{ leave.status === 'pending' ? 'Pending leave' : 'Leave' }}
+          </div>
+        }
+
         @if (dragSelection(); as sel) {
           @if (sel.date === column.date) {
             <div

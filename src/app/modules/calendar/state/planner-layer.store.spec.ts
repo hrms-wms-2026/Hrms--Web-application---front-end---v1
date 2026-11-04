@@ -104,6 +104,17 @@ describe('PlannerLayerStore', () => {
     expect(store.error()).toBe('This overlaps another planned block.');
     expect(notify.error).toHaveBeenCalledWith('This overlaps another planned block.');
   });
+
+  it('a quiet create keeps the refusal in error without a toast of its own', async () => {
+    await loadWeek();
+
+    const write = store.createBlock('t1', 'a', 'b', { quiet: true });
+    http.expectOne(`${base}/me/blocks`).flush({ code: 'planner_block_overlap' }, { status: 409, statusText: 'Conflict' });
+
+    expect(await write).toBe(false);
+    expect(store.error()).toBe('This overlaps another planned block.');
+    expect(notify.error).not.toHaveBeenCalled();
+  });
   it('keeps the newest range when an older response arrives last', async () => {
     const older = store.load('2026-10-26', '2026-11-01');
     const newer = store.load('2026-11-02', '2026-11-08');

@@ -47,6 +47,12 @@ import { MeetingsAvailabilityService } from '../../meetings/state/meetings-avail
 import { MeetingCreatedEvent } from '../../meetings/utils/meeting-created-drawer.util';
 
 export type TaskFormMode = 'create' | 'edit';
+
+/** Create-mode values handed over by the Planner create popover's Work item tab ("More options"). */
+export interface TaskFormPrefill {
+  title: string; categoryId: string | null; priority: WorkTask['priority'] | null; estimatedHours: number | null;
+  dueDate: string | null; assigneeEmployeeId: string | null;
+}
 /** The system key of a project's "Meeting" category (TaskCategorySystemKeys.Meeting on the backend). */
 const TASK_CATEGORY_MEETING = 'meeting';
 
@@ -2186,6 +2192,8 @@ export class TaskFormModalComponent {
    * (Tree, Board, Backlog) set it; everywhere else the category is not offered, so no plain task is made a "meeting".
    */
   readonly allowMeeting = input(false);
+  /** Create mode only: what the Planner create popover's Work item tab held ("More options"). */
+  readonly prefill = input<TaskFormPrefill | null>(null);
 
   readonly closed = output<void>();
   readonly created = output<string>();
@@ -2865,6 +2873,16 @@ export class TaskFormModalComponent {
       }
 
       await this.loadMembers();
+
+      const prefill = this.prefill();
+      if (prefill && this.currentEffectiveMode() === 'create') {
+        this.title.set(prefill.title);
+        if (prefill.categoryId && this.taskCategories().some((c) => c.id === prefill.categoryId)) this.categoryId.set(prefill.categoryId);
+        if (prefill.priority) this.priority.set(prefill.priority);
+        this.estimatedHours.set(prefill.estimatedHours);
+        this.dueDate.set(prefill.dueDate ?? '');
+        if (prefill.assigneeEmployeeId) this.assigneeEmployeeId.set(prefill.assigneeEmployeeId);
+      }
 
       const draftId = this.draftId();
       if (draftId) {

@@ -1,8 +1,22 @@
 <div class="flex h-full flex-col gap-3">
   <!-- The page name, in the band that used to be empty padding. -->
-  <header data-testid="planner-header">
+  <header data-testid="planner-header" class="flex flex-wrap items-center gap-3">
     <h1 class="text-xl font-semibold text-[var(--color-text-primary)]">{{ planner.active() ? 'Planner' : 'Calendar' }}</h1>
+    <!-- Team planner (2026-11-03): my plan or my team's, for someone with direct reports. -->
+    @if (canViewTeam()) {
+      <div role="group" aria-label="Whose plan" class="flex overflow-hidden rounded-md border border-[var(--color-border)]">
+        <button type="button" data-testid="planner-scope-me" class="px-3 py-1.5 text-sm" [attr.aria-pressed]="!teamMode()"
+          [style.background-color]="!teamMode() ? 'var(--color-accent)' : null" [style.color]="!teamMode() ? 'var(--color-accent-contrast)' : null"
+          (click)="setScope('me')">Me</button>
+        <button type="button" data-testid="planner-scope-team" class="px-3 py-1.5 text-sm" [attr.aria-pressed]="teamMode()"
+          [style.background-color]="teamMode() ? 'var(--color-accent)' : null" [style.color]="teamMode() ? 'var(--color-accent-contrast)' : null"
+          (click)="setScope('team')">My team</button>
+      </div>
+    }
   </header>
+  @if (teamMode()) {
+    <app-team-planner [timezone]="plannerZone()" />
+  } @else {
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div class="flex items-center gap-2">
       <app-button type="button" variant="secondary" (click)="previous()">&lsaquo;</app-button>
@@ -76,7 +90,7 @@
           <span data-testid="planner-focus-count" class="rounded-full bg-[var(--color-accent)]/10 px-1.5 text-xs font-semibold text-[var(--color-accent)]">{{ planner.focusCount() }}</span>
         </button>
       }
-      <app-button type="button" data-testid="calendar-new-event" (click)="openCreate()">
+      <app-button type="button" data-testid="calendar-new-event" (click)="onNewEvent()">
         <svg data-testid="calendar-new-event-icon" class="mr-1 inline h-4 w-4 align-[-2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New event
       </app-button>
     </div>
@@ -112,14 +126,14 @@
         }
         @case ('week') {
           <app-calendar-week-view [weekStart]="weekStart()" [visibleDays]="weekDays()" [events]="store.events()" [timezone]="store.myTimezone()"
-            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [loads]="gridLoads()" [employeeId]="employeeId()"
+            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [leaves]="plannerLeaves()" [loads]="gridLoads()" [employeeId]="employeeId()"
             (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)"
             (blockCreate)="onBlockCreate($event)" (blockMove)="onBlockMove($event)" (blockOpen)="openTask($event.projectId, $event.taskId)"
             (blockMoveAfter)="onBlockMoveAfter($event)" (blockRemove)="onBlockRemove($event)" />
         }
         @case ('day') {
           <app-calendar-day-view [date]="dayDate()" [events]="store.events()" [timezone]="store.myTimezone()"
-            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [loads]="gridLoads()" [employeeId]="employeeId()"
+            [blocks]="plannerBlocks()" [workWindows]="plannerWindows()" [editableDates]="plannerEditable()" [leaves]="plannerLeaves()" [loads]="gridLoads()" [employeeId]="employeeId()"
             (eventClick)="openEdit($event)" (slotClick)="onSlotClick($event)" (slotRange)="onSlotRange($event)"
             (blockCreate)="onBlockCreate($event)" (blockMove)="onBlockMove($event)" (blockOpen)="openTask($event.projectId, $event.taskId)"
             (blockMoveAfter)="onBlockMoveAfter($event)" (blockRemove)="onBlockRemove($event)" />
@@ -135,6 +149,7 @@
         (pick)="pickerItem.set($event)" (open)="openTask($event.projectId, $event.taskId)" />
     }
   </div>
+  }
 </div>
 
 @if (pickerItem(); as item) {
@@ -153,6 +168,7 @@
   [event]="editingEvent()"
   [prefillStart]="prefillStart()"
   [prefillEnd]="prefillEnd()"
+  [prefill]="eventPrefill()"
   [saving]="store.saving() || submitting()"
   [conflicts]="store.conflicts()"
   [checkingConflicts]="store.checkingConflicts()"
@@ -176,9 +192,75 @@
   (cancelled)="closeForm()"
 />
 
+@if (createSlot(); as slot) {
+  <app-planner-create-popover #createPop [slot]="slot" [tabs]="createTabs()" (closed)="closeCreate()">
+    <!-- Each tab is created on first open and then kept (hidden), so switching tabs keeps what was typed. -->
+    @if (createPop.isRendered('event')) {
+      <div [hidden]="createPop.active() !== 'event'">
+        <app-planner-event-tab [slot]="slot" [shared]="createPop.shared" [timezone]="plannerZone()"
+          (created)="onCreateDone()" (moreOptions)="onEventMoreOptions($event)" />
+      </div>
+    }
+    @if (createPop.isRendered('meeting')) {
+      <div [hidden]="createPop.active() !== 'meeting'">
+        <app-meeting-form-modal [open]="true" [embedded]="true" [compact]="true" mode="create" [sharedTitle]="createPop.shared.title"
+          [prefill]="{ title: createPop.shared.title(), start: slot.date + 'T' + clockOf(slot.startMinutes), end: slot.date + 'T' + clockOf(slot.endMinutes),
+            timezone: plannerZone(), isAllDay: createPop.shared.isAllDay() }"
+          (saved)="closeCreate(); onMeetingSaved($any($event))" (moreOptions)="onMeetingMoreOptions($event)" />
+      </div>
+    }
+    @if (createPop.isRendered('workItem')) {
+      <div [hidden]="createPop.active() !== 'workItem'">
+        <app-planner-work-item-tab [slot]="slot" [shared]="createPop.shared" [myBlocks]="plannerBlocks().get(slot.date) ?? []"
+          (done)="onCreateDone()" (pickAnotherTime)="onPickAnotherTime($event)" (moreOptions)="onWorkItemMoreOptions($event)" />
+      </div>
+    }
+    @if (createPop.isRendered('timeOff')) {
+      <div [hidden]="createPop.active() !== 'timeOff'">
+        <app-planner-time-off-tab [slot]="slot" (submitted)="onTimeOffSubmitted()" (moreOptions)="onTimeOffMoreOptions($event)" />
+      </div>
+    }
+  </app-planner-create-popover>
+}
+
 @if (meetingFormOpen()) {
   <app-meeting-form-modal [open]="true" mode="create" [prefill]="meetingPrefill()" (saved)="onMeetingSaved($any($event))"
     (closed)="meetingFormOpen.set(false); meetingPrefill.set(null)" />
+}
+
+@if (leaveWizard(); as lw) {
+  <app-new-leave-request-wizard
+    [open]="true"
+    [leaveTypes]="leaveTypes.items()"
+    [balances]="leaveBalances.my()"
+    [workStartTime]="leaveBalances.workWindow()?.workStartTime ?? null"
+    [workEndTime]="leaveBalances.workWindow()?.workEndTime ?? null"
+    [timezone]="leaveBalances.workWindow()?.timezone ?? plannerZone()"
+    [initialLeaveTypeId]="lw.leaveTypeId"
+    [initialStartDate]="lw.startDate"
+    [initialStartTime]="lw.startTime"
+    [initialEndDate]="lw.endDate"
+    [initialEndTime]="lw.endTime"
+    [initialReason]="lw.reason ?? ''"
+    [previewing]="leaveRequests.previewing()"
+    [previewResult]="leaveRequests.previewResult()"
+    [previewError]="leaveRequests.previewError()"
+    [submitting]="leaveRequests.submitting()"
+    [submitError]="leaveRequests.submitError()"
+    [uploadedDocuments]="leaveDocuments()"
+    [uploadingDocument]="leaveRequests.uploadingDocument()"
+    [documentUploadError]="leaveRequests.documentUploadError()"
+    (previewRequested)="leaveRequests.preview($event)"
+    (submitRequested)="onLeaveWizardSubmit($any($event))"
+    (documentSelected)="onLeaveDocumentSelected($event)"
+    (documentRemoved)="leaveDocuments.update((docs) => docs.filter((d) => d.id !== $event))"
+    (closed)="closeLeaveWizard()"
+  />
+}
+
+@if (workItemForm(); as wf) {
+  <app-task-form-modal [open]="true" mode="create" [projectId]="wf.projectId" [prefillModuleId]="wf.objectiveId"
+    [prefill]="wf.prefill" (created)="onWorkItemFormCreated($event)" (closed)="workItemForm.set(null); onTaskSaved()" />
 }
 
 @if (openedTask(); as task) {

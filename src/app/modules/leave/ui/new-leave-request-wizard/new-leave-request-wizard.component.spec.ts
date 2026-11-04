@@ -176,6 +176,19 @@ describe('NewLeaveRequestWizardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="document-input"]')).toBeTruthy();
   });
 
+  it('fills type, dates, times and reason from the initial inputs (Planner create popover)', () => {
+    fixture.componentRef.setInput('initialLeaveTypeId', 'type-1');
+    fixture.componentRef.setInput('initialStartDate', '2026-11-10');
+    fixture.componentRef.setInput('initialEndDate', '2026-11-10');
+    fixture.componentRef.setInput('initialStartTime', '09:00');
+    fixture.componentRef.setInput('initialEndTime', '11:00');
+    fixture.componentRef.setInput('initialReason', 'Doctor');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.draft()).toEqual({
+      leaveTypeId: 'type-1', startDate: '2026-11-10', startTime: '09:00', endDate: '2026-11-10', endTime: '11:00', reason: 'Doctor',
+    });
+  });
+
   it('prefills start and end dates from initialStartDate and initialEndDate', () => {
     fixture.componentRef.setInput('initialStartDate', '2026-09-10');
     fixture.componentRef.setInput('initialEndDate', '2026-09-10');

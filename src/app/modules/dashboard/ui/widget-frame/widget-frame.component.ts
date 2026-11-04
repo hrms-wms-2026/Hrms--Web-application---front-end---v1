@@ -17,45 +17,72 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
   imports: [NgComponentOutlet, UnsupportedWidgetComponent],
   providers: [WidgetDataStore, { provide: WIDGET_DATA, useExisting: WidgetDataStore }],
   template: `
-    <div class="relative h-full w-full" [class.select-none]="editing()" data-testid="widget-frame">
-      <div
-        class="h-full w-full [&>*]:block [&>*]:h-full"
-        [class.overflow-auto]="!overflowVisible()"
-        [class.overflow-visible]="overflowVisible()"
-        [class.ring-1]="editing()"
-        [class.ring-slate-300]="editing()"
-        [attr.inert]="editing() ? '' : null"
-      >
-        @if (entry(); as e) {
-          <ng-container *ngComponentOutlet="e.component; inputs: e.inputs" />
-        } @else {
-          <app-unsupported-widget [title]="widget().title" />
+    <div
+      class="relative flex h-full w-full flex-col"
+      [class.select-none]="editing()"
+      [class.rounded-2xl]="editing()"
+      [class.bg-slate-100]="editing()"
+      [class.p-1]="editing()"
+      [class.ring-1]="editing()"
+      [class.ring-slate-200]="editing()"
+      data-testid="widget-frame"
+    >
+      @if (editing()) {
+        <!-- Edit chrome gets its own strip above the card, so it never covers the card's title or controls. -->
+        <div class="flex h-8 shrink-0 items-center gap-1 pl-1" data-testid="widget-edit-bar">
+          <div
+            class="flex h-7 min-w-0 flex-1 cursor-grab touch-none items-center gap-1.5 rounded-lg px-1.5 text-xs font-semibold text-slate-600 hover:bg-white active:cursor-grabbing"
+            data-drag-handle
+            aria-hidden="true"
+          >
+            <svg class="h-3.5 w-3.5 shrink-0 text-slate-400" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <circle cx="5.5" cy="3.5" r="1.25" /><circle cx="10.5" cy="3.5" r="1.25" />
+              <circle cx="5.5" cy="8" r="1.25" /><circle cx="10.5" cy="8" r="1.25" />
+              <circle cx="5.5" cy="12.5" r="1.25" /><circle cx="10.5" cy="12.5" r="1.25" />
+            </svg>
+            <span class="truncate">{{ widget().title }}</span>
+          </div>
+          <button
+            type="button"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+            [attr.aria-label]="'Remove ' + widget().title"
+            (click)="remove.emit()"
+          >
+            <span aria-hidden="true">&#10005;</span>
+          </button>
+        </div>
+      }
+
+      <div class="relative min-h-0 w-full flex-1">
+        <div
+          class="h-full w-full [&>*]:block [&>*]:h-full"
+          data-testid="widget-content"
+          [class.overflow-auto]="!overflowVisible() && !editing()"
+          [class.overflow-hidden]="editing()"
+          [class.overflow-visible]="overflowVisible() && !editing()"
+          [attr.inert]="editing() ? '' : null"
+        >
+          @if (entry(); as e) {
+            <ng-container *ngComponentOutlet="e.component; inputs: e.inputs" />
+          } @else {
+            <app-unsupported-widget [title]="widget().title" />
+          }
+        </div>
+        @if (editing()) {
+          <div class="absolute inset-0 z-10 rounded-2xl" data-testid="widget-edit-overlay"></div>
         }
       </div>
 
       @if (editing()) {
-        <div class="absolute inset-0 z-10 rounded-2xl" data-testid="widget-edit-overlay"></div>
         <div
-          class="absolute left-2 top-2 z-20 flex cursor-grab touch-none items-center gap-1 rounded-lg bg-white/90 px-2 py-1 text-xs font-medium text-slate-600 shadow-sm active:cursor-grabbing"
-          data-drag-handle
-          aria-hidden="true"
-        >
-          <span aria-hidden="true">&#8942;&#8942;</span>
-          <span class="max-w-[10rem] truncate">{{ widget().title }}</span>
-        </div>
-        <button
-          type="button"
-          class="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
-          [attr.aria-label]="'Remove ' + widget().title"
-          (click)="remove.emit()"
-        >
-          <span aria-hidden="true">&#10005;</span>
-        </button>
-        <div
-          class="absolute bottom-1 right-1 z-20 h-5 w-5 cursor-nwse-resize touch-none rounded-br-xl border-b-2 border-r-2 border-slate-400"
+          class="absolute bottom-0 right-0 z-20 flex h-7 w-7 cursor-nwse-resize touch-none items-center justify-center rounded-br-2xl rounded-tl-lg bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 hover:text-blue-600"
           data-resize-handle
           aria-hidden="true"
-        ></div>
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+            <path d="M14 6v8H6M14 14 7 7" />
+          </svg>
+        </div>
       }
     </div>
   `,

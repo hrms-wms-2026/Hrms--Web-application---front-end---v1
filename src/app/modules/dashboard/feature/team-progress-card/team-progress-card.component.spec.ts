@@ -15,6 +15,7 @@ import {
 } from '../../models/team-progress-detail.model';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
+import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 import { TEAM_PROGRESS_PERIOD_STORAGE_KEY, TeamProgressCardComponent } from './team-progress-card.component';
@@ -323,8 +324,8 @@ describe('TeamProgressCardComponent', () => {
         ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-view-details'],
         ['team-progress-modules']],
       ['4x3', 424, 312, 'small',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion', 'team-progress-metrics', 'team-progress-period'],
-        ['team-progress-modules', 'team-progress-view-details', 'team-progress-weekly']],
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion', 'team-progress-period'],
+        ['team-progress-metrics', 'team-progress-modules', 'team-progress-view-details', 'team-progress-weekly']],
       ['4x5', 424, 528, 'small', ['team-progress-donut', 'team-progress-legend', 'team-progress-view-details'], ['team-progress-modules']],
       ['6x3', 642, 312, 'wide', ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics'], ['team-progress-modules']],
       ['6x4', 642, 420, 'medium',
@@ -373,7 +374,7 @@ describe('TeamProgressCardComponent', () => {
       for (const [w, h] of [[315, 312], [424, 312], [860, 420], [424, 636], [860, 636], [1296, 852]]) {
         resize(fixture, w, h);
         const center = fixture.nativeElement.querySelector('[data-testid="team-progress-total"] span') as HTMLElement;
-        expect(center.style.fontSize).toBe('16px');
+        expect(center.style.fontSize).toBe('17px');
       }
     });
 
@@ -447,25 +448,41 @@ describe('TeamProgressCardComponent', () => {
       expect(has(fixture, 'team-progress-overdue')).toBe(true);
     });
 
-    it('2x2 shows the mini view: a small donut beside the completion figure, no period switch', async () => {
+    it('2x2 shows the mini view: the full-size donut with the completion in it, no period switch', async () => {
       const fixture = await setup(sample());
       resize(fixture, 206, 204);
       expect(layoutMode(fixture)).toBe('mini');
       expect(has(fixture, 'team-progress-mini')).toBe(true);
-      expect(fixture.nativeElement.querySelector('[data-testid="team-progress-mini"] [data-testid="team-progress-donut"]')).not.toBeNull();
+      const donut = fixture.nativeElement.querySelector('[data-testid="team-progress-donut"]') as HTMLElement;
+      expect(donut.style.width).toBe(`${DASHBOARD_DONUT_PX}px`);
       expect(has(fixture, 'team-progress-period')).toBe(false);
       expect(has(fixture, 'team-progress-legend')).toBe(false);
-      expect(text(fixture, 'team-progress-completion')).toBe('30%');
-
       expect(has(fixture, 'team-progress-status-bar')).toBe(false);
+      expect(text(fixture, 'team-progress-completion')).toBe('30%');
+      expect(has(fixture, 'team-progress-total')).toBe(false);
 
-      // Stretched sideways, the stacked status bar and its legend replace the donut (one chart only).
+      // A little wider, the total sits beside the donut.
+      resize(fixture, 292, 204);
+      expect(has(fixture, 'team-progress-donut')).toBe(true);
+      expect(has(fixture, 'team-progress-total')).toBe(true);
+
+      // Stretched sideways (2 rows), the stacked status bar and its legend replace the donut.
       resize(fixture, 860, 204);
       expect(layoutMode(fixture)).toBe('mini');
       expect(has(fixture, 'team-progress-status-bar')).toBe(true);
       expect(has(fixture, 'team-progress-donut')).toBe(false);
       for (const key of ['completed', 'in-progress', 'not-started', 'untasked']) {
         expect(text(fixture, `team-progress-legend-${key}`)).toMatch(/ h$/);
+      }
+    });
+
+    it('the donut is the shared dashboard size in every view that shows it', async () => {
+      const fixture = await setup(sample());
+      for (const [w, h] of [[315, 312], [424, 420], [642, 312], [500, 636], [900, 636], [1296, 852]]) {
+        resize(fixture, w, h);
+        const donut = fixture.nativeElement.querySelector('[data-testid="team-progress-donut"]') as HTMLElement;
+        expect(donut.style.width).toBe(`${DASHBOARD_DONUT_PX}px`);
+        expect(donut.style.height).toBe(`${DASHBOARD_DONUT_PX}px`);
       }
     });
 
