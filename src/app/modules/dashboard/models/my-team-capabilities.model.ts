@@ -7,4 +7,6 @@ export interface MyTeamCapabilitiesResponse {
   leadsWork: boolean;
   canViewLiveActivity: boolean;
   legalEntityId: string | null;
+  /** Team planner (2026-11-03): the planner is on and the viewer has a direct report. Absent from an older API. */
+  canViewTeamPlan?: boolean;
 }

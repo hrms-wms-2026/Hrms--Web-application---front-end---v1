@@ -5,6 +5,7 @@ import { DashboardNotificationsCardComponent } from '../feature/dashboard-notifi
 import { MyTasksCardComponent } from '../feature/my-tasks-card/my-tasks-card.component';
 import { QuickActionsCardComponent } from '../feature/quick-actions-card/quick-actions-card.component';
 import { TeamAttendanceCardComponent } from '../feature/team-attendance-card/team-attendance-card.component';
+import { TeamPlanTodayCardComponent } from '../feature/team-plan-today-card/team-plan-today-card.component';
 import { TeamProgressCardComponent } from '../feature/team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../feature/team-status-card/team-status-card.component';
 import { TodayAtAGlanceCardComponent } from '../feature/today-at-a-glance-card/today-at-a-glance-card.component';
@@ -26,6 +27,15 @@ export interface WidgetRegistryEntry {
  */
 export const HIDDEN_WIDGET_KEYS: ReadonlySet<string> = new Set(['my-tasks', 'work-pattern', 'notifications', 'wellbeing']);
 
+/**
+ * Quick Actions is pinned: the dashboard shell draws it in the top-right corner above the grid, so it can't be
+ * dragged, resized or removed. Its layout entry stays saved (as with the hidden widgets) but the grid skips it.
+ */
+export const PINNED_WIDGET_KEYS: ReadonlySet<string> = new Set(['quick-actions', 'team-quick-actions']);
+
+/** Widgets the grid never draws and the widget store never offers. */
+export const OFF_GRID_WIDGET_KEYS: ReadonlySet<string> = new Set([...HIDDEN_WIDGET_KEYS, ...PINNED_WIDGET_KEYS]);
+
 /** widgetKey (as stored by the backend registry) to the card component that renders it. */
 export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
   'today-at-a-glance': { component: TodayAtAGlanceCardComponent },
@@ -41,5 +51,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
   'team-status': { component: TeamStatusCardComponent },
   'team-progress': { component: TeamProgressCardComponent },
   'team-attendance': { component: TeamAttendanceCardComponent },
+  'team-plan-today': { component: TeamPlanTodayCardComponent },
   'team-quick-actions': { component: QuickActionsCardComponent, inputs: { onTeamDashboard: true } }
 };

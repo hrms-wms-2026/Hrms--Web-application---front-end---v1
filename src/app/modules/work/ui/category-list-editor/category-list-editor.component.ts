@@ -6,11 +6,13 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { safeServerDetail } from '../../../../core/services/error-handler.service';
+import { KIND_META, TaskKind, USER_SELECTABLE_KINDS, kindOf } from '../../utils/task-kind';
 
 interface DraftRow {
   id: string;
   name: string;
   isSystem: boolean;
+  kind: TaskKind;
 }
 
 @Component({
@@ -29,8 +31,15 @@ interface DraftRow {
               (input)="newCategoryName.set($any($event.target).value)"
               (keydown.enter)="confirmAdd()"
               (keydown.escape)="cancelAdd()"
-             
+
             />
+            <!-- The user picks the new category's type; its name never decides it. -->
+            <select data-testid="category-add-kind-select" class="category-list__kind" aria-label="Type"
+              [value]="newCategoryKind()" (change)="newCategoryKind.set($any($event.target).value)">
+              @for (kind of kinds; track kind) {
+                <option [value]="kind" [selected]="kind === newCategoryKind()">{{ kindLabel(kind) }}</option>
+              }
+            </select>
             <div class="category-list__add-buttons">
               <app-button variant="primary" [loading]="adding()" (pressed)="confirmAdd()">Add</app-button>
               <app-button variant="secondary" [disabled]="adding()" (pressed)="cancelAdd()">Cancel</app-button>
@@ -61,6 +70,17 @@ interface DraftRow {
               </svg>
             </span>
             <span class="category-list__name">{{ row.name }}</span>
+            <!-- The type drives colours, icons and grouping in the Planner; a system category's type is fixed. -->
+            @if (row.isSystem) {
+              <span data-testid="category-kind-readonly" class="category-list__kind">{{ kindLabel(row.kind) }}</span>
+            } @else {
+              <select data-testid="category-kind-select" class="category-list__kind" aria-label="Type"
+                [value]="row.kind" (change)="changeKind(row, $any($event.target).value)">
+                @for (kind of kinds; track kind) {
+                  <option [value]="kind" [selected]="kind === row.kind">{{ kindLabel(kind) }}</option>
+                }
+              </select>
+            }
             <div class="category-list__row-actions">
               @if (row.isSystem) {
                 <span class="category-list__system-badge" title="System category: can't be renamed or deleted." aria-label="System category: can't be renamed or deleted.">
@@ -157,6 +177,17 @@ interface DraftRow {
       background: color-mix(in srgb, var(--color-border) 25%, transparent);
       border-color: color-mix(in srgb, var(--color-border) 50%, var(--color-accent, #2563eb));
     }
+    .category-list__kind {
+      margin-left: auto;
+      margin-right: 8px;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
+      padding: 2px 4px;
+      background: var(--color-surface);
+    }
+
     .category-list__rename-input {
       width: 100%;
       border: 1px solid var(--color-border);
@@ -313,6 +344,7 @@ export class CategoryListEditorComponent {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly addingNew = signal(false);
   protected readonly newCategoryName = signal('');
+  protected readonly newCategoryKind = signal<TaskKind>('task');
   protected readonly adding = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly editingName = signal('');
@@ -325,12 +357,11 @@ export class CategoryListEditorComponent {
         this.rows.set(
           [...this.categories()]
             .sort((a, b) => a.displayOrder - b.displayOrder)
-            .map((category) => ({ id: category.id, name: category.name, isSystem: category.isSystem ?? false }))
+            .map((category) => ({ id: category.id, name: category.name, isSystem: category.isSystem ?? false, kind: kindOf(category.kind) }))
         );
         this.errorMessage.set(null);
       } else {
-        this.addingNew.set(false);
-        this.newCategoryName.set('');
+        this.cancelAdd();
         this.cancelRename();
       }
     });
@@ -345,6 +376,7 @@ export class CategoryListEditorComponent {
   cancelAdd(): void {
     this.addingNew.set(false);
     this.newCategoryName.set('');
+    this.newCategoryKind.set('task');
   }
 
   async confirmAdd(): Promise<void> {
@@ -355,9 +387,10 @@ export class CategoryListEditorComponent {
     try {
       const created = await firstValueFrom(this.taskApi.createCategory(this.projectId(), {
         name,
-        displayOrder: this.rows().length
+        displayOrder: this.rows().length,
+        kind: this.newCategoryKind()
       }));
-      this.rows.set([...this.rows(), { id: created.id, name: created.name, isSystem: created.isSystem ?? false }]);
+      this.rows.set([...this.rows(), { id: created.id, name: created.name, isSystem: created.isSystem ?? false, kind: kindOf(created.kind) }]);
       this.cancelAdd();
       this.saved.emit();
     } catch (err: unknown) {
@@ -399,6 +432,29 @@ export class CategoryListEditorComponent {
       this.renameError.set(this.getErrorDetail(err) || 'Failed to rename the category.');
     } finally {
       this.renaming.set(false);
+    }
+  }
+
+  protected readonly kinds = USER_SELECTABLE_KINDS;
+
+  protected kindLabel(kind: string): string {
+    return KIND_META[kindOf(kind)].label;
+  }
+
+  /** Saves a row's new type right away, like a rename. */
+  async changeKind(row: DraftRow, kind: string): Promise<void> {
+    if (row.isSystem || kind === row.kind) return;
+    const rowIndex = this.rows().findIndex((r) => r.id === row.id);
+    if (rowIndex < 0) return;
+    this.errorMessage.set(null);
+    try {
+      await firstValueFrom(this.taskApi.editCategory(row.id, { name: row.name, displayOrder: rowIndex, kind }));
+      const next = [...this.rows()];
+      next[rowIndex] = { ...next[rowIndex], kind: kindOf(kind) };
+      this.rows.set(next);
+      this.saved.emit();
+    } catch (err: unknown) {
+      this.errorMessage.set(this.getErrorDetail(err) || 'Failed to change the type.');
     }
   }
 

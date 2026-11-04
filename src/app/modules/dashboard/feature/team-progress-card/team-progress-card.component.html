@@ -25,8 +25,9 @@
         }
       </select>
     }
+    <!-- Narrow views drop the "Refreshed" label so the title keeps its room. -->
     <app-popout-header-actions
-      [refreshedAt]="store.loadedAt()"
+      [refreshedAt]="mode() === 'mini' || mode() === 'xs' ? null : store.loadedAt()"
       [refreshing]="refreshing()"
       [expanded]="false"
       [canExpand]="true"
@@ -38,8 +39,8 @@
 
   @if (store.data(); as data) {
     <!-- Donut: arcs on a circle with circumference 100, so an arc's dash length is its share. -->
-    <ng-template #donutTpl>
-      <div class="tp-donut" data-testid="team-progress-donut">
+    <ng-template #donutTpl let-completionCenter="completionCenter">
+      <div class="tp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="team-progress-donut">
         <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
           <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="7" />
           @for (seg of donutSegments(); track seg.key) {
@@ -56,10 +57,17 @@
             />
           }
         </svg>
-        <p class="tp-donut-center" data-testid="team-progress-total">
-          <span class="font-bold text-slate-900 tabular-nums" [style.font-size.px]="totalFontPx()">{{ totalText() + ' ' }}</span>
-          <span class="tp-donut-caption">{{ periodCaption() }}</span>
-        </p>
+        @if (completionCenter) {
+          <p class="tp-donut-center">
+            <span class="text-xl font-bold text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+            <span class="tp-donut-caption">completed</span>
+          </p>
+        } @else {
+          <p class="tp-donut-center" data-testid="team-progress-total">
+            <span class="font-bold text-slate-900 tabular-nums" [style.font-size.px]="totalFontPx()">{{ totalText() + ' ' }}</span>
+            <span class="tp-donut-caption">{{ periodCaption() }}</span>
+          </p>
+        }
       </div>
     </ng-template>
 
@@ -315,7 +323,7 @@
     <div class="tp-body" [class.tp-body--narrow]="widthStep() < 300" data-testid="team-progress-layout" [attr.data-mode]="mode()" [attr.data-period]="period()">
       @if (periodState() === 'loading') {
         <div class="tp-message" data-testid="team-progress-period-loading" aria-busy="true">
-          <span class="tp-donut-skeleton animate-pulse" aria-hidden="true"></span>
+          <span class="tp-donut-skeleton animate-pulse" [style.width.px]="donutPx" [style.height.px]="donutPx" aria-hidden="true"></span>
           <span>Loading {{ period() === 'week' ? 'this week' : 'this month' }}…</span>
         </div>
       } @else if (periodState() === 'error') {
@@ -333,14 +341,10 @@
       } @else {
         @switch (mode()) {
           @case ('mini') {
-            <!-- 2-row cards (2x2 minimum): the 128px donut doesn't fit under the title, so a small donut
-            beside the completion figure. Stretched sideways the donut gives way to the stacked status bar
-            and a one-line legend - one chart, never both. -->
-            <div class="tp-mini" [class.tp-mini--wide]="plan().miniLegend === 'inline'" data-testid="team-progress-mini">
-              <div class="tp-mini-top">
-                @if (plan().miniLegend !== 'inline') {
-                  <ng-container *ngTemplateOutlet="donutTpl" />
-                }
+            <!-- 2-row cards: the donut, with the completion in its centre (the total beside it when there
+            is room). Stretched sideways the stacked status bar and a one-line legend take its place. -->
+            @if (plan().miniLegend === 'inline') {
+              <div class="tp-mini tp-mini--wide" data-testid="team-progress-mini">
                 <p class="tp-mini-figure">
                   <span class="tp-completion-big text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
                   <span class="tp-completion-caption">
@@ -348,8 +352,6 @@
                     <span class="font-semibold text-slate-700 tabular-nums">{{ totalText() }}</span>
                   </span>
                 </p>
-              </div>
-              @if (plan().miniLegend === 'inline') {
                 <div class="tp-mini-bar">
                   <div class="tp-status-bar" role="img" [attr.aria-label]="donutLabel()" data-testid="team-progress-status-bar">
                     @for (seg of donutSegments(); track seg.key) {
@@ -366,8 +368,18 @@
                     }
                   </ul>
                 </div>
-              }
-            </div>
+              </div>
+            } @else {
+              <div class="tp-mini tp-mini--donut" data-testid="team-progress-mini">
+                <ng-container *ngTemplateOutlet="donutTpl; context: { completionCenter: true }" />
+                @if (plan().miniFigure) {
+                  <p class="tp-mini-figure">
+                    <span class="font-bold text-slate-900 tabular-nums" data-testid="team-progress-total">{{ totalText() }}</span>
+                    <span class="tp-completion-caption">{{ period() === 'all' ? 'allocated' : periodCaption().toLowerCase() }}</span>
+                  </p>
+                }
+              </div>
+            }
           }
 
           @case ('xs') {
