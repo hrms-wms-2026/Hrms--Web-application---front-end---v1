@@ -40,12 +40,12 @@
                   @if (!s.configurable) {
                     <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs italic text-[var(--color-text-secondary)]">Uses built-in delivery for now</span>
                   } @else if (s.isOverridden) {
-                    <span class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">Customized</span>
+                    <span class="rounded-full bg-[var(--color-accent-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--color-accent)]">Customized</span>
                   } @else {
                     <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)]">Default</span>
                   }
                   @if (isRowDirty(s)) {
-                    <span class="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">Unsaved</span>
+                    <span class="rounded-full bg-[var(--color-warning-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--color-warning-text)]">Unsaved</span>
                   }
                 </div>
 
@@ -57,8 +57,8 @@
                       [class.cursor-pointer]="!isLocked(s, channel)"
                       [class.cursor-not-allowed]="isLocked(s, channel)"
                       [class.opacity-60]="isLocked(s, channel) && !isEnabled(s, channel)"
-                      [class.border-blue-500]="isEnabled(s, channel)"
-                      [class.bg-blue-50/50]="isEnabled(s, channel)"
+                      [class.border-[var(--color-accent)]]="isEnabled(s, channel)"
+                      [class.bg-[var(--color-accent-subtle)]/50]="isEnabled(s, channel)"
                       [class.border-[var(--color-border)]]="!isEnabled(s, channel)"
                       [class.bg-[var(--color-surface)]]="!isEnabled(s, channel)"
                       [attr.title]="toggleTitle(s, channel)"
@@ -81,7 +81,7 @@
                           [disabled]="isLocked(s, channel)"
                           (change)="toggle(s, channel)"
                         />
-                        <span class="h-4 w-7 rounded-full bg-slate-200 transition-colors after:absolute after:start-[2px] after:top-[2px] after:h-3 after:w-3 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-3 peer-checked:after:border-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-focus-ring)]"></span>
+                        <span class="h-4 w-7 rounded-full bg-[var(--color-border)] transition-colors after:absolute after:start-[2px] after:top-[2px] after:h-3 after:w-3 after:rounded-full after:border after:border-[var(--color-border-strong)] after:bg-[var(--color-surface)] after:transition-all after:content-[''] peer-checked:bg-[var(--color-accent)] peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-focus-ring)]"></span>
                       </span>
                     </label>
                   }
@@ -143,13 +143,13 @@
               }
 
               @if (store.conflicts()[s.eventKey]; as conflict) {
-                <div class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800" role="alert">
+                <div class="rounded-lg bg-[var(--color-warning-subtle)] px-3 py-2 text-sm text-[var(--color-warning-text)]" role="alert">
                   {{ conflict }}
                   <button type="button" class="ml-2 font-semibold underline" (click)="reload()">Reload</button>
                 </div>
               }
               @if (store.rowErrors()[s.eventKey]; as rowError) {
-                <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-[var(--color-danger-text)]" role="alert">{{ rowError }}</div>
+                <div class="rounded-lg bg-[var(--color-danger-subtle)] px-3 py-2 text-sm text-[var(--color-danger-text)]" role="alert">{{ rowError }}</div>
               }
             </div>
           }

@@ -101,7 +101,15 @@ Rule: no hex, `rgb()` or Tailwind gray/white/black utilities in components. Use 
     - the `task-kind.ts` identity palette (Task teal, Bug red, …)
     - `project-card` hero overlays, which sit on a dark image in both modes
     - the colour/hue pickers
-  - New rule: white elements on a selected accent row (`bg-white`, `bg-white/15`) map to `--color-text-on-solid`, never `--color-surface`.
+  - New rule: white elements on a selected accent row (`bg-white`, `bg-white/15`) map to `--color-text-on-solid`, never `--color-surface`. Committed in `8d5b12a5`.
+- **Batch 8 (Settings, Inbox, Profile, Calendar) and Batch 9 (auth pages, device activation): done.**
+  - The planner item style map is fully tokenized.
+  - The task-kind palette keeps its hues but now has `dark:` variants (`bg-*-950/60`, `text-*-400`), so tinted planner and task items stay readable in dark mode.
+  - The auth pages' forced-light token overrides were removed, so login, forgot/reset password and accept invitation now follow the mode.
+  - Planner and Settings were checked live in dark mode.
+  - **Not checked live:** the auth pages. That would need logging out, so it is left for the Phase 4 check.
+- **Left as is:** the public landing pages (`modules/public`), which already have their own dark mode handled by the landing header.
+- **Still to do in Phase 3:** the shadow cleanup (step 8) and the hard-coded-colour guard script.
 - What is left in shared code is data: the rich-text palette, filter-bar swatches, the entity-icon registry, and the canvas `fillStyle`.
 
 **Token mapping rules used (keep for the remaining batches):**

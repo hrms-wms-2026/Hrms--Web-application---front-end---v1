@@ -169,7 +169,7 @@ export const ESCALATE_NOTE_MAX = 500;
     .esc__name { overflow: hidden; font-size: 14px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
     .esc__detail { overflow: hidden; color: var(--color-text-secondary); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
     .esc__radio { display: inline-flex; width: 22px; height: 22px; flex: none; align-items: center; justify-content: center;
-      border: 1.5px solid var(--color-border); border-radius: 50%; color: #fff; }
+      border: 1.5px solid var(--color-border); border-radius: 50%; color: var(--color-text-on-solid); }
     .esc__row[aria-checked="true"] .esc__radio { border-color: var(--color-accent); background: var(--color-accent); }
     .esc__radio svg { width: 14px; height: 14px; stroke-width: 2.6; }
     .esc__empty { margin: 0; padding: 20px 12px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }

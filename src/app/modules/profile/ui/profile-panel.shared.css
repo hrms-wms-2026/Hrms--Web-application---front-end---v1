@@ -392,8 +392,8 @@
 }
 
 .pf-status-pill--active {
-  background: color-mix(in srgb, #10b981 12%, transparent);
-  color: #059669;
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
 }
 
 .pf-status-dot {

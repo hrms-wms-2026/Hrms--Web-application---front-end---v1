@@ -6,11 +6,11 @@ import { PlanColumn, PlanItem } from './plan-columns';
 const HOUR_PX = 72;
 
 const ITEM_STYLE: Record<PlanItem['kind'], string> = {
-  block: 'background:#dbeafe;color:#1e3a8a;border-left:3px solid #1d4ed8',
-  meeting: 'background:#ede9fe;color:#4c1d95;border-left:3px solid #7c3aed',
-  busy: 'background:repeating-linear-gradient(45deg,#e4e4e7,#e4e4e7 6px,#f4f4f5 6px,#f4f4f5 12px);color:#3f3f46;border-left:3px solid #a1a1aa',
-  leave: 'background:#fef3c7;color:#78350f;border:1px dashed #b45309',
-  leavePending: 'background:#fffbeb;color:#78350f;border:1px dashed #d97706',
+  block: 'background:var(--color-accent-subtle);color:var(--color-text-primary);border-left:3px solid var(--color-accent)',
+  meeting: 'background:var(--color-cat-violet-subtle);color:var(--color-text-primary);border-left:3px solid var(--color-cat-violet)',
+  busy: 'background:repeating-linear-gradient(45deg,var(--color-border),var(--color-border) 6px,var(--color-surface-secondary) 6px,var(--color-surface-secondary) 12px);color:var(--color-text-primary);border-left:3px solid var(--color-text-muted)',
+  leave: 'background:var(--color-warning-subtle);color:var(--color-warning-text);border:1px dashed var(--color-warning-text)',
+  leavePending: 'background:color-mix(in srgb, var(--color-warning-subtle) 55%, var(--color-surface));color:var(--color-warning-text);border:1px dashed var(--color-warning)',
 };
 
 interface PlacedItem extends PlanItem { top: number; height: number; style: string; time: string; }
@@ -81,22 +81,22 @@ interface PlacedColumn extends PlanColumn { placed: PlacedItem[]; off: { top: nu
     .pcg-grid { display: grid; min-width: 100%; }
     .pcg-time { position: sticky; left: 0; z-index: 2; background: var(--color-surface-muted, #fafafa); border-right: 1px solid var(--color-border, #e4e4e7); }
     .pcg-corner { height: 92px; box-sizing: border-box; border-bottom: 1px solid var(--color-border, #e4e4e7); display: flex; align-items: flex-end;
-      justify-content: center; padding-bottom: 8px; font-size: 11px; color: #52525b; }
-    .pcg-hour { height: 72px; box-sizing: border-box; padding: 4px 8px 0 0; text-align: right; font-size: 11px; color: #52525b; border-bottom: 1px solid #f4f4f5; }
+      justify-content: center; padding-bottom: 8px; font-size: 11px; color: var(--color-text-secondary); }
+    .pcg-hour { height: 72px; box-sizing: border-box; padding: 4px 8px 0 0; text-align: right; font-size: 11px; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
     .pcg-col { border-right: 1px solid var(--color-border, #e4e4e7); min-width: 0; }
     .pcg-head { all: unset; cursor: pointer; box-sizing: border-box; width: 100%; height: 92px; padding: 10px; display: grid;
       grid-template-columns: 28px 1fr; grid-template-rows: auto auto; gap: 4px 8px; align-items: center;
       border-bottom: 1px solid var(--color-border, #e4e4e7); background: var(--color-surface, #fff); }
-    .pcg-head:focus-visible { outline: 2px solid #1d4ed8; outline-offset: -2px; }
-    .pcg-avatar { width: 28px; height: 28px; border-radius: 50%; background: #1d4ed8; color: #fff; display: grid; place-items: center;
+    .pcg-head:focus-visible { outline: 2px solid var(--color-accent-hover); outline-offset: -2px; }
+    .pcg-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--color-accent-hover); color: var(--color-text-on-solid); display: grid; place-items: center;
       font-weight: 600; font-size: 11px; }
     .pcg-who { display: flex; flex-direction: column; min-width: 0; }
     .pcg-who strong { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .pcg-sub { font-size: 11px; color: #52525b; }
-    .pcg-bar { grid-column: 1 / span 2; height: 6px; border-radius: 3px; background: #f4f4f5; overflow: hidden; display: flex; }
-    .pcg-load { grid-column: 1 / span 2; font-size: 11px; font-weight: 600; color: #3f3f46; }
-    .pcg-body { position: relative; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 71px, #f4f4f5 71px, #f4f4f5 72px); }
-    .pcg-off { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(45deg, #f4f4f5, #f4f4f5 6px, #fafafa 6px, #fafafa 12px); }
+    .pcg-sub { font-size: 11px; color: var(--color-text-secondary); }
+    .pcg-bar { grid-column: 1 / span 2; height: 6px; border-radius: 3px; background: var(--color-surface-secondary); overflow: hidden; display: flex; }
+    .pcg-load { grid-column: 1 / span 2; font-size: 11px; font-weight: 600; color: var(--color-text-primary); }
+    .pcg-body { position: relative; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 71px, var(--color-surface-secondary) 71px, var(--color-surface-secondary) 72px); }
+    .pcg-off { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(45deg, var(--color-surface-secondary), var(--color-surface-secondary) 6px, var(--color-app-bg) 6px, var(--color-app-bg) 12px); }
     .pcg-item { position: absolute; left: 6px; right: 6px; box-sizing: border-box; border-radius: 6px; padding: 3px 7px; font-size: 11px;
       font-weight: 600; overflow: hidden; }
     .pcg-cards { display: flex; flex-direction: column; gap: 10px; }
@@ -105,7 +105,7 @@ interface PlacedColumn extends PlanColumn { placed: PlacedItem[]; off: { top: nu
     .pcg-card .pcg-load { grid-column: auto; }
     .pcg-list { list-style: none; margin: 0; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
     .pcg-list li { border-radius: 6px; padding: 4px 8px; }
-    .pcg-empty { color: #52525b; }
+    .pcg-empty { color: var(--color-text-secondary); }
   `],
 })
 export class PlanColumnsGridComponent {
