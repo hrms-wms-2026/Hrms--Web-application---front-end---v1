@@ -21,7 +21,7 @@
     align-items: center;
     gap: 0.875rem;
     padding: 0.35rem 0.75rem;
-    background: #18181b;
+    background: var(--color-mobile-nav-bg);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 22px;
     box-shadow:
@@ -40,7 +40,7 @@
     min-width: 2.875rem;
     height: 3.25rem;
     padding: 0 0.5rem;
-    color: #a1a1aa;
+    color: var(--color-mobile-nav-text);
     border: none;
     border-radius: 16px;
     background: transparent;
@@ -52,16 +52,16 @@
   }
 
   .mobile-nav-item:hover {
-    color: #f4f4f5;
+    color: var(--color-mobile-nav-text-active);
   }
 
   .mobile-nav-item:focus-visible {
-    box-shadow: 0 0 0 2px #3b82f6;
+    box-shadow: 0 0 0 2px var(--color-accent);
   }
 
   .mobile-nav-item--active {
-    background: #27272a;
-    color: #ffffff;
+    background: var(--color-mobile-nav-active-bg);
+    color: var(--color-mobile-nav-text-active);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
@@ -81,12 +81,12 @@
     padding: 0 4px;
     border-radius: 999px;
     background: var(--color-danger);
-    color: #fff;
+    color: var(--color-text-on-solid);
     font-size: 10px;
     font-weight: 700;
     line-height: 16px;
     text-align: center;
-    box-shadow: 0 0 0 2px #18181b;
+    box-shadow: 0 0 0 2px var(--color-mobile-nav-bg);
   }
 
   /* Above the bottom bar (1000), below the global dialogs (1200). */
@@ -212,7 +212,7 @@
   .more-row__link:focus-visible,
   .more-row__pin:focus-visible,
   .more-sheet__icon-btn:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
 

@@ -7,19 +7,19 @@
 .tp-period {
   flex: none;
   max-width: 7.5rem;
-  border: 1px solid rgb(226 232 240);
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  background-color: #fff;
+  background-color: var(--color-surface);
   padding: 0.25rem 0.375rem 0.25rem 0.5rem;
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 500;
-  color: rgb(51 65 85);
+  color: var(--color-text-primary);
   cursor: pointer;
 }
 
 .tp-period:hover {
-  border-color: rgb(203 213 225);
+  border-color: var(--color-border-strong);
 }
 
 .tp-period:focus-visible {
@@ -62,11 +62,11 @@
   margin-top: 2px;
   font-size: 11px;
   font-weight: 500;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 .tp-donut-skeleton {
-  border: 21px solid rgb(241 245 249);
+  border: 21px solid var(--color-border);
   border-radius: 9999px;
 }
 
@@ -93,7 +93,7 @@
 
 .tp-completion-caption {
   font-size: 0.8125rem;
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
 }
 
 /* ---- Mini (2x2 minimum): completion figure, stacked bar, optional legend ---- */
@@ -155,7 +155,7 @@
 .tp-mini-legend-label {
   min-width: 0;
   overflow: hidden;
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -163,7 +163,7 @@
 .tp-mini-legend-hours {
   flex: none;
   font-weight: 600;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -242,7 +242,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: rgb(51 65 85);
+  color: var(--color-text-primary);
 }
 
 .tp-legend--compact .tp-legend-label {
@@ -252,14 +252,14 @@
 .tp-legend-hours {
   text-align: right;
   font-weight: 700;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .tp-legend-pct {
   text-align: right;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -268,7 +268,7 @@
   height: 0.5rem;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
 }
 
 .tp-legend-bar > span {
@@ -341,18 +341,18 @@
   flex: none;
   overflow: hidden;
   border-radius: 0.375rem;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
 }
 
 .tp-status-bar > span + span {
-  border-left: 2px solid #fff;
+  border-left: 2px solid var(--color-surface);
 }
 
 .tp-headline {
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.15;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -429,15 +429,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.75rem;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 .tone-green { background: rgb(236 253 245); border-color: rgb(209 250 229); }
 .tone-green .tp-tone-text { color: rgb(5 150 105); }
 .tone-blue { background: rgb(239 246 255); border-color: rgb(219 234 254); }
 .tone-blue .tp-tone-text { color: rgb(37 99 235); }
-.tone-gray { background: rgb(248 250 252); border-color: rgb(241 245 249); }
-.tone-gray .tp-tone-text { color: rgb(51 65 85); }
+.tone-gray { background: var(--color-surface-secondary); border-color: var(--color-border); }
+.tone-gray .tp-tone-text { color: var(--color-text-primary); }
 .tone-amber { background: rgb(255 251 235); border-color: rgb(254 243 199); }
 .tone-amber .tp-tone-text { color: rgb(217 119 6); }
 .tone-rose { background: rgb(255 241 242); border-color: rgb(255 228 230); }
@@ -471,7 +471,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgb(241 245 249);
+  border: 1px solid var(--color-border);
   border-radius: 0.625rem;
   padding: 0.5rem 0.625rem;
 }
@@ -486,7 +486,7 @@
   gap: 0.5rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: rgb(30 41 59);
+  color: var(--color-text-primary);
 }
 
 /* ---- Weekly completion ---- */
@@ -511,7 +511,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.6875rem;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 .tp-weekly-skeleton {
@@ -526,7 +526,7 @@
 .tp-weekly-skeleton > span {
   flex: 1 1 0;
   border-radius: 4px 4px 0 0;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
   animation: tp-pulse 1.5s ease-in-out infinite;
 }
 
@@ -574,7 +574,7 @@
   height: 0.625rem;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
 }
 
 .tp-member-bar > span {
@@ -604,9 +604,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
-  border: 1px solid rgb(226 232 240);
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  background: rgb(248 250 252);
+  background: var(--color-surface-secondary);
   font-size: 0.8125rem;
   font-weight: 600;
   color: rgb(37 99 235);
@@ -632,7 +632,7 @@
   gap: 0.5rem;
   text-align: center;
   font-size: 0.875rem;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 /* 2026-11-02 design match: the status tile's text column and its icon badge on the right. */
@@ -652,7 +652,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: color-mix(in srgb, currentColor 14%, #fff);
+  background: color-mix(in srgb, currentColor 14%, var(--color-surface));
 }
 
 @container (max-width: 480px) {

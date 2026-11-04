@@ -163,7 +163,7 @@ export interface ComposerUploader {
     .cc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .cc-cancel-btn { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: 6px; padding: 4px 12px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--color-text-primary); }
     .cc-cancel-btn:hover { background: var(--color-surface-secondary); }
-    .cc-submit-btn { border: 0; background: var(--color-accent); color: #fff; border-radius: 6px; padding: 4px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .cc-submit-btn { border: 0; background: var(--color-accent); color: var(--color-accent-contrast); border-radius: 6px; padding: 4px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
     .cc-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   `]
 })

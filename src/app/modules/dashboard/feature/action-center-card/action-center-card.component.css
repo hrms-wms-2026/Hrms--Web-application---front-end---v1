@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  border: 1.5px solid #ffffff;
+  border: 1.5px solid var(--color-surface);
 }
 
 .inbox-badge svg {
@@ -28,15 +28,15 @@
   stroke-linejoin: round;
 }
 
-.inbox-badge--leave { background: #dbeafe; color: #2563eb; }
-.inbox-badge--attendance { background: #e0e7ff; color: #4f46e5; }
-.inbox-badge--location { background: #ccfbf1; color: #0d9488; }
-.inbox-badge--device { background: #f1f5f9; color: #475569; }
-.inbox-badge--alert { background: #fef3c7; color: #d97706; }
+.inbox-badge--leave { background: var(--color-accent-subtle); color: var(--color-accent); }
+.inbox-badge--attendance { background: color-mix(in srgb, var(--color-cat-indigo) 14%, var(--color-surface)); color: var(--color-cat-indigo); }
+.inbox-badge--location { background: color-mix(in srgb, var(--color-cat-teal) 14%, var(--color-surface)); color: var(--color-cat-teal); }
+.inbox-badge--device { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+.inbox-badge--alert { background: var(--color-warning-subtle); color: var(--color-warning); }
 .inbox-badge--alert svg { stroke-width: 3.4; }
-.inbox-badge--task { background: #dcfce7; color: #16a34a; }
-.inbox-badge--objective { background: #f3e8ff; color: #9333ea; }
-.inbox-badge--overdue { background: #fee2e2; color: #dc2626; }
+.inbox-badge--task { background: var(--color-success-subtle); color: var(--color-success); }
+.inbox-badge--objective { background: var(--color-cat-violet-subtle); color: var(--color-cat-violet); }
+.inbox-badge--overdue { background: var(--color-danger-subtle); color: var(--color-danger); }
 
 /* Row actions: icon-only ghost buttons. Approve and Open stay neutral gray; Reject keeps its red
    so the one destructive action is still easy to pick out at a glance. */
@@ -60,42 +60,42 @@
 }
 
 .inbox-btn:focus-visible {
-  outline: 2px solid #94a3b8;
+  outline: 2px solid var(--color-border-strong);
   outline-offset: 2px;
 }
 
 .inbox-btn--approve {
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .inbox-btn--approve:hover:not(:disabled),
 .inbox-btn--approve.inbox-btn--active {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: var(--color-border);
+  color: var(--color-text-primary);
 }
 
 .inbox-btn--reject {
-  color: #e11d48;
+  color: var(--color-danger);
 }
 
 .inbox-btn--reject:hover:not(:disabled),
 .inbox-btn--reject.inbox-btn--active {
-  background: #e2e8f0;
-  color: #e11d48;
+  background: var(--color-border);
+  color: var(--color-danger);
 }
 
 .inbox-btn--open {
-  color: #64748b;
+  color: var(--color-text-secondary);
 }
 
 .inbox-btn--open:hover {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: var(--color-border);
+  color: var(--color-text-primary);
   transform: translateX(2px);
 }
 
 .group\/row:focus-visible {
-  outline: 2px solid #94a3b8;
+  outline: 2px solid var(--color-border-strong);
   outline-offset: 2px;
   border-radius: 8px;
 }
@@ -115,9 +115,9 @@
   align-items: center;
   gap: 6px;
   border-radius: 999px;
-  border: 1px solid #fde68a;
-  background: #ffffff;
-  color: #475569;
+  border: 1px solid var(--color-warning-subtle);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
@@ -127,18 +127,18 @@
 }
 
 .inbox-chip:hover {
-  border-color: #cbd5e1;
-  color: #1e293b;
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
 }
 
 .inbox-chip--active {
-  border-color: #cbd5e1;
-  background: #f1f5f9;
-  color: #1e293b;
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
 }
 
 .inbox-chip:focus-visible {
-  outline: 2px solid #94a3b8;
+  outline: 2px solid var(--color-border-strong);
   outline-offset: 2px;
 }
 
@@ -149,16 +149,16 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--color-border);
+  color: var(--color-text-secondary);
   padding: 0 5px;
   font-size: 10px;
   font-weight: 700;
 }
 
 .inbox-chip--active .inbox-chip__count {
-  background: #475569;
-  color: #ffffff;
+  background: var(--color-text-secondary);
+  color: var(--color-text-on-solid);
 }
 
 /* Collapsed on the dashboard grid the card fills its cell. When the widget is resized shorter, it

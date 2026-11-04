@@ -43,7 +43,7 @@ const TITLE_ICON_RULES: readonly (readonly [RegExp, PopupIcon])[] = [
   template: `
     @if (open()) {
       <div class="fixed inset-0 z-[1200] flex items-center justify-center p-4" animate.leave="ui-popup-leave">
-        <div role="button" tabindex="0" appKeyboardClick [class]="dimBackdrop() ? 'ui-fade-in absolute inset-0 bg-black/50' : 'absolute inset-0'" (click)="onBackdropClick()"></div>
+        <div role="button" tabindex="0" appKeyboardClick [class]="dimBackdrop() ? 'ui-fade-in absolute inset-0 bg-[var(--color-overlay)]' : 'absolute inset-0'" (click)="onBackdropClick()"></div>
         <div
           #dialog
           [class]="dialogClass()"

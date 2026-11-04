@@ -119,7 +119,7 @@ const BAR_OFFSET = '40px';
     }
     .drafts-bar__chip:hover {
       background: var(--color-surface-secondary);
-      border-color: var(--color-border-hover, #cbd5e1);
+      border-color: var(--color-border-strong);
     }
     .drafts-bar__chip--active {
       border-color: var(--color-accent, #3b82f6);

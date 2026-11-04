@@ -474,7 +474,7 @@ export interface SlashMenuCoords {
     .tfm-link-btn--cancel:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .tfm-link-btn--remove { background: transparent; color: var(--color-danger); margin-right: auto; padding-left: 2px; }
     .tfm-link-btn--remove:hover { background: var(--color-danger-subtle); }
-    .tfm-link-btn--apply { background: var(--color-accent); color: #fff; }
+    .tfm-link-btn--apply { background: var(--color-accent); color: var(--color-accent-contrast); }
     .tfm-link-btn--apply:hover { opacity: 0.9; }
     .tfm-link-btn--apply:disabled { opacity: 0.4; cursor: not-allowed; }
     .tfm-editor__divider { width: 1px; height: 16px; background: var(--color-border); margin: 0 4px; }

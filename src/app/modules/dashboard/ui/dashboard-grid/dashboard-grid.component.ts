@@ -112,7 +112,7 @@ const FALLBACK_EASING = 'cubic-bezier(0.2, 0.9, 0.3, 1.1)';
       <!-- First in the DOM so widgets sliding across the landing slot are drawn over it. -->
       @if (ghost(); as g) {
         <div
-          class="pointer-events-none rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/60"
+          class="pointer-events-none rounded-2xl border-2 border-dashed border-[var(--color-accent)] bg-[var(--color-accent-subtle)]/60"
           data-testid="grid-ghost"
           aria-hidden="true"
           [style.grid-column]="gridColumn(g)"
@@ -128,7 +128,7 @@ const FALLBACK_EASING = 'cubic-bezier(0.2, 0.9, 0.3, 1.1)';
         @let dragged = drag()?.id === w.instanceId;
         <!-- --dash-i staggers the widget's entrance (dashboard-motion.css). -->
         <div
-          class="relative min-w-0 scroll-mt-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          class="relative min-w-0 scroll-mt-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           [style.--dash-i]="$index"
           [class.z-30]="dragged"
           [class.rounded-2xl]="editing()"

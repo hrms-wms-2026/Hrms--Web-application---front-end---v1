@@ -36,11 +36,11 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
         <!-- Edit chrome gets its own strip above the card, so it never covers the card's title or controls. -->
         <div class="flex h-8 shrink-0 items-center gap-1 pl-1" data-testid="widget-edit-bar">
           <div
-            class="flex h-7 min-w-0 flex-1 cursor-grab touch-none items-center gap-1.5 rounded-lg px-1.5 text-xs font-semibold text-slate-600 hover:bg-white active:cursor-grabbing"
+            class="flex h-7 min-w-0 flex-1 cursor-grab touch-none items-center gap-1.5 rounded-lg px-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] active:cursor-grabbing"
             data-drag-handle
             aria-hidden="true"
           >
-            <svg class="h-3.5 w-3.5 shrink-0 text-slate-400" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <svg class="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
               <circle cx="5.5" cy="3.5" r="1.25" /><circle cx="10.5" cy="3.5" r="1.25" />
               <circle cx="5.5" cy="8" r="1.25" /><circle cx="10.5" cy="8" r="1.25" />
               <circle cx="5.5" cy="12.5" r="1.25" /><circle cx="10.5" cy="12.5" r="1.25" />
@@ -49,7 +49,7 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
           </div>
           <button
             type="button"
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-danger-subtle)] hover:text-[var(--color-danger)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
             [attr.aria-label]="'Remove ' + widget().title"
             (click)="remove.emit()"
           >
@@ -80,7 +80,7 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
 
       @if (editing()) {
         <div
-          class="absolute bottom-0 right-0 z-20 flex h-7 w-7 cursor-nwse-resize touch-none items-center justify-center rounded-br-2xl rounded-tl-lg bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 hover:text-blue-600"
+          class="absolute bottom-0 right-0 z-20 flex h-7 w-7 cursor-nwse-resize touch-none items-center justify-center rounded-br-2xl rounded-tl-lg bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-sm ring-1 ring-[var(--color-border)] hover:text-[var(--color-accent)]"
           data-resize-handle
           aria-hidden="true"
         >

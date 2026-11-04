@@ -252,7 +252,7 @@
   display: block;
   height: 14px;
   border-radius: 4px;
-  background: rgb(248 250 252);
+  background: var(--color-surface-secondary);
 }
 .tp-project-allocated,
 .tp-project-completed {
@@ -263,7 +263,7 @@
   border-radius: 4px;
 }
 .tp-project-allocated {
-  background: rgb(203 213 225);
+  background: var(--color-border-strong);
 }
 .tp-project-completed {
   top: 3px;
@@ -291,7 +291,7 @@
   border-radius: 2px;
 }
 .tp-project-key--allocated {
-  background: rgb(203 213 225);
+  background: var(--color-border-strong);
 }
 .tp-project-key--completed {
   background: #10b981;

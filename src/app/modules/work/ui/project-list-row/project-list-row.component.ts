@@ -13,10 +13,10 @@ import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-ic
   template: `
     <div role="button" tabindex="0" appKeyboardClick
       data-testid="project-list-row"
-      class="group flex w-full items-center gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-150 cursor-pointer min-h-[4.25rem]"
+      class="group flex w-full items-center gap-4 rounded-xl border bg-[var(--color-card-bg)] [box-shadow:var(--shadow-card)] px-4 py-3.5 text-left transition-all duration-150 cursor-pointer min-h-[4.25rem]"
       [class]="selected()
-        ? 'border-[var(--color-accent)] bg-color-mix(in srgb,var(--color-accent-subtle) 40%,var(--color-surface)) shadow-sm'
-        : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface-secondary)]/50'"
+        ? 'border-[var(--color-selected-outline)]'
+        : 'border-[var(--color-border)] hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface-secondary)]/50'"
       (click)="selectedChange.emit()"
     >
       <!-- Logo Box -->

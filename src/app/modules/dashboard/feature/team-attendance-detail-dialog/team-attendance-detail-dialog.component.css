@@ -69,7 +69,7 @@
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.tad-rank--top { background: #d1fae5; color: #047857; }
+.tad-rank--top { background: var(--color-success-subtle); color: var(--color-success-text); }
 
 .tad-range {
   display: flex;

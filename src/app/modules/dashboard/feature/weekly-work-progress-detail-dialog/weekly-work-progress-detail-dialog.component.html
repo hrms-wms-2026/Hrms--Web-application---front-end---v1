@@ -36,7 +36,7 @@
       <div class="wwp-hero">
         <div class="wwp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
           <svg viewBox="0 0 42 42" class="block h-full w-full" aria-hidden="true">
-            <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#eef2f7" stroke-width="5" />
+            <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="5" />
             @if (ring() > 0) {
               <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round"
                 stroke-dashoffset="25" [attr.stroke-dasharray]="ring() + ' ' + (100 - ring())" />
@@ -69,7 +69,7 @@
           <div class="wwp-split">
             <div class="wwp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
               <svg viewBox="0 0 42 42" class="block h-full w-full" aria-hidden="true">
-                <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#dbeafe" stroke-width="5" />
+                <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-accent-subtle)" stroke-width="5" />
                 @for (arc of adherence().arcs; track arc.key) {
                   <circle cx="21" cy="21" r="15.9155" fill="none" stroke-width="5" [attr.stroke]="arc.color"
                     [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)" [attr.stroke-dashoffset]="arc.offset" />
@@ -116,7 +116,7 @@
         <div class="wwp-split">
           <div class="wwp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
             <svg viewBox="0 0 42 42" class="block h-full w-full" aria-hidden="true">
-              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="5" />
+              <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="5" />
               @for (arc of taskArcs(); track arc.key) {
                 <circle cx="21" cy="21" r="15.9155" fill="none" stroke-width="5" [attr.stroke]="arc.color"
                   [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)" [attr.stroke-dashoffset]="arc.offset" />

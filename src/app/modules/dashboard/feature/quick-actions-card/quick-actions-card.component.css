@@ -15,9 +15,9 @@
 
 /* Subtle neumorphism, on the tiles only: a soft raised surface that presses in when clicked. */
 .qa-btn {
-  --qa-accent: rgb(71 85 105);
-  --qa-accent-soft: rgb(241 245 249);
-  --qa-surface: rgb(246 248 251);
+  --qa-accent: var(--color-text-secondary);
+  --qa-accent-soft: color-mix(in srgb, var(--qa-accent) 10%, var(--color-surface));
+  --qa-surface: var(--color-surface-secondary);
   --qa-shadow-dark: rgb(15 23 42 / 0.09);
   --qa-shadow-light: rgb(255 255 255 / 0.95);
 
@@ -34,7 +34,7 @@
   box-shadow:
     3px 3px 8px var(--qa-shadow-dark),
     -3px -3px 8px var(--qa-shadow-light);
-  color: rgb(30 41 59);
+  color: var(--color-text-primary);
   text-align: left;
   cursor: pointer;
   transition:
@@ -44,13 +44,11 @@
 }
 
 .qa-btn[data-tone='emerald'] {
-  --qa-accent: rgb(5 150 105);
-  --qa-accent-soft: rgb(236 253 245);
+  --qa-accent: var(--color-success);
 }
 
 .qa-btn[data-tone='blue'] {
-  --qa-accent: rgb(37 99 235);
-  --qa-accent-soft: rgb(239 246 255);
+  --qa-accent: var(--color-cat-blue);
 }
 
 .qa-btn:hover:not(:disabled) {
@@ -128,4 +126,12 @@
   .qa-spinner {
     animation-duration: 2s;
   }
+}
+
+/* Dark mode: the white top-left highlight of the neumorphic tile would glow; use a faint one. */
+:host-context([data-mode='dark']) .qa-btn,
+:host-context(html.dark) .qa-btn {
+  --qa-shadow-dark: rgb(0 0 0 / 0.45);
+  --qa-shadow-light: rgb(255 255 255 / 0.03);
+  border-color: var(--color-border);
 }

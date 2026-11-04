@@ -55,7 +55,7 @@
   height: 20px;
   border-radius: 50%;
   flex-shrink: 0;
-  color: #ffffff;
+  color: var(--color-text-on-solid);
 }
 
 .toast-item--success .toast-item__icon {
@@ -63,7 +63,7 @@
 }
 
 .toast-item--error .toast-item__icon {
-  background-color: var(--color-error, #ef4444);
+  background-color: var(--color-danger);
 }
 
 .toast-item--warning .toast-item__icon {
@@ -126,7 +126,7 @@
 }
 
 .toast-item__close:hover {
-  background-color: var(--color-surface-hover, #f1f5f9);
+  background-color: var(--color-surface-secondary);
   color: var(--color-text-primary, #0f172a);
   border-color: var(--color-text-secondary, #94a3b8);
 }

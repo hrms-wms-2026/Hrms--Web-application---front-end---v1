@@ -260,7 +260,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgb(226 232 240);
+  background: var(--color-border);
 }
 
 .tsd-track {
@@ -352,8 +352,8 @@
   color: var(--color-text-secondary);
 }
 .tsd-rank--top {
-  background: #d1fae5;
-  color: #047857;
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
 }
 
 .tsd-parts {
@@ -394,7 +394,7 @@
 }
 .tsd-switch button.tsd-switch--on {
   background: rgb(37 99 235);
-  color: #fff;
+  color: var(--color-text-on-solid);
 }
 .tsd-select,
 .tsd-search {
@@ -438,7 +438,7 @@
   height: 8px;
   flex: none;
   border-radius: 9999px;
-  background: var(--tone, rgb(148 163 184));
+  background: var(--tone, var(--color-text-muted));
 }
 .tsd-workload {
   font-size: 11px;
@@ -468,7 +468,7 @@
   flex: 1 1 auto;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgb(226 232 240);
+  background: var(--color-border);
 }
 .tsd-bar span {
   display: block;

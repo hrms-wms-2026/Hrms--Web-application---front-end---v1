@@ -8,13 +8,14 @@
 
 :root {
   /* Neutral surfaces/text/borders - shared across every theme preset. */
+  color-scheme: light;
   --color-app-bg: #fafafa;
-  --color-surface: #ffffff;
+  --color-surface: #fafafa;
   --color-surface-secondary: #f4f4f5;
   --color-text-primary: #09090b;
   --color-text-secondary: #71717a;
   --color-text-inverse: #ffffff;
-  --color-border: #e4e4e7;
+  --color-border: #e5e5e5;
   --color-danger: #dc2626;
   --color-danger-subtle: #fee2e2;
   --color-danger-text: #991b1b;
@@ -28,7 +29,50 @@
   /* Glassmorphism & backdrop tokens */
   --color-glass-bg: rgba(255, 255, 255, 0.68);
   --color-glass-border: rgba(0, 0, 0, 0.08);
-  --color-card-shadow: rgba(0, 0, 0, 0.04);
+  --color-card-shadow: rgba(0, 0, 0, 0.035);
+
+  /*
+   * Semantic surface tokens. They alias the base tokens above so one change re-skins
+   * every card, header and popup, and the dark block below needs no copies of them.
+   * Cards, the header and popups all match the page background; the border and the
+   * soft shadow separate them.
+   */
+  --color-card-bg: var(--color-surface);
+  --color-header-bg: var(--color-surface);
+  --color-surface-raised: var(--color-surface);
+  --shadow-card: 0 1px 3px var(--color-card-shadow);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --color-selected-outline: var(--color-accent);
+
+  /* Extra neutrals and status tokens used by the hard-coded-color cleanup (Phase 3). */
+  --color-text-muted: #a1a1aa;
+  --color-text-on-solid: #ffffff; /* text/icons on a solid accent/danger/success fill; white in both modes */
+  --color-border-strong: #d4d4d4;
+  --color-overlay: rgba(0, 0, 0, 0.5);
+  --color-danger-hover: #b91c1c;
+  --color-info: #3b82f6;
+  --color-success-subtle: #dcfce7;
+  --color-success-text: #166534;
+
+  /*
+   * Categorical colors: fixed hues for charts, legends and "blue/green/amber/red/violet"
+   * pickers. They do NOT follow the accent preset, so "blue" stays blue under Violet.
+   */
+  --color-cat-blue: #2563eb;
+  --color-cat-green: #16a34a;
+  --color-cat-amber: #d97706;
+  --color-cat-red: #dc2626;
+  --color-cat-violet: #7c3aed;
+  --color-cat-violet-subtle: #ede9fe;
+  --color-cat-indigo: #6366f1;
+  --color-cat-teal: #0d9488;
+  --color-cat-slate: #94a3b8;
+
+  /* Mobile bottom navigation: a floating dark pill in both modes. */
+  --color-mobile-nav-bg: #18181b;
+  --color-mobile-nav-text: #a1a1aa;
+  --color-mobile-nav-text-active: #f4f4f5;
+  --color-mobile-nav-active-bg: #27272a;
 
   /* Avatar / seat-preview tokens */
   --color-seat-empty-bg: #e4e4e7;
@@ -41,6 +85,7 @@
 
 :root[data-mode='dark'],
 html.dark {
+  color-scheme: dark;
   --color-app-bg: #09090b;
   --color-surface: #18181b;
   --color-surface-secondary: #27272a;
@@ -59,6 +104,25 @@ html.dark {
   --color-glass-bg: rgba(18, 18, 20, 0.72);
   --color-glass-border: rgba(255, 255, 255, 0.12);
   --color-card-shadow: rgba(0, 0, 0, 0.5);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+  --color-text-muted: #71717a;
+  --color-border-strong: #3f3f46;
+  --color-overlay: rgba(0, 0, 0, 0.65);
+  --color-danger-hover: #dc2626;
+  --color-info: #60a5fa;
+  --color-success-subtle: #052e16;
+  --color-success-text: #86efac;
+
+  --color-cat-blue: #60a5fa;
+  --color-cat-green: #4ade80;
+  --color-cat-amber: #fbbf24;
+  --color-cat-red: #f87171;
+  --color-cat-violet: #a78bfa;
+  --color-cat-violet-subtle: #2e1065;
+  --color-cat-indigo: #818cf8;
+  --color-cat-teal: #2dd4bf;
+  --color-cat-slate: #71717a;
 
   /* Avatar / seat-preview tokens (dark overrides) */
   --color-seat-empty-bg: #3f3f46;
@@ -160,4 +224,11 @@ html.dark {
   --color-sidebar-text-muted: #64748b;
   --color-sidebar-active-bg: #334155;
   --color-sidebar-active-text: #ffffff;
+}
+
+/* Dark mode: every preset's pastel accent-subtle becomes a dim tint of its accent.
+   Extra attribute in the selector so it beats the per-preset blocks above. */
+:root[data-mode='dark'][data-theme],
+html.dark[data-theme] {
+  --color-accent-subtle: color-mix(in srgb, var(--color-accent) 22%, #18181b);
 }

@@ -2,8 +2,14 @@
 @import "./app/shared/styles/theme-tokens.css";
 @import "./app/shared/styles/fields.css";
 @import "./app/shared/styles/toolbar-buttons.css";
-@import "leaflet/dist/leaflet.css";
 @import "@angular/cdk/overlay-prebuilt.css";
+
+/* Tailwind `dark:` follows the app's Appearance mode (set on <html> by ThemeStore), not the OS.
+   Matches both markers theme-tokens.css uses for its dark block. */
+@custom-variant dark (&:where(.dark, .dark *, [data-mode='dark'], [data-mode='dark'] *));
+
+/* All colors live in ./app/shared/styles/theme-tokens.css. Components use var(--color-*) and
+   var(--shadow-*) tokens, never hard-coded hex or Tailwind gray/white utilities. */
 
 /* Dropdowns and pickers render in the CDK overlay; keep them above app-modal (1200) and the
    body-portaled popups on top of it (1250). */
@@ -194,8 +200,9 @@ body {
               linear-gradient(145deg, #ffffff 0%, #f8fafc 50%, #eef2ff 100%);
 }
 
-:root[data-mode='dark'] .greeting-card-bg,
-html.dark .greeting-card-bg {
+/* Dark mode: every time-of-day variant shares the same dim gradient (the art image keeps the mood). */
+:root[data-mode='dark'] :is(.greeting-card-bg, .greeting-card-bg-morning, .greeting-card-bg-afternoon, .greeting-card-bg-evening, .greeting-card-bg-night),
+html.dark :is(.greeting-card-bg, .greeting-card-bg-morning, .greeting-card-bg-afternoon, .greeting-card-bg-evening, .greeting-card-bg-night) {
   background: radial-gradient(circle at 92% 16%, rgba(59, 130, 246, 0.25) 0%, transparent 65%),
               linear-gradient(145deg, #18181b 0%, #0f172a 60%, #1e1b4b 100%);
   border-color: rgba(255, 255, 255, 0.1);
