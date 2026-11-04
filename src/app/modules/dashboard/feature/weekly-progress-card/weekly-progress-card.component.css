@@ -1,0 +1,347 @@
+.wp-week {
+  height: 1.75rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.5rem;
+  background: rgb(248 250 252);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: rgb(51 65 85);
+}
+
+.wp-no-target {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.wp-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  cursor: pointer;
+  border-radius: 0.75rem;
+  outline-offset: 2px;
+}
+
+/* ---- The donut: one size everywhere, centre text stacked and centred. ---- */
+.wp-donut {
+  position: relative;
+  flex: none;
+}
+
+.wp-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+}
+
+.wp-percent {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-percent--big {
+  font-size: 2.25rem;
+}
+
+.wp-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+}
+
+.wp-status--ahead,
+.wp-status--on_track {
+  color: rgb(5 150 105);
+}
+
+.wp-status--behind {
+  color: rgb(217 119 6);
+}
+
+.wp-delta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.wp-delta-value {
+  font-weight: 700;
+  color: rgb(5 150 105);
+}
+
+.wp-delta-value--down,
+.wp-down {
+  color: rgb(217 119 6);
+}
+
+.wp-delta-caption {
+  color: rgb(100 116 139);
+}
+
+/* ---- mini: the donut only. ---- */
+.wp-center {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- mini-wide: figure, this week / last week bars, then tiles when wide enough. ---- */
+.wp-row {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.wp-figure {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.wp-figure .wp-delta {
+  justify-content: flex-start;
+}
+
+.wp-week-bars {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.wp-week-bar {
+  display: grid;
+  grid-template-columns: 4.25rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.wp-week-name {
+  color: rgb(51 65 85);
+  white-space: nowrap;
+}
+
+.wp-week-track {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(226 232 240);
+}
+
+.wp-week-fill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: #2563eb;
+}
+
+.wp-week-fill--last {
+  background: #93c5fd;
+}
+
+.wp-week-hours {
+  color: rgb(71 85 105);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-mini-tiles {
+  min-width: 0;
+  flex: 1.2 1 0;
+}
+
+/* ---- xs: donut on top, tiles stacked under it. ---- */
+.wp-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wp-stacked-tile {
+  --tone: var(--color-accent);
+  display: flex;
+  width: 100%;
+  height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.625rem;
+  background: rgb(248 250 252);
+  padding: 0 0.75rem;
+  border-left: 3px solid var(--tone);
+}
+
+.wp-tone--success {
+  --tone: var(--color-success);
+}
+
+.wp-tone--warning {
+  --tone: var(--color-warning-text);
+}
+
+.wp-stacked-label {
+  font-size: 0.75rem;
+  color: rgb(71 85 105);
+}
+
+.wp-stacked-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-stacked-value small,
+.wp-compare-value small {
+  margin-left: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+}
+
+/* ---- standard: hero (donut + tiles), then chart, then comparison. Heights match WEEKLY_PROGRESS_SECTION_PX. ---- */
+.wp-standard {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wp-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Narrow standard card: compact rows beside the donut (34px each, 6px apart - four fit the donut's height). */
+.wp-side-tiles {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wp-side-tile {
+  --tone: var(--color-accent);
+  display: flex;
+  height: 34px;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  background: rgb(248 250 252);
+  padding: 0 0.625rem;
+  border-left: 3px solid var(--tone);
+}
+
+.wp-side-value {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-side-value small {
+  margin-left: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+}
+
+.wp-hero-donut {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.wp-tiles {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.wp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid rgb(241 245 249);
+  padding-top: 0.5rem;
+}
+
+.wp-section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(15 23 42);
+}
+
+.wp-chart {
+  height: 150px;
+}
+
+.wp-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+}
+
+.wp-compare-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  border-radius: 0.625rem;
+  background: rgb(248 250 252);
+  padding: 0.5rem 0.75rem;
+}
+
+.wp-compare-label {
+  font-size: 0.6875rem;
+  color: rgb(71 85 105);
+}
+
+.wp-compare-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-compare-value small {
+  color: rgb(5 150 105);
+}
+
+.wp-compare-value small.wp-down {
+  color: rgb(217 119 6);
+}
+
+.wp-compare-caption {
+  font-size: 0.6875rem;
+  color: rgb(100 116 139);
+}

@@ -3,22 +3,73 @@
   width: 100%;
   max-width: min(1280px, 100%);
   max-height: 92vh;
+  padding: 0;
+  --popup-pad: 0px;
 }
+
+/* Same shell as the Team Progress popup: app-modal's icon-tile header gives way to .tad-head. */
+:host ::ng-deep .team-attendance-detail > .app-modal__header { display: none; }
+
+.tad-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 16px 24px 4px;
+  background: var(--color-surface);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+.tad-head__row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.tad-head__title { min-width: 0; }
+.tad-head__title h2 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.25; color: var(--color-text-primary); }
+.tad-head__title p { margin: 2px 0 0; font-size: 12px; color: var(--color-text-secondary); }
+.tad-head__controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+
+.tad-select { width: 190px; }
+.tad-select--period { width: 130px; }
+
+.tad-close {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.tad-close:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+.tad-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 
 .tad {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 0.875rem;
+  padding: 10px 24px 20px;
 }
 
-.tad-controls {
-  display: flex;
-  flex-wrap: wrap;
+.tad-rank-head { display: inline-block; width: 2rem; color: var(--color-text-secondary); }
+
+.tad-rank {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--color-surface-secondary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
+.tad-rank--top { background: #d1fae5; color: #047857; }
 
 .tad-range {
   display: flex;
@@ -44,14 +95,6 @@
 .tad-nav:hover:not(:disabled) { background: var(--color-surface-secondary); }
 .tad-nav:disabled { opacity: 0.35; cursor: default; }
 
-.tad-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.tad-select { min-width: 9rem; }
-
 .tad-muted {
   font-size: 0.75rem;
   color: var(--color-text-secondary);
@@ -67,6 +110,10 @@
 
 @media (max-width: 767px) {
   .tad-charts { grid-template-columns: 1fr; }
+  .tad-head__row { flex-direction: column; }
+  .tad-head__controls { width: 100%; justify-content: flex-start; }
+  .tad-close { position: absolute; top: 14px; right: 16px; }
+  .tad-head__title { padding-right: 40px; }
 }
 
 .tad-panel {

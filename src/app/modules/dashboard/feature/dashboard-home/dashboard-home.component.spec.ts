@@ -1,6 +1,10 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { provideRouter } from '@angular/router';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
 import { DashboardBootstrap } from '../../models/dashboard-layout.model';
@@ -31,6 +35,9 @@ describe('DashboardHomeComponent', () => {
     };
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
+        { provide: TimeTrackingStore, useValue: { today: signal(null), actionLoading: signal(false), activeAction: signal(null), loadToday: vi.fn(), startBreak: vi.fn(), endBreak: vi.fn() } },
+        { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
         { provide: DashboardLayoutApiService, useValue: api },
         { provide: MyTeamCapabilitiesStore, useValue: { ensureLoaded } },
         { provide: NotificationService, useValue: { warning: vi.fn(), error: vi.fn(), success: vi.fn() } }

@@ -630,7 +630,7 @@ describe('TaskFormModalComponent - create mode', () => {
   let createTask: ReturnType<typeof vi.fn>;
 
   async function build(opts: { module?: string; sprint?: string; isOwner?: boolean; draftId?: string; allowMeeting?: boolean;
-    categories?: unknown[] } = {}): Promise<void> {
+    categories?: unknown[]; prefill?: unknown } = {}): Promise<void> {
     api = baseApi();
     if (opts.categories) api['getCategories'] = vi.fn().mockReturnValue(of(opts.categories));
     createTask = vi.fn().mockResolvedValue({ id: 't-new', objectiveId: 'o1' });
@@ -662,9 +662,23 @@ describe('TaskFormModalComponent - create mode', () => {
     if (opts.sprint) fixture.componentRef.setInput('prefillSprintId', opts.sprint);
     if (opts.draftId) fixture.componentRef.setInput('draftId', opts.draftId);
     if (opts.allowMeeting) fixture.componentRef.setInput('allowMeeting', true);
+    if (opts.prefill) fixture.componentRef.setInput('prefill', opts.prefill);
     fixture.componentRef.setInput('open', true);
     await flush(fixture);
   }
+
+  it('fills title, category, priority, estimate, due and assignee from prefill (Planner create popover)', async () => {
+    await build({
+      module: 'o1',
+      categories: [{ id: 'c1', name: 'task', displayOrder: 0 }, { id: 'c2', name: 'bug', displayOrder: 1 }],
+      prefill: { title: 'Fix login bug', categoryId: 'c2', priority: 'high', estimatedHours: 8, dueDate: '2026-11-20', assigneeEmployeeId: 'e1' },
+    });
+    const form = fixture.componentInstance;
+
+    expect([form.title(), form.categoryId(), form.priority(), form.estimatedHours(), form.dueDate(), form.assigneeEmployeeId()])
+      .toEqual(['Fix login bug', 'c2', 'high', 8, '2026-11-20', 'e1']);
+    expect(form.selectedObjectiveId()).toBe('o1');
+  });
 
   describe('the "meeting" category', () => {
     const categories = [

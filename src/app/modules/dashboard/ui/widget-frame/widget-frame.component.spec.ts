@@ -76,13 +76,13 @@ describe('WidgetFrameComponent', () => {
   it('view_mode_wrapper_does_not_clip_and_flagged_card_is_overflow_visible', () => {
     registry['fake'] = { component: FakeCardComponent };
     let el = setup(widget(), false).nativeElement as HTMLElement;
-    const wrapper = el.querySelector('[data-testid="widget-frame"] > div') as HTMLElement;
+    const wrapper = el.querySelector('[data-testid="widget-content"]') as HTMLElement;
     expect(wrapper.className).not.toContain('overflow-hidden');
     expect(wrapper.className).toContain('overflow-auto');
     TestBed.resetTestingModule();
     registry['fake'] = { component: FakeCardComponent, overflowVisible: true };
     el = setup(widget(), false).nativeElement as HTMLElement;
-    const flagged = el.querySelector('[data-testid="widget-frame"] > div') as HTMLElement;
+    const flagged = el.querySelector('[data-testid="widget-content"]') as HTMLElement;
     expect(flagged.className).toContain('overflow-visible');
     expect(flagged.className).not.toContain('overflow-auto');
   });

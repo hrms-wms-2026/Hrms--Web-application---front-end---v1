@@ -19,6 +19,7 @@ import {
   percentOf
 } from '../../utils/team-progress-format.util';
 import {
+  TEAM_PROGRESS_DONUT_PX,
   TeamProgressMode,
   TeamProgressPlan,
   planTeamProgressLayout,
@@ -159,12 +160,12 @@ function storePeriod(period: LedProgressPeriod): void {
 /** Views that show the weekly completion chart. */
 const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['tall', 'large', 'maximum']);
 
-const EMPTY_PLAN: TeamProgressPlan = { miniLegend: 'none', legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0 };
+const EMPTY_PLAN: TeamProgressPlan = { miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0 };
 
 /**
  * Team Progress: the estimated-hours (task estimate weightage, not time worked) picture of the
  * modules the viewer leads. The card picks one of seven views from its own rendered size (see
- * team-progress-layout.util). Every component keeps one fixed size (the donut is always 128px): a
+ * team-progress-layout.util). Every component keeps one fixed size (the donut is always DASHBOARD_DONUT_PX, or absent where it doesn't fit): a
  * bigger card shows more sections and list rows, never bigger graphics. Resizing only re-lays out
  * what is loaded, it never fetches.
  * A period switch (All time / This month / This week) narrows the figures to tasks due in it.
@@ -398,9 +399,11 @@ export class TeamProgressCardComponent implements OnInit {
   });
 
   /** Centre number size in px: fixed, one step smaller only for a long total, so it fits the ring. */
+  protected readonly donutPx = TEAM_PROGRESS_DONUT_PX;
+
   protected readonly totalFontPx = computed(() => {
     const length = this.totalText().length;
-    return length <= 8 ? 16 : length <= 10 ? 14 : 12;
+    return length <= 8 ? 17 : length <= 10 ? 15 : 13;
   });
 
   protected readonly donutLabel = computed(() => {
@@ -726,6 +729,7 @@ export class TeamProgressCardComponent implements OnInit {
 function samePlan(a: TeamProgressPlan, b: TeamProgressPlan): boolean {
   return (
     a.miniLegend === b.miniLegend &&
+    a.miniFigure === b.miniFigure &&
     a.legend === b.legend &&
     a.tileRows === b.tileRows &&
     a.viewDetails === b.viewDetails &&
