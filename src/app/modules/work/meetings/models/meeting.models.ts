@@ -206,20 +206,6 @@ export interface MeetingBulkPreviewResponse {
   capacityWarning: string | null;
 }
 
-export interface EmployeeMeetingAttendanceItem {
-  occurrenceTaskId: string;
-  startAt: string;
-  endAt: string;
-  /** "Private meeting" for a private occurrence seen by a manager. */
-  title: string;
-  organizerName: string | null;
-  status: MeetingAttendanceSyncStatus;
-  display: MeetingAttendanceDisplay;
-  outcome: MeetingAttendanceOutcome;
-  attendedSeconds: number | null;
-}
-export interface EmployeeMeetingAttendanceResponse { items: EmployeeMeetingAttendanceItem[]; }
-
 /** What the approver of a meeting.create / meeting.move request sees (spec D5), frozen when it was submitted. */
 export interface MeetingApprovalSnapshot {
   title: string;
