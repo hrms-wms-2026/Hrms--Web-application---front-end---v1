@@ -21,8 +21,8 @@
   font-size: 0.875rem;
 }
 .bo-banner--error {
-  background: color-mix(in srgb, #dc2626 8%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, #dc2626 28%, transparent);
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-danger) 28%, transparent);
   color: var(--color-text-primary);
 }
 .bo-step-flow {
@@ -63,7 +63,7 @@
 }
 .bo-step-flow__item--active .bo-step-flow__number {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-text-on-solid);
 }
 .bo-step-flow__item--completed .bo-step-flow__number {
   background: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface));
@@ -172,7 +172,7 @@
 }
 .bo-dropzone--has-file {
   border-style: solid;
-  border-color: color-mix(in srgb, #16a34a 45%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
 }
 .bo-dropzone input {
   position: absolute;
@@ -199,7 +199,7 @@
   height: 1.5rem;
 }
 .bo-dropzone__icon--success {
-  color: #16a34a;
+  color: var(--color-success);
 }
 .bo-dropzone__title {
   font-weight: 700;
@@ -245,8 +245,8 @@
 .bo-required {
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
-  background: color-mix(in srgb, #dc2626 12%, var(--color-surface));
-  color: #dc2626;
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-surface));
+  color: var(--color-danger);
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -318,8 +318,8 @@
   color: var(--color-text-secondary);
 }
 .bo-status-badge--valid {
-  background: color-mix(in srgb, #16a34a 12%, var(--color-surface));
-  color: #16a34a;
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+  color: var(--color-success);
 }
 @media (max-width: 800px) {
   .bo-step-flow {

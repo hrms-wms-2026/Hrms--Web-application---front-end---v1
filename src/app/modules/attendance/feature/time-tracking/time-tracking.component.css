@@ -373,15 +373,15 @@ h2 {
 }
 
 .work-mode-badge--onsite {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-hover);
+  border-color: var(--color-accent-subtle);
 }
 
 .work-mode-badge--remote {
-  background: #f5f3ff;
-  color: #6d28d9;
-  border-color: #ddd6fe;
+  background: var(--color-cat-violet-subtle);
+  color: var(--color-cat-violet);
+  border-color: var(--color-cat-violet-subtle);
 }
 
 .break-progress-track {
@@ -421,7 +421,7 @@ h2 {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--color-success);
   opacity: 0.6;
   animation: ping-slow 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
@@ -474,7 +474,7 @@ h2 {
 }
 
 .time-dot--out {
-  background: #94a3b8;
+  background: var(--color-text-muted);
 }
 
 .metric-time-item__val {
@@ -569,9 +569,9 @@ h2 {
 }
 
 .status-pill--active {
-  background: #ecfdf5;
-  color: #065f46;
-  border-color: #a7f3d0;
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
+  border-color: var(--color-success-subtle);
 }
 
 .status-pill--active .status-pill__dot {
@@ -580,9 +580,9 @@ h2 {
 }
 
 .status-pill--break {
-  background: #fffbeb;
-  color: #92400e;
-  border-color: #fde68a;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+  border-color: var(--color-warning-subtle);
 }
 
 .status-pill--break .status-pill__dot {

@@ -109,8 +109,8 @@ const MAX_ZOOM = 3;
     .wg-node--module-member circle { fill: var(--color-surface); stroke: #7c3aed; stroke-width: 3; }
     .wg-node--module-contributor circle { fill: var(--color-surface); stroke: #7c3aed; stroke-width: 2; stroke-dasharray: 3 3; }
     .wg-node--task-active circle { fill: #16a34a; stroke: var(--color-surface); }
-    .wg-node--task-not-started circle { fill: #94a3b8; stroke: var(--color-surface); }
-    .wg-initials { fill: #fff; font-size: 16px; font-weight: 700; pointer-events: none; }
+    .wg-node--task-not-started circle { fill: var(--color-text-muted); stroke: var(--color-surface); }
+    .wg-initials { fill: var(--color-text-on-solid); font-size: 16px; font-weight: 700; pointer-events: none; }
     .wg-label { fill: var(--color-text-secondary); font-size: 11px; pointer-events: none; }
     .wg-label--strong { fill: var(--color-text-primary); font-size: 13px; font-weight: 600; }
     .wg-sublabel { fill: var(--color-text-secondary); font-size: 11px; pointer-events: none; }

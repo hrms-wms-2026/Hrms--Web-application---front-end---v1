@@ -74,11 +74,11 @@ type TasksState = 'loading' | 'ready' | 'error';
               <svg viewBox="0 0 72 72" class="h-28 w-28" role="img" aria-label="Task distribution pie chart">
                 @let slices = pieSlices(d);
                 @if (slices.length === 0) {
-                  <circle cx="36" cy="36" r="34" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1" />
+                  <circle cx="36" cy="36" r="34" style="fill: var(--color-surface-secondary)" style="stroke: var(--color-border)" stroke-width="1" />
                 } @else {
                   @for (slice of slices; track slice.key) {
                     @if (slice.isFull) {
-                      <circle data-testid="pie-slice" cx="36" cy="36" r="34" [attr.fill]="slice.color" stroke="#ffffff" stroke-width="1.5">
+                      <circle data-testid="pie-slice" cx="36" cy="36" r="34" [attr.fill]="slice.color" style="stroke: var(--color-surface)" stroke-width="1.5">
                         <title>{{ slice.label }}: {{ slice.count }} (100%)</title>
                       </circle>
                     } @else {
@@ -86,7 +86,7 @@ type TasksState = 'loading' | 'ready' | 'error';
                         data-testid="pie-slice"
                         [attr.d]="slice.path"
                         [attr.fill]="slice.color"
-                        stroke="#ffffff"
+                        style="stroke: var(--color-surface)"
                         stroke-width="1.5"
                         stroke-linejoin="round"
                         class="transition-opacity duration-200 hover:opacity-85"
@@ -97,8 +97,8 @@ type TasksState = 'loading' | 'ready' | 'error';
                   }
                 }
               </svg>
-              <p class="mt-2 text-xs text-slate-500" data-testid="work-assigned">
-                <span class="font-bold text-slate-900 tabular-nums">{{ d.assigned }}</span> tasks
+              <p class="mt-2 text-xs text-[var(--color-text-secondary)]" data-testid="work-assigned">
+                <span class="font-bold text-[var(--color-text-primary)] tabular-nums">{{ d.assigned }}</span> tasks
               </p>
             </div>
 
@@ -106,29 +106,29 @@ type TasksState = 'loading' | 'ready' | 'error';
               class="grid flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 text-sm"
               data-testid="work-legend"
             >
-              <dt class="flex items-center gap-2 whitespace-nowrap text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Completed</dt>
-              <dd class="flex items-center justify-end gap-1 font-bold tabular-nums text-slate-900" data-testid="work-completed">
+              <dt class="flex items-center gap-2 whitespace-nowrap text-[var(--color-text-secondary)]"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Completed</dt>
+              <dd class="flex items-center justify-end gap-1 font-bold tabular-nums text-[var(--color-text-primary)]" data-testid="work-completed">
                 <span>{{ d.completed }}</span>
                 @if (completedDelta()) {
                   <app-delta-badge [delta]="completedDelta()" [against]="period.compareLabel()" />
                 }
               </dd>
 
-              <dt class="flex items-center gap-2 whitespace-nowrap text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>In progress</dt>
-              <dd class="flex items-center justify-end gap-1 font-bold tabular-nums text-slate-900" data-testid="work-in-progress">
+              <dt class="flex items-center gap-2 whitespace-nowrap text-[var(--color-text-secondary)]"><span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>In progress</dt>
+              <dd class="flex items-center justify-end gap-1 font-bold tabular-nums text-[var(--color-text-primary)]" data-testid="work-in-progress">
                 <span>{{ d.inProgress }}</span>
                 @if (inProgressDelta()) {
                   <app-delta-badge [delta]="inProgressDelta()" [against]="period.compareLabel()" />
                 }
               </dd>
 
-              <dt class="flex items-center gap-2 whitespace-nowrap text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-slate-300"></span>Not started</dt>
-              <dd class="flex items-center justify-end font-bold tabular-nums text-slate-900" data-testid="work-not-started">
+              <dt class="flex items-center gap-2 whitespace-nowrap text-[var(--color-text-secondary)]"><span class="h-2.5 w-2.5 rounded-full bg-slate-300"></span>Not started</dt>
+              <dd class="flex items-center justify-end font-bold tabular-nums text-[var(--color-text-primary)]" data-testid="work-not-started">
                 <span>{{ d.notStarted }}</span>
               </dd>
 
-              <dt class="flex items-center gap-2 whitespace-nowrap text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>Overdue</dt>
-              <dd class="flex items-center justify-end gap-1 font-bold tabular-nums text-rose-600" data-testid="work-overdue">
+              <dt class="flex items-center gap-2 whitespace-nowrap text-[var(--color-text-secondary)]"><span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>Overdue</dt>
+              <dd class="flex items-center justify-end gap-1 font-bold tabular-nums text-[var(--color-danger)]" data-testid="work-overdue">
                 <span>{{ d.overdue }}</span>
                 @if (overdueDelta()) {
                   <app-delta-badge [delta]="overdueDelta()" [against]="period.compareLabel()" />
@@ -138,32 +138,32 @@ type TasksState = 'loading' | 'ready' | 'error';
           </div>
 
           <!-- View all shares the rates line, so the card has no extra footer row. -->
-          <div class="work-rates grid grid-cols-[1fr_1fr_auto] items-end gap-4 border-t border-slate-100 pt-3">
+          <div class="work-rates grid grid-cols-[1fr_1fr_auto] items-end gap-4 border-t border-[var(--color-border)] pt-3">
             <div>
-              <p class="text-xs text-slate-500">Completion rate</p>
-              <p class="mt-0.5 text-base font-bold text-slate-900" data-testid="work-completion-rate">{{ d.completionRatePercent }}%</p>
+              <p class="text-xs text-[var(--color-text-secondary)]">Completion rate</p>
+              <p class="mt-0.5 text-base font-bold text-[var(--color-text-primary)]" data-testid="work-completion-rate">{{ d.completionRatePercent }}%</p>
             </div>
             <div>
-              <p class="text-xs text-slate-500">On-time rate</p>
-              <p class="mt-0.5 text-base font-bold text-slate-900" data-testid="work-ontime-rate">{{ d.onTimeRatePercent === null ? '—' : d.onTimeRatePercent + '%' }}</p>
+              <p class="text-xs text-[var(--color-text-secondary)]">On-time rate</p>
+              <p class="mt-0.5 text-base font-bold text-[var(--color-text-primary)]" data-testid="work-ontime-rate">{{ d.onTimeRatePercent === null ? '—' : d.onTimeRatePercent + '%' }}</p>
             </div>
             @if (!showAll()) {
-              <button type="button" class="pb-0.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer whitespace-nowrap" data-testid="work-toggle" (click)="onToggleClick($event)">View all ({{ d.assigned }})</button>
+              <button type="button" class="pb-0.5 text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer whitespace-nowrap" data-testid="work-toggle" (click)="onToggleClick($event)">View all ({{ d.assigned }})</button>
             }
           </div>
 
           @if (showAll()) {
-            <section class="border-t border-slate-100 pt-4" data-testid="work-task-list" aria-label="Tasks">
+            <section class="border-t border-[var(--color-border)] pt-4" data-testid="work-task-list" aria-label="Tasks">
               @switch (tasksState()) {
                 @case ('loading') {
                   <div class="space-y-2" data-testid="work-tasks-loading" aria-hidden="true">
                     @for (i of [0, 1, 2, 3]; track i) {
-                      <div class="h-14 animate-pulse rounded-xl bg-slate-100"></div>
+                      <div class="h-14 animate-pulse rounded-xl bg-[var(--color-surface-secondary)]"></div>
                     }
                   </div>
                 }
                 @case ('error') {
-                  <p class="py-4 text-center text-sm text-rose-600" data-testid="work-tasks-error">
+                  <p class="py-4 text-center text-sm text-[var(--color-danger)]" data-testid="work-tasks-error">
                     Could not load the tasks.
                     <button type="button" class="font-semibold underline cursor-pointer" (click)="retryTasks($event)">Retry</button>
                   </p>
@@ -179,12 +179,12 @@ type TasksState = 'loading' | 'ready' | 'error';
                       </ul>
                     </div>
                   } @empty {
-                    <p class="py-4 text-center text-sm text-slate-500">No tasks in this period.</p>
+                    <p class="py-4 text-center text-sm text-[var(--color-text-secondary)]">No tasks in this period.</p>
                   }
                 }
               }
               <div class="mt-4 flex justify-end">
-                <button type="button" class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer" data-testid="work-toggle" (click)="onToggleClick($event)">Show less</button>
+                <button type="button" class="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer" data-testid="work-toggle" (click)="onToggleClick($event)">Show less</button>
               </div>
             </section>
           }
@@ -198,7 +198,7 @@ type TasksState = 'loading' | 'ready' | 'error';
     .work-layout--wide { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 2.5rem; }
     .work-layout--wide > section { grid-column: 1 / -1; }
     .work-layout--wide [data-testid="work-legend"] { max-width: 20rem; }
-    .work-layout--wide .work-rates { border-top: 0; padding-top: 0; padding-left: 2.5rem; border-left: 1px solid rgb(241 245 249); column-gap: 2.5rem; align-self: stretch; align-items: center; }
+    .work-layout--wide .work-rates { border-top: 0; padding-top: 0; padding-left: 2.5rem; border-left: 1px solid var(--color-border); column-gap: 2.5rem; align-self: stretch; align-items: center; }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

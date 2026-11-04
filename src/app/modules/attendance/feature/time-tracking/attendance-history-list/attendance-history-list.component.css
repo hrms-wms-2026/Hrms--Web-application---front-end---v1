@@ -45,21 +45,21 @@
 }
 
 .table-status-pill--active {
-  background: #ecfdf5;
-  color: #059669;
-  border-color: #a7f3d0;
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  border-color: var(--color-success-subtle);
 }
 
 .table-status-pill--warning {
-  background: #fffbeb;
-  color: #d97706;
-  border-color: #fde68a;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+  border-color: var(--color-warning-subtle);
 }
 
 .table-status-pill--danger {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border-color: var(--color-danger-subtle);
 }
 
 .table-status-dot {

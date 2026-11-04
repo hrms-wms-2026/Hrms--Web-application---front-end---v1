@@ -85,7 +85,7 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
     <div class="space-y-3">
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5" data-testid="employment-kpis">
         @for (kpi of kpis(); track kpi.id) {
-          <div class="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-xs" [attr.data-testid]="'employment-kpi-' + kpi.id">
+          <div class="flex items-center gap-3 rounded-xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] px-3.5 py-3 shadow-xs" [attr.data-testid]="'employment-kpi-' + kpi.id">
             <span class="kpi-icon" [class]="'kpi-icon kpi-icon--' + kpi.tone" aria-hidden="true">
               @switch (kpi.id) {
                 @case ('tenure') {
@@ -106,10 +106,10 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
               }
             </span>
             <div class="min-w-0">
-              <p class="text-[11px] font-medium text-slate-500">{{ kpi.label }}</p>
-              <p class="truncate text-sm font-bold text-slate-900" [title]="kpi.value">{{ kpi.value }}</p>
+              <p class="text-[11px] font-medium text-[var(--color-text-secondary)]">{{ kpi.label }}</p>
+              <p class="truncate text-sm font-bold text-[var(--color-text-primary)]" [title]="kpi.value">{{ kpi.value }}</p>
               @if (kpi.hint) {
-                <p class="truncate text-[11px] text-slate-500" [title]="kpi.hint">{{ kpi.hint }}</p>
+                <p class="truncate text-[11px] text-[var(--color-text-secondary)]" [title]="kpi.hint">{{ kpi.hint }}</p>
               }
             </div>
           </div>
@@ -155,22 +155,22 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
         <div class="xl:col-span-2">
           <section role="button" tabindex="0" appKeyboardClick
             data-testid="work-network-card"
-            class="group flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs"
+            class="group flex h-full flex-col rounded-xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-4 shadow-xs"
             [class.cursor-pointer]="graphState() === 'ready'"
             [attr.aria-busy]="graphState() === 'loading'"
             (click)="openGraph()"
           >
             <header class="mb-3 flex items-start justify-between gap-3">
               <div class="flex items-center gap-2.5">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600" aria-hidden="true">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent-subtle)] text-[var(--color-accent)]" aria-hidden="true">
                   <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="9" cy="8" r="3"></circle><path d="M3 20a6 6 0 0 1 12 0"></path>
                     <circle cx="17" cy="9" r="2.5"></circle><path d="M16 14.5a5 5 0 0 1 5 5"></path>
                   </svg>
                 </span>
                 <div class="min-w-0">
-                  <h2 class="text-sm font-bold text-slate-900">Work Network</h2>
-                  <p class="truncate text-[11px] text-slate-500">{{ graphSubtitle() }}</p>
+                  <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Work Network</h2>
+                  <p class="truncate text-[11px] text-[var(--color-text-secondary)]">{{ graphSubtitle() }}</p>
                 </div>
               </div>
               <app-popout-header-actions
@@ -186,16 +186,16 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
 
             @switch (graphState()) {
               @case ('loading') {
-                <div data-testid="widget-loading" class="flex-1 animate-pulse rounded-xl bg-slate-100" aria-hidden="true" style="min-height: 10rem"></div>
+                <div data-testid="widget-loading" class="flex-1 animate-pulse rounded-xl bg-[var(--color-surface-secondary)]" aria-hidden="true" style="min-height: 10rem"></div>
               }
               @case ('error') {
                 <app-error-state message="Could not load the work network." [retryable]="true" (retry)="loadGraph()" />
               }
               @case ('forbidden') {
-                <p data-testid="widget-forbidden" class="text-sm text-slate-500">You do not have access to this section.</p>
+                <p data-testid="widget-forbidden" class="text-sm text-[var(--color-text-secondary)]">You do not have access to this section.</p>
               }
               @case ('empty') {
-                <p data-testid="widget-empty" class="text-sm text-slate-500">This employee is not part of any project yet.</p>
+                <p data-testid="widget-empty" class="text-sm text-[var(--color-text-secondary)]">This employee is not part of any project yet.</p>
               }
               @default {
                 @if (graph(); as g) {
@@ -214,10 +214,10 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
       width: 2.25rem; height: 2.25rem; border-radius: 9999px;
     }
     .kpi-icon svg { width: 1.125rem; height: 1.125rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-    .kpi-icon--blue { background: #eff6ff; color: #2563eb; }
-    .kpi-icon--green { background: #f0fdf4; color: #16a34a; }
-    .kpi-icon--violet { background: #f5f3ff; color: #7c3aed; }
-    .kpi-icon--orange { background: #fff7ed; color: #ea580c; }
+    .kpi-icon--blue { background: var(--color-accent-subtle); color: var(--color-accent); }
+    .kpi-icon--green { background: var(--color-success-subtle); color: var(--color-success); }
+    .kpi-icon--violet { background: var(--color-cat-violet-subtle); color: var(--color-cat-violet); }
+    .kpi-icon--orange { background: var(--color-warning-subtle); color: var(--color-warning); }
     .kpi-icon--sky { background: #f0f9ff; color: #0284c7; }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

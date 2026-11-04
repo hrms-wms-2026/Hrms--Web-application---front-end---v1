@@ -91,7 +91,11 @@ Rule: no hex, `rgb()` or Tailwind gray/white/black utilities in components. Use 
 
 **Progress (2026-11-05):**
 - **Batch 1 (shared UI + layouts): done.**
-- **Batch 2 (dashboard): done.** Checked live in Chrome in light and dark mode.
+- **Batch 2 (dashboard): done.** Checked live in Chrome in light and dark mode. Committed in `ff249b0e`.
+- **Batch 3 (People) and Batch 4 (Attendance): done.** Employee detail and Attendance were checked live in both modes.
+  - The script now also handles `[class.bg-white]` bindings, `-[#hex]` arbitrary classes, neutral SVG `stroke`/`fill`, and the `white` keyword.
+  - Chart or graph files, and chart-like selectors (seg, bar, legend, dot, cell, swatch, fill), keep their colored values, so legends match their charts.
+  - Specs that asserted old class names were updated.
 - What is left in shared code is data: the rich-text palette, filter-bar swatches, the entity-icon registry, and the canvas `fillStyle`.
 
 **Token mapping rules used (keep for the remaining batches):**

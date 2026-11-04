@@ -358,7 +358,7 @@
   width: 16px;
   height: 16px;
   border-radius: 9999px;
-  background: #fff;
+  background: var(--color-surface);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.25);
   transition: transform 140ms ease;
 }

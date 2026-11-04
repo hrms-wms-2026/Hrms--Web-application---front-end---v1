@@ -17,7 +17,7 @@ import { Delta } from '../../utils/employee-overview.utils';
   `,
   styles: [`
     .delta { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; font-weight: 600; }
-    .delta--good { color: #16a34a; }
+    .delta--good { color: var(--color-success); }
     .delta--bad { color: var(--color-danger-text); }
     .delta--neutral { color: var(--color-text-secondary); }
   `],

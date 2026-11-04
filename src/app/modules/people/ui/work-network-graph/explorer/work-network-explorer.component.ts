@@ -181,14 +181,14 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
     .wge-key--owner { background: #8b5cf6; }
     .wge-key--member { border: 2px solid #8b5cf6; }
     .wge-key--progress { background: #2563eb; outline: 2px solid #bfdbfe; }
-    .wge-key--not-started { background: #94a3b8; }
+    .wge-key--not-started { background: var(--color-text-muted); }
     .wge-key--overdue { background: #ef4444; }
     /* Project-mode legend swatches; only used when a legend with these keys is passed in. */
     .wge-key--default-module { background: #2563eb; }
     .wge-key--module { background: #8b5cf6; }
     .wge-key--sprint { background: #8b5cf6; }
     .wge-key--task { background: #38bdf8; }
-    .wge-key--done { background: #cbd5e1; }
+    .wge-key--done { background: var(--color-border-strong); }
     .wge-key--alert { background: #ef4444; }
     .wge-meta { margin: 0; font-size: 0.72rem; color: var(--color-text-secondary); white-space: nowrap; }
     @media (max-width: 900px) {

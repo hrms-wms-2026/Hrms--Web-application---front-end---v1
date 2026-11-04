@@ -131,7 +131,7 @@ export const STEP_LABELS: Record<OffboardingWizardStep, string> = {
     }
     .ow-step-flow__item--active .ow-step-flow__number {
       background: var(--color-primary);
-      color: #ffffff;
+      color: var(--color-text-on-solid);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
     }
     .ow-step-flow__item--completed {

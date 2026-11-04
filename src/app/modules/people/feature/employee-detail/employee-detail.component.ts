@@ -107,7 +107,7 @@ function toDetailTab(value: string | null): DetailTab {
                 />
                 @if (employee.isOnline) {
                   <span
-                    class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-white bg-green-500"
+                    class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-success)]"
                     data-testid="employee-online-dot"
                     title="Online"
                   ></span>
@@ -167,7 +167,7 @@ function toDetailTab(value: string | null): DetailTab {
                       {{ employee.jobInformation.pendingPositionName }}
                     </span>
                     <span
-                      class="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
+                      class="rounded-full border border-[var(--color-warning)] bg-[var(--color-warning-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-warning-text)]"
                       title="The seat is reserved. The position becomes active once they accept the invitation."
                       data-testid="employee-pending-position"
                     >Starts when invite is accepted</span>
@@ -592,8 +592,8 @@ export class EmployeeDetailComponent {
 
   severityBadgeClass(employee: EmployeeDetailResponse): string {
     const severity = attendanceSeverityClass(employee);
-    if (severity === 'emp-attention--critical') return 'bg-red-50 text-red-700';
-    if (severity === 'emp-attention--warning') return 'bg-amber-50 text-amber-700';
+    if (severity === 'emp-attention--critical') return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
+    if (severity === 'emp-attention--warning') return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
   }
 
@@ -601,22 +601,22 @@ export class EmployeeDetailComponent {
     const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
     const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
     if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
-      return 'bg-rose-50 text-rose-800';
+      return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
     }
     if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
-      return 'bg-emerald-50 text-emerald-800';
+      return 'bg-[var(--color-success-subtle)] text-[var(--color-success-text)]';
     }
     if (status === 'late' || label.includes('late')) {
-      return 'bg-amber-50 text-amber-800';
+      return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
     }
     if (status === 'on_break' || label.includes('break')) {
       return 'bg-sky-50 text-sky-800';
     }
     if (status === 'on_leave' || label.includes('leave')) {
-      return 'bg-purple-50 text-purple-800';
+      return 'bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)]';
     }
     if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
-      return 'bg-rose-50 text-rose-800';
+      return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
     }
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]';
   }
@@ -625,22 +625,22 @@ export class EmployeeDetailComponent {
     const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
     const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
     if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
-      return 'bg-rose-500';
+      return 'bg-[var(--color-danger)]';
     }
     if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
-      return 'bg-emerald-500';
+      return 'bg-[var(--color-success)]';
     }
     if (status === 'late' || label.includes('late')) {
-      return 'bg-amber-500';
+      return 'bg-[var(--color-warning)]';
     }
     if (status === 'on_break' || label.includes('break')) {
       return 'bg-sky-500';
     }
     if (status === 'on_leave' || label.includes('leave')) {
-      return 'bg-purple-500';
+      return 'bg-[var(--color-cat-violet)]';
     }
     if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
-      return 'bg-rose-500';
+      return 'bg-[var(--color-danger)]';
     }
     return 'bg-[var(--color-text-secondary)]';
   }

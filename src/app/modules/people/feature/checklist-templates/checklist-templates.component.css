@@ -80,7 +80,7 @@
 }
 
 .ct-action-btn--danger:hover {
-  background-color: #fef2f2;
-  color: #ef4444;
-  border-color: #fca5a5;
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border-color: var(--color-danger-subtle);
 }

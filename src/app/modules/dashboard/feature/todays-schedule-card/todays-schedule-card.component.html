@@ -205,12 +205,12 @@
 
                     <span
                       class="rounded-md px-2 py-0.5 text-[11px] font-semibold border"
-                      [class.border-blue-100]="eKind === 'Meeting'"
-                      [class.bg-blue-50]="eKind === 'Meeting'"
-                      [class.text-blue-600]="eKind === 'Meeting'"
-                      [class.border-purple-100]="eKind === 'Event'"
-                      [class.bg-purple-50]="eKind === 'Event'"
-                      [class.text-purple-700]="eKind === 'Event'"
+                      [class.border-[var(--color-accent-subtle)]]="eKind === 'Meeting'"
+                      [class.bg-[var(--color-accent-subtle)]]="eKind === 'Meeting'"
+                      [class.text-[var(--color-accent)]]="eKind === 'Meeting'"
+                      [class.border-[var(--color-cat-violet-subtle)]]="eKind === 'Event'"
+                      [class.bg-[var(--color-cat-violet-subtle)]]="eKind === 'Event'"
+                      [class.text-[var(--color-cat-violet)]]="eKind === 'Event'"
                     >
                       {{ eKind }}
                     </span>

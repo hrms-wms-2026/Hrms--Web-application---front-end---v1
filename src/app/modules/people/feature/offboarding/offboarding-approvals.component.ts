@@ -167,8 +167,8 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
       font-weight: 650;
     }
     .ap-badge--pending {
-      background: color-mix(in srgb, #eab308 15%, var(--color-surface));
-      color: #854d0e;
+      background: color-mix(in srgb, var(--color-warning) 15%, var(--color-surface));
+      color: var(--color-warning-text);
     }
     .ap-card__penalty-box {
       display: flex;

@@ -143,7 +143,7 @@ export const PERSON_CARD_HEIGHT = 72;
       padding: 0.0625rem 0.5rem;
       font-size: 0.625rem;
       font-weight: 600;
-      color: #fff;
+      color: var(--color-text-on-solid);
       background: var(--color-sidebar-active-bg, #2563eb);
     }
     .rh-card-count {

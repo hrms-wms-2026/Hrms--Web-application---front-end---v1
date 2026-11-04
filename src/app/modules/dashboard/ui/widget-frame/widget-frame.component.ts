@@ -26,10 +26,10 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
       class="relative flex h-full w-full flex-col"
       [class.select-none]="editing()"
       [class.rounded-2xl]="editing()"
-      [class.bg-slate-100]="editing()"
+      [class.bg-[var(--color-surface-secondary)]]="editing()"
       [class.p-1]="editing()"
       [class.ring-1]="editing()"
-      [class.ring-slate-200]="editing()"
+      [class.ring-[var(--color-border)]]="editing()"
       data-testid="widget-frame"
     >
       @if (editing()) {

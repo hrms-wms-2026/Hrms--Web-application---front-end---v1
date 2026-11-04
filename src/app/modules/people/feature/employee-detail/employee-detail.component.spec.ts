@@ -529,7 +529,7 @@ describe('EmployeeDetailComponent', () => {
     expect(primaryRow.classList.contains('flex-wrap')).toBe(true);
     expect(status.classList.contains('flex-shrink-0')).toBe(true);
     expect(status.classList.contains('border')).toBe(false);
-    expect(status.classList.contains('bg-rose-50')).toBe(true);
+    expect(status.classList.contains('bg-[var(--color-danger-subtle)]')).toBe(true);
     expect(status.textContent).not.toContain('Attendance today');
     expect(status.textContent).toContain('Still has not clocked in');
   });
