@@ -39,6 +39,27 @@ export class WeeklyCompletionChartComponent {
   readonly allocatedHours = input(0);
   /** Hides the hour labels above the bars where space is tight. */
   readonly compact = input(false);
+  /** A completion % line on a right 0-100% axis: hours completed so far in these weeks as a share of the allocation.
+   * The payload has completed hours only (no per-status hours), so the bars stay completed and this line is added. */
+  readonly percentLine = input(false);
+
+  /** Cumulative completed / allocated per week, in a 0-100 box; none without an allocation. */
+  protected readonly percentPoints = computed<{ x: number; y: number; percent: number }[]>(() => {
+    const allocation = this.allocatedHours();
+    const weeks = this.weeks();
+    if (!this.percentLine() || !(allocation > 0)) return [];
+    let done = 0;
+    return weeks.map((w, i) => {
+      done += w.completedHours;
+      const percent = Math.min(100, (done * 100) / allocation);
+      return { x: ((i + 0.5) * 100) / weeks.length, y: Math.round((100 - percent) * 10) / 10, percent };
+    });
+  });
+  protected readonly percentPolyline = computed(() =>
+    this.percentPoints()
+      .map((p) => `${p.x},${p.y}`)
+      .join(' ')
+  );
 
   protected readonly bars = computed<WeekBar[]>(() => {
     const weeks = this.weeks();
@@ -64,7 +85,10 @@ export class WeeklyCompletionChartComponent {
 
   protected readonly summary = computed(() => {
     const parts = this.bars().map((bar) => `${bar.label} ${bar.hoursText}`);
-    return `Completed task hours per week, last ${parts.length} weeks: ${parts.join(', ')}`;
+    const points = this.percentPoints();
+    const line =
+      points.length > 0 ? `. Completed in these weeks: ${formatPercent(points[points.length - 1].percent, 100)} of the allocation` : '';
+    return `Completed task hours per week, last ${parts.length} weeks: ${parts.join(', ')}${line}`;
   });
 
   protected readonly formatHourValue = formatHourValue;

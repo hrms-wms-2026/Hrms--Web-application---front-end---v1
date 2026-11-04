@@ -1,0 +1,32 @@
+<div
+  class="wtc-chart"
+  [class.wtc-chart--month]="monthly()"
+  role="img"
+  [attr.aria-label]="summary()"
+  data-testid="work-task-chart"
+>
+  @for (bar of bars(); track bar.date) {
+    <div
+      class="wtc-col"
+      [class.wtc-col--dim]="highlight() !== null && !bar.highlighted"
+      [title]="bar.tooltip"
+      data-testid="work-task-bar"
+    >
+      <div class="wtc-pair">
+        <span
+          class="wtc-bar"
+          data-segment="worked"
+          [style.height.%]="bar.worked"
+          [style.background]="colors.other"
+        ></span>
+        <span
+          class="wtc-bar"
+          data-segment="task"
+          [style.height.%]="bar.task"
+          [style.background]="colors.task"
+        ></span>
+      </div>
+      <span class="wtc-label">{{ bar.label }}</span>
+    </div>
+  }
+</div>

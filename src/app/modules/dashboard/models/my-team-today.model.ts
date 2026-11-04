@@ -17,6 +17,25 @@ export interface TeamTodayMember {
   attentionLabel: string | null;
   attentionSeverity: string | null;
   leave: TeamTodayLeave | null;
+  /** Working: the clock-in; on break: the open break's start; otherwise null. */
+  stateSince: string | null;
+  /** On break with a configured allowance only. */
+  breakRemainingMinutes: number | null;
+  /** Working or on break with a scheduled end only. */
+  shiftEndsAt: string | null;
+  /** Attendance minutes today (breaks excluded); 0 without a record. */
+  attendanceMinutes: number;
+  /** The legal entity's work window today in minutes; 0 on leave, null without working hours. */
+  expectedMinutes: number | null;
+  /** Today's breaks ordered by start; an open break has a null end. */
+  breaks: TeamTodayBreak[];
+  /** On leave (only where the viewer may see it): the work window the leave takes; else 0. */
+  leaveMinutes: number;
+}
+
+export interface TeamTodayBreak {
+  start: string;
+  end: string | null;
 }
 
 export interface TeamTodaySummary {
@@ -39,4 +58,22 @@ export interface TeamTodayResponse {
   summary: TeamTodaySummary;
   members: TeamTodayMember[];
   totalMembers: number;
+  /** When the server resolved the statuses. */
+  asOf: string;
+}
+
+/** One day of GET attendance/time-tracking/team/working-hours: attendance minutes, never task or planned time. */
+export interface TeamWorkingHoursDay {
+  date: string;
+  workedMinutes: number;
+  breakMinutes: number;
+  /** Approved leave, counted only for people the viewer may see leave for. */
+  onLeaveCount: number;
+  peopleWithRecord: number;
+}
+
+export interface TeamWorkingHoursResponse {
+  weekStart: string;
+  weekEnd: string;
+  days: TeamWorkingHoursDay[];
 }

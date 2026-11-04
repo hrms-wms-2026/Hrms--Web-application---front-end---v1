@@ -8,7 +8,7 @@ import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { LeaveRequestApiService } from '../../../leave/data-access/leave-request-api.service';
 import { LeaveRequestListItemResponse } from '../../../leave/models/leave-request.model';
-import { TodayAtAGlanceCardComponent } from './today-at-a-glance-card.component';
+import { TodayAtAGlanceCardComponent, isTickShown } from './today-at-a-glance-card.component';
 
 const baseToday: AttendanceTodayResponse = {
   employeeId: 'employee-1',
@@ -291,5 +291,25 @@ describe('TodayAtAGlanceCardComponent', () => {
     const { fixture } = await setup({ clockInAt: '2026-08-26T03:00:00Z' });
     expect(fixture.nativeElement.textContent).not.toContain('Today Plan');
     expect(fixture.nativeElement.querySelector('a')).toBeNull();
+  });
+});
+
+describe('isTickShown', () => {
+  const shown = (count: number, max: number) => Array.from({ length: count }, (_, i) => i).filter((i) => isTickShown(i, count, max));
+
+  it('labels every hour when they all fit', () => {
+    expect(shown(10, 10)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it('labels every 2nd hour of a long 9 AM - 11 PM day, keeping the last and no crowding before it', () => {
+    expect(shown(15, 10)).toEqual([0, 2, 4, 6, 8, 10, 12, 14]);
+  });
+
+  it('never puts a label one hour before the last when stepping by more than one', () => {
+    expect(shown(16, 10)).toEqual([0, 2, 4, 6, 8, 10, 12, 15]);
+  });
+
+  it('shows just first and last on a narrow card', () => {
+    expect(shown(15, 2)).toEqual([0, 14]);
   });
 });

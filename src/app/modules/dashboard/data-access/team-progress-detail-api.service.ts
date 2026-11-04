@@ -7,7 +7,9 @@ import {
   LedEmployeeQuery,
   LedPeriodProgress,
   LedWeeklyCompletion,
-  LedProgressPeriod
+  LedProgressPeriod,
+  LedTimePeriod,
+  LedTimeProgress
 } from '../models/team-progress-detail.model';
 
 /** Paged employee breakdown, period summary and weekly completion of the caller's led scope (Team Progress detail dialog). */
@@ -35,6 +37,11 @@ export class TeamProgressDetailApiService {
     filters: { projectId?: string; objectiveId?: string } = {}
   ): Observable<LedWeeklyCompletion> {
     return this.http.get<LedWeeklyCompletion>(`${this.basePath}/weekly-completion`, { params: toParams({ weeks, ...filters }) });
+  }
+
+  /** Planned vs worked minutes, unscheduled work and the workload ranking for this week or month. */
+  getTimeProgress(period: LedTimePeriod, filters: { projectId?: string; objectiveId?: string } = {}): Observable<LedTimeProgress> {
+    return this.http.get<LedTimeProgress>(`${this.basePath}/time`, { params: toParams({ period, ...filters }) });
   }
 }
 

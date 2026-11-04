@@ -58,4 +58,15 @@ describe('TeamProgressDetailApiService', () => {
     });
     expect(total).toBe(10);
   });
+
+  it('GETs the time progress for a period with only the set filters', () => {
+    service.getTimeProgress('month', { projectId: 'p1' }).subscribe();
+
+    const req = http.expectOne((r) => r.url === `${base}/time`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('period')).toBe('month');
+    expect(req.request.params.get('projectId')).toBe('p1');
+    expect(req.request.params.has('objectiveId')).toBe(false);
+    req.flush({});
+  });
 });

@@ -3,7 +3,7 @@
  * TEAM_PROGRESS_DONUT_PX): a bigger card shows more detail, never bigger graphics. */
 export type TeamProgressMode = 'mini' | 'xs' | 'small' | 'medium' | 'wide' | 'tall' | 'large' | 'maximum';
 
-import { DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
 
 /** The donut's diameter in every view that shows it (the shared dashboard size). */
 export const TEAM_PROGRESS_DONUT_PX = DASHBOARD_DONUT_PX;
@@ -107,6 +107,10 @@ const MINI_INLINE_LEGEND_WIDTH_PX = 320;
 /** Body width from which a 2-row card with the donut has room for the total beside it. */
 const MINI_FIGURE_WIDTH_PX = TEAM_PROGRESS_DONUT_PX + 12 + 80;
 const VIEW_DETAILS_PX = 36 + GAP_PX;
+/** xs: the four-status legend under the donut (four shared legend rows). */
+const XS_LEGEND_PX = GAP_PX + 4 * DASHBOARD_DONUT_LEGEND_ROW_PX;
+/** xs: the completion figure and its caption under the legend. */
+const XS_FIGURE_PX = GAP_PX + 50;
 
 /** The optional sections a view shows at a size. Everything here has a fixed height, so a larger
  * card adds sections and list rows instead of growing what is already there. */
@@ -114,9 +118,9 @@ export interface TeamProgressPlan {
   /** mini only: 'inline' on a card stretched sideways - the stacked status bar and its legend sit
    * beside the figure; 'none' stacks the bar under the figure with no legend. */
   miniLegend: 'none' | 'inline';
-  /** mini with the donut: whether the total fits beside it. */
+  /** mini with the donut: whether the total fits beside it. xs: whether the completion figure fits under the legend. */
   miniFigure: boolean;
-  /** xs only: the four-status legend under the completion figure. */
+  /** xs only: the four-status legend right under the donut (the same place every widget puts its legend). */
   legend: boolean;
   /** xs / small / medium: rows of extra metric tiles. */
   tileRows: number;
@@ -126,7 +130,28 @@ export interface TeamProgressPlan {
   listRows: number;
   /** Extra list rows to use when the weekly completion panel is not shown (failed / unavailable). */
   weeklyFallbackRows: number;
+  /** The planned-vs-worked band (tall / large / maximum, when the chart does not fit). */
+  timeBand: boolean;
+  /** The planned-vs-worked bucket chart (tall / large / maximum); it replaces the band. */
+  timeChart: boolean;
+  /** The unscheduled-work panel with its top 3 people (wide). */
+  timeCallout: boolean;
+  /** Workload ranking rows: 3 in medium, 5 in tall / large / maximum; 0 hides the panel. */
+  workloadRows: number;
 }
+
+/** Fixed heights of the planned-vs-worked sections (they match team-progress-time's CSS). */
+export const TEAM_PROGRESS_TIME_PX = {
+  band: 84,
+  /** The bucket chart: title row, plot and legend (2026-11-02 design match). */
+  chart: 180,
+  /** The unscheduled-work panel: a 18px title and three 20px people rows (6px padding); the most a 5-row wide card spares. */
+  callout: 84,
+  workloadRow: 40
+} as const;
+
+/** The list panels keep at least this many rows when a time section wants their space. */
+const MIN_LIST_ROWS_KEPT = 2;
 
 /** Fixed height of each view's always-shown content (body pixels, before optional sections). */
 function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
@@ -134,9 +159,9 @@ function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
     // The donut, or (stretched sideways) the completion figure beside the stacked status bar.
     case 'mini':
       return TEAM_PROGRESS_DONUT_PX;
-    // Donut, the big completion figure and its caption.
+    // The donut; its legend and the completion figure follow when they fit.
     case 'xs':
-      return TEAM_PROGRESS_DONUT_PX + 62;
+      return TEAM_PROGRESS_DONUT_PX;
     // Donut (with the completion line under it) beside the two-line legend.
     case 'small':
       return TEAM_PROGRESS_DONUT_PX + 32;
@@ -169,7 +194,10 @@ function rowsFor(space: number): number {
 
 /** The sections and list rows a view shows at a host size. */
 export function planTeamProgressLayout(mode: TeamProgressMode, width: number, height: number): TeamProgressPlan {
-  const plan: TeamProgressPlan = { miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0 };
+  const plan: TeamProgressPlan = {
+    miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
+    timeBand: false, timeChart: false, timeCallout: false, workloadRows: 0
+  };
   if (!(width > 0) || !(height > 0)) return plan;
   const bodyWidth = width - TEAM_PROGRESS_CARD_CHROME.width;
   let rest = height - TEAM_PROGRESS_CARD_CHROME.height - baseHeight(mode, bodyWidth);
@@ -181,11 +209,16 @@ export function planTeamProgressLayout(mode: TeamProgressMode, width: number, he
       else plan.miniFigure = bodyWidth >= MINI_FIGURE_WIDTH_PX;
       return plan;
     case 'xs':
-      if (rest >= 112) {
+      if (rest >= XS_LEGEND_PX) {
         plan.legend = true;
-        rest -= 112;
+        rest -= XS_LEGEND_PX;
       }
-      if (plan.legend && rest >= TILE_ROW_PX) {
+      // Under the legend when it fits; a card too short for the legend still shows the figure under the donut.
+      if (rest >= XS_FIGURE_PX) {
+        plan.miniFigure = true;
+        rest -= XS_FIGURE_PX;
+      }
+      if (plan.miniFigure && rest >= TILE_ROW_PX) {
         plan.tileRows = 1;
         rest -= TILE_ROW_PX;
       }
@@ -203,19 +236,54 @@ export function planTeamProgressLayout(mode: TeamProgressMode, width: number, he
         plan.tileRows = 1;
         rest -= TILE_ROW_PX;
       }
+      rest = reserveWorkload(plan, rest, 3);
       plan.listRows = rowsFor(rest - GAP_PX);
       plan.viewDetails = plan.listRows === 0 && plan.tileRows > 0 && rest >= VIEW_DETAILS_PX;
       return plan;
     case 'wide':
     case 'large':
     case 'maximum':
+      if (mode === 'wide') {
+        if (canReserve(rest, TEAM_PROGRESS_TIME_PX.callout)) {
+          plan.timeCallout = true;
+          rest -= GAP_PX + TEAM_PROGRESS_TIME_PX.callout;
+        }
+      } else {
+        rest = reserveBandAndWorkload(plan, rest);
+      }
       plan.listRows = rowsFor(rest - GAP_PX);
       plan.weeklyFallbackRows = mode === 'wide' ? 0 : rowsFor(rest + TEAM_PROGRESS_WEEKLY_PANEL_PX) - plan.listRows;
       return plan;
     case 'tall':
       plan.viewDetails = true;
+      rest = reserveBandAndWorkload(plan, rest);
       plan.listRows = rowsFor(rest - GAP_PX);
       plan.weeklyFallbackRows = rowsFor(rest + TEAM_PROGRESS_WEEKLY_PANEL_PX) - plan.listRows;
       return plan;
   }
+}
+
+/** A time section of `px` may take the space when it fits and the list panels keep MIN_LIST_ROWS_KEPT rows (or as many
+ * as they had, when that was fewer). */
+function canReserve(rest: number, px: number): boolean {
+  if (rest < GAP_PX + px) return false;
+  return rowsFor(rest - GAP_PX - px - GAP_PX) >= Math.min(MIN_LIST_ROWS_KEPT, rowsFor(rest - GAP_PX));
+}
+
+function reserveWorkload(plan: TeamProgressPlan, rest: number, rows: number): number {
+  const px = PANEL_CHROME_PX + rows * TEAM_PROGRESS_TIME_PX.workloadRow;
+  if (!canReserve(rest, px)) return rest;
+  plan.workloadRows = rows;
+  return rest - GAP_PX - px;
+}
+
+function reserveBandAndWorkload(plan: TeamProgressPlan, rest: number): number {
+  if (canReserve(rest, TEAM_PROGRESS_TIME_PX.chart)) {
+    plan.timeChart = true;
+    rest -= GAP_PX + TEAM_PROGRESS_TIME_PX.chart;
+  } else if (canReserve(rest, TEAM_PROGRESS_TIME_PX.band)) {
+    plan.timeBand = true;
+    rest -= GAP_PX + TEAM_PROGRESS_TIME_PX.band;
+  }
+  return reserveWorkload(plan, rest, 5);
 }

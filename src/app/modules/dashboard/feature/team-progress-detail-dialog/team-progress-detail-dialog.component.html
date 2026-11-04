@@ -88,6 +88,21 @@
                 </span>
               </div>
             }
+            <!-- Overdue is as of today whatever the period, and follows the project / module filter. -->
+            @if (overdueHoursView(); as od) {
+              <div class="tp-stat tp-stat--overdue" data-testid="tp-tile-overdue">
+                <div class="min-w-0">
+                  <div class="tp-stat__value">{{ formatHours(od.total) }} <small>h</small></div>
+                  <div class="tp-stat__label">
+                    Overdue
+                    <span class="tp-stat__count" data-testid="tp-tile-count-overdue">· {{ od.taskCount }} {{ od.taskCount === 1 ? 'task' : 'tasks' }}</span>
+                  </div>
+                </div>
+                <span class="tp-stat__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 7v6M12 16.5v.5" /></svg>
+                </span>
+              </div>
+            }
             <div class="tp-total" data-testid="tp-tile-total">
               <div class="tp-total__value" data-testid="tp-tile-allocated">{{ formatHours(ov.totalHours) }} <small>h</small></div>
               <div class="tp-total__label" data-testid="tp-total-label">{{ ov.totalLabel }}</div>
@@ -100,28 +115,30 @@
           <app-error-state message="Couldn't load this period's progress." [retryable]="true" retryLabel="Retry" (retry)="retryPeriod()" />
         } @else {
           <div class="tp-stats tp-stats--period" aria-busy="true" data-testid="tp-period-loading">
-            @for (i of [1, 2, 3, 4]; track i) {
+            @for (i of [1, 2, 3, 4, 5]; track i) {
               <div class="tp-stat tp-stat--skeleton"></div>
             }
           </div>
         }
 
-        <!-- Three panels: Status Distribution | Weekly completion | Employee Breakdown -->
+        <!-- Panels: Status Distribution | Weekly completion | planned vs worked | projects | Team members (full width) -->
         <div class="tp-panels">
           <section class="tp-panel" aria-labelledby="tp-dist-heading" data-testid="tp-distribution">
             <h3 id="tp-dist-heading" class="tp-panel__title">Status Distribution</h3>
             @if (overview(); as ov) {
               <div class="tp-dist">
                 <div class="tp-donut">
-                  <svg viewBox="0 0 42 42" role="img" [attr.aria-label]="ov.chartLabel" data-testid="tp-donut">
+                  <svg viewBox="0 0 42 42" role="img" [attr.aria-label]="donutLabel()" data-testid="tp-donut">
                     <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--color-surface-secondary)" stroke-width="5"></circle>
-                    @for (slice of donutSlices(); track slice.meta.key) {
-                      <circle
-                        cx="21" cy="21" r="15.915" fill="none" stroke-width="5"
-                        [attr.stroke]="slice.meta.color"
-                        [attr.stroke-dasharray]="slice.dash"
-                        [attr.stroke-dashoffset]="slice.offset"
-                      ></circle>
+                    @for (part of donutParts(); track part.key) {
+                      @if (part.hours > 0) {
+                        <circle
+                          cx="21" cy="21" r="15.915" fill="none" stroke-width="5"
+                          [attr.stroke]="part.color"
+                          [attr.stroke-dasharray]="part.dash"
+                          [attr.stroke-dashoffset]="part.offset"
+                        ></circle>
+                      }
                     }
                   </svg>
                   <div class="tp-donut__center" aria-hidden="true">
@@ -130,17 +147,20 @@
                   </div>
                 </div>
                 <ul class="tp-legend" aria-hidden="true">
-                  @for (tile of ov.tiles; track tile.meta.key) {
-                    <li>
-                      <span class="tp-dot" [class]="tile.meta.bgClass"></span>
-                      <span class="tp-legend__label">{{ tile.meta.label }}</span>
-                      <span class="tp-legend__hours">{{ formatHours(tile.hours) }} h</span>
-                      <span class="tp-legend__pct">({{ tile.percent }})</span>
+                  @for (part of donutParts(); track part.key) {
+                    <li data-testid="tp-legend-row">
+                      <span class="tp-dot" [class]="part.bgClass"></span>
+                      <span class="tp-legend__label">{{ part.label }}</span>
+                      <span class="tp-legend__hours">{{ formatHours(part.hours) }} h</span>
+                      <span class="tp-legend__pct">({{ part.percent }})</span>
                     </li>
                   }
                 </ul>
               </div>
               <ul class="tp-notes" data-testid="tp-overview-notes">
+                @if (donutHasOverdue()) {
+                  <li data-testid="tp-legend-note">In progress and Not started show the hours without the overdue tasks.</li>
+                }
                 @if (ov.overTaskedHours > 0) {
                   <li data-testid="tp-note-overtasked">Task estimates exceed the allocation by {{ formatHours(ov.overTaskedHours) }} h (over-tasked).</li>
                 }
@@ -169,7 +189,7 @@
                 <button type="button" class="tp-text-button" data-testid="tp-weekly-retry" (click)="retryWeekly()">Retry</button>
               </div>
             } @else if (weekly().status === 'ready' && weekly().data; as wc) {
-              <app-weekly-completion-chart class="tp-weekly__chart" data-testid="tp-weekly-chart" [weeks]="wc.weeks" [allocatedHours]="wc.allocatedHours" />
+              <app-weekly-completion-chart class="tp-weekly__chart" data-testid="tp-weekly-chart" [weeks]="wc.weeks" [allocatedHours]="wc.allocatedHours" [percentLine]="true" />
               @if (wc.undatedCompletedHours > 0) {
                 <p class="tp-footnote" data-testid="tp-weekly-undated">
                   Plus {{ formatHours(wc.undatedCompletedHours) }} h ({{ wc.undatedCompletedTaskCount }}
@@ -181,9 +201,36 @@
             }
           </section>
 
+          <app-team-progress-time-detail [time]="time().data" [status]="timeStatus()" (retried)="retryTime()" />
+
+          @if (!isPeriod() && projectBreakdown().length > 0) {
+            <section class="tp-panel tp-panel--projects" aria-labelledby="tp-projects-heading" data-testid="tp-projects">
+              <h3 id="tp-projects-heading" class="tp-panel__title">Project breakdown</h3>
+              <div class="tp-project-chart" role="img" [attr.aria-label]="projectChartLabel()">
+                @for (p of projectBreakdown(); track p.id) {
+                  <div class="tp-project-row" data-testid="tp-project-row" [title]="p.name + ': ' + formatHours(p.completed) + ' h of ' + formatHours(p.allocated) + ' h'">
+                    <p class="tp-project-head">
+                      <span class="tp-project-name">{{ p.name }}</span>
+                      <span class="tp-project-figures">{{ formatHours(p.completed) }} h / {{ formatHours(p.allocated) }} h · {{ p.percent }}</span>
+                    </p>
+                    <span class="tp-project-track" aria-hidden="true">
+                      <span class="tp-project-allocated" data-testid="tp-project-allocated" [style.width.%]="p.allocatedShare"></span>
+                      <span class="tp-project-completed" data-testid="tp-project-completed" [style.width.%]="p.completedShare"></span>
+                    </span>
+                  </div>
+                }
+              </div>
+              <ul class="tp-project-legend" aria-hidden="true">
+                <li><span class="tp-project-key tp-project-key--allocated"></span>Allocated</li>
+                <li><span class="tp-project-key tp-project-key--completed"></span>Completed</li>
+              </ul>
+            </section>
+          }
+
           <section class="tp-panel tp-panel--employees" aria-labelledby="tp-ov-emp-heading" data-testid="tp-ov-employees">
             <div class="tp-panel__head">
-              <h3 id="tp-ov-emp-heading" class="tp-panel__title">Employee Breakdown</h3>
+              <h3 id="tp-ov-emp-heading" class="tp-panel__title">Team members</h3>
+              <span class="tp-members-tools">
               <label class="tp-search">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
                 <input
@@ -195,7 +242,14 @@
                   (input)="onOverviewEmployeeSearch($any($event.target).value)"
                 />
               </label>
+              @if (time().data) {
+                <button type="button" class="tp-text-button" data-testid="tp-members-export" (click)="exportMembers()">Export CSV</button>
+              }
+              </span>
             </div>
+            <p class="tp-muted tp-members-note">
+              Estimated task hours by status, then planned and worked time ({{ timePeriodLabel().toLowerCase() }}). More workload is not better performance.
+            </p>
             @if (overviewEmployees().status === 'error') {
               <div class="tp-inline-error" role="alert">
                 Couldn't load employees.
@@ -204,14 +258,23 @@
             } @else {
               <div class="tp-mini-table-wrap" [attr.aria-busy]="overviewEmployees().status === 'loading'">
                 <table class="tp-mini-table">
-                  <caption class="sr-only">Top employees by estimated hours</caption>
+                  <caption class="sr-only">Team members: estimated task hours and planned / worked time</caption>
                   <thead>
+                    <tr class="tp-members-groups">
+                      <td></td>
+                      <th scope="colgroup" colspan="4">Estimated task hours</th>
+                      <th scope="colgroup" colspan="4" class="tp-members-time">{{ timePeriodLabel() }}</th>
+                    </tr>
                     <tr>
-                      <th scope="col">Employee</th>
+                      <th scope="col">Person</th>
                       <th scope="col">Completed</th>
                       <th scope="col">In progress</th>
                       <th scope="col">Not started</th>
                       <th scope="col">Total</th>
+                      <th scope="col" class="tp-members-time">Planned</th>
+                      <th scope="col">Worked</th>
+                      <th scope="col">Unscheduled</th>
+                      <th scope="col">Capacity used</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -228,12 +291,28 @@
                           <td>{{ formatHours(row.inProgressHours) }} h</td>
                           <td>{{ formatHours(row.notStartedHours) }} h</td>
                           <td class="font-semibold">{{ formatHours(row.totalHours) }} h</td>
+                          @if (memberTime().get(row.employeeId); as w) {
+                            <td class="tp-members-time">{{ plannerEnabled() ? timeHours(w.plannedMinutes) : '—' }}</td>
+                            <td>{{ timeHours(w.clockedMinutes) }}</td>
+                            <td>{{ plannerEnabled() ? timeHours(w.unscheduledMinutes) : '—' }}</td>
+                            <td
+                              [class.tp-over]="w.utilizationPercent !== null && w.utilizationPercent > 100"
+                              [attr.title]="w.expectedMinutes === null ? 'No working hours set for their legal entity' : 'Planned of ' + timeHours(w.expectedMinutes) + ' expected'"
+                            >
+                              {{ w.utilizationPercent === null ? '—' : w.utilizationPercent + '%' }}
+                            </td>
+                          } @else {
+                            <td class="tp-members-time" [attr.title]="time().status === 'ready' ? 'No planned or worked time in this period' : null">—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                          }
                         </tr>
                       } @empty {
-                        <tr><td colspan="5" class="tp-mini-table__empty">No employees match.</td></tr>
+                        <tr><td colspan="9" class="tp-mini-table__empty">No employees match.</td></tr>
                       }
                     } @else {
-                      <tr><td colspan="5" class="tp-mini-table__empty">Loading employees...</td></tr>
+                      <tr><td colspan="9" class="tp-mini-table__empty">Loading employees...</td></tr>
                     }
                   </tbody>
                 </table>
@@ -243,7 +322,7 @@
                   <span class="tp-muted" title="A task assigned to several people counts its full estimate for each of them, so employee totals can add up to more than the team total." data-testid="tp-ov-shared-note">
                     Shared tasks count for each assignee
                   </span>
-                  <nav class="tp-mini-pager" aria-label="Employee breakdown pages" data-testid="tp-ov-employee-pager">
+                  <nav class="tp-mini-pager" aria-label="Team members pages" data-testid="tp-ov-employee-pager">
                     <span data-testid="tp-ov-employee-range">{{ rangeLabel(page) }}</span>
                     <button type="button" aria-label="Previous employees" data-testid="tp-ov-employee-prev" [disabled]="!page.hasPrevious || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber - 1)">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
@@ -271,18 +350,76 @@
                 }
               </span>
             </h3>
-            <ul class="tp-overdue-list" data-testid="tp-overdue-list">
-              @for (task of overdueTasks(); track task.taskId) {
-                <li>
-                  <button type="button" class="tp-overdue" [attr.data-testid]="'tp-overdue-' + task.taskId" (click)="openTask(task)">
-                    <span class="tp-short-id">{{ task.shortId }}</span>
-                    <span class="min-w-0 flex-1 truncate">{{ task.title }}</span>
-                    <span class="hidden max-w-[10rem] truncate text-xs text-[var(--color-text-secondary)] sm:inline">{{ assigneeNames(task.assignees) || 'Unassigned' }}</span>
-                    <span class="tp-overdue__days">{{ task.daysOverdue }}d · {{ task.dueDate | date: 'd MMM y' }}</span>
-                  </button>
-                </li>
-              }
-            </ul>
+            @if (overdueHoursView(); as ov) {
+              <p class="tp-overdue-total" data-testid="tp-overdue-hours">
+                <strong>{{ formatHours(ov.total) }} h</strong> overdue{{ ov.listedOnly ? ' (listed tasks)' : '' }}
+                @if (ov.unestimated > 0) {
+                  <span class="tp-muted">· {{ ov.unestimated }} {{ ov.unestimated === 1 ? 'task' : 'tasks' }} without an estimate</span>
+                }
+              </p>
+              <div class="tp-overdue-body">
+                <div class="tp-overdue-chart">
+                  <div class="tp-overdue-pie" data-testid="tp-overdue-pie" [style.width.px]="overduePiePx" [style.height.px]="overduePiePx">
+                    <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" aria-label="Overdue hours by project">
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+                      @for (arc of ov.arcs; track arc.key) {
+                        <circle
+                          cx="21"
+                          cy="21"
+                          r="15.9155"
+                          fill="none"
+                          stroke-width="6"
+                          [attr.stroke]="arc.color"
+                          [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+                          [attr.stroke-dashoffset]="arc.offset"
+                        />
+                      }
+                    </svg>
+                    <p class="tp-overdue-pie__center"><strong>{{ formatHours(ov.total) }} h</strong><span>overdue</span></p>
+                  </div>
+                  <ul class="tp-overdue-legend" aria-label="Overdue hours by project">
+                    @for (s of ov.slices; track s.projectId) {
+                      <li data-testid="tp-overdue-slice">
+                        <span class="tp-overdue-dot" [style.background]="s.color"></span>
+                        <span class="tp-overdue-legend__name">{{ s.name }}</span>
+                        <span class="tp-overdue-legend__hours">{{ formatHours(s.hours) }} h</span>
+                        <span class="tp-muted">{{ s.percent }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+                <div class="tp-overdue-table-wrap">
+                  <table class="tp-mini-table tp-overdue-table" data-testid="tp-overdue-list">
+                    <caption class="sr-only">Overdue tasks with their allocated hours</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Task</th>
+                        <th scope="col">Assignee</th>
+                        <th scope="col">Allocated</th>
+                        <th scope="col">Overdue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (task of overdueTasks(); track task.taskId; let i = $index) {
+                        <tr>
+                          <td>{{ i + 1 }}</td>
+                          <td>
+                            <button type="button" class="tp-overdue-task" [attr.data-testid]="'tp-overdue-' + task.taskId" (click)="openTask(task)">
+                              <span class="tp-short-id">{{ task.shortId }}</span>
+                              <span class="truncate">{{ task.title }}</span>
+                            </button>
+                          </td>
+                          <td class="truncate">{{ assigneeNames(task.assignees) || 'Unassigned' }}</td>
+                          <td data-testid="tp-overdue-task-hours">{{ overdueTaskHours(task) }}</td>
+                          <td class="tp-overdue__days">{{ task.daysOverdue }}d · {{ task.dueDate | date: 'd MMM y' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
           </section>
         }
       </div>

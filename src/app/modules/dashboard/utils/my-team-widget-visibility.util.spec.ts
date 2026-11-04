@@ -1,11 +1,11 @@
 import { MyTeamCapabilitiesResponse } from '../models/my-team-capabilities.model';
-import { actionCenterRailVisible } from './my-team-widget-visibility.util';
+import { actionCenterRailVisible, teamScheduleVisible } from './my-team-widget-visibility.util';
 
 function capabilities(overrides: Partial<MyTeamCapabilitiesResponse> = {}): MyTeamCapabilitiesResponse {
   return {
     isAvailable: true, canViewPeopleStatus: false, canReviewPeopleApprovals: false,
     canReviewExceptions: false, hasWorkApprovals: false, leadsWork: false,
-    canViewLiveActivity: false, legalEntityId: 'le-1',
+    canViewLiveActivity: false, hasReports: false, legalEntityId: 'le-1',
     ...overrides
   };
 }
@@ -29,5 +29,14 @@ describe('actionCenterRailVisible', () => {
 
   it('is true when hasWorkApprovals is set', () => {
     expect(actionCenterRailVisible(capabilities({ hasWorkApprovals: true }))).toBe(true);
+  });
+});
+
+describe('teamScheduleVisible', () => {
+  it('needs My Team to be available and at least one report', () => {
+    expect(teamScheduleVisible(null)).toBe(false);
+    expect(teamScheduleVisible(capabilities({ hasReports: true }))).toBe(true);
+    expect(teamScheduleVisible(capabilities({ hasReports: false, canViewPeopleStatus: true, leadsWork: true }))).toBe(false);
+    expect(teamScheduleVisible(capabilities({ isAvailable: false, hasReports: true }))).toBe(false);
   });
 });

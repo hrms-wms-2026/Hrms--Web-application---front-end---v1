@@ -1,0 +1,64 @@
+:host {
+  position: relative;
+  min-height: 0;
+}
+
+.wtc-chart {
+  display: flex;
+  height: 100%;
+  min-height: 4.5rem;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.wtc-chart--month {
+  gap: 2px;
+}
+
+.wtc-col {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.wtc-col--dim {
+  opacity: 0.45;
+}
+
+.wtc-pair {
+  display: flex;
+  width: 100%;
+  max-width: 2.5rem;
+  min-height: 0;
+  flex: 1 1 0;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 0.375rem 0.375rem 0.125rem 0.125rem;
+  background: rgb(248 250 252);
+}
+
+.wtc-bar {
+  display: block;
+  min-height: 0;
+  flex: 1 1 0;
+  max-width: 0.875rem;
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.wtc-label {
+  min-height: 0.75rem;
+  overflow: hidden;
+  font-size: 0.625rem;
+  line-height: 1;
+  color: rgb(100 116 139);
+  white-space: nowrap;
+}
+
+/* A month's day numbers: every other one stays, so 31 narrow columns stay readable. */
+.wtc-chart--month .wtc-col:nth-child(even) .wtc-label {
+  visibility: hidden;
+}

@@ -42,7 +42,7 @@
     <ng-template #donutTpl let-completionCenter="completionCenter">
       <div class="tp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="team-progress-donut">
         <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
-          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="7" />
+          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
           @for (seg of donutSegments(); track seg.key) {
             <circle
               data-testid="donut-segment"
@@ -50,7 +50,7 @@
               cy="21"
               r="15.9155"
               fill="none"
-              stroke-width="7"
+              stroke-width="6"
               [attr.stroke]="seg.color"
               [attr.stroke-dasharray]="seg.length + ' ' + (100 - seg.length)"
               [attr.stroke-dashoffset]="seg.offset"
@@ -195,7 +195,8 @@
     <ng-template #overdueTpl>
       <section class="tp-panel" aria-label="Overdue tasks" data-testid="team-progress-overdue">
         <h3 class="team-progress-heading">
-          <span class="truncate">Overdue tasks ({{ data.overdueTotal }})</span>
+          <span class="truncate">Overdue tasks ({{ data.overdueTotal }})
+            · <span class="text-rose-600 tabular-nums" data-testid="team-progress-overdue-hours">{{ formatHourValue(data.overdueHours) }} h</span></span>
           <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenOverdueCount() }" />
         </h3>
         @if (visibleOverdue().length === 0) {
@@ -214,6 +215,7 @@
                     <span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-800" [title]="task.title">
                       @if (task.shortId) { <span class="mr-1 text-slate-400">{{ task.shortId }}</span> }{{ task.title }}
                     </span>
+                    <span class="shrink-0 text-xs text-slate-500 tabular-nums" data-testid="team-progress-overdue-task-hours">{{ task.estimatedHours === null ? '—' : formatHourValue(task.estimatedHours) + ' h' }}</span>
                     <span class="shrink-0 text-xs font-semibold text-rose-600 tabular-nums">{{ task.daysOverdue }}d overdue</span>
                   </span>
                   <span class="block truncate text-xs text-slate-500">{{ assigneeNames(task) || 'Unassigned' }}</span>
@@ -290,6 +292,7 @@
               class="tp-weekly-chart"
               [weeks]="weekly.weeks"
               [allocatedHours]="weekly.allocatedHours"
+              [percentLine]="true"
               [compact]="mode() === 'tall' && widthStep() < 500"
             />
             @if (undatedText()) {
@@ -303,6 +306,20 @@
             </div>
           }
         </section>
+      }
+    </ng-template>
+
+    <ng-template #timeTpl>
+      @if (plan().timeBand || plan().timeChart || plan().timeCallout || plan().workloadRows > 0) {
+        <app-team-progress-time
+          data-testid="team-progress-time"
+          [time]="store.time()"
+          [error]="store.timeError()"
+          [band]="plan().timeBand"
+          [chart]="plan().timeChart"
+          [callout]="plan().timeCallout"
+          [workloadRows]="plan().workloadRows"
+        />
       }
     </ng-template>
 
@@ -383,16 +400,19 @@
           }
 
           @case ('xs') {
-            <!-- 3x3: donut over the completion figure; taller cards add the legend, tiles and View details. -->
+            <!-- Narrow cards: the donut, its legend right under it (like every widget), then the completion
+            figure; taller cards add tiles and View details. -->
             <div class="tp-xs">
               <ng-container *ngTemplateOutlet="donutTpl" />
+            </div>
+            @if (plan().legend) {
+              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'list' }" />
+            }
+            @if (plan().miniFigure) {
               <p class="tp-completion">
                 <span class="tp-completion-big text-emerald-600 tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
                 <span class="tp-completion-caption">Completed</span>
               </p>
-            </div>
-            @if (plan().legend) {
-              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'list' }" />
             }
             @if (visibleExtraTiles().length > 0) {
               <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: 2 }" />
@@ -428,9 +448,12 @@
               <ul class="tp-status-tiles" [class.tp-status-tiles--3]="statusRows().length === 3" data-testid="team-progress-tiles">
                 @for (row of statusRows(); track row.key) {
                   <li class="tp-status-tile" [class]="'tone-' + row.tone">
-                    <span class="tp-status-tile-hours tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
-                    <span class="truncate text-xs text-slate-500" [title]="row.label">{{ row.label }}</span>
-                    <span class="tp-status-tile-pct tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId + '-percent'">{{ row.percentText }}</span>
+                    <span class="tp-status-tile-text">
+                      <span class="tp-status-tile-hours tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
+                      <span class="truncate text-xs text-slate-500" [title]="row.label">{{ row.label }}</span>
+                      <span class="tp-status-tile-pct tp-tone-text" [attr.data-testid]="'team-progress-legend-' + row.testId + '-percent'">{{ row.percentText }}</span>
+                    </span>
+                    <span class="tp-status-tile-icon tp-tone-text" aria-hidden="true"><app-icon [name]="statusIcon(row.key)" /></span>
                   </li>
                 }
               </ul>
@@ -439,6 +462,7 @@
             @if (visibleExtraTiles().length > 0) {
               <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: visibleExtraTiles().length }" />
             }
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <ng-container *ngTemplateOutlet="listPairTpl" />
             } @else if (plan().viewDetails) {
@@ -453,6 +477,7 @@
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
             <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: wideTiles(), columns: wideTiles().length }" />
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <ng-container *ngTemplateOutlet="listPairTpl" />
             }
@@ -470,6 +495,7 @@
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
             <ng-container *ngTemplateOutlet="weeklyTpl" />
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <div class="tp-panels tp-panels--grow">
                 <ng-container *ngTemplateOutlet="modulesTpl" />
@@ -493,6 +519,7 @@
                 }
               </div>
             }
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <ng-container *ngTemplateOutlet="listPairTpl" />
             }
@@ -514,6 +541,7 @@
                 }
               </div>
             }
+            <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <!-- Overdue tasks only take a column when there are some. -->
               <div class="tp-panels tp-panels--grow" [style.grid-template-columns]="'repeat(' + maximumPanelCount() + ', minmax(0, 1fr))'">

@@ -1,0 +1,307 @@
+<!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS. -->
+<app-modal
+  [open]="open()"
+  title="Work vs task hours"
+  size="2xl"
+  panelClass="team-work-task-detail"
+  (closed)="close()"
+>
+  <div class="wtd-head">
+    <div class="wtd-head__row">
+      <div class="wtd-head__title">
+        <h2>Work vs task hours</h2>
+        <p>
+          Working time (clocked time less breaks) against the estimated hours of the tasks your team
+          completed
+        </p>
+      </div>
+      <div class="wtd-head__controls" data-testid="wtd-controls">
+        @if (store.data(); as data) {
+          <app-select
+            class="wtd-select wtd-select--period"
+            ariaLabel="Period"
+            icon="calendar"
+            size="sm"
+            [searchable]="false"
+            [options]="periodOptions"
+            [value]="data.period"
+            (valueChange)="onPeriodSelect($event)"
+          />
+        }
+        <button
+          type="button"
+          class="wtd-close"
+          aria-label="Close"
+          data-testid="wtd-close"
+          (click)="close()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (store.data(); as data) {
+    <div class="wtd">
+      <div class="wtd-range" data-testid="wtd-range-row">
+        <button
+          type="button"
+          class="wtd-nav"
+          aria-label="Previous period"
+          data-testid="wtd-prev"
+          (click)="shift(-1)"
+        >
+          ‹
+        </button>
+        <span class="wtd-range-label" data-testid="wtd-range">{{ rangeLabel() }}</span>
+        <button
+          type="button"
+          class="wtd-nav"
+          aria-label="Next period"
+          data-testid="wtd-next"
+          [disabled]="data.isProvisional"
+          (click)="shift(1)"
+        >
+          ›
+        </button>
+        @if (data.isProvisional) {
+          <span class="wtd-muted">In progress</span>
+        }
+      </div>
+
+      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Work vs task totals" />
+
+      <div class="wtd-charts">
+        <section class="wtd-panel">
+          <p class="wtd-title">
+            {{ chartTitle() }}
+            @if (delta(); as d) {
+              <span class="wtd-delta" [class.wtd-delta--down]="d.down">{{ d.text }}</span>
+            }
+          </p>
+          <app-work-task-day-chart
+            class="wtd-chart"
+            [points]="data.trend"
+            [highlight]="data.period === 'day' ? data.rangeStart : null"
+          />
+          <p class="wtd-note">
+            <span class="wtd-dot" [style.background]="colors.other"></span> Worked &nbsp;<span
+              class="wtd-dot"
+              [style.background]="colors.task"
+            ></span>
+            Task hours completed
+          </p>
+        </section>
+        <section class="wtd-panel wtd-distribution" data-testid="wtd-distribution">
+          <p class="wtd-title">Where the time went</p>
+          <div class="wtd-distribution-body">
+            <svg
+              viewBox="0 0 42 42"
+              class="wtd-donut"
+              role="img"
+              aria-label="Time split for the period"
+            >
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+              @for (arc of arcs(); track arc.key) {
+                <circle
+                  cx="21"
+                  cy="21"
+                  r="15.9155"
+                  fill="none"
+                  stroke-width="6"
+                  [attr.stroke]="arc.color"
+                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
+                  [attr.stroke-dashoffset]="arc.offset"
+                />
+              }
+            </svg>
+            <ul class="wtd-legend">
+              @for (row of slices(); track row.key) {
+                <li>
+                  <span class="wtd-dot" [style.background]="row.color"></span>
+                  <span class="wtd-legend-label">{{ row.label }}</span>
+                  <span class="wtd-legend-count"
+                    >{{ hours(row.minutes) }} · {{ row.percent }}%</span
+                  >
+                </li>
+              }
+            </ul>
+          </div>
+          <p class="wtd-note" data-testid="wtd-explanation">{{ explanation() }}</p>
+        </section>
+      </div>
+
+      <section class="wtd-panel">
+        <div class="wtd-table-head">
+          <p class="wtd-title">
+            Team members <span class="wtd-muted">· highest task share first</span>
+          </p>
+          <div class="wtd-table-actions">
+            <app-input
+              class="wtd-search"
+              placeholder="Search employee…"
+              [value]="search()"
+              (valueChange)="onSearch($event)"
+            />
+            <button type="button" class="wtd-button" data-testid="wtd-export" (click)="exportCsv()">
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="wtd-scroll">
+          <table class="wtd-table">
+            <thead>
+              <tr>
+                <th
+                  class="wtd-sticky wtd-sticky--name"
+                  scope="col"
+                  [attr.aria-sort]="ariaSort('name')"
+                >
+                  <button type="button" class="wtd-sort" (click)="sortBy('rank')">
+                    <span class="wtd-rank-head">#</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="wtd-sort"
+                    data-testid="wtd-sort-name"
+                    (click)="sortBy('name')"
+                  >
+                    Employee
+                  </button>
+                </th>
+                <th class="wtd-num" scope="col" [attr.aria-sort]="ariaSort('worked')">
+                  <button
+                    type="button"
+                    class="wtd-sort"
+                    data-testid="wtd-sort-worked"
+                    (click)="sortBy('worked')"
+                  >
+                    Worked
+                  </button>
+                </th>
+                <th class="wtd-num" scope="col" [attr.aria-sort]="ariaSort('break')">
+                  <button type="button" class="wtd-sort" (click)="sortBy('break')">Break</button>
+                </th>
+                <th class="wtd-num" scope="col" [attr.aria-sort]="ariaSort('task')">
+                  <button
+                    type="button"
+                    class="wtd-sort"
+                    data-testid="wtd-sort-task"
+                    (click)="sortBy('task')"
+                  >
+                    Task hours
+                  </button>
+                </th>
+                <th
+                  class="wtd-num"
+                  scope="col"
+                  [attr.aria-sort]="ariaSort('gap')"
+                  title="Worked minus task hours"
+                >
+                  <button type="button" class="wtd-sort" (click)="sortBy('gap')">
+                    Not on tasks
+                  </button>
+                </th>
+                <th class="wtd-num" scope="col" [attr.aria-sort]="ariaSort('completed')">
+                  <button type="button" class="wtd-sort" (click)="sortBy('completed')">
+                    Tasks done
+                  </button>
+                </th>
+                <th class="wtd-num" scope="col" [attr.aria-sort]="ariaSort('rank')">
+                  <button type="button" class="wtd-sort" (click)="sortBy('rank')">
+                    Task share
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r.employeeId) {
+                <tr data-testid="wtd-row">
+                  <th class="wtd-sticky wtd-sticky--name" scope="row">
+                    <span class="wtd-person">
+                      <span
+                        class="wtd-rank"
+                        [class.wtd-rank--top]="r.rank !== null && r.rank <= 3"
+                        data-testid="wtd-rank"
+                        >{{ r.rank ?? '—' }}</span
+                      >
+                      <app-avatar
+                        size="xs"
+                        [avatarUrl]="avatarUrl(r.avatarFileId)"
+                        [userName]="r.name"
+                      />
+                      <span class="wtd-person-text">
+                        <span class="wtd-name">{{ r.name }}</span>
+                        @if (r.department) {
+                          <span class="wtd-dept">{{ r.department }}</span>
+                        }
+                      </span>
+                    </span>
+                  </th>
+                  <td class="wtd-num">{{ hours(r.workedMinutes) }}</td>
+                  <td class="wtd-num">{{ hours(r.breakMinutes) }}</td>
+                  <td class="wtd-num">
+                    {{ hours(r.taskMinutes) }}
+                    @if (r.unestimatedTasks > 0) {
+                      <span
+                        class="wtd-muted"
+                        [title]="r.unestimatedTasks + ' completed without an estimate'"
+                        >+{{ r.unestimatedTasks }}?</span
+                      >
+                    }
+                  </td>
+                  <td class="wtd-num" [class.wtd-gap--over]="gap(r) < 0">
+                    {{ gap(r) < 0 ? '+' + hours(-gap(r)) + ' over' : hours(gap(r)) }}
+                  </td>
+                  <td class="wtd-num">{{ r.completedTasks }}</td>
+                  <td class="wtd-num">
+                    <span class="wtd-util">
+                      <span class="wtd-util-bar" aria-hidden="true"
+                        ><span [style.width.%]="barWidth(r.utilization)"></span
+                      ></span>
+                      <span class="wtd-rate" data-testid="wtd-utilization">{{
+                        util(r.utilization)
+                      }}</span>
+                    </span>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="wtd-muted wtd-pad" colspan="7">No employees match.</td>
+                </tr>
+              }
+            </tbody>
+            @if (rows().length > 0) {
+              <tfoot class="wtd-tfoot">
+                <tr>
+                  <th class="wtd-sticky wtd-sticky--name" scope="row">Team</th>
+                  <td class="wtd-num">{{ hours(data.totals.workedMinutes) }}</td>
+                  <td class="wtd-num">{{ hours(data.totals.breakMinutes) }}</td>
+                  <td class="wtd-num">{{ hours(data.totals.taskMinutes) }}</td>
+                  <td class="wtd-num">
+                    {{
+                      gap(data.totals) < 0
+                        ? '+' + hours(-gap(data.totals)) + ' over'
+                        : hours(gap(data.totals))
+                    }}
+                  </td>
+                  <td class="wtd-num">{{ data.totals.completedTasks }}</td>
+                  <td class="wtd-num">
+                    <span class="wtd-rate">{{ util(data.totals.utilization) }}</span>
+                  </td>
+                </tr>
+              </tfoot>
+            }
+          </table>
+        </div>
+        <p class="wtd-note">
+          Task share = task hours ÷ working time. Task hours are the estimates of top-level tasks
+          marked complete in the period (subtasks roll up into their parent); a task without an
+          estimate counts 0h. Over 100% means more estimated work was finished than time was
+          clocked.
+        </p>
+      </section>
+    </div>
+  }
+</app-modal>

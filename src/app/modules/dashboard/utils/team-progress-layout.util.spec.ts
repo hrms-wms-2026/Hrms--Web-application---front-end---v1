@@ -185,7 +185,8 @@ describe('team-progress-layout.util', () => {
 
     it('shows nothing optional for a zero size', () => {
       expect(planTeamProgressLayout('tall', 0, 0)).toEqual({
-        miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0
+        miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
+        timeBand: false, timeChart: false, timeCallout: false, workloadRows: 0
       });
     });
 
@@ -231,7 +232,9 @@ describe('team-progress-layout.util', () => {
       expect(plan(4, 8).listRows).toBeGreaterThan(plan(4, 6).listRows);
       expect(plan(8, 6).listRows).toBeGreaterThanOrEqual(1);
       expect(plan(8, 8).listRows).toBeGreaterThan(plan(8, 6).listRows);
-      expect(plan(12, 8).listRows).toBeGreaterThanOrEqual(8);
+      // The planned-vs-worked bucket chart takes about two rows of a 12x8 card (2026-11-02 design match).
+      expect(plan(12, 8)).toMatchObject({ timeChart: true, timeBand: false });
+      expect(plan(12, 8).listRows).toBeGreaterThanOrEqual(4);
       for (const [c, r] of [[4, 6], [8, 6], [12, 8]]) {
         expect(plan(c, r).weeklyFallbackRows).toBeGreaterThanOrEqual(3);
       }
@@ -240,5 +243,54 @@ describe('team-progress-layout.util', () => {
     it('caps the list rows', () => {
       expect(planTeamProgressLayout('maximum', 1300, 10_000).listRows).toBe(20);
     });
+  });
+});
+
+describe('team progress layout: planned-vs-worked sections (coverage audit)', () => {
+  const rows = (n: number) => n * 96 + (n - 1) * 12;
+
+  it('medium adds the top-3 workload only when the lists keep two rows', () => {
+    expect(planTeamProgressLayout('medium', 700, rows(4)).workloadRows).toBe(0);
+    const tall = planTeamProgressLayout('medium', 700, rows(8));
+    expect(tall.workloadRows).toBe(3);
+    expect(tall.listRows).toBeGreaterThanOrEqual(2);
+  });
+
+  it('wide adds the unscheduled panel, never the band, chart or workload', () => {
+    expect(planTeamProgressLayout('wide', 900, rows(4)).timeCallout).toBe(false);
+    // The tallest wide card (5 rows) has room for it.
+    const plan = planTeamProgressLayout('wide', 900, rows(5));
+    expect(plan).toMatchObject({ timeCallout: true, timeBand: false, timeChart: false, workloadRows: 0 });
+  });
+
+  it('large and maximum add the band, then the chart in its place, then the top-5 workload as they grow', () => {
+    expect(planTeamProgressLayout('large', 900, rows(6))).toMatchObject({ timeBand: false, timeChart: false, workloadRows: 0 });
+    expect(planTeamProgressLayout('large', 900, rows(7))).toMatchObject({ timeBand: true, timeChart: false });
+    expect(planTeamProgressLayout('large', 900, rows(8))).toMatchObject({ timeBand: false, timeChart: true, workloadRows: 0 });
+    expect(planTeamProgressLayout('maximum', 1300, rows(11))).toMatchObject({ timeChart: true, workloadRows: 5 });
+  });
+
+  it('tall view shows bucket chart instead of band', () => {
+    expect(planTeamProgressLayout('tall', 500, rows(10))).toMatchObject({ timeChart: true, timeBand: false });
+  });
+
+  it('a view too short for the chart keeps the band', () => {
+    expect(planTeamProgressLayout('tall', 500, rows(9))).toMatchObject({ timeChart: false, timeBand: true });
+  });
+
+  it('a time section never takes the lists below two rows, or below what they had', () => {
+    for (const mode of ['medium', 'wide', 'tall', 'large', 'maximum'] as const) {
+      for (let r = 3; r <= 12; r++) {
+        const plan = planTeamProgressLayout(mode, 1300, rows(r));
+        const usesTime = plan.timeBand || plan.timeChart || plan.timeCallout || plan.workloadRows > 0;
+        if (usesTime && plan.listRows > 0) expect(plan.listRows, `${mode} ${r} rows`).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  it('mini, xs and small never show time sections', () => {
+    for (const mode of ['mini', 'xs', 'small'] as const) {
+      expect(planTeamProgressLayout(mode, 400, rows(8))).toMatchObject({ timeBand: false, timeChart: false, timeCallout: false, workloadRows: 0 });
+    }
   });
 });

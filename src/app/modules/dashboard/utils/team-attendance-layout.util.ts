@@ -1,4 +1,4 @@
-import { DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
 
 /** How the Team attendance card lays itself out at its rendered size. The detail dialog is the popup. */
 export type TeamAttendanceView = 'mini' | 'xs' | 'standard';
@@ -56,8 +56,10 @@ export const TEAM_ATTENDANCE_SECTION_PX = {
   gap: 12,
   /** The ‹ range › row of the standard view. */
   range: 24,
-  /** The rate, caption and change under the donut (xs). */
+  /** The rate, caption and change under the legend (xs). */
   xsFigure: 72,
+  /** The xs legend under the donut: four shared legend rows. */
+  xsLegend: 4 * DASHBOARD_DONUT_LEGEND_ROW_PX,
   /** One row of status tiles. */
   tileRow: 52,
   /** The trend panel: title and chart. */
@@ -84,28 +86,43 @@ export const TEAM_ATTENDANCE_MAX_RANKING_ROWS = 10;
 export interface TeamAttendancePlan {
   /** standard on a wide card: the trend chart sits beside the donut, rate and legend instead of below. */
   heroTrend: boolean;
+  /** xs: the status legend right under the donut (where every widget puts its legend). */
+  legend: boolean;
+  /** xs: today's rate, caption and change under the legend (or under the donut when the legend doesn't fit). */
+  figure: boolean;
   tiles: boolean;
   tileColumns: 2 | 4;
   trend: boolean;
   rankingRows: number;
 }
 
-export const EMPTY_TEAM_ATTENDANCE_PLAN: TeamAttendancePlan = { heroTrend: false, tiles: false, tileColumns: 4, trend: false, rankingRows: 0 };
+export const EMPTY_TEAM_ATTENDANCE_PLAN: TeamAttendancePlan = { heroTrend: false, legend: false, figure: false, tiles: false, tileColumns: 4, trend: false, rankingRows: 0 };
 
 export function planTeamAttendanceLayout(view: TeamAttendanceView, width: number, height: number): TeamAttendancePlan {
   if (view === 'mini' || !(width > 0) || !(height > 0)) return EMPTY_TEAM_ATTENDANCE_PLAN;
   const s = TEAM_ATTENDANCE_SECTION_PX;
   const bodyWidth = width - TEAM_ATTENDANCE_CARD_CHROME.width;
-  const base = view === 'xs' ? DASHBOARD_DONUT_PX + 8 + s.xsFigure : s.range + s.gap + DASHBOARD_DONUT_PX;
+  // xs: the donut, then its legend (it stands in for the status tiles) like every widget at this size.
+  const base = view === 'xs' ? DASHBOARD_DONUT_PX : s.range + s.gap + DASHBOARD_DONUT_PX;
   let rest = height - TEAM_ATTENDANCE_CARD_CHROME.height - base;
 
   const tileColumns: 2 | 4 = bodyWidth >= TILES_ONE_ROW_WIDTH_PX ? 4 : 2;
   const tilesPx = s.gap + (tileColumns === 4 ? s.tileRow : s.tileRow * 2 + 8);
   const heroTrend = view === 'standard' && bodyWidth >= HERO_TREND_WIDTH_PX;
-  const plan: TeamAttendancePlan = { heroTrend, tiles: false, tileColumns, trend: false, rankingRows: 0 };
-  if (rest < tilesPx) return plan;
-  plan.tiles = true;
-  rest -= tilesPx;
+  const plan: TeamAttendancePlan = { heroTrend, legend: false, figure: false, tiles: false, tileColumns, trend: false, rankingRows: 0 };
+  if (view === 'xs') {
+    if (rest >= s.gap + s.xsLegend) {
+      plan.legend = true;
+      rest -= s.gap + s.xsLegend;
+    }
+    if (rest < s.gap + s.xsFigure) return plan;
+    plan.figure = true;
+    rest -= s.gap + s.xsFigure;
+  } else {
+    if (rest < tilesPx) return plan;
+    plan.tiles = true;
+    rest -= tilesPx;
+  }
 
   // Beside the donut the trend costs no height; otherwise it comes before the ranking.
   if (!heroTrend) {

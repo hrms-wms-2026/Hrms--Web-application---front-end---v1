@@ -1,0 +1,57 @@
+/* One 28px row per person (SCHEDULE_SECTION_PX.dayChartRow). */
+.pad {
+  display: flex;
+  flex-direction: column;
+}
+
+.pad-row {
+  display: grid;
+  height: 28px;
+  align-items: center;
+  grid-template-columns: minmax(4rem, 9rem) minmax(0, 1fr) 3.5rem 2.75rem;
+  gap: 0.5rem;
+}
+
+.pad-label {
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: rgb(51 65 85);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pad-track {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pad-planned {
+  display: block;
+  height: 6px;
+  border-radius: 9999px;
+}
+
+.pad-actual {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+
+.pad-actual span {
+  height: 100%;
+  flex: none;
+}
+
+.pad-num {
+  font-size: 0.75rem;
+  color: rgb(15 23 42);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pad-pct {
+  color: rgb(71 85 105);
+}

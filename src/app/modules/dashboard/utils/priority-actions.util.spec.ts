@@ -28,14 +28,14 @@ function actionItems(sources: ActionSourceSummary[]): TeamActionItemsResponse {
 function overdueTask(overrides: Partial<LedOverdueTask> = {}): LedOverdueTask {
   return {
     taskId: 't1', shortId: 'CP-1', title: 'Fix bug', projectId: 'p1', objectiveId: 'o1',
-    dueDate: '2026-09-20', daysOverdue: 5, assignees: [],
+    dueDate: '2026-09-20', daysOverdue: 5, estimatedHours: null, assignees: [],
     ...overrides
   };
 }
 
 function ledProgress(overdueTasks: LedOverdueTask[]): LedWorkProgressResponse {
   return {
-    hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0,
+    hours: { allocatedHours: 0, completedHours: 0, inProgressHours: 0, notStartedHours: 0, untaskedHours: 0, overTaskedHours: 0, taskCount: 0, unestimatedTaskCount: 0 }, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [],
     projects: [], overdueTasks, overdueTotal: overdueTasks.length
   };
 }
@@ -113,9 +113,9 @@ describe('buildPriorityActions', () => {
 
   it('sorts overdue work by most days overdue first, then shortId', () => {
     const data = ledProgress([
-      overdueTask({ taskId: 't1', shortId: 'CP-2', daysOverdue: 3 }),
-      overdueTask({ taskId: 't2', shortId: 'CP-1', daysOverdue: 7 }),
-      overdueTask({ taskId: 't3', shortId: 'CP-1', daysOverdue: 7 })
+      overdueTask({ taskId: 't1', shortId: 'CP-2', daysOverdue: 3 , estimatedHours: null}),
+      overdueTask({ taskId: 't2', shortId: 'CP-1', daysOverdue: 7 , estimatedHours: null}),
+      overdueTask({ taskId: 't3', shortId: 'CP-1', daysOverdue: 7 , estimatedHours: null})
     ]);
     const result = buildPriorityActions(null, data, NOW);
     expect(result.map((r) => r.entityId)).toEqual(['t2', 't3', 't1']);

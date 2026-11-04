@@ -3,7 +3,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
-import { LedEmployeeProgress, LedPeriodProgress, LedProgressPeriod, LedWeeklyCompletion } from '../../models/team-progress-detail.model';
+import { LedEmployeeProgress, LedPeriodProgress, LedProgressPeriod, LedTimePeriod, LedWeeklyCompletion } from '../../models/team-progress-detail.model';
+import { TeamProgressTimeComponent } from '../../ui/team-progress-time/team-progress-time.component';
+import { timePeriodFor } from '../../utils/team-progress-time-format.util';
 import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
 import { Router } from '@angular/router';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
@@ -27,6 +29,7 @@ import {
 } from '../../utils/team-progress-layout.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -54,6 +57,13 @@ export interface MetricTile {
 }
 
 /** One of the hour states, ready for the donut, legends, tiles and bars. */
+const STATUS_ICON: Record<ProgressStatusKey, IconName> = {
+  completed: 'check-circle',
+  inProgress: 'clock',
+  notStarted: 'layers',
+  untasked: 'alert-triangle'
+};
+
 export interface StatusRow {
   key: ProgressStatusKey;
   label: string;
@@ -160,7 +170,10 @@ function storePeriod(period: LedProgressPeriod): void {
 /** Views that show the weekly completion chart. */
 const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['tall', 'large', 'maximum']);
 
-const EMPTY_PLAN: TeamProgressPlan = { miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0 };
+const EMPTY_PLAN: TeamProgressPlan = {
+  miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
+  timeBand: false, timeChart: false, timeCallout: false, workloadRows: 0
+};
 
 /**
  * Team Progress: the estimated-hours (task estimate weightage, not time worked) picture of the
@@ -174,7 +187,7 @@ const EMPTY_PLAN: TeamProgressPlan = { miniLegend: 'none', miniFigure: false, le
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [StopClickPropagationDirective, 
+  imports: [StopClickPropagationDirective, IconComponent, TeamProgressTimeComponent, 
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -216,6 +229,7 @@ export class TeamProgressCardComponent implements OnInit {
   /** Placeholder bar heights (%) for the weekly chart skeleton. */
   protected readonly skeletonBars = [40, 65, 30, 80, 55, 70, 45, 85, 60, 35];
   readonly detailOpen = signal(false);
+  private timeRequestedFor: { data: LedWorkProgressResponse; period: LedTimePeriod } | null = null;
 
   /** The period switch: 'all' is the bootstrap led-progress payload; week / month use the period endpoint. */
   readonly period = signal<LedProgressPeriod>(readStoredPeriod());
@@ -265,6 +279,15 @@ export class TeamProgressCardComponent implements OnInit {
   });
 
   constructor() {
+    // The planned-vs-worked figures load with the card, for the switch's period (All time reads the week).
+    effect(() => {
+      const data = this.store.data();
+      const period = timePeriodFor(this.period());
+      if (!data || (this.timeRequestedFor?.data === data && this.timeRequestedFor.period === period)) return;
+      this.timeRequestedFor = { data, period };
+      untracked(() => this.store.loadTime(period));
+    });
+
     effect(() => {
       const mode = this.mode();
       const data = this.store.data();
@@ -366,6 +389,11 @@ export class TeamProgressCardComponent implements OnInit {
 
   /** Four states for All time (a zero state still shows "0 h · 0%"); for a dated period the three
    * task states against the hours due in it ("not yet tasked" has no date). */
+  /** The status tile's icon badge (2026-11-02 design match). */
+  protected statusIcon(key: ProgressStatusKey): IconName {
+    return STATUS_ICON[key];
+  }
+
   protected readonly statusRows = computed<StatusRow[]>(() => {
     if (this.period() !== 'all') {
       const p = this.periodData();
@@ -734,7 +762,10 @@ function samePlan(a: TeamProgressPlan, b: TeamProgressPlan): boolean {
     a.tileRows === b.tileRows &&
     a.viewDetails === b.viewDetails &&
     a.listRows === b.listRows &&
-    a.weeklyFallbackRows === b.weeklyFallbackRows
+    a.weeklyFallbackRows === b.weeklyFallbackRows &&
+    a.timeBand === b.timeBand &&
+    a.timeCallout === b.timeCallout &&
+    a.workloadRows === b.workloadRows
   );
 }
 
