@@ -109,15 +109,6 @@
   (closed)="createModalOpen.set(false)"
 />
 
-<app-project-settings-modal
-  [open]="settingsModalOpen()"
-  [initialValue]="settingsModalInitialValue()"
-  [submitting]="actionSubmitting()"
-  [errorMessage]="store.error() ?? ''"
-  (saved)="onProjectSettingsSaved($event)"
-  (closed)="settingsModalOpen.set(false)"
-/>
-
 <app-confirm-modal
   [open]="deleteConfirmOpen()"
   title="Delete project"

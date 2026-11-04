@@ -175,6 +175,14 @@ export const routes: Routes = [
             data: { title: 'Notification Settings', permissions: ['notifications:manage'] }
           },
           {
+            // The leave admin screens (types, policies, entitlements, holidays, all requests) - not part of the Time Off hub.
+            path: 'time-off',
+            canActivate: [permissionGuard],
+            data: { permissions: ['leave:read', 'leave:manage'], modules: ['leave'] },
+            loadChildren: () =>
+              import('./modules/leave/time-off-settings.routes').then((module) => module.TIME_OFF_SETTINGS_ROUTES)
+          },
+          {
             path: 'bulk-onboarding',
             loadComponent: () =>
               import('./modules/people/feature/bulk-onboarding/bulk-onboarding.component').then(

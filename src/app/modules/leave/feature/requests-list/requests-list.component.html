@@ -1,8 +1,9 @@
 <section class="to-page">
   <header class="to-header">
-    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" currentLabel="All Requests" icon="time-off" />
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Settings" middleLabel="Time Off" currentLabel="All Requests" icon="settings" />
     <h1 class="to-sr-only">All Requests</h1>
   </header>
+  <app-time-off-settings-tabs />
   <div class="to-tabs" role="tablist" aria-label="Request status">
     <button type="button" role="tab" class="to-tab" [class.to-tab--active]="statusFilter() === ''" [attr.aria-selected]="statusFilter() === ''" (click)="setStatusFilter(undefined)">All</button>
     <button type="button" role="tab" class="to-tab" [class.to-tab--active]="statusFilter() === 'pending'" [attr.aria-selected]="statusFilter() === 'pending'" (click)="setStatusFilter('pending')">Pending</button>

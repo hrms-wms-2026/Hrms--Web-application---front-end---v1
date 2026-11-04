@@ -13,6 +13,8 @@ import { ChatMediaItemDto, ChatMediaKind, ChatMediaPageDto, ChatSearchResultDto,
 import { ConversationParticipantDto } from '../../models/inbox.dto';
 import { InboxChatsStore } from '../../state/inbox-chats.store';
 import { InboxStore } from '../../state/inbox.store';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
+import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 
 /** Items shown before "View all" (files and members), and per page once opened. */
 export const PREVIEW_COUNT = 5;
@@ -41,7 +43,7 @@ export function fileSize(bytes: number): string {
 @Component({
   selector: 'app-chat-info-panel',
   standalone: true,
-  imports: [AvatarComponent, ChangePhotoDialogComponent, DatePipe, NgTemplateOutlet],
+  imports: [AvatarComponent, ChangePhotoDialogComponent, DatePipe, EntityIconComponent, IconPickerComponent, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat-info-panel.component.html',
   styleUrl: './chat-info-panel.component.css'
@@ -245,6 +247,26 @@ export class ChatInfoPanelComponent {
     if (!file) return;
     this.pickedPhoto.set(file);
     this.framing.set(true);
+  }
+
+  /** The swatch picked before an icon, kept until one is chosen (a tint alone is not saved). */
+  protected readonly pendingColor = signal<string | null>(null);
+  protected readonly iconColor = computed(() => this.pendingColor() ?? this.row().color ?? null);
+
+  protected async saveIcon(icon: string | null): Promise<void> {
+    const color = this.iconColor();
+    this.pendingColor.set(null);
+    await this.save(() => this.api.setIcon(this.row().conversationId, icon, icon ? color : null),
+      icon ? 'The icon could not be saved.' : 'The icon could not be removed.');
+  }
+
+  protected async saveIconColor(color: string): Promise<void> {
+    const icon = this.row().icon;
+    if (!icon) {
+      this.pendingColor.set(color);
+      return;
+    }
+    await this.save(() => this.api.setIcon(this.row().conversationId, icon, color), 'The colour could not be saved.');
   }
 
   protected async savePhoto(file: File | null): Promise<void> {

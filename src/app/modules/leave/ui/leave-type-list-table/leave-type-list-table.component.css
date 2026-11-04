@@ -149,7 +149,8 @@
 @media (max-width: 640px) {
   .ltt-grid { padding: 0.75rem; grid-template-columns: 1fr; }
 }
-.ltt-dot { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 999px; vertical-align: middle; }
+.ltt-title { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.ltt-icon { --lti-size: 2.5rem; }
 /* Paid / unpaid tags on the left, View / add policy actions on the right. */
 .ltt-tag-row {
   display: flex;

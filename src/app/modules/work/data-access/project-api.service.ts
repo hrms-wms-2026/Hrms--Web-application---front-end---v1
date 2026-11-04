@@ -40,6 +40,9 @@ export class ProjectApiService {
       formData.set('releaseDate', payload.releaseDate);
     }
     formData.set('color', payload.color);
+    if (payload.icon) {
+      formData.set('icon', payload.icon);
+    }
     formData.set('actualHours', String(payload.actualHours));
     formData.set('defaultObjectiveAllocatedHours', String(payload.defaultObjectiveAllocatedHours));
     if (payload.logoFile) {

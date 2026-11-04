@@ -1,0 +1,24 @@
+.mlt-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+.mlt-head h1 { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); }
+.mlt-head p { margin: .3rem 0 0; color: var(--color-text-secondary); font-size: .875rem; }
+.mlt-back { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem 1rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-primary); font-size: .82rem; font-weight: 600; text-decoration: none; }
+.mlt-back:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+
+.mlt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.mlt-card { display: flex; flex-direction: column; gap: .6rem; padding: 1.1rem 1.2rem; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); }
+.mlt-card__head { display: flex; align-items: center; gap: .7rem; }
+.mlt-card__head h2 { margin: 0; font-size: .9rem; font-weight: 650; color: var(--color-text-primary); }
+.mlt-card__value { margin: 0; }
+.mlt-card__value strong { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); }
+.mlt-card__value small { margin-left: .3rem; color: var(--color-text-secondary); font-size: .8rem; }
+.mlt-negative { color: var(--color-danger) !important; }
+.mlt-bar { display: block; height: 6px; border-radius: 999px; background: var(--color-surface-secondary); overflow: hidden; }
+.mlt-bar span { display: block; height: 100%; border-radius: inherit; background: var(--color-success); }
+.mlt-muted { margin: 0; color: var(--color-text-secondary); font-size: .8rem; }
+.mlt-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem 1rem; margin: .25rem 0 0; }
+.mlt-stats dt { color: var(--color-text-secondary); font-size: .74rem; }
+.mlt-stats dd { margin: .1rem 0 0; color: var(--color-text-primary); font-size: .82rem; font-weight: 600; }
+.mlt-note { margin: 0; color: var(--color-text-secondary); font-size: .75rem; }
+
+@media (max-width: 1000px) { .mlt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .mlt-grid { grid-template-columns: minmax(0, 1fr); } }

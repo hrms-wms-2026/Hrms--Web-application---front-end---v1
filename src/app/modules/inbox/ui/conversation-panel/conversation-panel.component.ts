@@ -19,6 +19,7 @@ import { ChatSystemEvent, InboxChatRowDto, caseRefOf, isPeopleChatSource, parseS
 import { RealtimeConversationReaction } from '../../../../core/realtime/inbox-realtime.models';
 import { ConversationStore } from '../../state/conversation.store';
 import { CaseCardAction, CaseCardComponent } from '../case-card/case-card.component';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
 
 const ADD_COMMAND = 'add';
 const RENAME_COMMAND = 'rename';
@@ -97,6 +98,7 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
   selector: 'app-conversation-panel',
   standalone: true,
   imports: [
+    EntityIconComponent,
     DatePipe, AvatarComponent, CaseCardComponent, CommentComposerComponent, DropdownMenuComponent, EmojiPickerComponent, PersonPickerDialogComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -110,6 +112,8 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
           <!-- Groups show their photo once they have one, as in the chat list; otherwise the group icon. -->
           @if (c.type === 'direct' || c.avatarFileId) {
             <app-avatar [userName]="c.title" [avatarUrl]="avatarUrl(c.avatarFileId)" size="sm" />
+          } @else if (c.icon) {
+            <app-entity-icon class="conv__icon" shape="circle" [icon]="c.icon" [color]="c.color" [name]="c.title" />
           } @else {
             <span class="conv__group-icon" [class.conv__group-icon--case]="c.type === 'case'" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M16 20a4 4 0 0 0-8 0" /><circle cx="12" cy="11" r="3" /><path d="M21 19a3 3 0 0 0-4-2.8M3 19a3 3 0 0 1 4-2.8" /><circle cx="18" cy="9" r="2" /><circle cx="6" cy="9" r="2" /></svg>
@@ -421,6 +425,7 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
     .conv__meta { overflow: hidden; color: var(--color-text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
     .conv__head-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
     .conv__icon-btn:disabled { opacity: .45; cursor: default; }
+    .conv__icon { --entity-icon-size: 32px; }
     .conv__group-icon { display: inline-flex; width: 32px; height: 32px; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 50%;
       background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); }
     .conv__group-icon--case { background: color-mix(in srgb, var(--color-warning, #d97706) 14%, var(--color-surface)); color: var(--color-warning, #d97706); }

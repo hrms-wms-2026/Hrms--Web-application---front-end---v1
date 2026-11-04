@@ -1,6 +1,6 @@
 <section class="to-page">
   <header class="to-header">
-    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" currentLabel="Leave Types" icon="time-off" />
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Settings" middleLabel="Time Off" currentLabel="Leave Types" icon="settings" />
     <h1 class="to-sr-only">Leave Types</h1>
     <div class="to-header-actions">
       @if (hasManageAccess()) {
@@ -8,6 +8,7 @@
       }
     </div>
   </header>
+  <app-time-off-settings-tabs />
   @if (!store.loading() && !store.loadError() && store.items().length > 0) {
     <app-kpi-tiles ariaLabel="Leave type totals" [tiles]="typeKpiTiles()" />
   }

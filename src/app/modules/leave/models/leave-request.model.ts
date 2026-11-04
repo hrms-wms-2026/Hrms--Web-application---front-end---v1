@@ -69,6 +69,9 @@ export interface LeaveRequestListItemResponse {
   approvedByName: string | null;
   createdAt: string;
   updatedAt: string | null;
+  /** Multi-step approval progress ("1 of 2 approved"); skipped and cancelled approvers are not counted. */
+  approvedApproverCount?: number;
+  approverCount?: number;
 }
 
 /** Matches ONEVO.Application.Features.Storage.File.DTOs.Responses.FileRecordDto (camelCase). */

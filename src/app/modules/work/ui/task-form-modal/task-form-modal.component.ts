@@ -801,6 +801,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                             step="0.5"
                             class="tfm-inline-prop-input"
                             placeholder="Empty"
+                            [style.width.ch]="inlineInputWidthCh(estimatedHoursDisplay(), 'Empty')"
                             [value]="estimatedHoursDisplay()"
                             (input)="onEstimatedHoursChange($any($event.target).value)"
                           />
@@ -943,6 +944,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                             step="1"
                             class="tfm-inline-prop-input"
                             placeholder="Empty"
+                            [style.width.ch]="inlineInputWidthCh(storyPointsDisplay(), 'Empty')"
                             [value]="storyPointsDisplay()"
                             (input)="onStoryPointsChange($any($event.target).value)"
                           />
@@ -1003,6 +1005,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                             max="100"
                             class="tfm-inline-prop-input tfm-inline-prop-input--progress"
                             placeholder="0"
+                            [style.width.ch]="inlineInputWidthCh(progressPercentDisplay(), '0')"
                             [value]="progressPercentDisplay()"
                             (input)="onProgressPercentChange($any($event.target).value)"
                           />
@@ -1857,12 +1860,12 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-prop-grid .tfm-chip-label { max-width: none !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; text-align: left !important; }
 
     /* 4. Inline inputs (Time estimate, Story points, Progress) */
-    .tfm-inline-prop-box { display: flex; align-items: center; justify-content: flex-start; gap: 4px; width: 100%; height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: text; box-sizing: border-box; transition: all 140ms ease; }
+    .tfm-inline-prop-box { display: flex; align-items: center; justify-content: flex-start; gap: 2px; width: 100%; height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: text; box-sizing: border-box; transition: all 140ms ease; }
     .tfm-inline-prop-box:hover, .tfm-inline-prop-box:focus-within { background: var(--color-surface-secondary); border-color: transparent; box-shadow: none; outline: none; }
-    .tfm-inline-prop-input { min-width: 44px; width: auto; max-width: 70px; border: 0; outline: none; background: transparent; font: inherit; font-size: 13px; font-weight: 500; color: var(--color-text-primary); -moz-appearance: textfield; padding: 0; }
+    .tfm-inline-prop-input { min-width: 1ch; max-width: 70px; border: 0; outline: none; background: transparent; font: inherit; font-size: 13px; font-weight: 500; color: var(--color-text-primary); -moz-appearance: textfield; padding: 0; }
     .tfm-inline-prop-input::-webkit-inner-spin-button, .tfm-inline-prop-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .tfm-inline-prop-input::placeholder { color: var(--color-text-secondary); font-weight: 500; opacity: 1; }
-    .tfm-inline-prop-input--progress { min-width: 36px; max-width: 48px; }
+    .tfm-inline-prop-input--progress { max-width: 48px; }
     .tfm-inline-prop-unit { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
 
     /* 5. Track time (Clock widget & Readonly timer) */
@@ -3090,6 +3093,8 @@ export class TaskFormModalComponent {
   estimatedHoursDisplay(): string { return this.estimatedHours() == null ? '' : String(this.estimatedHours()); }
   storyPointsDisplay(): string { return this.storyPoints() == null ? '' : String(this.storyPoints()); }
   progressPercentDisplay(): string { return this.progressPercent() == null ? '' : String(this.progressPercent()); }
+  /** Width in ch so the unit (h, pts, %) sits right after the value instead of after a fixed-width box. */
+  inlineInputWidthCh(value: string, placeholder: string): number { return (value || placeholder).length + 0.5; }
   onEstimatedHoursChange(v: string): void { this.estimatedHours.set(v === '' ? null : Number(v)); }
   onStoryPointsChange(v: string): void { this.storyPoints.set(v === '' ? null : Number(v)); }
   onProgressPercentChange(v: string): void { this.progressPercent.set(v === '' ? null : Number(v)); }

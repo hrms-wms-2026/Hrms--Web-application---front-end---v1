@@ -55,6 +55,11 @@ export class InboxChatsApiService {
     return this.http.put<void>(`${this.base}/${conversationId}/description`, { description });
   }
 
+  /** A group's picked icon and tint; it replaces the photo. A null icon clears it. */
+  setIcon(conversationId: string, icon: string | null, color: string | null): Observable<void> {
+    return this.http.put<void>(`${this.base}/${conversationId}/icon`, { icon, color });
+  }
+
   /** A group's photo from an uploaded file (uploadGroupPhoto); null removes it. */
   setPhoto(conversationId: string, fileId: string | null): Observable<void> {
     return fileId

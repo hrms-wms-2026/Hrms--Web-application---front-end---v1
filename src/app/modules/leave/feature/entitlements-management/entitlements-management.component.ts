@@ -33,10 +33,11 @@ import { balancesToCsv, downloadCsv } from '../../utils/leave-balance-csv';
 
 type Tab = 'entitlements' | 'all-balances' | 'audit';
 
+import { TimeOffSettingsTabsComponent } from '../../ui/time-off-settings-tabs/time-off-settings-tabs.component';
 @Component({
   selector: 'app-entitlements-management',
   standalone: true,
-  imports: [CommonModule, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
+  imports: [CommonModule, TimeOffSettingsTabsComponent, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent, LeaveEntitlementListTableComponent, LeaveEntitlementGenerateModalComponent, LeaveEntitlementManualFormModalComponent, LeaveEntitlementAdjustModalComponent, LeaveBalanceListTableComponent, LeaveBalanceAuditTableComponent, NewLeaveRequestWizardComponent],
   templateUrl: './entitlements-management.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './entitlements-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush

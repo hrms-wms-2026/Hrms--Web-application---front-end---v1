@@ -204,29 +204,9 @@
   text-align: center;
 }
 
-.ptn-status-pill--occupied {
-  background: color-mix(in srgb, #10b981 12%, transparent);
-  color: #059669;
-}
-
 .ptn-status-pill--vacant {
   background: color-mix(in srgb, #f59e0b 12%, transparent);
   color: #d97706;
-}
-
-.ptn-status-pill--available {
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
-  color: var(--color-sidebar-active-bg, #2563eb);
-}
-
-.ptn-status-pill--full {
-  background: color-mix(in srgb, #10b981 12%, transparent);
-  color: #059669;
-}
-
-.ptn-status-pill--unknown {
-  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
-  color: var(--color-text-secondary);
 }
 
 /* Action Dropdown (Top Right) */
