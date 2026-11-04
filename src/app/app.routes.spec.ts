@@ -68,7 +68,7 @@ describe('app routes - Settings', () => {
 
     const legacyRoute = shellChildren.find((route) => route.path === 'time-attendance');
     expect(legacyRoute).toBeTruthy();
-    expect(legacyRoute?.redirectTo).toBe('attendance/time-tracking');
+    expect(legacyRoute?.redirectTo).toBe('attendance');
   });
 
   it('lets any Time Off child permission through the parent /time-off gate', () => {

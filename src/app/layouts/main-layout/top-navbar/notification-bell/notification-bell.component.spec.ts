@@ -315,7 +315,7 @@ describe('NotificationBellComponent', () => {
     fixture.detectChanges();
     fixture.nativeElement.querySelector('.notification-dropdown__item').click();
     await fixture.whenStable();
-    expect(navigate).toHaveBeenCalledWith(['/attendance/time-tracking']);
+    expect(navigate).toHaveBeenCalledWith(['/attendance']);
   });
 
   it('shows Approve/Reject buttons only for an actionable work_approval_requested notification', async () => {

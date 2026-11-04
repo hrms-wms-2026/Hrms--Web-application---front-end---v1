@@ -273,14 +273,14 @@ export class TeamStatusCardComponent implements OnInit {
 
   openMember(member: TeamTodayMember, event?: Event): void {
     event?.stopPropagation();
-    void this.router.navigate(['/attendance/time-tracking'], {
+    void this.router.navigate(['/attendance'], {
       queryParams: { view: 'team', employeeId: member.employeeId }
     });
   }
 
   viewAll(event?: Event): void {
     event?.stopPropagation();
-    void this.router.navigate(['/attendance/time-tracking'], { queryParams: { view: 'team' } });
+    void this.router.navigate(['/attendance'], { queryParams: { view: 'team' } });
   }
 }
 

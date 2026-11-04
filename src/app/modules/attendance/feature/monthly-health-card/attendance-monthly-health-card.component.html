@@ -1,24 +1,48 @@
-<app-card title="This month">
+<section class="monthly-health-card" aria-labelledby="monthly-health-heading">
+  <h2 id="monthly-health-heading" class="monthly-health-title">This Month</h2>
   @if (loading() && !summary()) {
     <p class="monthly-health-skeleton" aria-busy="true">Loading attendance health…</p>
   } @else if (error() && !summary()) {
     <p role="alert">{{ error() }}</p>
-    <button type="button" (click)="retry()">Try again</button>
+    <button type="button" class="text-action" (click)="retry()">Try again</button>
   } @else if (summary(); as summary) {
-    <p class="monthly-health-headline">{{ summary.daysPresent }} / {{ summary.workingDays }} days present</p>
     <dl class="monthly-health-grid">
       <div class="monthly-health-item">
-        <dt>Late arrivals</dt>
-        <dd>{{ summary.lateArrivals }}</dd>
+        <span class="monthly-health-icon monthly-health-icon--present" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
+        </span>
+        <div class="monthly-health-text">
+          <dd>{{ summary.daysPresent }}/{{ summary.workingDays }}</dd>
+          <dt>Present days</dt>
+        </div>
       </div>
       <div class="monthly-health-item">
-        <dt>Early departures</dt>
-        <dd>{{ summary.earlyDepartures }}</dd>
+        <span class="monthly-health-icon monthly-health-icon--late" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </span>
+        <div class="monthly-health-text">
+          <dd>{{ pad(summary.lateArrivals) }}</dd>
+          <dt>Late arrivals</dt>
+        </div>
       </div>
       <div class="monthly-health-item">
-        <dt>Missing clock-outs</dt>
-        <dd>{{ summary.missingClockOuts }}</dd>
+        <span class="monthly-health-icon monthly-health-icon--early" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><path d="m8 8 4-4 4 4M8 16l4 4 4-4"/></svg>
+        </span>
+        <div class="monthly-health-text">
+          <dd>{{ pad(summary.earlyDepartures) }}</dd>
+          <dt>Early departures</dt>
+        </div>
+      </div>
+      <div class="monthly-health-item">
+        <span class="monthly-health-icon monthly-health-icon--missing" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4M12 17h.01M5 3 2 6M22 6l-3-3"/></svg>
+        </span>
+        <div class="monthly-health-text">
+          <dd>{{ pad(summary.missingClockOuts) }}</dd>
+          <dt>Missing clock-outs</dt>
+        </div>
       </div>
     </dl>
   }
-</app-card>
+</section>

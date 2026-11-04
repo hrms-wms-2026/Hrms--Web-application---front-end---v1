@@ -155,7 +155,7 @@ describe('TeamStatusCardComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     (el.querySelector('[data-testid="team-status-preview"] [data-testid="team-status-member"]') as HTMLButtonElement).click();
     fixture.detectChanges();
-    expect(navigate).toHaveBeenCalledWith(['/attendance/time-tracking'], {
+    expect(navigate).toHaveBeenCalledWith(['/attendance'], {
       queryParams: { view: 'team', employeeId: 'emp-42' }
     });
     expect(isOpen(el)).toBe(false);
@@ -165,7 +165,7 @@ describe('TeamStatusCardComponent', () => {
     const { fixture } = await setup();
     const el = openTeam(fixture);
     (el.querySelector('[data-testid="team-status-view-all"]') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/attendance/time-tracking'], { queryParams: { view: 'team' } });
+    expect(navigate).toHaveBeenCalledWith(['/attendance'], { queryParams: { view: 'team' } });
   });
 
   it('pops out on a card click and closes again with Show less', async () => {

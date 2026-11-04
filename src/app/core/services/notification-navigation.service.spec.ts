@@ -105,7 +105,7 @@ describe('NotificationNavigationService', () => {
       relatedEntityType: 'attendance_correction', relatedEntityId: 'corr-1', isNavigable: false, destinationKey: null
     } as NotificationItem);
 
-    expect(router.navigate).toHaveBeenCalledWith(['/attendance/time-tracking']);
+    expect(router.navigate).toHaveBeenCalledWith(['/attendance']);
   });
 
   it('opens my attendance history when a work-area decision notice is clicked', async () => {
@@ -115,6 +115,6 @@ describe('NotificationNavigationService', () => {
       relatedEntityType: 'work_area_change_request', relatedEntityId: 'wa-1', isNavigable: false, destinationKey: null
     } as NotificationItem);
 
-    expect(router.navigate).toHaveBeenCalledWith(['/attendance/time-tracking']);
+    expect(router.navigate).toHaveBeenCalledWith(['/attendance']);
   });
 });

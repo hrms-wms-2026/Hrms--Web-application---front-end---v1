@@ -1,53 +1,63 @@
-<section class="today-timeline" aria-labelledby="today-timeline-heading">
-  <div class="today-timeline-header">
-    <h3 id="today-timeline-heading">Today's activity</h3>
-    @if (totalCount() > 0) {
-      <span class="today-timeline-count-badge">{{ totalCount() }} {{ totalCount() === 1 ? 'event' : 'events' }}</span>
-    }
-  </div>
-
-  @if (store.todayTimelineLoading()) {
-    <p aria-busy="true">Loading today's activity…</p>
-  } @else if (store.todayTimelineError()) {
-    <p role="alert">{{ store.todayTimelineError() }}</p>
-  } @else if (totalCount() === 0) {
-    <p class="today-timeline-empty">No activity recorded yet today.</p>
-  } @else {
-    <ol class="today-timeline-list">
-      @for (item of visibleItems(); track item.id) {
-        <li class="today-timeline-item" [class.today-timeline-item--now]="item.isNow">
-          <span class="today-timeline-item__label">{{ item.label }}</span>
-          <span class="today-timeline-item__time">{{ item.time }}</span>
-        </li>
+@if (mode() === 'trigger') {
+  <!-- Attendance page: only a button; the full timeline and chart open in the popup. -->
+  <button type="button" class="today-timeline-trigger" data-testid="view-activity" aria-haspopup="dialog" (click)="openModal()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 3v18h18"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16v-6"/>
+    </svg>
+    View activity
+  </button>
+} @else {
+  <section class="today-timeline" aria-labelledby="today-timeline-heading">
+    <div class="today-timeline-header">
+      <h3 id="today-timeline-heading">Today's activity</h3>
+      @if (totalCount() > 0) {
+        <span class="today-timeline-count-badge">{{ totalCount() }} {{ totalCount() === 1 ? 'event' : 'events' }}</span>
       }
-    </ol>
+    </div>
 
-    @if (hasMore()) {
-      <div class="today-timeline-footer">
-        <button
-          type="button"
-          class="today-timeline-more-btn"
-          (click)="openModal()"
-          aria-haspopup="dialog"
-        >
-          <span>+{{ moreCount() }} more {{ moreCount() === 1 ? 'action' : 'actions' }}</span>
-          <span class="more-link-action">View full timeline & chart &rarr;</span>
-        </button>
-      </div>
+    @if (store.todayTimelineLoading()) {
+      <p aria-busy="true">Loading today's activity…</p>
+    } @else if (store.todayTimelineError()) {
+      <p role="alert">{{ store.todayTimelineError() }}</p>
+    } @else if (totalCount() === 0) {
+      <p class="today-timeline-empty">No activity recorded yet today.</p>
     } @else {
-      <div class="today-timeline-footer">
-        <button
-          type="button"
-          class="today-timeline-more-btn today-timeline-more-btn--subtle"
-          (click)="openModal()"
-          aria-haspopup="dialog"
-        >
-          <span class="more-link-action">View breakdown & chart &rarr;</span>
-        </button>
-      </div>
+      <ol class="today-timeline-list">
+        @for (item of visibleItems(); track item.id) {
+          <li class="today-timeline-item" [class.today-timeline-item--now]="item.isNow">
+            <span class="today-timeline-item__label">{{ item.label }}</span>
+            <span class="today-timeline-item__time">{{ item.time }}</span>
+          </li>
+        }
+      </ol>
+
+      @if (hasMore()) {
+        <div class="today-timeline-footer">
+          <button
+            type="button"
+            class="today-timeline-more-btn"
+            (click)="openModal()"
+            aria-haspopup="dialog"
+          >
+            <span>+{{ moreCount() }} more {{ moreCount() === 1 ? 'action' : 'actions' }}</span>
+            <span class="more-link-action">View full timeline & chart &rarr;</span>
+          </button>
+        </div>
+      } @else {
+        <div class="today-timeline-footer">
+          <button
+            type="button"
+            class="today-timeline-more-btn today-timeline-more-btn--subtle"
+            (click)="openModal()"
+            aria-haspopup="dialog"
+          >
+            <span class="more-link-action">View breakdown & chart &rarr;</span>
+          </button>
+        </div>
+      }
     }
-  }
-</section>
+  </section>
+}
 
 @if (isModalOpen()) {
   <div role="presentation" class="today-modal-backdrop" animate.leave="ui-popup-leave" (click)="closeModal()">
