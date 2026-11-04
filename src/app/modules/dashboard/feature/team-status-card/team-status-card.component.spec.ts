@@ -259,12 +259,15 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     expect(fixture.componentInstance.detailOpen()).toBe(true);
   });
 
-  it('polls every 60 seconds while visible', async () => {
+  it('does not poll on a timer, and reloads when the tab becomes visible again', async () => {
     vi.useFakeTimers();
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
     const { getTeamToday } = await setup();
 
-    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.advanceTimersByTimeAsync(180_000);
+    expect(getTeamToday).toHaveBeenCalledTimes(1);
+
+    document.dispatchEvent(new Event('visibilitychange'));
     expect(getTeamToday).toHaveBeenCalledTimes(2);
   });
 

@@ -146,13 +146,13 @@ describe('WellbeingCarouselCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="wellbeing-card-title"]').textContent.trim()).toBe('Check your posture');
   });
 
-  it('polls focus status again after the poll interval elapses', async () => {
+  it('does not poll focus status on a timer', async () => {
     vi.useFakeTimers();
     const { getMyFocusStatus } = await setup();
 
-    vi.advanceTimersByTime(90_000);
+    vi.advanceTimersByTime(180_000);
 
-    expect(getMyFocusStatus).toHaveBeenCalledTimes(2);
+    expect(getMyFocusStatus).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to a null focus status without crashing on request failure', async () => {
@@ -230,34 +230,6 @@ describe('WellbeingCarouselCardComponent', () => {
       const { fixture, getMyFocusStatus } = await setupInFrame(fakeWidgetData('error'), 'error');
       expect(getMyFocusStatus).toHaveBeenCalledOnce();
       expect(title(fixture)).toBe('Stay hydrated');
-    });
-
-    it('polls through the widget context and applies the refreshed payload', async () => {
-      vi.useFakeTimers();
-      const widget = fakeWidgetData('success', makeStatus());
-      const { fixture, getMyFocusStatus } = await setupInFrame(widget);
-      expect(title(fixture)).toBe('Stay hydrated');
-
-      vi.advanceTimersByTime(90_000);
-      expect(widget.refresh).toHaveBeenCalledOnce();
-      expect(getMyFocusStatus).not.toHaveBeenCalled();
-
-      widget.resolve(makeStatus({ isBreakReminderDue: true, continuousFocusMinutes: 95 }));
-      fixture.detectChanges();
-      expect(title(fixture)).toBe('Take a mindful break');
-    });
-
-    it('falls back to its own api when a context refresh fails', async () => {
-      vi.useFakeTimers();
-      const widget = fakeWidgetData('success', makeStatus());
-      const { fixture, getMyFocusStatus } = await setupInFrame(widget, makeStatus({ isBreakReminderDue: true, continuousFocusMinutes: 70 }));
-
-      vi.advanceTimersByTime(90_000);
-      widget.fail();
-      fixture.detectChanges();
-
-      expect(getMyFocusStatus).toHaveBeenCalledOnce();
-      expect(title(fixture)).toBe('Take a mindful break');
     });
   });
 });

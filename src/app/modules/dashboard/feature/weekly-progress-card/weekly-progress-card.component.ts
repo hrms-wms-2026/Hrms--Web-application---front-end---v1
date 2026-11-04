@@ -30,8 +30,6 @@ import {
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { WeeklyWorkProgressDetailDialogComponent } from '../weekly-work-progress-detail-dialog/weekly-work-progress-detail-dialog.component';
 
-const REFRESH_INTERVAL_MS = 60_000;
-
 /**
  * My Work "Weekly Work Progress". One card whose layout follows its own rendered size (the dashboard widget
  * standard): a 2x2 card shows the fixed-size donut; a wide 2-row card the figure beside this week / last week bars
@@ -138,16 +136,13 @@ export class WeeklyProgressCardComponent implements OnInit {
     return view === 'standard' || (view === 'mini-wide' && this.sections().miniTiles);
   });
 
-  private pollId: ReturnType<typeof setInterval> | null = null;
   private readonly visibilityHandler = (): void => this.onVisibilityChange();
 
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    if (document.visibilityState === 'visible') this.startPolling();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopPolling();
     });
   }
 
@@ -217,20 +212,6 @@ export class WeeklyProgressCardComponent implements OnInit {
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
       this.feed.reload();
-      this.startPolling();
-    } else {
-      this.stopPolling();
     }
-  }
-
-  private startPolling(): void {
-    if (this.pollId !== null) return;
-    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
-  }
-
-  private stopPolling(): void {
-    if (this.pollId === null) return;
-    clearInterval(this.pollId);
-    this.pollId = null;
   }
 }
