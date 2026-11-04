@@ -8,6 +8,7 @@ import {
   LeaveApprovalDecisionResponse,
   LeaveApprovalDetailResponse,
   LeaveApprovalListFilter,
+  LeavePendingApprovalListItemResponse,
   LeaveRequestAllListFilter,
   LeaveRequestAllListItemResponse,
   RejectLeaveRequestRequest
@@ -23,6 +24,11 @@ export class LeaveApprovalApiService {
     let params = this.toParams(filter);
     if (filter.status) params = params.set('status', filter.status);
     return this.http.get<LeaveRequestAllListItemResponse[]>(`${environment.apiUrl}/leave/requests/all`, { params });
+  }
+
+  /** Requests waiting on the caller's decision (leave:approve). */
+  listPendingApprovals(): Observable<LeavePendingApprovalListItemResponse[]> {
+    return this.http.get<LeavePendingApprovalListItemResponse[]>(`${environment.apiUrl}/leave/requests/pending-approvals`);
   }
 
   getDetail(requestId: string): Observable<LeaveApprovalDetailResponse> {

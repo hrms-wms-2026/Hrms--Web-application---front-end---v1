@@ -6,6 +6,7 @@ import { ProjectApiService } from '../../data-access/project-api.service';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { Project } from '../../models/project.model';
 import { formatRelativeTime } from '../../utils/relative-time.util';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
 
 const DEFAULT_BANNER_COLOR = '#3B82F6';
 const COLLAPSED_AVATAR_LIMIT = 3;
@@ -14,7 +15,7 @@ const EXPANDED_AVATAR_LIMIT = 20;
 @Component({
   selector: 'app-project-card',
   standalone: true,
-  imports: [ButtonComponent, AvatarComponent, AvatarStackComponent],
+  imports: [ButtonComponent, AvatarComponent, AvatarStackComponent, EntityIconComponent],
   styles: `
     @keyframes drift-a {
       0%, 100% { transform: translate(-8%, -8%) scale(1); }
@@ -79,7 +80,10 @@ const EXPANDED_AVATAR_LIMIT = 20;
       <!-- Card Body Content -->
       <div class="p-3.5 pt-2.5">
         <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
+          @if (project().icon; as projectIcon) {
+            <app-entity-icon data-testid="project-icon" class="mt-0.5" [icon]="projectIcon" [color]="project().color" [name]="project().name" />
+          }
+          <div class="min-w-0 flex-1">
             <h3 class="truncate text-sm font-semibold text-[var(--color-text-primary)] tracking-tight">
               {{ project().name }}
             </h3>

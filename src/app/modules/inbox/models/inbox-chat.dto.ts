@@ -35,6 +35,10 @@ export interface InboxChatRowDto {
   isMuted?: boolean;
   /** Groups and case groups: their description (plain text). */
   description?: string | null;
+  /** Groups and case groups: the picked icon ("lucide:{name}" / "emoji:{emoji}"), shown when there is no photo. */
+  icon?: string | null;
+  /** The tint behind `icon` (#RRGGBB). */
+  color?: string | null;
 }
 
 /** What a chat's files are grouped by in its info panel. */

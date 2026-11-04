@@ -14,7 +14,8 @@ export function toProject(dto: ProjectListItemDto): Project {
     isActive: dto.isActive, allocatedHours: dto.allocatedHours, completedHours: dto.completedHours,
     isLead: dto.isLead, isAchieved: dto.isAchieved, achievedAt: dto.achievedAt, updatedAt: dto.updatedAt,
     logoFileId: dto.logoFileId, labels: dto.labels, members: dto.members, memberCount: dto.memberCount,
-    systemPurpose: dto.systemPurpose ?? null
+    systemPurpose: dto.systemPurpose ?? null,
+    icon: dto.icon ?? null
   };
 }
 
@@ -26,7 +27,8 @@ export function toProjectDetail(dto: ProjectDetailDto): ProjectDetail {
     isLead: dto.isLead, isAchieved: dto.isAchieved, achievedAt: dto.achievedAt, logoFileId: dto.logoFileId,
     actualHours: dto.actualHours, createdAt: dto.createdAt, updatedAt: dto.updatedAt,
     labels: dto.labels, members: dto.members, memberCount: dto.memberCount,
-    systemPurpose: dto.systemPurpose ?? null
+    systemPurpose: dto.systemPurpose ?? null,
+    icon: dto.icon ?? null
   };
 }
 

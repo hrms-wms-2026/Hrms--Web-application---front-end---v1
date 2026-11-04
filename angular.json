@@ -24,6 +24,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "data.json",
+                "input": "node_modules/emoji-picker-element-data/en/emojibase",
+                "output": "emoji"
               }
             ],
             "styles": ["src/styles.css", "@angular/cdk/overlay-prebuilt.css"],

@@ -55,8 +55,18 @@
           <small class="ltfm-counter">{{ (form.controls.description.value || '').length }} / {{ descriptionMaxLength }}</small>
         </div>
         <div class="ltfm-wide">
-          <span class="ui-field-label ltfm-label" id="ltfm-colour-label">Colour</span>
+          <span class="ui-field-label ltfm-label" id="ltfm-colour-label">Icon and colour</span>
           <div class="ltfm-swatches">
+            <app-icon-picker
+              class="ltfm-icon-picker"
+              ariaLabel="Change leave type icon"
+              [icon]="form.controls.icon.value"
+              [defaultIcon]="defaultIcon"
+              [color]="form.controls.color.value"
+              [name]="form.controls.name.value || ''"
+              [showColors]="false"
+              (iconChange)="form.controls.icon.setValue($event)"
+            />
             <div class="ltfm-swatch-list" role="radiogroup" aria-labelledby="ltfm-colour-label">
               @for (color of colors; track color) {
                 <button

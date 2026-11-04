@@ -9,16 +9,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // Its sub-sidebar is the chat list (people, groups), not child links.
   { id: 'inbox', label: 'Inbox', description: 'Requests, alerts and chats.', icon: 'inbox', path: '/inbox', customSubSidebar: 'inbox' },
   { id: 'calendar', label: 'Calendar', description: 'View and manage your calendar.', icon: 'calendar', path: '/calendar', requiredModules: ['calendar'] },
-  {
-    id: 'time-off', label: 'Time Off', description: 'Leaves, holidays and time off.', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
-    children: [
-      { id: 'time-off-balances', label: 'Balances', description: 'Your leave balances and requests.', path: '/time-off', exact: true, requiredModules: ['leave'], requiredPermissions: ['leave:read-own', 'leave:read-team'] },
-      { id: 'time-off-entitlements', label: 'Entitlements', description: 'How much leave each employee gets.', path: '/time-off/entitlements', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
-      { id: 'time-off-types', label: 'Leave Types', description: 'Annual, sick and other kinds of leave.', path: '/time-off/types', requiredModules: ['leave'], requiredPermissions: ['leave:read'] },
-      { id: 'time-off-policies', label: 'Leave Policies', description: 'Rules for accruing and taking leave.', path: '/time-off/policies', requiredModules: ['leave'], requiredPermissions: ['leave:manage'] },
-      { id: 'time-off-all-requests', label: 'All Requests', description: 'Every leave request across the team.', path: '/time-off/all', requiredModules: ['leave'], requiredPermissions: ['leave:read'] }
-    ]
-  },
+  // Time Off is one hub page that links to its own screens (2026-10-29 redesign), so it has no sub-sidebar.
+  // Its admin screens live under Settings → Time Off.
+  { id: 'time-off', label: 'Time Off', description: 'Leaves, holidays and time off.', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
+    requiredPermissions: ['leave:read-own', 'leave:read-team', 'leave:read', 'leave:manage', 'leave:approve', 'calendar:read'] },
   {
     id: 'time-attendance',
     label: 'Attendance',
@@ -75,6 +69,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'settings-users', label: 'Users', description: 'Manage team members and their access.', path: '/settings/users', requiredPermissions: ['users:read', 'users:manage'] },
       { id: 'settings-notifications', label: 'Notification Settings', description: 'Configure email and in-app notifications.', path: '/settings/notifications', requiredPermissions: ['notifications:manage'] },
       { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', description: 'Add and invite multiple users at once.', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
+      { id: 'settings-time-off', label: 'Time Off', description: 'Leave types, policies, entitlements and holidays.', path: '/settings/time-off', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
       { id: 'settings-clock-in-policy', label: 'Clock-in Policy', description: 'When and where people can clock in.', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
       { id: 'settings-calendar-connections', label: 'Calendar Sync', description: 'Connect Outlook and Google calendars.', path: '/settings/calendar-connections', requiredModules: ['calendar'], requiredPermissions: ['calendar:read'] }
       // Audit log is intentionally not listed yet.

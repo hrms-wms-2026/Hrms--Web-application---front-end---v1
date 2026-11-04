@@ -2,8 +2,8 @@ import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { ProjectApiService } from '../data-access/project-api.service';
-import { toProject, toProjectDetail } from '../utils/project.mapper';
-import { Project, ProjectDetail, CreateProjectPayload, EditProjectPayload } from '../models/project.model';
+import { toProject } from '../utils/project.mapper';
+import { Project, CreateProjectPayload, EditProjectPayload } from '../models/project.model';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 export type AchievedFilter = 'active' | 'archived' | 'all';
@@ -146,16 +146,6 @@ export const ProjectListStore = signalStore(
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to unachieve project.') });
         return false;
-      }
-    },
-
-    async getProjectDetail(id: string): Promise<ProjectDetail | null> {
-      try {
-        const dto = await firstValueFrom(api.getById(id));
-        return toProjectDetail(dto);
-      } catch (err) {
-        patchState(store, { error: extractError(err, 'Failed to load project.') });
-        return null;
       }
     }
   }))

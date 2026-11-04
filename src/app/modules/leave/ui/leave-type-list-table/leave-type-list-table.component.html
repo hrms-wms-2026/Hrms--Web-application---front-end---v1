@@ -2,9 +2,12 @@
   @for (type of leaveTypes; track type.id) {
     <article class="ltt-card" [class.ltt-card--inactive]="!type.isActive">
       <header class="ltt-head">
-        <div>
-          <h2><i class="ltt-dot" [style.background]="type.color" aria-hidden="true"></i>{{ type.name }}</h2>
-          <p class="ltt-code">{{ type.code }}</p>
+        <div class="ltt-title">
+          <app-leave-type-icon class="ltt-icon" [name]="type.name" [code]="type.code" [color]="type.color" [icon]="type.icon" />
+          <div>
+            <h2>{{ type.name }}</h2>
+            <p class="ltt-code">{{ type.code }}</p>
+          </div>
         </div>
         <div class="ltt-head-actions">
           <span class="ltt-status" [class.ltt-status--inactive]="!type.isActive">

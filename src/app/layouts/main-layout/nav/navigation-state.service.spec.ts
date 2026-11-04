@@ -47,7 +47,7 @@ describe('NavigationStateService', () => {
     expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-monitoring']);
   });
 
-  it('hides the sub-sidebar when the section has only one reachable page', async () => {
+  it('hides the sub-sidebar for a section with no child pages (Time Off is one hub)', async () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -58,7 +58,7 @@ describe('NavigationStateService', () => {
     const single = TestBed.inject(NavigationStateService);
     await TestBed.inject(Router).navigateByUrl('/time-off');
 
-    expect(single.activeChildren().map((c) => c.id)).toEqual(['time-off-balances']);
+    expect(single.activeChildren()).toEqual([]);
     expect(single.hasSubSidebar()).toBe(false);
     expect(single.hasVisibleSubSidebar()).toBe(false);
   });
@@ -132,7 +132,7 @@ describe('NavigationStateService', () => {
       expect(ids(full.mobileBarItems())).toEqual(['home', 'work', 'inbox', 'settings']);
       expect(ids(full.mobileMoreItems())).toContain('calendar');
 
-      await fullRouter.navigateByUrl('/time-off/types');
+      await fullRouter.navigateByUrl('/time-off/requests');
       expect(ids(full.mobileBarItems())).toEqual(['home', 'inbox', 'time-off', 'settings']);
     });
 

@@ -1,6 +1,6 @@
 <section class="to-page">
   <header class="to-header">
-    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" currentLabel="Entitlements" icon="time-off" />
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Settings" middleLabel="Time Off" currentLabel="Entitlements" icon="settings" />
     <h1 class="to-sr-only">Entitlements</h1>
     <div class="to-header-actions">
       <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
@@ -17,6 +17,7 @@
       }
     </div>
   </header>
+  <app-time-off-settings-tabs />
 
   <div class="to-tabs" role="tablist" aria-label="Entitlement views">
     <button type="button" role="tab" data-testid="tab-entitlements" class="to-tab" [class.to-tab--active]="activeTab() === 'entitlements'" [attr.aria-selected]="activeTab() === 'entitlements'" (click)="selectTab('entitlements')">Entitlements</button>
@@ -99,6 +100,7 @@
     [workStartTime]="balanceStore.workWindow()?.workStartTime ?? null"
     [workEndTime]="balanceStore.workWindow()?.workEndTime ?? null"
     [timezone]="balanceStore.workWindow()?.timezone ?? 'UTC'"
+    [breakMinutes]="balanceStore.workWindow()?.breakDurationMinutes ?? null"
     [previewing]="requestStore.previewing()"
     [previewResult]="requestStore.previewResult()"
     [previewError]="requestStore.previewError()"

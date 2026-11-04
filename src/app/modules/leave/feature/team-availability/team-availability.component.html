@@ -1,0 +1,130 @@
+<section class="to-page">
+  <header class="to-header">
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" parentUrl="/time-off" currentLabel="Team Availability" icon="time-off" />
+    <h1 class="to-sr-only">Team Availability</h1>
+    <div class="to-header-actions ta-controls">
+      <button type="button" class="ta-month" (click)="goToToday()" title="Go to today">{{ monthLabel() }}</button>
+      <button type="button" class="ta-icon-button" aria-label="Previous" (click)="previous()">‹</button>
+      <button type="button" class="ta-icon-button" aria-label="Next" (click)="next()">›</button>
+      <div class="ta-toggle" role="group" aria-label="Calendar view">
+        <button type="button" [class.ta-toggle--active]="view() === 'month'" [attr.aria-pressed]="view() === 'month'" (click)="setView('month')">Month</button>
+        <button type="button" [class.ta-toggle--active]="view() === 'week'" [attr.aria-pressed]="view() === 'week'" (click)="setView('week')">Week</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="ta-kpis">
+    <div class="ta-kpi">
+      <span class="ta-kpi__icon ta-kpi__icon--blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2" /><path d="M3 20a6 6 0 0 1 12 0" /><circle cx="17" cy="9" r="2.4" /><path d="M15.5 14.5A5 5 0 0 1 21 19" /></svg></span>
+      <div>
+        <span class="ta-kpi__label">Team Coverage</span>
+        <strong data-testid="team-coverage">{{ coverage().percent }}%</strong>
+        <small>{{ coverage().available }} of {{ coverage().size }} available today</small>
+      </div>
+    </div>
+    <div class="ta-kpi">
+      <span class="ta-kpi__icon ta-kpi__icon--blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M8 3v4M16 3v4" /></svg></span>
+      <div>
+        <span class="ta-kpi__label">Upcoming Absences</span>
+        <strong data-testid="upcoming-absences">{{ upcomingAbsences() }}</strong>
+        <small>over the next 7 days</small>
+      </div>
+    </div>
+    <div class="ta-kpi">
+      <span class="ta-kpi__icon ta-kpi__icon--red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5 2.5 20h19z" /><path d="M12 9.5v4.5M12 17.2h.01" /></svg></span>
+      <div>
+        <span class="ta-kpi__label">Coverage Conflicts</span>
+        <strong data-testid="coverage-conflicts">{{ conflictDays() }}</strong>
+        <small>{{ conflictDays() === 1 ? 'day' : 'days' }} with high absence this month</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="ta-body">
+    <section class="ta-card ta-calendar" aria-label="Leave calendar">
+      @if (store.loading() && !store.month()) {
+        <div class="to-loading"><app-loader /></div>
+      } @else if (store.error()) {
+        <app-error-state [message]="store.error()!" [retryable]="true" (retry)="store.load()" />
+      } @else {
+        <div class="ta-weekdays" aria-hidden="true">
+          @for (label of weekdays; track label) { <span>{{ label }}</span> }
+        </div>
+        @for (week of shownWeeks(); track week.days[0].date) {
+          <div class="ta-week" [style.--ta-lanes]="week.lanes">
+            @for (day of week.days; track day.date; let col = $index) {
+              <button
+                type="button"
+                class="ta-day"
+                data-testid="calendar-day"
+                [style.grid-column]="col + 1"
+                [class.ta-day--out]="!day.inMonth"
+                [class.ta-day--today]="day.date === today"
+                [attr.aria-label]="day.date"
+                (click)="openDay(day.date)"
+              >{{ day.dayOfMonth }}</button>
+            }
+            @for (bar of week.bars; track bar.id) {
+              <span
+                class="ta-bar ta-bar--{{ bar.kind }}"
+                [style.grid-column]="bar.start + 1 + ' / ' + (bar.end + 2)"
+                [style.grid-row]="bar.lane + 2"
+                [title]="bar.label"
+              >{{ bar.label }}</span>
+            }
+          </div>
+        }
+        <ul class="ta-legend">
+          <li><span class="ta-dot ta-dot--approved"></span>Approved</li>
+          <li><span class="ta-dot ta-dot--pending"></span>Pending</li>
+          <li><span class="ta-dot ta-dot--holiday"></span>Company Holiday</li>
+        </ul>
+      }
+    </section>
+
+    <aside class="ta-card ta-members" aria-labelledby="ta-members-heading">
+      <h2 id="ta-members-heading">Team Members ({{ teamSize() }})</h2>
+      <label class="ta-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>
+        <span class="to-sr-only">Search team member</span>
+        <input type="search" placeholder="Search team member..." [value]="memberSearch()" (input)="onSearchInput($event)" />
+      </label>
+      @if (departmentOptions().length > 2) {
+        <app-select [options]="departmentOptions()" [value]="store.departmentId() ?? ''" (valueChange)="onDepartmentChange($event)" />
+      }
+      @if (rosterLoading() && members().length === 0) {
+        <div class="to-loading"><app-loader /></div>
+      } @else if (members().length === 0) {
+        <p class="ta-muted">No team members found.</p>
+      } @else {
+        <ul class="ta-member-list">
+          @for (member of visibleMembers(); track member.employeeId) {
+            <li>
+              <label class="ta-member">
+                <input type="checkbox" [checked]="isShown(member.employeeId)" (change)="toggleMember(member.employeeId)" [attr.aria-label]="'Show ' + member.name + ' on the calendar'" />
+                <app-avatar size="xs" [userName]="member.name" />
+                <span class="ta-member__name">{{ member.name }}</span>
+                <span class="ta-member__status ta-member__status--{{ member.status }}"><span aria-hidden="true">●</span> {{ statusLabel[member.status] }}</span>
+              </label>
+            </li>
+          }
+        </ul>
+        @if (hiddenMemberCount() > 0) {
+          <button type="button" class="ta-more" (click)="showAllMembers.set(!showAllMembers())">{{ showAllMembers() ? 'Show less' : 'Show more (' + hiddenMemberCount() + ')' }}</button>
+        }
+      }
+    </aside>
+  </div>
+</section>
+
+<app-leave-calendar-day-detail
+  [open]="selectedDate() !== null"
+  [day]="selectedDay()"
+  [canRequestLeave]="canRequestLeave()"
+  (requestLeave)="onRequestLeave($event)"
+  (closed)="selectedDate.set(null)"
+/>
+
+@if (requestDate(); as date) {
+  <app-new-leave-request-host [initialDate]="date" (closed)="requestDate.set(null)" (submitted)="store.load()" />
+}

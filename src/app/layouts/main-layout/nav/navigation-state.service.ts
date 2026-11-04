@@ -62,7 +62,7 @@ export class NavigationStateService {
     return active.children.filter((child) => canAccessNavItem(child, this.permissionService));
   });
 
-  /** The sub-sidebar entry for the current page. Longest match wins: '/time-off' must not claim '/time-off/types'. */
+  /** The sub-sidebar entry for the current page. Longest match wins: '/attendance/overview' must not claim a deeper '/attendance/overview/...' page. */
   readonly activeChild = computed(() => {
     const url = this.currentUrl().split('?')[0].split('#')[0];
     return [...this.activeChildren()]
