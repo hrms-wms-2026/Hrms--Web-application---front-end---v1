@@ -5,6 +5,7 @@ import { DashboardNotificationsCardComponent } from '../feature/dashboard-notifi
 import { MyTasksCardComponent } from '../feature/my-tasks-card/my-tasks-card.component';
 import { QuickActionsCardComponent } from '../feature/quick-actions-card/quick-actions-card.component';
 import { TeamAttendanceCardComponent } from '../feature/team-attendance-card/team-attendance-card.component';
+import { TeamPlanTodayCardComponent } from '../feature/team-plan-today-card/team-plan-today-card.component';
 import { TeamScheduleCardComponent } from '../feature/team-schedule-card/team-schedule-card.component';
 import { TeamProgressCardComponent } from '../feature/team-progress-card/team-progress-card.component';
 import { TeamStatusCardComponent } from '../feature/team-status-card/team-status-card.component';
@@ -52,5 +53,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
   'team-progress': { component: TeamProgressCardComponent },
   'team-attendance': { component: TeamAttendanceCardComponent },
   'team-schedule': { component: TeamScheduleCardComponent },
+  'team-plan-today': { component: TeamPlanTodayCardComponent },
   'team-quick-actions': { component: QuickActionsCardComponent, inputs: { onTeamDashboard: true } }
 };

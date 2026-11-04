@@ -1,4 +1,4 @@
-/** GET planner/team (Today's team schedule, My Team widgets design 2026-10-29 section 6.2). Minutes, never estimate hours. */
+/** GET planner/team/schedule (Today's team schedule, My Team widgets design 2026-10-29 section 6.2). Minutes, never estimate hours. */
 
 export type TeamScheduleTaskStatus =
   'completed' | 'in_progress' | 'pending' | 'scheduled_not_clocked';

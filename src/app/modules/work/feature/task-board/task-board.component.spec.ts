@@ -865,7 +865,7 @@ describe('TaskBoardComponent', () => {
 
 
 describe('TaskBoardComponent - new meeting', () => {
-  it('offers New meeting next to Create work item and opens the meeting form placed in this project', async () => {
+  it('has no New meeting button; the work item form offers the "meeting" category instead', async () => {
     TestBed.configureTestingModule({
       imports: [TaskBoardComponent],
       providers: [
@@ -898,16 +898,12 @@ describe('TaskBoardComponent - new meeting', () => {
     // The toolbar is a template the project page renders (WorkPageToolbarStore), not part of the board's own view.
     const toolbar = TestBed.inject(WorkPageToolbarStore).template()!.createEmbeddedView(null);
     toolbar.detectChanges();
-    const button = toolbar.rootNodes
-      .map((node: Node) => (node instanceof HTMLElement ? node.querySelector('[data-testid="board-new-meeting"]') : null))
-      .find((el: Element | null) => el !== null) as HTMLElement | undefined;
-    expect(button).toBeDefined();
-    (button!.querySelector('button') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    const form = fixture.debugElement.query(By.css('app-meeting-form-modal'));
-    expect(form).not.toBeNull();
-    expect(form.componentInstance.placement()).toEqual({ projectId: 'project-1', objectiveId: null });
+    const labels = toolbar.rootNodes
+      .flatMap((node: Node) => (node instanceof HTMLElement ? Array.from(node.querySelectorAll('button')) : []))
+      .map((b: HTMLButtonElement) => b.textContent?.trim());
+    expect(labels).toContain('Create work item');
+    expect(labels).not.toContain('New meeting');
+    expect(fixture.debugElement.query(By.css('app-task-form-modal')).componentInstance.allowMeeting()).toBe(true);
   });
 
   function routeStub() {
@@ -916,19 +912,25 @@ describe('TaskBoardComponent - new meeting', () => {
 });
 
 describe('TaskBoardComponent - meetings', () => {
-  it('meeting cards are not draggable', async () => {
-    const list = vi.fn().mockReturnValue(of([{
-      taskId: 'm1', shortId: 'P-M1', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
-      endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Standup', status: 'scheduled', isPrivate: false,
-      projectId: 'project-1', objectiveId: 'milestone-1', myRole: 'attendee', myResponse: 'accepted'
-    }]));
+  const todo = { id: 'todo', name: 'To Do', displayOrder: 1, requiresApproval: false, marksTaskComplete: false, visibility: 'public' as const, category: 'not_started' as const, color: '' };
+  const doing = { ...todo, id: 'doing', name: 'In Process', displayOrder: 2, category: 'active' as const };
+  const done = { ...todo, id: 'done', name: 'Done', displayOrder: 3, marksTaskComplete: true, category: 'done' as const };
+  const meeting = (over: Record<string, unknown>) => ({
+    taskId: 'm1', shortId: 'P-M1', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
+    endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Standup', status: 'scheduled', isPrivate: false,
+    projectId: 'project-1', objectiveId: 'milestone-1', myRole: 'attendee', myResponse: 'accepted', ...over
+  });
+
+  async function build(items: unknown[]) {
+    const list = vi.fn().mockReturnValue(of(items));
     TestBed.configureTestingModule({
       imports: [TaskBoardComponent],
       providers: [
         {
           provide: TaskBoardStore,
-          useValue: { loadBoard: vi.fn().mockResolvedValue(undefined), columnsWithTasks: () => [], tasks: () => [], loading: () => false,
-            error: () => null, moveTask: vi.fn(), statuses: () => [] }
+          useValue: { loadBoard: vi.fn().mockResolvedValue(undefined),
+            columnsWithTasks: () => [{ status: todo, tasks: [] }, { status: doing, tasks: [] }, { status: done, tasks: [] }],
+            tasks: () => [], loading: () => false, error: () => null, moveTask: vi.fn(), statuses: () => [todo, doing, done] }
         },
         {
           provide: ProjectDetailStore,
@@ -948,12 +950,65 @@ describe('TaskBoardComponent - meetings', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+    return { fixture, list };
+  }
+
+  const meetingIdsIn = (fixture: { nativeElement: HTMLElement }, columnId: string) =>
+    Array.from(fixture.nativeElement.querySelectorAll('app-task-board-column'))
+      .filter((col) => (col as HTMLElement).querySelector(`[id="${columnId}"]`))
+      .flatMap((col) => Array.from((col as HTMLElement).querySelectorAll('[data-testid="meeting-card-shortid"]')))
+      .map((el) => el.textContent?.trim());
+
+  afterEach(() => vi.useRealTimers());
+
+  it('puts each meeting in the column its time puts it in, never in a drag list, and hides cancelled ones', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-02T10:00:00Z'));
+    const { fixture, list } = await build([
+      meeting({ taskId: 'a', shortId: 'P-M1', startAt: '2026-11-02T12:00:00Z', endAt: '2026-11-02T13:00:00Z' }),
+      // The list said scheduled, but it has started: the clock wins.
+      meeting({ taskId: 'b', shortId: 'P-M2', startAt: '2026-11-02T09:30:00Z', endAt: '2026-11-02T10:30:00Z' }),
+      meeting({ taskId: 'c', shortId: 'P-M3', startAt: '2026-11-02T08:00:00Z', endAt: '2026-11-02T09:00:00Z', status: 'completed' }),
+      meeting({ taskId: 'd', shortId: 'P-M4', status: 'cancelled' })
+    ]);
 
     expect(list).toHaveBeenCalledWith(expect.any(String), expect.any(String), 'project-1');
+    expect(fixture.nativeElement.querySelector('[data-testid="board-meetings-lane"]')).toBeNull();
+    expect(meetingIdsIn(fixture, 'todo')).toEqual(['P-M1']);
+    expect(meetingIdsIn(fixture, 'doing')).toEqual(['P-M2']);
+    expect(meetingIdsIn(fixture, 'done')).toEqual(['P-M3']);
     const cards: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('app-meeting-card'));
-    expect(cards.length).toBe(1);
+    expect(cards.length).toBe(3);
     for (const card of cards) {
       expect(card.closest('.cdk-drag, [cdkdrag], .cdk-drop-list, [cdkdroplist]')).toBeNull();
     }
+  });
+
+  it('applies the search and module filters to meetings, and hides them under filters a meeting has no value for', async () => {
+    const { fixture } = await build([meeting({ shortId: 'P-M1', title: 'Standup', startAt: '2099-01-01T09:00:00Z', endAt: '2099-01-01T10:00:00Z' })]);
+    const board = fixture.componentInstance as unknown as {
+      onSearchChanged(term: string): void;
+      onFilterFieldChanged(e: { key: string; values: string[] }): void;
+    };
+    const count = () => fixture.nativeElement.querySelectorAll('app-meeting-card').length;
+
+    board.onSearchChanged('stand');
+    fixture.detectChanges();
+    expect(count()).toBe(1);
+    board.onSearchChanged('retro');
+    fixture.detectChanges();
+    expect(count()).toBe(0);
+    board.onSearchChanged('');
+
+    board.onFilterFieldChanged({ key: 'module', values: ['other-module'] });
+    fixture.detectChanges();
+    expect(count()).toBe(0);
+    board.onFilterFieldChanged({ key: 'module', values: ['milestone-1'] });
+    fixture.detectChanges();
+    expect(count()).toBe(1);
+
+    board.onFilterFieldChanged({ key: 'priority', values: ['high'] });
+    fixture.detectChanges();
+    expect(count()).toBe(0);
   });
 });

@@ -80,6 +80,11 @@ export interface CreateTaskRequestDto {
   attachmentFileIds?: string[];
   /** An action item: the meeting occurrence (task id) it was raised from. Left out for every ordinary task. */
   sourceMeetingOccurrenceId?: string;
+  /** Planner create popover: if the create goes for approval, it's assigned to the caller (only allowed value) and
+   *  planned at this slot once approved. Ignored when the task is created directly. */
+  assigneeEmployeeId?: string;
+  planStartAt?: string;
+  planEndAt?: string;
 }
 
 export interface CreateSubtaskRequestDto {

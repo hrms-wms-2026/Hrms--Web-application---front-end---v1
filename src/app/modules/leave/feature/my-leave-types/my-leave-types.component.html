@@ -1,0 +1,57 @@
+<section class="to-page">
+  <header class="to-header">
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" parentUrl="/time-off" currentLabel="Leave Types" icon="time-off" />
+    <div class="to-header-actions">
+      <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
+    </div>
+  </header>
+
+  <div class="mlt-head">
+    <div>
+      <h1>All my leave types</h1>
+      <p>View your entitlement and usage for each leave type.</p>
+    </div>
+    <a class="mlt-back" routerLink="/time-off"><span aria-hidden="true">←</span> Back to overview</a>
+  </div>
+
+  @if (store.myLoading() && store.my().length === 0) {
+    <div class="to-loading"><app-loader /></div>
+  } @else if (store.myError()) {
+    <app-error-state [message]="store.myError()!" [retryable]="true" (retry)="store.loadMy(store.year())" />
+  } @else if (store.my().length === 0) {
+    <div class="to-empty">
+      <app-empty-state title="No leave balances yet" description="Balances appear once HR generates entitlements for this year." />
+    </div>
+  } @else {
+    <div class="mlt-grid">
+      @for (balance of store.my(); track balance.leaveTypeId) {
+        <article class="mlt-card" data-testid="balance-row">
+          <header class="mlt-card__head">
+            <app-leave-type-icon [name]="balance.leaveTypeName" [code]="balance.leaveTypeCode" [color]="color(balance)" [icon]="icon(balance)" />
+            <h2>{{ balance.leaveTypeName }}</h2>
+          </header>
+          <p class="mlt-card__value">
+            <strong data-testid="balance-remaining" [class.mlt-negative]="balance.isNegative">{{ hours(balance.remainingHours) }}</strong>
+            <small>/ {{ hours(balance.entitledHours) }} h</small>
+          </p>
+          <span class="mlt-bar" aria-hidden="true"><span [style.width.%]="share(balance)"></span></span>
+          <p class="mlt-muted">
+            @if (balance.isNegative) { {{ hours(-balance.remainingHours) }} h overdrawn } @else { {{ share(balance) | number: '1.0-0' }}% remaining }
+          </p>
+          <dl class="mlt-stats">
+            <div><dt>Entitled</dt><dd>{{ hours(balance.entitledHours) }} h/yr</dd></div>
+            <div><dt>Used</dt><dd>{{ hours(balance.usedHours) }} h</dd></div>
+            @if (balance.pendingHours > 0) { <div><dt>Pending</dt><dd>{{ hours(balance.pendingHours) }} h</dd></div> }
+            @if (balance.carriedForwardHours > 0) { <div><dt>Carried</dt><dd>{{ hours(balance.carriedForwardHours) }} h</dd></div> }
+          </dl>
+          @if (accrualNote(balance); as note) {
+            <p class="mlt-note" data-testid="balance-accrual">{{ note }}</p>
+          }
+          @if (balance.carryForwardExpiresOn) {
+            <p class="mlt-note">Carry-forward expires {{ balance.carryForwardExpiresOn }}</p>
+          }
+        </article>
+      }
+    </div>
+  }
+</section>

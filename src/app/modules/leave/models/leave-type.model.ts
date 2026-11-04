@@ -13,6 +13,8 @@ export interface LeaveTypeResponse {
   isActive: boolean;
   createdAt: string;
   policyCount: number;
+  /** "lucide:{name}" or "emoji:{emoji}"; null shows the picture guessed from the name. */
+  icon?: string | null;
 }
 
 export interface CreateLeaveTypeRequest {
@@ -25,6 +27,8 @@ export interface CreateLeaveTypeRequest {
   requiresDocument: boolean;
   documentRequiredAfterHours: number | null;
   acceptedDocumentTypes: string[];
+  /** Omitted keeps the current icon; '' clears it. */
+  icon?: string | null;
 }
 
 /** Code is immutable after creation and deliberately absent from update requests. */

@@ -11,9 +11,11 @@ export interface LeaveTypeState {
   readonly saving: boolean;
   readonly loadError: string | null;
   readonly actionError: string | null;
+  /** True once a load has succeeded, so "no leave types" can be told apart from "not loaded yet". */
+  readonly loaded: boolean;
 }
 
-const initialState: LeaveTypeState = { items: [], loading: false, saving: false, loadError: null, actionError: null };
+const initialState: LeaveTypeState = { items: [], loading: false, saving: false, loadError: null, actionError: null, loaded: false };
 
 export const LeaveTypeStore = signalStore(
   { providedIn: 'root' },
@@ -23,7 +25,7 @@ export const LeaveTypeStore = signalStore(
       patchState(store, { loading: true, loadError: null });
       try {
         const items = await firstValueFrom(api.list(false));
-        patchState(store, { items, loading: false });
+        patchState(store, { items, loading: false, loaded: true });
       } catch (err) {
         patchState(store, { loading: false, loadError: toSafeErrorMessage(err, 'Failed to load leave types.') });
       }

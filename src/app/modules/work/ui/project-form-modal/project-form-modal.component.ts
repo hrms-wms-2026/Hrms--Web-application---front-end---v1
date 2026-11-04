@@ -8,6 +8,7 @@ import { PersonPickerDialogComponent, PersonPickerOption } from '../../../../sha
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
 import { CreateProjectPayload } from '../../models/project.model';
 import { ColorSwatchPickerComponent } from '../color-swatch-picker/color-swatch-picker.component';
+import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
@@ -22,7 +23,7 @@ const STEP_ITEMS = [
   selector: 'app-project-form-modal',
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [StopClickPropagationDirective, InputComponent, ButtonComponent, DateRangePickerComponent, PersonPickerDialogComponent, ColorSwatchPickerComponent],
+  imports: [StopClickPropagationDirective, InputComponent, ButtonComponent, DateRangePickerComponent, PersonPickerDialogComponent, ColorSwatchPickerComponent, IconPickerComponent],
   template: `
     @if (open()) {
       <div role="presentation" class="proj-modal-backdrop" animate.leave="ui-popup-leave" (click)="closed.emit()">
@@ -209,8 +210,12 @@ const STEP_ITEMS = [
                   </span>
 
                   <span data-testid="color-field" class="col-span-2 flex flex-col gap-1">
-                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Color</span>
-                    <app-color-swatch-picker [presets]="colorPresets" [selected]="color()" (colorChange)="color.set($event)" />
+                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Icon and colour</span>
+                    <span class="flex items-center gap-3">
+                      <app-icon-picker data-testid="icon-field" ariaLabel="Choose project icon" [icon]="icon()" [color]="color() || null" [name]="name()"
+                                       [showColors]="false" (iconChange)="icon.set($event)" />
+                      <app-color-swatch-picker [presets]="colorPresets" [selected]="color()" (colorChange)="color.set($event)" />
+                    </span>
                     <!-- Hidden input so tests or form helpers can set color-field input directly -->
                     <input
                       type="text"
@@ -693,6 +698,7 @@ export class ProjectFormModalComponent implements OnInit {
   targetDate = signal('');
   allocatedHours = signal(0);
   color = signal('');
+  icon = signal<string | null>(null);
   logoFile = signal<File | null>(null);
   bannerFile = signal<File | null>(null);
   memberEmployeeIds = signal<readonly string[]>([]);
@@ -860,7 +866,7 @@ export class ProjectFormModalComponent implements OnInit {
       description: this.description(), startDate: fields.startDate, targetDate: fields.targetDate,
       releaseDate: null, color: this.color(), actualHours: 0,
       defaultObjectiveAllocatedHours: fields.allocatedHours,
-      logoFile: this.logoFile(), bannerFile: this.bannerFile(),
+      logoFile: this.logoFile(), bannerFile: this.bannerFile(), icon: this.icon(),
       memberEmployeeIds: this.memberEmployeeIds()
     });
   }

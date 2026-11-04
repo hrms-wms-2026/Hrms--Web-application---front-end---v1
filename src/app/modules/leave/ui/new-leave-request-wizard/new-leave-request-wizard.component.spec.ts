@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveRequestResponse } from '../../models/leave-request.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
-import { NewLeaveRequestWizardComponent } from './new-leave-request-wizard.component';
+import { NewLeaveRequestWizardComponent, halfDayWindows } from './new-leave-request-wizard.component';
 
 describe('NewLeaveRequestWizardComponent', () => {
   let fixture: ComponentFixture<NewLeaveRequestWizardComponent>;
@@ -45,9 +45,13 @@ describe('NewLeaveRequestWizardComponent', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Leave type');
-    expect(text).toContain('From date');
-    expect(text).toContain('To time');
-    expect(text).toContain('Reason (optional)');
+    expect(text).toContain('Date range');
+    expect(text).toContain('Full Day');
+    expect(text).toContain('Half Day');
+    expect(text).toContain('Custom Hours');
+    expect(text).toContain('Reason');
+    // Times are only asked for with Custom Hours.
+    expect(text).not.toContain('To time');
     expect(text).not.toContain('Step 1 of 5');
     expect(submitButton().textContent).toContain('Submit Request');
   });
@@ -58,8 +62,22 @@ describe('NewLeaveRequestWizardComponent', () => {
     expect(fixture.nativeElement.querySelector('app-date-picker .ui-field__trailing')).toBeNull();
   });
 
-  it('shows remaining hours next to each leave type option', () => {
+  it('shows the first three leave types as chips and picks one on click', () => {
     fixture.detectChanges();
+    const chips = fixture.nativeElement.querySelectorAll('[data-testid="leave-type-chip"]') as NodeListOf<HTMLButtonElement>;
+    expect(chips.length).toBe(1);
+    expect(chips[0].textContent).toContain('Annual Leave');
+    expect(chips[0].title).toContain('120 hours remaining');
+    expect(fixture.nativeElement.querySelector('[data-testid="leave-type-select"]')).toBeNull();
+    chips[0].click();
+    expect(fixture.componentInstance.draft().leaveTypeId).toBe('type-1');
+  });
+
+  it('puts leave types beyond the first three in the dropdown, with remaining hours', () => {
+    const more = ['type-2', 'type-3', 'type-4'].map((id, i) => ({ ...leaveTypes[0], id, name: `Type ${i + 2}`, code: `T${i + 2}` }));
+    fixture.componentRef.setInput('leaveTypes', [...more, leaveTypes[0]]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="leave-type-chip"]').length).toBe(3);
     const host = fixture.nativeElement.querySelector('[data-testid="leave-type-select"]') as HTMLElement;
     const options = openSelect(host, () => fixture.detectChanges());
     expect(options.some((o) => o.textContent?.includes('Annual Leave') && o.textContent?.includes('120 hours remaining'))).toBe(true);
@@ -78,6 +96,7 @@ describe('NewLeaveRequestWizardComponent', () => {
     const emitted: unknown[] = [];
     fixture.componentInstance.previewRequested.subscribe((e: unknown) => emitted.push(e));
     fixture.detectChanges();
+    fixture.componentInstance.onDurationChange('custom');
     fixture.componentInstance.draft.update((d) => ({
       ...d, leaveTypeId: 'type-1', startDate: '2026-09-09', startTime: '14:00', endDate: '2026-09-09', endTime: '18:00'
     }));
@@ -102,7 +121,7 @@ describe('NewLeaveRequestWizardComponent', () => {
     fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-09', endDate: '2026-09-09' }));
     fixture.detectChanges();
     expect(fixture.componentInstance.canSubmit()).toBe(false);
-    expect(fixture.nativeElement.querySelector('[data-testid="work-window-required"]')?.textContent).toContain('Set work start and end in General Settings first.');
+    expect(fixture.nativeElement.querySelector('[data-testid="work-window-required"]')?.textContent).toContain('Set work start and end in General Settings first');
   });
 
   it('drops the work-window error once the work hours arrive after opening', () => {
@@ -176,6 +195,19 @@ describe('NewLeaveRequestWizardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="document-input"]')).toBeTruthy();
   });
 
+  it('fills type, dates, times and reason from the initial inputs (Planner create popover)', () => {
+    fixture.componentRef.setInput('initialLeaveTypeId', 'type-1');
+    fixture.componentRef.setInput('initialStartDate', '2026-11-10');
+    fixture.componentRef.setInput('initialEndDate', '2026-11-10');
+    fixture.componentRef.setInput('initialStartTime', '09:00');
+    fixture.componentRef.setInput('initialEndTime', '11:00');
+    fixture.componentRef.setInput('initialReason', 'Doctor');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.draft()).toEqual({
+      leaveTypeId: 'type-1', startDate: '2026-11-10', startTime: '09:00', endDate: '2026-11-10', endTime: '11:00', reason: 'Doctor',
+    });
+  });
+
   it('prefills start and end dates from initialStartDate and initialEndDate', () => {
     fixture.componentRef.setInput('initialStartDate', '2026-09-10');
     fixture.componentRef.setInput('initialEndDate', '2026-09-10');
@@ -220,5 +252,86 @@ describe('NewLeaveRequestWizardComponent', () => {
     fixture.componentRef.setInput('previewResult', preview());
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="over-balance"]')).toBeNull();
+  });
+
+  it('Full Day asks for the whole work window on each date', () => {
+    const emitted: { startAt: string; endAt: string }[] = [];
+    fixture.componentInstance.previewRequested.subscribe((e) => emitted.push(e));
+    fixture.detectChanges();
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-11' }));
+    fixture.detectChanges();
+    expect(emitted.at(-1)).toMatchObject({ startAt: '2026-09-10T09:00:00.000Z', endAt: '2026-09-11T18:00:00.000Z' });
+  });
+
+  it('Half Day leaves the break between the halves, so each half is half a work day', () => {
+    fixture.componentRef.setInput('breakMinutes', 60);
+    const emitted: { startAt: string; endAt: string }[] = [];
+    fixture.componentInstance.previewRequested.subscribe((e) => emitted.push(e));
+    fixture.detectChanges();
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-10' }));
+    fixture.componentInstance.onDurationChange('half');
+    fixture.detectChanges();
+    expect(emitted.at(-1)).toMatchObject({ startAt: '2026-09-10T09:00:00.000Z', endAt: '2026-09-10T13:00:00.000Z' });
+    fixture.componentInstance.half.set('second');
+    fixture.detectChanges();
+    expect(emitted.at(-1)).toMatchObject({ startAt: '2026-09-10T14:00:00.000Z', endAt: '2026-09-10T18:00:00.000Z' });
+  });
+
+  it('Half Day keeps to one date and takes the first or second half of the work window', () => {
+    const emitted: { startAt: string; endAt: string }[] = [];
+    fixture.componentInstance.previewRequested.subscribe((e) => emitted.push(e));
+    fixture.detectChanges();
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-12' }));
+    fixture.componentInstance.onDurationChange('half');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.draft().endDate).toBe('2026-09-10');
+    expect(emitted.at(-1)).toMatchObject({ startAt: '2026-09-10T09:00:00.000Z', endAt: '2026-09-10T13:30:00.000Z' });
+
+    fixture.componentInstance.half.set('second');
+    fixture.detectChanges();
+    expect(emitted.at(-1)).toMatchObject({ startAt: '2026-09-10T13:30:00.000Z', endAt: '2026-09-10T18:00:00.000Z' });
+
+    fixture.componentInstance.onStartDateChange('2026-09-15');
+    expect(fixture.componentInstance.draft().endDate).toBe('2026-09-15');
+  });
+
+  it('lets Custom Hours submit without a work window', () => {
+    fixture.componentRef.setInput('workStartTime', null);
+    fixture.componentRef.setInput('workEndTime', null);
+    fixture.detectChanges();
+    fixture.componentInstance.onDurationChange('custom');
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-10', startTime: '10:00', endTime: '12:00' }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="work-window-required"]')).toBeNull();
+    expect(fixture.componentInstance.canSubmit()).toBe(true);
+  });
+
+  it('shows chargeable hours and the balance after the request from the preview', () => {
+    fixture.componentRef.setInput('previewResult', preview({ totalHours: 16, balanceImpact: { currentRemainingHours: 96, pendingAfterSubmitHours: 16, remainingAfterSubmitHours: 80 } }));
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1' }));
+    fixture.detectChanges();
+    const summary = fixture.nativeElement.querySelector('[data-testid="request-summary"]') as HTMLElement;
+    expect(summary.textContent).toContain('16 h');
+    expect(summary.textContent).toContain('80 h');
+    expect(summary.textContent).toContain('Annual Leave balance');
+  });
+
+  it('names the first approver once the preview knows them', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="approver-note"]')?.textContent).toContain('your manager');
+    fixture.componentRef.setInput('previewResult', preview({ approvers: [{ approverEmployeeId: 'm-1', approverName: 'Priya Nair', sequenceOrder: 1, status: 'pending', delegatedFromApproverId: null }] }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="approver-note"]')?.textContent).toContain('Priya Nair');
+  });
+});
+
+describe('halfDayWindows', () => {
+  it('gives each half half of the working hours, with the break between them', () => {
+    expect(halfDayWindows('09:00', '18:00', 60)).toEqual({ first: ['09:00', '13:00'], second: ['14:00', '18:00'] });
+    expect(halfDayWindows('08:00', '16:00', null)).toEqual({ first: ['08:00', '12:00'], second: ['12:00', '16:00'] });
+  });
+
+  it('handles a window that runs past midnight', () => {
+    expect(halfDayWindows('22:00', '06:00', 0)).toEqual({ first: ['22:00', '02:00'], second: ['02:00', '06:00'] });
   });
 });

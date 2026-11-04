@@ -9,39 +9,99 @@
         (confirmed)="onEmployeePicked($event[0])" (closed)="pickerOpen.set(false)" />
     }
 
-    <app-select
-      data-testid="leave-type-select"
-      label="Leave type"
-      [required]="true"
-      placeholder="Select a leave type"
-      [options]="leaveTypeOptions"
-      [value]="draft().leaveTypeId"
-      (valueChange)="onLeaveTypeChange($event)"
-    />
+    <div class="nlw-field">
+      <span class="ui-field-label" id="nlw-type-label">Leave type<span class="ui-field-required" aria-hidden="true">*</span></span>
+      <div class="nlw-chips" role="group" aria-labelledby="nlw-type-label" data-testid="leave-type-chips">
+        @for (type of chipLeaveTypes(); track type.id) {
+          <button
+            type="button"
+            class="nlw-chip"
+            data-testid="leave-type-chip"
+            [class.nlw-chip--active]="draft().leaveTypeId === type.id"
+            [attr.aria-pressed]="draft().leaveTypeId === type.id"
+            [title]="remainingHoursFor(type.id) === null ? type.name : type.name + ' - ' + remainingHoursFor(type.id) + ' hours remaining'"
+            (click)="onLeaveTypeChange(type.id)"
+          >
+            <app-leave-type-icon class="nlw-chip__icon" [name]="type.name" [code]="type.code" [color]="type.color" [icon]="type.icon" />
+            {{ type.name }}
+          </button>
+        }
+        @if (leaveTypeOptions.length > 0) {
+          <app-select
+            class="nlw-more-types"
+            data-testid="leave-type-select"
+            placeholder="More types"
+            [options]="leaveTypeOptions"
+            [value]="draft().leaveTypeId"
+            (valueChange)="onLeaveTypeChange($event)"
+          />
+        }
+      </div>
+    </div>
 
-    @if (workWindowMissing()) {
-      <p class="nlw-error" data-testid="work-window-required">Set work start and end in General Settings first.</p>
+    <div class="nlw-field">
+      <span class="ui-field-label">Date range<span class="ui-field-required" aria-hidden="true">*</span></span>
+      <div class="nlw-row">
+        <app-date-picker placeholder="From" ariaLabel="From date" [value]="draft().startDate" (valueChange)="onStartDateChange($event)" />
+        <app-date-picker placeholder="To" ariaLabel="To date" [disabled]="duration() === 'half'" [value]="draft().endDate" (valueChange)="draft.update(d => ({...d, endDate: $event}))" />
+      </div>
+    </div>
+
+    <div class="nlw-field">
+      <span class="ui-field-label" id="nlw-duration-label">Duration</span>
+      <div class="nlw-segments" role="radiogroup" aria-labelledby="nlw-duration-label">
+        <button type="button" role="radio" class="nlw-segment" data-testid="duration-full" [class.nlw-segment--active]="duration() === 'full'" [attr.aria-checked]="duration() === 'full'" (click)="onDurationChange('full')">Full Day</button>
+        <button type="button" role="radio" class="nlw-segment" data-testid="duration-half" [class.nlw-segment--active]="duration() === 'half'" [attr.aria-checked]="duration() === 'half'" (click)="onDurationChange('half')">Half Day</button>
+        <button type="button" role="radio" class="nlw-segment" data-testid="duration-custom" [class.nlw-segment--active]="duration() === 'custom'" [attr.aria-checked]="duration() === 'custom'" (click)="onDurationChange('custom')">Custom Hours</button>
+      </div>
+      @if (duration() === 'half' ? halfWindows() : null; as halves) {
+        <div class="nlw-segments nlw-segments--sub" role="radiogroup" aria-label="Which half">
+          <button type="button" role="radio" class="nlw-segment" [class.nlw-segment--active]="half() === 'first'" [attr.aria-checked]="half() === 'first'" (click)="half.set('first')">First half · {{ halves.first[0] }}–{{ halves.first[1] }}</button>
+          <button type="button" role="radio" class="nlw-segment" [class.nlw-segment--active]="half() === 'second'" [attr.aria-checked]="half() === 'second'" (click)="half.set('second')">Second half · {{ halves.second[0] }}–{{ halves.second[1] }}</button>
+        </div>
+      }
+    </div>
+
+    @if (duration() === 'custom') {
+      <div class="nlw-row">
+        <app-time-picker label="From time" [required]="true" [value]="draft().startTime || workStartTime || ''" (valueChange)="draft.update(d => ({...d, startTime: $event}))" />
+        <app-time-picker label="To time" [required]="true" [value]="draft().endTime || workEndTime || ''" (valueChange)="draft.update(d => ({...d, endTime: $event}))" />
+      </div>
     }
 
-    <div class="nlw-row">
-      <app-date-picker label="From date" [required]="true" [value]="draft().startDate" (valueChange)="onStartDateChange($event)" />
-      <app-date-picker label="To date" [required]="true" [value]="draft().endDate" (valueChange)="draft.update(d => ({...d, endDate: $event}))" />
-    </div>
-    <div class="nlw-row">
-      <app-time-picker label="From time" [required]="true" [value]="draft().startTime || workStartTime || ''" (valueChange)="draft.update(d => ({...d, startTime: $event}))" />
-      <app-time-picker label="To time" [required]="true" [value]="draft().endTime || workEndTime || ''" (valueChange)="draft.update(d => ({...d, endTime: $event}))" />
-    </div>
+    @if (workWindowMissing()) {
+      <p class="nlw-error" data-testid="work-window-required">Set work start and end in General Settings first, or choose Custom Hours.</p>
+    }
     @if (draft().startDate ? dateRangeHint() : null; as hint) {
       <p class="nlw-muted" data-testid="date-range-hint">{{ hint }}</p>
     }
 
+    @if (draft().leaveTypeId && previewResult && !previewError) {
+      <div class="nlw-summary" data-testid="request-summary">
+        <div>
+          <span>Chargeable</span>
+          <strong>{{ hoursLabel(previewResult.totalHours) }}</strong>
+          @if (previewResult.unpaidHours > 0) {
+            <small>{{ hoursLabel(previewResult.paidHours) }} paid · {{ hoursLabel(previewResult.unpaidHours) }} unpaid</small>
+          } @else {
+            <small>from the work hours in this range</small>
+          }
+        </div>
+        <div>
+          <span>Balance after request</span>
+          <strong [class.nlw-negative]="previewResult.balanceImpact.remainingAfterSubmitHours < 0">{{ hoursLabel(previewResult.balanceImpact.remainingAfterSubmitHours) }}</strong>
+          <small>{{ selectedLeaveTypeName() }} balance</small>
+        </div>
+      </div>
+    }
+
     <div class="nlw-field">
       <app-input
-        label="Reason (optional)"
+        label="Reason"
         [multiline]="true"
         [rows]="2"
         [maxlength]="reasonMaxLength"
-        placeholder="Add a reason for your leave request..."
+        placeholder="Enter a reason for your leave request..."
         [value]="draft().reason ?? ''"
         (valueChange)="draft.update(d => ({...d, reason: $event || null}))"
       />
@@ -89,6 +149,13 @@
           }
         </details>
       }
+    }
+
+    @if (!onBehalf) {
+      <p class="nlw-info" data-testid="approver-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></svg>
+        {{ approverNote() }}
+      </p>
     }
 
     @if (submitError) { <p class="nlw-error">{{ submitError }}</p> }

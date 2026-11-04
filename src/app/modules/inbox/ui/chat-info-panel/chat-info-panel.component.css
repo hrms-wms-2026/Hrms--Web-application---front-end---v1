@@ -20,6 +20,8 @@
 .cip__photo--edit:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 3px; }
 .cip__photo--edit:disabled { cursor: default; }
 .cip__photo ::ng-deep .avatar--xl { width: 96px; height: 96px; font-size: 2rem; }
+.cip__entity-icon { --entity-icon-size: 96px; }
+.cip__icon-picker { margin-top: 6px; }
 .cip__photo-icon { display: inline-flex; width: 96px; height: 96px; align-items: center; justify-content: center; border-radius: 999px;
   background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); }
 .cip__photo-icon svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }

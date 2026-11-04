@@ -1,0 +1,30 @@
+.mlr-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+.mlr-head h1 { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); }
+.mlr-head p { margin: .3rem 0 0; color: var(--color-text-secondary); font-size: .875rem; }
+
+.mlr-card { display: flex; flex-direction: column; gap: .85rem; padding: 1rem 1.1rem; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); }
+.mlr-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
+.mlr-tabs { margin: 0; }
+.mlr-filters { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.mlr-search { display: flex; align-items: center; gap: .5rem; height: var(--field-height, 2.5rem); padding: 0 .85rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-secondary); }
+.mlr-search:focus-within { border-color: var(--color-accent); }
+.mlr-search svg { flex: none; width: 1rem; height: 1rem; }
+.mlr-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--color-text-primary); font: inherit; font-size: .84rem; }
+
+.mlr-type { display: inline-flex; align-items: center; gap: .55rem; font-weight: 600; }
+.mlr-type__icon { --lti-size: 1.9rem; }
+.mlr-stack { display: inline-flex; flex-direction: column; }
+.mlr-stack small { color: var(--color-text-secondary); font-size: .72rem; }
+
+.mlr-status { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .72rem; font-weight: 600; text-transform: capitalize; }
+.mlr-status--approved { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+.mlr-status--pending { background: var(--color-warning-subtle); color: var(--color-warning-text); }
+.mlr-status--rejected { background: var(--color-danger-subtle); color: var(--color-danger-text); }
+.mlr-status--cancelled { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+
+.mlr-pager { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; color: var(--color-text-secondary); font-size: .8rem; }
+.mlr-pager__range { margin-right: auto; }
+.mlr-pager button { width: 2rem; height: 2rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font-size: 1rem; cursor: pointer; }
+.mlr-pager button:disabled { opacity: .45; cursor: not-allowed; }
+.mlr-pager button:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.mlr-progress { display: block; margin-top: .2rem; color: var(--color-text-secondary); font-size: .7rem; }

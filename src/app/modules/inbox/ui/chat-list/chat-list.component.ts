@@ -6,6 +6,7 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { ConversationsApiService } from '../../data-access/conversations-api.service';
 import { InboxChatPendingItemDto, InboxChatRowDto } from '../../models/inbox-chat.dto';
 import { ConversationPersonDto } from '../../models/inbox.dto';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
 
 export type ChatListFilter = 'all' | 'pending';
 
@@ -50,7 +51,7 @@ export function chatTimeLabel(iso: string, now: Date = new Date()): string {
 @Component({
   selector: 'app-chat-list',
   standalone: true,
-  imports: [AvatarComponent],
+  imports: [AvatarComponent, EntityIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="cl" data-testid="chat-list" [class.cl--roomy]="roomy()">
@@ -66,6 +67,8 @@ export function chatTimeLabel(iso: string, now: Date = new Date()): string {
             <button type="button" class="cl__open" data-testid="chat-row" [title]="row.preview ?? row.title" (click)="openRow.emit(row)">
               @if (row.type === 'direct' || row.avatarFileId) {
                 <app-avatar [userName]="row.title" [avatarUrl]="avatarUrl(row.avatarFileId)" size="md" />
+              } @else if (row.icon) {
+                <app-entity-icon class="cl__icon" shape="circle" [icon]="row.icon" [color]="row.color" [name]="row.title" />
               } @else {
                 <span class="cl__group" [class.cl__group--case]="row.type === 'case'" aria-hidden="true">
                   @if (row.type === 'case') {
@@ -133,6 +136,7 @@ export function chatTimeLabel(iso: string, now: Date = new Date()): string {
       color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
     .cl__open:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: -2px; }
     .cl__open app-avatar { flex: 0 0 auto; }
+    .cl__icon { --entity-icon-size: 36px; }
     .cl__group { display: inline-flex; width: 36px; height: 36px; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 999px;
       background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); }
     .cl__group--case { background: color-mix(in srgb, var(--color-warning, #d97706) 15%, var(--color-surface)); color: var(--color-warning, #b45309); }

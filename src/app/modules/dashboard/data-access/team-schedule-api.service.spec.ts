@@ -26,7 +26,7 @@ describe('TeamScheduleApiService', () => {
   it('GETs today without a date', () => {
     service.getTeamDay().subscribe();
 
-    const req = http.expectOne((r) => r.url === url);
+    const req = http.expectOne((r) => r.url === `${url}/schedule`);
     expect(req.request.method).toBe('GET');
     expect(req.request.params.keys()).toEqual([]);
     req.flush({});
@@ -35,7 +35,7 @@ describe('TeamScheduleApiService', () => {
   it('sends a past date', () => {
     service.getTeamDay('2026-10-28').subscribe();
 
-    const req = http.expectOne((r) => r.url === url);
+    const req = http.expectOne((r) => r.url === `${url}/schedule`);
     expect(req.request.params.get('date')).toBe('2026-10-28');
     req.flush({});
   });
