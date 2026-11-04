@@ -1,8 +1,8 @@
 import { GridRect, WidgetSize } from '../models/dashboard-layout.model';
 
 /**
- * Pure dashboard grid math. Mirrors the backend DashboardGrid (Overlaps / AutoPlace / Compact) so the client
- * preview and the server validation agree. Nothing here mutates its input.
+ * Pure dashboard grid math for the customize mode: home-screen packing (reading order, pack, reorder, resize) and
+ * the size clamp the backend validates against. Nothing here mutates its input.
  */
 
 /** Same cap as the backend DashboardGrid.MaxRows. */
@@ -15,52 +15,6 @@ export interface GridItem {
 
 export function overlaps(a: GridRect, b: GridRect): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-}
-
-/** First free slot scanning rows top to bottom, then columns left to right. */
-export function autoPlace(occupied: GridRect[], w: number, h: number, cols: number): GridRect {
-  if (w < 1 || h < 1 || w > cols) {
-    throw new RangeError('Widget size must be at least 1x1 and fit within the column count.');
-  }
-  if (h > MAX_ROWS) {
-    throw new RangeError('Widget height exceeds the maximum row count.');
-  }
-  for (let y = 0; y + h <= MAX_ROWS; y++) {
-    for (let x = 0; x <= cols - w; x++) {
-      const candidate: GridRect = { x, y, w, h };
-      if (!occupied.some(o => overlaps(o, candidate))) {
-        return candidate;
-      }
-    }
-  }
-  throw new Error(`No free slot within ${MAX_ROWS} rows.`);
-}
-
-/**
- * Gravity compaction: each item (visited top-to-bottom, then left-to-right) drops straight to the bottom edge of
- * the lowest already-placed item above it that shares columns, or to row 0 when there is none.
- */
-export function compact<T extends { rect: GridRect }>(items: T[]): T[] {
-  const ordered = items
-    .map((item, index) => ({ item, index }))
-    .sort((a, b) => a.item.rect.y - b.item.rect.y || a.item.rect.x - b.item.rect.x || a.index - b.index);
-  const placed: GridRect[] = [];
-  const result = new Map<T, T>();
-  for (const { item } of ordered) {
-    const rect = item.rect;
-    let floor = 0;
-    for (const p of placed) {
-      const sharesColumns = p.x < rect.x + rect.w && rect.x < p.x + p.w;
-      const bottom = p.y + p.h;
-      if (sharesColumns && bottom <= rect.y && bottom > floor) {
-        floor = bottom;
-      }
-    }
-    const next: GridRect = { ...rect, y: Math.min(floor, rect.y) };
-    placed.push(next);
-    result.set(item, { ...item, rect: next });
-  }
-  return items.map(item => result.get(item) as T);
 }
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
@@ -81,81 +35,82 @@ export function clampSize(rect: GridRect, size: WidgetSize, cols: number): GridR
   return { x, y, w, h };
 }
 
-/** Pushes every item overlapping the anchor below it, recursively. Mutates the working list only. */
-function pushColliders(list: GridItem[], anchorId: string): void {
-  const queue = [anchorId];
-  let guard = list.length * list.length + 8;
-  while (queue.length > 0 && guard-- > 0) {
-    const anchorKey = queue.shift();
-    const anchor = list.find(i => i.id === anchorKey);
-    if (!anchor) continue;
-    for (let i = 0; i < list.length; i++) {
-      const other = list[i];
-      if (other.id !== anchor.id && overlaps(anchor.rect, other.rect)) {
-        list[i] = { ...other, rect: { ...other.rect, y: anchor.rect.y + anchor.rect.h } };
-        queue.push(other.id);
+/** Reading order: top to bottom, then left to right (ties keep their input order). */
+export function readingOrder<T extends GridItem>(items: T[]): T[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => a.item.rect.y - b.item.rect.y || a.item.rect.x - b.item.rect.x || a.index - b.index)
+    .map(e => e.item);
+}
+
+/**
+ * Home-screen packing: the items keep the given order and each takes the first free slot at or after the previous
+ * item's slot (row by row, left to right). Moving one item earlier in the order pushes the later ones along instead
+ * of covering them, the way icons make room on a phone's home screen. Never overlaps. `reserved` cells (the pinned
+ * Quick Actions corner) count as taken. Returns the items in `ordered` order with their new rects.
+ */
+export function pack<T extends GridItem>(ordered: T[], cols: number, reserved: readonly GridRect[] = []): T[] {
+  const placed: GridRect[] = [...reserved];
+  let cursorY = 0;
+  let cursorX = 0;
+  return ordered.map(item => {
+    const w = Math.min(Math.max(1, item.rect.w), cols);
+    const h = Math.max(1, item.rect.h);
+    for (let y = cursorY; y + h <= MAX_ROWS; y++) {
+      for (let x = y === cursorY ? cursorX : 0; x <= cols - w; x++) {
+        const candidate: GridRect = { x, y, w, h };
+        if (!placed.some(p => overlaps(p, candidate))) {
+          placed.push(candidate);
+          cursorY = y;
+          cursorX = x;
+          return { ...item, rect: candidate };
+        }
       }
     }
-  }
+    throw new Error(`No free slot within ${MAX_ROWS} rows.`);
+  });
 }
 
-function place<T extends GridItem>(items: T[], id: string, rect: GridRect): T[] {
-  const list = items.map(i => (i.id === id ? { ...i, rect } : { ...i }));
-  pushColliders(list, id);
-  return compact(list);
-}
-
-/**
- * Moving down: the others are compacted first (as if the moved item were lifted out), then the moved item settles
- * below every neighbour that starts above its target row (they swap places with it); neighbours starting at or
- * below the target row are pushed down. Without this, pushing the lower neighbour down and compacting would just
- * float the moved item back to where it started.
- */
-function placeBelow<T extends GridItem>(items: T[], id: string, rect: GridRect): T[] {
-  const moved = items.find(i => i.id === id) as T;
-  const others = compact(items.filter(i => i.id !== id));
-  const target = { ...rect };
-  let guard = others.length + 1;
-  let passed = others.filter(o => overlaps(o.rect, target) && o.rect.y < target.y);
-  while (passed.length > 0 && guard-- > 0) {
-    target.y = Math.max(...passed.map(o => o.rect.y + o.rect.h));
-    passed = others.filter(o => overlaps(o.rect, target) && o.rect.y < target.y);
-  }
-  const byId = new Map<string, T>(others.map(o => [o.id, o]));
-  byId.set(id, { ...moved, rect: target });
-  const list = items.map(i => ({ ...(byId.get(i.id) as T) }));
-  pushColliders(list, id);
-  return compact(list);
+/** Packs the items in their reading order. The result keeps the input array order. */
+export function packInPlace<T extends GridItem>(items: T[], cols: number, reserved: readonly GridRect[] = []): T[] {
+  const byId = new Map(pack(readingOrder(items), cols, reserved).map(i => [i.id, i]));
+  return items.map(i => byId.get(i.id) as T);
 }
 
 /**
- * Moves an item to (x, y) (snapped, clamped to the grid). Moving up or sideways pushes colliders down; moving
- * down swaps with the neighbours passed over (see placeBelow). The result is always compacted with no overlap.
+ * Moves an item to position `index` of the reading order (clamped), then packs: the items between its old and new
+ * place shift by one slot to make room. The result keeps the input array order.
  */
-export function moveTo<T extends GridItem>(items: T[], id: string, x: number, y: number, cols: number): T[] {
-  const current = items.find(i => i.id === id);
-  if (!current) return items;
-  const rect: GridRect = {
-    ...current.rect,
-    x: clamp(Math.round(x), 0, Math.max(cols - current.rect.w, 0)),
-    y: Math.max(Math.round(y), 0)
-  };
-  return rect.y > current.rect.y ? placeBelow(items, id, rect) : place(items, id, rect);
+export function reorderTo<T extends GridItem>(
+  items: T[],
+  id: string,
+  index: number,
+  cols: number,
+  reserved: readonly GridRect[] = []
+): T[] {
+  const order = readingOrder(items);
+  const from = order.findIndex(i => i.id === id);
+  if (from < 0) return items;
+  const [moving] = order.splice(from, 1);
+  order.splice(clamp(Math.round(index), 0, order.length), 0, moving);
+  const byId = new Map(pack(order, cols, reserved).map(i => [i.id, i]));
+  return items.map(i => byId.get(i.id) as T);
 }
 
-/** Resizes an item (snapped to integers within its size limits and the columns), pushes colliders down, compacts. */
-export function resizeTo<T extends GridItem>(
+/** Resizes an item within its size limits and the columns, then packs in reading order. Keeps the input order. */
+export function resizePacked<T extends GridItem>(
   items: T[],
   id: string,
   w: number,
   h: number,
   size: WidgetSize,
-  cols: number
+  cols: number,
+  reserved: readonly GridRect[] = []
 ): T[] {
   const current = items.find(i => i.id === id);
   if (!current) return items;
   const rect = clampSize({ ...current.rect, w, h }, size, cols);
-  return place(items, id, rect);
+  return packInPlace(items.map(i => (i.id === id ? { ...i, rect } : i)), cols, reserved);
 }
 
 /** Snaps a pixel distance/offset to the nearest whole number of cells (cell pitch = cell size + gap). */

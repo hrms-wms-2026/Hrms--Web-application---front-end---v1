@@ -1,8 +1,11 @@
-import { Component, viewChild } from '@angular/core';
+import { Component, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { provideRouter } from '@angular/router';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
@@ -83,6 +86,9 @@ function setup(opts: { bootstrap?: DashboardBootstrap; available?: AvailableWidg
   });
   TestBed.configureTestingModule({
     providers: [
+      provideRouter([]),
+      { provide: TimeTrackingStore, useValue: { today: signal(null), actionLoading: signal(false), activeAction: signal(null), loadToday: vi.fn(), startBreak: vi.fn(), endBreak: vi.fn() } },
+      { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
       { provide: DashboardLayoutApiService, useValue: api },
       { provide: NotificationService, useValue: { warning: vi.fn(), error: vi.fn(), success: vi.fn() } }
     ]
@@ -160,6 +166,29 @@ describe('DashboardShellComponent', () => {
       spy.mockRestore();
       localStorage.removeItem('onexso.dashboard_layout');
     }
+  });
+
+  it('pins_quick_actions_to_the_grid_corner_and_packs_widgets_around_it', async () => {
+    const pinned = widget('qa', 'team-quick-actions', { x: 8, y: 0, w: 4, h: 4 });
+    const ctx = setup({
+      bootstrap: boot({ widgets: [widget('w1', 'alpha', { x: 0, y: 0, w: 8, h: 2 }), pinned, widget('w2', 'beta', { x: 0, y: 2, w: 4, h: 2 })] }),
+      available: [avail('team-quick-actions'), avail('gamma')]
+    });
+    await ready(ctx.fixture);
+    // The card sits in the grid's pinned top-right corner (3 x 1 until it has measured itself).
+    const corner = q(ctx.el, 'grid-pinned')!;
+    expect(corner.style.gridColumn).toBe('10 / span 3');
+    expect(corner.style.gridRow).toBe('1 / span 1');
+    const card = corner.querySelector('[data-testid="dashboard-pinned-quick-actions"]')!;
+    // On the My Team dashboard the card links back to My Work.
+    expect(card.querySelector('[data-testid="quick-action-my-work"]')).not.toBeNull();
+    const cells = Array.from(ctx.el.querySelectorAll<HTMLElement>('[data-instance-id]'));
+    expect(cells.map(c => c.dataset['instanceId'])).toEqual(['w1', 'w2']);
+    // beta moves up beside alpha, just under the pinned corner: never under it, and no hole where the old cell was.
+    expect(cells[1].style.gridColumn).toBe('9 / span 4');
+    expect(cells[1].style.gridRow).toBe('2 / span 2');
+    const store = ctx.fixture.debugElement.query(By.directive(DashboardShellComponent)).injector.get(DashboardStore);
+    expect(store.available().map(a => a.key)).toEqual(['gamma']);
   });
 
   it('customize_button_enters_edit_mode', async () => {
@@ -352,12 +381,13 @@ describe('DashboardShellComponent', () => {
   });
 
   it('forwards_later_breakpoint_changes_to_the_store', async () => {
-    let resizeCb: ResizeObserverCallback = () => undefined;
+    // The shell's breakpoint observer is the first one created (the grid and Quick Actions card add their own).
+    let resizeCb: ResizeObserverCallback | null = null;
     vi.stubGlobal(
       'ResizeObserver',
       class {
         constructor(cb: ResizeObserverCallback) {
-          resizeCb = cb;
+          resizeCb ??= cb;
         }
         observe = vi.fn();
         disconnect = vi.fn();
@@ -368,7 +398,7 @@ describe('DashboardShellComponent', () => {
       const ctx = setup();
       await ready(ctx.fixture);
       expect(ctx.api.bootstrap).toHaveBeenCalledTimes(1);
-      resizeCb([{ contentRect: { width: 900 } } as ResizeObserverEntry], {} as ResizeObserver);
+      resizeCb!([{ contentRect: { width: 900 } } as ResizeObserverEntry], {} as ResizeObserver);
       await ready(ctx.fixture);
       expect(ctx.api.bootstrap).toHaveBeenLastCalledWith('d1', 'tablet');
     } finally {

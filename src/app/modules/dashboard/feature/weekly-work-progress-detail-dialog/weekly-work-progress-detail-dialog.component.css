@@ -1,0 +1,113 @@
+/* The app-modal panel is rendered inside this component's view; the doubled class outranks app-modal's size rule. */
+:host ::ng-deep .weekly-work-progress-detail.weekly-work-progress-detail {
+  width: 100%;
+  max-width: min(1280px, 100%);
+  max-height: 92vh;
+  padding: 0;
+  --popup-pad: 0px;
+}
+
+/* Same shell as the Team Progress popup: app-modal's icon-tile header gives way to .wwp-head. */
+:host ::ng-deep .weekly-work-progress-detail > .app-modal__header { display: none; }
+
+.wwp-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 16px 24px 4px;
+  background: var(--color-surface);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+.wwp-head__row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.wwp-head__title { min-width: 0; }
+.wwp-head__title h2 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.25; color: var(--color-text-primary); }
+.wwp-head__title p { margin: 2px 0 0; font-size: 12px; color: var(--color-text-secondary); }
+.wwp-head__controls { display: flex; align-items: center; gap: 8px; }
+.wwp-select { width: 140px; }
+
+.wwp-close {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.wwp-close:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+.wwp-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+.wwp { display: flex; flex-direction: column; gap: 14px; padding: 10px 24px 20px; }
+
+.wwp-top { display: flex; align-items: center; gap: 20px; }
+.wwp-hero { display: flex; flex: none; flex-direction: column; align-items: center; gap: 6px; }
+.wwp-kpis { min-width: 0; flex: 1 1 0; }
+
+.wwp-donut { position: relative; flex: none; }
+.wwp-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.wwp-big { font-size: 28px; font-weight: 700; line-height: 1; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.wwp-mid { font-size: 22px; font-weight: 700; line-height: 1.1; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.wwp-status { max-width: 90px; font-size: 11px; line-height: 1.2; color: var(--color-text-secondary); }
+
+.wwp-delta { display: flex; gap: 4px; font-size: 12px; white-space: nowrap; color: var(--color-text-secondary); }
+.wwp-delta strong, .wwp-stat strong { color: rgb(5 150 105); }
+.wwp-down { color: rgb(217 119 6) !important; }
+
+.wwp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.wwp-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.wwp-panel--wide { grid-column: 1 / -1; }
+.wwp-title { margin: 0; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.wwp-chart { height: 220px; }
+
+.wwp-split { display: flex; align-items: center; gap: 16px; }
+.wwp-legend { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--color-text-secondary); }
+.wwp-legend b { margin-left: 4px; color: var(--color-text-primary); }
+.wwp-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 9999px; }
+
+.wwp-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.wwp-stat { display: flex; flex-direction: column; gap: 2px; border-radius: 10px; background: var(--color-surface-secondary); padding: 10px 12px; font-size: 12px; }
+.wwp-stat-label { color: var(--color-text-secondary); }
+.wwp-stat-value { font-size: 20px; font-weight: 700; color: var(--color-text-primary); }
+
+.wwp-insights { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wwp-insight { border-left: 3px solid var(--color-accent); padding-left: 8px; font-size: 12px; color: var(--color-text-primary); }
+.wwp-insight--positive { border-left-color: var(--color-success); }
+.wwp-insight--warning { border-left-color: var(--color-warning-text); }
+
+.wwp-muted { font-size: 12px; color: var(--color-text-secondary); }
+
+@media (max-width: 767px) {
+  .wwp-grid, .wwp-compare { grid-template-columns: 1fr; }
+  .wwp-top { flex-direction: column; align-items: stretch; }
+}
+
+/* Full screen on phones. */
+@media (max-width: 639px) {
+  :host ::ng-deep .weekly-work-progress-detail.weekly-work-progress-detail {
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}

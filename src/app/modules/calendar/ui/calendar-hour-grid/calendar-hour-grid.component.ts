@@ -10,8 +10,9 @@ import { gmtOffsetLabel } from '../../../../shared/utils/timezone-label.util';
 import { PlannerRangeBlockView, PlannerWorkWindow } from '../../../work/planner/models/planner.models';
 import { PlannerDragService } from '../../state/planner-drag.service';
 import {
-  MinuteRange, blockRange, busyIntervals, dropLength, kindMinutes, kindSegments, overlapSegments, windowMinutes,
+  MinuteRange, blockRange, busyIntervals, dropLength, kindMinutes, kindSegments, minuteOfDay, overlapSegments, windowMinutes,
 } from '../../utils/planner-grid.util';
+import { PlannerLeave } from '../../state/planner-leave-layer.store';
 
 /** A day's load for its header cell (2026-10-27 Planner = Calendar design, section 4.5). */
 export interface PlannerDayLoad {
@@ -110,7 +111,12 @@ interface DragSelection {
   imports: [CommonModule, PlannerAvatarStackComponent, TaskKindIconComponent],
   templateUrl: './calendar-hour-grid.component.html',
   // Today's column (header and grid) under the blocks, so the week shows where now is at a glance.
-  styles: ['.today-tint { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); }'],
+  styles: [
+    '.today-tint { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); }',
+    '.planner-leave { background: color-mix(in srgb, #7c3aed 22%, transparent); color: #5b21b6; border-left: 3px solid #7c3aed; }',
+    '.planner-leave--pending { background: repeating-linear-gradient(45deg, color-mix(in srgb, #7c3aed 10%, transparent) 0 6px, transparent 6px 12px);'
+      + ' border: 1px dashed #7c3aed; border-left-width: 3px; color: #6d28d9; }',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalendarHourGridComponent {
@@ -128,6 +134,16 @@ export class CalendarHourGridComponent {
   blocks = input<ReadonlyMap<string, readonly PlannerRangeBlockView[]>>(new Map());
   workWindows = input<ReadonlyMap<string, PlannerWorkWindow | null>>(new Map());
   editableDates = input<ReadonlySet<string>>(new Set());
+  /** The caller's own pending and approved leave (Planner create popover design, 2026-11-03). */
+  leaves = input<readonly PlannerLeave[]>([]);
+
+  /** The leave covering `date`, as bands over the day in the planner zone. */
+  leaveBands(date: string): readonly { id: string; status: PlannerLeave['status']; topPct: number; heightPct: number }[] {
+    return this.leaves()
+      .map((l) => ({ l, start: minuteOfDay(l.startAt, date, this.timezone()), end: minuteOfDay(l.endAt, date, this.timezone()) }))
+      .filter(({ start, end }) => end > start)
+      .map(({ l, start, end }) => ({ id: l.id, status: l.status, topPct: (start / DAY_MINUTES) * 100, heightPct: ((end - start) / DAY_MINUTES) * 100 }));
+  }
   loads = input<ReadonlyMap<string, PlannerDayLoad>>(new Map());
   employeeId = input<string | null>(null);
 

@@ -1,19 +1,20 @@
-<app-modal [open]="open()" title="Team attendance" icon="" size="2xl" panelClass="team-attendance-detail" (closed)="close()">
-  @if (store.data(); as data) {
-    <div class="tad">
-      <div class="tad-controls" data-testid="tad-controls">
-        <div class="tad-range">
-          <button type="button" class="tad-nav" aria-label="Previous period" (click)="shift(-1)">‹</button>
-          <span class="tad-range-label" data-testid="tad-range">{{ rangeLabel() }}</span>
-          <button type="button" class="tad-nav" aria-label="Next period" [disabled]="data.isProvisional" (click)="shift(1)">›</button>
-          @if (data.isProvisional) {
-            <span class="tad-muted">Today in progress</span>
-          }
-        </div>
-        <div class="tad-filters">
+<!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS (its
+     title still names the dialog for screen readers); the header below has the title on the left and the
+     period / department dropdowns and the close button on the right. -->
+<app-modal [open]="open()" title="Team attendance" size="2xl" panelClass="team-attendance-detail" (closed)="close()">
+  <div class="tad-head">
+    <div class="tad-head__row">
+      <div class="tad-head__title">
+        <h2>Team attendance</h2>
+        <p>Daily attendance and the team ranked by attendance rate</p>
+      </div>
+      <div class="tad-head__controls" data-testid="tad-controls">
+        @if (store.data(); as data) {
           <app-select
-            class="tad-select"
+            class="tad-select tad-select--period"
             ariaLabel="Period"
+            icon="calendar"
+            size="sm"
             [searchable]="false"
             [options]="[{ value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]"
             [value]="data.mode"
@@ -23,16 +24,35 @@
             <app-select
               class="tad-select"
               ariaLabel="Department"
+              icon="building"
+              size="sm"
               [searchable]="false"
               [options]="departmentOptions()"
               [value]="store.query().departmentId ?? ''"
               (valueChange)="onDepartment($event)"
             />
           }
-        </div>
+        }
+        <button type="button" class="tad-close" aria-label="Close" data-testid="tad-close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (store.data(); as data) {
+    <div class="tad">
+      <div class="tad-range" data-testid="tad-range-row">
+        <button type="button" class="tad-nav" aria-label="Previous period" (click)="shift(-1)">‹</button>
+        <span class="tad-range-label" data-testid="tad-range">{{ rangeLabel() }}</span>
+        <button type="button" class="tad-nav" aria-label="Next period" [disabled]="data.isProvisional" (click)="shift(1)">›</button>
+        @if (data.isProvisional) {
+          <span class="tad-muted">Today in progress</span>
+        }
       </div>
 
-      <app-kpi-tiles [tiles]="tiles()" ariaLabel="Period attendance" />
+      <!-- All five period tiles on one row. -->
+      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Period attendance" />
 
       <div class="tad-charts">
         <section class="tad-panel">
@@ -77,7 +97,7 @@
 
       <section class="tad-panel">
         <div class="tad-table-head">
-          <p class="tad-title">Employee attendance details</p>
+          <p class="tad-title">Employee ranking <span class="tad-muted">· best attendance rate first</span></p>
           <div class="tad-table-actions">
             <app-input class="tad-search" placeholder="Search employee…" [value]="search()" (valueChange)="onSearch($event)" />
             <button type="button" class="tad-button" data-testid="tad-export" [disabled]="exporting()" (click)="exportCsv()">
@@ -96,7 +116,7 @@
             <table class="tad-table">
               <thead>
                 <tr>
-                  <th class="tad-sticky tad-sticky--name" scope="col">Employee</th>
+                  <th class="tad-sticky tad-sticky--name" scope="col"><span class="tad-rank-head">#</span>Employee</th>
                   @for (d of dates(); track d.date) {
                     <th class="tad-date" scope="col" data-testid="tad-date-col" [attr.title]="d.date">
                       <span>{{ d.day }}</span><span class="tad-weekday">{{ d.weekday }}</span>
@@ -110,6 +130,7 @@
                   <tr>
                     <th class="tad-sticky tad-sticky--name" scope="row">
                       <span class="tad-person">
+                        <span class="tad-rank" [class.tad-rank--top]="r.rank !== null && r.rank <= 3" data-testid="tad-rank">{{ r.rank ?? '—' }}</span>
                         <app-avatar size="xs" [avatarUrl]="avatarUrl(r.avatarFileId)" [userName]="r.name" />
                         <span class="tad-person-text">
                           <span class="tad-name">{{ r.name }}</span>
