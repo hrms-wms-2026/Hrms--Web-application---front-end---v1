@@ -106,7 +106,8 @@ export class WorkItemPlanFlow {
 
   private async plan(): Promise<void> {
     const { taskId, shortId, slot } = this.planned!;
-    const ok = await this.planner.createBlock(taskId, slot.startIso, slot.endIso);
+    // Quiet: whoever runs the flow shows a refusal once, from the notPlanned state.
+    const ok = await this.planner.createBlock(taskId, slot.startIso, slot.endIso, { quiet: true });
     this.current.set(ok
       ? { kind: 'done', taskId }
       : { kind: 'notPlanned', taskId, shortId, reason: this.planner.error() ?? 'It could not be planned.' });

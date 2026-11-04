@@ -661,10 +661,11 @@ export class CalendarPageComponent {
     void this.leaveLayer.load(from, to);
   }
 
-  onTimeOffMoreOptions(draft: TimeOffDraft): void {
+  async onTimeOffMoreOptions(draft: TimeOffDraft): Promise<void> {
     this.closeCreate();
-    void this.leaveBalances.loadWorkWindow();
     if (this.leaveTypes.items().length === 0) void this.leaveTypes.load();
+    // Wait for the work window: converting with the planner's zone first would show other clock times.
+    await this.leaveBalances.loadWorkWindow();
     // The leave form works in the work-window zone; the slot's instants are shown there.
     const zone = this.leaveBalances.workWindow()?.timezone ?? this.plannerZone();
     const start = utcIsoToLocalParts(draft.startIso, zone);
@@ -721,6 +722,9 @@ export class CalendarPageComponent {
     if (state.kind === 'notPlanned') {
       const reason = state.reason === plannerErrorMessage('planner_task_not_plannable') ? 'assigned to someone else' : state.reason;
       this.notificationService.warning(`Created, not planned: ${reason}`);
+      // The popover's Retry/Pick another time is gone here: open the block picker for the created item.
+      this.onPickAnotherTime({ taskId, shortId: '', projectId: form.projectId, title: form.prefill.title ?? '',
+        estimatedMinutes: Math.round((form.prefill.estimatedHours ?? 0) * 60) });
     }
   }
 
