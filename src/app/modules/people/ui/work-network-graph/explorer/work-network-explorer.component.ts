@@ -153,7 +153,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
     .wge-title p { margin: 0.15rem 0 0; font-size: 0.75rem; color: var(--color-text-secondary); }
     .wge-actions { display: flex; align-items: center; gap: 0.5rem; }
     .wge-search { width: 17rem; }
-    .wge-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 5; margin: 0; padding: 0.3rem; list-style: none; border: 1px solid var(--color-border); border-radius: 0.6rem; background: var(--color-surface); box-shadow: 0 16px 32px rgb(15 23 42 / 0.16); }
+    .wge-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 5; margin: 0; padding: 0.3rem; list-style: none; border: 1px solid var(--color-border); border-radius: 0.6rem; background: var(--color-surface); box-shadow: var(--shadow-modal); }
     .wge-results--empty { padding: 0.6rem 0.75rem; font-size: 0.75rem; color: var(--color-text-secondary); }
     .wge-results button { display: flex; width: 100%; align-items: center; gap: 0.5rem; border: 0; border-radius: 0.4rem; background: transparent; padding: 0.4rem 0.5rem; text-align: left; cursor: pointer; font-size: 0.78rem; color: var(--color-text-primary); }
     .wge-results button:hover { background: var(--color-surface-secondary); }
@@ -167,7 +167,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
     .wge-body { position: relative; display: flex; flex: 1; min-height: 0; }
     .wge-stage { position: relative; flex: 1; min-width: 0; }
     .wge-panel { width: 23rem; flex-shrink: 0; }
-    .wge-counts { position: absolute; top: 1rem; left: 1rem; margin: 0; padding: 0.35rem; list-style: none; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); box-shadow: 0 6px 18px rgb(15 23 42 / 0.06); }
+    .wge-counts { position: absolute; top: 1rem; left: 1rem; margin: 0; padding: 0.35rem; list-style: none; border: 1px solid var(--color-border); border-radius: 0.75rem; background: var(--color-surface); box-shadow: var(--shadow-popover); }
     .wge-counts li { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.6rem; font-size: 0.78rem; font-weight: 500; color: var(--color-text-primary); }
     .wge-dot { width: 0.65rem; height: 0.65rem; flex-shrink: 0; border-radius: 9999px; }
     .wge-dot--project, .wge-dot--employee { background: #2563eb; }
@@ -181,14 +181,14 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
     .wge-key--owner { background: #8b5cf6; }
     .wge-key--member { border: 2px solid #8b5cf6; }
     .wge-key--progress { background: #2563eb; outline: 2px solid #bfdbfe; }
-    .wge-key--not-started { background: #94a3b8; }
+    .wge-key--not-started { background: var(--color-text-muted); }
     .wge-key--overdue { background: #ef4444; }
     /* Project-mode legend swatches; only used when a legend with these keys is passed in. */
     .wge-key--default-module { background: #2563eb; }
     .wge-key--module { background: #8b5cf6; }
     .wge-key--sprint { background: #8b5cf6; }
     .wge-key--task { background: #38bdf8; }
-    .wge-key--done { background: #cbd5e1; }
+    .wge-key--done { background: var(--color-border-strong); }
     .wge-key--alert { background: #ef4444; }
     .wge-meta { margin: 0; font-size: 0.72rem; color: var(--color-text-secondary); white-space: nowrap; }
     @media (max-width: 900px) {

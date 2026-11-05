@@ -189,7 +189,7 @@ function formatDate(value: string | null | undefined): string {
     :host { display: block; height: 100%; }
     .wgp { display: flex; height: 100%; flex-direction: column; background: var(--color-surface); border-left: 1px solid var(--color-border); animation: wgp-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both; }
     .wgp-head { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1rem 0.75rem; }
-    .wgp-code { display: flex; height: 2.75rem; width: 2.75rem; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 9999px; background: linear-gradient(135deg, #4f8bff, #2563eb); color: #fff; font-weight: 700; font-size: 0.875rem; }
+    .wgp-code { display: flex; height: 2.75rem; width: 2.75rem; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 9999px; background: linear-gradient(135deg, #4f8bff, #2563eb); color: var(--color-text-on-solid); font-weight: 700; font-size: 0.875rem; }
     .wgp-code--module { background: linear-gradient(135deg, #a26bff, #7c3aed); }
     .wgp-title { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; font-weight: 700; color: var(--color-text-primary); }
     .wgp-kind { margin: 0; font-size: 0.75rem; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -205,7 +205,7 @@ function formatDate(value: string | null | undefined): string {
     .wgp-stats strong { font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary); }
     .wgp-stats span { font-size: 0.68rem; color: var(--color-text-secondary); }
     .wgp-stats .wgp-progress { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
-    .wgp-track { flex: 1; height: 0.375rem; border-radius: 9999px; background: #e2e8f0; overflow: hidden; }
+    .wgp-track { flex: 1; height: 0.375rem; border-radius: 9999px; background: var(--color-border); overflow: hidden; }
     .wgp-fill { display: block; height: 100%; border-radius: 9999px; background: #22c55e; transition: width 400ms ease-out; }
     .wgp-overdue { grid-column: 1 / -1; margin: 0.25rem 0 0; font-size: 0.72rem; font-weight: 600; color: #dc2626; }
     .wgp-rows { margin: 0.875rem 0 0; display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.8rem; }
@@ -229,18 +229,18 @@ function formatDate(value: string | null | undefined): string {
     .wgp-dot--module { background: #8b5cf6; }
     .wgp-dot--hollow { background: transparent; border: 2px solid #8b5cf6; }
     .wgp-tone--progress { background: #2563eb; }
-    .wgp-tone--not-started { background: #94a3b8; }
+    .wgp-tone--not-started { background: var(--color-text-muted); }
     .wgp-tone--overdue { background: #ef4444; }
     .wgp-pill { flex-shrink: 0; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.65rem; font-weight: 600; }
-    .wgp-pill--progress { background: #eff6ff; color: #1d4ed8; }
-    .wgp-pill--not-started { background: #f1f5f9; color: #475569; }
-    .wgp-pill--overdue { background: #fef2f2; color: #dc2626; }
+    .wgp-pill--progress { background: var(--color-tint-blue-bg); color: var(--color-tint-blue-strong); }
+    .wgp-pill--not-started { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+    .wgp-pill--overdue { background: var(--color-tint-red-bg); color: var(--color-danger); }
     .wgp-people { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
     .wgp-people li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; color: var(--color-text-primary); }
     .wgp-people span { flex: 1; }
     .wgp-people em { font-style: normal; font-size: 0.68rem; color: var(--color-text-secondary); }
     .wgp-foot { padding: 0.75rem 1rem 1rem; }
-    .wgp-primary { display: flex; width: 100%; align-items: center; justify-content: center; gap: 0.5rem; border: 0; border-radius: 0.6rem; background: #2563eb; padding: 0.6rem; color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    .wgp-primary { display: flex; width: 100%; align-items: center; justify-content: center; gap: 0.5rem; border: 0; border-radius: 0.6rem; background: #2563eb; padding: 0.6rem; color: var(--color-text-on-solid); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
     .wgp-primary:hover { background: #1d4ed8; }
     .wgp-primary svg { width: 1rem; height: 1rem; }
     @keyframes wgp-in { from { opacity: 0; transform: translateX(12px); } }

@@ -16,7 +16,7 @@
   background: var(--color-surface);
   border-radius: 12px;
   border: 1px solid var(--color-border);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-modal);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -54,8 +54,8 @@
 }
 
 .rfm-badge--system {
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
-  color: var(--color-sidebar-active-bg, #2563eb);
+  background: color-mix(in srgb, var(--color-accent-strong) 12%, transparent);
+  color: var(--color-accent-strong);
 }
 
 .rfm-role-description {
@@ -77,7 +77,7 @@
   width: 18px;
   height: 18px;
   border: 2px solid var(--color-border);
-  border-top-color: var(--color-sidebar-active-bg, #2563eb);
+  border-top-color: var(--color-accent-strong);
   border-radius: 50%;
   animation: rfm-spin 0.8s linear infinite;
 }
@@ -159,8 +159,8 @@
 .rfm-selected-pill {
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-sidebar-active-bg, #2563eb);
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
+  color: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent-strong) 12%, transparent);
   padding: 0.1875rem 0.5rem;
   border-radius: 999px;
 }

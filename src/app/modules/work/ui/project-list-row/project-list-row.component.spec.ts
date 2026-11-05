@@ -69,4 +69,16 @@ describe('ProjectListRowComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="project-row-logo"]')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain(project.name.charAt(0).toUpperCase());
   });
+
+  it('keeps the logo placeholder neutral when the row is selected', () => {
+    fixture.componentRef.setInput('project', { ...project, color: '#dc2626' });
+    fixture.componentRef.setInput('selected', true);
+    fixture.detectChanges();
+
+    const placeholder = fixture.nativeElement.querySelector('[data-testid="project-row-placeholder"]') as HTMLElement;
+    expect(placeholder.className).toContain('bg-[var(--color-surface-secondary)]');
+    expect(placeholder.className).toContain('text-[var(--color-text-primary)]');
+    expect(placeholder.className).not.toContain('color-accent');
+    expect(placeholder.style.background).toBe('');
+  });
 });

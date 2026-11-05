@@ -31,16 +31,16 @@ export interface TimeOffDraft { leaveTypeId: string; startIso: string; endIso: s
       } @else if (requests.previewError(); as error) {
         <p data-testid="time-off-preview-error" class="text-xs text-[var(--color-danger)]">{{ error }}</p>
       } @else if (previewText(); as text) {
-        <p data-testid="time-off-preview" class="rounded-md bg-blue-50 px-2 py-1 text-xs" [class.text-amber-800]="overBalance()">{{ text }}</p>
+        <p data-testid="time-off-preview" class="rounded-md bg-[var(--color-accent-subtle)] px-2 py-1 text-xs" [class.text-[var(--color-warning-text)]]="overBalance()">{{ text }}</p>
       }
       @if (needsDocument()) {
-        <p data-testid="time-off-document-note" class="text-xs text-amber-700">This leave needs a supporting document. Use More options to attach it.</p>
+        <p data-testid="time-off-document-note" class="text-xs text-[var(--color-warning-text)]">This leave needs a supporting document. Use More options to attach it.</p>
       }
       @if (requests.submitError(); as error) { <p class="text-xs text-[var(--color-danger)]">{{ error }}</p> }
       <p class="text-xs text-[var(--color-text-secondary)]">Shows on your Planner as "Pending leave" until it's approved.</p>
       <div class="flex justify-end gap-2 pt-1">
         <button type="button" data-testid="time-off-more" class="rounded-md border px-3 py-1" (click)="moreOptions.emit(draft())">More options</button>
-        <button type="button" data-testid="time-off-submit" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-white"
+        <button type="button" data-testid="time-off-submit" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[var(--color-text-on-solid)]"
           [disabled]="!canSubmit()" (click)="submit()">Submit request</button>
       </div>
     </div>

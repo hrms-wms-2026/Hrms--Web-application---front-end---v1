@@ -73,18 +73,18 @@ const COMPACT_ROWS = 4;
     .tpt-row { all: unset; cursor: pointer; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; padding: 6px 4px;
       border-radius: 8px; }
     .tpt-row:hover { background: var(--color-surface-secondary, #f4f4f5); }
-    .tpt-row:focus-visible { outline: 2px solid #1d4ed8; }
-    .tpt-avatar { width: 30px; height: 30px; flex: none; border-radius: 50%; background: #1d4ed8; color: #fff; display: grid; place-items: center;
+    .tpt-row:focus-visible { outline: 2px solid var(--color-accent-hover); }
+    .tpt-avatar { width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--color-accent-hover); color: var(--color-text-on-solid); display: grid; place-items: center;
       font-size: 11px; font-weight: 600; }
     .tpt-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
     .tpt-main strong { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tpt-bar { height: 6px; border-radius: 3px; background: #f4f4f5; overflow: hidden; display: flex; }
-    .tpt-chip { align-self: flex-start; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: #f4f4f5; color: #3f3f46; }
-    .tpt-load { font-size: 12px; color: #3f3f46; white-space: nowrap; }
-    .tpt-more { margin: 0; font-size: 12px; color: #52525b; }
-    .tpt-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px; color: #52525b; font-size: 13px; }
-    .tpt-state button { border: 0; border-radius: 8px; background: #1d4ed8; color: #fff; padding: 6px 14px; font: inherit; cursor: pointer; }
-    .tpt-skeleton { height: 36px; border-radius: 8px; background: #f4f4f5; }
+    .tpt-bar { height: 6px; border-radius: 3px; background: var(--color-surface-secondary); overflow: hidden; display: flex; }
+    .tpt-chip { align-self: flex-start; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .tpt-load { font-size: 12px; color: var(--color-text-primary); white-space: nowrap; }
+    .tpt-more { margin: 0; font-size: 12px; color: var(--color-text-secondary); }
+    .tpt-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px; color: var(--color-text-secondary); font-size: 13px; }
+    .tpt-state button { border: 0; border-radius: 8px; background: var(--color-accent-hover); color: var(--color-text-on-solid); padding: 6px 14px; font: inherit; cursor: pointer; }
+    .tpt-skeleton { height: 36px; border-radius: 8px; background: var(--color-surface-secondary); }
   `],
 })
 export class TeamPlanTodayCardComponent implements OnInit {

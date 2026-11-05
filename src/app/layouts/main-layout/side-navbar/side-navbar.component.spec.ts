@@ -252,11 +252,12 @@ describe('SideNavbarComponent', () => {
 
   it('renders expand button when active section has children and sub-sidebar is collapsed, and expands on click', async () => {
     localStorage.clear();
-    const fixture = setup(['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'], ['time_attendance']);
+    const fixture = setup(['attendance:read', 'monitoring:read'], ['time_attendance']);
     const router = TestBed.inject(Router);
     const navState = TestBed.inject(NavigationStateService);
 
-    await router.navigateByUrl('/attendance/overview');
+    // Attendance is one page; Settings has two child pages here (Clock-in Policy, Monitoring).
+    await router.navigateByUrl('/settings/clock-in-policy');
     fixture.detectChanges();
 
     // Initially not collapsed

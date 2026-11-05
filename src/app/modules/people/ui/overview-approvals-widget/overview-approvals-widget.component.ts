@@ -62,9 +62,9 @@ const STATUS_LABELS: Record<ApprovalStatus, string> = {
   `,
   styles: [`
     .pill { border-radius: 9999px; padding: 0.125rem 0.5rem; font-size: 0.6875rem; font-weight: 600; }
-    .pill--pending { background: #fef3c7; color: #92400e; }
-    .pill--approved { background: #dcfce7; color: #166534; }
-    .pill--rejected { background: #fee2e2; color: #991b1b; }
+    .pill--pending { background: var(--color-warning-subtle); color: var(--color-warning-text); }
+    .pill--approved { background: var(--color-success-subtle); color: var(--color-success-text); }
+    .pill--rejected { background: var(--color-danger-subtle); color: var(--color-danger-text); }
     .pill--cancelled { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

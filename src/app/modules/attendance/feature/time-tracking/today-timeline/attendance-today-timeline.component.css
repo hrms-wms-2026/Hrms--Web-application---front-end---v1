@@ -142,7 +142,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-modal);
   overflow: hidden;
 }
 
@@ -284,7 +284,7 @@
   width: 100%;
   height: 6px;
   border-radius: 9999px;
-  background: #f1f5f9;
+  background: var(--color-surface-secondary);
   overflow: hidden;
   display: flex;
 }
@@ -462,7 +462,7 @@
   border: 2px solid var(--color-surface);
   background: var(--color-surface-secondary);
   color: var(--color-text-secondary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .modal-stepper-node svg {
@@ -471,28 +471,28 @@
 }
 
 .modal-stepper-node--clock-in {
-  background: #ecfdf5;
-  color: #059669;
-  border-color: #a7f3d0;
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  border-color: var(--color-success-subtle);
 }
 
 .modal-stepper-node--break-start,
 .modal-stepper-node--break-end {
-  background: #fffbeb;
-  color: #d97706;
-  border-color: #fde68a;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+  border-color: var(--color-warning-subtle);
 }
 
 .modal-stepper-node--clock-out {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border-color: var(--color-danger-subtle);
 }
 
 .modal-stepper-node--now {
-  background: #f5f3ff;
-  color: #7c3aed;
-  border-color: #ddd6fe;
+  background: var(--color-cat-violet-subtle);
+  color: var(--color-cat-violet);
+  border-color: var(--color-cat-violet-subtle);
 }
 
 .modal-stepper-body {
@@ -559,13 +559,13 @@
 }
 
 .modal-badge--duration {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
 }
 
 .modal-badge--live {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--color-cat-violet-subtle);
+  color: var(--color-cat-violet);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -631,3 +631,28 @@
 }
 
 
+
+.today-timeline-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.today-timeline-trigger:hover {
+  background: var(--color-surface-secondary);
+}
+
+.today-timeline-trigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

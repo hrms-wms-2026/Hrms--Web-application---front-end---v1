@@ -115,9 +115,9 @@ describe('filters and tones', () => {
     const [fresh] = buildActionInbox(actionItems([{ pendingCount: 1, topItems: [item('leave.approval', 'a', 1)] }]), null, NOW);
     const [soon] = buildActionInbox(actionItems([{ pendingCount: 1, topItems: [item('leave.approval', 'b', 3)] }]), null, NOW);
     const [late] = buildActionInbox(actionItems([{ pendingCount: 1, topItems: [item('leave.approval', 'c', 5)] }]), null, NOW);
-    expect(inboxAgeClass(fresh)).toBe('text-slate-400');
-    expect(inboxAgeClass(soon)).toContain('text-amber-600');
-    expect(inboxAgeClass(late)).toContain('text-rose-600');
+    expect(inboxAgeClass(fresh)).toBe('text-[var(--color-text-muted)]');
+    expect(inboxAgeClass(soon)).toContain('text-[var(--color-warning)]');
+    expect(inboxAgeClass(late)).toContain('text-[var(--color-danger)]');
   });
 });
 

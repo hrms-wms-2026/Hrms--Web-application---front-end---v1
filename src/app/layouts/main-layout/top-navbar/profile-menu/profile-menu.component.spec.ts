@@ -20,7 +20,7 @@ async function setup(overrides: { logoutResult?: boolean } = {}) {
   await TestBed.configureTestingModule({
     imports: [ProfileMenuComponent],
     providers: [
-      { provide: ThemeStore, useValue: { preset: presetSignal, setPreset } },
+      { provide: ThemeStore, useValue: { preset: presetSignal, setPreset, mode: signal('light'), resolvedMode: signal('light'), setMode: vi.fn() } },
       { provide: AuthStore, useValue: { logout: logoutMock } },
       { provide: Router, useValue: { navigate: navigateMock } },
       { provide: NotificationService, useValue: { error: notificationErrorMock } },
@@ -190,7 +190,7 @@ describe('ProfileMenuComponent', () => {
     appearanceBtn.click();
     fixture.detectChanges();
 
-    const options = fixture.nativeElement.querySelectorAll('[role="radio"]');
+    const options = fixture.nativeElement.querySelectorAll('[aria-label="Theme Presets"] [role="radio"]');
     expect(options.length).toBe(5);
 
     const emeraldOption = Array.from(options).find((el) =>

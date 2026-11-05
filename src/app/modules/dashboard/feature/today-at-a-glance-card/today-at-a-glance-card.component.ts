@@ -15,16 +15,16 @@ function formatClock(date: Date): string | null {
 
 /** The activity bar's legend, in the design's order; Upcoming is the bar's own background. */
 const BLOCK_LEGEND: readonly { type: DayBlockType | 'upcoming'; label: string; dotClass: string }[] = [
-  { type: 'working', label: 'Working', dotClass: 'bg-blue-600' },
-  { type: 'break', label: 'Break', dotClass: 'bg-amber-400' },
-  { type: 'leave', label: 'Leave', dotClass: 'bg-red-500' },
-  { type: 'upcoming', label: 'Upcoming', dotClass: 'bg-slate-200' }
+  { type: 'working', label: 'Working', dotClass: 'bg-[var(--color-accent)]' },
+  { type: 'break', label: 'Break', dotClass: 'bg-[var(--color-warning)]' },
+  { type: 'leave', label: 'Leave', dotClass: 'bg-[var(--color-danger)]' },
+  { type: 'upcoming', label: 'Upcoming', dotClass: 'bg-[var(--color-border)]' }
 ];
 
 const BLOCK_CLASS: Record<DayBlockType, string> = {
-  working: 'bg-gradient-to-r from-blue-600 to-sky-500',
-  break: 'bg-amber-400',
-  leave: 'bg-red-500'
+  working: 'bg-gradient-to-r from-[var(--color-accent)] to-sky-500',
+  break: 'bg-[var(--color-warning)]',
+  leave: 'bg-[var(--color-danger)]'
 };
 
 function addDays(isoDate: string, days: number): string {

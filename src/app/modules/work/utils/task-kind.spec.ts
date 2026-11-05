@@ -25,6 +25,6 @@ describe('task kinds', () => {
       expect(meta.bar).toMatch(/^bg-/);
     }
     expect(KIND_META.bug.label).toBe('Bug');
-    expect(KIND_META.feature.color).toBe('text-pink-600');
+    expect(KIND_META.feature.color).toBe('text-pink-600 dark:text-pink-400');
   });
 });

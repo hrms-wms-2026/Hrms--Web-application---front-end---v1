@@ -69,7 +69,7 @@
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.tad-rank--top { background: #d1fae5; color: #047857; }
+.tad-rank--top { background: var(--color-success-subtle); color: var(--color-success-text); }
 
 .tad-range {
   display: flex;
@@ -139,10 +139,10 @@
 .tad-delta {
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
-.tad-delta--down { color: rgb(220 38 38); }
+.tad-delta--down { color: var(--color-danger); }
 
 .tad-chart { height: 11rem; }
 

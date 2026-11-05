@@ -67,7 +67,7 @@
 .nav-rail__expand-btn:hover {
   background: rgb(255 255 255 / 16%);
   border-color: rgb(255 255 255 / 25%);
-  color: #ffffff;
+  color: var(--color-sidebar-active-text);
   transform: scale(1.04);
 }
 
@@ -182,7 +182,7 @@
   padding: 0 4px;
   border-radius: 999px;
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-text-on-solid);
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;

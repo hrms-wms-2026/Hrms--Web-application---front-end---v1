@@ -110,7 +110,7 @@ const MAX_VISIBLE_AVATARS = 5;
     .taaf__avatar app-avatar { display: contents; }
     .taaf__avatar .avatar { width: 100%; height: 100%; border: none; }
     .taaf__img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 999px; }
-    .taaf__panel { position: absolute; top: calc(100% + 7px); right: 0; z-index: 80; width: 260px; max-width: 90vw; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 16px 36px rgb(15 23 42 / .18); padding: 12px; animation: taaf-panel-in 130ms ease-out; }
+    .taaf__panel { position: absolute; top: calc(100% + 7px); right: 0; z-index: 80; width: 260px; max-width: 90vw; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: var(--shadow-modal); padding: 12px; animation: taaf-panel-in 130ms ease-out; }
     .taaf__panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
     .taaf__clear { border: 0; background: transparent; color: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
     .taaf__clear:hover { text-decoration: underline; }

@@ -6,6 +6,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { AttendanceDetailDrawerComponent, AttendanceDetailSelection } from './attendance-detail-drawer/attendance-detail-drawer.component';
 import { AttendanceStatusCardComponent } from '../status-card/attendance-status-card.component';
 import { AttendanceTodayTimelineComponent } from './today-timeline/attendance-today-timeline.component';
+import { AttendanceMonthlyHealthCardComponent } from '../monthly-health-card/attendance-monthly-health-card.component';
 import { AttendanceHistoryListComponent } from './attendance-history-list/attendance-history-list.component';
 import { MyRequestsPanelComponent } from './my-requests-panel/my-requests-panel.component';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -40,6 +41,7 @@ import {
   workModeLabel as workModeLabelShared
 } from '../../utils/attendance-formatters';
 
+import { AttendanceSharedStylesComponent } from './attendance-shared-styles.component';
 import { AttendanceCorrectionModalComponent } from '../../ui/attendance-correction-modal/attendance-correction-modal.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
@@ -50,7 +52,7 @@ type AttendanceViewMode = 'my' | 'team';
 @Component({
   selector: 'app-time-tracking',
   standalone: true,
-  imports: [AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, DatePickerComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, RouterLink],
+  imports: [AttendanceSharedStylesComponent, AttendanceCorrectionModalComponent, AttendanceDetailDrawerComponent, AttendanceMonthlyHealthCardComponent, AttendanceHistoryListComponent, AttendanceStatusCardComponent, AttendanceTodayTimelineComponent, BreadcrumbHeaderComponent, ButtonComponent, DatePickerComponent, DateRangePickerComponent, FormsModule, ModalComponent, MyRequestsPanelComponent, PopoverComponent, RouterLink],
   templateUrl: './time-tracking.component.html',
   styleUrl: './time-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -28,10 +28,10 @@ import { WorkActivityBarChartComponent } from '../work-activity-bar-chart/work-a
       emptyMessage="No tasks in this period."
       (retry)="work.reload()"
     >
-      <div widget-actions class="flex items-center gap-4 text-xs font-medium text-slate-600">
+      <div widget-actions class="flex items-center gap-4 text-xs font-medium text-[var(--color-text-secondary)]">
         @if (period.isComparing()) {
-          <span class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 font-semibold text-blue-700">
-            <span class="h-1.5 w-1.5 rounded-full bg-blue-600"></span> Comparing with {{ period.compareLabel() }}
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-accent-subtle)] bg-[var(--color-accent-subtle)] px-2.5 py-0.5 font-semibold text-[var(--color-accent)]">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]"></span> Comparing with {{ period.compareLabel() }}
           </span>
         }
         <span class="hidden items-center gap-1.5 sm:flex">
@@ -41,24 +41,24 @@ import { WorkActivityBarChartComponent } from '../work-activity-bar-chart/work-a
 
       @if (work.data(); as w) {
         <div class="flex flex-1 flex-col">
-          <p class="-mt-1 mb-4 text-xs text-slate-500">Task completion and delivery performance</p>
+          <p class="-mt-1 mb-4 text-xs text-[var(--color-text-secondary)]">Task completion and delivery performance</p>
 
-          <div class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 sm:divide-x sm:divide-slate-100">
+          <div class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 sm:divide-x sm:divide-[var(--color-border)]">
             <div>
-              <p class="text-xs text-slate-500">Completion rate</p>
-              <p class="mt-0.5 flex items-center gap-2 text-lg font-bold text-emerald-600">
+              <p class="text-xs text-[var(--color-text-secondary)]">Completion rate</p>
+              <p class="mt-0.5 flex items-center gap-2 text-lg font-bold text-[var(--color-success)]">
                 <span data-testid="delivery-health-completion-rate">{{ w.completionRatePercent }}%</span>
                 <app-delta-badge [delta]="completionDelta()" [against]="period.compareLabel()" />
               </p>
             </div>
             @if (delivery.state() === 'ready' && delivery.data(); as d) {
               <div class="sm:pl-6">
-                <p class="text-xs text-slate-500">Tasks completed</p>
-                <p class="mt-0.5 text-lg font-bold text-slate-900" data-testid="delivery-health-tasks">{{ d.tasksCompleted }} / {{ d.tasksAssigned }}</p>
+                <p class="text-xs text-[var(--color-text-secondary)]">Tasks completed</p>
+                <p class="mt-0.5 text-lg font-bold text-[var(--color-text-primary)]" data-testid="delivery-health-tasks">{{ d.tasksCompleted }} / {{ d.tasksAssigned }}</p>
               </div>
               <div class="sm:pl-6">
-                <p class="text-xs text-slate-500">Story points</p>
-                <p class="mt-0.5 text-lg font-bold text-slate-900" data-testid="delivery-health-points">{{ d.storyPointsCompleted }} / {{ d.storyPointsAssigned }}</p>
+                <p class="text-xs text-[var(--color-text-secondary)]">Story points</p>
+                <p class="mt-0.5 text-lg font-bold text-[var(--color-text-primary)]" data-testid="delivery-health-points">{{ d.storyPointsCompleted }} / {{ d.storyPointsAssigned }}</p>
               </div>
             }
           </div>
@@ -68,11 +68,11 @@ import { WorkActivityBarChartComponent } from '../work-activity-bar-chart/work-a
               <app-work-activity-bar-chart [bars]="bars()" ariaLabel="Tasks completed per month" />
             </div>
           } @else if (trend.state() === 'error') {
-            <p class="mt-5 border-t border-slate-100 pt-3 text-xs text-slate-500">
+            <p class="mt-5 border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-text-secondary)]">
               Could not load the monthly delivery trend.
             </p>
           } @else if (trend.state() === 'loading') {
-            <div class="mt-5 h-36 animate-pulse rounded-xl bg-slate-100" aria-hidden="true"></div>
+            <div class="mt-5 h-36 animate-pulse rounded-xl bg-[var(--color-surface-secondary)]" aria-hidden="true"></div>
           }
         </div>
       }

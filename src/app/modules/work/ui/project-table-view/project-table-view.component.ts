@@ -40,7 +40,7 @@ type SortOrder = 'asc' | 'desc';
         <div class="flex items-center gap-3">
           <!-- Project Color Badge -->
           <div
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-white text-xs shadow-xs"
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-[var(--color-text-on-solid)] text-xs shadow-xs"
             [style.background]="project.color || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
           >
             {{ projectLogoInitial(project) }}
@@ -77,7 +77,7 @@ type SortOrder = 'asc' | 'desc';
             <span
               class="inline-flex items-center text-[10px] font-semibold w-fit px-1.5 py-0.25 rounded-md"
               [class]="deadline.overdue
-                ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                ? 'bg-[var(--color-danger-subtle)] text-[var(--color-danger)] border border-[var(--color-danger-subtle)]'
                 : 'text-[var(--color-text-secondary)]'"
             >
               {{ deadline.label }}
@@ -98,7 +98,7 @@ type SortOrder = 'asc' | 'desc';
       </ng-template>
       <ng-template appDataTableCell="owner" let-project>
         <div class="flex items-center gap-2">
-          <div class="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px]">
+          <div class="h-6 w-6 rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] flex items-center justify-center font-bold text-[10px]">
             {{ project.isLead ? 'YOU' : 'LD' }}
           </div>
           <span class="text-xs font-medium text-[var(--color-text-primary)]">
@@ -122,12 +122,12 @@ type SortOrder = 'asc' | 'desc';
         <span
           class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold"
           [class]="project.isAchieved
-            ? 'bg-purple-50 text-purple-700 border border-purple-200'
-            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'"
+            ? 'bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)] border border-[var(--color-cat-violet-subtle)]'
+            : 'bg-[var(--color-success-subtle)] text-[var(--color-success-text)] border border-[var(--color-success-subtle)]'"
         >
           <span
             class="h-1.5 w-1.5 rounded-full"
-            [class]="project.isAchieved ? 'bg-purple-500' : 'bg-emerald-500'"
+            [class]="project.isAchieved ? 'bg-[var(--color-cat-violet)]' : 'bg-[var(--color-success)]'"
           ></span>
           {{ project.isAchieved ? 'Archived' : 'Active' }}
         </span>
@@ -205,7 +205,7 @@ type SortOrder = 'asc' | 'desc';
 
               <button
                 type="button"
-                class="flex items-center gap-2 px-3 py-1.5 text-xs text-left text-[var(--color-danger-text)] hover:bg-rose-50 cursor-pointer"
+                class="flex items-center gap-2 px-3 py-1.5 text-xs text-left text-[var(--color-danger-text)] hover:bg-[var(--color-danger-subtle)] cursor-pointer"
                 (click)="onDelete(project)"
               >
                 <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -18,12 +18,12 @@ export interface BarDatum {
   template: `
     <div role="img" [attr.aria-label]="summary()">
       <div class="relative ml-9 mr-1 h-36">
-        <div class="pointer-events-none absolute inset-0 font-mono text-[11px] text-slate-400" aria-hidden="true">
+        <div class="pointer-events-none absolute inset-0 font-mono text-[11px] text-[var(--color-text-muted)]" aria-hidden="true">
           @for (tick of ticks(); track $index; let last = $last) {
             <div
               class="absolute left-0 right-0 border-t"
-              [class.border-slate-100]="!last"
-              [class.border-slate-200]="last"
+              [class.border-[var(--color-border)]]="!last"
+              [class.border-[var(--color-border)]]="last"
               [style.top.%]="tick.top"
             >
               <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">{{ tick.label }}</span>
@@ -49,9 +49,9 @@ export interface BarDatum {
       <div class="ml-9 mr-1 mt-2 flex justify-around gap-1" aria-hidden="true">
         @for (bar of bars(); track bar.label) {
           <div class="min-w-0 max-w-[3.5rem] flex-1 text-center">
-            <span class="block truncate text-[11px] font-bold text-slate-800">{{ bar.label }}</span>
+            <span class="block truncate text-[11px] font-bold text-[var(--color-text-primary)]">{{ bar.label }}</span>
             @if (bar.sublabel) {
-              <span class="mt-0.5 block truncate text-[11px] text-slate-400">{{ bar.sublabel }}</span>
+              <span class="mt-0.5 block truncate text-[11px] text-[var(--color-text-muted)]">{{ bar.sublabel }}</span>
             }
           </div>
         }

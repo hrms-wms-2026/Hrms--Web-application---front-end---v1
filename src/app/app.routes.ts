@@ -127,7 +127,7 @@ export const routes: Routes = [
       {
         path: 'time-attendance',
         pathMatch: 'full',
-        redirectTo: 'attendance/time-tracking'
+        redirectTo: 'attendance'
       },
       {
         path: 'organization',
@@ -211,6 +211,14 @@ export const routes: Routes = [
               { path: 'new', pathMatch: 'full', redirectTo: '' },
               { path: ':id/edit', redirectTo: '' }
             ]
+          },
+          {
+            // Moved here from the Attendance sub-sidebar (2026-11-04): Attendance is a single page now.
+            path: 'monitoring',
+            loadComponent: () =>
+              import('./modules/attendance/feature/monitoring/monitoring.component').then((m) => m.MonitoringComponent),
+            canActivate: [permissionGuard],
+            data: { title: 'Monitoring', permissions: ['monitoring:read'], modules: ['time_attendance'] }
           },
           {
             path: 'calendar-connections',

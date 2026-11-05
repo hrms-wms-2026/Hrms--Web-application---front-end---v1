@@ -34,19 +34,19 @@ const ICONS: Record<string, KpiIcon> = {
 };
 
 const TONE_PALETTES: Record<KpiTone, KpiPalette> = {
-  critical: { tile: 'bg-red-50 text-red-600', value: 'text-red-600', detail: 'text-red-600' },
-  warning: { tile: 'bg-amber-50 text-amber-600', value: 'text-amber-600', detail: 'text-amber-600' },
-  info: { tile: 'bg-blue-50 text-blue-600', value: 'text-blue-600', detail: 'text-blue-600' },
-  baseline: { tile: 'bg-emerald-50 text-emerald-600', value: 'text-emerald-600', detail: 'text-emerald-600' }
+  critical: { tile: 'bg-[var(--color-danger-subtle)] text-[var(--color-danger)]', value: 'text-[var(--color-danger)]', detail: 'text-[var(--color-danger)]' },
+  warning: { tile: 'bg-[var(--color-warning-subtle)] text-[var(--color-warning)]', value: 'text-[var(--color-warning)]', detail: 'text-[var(--color-warning)]' },
+  info: { tile: 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]', value: 'text-[var(--color-accent)]', detail: 'text-[var(--color-accent)]' },
+  baseline: { tile: 'bg-[var(--color-success-subtle)] text-[var(--color-success)]', value: 'text-[var(--color-success)]', detail: 'text-[var(--color-success)]' }
 };
 
 /** Baseline cards are told apart by colour; signal cards always take their severity colour. */
 const BASELINE_PALETTES: Record<string, KpiPalette> = {
-  days_attended: { tile: 'bg-blue-50 text-blue-600', value: 'text-blue-600', detail: 'text-blue-600' },
-  on_time_delivery: { tile: 'bg-violet-50 text-violet-600', value: 'text-slate-900', detail: 'text-emerald-600' },
-  leave_days: { tile: 'bg-sky-50 text-sky-600', value: 'text-sky-600', detail: 'text-slate-500' },
-  tasks_in_progress: { tile: 'bg-blue-50 text-blue-600', value: 'text-blue-600', detail: 'text-slate-500' },
-  story_points: { tile: 'bg-violet-50 text-violet-600', value: 'text-violet-600', detail: 'text-slate-500' }
+  days_attended: { tile: 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]', value: 'text-[var(--color-accent)]', detail: 'text-[var(--color-accent)]' },
+  on_time_delivery: { tile: 'bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)]', value: 'text-[var(--color-text-primary)]', detail: 'text-[var(--color-success)]' },
+  leave_days: { tile: 'bg-sky-50 text-sky-600', value: 'text-sky-600', detail: 'text-[var(--color-text-secondary)]' },
+  tasks_in_progress: { tile: 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]', value: 'text-[var(--color-accent)]', detail: 'text-[var(--color-text-secondary)]' },
+  story_points: { tile: 'bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)]', value: 'text-[var(--color-cat-violet)]', detail: 'text-[var(--color-text-secondary)]' }
 };
 
 @Component({
@@ -59,7 +59,7 @@ const BASELINE_PALETTES: Record<string, KpiPalette> = {
         @let tone = palette(card);
         <div
           data-testid="kpi-card"
-          class="kpi-card flex items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3.5 py-3 shadow-xs transition-colors"
+          class="kpi-card flex items-center gap-3 rounded-xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] px-3.5 py-3 shadow-xs transition-colors"
           [attr.role]="clickable(card) ? 'button' : null"
           [attr.tabindex]="clickable(card) ? 0 : null"
           [class.kpi-card--clickable]="clickable(card)"
@@ -88,13 +88,13 @@ const BASELINE_PALETTES: Record<string, KpiPalette> = {
           </span>
 
           <div class="min-w-0 flex-1">
-            <p class="truncate text-[11px] font-medium text-slate-500">{{ card.label }}</p>
+            <p class="truncate text-[11px] font-medium text-[var(--color-text-secondary)]">{{ card.label }}</p>
             <div class="flex items-baseline gap-1">
               <span [class]="'text-sm font-bold ' + tone.value" data-testid="kpi-value">
                 {{ card.value }}{{ card.suffix }}
               </span>
               @if (card.denominator !== null) {
-                <span class="text-xs font-medium text-slate-400">/{{ card.denominator }}</span>
+                <span class="text-xs font-medium text-[var(--color-text-muted)]">/{{ card.denominator }}</span>
               }
               <app-delta-badge class="ml-auto" [delta]="deltas()[i] ?? null" [against]="against()" />
             </div>
@@ -106,7 +106,7 @@ const BASELINE_PALETTES: Record<string, KpiPalette> = {
   `,
   styles: [`
     .kpi-card--clickable { cursor: pointer; }
-    .kpi-card--clickable:hover { background: rgb(248 250 252); border-color: rgb(203 213 225); }
+    .kpi-card--clickable:hover { background: var(--color-surface-secondary); border-color: var(--color-border-strong); }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

@@ -79,7 +79,7 @@ import { Component, input, output, signal } from '@angular/core';
       }
       .proj-color-swatch:hover {
         transform: scale(1.1);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+        box-shadow: var(--shadow-card);
       }
       .proj-color-swatch--active {
         border-color: var(--color-text-primary) !important;
@@ -89,7 +89,7 @@ import { Component, input, output, signal } from '@angular/core';
       }
       .proj-color-swatch--custom {
         background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-        color: white;
+        color: var(--color-text-on-solid);
       }
       .proj-color-native {
         position: absolute;

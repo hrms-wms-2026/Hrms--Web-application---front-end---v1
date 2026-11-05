@@ -1,7 +1,8 @@
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { FileApiService } from '../../../shared/data-access/file-api.service';
 import {
   CreateProjectRequestDto, CreateProjectResponseDto, EditProjectRequestDto,
   PagedResultDto, ProjectDetailDto, ProjectListItemDto
@@ -13,6 +14,7 @@ import { ProjectWorkGraphDto } from '../models/dto/project-work-graph.dto';
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
   private readonly http = inject(HttpClient);
+  private readonly fileApi = inject(FileApiService);
   private readonly base = `${environment.apiUrl}/work/projects`;
 
   listMine(pageNumber: number, pageSize: number): Observable<PagedResultDto<ProjectListItemDto>> {
@@ -56,6 +58,19 @@ export class ProjectApiService {
 
   edit(id: string, payload: EditProjectRequestDto): Observable<ProjectDetailDto> {
     return this.http.put<ProjectDetailDto>(`${this.base}/${id}`, payload);
+  }
+
+  /** Two steps, like the company logo: upload a pending project_cover file, then link it. The server clears the icon. */
+  uploadLogo(id: string, file: File): Observable<{ projectId: string; logoFileId: string | null }> {
+    return this.fileApi.upload(file, 'project_cover').pipe(
+      switchMap((uploaded) =>
+        this.http.put<{ projectId: string; logoFileId: string | null }>(`${this.base}/${id}/logo`, { fileId: uploaded.fileId })
+      )
+    );
+  }
+
+  removeLogo(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}/logo`);
   }
 
   delete(id: string): Observable<void> {

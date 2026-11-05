@@ -69,9 +69,9 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
         (cardSelected)="openSignal($event)"
       />
     } @else {
-      <div class="mb-6 grid gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="mb-6 grid gap-4 rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-5 sm:grid-cols-2 xl:grid-cols-4">
         @for (i of [0, 1, 2, 3]; track i) {
-          <div data-testid="kpi-skeleton" class="h-16 animate-pulse rounded-xl bg-slate-100"></div>
+          <div data-testid="kpi-skeleton" class="h-16 animate-pulse rounded-xl bg-[var(--color-surface-secondary)]"></div>
         }
       </div>
     }
@@ -122,25 +122,25 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
 
       <section
         data-testid="approvals-card"
-        class="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs lg:col-span-2"
+        class="flex h-full flex-col rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-5 shadow-xs lg:col-span-2"
       >
         <header class="mb-3 flex items-center justify-between">
-          <h2 class="text-base font-bold text-slate-900">Approvals</h2>
+          <h2 class="text-base font-bold text-[var(--color-text-primary)]">Approvals</h2>
         </header>
         @if (approvalsWidget.loader.data(); as approvals) {
           @if (approvals.total > 0) {
             <div class="grid flex-1 grid-cols-3 gap-3" data-testid="visible-approvals-counts">
-              <div class="rounded-xl bg-amber-50 p-3">
-                <p class="text-xs font-medium text-amber-700">Pending</p>
-                <p class="mt-1 flex items-center gap-2 text-xl font-bold text-slate-900">{{ approvals.pending }} <app-delta-badge [delta]="approvalsWidget.pendingDelta()" [against]="store.compareLabel()" /></p>
+              <div class="rounded-xl bg-[var(--color-warning-subtle)] p-3">
+                <p class="text-xs font-medium text-[var(--color-warning-text)]">Pending</p>
+                <p class="mt-1 flex items-center gap-2 text-xl font-bold text-[var(--color-text-primary)]">{{ approvals.pending }} <app-delta-badge [delta]="approvalsWidget.pendingDelta()" [against]="store.compareLabel()" /></p>
               </div>
-              <div class="rounded-xl bg-emerald-50 p-3">
-                <p class="text-xs font-medium text-emerald-700">Approved</p>
-                <p class="mt-1 flex items-center gap-2 text-xl font-bold text-slate-900">{{ approvals.approved }} <app-delta-badge [delta]="approvalsWidget.approvedDelta()" [against]="store.compareLabel()" /></p>
+              <div class="rounded-xl bg-[var(--color-success-subtle)] p-3">
+                <p class="text-xs font-medium text-[var(--color-success-text)]">Approved</p>
+                <p class="mt-1 flex items-center gap-2 text-xl font-bold text-[var(--color-text-primary)]">{{ approvals.approved }} <app-delta-badge [delta]="approvalsWidget.approvedDelta()" [against]="store.compareLabel()" /></p>
               </div>
-              <div class="rounded-xl bg-rose-50 p-3">
-                <p class="text-xs font-medium text-rose-700">Rejected</p>
-                <p class="mt-1 flex items-center gap-2 text-xl font-bold text-slate-900">{{ approvals.rejected }} <app-delta-badge [delta]="approvalsWidget.rejectedDelta()" [against]="store.compareLabel()" /></p>
+              <div class="rounded-xl bg-[var(--color-danger-subtle)] p-3">
+                <p class="text-xs font-medium text-[var(--color-danger-text)]">Rejected</p>
+                <p class="mt-1 flex items-center gap-2 text-xl font-bold text-[var(--color-text-primary)]">{{ approvals.rejected }} <app-delta-badge [delta]="approvalsWidget.rejectedDelta()" [against]="store.compareLabel()" /></p>
               </div>
             </div>
           } @else {
@@ -151,14 +151,14 @@ import { createCompareLoader, deltaIf } from '../../utils/overview-compare';
         }
         <ng-template #approvalsEmpty>
           <div class="flex flex-1 flex-col items-center justify-center py-4 text-center" data-testid="approvals-empty">
-            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-slate-400">
+            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-text-muted)]">
               <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
                 <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
               </svg>
             </div>
-            <p class="text-sm text-slate-600">No approval requests in this period.</p>
-            <p class="mt-1 text-xs text-slate-400">All caught up!</p>
+            <p class="text-sm text-[var(--color-text-secondary)]">No approval requests in this period.</p>
+            <p class="mt-1 text-xs text-[var(--color-text-muted)]">All caught up!</p>
           </div>
         </ng-template>
       </section>

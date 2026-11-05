@@ -56,7 +56,7 @@
   background: var(--color-surface);
   color: var(--color-accent);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-card);
 }
 
 .ct-action-btn {
@@ -80,7 +80,7 @@
 }
 
 .ct-action-btn--danger:hover {
-  background-color: #fef2f2;
-  color: #ef4444;
-  border-color: #fca5a5;
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border-color: var(--color-danger-subtle);
 }

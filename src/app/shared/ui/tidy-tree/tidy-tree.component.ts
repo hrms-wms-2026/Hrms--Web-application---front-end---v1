@@ -48,8 +48,8 @@ interface DropLine {
     :host { display: block; }
     .tt-canvas { position: relative; }
     .tt-links { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
-    .tt-link { fill: none; stroke: #3b82f6; stroke-width: 2; }
-    .tt-link--dashed { stroke: #f59e0b; stroke-dasharray: 5 4; }
+    .tt-link { fill: none; stroke: var(--color-accent); stroke-width: 2; }
+    .tt-link--dashed { stroke: var(--color-warning); stroke-dasharray: 5 4; }
     .tt-slot { position: absolute; display: flex; justify-content: center; }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

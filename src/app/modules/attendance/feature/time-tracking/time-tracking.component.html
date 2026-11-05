@@ -1,7 +1,8 @@
+<app-attendance-shared-styles />
 <div class="time-tracking-page">
   <header class="time-tracking-header">
     <div class="time-tracking-header-row">
-      <app-breadcrumb-header parentLabel="Attendance" currentLabel="Time Tracking" icon="time-attendance" />
+      <app-breadcrumb-header currentLabel="Attendance" icon="time-attendance" />
       <div class="time-tracking-header-actions">
         @if (canShowTeamView()) {
           <div class="attendance-view-toggle" role="group" aria-label="Attendance view">
@@ -119,7 +120,9 @@
       <div class="time-tracking-overview history-requests-row" aria-labelledby="status-card-heading">
         <div class="time-tracking-column time-tracking-column--left">
           <div class="time-tracking-hero-card">
-            <app-attendance-status-card [layout]="'session'" [borderless]="true" />
+            <app-attendance-status-card [layout]="'session'" [borderless]="true">
+              <app-attendance-today-timeline status-card-header-action mode="trigger" />
+            </app-attendance-status-card>
 
             @if (hasAttention(today)) {
               <div [class]="attentionClass(today.attentionSeverity)" role="status" aria-live="polite">
@@ -234,16 +237,13 @@
               </article>
             </div>
 
-            <div class="activity-timeline-card">
-              <app-attendance-today-timeline />
-            </div>
+            <app-attendance-monthly-health-card />
           </div>
 
           <section class="history-card history-card--history" aria-labelledby="history-heading">
             <div class="section-heading section-heading--stacked-mobile">
               <div>
-                <p class="eyebrow">Personal records</p>
-                <h2 id="history-heading">My attendance history</h2>
+                <p class="eyebrow" id="history-heading">Personal attendance record</p>
               </div>
               <div class="range-controls" aria-label="Attendance history date range">
                 <app-date-range-picker

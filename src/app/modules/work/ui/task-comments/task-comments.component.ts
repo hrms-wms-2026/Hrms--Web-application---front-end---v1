@@ -357,7 +357,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
     .tc-text ::ng-deep a { color: var(--color-accent); text-decoration: underline; }
     .tc-text ::ng-deep .tfm-check-item { position: relative; display: block; padding-left: 24px; min-height: 22px; margin: 2px 0; }
     .tc-text ::ng-deep .tfm-check-item::before { content: ''; position: absolute; left: 2px; top: 4px; width: 13px; height: 13px; border: 1.5px solid var(--color-border); border-radius: 3px; background: var(--color-surface); }
-    .tc-text ::ng-deep .tfm-check-item.is-checked::before { content: '✓'; border-color: var(--color-accent); background: var(--color-accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center; }
+    .tc-text ::ng-deep .tfm-check-item.is-checked::before { content: '✓'; border-color: var(--color-accent); background: var(--color-accent); color: var(--color-text-on-solid); font-size: 10px; font-weight: 700; line-height: 13px; text-align: center; }
     .tc-text ::ng-deep .tfm-check-item.is-checked > .tfm-check-text { text-decoration: line-through; opacity: 0.6; }
     /* Action Bar */
     .tc-actions-bar {
@@ -396,7 +396,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
       border: 1px solid var(--color-border);
       border-radius: 8px;
       padding: 4px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      box-shadow: var(--shadow-popover);
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -456,7 +456,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 8px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       cursor: default;
       font-size: 12px;
       color: var(--color-text-primary);

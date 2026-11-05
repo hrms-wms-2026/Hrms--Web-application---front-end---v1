@@ -113,8 +113,8 @@
   font-variant-numeric: tabular-nums;
 }
 .wtd-rank--top {
-  background: #d1fae5;
-  color: #047857;
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
 }
 
 .wtd-range {
@@ -208,11 +208,11 @@
 .wtd-delta {
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wtd-delta--down {
-  color: rgb(220 38 38);
+  color: var(--color-danger);
 }
 
 .wtd-chart {
@@ -412,7 +412,7 @@
   padding-right: 0.75rem !important;
 }
 .wtd-gap--over {
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 .wtd-util {
   display: inline-flex;
@@ -427,7 +427,7 @@
   height: 6px;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
 }
 .wtd-util-bar > span {
   position: absolute;
