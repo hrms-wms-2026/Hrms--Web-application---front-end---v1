@@ -3,6 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { IconComponent } from '../../../../shared/ui/icon/icon.component';
 import { KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
@@ -33,17 +34,19 @@ import { WeeklyWorkProgressDetailDialogComponent } from '../weekly-work-progress
 const REFRESH_INTERVAL_MS = 60_000;
 
 /**
- * My Work "Weekly Work Progress". One card whose layout follows its own rendered size (the dashboard widget
+ * My Work "My weekly progress". One card whose layout follows its own rendered size (the dashboard widget
  * standard): a 2x2 card shows the fixed-size donut; a wide 2-row card the figure beside this week / last week bars
- * (and tiles once wide enough); a narrow tall card stacks the tiles under the donut; a large card adds the Daily Work
- * vs Schedule chart and then the weekly comparison. Data comes from the dashboard bootstrap; the card only calls the
- * API outside a dashboard, when the bootstrap had none, or for last week.
+ * (and tiles once wide enough); a narrow tall card stacks the tiles under the donut; the standard view shows worked
+ * against expected hours, a progress bar, tiles and the change on last week, and a large card adds the Daily Work vs
+ * Schedule chart and then the weekly comparison. Data comes from the dashboard bootstrap; the card only calls the API
+ * outside a dashboard, when the bootstrap had none, or for last week.
  */
 @Component({
   selector: 'app-weekly-progress-card',
   standalone: true,
   imports: [
     NgTemplateOutlet,
+    IconComponent,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
     KpiTilesComponent,
@@ -108,6 +111,9 @@ export class WeeklyProgressCardComponent implements OnInit {
     const data = this.shown();
     return data ? weeklyTiles(data.thisWeek, data.plannerEnabled) : [];
   });
+
+  /** standard: Expected is already in the headline, so the tiles start at Scheduled (Worked without the planner). */
+  protected readonly summaryTiles = computed(() => this.tiles().filter((t) => t.key !== 'expected'));
 
   /** mini-wide: three tiles beside the bars (Expected, Scheduled or Remaining without the planner, Worked). */
   protected readonly miniTiles = computed(() => this.tiles().filter((t) => t.key !== 'remaining').slice(0, 3));

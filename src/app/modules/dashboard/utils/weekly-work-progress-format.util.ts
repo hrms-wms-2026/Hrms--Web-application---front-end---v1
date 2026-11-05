@@ -50,13 +50,13 @@ export function weeklyTiles(week: WeekProgress, plannerEnabled: boolean): Weekly
   if (plannerEnabled) {
     tiles.push({
       key: 'scheduled', label: 'Scheduled', value: formatWeekHours(week.scheduledMinutes),
-      hint: `(${Math.round(week.planningCoveragePercent)}%)`, icon: 'layers', tone: 'accent'
+      hint: `(${Math.round(week.planningCoveragePercent)}%)`, icon: 'calendar', tone: 'accent'
     });
   }
   tiles.push(
     {
       key: 'worked', label: 'Worked', value: formatWeekHours(week.workedMinutes),
-      hint: `(${Math.round(week.progressPercent)}%)`, icon: 'check-circle', tone: 'success'
+      hint: `(${Math.round(week.progressPercent)}%)`, icon: 'play', tone: 'success'
     },
     {
       key: 'remaining', label: 'Remaining', value: formatWeekHours(week.remainingMinutes),

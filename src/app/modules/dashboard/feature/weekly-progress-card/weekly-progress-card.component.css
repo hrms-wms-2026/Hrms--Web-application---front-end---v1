@@ -220,72 +220,171 @@
   color: var(--color-text-secondary);
 }
 
-/* ---- standard: hero (donut + tiles), then chart, then comparison. Heights match WEEKLY_PROGRESS_SECTION_PX. ---- */
+/* ---- standard: summary (hours, bar, tiles, change), then chart, then comparison. Heights match
+   WEEKLY_PROGRESS_SECTION_PX. ---- */
 .wp-standard {
   display: flex;
   min-height: 0;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 12px;
+  container-type: inline-size;
 }
 
-.wp-hero {
+.wp-summary {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
-/* Narrow standard card: compact rows beside the donut (34px each, 6px apart - four fit the donut's height). */
-.wp-side-tiles {
+.wp-summary-icon {
   display: flex;
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+}
+
+.wp-summary-icon app-icon {
+  transform: scale(1.35);
+}
+
+.wp-summary-hours {
   min-width: 0;
   flex: 1 1 0;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
-.wp-side-tile {
-  --tone: var(--color-accent);
-  display: flex;
-  height: 34px;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  border-radius: 0.5rem;
-  background: var(--color-surface-secondary);
-  padding: 0 0.625rem;
-  border-left: 3px solid var(--tone);
-}
-
-.wp-side-value {
-  font-size: 0.875rem;
+.wp-hours {
+  font-size: 1.5rem;
   font-weight: 700;
+  line-height: 1.2;
   color: var(--color-text-primary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.wp-side-value small {
-  margin-left: 0.25rem;
-  font-size: 0.6875rem;
+.wp-hours-target {
   font-weight: 500;
   color: var(--color-text-secondary);
 }
 
-.wp-hero-donut {
+.wp-summary-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.wp-summary-progress {
   display: flex;
   flex: none;
   flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
+  align-items: flex-end;
+  gap: 0.125rem;
+  border-left: 1px solid var(--color-border);
+  padding-left: 1rem;
 }
 
+.wp-week-track--summary {
+  display: block;
+  flex: none;
+  height: 0.625rem;
+}
+
+/* Takes up spare height (to a limit) so a short card has no empty band above the change line. */
 .wp-tiles {
+  display: grid;
+  max-height: 6rem;
+  flex: 1 1 auto;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wp-tile {
+  display: flex;
   min-width: 0;
-  flex: 1 1 0;
+  align-items: center;
+  gap: 0.625rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface-secondary);
+  padding: 0.5rem 0.625rem;
+}
+
+.wp-tile-icon {
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.wp-tile-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.wp-tile-value {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-tile-value small {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.wp-footer {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.625rem;
+}
+
+/* With nothing below it, the change line sits at the bottom of the card. */
+.wp-footer:last-child {
+  margin-top: auto;
+}
+
+.wp-footer .wp-delta {
+  justify-content: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.wp-footer .wp-delta-value {
+  font-size: 1rem;
+}
+
+/* The tile icons go first, then the headline icon, so the figures keep their room on a narrow card. */
+@container (max-width: 380px) {
+  .wp-tile-icon {
+    display: none;
+  }
+}
+
+@container (max-width: 360px) {
+  .wp-summary-icon {
+    display: none;
+  }
+
+  .wp-hours {
+    font-size: 1.25rem;
+  }
 }
 
 .wp-section {
