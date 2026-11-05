@@ -3,13 +3,15 @@ import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CategoryListEditorComponent } from '../../ui/category-list-editor/category-list-editor.component';
+import { TaskKindIconComponent } from '../../ui/task-kind-icon/task-kind-icon.component';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
+import { kindOf } from '../../utils/task-kind';
 
 @Component({
   selector: 'app-task-category-settings-tab',
   standalone: true,
-  imports: [ButtonComponent, CategoryListEditorComponent],
+  imports: [ButtonComponent, CategoryListEditorComponent, TaskKindIconComponent],
   template: `
     <section class="project-settings-tab" data-testid="project-settings-tab-task-categories">
       <div class="project-settings-tab__header">
@@ -33,10 +35,7 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
         <div class="project-settings-tab__preview">
           @for (category of categories(); track category.id) {
             <span class="project-settings-tab__chip">
-              <svg class="project-settings-tab__chip-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                <line x1="7" y1="7" x2="7.01" y2="7" />
-              </svg>
+              <app-task-kind-icon [kind]="kindOf(category.kind)" [icon]="category.icon" />
               <span class="project-settings-tab__chip-name">{{ category.name }}</span>
             </span>
           }
@@ -103,10 +102,6 @@ import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
       font-weight: 500;
       color: var(--color-text-primary);
     }
-    .project-settings-tab__chip-icon {
-      color: var(--color-text-secondary);
-      flex-shrink: 0;
-    }
     @media (max-width: 520px) {
       .project-settings-tab { padding: 16px; }
       .project-settings-tab__header { align-items: flex-start; }
@@ -118,6 +113,7 @@ export class TaskCategorySettingsTabComponent implements OnInit {
   private readonly taskApi = inject(TaskApiService);
 
   readonly projectId = input.required<string>();
+  protected readonly kindOf = kindOf;
   protected readonly editOpen = signal(false);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
 

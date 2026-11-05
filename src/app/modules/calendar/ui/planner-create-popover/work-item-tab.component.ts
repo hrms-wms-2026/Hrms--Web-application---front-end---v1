@@ -56,7 +56,7 @@ function duration(minutes: number): string {
       </div>
       <div class="grid grid-cols-2 gap-2">
         <label class="flex items-center gap-2">
-          @if (selectedKind(); as kind) { <app-task-kind-icon data-testid="work-item-type-icon" [kind]="kind" /> }
+          @if (selectedKind(); as kind) { <app-task-kind-icon data-testid="work-item-type-icon" [kind]="kind" [icon]="selectedIcon()" /> }
           <select data-testid="work-item-type" aria-label="Type" class="flex-1" (change)="categoryId.set($any($event.target).value || null)">
             @for (c of categories(); track c.id) { <option [value]="c.id" [selected]="c.id === categoryId()">{{ c.name }}</option> }
           </select>
@@ -139,6 +139,7 @@ export class WorkItemTabComponent implements OnInit {
     const category = this.categories().find((c) => c.id === this.categoryId());
     return category ? kindOf(category.kind) : null;
   });
+  readonly selectedIcon = computed(() => this.categories().find((c) => c.id === this.categoryId())?.icon ?? null);
   readonly overlaps = computed(() => {
     const start = Date.parse(this.slot().startIso);
     const end = Date.parse(this.slot().endIso);
