@@ -2,7 +2,7 @@
   display: block;
   height: 100%;
   min-height: 0;
-  background: var(--color-surface);
+  background: var(--color-content-bg);
 }
 
 .work-page-header {

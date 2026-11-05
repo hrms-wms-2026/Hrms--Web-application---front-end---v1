@@ -49,7 +49,7 @@ describe('ThemeStore', () => {
     TestBed.configureTestingModule({});
     const store = TestBed.inject(ThemeStore);
 
-    for (const preset of ['emerald', 'violet', 'rose', 'slate', 'default'] as const) {
+    for (const preset of ['emerald', 'violet', 'rose', 'slate', 'mono', 'default'] as const) {
       store.setPreset(preset);
       expect(store.preset()).toBe(preset);
       expect(document.documentElement.getAttribute('data-theme')).toBe(preset);

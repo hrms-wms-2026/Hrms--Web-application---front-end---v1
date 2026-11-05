@@ -94,7 +94,7 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  color: var(--color-sidebar-active-bg, #2563eb);
+  color: var(--color-accent-strong);
 }
 
 .dfm-hint--warn {

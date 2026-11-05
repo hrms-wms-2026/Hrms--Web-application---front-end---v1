@@ -170,8 +170,8 @@
 }
 
 .tsc-pill--alert {
-  background: rgb(254 242 242);
-  color: rgb(185 28 28);
+  background: var(--color-tint-red-bg);
+  color: var(--color-tint-red-text);
 }
 
 .tsc-pill-text {
@@ -280,7 +280,7 @@
 
 .tsc-presence--alert {
   --tone: #ef4444;
-  color: rgb(185 28 28);
+  color: var(--color-tint-red-text);
 }
 
 .tsc-plan-bar {
@@ -345,7 +345,7 @@
   align-self: flex-start;
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgb(37 99 235);
+  color: var(--color-cat-blue);
 }
 
 .tsc-link:hover {
@@ -453,7 +453,7 @@
   font-size: 0.6875rem;
   font-weight: 500;
   line-height: 24px;
-  color: rgb(185 28 28);
+  color: var(--color-tint-red-text);
   text-align: center;
 }
 
@@ -573,10 +573,10 @@
 .tsc-count {
   margin-left: 0.25rem;
   border-radius: 9999px;
-  background: rgb(254 226 226);
+  background: var(--color-danger-subtle);
   padding: 0 0.375rem;
   font-size: 0.625rem;
-  color: rgb(185 28 28);
+  color: var(--color-tint-red-text);
 }
 
 .tsc-side-row {
@@ -594,5 +594,5 @@
 }
 
 .tsc-side-meta--alert {
-  color: rgb(185 28 28);
+  color: var(--color-tint-red-text);
 }

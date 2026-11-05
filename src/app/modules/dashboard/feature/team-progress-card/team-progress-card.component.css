@@ -432,16 +432,16 @@
   color: var(--color-text-secondary);
 }
 
-.tone-green { background: rgb(236 253 245); border-color: rgb(209 250 229); }
-.tone-green .tp-tone-text { color: rgb(5 150 105); }
-.tone-blue { background: rgb(239 246 255); border-color: rgb(219 234 254); }
-.tone-blue .tp-tone-text { color: rgb(37 99 235); }
+.tone-green { background: var(--color-tint-green-bg); border-color: var(--color-tint-green-line); }
+.tone-green .tp-tone-text { color: var(--color-tint-green-text); }
+.tone-blue { background: var(--color-tint-blue-bg); border-color: var(--color-tint-blue-line); }
+.tone-blue .tp-tone-text { color: var(--color-cat-blue); }
 .tone-gray { background: var(--color-surface-secondary); border-color: var(--color-border); }
 .tone-gray .tp-tone-text { color: var(--color-text-primary); }
-.tone-amber { background: rgb(255 251 235); border-color: rgb(254 243 199); }
-.tone-amber .tp-tone-text { color: rgb(217 119 6); }
-.tone-rose { background: rgb(255 241 242); border-color: rgb(255 228 230); }
-.tone-rose .tp-tone-text { color: rgb(225 29 72); }
+.tone-amber { background: var(--color-tint-amber-bg); border-color: var(--color-warning-subtle); }
+.tone-amber .tp-tone-text { color: var(--color-warning); }
+.tone-rose { background: var(--color-tint-rose-bg); border-color: var(--color-tint-rose-line); }
+.tone-rose .tp-tone-text { color: var(--color-tint-rose-text); }
 
 /* ---- Panels (lists, weekly chart, top members) ---- */
 .tp-panels {
@@ -550,7 +550,7 @@
 }
 
 .team-progress-row:hover {
-  background: rgb(239 246 255 / 0.6);
+  background: color-mix(in srgb, var(--color-tint-blue-bg) 60%, transparent);
 }
 
 .team-progress-row:focus-visible,
@@ -586,13 +586,13 @@
 
 .team-progress-link {
   border-radius: 0.25rem;
-  color: rgb(37 99 235);
+  color: var(--color-cat-blue);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .team-progress-link:hover {
-  color: rgb(29 78 216);
+  color: var(--color-tint-blue-strong);
   text-decoration: underline;
 }
 
@@ -609,13 +609,13 @@
   background: var(--color-surface-secondary);
   font-size: 0.8125rem;
   font-weight: 600;
-  color: rgb(37 99 235);
+  color: var(--color-cat-blue);
   cursor: pointer;
   transition: background-color 150ms ease;
 }
 
 .tp-view-details:hover {
-  background: rgb(239 246 255);
+  background: var(--color-tint-blue-bg);
 }
 
 /* In the tall view the button sits at the bottom even when the lists end early. */

@@ -27,18 +27,18 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
         tabindex="0"
         appKeyboardClick
         data-testid="needs-attention"
-        class="group rounded-2xl border border-[var(--color-warning-subtle)] bg-[var(--color-warning-subtle)] p-5"
+        class="group rounded-2xl border border-[var(--color-attention-line)] bg-[var(--color-warning-subtle)] p-5 dark:bg-[var(--color-card-bg)]"
         [class.cursor-pointer]="!popped() && signals().length > collapsedLimit"
         (click)="openAll()"
       >
         <div class="mb-2 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]" aria-hidden="true">!</span>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)] dark:bg-transparent dark:text-[var(--color-warning)]" aria-hidden="true">!</span>
             <h3 class="text-sm font-bold text-[var(--color-text-primary)]">Needs Attention</h3>
           </div>
           <div class="flex items-center gap-2">
             <app-popout-header-actions
-              style="--popout-actions-bg: #fefce8"
+              style="--popout-actions-bg: var(--color-attention-actions-bg)"
               [refreshedAt]="refreshedAt()"
               [refreshing]="refreshing()"
               [expanded]="popped()"
@@ -51,7 +51,7 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
           </div>
         </div>
 
-        <div class="divide-y divide-[var(--color-warning-subtle)]/70" id="needs-attention-list">
+        <div class="divide-y divide-[var(--color-attention-line)]/70" id="needs-attention-list">
           @for (signal of displayedSignals(); track signal.key; let i = $index) {
             <button
               type="button"
@@ -96,7 +96,7 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
         </div>
 
         @if (signals().length > collapsedLimit) {
-          <div class="flex justify-end border-t border-[var(--color-warning-subtle)]/70 pt-3">
+          <div class="flex justify-end border-t border-[var(--color-attention-line)]/70 pt-3">
             <button
               type="button"
               class="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer"

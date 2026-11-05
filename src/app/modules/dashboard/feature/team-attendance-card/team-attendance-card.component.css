@@ -111,11 +111,11 @@
 .ta-delta {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
   white-space: nowrap;
 }
 
-.ta-delta--down { color: rgb(220 38 38); }
+.ta-delta--down { color: var(--color-danger); }
 .ta-delta--inline { font-weight: 500; }
 
 .ta-chart {
@@ -399,7 +399,7 @@
 .ta-link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgb(37 99 235);
+  color: var(--color-cat-blue);
   white-space: nowrap;
 }
 
@@ -431,7 +431,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ta-rank--top { background: rgb(209 250 229); color: rgb(4 120 87); }
+.ta-rank--top { background: var(--color-tint-green-line); color: var(--color-tint-green-strong); }
 
 .ta-row-name {
   overflow: hidden;

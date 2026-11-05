@@ -67,8 +67,8 @@
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 10%, transparent);
-  color: var(--color-sidebar-active-bg, #2563eb);
+  background: color-mix(in srgb, var(--color-accent-strong) 10%, transparent);
+  color: var(--color-accent-strong);
   flex-shrink: 0;
 }
 

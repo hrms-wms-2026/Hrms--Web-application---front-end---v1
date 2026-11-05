@@ -232,9 +232,9 @@ function formatDate(value: string | null | undefined): string {
     .wgp-tone--not-started { background: var(--color-text-muted); }
     .wgp-tone--overdue { background: #ef4444; }
     .wgp-pill { flex-shrink: 0; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.65rem; font-weight: 600; }
-    .wgp-pill--progress { background: #eff6ff; color: #1d4ed8; }
+    .wgp-pill--progress { background: var(--color-tint-blue-bg); color: var(--color-tint-blue-strong); }
     .wgp-pill--not-started { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
-    .wgp-pill--overdue { background: #fef2f2; color: #dc2626; }
+    .wgp-pill--overdue { background: var(--color-tint-red-bg); color: var(--color-danger); }
     .wgp-people { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
     .wgp-people li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; color: var(--color-text-primary); }
     .wgp-people span { flex: 1; }

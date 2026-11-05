@@ -34,11 +34,8 @@ import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-ic
         <app-entity-icon data-testid="project-row-icon" class="[--entity-icon-size:2.75rem]" [icon]="projectIcon" [color]="project().color" [name]="project().name" />
       } @else {
         <div
-          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-base transition-all"
-          [class]="selected()
-            ? 'bg-[var(--color-accent)] text-[var(--color-text-on-solid)] shadow-sm'
-            : 'border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-accent)]'"
-          [style.background]="selected() && project().color ? project().color : null"
+          data-testid="project-row-placeholder"
+          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-base font-bold text-[var(--color-text-primary)]"
         >
           {{ projectLogoInitial() }}
         </div>

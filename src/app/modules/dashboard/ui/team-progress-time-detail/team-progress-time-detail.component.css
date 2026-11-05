@@ -33,11 +33,11 @@
 }
 .tptd-error {
   font-size: 0.75rem;
-  color: rgb(185 28 28);
+  color: var(--color-tint-red-text);
 }
 .tptd-link {
   font-weight: 600;
-  color: rgb(37 99 235);
+  color: var(--color-cat-blue);
 }
 .tptd-note {
   border-radius: 0.5rem;
@@ -60,7 +60,7 @@
   font-variant-numeric: tabular-nums;
 }
 .tptd-cover b {
-  color: rgb(37 99 235);
+  color: var(--color-cat-blue);
 }
 
 .tptd-chart {
@@ -116,14 +116,14 @@
   font-variant-numeric: tabular-nums;
 }
 .tptd-over {
-  color: rgb(220 38 38) !important;
+  color: var(--color-danger) !important;
   font-weight: 600;
 }
 .tptd-kind {
   border-radius: 9999px;
-  background: rgb(254 243 199);
+  background: var(--color-warning-subtle);
   padding: 0.0625rem 0.5rem;
   font-size: 0.6875rem;
   font-weight: 600;
-  color: rgb(180 83 9);
+  color: var(--color-tint-amber-text);
 }

@@ -203,8 +203,8 @@ body {
 /* Dark mode: every time-of-day variant shares the same dim gradient (the art image keeps the mood). */
 :root[data-mode='dark'] :is(.greeting-card-bg, .greeting-card-bg-morning, .greeting-card-bg-afternoon, .greeting-card-bg-evening, .greeting-card-bg-night),
 html.dark :is(.greeting-card-bg, .greeting-card-bg-morning, .greeting-card-bg-afternoon, .greeting-card-bg-evening, .greeting-card-bg-night) {
-  background: radial-gradient(circle at 92% 16%, rgba(59, 130, 246, 0.25) 0%, transparent 65%),
-              linear-gradient(145deg, #18181b 0%, #0f172a 60%, #1e1b4b 100%);
+  background: radial-gradient(circle at 92% 16%, rgba(71, 158, 236, 0.12) 0%, transparent 65%),
+              linear-gradient(145deg, #182029 0%, #1d2839 60%, #1b2939 100%);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -345,7 +345,7 @@ html.dark :is(.greeting-card-bg, .greeting-card-bg-morning, .greeting-card-bg-af
   margin-left: -2rem !important;
   margin-right: -2rem !important;
   padding: 0.5rem 2rem 0.5rem 2rem !important;
-  background: var(--color-surface) !important;
+  background: var(--color-content-bg) !important;
   border-bottom: 1px solid var(--color-border) !important;
   margin-bottom: 1rem !important;
 }

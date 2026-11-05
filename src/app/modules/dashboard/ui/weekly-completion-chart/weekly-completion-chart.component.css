@@ -66,7 +66,7 @@
 
 .wc-label--current {
   font-weight: 600;
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wc-empty {
@@ -101,13 +101,13 @@
 
 .wc-line polyline {
   fill: none;
-  stroke: rgb(37 99 235);
+  stroke: var(--color-cat-blue);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 
 .wc-line circle {
-  fill: rgb(37 99 235);
+  fill: var(--color-cat-blue);
 }
 
 .wc-axis {

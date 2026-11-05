@@ -218,7 +218,7 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
     .kpi-icon--green { background: var(--color-success-subtle); color: var(--color-success); }
     .kpi-icon--violet { background: var(--color-cat-violet-subtle); color: var(--color-cat-violet); }
     .kpi-icon--orange { background: var(--color-warning-subtle); color: var(--color-warning); }
-    .kpi-icon--sky { background: #f0f9ff; color: #0284c7; }
+    .kpi-icon--sky { background: var(--color-tint-sky-bg); color: #0284c7; }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

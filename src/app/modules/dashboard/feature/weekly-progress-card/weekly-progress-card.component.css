@@ -59,11 +59,11 @@
 
 .wp-status--ahead,
 .wp-status--on_track {
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wp-status--behind {
-  color: rgb(217 119 6);
+  color: var(--color-warning);
 }
 
 .wp-delta {
@@ -78,12 +78,12 @@
 
 .wp-delta-value {
   font-weight: 700;
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wp-delta-value--down,
 .wp-down {
-  color: rgb(217 119 6);
+  color: var(--color-warning);
 }
 
 .wp-delta-caption {
@@ -151,7 +151,7 @@
   display: block;
   height: 100%;
   border-radius: 9999px;
-  background: #2563eb;
+  background: var(--color-cat-blue);
 }
 
 .wp-week-fill--last {
@@ -334,11 +334,11 @@
 }
 
 .wp-compare-value small {
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wp-compare-value small.wp-down {
-  color: rgb(217 119 6);
+  color: var(--color-warning);
 }
 
 .wp-compare-caption {

@@ -105,6 +105,9 @@ function chatOfUrl(url: string): { source: string; kind: string; id: string } | 
     .ics { box-sizing: border-box; display: flex; width: 21rem; height: calc(100% - .5rem); min-height: 0; flex-direction: column; gap: 10px;
       margin: 0 0 .5rem .25rem; padding: 1rem .625rem; border: 1px solid var(--color-border); border-right: none; border-radius: 0 0 0 14px;
       background: var(--color-surface-secondary); box-shadow: 0 1px 3px rgb(0 0 0 / 3%); }
+    /* Dark mode: same tone swap as the app's sub-sidebar. */
+    :host-context([data-mode='dark']) .ics, :host-context(html.dark) .ics {
+      --color-surface-secondary: var(--color-side-panel-bg); --color-surface: var(--color-side-panel-item-bg); }
     .ics--embedded { width: 100%; height: 100%; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
     .ics__header { display: flex; min-height: 24px; align-items: center; justify-content: space-between; margin: 0 .25rem 0 .5rem; }
     .ics__heading { margin: 0; color: var(--color-text-secondary); font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }

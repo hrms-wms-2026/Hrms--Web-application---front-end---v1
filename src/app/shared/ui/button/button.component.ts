@@ -42,7 +42,7 @@ export class ButtonComponent {
       sm: 'h-[26px] px-2.5 text-xs leading-none'
     };
     const variants: Record<ButtonVariant, string> = {
-      primary: 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-hover)]',
+      primary: 'bg-[var(--color-accent-solid)] text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-solid-hover)]',
       secondary:
         'bg-[var(--color-surface)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)]',
       danger:

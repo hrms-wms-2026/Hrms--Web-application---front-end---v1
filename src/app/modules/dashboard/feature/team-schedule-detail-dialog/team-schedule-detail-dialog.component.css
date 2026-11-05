@@ -373,11 +373,11 @@
 
 .tsd-badge {
   border-radius: 9999px;
-  background: rgb(254 243 199);
+  background: var(--color-warning-subtle);
   padding: 0.0625rem 0.5rem;
   font-size: 0.6875rem;
   font-weight: 600;
-  color: rgb(180 83 9);
+  color: var(--color-tint-amber-text);
 }
 
 /* 2026-11-02 design match: Day / Week switch, status filter, search, main table with a side column. */
@@ -393,7 +393,7 @@
   color: var(--color-text-secondary);
 }
 .tsd-switch button.tsd-switch--on {
-  background: rgb(37 99 235);
+  background: var(--color-cat-blue);
   color: var(--color-text-on-solid);
 }
 .tsd-select,
@@ -445,10 +445,10 @@
   font-weight: 600;
 }
 .tsd-workload[data-level='High'] {
-  color: rgb(185 28 28);
+  color: var(--color-tint-red-text);
 }
 .tsd-workload[data-level='Medium'] {
-  color: rgb(180 83 9);
+  color: var(--color-tint-amber-text);
 }
 .tsd-workload[data-level='Low'] {
   color: rgb(21 128 61);

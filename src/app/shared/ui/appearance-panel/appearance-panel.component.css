@@ -101,6 +101,10 @@
   background-color: var(--preset-preview-slate, #475569);
 }
 
+.preset-swatch[data-preset='mono'] {
+  background-color: var(--preset-preview-mono);
+}
+
 .preset-info {
   flex: 1;
 }

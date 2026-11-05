@@ -148,7 +148,7 @@
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.625rem;
-  background: rgb(240 249 255);
+  background: var(--color-tint-sky-bg);
   padding: 0 0.75rem;
   font-size: 0.75rem;
   color: var(--color-text-primary);
@@ -156,7 +156,7 @@
 }
 
 .wbl-pill:hover {
-  background: rgb(224 242 254);
+  background: var(--color-tint-sky-line);
 }
 
 .wbl-pill-text {
@@ -344,7 +344,7 @@
 .wbl-late {
   margin-left: 0.25rem;
   border-radius: 0.25rem;
-  background: rgb(254 243 199);
+  background: var(--color-warning-subtle);
   padding: 0 0.25rem;
   font-size: 0.625rem;
   font-weight: 600;
@@ -447,7 +447,7 @@
   align-self: flex-start;
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgb(37 99 235);
+  color: var(--color-cat-blue);
 }
 
 .wbl-link:hover {

@@ -15,7 +15,7 @@
     <img
       [src]="timeOfDayInfo().illustrationSrc"
       alt=""
-      class="greeting-art h-full w-full object-cover object-center opacity-25 mix-blend-multiply transition-opacity duration-700 select-none @lg:object-[70%_35%] @lg:opacity-100 @lg:mix-blend-normal"
+      class="greeting-art h-full w-full dark:saturate-50 object-cover object-center opacity-25 mix-blend-multiply transition-opacity duration-700 select-none @lg:object-[70%_35%] @lg:opacity-100 @lg:mix-blend-normal"
     />
     <div class="absolute inset-0 bg-gradient-to-b from-[var(--color-surface)]/40 via-[var(--color-surface)]/70 to-[var(--color-surface)]/95 @lg:hidden"></div>
   </div>
@@ -29,7 +29,7 @@
     <div class="relative z-10 flex flex-col gap-4">
     <!-- Status tiles: what I'm doing + how long, and how long is left -->
     <div class="relative z-10 grid grid-cols-1 gap-3 @lg:gap-4 @2xl:grid-cols-[1.65fr_1fr]">
-      <div class="flex items-center gap-3 rounded-2xl border border-[var(--color-accent-subtle)] bg-[var(--color-surface)]/85 p-3 shadow-xs backdrop-blur-xs @lg:gap-3 @lg:p-4 @xl:gap-4 @xl:p-5">
+      <div class="flex items-center gap-3 rounded-2xl border border-[var(--color-accent-subtle)] bg-[var(--color-surface)]/85 p-3 dark:border-[var(--color-border)] shadow-xs backdrop-blur-xs @lg:gap-3 @lg:p-4 @xl:gap-4 @xl:p-5">
         <div class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] @lg:h-12 @lg:w-12 @xl:h-16 @xl:w-16">
           <svg class="h-6 w-6 @xl:h-8 @xl:w-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 5.5A1.5 1.5 0 016.5 4h11A1.5 1.5 0 0119 5.5V15H5V5.5zM7 6v7h10V6H7zM2.5 16.5h19a.5.5 0 01.5.5 2 2 0 01-2 2H4a2 2 0 01-2-2 .5.5 0 01.5-.5z"></path>
@@ -52,7 +52,7 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-3 rounded-2xl border border-[var(--color-warning-subtle)]/70 bg-[var(--color-warning-subtle)]/70 p-3 shadow-xs backdrop-blur-xs @lg:gap-3 @lg:p-4 @xl:gap-4 @xl:p-5">
+      <div class="flex items-center gap-3 rounded-2xl border border-[var(--color-warning-subtle)]/70 bg-[var(--color-warning-subtle)]/70 p-3 dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]/85 shadow-xs backdrop-blur-xs @lg:gap-3 @lg:p-4 @xl:gap-4 @xl:p-5">
         <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-subtle)] text-[var(--color-accent)] @lg:h-12 @lg:w-12 @xl:h-16 @xl:w-16">
           <svg class="h-6 w-6 @xl:h-8 @xl:w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9" stroke-width="2"></circle>

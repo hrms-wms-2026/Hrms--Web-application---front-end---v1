@@ -24,13 +24,13 @@
 }
 
 .ptn-node-card:hover {
-  border-color: var(--color-sidebar-active-bg, #2563eb);
+  border-color: var(--color-accent-strong);
   box-shadow: var(--shadow-popover);
 }
 
 .ptn-node-card--dragover {
-  border: 2px dashed var(--color-sidebar-active-bg, #2563eb) !important;
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 6%, transparent);
+  border: 2px dashed var(--color-accent-strong) !important;
+  background: color-mix(in srgb, var(--color-accent-strong) 6%, transparent);
   transform: scale(1.02);
 }
 
@@ -41,8 +41,8 @@
 }
 
 .ptn-node-card--highlight {
-  border: 2px solid var(--color-sidebar-active-bg, #2563eb);
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 7%, var(--color-surface));
+  border: 2px solid var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent-strong) 7%, var(--color-surface));
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.15);
 }
 
@@ -243,9 +243,9 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 1px solid var(--color-sidebar-active-bg, #2563eb);
+  border: 1px solid var(--color-accent-strong);
   background: var(--color-surface);
-  color: var(--color-sidebar-active-bg, #2563eb);
+  color: var(--color-accent-strong);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -256,7 +256,7 @@
 }
 
 .ptn-bottom-add-btn:hover {
-  background: var(--color-sidebar-active-bg, #2563eb);
+  background: var(--color-accent-strong);
   color: var(--color-text-on-solid);
   transform: translateX(-50%) scale(1.15);
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);

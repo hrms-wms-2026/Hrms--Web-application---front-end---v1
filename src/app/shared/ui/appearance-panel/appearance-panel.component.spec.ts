@@ -26,9 +26,9 @@ async function setup(stub = storeStub()) {
 }
 
 describe('AppearancePanelComponent', () => {
-  it('renders 5 theme preset options', async () => {
+  it('renders 6 theme preset options', async () => {
     const { el } = await setup();
-    expect(el.querySelectorAll('[aria-label="Theme Presets"] [role="radio"]').length).toBe(5);
+    expect(el.querySelectorAll('[aria-label="Theme Presets"] [role="radio"]').length).toBe(6);
   });
 
   it('calls ThemeStore.setPreset when a theme option is selected', async () => {

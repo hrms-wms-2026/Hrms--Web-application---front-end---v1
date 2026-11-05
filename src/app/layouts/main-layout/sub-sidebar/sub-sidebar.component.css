@@ -18,6 +18,13 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Dark mode: the panel sits at card level; swapping the two tones keeps its rows and hovers a step lighter. */
+:host-context([data-mode='dark']) .sub-sidebar,
+:host-context(html.dark) .sub-sidebar {
+  --color-surface-secondary: var(--color-side-panel-bg);
+  --color-surface: var(--color-side-panel-item-bg);
+}
+
 .sub-sidebar__header {
   display: flex;
   align-items: center;

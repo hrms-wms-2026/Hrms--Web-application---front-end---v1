@@ -226,7 +226,7 @@ export const PEOPLE_CARD_HEIGHT = 64;
       color: inherit; text-decoration: none; user-select: none; cursor: pointer;
       transition: border-color 150ms ease, box-shadow 150ms ease;
     }
-    .pcn-card:hover { border-color: var(--color-sidebar-active-bg, #2563eb); box-shadow: var(--shadow-popover); }
+    .pcn-card:hover { border-color: var(--color-accent-strong); box-shadow: var(--shadow-popover); }
     .pcn-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus-ring); }
     .pcn-card--selected { border-color: var(--color-accent) !important; background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 24%, transparent); }
     .pcn-card--coverage-selected { border: 2px solid #2563eb !important; background: color-mix(in srgb, #2563eb 7%, var(--color-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #2563eb 18%, transparent), 0 8px 22px rgba(37, 99, 235, 0.14); }
