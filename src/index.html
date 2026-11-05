@@ -6,6 +6,23 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Paint the saved colour mode + accent preset before Angular boots (no light flash in dark mode).
+       Keep keys/values in sync with core/theme (ThemeStore, theme-mode.model.ts). -->
+  <script>
+    (function () {
+      var root = document.documentElement, mode = 'light', preset = 'default';
+      try {
+        var m = localStorage.getItem('onevo.color.mode');
+        if (m === 'light' || m === 'dark' || m === 'system') mode = m;
+        var p = localStorage.getItem('onevo.theme.preset');
+        if (p === 'default' || p === 'emerald' || p === 'violet' || p === 'rose' || p === 'slate' || p === 'mono') preset = p;
+      } catch (e) {}
+      if (mode === 'system') mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.setAttribute('data-mode', mode);
+      root.setAttribute('data-theme', preset);
+      if (mode === 'dark') root.classList.add('dark');
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">

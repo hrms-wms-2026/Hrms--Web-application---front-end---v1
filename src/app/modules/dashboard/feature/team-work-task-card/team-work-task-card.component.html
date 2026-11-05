@@ -79,7 +79,7 @@
           role="img"
           [attr.aria-label]="donutLabel()"
         >
-          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+          <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
           @for (arc of donut(); track arc.key) {
             <circle
               cx="21"

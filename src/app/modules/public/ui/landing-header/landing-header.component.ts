@@ -6,6 +6,7 @@ import {
   ElementRef,
   OnDestroy,
   PLATFORM_ID,
+  computed,
   inject,
   signal
 } from '@angular/core';
@@ -14,6 +15,7 @@ import { DOCUMENT, NgOptimizedImage, isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
 import { buildTenantUrl, readLastTenantSlug } from '../../../../core/auth/utils/tenant-redirect';
+import { ThemeStore } from '../../../../core/theme/state/theme.store';
 
 const HIDE_AFTER = 120;
 const SCROLL_DELTA = 8;
@@ -40,10 +42,12 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
+  private readonly themeStore = inject(ThemeStore);
 
   readonly menuOpen = signal(false);
   readonly headerVisible = signal(true);
-  readonly isDarkMode = signal(false);
+  /** One source of truth with the app's Appearance setting (ThemeStore). */
+  readonly isDarkMode = computed(() => this.themeStore.resolvedMode() === 'dark');
   readonly isScrolled = signal(false);
   readonly workspaceUrl = signal<string | null>(null);
 
@@ -67,33 +71,15 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
   }
 
   toggleMode(): void {
-    const nextMode = !this.isDarkMode();
-    this.isDarkMode.set(nextMode);
-    this.applyModeToDocument(nextMode);
+    this.themeStore.setMode(this.isDarkMode() ? 'light' : 'dark');
   }
 
   applyLightMode(): void {
-    this.isDarkMode.set(false);
-    this.applyModeToDocument(false);
+    this.themeStore.setMode('light');
   }
 
   applyDarkMode(): void {
-    this.isDarkMode.set(true);
-    this.applyModeToDocument(true);
-  }
-
-  private applyModeToDocument(isDark: boolean): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-    const doc = document.documentElement;
-    if (isDark) {
-      doc.classList.add('dark');
-      doc.setAttribute('data-mode', 'dark');
-      try { localStorage.setItem('onevo.color.mode', 'dark'); } catch {}
-    } else {
-      doc.classList.remove('dark');
-      doc.setAttribute('data-mode', 'light');
-      try { localStorage.setItem('onevo.color.mode', 'light'); } catch {}
-    }
+    this.themeStore.setMode('dark');
   }
 
   toggleMenu(): void {
@@ -110,17 +96,6 @@ export class LandingHeaderComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
-    }
-
-    // Initialize mode from localStorage or system prefers-color-scheme
-    try {
-      const stored = localStorage.getItem('onevo.color.mode');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialDark = stored ? stored === 'dark' : prefersDark;
-      this.isDarkMode.set(initialDark);
-      this.applyModeToDocument(initialDark);
-    } catch {
-      // Fallback if localStorage or matchMedia fails
     }
 
     this.lastScrollY = window.scrollY;

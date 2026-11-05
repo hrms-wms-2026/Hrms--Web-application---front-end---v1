@@ -21,9 +21,9 @@ describe('signal item links', () => {
 
   it('routes attendance and location keys to the filtered Time Tracking team view', () => {
     expect(signalFullListUrl('late_clock_ins', 'emp-1', '2026-09-01', '2026-09-30'))
-      .toBe('/attendance/time-tracking?view=team&employeeId=emp-1&from=2026-09-01&to=2026-09-30');
+      .toBe('/attendance?view=team&employeeId=emp-1&from=2026-09-01&to=2026-09-30');
     expect(signalFullListUrl('location_violations', 'emp-1', '2026-09-01', '2026-09-30'))
-      .toBe('/attendance/time-tracking?view=team&employeeId=emp-1&from=2026-09-01&to=2026-09-30');
+      .toBe('/attendance?view=team&employeeId=emp-1&from=2026-09-01&to=2026-09-30');
   });
 
   it('routes alert keys to the alerts about that employee in the Inbox, overdue tasks to Work, and has no list for approvals', () => {

@@ -91,7 +91,7 @@ export interface TaskAssigneeOption {
       border: 1px solid var(--color-border, #e2e8f0);
       background: var(--color-surface, #ffffff);
       padding: 6px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       box-sizing: border-box;
       user-select: none;
     }

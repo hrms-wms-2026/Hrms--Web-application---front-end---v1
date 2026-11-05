@@ -36,7 +36,7 @@ import { CREATE_TAB_LABELS, CREATE_TAB_ORDER, CreateSlot, CreateTab, SharedCreat
     .pcp-panel {
       position: absolute; left: 50%; top: 12vh; transform: translateX(-50%); width: min(560px, calc(100vw - 32px));
       max-height: 76vh; overflow: auto; border: 1px solid var(--color-border); border-radius: 14px;
-      background: var(--color-surface); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+      background: var(--color-surface); box-shadow: var(--shadow-modal);
     }
     .pcp-tabs { display: flex; align-items: center; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--color-border);
       background: var(--color-surface-muted, var(--color-surface)); }
@@ -44,7 +44,7 @@ import { CREATE_TAB_LABELS, CREATE_TAB_ORDER, CreateSlot, CreateTab, SharedCreat
     .pcp-tab { padding: 5px 10px; border-radius: 8px; border: 1px solid transparent; color: var(--color-text-secondary);
       font-weight: 500; background: transparent; }
     .pcp-tab--on { background: var(--color-surface); color: var(--color-text-primary); border-color: var(--color-border);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+      box-shadow: var(--shadow-card); }
     .pcp-close { margin-left: auto; width: 26px; height: 26px; border-radius: 50%; border: 0; color: var(--color-text-secondary);
       background: transparent; }
     .pcp-body { padding: 12px 14px; }

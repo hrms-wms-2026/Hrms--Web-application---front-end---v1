@@ -98,8 +98,8 @@ const REHIRE_LABELS: Record<RehireEligibility, string> = {
       align-items: center;
       text-align: center;
       padding: 2.5rem 1.5rem;
-      background: color-mix(in srgb, #16a34a 4%, var(--color-surface));
-      border: 1px solid color-mix(in srgb, #16a34a 30%, var(--color-border));
+      background: color-mix(in srgb, var(--color-success) 4%, var(--color-surface));
+      border: 1px solid color-mix(in srgb, var(--color-success) 30%, var(--color-border));
       border-radius: 14px;
     }
     .obs-completed-box__icon {
@@ -109,8 +109,8 @@ const REHIRE_LABELS: Record<RehireEligibility, string> = {
       width: 3rem;
       height: 3rem;
       border-radius: 50%;
-      background: color-mix(in srgb, #16a34a 15%, var(--color-surface));
-      color: #16a34a;
+      background: color-mix(in srgb, var(--color-success) 15%, var(--color-surface));
+      color: var(--color-success);
       font-size: 1.25rem;
       font-weight: 800;
       margin-bottom: 1rem;
@@ -155,8 +155,8 @@ const REHIRE_LABELS: Record<RehireEligibility, string> = {
       border-radius: 12px;
     }
     .obs-summary-box--ready {
-      background: color-mix(in srgb, #16a34a 4%, var(--color-surface));
-      border-color: color-mix(in srgb, #16a34a 30%, var(--color-border));
+      background: color-mix(in srgb, var(--color-success) 4%, var(--color-surface));
+      border-color: color-mix(in srgb, var(--color-success) 30%, var(--color-border));
     }
     .obs-summary-box__header {
       display: flex;
@@ -178,8 +178,8 @@ const REHIRE_LABELS: Record<RehireEligibility, string> = {
       font-weight: 650;
     }
     .obs-readiness-chip--ready {
-      background: color-mix(in srgb, #16a34a 12%, var(--color-surface));
-      color: #16a34a;
+      background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+      color: var(--color-success);
     }
     .obs-summary-box__copy {
       margin: 0;

@@ -4,71 +4,29 @@ import { permissionGuard } from '../../core/guards/permission.guard';
 import { ATTENDANCE_ROUTES, attendanceApprovalsDeepLinkGuard } from './attendance.routes';
 
 describe('ATTENDANCE_ROUTES', () => {
-    const monitoring = () => ATTENDANCE_ROUTES.find((route) => route.path === 'monitoring')!;
-  const timeTracking = () => ATTENDANCE_ROUTES.find((route) => route.path === 'time-tracking')!;
-  const requests = () => ATTENDANCE_ROUTES.find((route) => route.path === 'time-tracking/requests')!;
+  const page = () => ATTENDANCE_ROUTES.find((route) => route.path === '')!;
 
-    it('redirects the empty path to overview', () => {
-    const emptyRoute = ATTENDANCE_ROUTES.find((route) => route.path === '');
-    expect(emptyRoute?.redirectTo).toBe('overview');
-  });
+  it('serves Attendance as one lazy-loaded page at the empty path, gated on time_attendance and any attendance permission', () => {
+    const route = page();
 
-  it('registers the overview route with the correct permissions and module gate', () => {
-    const overviewRoute = ATTENDANCE_ROUTES.find((route) => route.path === 'overview');
-    expect(overviewRoute).toBeDefined();
-    expect(overviewRoute?.data?.['modules']).toEqual(['time_attendance']);
-    expect(overviewRoute?.data?.['permissions']).toEqual([
-      'attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'
-    ]);
-  });
-
-  it('guards Monitoring with time_attendance and monitoring:read', () => {
-    const route = monitoring();
-
-    expect(route.canActivate).toContain(permissionGuard);
-    expect(route.data?.['modules']).toEqual(['time_attendance']);
-    expect(route.data?.['permissions']).toEqual(['monitoring:read']);
+    expect(route.pathMatch).toBe('full');
+    expect(route.redirectTo).toBeUndefined();
     expect(route.loadComponent).toBeTypeOf('function');
-  });
-
-  it('guards time tracking with time_attendance and the established any-of permission set, including attendance:approve', () => {
-
-    const route = timeTracking();
-
     expect(route.canActivate).toContain(permissionGuard);
     expect(route.data?.['modules']).toEqual(['time_attendance']);
     expect(route.data?.['permissions']).toEqual([
-      'attendance:read-own',
-      'attendance:write-own',
-      'attendance:read',
-      'attendance:approve'
+      'attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'
     ]);
     expect(route.data?.['roles']).toBeUndefined();
   });
 
-  it('gives Requests its own path so it does not co-highlight with Time Tracking, but renders the same component', () => {
-    const route = requests();
-    const trackingRoute = timeTracking();
+  it('redirects the old Overview, Time Tracking and Requests URLs to the page, and Monitoring to Settings', () => {
+    const redirectFor = (path: string) => ATTENDANCE_ROUTES.find((route) => route.path === path)?.redirectTo;
 
-    expect(route).toBeDefined();
-    expect(route.path).not.toBe(trackingRoute.path);
-    expect(route.canActivate).toContain(permissionGuard);
-    expect(route.data?.['modules']).toEqual(['time_attendance']);
-    expect(route.loadComponent).toBeTypeOf('function');
-  });
-
-  it('keeps the protected destination lazy-loaded and does not bypass it through redirects', () => {
-    const route = timeTracking();
-    const monitoringRoute = monitoring();
-    const root = ATTENDANCE_ROUTES.find((candidate) => candidate.path === '');
-
-    expect(route.loadComponent).toBeTypeOf('function');
-    expect(monitoringRoute.loadComponent).toBeTypeOf('function');
-    expect(root?.redirectTo).toBe('overview');
-    expect(root?.pathMatch).toBe('full');
-    for (const candidate of [route, monitoringRoute]) {
-      expect(candidate.canActivate?.includes(permissionGuard)).toBe(true);
-    }
+    expect(redirectFor('overview')).toBe('/attendance');
+    expect(redirectFor('time-tracking')).toBe('/attendance');
+    expect(redirectFor('time-tracking/requests')).toBe('/attendance');
+    expect(redirectFor('monitoring')).toBe('/settings/monitoring');
   });
 
   describe('approver screens moved to the Inbox (FA)', () => {
@@ -91,7 +49,7 @@ describe('ATTENDANCE_ROUTES', () => {
     });
 
     it('sends the old Time Tracking team approvals view to the Inbox, and leaves every other view alone', () => {
-      expect(timeTracking().canActivate?.[0]).toBe(attendanceApprovalsDeepLinkGuard);
+      expect(page().canActivate?.[0]).toBe(attendanceApprovalsDeepLinkGuard);
       expect(url(guard({ view: 'team', type: 'corrections' }))).toBe('/inbox?source=attendance&kind=correction');
       expect(url(guard({ view: 'team', type: 'location', requestId: 'l1' }))).toBe('/inbox/attendance/location_change/l1');
       expect(url(guard({ view: 'team', type: 'device-change', requestId: 'd1' }))).toBe('/inbox/attendance/device_change/d1');

@@ -171,7 +171,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
     }
 
     .task-clock-widget__overlay { position: fixed; z-index: 90; inset: 0; background: rgb(15 23 42 / .22); animation: task-clock-overlay-in 160ms ease-out; }
-    .task-clock-widget__popup { position: fixed; z-index: 91; top: 50%; left: 50%; display: flex; flex-direction: column; gap: 9px; width: min(320px, calc(100vw - 32px)); margin: 0; padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 20px 50px rgb(15 23 42 / .24); transform: translate(-50%, -50%); animation: task-clock-popup-in 160ms ease-out; }
+    .task-clock-widget__popup { position: fixed; z-index: 91; top: 50%; left: 50%; display: flex; flex-direction: column; gap: 9px; width: min(320px, calc(100vw - 32px)); margin: 0; padding: 16px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: var(--shadow-modal); transform: translate(-50%, -50%); animation: task-clock-popup-in 160ms ease-out; }
     .task-clock-widget__popup p { margin: 0; color: var(--color-text-primary); font-size: 13px; font-weight: 600; }
 
     .task-clock-widget__popup [role="alert"] { color: var(--color-danger-text); font-size: 12px; line-height: 1.35; }

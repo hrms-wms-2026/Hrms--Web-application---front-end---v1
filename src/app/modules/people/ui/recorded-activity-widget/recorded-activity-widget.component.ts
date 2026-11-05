@@ -26,38 +26,38 @@ import { WorkActivityBarChartComponent } from '../work-activity-bar-chart/work-a
       (retry)="activity.reload()"
     >
       @if (byHour.state() === 'ready' && byHour.data(); as h) {
-        <span widget-actions class="whitespace-nowrap text-[11px] text-slate-500">
-          Last activity <span class="font-semibold text-slate-800">{{ clock(h.lastActivityAt, h.timezone) }}</span>
+        <span widget-actions class="whitespace-nowrap text-[11px] text-[var(--color-text-secondary)]">
+          Last activity <span class="font-semibold text-[var(--color-text-primary)]">{{ clock(h.lastActivityAt, h.timezone) }}</span>
         </span>
       }
 
       <div class="flex flex-1 flex-col">
-        <p class="-mt-1 mb-3 text-xs text-slate-500">Based on device activity for the selected period</p>
+        <p class="-mt-1 mb-3 text-xs text-[var(--color-text-secondary)]">Based on device activity for the selected period</p>
 
         @if (activity.data(); as a) {
           <div class="grid grid-cols-3 gap-2">
-            <div class="min-w-0 rounded-xl bg-emerald-50 p-3">
-              <p class="truncate text-xs font-medium text-emerald-700">Active time</p>
-              <p class="mt-1 truncate text-base font-bold text-slate-900">{{ duration(a.activeMinutes) }}</p>
+            <div class="min-w-0 rounded-xl bg-[var(--color-success-subtle)] p-3">
+              <p class="truncate text-xs font-medium text-[var(--color-success-text)]">Active time</p>
+              <p class="mt-1 truncate text-base font-bold text-[var(--color-text-primary)]">{{ duration(a.activeMinutes) }}</p>
             </div>
-            <div class="min-w-0 rounded-xl bg-amber-50 p-3">
-              <p class="truncate text-xs font-medium text-amber-700">Idle time</p>
-              <p class="mt-1 truncate text-base font-bold text-slate-900">{{ duration(a.idleMinutes) }}</p>
+            <div class="min-w-0 rounded-xl bg-[var(--color-warning-subtle)] p-3">
+              <p class="truncate text-xs font-medium text-[var(--color-warning-text)]">Idle time</p>
+              <p class="mt-1 truncate text-base font-bold text-[var(--color-text-primary)]">{{ duration(a.idleMinutes) }}</p>
             </div>
-            <div class="min-w-0 rounded-xl bg-violet-50 p-3">
-              <p class="truncate text-xs font-medium text-violet-700">Meeting time</p>
-              <p class="mt-1 truncate text-base font-bold text-slate-900">{{ duration(a.meetingMinutes) }}</p>
+            <div class="min-w-0 rounded-xl bg-[var(--color-cat-violet-subtle)] p-3">
+              <p class="truncate text-xs font-medium text-[var(--color-cat-violet)]">Meeting time</p>
+              <p class="mt-1 truncate text-base font-bold text-[var(--color-text-primary)]">{{ duration(a.meetingMinutes) }}</p>
             </div>
           </div>
         }
 
         @if (byHour.state() === 'ready' && byHour.data()) {
           <div class="mt-auto pt-4">
-            <p class="mb-2 text-xs font-medium text-slate-500">Activity by time of day</p>
+            <p class="mb-2 text-xs font-medium text-[var(--color-text-secondary)]">Activity by time of day</p>
             <app-work-activity-bar-chart [bars]="bars()" [formatTick]="tick" ariaLabel="Active minutes by hour of day" />
           </div>
         } @else if (byHour.state() === 'error') {
-          <p class="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+          <p class="mt-4 border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-text-secondary)]">
             Could not load activity by time of day.
           </p>
         }

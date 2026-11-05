@@ -11,28 +11,28 @@ interface TaskGroup { readonly projectName: string; readonly items: readonly Emp
   selector: 'app-signal-items-list',
   standalone: true,
   template: `
-    <div class="mt-2 rounded-xl border border-amber-200/70 bg-white/70 p-2" data-testid="signal-items">
+    <div class="mt-2 rounded-xl border border-[var(--color-warning-subtle)]/70 bg-[var(--color-surface)]/70 p-2" data-testid="signal-items">
       @if (loading()) {
         @for (i of [0, 1, 2]; track i) {
-          <div data-testid="signal-items-skeleton" class="my-1 h-7 animate-pulse rounded bg-slate-100"></div>
+          <div data-testid="signal-items-skeleton" class="my-1 h-7 animate-pulse rounded bg-[var(--color-surface-secondary)]"></div>
         }
       } @else if (error()) {
-        <div class="flex items-center justify-between gap-2 px-2 py-1.5 text-xs text-slate-600" role="alert">
+        <div class="flex items-center justify-between gap-2 px-2 py-1.5 text-xs text-[var(--color-text-secondary)]" role="alert">
           <span>Could not load these items.</span>
-          <button type="button" data-testid="signal-items-retry" class="font-semibold text-blue-600 hover:underline" (click)="retry.emit()">Retry</button>
+          <button type="button" data-testid="signal-items-retry" class="font-semibold text-[var(--color-accent)] hover:underline" (click)="retry.emit()">Retry</button>
         </div>
       } @else if (response(); as r) {
         @if (isTasks()) {
           @for (group of taskGroups(); track group.projectName) {
             <div data-testid="signal-task-group" class="py-1">
-              <p data-testid="signal-task-group-name" class="px-2 text-[11px] font-bold text-slate-700">{{ group.projectName }} ({{ group.items.length }})</p>
+              <p data-testid="signal-task-group-name" class="px-2 text-[11px] font-bold text-[var(--color-text-primary)]">{{ group.projectName }} ({{ group.items.length }})</p>
               @for (item of group.items; track item.id) {
                 <button type="button" data-testid="signal-item" class="item-row" (click)="itemSelected.emit(item)">
                   <span class="truncate">{{ item.title }}</span>
-                  <span class="flex shrink-0 items-center gap-1.5 text-slate-400">
+                  <span class="flex shrink-0 items-center gap-1.5 text-[var(--color-text-muted)]">
                     @if (item.carriedOver) {
                       <span data-testid="signal-item-carried-over"
-                            class="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">{{ carriedOverLabel(item) }}</span>
+                            class="rounded bg-[var(--color-warning-subtle)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-warning-text)]">{{ carriedOverLabel(item) }}</span>
                     }
                     due {{ short(item.dueDate) }} ›
                   </span>
@@ -45,24 +45,24 @@ interface TaskGroup { readonly projectName: string; readonly items: readonly Emp
             <button type="button" data-testid="signal-item" class="item-row" (click)="onItemClick(item)"
                     [attr.aria-expanded]="item.kind === 'approval' ? openApprovalId() === item.id : null">
               <span class="min-w-0 truncate">
-                <span class="font-semibold text-slate-800">{{ item.title }}</span>
-                @if (item.occurredAt) { <span class="text-slate-400"> · {{ time(item.occurredAt, r.timezone) }}</span> }
-                @if (item.subtitle) { <span class="text-slate-500"> · {{ item.subtitle }}</span> }
+                <span class="font-semibold text-[var(--color-text-primary)]">{{ item.title }}</span>
+                @if (item.occurredAt) { <span class="text-[var(--color-text-muted)]"> · {{ time(item.occurredAt, r.timezone) }}</span> }
+                @if (item.subtitle) { <span class="text-[var(--color-text-secondary)]"> · {{ item.subtitle }}</span> }
               </span>
-              <span class="shrink-0 text-slate-400">{{ item.kind === 'approval' ? (openApprovalId() === item.id ? '▾' : '▸') : '›' }}</span>
+              <span class="shrink-0 text-[var(--color-text-muted)]">{{ item.kind === 'approval' ? (openApprovalId() === item.id ? '▾' : '▸') : '›' }}</span>
             </button>
             @if (item.kind === 'approval' && openApprovalId() === item.id) {
-              <div class="mx-2 mb-2 rounded-lg bg-slate-50 p-2 text-[11px] text-slate-600" data-testid="approval-detail">
+              <div class="mx-2 mb-2 rounded-lg bg-[var(--color-surface-secondary)] p-2 text-[11px] text-[var(--color-text-secondary)]" data-testid="approval-detail">
                 @if (item.requestedAt) { <p>Requested {{ short(item.requestedAt) }}</p> }
                 @if (item.approverName) { <p>Waiting on {{ item.approverName }}</p> }
-                <a data-testid="approval-review-link" class="mt-1 inline-block font-semibold text-blue-600 hover:underline"
+                <a data-testid="approval-review-link" class="mt-1 inline-block font-semibold text-[var(--color-accent)] hover:underline"
                    [href]="reviewUrl(item)" (click)="navigate($event, reviewUrl(item))">Review in approvals →</a>
               </div>
             }
           }
         }
         @if (r.total > r.items.length && fullListUrl(); as url) {
-          <a data-testid="signal-items-more" class="block px-2 py-1.5 text-[11px] font-semibold text-blue-600 hover:underline"
+          <a data-testid="signal-items-more" class="block px-2 py-1.5 text-[11px] font-semibold text-[var(--color-accent)] hover:underline"
              [href]="url" (click)="navigate($event, url)">+{{ r.total - r.items.length }} more · open full list</a>
         }
       }
@@ -71,7 +71,7 @@ interface TaskGroup { readonly projectName: string; readonly items: readonly Emp
   styles: [`
     .item-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 0.5rem;
       border-radius: 0.5rem; padding: 0.375rem 0.5rem; text-align: left; font-size: 11px; cursor: pointer; }
-    .item-row:hover { background: rgb(248 250 252); }
+    .item-row:hover { background: var(--color-surface-secondary); }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

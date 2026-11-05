@@ -23,7 +23,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
     </div>
   `,
   styles: [`
-    .csp-popover { position: absolute; z-index: 20; margin-top: 4px; padding: 8px; border-radius: 8px; background: var(--color-surface); box-shadow: 0 8px 24px rgb(15 23 42 / .18); border: 1px solid var(--color-border); }
+    .csp-popover { position: absolute; z-index: 20; margin-top: 4px; padding: 8px; border-radius: 8px; background: var(--color-surface); box-shadow: var(--shadow-popover); border: 1px solid var(--color-border); }
     .csp-remove { display: block; width: 100%; text-align: left; padding: 4px 6px; margin-bottom: 6px; border: none; background: none; cursor: pointer; font-size: 12px; color: var(--color-text-muted, #64748b); }
     .csp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     .csp-swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgb(0 0 0 / .1); cursor: pointer; padding: 0; }

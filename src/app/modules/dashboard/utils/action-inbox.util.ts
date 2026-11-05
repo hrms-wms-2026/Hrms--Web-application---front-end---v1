@@ -144,9 +144,9 @@ export function filterInbox(items: readonly InboxItem[], filter: InboxFilter): I
 }
 
 const AGE_CLASS = {
-  late: 'text-rose-600 font-semibold',
-  soon: 'text-amber-600 font-semibold',
-  fresh: 'text-slate-400'
+  late: 'text-[var(--color-danger)] font-semibold',
+  soon: 'text-[var(--color-warning)] font-semibold',
+  fresh: 'text-[var(--color-text-muted)]'
 } as const;
 
 /** 5d+ (and any overdue task) red, 3d+ amber. Full class strings for Tailwind JIT. */

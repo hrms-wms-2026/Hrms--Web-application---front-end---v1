@@ -12,21 +12,21 @@
   gap: 0.375rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
 }
 
 .tpt-muted {
   font-size: 0.75rem;
   font-weight: 400;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 .tpt-note {
   border-radius: 0.5rem;
-  background: rgb(248 250 252);
+  background: var(--color-surface-secondary);
   padding: 0.375rem 0.625rem;
   font-size: 0.75rem;
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
 }
 
 .tpt-band {
@@ -34,7 +34,7 @@
   height: 84px;
   flex-direction: column;
   justify-content: space-between;
-  border: 1px solid rgb(241 245 249);
+  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
   padding: 0.5rem 0.75rem;
 }
@@ -42,7 +42,7 @@
 .tpt-coverage {
   margin-left: auto;
   font-weight: 700;
-  color: rgb(37 99 235);
+  color: var(--color-cat-blue);
   font-variant-numeric: tabular-nums;
 }
 
@@ -52,7 +52,7 @@
   height: 12px;
   overflow: visible;
   border-radius: 0.375rem;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
 }
 
 .tpt-seg {
@@ -85,7 +85,7 @@
   flex-wrap: wrap;
   gap: 0.25rem 0.75rem;
   font-size: 0.6875rem;
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
   white-space: nowrap;
 }
 
@@ -103,9 +103,9 @@
   height: 84px;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgb(254 202 202);
+  border: 1px solid var(--color-tint-red-line);
   border-radius: 0.625rem;
-  background: rgb(254 242 242);
+  background: var(--color-tint-red-bg);
   padding: 3px 0.75rem;
 }
 
@@ -114,7 +114,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 18px;
-  color: rgb(185 28 28);
+  color: var(--color-tint-red-text);
 }
 
 .tpt-unscheduled-row {
@@ -136,7 +136,7 @@
   height: 180px;
   flex-direction: column;
   gap: 0.375rem;
-  border: 1px solid rgb(241 245 249);
+  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
   padding: 0.5rem 0.75rem;
 }
@@ -150,7 +150,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  border: 1px solid rgb(241 245 249);
+  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
   padding: 0.5rem 0.75rem;
 }
@@ -161,7 +161,7 @@
   grid-template-columns: auto minmax(0, 1fr) 3.5rem minmax(3rem, 6rem) 3rem;
   align-items: center;
   gap: 0.5rem;
-  border-bottom: 1px solid rgb(248 250 252);
+  border-bottom: 1px solid var(--color-border);
   font-size: 0.8125rem;
 }
 
@@ -176,22 +176,22 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
   font-size: 0.6875rem;
   font-weight: 700;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 .tpt-name {
   overflow: hidden;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .tpt-hours {
   text-align: right;
-  color: rgb(51 65 85);
+  color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -200,7 +200,7 @@
   height: 6px;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
 }
 
 .tpt-row-bar > span {
@@ -213,10 +213,10 @@
 .tpt-util {
   text-align: right;
   font-weight: 600;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .tpt-util--over {
-  color: rgb(220 38 38);
+  color: var(--color-danger);
 }

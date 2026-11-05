@@ -24,8 +24,8 @@
 }
 
 .rlt-badge--system {
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
-  color: var(--color-sidebar-active-bg, #2563eb);
+  background: color-mix(in srgb, var(--color-accent-strong) 12%, transparent);
+  color: var(--color-accent-strong);
 }
 
 .rlt-badge--custom {

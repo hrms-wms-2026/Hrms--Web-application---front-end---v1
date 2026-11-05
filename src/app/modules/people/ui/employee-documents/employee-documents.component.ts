@@ -18,47 +18,47 @@ import { toSafeErrorMessage } from '../../../../core/services/error-handler.serv
   imports: [DatePipe],
   host: { class: 'block' },
   template: `
-    <section class="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs" data-testid="employee-documents-card">
+    <section class="rounded-xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-4 shadow-xs" data-testid="employee-documents-card">
       <header class="mb-3 flex items-center gap-2.5">
-        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600" aria-hidden="true">
+        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)]" aria-hidden="true">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
           </svg>
         </span>
         <div>
-          <h2 class="text-sm font-bold text-slate-900">Documents</h2>
-          <p class="text-[11px] text-slate-500">Uploaded by the employee from their profile</p>
+          <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Documents</h2>
+          <p class="text-[11px] text-[var(--color-text-secondary)]">Uploaded by the employee from their profile</p>
         </div>
       </header>
 
       @if (loading()) {
-        <p class="py-4 text-center text-xs text-slate-500">Loading documents…</p>
+        <p class="py-4 text-center text-xs text-[var(--color-text-secondary)]">Loading documents…</p>
       } @else if (forbidden()) {
-        <p class="py-4 text-center text-xs text-slate-500" data-testid="employee-documents-forbidden">You don't have access to this employee's documents.</p>
+        <p class="py-4 text-center text-xs text-[var(--color-text-secondary)]" data-testid="employee-documents-forbidden">You don't have access to this employee's documents.</p>
       } @else if (error()) {
-        <p class="py-4 text-center text-xs text-rose-600" role="alert">{{ error() }}</p>
+        <p class="py-4 text-center text-xs text-[var(--color-danger)]" role="alert">{{ error() }}</p>
       } @else if (documents().length === 0) {
-        <p class="py-4 text-center text-xs text-slate-500" data-testid="employee-documents-empty">No documents uploaded.</p>
+        <p class="py-4 text-center text-xs text-[var(--color-text-secondary)]" data-testid="employee-documents-empty">No documents uploaded.</p>
       } @else {
-        <ul class="divide-y divide-slate-100">
+        <ul class="divide-y divide-[var(--color-border)]">
           @for (doc of documents(); track doc.id) {
             <li class="flex items-center gap-3 py-2" [attr.data-testid]="'employee-document-' + doc.id">
               <span
-                class="flex h-7 w-6 shrink-0 items-center justify-center rounded text-[8px] font-bold text-white"
-                [class.bg-red-600]="kind(doc) === 'pdf'"
-                [class.bg-green-600]="kind(doc) === 'image'"
-                [class.bg-blue-600]="kind(doc) === 'word'"
+                class="flex h-7 w-6 shrink-0 items-center justify-center rounded text-[8px] font-bold text-[var(--color-text-on-solid)]"
+                [class.bg-[var(--color-danger)]]="kind(doc) === 'pdf'"
+                [class.bg-[var(--color-success)]]="kind(doc) === 'image'"
+                [class.bg-[var(--color-accent)]]="kind(doc) === 'word'"
                 [class.bg-slate-500]="kind(doc) === 'file'"
                 aria-hidden="true"
               >{{ kind(doc) === 'pdf' ? 'PDF' : kind(doc) === 'image' ? 'IMG' : kind(doc) === 'word' ? 'DOC' : 'FILE' }}</span>
               <div class="min-w-0 flex-1">
-                <p class="truncate text-[13px] font-semibold text-slate-900" [title]="doc.fileName">{{ doc.name }}</p>
-                <p class="text-[11px] text-slate-500">
+                <p class="truncate text-[13px] font-semibold text-[var(--color-text-primary)]" [title]="doc.fileName">{{ doc.name }}</p>
+                <p class="text-[11px] text-[var(--color-text-secondary)]">
                   {{ typeLabel(doc.documentType) }} · {{ doc.uploadedAt | date: 'yyyy-MM-dd' }} · {{ fileSize(doc.fileSizeBytes) }}
                 </p>
               </div>
-              <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50" (click)="open(doc, 'view')">View</button>
-              <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100" (click)="open(doc, 'download')">Download</button>
+              <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]" (click)="open(doc, 'view')">View</button>
+              <button type="button" class="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]" (click)="open(doc, 'download')">Download</button>
             </li>
           }
         </ul>

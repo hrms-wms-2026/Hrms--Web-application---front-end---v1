@@ -12,14 +12,14 @@ interface BalanceTone {
 
 /** Cycled per balance so neighbouring leave types never share a colour. */
 const TONES: readonly BalanceTone[] = [
-  { tile: 'bg-emerald-50 text-emerald-600', bar: 'bg-emerald-500' },
-  { tile: 'bg-blue-50 text-blue-600', bar: 'bg-blue-600' },
-  { tile: 'bg-violet-50 text-violet-600', bar: 'bg-violet-500' },
-  { tile: 'bg-amber-50 text-amber-600', bar: 'bg-amber-500' },
+  { tile: 'bg-[var(--color-success-subtle)] text-[var(--color-success)]', bar: 'bg-[var(--color-success)]' },
+  { tile: 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]', bar: 'bg-[var(--color-accent)]' },
+  { tile: 'bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)]', bar: 'bg-[var(--color-cat-violet)]' },
+  { tile: 'bg-[var(--color-warning-subtle)] text-[var(--color-warning)]', bar: 'bg-[var(--color-warning)]' },
   { tile: 'bg-cyan-50 text-cyan-600', bar: 'bg-cyan-500' },
   { tile: 'bg-pink-50 text-pink-600', bar: 'bg-pink-500' }
 ];
-const OVERDRAWN: BalanceTone = { tile: 'bg-rose-50 text-rose-600', bar: 'bg-rose-500' };
+const OVERDRAWN: BalanceTone = { tile: 'bg-[var(--color-danger-subtle)] text-[var(--color-danger)]', bar: 'bg-[var(--color-danger)]' };
 
 /**
  * Year-based remaining balance per leave type: intentionally independent of the month period, so
@@ -44,13 +44,13 @@ const OVERDRAWN: BalanceTone = { tile: 'bg-rose-50 text-rose-600', bar: 'bg-rose
           @if (d.balances.length > 3) {
             <button
               type="button"
-              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              class="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer"
               (click)="toggleShowAll()"
             >
               {{ showAll() ? 'Show less' : 'See all (' + d.balances.length + ')' }}
             </button>
           } @else {
-            <span class="text-xs text-slate-500">Available balance</span>
+            <span class="text-xs text-[var(--color-text-secondary)]">Available balance</span>
           }
         </div>
       }
@@ -59,7 +59,7 @@ const OVERDRAWN: BalanceTone = { tile: 'bg-rose-50 text-rose-600', bar: 'bg-rose
         <div class="grid gap-3 sm:grid-cols-3">
           @for (b of displayedBalances(d.balances); track b.leaveTypeId; let idx = $index) {
             @let tone = toneFor(b, idx);
-            <div class="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5" data-testid="balance-row">
+            <div class="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)]/60 p-3.5" data-testid="balance-row">
               <div class="flex items-center gap-3">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" [class]="tone.tile" aria-hidden="true">
                   <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -68,19 +68,19 @@ const OVERDRAWN: BalanceTone = { tile: 'bg-rose-50 text-rose-600', bar: 'bg-rose
                   </svg>
                 </span>
                 <div class="min-w-0">
-                  <p class="truncate text-xs font-semibold text-slate-700" [title]="b.leaveTypeName">{{ b.leaveTypeName }}</p>
+                  <p class="truncate text-xs font-semibold text-[var(--color-text-primary)]" [title]="b.leaveTypeName">{{ b.leaveTypeName }}</p>
                   <p class="mt-0.5 whitespace-nowrap">
                     @if (b.isNegative) {
-                      <span class="text-lg font-bold text-rose-600">{{ hours(-b.remainingHours) }} overdrawn</span>
+                      <span class="text-lg font-bold text-[var(--color-danger)]">{{ hours(-b.remainingHours) }} overdrawn</span>
                     } @else {
-                      <span class="text-lg font-bold text-slate-900">{{ hours(b.remainingHours) }}</span>
+                      <span class="text-lg font-bold text-[var(--color-text-primary)]">{{ hours(b.remainingHours) }}</span>
                     }
-                    <span class="text-xs text-slate-400"> / {{ hours(b.entitledHours) }}</span>
+                    <span class="text-xs text-[var(--color-text-muted)]"> / {{ hours(b.entitledHours) }}</span>
                   </p>
                 </div>
               </div>
               <div
-                class="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/70"
+                class="mt-3 h-2 overflow-hidden rounded-full bg-[var(--color-border)]/70"
                 role="progressbar"
                 [attr.aria-valuemin]="0"
                 [attr.aria-valuemax]="100"

@@ -17,20 +17,20 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
     >
       <span class="flex items-center gap-1.5 min-w-0" [style.paddingLeft.px]="depth() * 20">
         <span class="h-4 w-4 shrink-0"></span>
-        <svg data-testid="task-icon" class="h-4 w-4 shrink-0 {{ selected() ? 'text-white' : 'text-[var(--color-accent)]' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg data-testid="task-icon" class="h-4 w-4 shrink-0 {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-accent)]' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="4" y="4" width="16" height="16" rx="2" />
           <path d="M8 12l3 3 5-6" />
         </svg>
-        <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
+        <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
         <app-tree-alert-mark [alerts]="alerts()" />
         @if (node().status; as status) {
-          <span data-testid="status-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">{{ status }}</span>
+          <span data-testid="status-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-[var(--color-text-on-solid)]/15 text-[var(--color-text-on-solid)]' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">{{ status }}</span>
         }
       </span>
 
-      <span class="flex items-center gap-2 text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="progress-cell">
-        <span data-testid="progress-track" class="h-1.5 w-16 overflow-hidden rounded-full {{ selected() ? 'bg-white/25' : 'bg-[var(--color-surface-secondary)]' }}">
-          <span data-testid="progress-fill" class="block h-full rounded-full {{ selected() ? 'bg-white' : 'bg-[var(--color-accent)]' }}" [style.width.%]="node().progress"></span>
+      <span class="flex items-center gap-2 text-xs {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-text-secondary)]' }}" data-testid="progress-cell">
+        <span data-testid="progress-track" class="h-1.5 w-16 overflow-hidden rounded-full {{ selected() ? 'bg-[var(--color-text-on-solid)]/25' : 'bg-[var(--color-surface-secondary)]' }}">
+          <span data-testid="progress-fill" class="block h-full rounded-full {{ selected() ? 'bg-[var(--color-text-on-solid)]' : 'bg-[var(--color-accent)]' }}" [style.width.%]="node().progress"></span>
         </span>
         {{ node().progress }}%
       </span>
@@ -39,11 +39,11 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
         @if (assigneeId(); as id) {
           <app-employee-avatar [employeeId]="id" />
         } @else {
-          <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}">—</span>
+          <span class="text-xs {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-text-secondary)]' }}">—</span>
         }
       </span>
 
-      <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
+      <span class="text-xs {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate }}</span>
 
       <span class="flex items-center justify-end gap-px" data-testid="row-actions">
         <button type="button" class="{{ iconClass() }}" data-testid="view-button" aria-label="View task" (click)="emit($event, viewRequested)">
@@ -91,7 +91,7 @@ export class TaskTreeRowComponent {
 
   iconClass(): string {
     return this.selected()
-      ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-white hover:bg-white/20'
+      ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-[var(--color-text-on-solid)] hover:bg-[var(--color-text-on-solid)]/20'
       : 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]';
   }
 

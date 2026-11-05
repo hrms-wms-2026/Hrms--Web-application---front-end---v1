@@ -12,7 +12,7 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
       @if (showName() && summary()?.name) {
         <span
           class="truncate text-xs font-medium"
-          [class]="invertText() ? 'text-white font-semibold' : 'text-[var(--color-text-secondary)]'"
+          [class]="invertText() ? 'text-[var(--color-text-on-solid)] font-semibold' : 'text-[var(--color-text-secondary)]'"
           data-testid="employee-owner-name"
         >
           {{ summary()?.name }}

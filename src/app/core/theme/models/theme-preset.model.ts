@@ -1,4 +1,4 @@
-export type ThemePresetId = 'default' | 'emerald' | 'violet' | 'rose' | 'slate';
+export type ThemePresetId = 'default' | 'emerald' | 'violet' | 'rose' | 'slate' | 'mono';
 
 export interface ThemePresetOption {
   id: ThemePresetId;
@@ -10,7 +10,8 @@ export const THEME_PRESETS: readonly ThemePresetOption[] = [
   { id: 'emerald', label: 'Emerald' },
   { id: 'violet', label: 'Violet' },
   { id: 'rose', label: 'Rose' },
-  { id: 'slate', label: 'Slate' }
+  { id: 'slate', label: 'Slate' },
+  { id: 'mono', label: 'Black & White' }
 ];
 
 export const DEFAULT_THEME_PRESET: ThemePresetId = 'default';

@@ -82,32 +82,32 @@ const LEGEND: readonly { band: LoadBand; label: string }[] = [
     :host { display: block; }
     .twh-scroll { overflow-x: auto; }
     .twh-grid { display: grid; gap: 8px; align-items: center; min-width: 100%; }
-    .twh-h { font-size: 13px; color: #52525b; font-weight: 500; }
+    .twh-h { font-size: 13px; color: var(--color-text-secondary); font-weight: 500; }
     .twh-c { text-align: center; }
     .twh-r { text-align: right; }
     .twh-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .twh-person { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; min-width: 0; }
     .twh-person:focus-visible, .twh-cell:focus-visible, .twh-drill:focus-visible, .twh-chip:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }
-    .twh-avatar { width: 34px; height: 34px; flex: none; border-radius: 50%; background: #1d4ed8; color: #fff; display: grid; place-items: center;
+    .twh-avatar { width: 34px; height: 34px; flex: none; border-radius: 50%; background: var(--color-accent); color: var(--color-text-on-solid); display: grid; place-items: center;
       font-weight: 600; font-size: 12px; }
     .twh-name { display: flex; flex-direction: column; min-width: 0; }
     .twh-name strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .twh-sub { font-size: 12px; color: #52525b; }
+    .twh-sub { font-size: 12px; color: var(--color-text-secondary); }
     .twh-drill { all: unset; cursor: pointer; margin-left: 44px; font-size: 12px; color: #1d4ed8; }
     .twh-cell { all: unset; cursor: pointer; box-sizing: border-box; height: 62px; border-radius: 10px; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 2px; }
     .twh-cell strong { font-size: 16px; }
     .twh-cell span { font-size: 11px; }
-    .twh-total { font-size: 14px; color: #18181b; }
+    .twh-total { font-size: 14px; color: var(--color-text-primary); }
     .twh-total--over { color: #c2410c; }
-    .twh-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f4f4f5;
-      font-size: 12px; color: #3f3f46; }
+    .twh-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--color-border);
+      font-size: 12px; color: var(--color-text-primary); }
     .twh-legend-title { font-weight: 600; }
     .twh-key { display: flex; align-items: center; gap: 6px; }
     .twh-swatch { width: 18px; height: 12px; border-radius: 3px; }
     .twh-hint { margin-left: auto; }
     .twh-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-    .twh-mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid #e4e4e7; border-radius: 12px; }
+    .twh-mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--color-border); border-radius: 12px; }
     .twh-chips { display: flex; gap: 4px; flex: 1; }
     .twh-chip { all: unset; cursor: pointer; flex: 1; min-width: 36px; height: 28px; border-radius: 6px; display: grid; place-items: center;
       font-size: 11px; font-weight: 600; }

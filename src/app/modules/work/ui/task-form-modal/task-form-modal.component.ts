@@ -1779,7 +1779,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
   `,
   styles: [`
     .tfm-scrim { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-start; justify-content: center; padding: 40px 24px; background: rgba(0,0,0,.5); overflow-y: auto; }
-    .tfm { display: flex; flex-direction: column; width: 100%; max-width: 1180px; max-height: calc(100vh - 80px); border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08); overflow: hidden; }
+    .tfm { display: flex; flex-direction: column; width: 100%; max-width: 1180px; max-height: calc(100vh - 80px); border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-modal); overflow: hidden; }
     .tfm--create { max-width: 820px; max-height: none; overflow: visible; }
     .tfm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 30px 16px; }
     .tfm__head--doc { align-items: center; padding: 14px 30px; border-bottom: 1px solid var(--color-border); }
@@ -1805,7 +1805,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-doc-layout { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
     .tfm-type-pill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border-radius: 4px; background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); font-size: 11.5px; font-weight: 600; }
     .tfm-type-pill svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
-    .tfm-type-pill--subtask { background: color-mix(in srgb, #8b5cf6 15%, var(--color-surface)) !important; color: #8b5cf6 !important; }
+    .tfm-type-pill--subtask { background: color-mix(in srgb, var(--color-cat-violet) 15%, var(--color-surface)) !important; color: var(--color-cat-violet) !important; }
     .tfm-type-pill--interactive { border: none; cursor: pointer; font-family: inherit; transition: filter 120ms ease, background-color 120ms ease; }
     .tfm-type-pill--interactive:hover { filter: brightness(0.95); }
     .tfm-created-at { flex: 0 0 auto; color: var(--color-text-secondary); font-size: 12px; white-space: nowrap; }
@@ -1995,7 +1995,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-subtask-status-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: none; background: transparent; padding: 0; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: transform 120ms ease; }
     .tfm-subtask-status-btn:hover { transform: scale(1.1); }
     .tfm-subtask-dashed-circle { width: 15px; height: 15px; color: var(--color-text-secondary); opacity: 0.65; stroke: currentColor; }
-    .tfm-subtask-check-circle { width: 15px; height: 15px; color: #22c55e; fill: currentColor; }
+    .tfm-subtask-check-circle { width: 15px; height: 15px; color: var(--color-success); fill: currentColor; }
     .tfm-subtask-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 450; color: var(--color-text-primary); }
     .tfm-subtask-title--completed { text-decoration: line-through; color: var(--color-text-secondary); opacity: 0.7; }
     .tfm-subtask-cell-assignee { display: flex; align-items: center; min-width: 0; }
@@ -2007,16 +2007,16 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-subtask-assignee-btn { padding: 2px; }
     .tfm-subtask-priority-btn { padding: 2px 4px; }
     .tfm-subtask-priority-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; }
-    .tfm-subtask-priority-tag[data-priority="critical"] { color: #ef4444; }
-    .tfm-subtask-priority-tag[data-priority="high"] { color: #f59e0b; }
-    .tfm-subtask-priority-tag[data-priority="medium"] { color: #3b82f6; }
-    .tfm-subtask-priority-tag[data-priority="low"] { color: #94a3b8; }
+    .tfm-subtask-priority-tag[data-priority="critical"] { color: var(--color-danger); }
+    .tfm-subtask-priority-tag[data-priority="high"] { color: var(--color-warning); }
+    .tfm-subtask-priority-tag[data-priority="medium"] { color: var(--color-accent); }
+    .tfm-subtask-priority-tag[data-priority="low"] { color: var(--color-text-muted); }
     .tfm-subtask-priority-tag--none { color: var(--color-text-secondary); opacity: 0.5; }
     .tfm-subtask-flag-icon { width: 12px; height: 12px; flex-shrink: 0; }
-    .tfm-subtask-flag-icon[data-priority="critical"] { color: #ef4444; }
-    .tfm-subtask-flag-icon[data-priority="high"] { color: #f59e0b; }
-    .tfm-subtask-flag-icon[data-priority="medium"] { color: #3b82f6; }
-    .tfm-subtask-flag-icon[data-priority="low"] { color: #94a3b8; }
+    .tfm-subtask-flag-icon[data-priority="critical"] { color: var(--color-danger); }
+    .tfm-subtask-flag-icon[data-priority="high"] { color: var(--color-warning); }
+    .tfm-subtask-flag-icon[data-priority="medium"] { color: var(--color-accent); }
+    .tfm-subtask-flag-icon[data-priority="low"] { color: var(--color-text-muted); }
     .tfm-subtask-status-pill-btn { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent); border-radius: 4px; background: var(--color-surface); cursor: pointer; transition: all 120ms ease; max-width: 110px; }
     .tfm-subtask-status-pill-btn:hover { background: var(--color-surface-secondary); border-color: var(--color-border); }
     .tfm-subtask-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -2025,7 +2025,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-subtask-cell-actions { display: flex; align-items: center; justify-content: flex-end; }
     .tfm-subtask-remove-draft-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: none; background: transparent; color: var(--color-text-secondary); opacity: 0; cursor: pointer; border-radius: 4px; transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease; }
     .tfm-subtask-row:hover .tfm-subtask-remove-draft-btn { opacity: 0.7; }
-    .tfm-subtask-remove-draft-btn:hover { opacity: 1 !important; color: #ef4444; background: var(--color-surface-secondary); }
+    .tfm-subtask-remove-draft-btn:hover { opacity: 1 !important; color: var(--color-danger); background: var(--color-surface-secondary); }
     .tfm-subtask-remove-draft-btn svg { width: 14px; height: 14px; }
     .tfm-subtask-chevron { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: var(--color-text-secondary); opacity: 0; transition: opacity 120ms ease, transform 120ms ease; }
     .tfm-subtask-chevron svg { width: 14px; height: 14px; }
@@ -2037,7 +2037,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-subtask-add-trigger svg { width: 13px; height: 13px; flex-shrink: 0; }
 
     /* Inline Subtask Creation Row (ClickUp Style single row) */
-    .tfm-subtask-inline-create { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; padding: 4px 10px; background: var(--color-surface, #ffffff); border: 1px solid var(--color-border, #e2e8f0); border-radius: 6px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); margin: 4px 0 6px; box-sizing: border-box; }
+    .tfm-subtask-inline-create { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; padding: 4px 10px; background: var(--color-surface, #ffffff); border: 1px solid var(--color-border, #e2e8f0); border-radius: 6px; box-shadow: var(--shadow-card); margin: 4px 0 6px; box-sizing: border-box; }
     .tfm-subtask-create-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
     .tfm-subtask-create-status-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--color-text-secondary); opacity: 0.65; flex-shrink: 0; }
     .tfm-subtask-inline-title { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: inherit; font-size: 13px; color: var(--color-text-primary); padding: 2px 0; }
@@ -2052,7 +2052,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-subtask-date-label { display: inline-flex; align-items: center; height: 26px; padding: 0 6px; font-size: 12px; font-weight: 500; white-space: nowrap; }
     .tfm-subtask-btn-cancel { height: 26px; padding: 0 8px; border: none; background: transparent; color: var(--color-text-secondary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 4px; transition: background-color 120ms ease, color 120ms ease; }
     .tfm-subtask-btn-cancel:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    .tfm-subtask-btn-save { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border: none; border-radius: 6px; background: #1e293b; color: #ffffff; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: opacity 120ms ease, background-color 120ms ease; }
+    .tfm-subtask-btn-save { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border: none; border-radius: 6px; background: #1e293b; color: var(--color-text-on-solid); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: opacity 120ms ease, background-color 120ms ease; }
     .tfm-subtask-btn-save:hover:not(:disabled) { background: #0f172a; }
     .tfm-subtask-btn-save:disabled { opacity: 0.45; cursor: not-allowed; }
     .tfm-subtask-enter-symbol { font-size: 11px; opacity: 0.8; }
@@ -2084,7 +2084,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-chips-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
     .tfm-chip-anchor { position: relative; display: inline-flex; }
     .tfm-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 9999px; border: 1px solid var(--color-border); background: var(--color-surface-secondary); color: var(--color-text-primary); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 140ms ease; white-space: nowrap; user-select: none; }
-    .tfm-chip:hover { background: var(--color-surface); border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); box-shadow: 0 1px 3px rgb(15 23 42 / .06); }
+    .tfm-chip:hover { background: var(--color-surface); border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); box-shadow: var(--shadow-card); }
     .tfm-chip--active { border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border)); background: var(--color-surface); }
     .tfm-chip--error { border-color: var(--color-danger); background: var(--color-danger-subtle); color: var(--color-danger-text); }
     .tfm-chip-svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
@@ -2095,8 +2095,8 @@ const TASK_CATEGORY_MEETING = 'meeting';
     /* Popovers */
     .tfm-popover-container { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; animation: tfm-popover-in 120ms ease-out; }
     .tfm-popover-container--up { top: auto; bottom: calc(100% + 6px); animation: tfm-popover-in-up 120ms ease-out; }
-    .tfm-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; min-width: 220px; max-width: 320px; max-height: 280px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: 0 14px 34px rgb(15 23 42 / .18); animation: tfm-popover-in 120ms ease-out; }
-    .tfm-popover--up { top: auto; bottom: calc(100% + 6px); box-shadow: 0 -10px 30px rgb(15 23 42 / .16); animation: tfm-popover-in-up 120ms ease-out; }
+    .tfm-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; min-width: 220px; max-width: 320px; max-height: 280px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: var(--shadow-modal); animation: tfm-popover-in 120ms ease-out; }
+    .tfm-popover--up { top: auto; bottom: calc(100% + 6px); box-shadow: var(--shadow-popover); animation: tfm-popover-in-up 120ms ease-out; }
     .tfm-popover--right { left: auto; right: 0; }
     .tfm-popover__list { display: flex; flex-direction: column; gap: 2px; }
     .tfm-popover__item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; cursor: pointer; text-align: left; transition: background-color 120ms ease; white-space: nowrap; }
@@ -2144,14 +2144,14 @@ const TASK_CATEGORY_MEETING = 'meeting';
 
     /* Split Button */
     .tfm-split-action { position: relative; display: inline-flex; }
-    .tfm-split-btn { display: inline-flex; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgb(15 23 42 / .06); }
+    .tfm-split-btn { display: inline-flex; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-card); }
     .tfm-split-btn__main { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; background: var(--color-accent); color: var(--color-accent-contrast); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 140ms ease; }
     .tfm-split-btn__main:hover { filter: brightness(0.95); }
     .tfm-split-btn__main:disabled { opacity: .6; cursor: not-allowed; }
     .tfm-split-btn__arrow { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 30px; border: 0; border-left: 1px solid color-mix(in srgb, var(--color-accent-contrast) 25%, transparent); background: var(--color-accent); color: var(--color-accent-contrast); cursor: pointer; transition: opacity 140ms ease; }
     .tfm-split-btn__arrow:hover { filter: brightness(0.95); }
     .tfm-split-btn__arrow svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
-    .tfm-split-dropdown { position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 110; width: 250px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: 0 14px 34px rgb(15 23 42 / .2); animation: tfm-popover-in 120ms ease-out; }
+    .tfm-split-dropdown { position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 110; width: 250px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: var(--shadow-modal); animation: tfm-popover-in 120ms ease-out; }
     .tfm-split-dropdown__item { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-primary); font: inherit; cursor: pointer; text-align: left; transition: background-color 120ms ease; }
     .tfm-split-dropdown__item:hover { background: var(--color-surface-secondary); }
     .tfm-split-dropdown__item svg { width: 16px; height: 16px; stroke: var(--color-accent); fill: none; stroke-width: 2; flex-shrink: 0; margin-top: 2px; }

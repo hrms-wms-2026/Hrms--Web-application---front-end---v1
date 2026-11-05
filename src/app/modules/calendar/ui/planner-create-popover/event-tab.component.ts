@@ -36,7 +36,7 @@ import { CreateSlot, SharedCreateDraft, clock } from './planner-create-draft';
         (input)="description.set($any($event.target).value)"></textarea>
       <div class="flex justify-end gap-2 pt-1">
         <button type="button" data-testid="event-tab-more" class="rounded-md border px-3 py-1" (click)="moreOptions.emit(draft())">More options</button>
-        <button type="button" data-testid="event-tab-save" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-white"
+        <button type="button" data-testid="event-tab-save" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[var(--color-text-on-solid)]"
           [disabled]="!canSave()" (click)="save()">Save</button>
       </div>
     </div>

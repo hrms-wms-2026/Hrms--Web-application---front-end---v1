@@ -250,7 +250,7 @@
   position: absolute;
   width: 0.875rem;
   height: 0.875rem;
-  border: 2px solid #fff;
+  border: 2px solid var(--color-surface);
   border-radius: 999px;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
   transform: translate(-50%, -50%);
@@ -268,7 +268,7 @@
 .ltfm-picker__hue::-webkit-slider-thumb {
   width: 0.875rem;
   height: 0.875rem;
-  border: 2px solid #fff;
+  border: 2px solid var(--color-surface);
   border-radius: 999px;
   background: transparent;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
@@ -277,7 +277,7 @@
 .ltfm-picker__hue::-moz-range-thumb {
   width: 0.875rem;
   height: 0.875rem;
-  border: 2px solid #fff;
+  border: 2px solid var(--color-surface);
   border-radius: 999px;
   background: transparent;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);

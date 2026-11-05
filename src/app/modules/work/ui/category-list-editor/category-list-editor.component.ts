@@ -214,7 +214,7 @@ const NEW_CATEGORY_KIND: TaskKind = 'task';
       border: 1px solid var(--color-border);
       border-radius: 8px;
       background: var(--color-surface);
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      box-shadow: var(--shadow-card);
       transition: border-color 120ms ease, box-shadow 120ms ease;
     }
     .category-list__row:hover {
@@ -270,7 +270,7 @@ const NEW_CATEGORY_KIND: TaskKind = 'task';
     }
     .category-list__delete-icon:hover {
       color: var(--color-danger-text, #ef4444);
-      background: color-mix(in srgb, #ef4444 10%, transparent);
+      background: color-mix(in srgb, var(--color-danger) 10%, transparent);
     }
     .category-list__system-badge {
       display: inline-flex;
@@ -306,7 +306,7 @@ const NEW_CATEGORY_KIND: TaskKind = 'task';
     .cdk-drag-preview {
       box-sizing: border-box;
       border-radius: 8px;
-      box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.18), 0 6px 10px -2px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow-popover);
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       display: flex;

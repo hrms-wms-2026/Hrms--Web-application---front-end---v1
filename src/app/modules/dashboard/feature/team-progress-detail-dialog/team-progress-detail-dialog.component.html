@@ -361,7 +361,7 @@
                 <div class="tp-overdue-chart">
                   <div class="tp-overdue-pie" data-testid="tp-overdue-pie" [style.width.px]="overduePiePx" [style.height.px]="overduePiePx">
                     <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" aria-label="Overdue hours by project">
-                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+                      <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
                       @for (arc of ov.arcs; track arc.key) {
                         <circle
                           cx="21"

@@ -57,12 +57,12 @@ import { kindOf } from '../../utils/task-kind';
       border-radius: 12px;
       background: var(--color-surface);
       padding: 20px 24px;
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+      box-shadow: var(--shadow-card);
       transition: border-color 150ms ease, box-shadow 150ms ease;
     }
     .project-settings-tab:hover {
       border-color: color-mix(in srgb, var(--color-border) 70%, var(--color-accent, #2563eb));
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+      box-shadow: var(--shadow-popover);
     }
     .project-settings-tab__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
     .project-settings-tab__heading { display: flex; min-width: 0; align-items: center; gap: 14px; }

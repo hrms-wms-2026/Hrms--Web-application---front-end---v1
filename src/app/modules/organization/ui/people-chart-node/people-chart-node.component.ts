@@ -222,11 +222,11 @@ export const PEOPLE_CARD_HEIGHT = 64;
       width: 250px; height: 64px; padding: 0.625rem 0.875rem;
       border-radius: 10px; background: var(--color-surface);
       border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--shadow-popover);
       color: inherit; text-decoration: none; user-select: none; cursor: pointer;
       transition: border-color 150ms ease, box-shadow 150ms ease;
     }
-    .pcn-card:hover { border-color: var(--color-sidebar-active-bg, #2563eb); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08); }
+    .pcn-card:hover { border-color: var(--color-accent-strong); box-shadow: var(--shadow-popover); }
     .pcn-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus-ring); }
     .pcn-card--selected { border-color: var(--color-accent) !important; background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 24%, transparent); }
     .pcn-card--coverage-selected { border: 2px solid #2563eb !important; background: color-mix(in srgb, #2563eb 7%, var(--color-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #2563eb 18%, transparent), 0 8px 22px rgba(37, 99, 235, 0.14); }
@@ -267,21 +267,21 @@ export const PEOPLE_CARD_HEIGHT = 64;
       border-color: color-mix(in srgb, #f59e0b 35%, var(--color-surface));
     }
     .pcn-chip--staying { border-style: dashed; color: var(--color-text-secondary); background: var(--color-surface-secondary); }
-    .pcn-check { position: absolute; top: -7px; left: -7px; width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: white; opacity: 0; transform: scale(0.85); transition: 120ms ease; }
+    .pcn-check { position: absolute; top: -7px; left: -7px; width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text-on-solid); opacity: 0; transform: scale(0.85); transition: 120ms ease; }
     .pcn-card:hover .pcn-check, .pcn-check--visible { opacity: 1; transform: scale(1); }
     .pcn-card--selected .pcn-check { border-color: var(--color-accent); background: var(--color-accent); }
     .pcn-check svg { width: 13px; height: 13px; }
-    .pcn-drag-count { position: absolute; right: -8px; top: -9px; min-width: 22px; height: 22px; padding: 0 5px; display: grid; place-items: center; border: 2px solid var(--color-surface); border-radius: 999px; background: var(--color-accent); color: white; font-size: 0.625rem; font-weight: 700; }
+    .pcn-drag-count { position: absolute; right: -8px; top: -9px; min-width: 22px; height: 22px; padding: 0 5px; display: grid; place-items: center; border: 2px solid var(--color-surface); border-radius: 999px; background: var(--color-accent); color: var(--color-text-on-solid); font-size: 0.625rem; font-weight: 700; }
     .pcn-coverage-levels { position: absolute; right: 7px; bottom: 5px; display: flex; gap: 3px; }
     .pcn-coverage-level { min-width: 1.25rem; padding: 1px 5px; border-radius: 999px; background: color-mix(in srgb, #059669 14%, var(--color-surface)); color: #047857; font-size: 0.6rem; font-weight: 800; line-height: 1.35; text-align: center; }
     .pcn-card--coverage-unresolved .pcn-coverage-level { background: color-mix(in srgb, #f59e0b 18%, var(--color-surface)); color: #92400e; }
-    .pcn-coverage-warning { position: absolute; top: -8px; right: -8px; display: grid; place-items: center; width: 21px; height: 21px; border: 2px solid var(--color-surface); border-radius: 999px; background: #f59e0b; color: white; font-size: 0.7rem; font-weight: 900; }
+    .pcn-coverage-warning { position: absolute; top: -8px; right: -8px; display: grid; place-items: center; width: 21px; height: 21px; border: 2px solid var(--color-surface); border-radius: 999px; background: #f59e0b; color: var(--color-text-on-solid); font-size: 0.7rem; font-weight: 900; }
 
     /* Hover card */
     .pcn-hover {
       width: 300px; border-radius: 14px; overflow: hidden;
       background: var(--color-surface); border: 1px solid var(--color-border);
-      box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.28), 0 4px 12px -4px rgba(15, 23, 42, 0.1);
+      box-shadow: var(--shadow-modal);
       animation: pcnHoverIn 120ms ease-out;
     }
     .pcn-hover__head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 1rem 1rem 0.875rem; }

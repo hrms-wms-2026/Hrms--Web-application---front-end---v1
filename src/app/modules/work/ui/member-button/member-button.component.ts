@@ -20,7 +20,7 @@ import { Component, input, output } from '@angular/core';
       @if (memberCount() > 0) {
         <span
           data-testid="member-count-badge"
-          class="absolute -right-1 -top-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[var(--color-accent)] px-0.5 text-[9px] font-semibold leading-none text-white"
+          class="absolute -right-1 -top-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[var(--color-accent)] px-0.5 text-[9px] font-semibold leading-none text-[var(--color-text-on-solid)]"
         >{{ memberCount() }}</span>
       }
     </button>

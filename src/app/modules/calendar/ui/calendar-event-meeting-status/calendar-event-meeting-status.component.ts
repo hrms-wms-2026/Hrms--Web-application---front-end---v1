@@ -19,7 +19,7 @@ import { meetingErrorMessage } from '../../utils/meeting-error-message';
               <p class="text-[var(--color-text-secondary)]">We couldn't confirm whether the {{ name() }} meeting was created. Invitations went out without a link.</p>
               <div class="mt-2 flex gap-2">
                 <button type="button" data-testid="calendar-meeting-retry" class="text-[var(--color-accent)]" [disabled]="busy()" (click)="retry()">Retry</button>
-                <button type="button" data-testid="calendar-meeting-remove" class="text-red-600" [disabled]="busy()" (click)="remove()">Remove</button>
+                <button type="button" data-testid="calendar-meeting-remove" class="text-[var(--color-danger)]" [disabled]="busy()" (click)="remove()">Remove</button>
               </div>
             }
             @case ('unresolved') {
@@ -37,7 +37,7 @@ import { meetingErrorMessage } from '../../utils/meeting-error-message';
             }
           }
           @if (error()) {
-            <p class="mt-1 text-red-600" role="alert">{{ error() }}</p>
+            <p class="mt-1 text-[var(--color-danger)]" role="alert">{{ error() }}</p>
           }
         </div>
       }

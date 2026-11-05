@@ -33,18 +33,18 @@ type Step = 'idle' | 'loading' | 'pick' | 'none' | 'error' | 'form';
         @case ('loading') {
           <div class="flex flex-col gap-2 animate-pulse" data-testid="quick-create-task-loading">
             @for (row of [1, 2, 3]; track row) {
-              <div class="h-12 rounded-xl bg-slate-100"></div>
+              <div class="h-12 rounded-xl bg-[var(--color-surface-secondary)]"></div>
             }
           </div>
         }
         @case ('error') {
-          <p class="text-sm text-slate-600" data-testid="quick-create-task-error">
+          <p class="text-sm text-[var(--color-text-secondary)]" data-testid="quick-create-task-error">
             Couldn't load your projects.
-            <button type="button" class="ml-1 font-semibold text-blue-600 hover:underline" (click)="load()">Retry</button>
+            <button type="button" class="ml-1 font-semibold text-[var(--color-accent)] hover:underline" (click)="load()">Retry</button>
           </p>
         }
         @case ('none') {
-          <p class="text-sm text-slate-600" data-testid="quick-create-task-none">
+          <p class="text-sm text-[var(--color-text-secondary)]" data-testid="quick-create-task-none">
             You're not on any active project yet, so there is nowhere to add a task.
           </p>
         }
@@ -54,18 +54,18 @@ type Step = 'idle' | 'loading' | 'pick' | 'none' | 'error' | 'form';
               <li>
                 <button
                   type="button"
-                  class="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+                  class="flex w-full items-center gap-3 rounded-xl border border-[var(--color-border)] px-3 py-2.5 text-left transition-colors hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)]/40"
                   [attr.data-testid]="'quick-create-task-project-' + project.id"
                   (click)="choose(project.id)"
                 >
                   <span
-                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-[var(--color-text-on-solid)]"
                     [style.background-color]="project.color || '#6366f1'"
                     aria-hidden="true"
                   >{{ initial(project) }}</span>
                   <span class="min-w-0 flex-1">
-                    <span class="block truncate text-sm font-semibold text-slate-800">{{ project.name }}</span>
-                    <span class="block truncate text-xs text-slate-500">{{ project.identifier }}</span>
+                    <span class="block truncate text-sm font-semibold text-[var(--color-text-primary)]">{{ project.name }}</span>
+                    <span class="block truncate text-xs text-[var(--color-text-secondary)]">{{ project.identifier }}</span>
                   </span>
                 </button>
               </li>

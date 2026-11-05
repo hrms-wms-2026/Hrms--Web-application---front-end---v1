@@ -8,13 +8,14 @@
 
 :root {
   /* Neutral surfaces/text/borders - shared across every theme preset. */
+  color-scheme: light;
   --color-app-bg: #fafafa;
-  --color-surface: #ffffff;
+  --color-surface: #fafafa;
   --color-surface-secondary: #f4f4f5;
   --color-text-primary: #09090b;
   --color-text-secondary: #71717a;
   --color-text-inverse: #ffffff;
-  --color-border: #e4e4e7;
+  --color-border: #e5e5e5;
   --color-danger: #dc2626;
   --color-danger-subtle: #fee2e2;
   --color-danger-text: #991b1b;
@@ -28,7 +29,82 @@
   /* Glassmorphism & backdrop tokens */
   --color-glass-bg: rgba(255, 255, 255, 0.68);
   --color-glass-border: rgba(0, 0, 0, 0.08);
-  --color-card-shadow: rgba(0, 0, 0, 0.04);
+  --color-card-shadow: rgba(0, 0, 0, 0.035);
+
+  /*
+   * Semantic surface tokens. They alias the base tokens above so one change re-skins
+   * every card, header and popup, and the dark block below needs no copies of them.
+   * Cards, the header and popups all match the page background; the border and the
+   * soft shadow separate them.
+   */
+  --color-card-bg: var(--color-surface);
+  --color-header-bg: var(--color-surface);
+  --color-content-bg: var(--color-surface); /* main panel behind the page's cards */
+  --color-shell-border: var(--color-border); /* frame around the header + main panel */
+  --color-surface-raised: var(--color-surface);
+  --shadow-card: 0 1px 3px var(--color-card-shadow);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 20px 48px -12px rgba(0, 0, 0, 0.18);
+  --color-selected-outline: var(--color-accent);
+  --color-success-soft: var(--color-success); /* calmer green for large rings and tiles */
+  --color-accent-solid: var(--color-accent); /* filled buttons; a preset can make this deeper than its text accent */
+  --color-accent-solid-hover: var(--color-accent-hover);
+
+  /* Accent for page content that wants the deep brand tone; in dark mode it follows the accent. */
+  --color-accent-strong: var(--color-sidebar-active-bg);
+
+  /* Soft status tints for tiles, rows and chips: a pastel in light mode, a dim mix in dark mode. */
+  --color-tint-blue-bg: #eff6ff;
+  --color-tint-blue-line: #dbeafe;
+  --color-tint-blue-strong: #1d4ed8;
+  --color-tint-sky-bg: #f0f9ff;
+  --color-tint-sky-line: #e0f2fe;
+  --color-tint-green-bg: #ecfdf5;
+  --color-tint-green-line: #d1fae5;
+  --color-tint-green-text: #059669;
+  --color-tint-green-strong: #047857;
+  --color-tint-amber-bg: #fffbeb;
+  --color-tint-amber-text: #b45309;
+  --color-tint-rose-bg: #fff1f2;
+  --color-tint-rose-line: #ffe4e6;
+  --color-tint-rose-text: #e11d48;
+  --color-tint-red-bg: #fef2f2;
+  --color-tint-red-line: #fecaca;
+  --color-tint-red-text: #b91c1c;
+
+  /* "Needs attention" panels (Action Center): amber in light mode, a plain card in dark mode. */
+  --color-attention-line: var(--color-warning-subtle);
+  --color-attention-actions-bg: #fefce8;
+
+  /* Extra neutrals and status tokens used by the hard-coded-color cleanup (Phase 3). */
+  --color-text-muted: #a1a1aa;
+  --color-text-on-solid: #ffffff; /* text/icons on a solid accent/danger/success fill; white in both modes */
+  --color-border-strong: #d4d4d4;
+  --color-overlay: rgba(0, 0, 0, 0.5);
+  --color-danger-hover: #b91c1c;
+  --color-info: #3b82f6;
+  --color-success-subtle: #dcfce7;
+  --color-success-text: #166534;
+
+  /*
+   * Categorical colors: fixed hues for charts, legends and "blue/green/amber/red/violet"
+   * pickers. They do NOT follow the accent preset, so "blue" stays blue under Violet.
+   */
+  --color-cat-blue: #2563eb;
+  --color-cat-green: #16a34a;
+  --color-cat-amber: #d97706;
+  --color-cat-red: #dc2626;
+  --color-cat-violet: #7c3aed;
+  --color-cat-violet-subtle: #ede9fe;
+  --color-cat-indigo: #6366f1;
+  --color-cat-teal: #0d9488;
+  --color-cat-slate: #94a3b8;
+
+  /* Mobile bottom navigation: a floating dark pill in both modes. */
+  --color-mobile-nav-bg: #18181b;
+  --color-mobile-nav-text: #a1a1aa;
+  --color-mobile-nav-text-active: #f4f4f5;
+  --color-mobile-nav-active-bg: #27272a;
 
   /* Avatar / seat-preview tokens */
   --color-seat-empty-bg: #e4e4e7;
@@ -41,13 +117,15 @@
 
 :root[data-mode='dark'],
 html.dark {
-  --color-app-bg: #09090b;
-  --color-surface: #18181b;
-  --color-surface-secondary: #27272a;
-  --color-text-primary: #f4f4f5;
-  --color-text-secondary: #a1a1aa;
-  --color-text-inverse: #09090b;
-  --color-border: #27272a;
+  /* Navy neutrals: page, header and rail share one tone; cards sit a step above; tiles a step above that. */
+  color-scheme: dark;
+  --color-app-bg: #11171e;
+  --color-surface: #181e27;
+  --color-surface-secondary: #252c36;
+  --color-text-primary: #f1f4f8;
+  --color-text-secondary: #a3adba;
+  --color-text-inverse: #11171e;
+  --color-border: #272e39;
   --color-danger: #ef4444;
   --color-danger-subtle: #450a0a;
   --color-danger-text: #fca5a5;
@@ -55,15 +133,68 @@ html.dark {
   --color-warning: #f59e0b;
   --color-warning-subtle: #451a03;
   --color-warning-text: #fcd34d;
-  --color-greeting-card-border: rgba(255, 255, 255, 0.1);
-  --color-glass-bg: rgba(18, 18, 20, 0.72);
+  --color-greeting-card-border: rgba(255, 255, 255, 0.08);
+  --color-glass-bg: rgba(17, 23, 30, 0.72);
   --color-glass-border: rgba(255, 255, 255, 0.12);
-  --color-card-shadow: rgba(0, 0, 0, 0.5);
+  --color-card-shadow: rgba(0, 0, 0, 0.35);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 20px 48px -12px rgba(0, 0, 0, 0.75);
+
+  --color-header-bg: var(--color-surface);
+  --color-content-bg: var(--color-app-bg);
+  --color-shell-border: transparent;
+  --color-attention-line: var(--color-border);
+  --color-attention-actions-bg: var(--color-surface);
+
+  /* Sub-sidebars swap these in so the panel sits at card level and its rows stay a step lighter. */
+  --color-success-soft: #6f9a6e;
+  --color-side-panel-bg: #181e27;
+  --color-side-panel-item-bg: #252c36;
+
+  --color-accent-strong: var(--color-accent);
+  --color-tint-blue-bg: color-mix(in srgb, #479eec 14%, var(--color-surface));
+  --color-tint-blue-line: color-mix(in srgb, #479eec 28%, var(--color-surface));
+  --color-tint-blue-strong: #7cbcf5;
+  --color-tint-sky-bg: color-mix(in srgb, #38bdf8 14%, var(--color-surface));
+  --color-tint-sky-line: color-mix(in srgb, #38bdf8 28%, var(--color-surface));
+  --color-tint-green-bg: color-mix(in srgb, #34d399 14%, var(--color-surface));
+  --color-tint-green-line: color-mix(in srgb, #34d399 28%, var(--color-surface));
+  --color-tint-green-text: #34d399;
+  --color-tint-green-strong: #6ee7b7;
+  --color-tint-amber-bg: color-mix(in srgb, #f59e0b 14%, var(--color-surface));
+  --color-tint-amber-text: #fcd34d;
+  --color-tint-rose-bg: color-mix(in srgb, #fb7185 14%, var(--color-surface));
+  --color-tint-rose-line: color-mix(in srgb, #fb7185 28%, var(--color-surface));
+  --color-tint-rose-text: #fb7185;
+  --color-tint-red-bg: color-mix(in srgb, #f87171 14%, var(--color-surface));
+  --color-tint-red-line: color-mix(in srgb, #f87171 28%, var(--color-surface));
+  --color-tint-red-text: #fca5a5;
+
+  --color-text-muted: #748092;
+  --color-border-strong: #3a4350;
+  --color-overlay: rgba(0, 0, 0, 0.65);
+  --color-danger-hover: #dc2626;
+  --color-info: #60a5fa;
+  --color-success-subtle: #052e16;
+  --color-success-text: #86efac;
+
+  --color-cat-blue: #479eec;
+  --color-cat-green: #4ade80;
+  --color-cat-amber: #fbbf24;
+  --color-cat-red: #f87171;
+  --color-cat-violet: #a78bfa;
+  --color-cat-violet-subtle: #2e1065;
+  --color-cat-indigo: #818cf8;
+  --color-cat-teal: #2dd4bf;
+  --color-cat-slate: #748092;
+
+  --color-mobile-nav-bg: #252c36;
+  --color-mobile-nav-active-bg: #3a4350;
 
   /* Avatar / seat-preview tokens (dark overrides) */
-  --color-seat-empty-bg: #3f3f46;
-  --color-seat-empty-border: #52525b;
-  --color-seat-overflow-bg: #71717a;
+  --color-seat-empty-bg: #3a4350;
+  --color-seat-empty-border: #4b5563;
+  --color-seat-overflow-bg: #748092;
   --color-seat-overflow-text: #ffffff;
 }
 
@@ -95,6 +226,7 @@ html.dark {
   --preset-preview-violet: #7c3aed;
   --preset-preview-rose: #e11d48;
   --preset-preview-slate: #475569;
+  --preset-preview-mono: #0a0a0a; /* black in light mode, white in dark mode */
 }
 
 :root[data-theme='default'] {
@@ -160,4 +292,80 @@ html.dark {
   --color-sidebar-text-muted: #64748b;
   --color-sidebar-active-bg: #334155;
   --color-sidebar-active-text: #ffffff;
+}
+
+:root[data-theme='mono'] {
+  --color-accent: #0a0a0a;
+  --color-accent-hover: #27272a;
+  --color-accent-subtle: #e4e4e7;
+  --color-focus-ring: #a1a1aa;
+  --color-link: #0a0a0a;
+  --color-sidebar-bg: #0a0a0a;
+  --color-sidebar-text: #d4d4d8;
+  --color-sidebar-text-muted: #71717a;
+  --color-sidebar-active-bg: #27272a;
+  --color-sidebar-active-text: #ffffff;
+}
+
+/* Dark mode: every preset's pastel accent-subtle becomes a dim tint of its accent.
+   Extra attribute in the selector so it beats the per-preset blocks above. */
+:root[data-mode='dark'][data-theme],
+html.dark[data-theme] {
+  --color-accent-subtle: color-mix(in srgb, var(--color-accent) 28%, var(--color-surface));
+}
+
+/* Default preset in dark mode: softer sky blue, and the rail blends into the page. */
+:root[data-mode='dark'][data-theme='default'],
+html.dark[data-theme='default'] {
+  --color-accent: #4190e0;
+  --color-accent-hover: #3580d2;
+  --color-link: #5ba4ee;
+  --color-sidebar-bg: var(--color-app-bg);
+  --color-sidebar-text: #aeb7c4;
+  --color-sidebar-text-muted: #748092;
+  --color-sidebar-active-bg: #263c57;
+}
+
+/* Slate in dark mode: its light-mode accent is too dark to read as text on a dark card. */
+:root[data-mode='dark'][data-theme='slate'],
+html.dark[data-theme='slate'] {
+  --color-accent: #7c8da5;
+  --color-accent-hover: #6b7c94;
+  --color-accent-solid: #41546b;
+  --color-accent-solid-hover: #4d627c;
+  --color-link: #a3b3c7;
+  --color-sidebar-bg: var(--color-app-bg);
+  --color-sidebar-text: #aeb7c4;
+  --color-sidebar-text-muted: #748092;
+}
+
+/* Violet and Rose: same reason, a step lighter so accent text stays readable on cards. */
+:root[data-mode='dark'][data-theme='violet'],
+html.dark[data-theme='violet'] {
+  --color-accent: #8b5cf6;
+  --color-accent-hover: #7c3aed;
+  --color-link: #a78bfa;
+}
+
+:root[data-mode='dark'][data-theme='rose'],
+html.dark[data-theme='rose'] {
+  --color-accent: #f43f5e;
+  --color-accent-hover: #e11d48;
+  --color-link: #fb7185;
+}
+
+/* Black & White in dark mode: the accent is white, so text on solid fills flips to black. */
+:root[data-mode='dark'][data-theme='mono'],
+html.dark[data-theme='mono'] {
+  --preset-preview-mono: #ffffff;
+  --color-accent: #ffffff;
+  --color-accent-hover: #e4e4e7;
+  --color-accent-contrast: #0a0a0a;
+  --color-text-on-solid: #0a0a0a;
+  --color-focus-ring: #a1a1aa;
+  --color-link: #ffffff;
+  --color-sidebar-bg: var(--color-app-bg);
+  --color-sidebar-text: #aeb7c4;
+  --color-sidebar-text-muted: #748092;
+  --color-sidebar-active-bg: #2f3640;
 }

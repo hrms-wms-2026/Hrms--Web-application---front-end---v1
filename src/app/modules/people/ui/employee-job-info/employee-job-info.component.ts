@@ -24,18 +24,18 @@ import {
   imports: [ReactiveFormsModule, InputComponent, ButtonComponent, SelectComponent],
   host: { class: 'block h-full' },
   template: `
-    <section class="flex h-full flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs" data-testid="current-assignment-card">
+    <section class="flex h-full flex-col rounded-xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-4 shadow-xs" data-testid="current-assignment-card">
       <header class="mb-3 flex items-start justify-between gap-3">
         <div class="flex items-center gap-2.5">
-          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600" aria-hidden="true">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent-subtle)] text-[var(--color-accent)]" aria-hidden="true">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="7" width="18" height="13" rx="2"></rect>
               <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"></path>
             </svg>
           </span>
           <div>
-            <h2 class="text-sm font-bold text-slate-900">Current Assignment</h2>
-            <p class="text-[11px] text-slate-500">Current role and organizational details</p>
+            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Current Assignment</h2>
+            <p class="text-[11px] text-[var(--color-text-secondary)]">Current role and organizational details</p>
           </div>
         </div>
         @if (canEdit() && !isEditing()) {
@@ -82,43 +82,43 @@ import {
           </div>
         </form>
       } @else {
-        <div class="grid flex-1 grid-cols-1 gap-x-6 gap-y-2.5 text-[13px] md:grid-cols-2 md:divide-x md:divide-slate-100">
+        <div class="grid flex-1 grid-cols-1 gap-x-6 gap-y-2.5 text-[13px] md:grid-cols-2 md:divide-x md:divide-[var(--color-border)]">
           <dl class="space-y-2.5">
             <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
-              <dt class="text-slate-500">Employee Number</dt>
-              <dd><span class="inline-block rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-900">{{ jobInformation().employeeNumber }}</span></dd>
+              <dt class="text-[var(--color-text-secondary)]">Employee Number</dt>
+              <dd><span class="inline-block rounded-md bg-[var(--color-surface-secondary)] px-1.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--color-text-primary)]">{{ jobInformation().employeeNumber }}</span></dd>
             </div>
             <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
-              <dt class="text-slate-500">Position</dt>
-              <dd class="font-medium text-slate-900">{{ jobInformation().positionName || 'Unassigned' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Position</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().positionName || 'Unassigned' }}</dd>
             </div>
             <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
-              <dt class="text-slate-500">Department</dt>
-              <dd class="font-medium text-slate-900">{{ jobInformation().departmentName || 'Unassigned' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Department</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().departmentName || 'Unassigned' }}</dd>
             </div>
             <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
-              <dt class="text-slate-500">Company</dt>
-              <dd class="font-medium text-slate-900">{{ jobInformation().legalEntityName || '—' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Company</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().legalEntityName || '—' }}</dd>
             </div>
           </dl>
           <dl class="space-y-2.5 md:pl-6">
             <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
-              <dt class="text-slate-500">Reporting Manager</dt>
-              <dd class="font-medium" [class.text-blue-600]="!!jobInformation().reportingManagerName" [class.text-slate-900]="!jobInformation().reportingManagerName">
+              <dt class="text-[var(--color-text-secondary)]">Reporting Manager</dt>
+              <dd class="font-medium" [class.text-[var(--color-accent)]]="!!jobInformation().reportingManagerName" [class.text-[var(--color-text-primary)]]="!jobInformation().reportingManagerName">
                 {{ jobInformation().reportingManagerName || 'Unassigned' }}
               </dd>
             </div>
             <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
-              <dt class="text-slate-500">Employment Type</dt>
-              <dd class="font-medium text-slate-900">{{ jobInformation().employmentTypeLabel }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Employment Type</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().employmentTypeLabel }}</dd>
             </div>
             <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
-              <dt class="text-slate-500">Work Mode</dt>
-              <dd class="font-medium text-slate-900">{{ jobInformation().workModeLabel || '—' }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Work Mode</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().workModeLabel || '—' }}</dd>
             </div>
             <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
-              <dt class="text-slate-500">Hire Date</dt>
-              <dd class="font-medium text-slate-900">{{ jobInformation().hireDate }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Hire Date</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().hireDate }}</dd>
             </div>
           </dl>
         </div>

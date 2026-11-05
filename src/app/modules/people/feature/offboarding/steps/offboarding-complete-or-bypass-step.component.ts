@@ -121,8 +121,8 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
       text-transform: capitalize;
     }
     .obs-status-tag--done {
-      background: color-mix(in srgb, #16a34a 12%, var(--color-surface));
-      color: #16a34a;
+      background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+      color: var(--color-success);
     }
     .obs-task-card__actions {
       display: flex;

@@ -8,11 +8,11 @@ export type MetricStatTone = 'blue' | 'green' | 'amber' | 'red' | 'violet';
  * raw-hex precedent already used for the completed/in-progress/overdue segments in
  * OverviewWorkWidgetComponent's progress bar. */
 const TONE_HEX: Record<MetricStatTone, string> = {
-  blue: '#2563eb',
-  green: '#16a34a',
-  amber: '#d97706',
-  red: '#dc2626',
-  violet: '#7c3aed'
+  blue: 'var(--color-cat-blue)',
+  green: 'var(--color-cat-green)',
+  amber: 'var(--color-cat-amber)',
+  red: 'var(--color-cat-red)',
+  violet: 'var(--color-cat-violet)'
 };
 
 /** One icon-badge stat: a colored round icon plus a value/label pair. Used by cards that show a row of period metrics (Work Summary, Recorded Activity). */

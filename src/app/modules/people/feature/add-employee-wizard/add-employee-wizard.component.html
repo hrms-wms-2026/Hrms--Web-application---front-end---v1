@@ -475,7 +475,7 @@
                   </div>
 
                   @if (reportingAttempted() && store.needsReportsToPick() && !store.selectedReportsToEmployeeId()) {
-                    <p class="text-xs text-red-500 mt-2">Select who this employee reports to.</p>
+                    <p class="text-xs text-[var(--color-danger)] mt-2">Select who this employee reports to.</p>
                   }
                 </section>
 
@@ -591,7 +591,7 @@
                         }
                       </div>
                       @if (workSetupAttempted() && form.controls.workModeId.invalid) {
-                        <p class="text-xs text-red-500 mt-2">Work arrangement is required.</p>
+                        <p class="text-xs text-[var(--color-danger)] mt-2">Work arrangement is required.</p>
                       }
                     }
                   </section>

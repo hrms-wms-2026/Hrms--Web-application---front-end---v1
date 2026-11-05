@@ -520,7 +520,7 @@ export interface QuickTaskCreatedEvent {
     .task-board-column__expand-btn:hover {
       background: var(--color-surface);
       border-color: var(--color-border);
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      box-shadow: var(--shadow-card);
     }
     .task-board-column__collapsed-dot {
       display: inline-flex;
@@ -605,7 +605,7 @@ export interface QuickTaskCreatedEvent {
       gap: 6px;
       padding: 3px 9px 3px 7px;
       border-radius: 6px;
-      color: #ffffff;
+      color: var(--color-text-on-solid);
       line-height: 1.2;
     }
     .task-board-column__status-dot {
@@ -615,14 +615,14 @@ export interface QuickTaskCreatedEvent {
       width: 11px;
       height: 11px;
       border-radius: 999px;
-      background: #ffffff;
-      border: 1.5px solid #ffffff;
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-surface);
       box-sizing: border-box;
       flex-shrink: 0;
     }
     .task-board-column__status-dot--not-started {
       background: transparent;
-      border: 1.5px solid #ffffff;
+      border: 1.5px solid var(--color-surface);
     }
     .task-board-column__status-dot--done {
       background: transparent;
@@ -635,7 +635,7 @@ export interface QuickTaskCreatedEvent {
     .task-board-column__title-text {
       font-size: 11px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--color-text-on-solid);
       text-transform: uppercase;
       letter-spacing: 0.4px;
       white-space: nowrap;
@@ -688,7 +688,7 @@ export interface QuickTaskCreatedEvent {
       background: var(--color-surface);
       border-color: var(--color-border);
       color: var(--color-text-primary);
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      box-shadow: var(--shadow-card);
     }
     .task-board-column__collapse-btn:focus-visible,
     .task-board-column__menu-btn:focus-visible,
@@ -729,7 +729,7 @@ export interface QuickTaskCreatedEvent {
       border: 1px solid var(--color-border);
       border-radius: 8px;
       background: var(--color-surface);
-      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+      box-shadow: var(--shadow-popover);
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -795,7 +795,7 @@ export interface QuickTaskCreatedEvent {
       border: 1px solid var(--color-border);
       border-radius: 6px;
       box-sizing: border-box;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+      box-shadow: var(--shadow-card);
       position: relative;
     }
     .task-board-column__rename-box:focus-within {
@@ -862,7 +862,7 @@ export interface QuickTaskCreatedEvent {
       border: 1px solid var(--color-border);
       border-radius: 8px;
       padding: 8px;
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+      box-shadow: var(--shadow-popover);
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -904,7 +904,7 @@ export interface QuickTaskCreatedEvent {
       border-radius: 10px;
       padding: 10px 12px;
       margin-bottom: 10px;
-      box-shadow: 0 2px 8px rgb(15 23 42 / 0.06);
+      box-shadow: var(--shadow-popover);
       transition: border-color 140ms ease, box-shadow 140ms ease;
     }
     .quick-task-card:focus-within {
@@ -952,7 +952,7 @@ export interface QuickTaskCreatedEvent {
     }
     .quick-task-card__save-btn:hover:not(:disabled) {
       background: var(--color-accent);
-      color: #fff;
+      color: var(--color-text-on-solid);
     }
     .quick-task-card__save-btn:disabled {
       opacity: 0.45;
@@ -1068,7 +1068,7 @@ export interface QuickTaskCreatedEvent {
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 6px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
     }
     .quick-popover__list {
       display: flex;
@@ -1140,7 +1140,7 @@ export interface QuickTaskCreatedEvent {
       border-radius: 12px;
       padding: 12px 14px;
       background: var(--color-surface);
-      box-shadow: 0 14px 30px rgb(15 23 42 / 0.18);
+      box-shadow: var(--shadow-popover);
       transform: rotate(1deg) scale(1.02);
       cursor: grabbing;
     }

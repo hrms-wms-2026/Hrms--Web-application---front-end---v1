@@ -117,15 +117,15 @@ function buildChartData(raw: ChartSources | null) {
     </div>
 
     @if (loader.state() === 'loading') {
-      <div class="h-60 animate-pulse rounded-2xl bg-slate-100"></div>
+      <div class="h-60 animate-pulse rounded-2xl bg-[var(--color-surface-secondary)]"></div>
     } @else if (data(); as d) {
       <div class="h-full">
         <!-- Attendance vs. Delivery Trend Card -->
-        <div class="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs overflow-hidden">
+        <div class="flex h-full flex-col rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-5 shadow-xs overflow-hidden">
           <!-- Chart Header -->
           <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div class="flex items-center gap-3">
-              <h3 class="text-base font-bold text-slate-900">Attendance vs. Delivery Trend</h3>
+              <h3 class="text-base font-bold text-[var(--color-text-primary)]">Attendance vs. Delivery Trend</h3>
               @if (period.isComparing()) {
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                   <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span> Comparing with {{ period.compareLabel() }}
@@ -134,7 +134,7 @@ function buildChartData(raw: ChartSources | null) {
             </div>
 
             <!-- Legend -->
-            <div class="flex items-center gap-5 text-xs font-medium text-slate-600">
+            <div class="flex items-center gap-5 text-xs font-medium text-[var(--color-text-secondary)]">
               <span class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Attendance Discipline
               </span>
@@ -147,7 +147,7 @@ function buildChartData(raw: ChartSources | null) {
                 </span>
               }
               <span class="flex items-center gap-1.5">
-                <span class="w-3.5 h-0.5 border-t-2 border-dashed border-slate-400 inline-block"></span> Target (80%)
+                <span class="w-3.5 h-0.5 border-t-2 border-dashed border-[var(--color-border-strong)] inline-block"></span> Target (80%)
               </span>
             </div>
           </div>
@@ -157,36 +157,36 @@ function buildChartData(raw: ChartSources | null) {
             <!-- Keep the grid, target line and bars in the same fixed-height plot so their percentages align. -->
             <div data-testid="weekly-chart-plot" class="relative ml-10 mr-2 h-36">
               <!-- Y-Axis Grid Lines & Labels -->
-              <div class="pointer-events-none absolute inset-0 text-[11px] font-mono text-slate-400">
-                <div data-testid="chart-grid-100" class="absolute left-0 right-0 top-0 border-t border-slate-100">
+              <div class="pointer-events-none absolute inset-0 text-[11px] font-mono text-[var(--color-text-muted)]">
+                <div data-testid="chart-grid-100" class="absolute left-0 right-0 top-0 border-t border-[var(--color-border)]">
                   <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">100%</span>
                 </div>
-                <div class="absolute left-0 right-0 top-1/4 border-t border-slate-100">
+                <div class="absolute left-0 right-0 top-1/4 border-t border-[var(--color-border)]">
                   <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">75%</span>
                 </div>
-                <div class="absolute left-0 right-0 top-1/2 border-t border-slate-100">
+                <div class="absolute left-0 right-0 top-1/2 border-t border-[var(--color-border)]">
                   <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">50%</span>
                 </div>
-                <div class="absolute left-0 right-0 top-3/4 border-t border-slate-100">
+                <div class="absolute left-0 right-0 top-3/4 border-t border-[var(--color-border)]">
                   <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">25%</span>
                 </div>
-                <div data-testid="chart-grid-0" class="absolute bottom-0 left-0 right-0 border-t border-slate-200">
+                <div data-testid="chart-grid-0" class="absolute bottom-0 left-0 right-0 border-t border-[var(--color-border)]">
                   <span class="absolute right-full mr-2 w-8 -translate-y-1/2 text-right">0%</span>
                 </div>
               </div>
 
               <!-- 80% Target Reference Line -->
-              <div class="pointer-events-none absolute left-0 right-0 top-[20%] z-20 border-t border-dashed border-slate-400"></div>
+              <div class="pointer-events-none absolute left-0 right-0 top-[20%] z-20 border-t border-dashed border-[var(--color-border-strong)]"></div>
 
               @if (!d.hasTasks) {
                 <!-- Inside the plot (not the legend) so the header stays on one line. -->
-                <p data-testid="productivity-no-tasks-note" class="pointer-events-none absolute inset-x-0 top-[38%] z-30 text-center text-xs text-slate-400">
+                <p data-testid="productivity-no-tasks-note" class="pointer-events-none absolute inset-x-0 top-[38%] z-30 text-center text-xs text-[var(--color-text-muted)]">
                   No tasks this period, so there is no work productivity to show.
                 </p>
               }
 
               <!-- Bars Container -->
-              <div class="relative z-10 flex h-full items-end justify-around border-b border-slate-200">
+              <div class="relative z-10 flex h-full items-end justify-around border-b border-[var(--color-border)]">
               @if (compareData()) {
                 <svg class="absolute inset-0 w-full h-full pointer-events-none z-[5]" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <polyline
@@ -225,7 +225,7 @@ function buildChartData(raw: ChartSources | null) {
                           [style.minHeight.px]="group.productivityPercent > 0 ? 6 : 0"
                         ></div>
                       } @else {
-                        <div data-testid="productivity-no-tasks" class="h-2 w-full rounded-t-sm border border-dashed border-slate-300"></div>
+                        <div data-testid="productivity-no-tasks" class="h-2 w-full rounded-t-sm border border-dashed border-[var(--color-border-strong)]"></div>
                       }
                     </div>
                   </div>
@@ -235,11 +235,11 @@ function buildChartData(raw: ChartSources | null) {
             </div>
 
             <!-- X-Axis Labels -->
-            <div data-testid="chart-x-labels" class="ml-10 mr-2 mt-2 flex items-center justify-around text-xs font-medium text-slate-500">
+            <div data-testid="chart-x-labels" class="ml-10 mr-2 mt-2 flex items-center justify-around text-xs font-medium text-[var(--color-text-secondary)]">
               @for (group of d.weeklyGroups; track group.label) {
                 <div class="flex-1 max-w-[130px] text-center">
-                  <span class="font-bold text-slate-800 block text-xs">{{ group.label }}</span>
-                  <span class="text-[11px] text-slate-400 block mt-0.5">{{ group.periodLabel }}</span>
+                  <span class="font-bold text-[var(--color-text-primary)] block text-xs">{{ group.label }}</span>
+                  <span class="text-[11px] text-[var(--color-text-muted)] block mt-0.5">{{ group.periodLabel }}</span>
                 </div>
               }
             </div>

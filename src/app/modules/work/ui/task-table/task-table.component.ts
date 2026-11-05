@@ -288,7 +288,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
     .task-table__priority-btn:hover, .task-table__priority-btn[aria-expanded="true"],
     .task-table__due-date-btn:hover, .task-table__due-date-btn[aria-expanded="true"] {
       border-color: var(--color-accent);
-      box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+      box-shadow: var(--shadow-card);
     }
     .task-table__status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; }
     .task-table__priority-icon { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
@@ -307,7 +307,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 8px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       cursor: default;
       font-size: 12px;
       color: var(--color-text-primary);

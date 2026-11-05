@@ -452,7 +452,7 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
     .conv__decision[data-tone="success"] { --tone: var(--color-success, #16a34a); }
     .conv__decision[data-tone="danger"] { --tone: var(--color-danger); }
     .conv__decision-icon { display: inline-flex; width: 40px; height: 40px; flex: none; align-items: center; justify-content: center; border-radius: 50%;
-      background: var(--tone); color: #fff; }
+      background: var(--tone); color: var(--color-text-on-solid); }
     .conv__decision-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
     .conv__decision-text { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; padding: 0; border: 0; background: none; font: inherit;
       text-align: left; cursor: pointer; }

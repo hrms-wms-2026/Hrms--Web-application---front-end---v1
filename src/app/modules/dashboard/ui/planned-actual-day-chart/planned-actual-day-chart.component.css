@@ -15,7 +15,7 @@
 .pad-label {
   overflow: hidden;
   font-size: 0.75rem;
-  color: rgb(51 65 85);
+  color: var(--color-text-primary);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -47,11 +47,11 @@
 
 .pad-num {
   font-size: 0.75rem;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .pad-pct {
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
 }

@@ -52,13 +52,13 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
       appStopClickPropagation
     >
       @if (refreshedAt(); as at) {
-        <span class="mr-1 whitespace-nowrap text-xs text-slate-500" data-testid="refreshed-label" [title]="'Last loaded ' + at.toLocaleString()">
+        <span class="mr-1 whitespace-nowrap text-xs text-[var(--color-text-secondary)]" data-testid="refreshed-label" [title]="'Last loaded ' + at.toLocaleString()">
           Refreshed {{ ago() }}
         </span>
       }
       <button
         type="button"
-        class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 cursor-pointer disabled:cursor-default disabled:opacity-60"
+        class="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer disabled:cursor-default disabled:opacity-60"
         data-testid="popout-refresh"
         aria-label="Refresh"
         title="Refresh"
@@ -75,7 +75,7 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
       @if (expanded()) {
         <button
           type="button"
-          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
+          class="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer"
           data-testid="popout-close"
           aria-label="Close"
           title="Close"
@@ -89,7 +89,7 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
       } @else if (canExpand()) {
         <button
           type="button"
-          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
+          class="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer"
           data-testid="popout-expand"
           aria-label="Expand"
           title="Expand"
@@ -113,7 +113,7 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
     :host(.overlay) { position: relative; width: 0; height: 2rem; flex: none; align-self: center; }
     .reveal {
       position: absolute; right: 0; top: 0; height: 2rem; padding-left: 0.75rem;
-      background: var(--popout-actions-bg, #ffffff); border-radius: 0.5rem;
+      background: var(--popout-actions-bg, var(--color-surface)); border-radius: 0.5rem;
       opacity: 0; pointer-events: none; transition: opacity 150ms ease;
     }
     :host-context(.group:hover) .reveal, .reveal:focus-within { opacity: 1; pointer-events: auto; }

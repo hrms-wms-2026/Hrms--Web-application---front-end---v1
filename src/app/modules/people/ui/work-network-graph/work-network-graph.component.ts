@@ -76,7 +76,7 @@ const MAX_PREVIEW_NODES = 8;
     .wg-icon-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
     .wg-icon-button svg { width: 1rem; height: 1rem; flex: none; }
     .wg-overlay { position: fixed; inset: 0; z-index: 1400; display: flex; background: rgb(15 23 42 / 0.58); padding: 1rem; backdrop-filter: blur(3px); }
-    .wg-dialog { display: flex; width: 100%; min-width: 0; height: 100%; min-height: 0; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 1rem; background: var(--color-surface); box-shadow: 0 24px 80px rgb(0 0 0 / 0.3); outline: none; }
+    .wg-dialog { display: flex; width: 100%; min-width: 0; height: 100%; min-height: 0; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: 1rem; background: var(--color-surface); box-shadow: var(--shadow-modal); outline: none; }
     @media (max-width: 640px) {
       .wg-overlay { padding: 0; }
       .wg-dialog { border: 0; border-radius: 0; }

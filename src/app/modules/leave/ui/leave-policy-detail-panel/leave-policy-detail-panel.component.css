@@ -9,7 +9,7 @@
 .lpd-muted { margin: 0; font-size: 12px; color: var(--color-text-secondary); }
 .lpd-actions { display: flex; gap: 6px; }
 .lpd-btn { height: 30px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.lpd-btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+.lpd-btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-text-on-solid); }
 .lpd-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 13px; }
 .lpd-facts dt { color: var(--color-text-secondary); }
 .lpd-facts dd { margin: 0; font-weight: 600; }

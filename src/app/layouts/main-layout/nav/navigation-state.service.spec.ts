@@ -31,20 +31,19 @@ describe('NavigationStateService', () => {
     router = TestBed.inject(Router);
   });
 
-  it('keeps Attendance active and returns sub-sidebar children when navigated to /attendance/monitoring', async () => {
-    await router.navigateByUrl('/attendance/monitoring');
+  it('keeps Attendance active with no sub-sidebar (it is one page), including with query parameters', async () => {
+    await router.navigateByUrl('/attendance?openCorrection=today');
 
     expect(service.activeItem()?.id).toBe('time-attendance');
-    const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-monitoring']);
+    expect(service.activeChildren()).toEqual([]);
+    expect(service.hasSubSidebar()).toBe(false);
   });
 
-  it('keeps Attendance active and sub-sidebar visible when navigating with query parameters', async () => {
-    await router.navigateByUrl('/attendance/time-tracking?openCorrection=today');
+  it('opens Settings with Monitoring in its sub-sidebar at /settings/monitoring', async () => {
+    await router.navigateByUrl('/settings/monitoring');
 
-    expect(service.activeItem()?.id).toBe('time-attendance');
-    const childIds = service.activeChildren().map((c) => c.id);
-    expect(childIds).toEqual(['time-attendance-overview', 'time-attendance-tracking', 'time-attendance-monitoring']);
+    expect(service.activeItem()?.id).toBe('settings');
+    expect(service.activeChildren().map((c) => c.id)).toEqual(['settings-clock-in-policy', 'settings-monitoring']);
   });
 
   it('hides the sub-sidebar for a section with no child pages (Time Off is one hub)', async () => {
@@ -64,7 +63,7 @@ describe('NavigationStateService', () => {
   });
 
   it('manages sub-sidebar collapsed and expanded states and persists to localStorage', async () => {
-    await router.navigateByUrl('/attendance/overview');
+    await router.navigateByUrl('/settings/monitoring');
 
     expect(service.hasSubSidebar()).toBe(true);
     expect(service.isSubSidebarCollapsed()).toBe(false);
