@@ -20,7 +20,7 @@
   border-radius: 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  box-shadow: var(--shadow-modal);
   outline: none;
 }
 
@@ -285,7 +285,7 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
-  box-shadow: 0 14px 34px rgb(15 23 42 / 0.18);
+  box-shadow: var(--shadow-modal);
 }
 
 .ctd-popover__item {
@@ -358,8 +358,8 @@
   width: 16px;
   height: 16px;
   border-radius: 9999px;
-  background: #fff;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.25);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   transition: transform 140ms ease;
 }
 

@@ -140,7 +140,7 @@ interface AddedPerson {
     .event-inline-link:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .event-row-icon { display: inline-flex; width: 1.25rem; flex-shrink: 0; justify-content: center; color: var(--color-text-secondary); }
     .event-chip__remove { font-size: 1rem; line-height: 1; color: var(--color-text-secondary); }
-    .event-chip__remove:hover { color: #dc2626; }
+    .event-chip__remove:hover { color: var(--color-danger); }
     .event-select-trigger {
       display: flex; width: 100%; height: 2.5rem; align-items: center; justify-content: space-between; gap: 0.5rem;
       border: 0; background: transparent; padding: 0; text-align: left; font-size: 0.875rem;

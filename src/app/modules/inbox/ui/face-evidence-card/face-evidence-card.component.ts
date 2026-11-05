@@ -98,7 +98,7 @@ const SHORT_RESULTS: Record<string, string | undefined> = {
     .fec__row--flagged .fec__thumb { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 
     .fec__viewer { width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh; margin: 0; padding: 0; border: 0;
-      background: rgb(0 0 0 / 0.92); color: #fff; }
+      background: rgb(0 0 0 / 0.92); color: var(--color-text-on-solid); }
     .fec__viewer[open] { display: flex; flex-direction: column; }
     .fec__viewer::backdrop { background: rgb(0 0 0 / 0.6); }
     .fec__viewer-bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-size: 13px; }
@@ -107,7 +107,7 @@ const SHORT_RESULTS: Record<string, string | undefined> = {
     .fec__viewer-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 16px; padding: 0 16px 16px; }
     .fec__viewer-img { max-width: calc(100% - 112px); max-height: 100%; object-fit: contain; border-radius: 8px; }
     .fec__viewer-none { color: rgb(255 255 255 / 0.7); font-size: 14px; }
-    .fec__viewer-btn { flex: none; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgb(255 255 255 / 0.12); color: #fff;
+    .fec__viewer-btn { flex: none; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgb(255 255 255 / 0.12); color: var(--color-text-on-solid);
       font-size: 18px; line-height: 1; cursor: pointer; }
     .fec__viewer-nav { font-size: 28px; }
     .fec__viewer-btn:hover { background: rgb(255 255 255 / 0.22); }

@@ -116,10 +116,11 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(general, checker(['org:read'], ['org_structure']))).toBe(false);
     });
 
-    it('gates Attendance on time_attendance and any of self-service, read, or approve — and keeps Time Tracking reachable for an approve-only user', () => {
+    it('gates Attendance (one page, no sub-sidebar) on time_attendance and any of self-service, read, or approve', () => {
       const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
 
-      expect(attendance.path).toBe('/attendance/overview');
+      expect(attendance.path).toBe('/attendance');
+      expect(attendance.children).toBeUndefined();
       expect(canAccessNavItem(attendance, checker(['attendance:read-own'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker(['attendance:write-own'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
@@ -127,39 +128,25 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(attendance, checker([], ['time_attendance']))).toBe(false);
       expect(canAccessNavItem(attendance, checker(['attendance:read-own'], []))).toBe(false);
 
-      const children = attendance.children ?? [];
-      expect(children.map((child) => child.id)).toEqual([
-        'time-attendance-overview',
-        'time-attendance-tracking',
-        'time-attendance-monitoring'
-      ]);
-      const monitoring = children.find((child) => child.id === 'time-attendance-monitoring')!;
+    });
+
+    it('lists Monitoring under Settings, gated on monitoring:read and time_attendance', () => {
+      const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
+      const monitoring = settings.children!.find((child) => child.id === 'settings-monitoring')!;
+
       expect(monitoring.label).toBe('Monitoring');
-      expect(monitoring.path).toBe('/attendance/monitoring');
+      expect(monitoring.path).toBe('/settings/monitoring');
       expect(canAccessNavItem(monitoring, checker(['monitoring:read'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
       expect(canAccessNavItem(monitoring, checker(['monitoring:read'], []))).toBe(false);
-      const tracking = children.find((child) => child.id === 'time-attendance-tracking')!;
-      expect(canAccessNavItem(tracking, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
     });
 
-    it('does not leak the parent Attendance item to a monitoring:read-only user (no attendance permission)', () => {
+    it('hides Attendance from a monitoring:read-only user, who still reaches Settings > Monitoring', () => {
       const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
-      const monitoring = attendance.children!.find((item) => item.id === 'time-attendance-monitoring')!;
+      const monitoring = NAV_ITEMS.find((item) => item.id === 'settings')!.children!.find((item) => item.id === 'settings-monitoring')!;
 
-      // monitoring:read alone must not unlock the parent - its link target (/attendance/time-tracking)
-      // is a page this user cannot open, since Time Tracking is separately gated on attendance:*.
       expect(canAccessNavItem(attendance, checker(['monitoring:read'], ['time_attendance']))).toBe(false);
-      // but the child Monitoring item itself is reachable for this user.
       expect(canAccessNavItem(monitoring, checker(['monitoring:read'], ['time_attendance']))).toBe(true);
-    });
-
-    it('shows Attendance to an attendance-permission user without monitoring:read, but hides the Monitoring child', () => {
-      const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
-      const monitoring = attendance.children!.find((item) => item.id === 'time-attendance-monitoring')!;
-
-      expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
     });
 
     it('does not leak Org to a bare Employee through its People section (core_hr module, no employees permission)', () => {

@@ -15,7 +15,7 @@
   font-size: 1.625rem;
   font-weight: 700;
   letter-spacing: -0.025em;
-  color: #0f172a;
+  color: var(--color-text-primary);
   text-align: center;
   line-height: 1.25;
 }
@@ -23,13 +23,13 @@
 .invite-subtitle {
   margin: 0 0 1.75rem;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--color-text-secondary);
   text-align: center;
   line-height: 1.5;
 }
 
 .invite-subtitle strong {
-  color: #1e293b;
+  color: var(--color-text-primary);
 }
 
 .invite-form {
@@ -47,16 +47,16 @@
 }.invite-error-text {
   margin: 0;
   font-size: 0.75rem;
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 .invite-server-error {
   margin: 0.25rem 0 0;
   padding: 0.625rem 0.875rem;
   border-radius: 8px;
-  background: #fef2f2;
-  border: 1px solid #fee2e2;
-  color: #b91c1c;
+  background: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-subtle);
+  color: var(--color-danger-text);
   font-size: 0.8125rem;
   text-align: center;
 }
@@ -71,7 +71,7 @@
   align-items: flex-start;
   gap: 0.625rem;
   font-size: 0.8125rem;
-  color: #475569;
+  color: var(--color-text-secondary);
   line-height: 1.5;
   cursor: pointer;
 }
@@ -81,20 +81,20 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  accent-color: #2563eb;
+  border: 1px solid var(--color-border-strong);
+  accent-color: var(--color-accent);
   cursor: pointer;
 }
 
 .invite-doc-link {
-  color: #2563eb;
+  color: var(--color-accent);
   font-weight: 500;
   text-decoration: none;
   transition: color 150ms ease;
 }
 
 .invite-doc-link:hover {
-  color: #1d4ed8;
+  color: var(--color-accent-hover);
   text-decoration: underline;
 }
 
@@ -110,27 +110,27 @@
   padding: 0 1rem;
   border-radius: 8px;
   border: none;
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--color-accent);
+  color: var(--color-text-on-solid);
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 150ms ease, opacity 150ms ease, box-shadow 150ms ease;
   box-sizing: border-box;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .invite-btn:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--color-accent-hover);
 }
 
 .invite-btn:focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
 .invite-btn:disabled {
-  background: #cbd5e1;
+  background: var(--color-border-strong);
   cursor: not-allowed;
   opacity: 0.8;
 }
@@ -141,7 +141,7 @@
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.35);
   border-radius: 50%;
-  border-top-color: #ffffff;
+  border-top-color: var(--color-surface);
   animation: invite-spin 0.7s linear infinite;
 }
 
@@ -171,20 +171,12 @@
 }
 
 .invite-state-icon--warning {
-  background: #fffbeb;
-  border: 1px solid #fef3c7;
+  background: var(--color-warning-subtle);
+  border: 1px solid var(--color-warning-subtle);
 }
 
 .invite-state-icon--error {
-  background: #fef2f2;
-  border: 1px solid #fee2e2;
+  background: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-subtle);
 }
 
-/* Auth pages are always light, so the standard fields keep light colours even in dark mode. */
-.invite-form {
-  --color-surface: #ffffff;
-  --color-surface-secondary: #f4f4f5;
-  --color-border: #cbd5e1;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #64748b;
-}

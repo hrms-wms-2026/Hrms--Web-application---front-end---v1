@@ -31,6 +31,8 @@ import {
 } from '../models/work-area-change-request.model';
 
 const DEFAULT_PAGE_SIZE = 20;
+/** The Attendance page's personal history and My requests cards show five rows at a time. */
+const MY_LIST_PAGE_SIZE = 5;
 
 export type TimeTrackingAction = 'clockIn' | 'startBreak' | 'endBreak' | 'clockOut';
 export type CorrectionAction = 'preview' | 'submit' | 'cancel' | 'approve' | 'reject';
@@ -141,7 +143,7 @@ const initialState: TimeTrackingState = {
   historyLoading: false,
   historyError: null,
   historyPage: 1,
-  historyPageSize: DEFAULT_PAGE_SIZE,
+  historyPageSize: MY_LIST_PAGE_SIZE,
   historyTotalCount: 0,
   monthlySummary: null,
   monthlySummaryLoading: false,
@@ -164,7 +166,7 @@ const initialState: TimeTrackingState = {
   myCorrectionsLoading: false,
   myCorrectionsError: null,
   myCorrectionsPage: 1,
-  myCorrectionsPageSize: DEFAULT_PAGE_SIZE,
+  myCorrectionsPageSize: MY_LIST_PAGE_SIZE,
   myCorrectionsTotalCount: 0,
   myCorrectionsLoaded: false,
   approvalInbox: [],
@@ -184,7 +186,7 @@ const initialState: TimeTrackingState = {
   myWorkAreaRequestsLoading: false,
   myWorkAreaRequestsError: null,
   myWorkAreaRequestsPage: 1,
-  myWorkAreaRequestsPageSize: DEFAULT_PAGE_SIZE,
+  myWorkAreaRequestsPageSize: MY_LIST_PAGE_SIZE,
   myWorkAreaRequestsTotalCount: 0,
   myWorkAreaRequestsLoaded: false,
   workAreaApprovalInbox: [],
@@ -198,7 +200,7 @@ const initialState: TimeTrackingState = {
   activeWorkAreaRequestId: null,
   activeWorkAreaAction: null,
   workAreaActionLoading: false,
-  myWorkAreaRequestFilters: { pageNumber: 1, pageSize: DEFAULT_PAGE_SIZE },
+  myWorkAreaRequestFilters: { pageNumber: 1, pageSize: MY_LIST_PAGE_SIZE },
   workAreaApprovalFilters: { pageNumber: 1, pageSize: DEFAULT_PAGE_SIZE }
 };
 

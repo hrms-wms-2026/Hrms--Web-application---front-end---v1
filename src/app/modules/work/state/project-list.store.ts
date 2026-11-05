@@ -113,6 +113,30 @@ export const ProjectListStore = signalStore(
       }
     },
 
+    async setProjectLogo(id: string, file: File): Promise<boolean> {
+      patchState(store, { error: null });
+      try {
+        await firstValueFrom(api.uploadLogo(id, file));
+        await this.loadProjects();
+        return true;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to upload the logo.') });
+        return false;
+      }
+    },
+
+    async removeProjectLogo(id: string): Promise<boolean> {
+      patchState(store, { error: null });
+      try {
+        await firstValueFrom(api.removeLogo(id));
+        await this.loadProjects();
+        return true;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to remove the logo.') });
+        return false;
+      }
+    },
+
     async deleteProject(id: string): Promise<boolean> {
       patchState(store, { error: null });
       try {

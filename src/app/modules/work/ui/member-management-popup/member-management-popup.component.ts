@@ -56,7 +56,7 @@ export interface ProjectMemberPopupItem {
                   <span data-testid="leader-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Leader</span>
                 }
                 @if (member.pending) {
-                  <span data-testid="pending-tag" class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Request pending</span>
+                  <span data-testid="pending-tag" class="rounded-full bg-[var(--color-warning-subtle)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-warning-text)] dark:bg-[var(--color-warning)]/40 dark:text-[var(--color-warning)]">Request pending</span>
                 }
               </div>
               @if (canManage() && !member.pending && !member.isHead) {

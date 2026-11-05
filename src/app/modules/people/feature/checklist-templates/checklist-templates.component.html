@@ -62,10 +62,10 @@
       <ng-template appDataTableCell="type" let-tmpl>
         <span
           class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-          [class.bg-blue-100]="tmpl.templateType === 'onboarding'"
-          [class.text-blue-800]="tmpl.templateType === 'onboarding'"
-          [class.bg-purple-100]="tmpl.templateType === 'offboarding'"
-          [class.text-purple-800]="tmpl.templateType === 'offboarding'"
+          [class.bg-[var(--color-accent-subtle)]]="tmpl.templateType === 'onboarding'"
+          [class.text-[var(--color-accent-hover)]]="tmpl.templateType === 'onboarding'"
+          [class.bg-[var(--color-cat-violet-subtle)]]="tmpl.templateType === 'offboarding'"
+          [class.text-[var(--color-cat-violet)]]="tmpl.templateType === 'offboarding'"
         >
           {{ tmpl.templateType === 'onboarding' ? 'Onboarding' : 'Offboarding' }}
         </span>
@@ -75,10 +75,10 @@
       <ng-template appDataTableCell="status" let-tmpl>
         <span
           class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-          [class.bg-green-100]="tmpl.isActive"
-          [class.text-green-800]="tmpl.isActive"
-          [class.bg-gray-100]="!tmpl.isActive"
-          [class.text-gray-600]="!tmpl.isActive"
+          [class.bg-[var(--color-success-subtle)]]="tmpl.isActive"
+          [class.text-[var(--color-success-text)]]="tmpl.isActive"
+          [class.bg-[var(--color-surface-secondary)]]="!tmpl.isActive"
+          [class.text-[var(--color-text-secondary)]]="!tmpl.isActive"
         >
           {{ tmpl.isActive ? 'Active' : 'Archived' }}
         </span>

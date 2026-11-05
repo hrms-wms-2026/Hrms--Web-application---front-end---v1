@@ -19,19 +19,19 @@ const STATUS_META: Record<ScheduleItemStatus, {
   label: string; chip: string; dot: string; node: string; rail: string; card: string; step: string;
 }> = {
   completed: {
-    label: 'Completed', chip: 'bg-emerald-50 text-emerald-700', dot: '#10b981',
-    node: 'bg-emerald-500 text-white shadow-xs font-bold', rail: 'bg-emerald-500',
-    card: 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs', step: 'Completed step'
+    label: 'Completed', chip: 'bg-[var(--color-success-subtle)] text-[var(--color-success-text)]', dot: '#10b981',
+    node: 'bg-[var(--color-success)] text-[var(--color-text-on-solid)] shadow-xs font-bold', rail: 'bg-[var(--color-success)]',
+    card: 'border-[var(--color-border)]/80 bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] hover:shadow-xs', step: 'Completed step'
   },
   inProgress: {
-    label: 'In progress', chip: 'bg-blue-50 text-blue-700', dot: '#2563eb',
-    node: 'bg-blue-600 text-white shadow-xs font-bold', rail: 'bg-blue-600',
-    card: 'border-blue-200 bg-blue-50/40 shadow-xs', step: 'In progress step'
+    label: 'In progress', chip: 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]', dot: '#2563eb',
+    node: 'bg-[var(--color-accent)] text-[var(--color-text-on-solid)] shadow-xs font-bold', rail: 'bg-[var(--color-accent)]',
+    card: 'border-[var(--color-accent-subtle)] bg-[var(--color-accent-subtle)]/40 shadow-xs', step: 'In progress step'
   },
   upcoming: {
-    label: 'Upcoming', chip: 'bg-slate-100 text-slate-600', dot: '#94a3b8',
-    node: 'border border-slate-200 bg-white font-semibold text-slate-700 shadow-2xs', rail: 'bg-slate-200',
-    card: 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs', step: 'Step'
+    label: 'Upcoming', chip: 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]', dot: '#94a3b8',
+    node: 'border border-[var(--color-border)] bg-[var(--color-surface)] font-semibold text-[var(--color-text-primary)] shadow-2xs', rail: 'bg-[var(--color-border)]',
+    card: 'border-[var(--color-border)]/80 bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] hover:shadow-xs', step: 'Step'
   }
 };
 

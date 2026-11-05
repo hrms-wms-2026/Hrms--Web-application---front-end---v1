@@ -38,7 +38,7 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
           />
         } @else {
           <div
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-white text-sm shadow-sm"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-[var(--color-text-on-solid)] text-sm shadow-sm"
             [style.background]="project().color || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
           >
             {{ projectLogoInitial() }}
@@ -113,7 +113,7 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
           <span data-testid="view-button" class="w-full">
             <button
               type="button"
-              class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3.5 py-2 text-center text-xs font-semibold text-white shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3.5 py-2 text-center text-xs font-semibold text-[var(--color-text-on-solid)] shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
               (click)="viewed.emit()"
             >
               <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="m8 9 3 3-3 3M13 15h3" /></svg>

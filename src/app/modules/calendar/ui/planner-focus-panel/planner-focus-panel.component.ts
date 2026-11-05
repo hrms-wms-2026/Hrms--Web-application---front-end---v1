@@ -12,7 +12,7 @@ const GROUP_TITLES: Record<PlannerFocusReason, string> = {
 const REASONS: readonly PlannerFocusReason[] = ['overdue', 'due_today', 'due_this_week', 'backlog'];
 /** The section dot: red overdue, orange due today, grey otherwise. */
 const REASON_DOTS: Record<PlannerFocusReason, string> = {
-  overdue: 'bg-[var(--color-danger)]', due_today: 'bg-orange-500',
+  overdue: 'bg-[var(--color-danger)]', due_today: 'bg-[var(--color-warning)]',
   due_this_week: 'bg-[var(--color-text-secondary)]', backlog: 'bg-[var(--color-text-secondary)]',
 };
 /** Cards per section before "See all". */

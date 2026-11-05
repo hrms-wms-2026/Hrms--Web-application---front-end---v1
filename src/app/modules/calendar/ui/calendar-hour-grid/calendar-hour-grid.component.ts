@@ -113,9 +113,9 @@ interface DragSelection {
   // Today's column (header and grid) under the blocks, so the week shows where now is at a glance.
   styles: [
     '.today-tint { background-color: color-mix(in srgb, var(--color-accent) 6%, transparent); }',
-    '.planner-leave { background: color-mix(in srgb, #7c3aed 22%, transparent); color: #5b21b6; border-left: 3px solid #7c3aed; }',
-    '.planner-leave--pending { background: repeating-linear-gradient(45deg, color-mix(in srgb, #7c3aed 10%, transparent) 0 6px, transparent 6px 12px);'
-      + ' border: 1px dashed #7c3aed; border-left-width: 3px; color: #6d28d9; }',
+    '.planner-leave { background: color-mix(in srgb, var(--color-cat-violet) 22%, transparent); color: var(--color-cat-violet); border-left: 3px solid var(--color-cat-violet); }',
+    '.planner-leave--pending { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-cat-violet) 10%, transparent) 0 6px, transparent 6px 12px);'
+      + ' border: 1px dashed var(--color-cat-violet); border-left-width: 3px; color: var(--color-cat-violet); }',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })

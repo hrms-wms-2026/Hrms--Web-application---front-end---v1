@@ -168,7 +168,7 @@ describe('TimeTrackingStore', () => {
     await store.loadMyWorkAreaRequests();
     await store.loadWorkAreaApprovalInbox({ status: 'pending' });
 
-    expect(api.getMyWorkAreaChangeRequests).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20 });
+    expect(api.getMyWorkAreaChangeRequests).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 5 });
     expect(api.getWorkAreaChangeApprovalInbox).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20, status: 'pending' });
     expect(store.myWorkAreaRequests()).toHaveLength(1);
     expect(store.workAreaApprovalInbox()).toHaveLength(1);
@@ -295,7 +295,7 @@ describe('TimeTrackingStore', () => {
 
     await store.loadMyHistory({ from: '2026-08-17', to: '2026-08-23' }, 3);
 
-    expect(api.getMyHistory).toHaveBeenCalledWith('2026-08-17', '2026-08-23', 3, 20);
+    expect(api.getMyHistory).toHaveBeenCalledWith('2026-08-17', '2026-08-23', 3, 5);
     expect(store.historyPage()).toBe(3);
     expect(store.historyTotalCount()).toBe(61);
   });
@@ -319,7 +319,7 @@ describe('TimeTrackingStore', () => {
 
     await store.loadMyCorrections();
 
-    expect(api.getMyCorrections).toHaveBeenCalledWith(1, 20);
+    expect(api.getMyCorrections).toHaveBeenCalledWith(1, 5);
     expect(store.myCorrectionsPage()).toBe(1);
     expect(store.myCorrectionsTotalCount()).toBe(5);
   });
@@ -390,7 +390,7 @@ describe('TimeTrackingStore', () => {
 
     expect(typeof requesterFilters).toBe('function');
     expect(typeof approvalFilters).toBe('function');
-    expect((requesterFilters as () => unknown)()).toEqual({ pageNumber: 1, pageSize: 20 });
+    expect((requesterFilters as () => unknown)()).toEqual({ pageNumber: 1, pageSize: 5 });
     expect((approvalFilters as () => unknown)()).toEqual({ status: 'pending', pageNumber: 2, pageSize: 20 });
   });
 
@@ -398,7 +398,7 @@ describe('TimeTrackingStore', () => {
     await store.loadWorkAreaApprovalInbox({ status: 'pending' });
     await store.loadMyWorkAreaRequests();
 
-    expect(api.getMyWorkAreaChangeRequests).toHaveBeenLastCalledWith({ pageNumber: 1, pageSize: 20 });
+    expect(api.getMyWorkAreaChangeRequests).toHaveBeenLastCalledWith({ pageNumber: 1, pageSize: 5 });
   });
 
   it('keeps requester and approval pagination independent in both directions', async () => {
@@ -406,7 +406,7 @@ describe('TimeTrackingStore', () => {
     await store.loadWorkAreaApprovalInbox({ pageNumber: 2, status: 'pending' });
     await store.loadMyWorkAreaRequests();
 
-    expect(api.getMyWorkAreaChangeRequests).toHaveBeenLastCalledWith({ pageNumber: 3, pageSize: 20 });
+    expect(api.getMyWorkAreaChangeRequests).toHaveBeenLastCalledWith({ pageNumber: 3, pageSize: 5 });
     expect(store.myWorkAreaRequestsPage()).toBe(3);
     expect(store.workAreaApprovalInboxPage()).toBe(2);
 
@@ -422,7 +422,7 @@ describe('TimeTrackingStore', () => {
     await store.approveWorkAreaChangeRequest('wa-1', null);
 
     expect(api.getWorkAreaChangeApprovalInbox).toHaveBeenLastCalledWith({ status: 'pending', pageNumber: 2, pageSize: 20 });
-    expect(api.getMyWorkAreaChangeRequests).toHaveBeenLastCalledWith({ status: 'approved', pageNumber: 4, pageSize: 20 });
+    expect(api.getMyWorkAreaChangeRequests).toHaveBeenLastCalledWith({ status: 'approved', pageNumber: 4, pageSize: 5 });
   });
 
   it('refreshes a cancellation conflict with requester-history filters only', async () => {
@@ -432,7 +432,7 @@ describe('TimeTrackingStore', () => {
 
     await store.cancelWorkAreaChangeRequest('wa-1');
 
-    expect(api.getMyWorkAreaChangeRequests).toHaveBeenLastCalledWith({ status: 'approved', pageNumber: 3, pageSize: 20 });
+    expect(api.getMyWorkAreaChangeRequests).toHaveBeenLastCalledWith({ status: 'approved', pageNumber: 3, pageSize: 5 });
     expect(api.getWorkAreaChangeApprovalInbox).toHaveBeenLastCalledWith({ status: 'pending', pageNumber: 2, pageSize: 20 });
   });
 

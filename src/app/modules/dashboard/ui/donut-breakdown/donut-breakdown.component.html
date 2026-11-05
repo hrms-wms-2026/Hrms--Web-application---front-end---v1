@@ -1,7 +1,7 @@
 <div class="db" (mouseleave)="setActive(null)">
   <div class="db-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
     <svg viewBox="0 0 42 42" class="db-svg" role="img" [attr.aria-label]="ariaLabel()">
-      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
+      <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
       @for (arc of arcs(); track arc.key) {
         <circle
           class="db-arc"

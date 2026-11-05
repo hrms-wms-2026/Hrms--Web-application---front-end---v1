@@ -283,7 +283,7 @@ export function faceEvidenceFor(
     .inbox__icon-btn:focus-visible, .inbox__chip:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 
     /* One surface split by lines, not three separate cards: chats | conversation | details. */
-    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr); background: var(--color-surface); }
+    .inbox__workspace { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr); background: var(--color-content-bg); }
     .inbox__workspace--details { grid-template-columns: minmax(360px, 62fr) minmax(320px, 38fr); }
     /* Wide screens: the workspace runs to the page's right and bottom edges, so the details panel is a full-height
        column under the header line (the chat keeps the page's left gutter). */
@@ -292,7 +292,7 @@ export function faceEvidenceFor(
       .inbox__chat { padding-bottom: 12px; }
     }
     .inbox__list { border-right: 0; }
-    .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--color-surface); }
+    .inbox__panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; background: var(--color-content-bg); }
     .inbox__details { border-left: 1px solid var(--color-border); }
     .inbox__details { display: none; }
     .inbox__workspace--details .inbox__details { display: flex; }

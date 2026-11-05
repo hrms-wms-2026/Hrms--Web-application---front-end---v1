@@ -49,12 +49,96 @@ describe('ThemeStore', () => {
     TestBed.configureTestingModule({});
     const store = TestBed.inject(ThemeStore);
 
-    for (const preset of ['emerald', 'violet', 'rose', 'slate', 'default'] as const) {
+    for (const preset of ['emerald', 'violet', 'rose', 'slate', 'mono', 'default'] as const) {
       store.setPreset(preset);
       expect(store.preset()).toBe(preset);
       expect(document.documentElement.getAttribute('data-theme')).toBe(preset);
       expect(localStorage.getItem(STORAGE_KEY)).toBe(preset);
     }
+  });
+
+  describe('colour mode', () => {
+    const MODE_KEY = 'onevo.color.mode';
+    let listeners: ((event: MediaQueryListEvent) => void)[] = [];
+
+    function mockSystemDark(matches: boolean): void {
+      listeners = [];
+      vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
+        matches,
+        addEventListener: (_: string, fn: (event: MediaQueryListEvent) => void) => listeners.push(fn),
+        removeEventListener: vi.fn()
+      }));
+    }
+
+    beforeEach(() => {
+      document.documentElement.removeAttribute('data-mode');
+      document.documentElement.classList.remove('dark');
+      mockSystemDark(false);
+    });
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('defaults to light and applies it to the document root', () => {
+      TestBed.configureTestingModule({});
+      const store = TestBed.inject(ThemeStore);
+
+      expect(store.mode()).toBe('light');
+      expect(store.resolvedMode()).toBe('light');
+      expect(document.documentElement.getAttribute('data-mode')).toBe('light');
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+
+    it('restores a stored mode (shared key with the landing page) and ignores invalid values', () => {
+      localStorage.setItem(MODE_KEY, 'dark');
+      TestBed.configureTestingModule({});
+      expect(TestBed.inject(ThemeStore).resolvedMode()).toBe('dark');
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+      TestBed.resetTestingModule();
+      localStorage.setItem(MODE_KEY, 'sepia');
+      TestBed.configureTestingModule({});
+      expect(TestBed.inject(ThemeStore).mode()).toBe('light');
+    });
+
+    it('setMode updates the signal, both document markers, and storage', () => {
+      TestBed.configureTestingModule({});
+      const store = TestBed.inject(ThemeStore);
+
+      store.setMode('dark');
+      expect(store.mode()).toBe('dark');
+      expect(document.documentElement.getAttribute('data-mode')).toBe('dark');
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+      expect(localStorage.getItem(MODE_KEY)).toBe('dark');
+
+      store.setMode('light');
+      expect(document.documentElement.getAttribute('data-mode')).toBe('light');
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+    });
+
+    it('system follows the OS preference and updates live when it changes', () => {
+      mockSystemDark(true);
+      TestBed.configureTestingModule({});
+      const store = TestBed.inject(ThemeStore);
+
+      store.setMode('system');
+      expect(store.resolvedMode()).toBe('dark');
+      expect(document.documentElement.getAttribute('data-mode')).toBe('dark');
+      expect(localStorage.getItem(MODE_KEY)).toBe('system');
+
+      listeners.forEach((fn) => fn({ matches: false } as MediaQueryListEvent));
+      expect(store.resolvedMode()).toBe('light');
+      expect(document.documentElement.getAttribute('data-mode')).toBe('light');
+    });
+
+    it('an OS change does not override an explicit Light or Dark choice', () => {
+      TestBed.configureTestingModule({});
+      const store = TestBed.inject(ThemeStore);
+      store.setMode('light');
+
+      listeners.forEach((fn) => fn({ matches: true } as MediaQueryListEvent));
+      expect(store.resolvedMode()).toBe('light');
+      expect(document.documentElement.getAttribute('data-mode')).toBe('light');
+    });
   });
 
   // NOTE: this test suite runs under jsdom (see package.json), which does not load or

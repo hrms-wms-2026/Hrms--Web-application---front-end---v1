@@ -83,7 +83,7 @@ export interface CanvasMinimapLink {
     :host {
       position: absolute; left: 1rem; bottom: 1rem; z-index: 6; display: flex; gap: 0.25rem;
       padding: 0.375rem; border-radius: 0.75rem; border: 1px solid var(--color-border);
-      background: var(--color-surface); box-shadow: 0 6px 18px rgb(15 23 42 / 0.08);
+      background: var(--color-surface); box-shadow: var(--shadow-popover);
       touch-action: none;
     }
     .cmm-map {
@@ -99,12 +99,12 @@ export interface CanvasMinimapLink {
     .cmm-btn:hover:not(:disabled) { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .cmm-btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .cmm-btn svg { width: 0.95rem; height: 0.95rem; }
-    .cmm-link { stroke: #c7d2fe; stroke-width: 1; }
-    .cmm-item--primary { fill: #2563eb; }
-    .cmm-item--secondary { fill: #8b5cf6; }
-    .cmm-item--muted { fill: #94a3b8; }
+    .cmm-link { stroke: var(--color-border-strong); stroke-width: 1; }
+    .cmm-item--primary { fill: var(--color-cat-blue); }
+    .cmm-item--secondary { fill: var(--color-cat-violet); }
+    .cmm-item--muted { fill: var(--color-cat-slate); }
     .cmm-item--rect { fill-opacity: 0.85; }
-    .cmm-view { fill: rgb(37 99 235 / 0.08); stroke: #2563eb; stroke-width: 1.5; }
+    .cmm-view { fill: color-mix(in srgb, var(--color-accent) 8%, transparent); stroke: var(--color-accent); stroke-width: 1.5; }
   `],
   host: {
     'aria-label': 'Minimap',

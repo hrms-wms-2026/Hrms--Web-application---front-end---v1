@@ -24,13 +24,13 @@
   font-size: 0.625rem;
   font-weight: 600;
   line-height: 1;
-  color: rgb(51 65 85);
+  color: var(--color-text-primary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .wc-value--zero {
-  color: rgb(203 213 225);
+  color: var(--color-text-muted);
 }
 
 .wc-track {
@@ -39,7 +39,7 @@
   min-height: 0;
   flex: 1 1 0;
   align-items: flex-end;
-  border-bottom: 1px solid rgb(226 232 240);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .wc-bar {
@@ -59,14 +59,14 @@
   overflow: hidden;
   font-size: 0.625rem;
   line-height: 1;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .wc-label--current {
   font-weight: 600;
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wc-empty {
@@ -76,7 +76,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
   pointer-events: none;
 }
 
@@ -101,13 +101,13 @@
 
 .wc-line polyline {
   fill: none;
-  stroke: rgb(37 99 235);
+  stroke: var(--color-cat-blue);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 
 .wc-line circle {
-  fill: rgb(37 99 235);
+  fill: var(--color-cat-blue);
 }
 
 .wc-axis {
@@ -121,6 +121,6 @@
   justify-content: space-between;
   font-size: 0.5625rem;
   line-height: 1;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
   text-align: right;
 }

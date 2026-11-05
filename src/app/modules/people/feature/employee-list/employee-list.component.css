@@ -1,7 +1,7 @@
 :host {
   display: block;
   min-height: 100%;
-  background: var(--color-surface);
+  background: var(--color-content-bg);
 }
 
 .emp-page-header {

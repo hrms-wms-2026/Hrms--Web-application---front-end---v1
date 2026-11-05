@@ -49,12 +49,12 @@ function clearLegacyDashboardStorage(): void {
     <div class="flex flex-col gap-3" data-testid="dashboard-shell">
       @if (store.editing()) {
         <div
-          class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-accent-subtle)] bg-[var(--color-accent-subtle)]/60 px-4 py-3"
           data-testid="dashboard-edit-toolbar"
         >
           <div>
-            <h2 class="text-sm font-bold text-slate-800">Customize your dashboard</h2>
-            <p class="text-xs text-slate-500">Drag a widget by its handle, resize from the corner, or use the arrow keys on a focused widget.</p>
+            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Customize your dashboard</h2>
+            <p class="text-xs text-[var(--color-text-secondary)]">Drag a widget by its handle, resize from the corner, or use the arrow keys on a focused widget.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button #addWidgetBtn type="button" class="shell-btn" data-testid="dashboard-add-widget" [disabled]="store.saving()" (click)="openDrawer($event)">Add widget</button>
@@ -98,13 +98,13 @@ function clearLegacyDashboardStorage(): void {
           <ng-content select="[emptyState]" />
         }
       } @else if (store.error()) {
-        <div class="rounded-2xl border border-slate-200/80 bg-white px-4 py-8 text-center" data-testid="dashboard-error" role="alert">
-          <p class="text-sm font-semibold text-slate-800">Couldn't load your dashboard</p>
-          <p class="mt-1 text-xs text-slate-500">{{ store.error() }}</p>
-          <button type="button" class="mt-2 text-sm font-semibold text-blue-600 hover:underline" data-testid="dashboard-retry" (click)="reload()">Try again</button>
+        <div class="rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] px-4 py-8 text-center" data-testid="dashboard-error" role="alert">
+          <p class="text-sm font-semibold text-[var(--color-text-primary)]">Couldn't load your dashboard</p>
+          <p class="mt-1 text-xs text-[var(--color-text-secondary)]">{{ store.error() }}</p>
+          <button type="button" class="mt-2 text-sm font-semibold text-[var(--color-accent)] hover:underline" data-testid="dashboard-retry" (click)="reload()">Try again</button>
         </div>
       } @else {
-        <div class="flex min-h-[200px] items-center justify-center rounded-2xl border border-slate-200/80 bg-white">
+        <div class="flex min-h-[200px] items-center justify-center rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)]">
           <app-loader label="Loading your dashboard" />
         </div>
       }
@@ -124,27 +124,27 @@ function clearLegacyDashboardStorage(): void {
   styles: `
     .shell-btn {
       border-radius: 0.5rem;
-      border: 1px solid rgb(203 213 225);
-      background: white;
+      border: 1px solid var(--color-border-strong);
+      background: var(--color-surface);
       padding: 0.375rem 0.75rem;
       font-size: 0.75rem;
       font-weight: 600;
-      color: rgb(51 65 85);
+      color: var(--color-text-primary);
     }
     .shell-btn:hover:not(:disabled) {
-      background: rgb(241 245 249);
+      background: var(--color-surface-secondary);
     }
     .shell-btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
     .shell-btn--primary {
-      border-color: rgb(37 99 235);
-      background: rgb(37 99 235);
-      color: white;
+      border-color: var(--color-accent);
+      background: var(--color-accent);
+      color: var(--color-accent-contrast);
     }
     .shell-btn--primary:hover:not(:disabled) {
-      background: rgb(29 78 216);
+      background: var(--color-accent-hover);
     }
   `
 })

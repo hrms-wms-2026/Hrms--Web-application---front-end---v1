@@ -1,12 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { TimeTrackingStore } from '../../state/time-tracking.store';
 import { TimeTrackingRange } from '../../models/time-tracking.model';
 
 @Component({
   selector: 'app-attendance-monthly-health-card',
   standalone: true,
-  imports: [CardComponent],
   templateUrl: './attendance-monthly-health-card.component.html',
   styleUrl: './attendance-monthly-health-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -20,6 +18,11 @@ export class AttendanceMonthlyHealthCardComponent implements OnInit {
 
   ngOnInit(): void {
     void this.store.loadMonthlySummary(currentMonthRange());
+  }
+
+  /** Two-digit counts, as on the mockup: 2 → "02". */
+  protected pad(value: number): string {
+    return String(value).padStart(2, '0');
   }
 
   retry(): void {

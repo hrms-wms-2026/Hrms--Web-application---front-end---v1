@@ -279,12 +279,12 @@ export interface TaskCardAssignableMember {
       border-radius: 12px;
       padding: 12px 14px;
       cursor: pointer;
-      box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+      box-shadow: var(--shadow-card);
       transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
     }
     .task-card:hover {
       border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border));
-      box-shadow: 0 5px 14px rgb(15 23 42 / 0.08);
+      box-shadow: var(--shadow-popover);
       transform: translateY(-1px);
     }
     .task-card__header {
@@ -321,14 +321,14 @@ export interface TaskCardAssignableMember {
       cursor: pointer;
       line-height: 1.3;
       transition: all 120ms ease;
-      box-shadow: 0 0.5px 1.5px rgb(15 23 42 / 0.04);
+      box-shadow: var(--shadow-card);
     }
     .task-card__meta-btn:hover,
     .task-card__meta-btn[aria-expanded="true"] {
       background: var(--color-surface-secondary);
       border-color: var(--color-accent);
       color: var(--color-text-primary);
-      box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+      box-shadow: var(--shadow-card);
     }
     .task-card__meta-btn--icon-only {
       width: 26px;
@@ -374,13 +374,13 @@ export interface TaskCardAssignableMember {
     .task-card__priority { display: inline-flex; align-items: center; gap: 4px; text-transform: capitalize; color: var(--color-text-primary); }
     .task-card__priority-icon { width: 12px; height: 12px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; flex-shrink: 0; }
     .task-card__priority[data-priority="critical"] .task-card__priority-icon,
-    .task-card__priority-icon[data-priority="critical"] { color: #ef4444; fill: #ef4444; }
+    .task-card__priority-icon[data-priority="critical"] { color: var(--color-danger); fill: var(--color-danger); }
     .task-card__priority[data-priority="high"] .task-card__priority-icon,
-    .task-card__priority-icon[data-priority="high"] { color: #f59e0b; fill: #f59e0b; }
+    .task-card__priority-icon[data-priority="high"] { color: var(--color-warning); fill: var(--color-warning); }
     .task-card__priority[data-priority="medium"] .task-card__priority-icon,
-    .task-card__priority-icon[data-priority="medium"] { color: #3b82f6; fill: #3b82f6; }
+    .task-card__priority-icon[data-priority="medium"] { color: var(--color-accent); fill: var(--color-accent); }
     .task-card__priority[data-priority="low"] .task-card__priority-icon,
-    .task-card__priority-icon[data-priority="low"] { color: #94a3b8; fill: #94a3b8; }
+    .task-card__priority-icon[data-priority="low"] { color: var(--color-text-muted); fill: var(--color-text-muted); }
     .task-card__clock { min-width: 0; margin-left: auto; flex-shrink: 0; }
 
     .task-card__popover {
@@ -389,7 +389,7 @@ export interface TaskCardAssignableMember {
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 8px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       cursor: default;
       font-size: 12px;
       color: var(--color-text-primary);
@@ -515,7 +515,7 @@ export interface TaskCardAssignableMember {
     .task-card__popover-save-btn {
       border: 0;
       background: var(--color-accent);
-      color: #fff;
+      color: var(--color-text-on-solid);
       padding: 3px 10px;
       font: inherit;
       font-size: 11px;

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { TimeTrackingStore } from '../../../state/time-tracking.store';
 import {
   formatDate,
@@ -55,6 +55,8 @@ export interface EnrichedTimelineItem {
 })
 export class AttendanceTodayTimelineComponent {
   readonly store = inject(TimeTrackingStore);
+  /** 'card' shows today's events inline; 'trigger' shows just a "View activity" button that opens the popup. */
+  readonly mode = input<'card' | 'trigger'>('card');
   readonly formatDateTime = formatDateTime;
   readonly timelineEventLabel = timelineEventLabel;
 

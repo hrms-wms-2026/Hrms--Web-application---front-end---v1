@@ -1,11 +1,11 @@
 .wp-week {
   height: 1.75rem;
-  border: 1px solid rgb(226 232 240);
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  background: rgb(248 250 252);
+  background: var(--color-surface-secondary);
   padding: 0 0.5rem;
   font-size: 0.75rem;
-  color: rgb(51 65 85);
+  color: var(--color-text-primary);
 }
 
 .wp-no-target {
@@ -43,7 +43,7 @@
   font-size: 1.75rem;
   font-weight: 700;
   line-height: 1;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -54,16 +54,16 @@
 .wp-status {
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 .wp-status--ahead,
 .wp-status--on_track {
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wp-status--behind {
-  color: rgb(217 119 6);
+  color: var(--color-warning);
 }
 
 .wp-delta {
@@ -78,16 +78,16 @@
 
 .wp-delta-value {
   font-weight: 700;
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wp-delta-value--down,
 .wp-down {
-  color: rgb(217 119 6);
+  color: var(--color-warning);
 }
 
 .wp-delta-caption {
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 /* ---- mini: the donut only. ---- */
@@ -136,7 +136,7 @@
 }
 
 .wp-week-name {
-  color: rgb(51 65 85);
+  color: var(--color-text-primary);
   white-space: nowrap;
 }
 
@@ -144,14 +144,14 @@
   height: 0.5rem;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgb(226 232 240);
+  background: var(--color-border);
 }
 
 .wp-week-fill {
   display: block;
   height: 100%;
   border-radius: 9999px;
-  background: #2563eb;
+  background: var(--color-cat-blue);
 }
 
 .wp-week-fill--last {
@@ -159,7 +159,7 @@
 }
 
 .wp-week-hours {
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -186,7 +186,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   border-radius: 0.625rem;
-  background: rgb(248 250 252);
+  background: var(--color-surface-secondary);
   padding: 0 0.75rem;
   border-left: 3px solid var(--tone);
 }
@@ -201,13 +201,13 @@
 
 .wp-stacked-label {
   font-size: 0.75rem;
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
 }
 
 .wp-stacked-value {
   font-size: 1rem;
   font-weight: 700;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -217,7 +217,7 @@
   margin-left: 0.25rem;
   font-size: 0.6875rem;
   font-weight: 500;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 /* ---- standard: hero (donut + tiles), then chart, then comparison. Heights match WEEKLY_PROGRESS_SECTION_PX. ---- */
@@ -255,7 +255,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   border-radius: 0.5rem;
-  background: rgb(248 250 252);
+  background: var(--color-surface-secondary);
   padding: 0 0.625rem;
   border-left: 3px solid var(--tone);
 }
@@ -263,7 +263,7 @@
 .wp-side-value {
   font-size: 0.875rem;
   font-weight: 700;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -272,7 +272,7 @@
   margin-left: 0.25rem;
   font-size: 0.6875rem;
   font-weight: 500;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
 
 .wp-hero-donut {
@@ -292,14 +292,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  border-top: 1px solid rgb(241 245 249);
+  border-top: 1px solid var(--color-border);
   padding-top: 0.5rem;
 }
 
 .wp-section-title {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
 }
 
 .wp-chart {
@@ -317,31 +317,31 @@
   flex-direction: column;
   gap: 0.125rem;
   border-radius: 0.625rem;
-  background: rgb(248 250 252);
+  background: var(--color-surface-secondary);
   padding: 0.5rem 0.75rem;
 }
 
 .wp-compare-label {
   font-size: 0.6875rem;
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
 }
 
 .wp-compare-value {
   font-size: 1.125rem;
   font-weight: 700;
-  color: rgb(15 23 42);
+  color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .wp-compare-value small {
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
 .wp-compare-value small.wp-down {
-  color: rgb(217 119 6);
+  color: var(--color-warning);
 }
 
 .wp-compare-caption {
   font-size: 0.6875rem;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
 }
