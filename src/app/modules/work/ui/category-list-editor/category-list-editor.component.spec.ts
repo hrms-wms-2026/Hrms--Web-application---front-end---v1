@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
+import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 import { CategoryListEditorComponent } from './category-list-editor.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCategoryColumn } from '../../models/task-category.model';
@@ -78,18 +80,39 @@ describe('CategoryListEditorComponent', () => {
       .map((element) => element.textContent?.trim())).toContain('Feature');
   });
 
-  it('the Add row has its own Type select (user types only, Task by default) and sends the chosen type', async () => {
+  it('the Add row has an icon picker and no Type select, and sends the picked icon', async () => {
     const { fixture, createCategory } = setup();
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    const type = fixture.nativeElement.querySelector('[data-testid="category-add-kind-select"]') as HTMLSelectElement;
-    expect(type.value).toBe('task');
-    expect(Array.from(type.options).map((o) => o.value)).toEqual(['task', 'bug', 'story', 'feature', 'testing']);
+    const form = fixture.nativeElement.querySelector('.category-list__add-form') as HTMLElement;
+    expect(form.querySelector('select')).toBeNull();
+    const picker = fixture.debugElement.query(By.css('[data-testid="category-add-icon"]')).componentInstance as IconPickerComponent;
+    picker.iconChange.emit('lucide:bug');
+    const input = form.querySelector('input') as HTMLInputElement;
+    input.value = 'Hotfix';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((button) => button.textContent?.trim() === 'Add')!.click();
+    await fixture.whenStable();
 
-    type.value = 'bug';
-    type.dispatchEvent(new Event('change'));
+    expect(createCategory).toHaveBeenCalledWith('project-1', { name: 'Hotfix', displayOrder: 4, kind: 'task', icon: 'lucide:bug' });
+  });
+
+  it('the Add row forgets a picked icon after a cancel', async () => {
+    const { fixture, createCategory } = setup();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.debugElement.query(By.css('[data-testid="category-add-icon"]')).componentInstance as IconPickerComponent).iconChange.emit('lucide:bug');
+    Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((button) => button.textContent?.trim() === 'Cancel')!.click();
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
+    fixture.detectChanges();
     const input = fixture.nativeElement.querySelector('.category-list__add-form input') as HTMLInputElement;
     input.value = 'Hotfix';
     input.dispatchEvent(new Event('input'));
@@ -98,24 +121,7 @@ describe('CategoryListEditorComponent', () => {
       .find((button) => button.textContent?.trim() === 'Add')!.click();
     await fixture.whenStable();
 
-    expect(createCategory).toHaveBeenCalledWith('project-1', { name: 'Hotfix', displayOrder: 4, kind: 'bug' });
-  });
-
-  it('the Add row starts again at Task after a cancel', () => {
-    const { fixture } = setup();
-    fixture.detectChanges();
-    (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    const type = fixture.nativeElement.querySelector('[data-testid="category-add-kind-select"]') as HTMLSelectElement;
-    type.value = 'story';
-    type.dispatchEvent(new Event('change'));
-    Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
-      .find((button) => button.textContent?.trim() === 'Cancel')!.click();
-    fixture.detectChanges();
-
-    (fixture.nativeElement.querySelector('.category-list__add-icon') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect((fixture.nativeElement.querySelector('[data-testid="category-add-kind-select"]') as HTMLSelectElement).value).toBe('task');
+    expect(createCategory).toHaveBeenCalledWith('project-1', { name: 'Hotfix', displayOrder: 4, kind: 'task' });
   });
 
   it('renames a category through the edit endpoint', async () => {
@@ -171,30 +177,64 @@ describe('CategoryListEditorComponent', () => {
 
     expect(reorderTaskCategories).toHaveBeenCalledWith('project-1', expect.arrayContaining([{ categoryId: 'c9', displayOrder: 3 }]));
   });
-  it('each row has a Type select; changing it saves the kind', async () => {
+
+  it('rows have no Type select', () => {
+    const { fixture } = setup();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.category-list__list select')).toBeNull();
+  });
+
+  it('the Edit dialog offers the user types and sends a changed type', async () => {
     const { fixture, editCategory } = setup();
     fixture.detectChanges();
-    const selects = fixture.nativeElement.querySelectorAll('[data-testid="category-kind-select"]') as NodeListOf<HTMLSelectElement>;
-    // Task, Bug, Story have a select; the system meeting row shows its type read-only.
-    expect(selects.length).toBe(3);
-    expect(selects[1].value).toBe('bug');
-    expect(selects[0].value).toBe('task');
-    expect(Array.from(selects[0].options).map((o) => o.value)).toEqual(['task', 'bug', 'story', 'feature', 'testing']);
+    (fixture.nativeElement.querySelector('.category-list__edit-icon') as HTMLButtonElement).click();
+    fixture.detectChanges();
 
-    selects[0].value = 'testing';
-    selects[0].dispatchEvent(new Event('change'));
+    const type = fixture.nativeElement.querySelector('[data-testid="category-edit-kind-select"]') as HTMLSelectElement;
+    expect(type.value).toBe('task');
+    expect(Array.from(type.options).map((o) => o.value)).toEqual(['task', 'bug', 'story', 'feature', 'testing']);
+
+    type.value = 'testing';
+    type.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((button) => button.textContent?.trim() === 'Save')!.click();
     await fixture.whenStable();
 
     expect(editCategory).toHaveBeenCalledWith('c1', { name: 'Task', displayOrder: 0, kind: 'testing' });
   });
 
-  it('a system category shows its type and cannot change it', () => {
+  it('picking an icon on a row saves it at once', async () => {
+    const { fixture, editCategory } = setup();
+    fixture.detectChanges();
+
+    const picker = fixture.debugElement.query(By.css('[data-testid="category-icon-picker"]')).componentInstance as IconPickerComponent;
+    picker.iconChange.emit('emoji:🐞');
+    await fixture.whenStable();
+
+    expect(editCategory).toHaveBeenCalledWith('c1', { name: 'Task', displayOrder: 0, icon: 'emoji:🐞' });
+  });
+
+  it('removing an icon sends an empty value, which clears it', async () => {
+    const { fixture, editCategory } = setup();
+    fixture.detectChanges();
+
+    const picker = fixture.debugElement.query(By.css('[data-testid="category-icon-picker"]')).componentInstance as IconPickerComponent;
+    picker.iconChange.emit(null);
+    await fixture.whenStable();
+
+    expect(editCategory).toHaveBeenCalledWith('c1', { name: 'Task', displayOrder: 0, icon: '' });
+  });
+
+  it('a system category shows a fixed icon, with no picker', () => {
     const { fixture } = setup();
     fixture.detectChanges();
     const rows = fixture.nativeElement.querySelectorAll('.category-list__row') as NodeListOf<HTMLElement>;
 
-    expect(rows[3].querySelector('[data-testid="category-kind-select"]')).toBeNull();
-    expect(rows[3].querySelector('[data-testid="category-kind-readonly"]')!.textContent!.trim()).toBe('Meeting');
+    expect(rows[3].querySelector('[data-testid="category-icon-picker"]')).toBeNull();
+    expect(rows[3].querySelector('[data-testid="category-icon-fixed"] svg')).not.toBeNull();
+    expect(rows[0].querySelector('[data-testid="category-icon-picker"]')).not.toBeNull();
   });
 });
 
