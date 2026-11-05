@@ -10,7 +10,6 @@
 >
   <app-popout-header-actions
     widget-actions
-    [refreshedAt]="view() === 'standard' ? store.loadedAt() : null"
     [refreshing]="refreshing()"
     [expanded]="false"
     [canExpand]="true"

@@ -60,6 +60,13 @@
           </svg>
         </div>
         <div class="min-w-0">
+          <p class="truncate text-[11px] font-medium text-slate-600 @lg:text-xs @xl:text-base">Time left to finish</p>
+          <p class="text-lg font-bold leading-tight text-slate-900 @lg:text-2xl @xl:text-3xl" data-testid="time-left">{{ timeLeftLabel() }}</p>
+          <!-- The finish line keeps its height before clock-in too, so the tiles (and the gap under the date) never change size -->
+          @if (finishLabel(); as finish) {
+            <p class="truncate text-[11px] font-medium text-slate-600 @lg:text-sm @xl:text-lg" data-testid="finish-at">{{ finish }}</p>
+          } @else {
+            <p class="invisible text-[11px] font-medium @lg:text-sm @xl:text-lg" aria-hidden="true">&nbsp;</p>
           <p class="truncate text-[11px] font-medium text-[var(--color-text-secondary)] @lg:text-xs @xl:text-base">Time left to finish</p>
           <p class="text-lg font-bold leading-tight text-[var(--color-text-primary)] @lg:text-2xl @xl:text-3xl" data-testid="time-left">{{ timeLeftLabel() }}</p>
           @if (finishLabel(); as finish) {
@@ -164,4 +171,19 @@
     </div>
   }
 </section>
+</div>
+
+<!--
+  Refresh, top right and shown only on hover, like every dashboard card. It sits outside the scaled design
+  canvas so it keeps the same size as the other cards' refresh button, whatever the card's scale.
+-->
+<div class="absolute right-4 top-4 z-20" data-testid="today-refresh-corner">
+  <app-popout-header-actions
+    style="--popout-actions-bg: transparent"
+    [refreshing]="refreshing()"
+    [expanded]="false"
+    [canExpand]="false"
+    [revealOnHover]="true"
+    (refresh)="refresh()"
+  />
 </div>

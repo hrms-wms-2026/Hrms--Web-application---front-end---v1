@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { RouterLink } from '@angular/router';
 import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse } from '../../../calendar/models/calendar-event.model';
@@ -40,7 +41,7 @@ export type AgendaItemKind = 'Meeting' | 'Event';
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
-  imports: [NgTemplateOutlet, RouterLink, KeyboardClickDirective, MeetingOccurrenceDrawerComponent],
+  imports: [NgTemplateOutlet, RouterLink, KeyboardClickDirective, MeetingOccurrenceDrawerComponent, PopoutHeaderActionsComponent],
   // A size container: the row layout follows the card's own width (Small / Large on the grid).
   host: { class: '@container block' },
   templateUrl: './todays-schedule-card.component.html',
@@ -56,6 +57,8 @@ export class TodaysScheduleCardComponent implements OnInit {
   private readonly rawMeetings = signal<readonly MeetingListItem[]>([]);
   private readonly todayWindow = signal<{ from: string; to: string } | null>(null);
   protected readonly loading = signal(true);
+  /** A refresh from the header button: the list stays on screen while it reloads. */
+  protected readonly refreshing = signal(false);
   protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
 
   /** Today's meetings-as-tasks occurrences, in chronological start and end order; a cancelled one is left out. */
@@ -159,6 +162,16 @@ export class TodaysScheduleCardComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.load();
+  }
+
+  protected refresh(): void {
+    if (this.refreshing()) return;
+    this.refreshing.set(true);
+    this.load();
+  }
+
+  private load(): void {
     this.api.getMyTimezone().subscribe({
       next: ({ timezone }) => this.loadTodaysEvents(timezone),
       error: () => this.loadTodaysEvents('UTC')
@@ -272,10 +285,12 @@ export class TodaysScheduleCardComponent implements OnInit {
       next: (response) => {
         this.rawEvents.set(response.events);
         this.loading.set(false);
+        this.refreshing.set(false);
       },
       error: () => {
         this.rawEvents.set([]);
         this.loading.set(false);
+        this.refreshing.set(false);
       }
     });
   }

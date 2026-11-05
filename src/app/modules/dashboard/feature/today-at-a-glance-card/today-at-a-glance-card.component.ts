@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { DashboardGreetingComponent } from '../dashboard-greeting/dashboard-greeting.component';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { LeaveRequestApiService } from '../../../leave/data-access/leave-request-api.service';
 import { formatMinutes } from '../../util/timeline-segments.util';
 import { getTimeOfDayInfo, TimeOfDayInfo } from '../../util/time-of-day.util';
@@ -62,9 +63,9 @@ const STATUS_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-today-at-a-glance-card',
   standalone: true,
-  imports: [DashboardGreetingComponent],
+  imports: [DashboardGreetingComponent, PopoutHeaderActionsComponent],
   // The card clips the scaled design canvas inside it (see DESIGN_WIDTH).
-  host: { class: 'relative block h-full overflow-hidden rounded-2xl' },
+  host: { class: 'group relative block h-full overflow-hidden rounded-2xl' },
   templateUrl: './today-at-a-glance-card.component.html',
   // On a wide card the illustration sits top right and fades out to the left and to the bottom.
   styles: `
@@ -98,6 +99,10 @@ export class TodayAtAGlanceCardComponent implements OnInit {
 
   protected readonly today = this.store.today;
   protected readonly loading = this.store.todayLoading;
+  /** When the card's data last came from the backend (page open, refresh button, or a clock/break action). */
+  private readonly loadedAt = this.store.todayLoadedAt;
+  /** The refresh button's request is in flight. */
+  protected readonly refreshing = signal(false);
   protected readonly timeOfDayInfo = computed<TimeOfDayInfo>(() => getTimeOfDayInfo(new Date(this.now())));
 
   /** Approved leave around today, as start/end; drawn red on the activity bar. */
@@ -141,7 +146,7 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     const left = this.minutesLeft();
     if (left === null) return null;
     if (left === 0) return 'Required time done';
-    const from = this.lastUpdated()?.getTime() ?? this.now();
+    const from = this.loadedAt()?.getTime() ?? this.now();
     return `Finish at ${formatClock(new Date(from + left * 60_000))}`;
   });
 
@@ -176,8 +181,6 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     return buildDayBlocks(axis, today, breaks, this.leaves(), this.now());
   });
 
-  private readonly lastUpdated = signal<Date | null>(null);
-
   constructor() {
     afterNextRender(() => {
       const el = this.host.nativeElement;
@@ -206,7 +209,20 @@ export class TodayAtAGlanceCardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.store.loadToday().then(() => this.lastUpdated.set(new Date()));
+    void this.store.loadToday();
+  }
+
+  /** The refresh button: reloads today's attendance (and its leave); the button replays the load animation when done. */
+  protected async refresh(): Promise<void> {
+    if (this.refreshing()) return;
+    this.refreshing.set(true);
+    this.leaveRequestedFor = null;
+    try {
+      await this.store.loadToday();
+    } finally {
+      this.refreshing.set(false);
+      this.now.set(Date.now());
+    }
   }
 
   private fitCanvas(width: number, height: number): void {

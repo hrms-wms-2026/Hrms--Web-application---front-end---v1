@@ -34,7 +34,6 @@ import { formatPercent } from '../../utils/team-progress-format.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamStatusDetailDialogComponent } from '../team-status-detail-dialog/team-status-detail-dialog.component';
 
-const REFRESH_INTERVAL_MS = 60_000;
 /** Elapsed times tick between refreshes; the counts only change when the data reloads. */
 const TICK_MS = 30_000;
 
@@ -88,7 +87,6 @@ export class TeamStatusCardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly size = injectHostSize();
 
-  private pollId: ReturnType<typeof setInterval> | null = null;
   private tickId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
   private lastView: PresenceView | null = null;
@@ -209,11 +207,9 @@ export class TeamStatusCardComponent implements OnInit {
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    if (document.visibilityState === 'visible') this.startPolling();
     this.tickId = setInterval(() => this.now.set(new Date()), TICK_MS);
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopPolling();
       if (this.tickId) clearInterval(this.tickId);
     });
   }
@@ -298,21 +294,6 @@ export class TeamStatusCardComponent implements OnInit {
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
       this.feed.reload();
-      this.startPolling();
-    } else {
-      this.stopPolling();
-    }
-  }
-
-  private startPolling(): void {
-    if (this.pollId) return;
-    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
-  }
-
-  private stopPolling(): void {
-    if (this.pollId) {
-      clearInterval(this.pollId);
-      this.pollId = null;
     }
   }
 }

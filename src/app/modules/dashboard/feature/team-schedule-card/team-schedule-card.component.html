@@ -14,7 +14,6 @@
       <span class="tsc-off-chip" data-testid="tsc-planner-off" title="Schedules aren't shown. Clocked time still counts.">Planner is off</span>
     }
     <app-popout-header-actions
-      [refreshedAt]="drawn() === 'rows' || drawn() === 'timeline' ? store.loadedAt() : null"
       [refreshing]="refreshing()"
       [expanded]="false"
       [canExpand]="true"
