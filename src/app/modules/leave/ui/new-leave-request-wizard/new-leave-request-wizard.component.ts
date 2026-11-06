@@ -1,5 +1,5 @@
 /**
- * New leave request: one form (type chips, From/To, Full Day / Half Day / Custom Hours, reason) whose
+ * New leave request: one form (type chips, From/To, Full Day / Half Day / Custom Hours, reason, document) whose
  * hours, balance after, and policy warnings preview as soon as the dates are valid.
  */
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, effect, signal, untracked, OnChanges, OnInit } from '@angular/core';
@@ -108,17 +108,20 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
 
   readonly reasonMaxLength = 500;
 
-  /** Type + range last sent for preview, so editing the reason doesn't re-run it. */
+  /** Type + range + documents last sent for preview, so editing the reason doesn't re-run it. */
   private lastPreviewKey = '';
+  /** The attached file ids as a signal: the preview effect can't see an @Input, and a required document fails preview until one is attached. */
+  private readonly documentKey = signal('');
 
   constructor() {
     // Preview (total, balance, notice and conflict warnings) as soon as the type and dates are valid.
     effect(() => {
       const d = this.draft();
+      const documents = this.documentKey();
       if (!d.leaveTypeId || this.dateRangeHint() !== null) return;
       const payload = this.toSubmitPayload();
       if (!payload) return;
-      const key = `${payload.leaveTypeId}|${payload.startAt}|${payload.endAt}`;
+      const key = `${payload.leaveTypeId}|${payload.startAt}|${payload.endAt}|${documents}`;
       if (key === this.lastPreviewKey) return;
       this.lastPreviewKey = key;
       untracked(() => this.previewRequested.emit(payload));
@@ -129,6 +132,7 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
   leaveTypeOptions: readonly SelectOption[] = [];
 
   ngOnChanges(): void {
+    this.documentKey.set(this.uploadedDocuments.map((doc) => doc.id).join(','));
     this.leaveTypeOptions = [
       ...this.activeLeaveTypes()
         .slice(TYPE_CHIP_LIMIT)
@@ -208,6 +212,14 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
     return this.selectedLeaveType()?.name ?? '';
   }
 
+  /** The leave type's document rule. With an hours limit it stays required until the preview shows the request is within it. */
+  documentRequired(): boolean {
+    const type = this.selectedLeaveType();
+    if (!type?.requiresDocument) return false;
+    const after = type.documentRequiredAfterHours;
+    return after === null || !this.previewResult || this.previewResult.totalHours > after;
+  }
+
   onLeaveTypeChange(leaveTypeId: string): void {
     this.draft.update((d) => ({ ...d, leaveTypeId }));
   }
@@ -241,6 +253,7 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
     const d = this.draft();
     if (!d.leaveTypeId || (this.onBehalf && this.employeeId() === null)) return false;
     if (this.toSubmitPayload() === null || this.dateRangeHint() !== null) return false;
+    if (this.documentRequired() && this.uploadedDocuments.length === 0) return false;
     return !this.submitting && !this.uploadingDocument && !this.previewing && !this.previewError;
   }
 

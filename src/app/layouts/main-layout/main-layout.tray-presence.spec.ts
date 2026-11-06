@@ -109,7 +109,7 @@ describe('MainLayoutComponent tray activation gate', () => {
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+          useValue: { pageSubSidebar: signal(null), pageSubSidebarActions: signal(null), activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
         { provide: FileApiService, useValue: fileApiStub }
@@ -148,7 +148,7 @@ describe('MainLayoutComponent tray activation gate', () => {
     isBlocking.set(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('#gate-title')?.textContent).toContain(
-      'Connect the ONEVO tray app'
+      'Connect the CROWNUS tray app'
     );
     expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).toBeNull();
@@ -197,7 +197,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+          useValue: { pageSubSidebar: signal(null), pageSubSidebarActions: signal(null), activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
         { provide: FileApiService, useValue: fileApiStub }

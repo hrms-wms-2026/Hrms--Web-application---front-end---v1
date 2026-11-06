@@ -1,19 +1,21 @@
 import { MeetingCreatedEvent, drawerKeyForCreated } from '../../../work/meetings/utils/meeting-created-drawer.util';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { TemplatePortal } from '@angular/cdk/portal';
+import { ChangeDetectionStrategy, Component, DestroyRef, TemplateRef, ViewContainerRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { MeetingDraft, MeetingFormModalComponent, MeetingPrefill } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { NavigationStateService } from '../../../../layouts/main-layout/nav/navigation-state.service';
 import { CalendarEventResponse, MeetingProvider, RecurrenceEditScope } from '../../models/calendar-event.model';
 import { CalendarEventStore } from '../../state/calendar-event.store';
 import { buildMonthGrid } from '../../utils/calendar-grid.util';
 import { CalendarMonthGridComponent } from '../../ui/calendar-month-grid/calendar-month-grid.component';
 import { CalendarWeekViewComponent } from '../calendar-week-view/calendar-week-view.component';
 import { CalendarDayViewComponent } from '../calendar-day-view/calendar-day-view.component';
-import { CalendarAgendaViewComponent } from '../calendar-agenda-view/calendar-agenda-view.component';
 import {
   CalendarEventFormModalComponent, CalendarEventFormSubmission, RespondToCalendarEventPayload
 } from '../../ui/calendar-event-form-modal/calendar-event-form-modal.component';
@@ -37,7 +39,6 @@ import { PlannerLeaveLayerStore } from '../../state/planner-leave-layer.store';
 import { TeamPlannerStore } from '../../state/team-planner.store';
 import { TeamPlannerComponent } from '../team-planner/team-planner.component';
 import { MyTeamCapabilitiesStore } from '../../../dashboard/state/my-team-capabilities.store';
-import { EventDraft } from '../../utils/event-draft';
 import { CREATE_TAB_ORDER, CreateSlot, CreateTab, clock } from '../../ui/planner-create-popover/planner-create-draft';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 import {
@@ -53,7 +54,7 @@ import { PlannerBlockPickerComponent } from '../../ui/planner-block-picker/plann
 import { PlannerMonthSummary } from '../../ui/calendar-month-grid/calendar-month-grid.component';
 import { MinuteRange, blockRange, busyIntervals, dayLoad, moveAfterSlot, windowMinutes } from '../../utils/planner-grid.util';
 
-export type CalendarView = 'month' | 'week' | 'day' | 'agenda';
+export type CalendarView = 'month' | 'week' | 'day';
 
 function toDateString(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -100,18 +101,23 @@ const CONNECTED_PROVIDER_LABELS: Record<string, string> = {
   microsoft: 'Outlook'
 };
 
+/** Where the layout shows its sub-sidebar. */
+const WIDE_SCREEN = '(min-width: 769px)';
+
 @Component({
   selector: 'app-calendar-page',
   standalone: true,
   imports: [
     CommonModule, ButtonComponent, CalendarMonthGridComponent, CalendarWeekViewComponent,
-    CalendarDayViewComponent, CalendarAgendaViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
+    CalendarDayViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
     MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
     PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent, TimeOffTabComponent, NewLeaveRequestWizardComponent,
-    TeamPlannerComponent
+    TeamPlannerComponent, SelectComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
   providers: [PlannerLayerStore, WorkItemPlanFlow, PlannerLeaveLayerStore, TeamPlannerStore],
+  // A real height on wide screens, so the Task list sub-sidebar can fill the column.
+  host: { class: 'block md:h-full' },
   templateUrl: './calendar-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -128,12 +134,7 @@ export class CalendarPageComponent {
   readonly cursor = signal(new Date());
   readonly formOpen = signal(false);
   readonly editingEvent = signal<CalendarEventResponse | null>(null);
-  readonly prefillStart = signal<string | null>(null);
-  readonly prefillEnd = signal<string | null>(null);
   readonly submitting = signal(false);
-  readonly meetingFormOpen = signal(false);
-  /** Set when a new calendar event with people is handed over to the meeting form. */
-  readonly meetingPrefill = signal<MeetingPrefill | null>(null);
   readonly meetingsAvailability = inject(MeetingsAvailabilityService);
   readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
 
@@ -143,22 +144,33 @@ export class CalendarPageComponent {
   private readonly auth = inject(AuthStore);
   private readonly permissions = inject(PermissionService);
   readonly employeeId = computed(() => this.auth.employeeId());
-  /** Week view's Focus panel; Day view always shows it. */
-  readonly focusOpen = signal(readFlag('planner.focusOpen', true));
-  /** Month and Agenda show the panel only when asked. */
-  readonly focusOpenElsewhere = signal(false);
   readonly showWeekend = signal(readFlag('planner.showWeekend', false));
   readonly plannerDay = signal<PlannerDayResponse | null>(null);
   readonly pickerItem = signal<PlannerFocusItem | PlannerRangeBlockView | null>(null);
 
-  readonly showPanel = computed(() => {
-    if (!this.planner.active()) return false;
-    switch (this.view()) {
-      case 'day': return true;
-      case 'week': return this.focusOpen();
-      default: return this.focusOpenElsewhere();
-    }
+  /** The Task list goes with the planner; the team view has its own controls. */
+  readonly taskListOn = computed(() => this.planner.active() && !this.teamMode());
+  /** The layout hides its sub-sidebar on a phone, so the page shows the Task list itself there. */
+  readonly wideScreen = signal(typeof window !== 'undefined' && !!window.matchMedia?.(WIDE_SCREEN).matches);
+  private readonly navState = inject(NavigationStateService);
+  private readonly taskListTemplate = viewChild.required<TemplateRef<unknown>>('taskList');
+  private readonly taskListActionsTemplate = viewChild.required<TemplateRef<unknown>>('taskListActions');
+  /** Opened from the sub-sidebar header; the Task list shows the field. */
+  readonly taskSearchOpen = signal(false);
+  private readonly viewContainer = inject(ViewContainerRef);
+  /** Rendered by the layout's sub-sidebar but declared here, so the Task list keeps this page's stores and handlers. */
+  private readonly taskListEffect = effect(() => {
+    const shown = this.taskListOn() && this.wideScreen();
+    this.navState.pageSubSidebar.set(shown ? new TemplatePortal(this.taskListTemplate(), this.viewContainer) : null);
+    this.navState.pageSubSidebarActions.set(shown ? new TemplatePortal(this.taskListActionsTemplate(), this.viewContainer) : null);
   });
+
+  /** The view list; the planner's Week is the working days until Show weekend is on. */
+  readonly viewOptions = computed<readonly SelectOption[]>(() => [
+    { value: 'month', label: 'Month' },
+    { value: 'week', label: this.planner.active() && !this.showWeekend() ? 'Work week' : 'Week' },
+    { value: 'day', label: 'Day' }
+  ]);
 
   readonly plannerBlocks = computed(() => new Map([...this.planner.dayByDate()].map(([date, day]) => [date, day.blocks])));
   readonly plannerWindows = computed(() => new Map([...this.planner.dayByDate()].map(([date, day]) => [date, day.workWindow])));
@@ -187,8 +199,6 @@ export class CalendarPageComponent {
   readonly monthSummaries = computed(() => new Map<string, PlannerMonthSummary>([...this.plannerLoads()]
     .filter(([, l]) => l.blockCount > 0 || l.meetingCount > 0)
     .map(([date, l]) => [date, { tasks: l.blockCount, meetings: l.meetingCount, plannedMinutes: l.plannedMinutes }])));
-
-  readonly agendaBlocks = computed(() => [...this.planner.dayByDate().values()].flatMap((d) => d.blocks));
 
   /** Week view: the legal entity's working days unless "Show weekend" is on (all seven when the schedule is unknown). */
   readonly weekDays = computed<readonly string[] | null>(() => {
@@ -222,7 +232,6 @@ export class CalendarPageComponent {
       case 'month': return c.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
       case 'week': return `Week of ${this.weekStart()}`;
       case 'day': return this.dayDate();
-      case 'agenda': return 'Agenda';
     }
   });
 
@@ -271,6 +280,14 @@ export class CalendarPageComponent {
   });
 
   constructor() {
+    const media = typeof window !== 'undefined' ? window.matchMedia?.(WIDE_SCREEN) : undefined;
+    const onScreenChange = (event: MediaQueryListEvent) => this.wideScreen.set(event.matches);
+    media?.addEventListener?.('change', onScreenChange);
+    inject(DestroyRef).onDestroy(() => {
+      media?.removeEventListener?.('change', onScreenChange);
+      this.navState.pageSubSidebar.set(null);
+      this.navState.pageSubSidebarActions.set(null);
+    });
     this.store.loadMyTimezone();
     this.store.loadMeetingConnectionStatus();
     this.handleCalendarConnectionRedirect();
@@ -366,12 +383,6 @@ export class CalendarPageComponent {
         const date = this.dayDate();
         return { from: `${date}T00:00:00Z`, to: `${date}T23:59:59Z` };
       }
-      case 'agenda': {
-        const start = toDateString(this.cursor());
-        const end = new Date(this.cursor());
-        end.setDate(end.getDate() + 30);
-        return { from: `${start}T00:00:00Z`, to: `${toDateString(end)}T23:59:59Z` };
-      }
     }
   }
 
@@ -386,10 +397,6 @@ export class CalendarPageComponent {
         return { from: this.weekStart(), to: addDays(this.weekStart(), 6) };
       case 'day':
         return { from: this.dayDate(), to: this.dayDate() };
-      case 'agenda': {
-        const start = toDateString(this.cursor());
-        return { from: start, to: addDays(start, 30) };
-      }
     }
   }
 
@@ -403,24 +410,6 @@ export class CalendarPageComponent {
     const [y, m, d] = date.split('-').map(Number);
     this.cursor.set(new Date(y, m - 1, d));
     this.view.set('day');
-  }
-
-  toggleFocus(): void {
-    if (this.view() === 'week') {
-      this.focusOpen.update((open) => !open);
-      writeFlag('planner.focusOpen', this.focusOpen());
-    } else if (this.view() !== 'day') {
-      this.focusOpenElsewhere.update((open) => !open);
-    }
-  }
-
-  closeFocus(): void {
-    if (this.view() === 'week') {
-      this.focusOpen.set(false);
-      writeFlag('planner.focusOpen', false);
-    } else {
-      this.focusOpenElsewhere.set(false);
-    }
   }
 
   toggleWeekend(): void {
@@ -523,9 +512,6 @@ export class CalendarPageComponent {
       case 'day':
         this.cursor.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + direction));
         break;
-      case 'agenda':
-        this.cursor.set(new Date(d.getFullYear(), d.getMonth(), d.getDate() + direction * 30));
-        break;
     }
   }
 
@@ -551,42 +537,19 @@ export class CalendarPageComponent {
   }
 
   /** A meeting work item was created (or sent for approval): close the form and show it on the calendar. */
-  /** Meetings-as-tasks: a new event that would have people or a link becomes a Meeting work item instead. */
-  onConvertToMeeting(prefill: MeetingPrefill): void {
-    this.formOpen.set(false);
-    this.meetingPrefill.set(prefill);
-    this.meetingFormOpen.set(true);
-  }
-
   async onMeetingSaved(event?: MeetingCreatedEvent): Promise<void> {
-    this.meetingFormOpen.set(false);
     await this.reloadEvents();
     // A new meeting opens in its drawer; a request sent for approval has nothing to open yet.
     const key = event ? drawerKeyForCreated(event) : null;
     if (key) this.openMeeting.set(key);
   }
 
-  openCreate(prefillStart?: string, prefillEnd?: string): void {
-    this.editingEvent.set(null);
-    this.prefillStart.set(prefillStart ?? null);
-    this.prefillEnd.set(prefillEnd ?? null);
-    this.formOpen.set(true);
-  }
-
   onSlotClick(slot: { date: string; hour: number }): void {
-    if (this.canCreateHere(slot.date)) {
-      this.openCreatePopover(slot.date, slot.hour * 60, Math.min(slot.hour * 60 + 60, 24 * 60));
-      return;
-    }
-    this.openCreate(`${slot.date}T${String(slot.hour).padStart(2, '0')}:00`);
+    this.openCreatePopover(slot.date, slot.hour * 60, Math.min(slot.hour * 60 + 60, 24 * 60));
   }
 
   onSlotRange(range: { date: string; startMinutes: number; endMinutes: number }): void {
-    if (this.canCreateHere(range.date)) {
-      this.openCreatePopover(range.date, range.startMinutes, range.endMinutes);
-      return;
-    }
-    this.openCreate(`${range.date}T${clock(range.startMinutes)}`, `${range.date}T${clock(range.endMinutes)}`);
+    this.openCreatePopover(range.date, range.startMinutes, range.endMinutes);
   }
 
   // --- Planner create popover (2026-11-03 design) ---
@@ -594,33 +557,34 @@ export class CalendarPageComponent {
   /** The picked time while the create popover is open; null when closed. */
   readonly createSlot = signal<CreateSlot | null>(null);
   readonly createTabs = computed<readonly CreateTab[]>(() => CREATE_TAB_ORDER.filter((tab) => {
+    // A work item is planned on the spot: it needs the planner, and a picked slot must be on a day that can be planned.
+    if (tab === 'workItem') {
+      const slot = this.createSlot();
+      return this.planner.active() && (!slot || !!slot.isDefault || this.canPlan(slot.date));
+    }
     if (tab === 'meeting') return this.meetingsAvailability.canCreate();
     if (tab === 'timeOff') return this.permissions.hasModule('leave') && this.permissions.hasPermission('leave:read-own');
     return true;
   }));
 
-  /** The popover belongs to the planner: it needs the planner's editable days. Elsewhere the event form stays. */
-  private canCreateHere(date: string): boolean {
+  /** Past days, days beyond the planning horizon and a switched-off planner can't take a planned block. */
+  private canPlan(date: string): boolean {
     return this.planner.active() && this.plannerEditable().has(date);
   }
 
-  private openCreatePopover(date: string, startMinutes: number, endMinutes: number): void {
+  private openCreatePopover(date: string, startMinutes: number, endMinutes: number, isDefault = false): void {
     // A new popover is a new work item: the last one's state (created, refused, pending) stays with it.
     this.planFlow.reset();
-    this.createSlot.set({ date, startMinutes, endMinutes, startIso: this.toIso(date, startMinutes), endIso: this.toIso(date, endMinutes) });
+    this.createSlot.set({ date, startMinutes, endMinutes, startIso: this.toIso(date, startMinutes), endIso: this.toIso(date, endMinutes), isDefault });
   }
 
-  /** New event: the popover at the next half hour today (planner zone), for an hour; the event form when it can't. */
+  /** New event: the popover at the next half hour today (planner zone), for an hour; late at night, the day's last hour. */
   onNewEvent(): void {
-    const zone = this.planner.range()?.timezone ?? this.store.myTimezone();
+    const zone = this.plannerZone();
     const now = utcIsoToLocalParts(new Date().toISOString(), zone);
     const [h, m] = now.time.split(':').map(Number);
-    const start = Math.ceil((h * 60 + m + 1) / 30) * 30;
-    if (start + 60 <= 24 * 60 && this.canCreateHere(now.date)) {
-      this.openCreatePopover(now.date, start, start + 60);
-      return;
-    }
-    this.openCreate();
+    const start = Math.min(Math.ceil((h * 60 + m + 1) / 30) * 30, 23 * 60);
+    this.openCreatePopover(now.date, start, start + 60, true);
   }
 
   closeCreate(): void {
@@ -629,8 +593,6 @@ export class CalendarPageComponent {
 
   /** The planner's zone: the grid's wall-clock times and every tab's slot are in it. */
   readonly plannerZone = computed(() => this.planner.range()?.timezone ?? this.store.myTimezone());
-  /** "More options" on the Event tab: the full event form, filled with everything the tab held. */
-  readonly eventPrefill = signal<EventDraft | null>(null);
 
   /** A tab created its item: close the popover and show it. */
   onCreateDone(): void {
@@ -693,7 +655,7 @@ export class CalendarPageComponent {
   }
 
   /** "More options" on the Work item tab: the full Create work item form, filled, then the created item is planned. */
-  readonly workItemForm = signal<{ projectId: string; objectiveId: string; prefill: TaskFormPrefill; slot: CreateSlot; planned: boolean } | null>(null);
+  readonly workItemForm = signal<{ projectId: string; objectiveId: string; prefill: TaskFormPrefill; slot: CreateSlot | null; continuation: readonly CreateSlot[]; planned: boolean } | null>(null);
   private readonly planFlow = inject(WorkItemPlanFlow);
 
   async onWorkItemMoreOptions(draft: WorkItemDraft): Promise<void> {
@@ -706,8 +668,8 @@ export class CalendarPageComponent {
     await this.projects.loadMyMilestones(draft.projectId);
     this.closeCreate();
     this.workItemForm.set({
-      projectId: draft.projectId, objectiveId: draft.objectiveId ?? '', slot: draft.slot, planned: false,
-      prefill: { title: draft.title, categoryId: draft.categoryId, priority: draft.priority, estimatedHours: draft.estimatedHours,
+      projectId: draft.projectId, objectiveId: draft.objectiveId ?? '', slot: draft.slot, continuation: draft.continuation, planned: false,
+      prefill: { title: draft.title, description: draft.description, categoryId: draft.categoryId, priority: draft.priority, estimatedHours: draft.estimatedHours,
         dueDate: draft.dueDate, assigneeEmployeeId: this.employeeId() },
     });
   }
@@ -715,9 +677,9 @@ export class CalendarPageComponent {
   /** The full form created an item: plan the first one it created directly ('' = sent for approval: nothing to plan). */
   async onWorkItemFormCreated(taskId: string): Promise<void> {
     const form = this.workItemForm();
-    if (!taskId || !form || form.planned) return;
+    if (!taskId || !form?.slot || form.planned) return;
     this.workItemForm.set({ ...form, planned: true });
-    await this.planFlow.planExisting(taskId, '', form.slot);
+    await this.planFlow.planExisting(taskId, '', form.slot, form.continuation);
     const state = this.planFlow.state();
     if (state.kind === 'notPlanned') {
       const reason = state.reason === plannerErrorMessage('planner_task_not_plannable') ? 'assigned to someone else' : state.reason;
@@ -739,22 +701,6 @@ export class CalendarPageComponent {
     });
   }
 
-  /** "More options" on the Meeting tab: today's full meeting form, filled with everything the tab held. */
-  onMeetingMoreOptions(draft: MeetingDraft): void {
-    this.closeCreate();
-    this.meetingPrefill.set(draft);
-    this.meetingFormOpen.set(true);
-  }
-
-  onEventMoreOptions(draft: EventDraft): void {
-    this.closeCreate();
-    this.editingEvent.set(null);
-    this.prefillStart.set(null);
-    this.prefillEnd.set(null);
-    this.eventPrefill.set(draft);
-    this.formOpen.set(true);
-  }
-
   openEdit(eventId: string): void {
     const found = this.store.events().find((e) => e.id === eventId) ?? null;
     // A task meeting opens its own drawer by series + original start (it may not be materialized yet, so it has no
@@ -764,52 +710,34 @@ export class CalendarPageComponent {
       return;
     }
     this.editingEvent.set(found);
-    this.prefillStart.set(null);
-    this.prefillEnd.set(null);
     this.formOpen.set(true);
   }
 
   closeForm(): void {
     this.formOpen.set(false);
-    this.eventPrefill.set(null);
     this.editingEvent.set(null);
-    this.prefillStart.set(null);
-    this.prefillEnd.set(null);
-    this.store.clearConflicts();
     this.store.clearEligibleNominees();
   }
 
   async onSave(submission: CalendarEventFormSubmission): Promise<void> {
-    // store.saving ends after the event POST, so the follow-up meeting call left Create clickable and a 2nd click duplicated the event.
+    // One save at a time: a second click must not send the update twice.
     if (this.submitting()) return;
     this.submitting.set(true);
     try {
       const editing = this.editingEvent();
+      if (!editing) return;
       let ok: boolean;
 
-      if ('update' in submission && editing) {
-        if (submission.scope && editing.recurrenceMasterId) {
-          const { from, to } = this.currentRange();
-          ok = await this.store.editOccurrence(
-            editing.recurrenceMasterId,
-            { originalStart: editing.originalStart!, scope: submission.scope, ...submission.update },
-            from, to
-          );
-        } else {
-          ok = await this.store.updateEvent(editing.id, submission.update);
-          if (ok) await this.reloadEvents();
-        }
-      } else if ('create' in submission) {
-        const created = await this.store.createEvent(submission.create);
-        ok = !!created;
-        if (created && submission.meetingProvider) {
-          // The event was created with this meeting pending, so its invites were held back for the link: a failed
-          // link keeps the event and sends them without one; the store's actionError explains what happened (P1-5).
-          await this.store.createMeeting(created.id, submission.meetingProvider, true);
-        }
-        if (created) await this.reloadEvents();
+      if (submission.scope && editing.recurrenceMasterId) {
+        const { from, to } = this.currentRange();
+        ok = await this.store.editOccurrence(
+          editing.recurrenceMasterId,
+          { originalStart: editing.originalStart!, scope: submission.scope, ...submission.update },
+          from, to
+        );
       } else {
-        ok = false;
+        ok = await this.store.updateEvent(editing.id, submission.update);
+        if (ok) await this.reloadEvents();
       }
 
       if (ok) this.closeForm();
@@ -844,13 +772,6 @@ export class CalendarPageComponent {
       await this.store.deleteEvent(editing.id);
     }
     this.closeForm();
-  }
-
-  onCheckConflicts(payload: {
-    participantEmployeeIds: readonly string[]; startDate: string; endDate: string; isAllDay?: boolean; timeZone?: string;
-  }): void {
-    this.store.checkConflicts(payload.participantEmployeeIds, payload.startDate, payload.endDate,
-      { isAllDay: payload.isAllDay, timeZone: payload.timeZone });
   }
 
   async onRespond(payload: RespondToCalendarEventPayload): Promise<void> {

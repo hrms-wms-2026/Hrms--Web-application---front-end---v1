@@ -252,7 +252,7 @@ export interface PositionTemplatePackPositionResponse {
  * drop targets can tell a template drag apart from an existing-position
  * reparent drag (which uses 'text/plain' for the dragged position id).
  */
-export const POSITION_TEMPLATE_DRAG_MIME_TYPE = 'application/x-onevo-position-template';
+export const POSITION_TEMPLATE_DRAG_MIME_TYPE = 'application/x-crownus-position-template';
 
 export type PositionTemplatePresetSource = 'template-click' | 'template-drop-root' | 'template-drop-under-position';
 

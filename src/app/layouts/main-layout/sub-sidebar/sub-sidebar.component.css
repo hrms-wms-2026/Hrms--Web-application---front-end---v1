@@ -18,6 +18,11 @@
   box-shadow: var(--shadow-card);
 }
 
+/* A page's own list needs room for its titles; link lists keep the narrow width. */
+.sub-sidebar--content {
+  width: 18rem;
+}
+
 /* Dark mode: the panel sits at card level; swapping the two tones keeps its rows and hovers a step lighter. */
 :host-context([data-mode='dark']) .sub-sidebar,
 :host-context(html.dark) .sub-sidebar {
@@ -31,6 +36,12 @@
   justify-content: space-between;
   margin: 0 0.25rem 0.75rem 0.5rem;
   min-height: 24px;
+}
+
+.sub-sidebar__tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .sub-sidebar__heading {

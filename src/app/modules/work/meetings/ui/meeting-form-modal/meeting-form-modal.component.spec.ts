@@ -1,3 +1,4 @@
+import { OverlayModule } from '@angular/cdk/overlay';
 import { NgTemplateOutlet } from '@angular/common';
 import { vi } from 'vitest';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -12,6 +13,8 @@ import { MeetingApiService } from '../../data-access/meeting-api.service';
 import { MeetingCreatedResponse, MeetingEditResponse, MeetingOccurrenceResponse } from '../../models/meeting.models';
 import { MeetingFormModalComponent } from './meeting-form-modal.component';
 import { toZonedParts } from '../../utils/meeting-time';
+import { SelectComponent } from '../../../../../shared/ui/select/select.component';
+import { openSelect, selectDisplayText } from '../../../../../shared/ui/select/select.testing';
 
 /** The specs' clock: 2026-10-30 10:10 in Colombo, before the 2026-11-02 meetings they create. */
 const NOW = '2026-10-30T04:40:00Z';
@@ -58,7 +61,8 @@ describe('MeetingFormModalComponent', () => {
       ],
     });
     // NgTemplateOutlet stays: the form is one template, rendered in the modal or embedded in the work item form.
-    TestBed.overrideComponent(MeetingFormModalComponent, { set: { imports: [NgTemplateOutlet], schemas: [NO_ERRORS_SCHEMA] } });
+    // OverlayModule for the people dropdown's origin, and the real select so the specs can read and open it.
+    TestBed.overrideComponent(MeetingFormModalComponent, { set: { imports: [NgTemplateOutlet, OverlayModule, SelectComponent], schemas: [NO_ERRORS_SCHEMA] } });
   });
 
   function fillOffice(): void {
@@ -95,11 +99,7 @@ describe('MeetingFormModalComponent', () => {
 
   describe('compact, in the Planner create popover (2026-11-03)', () => {
     const q = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
-    const draft = {
-      title: 'Design review', start: '2026-11-03T14:00', end: '2026-11-03T15:30', description: '<p>Agenda</p>', isAllDay: false,
-      timezone: 'Asia/Colombo', recurrence: 'weekly' as const, platform: 'zoom' as const, projectId: null, objectiveId: null,
-      participantIds: ['e2'],
-    };
+    const prefill = { title: 'Design review', start: '2026-11-03T14:00', end: '2026-11-03T15:30', timezone: 'Asia/Colombo' };
 
     it('compact hides private, location, custom rule and bulk invite', () => {
       build({ mode: 'create', embedded: true, compact: true });
@@ -107,44 +107,95 @@ describe('MeetingFormModalComponent', () => {
       expect(q('meeting-private')).toBeNull();
       expect(q('meeting-location')).toBeNull();
       expect(q('meeting-bulk-invite')).toBeNull();
-      expect(Array.from(fixture.nativeElement.querySelectorAll('[data-testid="meeting-recurrence"] option') as NodeListOf<HTMLOptionElement>)
-        .map((o) => o.value)).not.toContain('custom');
-      expect(q('meeting-more')).not.toBeNull();
+      expect(openSelect(q('meeting-recurrence')!, () => fixture.detectChanges()).map((o) => o.textContent?.trim())).not.toContain('Custom rule');
     });
 
-    it('the full form keeps private, location and bulk invite, and has no More options', () => {
+    it('the full form keeps private, location and bulk invite', () => {
       build({ mode: 'create' });
 
       expect(q('meeting-private')).not.toBeNull();
       expect(q('meeting-location')).not.toBeNull();
       expect(q('meeting-bulk-invite')).not.toBeNull();
-      expect(q('meeting-more')).toBeNull();
     });
 
-    it('a MeetingDraft prefill fills every field', () => {
-      build({ mode: 'create', prefill: draft });
-
-      expect(form.form.getRawValue()).toMatchObject({
-        title: 'Design review', date: '2026-11-03', time: '14:00', durationMinutes: 90, description: '<p>Agenda</p>',
-        isAllDay: false, timezone: 'Asia/Colombo', recurrence: 'weekly', platform: 'zoom',
-      });
-      expect(form.participantIds()).toEqual(['e2']);
-    });
-
-    it('More options emits every filled field as MeetingDraft', () => {
-      build({ mode: 'create', embedded: true, compact: true, prefill: draft });
+    it('Cancel closes the form', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill });
       const spy = vi.fn();
-      form.moreOptions.subscribe(spy);
+      form.closed.subscribe(spy);
 
-      q('meeting-more')!.click();
+      q('meeting-cancel')!.click();
 
-      expect(spy).toHaveBeenCalledWith(draft);
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('End shows the start plus the length, and picking an End sets the length', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill });
+      expect(form.endTime()).toBe('15:30');
+      expect(q('meeting-duration')!.textContent).toContain('1h 30 min');
+
+      form.setEndTime('14:45');
+      fixture.detectChanges();
+
+      expect(form.form.controls.durationMinutes.value).toBe(45);
+      expect(q('meeting-duration')!.textContent).toContain('45 min');
+    });
+
+    it('moving the Start keeps the length', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill });
+
+      form.form.controls.time.setValue('15:00');
+
+      expect(form.endTime()).toBe('16:30');
+      expect(form.form.controls.durationMinutes.value).toBe(90);
+    });
+
+    it('an End that makes the meeting too long says so and blocks Create', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill });
+
+      form.setEndTime('13:00');
+      fixture.detectChanges();
+
+      expect(q('meeting-duration-invalid')).not.toBeNull();
+      expect(form.canSave()).toBe(false);
+    });
+
+    it('All day hides the times', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill });
+
+      form.form.controls.isAllDay.setValue(true);
+      fixture.detectChanges();
+
+      expect(q('meeting-start')).toBeNull();
+      expect(q('meeting-end')).toBeNull();
+    });
+
+    it('Repeat reads "Repeat" until one is chosen', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill });
+      expect(selectDisplayText(q('meeting-recurrence')!)).toBe('Repeat');
+
+      form.setRecurrence('daily');
+      fixture.detectChanges();
+
+      expect(selectDisplayText(q('meeting-recurrence')!)).toBe('Every day');
+    });
+
+    it('lists picked people as chips, and removing one drops them', () => {
+      build({ mode: 'create', embedded: true, compact: true, prefill });
+      form.onParticipantsChange(['e2', 'e3']);
+      form.rememberNames([{ id: 'e2', name: 'Ada Lovelace' }]);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelectorAll('[data-testid="meeting-participant-chip"]').length).toBe(1);
+      expect(form.unnamedPeople()).toBe(1);
+
+      form.removeParticipant('e2');
+      expect(form.participantIds()).toEqual(['e3']);
     });
 
     it('shows the past-start note for a slot that has started', () => {
       const started = toZonedParts('2026-10-30T04:30:00Z', 'Asia/Colombo');
       build({ mode: 'create', embedded: true, compact: true,
-        prefill: { ...draft, start: `${started.date}T${started.time}`, end: `${started.date}T23:00`, recurrence: 'none' } });
+        prefill: { ...prefill, start: `${started.date}T${started.time}`, end: `${started.date}T23:00` } });
 
       expect(q('meeting-start-past')).not.toBeNull();
       expect(form.canSave()).toBe(false);
@@ -330,8 +381,8 @@ describe('MeetingFormModalComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect((fixture.nativeElement.querySelector('[data-testid="meeting-project"]') as HTMLSelectElement).value).toBe('p1');
-    expect((fixture.nativeElement.querySelector('[data-testid="meeting-module"]') as HTMLSelectElement).value).toBe('o1');
+    expect(selectDisplayText(fixture.nativeElement.querySelector('[data-testid="meeting-project"]'))).toBe('Acme');
+    expect(selectDisplayText(fixture.nativeElement.querySelector('[data-testid="meeting-module"]'))).toBe('Delivery');
   });
 
   it('offers Office once, by name, and never lists the Office project as a second choice', async () => {
@@ -343,9 +394,7 @@ describe('MeetingFormModalComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const options = Array.from((fixture.nativeElement.querySelector('[data-testid="meeting-project"]') as HTMLSelectElement).options)
-      .map((o) => o.textContent?.trim());
-    expect(options).toEqual(['Office', 'Acme']);
+    expect(form.projectOptions().map((o) => o.label)).toEqual(['Office', 'Acme']);
   });
 
   it('a calendar handoff fills the title, date, time and length', () => {

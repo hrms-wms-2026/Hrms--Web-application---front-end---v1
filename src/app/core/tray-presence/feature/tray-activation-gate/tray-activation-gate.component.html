@@ -2,7 +2,7 @@
   <section class="step" aria-labelledby="step-download">
     <div class="step__header">
       <span class="step__badge" aria-hidden="true">1</span>
-      <h2 id="step-download" class="step__title">Install the ONEVO tray app</h2>
+      <h2 id="step-download" class="step__title">Install the CROWNUS tray app</h2>
     </div>
 
     @if (installerState() === 'ready' && installer(); as info) {
@@ -35,13 +35,13 @@
 <section class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
   <div class="gate__card">
     <div class="gate__header">
-      <h1 id="gate-title">Connect the ONEVO tray app</h1>
+      <h1 id="gate-title">Connect the CROWNUS tray app</h1>
     </div>
 
     @if (presence.phase() === 'checking') {
       <div class="status-box status-box--checking">
         <div class="spinner spinner--lg" aria-hidden="true"></div>
-        <p class="status-text" aria-live="polite">Checking the ONEVO tray connection…</p>
+        <p class="status-text" aria-live="polite">Checking the CROWNUS tray connection…</p>
       </div>
     } @else if (presence.phase() === 'needs-code') {
       <ng-container *ngTemplateOutlet="downloadStep" />
@@ -101,7 +101,7 @@
       <button class="primary" type="button" (click)="regenerate()">Generate a new code</button>
     } @else if (presence.phase() === 'offline') {
       <div class="notice-box notice-box--error">
-        <p aria-live="polite">The ONEVO service is temporarily unavailable. The page will retry automatically.</p>
+        <p aria-live="polite">The CROWNUS service is temporarily unavailable. The page will retry automatically.</p>
         @if (presence.generationError(); as message) {
           <p class="error" role="alert">{{ message }}</p>
         }

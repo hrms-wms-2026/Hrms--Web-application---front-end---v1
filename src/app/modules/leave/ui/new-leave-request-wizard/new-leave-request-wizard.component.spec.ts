@@ -195,6 +195,79 @@ describe('NewLeaveRequestWizardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="document-input"]')).toBeTruthy();
   });
 
+  it('offers an optional upload before a type is picked and for a type with no document rule', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="document-input"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="document-optional"]')).toBeTruthy();
+
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-10' }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="document-optional"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="document-required"]')).toBeNull();
+    expect(fixture.componentInstance.canSubmit()).toBe(true);
+  });
+
+  it('sends an optional document with the request', () => {
+    fixture.componentRef.setInput('uploadedDocuments', [{ id: 'file-1', originalFileName: 'note.pdf' }]);
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-10' }));
+    fixture.detectChanges();
+    const emitted: { fileRecordIds: string[] | null }[] = [];
+    fixture.componentInstance.submitRequested.subscribe((e) => emitted.push(e));
+    fixture.componentInstance.onSubmit();
+    expect(emitted[0].fileRecordIds).toEqual(['file-1']);
+  });
+
+  it('blocks Submit until a mandatory document is attached', () => {
+    fixture.componentRef.setInput('leaveTypes', [{ ...leaveTypes[0], requiresDocument: true }]);
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-10' }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="document-required"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="document-optional"]')).toBeNull();
+    expect(fixture.componentInstance.canSubmit()).toBe(false);
+
+    fixture.componentRef.setInput('uploadedDocuments', [{ id: 'file-1', originalFileName: 'note.pdf' }]);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canSubmit()).toBe(true);
+  });
+
+  it('treats the document as optional once the preview is within the hours limit', () => {
+    fixture.componentRef.setInput('leaveTypes', [{ ...leaveTypes[0], requiresDocument: true, documentRequiredAfterHours: 24 }]);
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-10' }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.documentRequired()).toBe(true);
+
+    fixture.componentRef.setInput('previewResult', preview({ totalHours: 8 }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.documentRequired()).toBe(false);
+    expect(fixture.componentInstance.canSubmit()).toBe(true);
+
+    fixture.componentRef.setInput('previewResult', preview({ totalHours: 32 }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.documentRequired()).toBe(true);
+    expect(fixture.componentInstance.canSubmit()).toBe(false);
+  });
+
+  it('previews again when a document is attached or removed, so a missing-document error clears', () => {
+    const emitted: { fileRecordIds: string[] | null }[] = [];
+    fixture.componentInstance.previewRequested.subscribe((e) => emitted.push(e));
+    fixture.componentInstance.draft.update((d) => ({ ...d, leaveTypeId: 'type-1', startDate: '2026-09-10', endDate: '2026-09-10' }));
+    fixture.detectChanges();
+    expect(emitted.map((e) => e.fileRecordIds)).toEqual([[]]);
+
+    fixture.componentRef.setInput('uploadedDocuments', [{ id: 'file-1', originalFileName: 'note.pdf' }]);
+    fixture.detectChanges();
+    expect(emitted.map((e) => e.fileRecordIds)).toEqual([[], ['file-1']]);
+
+    // A new array with the same files is not a change.
+    fixture.componentRef.setInput('uploadedDocuments', [{ id: 'file-1', originalFileName: 'note.pdf' }]);
+    fixture.detectChanges();
+    expect(emitted.length).toBe(2);
+
+    fixture.componentRef.setInput('uploadedDocuments', []);
+    fixture.detectChanges();
+    expect(emitted.map((e) => e.fileRecordIds)).toEqual([[], ['file-1'], []]);
+  });
+
   it('fills type, dates, times and reason from the initial inputs (Planner create popover)', () => {
     fixture.componentRef.setInput('initialLeaveTypeId', 'type-1');
     fixture.componentRef.setInput('initialStartDate', '2026-11-10');

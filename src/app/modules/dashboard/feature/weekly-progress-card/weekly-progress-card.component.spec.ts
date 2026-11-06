@@ -77,7 +77,7 @@ describe('WeeklyProgressCardComponent', () => {
 
     expect(api.get).not.toHaveBeenCalled();
     expect(q(f, 'wp-percent')?.textContent).toContain('68%');
-    expect(text(f)).toContain('Weekly Work Progress');
+    expect(text(f)).toContain('My weekly progress');
   });
 
   it('fetches the current week when the bootstrap has no data', () => {
@@ -141,20 +141,31 @@ describe('WeeklyProgressCardComponent', () => {
     expect(q(f, 'wp-donut')?.style.width).toBe('140px');
   });
 
-  it('the default 4x3 slot lists the tiles beside the donut and adds nothing below', () => {
+  it('the default 4x3 slot shows hours, percent, bar, three tiles and the change, with nothing below', () => {
     const f = render(fakeWidgetData('success', payload()), cols(4), rows(3));
 
-    expect(qa(f, 'wp-side-tile').length).toBe(4);
-    expect(q(f, 'wp-side-tiles')?.textContent).toContain('Remaining');
+    expect(q(f, 'wp-hours')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('27h / 40h');
+    expect(q(f, 'wp-percent')?.textContent).toContain('68%');
+    expect((q(f, 'wp-progress-bar')?.firstElementChild as HTMLElement).style.width).toBe('68%');
+    expect(qa(f, 'wp-tile').map((t) => t.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'Scheduled32h (80%)', 'Worked27h (68%)', 'Remaining13h (33%)'
+    ]);
+    expect(q(f, 'wp-delta')?.textContent).toContain('vs last week (56%)');
+    expect(q(f, 'wp-donut')).toBeNull();
     expect(q(f, 'daily-work-chart')).toBeNull();
-    expect(f.nativeElement.querySelector('app-kpi-tiles')).toBeNull();
+  });
+
+  it('keeps the progress bar inside its track past 100%', () => {
+    const f = render(fakeWidgetData('success', payload({}, { progressPercent: 130 })), cols(4), rows(3));
+
+    expect((q(f, 'wp-progress-bar')?.firstElementChild as HTMLElement).style.width).toBe('100%');
+    expect(q(f, 'wp-percent')?.textContent).toContain('130%');
   });
 
   it('a large card adds the daily chart, then the weekly comparison', () => {
     const f = render(fakeWidgetData('success', payload()), cols(6), rows(5));
     expect(q(f, 'daily-work-chart')).not.toBeNull();
     expect(q(f, 'wp-comparison')).toBeNull();
-    expect(q(f, 'wp-donut')?.style.width).toBe('140px');
 
     const tall = render(fakeWidgetData('success', payload()), cols(6), rows(7));
     expect(q(tall, 'wp-comparison')?.textContent).toContain('vs last week (22h)');

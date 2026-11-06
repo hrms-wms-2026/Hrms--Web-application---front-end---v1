@@ -33,7 +33,7 @@ import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.compone
 
 /** Per-viewer memory of the period switch. A convenience only: when storage is blocked the card
  * simply starts on All time. */
-export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'onevo.teamProgress.period';
+export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'crownus.teamProgress.period';
 
 export const TEAM_PROGRESS_PERIODS: readonly { value: LedProgressPeriod; label: string }[] = [
   { value: 'all', label: 'All time' },

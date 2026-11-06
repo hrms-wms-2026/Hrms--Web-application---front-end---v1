@@ -19,8 +19,8 @@ import { CalendarConnectionsStore } from '../../state/calendar-connections.store
 
 const SYNC_DIRECTION_OPTIONS: readonly SelectOption[] = [
   { value: 'two_way', label: 'Two-way sync' },
-  { value: 'pull_only', label: 'Pull only (external → ONEVO)' },
-  { value: 'push_only', label: 'Push only (ONEVO → external)' },
+  { value: 'pull_only', label: 'Pull only (external → CROWNUS)' },
+  { value: 'push_only', label: 'Push only (CROWNUS → external)' },
   { value: 'disabled', label: 'Paused' }
 ];
 

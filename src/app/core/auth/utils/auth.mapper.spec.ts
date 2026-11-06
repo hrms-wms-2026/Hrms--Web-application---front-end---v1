@@ -68,7 +68,7 @@ describe('toCurrentUserViewModel', () => {
         {
           document_type: 'privacy_notice',
           version: '1.0',
-          title: 'ONEVO Privacy Notice',
+          title: 'CROWNUS Privacy Notice',
           effective_at: '2026-07-28T08:55:29.331905+00:00',
           content_url: null
         }

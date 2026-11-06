@@ -9,7 +9,7 @@ import {
   ThemeMode
 } from '../models/theme-mode.model';
 
-const STORAGE_KEY = 'onevo.theme.preset';
+const STORAGE_KEY = 'crownus.theme.preset';
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 interface ThemeState {

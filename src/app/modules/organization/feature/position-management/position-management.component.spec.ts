@@ -757,9 +757,9 @@ describe('PositionManagementComponent - System Access Flow', () => {
       return {
         preventDefault: vi.fn(),
         dataTransfer: {
-          types: ['application/x-onevo-position-template'],
+          types: ['application/x-crownus-position-template'],
           dropEffect: '',
-          getData: (type: string) => (type === 'application/x-onevo-position-template' ? JSON.stringify(payload) : '')
+          getData: (type: string) => (type === 'application/x-crownus-position-template' ? JSON.stringify(payload) : '')
         }
       } as unknown as DragEvent;
     }

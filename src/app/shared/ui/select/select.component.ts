@@ -163,6 +163,8 @@ interface DisplayOption extends SelectOption {
             <li class="px-2.5 py-2 text-xs text-[var(--color-text-secondary)]">{{ options().length ? 'No matches' : 'No options' }}</li>
           }
         </ul>
+        <!-- A host's own control under the list, such as a toggle; using it leaves the list open. -->
+        <ng-content select="[selectFooter]" />
         @if (panelActionLabel()) {
           <div class="border-t border-[var(--color-border)] p-1">
             <button

@@ -1,4 +1,4 @@
-<div class="flex flex-col overflow-hidden rounded-lg border border-[var(--color-border)]">
+<div class="flex h-full flex-col overflow-hidden rounded-lg border border-[var(--color-border)]">
   <div data-testid="calendar-hour-header-row" class="flex border-b border-[var(--color-border)] bg-[var(--color-surface)]">
     <div
       data-testid="calendar-hour-tz-label"
@@ -74,7 +74,7 @@
     }
   </div>
 
-  <div class="flex max-h-[70vh] overflow-y-auto scroll-fade">
+  <div class="flex max-h-[70vh] overflow-y-auto scroll-fade md:max-h-none md:min-h-0 md:flex-1">
     <div class="relative h-[72rem] w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
       @for (hour of hours; track hour) {
         <div data-testid="calendar-hour-label" class="h-12 border-b border-[var(--color-border)] px-1 text-[10px] text-[var(--color-text-secondary)]">
