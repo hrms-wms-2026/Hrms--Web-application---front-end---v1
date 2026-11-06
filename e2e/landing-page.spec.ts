@@ -58,13 +58,13 @@ test('skip link is the first keyboard stop and jumps to main content', async ({ 
   await expect(page.locator('.landing-skip-link')).toBeFocused();
 });
 
-test('renders ONEXSO branding and no legacy OneVo Workspace branding or system status', async ({ page }) => {
+test('renders CROWNUS branding and no legacy OneVo Workspace branding or system status', async ({ page }) => {
   await mockGuest(page);
   await page.goto('/');
 
   const logo = page.locator('.landing-header__mark');
   await expect(logo).toBeVisible();
-  await expect(logo).toHaveAttribute('alt', 'ONEXSO');
+  await expect(logo).toHaveAttribute('alt', 'CROWNUS');
 
   await expect(page.locator('body')).not.toContainText('OneVo');
   await expect(page.locator('body')).not.toContainText('All systems operational');

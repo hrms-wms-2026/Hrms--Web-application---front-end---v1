@@ -148,7 +148,7 @@ describe('MainLayoutComponent tray activation gate', () => {
     isBlocking.set(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('#gate-title')?.textContent).toContain(
-      'Connect the ONEVO tray app'
+      'Connect the CROWNUS tray app'
     );
     expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).toBeNull();

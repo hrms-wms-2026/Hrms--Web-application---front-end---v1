@@ -108,10 +108,10 @@ describe('LandingHeaderComponent', () => {
     expect(fixture.componentInstance.menuOpen()).toBe(false);
   });
 
-  it('renders the ONEXSO logo with accessible alt text', async () => {
+  it('renders the CROWNUS logo with accessible alt text', async () => {
     const fixture = await createComponent();
     const logo = fixture.debugElement.query(By.css('.landing-header__mark')).nativeElement as HTMLImageElement;
-    expect(logo.getAttribute('alt')).toBe('ONEXSO');
+    expect(logo.getAttribute('alt')).toBe('CROWNUS');
   });
 
   it('does not render "OneVo Workspace" branding', async () => {

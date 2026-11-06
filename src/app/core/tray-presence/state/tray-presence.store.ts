@@ -193,7 +193,7 @@ export const TrayPresenceStore = signalStore(
         patchState(store, {
           phase: 'offline',
           checkedOnce: true,
-          generationError: 'The ONEVO service is temporarily unavailable. Retrying status…'
+          generationError: 'The CROWNUS service is temporarily unavailable. Retrying status…'
         });
         wasConnected = false;
         if (transitionedToLocked) reload.reloadCurrentUrl();

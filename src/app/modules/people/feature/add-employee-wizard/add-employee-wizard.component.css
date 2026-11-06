@@ -1497,7 +1497,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Field frame: the standard ONEXSO field (shared/styles/fields.css) - icon cell with a divider + bare control. */
+/* Field frame: the standard CROWNUS field (shared/styles/fields.css) - icon cell with a divider + bare control. */
 .aw-ctl {
   display: flex;
   align-items: stretch;
