@@ -87,13 +87,15 @@ describe('WeeklyProgressCardComponent', () => {
     expect(api.get).toHaveBeenCalledWith();
   });
 
-  it('refreshes through the dashboard every minute while visible', () => {
+  it('does not refresh on a timer, only when the tab becomes visible again', () => {
     vi.useFakeTimers();
     const data = fakeWidgetData('success', payload());
     render(data, cols(2), rows(2));
 
-    vi.advanceTimersByTime(60_000);
+    vi.advanceTimersByTime(180_000);
+    expect(data.refresh).not.toHaveBeenCalled();
 
+    document.dispatchEvent(new Event('visibilitychange'));
     expect(data.refresh).toHaveBeenCalledTimes(1);
   });
 

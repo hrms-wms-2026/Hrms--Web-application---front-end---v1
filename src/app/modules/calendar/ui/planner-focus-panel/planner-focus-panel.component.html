@@ -76,7 +76,7 @@
               <circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
             </svg>
           </span>
-          <app-task-kind-icon [kind]="card.kind" [tile]="true" />
+          <app-task-kind-icon [kind]="card.kind" [icon]="card.item.categoryIcon" [tile]="true" />
           <span data-testid="planner-focus-title" class="min-w-0 flex-1 truncate font-medium group-hover:text-[var(--color-accent)]">{{ card.item.title }}</span>
           <!-- Plan with the day-and-time picker: the keyboard's way to schedule, since a drag needs a pointer. -->
           <button type="button" data-testid="planner-focus-plan" data-no-drag

@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { ProjectApiService } from '../../../work/data-access/project-api.service';
 import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 
 /** `/work/projects/mine` has no status filter, so one page this size is fetched and filtered here -
@@ -17,7 +18,7 @@ const FALLBACK_COLORS: readonly string[] = ['#6366f1', '#22c55e', '#8b5cf6', '#f
 @Component({
   selector: 'app-active-projects-card',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, PopoutHeaderActionsComponent],
   // A size container: the progress column widens when the card is Large.
   host: { class: '@container block' },
   templateUrl: './active-projects-card.component.html',
@@ -29,6 +30,8 @@ export class ActiveProjectsCardComponent implements OnInit {
 
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
+  /** A refresh from the header button: the list stays on screen while it reloads. */
+  protected readonly refreshing = signal(false);
   private readonly projects = signal<ProjectListItemDto[]>([]);
 
   protected readonly active = computed(() => this.projects().filter((p) => p.isActive && !p.isAchieved));
@@ -40,16 +43,24 @@ export class ActiveProjectsCardComponent implements OnInit {
    * error state only appears after the card's own request failed. */
   private readonly feed = injectWidgetDataFeed<PagedResultDto<ProjectListItemDto>>({
     apply: (page) => this.applyPage(page),
-    fetch: () => this.load()
+    fetch: () => this.load(),
+    refreshing: () => this.refreshing.set(true)
   });
 
   ngOnInit(): void {
     this.feed.start();
   }
 
+  protected refresh(): void {
+    if (this.refreshing()) return;
+    this.refreshing.set(true);
+    this.feed.reload();
+  }
+
   private applyPage(page: PagedResultDto<ProjectListItemDto>): void {
     this.projects.set(page.items);
     this.loading.set(false);
+    this.refreshing.set(false);
   }
 
   protected load(): void {
@@ -63,6 +74,7 @@ export class ActiveProjectsCardComponent implements OnInit {
         error: () => {
           this.error.set(true);
           this.loading.set(false);
+          this.refreshing.set(false);
         }
       });
   }

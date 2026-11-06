@@ -86,6 +86,8 @@ export interface PlannerRangeBlockView {
   /** The category's name and fixed type; absent from an older API (treated as a plain task). */
   categoryName?: string;
   categoryKind?: string;
+  /** The category's picked icon; none shows the kind's own. */
+  categoryIcon?: string | null;
 }
 
 export interface PlannerRangeDay {
@@ -125,6 +127,8 @@ export interface PlannerFocusItem {
   /** The category's name and fixed type; absent from an older API (treated as a plain task). */
   categoryName?: string;
   categoryKind?: string;
+  /** The category's picked icon; none shows the kind's own. */
+  categoryIcon?: string | null;
   /** When the task was created: "Open N days" on an overdue card. */
   createdAt?: string;
 }

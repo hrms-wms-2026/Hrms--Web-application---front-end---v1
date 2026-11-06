@@ -1,3 +1,4 @@
+<section class="group flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-purpose="active-projects">
 <section class="flex h-full flex-col rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-5 shadow-xs" data-purpose="active-projects">
   <div class="flex items-center justify-between gap-2">
     <h2 class="flex min-w-0 items-center gap-2.5 text-base font-bold text-[var(--color-text-primary)]">
@@ -12,6 +13,27 @@
         <span class="shrink-0 rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs font-semibold text-[var(--color-text-secondary)]" data-testid="active-projects-count">{{ active().length }}</span>
       }
     </h2>
+    <div class="flex shrink-0 items-center gap-1">
+      <a
+        routerLink="/work"
+        data-testid="active-projects-view-all"
+        class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50"
+      >
+        View All
+        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+        </svg>
+      </a>
+      <!-- Refresh in the top-right corner, shown only while the card is hovered (or the button has focus) -->
+      <div class="opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+        <app-popout-header-actions
+          [refreshing]="refreshing()"
+          [expanded]="false"
+          [canExpand]="false"
+          (refresh)="refresh()"
+        />
+      </div>
+    </div>
     <a
       routerLink="/work"
       data-testid="active-projects-view-all"

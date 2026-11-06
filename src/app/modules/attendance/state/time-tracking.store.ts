@@ -63,6 +63,8 @@ interface TimeTrackingState {
   readonly today: AttendanceTodayResponse | null;
   readonly todayLoading: boolean;
   readonly todayError: string | null;
+  /** When `today` last came from the backend (a load or a clock/break action); null before the first. */
+  readonly todayLoadedAt: Date | null;
   readonly actionLoading: boolean;
   readonly activeAction: TimeTrackingAction | null;
   readonly history: readonly AttendanceHistoryRow[];
@@ -134,6 +136,7 @@ const initialState: TimeTrackingState = {
   today: null,
   todayLoading: false,
   todayError: null,
+  todayLoadedAt: null,
   actionLoading: false,
   activeAction: null,
   history: [],
@@ -229,7 +232,7 @@ export const TimeTrackingStore = signalStore(
       patchState(store, { actionLoading: true, activeAction: action, todayError: null });
       try {
         const today = await firstValueFrom(operation());
-        patchState(store, { today, actionLoading: false, activeAction: null, todayError: null });
+        patchState(store, { today, todayLoadedAt: new Date(), actionLoading: false, activeAction: null, todayError: null });
         notifications.success(successMessage);
       } catch (error) {
         const fallback = errors.toSafeMessage(error, failureFallback);
@@ -303,7 +306,7 @@ export const TimeTrackingStore = signalStore(
         patchState(store, { todayLoading: true, todayError: null });
         try {
           const today = await firstValueFrom(api.getToday());
-          patchState(store, { today, todayLoading: false, todayError: null });
+          patchState(store, { today, todayLoadedAt: new Date(), todayLoading: false, todayError: null });
         } catch (error) {
           patchState(store, { todayLoading: false, todayError: errors.toSafeMessage(error, TIME_TRACKING_LOAD_ERROR) });
         }

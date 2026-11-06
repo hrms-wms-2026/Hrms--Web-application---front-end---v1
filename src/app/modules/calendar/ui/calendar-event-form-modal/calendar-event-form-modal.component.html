@@ -61,7 +61,7 @@
         @if (!form.controls.isAllDay.value) {
           <div class="flex items-center gap-2" data-testid="calendar-form-time-range">
             <app-time-picker
-              class="w-[8.5rem]"
+              class="w-[11rem]"
               data-testid="calendar-form-start-time"
               placeholder="Start"
               [value]="form.controls.startTime.value ?? ''"
@@ -71,7 +71,7 @@
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
             <app-time-picker
-              class="w-[8.5rem]"
+              class="w-[11rem]"
               data-testid="calendar-form-end-time"
               placeholder="End"
               [value]="form.controls.endTime.value ?? ''"

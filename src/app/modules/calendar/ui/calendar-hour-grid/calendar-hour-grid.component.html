@@ -207,7 +207,7 @@
             <span data-testid="planner-block-accent" class="absolute inset-y-0 left-0 w-[3px] {{ vm.meta.bar }}" aria-hidden="true"></span>
             <span class="flex items-start gap-1">
               @if (vm.short) {
-                <app-task-kind-icon [kind]="vm.kind" />
+                <app-task-kind-icon [kind]="vm.kind" [icon]="vm.block.categoryIcon" />
                 <span class="truncate font-semibold">{{ vm.block.taskTitle }}</span>
               } @else {
                 <span data-testid="block-time" class="truncate opacity-80">{{ vm.times }} · {{ vm.duration }}</span>
@@ -219,7 +219,7 @@
             </span>
             @if (!vm.short) {
               <span class="flex items-center gap-1 font-semibold">
-                <app-task-kind-icon [kind]="vm.kind" />
+                <app-task-kind-icon [kind]="vm.kind" [icon]="vm.block.categoryIcon" />
                 <span class="truncate">{{ vm.block.taskTitle }}</span>
               </span>
               @if (vm.subtitle) {

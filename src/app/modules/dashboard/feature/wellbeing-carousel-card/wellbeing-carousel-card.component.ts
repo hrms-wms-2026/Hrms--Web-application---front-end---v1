@@ -12,7 +12,6 @@ export interface WellbeingCard {
   readonly description: string;
 }
 
-const FOCUS_STATUS_POLL_MS = 90_000;
 const ROTATE_MS = 6_000;
 
 /** Illustration for a card kind, added as each one is supplied. A kind with no entry falls
@@ -45,7 +44,7 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   private readonly timeTrackingStore = inject(TimeTrackingStore);
 
   private readonly focusStatus = signal<FocusStatus | null>(null);
-  /** Inside a dashboard frame the first status comes from the bootstrap and polls go through the widget
+  /** Inside a dashboard frame the first status comes from the bootstrap and reloads go through the widget
    * context; outside one (or when that data isn't available, or a refresh fails) the card calls its own
    * API as before - whose failure still means "tips only". */
   private readonly feed = injectWidgetDataFeed<FocusStatus>({
@@ -77,7 +76,6 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
 
   protected readonly contentVisible = signal(true);
 
-  private focusStatusPollId: ReturnType<typeof setInterval> | null = null;
   private rotateId: ReturnType<typeof setInterval> | null = null;
   private fadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private wasBreakReminderDue = false;
@@ -100,7 +98,6 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.feed.start();
-    this.focusStatusPollId = setInterval(() => this.feed.reload(), FOCUS_STATUS_POLL_MS);
     // Respect prefers-reduced-motion: don't auto-advance a rotating carousel for employees who
     // asked the OS not to animate content changes on their behalf. Manual prev/next/dots still work.
     if (!prefersReducedMotion()) {
@@ -109,7 +106,6 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.focusStatusPollId) clearInterval(this.focusStatusPollId);
     if (this.rotateId) clearInterval(this.rotateId);
     if (this.fadeTimeoutId) clearTimeout(this.fadeTimeoutId);
   }

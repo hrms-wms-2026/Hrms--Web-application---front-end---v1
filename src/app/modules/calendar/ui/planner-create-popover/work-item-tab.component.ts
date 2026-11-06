@@ -97,13 +97,12 @@ function duration(minutes: number): string {
         <app-date-picker variant="chip" chipClass="wi-date-chip" btnTestId="work-item-due" emptyLabel="Due date" [value]="dueDate() ?? ''"
           (valueChange)="setDue($event)" />
         <span class="wi-type" [class.wi-type--icon]="selectedKind()">
-          @if (selectedKind(); as kind) { <app-task-kind-icon class="wi-type__icon" data-testid="work-item-type-icon" [kind]="kind" /> }
+          @if (selectedKind(); as kind) { <app-task-kind-icon class="wi-type__icon" data-testid="work-item-type-icon" [kind]="kind" [icon]="selectedIcon()" /> }
           <app-select class="wi-chip" [class.wi-chip--active]="categoryId()" data-testid="work-item-type" ariaLabel="Type" placeholder="Type"
             [searchable]="false" [options]="categoryOptions()" [value]="categoryId() ?? ''" [disabled]="!projectId()"
             (valueChange)="categoryId.set($event || null)" />
         </span>
       </div>
-
       <div class="wi-section"><span class="wi-section__title">Planning &amp; details</span><span class="wi-section__line"></span></div>
       <div class="wi-planning">
         <label class="wi-field">
@@ -423,6 +422,7 @@ export class WorkItemTabComponent implements OnInit {
     const category = this.categories().find((c) => c.id === this.categoryId());
     return category ? kindOf(category.kind) : null;
   });
+  readonly selectedIcon = computed(() => this.categories().find((c) => c.id === this.categoryId())?.icon ?? null);
   readonly overlaps = computed(() => {
     const first = this.slots().at(0);
     if (!first) return false;

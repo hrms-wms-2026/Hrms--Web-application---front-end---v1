@@ -26,7 +26,6 @@
       }
     }
     <app-popout-header-actions
-      [refreshedAt]="view() === 'mini' || view() === 'xs' ? null : store.loadedAt()"
       [refreshing]="refreshing()"
       [expanded]="false"
       [canExpand]="true"

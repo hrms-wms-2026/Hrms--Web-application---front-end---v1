@@ -39,6 +39,15 @@ describe('TeamPlanTodayCard (My Team widget, team planner 2026-11-03)', () => {
     expect(all('tpt-load')[0].textContent!.trim()).toBe('6h / 8h');
   });
 
+  it('the hover refresh button reloads the team plan', async () => {
+    const { fixture, getTeamDay } = await setup();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('[data-testid="popout-expand"]')).toBeNull();
+    (el.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(getTeamDay).toHaveBeenCalledTimes(2);
+  });
+
   it('on leave and not planned chips', async () => {
     const { all } = await setup();
     expect(all('tpt-chip').map((e) => e.textContent!.trim())).toEqual(['On leave', 'Not planned']);

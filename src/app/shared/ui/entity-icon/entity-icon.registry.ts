@@ -8,7 +8,7 @@ import {
   Key, Landmark, Layers, Leaf, Library, LifeBuoy, Lightbulb, Link, ListChecks, Lock, Mail, Map as MapIcon, MapPin, Medal, Megaphone,
   MessageCircle, MessagesSquare, Mic, Microscope, Moon, Mountain, Newspaper, Package, Palette, PartyPopper, PenTool,
   PersonStanding, Phone, PiggyBank, Pill, Plane, Plug, Puzzle, Receipt, Recycle, Rocket, Scale, Send, Server, Settings, Shield,
-  ShieldCheck, Ship, Shirt, ShoppingCart, Snowflake, Sofa, Sparkles, Sprout, SquareKanban, Star, Stethoscope, Store, Sun,
+  ShieldCheck, Ship, Shirt, ShoppingCart, Snowflake, Sofa, Sparkles, Sprout, SquareCheckBig, SquareKanban, Star, Stethoscope, Store, Sun,
   Syringe, Tag, Target, Tent, Terminal, Thermometer, ThumbsUp, Timer, TreePalm, TrendingUp, Trophy, Truck, Umbrella, UserPlus,
   UserRound, Users, UsersRound, Utensils, Video, Wallet, Wifi, Wrench, Zap
 } from 'lucide';
@@ -42,6 +42,7 @@ export const ENTITY_ICON_GROUPS: readonly EntityIconGroup[] = [
       icon('layers', Layers, 'stack'), icon('boxes', Boxes, 'modules'), icon('package', Package, 'box delivery'),
       icon('folder', Folder, 'files'), icon('folder-kanban', FolderKanban, 'project board'), icon('square-kanban', SquareKanban, 'board'),
       icon('clipboard-list', ClipboardList, 'tasks checklist'), icon('list-checks', ListChecks, 'todo'),
+      icon('square-check-big', SquareCheckBig, 'task done tick'),
       icon('chart-column', ChartColumn, 'bar graph report'), icon('chart-line', ChartLine, 'graph trend'),
       icon('chart-pie', ChartPie, 'graph share'), icon('trending-up', TrendingUp, 'growth sales'), icon('gauge', Gauge, 'speed performance'),
       icon('building', Building, 'office company'), icon('factory', Factory, 'manufacturing plant'), icon('store', Store, 'shop retail'),

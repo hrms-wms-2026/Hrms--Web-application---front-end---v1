@@ -25,9 +25,7 @@
       </select>
       }
     }
-    <!-- Narrow views drop the "Refreshed" label so the title keeps its room. -->
     <app-popout-header-actions
-      [refreshedAt]="view() === 'mini' || view() === 'xs' ? null : store.loadedAt()"
       [refreshing]="refreshing()"
       [expanded]="false"
       [canExpand]="true"

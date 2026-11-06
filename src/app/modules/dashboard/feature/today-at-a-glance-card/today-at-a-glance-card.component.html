@@ -165,3 +165,18 @@
   }
 </section>
 </div>
+
+<!--
+  Refresh, top right and shown only on hover, like every dashboard card. It sits outside the scaled design
+  canvas so it keeps the same size as the other cards' refresh button, whatever the card's scale.
+-->
+<div class="absolute right-4 top-4 z-20" data-testid="today-refresh-corner">
+  <app-popout-header-actions
+    style="--popout-actions-bg: transparent"
+    [refreshing]="refreshing()"
+    [expanded]="false"
+    [canExpand]="false"
+    [revealOnHover]="true"
+    (refresh)="refresh()"
+  />
+</div>
