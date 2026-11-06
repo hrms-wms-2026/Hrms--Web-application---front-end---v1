@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Observable, Subject, Subscription, catchError, debounceTime, map, of, switchMap, tap } from 'rxjs';
+import { EMPTY, Observable, Subject, Subscription, catchError, debounceTime, expand, map, of, reduce, switchMap, tap } from 'rxjs';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
@@ -37,6 +37,10 @@ import {
   LedProgressPeriod,
   LedTaskStatus,
   LedTimeProgress,
+  LedUnscheduledKind,
+  LedUnscheduledPage,
+  LedUnscheduledQuery,
+  LedUnscheduledRow,
   LedWeeklyCompletion
 } from '../../models/team-progress-detail.model';
 import { TeamProgressTimeDetailComponent } from '../../ui/team-progress-time-detail/team-progress-time-detail.component';
@@ -57,6 +61,10 @@ export const TEAM_PROGRESS_SEARCH_DEBOUNCE_MS = 300;
 export const TEAM_PROGRESS_OVERVIEW_EMPLOYEES = 5;
 /** Weeks in the weekly completion chart (current week last). */
 export const TEAM_PROGRESS_WEEKS = 10;
+/** Cards per Unscheduled work page (paged on the server). */
+export const TEAM_PROGRESS_UNSCHEDULED_PAGE_SIZE = 4;
+/** Rows per request while the Unscheduled work CSV export walks every page. */
+const UNSCHEDULED_EXPORT_PAGE_SIZE = 100;
 
 type DatedPeriod = Exclude<LedProgressPeriod, 'all'>;
 
@@ -205,14 +213,60 @@ export class TeamProgressDetailDialogComponent {
   protected readonly plannerEnabled = computed(() => this.time().data?.plannerEnabled ?? false);
   protected readonly timePeriodLabel = computed(() => (this.time().data?.period === 'month' ? 'This month' : 'This week'));
 
+  /** Team members: a horizontal stacked bar per person (default) or the full table. */
+  protected readonly membersView = signal<'chart' | 'table'>('chart');
+  protected readonly memberStatuses = [PROGRESS_STATUS_BY_KEY.completed, PROGRESS_STATUS_BY_KEY.inProgress, PROGRESS_STATUS_BY_KEY.notStarted];
+  /** The page's people on one scale (the largest total fills the track). */
+  protected readonly memberBars = computed(() => {
+    const items = this.overviewEmployees().data?.items ?? [];
+    const scale = Math.max(0, ...items.map((e) => e.totalHours));
+    const share = (h: number) => (scale > 0 ? (h / scale) * 100 : 0);
+    return items.map((e) => ({
+      row: e,
+      segments: [
+        { key: 'completed', hours: e.completedHours, width: share(e.completedHours), color: PROGRESS_STATUS_BY_KEY.completed.color },
+        { key: 'inProgress', hours: e.inProgressHours, width: share(e.inProgressHours), color: PROGRESS_STATUS_BY_KEY.inProgress.color },
+        { key: 'notStarted', hours: e.notStartedHours, width: share(e.notStartedHours), color: PROGRESS_STATUS_BY_KEY.notStarted.color }
+      ].filter((s) => s.hours > 0)
+    }));
+  });
+
+  setMembersView(view: 'chart' | 'table'): void {
+    this.membersView.set(view);
+  }
+
   /** The file download; a field so a test can stand in for the browser download. */
   downloadFile = downloadCsv;
-  protected readonly timeStatus = computed<'loading' | 'ready' | 'error'>(() => {
-    const status = this.time().status;
-    return status === 'idle' ? 'loading' : status;
-  });
   private timeKey: string | null = null;
   private timeSub: Subscription | null = null;
+
+  // ---- Unscheduled work (server, paged; same period and filters as the time call) ----
+  protected readonly unscheduledKind = signal<LedUnscheduledKind>('all');
+  /** Back to page 1 whenever the period, a filter or the tab changes. */
+  protected readonly unscheduledPageNumber = linkedSignal({
+    source: () => `${timePeriodFor(this.period())}|${JSON.stringify(this.serverFilters())}|${this.unscheduledKind()}`,
+    computation: () => 1
+  });
+  protected readonly unscheduled = signal<RemoteState<LedUnscheduledPage>>({ status: 'idle', data: null });
+  protected readonly unscheduledStatus = computed<'loading' | 'ready' | 'error'>(() => {
+    const status = this.unscheduled().status;
+    return status === 'idle' ? 'loading' : status;
+  });
+  protected readonly unscheduledPeriod = computed(() => timePeriodFor(this.period()));
+  protected readonly unscheduledExporting = signal(false);
+  private readonly unscheduledQuery = computed<LedUnscheduledQuery | null>(() => {
+    if (!this.open() || !this.summary()) return null;
+    return {
+      period: timePeriodFor(this.period()),
+      kind: this.unscheduledKind(),
+      pageNumber: this.unscheduledPageNumber(),
+      pageSize: TEAM_PROGRESS_UNSCHEDULED_PAGE_SIZE,
+      ...this.serverFilters()
+    };
+  });
+  private readonly unscheduledRequests = new Subject<LedUnscheduledQuery>();
+  private unscheduledKey: string | null = null;
+  private unscheduledExportSub: Subscription | null = null;
 
   // ---- Filters (options from the summary) ----
 
@@ -494,7 +548,25 @@ export class TeamProgressDetailDialogComponent {
       this.timeKey = key;
       untracked(() => this.loadTime(period, filters));
     });
-    inject(DestroyRef).onDestroy(() => this.timeSub?.unsubscribe());
+    inject(DestroyRef).onDestroy(() => {
+      this.timeSub?.unsubscribe();
+      this.unscheduledExportSub?.unsubscribe();
+    });
+
+    this.connect(
+      this.unscheduledRequests,
+      (q) => this.api.getUnscheduledWork(q),
+      this.unscheduled,
+      () => (this.unscheduledKey = null)
+    );
+    effect(() => {
+      const q = this.unscheduledQuery();
+      if (!q) return;
+      const key = JSON.stringify(q);
+      if (key === this.unscheduledKey) return;
+      this.unscheduledKey = key;
+      untracked(() => this.unscheduledRequests.next(q));
+    });
 
     this.connect(
       this.overviewEmployeeRequests,
@@ -564,6 +636,49 @@ export class TeamProgressDetailDialogComponent {
   retryTime(): void {
     const period = timePeriodFor(this.period());
     this.loadTime(period, this.serverFilters());
+  }
+
+  setUnscheduledKind(kind: LedUnscheduledKind): void {
+    this.unscheduledKind.set(kind);
+  }
+
+  goToUnscheduledPage(page: number): void {
+    this.unscheduledPageNumber.set(Math.max(1, page));
+  }
+
+  retryUnscheduled(): void {
+    const q = this.unscheduledQuery();
+    if (q) {
+      this.unscheduledKey = JSON.stringify(q);
+      this.unscheduledRequests.next(q);
+    }
+  }
+
+  /** Every unscheduled row of the period (all kinds), fetched page by page from the server, as one CSV. */
+  exportUnscheduled(): void {
+    const q = this.unscheduledQuery();
+    if (!q || this.unscheduledExporting()) return;
+    const first: LedUnscheduledQuery = { ...q, kind: 'all', pageNumber: 1, pageSize: UNSCHEDULED_EXPORT_PAGE_SIZE };
+    this.unscheduledExporting.set(true);
+    this.unscheduledExportSub = this.api
+      .getUnscheduledWork(first)
+      .pipe(
+        expand((page) => (page.hasNext ? this.api.getUnscheduledWork({ ...first, pageNumber: page.pageNumber + 1 }) : EMPTY)),
+        reduce((acc, page) => ({ from: page.from, to: page.to, rows: [...acc.rows, ...page.items] }), {
+          from: '',
+          to: '',
+          rows: [] as LedUnscheduledRow[]
+        })
+      )
+      .subscribe({
+        next: ({ from, to, rows }) => {
+          const header = ['Person', 'Task', 'Title', 'Start', 'End', 'Minutes', 'Kind'];
+          const lines = rows.map((u) => [u.displayName, u.shortId, u.title, u.start, u.end, String(u.minutes), u.kind === 'no_plan' ? 'No plan' : 'Outside slot']);
+          this.downloadFile(`team-unscheduled-work-${from}_${to}.csv`, toCsv([header, ...lines]));
+          this.unscheduledExporting.set(false);
+        },
+        error: () => this.unscheduledExporting.set(false)
+      });
   }
 
   private loadTime(period: 'week' | 'month', filters: ScopeFilters): void {

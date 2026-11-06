@@ -121,7 +121,7 @@
           </div>
         }
 
-        <!-- Panels: Status Distribution | Weekly completion | planned vs worked | projects | Team members (full width) -->
+        <!-- Panels: Status Distribution | Weekly completion | Unscheduled work, then projects and Team members (full width) -->
         <div class="tp-panels">
           <section class="tp-panel" aria-labelledby="tp-dist-heading" data-testid="tp-distribution">
             <h3 id="tp-dist-heading" class="tp-panel__title">Status Distribution</h3>
@@ -201,7 +201,17 @@
             }
           </section>
 
-          <app-team-progress-time-detail [time]="time().data" [status]="timeStatus()" (retried)="retryTime()" />
+          <app-team-progress-time-detail
+            [page]="unscheduled().data"
+            [status]="unscheduledStatus()"
+            [kind]="unscheduledKind()"
+            [period]="unscheduledPeriod()"
+            [exporting]="unscheduledExporting()"
+            (kindChange)="setUnscheduledKind($event)"
+            (pageChange)="goToUnscheduledPage($event)"
+            (retried)="retryUnscheduled()"
+            (exported)="exportUnscheduled()"
+          />
 
           @if (!isPeriod() && projectBreakdown().length > 0) {
             <section class="tp-panel tp-panel--projects" aria-labelledby="tp-projects-heading" data-testid="tp-projects">
@@ -231,6 +241,16 @@
             <div class="tp-panel__head">
               <h3 id="tp-ov-emp-heading" class="tp-panel__title">Team members</h3>
               <span class="tp-members-tools">
+              <span class="tp-view-switch" role="group" aria-label="Team members view" data-testid="tp-members-view">
+                <button type="button" [class.tp-view-switch--on]="membersView() === 'chart'" [attr.aria-pressed]="membersView() === 'chart'" data-testid="tp-members-view-chart" (click)="setMembersView('chart')">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M4 12h16M4 18h7" /></svg>
+                  Chart
+                </button>
+                <button type="button" [class.tp-view-switch--on]="membersView() === 'table'" [attr.aria-pressed]="membersView() === 'table'" data-testid="tp-members-view-table" (click)="setMembersView('table')">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14" /></svg>
+                  Table
+                </button>
+              </span>
               <label class="tp-search">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
                 <input
@@ -254,6 +274,46 @@
               <div class="tp-inline-error" role="alert">
                 Couldn't load employees.
                 <button type="button" class="tp-text-button" (click)="retryOverviewEmployees()">Retry</button>
+              </div>
+            } @else if (membersView() === 'chart') {
+              <div class="tp-members-chart" data-testid="tp-members-chart" [attr.aria-busy]="overviewEmployees().status === 'loading'">
+                <ul class="tp-members-legend" aria-hidden="true">
+                  @for (s of memberStatuses; track s.key) {
+                    <li><span class="tp-dot" [style.background]="s.color"></span>{{ s.label }}</li>
+                  }
+                </ul>
+                @if (overviewEmployees().data) {
+                  @for (bar of memberBars(); track bar.row.employeeId) {
+                    <div
+                      class="tp-member-bar"
+                      role="img"
+                      [attr.data-testid]="'tp-member-bar-' + bar.row.employeeId"
+                      [attr.aria-label]="bar.row.displayName + ': ' + formatHours(bar.row.completedHours) + ' h completed, ' + formatHours(bar.row.inProgressHours) + ' h in progress, ' + formatHours(bar.row.notStartedHours) + ' h not started'"
+                    >
+                      <span class="tp-person">
+                        <span class="tp-avatar" aria-hidden="true">{{ initials(bar.row.displayName) }}</span>
+                        <span class="truncate" [title]="bar.row.displayName">{{ bar.row.displayName }}</span>
+                      </span>
+                      <span class="tp-member-track" aria-hidden="true">
+                        @for (seg of bar.segments; track seg.key) {
+                          <span class="tp-member-seg" [style.width.%]="seg.width" [style.background]="seg.color" [title]="formatHours(seg.hours) + ' h'"></span>
+                        }
+                      </span>
+                      <span class="tp-member-total">{{ formatHours(bar.row.totalHours) }} h</span>
+                      <span class="tp-member-worked" [title]="timePeriodLabel() + ': planned / worked'">
+                        @if (memberTime().get(bar.row.employeeId); as w) {
+                          {{ timeHours(w.clockedMinutes) }} worked
+                        } @else {
+                          —
+                        }
+                      </span>
+                    </div>
+                  } @empty {
+                    <p class="tp-mini-table__empty">No employees match.</p>
+                  }
+                } @else {
+                  <p class="tp-mini-table__empty">Loading employees...</p>
+                }
               </div>
             } @else {
               <div class="tp-mini-table-wrap" [attr.aria-busy]="overviewEmployees().status === 'loading'">
@@ -317,39 +377,39 @@
                   </tbody>
                 </table>
               </div>
-              @if (overviewEmployees().data; as page) {
-                <div class="tp-panel__foot">
-                  <span class="tp-muted" title="A task assigned to several people counts its full estimate for each of them, so employee totals can add up to more than the team total." data-testid="tp-ov-shared-note">
-                    Shared tasks count for each assignee
-                  </span>
-                  <nav class="tp-mini-pager" aria-label="Team members pages" data-testid="tp-ov-employee-pager">
-                    <span data-testid="tp-ov-employee-range">{{ rangeLabel(page) }}</span>
-                    <button type="button" aria-label="Previous employees" data-testid="tp-ov-employee-prev" [disabled]="!page.hasPrevious || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber - 1)">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
-                    </button>
-                    <button type="button" aria-label="Next employees" data-testid="tp-ov-employee-next" [disabled]="!page.hasNext || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber + 1)">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
-                    </button>
-                  </nav>
-                </div>
-              }
+            }
+            @if (overviewEmployees().status !== 'error' && overviewEmployees().data; as page) {
+              <div class="tp-panel__foot">
+                <span class="tp-muted" title="A task assigned to several people counts its full estimate for each of them, so employee totals can add up to more than the team total." data-testid="tp-ov-shared-note">
+                  Shared tasks count for each assignee
+                </span>
+                <nav class="tp-mini-pager" aria-label="Team members pages" data-testid="tp-ov-employee-pager">
+                  <span data-testid="tp-ov-employee-range">{{ rangeLabel(page) }}</span>
+                  <button type="button" aria-label="Previous employees" data-testid="tp-ov-employee-prev" [disabled]="!page.hasPrevious || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber - 1)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
+                  </button>
+                  <button type="button" aria-label="Next employees" data-testid="tp-ov-employee-next" [disabled]="!page.hasNext || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber + 1)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+                  </button>
+                </nav>
+              </div>
             }
           </section>
         </div>
 
         <!-- Overdue (always as of today, whatever the period); hidden when nothing is overdue. -->
         @if (overdueTasks().length > 0) {
-          <section class="tp-panel" aria-labelledby="tp-overdue-heading" data-testid="tp-overdue">
-            <h3 id="tp-overdue-heading" class="tp-panel__title">
-              Overdue tasks
-              <span class="font-normal text-[var(--color-text-secondary)]" data-testid="tp-overdue-count">
+          <section class="tp-panel tp-panel--overdue" aria-labelledby="tp-overdue-heading" data-testid="tp-overdue">
+            <div class="tp-panel__head">
+              <h3 id="tp-overdue-heading" class="tp-panel__title">Overdue tasks</h3>
+              <span class="tp-tag" data-testid="tp-overdue-count">
                 @if (hasFilters()) {
                   {{ overdueTasks().length }} of the {{ data.overdueTasks.length }} listed match the filter
                 } @else {
                   {{ overdueTasks().length }} of {{ overdueTotal() }}
                 }
               </span>
-            </h3>
+            </div>
             @if (overdueHoursView(); as ov) {
               <p class="tp-overdue-total" data-testid="tp-overdue-hours">
                 <strong>{{ formatHours(ov.total) }} h</strong> overdue{{ ov.listedOnly ? ' (listed tasks)' : '' }}
@@ -359,6 +419,7 @@
               </p>
               <div class="tp-overdue-body">
                 <div class="tp-overdue-chart">
+                  <p class="tp-overdue-chart__title">By project</p>
                   <div class="tp-overdue-pie" data-testid="tp-overdue-pie" [style.width.px]="overduePiePx" [style.height.px]="overduePiePx">
                     <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" aria-label="Overdue hours by project">
                       <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
@@ -391,28 +452,47 @@
                 <div class="tp-overdue-table-wrap">
                   <table class="tp-mini-table tp-overdue-table" data-testid="tp-overdue-list">
                     <caption class="sr-only">Overdue tasks with their allocated hours</caption>
+                    <colgroup>
+                      <col class="tp-ot-col--n" />
+                      <col />
+                      <col class="tp-ot-col--who" />
+                      <col class="tp-ot-col--hours" />
+                      <col class="tp-ot-col--due" />
+                    </colgroup>
                     <thead>
                       <tr>
                         <th scope="col">#</th>
                         <th scope="col">Task</th>
                         <th scope="col">Assignee</th>
-                        <th scope="col">Allocated</th>
-                        <th scope="col">Overdue</th>
+                        <th scope="col" class="tp-ot-num">Allocated</th>
+                        <th scope="col" class="tp-ot-num">Overdue</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (task of overdueTasks(); track task.taskId; let i = $index) {
                         <tr>
-                          <td>{{ i + 1 }}</td>
+                          <td class="tp-ot-index">{{ i + 1 }}</td>
                           <td>
-                            <button type="button" class="tp-overdue-task" [attr.data-testid]="'tp-overdue-' + task.taskId" (click)="openTask(task)">
+                            <button type="button" class="tp-overdue-task" [attr.data-testid]="'tp-overdue-' + task.taskId" [title]="task.shortId + ' ' + task.title" (click)="openTask(task)">
                               <span class="tp-short-id">{{ task.shortId }}</span>
                               <span class="truncate">{{ task.title }}</span>
                             </button>
                           </td>
-                          <td class="truncate">{{ assigneeNames(task.assignees) || 'Unassigned' }}</td>
-                          <td data-testid="tp-overdue-task-hours">{{ overdueTaskHours(task) }}</td>
-                          <td class="tp-overdue__days">{{ task.daysOverdue }}d · {{ task.dueDate | date: 'd MMM y' }}</td>
+                          <td>
+                            <span class="tp-ot-who" [title]="assigneeNames(task.assignees) || 'Unassigned'">
+                              @if (task.assignees.length) {
+                                <span class="tp-avatar" aria-hidden="true">{{ initials(task.assignees[0].displayName) }}</span>
+                              }
+                              <span class="truncate" [class.tp-muted]="!task.assignees.length">{{ assigneeNames(task.assignees) || 'Unassigned' }}</span>
+                            </span>
+                          </td>
+                          <td class="tp-ot-num" data-testid="tp-overdue-task-hours">{{ overdueTaskHours(task) }}</td>
+                          <td class="tp-ot-num">
+                            <span class="tp-ot-due">
+                              <span class="tp-overdue__days">{{ task.daysOverdue }}d late</span>
+                              <span class="tp-ot-date">{{ task.dueDate | date: 'd MMM y' }}</span>
+                            </span>
+                          </td>
                         </tr>
                       }
                     </tbody>

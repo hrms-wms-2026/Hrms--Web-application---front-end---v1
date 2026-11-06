@@ -168,3 +168,32 @@ export interface LedTimeProgress {
   unscheduled: LedUnscheduledRow[];
   unscheduledTotal: number;
 }
+
+export type LedUnscheduledKind = 'all' | 'no_plan' | 'outside_slot';
+
+/** Rows and minutes of one unscheduled-work kind (or all of them) in the window. */
+export interface LedUnscheduledKindTotal {
+  count: number;
+  minutes: number;
+}
+
+/** GET led-progress/time/unscheduled: one page (newest first) of the selected kind, plus every kind's totals for the tabs. */
+export interface LedUnscheduledPage extends LedPage<LedUnscheduledRow> {
+  period: LedTimePeriod;
+  from: string;
+  to: string;
+  plannerEnabled: boolean;
+  kind: LedUnscheduledKind;
+  all: LedUnscheduledKindTotal;
+  noPlan: LedUnscheduledKindTotal;
+  outsideSlot: LedUnscheduledKindTotal;
+}
+
+export interface LedUnscheduledQuery {
+  period: LedTimePeriod;
+  kind?: LedUnscheduledKind;
+  pageNumber?: number;
+  pageSize?: number;
+  projectId?: string;
+  objectiveId?: string;
+}
