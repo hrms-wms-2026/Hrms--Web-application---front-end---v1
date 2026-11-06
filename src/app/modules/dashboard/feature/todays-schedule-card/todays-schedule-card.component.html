@@ -1,5 +1,4 @@
-<section class="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition-all hover:shadow-sm" data-purpose="today-schedule">
-<section class="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-xs transition-all hover:shadow-sm" data-purpose="today-schedule">
+<section class="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-xs transition-all hover:shadow-sm" data-purpose="today-schedule">
   <!-- Fixed Header & Summary Section -->
   <div class="shrink-0 pb-1">
     <div class="flex items-center justify-between gap-2">
@@ -25,10 +24,10 @@
         <a
           routerLink="/calendar"
           data-testid="todays-schedule-view-link"
-          class="inline-flex items-center gap-1.5 rounded-full border border-blue-400 bg-white px-3 py-1 text-xs font-semibold text-blue-600 shadow-2xs transition-all hover:bg-blue-50 hover:border-blue-400"
+          class="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-accent)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-accent)] shadow-2xs transition-all hover:bg-[var(--color-accent-subtle)] hover:border-[var(--color-accent)]"
         >
           Open planner
-          <svg class="h-3 w-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg class="h-3 w-3 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
           </svg>
         </a>
@@ -42,16 +41,6 @@
           />
         </div>
       </div>
-      <a
-        routerLink="/calendar"
-        data-testid="todays-schedule-view-link"
-        class="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-accent)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-accent)] shadow-2xs transition-all hover:bg-[var(--color-accent-subtle)] hover:border-[var(--color-accent)]"
-      >
-        Open planner
-        <svg class="h-3 w-3 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
-        </svg>
-      </a>
     </div>
 
     <!-- Summary / Stats 3-Column Box (matching reference design) -->
