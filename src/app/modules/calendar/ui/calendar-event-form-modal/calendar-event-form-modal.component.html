@@ -61,7 +61,7 @@
         @if (!form.controls.isAllDay.value) {
           <div class="flex items-center gap-2" data-testid="calendar-form-time-range">
             <app-time-picker
-              class="w-[8.5rem]"
+              class="w-[11rem]"
               data-testid="calendar-form-start-time"
               placeholder="Start"
               [value]="form.controls.startTime.value ?? ''"
@@ -71,7 +71,7 @@
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
             <app-time-picker
-              class="w-[8.5rem]"
+              class="w-[11rem]"
               data-testid="calendar-form-end-time"
               placeholder="End"
               [value]="form.controls.endTime.value ?? ''"
@@ -99,7 +99,7 @@
           [style.background-color]="form.controls.isAllDay.value ? 'var(--color-accent)' : 'var(--color-border)'"
         >
           <span
-            class="inline-block h-3 w-3 rounded-full bg-white transition-transform"
+            class="inline-block h-3 w-3 rounded-full bg-[var(--color-surface)] transition-transform"
             [style.transform]="form.controls.isAllDay.value ? 'translateX(14px)' : 'translateX(2px)'"
           ></span>
         </button>
@@ -235,12 +235,12 @@
                     } @else if (person.status) {
                       <span
                         class="rounded-full px-1.5 text-[0.6875rem] font-medium"
-                        [class.bg-gray-100]="person.status === 'pending'"
-                        [class.text-gray-700]="person.status === 'pending'"
-                        [class.bg-green-100]="person.status === 'accepted'"
-                        [class.text-green-700]="person.status === 'accepted'"
-                        [class.bg-red-100]="person.status === 'rejected'"
-                        [class.text-red-700]="person.status === 'rejected'"
+                        [class.bg-[var(--color-surface-secondary)]]="person.status === 'pending'"
+                        [class.text-[var(--color-text-primary)]]="person.status === 'pending'"
+                        [class.bg-[var(--color-success-subtle)]]="person.status === 'accepted'"
+                        [class.text-[var(--color-success-text)]]="person.status === 'accepted'"
+                        [class.bg-[var(--color-danger-subtle)]]="person.status === 'rejected'"
+                        [class.text-[var(--color-danger-text)]]="person.status === 'rejected'"
                       >{{ person.status }}</span>
                     }
                     @switch (person.kind) {
@@ -385,7 +385,7 @@
               (click)="copyMeetingLink()"
             >
               @if (linkCopyState() === 'copied') {
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--color-success)]" aria-hidden="true">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               } @else {
@@ -397,7 +397,7 @@
             </button>
             <button
               type="button"
-              class="ml-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-red-600 disabled:opacity-50"
+              class="ml-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-danger)] disabled:opacity-50"
               [disabled]="meetingActionSaving"
               aria-label="Remove meeting"
               title="Remove meeting"
@@ -417,7 +417,7 @@
             <span>{{ pendingMeetingProvider() === 'zoom' ? 'Zoom' : 'Teams' }} meeting will be created when you save</span>
             <button
               type="button"
-              class="ml-2 shrink-0 text-xs text-[var(--color-text-secondary)] hover:text-red-600"
+              class="ml-2 shrink-0 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-danger)]"
               (click)="clearPendingMeeting()"
               data-testid="calendar-form-remove-pending-meeting"
             >
@@ -438,7 +438,7 @@
             </div>
             <button
               type="button"
-              class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-red-600"
+              class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-danger)]"
               aria-label="Remove meeting link"
               title="Remove meeting link"
               data-testid="calendar-form-clear-meeting-link"
@@ -446,7 +446,7 @@
             >&times;</button>
           </div>
           @if (form.controls.meetingLink.invalid && form.controls.meetingLink.dirty) {
-            <p class="text-xs text-red-600" data-testid="calendar-form-meeting-link-error">
+            <p class="text-xs text-[var(--color-danger)]" data-testid="calendar-form-meeting-link-error">
               Enter a full link starting with http:// or https://
             </p>
           }

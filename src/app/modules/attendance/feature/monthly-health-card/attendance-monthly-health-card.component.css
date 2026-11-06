@@ -2,43 +2,105 @@
   display: block;
 }
 
-.monthly-health-headline {
-  margin: 0 0 0.9rem;
-  font-size: 1.375rem;
+.monthly-health-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-secondary));
+}
+
+.monthly-health-title {
+  margin: 0;
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
   color: var(--color-text-primary);
 }
 
 .monthly-health-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0;
 }
 
 .monthly-health-item {
   display: flex;
-  flex-direction: column-reverse;
-  gap: 0.2rem;
-  padding: 0.55rem 0.65rem;
-  background: var(--color-surface-secondary);
-  border-radius: 8px;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0 0.6rem;
 }
 
-.monthly-health-item dt {
-  font-size: 0.72rem;
-  color: var(--color-text-secondary);
+.monthly-health-item:first-child {
+  padding-left: 0;
 }
 
-.monthly-health-item dd {
+.monthly-health-item + .monthly-health-item {
+  border-left: 1px solid var(--color-border);
+}
+
+.monthly-health-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+}
+
+.monthly-health-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.monthly-health-icon--present,
+.monthly-health-icon--late {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  color: var(--color-accent);
+}
+
+.monthly-health-icon--early,
+.monthly-health-icon--missing {
+  background: color-mix(in srgb, var(--color-danger-text) 10%, var(--color-surface));
+  color: var(--color-danger-text);
+}
+
+.monthly-health-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.monthly-health-text dd {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-text-primary);
 }
 
+.monthly-health-text dt {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--color-text-secondary);
+}
+
 .monthly-health-skeleton {
+  margin: 0;
   color: var(--color-text-secondary);
   font-size: 0.85rem;
+}
+
+@media (max-width: 900px) {
+  .monthly-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 0.75rem;
+  }
+
+  .monthly-health-item:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
 }

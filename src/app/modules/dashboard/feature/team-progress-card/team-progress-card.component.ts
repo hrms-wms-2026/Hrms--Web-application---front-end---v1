@@ -30,8 +30,6 @@ import {
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
 
-const REFRESH_INTERVAL_MS = 60_000;
-
 /** Per-viewer memory of the period switch. A convenience only: when storage is blocked the card
  * simply starts on All time. */
 export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'onevo.teamProgress.period';
@@ -211,7 +209,6 @@ export class TeamProgressCardComponent implements OnInit {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly detailApi = inject(TeamProgressDetailApiService);
 
-  private pollId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
 
   private resizeObserver: ResizeObserver | null = null;
@@ -232,7 +229,7 @@ export class TeamProgressCardComponent implements OnInit {
   /** The period switch: 'all' is the bootstrap led-progress payload; week / month use the period endpoint. */
   readonly period = signal<LedProgressPeriod>(readStoredPeriod());
   /** Period payloads, each with the led-progress load it was fetched for. A newer load (refresh or
-   * poll) refetches the selected period and keeps showing the older payload until the new one lands. */
+   * tab return) refetches the selected period and keeps showing the older payload until the new one lands. */
   private readonly periodCache = signal<Partial<Record<DatedPeriod, { payload: LedPeriodProgress; for: LedWorkProgressResponse }>>>({});
   private readonly periodRequested = new Map<DatedPeriod, LedWorkProgressResponse>();
   protected readonly periodFailed = signal(false);
@@ -246,7 +243,7 @@ export class TeamProgressCardComponent implements OnInit {
   protected readonly topMemberScale = computed(() => Math.max(0, ...this.topMembers().map((m) => m.totalHours)));
 
   /** Weekly completion (last 10 weeks) for the tall, large and maximum views. Fetched lazily the
-   * first time one of them shows, once per data load (refresh / poll reload it, resizing never does);
+   * first time one of them shows, once per data load (refresh / tab return reload it, resizing never does);
    * not tied to the period switch. A failure hides the section and gives its space to the lists. */
   private readonly weekly = signal<{ for: LedWorkProgressResponse; payload: LedWeeklyCompletion | null } | null>(null);
   private weeklyRequestedFor: LedWorkProgressResponse | null = null;
@@ -343,7 +340,7 @@ export class TeamProgressCardComponent implements OnInit {
 
   protected readonly formatHourValue = formatHourValue;
 
-  /** Polls set `loading` every minute; only a first load (no data yet) shows the skeleton. */
+  /** A reload sets `loading`; only a first load (no data yet) shows the skeleton. */
   protected readonly widgetState = computed<WidgetState>(() => {
     const data = this.store.data();
     if (!data) return this.store.error() ? 'error' : 'loading';
@@ -640,11 +637,9 @@ export class TeamProgressCardComponent implements OnInit {
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    if (document.visibilityState === 'visible') this.startPolling();
     this.observeSize();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopPolling();
       this.stopObservingSize();
     });
   }
@@ -726,21 +721,6 @@ export class TeamProgressCardComponent implements OnInit {
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
       this.feed.reload();
-      this.startPolling();
-    } else {
-      this.stopPolling();
-    }
-  }
-
-  private startPolling(): void {
-    if (this.pollId) return;
-    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
-  }
-
-  private stopPolling(): void {
-    if (this.pollId) {
-      clearInterval(this.pollId);
-      this.pollId = null;
     }
   }
 

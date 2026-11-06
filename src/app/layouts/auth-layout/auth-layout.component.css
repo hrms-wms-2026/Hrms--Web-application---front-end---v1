@@ -9,7 +9,7 @@
   flex-direction: column;
   min-height: 100dvh;
   width: 100%;
-  background: #ffffff;
+  background: var(--color-app-bg);
   overflow-x: hidden;
 }
 
@@ -84,7 +84,7 @@
 .auth-layout__logo-text {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--color-text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -96,13 +96,13 @@
 
 .auth-layout__help-link {
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   text-decoration: none;
   font-weight: 500;
   transition: color 150ms ease;
 }
 
 .auth-layout__help-link:hover {
-  color: #475569;
+  color: var(--color-text-secondary);
   text-decoration: underline;
 }

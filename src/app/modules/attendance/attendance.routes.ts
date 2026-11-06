@@ -23,66 +23,23 @@ export const attendanceApprovalsDeepLinkGuard: CanActivateFn = (route) => {
 
 const legacyApprovalsRedirect = (kind: string): RedirectFunction => ({ queryParams }) => inboxFor(kind, queryParams['requestId']);
 
+const ATTENDANCE_PERMISSIONS = ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'];
+
+// Attendance is one page (2026-11-04): the old Overview and Time Tracking screens were merged into it, and
+// Monitoring moved to Settings > Monitoring. The old URLs redirect here; string redirects keep their query params.
 export const ATTENDANCE_ROUTES: Routes = [
   {
-    path: 'overview',
-    canActivate: [permissionGuard],
-    data: {
-      title: 'Overview',
-      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
-      modules: ['time_attendance']
-    },
-    loadComponent: () =>
-      import('./feature/overview/overview.component').then(
-        (module) => module.OverviewComponent
-      )
-  },
-
-  {
-    path: 'monitoring',
-    canActivate: [permissionGuard],
-    data: {
-      title: 'Monitoring',
-      permissions: ['monitoring:read'],
-      modules: ['time_attendance']
-    },
-    loadComponent: () =>
-      import('./feature/monitoring/monitoring.component').then(
-        (module) => module.MonitoringComponent
-      )
-  },
-
-  {
-    path: 'time-tracking',
+    path: '',
+    pathMatch: 'full',
     canActivate: [attendanceApprovalsDeepLinkGuard, permissionGuard],
-    data: {
-      title: 'Time Tracking',
-      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
-      modules: ['time_attendance']
-    },
+    data: { title: 'Attendance', permissions: ATTENDANCE_PERMISSIONS, modules: ['time_attendance'] },
     loadComponent: () =>
-      import('./feature/time-tracking/time-tracking.component').then(
-        (module) => module.TimeTrackingComponent
-      )
+      import('./feature/time-tracking/time-tracking.component').then((module) => module.TimeTrackingComponent)
   },
-  {
-    // Same component as 'time-tracking' - Requests has no standalone page yet (its
-    // correction/work-area draft-form state still lives on TimeTrackingComponent itself, see
-    // docs/superpowers/plans/finished/2026-09-08/2026-09-08-attendance-overview-redesign.md, "Deferred"). The
-    // sidebar no longer lists Requests; this route stays as the target of the Overview
-    // requests card's "View all requests" link.
-    path: 'time-tracking/requests',
-    canActivate: [permissionGuard],
-    data: {
-      title: 'Requests',
-      permissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
-      modules: ['time_attendance']
-    },
-    loadComponent: () =>
-      import('./feature/time-tracking/time-tracking.component').then(
-        (module) => module.TimeTrackingComponent
-      )
-  },
+  { path: 'overview', pathMatch: 'full', redirectTo: '/attendance' },
+  { path: 'time-tracking', pathMatch: 'full', redirectTo: '/attendance' },
+  { path: 'time-tracking/requests', pathMatch: 'full', redirectTo: '/attendance' },
+  { path: 'monitoring', pathMatch: 'full', redirectTo: '/settings/monitoring' },
   // Exception cases are reviewed in the Inbox now; the old Alerts page (and its ?alertId= links) land there.
   {
     path: 'alerts',
@@ -95,10 +52,5 @@ export const ATTENDANCE_ROUTES: Routes = [
     }
   },
   { path: 'corrections/approvals', redirectTo: legacyApprovalsRedirect('correction') },
-  { path: 'work-area-change-requests/approvals', redirectTo: legacyApprovalsRedirect('work_mode_change') },
-  {
-    path: '',
-    pathMatch: 'full',
-    redirectTo: 'overview'
-  }
+  { path: 'work-area-change-requests/approvals', redirectTo: legacyApprovalsRedirect('work_mode_change') }
 ];

@@ -60,7 +60,7 @@
           <button
             type="button"
             data-testid="calendar-hour-allday-chip"
-            class="flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-left text-[11px] text-white"
+            class="flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-left text-[11px] text-[var(--color-text-on-solid)]"
             [style.background-color]="event.color || 'var(--color-accent)'"
             (click)="eventClick.emit(event.id)"
           >
@@ -84,7 +84,7 @@
       @if (nowMarker(); as marker) {
         <span
           data-testid="calendar-now-label"
-          class="pointer-events-none absolute right-1 z-20 -translate-y-1/2 whitespace-nowrap rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
+          class="pointer-events-none absolute right-1 z-20 -translate-y-1/2 whitespace-nowrap rounded-full bg-[var(--color-danger)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--color-text-on-solid)]"
           [style.top.%]="marker.nowFraction! * 100"
         >{{ marker.nowLabel }}</span>
       }
@@ -130,8 +130,8 @@
         }
 
         @if (column.nowFraction !== null) {
-          <div data-testid="calendar-now-line" class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-red-500" [style.top.%]="column.nowFraction * 100">
-            <span data-testid="calendar-now-dot" class="absolute -left-1.5 -top-[6px] h-2.5 w-2.5 rounded-full bg-red-500"></span>
+          <div data-testid="calendar-now-line" class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-[var(--color-danger)]" [style.top.%]="column.nowFraction * 100">
+            <span data-testid="calendar-now-dot" class="absolute -left-1.5 -top-[6px] h-2.5 w-2.5 rounded-full bg-[var(--color-danger)]"></span>
           </div>
         }
 
@@ -141,7 +141,7 @@
             <button
               type="button"
               data-testid="calendar-hour-event-block"
-              class="absolute flex flex-col items-stretch gap-0.5 overflow-hidden rounded-md px-1.5 py-1 text-left text-[11px] leading-tight text-white"
+              class="absolute flex flex-col items-stretch gap-0.5 overflow-hidden rounded-md px-1.5 py-1 text-left text-[11px] leading-tight text-[var(--color-text-on-solid)]"
               [attr.data-kind]="'meeting'"
               [style.top.%]="positioned.top * 100"
               [style.height.%]="positioned.height * 100"
@@ -171,7 +171,7 @@
             <button
               type="button"
               data-testid="calendar-hour-event-block"
-              class="absolute flex items-center gap-1 overflow-hidden rounded px-1 text-left text-[11px] text-white"
+              class="absolute flex items-center gap-1 overflow-hidden rounded px-1 text-left text-[11px] text-[var(--color-text-on-solid)]"
               [style.top.%]="positioned.top * 100"
               [style.height.%]="positioned.height * 100"
               [style.left.%]="positioned.left * 100"
@@ -207,7 +207,7 @@
             <span data-testid="planner-block-accent" class="absolute inset-y-0 left-0 w-[3px] {{ vm.meta.bar }}" aria-hidden="true"></span>
             <span class="flex items-start gap-1">
               @if (vm.short) {
-                <app-task-kind-icon [kind]="vm.kind" />
+                <app-task-kind-icon [kind]="vm.kind" [icon]="vm.block.categoryIcon" />
                 <span class="truncate font-semibold">{{ vm.block.taskTitle }}</span>
               } @else {
                 <span data-testid="block-time" class="truncate opacity-80">{{ vm.times }} · {{ vm.duration }}</span>
@@ -219,7 +219,7 @@
             </span>
             @if (!vm.short) {
               <span class="flex items-center gap-1 font-semibold">
-                <app-task-kind-icon [kind]="vm.kind" />
+                <app-task-kind-icon [kind]="vm.kind" [icon]="vm.block.categoryIcon" />
                 <span class="truncate">{{ vm.block.taskTitle }}</span>
               </span>
               @if (vm.subtitle) {
@@ -229,10 +229,10 @@
             @if (vm.clash) {
               @if (column.editable) {
                 <button type="button" data-testid="planner-overlap-pill"
-                  class="mt-0.5 self-start truncate rounded-full bg-amber-100 px-1.5 text-[10px] text-amber-800"
+                  class="mt-0.5 self-start truncate rounded-full bg-[var(--color-warning-subtle)] px-1.5 text-[10px] text-[var(--color-warning-text)]"
                   (pointerdown)="stopPointer($event)" (click)="moveAfter(vm, column.date, $event)">Overlaps {{ vm.clash.title }} · Move after</button>
               } @else {
-                <span class="mt-0.5 self-start truncate rounded-full bg-amber-100 px-1.5 text-[10px] text-amber-800">Overlaps {{ vm.clash.title }}</span>
+                <span class="mt-0.5 self-start truncate rounded-full bg-[var(--color-warning-subtle)] px-1.5 text-[10px] text-[var(--color-warning-text)]">Overlaps {{ vm.clash.title }}</span>
               }
             }
             @if (column.editable) {
@@ -241,7 +241,7 @@
             }
           </div>
           @for (o of vm.overlaps; track $index) {
-            <div data-testid="planner-overlap" class="pointer-events-none absolute z-[6] rounded bg-amber-300 opacity-50"
+            <div data-testid="planner-overlap" class="pointer-events-none absolute z-[6] rounded bg-[var(--color-warning)] opacity-50"
               [style.top.%]="o.topPct" [style.height.%]="o.heightPct" [style.left.%]="vm.left * 100" [style.width.%]="vm.width * 100"></div>
           }
           @if (openMenu() === vm.block.id && column.editable) {
@@ -264,7 +264,7 @@
           @if (p.date === column.date) {
             <div data-testid="planner-drop-preview" [attr.data-invalid]="p.invalid"
               class="pointer-events-none absolute left-0.5 right-0.5 z-20 rounded border-2 border-dashed"
-              [ngClass]="p.invalid ? 'border-red-500 bg-red-50' : 'border-teal-600 bg-teal-50'"
+              [ngClass]="p.invalid ? 'border-[var(--color-danger)] bg-[var(--color-danger-subtle)]' : 'border-teal-600 bg-teal-50'"
               [style.top.%]="(p.start / 1440) * 100" [style.height.%]="((p.end - p.start) / 1440) * 100"></div>
           }
         }

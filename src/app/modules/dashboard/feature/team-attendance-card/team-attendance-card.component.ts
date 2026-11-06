@@ -27,7 +27,6 @@ import {
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
-const REFRESH_INTERVAL_MS = 60_000;
 interface LegendRow {
   readonly key: Exclude<TeamAttendanceBucket, 'off' | 'pending'>;
   readonly label: string;
@@ -70,7 +69,6 @@ export class TeamAttendanceCardComponent implements OnInit {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly api = inject(TeamAttendanceApiService);
 
-  private pollId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
   private resizeObserver: ResizeObserver | null = null;
   private frameId: number | null = null;
@@ -177,11 +175,9 @@ export class TeamAttendanceCardComponent implements OnInit {
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    if (document.visibilityState === 'visible') this.startPolling();
     this.observeSize();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopPolling();
       this.stopObservingSize();
     });
   }
@@ -291,21 +287,6 @@ export class TeamAttendanceCardComponent implements OnInit {
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
       this.feed.reload();
-      this.startPolling();
-    } else {
-      this.stopPolling();
-    }
-  }
-
-  private startPolling(): void {
-    if (this.pollId) return;
-    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
-  }
-
-  private stopPolling(): void {
-    if (this.pollId) {
-      clearInterval(this.pollId);
-      this.pollId = null;
     }
   }
 }

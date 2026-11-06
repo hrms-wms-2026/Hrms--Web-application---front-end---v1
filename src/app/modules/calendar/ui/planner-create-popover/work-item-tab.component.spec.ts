@@ -137,12 +137,12 @@ describe('WorkItemTabComponent', () => {
       .toBe('Sent for approval. Once approved it\'s yours and planned for Tue 09:00–11:00.');
   });
 
-  it('a lost create response says to check the Task queue', async () => {
+  it('a lost create response says to check the Task list', async () => {
     const { fixture, q, state } = await setup();
     state.set({ kind: 'unknown' });
     fixture.detectChanges();
     expect(q('work-item-unknown')!.textContent!.trim())
-      .toBe('We couldn\'t confirm the work item was created. Check your Task queue before trying again.');
+      .toBe('We couldn\'t confirm the work item was created. Check your Task list before trying again.');
   });
 
   // Review finding 2: the item exists (or may) in these states, so Create & plan must not send it again.

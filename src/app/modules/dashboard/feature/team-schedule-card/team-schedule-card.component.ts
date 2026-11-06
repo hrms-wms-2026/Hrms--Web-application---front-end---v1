@@ -74,7 +74,7 @@ import {
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamScheduleDetailDialogComponent } from '../team-schedule-detail-dialog/team-schedule-detail-dialog.component';
 
-const REFRESH_INTERVAL_MS = 60_000;
+const CLOCK_TICK_MS = 60_000;
 /** The timeline's fixed columns (member 200, status 104, done 48, three 12px gaps); the track takes the rest. */
 const TIMELINE_NAME_PX = 388;
 /** A block narrower than this shows its colour and tooltip only. */
@@ -128,7 +128,7 @@ export class TeamScheduleCardComponent implements OnInit {
   });
   private readonly destroyRef = inject(DestroyRef);
   private readonly size = injectHostSize();
-  private pollId: ReturnType<typeof setInterval> | null = null;
+  private clockId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
   private lastView: ScheduleView | null = null;
   private weekRequested = false;
@@ -271,10 +271,10 @@ export class TeamScheduleCardComponent implements OnInit {
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    if (document.visibilityState === 'visible') this.startPolling();
+    if (document.visibilityState === 'visible') this.startClock();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopPolling();
+      this.stopClock();
     });
   }
 
@@ -397,24 +397,21 @@ export class TeamScheduleCardComponent implements OnInit {
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
       this.feed.reload();
-      this.startPolling();
+      this.startClock();
     } else {
-      this.stopPolling();
+      this.stopClock();
     }
   }
 
-  private startPolling(): void {
-    if (this.pollId) return;
-    this.pollId = setInterval(() => {
-      this.now.set(new Date());
-      this.feed.reload();
-    }, REFRESH_INTERVAL_MS);
+  private startClock(): void {
+    if (this.clockId) return;
+    this.clockId = setInterval(() => this.now.set(new Date()), CLOCK_TICK_MS);
   }
 
-  private stopPolling(): void {
-    if (this.pollId) {
-      clearInterval(this.pollId);
-      this.pollId = null;
+  private stopClock(): void {
+    if (this.clockId) {
+      clearInterval(this.clockId);
+      this.clockId = null;
     }
   }
 }

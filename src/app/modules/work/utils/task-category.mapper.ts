@@ -8,7 +8,8 @@ export function toTaskCategoryColumn(dto: TaskCategoryDto): TaskCategoryColumn {
     displayOrder: dto.displayOrder,
     systemKey: dto.systemKey ?? null,
     isSystem: dto.isSystem ?? false,
-    kind: dto.kind ?? 'task'
+    kind: dto.kind ?? 'task',
+    icon: dto.icon ?? null
   };
 }
 

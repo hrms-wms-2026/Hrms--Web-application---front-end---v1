@@ -134,11 +134,11 @@ export interface ComposerUploader {
       background-color: var(--color-surface-secondary);
       border: 1px solid var(--color-border);
       border-radius: 3px;
-      box-shadow: 0 1px 1px rgba(0,0,0,0.06);
+      box-shadow: var(--shadow-card);
     }
     .cc-expanded-wrap { display: flex; flex-direction: column; gap: 8px; }
     /* Chat variant: one rounded box - the message on top, attach and send below (no formatting toolbar; / still works). */
-    .cc-chat { gap: 4px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); box-shadow: 0 1px 2px rgb(0 0 0 / .04); cursor: text; transition: border-color 150ms ease, box-shadow 150ms ease; }
+    .cc-chat { gap: 4px; padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); box-shadow: var(--shadow-card); cursor: text; transition: border-color 150ms ease, box-shadow 150ms ease; }
     .cc-chat:focus-within { border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 12%, transparent); }
     .cc-chat ::ng-deep .tfm-editor__toolbar { display: none; }
     /* app-rich-text-editor in the selectors outranks the editor's own borderless/compact host rules. */
@@ -163,7 +163,7 @@ export interface ComposerUploader {
     .cc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .cc-cancel-btn { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: 6px; padding: 4px 12px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--color-text-primary); }
     .cc-cancel-btn:hover { background: var(--color-surface-secondary); }
-    .cc-submit-btn { border: 0; background: var(--color-accent); color: #fff; border-radius: 6px; padding: 4px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .cc-submit-btn { border: 0; background: var(--color-accent); color: var(--color-accent-contrast); border-radius: 6px; padding: 4px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
     .cc-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   `]
 })

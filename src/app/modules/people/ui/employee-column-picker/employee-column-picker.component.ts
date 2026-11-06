@@ -47,7 +47,7 @@ import { DEFAULT_EMPLOYEE_COLUMNS, EMPLOYEE_COLUMNS, EmployeeColumnKey } from '.
     .ecp__item input { accent-color: var(--color-accent); }
     .ecp__actions { display: flex; justify-content: flex-end; gap: 8px; }
     .ecp__btn { padding: 6px 14px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 13px; cursor: pointer; }
-    .ecp__btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+    .ecp__btn--primary { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-text-on-solid); }
   `]
 })
 export class EmployeeColumnPickerComponent {

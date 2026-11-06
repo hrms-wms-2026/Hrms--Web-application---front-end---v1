@@ -133,7 +133,7 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      box-shadow: var(--shadow-card);
     }
     .ap-card__header {
       display: flex;
@@ -167,8 +167,8 @@ import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
       font-weight: 650;
     }
     .ap-badge--pending {
-      background: color-mix(in srgb, #eab308 15%, var(--color-surface));
-      color: #854d0e;
+      background: color-mix(in srgb, var(--color-warning) 15%, var(--color-surface));
+      color: var(--color-warning-text);
     }
     .ap-card__penalty-box {
       display: flex;

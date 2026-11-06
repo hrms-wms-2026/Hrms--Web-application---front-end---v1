@@ -93,7 +93,7 @@ describe('OverviewTimeOffWidgetComponent', () => {
 
     expect(bars[0].getAttribute('aria-valuenow')).toBe('100');
     expect(bars[1].getAttribute('aria-valuenow')).toBe('100');
-    expect((bars[1].firstElementChild as HTMLElement).className).toContain('bg-rose-500');
+    expect((bars[1].firstElementChild as HTMLElement).className).toContain('bg-[var(--color-danger)]');
   });
 
   it('shows the no-access state on 403', () => {

@@ -25,7 +25,7 @@ import { OverviewKpiStripComponent } from '../overview-kpi-strip/overview-kpi-st
       @case ('loading') {
         <div data-testid="widget-loading" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-hidden="true">
           @for (i of [0, 1, 2, 3]; track i) {
-            <div class="h-[4.25rem] animate-pulse rounded-xl border border-slate-200/80 bg-slate-100"></div>
+            <div class="h-[4.25rem] animate-pulse rounded-xl border border-[var(--color-border)]/80 bg-[var(--color-surface-secondary)]"></div>
           }
         </div>
       }

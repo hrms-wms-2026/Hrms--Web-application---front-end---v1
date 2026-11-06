@@ -46,6 +46,15 @@ describe('TodaysScheduleCardComponent', () => {
     return { fixture, getEvents, getMyTimezone };
   }
 
+  it('the hover refresh button fetches today again', async () => {
+    const { fixture, getEvents } = await setup();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('[data-testid="popout-expand"]')).toBeNull();
+    (el.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(getEvents).toHaveBeenCalledTimes(2);
+  });
+
   it('resolves the viewer timezone before fetching events, and requests a UTC range covering today', async () => {
     const { getEvents, getMyTimezone } = await setup();
     expect(getMyTimezone).toHaveBeenCalledOnce();
@@ -76,7 +85,7 @@ describe('TodaysScheduleCardComponent', () => {
     expect(rows.map((r) => r.dataset['status'])).toEqual(['completed', 'inProgress', 'upcoming']);
     expect(rows.map((r) => r.querySelector('[data-testid="todays-schedule-status"]')!.textContent!.trim())).toEqual([
       'Completed',
-      'In Progress',
+      'In progress',
       'Upcoming'
     ]);
     expect(rows[2].textContent).toContain('Review PR');
@@ -154,6 +163,51 @@ describe('TodaysScheduleCardComponent', () => {
     expect(btn.title).toBe('Join Teams Meeting');
     expect(btn.getAttribute('href')).toBe('https://teams.microsoft.com/l/meetup-join/123');
   });
+
+  it('renders item count, total time, and meetings/events counts in stats bar', async () => {
+    const at = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString();
+    const { fixture } = await setup({
+      events: [
+        event({ id: 'e1', title: 'Daily standup', startDate: at(-60), endDate: at(-30), meetingLink: 'https://zoom.us/j/1' }),
+        event({ id: 'e2', title: 'Sprint planning', startDate: at(0), endDate: at(60), meetingLink: 'https://teams.microsoft.com/l/2' }),
+        event({ id: 'e3', title: 'Feature development', startDate: at(90), endDate: at(150) })
+      ]
+    });
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('3 items scheduled today');
+    expect(text).toContain('2h 30m');
+    expect(text).toContain('Total time');
+    expect(text).toContain('2 Meetings');
+    expect(text).toContain('1 Event');
+  });
+
+  it('a calendar event is a Meeting only when it has a meeting link, never from its title', async () => {
+    const at = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString();
+    const { fixture } = await setup({
+      events: [event({ id: 'e1', title: 'Code review meeting', startDate: at(30), endDate: at(60) })]
+    });
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('0 Meetings');
+    expect(text).toContain('1 Event');
+  });
+
+  it('an empty day offers only Add Quick Event, no sample schedule', async () => {
+    const { fixture } = await setup();
+    const empty: HTMLElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-empty"]');
+
+    expect(empty).not.toBeNull();
+    expect(empty.textContent).toContain('Add Quick Event');
+    expect(empty.querySelectorAll('button')).toHaveLength(0);
+  });
+
+  it('renders Open planner link with calendar path and text', async () => {
+    const { fixture } = await setup();
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-view-link"]');
+    expect(link.getAttribute('href')).toBe('/calendar');
+    expect(link.textContent).toContain('Open planner');
+  });
 });
 
 describe('TodaysScheduleCardComponent - meetings', () => {
@@ -202,6 +256,19 @@ describe('TodaysScheduleCardComponent - meetings', () => {
     const { fixture } = await setup([event({ id: 'e1', title: 'Dentist', startDate: at(60), endDate: at(90) })], []);
     const row: HTMLElement = fixture.nativeElement.querySelector('[data-testid="todays-schedule-item"]');
     expect(row.querySelector('[data-testid="todays-schedule-kind"]')?.textContent?.trim()).toBe('Calendar event');
+  });
+
+  it('a cancelled meeting is left out of the meetings list', async () => {
+    const today = new Date();
+    const todayAt = (h: number) => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), h)).toISOString();
+    const { fixture } = await setup([], [
+      { ...meeting('c', 'Called off', todayAt(15), todayAt(16)), status: 'cancelled' },
+      meeting('a', 'Morning standup', todayAt(9), todayAt(10)),
+    ]);
+
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="todays-meetings-item"]'));
+    expect(rows.map((r) => r.querySelector('[data-testid="meeting-card-title"]')?.textContent?.trim()))
+      .toEqual(['Morning standup']);
   });
 
   it('a task meeting the calendar feed also returns is listed once, under the meetings', async () => {

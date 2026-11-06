@@ -13,40 +13,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // Its admin screens live under Settings → Time Off.
   { id: 'time-off', label: 'Time Off', description: 'Leaves, holidays and time off.', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
     requiredPermissions: ['leave:read-own', 'leave:read-team', 'leave:read', 'leave:manage', 'leave:approve', 'calendar:read'] },
-  {
-    id: 'time-attendance',
-    label: 'Attendance',
-    description: 'Attendance and work hours.',
-    icon: 'time-attendance',
-    path: '/attendance/overview',
+  // Attendance is one page (2026-11-04 redesign), so it has no sub-sidebar. Monitoring lives under Settings → Monitoring.
+  { id: 'time-attendance', label: 'Attendance', description: 'Attendance and work hours.', icon: 'time-attendance', path: '/attendance',
     requiredModules: ['time_attendance'],
-    requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
-    children: [
-      {
-        id: 'time-attendance-overview',
-        label: 'Overview', description: 'Attendance for today at a glance.',
-        path: '/attendance/overview',
-        exact: true,
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
-      },
-      {
-        id: 'time-attendance-tracking',
-        label: 'Time Tracking', description: 'Clock-ins, hours and timesheets.',
-        path: '/attendance/time-tracking',
-        exact: true,
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
-      },
-      {
-        id: 'time-attendance-monitoring',
-        label: 'Monitoring', description: 'Activity and presence monitoring.',
-        path: '/attendance/monitoring',
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['monitoring:read']
-      }
-    ]
-  },
+    requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'] },
   // Org holds the organization structure and the people in it, as two sections of one sub-sidebar. The parent needs
   // either module and shows when any child is reachable (a team manager sees only People, an org admin only
   // Organization), and the rail opens the first reachable child (NavigationStateService.entryPath).
@@ -71,6 +41,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', description: 'Add and invite multiple users at once.', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
       { id: 'settings-time-off', label: 'Time Off', description: 'Leave types, policies, entitlements and holidays.', path: '/settings/time-off', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
       { id: 'settings-clock-in-policy', label: 'Clock-in Policy', description: 'When and where people can clock in.', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
+      { id: 'settings-monitoring', label: 'Monitoring', description: 'Activity and presence monitoring.', path: '/settings/monitoring', requiredModules: ['time_attendance'], requiredPermissions: ['monitoring:read'] },
       { id: 'settings-calendar-connections', label: 'Calendar Sync', description: 'Connect Outlook and Google calendars.', path: '/settings/calendar-connections', requiredModules: ['calendar'], requiredPermissions: ['calendar:read'] }
       // Audit log is intentionally not listed yet.
     ]

@@ -131,7 +131,7 @@ export function chatTimeLabel(iso: string, now: Date = new Date()): string {
     .cl__row { position: relative; display: flex; align-items: center; gap: 2px; border-radius: 10px; }
     .cl__row:hover { background: var(--color-surface); }
     .cl__row--active, .cl__row--active:hover { background: var(--color-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
-    .cl__row--active .cl__name { color: var(--color-accent); }
+    .cl__row--active .cl__name { color: var(--color-link); }
     .cl__open { display: flex; min-width: 0; flex: 1; align-items: center; gap: 10px; padding: 8px; border: 0; border-radius: 10px; background: none;
       color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
     .cl__open:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: -2px; }

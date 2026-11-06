@@ -28,8 +28,8 @@ import { taskBoardUrl } from '../../utils/signal-item-links';
                                  (saved)="changed.emit()" (closed)="close()" />
           } @else if (taskState() === 'failed') {
             <app-modal [open]="true" [title]="s.item.title" size="md" (closed)="close()">
-              <p class="text-sm text-slate-600">This task's project could not be opened here.</p>
-              <a data-testid="task-board-fallback" class="mt-2 inline-block text-sm font-semibold text-blue-600 hover:underline"
+              <p class="text-sm text-[var(--color-text-secondary)]">This task's project could not be opened here.</p>
+              <a data-testid="task-board-fallback" class="mt-2 inline-block text-sm font-semibold text-[var(--color-accent)] hover:underline"
                  [href]="boardUrl()" (click)="openBoard($event)">Open on board →</a>
             </app-modal>
           }

@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Component, OnInit, Signal, WritableSignal, computed, effect, inject, input, output, signal } from '@angular/core';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
@@ -7,7 +7,7 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { PersonPickerDialogComponent, PersonPickerOption } from '../../../../shared/ui/person-picker-dialog/person-picker-dialog.component';
 import { validateProjectForm, ProjectFormFields } from '../../utils/project-form.validator';
 import { CreateProjectPayload } from '../../models/project.model';
-import { ColorSwatchPickerComponent } from '../color-swatch-picker/color-swatch-picker.component';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
 import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
@@ -23,7 +23,7 @@ const STEP_ITEMS = [
   selector: 'app-project-form-modal',
   host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [StopClickPropagationDirective, InputComponent, ButtonComponent, DateRangePickerComponent, PersonPickerDialogComponent, ColorSwatchPickerComponent, IconPickerComponent],
+  imports: [StopClickPropagationDirective, InputComponent, ButtonComponent, DateRangePickerComponent, PersonPickerDialogComponent, EntityIconComponent, IconPickerComponent],
   template: `
     @if (open()) {
       <div role="presentation" class="proj-modal-backdrop" animate.leave="ui-popup-leave" (click)="closed.emit()">
@@ -209,47 +209,49 @@ const STEP_ITEMS = [
                     <app-input label="Allocated Hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours']" (valueChange)="onAllocatedHoursChange($event)" />
                   </span>
 
-                  <span data-testid="color-field" class="col-span-2 flex flex-col gap-1">
-                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Icon and colour</span>
-                    <span class="flex items-center gap-3">
-                      <app-icon-picker data-testid="icon-field" ariaLabel="Choose project icon" [icon]="icon()" [color]="color() || null" [name]="name()"
-                                       [showColors]="false" (iconChange)="icon.set($event)" />
-                      <app-color-swatch-picker [presets]="colorPresets" [selected]="color()" (colorChange)="color.set($event)" />
-                    </span>
-                    <!-- Hidden input so tests or form helpers can set color-field input directly -->
-                    <input
-                      type="text"
-                      class="sr-only"
-                      [value]="color()"
-                      (input)="color.set($any($event.target).value)"
-                      tabindex="-1"
-                      aria-hidden="true"
-                    />
-                  </span>
-
                 </div>
                 <span data-testid="description-field">
                   <app-input label="Description" [value]="description()" (valueChange)="description.set($event)" />
                 </span>
                 <div class="grid grid-cols-2 gap-3">
-                  <span data-testid="logo-field" class="flex flex-col gap-1">
-                    <label for="project-logo-input" class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Logo</label>
-                    <div class="proj-file-input">
-                      <input id="project-logo-input" type="file" accept="image/png,image/jpeg,image/webp" (change)="onLogoFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                      <svg class="h-3.5 w-3.5 text-[var(--color-accent)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                      <span class="truncate text-xs text-[var(--color-text-secondary)]">{{ logoFile() ? logoFile()!.name : 'Choose logo' }}</span>
-                      <span class="text-[10px] font-bold text-[var(--color-accent)] uppercase shrink-0">Browse</span>
+                  <!-- One picture per project: picking an icon or emoji replaces the logo, and uploading a logo replaces the icon. -->
+                  <div data-testid="icon-field" class="flex flex-col gap-1" role="group" aria-label="Project icon">
+                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Icon</span>
+                    <div class="proj-media-field">
+                      @if (logoPreviewUrl(); as url) {
+                        <img data-testid="logo-preview" class="proj-media-thumb" [src]="url" alt="" />
+                      } @else {
+                        <app-entity-icon data-testid="icon-preview" class="shrink-0 [--entity-icon-size:1.75rem]" [icon]="icon()" [name]="name()" />
+                      }
+                      <app-icon-picker linkLabel="Icon or emoji" [icon]="icon()" [name]="name()" [showColors]="false" (iconChange)="onIconChange($event)" />
+                      <span data-testid="logo-field" class="inline-flex">
+                        <input id="project-logo-input" type="file" accept="image/png,image/jpeg,image/webp" class="proj-media-input sr-only" (change)="onLogoFileSelected($event)" />
+                        <label for="project-logo-input" class="proj-media-link">Upload logo</label>
+                      </span>
+                      @if (icon() || logoFile()) {
+                        <button type="button" data-testid="remove-picture" class="proj-media-remove" (click)="removePicture()">Remove</button>
+                      }
                     </div>
-                  </span>
-                  <span data-testid="banner-field" class="flex flex-col gap-1">
-                    <label for="project-banner-input" class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Banner</label>
-                    <div class="proj-file-input">
-                      <input id="project-banner-input" type="file" accept="image/png,image/jpeg,image/webp" (change)="onBannerFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                      <svg class="h-3.5 w-3.5 text-[var(--color-accent)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                      <span class="truncate text-xs text-[var(--color-text-secondary)]">{{ bannerFile() ? bannerFile()!.name : 'Choose banner' }}</span>
-                      <span class="text-[10px] font-bold text-[var(--color-accent)] uppercase shrink-0">Browse</span>
+                  </div>
+                  <div data-testid="banner-field" class="flex flex-col gap-1" role="group" aria-label="Project banner">
+                    <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Project Banner</span>
+                    <div class="proj-media-field">
+                      @if (bannerPreviewUrl(); as url) {
+                        <img data-testid="banner-preview" class="proj-media-thumb" [src]="url" alt="" />
+                      } @else {
+                        <span class="proj-media-tile" aria-hidden="true">
+                          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </span>
+                      }
+                      <span class="inline-flex">
+                        <input id="project-banner-input" type="file" accept="image/png,image/jpeg,image/webp" class="proj-media-input sr-only" (change)="onBannerFileSelected($event)" />
+                        <label for="project-banner-input" class="proj-media-link">Upload banner</label>
+                      </span>
+                      @if (bannerFile()) {
+                        <button type="button" data-testid="remove-banner" class="proj-media-remove" (click)="bannerFile.set(null)">Remove</button>
+                      }
                     </div>
-                  </span>
+                  </div>
                 </div>
               </div>
             }
@@ -297,12 +299,11 @@ const STEP_ITEMS = [
                 </div>
                 <div class="rounded-lg border border-[var(--color-border)] overflow-hidden bg-[var(--color-surface)]">
                   <div class="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface-secondary)]/40">
-                    <div
-                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-white text-sm shadow-sm"
-                      [style.background]="color() || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
-                    >
-                      {{ name().substring(0, 1).toUpperCase() || 'P' }}
-                    </div>
+                    @if (logoPreviewUrl(); as url) {
+                      <img data-testid="review-logo" class="h-9 w-9 shrink-0 rounded-xl border border-[var(--color-border)] object-cover" [src]="url" alt="" />
+                    } @else {
+                      <app-entity-icon data-testid="review-icon" class="shrink-0 [--entity-icon-size:2.25rem]" [icon]="icon()" [name]="name()" />
+                    }
                     <div>
                       <div class="text-sm font-bold text-[var(--color-text-primary)]">{{ name() }}</div>
                       <div class="text-xs text-[var(--color-text-secondary)]">{{ identifier() }} &bull; {{ selectedCategoryName() }}</div>
@@ -331,7 +332,7 @@ const STEP_ITEMS = [
             }
 
             @if (errorMessage()) {
-              <p class="text-xs font-medium text-[var(--color-danger-text)] bg-red-50 p-2.5 rounded-lg border border-red-200 mt-2" role="alert">
+              <p class="text-xs font-medium text-[var(--color-danger-text)] bg-[var(--color-danger-subtle)] p-2.5 rounded-lg border border-[var(--color-danger-subtle)] mt-2" role="alert">
                 {{ errorMessage() }}
               </p>
             }
@@ -399,7 +400,7 @@ const STEP_ITEMS = [
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: 10px;
-      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.12), 0 8px 10px -6px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-modal);
       overflow: visible;
       outline: none;
     }
@@ -560,7 +561,7 @@ const STEP_ITEMS = [
       background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
       color: var(--color-accent);
       font-weight: 600;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: var(--shadow-card);
     }
 
     .proj-category-card--add {
@@ -603,7 +604,7 @@ const STEP_ITEMS = [
     .proj-category-add-btn--confirm {
       border: none;
       background: var(--color-accent);
-      color: white;
+      color: var(--color-text-on-solid);
     }
     .proj-category-add-btn--cancel {
       border: 1px solid var(--color-border);
@@ -611,21 +612,47 @@ const STEP_ITEMS = [
       color: var(--color-text-secondary);
     }
 
-    .proj-file-input {
-      position: relative;
+    .proj-media-field {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      border: 1px dashed var(--color-border);
+      min-height: 2.5rem;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--color-border);
       border-radius: 8px;
-      padding: 0.5rem 0.75rem;
-      background: var(--color-surface-secondary);
-      cursor: pointer;
-      transition: border-color 150ms ease;
-      overflow: hidden;
-      min-height: 2.25rem;
+      background: var(--color-surface);
     }
-    .proj-file-input:hover { border-color: var(--color-accent); }
+    .proj-media-thumb,
+    .proj-media-tile {
+      width: 1.75rem;
+      height: 1.75rem;
+      flex-shrink: 0;
+      border-radius: 0.5rem;
+    }
+    .proj-media-thumb { object-fit: cover; }
+    .proj-media-tile {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+      color: var(--color-accent);
+    }
+    .proj-media-link,
+    .proj-media-remove {
+      padding: 0.125rem 0.25rem;
+      border: 0;
+      border-radius: 0.375rem;
+      background: none;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .proj-media-link { color: var(--color-accent); }
+    .proj-media-link:hover { text-decoration: underline; }
+    .proj-media-input:focus-visible + .proj-media-link { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+    .proj-media-remove { margin-left: auto; color: var(--color-text-secondary); }
+    .proj-media-remove:hover { color: var(--color-danger-text); }
 
     .proj-member-avatar {
       display: flex;
@@ -675,13 +702,6 @@ export class ProjectFormModalComponent implements OnInit {
 
   readonly steps = STEP_ITEMS;
 
-  readonly colorPresets = [
-    { value: '#2563eb', label: 'Blue' },
-    { value: '#16a34a', label: 'Green' },
-    { value: '#7c3aed', label: 'Purple' },
-    { value: '#ea580c', label: 'Orange' },
-  ];
-
   open = input(false);
   submitting = input(false);
   errorMessage = input<string>('');
@@ -697,10 +717,11 @@ export class ProjectFormModalComponent implements OnInit {
   startDate = signal('');
   targetDate = signal('');
   allocatedHours = signal(0);
-  color = signal('');
   icon = signal<string | null>(null);
   logoFile = signal<File | null>(null);
+  protected readonly logoPreviewUrl = signal<string | null>(null);
   bannerFile = signal<File | null>(null);
+  protected readonly bannerPreviewUrl = signal<string | null>(null);
   memberEmployeeIds = signal<readonly string[]>([]);
   pickerOpen = signal(false);
   errors = signal<Record<string, string>>({});
@@ -721,7 +742,7 @@ export class ProjectFormModalComponent implements OnInit {
         this.startDate.set('');
         this.targetDate.set('');
         this.allocatedHours.set(0);
-        this.color.set('');
+        this.icon.set(null);
         this.logoFile.set(null);
         this.bannerFile.set(null);
         this.memberEmployeeIds.set([]);
@@ -732,6 +753,22 @@ export class ProjectFormModalComponent implements OnInit {
         this.creatingCategory.set(false);
         this.addCategoryError.set('');
       }
+    });
+
+    this.keepPreviewUrl(this.logoFile, this.logoPreviewUrl);
+    this.keepPreviewUrl(this.bannerFile, this.bannerPreviewUrl);
+  }
+
+  private keepPreviewUrl(file: Signal<File | null>, previewUrl: WritableSignal<string | null>): void {
+    effect((onCleanup) => {
+      const current = file();
+      if (!current) {
+        previewUrl.set(null);
+        return;
+      }
+      const url = URL.createObjectURL(current);
+      previewUrl.set(url);
+      onCleanup(() => URL.revokeObjectURL(url));
     });
   }
 
@@ -797,12 +834,28 @@ export class ProjectFormModalComponent implements OnInit {
 
   onLogoFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.logoFile.set(input.files?.[0] ?? null);
+    const file = input.files?.[0];
+    input.value = ''; // so choosing the same file again after Remove still fires change
+    if (!file) return;
+    this.logoFile.set(file);
+    this.icon.set(null);
+  }
+
+  onIconChange(icon: string | null): void {
+    this.icon.set(icon);
+    if (icon) this.logoFile.set(null);
+  }
+
+  removePicture(): void {
+    this.icon.set(null);
+    this.logoFile.set(null);
   }
 
   onBannerFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.bannerFile.set(input.files?.[0] ?? null);
+    const file = input.files?.[0];
+    input.value = ''; // so choosing the same file again after Remove still fires change
+    if (file) this.bannerFile.set(file);
   }
 
   /** Members already staged: listed as added in the picker. */
@@ -864,7 +917,7 @@ export class ProjectFormModalComponent implements OnInit {
     this.createSubmitted.emit({
       categoryId: fields.categoryId, name: fields.name, identifier: fields.identifier,
       description: this.description(), startDate: fields.startDate, targetDate: fields.targetDate,
-      releaseDate: null, color: this.color(), actualHours: 0,
+      releaseDate: null, color: '', actualHours: 0,
       defaultObjectiveAllocatedHours: fields.allocatedHours,
       logoFile: this.logoFile(), bannerFile: this.bannerFile(), icon: this.icon(),
       memberEmployeeIds: this.memberEmployeeIds()

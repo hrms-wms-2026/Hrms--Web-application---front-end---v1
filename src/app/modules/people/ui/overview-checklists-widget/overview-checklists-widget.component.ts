@@ -66,7 +66,7 @@ export const CHECKLIST_PREVIEW_LIMIT = 3;
                 <div class="bar" data-testid="checklist-bar" [class.bar--done]="isDone(group)" [style.width.%]="percent(group)"></div>
               </div>
               @if (group.tasks?.length) {
-                <ul class="mt-2 space-y-2 border-l-2 border-slate-100 pl-3">
+                <ul class="mt-2 space-y-2 border-l-2 border-[var(--color-border)] pl-3">
                   @for (task of group.tasks; track task.id) {
                     <li class="rounded-md bg-[var(--color-surface-secondary)] px-3 py-2 text-xs" data-testid="checklist-task">
                       <div class="flex items-start justify-between gap-2">
@@ -83,7 +83,7 @@ export const CHECKLIST_PREVIEW_LIMIT = 3;
                       }
                       @if (task.canOpenTask && task.workProjectId && task.workTaskId) {
                         <a
-                          class="mt-1 inline-block font-semibold text-blue-600 hover:underline"
+                          class="mt-1 inline-block font-semibold text-[var(--color-accent)] hover:underline"
                           [routerLink]="['/work', task.workProjectId, 'board']"
                           [queryParams]="{ highlightTaskId: task.workTaskId }"
                           appStopClickPropagation
@@ -99,10 +99,10 @@ export const CHECKLIST_PREVIEW_LIMIT = 3;
       }
 
       @if (canExpand()) {
-        <div class="mt-3 flex justify-end border-t border-slate-100 pt-3">
+        <div class="mt-3 flex justify-end border-t border-[var(--color-border)] pt-3">
           <button
             type="button"
-            class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+            class="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer"
             data-testid="checklists-toggle"
             [attr.aria-expanded]="showAll()"
             (click)="onToggleClick($event)"

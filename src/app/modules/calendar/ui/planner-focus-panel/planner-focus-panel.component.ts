@@ -12,7 +12,7 @@ const GROUP_TITLES: Record<PlannerFocusReason, string> = {
 const REASONS: readonly PlannerFocusReason[] = ['overdue', 'due_today', 'due_this_week', 'backlog'];
 /** The section dot: red overdue, orange due today, grey otherwise. */
 const REASON_DOTS: Record<PlannerFocusReason, string> = {
-  overdue: 'bg-[var(--color-danger)]', due_today: 'bg-orange-500',
+  overdue: 'bg-[var(--color-danger)]', due_today: 'bg-[var(--color-warning)]',
   due_this_week: 'bg-[var(--color-text-secondary)]', backlog: 'bg-[var(--color-text-secondary)]',
 };
 /** Cards per section before "See all". */
@@ -44,7 +44,7 @@ function localDate(date: string): Date {
 }
 
 /**
- * The Focus panel, shown to users as "Task queue" (2026-10-27 Planner = Calendar design, section 4.2): what to work on, in four groups. On a wide screen a
+ * The Focus panel, shown to users as "Task list" (2026-10-27 Planner = Calendar design, section 4.2): what to work on, in four groups. On a wide screen a
  * card is dragged onto the calendar grid and a click opens the task; on a narrow one a tap asks for a day and time
  * instead. Every card also has a Plan button, the keyboard's way to schedule.
  */

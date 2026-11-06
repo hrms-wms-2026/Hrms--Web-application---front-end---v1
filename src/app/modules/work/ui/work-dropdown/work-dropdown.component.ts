@@ -86,7 +86,7 @@ export type WorkDropdownSize = 'md' | 'sm';
     .work-dropdown__label { color: var(--color-text-secondary); font-size: 12px; font-weight: 500; line-height: 1.2; }
     .work-dropdown__control { position: relative; min-width: 0; }
     .work-dropdown__error { display: block; margin-top: 3px; color: var(--color-danger-text, var(--color-danger)); font-size: 11px; line-height: 1.3; }
-    .work-dropdown__trigger { display: inline-flex; width: 100%; height: 44px; align-items: center; gap: 9px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 12px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; box-shadow: 0 1px 2px rgb(15 23 42 / .04); transition: border-color 160ms ease, box-shadow 160ms ease; }
+    .work-dropdown__trigger { display: inline-flex; width: 100%; height: 44px; align-items: center; gap: 9px; border: 1px solid var(--color-border); border-radius: 9px; padding: 0 12px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; box-shadow: var(--shadow-card); transition: border-color 160ms ease, box-shadow 160ms ease; }
     .work-dropdown__trigger--sm { height: 30px; gap: 7px; border-radius: 8px; padding: 0 10px; font-size: 13px; }
     .work-dropdown__trigger--sm .work-dropdown__leading-icon, .work-dropdown__trigger--sm .work-dropdown__chevron { width: 15px; height: 15px; }
     .work-dropdown__trigger:hover, .work-dropdown__trigger[aria-expanded="true"] { border-color: var(--color-accent); }
@@ -100,7 +100,7 @@ export type WorkDropdownSize = 'md' | 'sm';
     .work-dropdown__value { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .work-dropdown__chevron { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 160ms ease; }
     .work-dropdown__chevron--open { transform: rotate(180deg); }
-    .work-dropdown__menu { position: absolute; left: 0; right: 0; top: calc(100% + 7px); z-index: 60; max-height: 16rem; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 10px; padding: 6px; background: var(--color-surface); box-shadow: 0 14px 30px rgb(15 23 42 / .14); animation: work-dropdown-menu-in 140ms ease-out; }
+    .work-dropdown__menu { position: absolute; left: 0; right: 0; top: calc(100% + 7px); z-index: 60; max-height: 16rem; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 10px; padding: 6px; background: var(--color-surface); box-shadow: var(--shadow-popover); animation: work-dropdown-menu-in 140ms ease-out; }
     .work-dropdown__menu--up { top: auto; bottom: calc(100% + 7px); }
     .work-dropdown__clear { display: block; width: 100%; margin-bottom: 2px; border: 0; border-radius: 6px; padding: 5px 9px; background: transparent; color: var(--color-accent); font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
     .work-dropdown__clear:hover { background: var(--color-surface-secondary); }

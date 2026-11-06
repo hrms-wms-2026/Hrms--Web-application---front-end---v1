@@ -6,13 +6,13 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   standalone: true,
   template: `
     <section
-      class="flex h-full flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-slate-200/80 bg-white p-5 text-center"
+      class="flex h-full flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-[var(--color-border)]/80 bg-[var(--color-surface)] p-5 text-center"
       data-testid="unsupported-widget"
     >
       @if (title()) {
-        <p class="text-sm font-semibold text-slate-700">{{ title() }}</p>
+        <p class="text-sm font-semibold text-[var(--color-text-primary)]">{{ title() }}</p>
       }
-      <p class="text-xs text-slate-500">This widget is no longer available.</p>
+      <p class="text-xs text-[var(--color-text-secondary)]">This widget is no longer available.</p>
     </section>
   `,
   host: { class: 'block h-full' },

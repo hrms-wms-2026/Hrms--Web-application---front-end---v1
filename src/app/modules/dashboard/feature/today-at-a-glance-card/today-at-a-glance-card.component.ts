@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { DashboardGreetingComponent } from '../dashboard-greeting/dashboard-greeting.component';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { LeaveRequestApiService } from '../../../leave/data-access/leave-request-api.service';
 import { formatMinutes } from '../../util/timeline-segments.util';
 import { getTimeOfDayInfo, TimeOfDayInfo } from '../../util/time-of-day.util';
@@ -15,16 +16,16 @@ function formatClock(date: Date): string | null {
 
 /** The activity bar's legend, in the design's order; Upcoming is the bar's own background. */
 const BLOCK_LEGEND: readonly { type: DayBlockType | 'upcoming'; label: string; dotClass: string }[] = [
-  { type: 'working', label: 'Working', dotClass: 'bg-blue-600' },
-  { type: 'break', label: 'Break', dotClass: 'bg-amber-400' },
-  { type: 'leave', label: 'Leave', dotClass: 'bg-red-500' },
-  { type: 'upcoming', label: 'Upcoming', dotClass: 'bg-slate-200' }
+  { type: 'working', label: 'Working', dotClass: 'bg-[var(--color-accent)]' },
+  { type: 'break', label: 'Break', dotClass: 'bg-[var(--color-warning)]' },
+  { type: 'leave', label: 'Leave', dotClass: 'bg-[var(--color-danger)]' },
+  { type: 'upcoming', label: 'Upcoming', dotClass: 'bg-[var(--color-border)]' }
 ];
 
 const BLOCK_CLASS: Record<DayBlockType, string> = {
-  working: 'bg-gradient-to-r from-blue-600 to-sky-500',
-  break: 'bg-amber-400',
-  leave: 'bg-red-500'
+  working: 'bg-gradient-to-r from-[var(--color-accent)] to-sky-500',
+  break: 'bg-[var(--color-warning)]',
+  leave: 'bg-[var(--color-danger)]'
 };
 
 function addDays(isoDate: string, days: number): string {
@@ -40,6 +41,18 @@ function addDays(isoDate: string, days: number): string {
 const DESIGN_WIDTH = 800;
 const DESIGN_HEIGHT = 620;
 
+/**
+ * Whether hour tick `index` of `count` is labelled when at most `max` labels fit: every `step`th hour
+ * from the first, plus the last - dropping the one before it if it would sit closer than a step.
+ */
+export function isTickShown(index: number, count: number, max: number): boolean {
+  if (count <= max) return true;
+  const last = count - 1;
+  if (index === last) return true;
+  const step = Math.ceil(last / (max - 1));
+  return index % step === 0 && last - index >= step;
+}
+
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: 'Not clocked in',
   clocked_in: 'Clocked in',
@@ -50,9 +63,9 @@ const STATUS_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-today-at-a-glance-card',
   standalone: true,
-  imports: [DashboardGreetingComponent],
+  imports: [DashboardGreetingComponent, PopoutHeaderActionsComponent],
   // The card clips the scaled design canvas inside it (see DESIGN_WIDTH).
-  host: { class: 'relative block h-full overflow-hidden rounded-2xl' },
+  host: { class: 'group relative block h-full overflow-hidden rounded-2xl' },
   templateUrl: './today-at-a-glance-card.component.html',
   // On a wide card the illustration sits top right and fades out to the left and to the bottom.
   styles: `
@@ -86,6 +99,10 @@ export class TodayAtAGlanceCardComponent implements OnInit {
 
   protected readonly today = this.store.today;
   protected readonly loading = this.store.todayLoading;
+  /** When the card's data last came from the backend (page open, refresh button, or a clock/break action). */
+  private readonly loadedAt = this.store.todayLoadedAt;
+  /** The refresh button's request is in flight. */
+  protected readonly refreshing = signal(false);
   protected readonly timeOfDayInfo = computed<TimeOfDayInfo>(() => getTimeOfDayInfo(new Date(this.now())));
 
   /** Approved leave around today, as start/end; drawn red on the activity bar. */
@@ -129,7 +146,7 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     const left = this.minutesLeft();
     if (left === null) return null;
     if (left === 0) return 'Required time done';
-    const from = this.lastUpdated()?.getTime() ?? this.now();
+    const from = this.loadedAt()?.getTime() ?? this.now();
     return `Finish at ${formatClock(new Date(from + left * 60_000))}`;
   });
 
@@ -164,8 +181,6 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     return buildDayBlocks(axis, today, breaks, this.leaves(), this.now());
   });
 
-  private readonly lastUpdated = signal<Date | null>(null);
-
   constructor() {
     afterNextRender(() => {
       const el = this.host.nativeElement;
@@ -194,7 +209,20 @@ export class TodayAtAGlanceCardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.store.loadToday().then(() => this.lastUpdated.set(new Date()));
+    void this.store.loadToday();
+  }
+
+  /** The refresh button: reloads today's attendance (and its leave); the button replays the load animation when done. */
+  protected async refresh(): Promise<void> {
+    if (this.refreshing()) return;
+    this.refreshing.set(true);
+    this.leaveRequestedFor = null;
+    try {
+      await this.store.loadToday();
+    } finally {
+      this.refreshing.set(false);
+      this.now.set(Date.now());
+    }
   }
 
   private fitCanvas(width: number, height: number): void {
@@ -203,10 +231,16 @@ export class TodayAtAGlanceCardComponent implements OnInit {
     this.canvas.set({ width: width / scale, height: height / scale, scale });
   }
 
-  /** Hour labels: first and last always; every other hour from a mid-size card; all on a wide one. */
+  /**
+   * Hour labels, thinned so they never run into each other: a long day (e.g. 9 AM to 11 PM after
+   * working late) has too many hours for the bar, so only every 2nd/3rd/... hour is labelled. How
+   * many fit depends on the card's width - just first and last on a narrow one.
+   */
   protected tickClass(index: number, count: number): string {
-    if (index === 0 || index === count - 1) return 'flex';
-    return index % 2 === 0 && index < count - 2 ? 'hidden @lg:flex' : 'hidden @2xl:flex';
+    const base = isTickShown(index, count, 2) ? 'flex' : 'hidden';
+    const lg = isTickShown(index, count, 6) ? '@lg:flex' : '@lg:hidden';
+    const xl2 = isTickShown(index, count, 10) ? '@2xl:flex' : '@2xl:hidden';
+    return `${base} ${lg} ${xl2}`;
   }
 
   protected blockClass(type: DayBlockType): string {

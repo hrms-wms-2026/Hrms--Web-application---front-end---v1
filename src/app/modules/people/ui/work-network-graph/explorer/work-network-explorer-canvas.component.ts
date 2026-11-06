@@ -263,7 +263,7 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-node--dim { opacity: 0.32; }
     .wgx-halo { fill: currentColor; opacity: 0.12; transition: opacity 180ms; }
     .wgx-node:hover .wgx-halo, .wgx-node--locked .wgx-halo { opacity: 0.26; }
-    .wgx-node--locked .wgx-core { stroke: #fff; stroke-width: 3; }
+    .wgx-node--locked .wgx-core { stroke: var(--color-text-on-solid); stroke-width: 3; }
     .wgx-node--focus .wgx-halo { animation: wgx-ping 900ms ease-out 2; }
     .wgx-node--employee { color: #2563eb; }
     .wgx-node--employee .wgx-core { fill: url(#wgx-employee); }
@@ -272,9 +272,9 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-node--module-owner { color: #8b5cf6; }
     .wgx-node--module-owner .wgx-core { fill: url(#wgx-module); }
     .wgx-node--module-member, .wgx-node--module-contributor { color: #8b5cf6; }
-    .wgx-node--module-member .wgx-core { fill: #fff; stroke: #8b5cf6; stroke-width: 3; }
-    .wgx-node--module-contributor .wgx-core { fill: #fff; stroke: #8b5cf6; stroke-width: 2; stroke-dasharray: 4 3; }
-    .wgx-code { fill: #fff; font-size: 14px; font-weight: 700; pointer-events: none; }
+    .wgx-node--module-member .wgx-core { fill: var(--color-text-on-solid); stroke: #8b5cf6; stroke-width: 3; }
+    .wgx-node--module-contributor .wgx-core { fill: var(--color-text-on-solid); stroke: #8b5cf6; stroke-width: 2; stroke-dasharray: 4 3; }
+    .wgx-code { fill: var(--color-text-on-solid); font-size: 14px; font-weight: 700; pointer-events: none; }
     .wgx-node--employee .wgx-code { font-size: 20px; }
     .wgx-node--module-member .wgx-code, .wgx-node--module-contributor .wgx-code { fill: #7c3aed; }
     /* Project mode: modules are not viewer-relative - one purple fill for all of them, and blue for
@@ -285,23 +285,23 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-node--module-default .wgx-core { fill: url(#wgx-project); }
     /* Project mode sprints (purple): active = empty, draft = filled, complete/achieved = gray. */
     .wgx-node--sprint-active, .wgx-node--sprint-draft { color: #8b5cf6; }
-    .wgx-node--sprint-active .wgx-core { fill: #fff; stroke: #8b5cf6; stroke-width: 3; }
+    .wgx-node--sprint-active .wgx-core { fill: var(--color-text-on-solid); stroke: #8b5cf6; stroke-width: 3; }
     .wgx-node--sprint-active .wgx-code { fill: #7c3aed; }
     .wgx-node--sprint-draft .wgx-core { fill: url(#wgx-module); }
-    .wgx-node--sprint-done { color: #94a3b8; }
-    .wgx-node--sprint-done .wgx-core { fill: #cbd5e1; }
+    .wgx-node--sprint-done { color: var(--color-text-muted); }
+    .wgx-node--sprint-done .wgx-core { fill: var(--color-text-muted); }
     /* Project mode task status dots (light blue): not started = empty, started = filled, done = gray. */
-    .wgx-dot--empty { fill: #fff; stroke: #38bdf8; stroke-width: 2; }
+    .wgx-dot--empty { fill: var(--color-text-on-solid); stroke: #38bdf8; stroke-width: 2; }
     .wgx-dot--filled { fill: #38bdf8; }
-    .wgx-dot--done { fill: #cbd5e1; }
+    .wgx-dot--done { fill: var(--color-text-muted); }
     /* A module the project monitor raised an alert on - the tree's red dot, as a whole circle. */
     .wgx-node--alert .wgx-core { fill: #ef4444; stroke: #b91c1c; stroke-width: 2; stroke-dasharray: none; }
-    .wgx-node--alert .wgx-code { fill: #fff; }
+    .wgx-node--alert .wgx-code { fill: var(--color-text-on-solid); }
     .wgx-ring-track { fill: none; stroke: #e2e8f0; stroke-width: 4; }
     .wgx-ring-fill { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; }
     .wgx-icon path { fill: rgb(255 255 255 / 0.9); }
     .wgx-photo { pointer-events: none; }
-    .wgx-badge circle { fill: #fff; stroke: #c7d2fe; stroke-width: 1; }
+    .wgx-badge circle { fill: var(--color-text-on-solid); stroke: #c7d2fe; stroke-width: 1; }
     .wgx-badge text { fill: #1e3a8a; font-size: 10px; font-weight: 700; }
     .wgx-label { fill: var(--color-text-primary); font-size: 12px; font-weight: 600; pointer-events: none; }
     .wgx-label--strong { font-size: 12.5px; font-weight: 700; }
@@ -319,7 +319,7 @@ const TWEEN_LAYOUT_MS = 650;
     .wgx-card__title { fill: var(--color-text-primary); font-size: 11px; font-weight: 600; pointer-events: none; }
     .wgx-card__code { fill: var(--color-text-secondary); font-size: 10px; pointer-events: none; }
     .wgx-tone--progress { fill: #2563eb; }
-    .wgx-tone--not-started { fill: #94a3b8; }
+    .wgx-tone--not-started { fill: var(--color-text-muted); }
     .wgx-tone--overdue { fill: #ef4444; }
 
     @keyframes wgx-pop { from { opacity: 0; transform: scale(0.6); } }

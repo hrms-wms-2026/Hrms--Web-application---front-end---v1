@@ -15,6 +15,7 @@ import { parseEntityIcon } from './entity-icon.registry';
       class="ei"
       [class.ei--circle]="shape() === 'circle'"
       [class.ei--emoji]="parsed()?.kind === 'emoji'"
+      [class.ei--bare]="bare()"
       [style.--ei-color]="color() || 'var(--color-accent)'"
       [attr.aria-hidden]="true"
     >
@@ -56,6 +57,9 @@ import { parseEntityIcon } from './entity-icon.registry';
     .ei svg { width: 52%; height: 52%; }
     .ei__emoji { font-size: 58cqh; line-height: 1; font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
     .ei__initials { font-size: 38cqh; font-weight: 600; letter-spacing: 0.02em; line-height: 1; }
+    .ei--bare { background: none; color: inherit; border-radius: 0; }
+    .ei--bare svg { width: 100%; height: 100%; }
+    .ei--bare .ei__emoji { font-size: 100cqh; }
   `]
 })
 export class EntityIconComponent {
@@ -66,6 +70,8 @@ export class EntityIconComponent {
   /** Used for the initials when there is no icon. */
   readonly name = input('');
   readonly shape = input<'rounded' | 'circle'>('rounded');
+  /** Only the glyph, filling the box in the inherited colour: no tile behind it. */
+  readonly bare = input(false);
 
   protected readonly parsed = computed(() => parseEntityIcon(this.icon()));
   protected readonly emoji = computed(() => {

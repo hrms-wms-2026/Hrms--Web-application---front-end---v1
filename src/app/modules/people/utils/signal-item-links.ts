@@ -30,7 +30,7 @@ export function approvalReviewUrl(item: EmployeeSignalItem): string {
 /** The module page listing everything behind a signal, for capped lists. */
 export function signalFullListUrl(key: string, employeeId: string, from: string, to: string): string | null {
   if (ATTENDANCE_KEYS.has(key)) {
-    return withQuery('/attendance/time-tracking', { view: 'team', employeeId, from, to });
+    return withQuery('/attendance', { view: 'team', employeeId, from, to });
   }
   // Alerts and exception cases are reviewed in the Inbox, filtered to this employee.
   if (key === 'idle_activity_alerts') return withQuery('/inbox', { tab: 'alerts', employee: employeeId });

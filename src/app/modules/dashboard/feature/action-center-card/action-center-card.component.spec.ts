@@ -347,8 +347,8 @@ describe('ActionCenterCardComponent', () => {
     });
   });
 
-  describe('polling', () => {
-    it('polls action-items every 60s while visible, when the viewer has approvals', async () => {
+  describe('reloads', () => {
+    it('does not poll on a timer, and reloads action-items when the tab becomes visible again', async () => {
       vi.useFakeTimers();
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
       navigate = vi.fn();
@@ -364,7 +364,10 @@ describe('ActionCenterCardComponent', () => {
       fixture.detectChanges();
       expect(getActionItems).toHaveBeenCalledTimes(1);
 
-      await vi.advanceTimersByTimeAsync(60_000);
+      await vi.advanceTimersByTimeAsync(180_000);
+      expect(getActionItems).toHaveBeenCalledTimes(1);
+
+      document.dispatchEvent(new Event('visibilitychange'));
       expect(getActionItems).toHaveBeenCalledTimes(2);
     });
   });

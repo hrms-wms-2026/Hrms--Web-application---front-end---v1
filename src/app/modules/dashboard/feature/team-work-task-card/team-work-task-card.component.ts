@@ -44,8 +44,6 @@ import {
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamWorkTaskDetailDialogComponent } from '../team-work-task-detail-dialog/team-work-task-detail-dialog.component';
 
-const REFRESH_INTERVAL_MS = 60_000;
-
 interface KpiTileRow {
   readonly key: string;
   readonly label: string;
@@ -89,7 +87,6 @@ export class TeamWorkTaskCardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  private pollId: ReturnType<typeof setInterval> | null = null;
   private readonly visibilityHandler = (): void => this.onVisibilityChange();
   private resizeObserver: ResizeObserver | null = null;
   private frameId: number | null = null;
@@ -199,11 +196,9 @@ export class TeamWorkTaskCardComponent implements OnInit {
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    if (document.visibilityState === 'visible') this.startPolling();
     this.observeSize();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopPolling();
       this.stopObservingSize();
     });
   }
@@ -297,21 +292,6 @@ export class TeamWorkTaskCardComponent implements OnInit {
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
       this.feed.reload();
-      this.startPolling();
-    } else {
-      this.stopPolling();
-    }
-  }
-
-  private startPolling(): void {
-    if (this.pollId) return;
-    this.pollId = setInterval(() => this.feed.reload(), REFRESH_INTERVAL_MS);
-  }
-
-  private stopPolling(): void {
-    if (this.pollId) {
-      clearInterval(this.pollId);
-      this.pollId = null;
     }
   }
 }

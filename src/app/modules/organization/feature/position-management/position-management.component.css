@@ -282,7 +282,7 @@ app-position-template-drawer {
 .pm-chart-switch__btn--active {
   background: var(--color-surface);
   color: var(--color-accent);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-card);
 }
 
 .pm-chart-switch__btn:focus-visible {
@@ -302,7 +302,7 @@ app-position-template-drawer {
   border: 1px solid color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
   border-radius: 10px;
   background: color-mix(in srgb, var(--color-accent) 5%, var(--color-surface));
-  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-popover);
 }
 
 .pm-selection-summary,
@@ -335,7 +335,7 @@ app-position-template-drawer {
   border: 1px solid var(--color-accent);
   border-radius: 8px;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-text-on-solid);
   font: inherit;
   font-size: 0.6875rem;
   font-weight: 650;
@@ -357,17 +357,17 @@ app-position-template-drawer {
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-popover);
   font-size: 0.6875rem;
   color: var(--color-text-secondary);
 }
 
 .pm-coverage-legend > span { display: inline-flex; align-items: center; gap: 0.3rem; }
-.pm-coverage-dot { width: 0.55rem; height: 0.55rem; border-radius: 999px; background: #94a3b8; }
+.pm-coverage-dot { width: 0.55rem; height: 0.55rem; border-radius: 999px; background: var(--color-text-muted); }
 .pm-coverage-dot--selected { background: #2563eb; }
 .pm-coverage-dot--resolved { background: #10b981; }
 .pm-coverage-dot--unresolved { background: #f59e0b; }
-.pm-coverage-dot--outside { background: #cbd5e1; }
+.pm-coverage-dot--outside { background: var(--color-border-strong); }
 .pm-coverage-legend__message { padding: 0 0.25rem; font-weight: 600; }
 .pm-coverage-legend__message--error { color: var(--color-danger-text, #b91c1c); }
 .pm-coverage-clear { border: 0; background: transparent; color: var(--color-accent); font: inherit; font-weight: 700; cursor: pointer; }

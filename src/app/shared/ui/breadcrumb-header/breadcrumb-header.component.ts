@@ -21,7 +21,8 @@ export interface BreadcrumbSwitcherItem {
 })
 export class BreadcrumbHeaderComponent {
   private readonly backBar = inject(MobileBackBarState);
-  parentLabel = input.required<string>();
+  /** Empty for a top-level page: the crumb is then just the icon and the current label. */
+  parentLabel = input<string>('');
   currentLabel = input.required<string>();
   /** An optional level between the parent and the current page (Inbox › Chats › Priya). */
   middleLabel = input<string | undefined>(undefined);

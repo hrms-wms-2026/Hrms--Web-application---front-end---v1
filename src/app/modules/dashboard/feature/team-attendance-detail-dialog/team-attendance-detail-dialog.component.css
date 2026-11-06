@@ -69,7 +69,7 @@
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.tad-rank--top { background: #d1fae5; color: #047857; }
+.tad-rank--top { background: var(--color-success-subtle); color: var(--color-success-text); }
 
 .tad-range {
   display: flex;
@@ -139,10 +139,10 @@
 .tad-delta {
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgb(5 150 105);
+  color: var(--color-tint-green-text);
 }
 
-.tad-delta--down { color: rgb(220 38 38); }
+.tad-delta--down { color: var(--color-danger); }
 
 .tad-chart { height: 11rem; }
 
@@ -180,7 +180,7 @@
   position: relative;
   height: 0.625rem;
   border-radius: 9999px;
-  background: #f1f5f9;
+  background: var(--color-surface-secondary);
 }
 
 .tad-dept-bar {
@@ -191,7 +191,7 @@
 
 .tad-dept-avg,
 .tad-dept-avg-key {
-  border-left: 1.5px dashed rgb(71 85 105);
+  border-left: 1.5px dashed var(--color-text-secondary);
 }
 
 .tad-dept-avg {
@@ -344,8 +344,8 @@
 .tad-cell--late { background: #fbbf24; border-radius: 0.1875rem; }
 .tad-cell--absent { background: #f87171; border-radius: 0.1875rem; transform: rotate(45deg) scale(0.85); }
 .tad-cell--leave { background: #60a5fa; }
-.tad-cell--pending { background: transparent; border: 2px solid #cbd5e1; }
-.tad-cell--off { width: 0.5rem; height: 2px; border-radius: 1px; background: #cbd5e1; }
+.tad-cell--pending { background: transparent; border: 2px solid var(--color-border-strong); }
+.tad-cell--off { width: 0.5rem; height: 2px; border-radius: 1px; background: var(--color-border-strong); }
 
 .tad-rate-col { min-width: 3.5rem; }
 

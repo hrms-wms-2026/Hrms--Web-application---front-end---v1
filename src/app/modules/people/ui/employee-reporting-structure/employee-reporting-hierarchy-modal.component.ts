@@ -124,11 +124,11 @@ export const PERSON_CARD_HEIGHT = 72;
       border-radius: 10px;
       background: var(--color-surface);
       border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--shadow-popover);
     }
     .rh-card--self {
-      border: 2px solid var(--color-sidebar-active-bg, #2563eb);
-      background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 7%, var(--color-surface));
+      border: 2px solid var(--color-accent-strong);
+      background: color-mix(in srgb, var(--color-accent-strong) 7%, var(--color-surface));
       box-shadow: 0 6px 16px rgba(37, 99, 235, 0.15);
     }
     .rh-card--placeholder { border-style: dashed; opacity: 0.75; }
@@ -143,8 +143,8 @@ export const PERSON_CARD_HEIGHT = 72;
       padding: 0.0625rem 0.5rem;
       font-size: 0.625rem;
       font-weight: 600;
-      color: #fff;
-      background: var(--color-sidebar-active-bg, #2563eb);
+      color: var(--color-text-on-solid);
+      background: var(--color-accent-strong);
     }
     .rh-card-count {
       flex-shrink: 0;
@@ -154,8 +154,8 @@ export const PERSON_CARD_HEIGHT = 72;
       text-align: center;
       font-size: 0.6875rem;
       font-weight: 600;
-      color: var(--color-sidebar-active-bg, #2563eb);
-      background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 10%, transparent);
+      color: var(--color-accent-strong);
+      background: color-mix(in srgb, var(--color-accent-strong) 10%, transparent);
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

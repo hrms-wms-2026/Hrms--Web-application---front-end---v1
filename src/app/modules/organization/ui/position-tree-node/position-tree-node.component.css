@@ -14,7 +14,7 @@
   border-radius: 10px;
   background: var(--color-surface);
   border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-popover);
   /* Fixed size: app-tidy-tree lays the chart out with these (POSITION_CARD_WIDTH / _HEIGHT). */
   width: 270px;
   height: 98px;
@@ -24,13 +24,13 @@
 }
 
 .ptn-node-card:hover {
-  border-color: var(--color-sidebar-active-bg, #2563eb);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  border-color: var(--color-accent-strong);
+  box-shadow: var(--shadow-popover);
 }
 
 .ptn-node-card--dragover {
-  border: 2px dashed var(--color-sidebar-active-bg, #2563eb) !important;
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 6%, transparent);
+  border: 2px dashed var(--color-accent-strong) !important;
+  background: color-mix(in srgb, var(--color-accent-strong) 6%, transparent);
   transform: scale(1.02);
 }
 
@@ -41,27 +41,27 @@
 }
 
 .ptn-node-card--highlight {
-  border: 2px solid var(--color-sidebar-active-bg, #2563eb);
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 7%, var(--color-surface));
+  border: 2px solid var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent-strong) 7%, var(--color-surface));
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.15);
 }
 
 .ptn-node-card--coverage-selected {
-  border: 2px solid #2563eb;
-  background: color-mix(in srgb, #2563eb 7%, var(--color-surface));
-  box-shadow: 0 0 0 3px color-mix(in srgb, #2563eb 18%, transparent), 0 8px 24px rgba(37, 99, 235, 0.14);
+  border: 2px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent), 0 8px 24px rgba(37, 99, 235, 0.14);
 }
 
 .ptn-node-card--coverage-resolved {
-  border-color: #10b981;
-  background: color-mix(in srgb, #10b981 10%, var(--color-surface));
-  box-shadow: 0 0 0 3px color-mix(in srgb, #10b981 16%, transparent), 0 8px 22px rgba(16, 185, 129, 0.14);
+  border-color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 16%, transparent), 0 8px 22px rgba(16, 185, 129, 0.14);
 }
 
 .ptn-node-card--coverage-unresolved {
-  border-color: #f59e0b;
-  background: color-mix(in srgb, #f59e0b 12%, var(--color-surface));
-  box-shadow: 0 0 0 3px color-mix(in srgb, #f59e0b 18%, transparent), 0 8px 22px rgba(245, 158, 11, 0.16);
+  border-color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warning) 18%, transparent), 0 8px 22px rgba(245, 158, 11, 0.16);
 }
 
 .ptn-node-card--coverage-outside {
@@ -159,8 +159,8 @@
   min-width: 1.35rem;
   padding: 0.1rem 0.35rem;
   border-radius: 999px;
-  background: color-mix(in srgb, #059669 14%, var(--color-surface));
-  color: #047857;
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  color: var(--color-success-text);
   font-size: 0.625rem;
   font-weight: 800;
   line-height: 1.35;
@@ -168,8 +168,8 @@
 }
 
 .ptn-node-card--coverage-unresolved .ptn-coverage-level {
-  background: color-mix(in srgb, #f59e0b 18%, var(--color-surface));
-  color: #92400e;
+  background: color-mix(in srgb, var(--color-warning) 18%, var(--color-surface));
+  color: var(--color-warning-text);
 }
 
 .ptn-coverage-warning {
@@ -182,8 +182,8 @@
   height: 22px;
   border: 2px solid var(--color-surface);
   border-radius: 999px;
-  background: #f59e0b;
-  color: #fff;
+  background: var(--color-warning);
+  color: var(--color-text-on-solid);
   font-size: 0.75rem;
   font-weight: 900;
 }
@@ -205,8 +205,8 @@
 }
 
 .ptn-status-pill--vacant {
-  background: color-mix(in srgb, #f59e0b 12%, transparent);
-  color: #d97706;
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  color: var(--color-warning);
 }
 
 /* Action Dropdown (Top Right) */
@@ -243,9 +243,9 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 1px solid var(--color-sidebar-active-bg, #2563eb);
+  border: 1px solid var(--color-accent-strong);
   background: var(--color-surface);
-  color: var(--color-sidebar-active-bg, #2563eb);
+  color: var(--color-accent-strong);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -256,8 +256,8 @@
 }
 
 .ptn-bottom-add-btn:hover {
-  background: var(--color-sidebar-active-bg, #2563eb);
-  color: #ffffff;
+  background: var(--color-accent-strong);
+  color: var(--color-text-on-solid);
   transform: translateX(-50%) scale(1.15);
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
 }
@@ -272,7 +272,7 @@
   border-radius: 8px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-popover);
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -323,10 +323,10 @@
   gap: 0.5rem;
   width: 240px;
   padding: 0.75rem;
-  border: 2px dashed #2563eb;
+  border: 2px dashed var(--color-accent);
   border-radius: 8px;
-  background: color-mix(in srgb, #2563eb 8%, transparent);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-accent);
   font-size: 0.75rem;
   font-weight: 600;
 }

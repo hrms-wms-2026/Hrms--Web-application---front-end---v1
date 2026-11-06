@@ -39,56 +39,56 @@ import { priorityLabel } from '../../utils/employee-work-activity.utils';
         </div>
       }
       @if (loader.data(); as d) {
-        <p class="-mt-1 mb-3 text-xs text-slate-500">Tasks due today or updated today</p>
+        <p class="-mt-1 mb-3 text-xs text-[var(--color-text-secondary)]">Tasks due today or updated today</p>
         <ul class="space-y-2">
           @for (t of expanded() ? d.items : d.items.slice(0, previewCount); track t.taskId) {
             <li>
               <a
                 data-testid="recent-row"
-                class="grid w-full grid-cols-1 items-center gap-x-4 gap-y-2 rounded-xl border border-slate-100 bg-white px-4 py-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40 sm:grid-cols-[minmax(0,1fr)_auto]"
+                class="grid w-full grid-cols-1 items-center gap-x-4 gap-y-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--color-accent-subtle)] hover:bg-[var(--color-accent-subtle)]/40 sm:grid-cols-[minmax(0,1fr)_auto]"
                 [routerLink]="['/work', t.projectId, 'board']"
                 [queryParams]="{ highlightTaskId: t.taskId }"
                 [attr.aria-label]="'Open task ' + t.title"
               >
                 <div class="min-w-0">
-                  <p class="truncate text-sm font-semibold text-slate-900" [title]="t.title">
-                    @if (t.shortId) { <span class="mr-1.5 font-medium text-slate-400">{{ t.shortId }}</span> }{{ t.title }}
+                  <p class="truncate text-sm font-semibold text-[var(--color-text-primary)]" [title]="t.title">
+                    @if (t.shortId) { <span class="mr-1.5 font-medium text-[var(--color-text-muted)]">{{ t.shortId }}</span> }{{ t.title }}
                   </p>
                   <div class="mt-1 flex items-center gap-3">
-                    <p class="min-w-0 truncate text-xs text-slate-500">{{ t.projectName }}</p>
+                    <p class="min-w-0 truncate text-xs text-[var(--color-text-secondary)]">{{ t.projectName }}</p>
                     @if (t.progressPercent > 0) {
                       <div class="hidden w-24 shrink-0 items-center gap-1.5 md:flex" [title]="t.progressPercent + '% done'">
-                        <div class="h-1 flex-1 overflow-hidden rounded-full bg-slate-100">
-                          <div class="h-full rounded-full bg-emerald-500" [style.width.%]="t.progressPercent"></div>
+                        <div class="h-1 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-secondary)]">
+                          <div class="h-full rounded-full bg-[var(--color-success)]" [style.width.%]="t.progressPercent"></div>
                         </div>
-                        <span class="text-[11px] tabular-nums text-slate-400">{{ t.progressPercent }}%</span>
+                        <span class="text-[11px] tabular-nums text-[var(--color-text-muted)]">{{ t.progressPercent }}%</span>
                       </div>
                     }
                   </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 sm:justify-end">
                   <span class="rounded-md px-2 py-0.5 text-[11px] font-semibold" [class]="priorityClass(t.priority)">{{ priority(t.priority) }}</span>
-                  <span class="inline-flex max-w-40 items-center gap-1.5 rounded-md bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                  <span class="inline-flex max-w-40 items-center gap-1.5 rounded-md bg-[var(--color-surface-secondary)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-primary)]">
                     <span class="h-2 w-2 shrink-0 rounded-full" [style.background]="t.statusColor || '#94a3b8'"></span>
                     <span class="truncate">{{ t.statusName }}</span>
                   </span>
-                  <span class="rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">{{ t.storyPoints ?? '—' }} SP</span>
+                  <span class="rounded-md bg-[var(--color-cat-violet-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-cat-violet)]">{{ t.storyPoints ?? '—' }} SP</span>
                   @if (t.updatedToday) {
                     <span data-testid="recent-updated-today" class="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">Updated today</span>
                   }
-                  <span class="min-w-24 text-right text-xs text-slate-500">{{ due(t.dueDate) }}</span>
-                  <svg class="hidden h-4 w-4 text-slate-400 sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  <span class="min-w-24 text-right text-xs text-[var(--color-text-secondary)]">{{ due(t.dueDate) }}</span>
+                  <svg class="hidden h-4 w-4 text-[var(--color-text-muted)] sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </a>
             </li>
           }
         </ul>
         @if (canExpand()) {
-          <div class="mt-3 flex justify-end border-t border-slate-100 pt-3">
+          <div class="mt-3 flex justify-end border-t border-[var(--color-border)] pt-3">
             <button
               type="button"
               data-testid="recent-view-all"
-              class="cursor-pointer text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              class="cursor-pointer text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline"
               [attr.aria-expanded]="expanded()"
               (click)="onToggleClick($event)"
             >
@@ -137,13 +137,13 @@ export class RecentTasksWidgetComponent {
     switch (priority.toLowerCase()) {
       case 'urgent':
       case 'critical':
-        return 'bg-red-100 text-red-700';
+        return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
       case 'high':
-        return 'bg-orange-100 text-orange-700';
+        return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
       case 'low':
-        return 'bg-slate-100 text-slate-600';
+        return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
       default:
-        return 'bg-amber-50 text-amber-700';
+        return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
     }
   }
 }

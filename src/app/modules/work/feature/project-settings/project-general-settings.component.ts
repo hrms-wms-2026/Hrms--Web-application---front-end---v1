@@ -1,8 +1,10 @@
-import { Component, OnInit, effect, inject, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
 import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { ProjectApiService } from '../../data-access/project-api.service';
 import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { ProjectFormFields, validateProjectForm } from '../../utils/project-form.validator';
@@ -12,12 +14,16 @@ export interface ProjectGeneralSettingsSave {
   fields: EditProjectPayload;
   achievedChanged: boolean;
   achieved: boolean;
+  /** A new logo to upload; it replaces the icon. */
+  logoFile: File | null;
+  /** Delete the current logo. */
+  removeLogo: boolean;
 }
 
 @Component({
   selector: 'app-project-general-settings',
   standalone: true,
-  imports: [ButtonComponent, DatePickerComponent, IconPickerComponent, InputComponent, WorkDropdownComponent],
+  imports: [ButtonComponent, DatePickerComponent, EntityIconComponent, IconPickerComponent, InputComponent, WorkDropdownComponent],
   template: `
     <section class="project-general-settings" data-testid="project-general-settings">
       <div class="project-general-settings__header">
@@ -61,18 +67,27 @@ export interface ProjectGeneralSettingsSave {
           <app-input label="Allocated hours" type="number" [value]="allocatedHoursDisplay()" [error]="errors()['allocatedHours']" [disabled]="!canEdit() || submitting()" (valueChange)="onAllocatedHoursChange($event)" />
         </span>
 
-        <div class="project-general-settings__icon-field" data-testid="icon-field">
-          <app-icon-picker ariaLabel="Change project icon" [icon]="icon()" [color]="color() || null" [name]="name()" [disabled]="!canEdit() || submitting()"
-                           (iconChange)="icon.set($event)" (colorChange)="color.set($event)" />
-          <span>
-            <strong>Icon</strong>
-            <small>Pick an icon or emoji and a colour. Shown on the project card and header.</small>
-          </span>
+        <!-- One picture per project: picking an icon or emoji replaces the logo, and uploading a logo replaces the icon. -->
+        <div class="project-general-settings__wide project-general-settings__picture" data-testid="icon-field" role="group" aria-label="Project icon">
+          <span class="project-general-settings__picture-label">Project icon</span>
+          <div class="project-general-settings__picture-row">
+            @if (logoPreviewUrl(); as url) {
+              <img data-testid="logo-preview" class="project-general-settings__logo" [src]="url" alt="" />
+            } @else {
+              <app-entity-icon data-testid="icon-preview" class="project-general-settings__entity-icon" [icon]="icon()" [color]="project().color" [name]="name()" />
+            }
+            @if (canEdit()) {
+              <app-icon-picker linkLabel="Icon or emoji" [icon]="icon()" [name]="name()" [showColors]="false" [disabled]="submitting()" (iconChange)="onIconChange($event)" />
+              <span data-testid="logo-field" class="project-general-settings__upload">
+                <input id="project-settings-logo-input" type="file" accept="image/png,image/jpeg,image/webp" class="project-general-settings__logo-input sr-only" [disabled]="submitting()" (change)="onLogoFileSelected($event)" />
+                <label for="project-settings-logo-input" class="project-general-settings__logo-link">Upload logo</label>
+              </span>
+              @if (icon() || logoPreviewUrl()) {
+                <button type="button" data-testid="remove-picture" class="project-general-settings__picture-remove" [disabled]="submitting()" (click)="removePicture()">Remove</button>
+              }
+            }
+          </div>
         </div>
-
-        <span data-testid="color-field">
-          <app-input label="Color" placeholder="#2563EB" [value]="color()" [disabled]="!canEdit() || submitting()" (valueChange)="color.set($event)" />
-        </span>
 
         <label class="project-general-settings__toggle" data-testid="achieved-field">
           <input type="checkbox" [checked]="achieved()" [disabled]="!canEdit() || submitting()" (change)="onAchievedChange($event)" />
@@ -108,10 +123,18 @@ export interface ProjectGeneralSettingsSave {
     .project-general-settings__notice { margin: 18px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--color-surface-secondary); color: var(--color-text-secondary); font-size: 12px; }
     .project-general-settings__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--color-border); }
     .project-general-settings__wide { grid-column: 1 / -1; }
-    .project-general-settings__icon-field { display: flex; align-items: center; gap: 12px; align-self: end; }
-    .project-general-settings__icon-field span { display: flex; flex-direction: column; gap: 2px; color: var(--color-text-primary); }
-    .project-general-settings__icon-field strong { font-size: 13px; font-weight: 600; }
-    .project-general-settings__icon-field small { color: var(--color-text-secondary); font-size: 12px; }
+    .project-general-settings__picture { display: flex; flex-direction: column; gap: 6px; }
+    .project-general-settings__picture-label { color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+    .project-general-settings__picture-row { display: flex; min-height: 36px; align-items: center; gap: 8px; }
+    .project-general-settings__logo { width: 36px; height: 36px; flex: 0 0 auto; border: 1px solid var(--color-border); border-radius: 12px; object-fit: cover; }
+    .project-general-settings__entity-icon { flex: 0 0 auto; --entity-icon-size: 2.25rem; }
+    .project-general-settings__upload { display: inline-flex; }
+    .project-general-settings__logo-link, .project-general-settings__picture-remove { padding: 2px 4px; border: 0; border-radius: 6px; background: none; font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+    .project-general-settings__logo-link { color: var(--color-accent); }
+    .project-general-settings__logo-link:hover { text-decoration: underline; }
+    .project-general-settings__logo-input:focus-visible + .project-general-settings__logo-link { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+    .project-general-settings__picture-remove { color: var(--color-text-secondary); }
+    .project-general-settings__picture-remove:hover { color: var(--color-danger-text); }
     .project-general-settings__toggle { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 10px; width: fit-content; color: var(--color-text-primary); cursor: pointer; }
     .project-general-settings__toggle input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--color-accent); }
     .project-general-settings__toggle span { display: flex; flex-direction: column; gap: 2px; }
@@ -124,6 +147,7 @@ export interface ProjectGeneralSettingsSave {
 })
 export class ProjectGeneralSettingsComponent implements OnInit {
   private readonly categoryStore = inject(ProjectCategoryStore);
+  private readonly projectApi = inject(ProjectApiService);
 
   project = input.required<ProjectDetail>();
   submitting = input(false);
@@ -137,13 +161,31 @@ export class ProjectGeneralSettingsComponent implements OnInit {
   protected readonly startDate = signal('');
   protected readonly targetDate = signal('');
   protected readonly allocatedHours = signal(0);
-  protected readonly color = signal('');
   protected readonly icon = signal<string | null>(null);
+  protected readonly logoFile = signal<File | null>(null);
+  /** The saved logo is gone from the form: Remove deletes it on save, and a newly picked icon makes the server drop it. */
+  protected readonly logoCleared = signal(false);
+  private readonly newLogoUrl = signal<string | null>(null);
+  protected readonly logoPreviewUrl = computed(() => {
+    const { id, logoFileId } = this.project();
+    return this.newLogoUrl() ?? (logoFileId && !this.logoCleared() ? this.projectApi.getLogoUrl(id, logoFileId) : null);
+  });
   protected readonly achieved = signal(false);
   protected readonly errors = signal<Record<string, string>>({});
 
   constructor() {
     effect(() => this.patchForm(this.project()));
+
+    effect((onCleanup) => {
+      const file = this.logoFile();
+      if (!file) {
+        this.newLogoUrl.set(null);
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      this.newLogoUrl.set(url);
+      onCleanup(() => URL.revokeObjectURL(url));
+    });
   }
 
   ngOnInit(): void {
@@ -168,6 +210,28 @@ export class ProjectGeneralSettingsComponent implements OnInit {
 
   protected onAchievedChange(event: Event): void {
     this.achieved.set((event.target as HTMLInputElement).checked);
+  }
+
+  protected onLogoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // so choosing the same file again after Remove still fires change
+    if (!file) return;
+    this.logoFile.set(file);
+    this.icon.set(null);
+  }
+
+  protected onIconChange(icon: string | null): void {
+    this.icon.set(icon);
+    if (!icon) return;
+    this.logoFile.set(null);
+    this.logoCleared.set(true);
+  }
+
+  protected removePicture(): void {
+    this.icon.set(null);
+    this.logoFile.set(null);
+    this.logoCleared.set(true);
   }
 
   protected reset(): void {
@@ -198,13 +262,15 @@ export class ProjectGeneralSettingsComponent implements OnInit {
         categoryId: fields.categoryId,
         startDate: fields.startDate,
         targetDate: fields.targetDate,
-        color: this.color(),
+        color: project.color ?? '',
         actualHours: 0,
         allocatedHours: this.allocatedHours(),
         icon: this.icon() ?? ''
       },
       achievedChanged: this.achieved() !== project.isAchieved,
-      achieved: this.achieved()
+      achieved: this.achieved(),
+      logoFile: this.logoFile(),
+      removeLogo: this.logoCleared() && !this.logoFile() && !this.icon() && !!project.logoFileId
     });
   }
 
@@ -215,8 +281,10 @@ export class ProjectGeneralSettingsComponent implements OnInit {
     this.startDate.set(project.startDate);
     this.targetDate.set(project.targetDate);
     this.allocatedHours.set(project.allocatedHours);
-    this.color.set(project.color ?? '');
-    this.icon.set(project.icon ?? null);
+    // Older projects can have both; the logo is what they show, so it is the one the form keeps.
+    this.icon.set(project.logoFileId ? null : project.icon ?? null);
+    this.logoFile.set(null);
+    this.logoCleared.set(false);
     this.achieved.set(project.isAchieved);
     this.errors.set({});
   }

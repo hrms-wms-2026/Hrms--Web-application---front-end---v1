@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
+import { ProjectApiService } from '../../data-access/project-api.service';
 import { ProjectDetail } from '../../models/project.model';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { ProjectGeneralSettingsComponent } from './project-general-settings.component';
@@ -21,6 +22,9 @@ describe('ProjectGeneralSettingsComponent', () => {
       providers: [{
         provide: ProjectCategoryStore,
         useValue: { categories: () => [{ id: 'cat1', name: 'Engineering' }], loadCategories: vi.fn().mockResolvedValue(undefined) }
+      }, {
+        provide: ProjectApiService,
+        useValue: { getLogoUrl: (id: string, fileId: string) => `/logo/${id}/${fileId}` }
       }]
     });
     fixture = TestBed.createComponent(ProjectGeneralSettingsComponent);
@@ -48,5 +52,100 @@ describe('ProjectGeneralSettingsComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Only the project lead can change these details.');
     expect(fixture.nativeElement.querySelector('[data-testid="submit-button"]')).toBeNull();
     expect((fixture.nativeElement.querySelector('[data-testid="name-field"] input') as HTMLInputElement).disabled).toBe(true);
+  });
+
+  describe('project picture', () => {
+    const logo = new File(['fake'], 'logo.png', { type: 'image/png' });
+    const withLogo = { ...project, logoFileId: 'f1' };
+    let emitted: any;
+
+    beforeEach(() => {
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:logo');
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      emitted = undefined;
+      fixture.componentInstance.saved.subscribe((value) => (emitted = value));
+    });
+
+    afterEach(() => vi.restoreAllMocks());
+
+    const el = (testId: string) => fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+
+    function save(): void {
+      (fixture.nativeElement.querySelector('[data-testid="submit-button"] button') as HTMLButtonElement).click();
+    }
+
+    function uploadLogo(): void {
+      const input: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="logo-field"] input[type="file"]');
+      Object.defineProperty(input, 'files', { value: [logo], configurable: true });
+      input.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    }
+
+    it('has no colour controls and keeps the saved colour', () => {
+      fixture.detectChanges();
+      expect(el('color-field')).toBeNull();
+
+      save();
+      expect(emitted.fields.color).toBe('#2563EB');
+    });
+
+    it('shows the saved logo instead of the icon, and keeps it when nothing changes', () => {
+      fixture.componentRef.setInput('project', { ...withLogo, icon: 'lucide:rocket' });
+      fixture.detectChanges();
+      expect(el('logo-preview').getAttribute('src')).toBe('/logo/p1/f1');
+      expect(el('icon-preview')).toBeNull();
+
+      save();
+      expect(emitted.logoFile).toBeNull();
+      expect(emitted.removeLogo).toBe(false);
+      expect(emitted.fields.icon).toBe('');
+    });
+
+    it('replaces the icon when a logo is uploaded', () => {
+      fixture.componentRef.setInput('project', { ...project, icon: 'lucide:rocket' });
+      fixture.detectChanges();
+
+      uploadLogo();
+      expect(el('logo-preview').getAttribute('src')).toBe('blob:logo');
+
+      save();
+      expect(emitted.logoFile).toBe(logo);
+      expect(emitted.fields.icon).toBe('');
+    });
+
+    it('replaces the saved logo when an icon is picked, leaving the delete to the server', () => {
+      fixture.componentRef.setInput('project', withLogo);
+      fixture.detectChanges();
+
+      (fixture.componentInstance as unknown as { onIconChange(icon: string): void }).onIconChange('emoji:🚀');
+      fixture.detectChanges();
+      expect(el('logo-preview')).toBeNull();
+
+      save();
+      expect(emitted.fields.icon).toBe('emoji:🚀');
+      expect(emitted.logoFile).toBeNull();
+      expect(emitted.removeLogo).toBe(false);
+    });
+
+    it('deletes the saved logo with Remove', () => {
+      fixture.componentRef.setInput('project', withLogo);
+      fixture.detectChanges();
+
+      (el('remove-picture') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(el('logo-preview')).toBeNull();
+
+      save();
+      expect(emitted.removeLogo).toBe(true);
+    });
+
+    it('hides the picture controls from a member who is not the lead', () => {
+      fixture.componentRef.setInput('project', { ...withLogo, isLead: false });
+      fixture.detectChanges();
+
+      expect(el('logo-preview')).not.toBeNull();
+      expect(el('logo-field')).toBeNull();
+      expect(el('remove-picture')).toBeNull();
+    });
   });
 });

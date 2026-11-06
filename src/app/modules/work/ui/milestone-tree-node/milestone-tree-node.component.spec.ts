@@ -113,7 +113,7 @@ describe('MilestoneTreeNodeComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const selectedTitle = rows[0].querySelector('[data-testid="title-text"]') as HTMLElement;
     const unselectedTitle = rows[1].querySelector('[data-testid="title-text"]') as HTMLElement;
-    expect(selectedTitle.className).toContain('text-white');
+    expect(selectedTitle.className).toContain('text-[var(--color-text-on-solid)]');
     expect(unselectedTitle.className).toContain('text-[var(--color-text-primary)]');
   });
 
@@ -122,7 +122,7 @@ describe('MilestoneTreeNodeComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const selectedIcon = rows[0].querySelector('[data-testid="folder-icon"]') as HTMLElement;
     const unselectedIcon = rows[1].querySelector('[data-testid="folder-icon"]') as HTMLElement;
-    expect(selectedIcon.getAttribute('class')).toContain('text-white');
+    expect(selectedIcon.getAttribute('class')).toContain('text-[var(--color-text-on-solid)]');
     expect(unselectedIcon.getAttribute('class')).toContain('text-[var(--color-accent)]');
   });
 
@@ -131,7 +131,7 @@ describe('MilestoneTreeNodeComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const selectedFill = rows[0].querySelector('[data-testid="progress-fill"]') as HTMLElement;
     const unselectedFill = rows[1].querySelector('[data-testid="progress-fill"]') as HTMLElement;
-    expect(selectedFill.className).toContain('bg-white');
+    expect(selectedFill.className).toContain('bg-[var(--color-text-on-solid)]');
     expect(unselectedFill.className).toContain('bg-[var(--color-accent)]');
   });
 
@@ -139,7 +139,7 @@ describe('MilestoneTreeNodeComponent', () => {
     setup(root, 'o1', true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const selectedDate = rows[0].querySelector('[data-testid="due-date-cell"]') as HTMLElement;
-    expect(selectedDate.className).toContain('text-white');
+    expect(selectedDate.className).toContain('text-[var(--color-text-on-solid)]');
   });
 
   it('renders owner avatar with theme background, white text, and white border outline', () => {
@@ -156,8 +156,8 @@ describe('MilestoneTreeNodeComponent', () => {
     setup(achievedRoot, 'o1', true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const badge = rows[0].querySelector('[data-testid="achieved-badge"]') as HTMLElement;
-    expect(badge.className).toContain('text-white');
-    expect(badge.className).toContain('bg-white/15');
+    expect(badge.className).toContain('text-[var(--color-text-on-solid)]');
+    expect(badge.className).toContain('bg-[var(--color-text-on-solid)]/15');
   });
 
   it('shows a create-sub-module button only when the node is owned by the caller', () => {

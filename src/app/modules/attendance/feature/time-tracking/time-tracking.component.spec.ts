@@ -116,6 +116,10 @@ interface StoreMock {
   todayTimelineLoading: ReturnType<typeof signal<boolean>>;
   todayTimelineError: ReturnType<typeof signal<string | null>>;
   loadTodayTimeline: ReturnType<typeof vi.fn>;
+  monthlySummary: ReturnType<typeof signal<unknown>>;
+  monthlySummaryLoading: ReturnType<typeof signal<boolean>>;
+  monthlySummaryError: ReturnType<typeof signal<string | null>>;
+  loadMonthlySummary: ReturnType<typeof vi.fn>;
   loadToday: ReturnType<typeof vi.fn>;
   loadMyHistory: ReturnType<typeof vi.fn>;
   loadCoveredHistory: ReturnType<typeof vi.fn>;
@@ -213,6 +217,10 @@ describe('TimeTrackingComponent', () => {
       todayTimelineLoading: signal(false),
       todayTimelineError: signal(null),
       loadTodayTimeline: vi.fn(() => Promise.resolve()),
+      monthlySummary: signal(null),
+      monthlySummaryLoading: signal(false),
+      monthlySummaryError: signal(null),
+      loadMonthlySummary: vi.fn(() => Promise.resolve()),
       loadToday: vi.fn(() => Promise.resolve()),
       loadMyHistory: vi.fn(() => Promise.resolve()),
       loadCoveredHistory: vi.fn(() => Promise.resolve()),

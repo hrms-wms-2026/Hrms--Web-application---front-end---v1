@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { ProjectSettingsComponent } from './project-settings.component';
+import { ProjectApiService } from '../../data-access/project-api.service';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { ProjectListStore } from '../../state/project-list.store';
@@ -37,6 +38,7 @@ describe('ProjectSettingsComponent', () => {
           categories: () => [{ id: 'cat1', name: 'Engineering' }], loadCategories: vi.fn().mockResolvedValue(undefined)
         } },
         { provide: NotificationService, useValue: { success: vi.fn() } },
+        { provide: ProjectApiService, useValue: { getLogoUrl: () => '' } },
         { provide: TaskApiService, useValue: {
           getStatuses, getCategories, createStatus: vi.fn(), deleteStatus: vi.fn(), reorderTaskStatuses: vi.fn(),
           createCategory: vi.fn(), editCategory: vi.fn(), deleteCategory: vi.fn(), reorderTaskCategories: vi.fn()

@@ -29,7 +29,7 @@
   flex-direction: column-reverse;
   overflow: hidden;
   border-radius: 0.375rem 0.375rem 0.125rem 0.125rem;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
 }
 
 .adc-seg {
@@ -46,7 +46,7 @@
   min-height: 0.75rem;
   font-size: 0.625rem;
   line-height: 1;
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }

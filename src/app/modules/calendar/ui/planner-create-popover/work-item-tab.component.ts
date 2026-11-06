@@ -56,7 +56,7 @@ function duration(minutes: number): string {
       </div>
       <div class="grid grid-cols-2 gap-2">
         <label class="flex items-center gap-2">
-          @if (selectedKind(); as kind) { <app-task-kind-icon data-testid="work-item-type-icon" [kind]="kind" /> }
+          @if (selectedKind(); as kind) { <app-task-kind-icon data-testid="work-item-type-icon" [kind]="kind" [icon]="selectedIcon()" /> }
           <select data-testid="work-item-type" aria-label="Type" class="flex-1" (change)="categoryId.set($any($event.target).value || null)">
             @for (c of categories(); track c.id) { <option [value]="c.id" [selected]="c.id === categoryId()">{{ c.name }}</option> }
           </select>
@@ -80,17 +80,17 @@ function duration(minutes: number): string {
         <p data-testid="work-item-all-day-note" class="text-xs text-[var(--color-danger)]">Turn off All day to plan a work item.</p>
       }
       @if (overlaps()) {
-        <p data-testid="work-item-overlap" class="text-xs text-amber-700">This overlaps one of your planned blocks, so planning it here will be refused.</p>
+        <p data-testid="work-item-overlap" class="text-xs text-[var(--color-warning-text)]">This overlaps one of your planned blocks, so planning it here will be refused.</p>
       }
 
       @switch (flow.state().kind) {
         @case ('pending') { <p data-testid="work-item-pending" class="text-xs">{{ pendingMessage() }}</p> }
         @case ('unknown') {
-          <p data-testid="work-item-unknown" class="text-xs text-[var(--color-danger)]">We couldn't confirm the work item was created. Check your Task queue before trying again.</p>
+          <p data-testid="work-item-unknown" class="text-xs text-[var(--color-danger)]">We couldn't confirm the work item was created. Check your Task list before trying again.</p>
         }
         @case ('error') { <p data-testid="work-item-error" class="text-xs text-[var(--color-danger)]">{{ errorMessage() }}</p> }
         @case ('notPlanned') {
-          <div data-testid="work-item-not-planned" class="flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs">
+          <div data-testid="work-item-not-planned" class="flex flex-col gap-2 rounded-md border border-[var(--color-warning)] bg-[var(--color-warning-subtle)] p-2 text-xs">
             <span>{{ notPlannedMessage() }}</span>
             <div class="flex gap-2">
               <button type="button" data-testid="work-item-retry" class="rounded-md border px-2 py-1" (click)="flow.retryPlanning()">Retry planning</button>
@@ -102,7 +102,7 @@ function duration(minutes: number): string {
 
       <div class="flex justify-end gap-2 pt-1">
         <button type="button" data-testid="work-item-more" class="rounded-md border px-3 py-1" (click)="moreOptions.emit(draft())">More options</button>
-        <button type="button" data-testid="work-item-create" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-white"
+        <button type="button" data-testid="work-item-create" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[var(--color-text-on-solid)]"
           [disabled]="!canCreate()" (click)="create()">{{ flow.state().kind === 'busy' ? 'Creating…' : 'Create & plan' }}</button>
       </div>
     </div>
@@ -139,6 +139,7 @@ export class WorkItemTabComponent implements OnInit {
     const category = this.categories().find((c) => c.id === this.categoryId());
     return category ? kindOf(category.kind) : null;
   });
+  readonly selectedIcon = computed(() => this.categories().find((c) => c.id === this.categoryId())?.icon ?? null);
   readonly overlaps = computed(() => {
     const start = Date.parse(this.slot().startIso);
     const end = Date.parse(this.slot().endIso);

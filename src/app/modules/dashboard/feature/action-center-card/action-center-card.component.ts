@@ -34,7 +34,8 @@ import { safeServerDetail } from '../../../../core/services/error-handler.servic
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
-const REFRESH_INTERVAL_MS = 60_000;
+/** How often the "x min ago" ages tick (no API call). */
+const CLOCK_TICK_MS = 60_000;
 /** Inbox rows on the compact card; "View all" pops out the rest. */
 const CARD_ROW_LIMIT = 4;
 
@@ -54,8 +55,9 @@ interface DecisionForm {
  * single list, longest-waiting first, each showing the person's photo with a small type icon, with
  * All / Approvals / Alerts / Overdue
  * filters to look at each separately. Approvals can be approved or rejected in place (through the
- * request's own module API, after a confirm); every row's arrow opens its own screen. Polls the
- * action-items response every 60s; led-progress is owned and polled by Team Progress.
+ * request's own module API, after a confirm); every row's arrow opens its own screen. Reloads the
+ * action-items response on the refresh button and when the tab becomes visible again (no timed
+ * polling); led-progress is owned by Team Progress.
  */
 @Component({
   selector: 'app-action-center-card',
@@ -78,7 +80,6 @@ export class ActionCenterCardComponent implements OnInit {
   protected readonly directory = inject(EmployeeDirectoryStore);
 
   private readonly now = signal(new Date());
-  private pollId: ReturnType<typeof setInterval> | null = null;
   private clockId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
 
@@ -281,18 +282,16 @@ export class ActionCenterCardComponent implements OnInit {
     else this.expand();
   }
 
-  // --- Lifecycle / polling (owns MyTeamActionItemsStore, conditional on the viewer having approvals) ---
+  // --- Lifecycle / reloads (owns MyTeamActionItemsStore, conditional on the viewer having approvals) ---
 
   ngOnInit(): void {
     if (this.showRail()) {
       void this.store.load();
       document.addEventListener('visibilitychange', this.visibilityHandler);
-      if (document.visibilityState === 'visible') this.startPolling();
     }
     this.startClock();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopPolling();
       this.stopClock();
     });
   }
@@ -300,30 +299,16 @@ export class ActionCenterCardComponent implements OnInit {
   private onVisibilityChange(): void {
     if (document.visibilityState === 'visible') {
       void this.store.load();
-      this.startPolling();
       this.now.set(new Date());
       this.startClock();
     } else {
-      this.stopPolling();
       this.stopClock();
-    }
-  }
-
-  private startPolling(): void {
-    if (this.pollId) return;
-    this.pollId = setInterval(() => void this.store.load(), REFRESH_INTERVAL_MS);
-  }
-
-  private stopPolling(): void {
-    if (this.pollId) {
-      clearInterval(this.pollId);
-      this.pollId = null;
     }
   }
 
   private startClock(): void {
     if (this.clockId) return;
-    this.clockId = setInterval(() => this.now.set(new Date()), REFRESH_INTERVAL_MS);
+    this.clockId = setInterval(() => this.now.set(new Date()), CLOCK_TICK_MS);
   }
 
   private stopClock(): void {

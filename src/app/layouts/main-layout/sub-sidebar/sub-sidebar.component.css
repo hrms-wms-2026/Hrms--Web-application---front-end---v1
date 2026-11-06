@@ -15,7 +15,14 @@
   border-radius: 0 0 0 14px;
   background: var(--color-surface-secondary);
   overflow-y: auto;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-card);
+}
+
+/* Dark mode: the panel sits at card level; swapping the two tones keeps its rows and hovers a step lighter. */
+:host-context([data-mode='dark']) .sub-sidebar,
+:host-context(html.dark) .sub-sidebar {
+  --color-surface-secondary: var(--color-side-panel-bg);
+  --color-surface: var(--color-side-panel-item-bg);
 }
 
 .sub-sidebar__header {
@@ -65,7 +72,7 @@
   background: var(--color-surface);
   border-color: var(--color-border);
   color: var(--color-text-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .sub-sidebar__collapse-btn:focus-visible {
@@ -125,5 +132,5 @@
   background: var(--color-surface);
   color: var(--color-accent);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
 }

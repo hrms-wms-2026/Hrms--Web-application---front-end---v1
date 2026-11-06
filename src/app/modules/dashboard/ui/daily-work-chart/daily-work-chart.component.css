@@ -9,7 +9,7 @@
   justify-content: flex-end;
   gap: 0.75rem;
   font-size: 0.6875rem;
-  color: rgb(71 85 105);
+  color: var(--color-text-secondary);
 }
 
 .dw-key {
@@ -36,7 +36,7 @@
 
 .dw-dash {
   width: 0.875rem;
-  border-top: 2px dashed rgb(148 163 184);
+  border-top: 2px dashed var(--color-border-strong);
 }
 
 .dw-plot {
@@ -53,7 +53,7 @@
   padding-bottom: 1.75rem;
   font-size: 0.625rem;
   line-height: 1;
-  color: rgb(148 163 184);
+  color: var(--color-text-muted);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -70,7 +70,7 @@
   display: flex;
   min-height: 3rem;
   flex: 1 1 0;
-  border-bottom: 1px solid rgb(226 232 240);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .dw-track {
@@ -101,7 +101,7 @@
 
 .dw-expected polyline {
   fill: none;
-  stroke: rgb(148 163 184);
+  stroke: var(--color-text-muted);
   stroke-width: 1.5;
   stroke-dasharray: 4 3;
   vector-effect: non-scaling-stroke;
@@ -125,10 +125,10 @@
 
 .dw-label-name {
   font-weight: 600;
-  color: rgb(51 65 85);
+  color: var(--color-text-primary);
 }
 
 .dw-label-hours {
-  color: rgb(100 116 139);
+  color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }

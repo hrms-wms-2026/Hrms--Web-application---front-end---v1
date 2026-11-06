@@ -52,6 +52,15 @@ export class ProjectSettingsComponent {
       return;
     }
 
+    const logoSuccess = event.logoFile
+      ? await this.projectStore.setProjectLogo(projectId, event.logoFile)
+      : event.removeLogo ? await this.projectStore.removeProjectLogo(projectId) : true;
+    if (!logoSuccess) {
+      await this.detailStore.loadProject(projectId);
+      this.submitting.set(false);
+      return;
+    }
+
     if (event.achievedChanged) {
       const lifecycleSuccess = event.achieved
         ? await this.projectStore.achieveProject(projectId)

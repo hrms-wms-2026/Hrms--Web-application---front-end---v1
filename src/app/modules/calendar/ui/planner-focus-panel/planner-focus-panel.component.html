@@ -1,9 +1,9 @@
 <aside data-testid="planner-focus-panel" class="flex flex-col gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-xs">
   <div class="flex items-center gap-2">
-    <h2 data-testid="queue-title" class="text-base font-semibold">Task queue</h2>
+    <h2 data-testid="queue-title" class="text-base font-semibold">Task list</h2>
     <span data-testid="queue-total" class="rounded-full bg-[var(--color-surface-secondary)] px-2 text-xs font-semibold text-[var(--color-text-secondary)]">{{ total() }}</span>
     @if (closable()) {
-      <button type="button" data-testid="planner-focus-close" aria-label="Close Task queue" class="ml-auto px-1 text-[var(--color-text-secondary)]"
+      <button type="button" data-testid="planner-focus-close" aria-label="Close Task list" class="ml-auto px-1 text-[var(--color-text-secondary)]"
         (click)="closed.emit()">✕</button>
     }
   </div>
@@ -89,7 +89,7 @@
               <circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
             </svg>
           </span>
-          <app-task-kind-icon [kind]="card.kind" [tile]="true" />
+          <app-task-kind-icon [kind]="card.kind" [icon]="card.item.categoryIcon" [tile]="true" />
           <span class="flex min-w-0 flex-1 flex-col gap-0.5">
             <span data-testid="planner-focus-title" class="truncate font-medium group-hover:text-[var(--color-accent)]">{{ card.item.title }}</span>
             <span data-testid="planner-focus-meta" class="truncate text-[var(--color-text-secondary)]">{{ card.item.projectName }}@if (card.age) { · <span data-testid="meta-age" class="text-[var(--color-danger)]">{{ card.age }}</span> }@if (card.detail) { · {{ card.detail }} }@if (card.planned) { · <span class="text-teal-700">{{ card.planned }}</span> }</span>

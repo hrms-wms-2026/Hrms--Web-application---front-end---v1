@@ -201,7 +201,7 @@ function sameValues(a: readonly string[], b: readonly string[]): boolean {
     .tfb__badge:hover { background: var(--color-danger-subtle); color: var(--color-danger-text, var(--color-danger)); }
     .tfb__badge:hover .tfb__badge-count { display: none; }
     .tfb__badge:hover .tfb__badge-clear { display: inline-flex; }
-    .tfb__panel { position: absolute; top: calc(100% + 7px); right: 0; z-index: 80; width: 360px; max-width: 90vw; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: 0 16px 36px rgb(15 23 42 / .18); padding: 12px; animation: tfb-panel-in 130ms ease-out; }
+    .tfb__panel { position: absolute; top: calc(100% + 7px); right: 0; z-index: 80; width: 360px; max-width: 90vw; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: var(--shadow-modal); padding: 12px; animation: tfb-panel-in 130ms ease-out; }
     .tfb__panel--left { right: auto; left: 0; }
     .tfb__hint { margin: 0 0 10px; font-size: 12px; line-height: 1.4; color: var(--color-text-secondary); }
     .tfb__color-dot { width: 12px; height: 12px; border-radius: 999px; box-shadow: 0 0 0 1px rgb(15 23 42 / .15); }

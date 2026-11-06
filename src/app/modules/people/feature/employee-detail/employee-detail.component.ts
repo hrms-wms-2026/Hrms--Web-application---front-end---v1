@@ -1,4 +1,3 @@
-import { MeetingAttendanceTabComponent } from './meeting-attendance-tab/meeting-attendance-tab.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -36,9 +35,9 @@ import { EmployeePersonalTabComponent } from './personal-tab.component';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
 import { EmployeeWorkActivityTabComponent } from './work-activity-tab.component';
 
-type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal' | 'meetings';
+type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
 
-const DETAIL_TABS: readonly DetailTab[] = ['overview', 'employment', 'work-activity', 'personal', 'meetings'];
+const DETAIL_TABS: readonly DetailTab[] = ['overview', 'employment', 'work-activity', 'personal'];
 
 /** Reads the ?tab= query value; anything unknown falls back to Overview. */
 function toDetailTab(value: string | null): DetailTab {
@@ -57,7 +56,6 @@ function toDetailTab(value: string | null): DetailTab {
   selector: 'app-employee-detail',
   standalone: true,
   imports: [
-    MeetingAttendanceTabComponent,
     BreadcrumbHeaderComponent,
     AvatarComponent,
     ButtonComponent,
@@ -109,7 +107,7 @@ function toDetailTab(value: string | null): DetailTab {
                 />
                 @if (employee.isOnline) {
                   <span
-                    class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-white bg-green-500"
+                    class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-success)]"
                     data-testid="employee-online-dot"
                     title="Online"
                   ></span>
@@ -169,7 +167,7 @@ function toDetailTab(value: string | null): DetailTab {
                       {{ employee.jobInformation.pendingPositionName }}
                     </span>
                     <span
-                      class="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
+                      class="rounded-full border border-[var(--color-warning)] bg-[var(--color-warning-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-warning-text)]"
                       title="The seat is reserved. The position becomes active once they accept the invitation."
                       data-testid="employee-pending-position"
                     >Starts when invite is accepted</span>
@@ -225,7 +223,7 @@ function toDetailTab(value: string | null): DetailTab {
       <!-- Navigation Tabs -->
       <div class="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--color-border)]">
         <nav class="flex gap-2" aria-label="Employee Detail Sections">
-          @for (tab of tabs(); track tab.id) {
+          @for (tab of tabs; track tab.id) {
             <button
               type="button"
               class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap cursor-pointer"
@@ -277,14 +275,6 @@ function toDetailTab(value: string | null): DetailTab {
       @if (activeTab() === 'personal') {
         <app-employee-personal-tab [employee]="employee" />
       }
-
-      <!-- Rendered from the start (hidden) so it can ask the API whether this caller may see it; a 404 keeps the tab hidden. -->
-      <app-meeting-attendance-tab
-        [employeeId]="employee.id"
-        [hidden]="activeTab() !== 'meetings'"
-        [class.hidden]="activeTab() !== 'meetings'"
-        (availability)="onMeetingTabAvailability($event)"
-      />
 
       @if (employee.jobInformation.legalEntityId; as legalEntityId) {
         <app-change-position-modal
@@ -389,20 +379,14 @@ export class EmployeeDetailComponent {
   readonly changePositionOpen = signal(false);
   readonly startOffboardingOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
-  private readonly baseTabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
+  // A person's plan and their meeting attendance are not profile tabs: the plan lives in Planner → My team (team
+  // planner, 2026-11-03) and a meeting's attendance in its own meeting drawer (2026-11-04).
+  readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'employment', label: 'Employment' },
     { id: 'work-activity', label: 'Work & Activity' },
     { id: 'personal', label: 'Personal' }
   ];
-  /** Meeting attendance (meetings-as-tasks D16) is the employee's own or their current reporting line's: the tab
-   * appears only once the API answers for this caller, and a 404 keeps it hidden. */
-  readonly meetingTabAvailable = signal(false);
-  // A person's plan is not a profile tab: it lives in Planner → My team (team planner, 2026-11-03).
-  readonly tabs = computed(() => [
-    ...this.baseTabs,
-    ...(this.meetingTabAvailable() ? [{ id: 'meetings' as DetailTab, label: 'Meeting attendance' }] : []),
-  ]);
   readonly activeTab = signal<DetailTab>('overview');
   readonly employmentVisited = signal(false);
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
@@ -485,11 +469,6 @@ export class EmployeeDetailComponent {
   }
 
   /** Switches tab and records it as ?tab= so a refresh or shared link opens the same tab. */
-  onMeetingTabAvailability(available: boolean): void {
-    this.meetingTabAvailable.set(available);
-    if (!available && this.activeTab() === 'meetings') this.activeTab.set('overview');
-  }
-
   selectTab(tab: DetailTab): void {
     this.showTab(tab);
     void this.router.navigate([], {
@@ -613,8 +592,8 @@ export class EmployeeDetailComponent {
 
   severityBadgeClass(employee: EmployeeDetailResponse): string {
     const severity = attendanceSeverityClass(employee);
-    if (severity === 'emp-attention--critical') return 'bg-red-50 text-red-700';
-    if (severity === 'emp-attention--warning') return 'bg-amber-50 text-amber-700';
+    if (severity === 'emp-attention--critical') return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
+    if (severity === 'emp-attention--warning') return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
   }
 
@@ -622,22 +601,22 @@ export class EmployeeDetailComponent {
     const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
     const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
     if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
-      return 'bg-rose-50 text-rose-800';
+      return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
     }
     if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
-      return 'bg-emerald-50 text-emerald-800';
+      return 'bg-[var(--color-success-subtle)] text-[var(--color-success-text)]';
     }
     if (status === 'late' || label.includes('late')) {
-      return 'bg-amber-50 text-amber-800';
+      return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
     }
     if (status === 'on_break' || label.includes('break')) {
       return 'bg-sky-50 text-sky-800';
     }
     if (status === 'on_leave' || label.includes('leave')) {
-      return 'bg-purple-50 text-purple-800';
+      return 'bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)]';
     }
     if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
-      return 'bg-rose-50 text-rose-800';
+      return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
     }
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]';
   }
@@ -646,22 +625,22 @@ export class EmployeeDetailComponent {
     const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
     const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
     if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
-      return 'bg-rose-500';
+      return 'bg-[var(--color-danger)]';
     }
     if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
-      return 'bg-emerald-500';
+      return 'bg-[var(--color-success)]';
     }
     if (status === 'late' || label.includes('late')) {
-      return 'bg-amber-500';
+      return 'bg-[var(--color-warning)]';
     }
     if (status === 'on_break' || label.includes('break')) {
       return 'bg-sky-500';
     }
     if (status === 'on_leave' || label.includes('leave')) {
-      return 'bg-purple-500';
+      return 'bg-[var(--color-cat-violet)]';
     }
     if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
-      return 'bg-rose-500';
+      return 'bg-[var(--color-danger)]';
     }
     return 'bg-[var(--color-text-secondary)]';
   }

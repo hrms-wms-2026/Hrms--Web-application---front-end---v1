@@ -72,9 +72,9 @@
 }
 
 .status-pill--active {
-  background: #ecfdf5;
-  color: #065f46;
-  border-color: #a7f3d0;
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
+  border-color: var(--color-success-subtle);
 }
 
 .status-pill--active .status-pill__dot {
@@ -83,9 +83,9 @@
 }
 
 .status-pill--break {
-  background: #fffbeb;
-  color: #92400e;
-  border-color: #fde68a;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+  border-color: var(--color-warning-subtle);
 }
 
 .status-pill--break .status-pill__dot {
@@ -179,7 +179,7 @@
 }
 
 .status-card-meta__item--danger {
-  color: #b91c1c;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 

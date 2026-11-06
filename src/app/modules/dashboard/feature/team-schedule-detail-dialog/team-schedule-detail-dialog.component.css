@@ -76,13 +76,13 @@
   height: 30px;
   align-items: center;
   border-radius: 8px;
-  background: rgb(29 78 216);
+  background: var(--color-accent-solid);
   padding: 0 12px;
   font-size: 12px;
-  color: #fff;
+  color: var(--color-text-on-solid);
 }
 .tsd-toolbar__group .tsd-open:hover {
-  background: rgb(30 64 175);
+  background: var(--color-accent-solid-hover);
   text-decoration: none;
 }
 
@@ -302,7 +302,7 @@ td.tsd-workload-col {
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgb(226 232 240);
+  background: var(--color-border);
 }
 
 .tsd-track {
@@ -324,7 +324,7 @@ td.tsd-workload-col {
   opacity: 0.3;
 }
 .tsd-unscheduled {
-  background: repeating-linear-gradient(135deg, #ef4444 0 3px, #fecaca 3px 7px);
+  background: repeating-linear-gradient(135deg, #ef4444 0 3px, var(--color-tint-red-line) 3px 7px);
 }
 
 .tsd-person {
@@ -380,8 +380,8 @@ td.tsd-workload-col {
   color: var(--color-text-secondary);
 }
 .tsd-rank--top {
-  background: #d1fae5;
-  color: #047857;
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
 }
 
 .tsd-parts {
@@ -401,11 +401,11 @@ td.tsd-workload-col {
 
 .tsd-badge {
   border-radius: 9999px;
-  background: rgb(254 243 199);
+  background: var(--color-warning-subtle);
   padding: 0.0625rem 0.5rem;
   font-size: 0.6875rem;
   font-weight: 600;
-  color: rgb(180 83 9);
+  color: var(--color-tint-amber-text);
 }
 
 /* 2026-11-02 design match: Day / Week switch, status filter, search, main table with a side column. */
@@ -421,8 +421,8 @@ td.tsd-workload-col {
   color: var(--color-text-secondary);
 }
 .tsd-switch button.tsd-switch--on {
-  background: rgb(37 99 235);
-  color: #fff;
+  background: var(--color-cat-blue);
+  color: var(--color-text-on-solid);
 }
 .tsd-select,
 .tsd-search {
@@ -477,7 +477,7 @@ td.tsd-workload-col {
   height: 8px;
   flex: none;
   border-radius: 9999px;
-  background: var(--tone, rgb(148 163 184));
+  background: var(--tone, var(--color-text-muted));
 }
 /* Load / capacity: "6h / 8h" over its bar, or a Not planned / On leave badge (2026-11-05 merged-widget design). */
 .tsd-load-cell {
@@ -492,7 +492,7 @@ td.tsd-workload-col {
   white-space: nowrap;
 }
 .tsd-load--over {
-  color: rgb(194 65 12);
+  color: var(--color-tint-amber-text);
   font-weight: 600;
 }
 .tsd-load-track {
@@ -500,7 +500,7 @@ td.tsd-workload-col {
   height: 5px;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgb(241 245 249);
+  background: var(--color-surface-secondary);
 }
 .tsd-load-track span {
   display: block;
@@ -508,8 +508,8 @@ td.tsd-workload-col {
   border-radius: 9999px;
 }
 .tsd-badge--leave {
-  background: rgb(254 240 138);
-  color: rgb(113 63 18);
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
 }
 .tsd-load-cell .tsd-badge {
   align-self: flex-start;
@@ -520,7 +520,7 @@ td.tsd-workload-col {
   position: absolute;
   inset: 2px;
   border-radius: 0.25rem;
-  background: repeating-linear-gradient(135deg, #fde68a 0 8px, #fefce8 8px 16px);
+  background: repeating-linear-gradient(135deg, var(--color-warning-subtle) 0 8px, var(--color-tint-amber-bg) 8px 16px);
 }
 .tsd-done {
   font-weight: 600;
@@ -530,7 +530,7 @@ td.tsd-workload-col {
 .tsd-link {
   font-size: 13px;
   font-weight: 600;
-  color: rgb(29 78 216);
+  color: var(--color-tint-blue-strong);
   white-space: nowrap;
 }
 .tsd-open:hover,
@@ -561,7 +561,7 @@ td.tsd-workload-col {
   font-variant-numeric: tabular-nums;
 }
 .tsd-summary-row dd.tsd-summary--alert {
-  color: rgb(194 65 12);
+  color: var(--color-tint-amber-text);
 }
 .tsd-list li.tsd-side-item {
   flex-direction: column;
@@ -572,7 +572,7 @@ td.tsd-workload-col {
 }
 .tsd-alert {
   font-size: 12px;
-  color: rgb(194 65 12);
+  color: var(--color-tint-amber-text);
 }
 .tsd-list li.tsd-top-row {
   flex-direction: column;
@@ -637,10 +637,10 @@ td.tsd-workload-col {
   color: var(--color-text-primary);
 }
 .tsd-diff--behind {
-  color: rgb(194 65 12);
+  color: var(--color-tint-amber-text);
 }
 .tsd-diff--ahead {
-  color: rgb(4 120 87);
+  color: var(--color-tint-green-strong);
 }
 /* Planned vs actual double bar (the old day chart's look): light planned bar over the split actual bar. */
 /* Wide enough for "84.5%" and an "Unscheduled 1h 36m" badge on one line, so every row keeps the same height. */
@@ -706,11 +706,11 @@ td.tsd-workload-col {
 }
 /* Swatches drawn like the timeline's own strips. */
 .tsd-legend .tsd-key-unscheduled {
-  background: repeating-linear-gradient(135deg, #ef4444 0 2px, #fecaca 2px 4px);
+  background: repeating-linear-gradient(135deg, #ef4444 0 2px, var(--color-tint-red-line) 2px 4px);
 }
 .tsd-legend .tsd-key-leave {
-  background: repeating-linear-gradient(135deg, #fde68a 0 3px, #fefce8 3px 6px);
-  box-shadow: inset 0 0 0 1px #fde68a;
+  background: repeating-linear-gradient(135deg, var(--color-warning-subtle) 0 3px, var(--color-tint-amber-bg) 3px 6px);
+  box-shadow: inset 0 0 0 1px var(--color-warning-subtle);
 }
 .tsd-legend .tsd-key-cancelled {
   opacity: 0.3;
@@ -718,7 +718,7 @@ td.tsd-workload-col {
 .tsd-legend .tsd-key-now {
   width: 2px;
   border-radius: 0;
-  background: #dc2626;
+  background: var(--color-danger);
 }
 
 /* Current time: a red line through each row and a time badge on the axis (today only). */
@@ -729,7 +729,7 @@ td.tsd-workload-col {
   z-index: 1;
   width: 2px;
   margin-left: -1px;
-  background: #dc2626;
+  background: var(--color-danger);
   pointer-events: none;
 }
 .tsd-now-badge {
@@ -738,12 +738,12 @@ td.tsd-workload-col {
   z-index: 2;
   transform: translate(-50%, -50%);
   border-radius: 9999px;
-  background: #dc2626;
+  background: var(--color-danger);
   padding: 1px 6px;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.3;
-  color: #fff;
+  color: var(--color-text-on-solid);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }

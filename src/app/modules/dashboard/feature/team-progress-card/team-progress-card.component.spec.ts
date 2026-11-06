@@ -745,20 +745,17 @@ describe('TeamProgressCardComponent', () => {
 
   const EMPTY: LedWorkProgressResponse = { hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [] };
 
-  it('polls every 60 seconds while the document is visible', async () => {
+  it('does not poll on a timer', async () => {
     vi.useFakeTimers();
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
     const { getLedProgress } = await setupWithApi(EMPTY);
     expect(getLedProgress).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(getLedProgress).toHaveBeenCalledTimes(2);
-
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(getLedProgress).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(180_000);
+    expect(getLedProgress).toHaveBeenCalledTimes(1);
   });
 
-  it('stops polling while hidden and refetches immediately when visible again', async () => {
+  it('refetches once when the tab becomes visible again', async () => {
     vi.useFakeTimers();
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
     const { getLedProgress } = await setupWithApi(EMPTY);
@@ -774,7 +771,7 @@ describe('TeamProgressCardComponent', () => {
     expect(getLedProgress).toHaveBeenCalledTimes(2);
 
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(getLedProgress).toHaveBeenCalledTimes(3);
+    expect(getLedProgress).toHaveBeenCalledTimes(2);
   });
 
   it('removes the visibilitychange listener and clears the interval on destroy', async () => {
@@ -840,13 +837,13 @@ describe('TeamProgressCardComponent', () => {
       expect(fixture.nativeElement.textContent).toContain("Couldn't load team progress");
     });
 
-    it('polls through the widget context every 60 seconds and feeds the result into the store', async () => {
+    it('reloads through the widget context when the tab becomes visible again and feeds the result into the store', async () => {
       vi.useFakeTimers();
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
       const widget = fakeWidgetData('success', EMPTY);
       const { fixture, getLedProgress, store } = await setupInFrame(widget, EMPTY);
 
-      await vi.advanceTimersByTimeAsync(60_000);
+      document.dispatchEvent(new Event('visibilitychange'));
       expect(widget.refresh).toHaveBeenCalledOnce();
       expect(getLedProgress).not.toHaveBeenCalled();
       expect(store.loading()).toBe(true);
@@ -865,7 +862,7 @@ describe('TeamProgressCardComponent', () => {
       const next = response([module('o3', 'Ledger', hours(10, 5, 0, 0))]);
       const { fixture, getLedProgress, store } = await setupInFrame(widget, next);
 
-      await vi.advanceTimersByTimeAsync(60_000);
+      document.dispatchEvent(new Event('visibilitychange'));
       widget.fail();
       fixture.detectChanges();
       await fixture.whenStable();
