@@ -1,0 +1,203 @@
+/* Combo chart (BoardUI Combo Chart Card look) on this app's tokens: bars = completed (success),
+   line = completion (info). Both tokens flip in dark mode and don't follow the accent preset. */
+:host {
+  --cc-bar: var(--color-success);
+  --cc-line: var(--color-info);
+  --cc-label-h: 20px;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.cc {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---- Headline ---- */
+.cc-head { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cc-caption {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-headline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; }
+.cc-value {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 30px;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.cc-value small { font-size: 14px; font-weight: 500; color: var(--color-text-secondary); }
+.cc-pill {
+  padding: 1px 8px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--cc-bar) 16%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--color-success-text);
+}
+.cc-tasks { font-size: 12px; color: var(--color-text-muted); }
+
+/* ---- Plot: left axis | canvas | right axis ---- */
+.cc-plot {
+  display: grid;
+  min-height: var(--cc-plot-min, 150px);
+  flex: 1 1 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.cc-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: calc(var(--cc-label-h) - 6px);
+  margin-top: -6px;
+  font-size: 11px;
+  line-height: 12px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cc-axis--left { text-align: right; }
+
+.cc-canvas { position: relative; min-width: 0; }
+
+.cc-grid,
+.cc-line,
+.cc-dots {
+  position: absolute;
+  inset: 0 0 var(--cc-label-h) 0;
+}
+.cc-grid { display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.cc-grid span { height: 0; border-top: 1px dashed var(--color-border); }
+.cc-grid span:last-child { border-top-style: solid; }
+
+.cc-cols { position: relative; display: flex; height: 100%; }
+.cc-col {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 3px;
+  cursor: default;
+}
+.cc-bar-slot { display: flex; width: 100%; flex: 1 1 0; align-items: flex-end; justify-content: center; }
+
+.cc-bar {
+  width: min(100%, 28px);
+  min-height: 3px;
+  border-radius: 8px;
+  background: var(--cc-bar);
+  transform-origin: bottom;
+  transition: background-color 150ms ease, opacity 150ms ease;
+  animation: cc-bar-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* The current bucket is still running: lighter, so it doesn't read as finished. */
+.cc-bar--current {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cc-bar) 60%, var(--color-surface)) 0 4px,
+    color-mix(in srgb, var(--cc-bar) 35%, var(--color-surface)) 4px 8px
+  );
+}
+.cc-bar--future { min-height: 0; }
+
+/* Hover: the bar under the pointer darkens one step, the rest dim. */
+.cc-plot--hover .cc-bar { opacity: 0.35; }
+.cc-plot--hover .cc-col--on .cc-bar { opacity: 1; background-color: color-mix(in srgb, var(--cc-bar) 82%, var(--color-text-primary)); }
+
+.cc-label {
+  display: block;
+  max-width: none;
+  height: var(--cc-label-h);
+  overflow: visible;
+  padding-top: 5px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-label--current { font-weight: 600; color: var(--color-text-primary); }
+.cc-col--on .cc-label { color: var(--color-text-primary); }
+
+/* ---- Line + dots ---- */
+.cc-line { width: 100%; height: calc(100% - var(--cc-label-h)); overflow: visible; pointer-events: none; }
+.cc-line path { fill: none; stroke: var(--cc-line); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cc-dots { pointer-events: none; }
+.cc-dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border: 1.5px solid var(--color-surface);
+  border-radius: 9999px;
+  background: var(--cc-line);
+  transition: transform 150ms ease;
+}
+.cc-dot--on { transform: scale(1.4); }
+.cc-dot--on::after {
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: var(--cc-line);
+  content: '';
+  opacity: 0.35;
+  animation: cc-pulse 1.4s ease-out infinite;
+}
+
+.cc-empty { margin: -4px 0 0; font-size: 12px; text-align: center; color: var(--color-text-secondary); }
+
+/* ---- Tiles ---- */
+.cc-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cc-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--cc-tile-bg, var(--color-surface-secondary));
+}
+.cc-tile__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.cc-tile__value { font-size: 14px; font-weight: 600; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.cc-key { width: 10px; height: 10px; flex-shrink: 0; border-radius: 3px; }
+.cc-key--bar { background: var(--cc-bar); }
+.cc-key--line { border-radius: 9999px; background: var(--cc-line); }
+
+@keyframes cc-bar-rise {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes cc-pulse {
+  from { transform: scale(1); opacity: 0.4; }
+  to { transform: scale(2.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-bar,
+  .cc-dot--on::after { animation: none; }
+  .cc-bar,
+  .cc-dot { transition: none; }
+}

@@ -33,12 +33,14 @@ export class TeamProgressDetailApiService {
     return this.http.get<LedPeriodProgress>(`${this.basePath}/period`, { params: toParams({ period, ...filters }) });
   }
 
-  /** Completed task estimates per week for the last `weeks` ISO weeks, current week last. */
+  /** Completed task estimates per bucket: the last `weeks` ISO weeks (no period), the days of this
+   * week (`week`) or the weeks of this month (`month`); oldest first, current bucket last. */
   getWeeklyCompletion(
     weeks = 10,
-    filters: { projectId?: string; objectiveId?: string } = {}
+    filters: { projectId?: string; objectiveId?: string } = {},
+    period?: Exclude<LedProgressPeriod, 'all'>
   ): Observable<LedWeeklyCompletion> {
-    return this.http.get<LedWeeklyCompletion>(`${this.basePath}/weekly-completion`, { params: toParams({ weeks, ...filters }) });
+    return this.http.get<LedWeeklyCompletion>(`${this.basePath}/weekly-completion`, { params: toParams({ weeks, period, ...filters }) });
   }
 
   /** Planned vs worked minutes, unscheduled work and the workload ranking for this week or month. */

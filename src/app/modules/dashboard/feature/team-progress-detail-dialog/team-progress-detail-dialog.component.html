@@ -121,7 +121,7 @@
           </div>
         }
 
-        <!-- Panels: Status Distribution | Weekly completion | Unscheduled work, then projects and Team members (full width) -->
+        <!-- Panels: Status Distribution | Weekly completion (wide), then projects and Team members (full width) -->
         <div class="tp-panels">
           <section class="tp-panel" aria-labelledby="tp-dist-heading" data-testid="tp-distribution">
             <h3 id="tp-dist-heading" class="tp-panel__title">Status Distribution</h3>
@@ -177,23 +177,29 @@
             }
           </section>
 
-          <section class="tp-panel" aria-labelledby="tp-weekly-heading" data-testid="tp-weekly">
+          <section class="tp-panel tp-panel--weekly" aria-labelledby="tp-weekly-heading" data-testid="tp-weekly">
             <div class="tp-panel__head">
               <h3 id="tp-weekly-heading" class="tp-panel__title">Weekly completion</h3>
-              <span class="tp-tag" data-testid="tp-weekly-range">Last {{ weekCount }} weeks</span>
+              <span class="tp-tag" data-testid="tp-weekly-range">{{ weeklyRange() }}</span>
             </div>
-            <p class="tp-muted">Allocated task hours completed per week</p>
             @if (weekly().status === 'error') {
               <div class="tp-inline-error" role="alert" data-testid="tp-weekly-error">
                 Couldn't load the weekly completion.
                 <button type="button" class="tp-text-button" data-testid="tp-weekly-retry" (click)="retryWeekly()">Retry</button>
               </div>
             } @else if (weekly().status === 'ready' && weekly().data; as wc) {
-              <app-weekly-completion-chart class="tp-weekly__chart" data-testid="tp-weekly-chart" [weeks]="wc.weeks" [allocatedHours]="wc.allocatedHours" [percentLine]="true" />
+              <app-completion-combo-chart
+                class="tp-weekly__chart"
+                data-testid="tp-weekly-chart"
+                [buckets]="wc.weeks"
+                [allocatedHours]="wc.allocatedHours"
+                [granularity]="wc.granularity ?? 'week'"
+                [rangeLabel]="weeklyRange()"
+              />
               @if (wc.undatedCompletedHours > 0) {
                 <p class="tp-footnote" data-testid="tp-weekly-undated">
                   Plus {{ formatHours(wc.undatedCompletedHours) }} h ({{ wc.undatedCompletedTaskCount }}
-                  {{ wc.undatedCompletedTaskCount === 1 ? 'task' : 'tasks' }}) completed without a completion date, not shown in any week.
+                  {{ wc.undatedCompletedTaskCount === 1 ? 'task' : 'tasks' }}) completed without a completion date, not shown in any {{ wc.granularity === 'day' ? 'day' : 'week' }}.
                 </p>
               }
             } @else {
@@ -201,17 +207,6 @@
             }
           </section>
 
-          <app-team-progress-time-detail
-            [page]="unscheduled().data"
-            [status]="unscheduledStatus()"
-            [kind]="unscheduledKind()"
-            [period]="unscheduledPeriod()"
-            [exporting]="unscheduledExporting()"
-            (kindChange)="setUnscheduledKind($event)"
-            (pageChange)="goToUnscheduledPage($event)"
-            (retried)="retryUnscheduled()"
-            (exported)="exportUnscheduled()"
-          />
 
           @if (!isPeriod() && projectBreakdown().length > 0) {
             <section class="tp-panel tp-panel--projects" aria-labelledby="tp-projects-heading" data-testid="tp-projects">
@@ -276,41 +271,48 @@
                 <button type="button" class="tp-text-button" (click)="retryOverviewEmployees()">Retry</button>
               </div>
             } @else if (membersView() === 'chart') {
-              <div class="tp-members-chart" data-testid="tp-members-chart" [attr.aria-busy]="overviewEmployees().status === 'loading'">
-                <ul class="tp-members-legend" aria-hidden="true">
-                  @for (s of memberStatuses; track s.key) {
-                    <li><span class="tp-dot" [style.background]="s.color"></span>{{ s.label }}</li>
-                  }
-                </ul>
+              <div class="tp-barlist" data-testid="tp-members-chart" [style.--tp-barlist-color]="memberTabColor()" [attr.aria-busy]="overviewEmployees().status === 'loading'">
+                <div class="tp-barlist__head">
+                  <div class="tp-barlist__tabs" role="group" aria-label="Rank team members by" data-testid="tp-members-tabs">
+                    @for (tab of memberTabs; track tab.key) {
+                      <button
+                        type="button"
+                        class="tp-barlist__tab"
+                        [class.tp-barlist__tab--on]="membersTab() === tab.key"
+                        [attr.aria-pressed]="membersTab() === tab.key"
+                        [attr.data-testid]="'tp-members-tab-' + tab.key"
+                        (click)="setMembersTab(tab.key)"
+                      >
+                        {{ tab.label }}
+                      </button>
+                    }
+                  </div>
+                  <span class="tp-barlist__metric" aria-hidden="true">Hours</span>
+                </div>
                 @if (overviewEmployees().data) {
-                  @for (bar of memberBars(); track bar.row.employeeId) {
-                    <div
-                      class="tp-member-bar"
-                      role="img"
-                      [attr.data-testid]="'tp-member-bar-' + bar.row.employeeId"
-                      [attr.aria-label]="bar.row.displayName + ': ' + formatHours(bar.row.completedHours) + ' h completed, ' + formatHours(bar.row.inProgressHours) + ' h in progress, ' + formatHours(bar.row.notStartedHours) + ' h not started'"
-                    >
-                      <span class="tp-person">
-                        <span class="tp-avatar" aria-hidden="true">{{ initials(bar.row.displayName) }}</span>
-                        <span class="truncate" [title]="bar.row.displayName">{{ bar.row.displayName }}</span>
-                      </span>
-                      <span class="tp-member-track" aria-hidden="true">
-                        @for (seg of bar.segments; track seg.key) {
-                          <span class="tp-member-seg" [style.width.%]="seg.width" [style.background]="seg.color" [title]="formatHours(seg.hours) + ' h'"></span>
-                        }
-                      </span>
-                      <span class="tp-member-total">{{ formatHours(bar.row.totalHours) }} h</span>
-                      <span class="tp-member-worked" [title]="timePeriodLabel() + ': planned / worked'">
-                        @if (memberTime().get(bar.row.employeeId); as w) {
-                          {{ timeHours(w.clockedMinutes) }} worked
-                        } @else {
-                          —
-                        }
-                      </span>
-                    </div>
-                  } @empty {
-                    <p class="tp-mini-table__empty">No employees match.</p>
-                  }
+                  <ul class="tp-barlist__rows">
+                    @for (bar of memberBars(); track bar.row.employeeId) {
+                      <li
+                        class="tp-barlist__row"
+                        [attr.data-testid]="'tp-member-bar-' + bar.row.employeeId"
+                        [attr.aria-label]="bar.row.displayName + ': ' + formatHours(bar.row.completedHours) + ' h completed, ' + formatHours(bar.row.inProgressHours) + ' h in progress, ' + formatHours(bar.row.notStartedHours) + ' h not started, ' + formatHours(bar.row.totalHours) + ' h total'"
+                      >
+                        <span class="tp-barlist__bar" aria-hidden="true" [style.width.%]="bar.width"></span>
+                        <span class="tp-person tp-barlist__who">
+                          <span class="tp-avatar" aria-hidden="true">{{ initials(bar.row.displayName) }}</span>
+                          <span class="truncate" [title]="bar.row.displayName">{{ bar.row.displayName }}</span>
+                        </span>
+                        <span class="tp-barlist__worked" [title]="timePeriodLabel() + ': worked time'">
+                          @if (memberTime().get(bar.row.employeeId); as w) {
+                            {{ timeHours(w.clockedMinutes) }} worked
+                          }
+                        </span>
+                        <span class="tp-barlist__value">{{ formatHours(bar.hours) }} h</span>
+                      </li>
+                    } @empty {
+                      <li class="tp-mini-table__empty">No employees match.</li>
+                    }
+                  </ul>
                 } @else {
                   <p class="tp-mini-table__empty">Loading employees...</p>
                 }

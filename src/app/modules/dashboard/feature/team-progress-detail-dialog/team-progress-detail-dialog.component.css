@@ -94,7 +94,7 @@
 .tp-total__meta { font-size: 11px; color: var(--color-text-secondary); }
 .tp-total__meta span { font-weight: 700; color: #059669; }
 
-.tp-panels { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr); gap: 12px; }
+.tp-panels { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 12px; }
 .tp-panel { display: flex; min-width: 0; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); }
 .tp-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tp-panel__title { margin: 0; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
@@ -127,7 +127,11 @@
 
 .tp-notes { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 8px 0 0; border-top: 1px dashed var(--color-border); list-style: none; font-size: 11px; color: var(--color-text-secondary); }
 
-/* Weekly completion: the shared chart fills the space left in the panel. */
+/* Weekly completion: the wide panel on a light gray tray; the chart fills the space left in it,
+   its tiles and tag sit on the plain surface so they still read as cards. */
+.tp-panel--weekly { background: var(--color-surface-secondary); }
+.tp-panel--weekly .tp-tag { background: var(--color-surface); }
+.tp-panel--weekly app-completion-combo-chart { --cc-tile-bg: var(--color-surface); --cc-plot-min: 220px; }
 .tp-weekly__chart { flex: 1; min-height: 180px; }
 .tp-footnote { margin: 0; font-size: 11px; line-height: 1.35; color: var(--color-text-secondary); }
 .tp-skeleton { border-radius: 8px; background: var(--color-surface-secondary); opacity: .7; }
@@ -339,19 +343,29 @@
 .tp-view-switch svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tp-view-switch .tp-view-switch--on { background: var(--color-surface); color: var(--color-text-primary); box-shadow: 0 1px 2px rgb(0 0 0 / .18); }
 
-/* Team members chart: one stacked horizontal bar per person on one scale. */
-.tp-members-chart { display: flex; flex-direction: column; gap: 8px; }
-.tp-members-legend { display: flex; gap: 14px; margin: 0 0 2px; padding: 0; list-style: none; font-size: 11px; color: var(--color-text-secondary); }
-.tp-members-legend li { display: inline-flex; align-items: center; gap: 6px; }
-.tp-member-bar { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr) 72px 96px; align-items: center; gap: 12px; min-height: 32px; padding: 2px 6px; border-radius: 6px; font-size: 12px; color: var(--color-text-primary); }
-.tp-member-bar:hover { background: var(--color-surface-secondary); }
-.tp-member-track { display: flex; height: 14px; overflow: hidden; border-radius: 4px; background: var(--color-surface-secondary); }
-.tp-member-seg { height: 100%; min-width: 2px; }
-.tp-member-seg + .tp-member-seg { border-left: 1px solid var(--color-surface); }
-.tp-member-total { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
-.tp-member-worked { font-size: 11px; text-align: right; color: var(--color-text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Team members bar list (BoardUI Bar List Card look): underline tabs pick the ranking, each row's tinted
+   bar behind the name is its share of the page's largest value, the hours sit on the right. */
+.tp-barlist { --tp-barlist-color: var(--color-info); display: flex; flex-direction: column; gap: 8px; }
+.tp-barlist__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--color-border); }
+.tp-barlist__tabs { display: flex; min-width: 0; gap: 18px; overflow-x: auto; scrollbar-width: none; }
+.tp-barlist__tab { position: relative; flex-shrink: 0; padding: 4px 0 8px; border: 0; background: transparent; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); white-space: nowrap; cursor: pointer; transition: color 150ms ease; }
+.tp-barlist__tab:hover { color: var(--color-text-primary); }
+.tp-barlist__tab:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-radius: 4px; }
+.tp-barlist__tab::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; border-radius: 2px; background: transparent; content: ''; transition: background-color 150ms ease; }
+.tp-barlist__tab--on { color: var(--color-text-primary); }
+.tp-barlist__tab--on::after { background: var(--tp-barlist-color); }
+.tp-barlist__metric { padding-bottom: 8px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text-muted); }
+.tp-barlist__rows { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.tp-barlist__row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto 72px; align-items: center; gap: 12px; min-height: 34px; padding: 0 10px 0 6px; border-radius: 10px; font-size: 13px; color: var(--color-text-primary); transition: background-color 150ms ease; }
+.tp-barlist__row:hover { background: var(--color-surface-secondary); }
+.tp-barlist__bar { position: absolute; top: 0; bottom: 0; left: 0; min-width: 4px; border-radius: 10px; background: color-mix(in srgb, var(--tp-barlist-color) 16%, var(--color-surface)); transition: width 400ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease; }
+.tp-barlist__row:hover .tp-barlist__bar { background: color-mix(in srgb, var(--tp-barlist-color) 24%, var(--color-surface)); }
+.tp-barlist__who { position: relative; min-width: 0; }
+.tp-barlist__worked { position: relative; font-size: 11px; color: var(--color-text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tp-barlist__value { position: relative; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 639.98px) {
-  .tp-member-bar { grid-template-columns: minmax(0, 1fr) 64px; }
-  .tp-member-track { grid-column: 1 / -1; grid-row: 2; }
-  .tp-member-worked { display: none; }
+  .tp-barlist__worked { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tp-barlist__bar, .tp-barlist__tab, .tp-barlist__tab::after, .tp-barlist__row { transition: none; }
 }

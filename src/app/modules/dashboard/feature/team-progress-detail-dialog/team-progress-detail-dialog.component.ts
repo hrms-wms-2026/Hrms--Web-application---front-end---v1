@@ -15,7 +15,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { EMPTY, Observable, Subject, Subscription, catchError, debounceTime, expand, map, of, reduce, switchMap, tap } from 'rxjs';
+import { Observable, Subject, Subscription, catchError, debounceTime, map, of, switchMap, tap } from 'rxjs';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
@@ -33,20 +33,16 @@ import {
 import {
   LedEmployeeProgressPage,
   LedEmployeeQuery,
+  LedEmployeeSort,
   LedPeriodProgress,
   LedProgressPeriod,
   LedTaskStatus,
   LedTimeProgress,
-  LedUnscheduledKind,
-  LedUnscheduledPage,
-  LedUnscheduledQuery,
-  LedUnscheduledRow,
   LedWeeklyCompletion
 } from '../../models/team-progress-detail.model';
-import { TeamProgressTimeDetailComponent } from '../../ui/team-progress-time-detail/team-progress-time-detail.component';
 import { hoursText, timePeriodFor } from '../../utils/team-progress-time-format.util';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
-import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
+import { CompletionComboChartComponent } from '../../ui/completion-combo-chart/completion-combo-chart.component';
 import {
   PROGRESS_STATUSES,
   PROGRESS_STATUS_BY_KEY,
@@ -61,10 +57,6 @@ export const TEAM_PROGRESS_SEARCH_DEBOUNCE_MS = 300;
 export const TEAM_PROGRESS_OVERVIEW_EMPLOYEES = 5;
 /** Weeks in the weekly completion chart (current week last). */
 export const TEAM_PROGRESS_WEEKS = 10;
-/** Cards per Unscheduled work page (paged on the server). */
-export const TEAM_PROGRESS_UNSCHEDULED_PAGE_SIZE = 4;
-/** Rows per request while the Unscheduled work CSV export walks every page. */
-const UNSCHEDULED_EXPORT_PAGE_SIZE = 100;
 
 type DatedPeriod = Exclude<LedProgressPeriod, 'all'>;
 
@@ -76,6 +68,15 @@ interface ScopeFilters {
 interface PeriodQuery {
   period: DatedPeriod;
   filters: ScopeFilters;
+}
+
+/** Team members bar list tabs: the server sort fields with hours. */
+type MemberTab = Exclude<LedEmployeeSort, 'name'>;
+
+/** Weekly completion request: no period = the last 10 weeks. */
+interface WeeklyQuery {
+  filters: ScopeFilters;
+  period?: DatedPeriod;
 }
 
 interface OverviewTile {
@@ -157,7 +158,7 @@ interface OverdueHoursView {
 @Component({
   selector: 'app-team-progress-detail-dialog',
   standalone: true,
-  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent, TeamProgressTimeDetailComponent],
+  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, CompletionComboChartComponent],
   templateUrl: './team-progress-detail-dialog.component.html',
   styleUrl: './team-progress-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -175,7 +176,6 @@ export class TeamProgressDetailDialogComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly formatHours = formatHourValue;
-  protected readonly weekCount = TEAM_PROGRESS_WEEKS;
 
   protected readonly periodOptions: readonly SelectOption[] = [
     { value: 'all', label: 'All time' },
@@ -196,14 +196,21 @@ export class TeamProgressDetailDialogComponent {
   protected readonly overviewEmployeeSearchText = signal('');
   private readonly overviewEmployeeSearch = signal('');
   /** Pages reset to 1 whenever the period changes (linkedSignal), in the same change as the period. */
-  protected readonly overviewEmployeePage = linkedSignal({ source: this.period, computation: () => 1 });
+  protected readonly overviewEmployeePage = linkedSignal({ source: () => `${this.period()}|${this.membersTab()}`, computation: () => 1 });
   protected readonly overviewEmployees = signal<RemoteState<LedEmployeeProgressPage>>({ status: 'idle', data: null });
 
   // ---- Period summary (server, week / month only) ----
   protected readonly periodSummary = signal<RemoteState<LedPeriodProgress>>({ status: 'idle', data: null });
 
-  // ---- Weekly completion (server, last 10 weeks, never filtered by the period) ----
+  // ---- Weekly completion (server: last 10 weeks for All time, the days of this week or the weeks of this month) ----
   protected readonly weekly = signal<RemoteState<LedWeeklyCompletion>>({ status: 'idle', data: null });
+  /** What the chart's buckets cover. A server without period support (no `granularity`) always sends
+   * the last 10 weeks, so the tag says so whatever period is selected. */
+  protected readonly weeklyRange = computed(() => {
+    const period = this.period();
+    if (period === 'all' || !this.weekly().data?.granularity) return `Last ${TEAM_PROGRESS_WEEKS} weeks`;
+    return period === 'week' ? 'This week' : 'This month';
+  });
 
   // ---- Planned vs worked (server, the period's week / month - All time reads the week - and the filters) ----
   protected readonly time = signal<RemoteState<LedTimeProgress>>({ status: 'idle', data: null });
@@ -213,23 +220,28 @@ export class TeamProgressDetailDialogComponent {
   protected readonly plannerEnabled = computed(() => this.time().data?.plannerEnabled ?? false);
   protected readonly timePeriodLabel = computed(() => (this.time().data?.period === 'month' ? 'This month' : 'This week'));
 
-  /** Team members: a horizontal stacked bar per person (default) or the full table. */
+  /** Team members: a ranked bar list per person (default) or the full table. */
   protected readonly membersView = signal<'chart' | 'table'>('chart');
-  protected readonly memberStatuses = [PROGRESS_STATUS_BY_KEY.completed, PROGRESS_STATUS_BY_KEY.inProgress, PROGRESS_STATUS_BY_KEY.notStarted];
-  /** The page's people on one scale (the largest total fills the track). */
+  /** The bar list's tab: which hours rank the people (sorted on the server, highest first). */
+  protected readonly membersTab = signal<MemberTab>('totalHours');
+  protected readonly memberTabs: readonly { key: MemberTab; label: string; color: string }[] = [
+    { key: 'totalHours', label: 'Total', color: 'var(--color-info)' },
+    { key: 'completedHours', label: PROGRESS_STATUS_BY_KEY.completed.label, color: PROGRESS_STATUS_BY_KEY.completed.color },
+    { key: 'inProgressHours', label: PROGRESS_STATUS_BY_KEY.inProgress.label, color: PROGRESS_STATUS_BY_KEY.inProgress.color },
+    { key: 'notStartedHours', label: PROGRESS_STATUS_BY_KEY.notStarted.label, color: PROGRESS_STATUS_BY_KEY.notStarted.color }
+  ];
+  protected readonly memberTabColor = computed(() => this.memberTabs.find((t) => t.key === this.membersTab())?.color ?? 'var(--color-info)');
+  /** The page's people: the tab's hours, the bar as a share of the page's largest value. */
   protected readonly memberBars = computed(() => {
     const items = this.overviewEmployees().data?.items ?? [];
-    const scale = Math.max(0, ...items.map((e) => e.totalHours));
-    const share = (h: number) => (scale > 0 ? (h / scale) * 100 : 0);
-    return items.map((e) => ({
-      row: e,
-      segments: [
-        { key: 'completed', hours: e.completedHours, width: share(e.completedHours), color: PROGRESS_STATUS_BY_KEY.completed.color },
-        { key: 'inProgress', hours: e.inProgressHours, width: share(e.inProgressHours), color: PROGRESS_STATUS_BY_KEY.inProgress.color },
-        { key: 'notStarted', hours: e.notStartedHours, width: share(e.notStartedHours), color: PROGRESS_STATUS_BY_KEY.notStarted.color }
-      ].filter((s) => s.hours > 0)
-    }));
+    const tab = this.membersTab();
+    const scale = Math.max(0, ...items.map((e) => e[tab]));
+    return items.map((e) => ({ row: e, hours: e[tab], width: scale > 0 ? (e[tab] / scale) * 100 : 0 }));
   });
+
+  setMembersTab(tab: MemberTab): void {
+    this.membersTab.set(tab);
+  }
 
   setMembersView(view: 'chart' | 'table'): void {
     this.membersView.set(view);
@@ -239,34 +251,6 @@ export class TeamProgressDetailDialogComponent {
   downloadFile = downloadCsv;
   private timeKey: string | null = null;
   private timeSub: Subscription | null = null;
-
-  // ---- Unscheduled work (server, paged; same period and filters as the time call) ----
-  protected readonly unscheduledKind = signal<LedUnscheduledKind>('all');
-  /** Back to page 1 whenever the period, a filter or the tab changes. */
-  protected readonly unscheduledPageNumber = linkedSignal({
-    source: () => `${timePeriodFor(this.period())}|${JSON.stringify(this.serverFilters())}|${this.unscheduledKind()}`,
-    computation: () => 1
-  });
-  protected readonly unscheduled = signal<RemoteState<LedUnscheduledPage>>({ status: 'idle', data: null });
-  protected readonly unscheduledStatus = computed<'loading' | 'ready' | 'error'>(() => {
-    const status = this.unscheduled().status;
-    return status === 'idle' ? 'loading' : status;
-  });
-  protected readonly unscheduledPeriod = computed(() => timePeriodFor(this.period()));
-  protected readonly unscheduledExporting = signal(false);
-  private readonly unscheduledQuery = computed<LedUnscheduledQuery | null>(() => {
-    if (!this.open() || !this.summary()) return null;
-    return {
-      period: timePeriodFor(this.period()),
-      kind: this.unscheduledKind(),
-      pageNumber: this.unscheduledPageNumber(),
-      pageSize: TEAM_PROGRESS_UNSCHEDULED_PAGE_SIZE,
-      ...this.serverFilters()
-    };
-  });
-  private readonly unscheduledRequests = new Subject<LedUnscheduledQuery>();
-  private unscheduledKey: string | null = null;
-  private unscheduledExportSub: Subscription | null = null;
 
   // ---- Filters (options from the summary) ----
 
@@ -505,7 +489,7 @@ export class TeamProgressDetailDialogComponent {
       search: this.overviewEmployeeSearch() || undefined,
       ...this.serverFilters(),
       period: this.periodParam(),
-      sort: 'totalHours',
+      sort: this.membersTab(),
       direction: 'desc'
     };
   });
@@ -517,10 +501,11 @@ export class TeamProgressDetailDialogComponent {
     return { period, filters: this.serverFilters() };
   });
 
-  /** Only while open; narrowed by the project / module filters, never by the period. */
-  private readonly weeklyQuery = computed<ScopeFilters | null>(() => {
+  /** Only while open; narrowed by the project / module filters and the period. */
+  private readonly weeklyQuery = computed<WeeklyQuery | null>(() => {
     if (!this.open() || !this.summary()) return null;
-    return this.serverFilters();
+    const period = this.period();
+    return { filters: this.serverFilters(), period: period === 'all' ? undefined : period };
   });
 
   private readonly overviewEmployeeRequests = new Subject<LedEmployeeQuery>();
@@ -529,7 +514,7 @@ export class TeamProgressDetailDialogComponent {
   private overviewEmployeeKey: string | null = null;
   private readonly periodRequests = new Subject<PeriodQuery>();
   private periodKey: string | null = null;
-  private readonly weeklyRequests = new Subject<ScopeFilters>();
+  private readonly weeklyRequests = new Subject<WeeklyQuery>();
   private weeklyKey: string | null = null;
   /** Period summaries and weekly charts by query key, so flipping week / month / filters back and
    * forth doesn't refetch. Dropped when the card hands in a new summary (a refresh). */
@@ -550,22 +535,6 @@ export class TeamProgressDetailDialogComponent {
     });
     inject(DestroyRef).onDestroy(() => {
       this.timeSub?.unsubscribe();
-      this.unscheduledExportSub?.unsubscribe();
-    });
-
-    this.connect(
-      this.unscheduledRequests,
-      (q) => this.api.getUnscheduledWork(q),
-      this.unscheduled,
-      () => (this.unscheduledKey = null)
-    );
-    effect(() => {
-      const q = this.unscheduledQuery();
-      if (!q) return;
-      const key = JSON.stringify(q);
-      if (key === this.unscheduledKey) return;
-      this.unscheduledKey = key;
-      untracked(() => this.unscheduledRequests.next(q));
     });
 
     this.connect(
@@ -583,7 +552,7 @@ export class TeamProgressDetailDialogComponent {
     );
     this.connect(
       this.weeklyRequests,
-      (q) => cached(this.weeklyCache, JSON.stringify(q), () => this.api.getWeeklyCompletion(TEAM_PROGRESS_WEEKS, q)),
+      (q) => cached(this.weeklyCache, JSON.stringify(q), () => this.api.getWeeklyCompletion(TEAM_PROGRESS_WEEKS, q.filters, q.period)),
       this.weekly,
       () => (this.weeklyKey = null)
     );
@@ -636,49 +605,6 @@ export class TeamProgressDetailDialogComponent {
   retryTime(): void {
     const period = timePeriodFor(this.period());
     this.loadTime(period, this.serverFilters());
-  }
-
-  setUnscheduledKind(kind: LedUnscheduledKind): void {
-    this.unscheduledKind.set(kind);
-  }
-
-  goToUnscheduledPage(page: number): void {
-    this.unscheduledPageNumber.set(Math.max(1, page));
-  }
-
-  retryUnscheduled(): void {
-    const q = this.unscheduledQuery();
-    if (q) {
-      this.unscheduledKey = JSON.stringify(q);
-      this.unscheduledRequests.next(q);
-    }
-  }
-
-  /** Every unscheduled row of the period (all kinds), fetched page by page from the server, as one CSV. */
-  exportUnscheduled(): void {
-    const q = this.unscheduledQuery();
-    if (!q || this.unscheduledExporting()) return;
-    const first: LedUnscheduledQuery = { ...q, kind: 'all', pageNumber: 1, pageSize: UNSCHEDULED_EXPORT_PAGE_SIZE };
-    this.unscheduledExporting.set(true);
-    this.unscheduledExportSub = this.api
-      .getUnscheduledWork(first)
-      .pipe(
-        expand((page) => (page.hasNext ? this.api.getUnscheduledWork({ ...first, pageNumber: page.pageNumber + 1 }) : EMPTY)),
-        reduce((acc, page) => ({ from: page.from, to: page.to, rows: [...acc.rows, ...page.items] }), {
-          from: '',
-          to: '',
-          rows: [] as LedUnscheduledRow[]
-        })
-      )
-      .subscribe({
-        next: ({ from, to, rows }) => {
-          const header = ['Person', 'Task', 'Title', 'Start', 'End', 'Minutes', 'Kind'];
-          const lines = rows.map((u) => [u.displayName, u.shortId, u.title, u.start, u.end, String(u.minutes), u.kind === 'no_plan' ? 'No plan' : 'Outside slot']);
-          this.downloadFile(`team-unscheduled-work-${from}_${to}.csv`, toCsv([header, ...lines]));
-          this.unscheduledExporting.set(false);
-        },
-        error: () => this.unscheduledExporting.set(false)
-      });
   }
 
   private loadTime(period: 'week' | 'month', filters: ScopeFilters): void {

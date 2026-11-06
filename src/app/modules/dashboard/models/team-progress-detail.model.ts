@@ -94,7 +94,11 @@ export interface LedWeeklyCompletionWeek {
  * partial week. Done tasks without a completion date can't be placed in a week: they are reported
  * as `undated*` instead of being guessed. */
 export interface LedWeeklyCompletion {
+  /** Buckets, oldest first. With `period=week` each one is a day, with `period=month` an ISO week clipped to the month. */
   weeks: LedWeeklyCompletionWeek[];
+  /** 'day' for `period=week`, else 'week'. Missing on servers without period support: then `weeks` are
+   * always the last N weeks, whatever period was asked for. */
+  granularity?: 'week' | 'day';
   /** Allocation of the (filtered) led scope, so a week can be read as a share of it. */
   allocatedHours: number;
   undatedCompletedHours: number;

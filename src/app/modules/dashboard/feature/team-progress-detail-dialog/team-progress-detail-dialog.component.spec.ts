@@ -11,8 +11,6 @@ import {
   LedEmployeeProgressPage,
   LedPeriodProgress,
   LedProgressPeriod,
-  LedUnscheduledPage,
-  LedUnscheduledRow,
   LedWeeklyCompletion
 } from '../../models/team-progress-detail.model';
 import { TeamProgressDetailDialogComponent } from './team-progress-detail-dialog.component';
@@ -78,20 +76,6 @@ function employeePage(extra: Partial<LedEmployeeProgressPage> = {}): LedEmployee
   };
 }
 
-const UN_ROW: LedUnscheduledRow = {
-  employeeId: 'e1', displayName: 'Ada', taskId: 't1', shortId: 'T-1', title: 'Fix bug',
-  start: '2026-10-26T09:00:00Z', end: '2026-10-26T10:30:00Z', minutes: 90, kind: 'no_plan'
-};
-
-function unscheduledPage(extra: Partial<LedUnscheduledPage> = {}): LedUnscheduledPage {
-  return {
-    items: [UN_ROW],
-    pageNumber: 1, pageSize: 4, totalCount: 1, totalPages: 1, hasNext: false, hasPrevious: false,
-    period: 'week', from: '2026-10-26', to: '2026-11-01', plannerEnabled: true, kind: 'all',
-    all: { count: 1, minutes: 90 }, noPlan: { count: 1, minutes: 90 }, outsideSlot: { count: 0, minutes: 0 },
-    ...extra
-  };
-}
 
 function periodSummary(period: 'week' | 'month', extra: Partial<LedPeriodProgress> = {}): LedPeriodProgress {
   return {
@@ -137,9 +121,6 @@ describe('TeamProgressDetailDialogComponent', () => {
     // The planned-vs-worked call is covered by its own tests below; the older tests answer it here.
     http.match(isTime).forEach((r) => {
       if (!r.cancelled) r.flush(ledTime());
-    });
-    http.match(isUnscheduled).forEach((r) => {
-      if (!r.cancelled) r.flush(unscheduledPage());
     });
     http.verify();
     vi.useRealTimers();
@@ -222,8 +203,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(panels).toEqual(['tp-distribution', 'tp-weekly', 'tp-projects', 'tp-ov-employees']);
     expect(q('tp-weekly')?.textContent).toContain('Weekly completion');
     expect(q('tp-weekly-range')?.textContent?.trim()).toBe('Last 10 weeks');
-    expect(q('tp-weekly')?.textContent).toContain('Allocated task hours completed per week');
-    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="weekly-completion-bar"]').length).toBe(10);
+    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="cc-bar"]').length).toBe(10);
     expect(q('tp-weekly-undated')).toBeNull();
     expect(q('tp-member-bar-e1')?.textContent).toContain('AL');
     expect(q('tp-member-bar-e1')?.textContent).toContain('24 h');
@@ -264,7 +244,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     http.expectNone(isWeekly);
   });
 
-  it('narrows the weekly chart by the project / module filters, caches each, and ignores the period', () => {
+  it('narrows the weekly chart by the project / module filters and the period, caching each', () => {
     openWith();
     fixture.componentInstance.setProject('p2');
     render();
@@ -290,12 +270,40 @@ describe('TeamProgressDetailDialogComponent', () => {
     http.expectNone(isWeekly);
     expectEmployees().flush(employeePage());
 
-    // The period dropdown never refetches the weekly chart.
+    // This month asks for the month's weeks; the range tag follows what the server answered.
     fixture.componentRef.setInput('period', 'month');
     render();
-    http.expectNone(isWeekly);
+    req = expectWeekly();
+    expect(req.request.params.get('period')).toBe('month');
+    req.flush(weekly({ granularity: 'week', weeks: weekly().weeks.slice(0, 5) }));
     expectPeriod().flush(periodSummary('month'));
     expectEmployees().flush(employeePage());
+    render();
+    expect(q('tp-weekly-range')?.textContent?.trim()).toBe('This month');
+    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="cc-bar"]').length).toBe(5);
+
+    // This week asks for its days.
+    fixture.componentRef.setInput('period', 'week');
+    render();
+    req = expectWeekly();
+    expect(req.request.params.get('period')).toBe('week');
+    req.flush(weekly({ granularity: 'day', weeks: weekly().weeks.slice(0, 7) }));
+    expectPeriod().flush(periodSummary('week'));
+    expectEmployees().flush(employeePage());
+    render();
+    expect(q('tp-weekly-range')?.textContent?.trim()).toBe('This week');
+
+    // Back to All time: cached.
+    fixture.componentRef.setInput('period', 'all');
+    render();
+    http.expectNone(isWeekly);
+    expectEmployees().flush(employeePage());
+  });
+
+  it('keeps saying "Last 10 weeks" when the server answers a period request without one', () => {
+    openWith(summary(), 'month', weekly());
+    expectPeriod().flush(periodSummary('month'));
+    expect(q('tp-weekly-range')?.textContent?.trim()).toBe('Last 10 weeks');
   });
 
   it('drops the weekly cache when the card passes a new summary', () => {
@@ -480,7 +488,8 @@ describe('TeamProgressDetailDialogComponent', () => {
     emp = expectEmployees();
     expect(emp.request.params.get('projectId')).toBe('p2');
     emp.flush(employeePage());
-    expectWeekly().flush(weekly());
+    // The weekly chart follows the period too (its own test covers the requests).
+    http.match(isWeekly).filter((r) => !r.cancelled).forEach((r) => r.flush(weekly()));
   });
 
   it('shows an error with Retry when the period summary fails', () => {
@@ -650,118 +659,24 @@ describe('TeamProgressDetailDialogComponent', () => {
   });
 
   describe('planned vs worked sections', () => {
-    it('no Planned vs worked panel; Unscheduled work loads its first page from the server for the week', () => {
-      openWith(summary(), 'all');
-      http.expectOne(isTime).flush(ledTime());
-      const req = http.expectOne(isUnscheduled);
-      expect(req.request.params.get('period')).toBe('week');
-      expect(req.request.params.get('kind')).toBe('all');
-      expect(req.request.params.get('pageNumber')).toBe('1');
-      expect(req.request.params.get('pageSize')).toBe('4');
-      req.flush(unscheduledPage());
-      render();
-
-      expect(q('tptd-planned')).toBeNull();
-      expect(el().textContent).not.toContain('Planned vs worked');
-      expect(q('tptd-unscheduled')!.textContent).toContain('Unscheduled work');
-      expect(q('tptd-unscheduled')!.textContent).toContain('Worked without a matching Planner slot.');
-      expect(el().querySelectorAll('[data-testid="tptd-unscheduled-row"]').length).toBe(1);
-      expect(q('tptd-unscheduled')!.querySelector('table')).toBeNull();
-      expect(q('tptd-pager')).toBeNull();
-    });
-
-    it('a tab asks the server for that kind from page 1; the tab counts come from the response', () => {
-      openWith(summary(), 'all');
-      http.expectOne(isUnscheduled).flush(unscheduledPage({
-        totalCount: 64, totalPages: 16, hasNext: true,
-        all: { count: 64, minutes: 2960 }, noPlan: { count: 3, minutes: 1202 }, outsideSlot: { count: 61, minutes: 1758 }
-      }));
-      render();
-      expect(q('tptd-tab-outside_slot')!.textContent).toContain('61');
-      expect(q('tptd-tab-all')!.getAttribute('aria-selected')).toBe('true');
-
-      q('tptd-tab-no_plan')!.click();
-      render();
-      const req = http.expectOne(isUnscheduled);
-      expect(req.request.params.get('kind')).toBe('no_plan');
-      expect(req.request.params.get('pageNumber')).toBe('1');
-      req.flush(unscheduledPage({ kind: 'no_plan' }));
-      render();
-      expect(q('tptd-tab-no_plan')!.getAttribute('aria-selected')).toBe('true');
-    });
-
-    it('pages on the server with Next / Previous and keeps the cards while the next page loads', () => {
-      openWith(summary(), 'all');
-      http.expectOne(isUnscheduled).flush(unscheduledPage({
-        totalCount: 9, totalPages: 3, hasNext: true,
-        items: [0, 1, 2, 3].map((i) => ({ ...UN_ROW, taskId: 't' + i }))
-      }));
-      render();
-      expect(q('tptd-range')!.textContent!.trim()).toBe('1–4 of 9');
-      expect(q('tptd-page')!.textContent!.trim()).toBe('1 / 3');
-      expect((q('tptd-prev') as HTMLButtonElement).disabled).toBe(true);
-
-      q('tptd-next')!.click();
-      render();
-      const req = http.expectOne(isUnscheduled);
-      expect(req.request.params.get('pageNumber')).toBe('2');
-      expect(el().querySelectorAll('[data-testid="tptd-unscheduled-row"]').length).toBe(4);
-      expect((q('tptd-next') as HTMLButtonElement).disabled).toBe(true);
-      req.flush(unscheduledPage({ pageNumber: 2, totalCount: 9, totalPages: 3, hasNext: true, hasPrevious: true }));
-      render();
-      expect(q('tptd-range')!.textContent!.trim()).toBe('5–5 of 9');
-      expect((q('tptd-prev') as HTMLButtonElement).disabled).toBe(false);
-    });
-
-    it('a period change goes back to page 1', () => {
+    it('has no Unscheduled work panel and never asks for unscheduled work', () => {
       openWith(summary(), 'week');
       http.match(isPeriod).forEach((r) => r.flush({}));
-      http.expectOne(isUnscheduled).flush(unscheduledPage({ totalCount: 9, totalPages: 3, hasNext: true }));
       render();
-      q('tptd-next')!.click();
-      render();
-      http.expectOne(isUnscheduled).flush(unscheduledPage({ pageNumber: 2, totalCount: 9, totalPages: 3, hasNext: true, hasPrevious: true }));
-      fixture.componentRef.setInput('period', 'month');
-      render();
-      http.match(isEmployees).forEach((r) => r.flush(employeePage()));
-      http.match(isPeriod).forEach((r) => r.flush({}));
-
-      const req = http.expectOne(isUnscheduled);
-      expect(req.request.params.get('period')).toBe('month');
-      expect(req.request.params.get('pageNumber')).toBe('1');
+      expect(q('tptd-unscheduled')).toBeNull();
+      expect(el().textContent).not.toContain('Unscheduled work');
+      http.expectNone(isUnscheduled);
     });
 
-    it('Export CSV walks every server page', () => {
-      openWith(summary(), 'all');
-      http.expectOne(isUnscheduled).flush(unscheduledPage({ totalCount: 2 }));
-      render();
-      const download = vi.fn();
-      fixture.componentInstance.downloadFile = download;
-
-      q('tptd-unscheduled-export')!.click();
-      const first = http.expectOne(isUnscheduled);
-      expect(first.request.params.get('pageSize')).toBe('100');
-      expect(first.request.params.get('kind')).toBe('all');
-      first.flush(unscheduledPage({ hasNext: true, totalPages: 2 }));
-      const second = http.expectOne(isUnscheduled);
-      expect(second.request.params.get('pageNumber')).toBe('2');
-      second.flush(unscheduledPage({ pageNumber: 2, items: [{ ...UN_ROW, taskId: 't9', shortId: 'T-9', kind: 'outside_slot' }] }));
-
-      expect(download).toHaveBeenCalledOnce();
-      const [name, csv] = download.mock.calls[0] as [string, string];
-      expect(name).toBe('team-unscheduled-work-2026-10-26_2026-11-01.csv');
-      expect(csv).toContain('T-1');
-      expect(csv).toContain('T-9');
-    });
-
-    it('Team members shows a horizontal bar chart by default and switches to the table', () => {
+    it('Team members shows a ranked bar list by default and switches to the table', () => {
       openWith(summary(), 'all');
       http.expectOne(isTime).flush(ledTime());
       render();
 
       expect(q('tp-members-chart')).not.toBeNull();
       expect(q('tp-member-bar-e1')!.getAttribute('aria-label')).toContain('10 h completed');
-      expect(q('tp-member-bar-e1')!.querySelectorAll('.tp-member-seg').length).toBe(3);
+      expect(q('tp-member-bar-e1')!.querySelector('.tp-barlist__value')!.textContent!.trim()).toBe('24 h');
+      expect(q('tp-members-tab-totalHours')!.getAttribute('aria-pressed')).toBe('true');
       expect(q('tp-ov-employee-e1')).toBeNull();
 
       q('tp-members-view-table')!.click();
@@ -769,6 +684,23 @@ describe('TeamProgressDetailDialogComponent', () => {
       expect(q('tp-members-chart')).toBeNull();
       expect(q('tp-ov-employee-e1')).not.toBeNull();
       expect(q('tp-members-view-table')!.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('a Team members tab ranks by that status on the server, from page 1, and shows its hours', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush(ledTime());
+      render();
+
+      q('tp-members-tab-completedHours')!.click();
+      render();
+      const req = expectEmployees();
+      expect(req.request.params.get('sort')).toBe('completedHours');
+      expect(req.request.params.get('direction')).toBe('desc');
+      expect(req.request.params.get('pageNumber')).toBe('1');
+      req.flush(employeePage());
+      render();
+      expect(q('tp-members-tab-completedHours')!.getAttribute('aria-pressed')).toBe('true');
+      expect(q('tp-member-bar-e1')!.querySelector('.tp-barlist__value')!.textContent!.trim()).toBe('10 h');
     });
 
     it('one Team members table: estimate hours and this week time side by side, matched by employee', () => {
@@ -815,29 +747,9 @@ describe('TeamProgressDetailDialogComponent', () => {
       render();
       http.match(isEmployees).forEach((r) => r.flush(employeePage()));
       http.match(isPeriod).forEach((r) => r.flush({}));
+      http.match(isWeekly).forEach((r) => r.flush(weekly()));
 
       expect(http.expectOne(isTime).request.params.get('period')).toBe('month');
-    });
-
-    it('Planner off shows a note in the unscheduled work panel instead of the cards', () => {
-      openWith(summary(), 'all');
-      http.expectOne(isUnscheduled).flush(unscheduledPage({ plannerEnabled: false, items: [], totalCount: 0, all: { count: 0, minutes: 0 } }));
-      render();
-
-      expect(q('tptd-planner-off')!.textContent).toContain('Planner is off');
-      expect(q('tptd-tabs')).toBeNull();
-      expect(q('tptd-unscheduled-export')).toBeNull();
-    });
-
-    it('shows a retry when the unscheduled work fails', () => {
-      openWith(summary(), 'all');
-      http.expectOne(isUnscheduled).flush('boom', { status: 500, statusText: 'Server Error' });
-      render();
-
-      expect(q('tptd-error')).not.toBeNull();
-      (q('tptd-error')!.querySelector('button') as HTMLButtonElement).click();
-      render();
-      expect(http.expectOne(isUnscheduled).request.params.get('period')).toBe('week');
     });
   });
 });

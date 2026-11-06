@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Plans and reference notes quote utility classes; they must not add CSS to the app bundle. */
+@source not "../docs";
 @import "./app/shared/styles/theme-tokens.css";
 @import "./app/shared/styles/fields.css";
 @import "./app/shared/styles/toolbar-buttons.css";
