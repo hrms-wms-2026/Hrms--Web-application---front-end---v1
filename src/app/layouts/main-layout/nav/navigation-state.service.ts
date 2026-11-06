@@ -11,9 +11,9 @@ import { NAV_ITEMS } from './nav-items.config';
 
 @Injectable({ providedIn: 'root' })
 export class NavigationStateService {
-  private static readonly STORAGE_KEY = 'onevo.sub_sidebar_collapsed';
-  private static readonly PINNED_KEY = 'onevo.mobile_nav_pinned';
-  private static readonly RECENT_KEY = 'onevo.mobile_nav_recent';
+  private static readonly STORAGE_KEY = 'crownus.sub_sidebar_collapsed';
+  private static readonly PINNED_KEY = 'crownus.mobile_nav_pinned';
+  private static readonly RECENT_KEY = 'crownus.mobile_nav_recent';
   private static readonly HOME_ID = 'home';
   /** Icons on the mobile bottom bar, More included. */
   private static readonly MOBILE_BAR_SIZE = 5;

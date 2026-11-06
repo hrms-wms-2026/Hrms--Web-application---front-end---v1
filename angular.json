@@ -80,11 +80,11 @@
           "builder": "@angular/build:dev-server",
           "options": {
             "ssl": true,
-            "sslCert": ".certs/onexso-cert.pem",
-            "sslKey": ".certs/onexso-key.pem",
+            "sslCert": ".certs/crownus-cert.pem",
+            "sslKey": ".certs/crownus-key.pem",
             "host": "0.0.0.0",
             "port": 4200,
-            "allowedHosts": ["onexso.com", ".onexso.com"]
+            "allowedHosts": ["crownus.test", ".crownus.test"]
           },
           "configurations": {
             "production": {

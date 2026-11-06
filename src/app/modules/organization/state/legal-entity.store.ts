@@ -6,7 +6,7 @@ import { AuthStore } from '../../../core/auth/state/auth.store';
 import { LegalEntityApiService } from '../data-access/legal-entity-api.service';
 import { CreateLegalEntityRequest, LegalEntityListItem } from '../models/legal-entity.model';
 
-export const SELECTED_LEGAL_ENTITY_STORAGE_KEY = 'onevo.selected_legal_entity_id';
+export const SELECTED_LEGAL_ENTITY_STORAGE_KEY = 'crownus.selected_legal_entity_id';
 
 export interface LegalEntityState {
   readonly companies: readonly LegalEntityListItem[];

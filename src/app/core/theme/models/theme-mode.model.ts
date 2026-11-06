@@ -22,4 +22,4 @@ export const DEFAULT_THEME_MODE: ThemeMode = 'light';
  * localStorage key. Shared with the public landing page and read by the pre-boot script in
  * src/index.html (keep the key and values in sync there), so the right mode paints before Angular starts.
  */
-export const THEME_MODE_STORAGE_KEY = 'onevo.color.mode';
+export const THEME_MODE_STORAGE_KEY = 'crownus.color.mode';

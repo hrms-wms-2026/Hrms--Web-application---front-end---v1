@@ -12,9 +12,9 @@
     (function () {
       var root = document.documentElement, mode = 'light', preset = 'default';
       try {
-        var m = localStorage.getItem('onevo.color.mode');
+        var m = localStorage.getItem('crownus.color.mode');
         if (m === 'light' || m === 'dark' || m === 'system') mode = m;
-        var p = localStorage.getItem('onevo.theme.preset');
+        var p = localStorage.getItem('crownus.theme.preset');
         if (p === 'default' || p === 'emerald' || p === 'violet' || p === 'rose' || p === 'slate' || p === 'mono') preset = p;
       } catch (e) {}
       if (mode === 'system') mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
