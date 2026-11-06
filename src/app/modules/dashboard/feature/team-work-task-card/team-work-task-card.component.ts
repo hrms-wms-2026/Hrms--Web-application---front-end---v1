@@ -10,14 +10,13 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
-import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import {
   WidgetCardComponent,
   WidgetState,
 } from '../../../../shared/ui/widget-card/widget-card.component';
-import { TeamWorkTaskHoursResponse, TeamWorkTaskPeriod } from '../../models/team-work-task.model';
+import { TeamWorkTaskHoursResponse } from '../../models/team-work-task.model';
 import { TeamWorkTaskStore } from '../../state/team-work-task.store';
 import { WorkTaskDayChartComponent } from '../../ui/work-task-day-chart/work-task-day-chart.component';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
@@ -68,7 +67,6 @@ interface KpiTileRow {
   selector: 'app-team-work-task-card',
   standalone: true,
   imports: [
-    StopClickPropagationDirective,
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -217,12 +215,6 @@ export class TeamWorkTaskCardComponent implements OnInit {
   /** Bar width for a utilization: capped at 100% of the track. */
   protected barWidth(value: number | null): number {
     return value === null ? 0 : Math.min(100, Math.max(0, value));
-  }
-
-  onPeriodSelect(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    if (value === 'day' || value === 'week' || value === 'month')
-      this.store.setPeriod(value as TeamWorkTaskPeriod);
   }
 
   shift(step: -1 | 1, event?: Event): void {

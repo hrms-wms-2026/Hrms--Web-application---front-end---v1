@@ -99,6 +99,8 @@ export const TEAM_PROGRESS_WEEKLY_PANEL_PX = 196;
 export const TEAM_PROGRESS_TALL_SIDE_BY_SIDE_PX = 560;
 
 const TILE_ROW_PX = 60 + GAP_PX;
+/** small: one row of the 52px KPI cards. */
+const KPI_ROW_PX = 52 + GAP_PX;
 /** Height of the mini legend line. */
 const MINI_LEGEND_ROW_PX = 22;
 /** Body width from which a 2-row card puts the stacked status bar and its legend beside the
@@ -162,9 +164,9 @@ function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
     // The donut; its legend and the completion figure follow when they fit.
     case 'xs':
       return TEAM_PROGRESS_DONUT_PX;
-    // Donut (with the completion line under it) beside the two-line legend.
+    // Donut with the completion line under it (4px gap + 16px line), beside the two-line legend (4 x 36px, shorter).
     case 'small':
-      return TEAM_PROGRESS_DONUT_PX + 32;
+      return TEAM_PROGRESS_DONUT_PX + 20;
     // Stacked bar, total line and the four status tiles.
     case 'medium':
       return 176;
@@ -225,9 +227,9 @@ export function planTeamProgressLayout(mode: TeamProgressMode, width: number, he
       plan.viewDetails = plan.tileRows > 0 && rest >= VIEW_DETAILS_PX;
       return plan;
     case 'small':
-      while (plan.tileRows < 2 && rest >= TILE_ROW_PX) {
+      while (plan.tileRows < 2 && rest >= KPI_ROW_PX) {
         plan.tileRows++;
-        rest -= TILE_ROW_PX;
+        rest -= KPI_ROW_PX;
       }
       plan.viewDetails = plan.tileRows === 2 && rest >= VIEW_DETAILS_PX;
       return plan;

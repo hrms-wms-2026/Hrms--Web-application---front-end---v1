@@ -28,7 +28,6 @@ import {
   resolveTeamProgressMode
 } from '../../utils/team-progress-layout.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
-import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -36,12 +35,6 @@ const REFRESH_INTERVAL_MS = 60_000;
 /** Per-viewer memory of the period switch. A convenience only: when storage is blocked the card
  * simply starts on All time. */
 export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'onevo.teamProgress.period';
-
-export const TEAM_PROGRESS_PERIODS: readonly { value: LedProgressPeriod; label: string }[] = [
-  { value: 'all', label: 'All time' },
-  { value: 'month', label: 'This month' },
-  { value: 'week', label: 'This week' }
-];
 
 type DatedPeriod = Exclude<LedProgressPeriod, 'all'>;
 type TaskStatusKey = Exclude<ProgressStatusKey, 'untasked'>;
@@ -54,6 +47,11 @@ export interface MetricTile {
   value: string;
   label: string;
   tone: MetricTone;
+}
+
+/** A KPI card of the small view: a metric tile with an icon badge, like the popup's Overview tiles. */
+export interface KpiCard extends MetricTile {
+  icon: IconName;
 }
 
 /** One of the hour states, ready for the donut, legends, tiles and bars. */
@@ -187,7 +185,7 @@ const EMPTY_PLAN: TeamProgressPlan = {
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [StopClickPropagationDirective, IconComponent, TeamProgressTimeComponent, 
+  imports: [IconComponent, TeamProgressTimeComponent, 
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -233,7 +231,6 @@ export class TeamProgressCardComponent implements OnInit {
 
   /** The period switch: 'all' is the bootstrap led-progress payload; week / month use the period endpoint. */
   readonly period = signal<LedProgressPeriod>(readStoredPeriod());
-  protected readonly periods = TEAM_PROGRESS_PERIODS;
   /** Period payloads, each with the led-progress load it was fetched for. A newer load (refresh or
    * poll) refetches the selected period and keeps showing the older payload until the new one lands. */
   private readonly periodCache = signal<Partial<Record<DatedPeriod, { payload: LedPeriodProgress; for: LedWorkProgressResponse }>>>({});
@@ -520,6 +517,45 @@ export class TeamProgressCardComponent implements OnInit {
     this.extraTiles().slice(0, this.plan().tileRows * (this.mode() === 'medium' ? 4 : 2))
   );
 
+  /** The small view's KPI cards, in the detail popup's Overview style (value, label, icon badge):
+   * in progress and overdue first, then the task count and modules at risk (or, for a period, the
+   * tasks due and not started). Two per row. */
+  protected readonly kpiCards = computed<KpiCard[]>(() => {
+    const data = this.store.data();
+    if (!data) return [];
+    const inProgress = this.statusRows().find((row) => row.key === 'inProgress');
+    const overdue = data.overdueTotal;
+    const cards: KpiCard[] = [];
+    if (inProgress) {
+      cards.push({ key: 'in-progress', value: `${inProgress.hoursText} h`, label: `In progress · ${inProgress.percentText}`, icon: 'clock', tone: 'blue' });
+    }
+    cards.push({
+      key: 'overdue',
+      value: `${formatHourValue(data.overdueHours)} h`,
+      label: `Overdue · ${overdue} ${overdue === 1 ? 'task' : 'tasks'}`,
+      icon: 'alert-triangle',
+      tone: overdue > 0 ? 'rose' : 'gray'
+    });
+    if (this.period() !== 'all') {
+      const p = this.periodData();
+      if (p) {
+        cards.push(
+          { key: 'tasks', value: formatHourValue(p.taskCount), label: this.period() === 'week' ? 'Tasks due this week' : 'Tasks due this month', icon: 'clipboard-list', tone: 'gray' },
+          { key: 'not-started-tasks', value: formatHourValue(p.notStartedTaskCount), label: 'Tasks not started', icon: 'layers', tone: 'gray' }
+        );
+      }
+      return cards;
+    }
+    const atRisk = data.modulesAtRisk;
+    cards.push(
+      { key: 'tasks', value: formatHourValue(data.hours.taskCount), label: 'Total tasks', icon: 'clipboard-list', tone: 'gray' },
+      { key: 'at-risk', value: String(atRisk), label: atRisk === 1 ? 'Module at risk' : 'Modules at risk', icon: 'layers', tone: atRisk > 0 ? 'rose' : 'gray' }
+    );
+    return cards;
+  });
+
+  protected readonly visibleKpiCards = computed(() => this.kpiCards().slice(0, this.plan().tileRows * 2));
+
   /** Over-tasked / unestimated notes only make sense against the allocation (All time). */
   protected readonly showNotes = computed(() => {
     const h = this.store.data()?.hours;
@@ -619,10 +655,6 @@ export class TeamProgressCardComponent implements OnInit {
     this.periodFailed.set(false);
     this.period.set(period);
     storePeriod(period);
-  }
-
-  onPeriodSelect(event: Event): void {
-    this.setPeriod((event.target as HTMLSelectElement).value as LedProgressPeriod);
   }
 
   retryPeriod(event?: Event): void {

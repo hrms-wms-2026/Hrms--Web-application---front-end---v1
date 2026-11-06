@@ -64,34 +64,29 @@
           </p>
           <app-attendance-day-chart class="tad-chart" [points]="data.trend" />
         </section>
-        <section class="tad-panel tad-distribution">
-          <p class="tad-title">Distribution</p>
-          <div class="tad-distribution-body">
-            <svg viewBox="0 0 42 42" class="tad-donut" role="img" aria-label="Attendance distribution for the period">
-              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="6" />
-              @for (arc of distribution().arcs; track arc.key) {
-                <circle
-                  cx="21"
-                  cy="21"
-                  r="15.9155"
-                  fill="none"
-                  stroke-width="6"
-                  [attr.stroke]="arc.color"
-                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-                  [attr.stroke-dashoffset]="arc.offset"
-                />
-              }
-            </svg>
-            <ul class="tad-legend">
-              @for (row of distribution().rows; track row.key) {
-                <li>
-                  <span class="tad-dot" [style.background]="row.color"></span>
-                  <span class="tad-legend-label">{{ row.label }}</span>
-                  <span class="tad-legend-count">{{ row.count }}</span>
+        <section class="tad-panel tad-departments" data-testid="tad-departments">
+          <p class="tad-title">By department</p>
+          @if (departmentBars().length === 0) {
+            <p class="tad-muted">No attendance to compare.</p>
+          } @else {
+            <ul class="tad-dept-list" aria-label="Attendance rate by department">
+              @for (d of departmentBars(); track d.key) {
+                <li class="tad-dept" data-testid="tad-dept" [attr.title]="d.title">
+                  <span class="tad-dept-name">{{ d.name }}</span>
+                  <span class="tad-dept-track" aria-hidden="true">
+                    <span class="tad-dept-bar" [style.width.%]="d.width" [style.background]="d.color"></span>
+                    @if (data.periodRate !== null) {
+                      <span class="tad-dept-avg" [style.left.%]="data.periodRate"></span>
+                    }
+                  </span>
+                  <span class="tad-dept-rate" data-testid="tad-dept-rate">{{ percentText(d.rate) }}</span>
                 </li>
               }
             </ul>
-          </div>
+            @if (data.periodRate !== null) {
+              <p class="tad-dept-note"><span class="tad-dept-avg-key" aria-hidden="true"></span>Team {{ percentText(data.periodRate) }}</p>
+            }
+          }
         </section>
       </div>
 

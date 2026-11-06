@@ -9,22 +9,7 @@
   (retry)="retry()"
 >
   <div widget-actions class="flex min-w-0 items-center gap-1">
-    @if (store.data(); as data) {
-      @if (view() === 'standard') {
-        <select
-          class="wt-period"
-          data-testid="wt-period"
-          aria-label="Period"
-          [value]="data.period"
-          appStopClickPropagation
-          (change)="onPeriodSelect($event)"
-        >
-          <option value="day" [selected]="data.period === 'day'">Day</option>
-          <option value="week" [selected]="data.period === 'week'">Week</option>
-          <option value="month" [selected]="data.period === 'month'">Month</option>
-        </select>
-      }
-    }
+    <!-- The Day / Week / Month switch lives in the popup only (2026-11-05); the card follows the shared store. -->
     <app-popout-header-actions
       [refreshedAt]="view() === 'mini' || view() === 'xs' ? null : store.loadedAt()"
       [refreshing]="refreshing()"

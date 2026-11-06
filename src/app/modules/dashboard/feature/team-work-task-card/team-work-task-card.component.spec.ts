@@ -91,12 +91,12 @@ describe('TeamWorkTaskCardComponent', () => {
     expect(all(el, 'wt-rank-row')[0].textContent).toContain('Ann');
   });
 
-  it('the period switch and arrows reload the store', () => {
+  it('has no period dropdown (it lives in the popup); the store period still reloads it', () => {
     setup();
     const el = resize(760, 420);
-    const select = q(el, 'wt-period') as HTMLSelectElement;
-    select.value = 'month';
-    select.dispatchEvent(new Event('change'));
+    expect(q(el, 'wt-period')).toBeNull();
+    TestBed.inject(TeamWorkTaskStore).setPeriod('month');
+    fixture.detectChanges();
     expect(get).toHaveBeenLastCalledWith({ period: 'month', anchor: '2026-10-28' });
     expect((q(el, 'wt-next') as HTMLButtonElement).disabled).toBe(true);
   });

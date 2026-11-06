@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TeamScheduleApiService } from '../../data-access/team-schedule-api.service';
@@ -98,6 +99,7 @@ describe('TeamScheduleCardComponent', () => {
     await TestBed.configureTestingModule({
       imports: [TeamScheduleCardComponent],
       providers: [
+        provideRouter([]),
         TeamScheduleStore,
         TeamScheduleWeekStore,
         { provide: TeamScheduleApiService, useValue: { getTeamDay, getTeamWeek } },
@@ -135,65 +137,72 @@ describe('TeamScheduleCardComponent', () => {
     expect(el.textContent).toContain("Couldn't load the team's schedule.");
   });
 
-  it('204x204 is mini: the 140px item donut with total items and its legend', async () => {
+  it('204x204 is mini: the item count, a stacked bar and the three status chips', async () => {
     const { el } = await setup(response(), { width: 204, height: 204 });
 
+    expect(q(el, 'tsc-mini-count')!.textContent!.trim()).toBe('5');
+    expect(q(el, 'tsc-mini-bar')).toBeTruthy();
+    expect(q(el, 'tsc-donut')).toBeNull();
+    // Bob has no plan; nobody is over capacity or on leave.
+    expect(all(el, 'tsc-chip').map((c) => c.textContent!.trim())).toEqual([
+      '0 over capacity',
+      '1 not planned',
+      '0 on leave',
+    ]);
+    // The planner link lives only in the popup now.
+    expect(q(el, 'tsc-open-planner')).toBeNull();
+  });
+
+  it('the chips count over capacity and on leave over everyone', async () => {
+    const busy = { ...planned, plannedTaskMinutes: 540, expectedMinutes: 480 };
+    const away = { ...noPlan, presenceStatus: 'on_leave', notRankedReason: 'on_leave' as const };
+    const { el } = await setup(response({ members: [busy, away] }), { width: 420, height: 204 });
+    expect(all(el, 'tsc-chip').map((c) => c.textContent!.trim())).toEqual([
+      '1 over capacity',
+      '0 not planned',
+      '1 on leave',
+    ]);
+  });
+
+  it('300x636 is xs: the 140px item donut over its legend, the chips, then rows', async () => {
+    const { el } = await setup(response(), { width: 300, height: 636 });
+
+    expect(q(el, 'tsc-layout')!.getAttribute('data-view')).toBe('xs');
     expect((q(el, 'tsc-donut') as HTMLElement).style.width).toBe('140px');
-    expect(squash(q(el, 'tsc-center'))).toBe('5Totalitems');
+    expect(squash(q(el, 'tsc-center'))).toBe('5items');
     expect(all(el, 'tsc-legend-row').map((r) => r.getAttribute('data-key'))).toEqual([
       'completed',
       'inProgress',
       'pending',
       'meetings',
     ]);
-  });
-
-  it('420x204 is the inline mini: a stacked bar and the unscheduled-work pill', async () => {
-    const { el } = await setup(response(), { width: 420, height: 204 });
-
-    expect(q(el, 'tsc-mini-bar')).toBeTruthy();
-    expect(q(el, 'tsc-donut')).toBeNull();
-    expect(q(el, 'tsc-pill')!.textContent).toContain('1 employee has unscheduled work');
-  });
-
-  it('the pill says so when no one worked off-plan', async () => {
-    const { el } = await setup(scheduleResponse([planned]), { width: 420, height: 204 });
-    expect(q(el, 'tsc-pill')!.textContent).toContain('No unscheduled work');
-  });
-
-  it('300x636 is xs: the donut, an avatar stack, the pill, then rows', async () => {
-    const { el } = await setup(response(), { width: 300, height: 636 });
-
-    expect(q(el, 'tsc-layout')!.getAttribute('data-view')).toBe('xs');
-    expect(q(el, 'tsc-donut')).toBeTruthy();
-    expect(all(el, 'tsc-avatar').length).toBe(2);
-    expect(q(el, 'tsc-pill')).toBeTruthy();
+    expect(q(el, 'tsc-chips')).toBeTruthy();
     expect(all(el, 'tsc-row').length).toBe(2);
   });
 
-  it('600x420 is rows: a segmented plan bar with break and unscheduled segments, and completion', async () => {
-    const withBreak = response({
-      members: [{ ...planned, breaks: [{ start: at(12), end: at(12, 30) }] }, noPlan],
-    });
-    const { el } = await setup(withBreak, { width: 600, height: 420 });
+  it('600x420 is rows: load against capacity with its bar, a Not planned badge, and done', async () => {
+    const { el } = await setup(response(), { width: 600, height: 420 });
 
     expect(q(el, 'tsc-layout')!.getAttribute('data-view')).toBe('rows');
-    expect(all(el, 'tsc-completion').map((c) => c.textContent!.trim())).toEqual(['75%', 'No plan']);
-    expect(all(el, 'tsc-plan-break').length).toBe(1);
-    expect(all(el, 'tsc-plan-unscheduled').length).toBe(1);
-    expect(el.textContent).toContain('Working');
+    expect(all(el, 'tsc-load').map((c) => c.textContent!.trim())).toEqual(['2h / 8h', '0h / 8h']);
+    expect((all(el, 'tsc-load-bar')[0] as HTMLElement).style.width).toBe('25%');
+    expect(q(el, 'tsc-badge-not-planned')).toBeTruthy();
+    expect(all(el, 'tsc-completion').map((c) => c.textContent!.trim())).toEqual(['75%', '—']);
   });
 
-  it('900x636 is the timeline: labelled blocks, a hatched unscheduled strip, a conflict outline, a legend', async () => {
+  it('900x636 is the timeline: the donut head, titled blocks, a hatched unscheduled strip, a conflict outline, a legend', async () => {
     const { el } = await setup(response(), { width: 900, height: 636 });
 
+    expect(q(el, 'tsc-head')).toBeTruthy();
+    expect(squash(q(el, 'tsc-center'))).toBe('5Totalitems');
     expect(q(el, 'tsc-timeline')).toBeTruthy();
     expect(all(el, 'tsc-block').length).toBe(2);
     expect(all(el, 'tsc-unscheduled-seg').length).toBe(1);
     expect(el.querySelectorAll('.tsc-block--conflict').length).toBe(2);
     expect(all(el, 'tsc-block').map((b) => b.getAttribute('title'))).toContain('Private meeting · Finished');
-    expect(all(el, 'tsc-block-label').map((l) => l.textContent!.trim())).toContain('Task');
+    expect(all(el, 'tsc-block-label').map((l) => l.textContent!.trim())).toContain('Write report');
     expect(q(el, 'tsc-legend')).toBeTruthy();
+    expect(q(el, 'tsc-view-all')!.textContent).toContain('View all 2 members');
   });
 
   it('block label hidden under 48px', async () => {
@@ -216,9 +225,12 @@ describe('TeamScheduleCardComponent', () => {
     expect(blocks[1].querySelector('[data-testid="tsc-block-label"]')).toBeNull();
   });
 
-  it('a person without any plan gets a "No scheduled work" strip on the timeline', async () => {
-    const { el } = await setup(response(), { width: 900, height: 636 });
-    expect(all(el, 'tsc-no-plan').length).toBe(1);
+  it('on the timeline a person without a plan gets a Not planned badge, and one on leave a leave strip', async () => {
+    const away = { ...planned, employeeId: 'c', displayName: 'Cy', presenceStatus: 'on_leave', notRankedReason: 'on_leave' as const, items: [], conflicts: [] };
+    const { el } = await setup(response({ members: [planned, noPlan, away] }), { width: 900, height: 636 });
+    expect(all(el, 'tsc-badge-not-planned').length).toBe(1);
+    expect(all(el, 'tsc-badge-leave').length).toBe(1);
+    expect(all(el, 'tsc-leave-bar').length).toBe(1);
   });
 
   it('900x852 adds the daily planned-vs-actual chart with a row per shown person', async () => {
@@ -250,7 +262,7 @@ describe('TeamScheduleCardComponent', () => {
     expect(q(wide.el, 'tsc-timeline')).toBeNull();
     expect(q(wide.el, 'tsc-planner-off')).toBeTruthy();
     expect(q(wide.el, 'tsc-day-chart')).toBeNull();
-    const bar = q(wide.el, 'tsc-clocked-bar') as HTMLElement;
+    const bar = q(wide.el, 'tsc-load-bar') as HTMLElement;
     expect(bar.style.width).toBe('50%');
     expect(wide.el.textContent).toContain('4h / 8h');
     TestBed.resetTestingModule();

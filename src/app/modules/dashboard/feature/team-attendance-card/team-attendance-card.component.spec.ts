@@ -53,7 +53,7 @@ function summary(over: Partial<TeamAttendanceSummaryResponse> = {}): TeamAttenda
     periodCounts: { present: 60, late: 6, absent: 3, onLeave: 6, pending: 0 }, periodRate: 95.7, previousRate: 91.7,
     deltaPp: 4, trend: trend(),
     todayPreview: ['Ann', 'Bob', 'Cat', 'Dan', 'Eve', 'Fay'].map((n, i) => previewRow(n, i === 0 ? 'late' : i === 1 ? 'absent' : 'present')),
-    departments: [], teamSize: 25, calculatedAtUtc: '2026-10-28T10:00:00Z', isProvisional: true, ...over
+    departments: [], teamSize: 25, calculatedAtUtc: '2026-10-28T10:00:00Z', isProvisional: true, departmentRates: [], ...over
   };
 }
 

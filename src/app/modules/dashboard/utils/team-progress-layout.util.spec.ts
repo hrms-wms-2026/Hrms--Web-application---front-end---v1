@@ -205,9 +205,9 @@ describe('team-progress-layout.util', () => {
       expect(plan(3, 5)).toMatchObject({ legend: true, tileRows: 1, viewDetails: true });
     });
 
-    it('small: tile rows grow with height, then View details', () => {
-      expect(plan(4, 3)).toMatchObject({ tileRows: 0, viewDetails: false, listRows: 0 });
-      expect(plan(4, 4)).toMatchObject({ tileRows: 2, viewDetails: false });
+    it('small: KPI card rows grow with height (one already at 3 rows), then View details', () => {
+      expect(plan(4, 3)).toMatchObject({ tileRows: 1, viewDetails: false, listRows: 0 });
+      expect(plan(4, 4)).toMatchObject({ tileRows: 2, viewDetails: true });
       expect(plan(4, 5)).toMatchObject({ tileRows: 2, viewDetails: true });
     });
 

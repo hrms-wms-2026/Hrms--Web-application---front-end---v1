@@ -93,22 +93,29 @@ describe('schedule layout ladder', () => {
     expect(plan.rows).toBe(8);
   });
 
-  it('mini: pill on the inline form; xs: avatars and pill, then rows', () => {
-    expect(planScheduleLayout('mini', 204, 204, 8, true)).toMatchObject({ miniInline: false, pill: false });
-    expect(planScheduleLayout('mini', 420, 204, 8, true)).toMatchObject({ miniInline: true, pill: true });
+  it('mini: the chips; xs and rows: the chips, then rows', () => {
+    expect(planScheduleLayout('mini', 204, 204, 8, true)).toMatchObject({ chips: true, rows: 0, head: false });
     const xs = planScheduleLayout('xs', 300, 852, 60, true);
-    expect(xs).toMatchObject({ avatars: true, pill: true });
+    expect(xs.chips).toBe(true);
     expect(xs.rows).toBeGreaterThan(0);
+    expect(planScheduleLayout('rows', 500, 636, 60, true).chips).toBe(true);
   });
 
-  it('a 2-column, 4-row card is xs (donut over legend, then the pill) like the other widgets, even grown from mini', () => {
+  it('a 2-column, 4-row card is xs (donut over legend, then the chips) like the other widgets, even grown from mini', () => {
     for (const width of [218, 2 * 140 + 12]) {
       expect(resolveScheduleView(width, rows(4), 'mini')).toBe('xs');
       const plan = planScheduleLayout('xs', width, rows(4), 8, true);
-      expect(plan).toMatchObject({ pill: true, avatars: false, rows: 0 });
+      expect(plan).toMatchObject({ chips: true, rows: 0 });
       expect(scheduleBodyUsed('xs', plan, true)).toBeLessThanOrEqual(rows(4) - SCHEDULE_CARD_CHROME.height);
     }
     expect(classifyScheduleSize(218, rows(3))).toBe('mini');
+  });
+
+  it('the timeline head (donut and status tiles) comes once two lines fit under it', () => {
+    expect(planScheduleLayout('timeline', 900, rows(3), 8, true).head).toBe(false);
+    const tall = planScheduleLayout('timeline', 900, rows(4), 8, true);
+    expect(tall.head).toBe(true);
+    expect(tall.rows).toBeGreaterThanOrEqual(2);
   });
 
   it('"View all" is reserved only while rows hide someone', () => {

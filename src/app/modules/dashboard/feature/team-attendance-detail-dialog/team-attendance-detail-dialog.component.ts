@@ -16,7 +16,6 @@ import {
 } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
 import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/attendance-day-chart.component';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
   TEAM_ATTENDANCE_COLORS,
   TEAM_ATTENDANCE_LABELS,
@@ -104,17 +103,33 @@ export class TeamAttendanceDetailDialogComponent {
     ];
   });
 
-  protected readonly distribution = computed<{ arcs: DonutArc[]; rows: { key: string; label: string; count: number; color: string }[] }>(() => {
-    const c = this.store.data()?.periodCounts;
-    if (!c) return { arcs: [], rows: [] };
-    const rows = [
-      { key: 'present', label: 'Present', count: c.present, color: TEAM_ATTENDANCE_COLORS.present },
-      { key: 'absent', label: 'Absent', count: c.absent, color: TEAM_ATTENDANCE_COLORS.absent },
-      { key: 'late', label: 'Late', count: c.late, color: TEAM_ATTENDANCE_COLORS.late },
-      { key: 'leave', label: 'On leave', count: c.onLeave, color: TEAM_ATTENDANCE_COLORS.leave }
-    ];
-    return { arcs: donutArcs(rows), rows };
-  });
+  /** Department comparison bars: width = rate, coloured green from 90%, amber from 75%, else red. */
+  protected readonly departmentBars = computed(() =>
+    // Worst rate first so problem departments sit at the top; departments with no rate (all on leave) go last.
+    [...(this.store.data()?.departmentRates ?? [])]
+      .sort((a, b) => {
+        if (a.rate === null || b.rate === null) {
+          return a.rate === b.rate ? a.name.localeCompare(b.name) : a.rate === null ? 1 : -1;
+        }
+        return a.rate - b.rate || a.name.localeCompare(b.name);
+      })
+      .map((d) => ({
+      key: d.id ?? 'none',
+      name: d.name,
+      people: d.people,
+      rate: d.rate,
+      width: d.rate ?? 0,
+      color:
+        d.rate === null
+          ? TEAM_ATTENDANCE_COLORS.leave
+          : d.rate >= 90
+            ? TEAM_ATTENDANCE_COLORS.present
+            : d.rate >= 75
+              ? TEAM_ATTENDANCE_COLORS.late
+              : TEAM_ATTENDANCE_COLORS.absent,
+      title: `${d.name}: ${d.attended} of ${d.expected} expected days attended · ${d.people} ${d.people === 1 ? 'person' : 'people'}`,
+    })),
+  );
 
   constructor() {
     // Reload the matrix for the shown period, department, search and page; a new period starts at page 1.

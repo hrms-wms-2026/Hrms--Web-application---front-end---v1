@@ -327,8 +327,8 @@ describe('TeamProgressCardComponent', () => {
         ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-view-details'],
         ['team-progress-modules']],
       ['4x3', 424, 312, 'small',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion', 'team-progress-period'],
-        ['team-progress-metrics', 'team-progress-modules', 'team-progress-view-details', 'team-progress-weekly']],
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion', 'team-progress-metrics'],
+        ['team-progress-modules', 'team-progress-view-details', 'team-progress-weekly']],
       ['4x5', 424, 528, 'small', ['team-progress-donut', 'team-progress-legend', 'team-progress-view-details'], ['team-progress-modules']],
       ['6x3', 642, 312, 'wide', ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics'], ['team-progress-modules']],
       ['6x4', 642, 420, 'medium',
@@ -353,6 +353,17 @@ describe('TeamProgressCardComponent', () => {
         ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-weekly', 'team-progress-projects', 'team-progress-modules', 'team-progress-overdue'],
         ['team-progress-status-bar']]
     ];
+
+    it('small view: KPI cards fill the space under the donut, in progress and overdue first', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 424, 312);
+      expect(text(fixture, 'team-progress-kpi-in-progress')).toMatch(/h\s*In progress · \d+%/);
+      expect(text(fixture, 'team-progress-kpi-overdue')).toContain('Overdue · 1 task');
+      expect(has(fixture, 'team-progress-kpi-tasks')).toBe(false);
+      resize(fixture, 424, 420);
+      expect(has(fixture, 'team-progress-kpi-tasks')).toBe(true);
+      expect(text(fixture, 'team-progress-kpi-at-risk')).toContain('Module at risk');
+    });
 
     for (const [name, width, height, mode, present, absent] of cases) {
       it(`${name} (${width}x${height}) renders the ${mode} layout`, async () => {
@@ -867,10 +878,9 @@ describe('TeamProgressCardComponent', () => {
   describe('period switch', () => {
     const payload = (): LedWorkProgressResponse => response([module('o1', 'Payments', hours(200, 40, 30, 70))]);
 
+    // The card has no dropdown any more: the period comes from the popup (setPeriod is what its periodChange calls).
     function choose(fixture: ComponentFixture<TeamProgressCardComponent>, value: string): void {
-      const select = fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement;
-      select.value = value;
-      select.dispatchEvent(new Event('change'));
+      fixture.componentInstance.setPeriod(value as LedProgressPeriod);
       fixture.detectChanges();
       fixture.detectChanges();
     }
@@ -881,7 +891,7 @@ describe('TeamProgressCardComponent', () => {
     it('starts on All time without calling the period endpoint', async () => {
       const fixture = await setup(payload());
       expect(fixture.componentInstance.period()).toBe('all');
-      expect((fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement).value).toBe('all');
+      expect(has(fixture, 'team-progress-period')).toBe(false);
       expect(getPeriodProgress).not.toHaveBeenCalled();
     });
 
@@ -1002,16 +1012,9 @@ describe('TeamProgressCardComponent', () => {
       dialog(fixture).periodChange.emit('month');
       fixture.detectChanges();
       expect(fixture.componentInstance.period()).toBe('month');
-      expect((fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement).value).toBe('month');
       expect(getPeriodProgress).toHaveBeenLastCalledWith('month');
     });
 
-    it('does not open the dialog when the period dropdown is used', async () => {
-      const fixture = await setup(payload());
-      (fixture.nativeElement.querySelector('[data-testid="team-progress-period"]') as HTMLSelectElement).click();
-      fixture.detectChanges();
-      expect(dialog(fixture).open()).toBe(false);
-    });
   });
   describe('planned vs worked time', () => {
     const payload = (): LedWorkProgressResponse => response([module('o1', 'Payments', hours(200, 40, 30, 70))]);
@@ -1045,9 +1048,7 @@ describe('TeamProgressCardComponent', () => {
       fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
     function choose(fixture: ComponentFixture<TeamProgressCardComponent>, value: string): void {
-      const select = el(fixture, 'team-progress-period') as HTMLSelectElement;
-      select.value = value;
-      select.dispatchEvent(new Event('change'));
+      fixture.componentInstance.setPeriod(value as LedProgressPeriod);
       fixture.detectChanges();
       fixture.detectChanges();
     }

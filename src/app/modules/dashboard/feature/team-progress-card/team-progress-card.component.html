@@ -11,20 +11,7 @@
   (retry)="retry()"
 >
   <div widget-actions class="flex min-w-0 items-center gap-1">
-    @if (store.data() && mode() !== 'xs' && mode() !== 'mini') {
-      <select
-        class="tp-period"
-        data-testid="team-progress-period"
-        aria-label="Period"
-        [value]="period()"
-        appStopClickPropagation
-        (change)="onPeriodSelect($event)"
-      >
-        @for (option of periods; track option.value) {
-          <option [value]="option.value" [selected]="option.value === period()">{{ option.label }}</option>
-        }
-      </select>
-    }
+    <!-- The period switch lives in the popup only (2026-11-05); the popup's periodChange still sets the card's period. -->
     <!-- Narrow views drop the "Refreshed" label so the title keeps its room. -->
     <app-popout-header-actions
       [refreshedAt]="mode() === 'mini' || mode() === 'xs' ? null : store.loadedAt()"
@@ -566,8 +553,19 @@
               <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'compact' }" />
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
-            @if (visibleExtraTiles().length > 0) {
-              <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: 2 }" />
+            <!-- KPI cards in the popup's Overview style, two per row, as many rows as the height allows. -->
+            @if (visibleKpiCards().length > 0) {
+              <ul class="tp-kpis" data-testid="team-progress-metrics">
+                @for (card of visibleKpiCards(); track card.key) {
+                  <li class="tp-kpi" [class]="'tone-' + card.tone" [title]="card.label + ': ' + card.value" [attr.data-testid]="'team-progress-kpi-' + card.key">
+                    <span class="tp-kpi-text">
+                      <span class="tp-kpi-value tp-tone-text">{{ card.value }}</span>
+                      <span class="tp-kpi-label">{{ card.label }}</span>
+                    </span>
+                    <span class="tp-kpi-icon tp-tone-text" aria-hidden="true"><app-icon [name]="card.icon" /></span>
+                  </li>
+                }
+              </ul>
             }
             @if (plan().viewDetails) {
               <ng-container *ngTemplateOutlet="viewDetailsTpl" />
