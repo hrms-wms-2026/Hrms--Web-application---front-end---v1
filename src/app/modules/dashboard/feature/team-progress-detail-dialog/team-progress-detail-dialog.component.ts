@@ -42,7 +42,9 @@ import {
 } from '../../models/team-progress-detail.model';
 import { hoursText, timePeriodFor } from '../../utils/team-progress-time-format.util';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
-import { CompletionComboChartComponent } from '../../ui/completion-combo-chart/completion-combo-chart.component';
+import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import {
   PROGRESS_STATUSES,
   PROGRESS_STATUS_BY_KEY,
@@ -158,7 +160,7 @@ interface OverdueHoursView {
 @Component({
   selector: 'app-team-progress-detail-dialog',
   standalone: true,
-  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, CompletionComboChartComponent],
+  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent, DashboardDonutComponent, DonutKeyComponent],
   templateUrl: './team-progress-detail-dialog.component.html',
   styleUrl: './team-progress-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -377,6 +379,35 @@ export class TeamProgressDetailDialogComponent {
 
   /** The donut and its legend. Overdue tasks are open work, so their hours come out of In progress / Not started and
    * show as their own slice: the parts still add up to the total. */
+  /** The Status Distribution slice (or legend row) under the pointer: the shared donut lights it. */
+  protected readonly hoveredPart = signal<string | null>(null);
+  /** The same for the overdue-by-project pie. */
+  protected readonly hoveredOverdue = signal<string | null>(null);
+  /** The Status Distribution donut: a little larger than the cards' (the popup has the room). */
+  protected readonly statusDonutPx = 192;
+
+  protected readonly donutSlices = computed<DashboardDonutSlice[]>(() =>
+    this.donutParts().map((p) => ({
+      key: p.key,
+      label: p.label,
+      value: Math.max(0, p.hours),
+      valueText: `${formatHourValue(p.hours)} h`,
+      percentText: p.percent,
+      color: p.color
+    }))
+  );
+
+  protected overdueSlices(slices: readonly { projectId: string; name: string; hours: number; color: string; percent: string }[]): DashboardDonutSlice[] {
+    return slices.map((s) => ({
+      key: s.projectId,
+      label: s.name,
+      value: s.hours,
+      valueText: `${formatHourValue(s.hours)} h`,
+      percentText: s.percent,
+      color: s.color
+    }));
+  }
+
   protected readonly donutParts = computed<DonutPart[]>(() => {
     const ov = this.overview();
     if (!ov) return [];

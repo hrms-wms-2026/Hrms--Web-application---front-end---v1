@@ -36,10 +36,11 @@ describe('team attendance layout', () => {
 
   it('standard: a taller card adds the tiles, then the trend, then the ranking (never the other way round)', () => {
     const w = 640;
-    expect(planTeamAttendanceLayout('standard', w, rows(3))).toMatchObject({ tiles: true, tileColumns: 4, trend: false, rankingRows: 0 });
-    expect(planTeamAttendanceLayout('standard', w, rows(4))).toMatchObject({ tiles: true, trend: false, rankingRows: 0 });
+    expect(planTeamAttendanceLayout('standard', w, rows(3))).toMatchObject({ tiles: false, trend: false, rankingRows: 0 });
+    expect(planTeamAttendanceLayout('standard', w, rows(4))).toMatchObject({ tiles: true, tileColumns: 4, trend: false, rankingRows: 0 });
     expect(planTeamAttendanceLayout('standard', w, rows(5))).toMatchObject({ tiles: true, trend: true, rankingRows: 0 });
-    expect(planTeamAttendanceLayout('standard', w, rows(6))).toMatchObject({ tiles: true, trend: true, rankingRows: 3 });
+    expect(planTeamAttendanceLayout('standard', w, rows(6))).toMatchObject({ tiles: true, trend: true, rankingRows: 0 });
+    expect(planTeamAttendanceLayout('standard', w, rows(7))).toMatchObject({ tiles: true, trend: true, rankingRows: 5 });
     expect(planTeamAttendanceLayout('standard', w, rows(8)).rankingRows).toBeGreaterThan(3);
     expect(planTeamAttendanceLayout('standard', w, 5000).rankingRows).toBe(10);
   });
@@ -56,9 +57,10 @@ describe('team attendance layout', () => {
     expect(planTeamAttendanceLayout('standard', 400, rows(4))).toMatchObject({ tiles: true, tileColumns: 2 });
   });
 
-  it('xs: the rate under the donut at 3 rows, the legend between them from 4, the trend from 6, the ranking after that', () => {
-    expect(planTeamAttendanceLayout('xs', 315, rows(3))).toMatchObject({ legend: false, figure: true, tiles: false, trend: false, rankingRows: 0 });
-    expect(planTeamAttendanceLayout('xs', 315, rows(4))).toMatchObject({ legend: true, figure: true, tiles: false, trend: false });
+  it('xs: the donut alone at 3 rows, its legend from 4, the rate from 5, the trend from 6, the ranking after that', () => {
+    expect(planTeamAttendanceLayout('xs', 315, rows(3))).toMatchObject({ legend: false, figure: false, tiles: false, trend: false, rankingRows: 0 });
+    expect(planTeamAttendanceLayout('xs', 315, rows(4))).toMatchObject({ legend: true, figure: false, tiles: false, trend: false });
+    expect(planTeamAttendanceLayout('xs', 315, rows(5))).toMatchObject({ legend: true, figure: true, tiles: false, trend: false });
     expect(planTeamAttendanceLayout('xs', 315, rows(6))).toMatchObject({ legend: true, tiles: false, trend: true, rankingRows: 0 });
     expect(planTeamAttendanceLayout('xs', 315, rows(8)).rankingRows).toBeGreaterThanOrEqual(3);
   });

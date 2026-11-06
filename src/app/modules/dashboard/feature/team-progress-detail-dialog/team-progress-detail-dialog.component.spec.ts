@@ -183,6 +183,28 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(el().textContent).not.toContain('Status by Project');
   });
 
+  it('hovering a donut slice or a legend row puts that status in the donut centre', () => {
+    openWith();
+    const hover = () => q('tp-donut')!.querySelector('[data-testid="donut-hover"]');
+    const slice = q('tp-donut')!.querySelector('circle.dd-arc') as SVGCircleElement;
+    slice.dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    expect(hover()?.querySelector('.dd-value')?.textContent?.trim()).toBe('50 h');
+    expect(hover()?.textContent).toContain('Completed · 25%');
+
+    q('tp-donut')!.dispatchEvent(new Event('mouseleave'));
+    fixture.detectChanges();
+    expect(hover()).toBeNull();
+
+    const rows = [...el().querySelectorAll('[data-testid="tp-legend-row"]')];
+    rows[0].dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    expect(hover()?.querySelector('.dd-value')?.textContent?.trim()).toBe('50 h');
+    rows[0].dispatchEvent(new Event('mouseleave'));
+    fixture.detectChanges();
+    expect(hover()).toBeNull();
+  });
+
   it('renders the overview from the summary: tiles, donut, notes, three panels and overdue tasks', () => {
     openWith();
     expect(el().querySelector('[role="dialog"]')).not.toBeNull();
@@ -192,8 +214,8 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-tile-completed')?.textContent).toContain('25%');
     expect(q('tp-tile-untasked')?.textContent).toContain('100');
     expect(q('tp-completion')?.textContent?.trim()).toBe('25%');
-    expect(q('tp-donut')?.getAttribute('role')).toBe('img');
-    expect(q('tp-donut')?.getAttribute('aria-label')).toContain('Completed 50 h');
+    expect(q('tp-donut')?.querySelector('svg')?.getAttribute('role')).toBe('img');
+    expect(q('tp-donut')?.querySelector('svg')?.getAttribute('aria-label')).toContain('Completed 50 h');
     expect(q('tp-note-overtasked')?.textContent).toContain('5 h');
     expect(q('tp-note-unestimated')?.textContent).toContain('2 tasks');
     expect(q('tp-note-risk')?.textContent).toContain('1');
@@ -203,7 +225,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(panels).toEqual(['tp-distribution', 'tp-weekly', 'tp-projects', 'tp-ov-employees']);
     expect(q('tp-weekly')?.textContent).toContain('Weekly completion');
     expect(q('tp-weekly-range')?.textContent?.trim()).toBe('Last 10 weeks');
-    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="cc-bar"]').length).toBe(10);
+    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="bar-chart-col"]').length).toBe(10);
     expect(q('tp-weekly-undated')).toBeNull();
     expect(q('tp-member-bar-e1')?.textContent).toContain('AL');
     expect(q('tp-member-bar-e1')?.textContent).toContain('24 h');
@@ -280,7 +302,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expectEmployees().flush(employeePage());
     render();
     expect(q('tp-weekly-range')?.textContent?.trim()).toBe('This month');
-    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="cc-bar"]').length).toBe(5);
+    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="bar-chart-col"]').length).toBe(5);
 
     // This week asks for its days.
     fixture.componentRef.setInput('period', 'week');
@@ -446,7 +468,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-completion')?.textContent?.trim()).toBe('30%');
     expect(q('tp-note-overtasked')).toBeNull();
     expect(q('tp-note-unestimated')?.textContent).toContain('1 task has');
-    expect(q('tp-donut')?.getAttribute('aria-label')).toContain('due this week');
+    expect(q('tp-donut')?.querySelector('svg')?.getAttribute('aria-label')).toContain('due this week');
     // The weekly chart is its own 10-week timeline, still shown.
     expect(q('tp-weekly-chart')).not.toBeNull();
   });
@@ -573,7 +595,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     const slices = [...el().querySelectorAll('[data-testid="tp-overdue-slice"]')].map((r) =>
       [...r.children].map((c) => c.textContent!.trim()).filter((t) => t !== '').join(' '),
     );
-    expect(slices).toEqual(['Apollo 20 h 77%', 'Zeus 6 h 23%']);
+    expect(slices).toEqual(['Apollo 77% 20 h', 'Zeus 23% 6 h']);
     expect(q('tp-overdue-pie')).not.toBeNull();
     const row = (id: string) => q(id)!.closest('tr')!.textContent!.replace(/\s+/g, ' ');
     expect(row('tp-overdue-t1')).toContain('6 h');
@@ -588,7 +610,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-tile-count-overdue')!.textContent).toContain('9 tasks');
   });
 
-  /** The Status Distribution legend rows as [label, hours, percent]. */
+  /** The Status Distribution legend rows as [label, percent, hours] (the share sits beside the colour). */
   const legendRows = () =>
     [...el().querySelectorAll('[data-testid="tp-legend-row"]')].map((r) =>
       [...r.children].map((c) => c.textContent!.trim()).filter((t) => t !== ''),
@@ -597,16 +619,16 @@ describe('TeamProgressDetailDialogComponent', () => {
   it('status distribution: overdue is its own slice, carved out of In progress / Not started so it still adds up', () => {
     openWith();
     expect(legendRows()).toEqual([
-      ['Completed', '50 h', '(25%)'],
-      ['In progress', '18 h', '(9%)'],
-      ['Overdue', '26 h', '(13%)'],
-      ['Not started', '6 h', '(3%)'],
-      ['Not yet tasked', '100 h', '(50%)'],
+      ['Completed', '25%', '50 h'],
+      ['In progress', '9%', '18 h'],
+      ['Overdue', '13%', '26 h'],
+      ['Not started', '3%', '6 h'],
+      ['Not yet tasked', '50%', '100 h'],
     ]);
     const slices = [...q('tp-donut')!.querySelectorAll('circle[stroke-dasharray]')];
     expect(slices.map((c) => c.getAttribute('stroke'))).toContain('#ef4444');
     expect(q('tp-donut-overdue')).toBeNull();
-    expect(q('tp-donut')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
+    expect(q('tp-donut')!.querySelector('svg')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
     expect(q('tp-legend-note')!.textContent).toContain('without the overdue');
   });
 
@@ -614,8 +636,8 @@ describe('TeamProgressDetailDialogComponent', () => {
     openWith();
     fixture.componentInstance.setProject('p2');
     render();
-    expect(legendRows()).toContainEqual(['Overdue', '6 h', '(7.5%)']);
-    expect(legendRows()).toContainEqual(['Not started', '4 h', '(5%)']);
+    expect(legendRows()).toContainEqual(['Overdue', '7.5%', '6 h']);
+    expect(legendRows()).toContainEqual(['Not started', '5%', '4 h']);
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
   });

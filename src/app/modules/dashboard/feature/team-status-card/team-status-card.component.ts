@@ -9,7 +9,9 @@ import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours
 import { TeamTodayMember, TeamTodayResponse, TeamWorkingHoursDay } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
 import { WorkingHoursChartComponent } from '../../ui/working-hours-chart/working-hours-chart.component';
-import { DASHBOARD_DONUT_PX, donutValueFontPx } from '../../utils/dashboard-donut.util';
+import { dashboardDonutPx, donutValueFontPx } from '../../utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { injectHostSize } from '../../utils/host-size.util';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
@@ -62,6 +64,8 @@ interface Counter {
   standalone: true,
   imports: [
     NgTemplateOutlet,
+    DashboardDonutComponent,
+    DonutKeyComponent,
     AvatarComponent,
     IconComponent,
     WidgetCardComponent,
@@ -92,7 +96,8 @@ export class TeamStatusCardComponent implements OnInit {
   private lastView: PresenceView | null = null;
   private trendRequested = false;
 
-  protected readonly donutPx = DASHBOARD_DONUT_PX;
+  /** Full size, or the mini size in the 2x2 view. */
+  protected readonly donutPx = computed(() => dashboardDonutPx(this.view()));
   protected readonly valueFontPx = donutValueFontPx;
   protected readonly colors = PRESENCE_COLORS;
   protected readonly now = signal(new Date());
@@ -160,6 +165,12 @@ export class TeamStatusCardComponent implements OnInit {
   protected readonly donut = computed<DonutArc[]>(() =>
     donutArcs(this.hourLegend().map((row) => ({ key: row.key, count: row.minutes, color: row.color })))
   );
+  /** The donut and its key: worked, break and leave time, with each one's share of the day's total. */
+  protected readonly hourSlices = computed<DashboardDonutSlice[]>(() =>
+    this.hourLegend().map((row) => ({ key: row.key, label: row.label, value: row.minutes, valueText: minutesText(row.minutes), color: row.color }))
+  );
+  /** The slice the donut lights (hovered there or on a key row). */
+  protected readonly hovered = signal<string | null>(null);
   protected readonly donutLabel = computed(
     () =>
       `Team time today: ${this.hourLegend()

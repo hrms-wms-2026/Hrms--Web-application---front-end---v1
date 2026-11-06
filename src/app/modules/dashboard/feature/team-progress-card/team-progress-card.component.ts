@@ -21,12 +21,14 @@ import {
   percentOf
 } from '../../utils/team-progress-format.util';
 import {
-  TEAM_PROGRESS_DONUT_PX,
   TeamProgressMode,
   TeamProgressPlan,
   planTeamProgressLayout,
   resolveTeamProgressMode
 } from '../../utils/team-progress-layout.util';
+import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
 
@@ -164,7 +166,7 @@ function storePeriod(period: LedProgressPeriod): void {
 }
 
 /** Views that show the weekly completion chart. */
-const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['tall', 'large', 'maximum']);
+const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['wide', 'tall', 'large', 'maximum']);
 
 const EMPTY_PLAN: TeamProgressPlan = {
   miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
@@ -174,7 +176,7 @@ const EMPTY_PLAN: TeamProgressPlan = {
 /**
  * Team Progress: the estimated-hours (task estimate weightage, not time worked) picture of the
  * modules the viewer leads. The card picks one of seven views from its own rendered size (see
- * team-progress-layout.util). Every component keeps one fixed size (the donut is always DASHBOARD_DONUT_PX, or absent where it doesn't fit): a
+ * team-progress-layout.util). Every component keeps one fixed size (the donut is always DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX in the 2x2 view, or absent where it does not fit): a
  * bigger card shows more sections and list rows, never bigger graphics. Resizing only re-lays out
  * what is loaded, it never fetches.
  * A period switch (All time / This month / This week) narrows the figures to tasks due in it.
@@ -183,7 +185,7 @@ const EMPTY_PLAN: TeamProgressPlan = {
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [IconComponent, TeamProgressTimeComponent, 
+  imports: [IconComponent, DashboardDonutComponent, DonutKeyComponent, TeamProgressTimeComponent, 
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -217,6 +219,8 @@ export class TeamProgressCardComponent implements OnInit {
 
   /** Layout for the card's current size. 'small' until the first measurement (and without ResizeObserver). */
   readonly mode = signal<TeamProgressMode>('small');
+  /** The donut slice (or legend row) under the pointer: the shared donut lights it and reads it in the centre. */
+  protected readonly hoveredStatus = signal<string | null>(null);
   /** Optional sections and list rows the current view has room for. */
   readonly plan = signal<TeamProgressPlan>(EMPTY_PLAN);
   /** Rendered card width, rounded to 100px steps so it only changes the layout at those steps. */
@@ -398,6 +402,18 @@ export class TeamProgressCardComponent implements OnInit {
   });
 
   /** Donut arcs share the circle by the states' hours. A tiny state gets a tiny arc. */
+  /** The donut's slices: each status's hours, with its share of the base (allocation or period total). */
+  protected readonly donutSlices = computed<DashboardDonutSlice[]>(() =>
+    this.statusRows().map((row) => ({
+      key: row.key,
+      label: row.label,
+      value: Math.max(0, row.hours),
+      valueText: `${row.hoursText} h`,
+      percentText: row.percentText,
+      color: row.color
+    }))
+  );
+
   protected readonly donutSegments = computed<DonutSegment[]>(() => {
     const rows = this.statusRows();
     const total = rows.reduce((sum, row) => sum + Math.max(0, row.hours), 0);
@@ -421,11 +437,12 @@ export class TeamProgressCardComponent implements OnInit {
   });
 
   /** Centre number size in px: fixed, one step smaller only for a long total, so it fits the ring. */
-  protected readonly donutPx = TEAM_PROGRESS_DONUT_PX;
+  /** Full size, or the mini size in the 2x2 view. */
+  protected readonly donutPx = computed(() => dashboardDonutPx(this.mode()));
 
   protected readonly totalFontPx = computed(() => {
     const length = this.totalText().length;
-    return length <= 8 ? 17 : length <= 10 ? 15 : 13;
+    return length <= 8 ? 15 : length <= 10 ? 14 : 12;
   });
 
   protected readonly donutLabel = computed(() => {
@@ -475,14 +492,6 @@ export class TeamProgressCardComponent implements OnInit {
       { key: 'at-risk', value: String(atRisk), label: atRisk === 1 ? 'Module at risk' : 'Modules at risk', tone: atRisk > 0 ? 'rose' : 'gray' },
       { key: 'untasked', value: this.untaskedText(), label: 'Not yet tasked', tone: 'amber' }
     ];
-  });
-
-  /** The wide layout's three tiles (four on a card 1000px+ wide): completion, a task count, then not
-   * yet tasked (All time) or the tasks due (period). */
-  protected readonly wideTiles = computed<MetricTile[]>(() => {
-    const tiles = this.metricTiles();
-    if (tiles.length < 4 || this.widthStep() >= 1000) return tiles;
-    return this.period() === 'all' ? [tiles[0], tiles[1], tiles[3]] : [tiles[0], tiles[2], tiles[1]];
   });
 
   private readonly overdueTile = computed<MetricTile>(() => {

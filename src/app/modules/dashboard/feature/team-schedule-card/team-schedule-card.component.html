@@ -26,39 +26,30 @@
   @if (store.data(); as data) {
     <!-- One donut size (DASHBOARD_DONUT_PX): today's items, meetings included. -->
     <ng-template #donutTpl>
-      <div class="tsc-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="tsc-donut">
-        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
-          <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-          @for (arc of donut(); track arc.key) {
-            <circle
-              cx="21"
-              cy="21"
-              r="15.9155"
-              fill="none"
-              stroke-width="6"
-              [attr.stroke]="arc.color"
-              [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-              [attr.stroke-dashoffset]="arc.offset"
-            />
-          }
-        </svg>
+      <app-dashboard-donut
+        class="tsc-donut"
+        data-testid="tsc-donut"
+        [size]="donutPx"
+        [slices]="donutSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hovered"
+      >
         <p class="tsc-donut-center" data-testid="tsc-center">
           <span class="tsc-donut-value" [style.font-size.px]="valueFontPx(totalItems() + '')">{{ totalItems() }}</span>
           <span class="tsc-donut-of">{{ drawn() === 'timeline' ? 'Total items' : 'items' }}</span>
         </p>
-      </div>
+      </app-dashboard-donut>
     </ng-template>
 
     <ng-template #legendTpl>
-      <ul class="tsc-legend-list" aria-label="Items today">
-        @for (row of legend(); track row.key) {
-          <li class="tsc-legend-row" data-testid="tsc-legend-row" [attr.data-key]="row.key">
-            <span class="tsc-dot" [style.background]="row.color"></span>
-            <span class="tsc-legend-label">{{ row.label }}</span>
-            <span class="tsc-legend-count">{{ row.count }}</span>
-          </li>
-        }
-      </ul>
+      <app-donut-key
+        class="tsc-legend-list"
+        ariaLabel="Items today"
+        rowTestId="tsc-legend-row"
+        [showValue]="true"
+        [slices]="donutSlices()"
+        [(active)]="hovered"
+      />
     </ng-template>
 
     <!-- Planner off: the team's clocked time stands in for the donut. -->
@@ -300,9 +291,13 @@
 
             @if (plan().weekChart) {
               <section class="tsc-panel tsc-week" data-testid="tsc-week-chart" aria-label="This week, planned vs actual">
-                <p class="tsc-section-title">This week · planned vs actual</p>
                 @if (weekDays(); as days) {
-                  <app-planned-actual-week-chart class="tsc-week-chart" [days]="days" [today]="store.today()" />
+                  <app-planned-actual-week-chart
+                    class="tsc-week-chart"
+                    heading="This week · planned vs actual"
+                    [days]="days"
+                    [today]="store.today()"
+                  />
                 } @else {
                   <p class="tsc-muted-fill">{{ weekStore.error() ? "Couldn't load this week." : 'Loading…' }}</p>
                 }

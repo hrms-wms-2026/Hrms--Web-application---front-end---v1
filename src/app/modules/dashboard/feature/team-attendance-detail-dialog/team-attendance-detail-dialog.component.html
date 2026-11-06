@@ -56,13 +56,13 @@
 
       <div class="tad-charts">
         <section class="tad-panel">
-          <p class="tad-title">
-            Daily attendance · {{ percentText(data.periodRate) }}
-            @if (delta(); as d) {
-              <span class="tad-delta" [class.tad-delta--down]="d.down">{{ d.text }}</span>
-            }
-          </p>
-          <app-attendance-day-chart class="tad-chart" [points]="data.trend" />
+          <app-attendance-day-chart
+            class="tad-chart"
+            heading="Daily attendance"
+            [rate]="percentText(data.periodRate)"
+            [chip]="deltaChip()"
+            [points]="data.trend"
+          />
         </section>
         <section class="tad-panel tad-departments" data-testid="tad-departments">
           <p class="tad-title">By department</p>

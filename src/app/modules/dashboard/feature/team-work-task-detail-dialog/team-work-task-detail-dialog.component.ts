@@ -17,7 +17,10 @@ import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
 import { TeamWorkTaskEmployeeRow } from '../../models/team-work-task.model';
 import { TeamWorkTaskStore } from '../../state/team-work-task.store';
 import { WorkTaskDayChartComponent } from '../../ui/work-task-day-chart/work-task-day-chart.component';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DashboardBarChip } from '../../ui/dashboard-bar-chart/dashboard-bar-chart.component';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import {
   TEAM_WORK_TASK_COLORS,
   hoursText,
@@ -90,6 +93,8 @@ export function sortWorkTaskRows(
     InputComponent,
     SelectComponent,
     WorkTaskDayChartComponent,
+    DashboardDonutComponent,
+    DonutKeyComponent,
   ],
   templateUrl: './team-work-task-detail-dialog.component.html',
   styleUrl: './team-work-task-detail-dialog.component.css',
@@ -116,6 +121,12 @@ export class TeamWorkTaskDetailDialogComponent {
   protected readonly rangeLabel = computed(() => {
     const data = this.store.data();
     return data ? teamWorkTaskRangeLabel(data.period, data.rangeStart, data.rangeEnd) : '';
+  });
+
+  /** The change against the previous period, as the chart headline's pill. */
+  protected readonly deltaChip = computed<DashboardBarChip | null>(() => {
+    const d = this.delta();
+    return d ? { text: d.text, tone: d.down ? 'down' : 'up' } : null;
   });
 
   protected readonly delta = computed(() => {
@@ -188,9 +199,22 @@ export class TeamWorkTaskDetailDialogComponent {
     return data ? teamWorkTaskSlices(data.totals) : [];
   });
 
-  protected readonly arcs = computed<DonutArc[]>(() =>
-    donutArcs(this.slices().map((s) => ({ key: s.key, count: s.minutes, color: s.color }))),
+  /** The pie and its key: task, other work and break time, each with its share. */
+  protected readonly donutSlices = computed<DashboardDonutSlice[]>(() =>
+    this.slices().map((s) => ({
+      key: s.key,
+      label: s.label,
+      value: s.minutes,
+      valueText: hoursText(s.minutes),
+      percentText: `${s.percent}%`,
+      color: s.color,
+    })),
   );
+  protected readonly totalMinutes = computed(() => this.slices().reduce((sum, s) => sum + s.minutes, 0));
+  /** The slice the pie lights (hovered there or on a key row). */
+  protected readonly hovered = signal<string | null>(null);
+  /** The popup's pie: the dashboard donut size. */
+  protected readonly donutPx = DASHBOARD_DONUT_PX;
 
   /** Plain-words reading of the pie, so the numbers explain themselves. */
   protected readonly explanation = computed(() => {

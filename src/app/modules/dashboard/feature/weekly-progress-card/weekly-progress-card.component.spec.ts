@@ -138,7 +138,7 @@ describe('WeeklyProgressCardComponent', () => {
     expect(qa(f, 'wp-stacked-tile').map(tileText)).toEqual([
       'Expected 40h', 'Scheduled 32h (80%)', 'Worked 27h (68%)', 'Remaining 13h (33%)'
     ]);
-    expect(q(f, 'wp-donut')?.style.width).toBe('140px');
+    expect(q(f, 'wp-donut')?.style.width).toBe('168px');
   });
 
   it('the default 4x3 slot lists the tiles beside the donut and adds nothing below', () => {
@@ -154,7 +154,7 @@ describe('WeeklyProgressCardComponent', () => {
     const f = render(fakeWidgetData('success', payload()), cols(6), rows(5));
     expect(q(f, 'daily-work-chart')).not.toBeNull();
     expect(q(f, 'wp-comparison')).toBeNull();
-    expect(q(f, 'wp-donut')?.style.width).toBe('140px');
+    expect(q(f, 'wp-donut')?.style.width).toBe('168px');
 
     const tall = render(fakeWidgetData('success', payload()), cols(6), rows(7));
     expect(q(tall, 'wp-comparison')?.textContent).toContain('vs last week (22h)');

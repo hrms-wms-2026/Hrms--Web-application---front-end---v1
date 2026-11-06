@@ -23,28 +23,19 @@
   </div>
 
   @if (store.data(); as data) {
-    <!-- Donut: arcs on a circle with circumference 100, so an arc's dash length is its share. -->
+    <!-- The shared dashboard donut: hovering a slice (or a legend row) puts that status in the centre. -->
     <ng-template #donutTpl let-completionCenter="completionCenter">
-      <div class="tp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="team-progress-donut">
-        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
-          <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-          @for (seg of donutSegments(); track seg.key) {
-            <circle
-              data-testid="donut-segment"
-              cx="21"
-              cy="21"
-              r="15.9155"
-              fill="none"
-              stroke-width="6"
-              [attr.stroke]="seg.color"
-              [attr.stroke-dasharray]="seg.length + ' ' + (100 - seg.length)"
-              [attr.stroke-dashoffset]="seg.offset"
-            />
-          }
-        </svg>
+      <app-dashboard-donut
+        class="tp-donut"
+        data-testid="team-progress-donut"
+        [size]="donutPx()"
+        [slices]="donutSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hoveredStatus"
+      >
         @if (completionCenter) {
           <p class="tp-donut-center">
-            <span class="text-xl font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+            <span class="text-lg font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
             <span class="tp-donut-caption">completed</span>
           </p>
         } @else {
@@ -53,14 +44,19 @@
             <span class="tp-donut-caption">{{ periodCaption() }}</span>
           </p>
         }
-      </div>
+      </app-dashboard-donut>
     </ng-template>
 
     <!-- Every status, always: dot + label (text, not colour only) + hours + share. -->
     <ng-template #statusListTpl let-variant>
       <ul class="tp-legend" [class]="'tp-legend--' + variant" data-testid="team-progress-legend">
         @for (row of statusRows(); track row.key) {
-          <li class="tp-legend-row" [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'">
+          <li
+            class="tp-legend-row"
+            [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'"
+            (mouseenter)="hoveredStatus.set(row.key)"
+            (mouseleave)="hoveredStatus.set(null)"
+          >
             <span class="h-2.5 w-2.5 rounded-full" [class]="row.bgClass" aria-hidden="true"></span>
             <span class="tp-legend-label" [title]="row.label">{{ row.label }}</span>
             <span class="tp-legend-hours" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
@@ -269,16 +265,11 @@
     <ng-template #weeklyTpl>
       @if (weeklyState() !== 'hidden') {
         <section class="tp-panel tp-weekly" aria-label="Weekly completion, last 10 weeks" data-testid="team-progress-weekly">
-          <h3 class="team-progress-heading" title="Estimated hours of tasks completed each week (task weightage, not time worked).">
-            <span class="truncate">Weekly completion · last 10 weeks</span>
-          </h3>
           @if (weeklyShown(); as weekly) {
             <app-weekly-completion-chart
               class="tp-weekly-chart"
               [weeks]="weekly.weeks"
               [allocatedHours]="weekly.allocatedHours"
-              [percentLine]="true"
-              [compact]="mode() === 'tall' && widthStep() < 500"
             />
             @if (undatedText()) {
               <p class="tp-footnote" data-testid="team-progress-weekly-undated">{{ undatedText() }}</p>
@@ -325,7 +316,7 @@
     <div class="tp-body" [class.tp-body--narrow]="widthStep() < 300" data-testid="team-progress-layout" [attr.data-mode]="mode()" [attr.data-period]="period()">
       @if (periodState() === 'loading') {
         <div class="tp-message" data-testid="team-progress-period-loading" aria-busy="true">
-          <span class="tp-donut-skeleton animate-pulse" [style.width.px]="donutPx" [style.height.px]="donutPx" aria-hidden="true"></span>
+          <span class="tp-donut-skeleton animate-pulse" [style.width.px]="donutPx()" [style.height.px]="donutPx()" aria-hidden="true"></span>
           <span>Loading {{ period() === 'week' ? 'this week' : 'this month' }}…</span>
         </div>
       } @else if (periodState() === 'error') {
@@ -362,9 +353,15 @@
                   </div>
                   <ul class="tp-mini-legend" data-testid="team-progress-legend">
                     @for (row of statusRows(); track row.key) {
-                      <li class="tp-mini-legend-item" [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'">
+                      <li
+                        class="tp-mini-legend-item"
+                        [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'"
+                        (mouseenter)="hoveredStatus.set(row.key)"
+                        (mouseleave)="hoveredStatus.set(null)"
+                      >
                         <span class="h-2 w-2 shrink-0 rounded-full" [class]="row.bgClass" aria-hidden="true"></span>
                         <span class="tp-mini-legend-label">{{ row.label }}</span>
+                        <span class="tp-key-pct" [attr.data-testid]="'team-progress-mini-' + row.testId + '-percent'">{{ row.percentText }}</span>
                         <span class="tp-mini-legend-hours" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
                       </li>
                     }
@@ -456,12 +453,30 @@
           }
 
           @case ('wide') {
-            <div class="tp-hero">
+            <!-- Donut + colour key + weekly completion, no KPI tiles: the status bars only repeated the donut,
+                 so they show only as a fallback when the weekly chart can't load. -->
+            <div
+              class="tp-hero"
+              [class.tp-hero--weekly]="weeklyState() !== 'hidden'"
+              [class.tp-hero--grow]="weeklyState() !== 'hidden' && !showLists()"
+              data-testid="team-progress-wide-hero"
+            >
               <ng-container *ngTemplateOutlet="donutTpl" />
-              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
+              @if (weeklyState() !== 'hidden') {
+                <app-donut-key
+                  class="tp-key"
+                  data-testid="team-progress-key"
+                  ariaLabel="Donut colours"
+                  rowTestId="team-progress-key-row"
+                  [slices]="donutSlices()"
+                  [(active)]="hoveredStatus"
+                />
+                <ng-container *ngTemplateOutlet="weeklyTpl" />
+              } @else {
+                <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
+              }
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
-            <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: wideTiles(), columns: wideTiles().length }" />
             <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <ng-container *ngTemplateOutlet="listPairTpl" />

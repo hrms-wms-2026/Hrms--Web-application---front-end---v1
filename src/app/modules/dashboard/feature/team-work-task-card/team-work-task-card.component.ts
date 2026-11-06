@@ -19,7 +19,9 @@ import {
 import { TeamWorkTaskHoursResponse } from '../../models/team-work-task.model';
 import { TeamWorkTaskStore } from '../../state/team-work-task.store';
 import { WorkTaskDayChartComponent } from '../../ui/work-task-day-chart/work-task-day-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
   TEAM_WORK_TASK_COLORS,
@@ -66,6 +68,8 @@ interface KpiTileRow {
   standalone: true,
   imports: [
     NgTemplateOutlet,
+    DashboardDonutComponent,
+    DonutKeyComponent,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
     AvatarComponent,
@@ -100,7 +104,8 @@ export class TeamWorkTaskCardComponent implements OnInit {
   readonly miniFigure = signal(false);
   readonly detailOpen = signal(false);
 
-  protected readonly donutPx = DASHBOARD_DONUT_PX;
+  /** Full size, or the mini size in the 2x2 view. */
+  protected readonly donutPx = computed(() => dashboardDonutPx(this.view()));
   protected readonly colors = TEAM_WORK_TASK_COLORS;
   protected readonly hours = hoursText;
   protected readonly util = utilizationText;
@@ -137,6 +142,21 @@ export class TeamWorkTaskCardComponent implements OnInit {
   protected readonly donut = computed<DonutArc[]>(() =>
     donutArcs(this.slices().map((s) => ({ key: s.key, count: s.minutes, color: s.color }))),
   );
+
+  /** The donut and its key: task, other work and break time, each with its share of the time. */
+  protected readonly donutSlices = computed<DashboardDonutSlice[]>(() =>
+    this.slices().map((s) => ({
+      key: s.key,
+      label: s.label,
+      value: s.minutes,
+      valueText: hoursText(s.minutes),
+      percentText: `${s.percent}%`,
+      color: s.color,
+    })),
+  );
+
+  /** The slice the donut lights (hovered there or on a key row). */
+  protected readonly hovered = signal<string | null>(null);
 
   protected readonly donutLabel = computed(() => {
     const data = this.store.data();

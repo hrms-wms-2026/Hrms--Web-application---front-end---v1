@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamWorkTaskApiService } from '../../data-access/team-work-task-api.service';
 import { TeamWorkTaskHoursResponse, TeamWorkTaskQuery } from '../../models/team-work-task.model';
 import { TeamWorkTaskStore } from '../../state/team-work-task.store';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { workTaskResponse } from '../../utils/team-work-task.testing';
 import { TeamWorkTaskCardComponent } from './team-work-task-card.component';
 
@@ -53,7 +53,7 @@ describe('TeamWorkTaskCardComponent', () => {
     setup();
     let el = resize(206, 204);
     expect(q(el, 'wt-mini')).toBeTruthy();
-    expect((q(el, 'wt-donut') as HTMLElement).style.width).toBe(`${DASHBOARD_DONUT_PX}px`);
+    expect((q(el, 'wt-donut') as HTMLElement).style.width).toBe(`${DASHBOARD_MINI_DONUT_PX}px`);
     expect(q(el, 'wt-utilization')?.textContent?.trim()).toBe('50%');
     expect(q(el, 'wt-figure')).toBeNull();
 
@@ -77,6 +77,9 @@ describe('TeamWorkTaskCardComponent', () => {
   it('growing taller adds tiles, then the chart, then the ranking', () => {
     setup();
     let el = resize(760, 312);
+    expect(q(el, 'wt-tiles')).toBeNull();
+
+    el = resize(760, 420);
     expect(q(el, 'wt-tiles')).toBeTruthy();
     expect(q(el, 'wt-tile-task')?.textContent).toContain('60h');
     expect(q(el, 'wt-trend')).toBeNull();
@@ -86,7 +89,7 @@ describe('TeamWorkTaskCardComponent', () => {
     expect(q(el, 'work-task-chart')).toBeTruthy();
     expect(q(el, 'wt-ranking')).toBeNull();
 
-    el = resize(760, 636);
+    el = resize(760, 744);
     expect(all(el, 'wt-rank-row').length).toBeGreaterThanOrEqual(3);
     expect(all(el, 'wt-rank-row')[0].textContent).toContain('Ann');
   });

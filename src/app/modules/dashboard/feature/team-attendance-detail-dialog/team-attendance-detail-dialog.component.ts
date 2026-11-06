@@ -15,6 +15,7 @@ import {
   TeamAttendancePage
 } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
+import { DashboardBarChip } from '../../ui/dashboard-bar-chart/dashboard-bar-chart.component';
 import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/attendance-day-chart.component';
 import {
   TEAM_ATTENDANCE_COLORS,
@@ -73,6 +74,12 @@ export class TeamAttendanceDetailDialogComponent {
   protected readonly rangeLabel = computed(() => {
     const data = this.store.data();
     return data ? teamAttendanceRangeLabel(data.mode, data.rangeStart, data.rangeEnd) : '';
+  });
+
+  /** The change against the previous period, as the chart headline's pill. */
+  protected readonly deltaChip = computed<DashboardBarChip | null>(() => {
+    const d = this.delta();
+    return d ? { text: d.text, tone: d.down ? 'down' : 'up' } : null;
   });
 
   protected readonly delta = computed(() => {

@@ -12,7 +12,9 @@ import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/atten
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import { TeamAttendanceDetailDialogComponent } from '../team-attendance-detail-dialog/team-attendance-detail-dialog.component';
 import { TEAM_ATTENDANCE_COLORS, TEAM_ATTENDANCE_LABELS, teamAttendanceDelta, teamAttendanceRangeLabel } from '../../utils/team-attendance-format.util';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import {
   EMPTY_TEAM_ATTENDANCE_PLAN,
   TEAM_ATTENDANCE_BREAKPOINTS,
@@ -45,7 +47,7 @@ interface LegendRow {
 @Component({
   selector: 'app-team-attendance-card',
   standalone: true,
-  imports: [StopClickPropagationDirective, 
+  imports: [StopClickPropagationDirective, DashboardDonutComponent, DonutKeyComponent, 
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -95,7 +97,8 @@ export class TeamAttendanceCardComponent implements OnInit {
   private rankingSub: Subscription | null = null;
   protected readonly rankingShown = computed(() => (this.ranking() ?? []).slice(0, this.plan().rankingRows));
 
-  protected readonly donutPx = DASHBOARD_DONUT_PX;
+  /** Full size, or the mini size in the 2x2 view. */
+  protected readonly donutPx = computed(() => dashboardDonutPx(this.view()));
   protected readonly labels = TEAM_ATTENDANCE_LABELS;
   protected readonly colors = TEAM_ATTENDANCE_COLORS;
 
@@ -135,16 +138,33 @@ export class TeamAttendanceCardComponent implements OnInit {
     ];
   });
 
-  protected readonly donut = computed<DonutArc[]>(() => {
-    const c = this.store.data()?.todayCounts;
-    if (!c) return [];
-    return donutArcs([
-      { key: 'present', count: c.present, color: TEAM_ATTENDANCE_COLORS.present },
-      { key: 'late', count: c.late, color: TEAM_ATTENDANCE_COLORS.late },
-      { key: 'absent', count: c.absent, color: TEAM_ATTENDANCE_COLORS.absent },
-      { key: 'leave', count: c.onLeave, color: TEAM_ATTENDANCE_COLORS.leave },
-      { key: 'pending', count: c.pending, color: TEAM_ATTENDANCE_COLORS.pending }
-    ]);
+  protected readonly donut = computed<DonutArc[]>(() =>
+    donutArcs(this.donutSlices().map((s) => ({ key: s.key, count: s.value, color: s.color })))
+  );
+
+  /** The slice the donut lights (hovered there or on a legend row). */
+  protected readonly hovered = signal<string | null>(null);
+
+  /** The legend's statuses as donut-key rows: count, and share of everyone expected today. */
+  protected readonly keySlices = computed<DashboardDonutSlice[]>(() =>
+    this.legend().map((row) => ({ key: row.key, label: row.label, value: row.count, percentText: `${row.percent}%`, color: row.color }))
+  );
+
+  /** The ring: present, late, absent, on leave, then the people not in yet. */
+  protected readonly donutSlices = computed<DashboardDonutSlice[]>(() => {
+    const data = this.store.data();
+    if (!data) return [];
+    const c = data.todayCounts;
+    const share = (n: number): string => `${data.eligibleToday > 0 ? Math.round((n * 100) / data.eligibleToday) : 0}%`;
+    const slice = (key: string, label: string, value: number, color: string): DashboardDonutSlice =>
+      ({ key, label, value, percentText: share(value), color });
+    return [
+      slice('present', 'Present', c.present, TEAM_ATTENDANCE_COLORS.present),
+      slice('late', 'Late', c.late, TEAM_ATTENDANCE_COLORS.late),
+      slice('absent', 'Absent', c.absent, TEAM_ATTENDANCE_COLORS.absent),
+      slice('leave', 'On leave', c.onLeave, TEAM_ATTENDANCE_COLORS.leave),
+      slice('pending', 'Not in yet', c.pending, TEAM_ATTENDANCE_COLORS.pending)
+    ];
   });
 
   protected readonly donutLabel = computed(() =>

@@ -535,9 +535,10 @@
         @if (week.plannerEnabled) {
           <app-kpi-tiles [tiles]="weekTiles()" [maxColumns]="4" ariaLabel="This week" />
           <section class="tsd-panel tsd-week-panel" data-testid="tsd-week-chart">
-            <p class="tsd-title">Planned vs actual by day</p>
             @if (weekDays(); as days) {
               <app-planned-actual-week-chart
+                heading="Planned vs actual by day"
+                [compactHeadline]="false"
                 class="tsd-week-chart"
                 [days]="days"
                 [today]="store.today()"

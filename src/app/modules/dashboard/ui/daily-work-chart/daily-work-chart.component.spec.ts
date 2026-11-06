@@ -12,57 +12,64 @@ function days(patch: (i: number) => Partial<WeekDayProgress> = () => ({})): Week
   }));
 }
 
-function render(input: WeekDayProgress[], showScheduled = true, compact = false): ComponentFixture<DailyWorkChartComponent> {
+function render(input: WeekDayProgress[], inputs: Record<string, unknown> = {}): ComponentFixture<DailyWorkChartComponent> {
   const fixture = TestBed.createComponent(DailyWorkChartComponent);
   fixture.componentRef.setInput('days', input);
-  fixture.componentRef.setInput('showScheduled', showScheduled);
-  fixture.componentRef.setInput('compact', compact);
+  for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
   fixture.detectChanges();
   return fixture;
 }
 
 const all = (f: ComponentFixture<DailyWorkChartComponent>, id: string): HTMLElement[] =>
   Array.from(f.nativeElement.querySelectorAll(`[data-testid="${id}"]`));
+const headline = (f: ComponentFixture<DailyWorkChartComponent>) =>
+  Array.from(
+    (f.nativeElement as HTMLElement).querySelectorAll('[data-testid=bar-chart-headline] .bc-head-label, [data-testid=bar-chart-headline] .bc-head-row > span')
+  ).map((n) => n.textContent?.trim());
 
-describe('DailyWorkChartComponent', () => {
-  it('draws Monday to Sunday with scheduled and worked bars scaled to an even-hour axis', () => {
-    const f = render(days((i) => (i === 0 ? { scheduledMinutes: 480, workedMinutes: 240 } : {})));
+describe('DailyWorkChartComponent (on the shared dashboard bar chart)', () => {
+  const week = days((i) => (i < 5 ? { scheduledMinutes: 480, workedMinutes: 240 } : {}));
 
-    expect(all(f, 'daily-work-day').length).toBe(7);
-    expect(all(f, 'daily-work-scheduled')[0].style.height).toBe('100%');
-    expect(all(f, 'daily-work-worked')[0].style.height).toBe('50%');
-    expect(all(f, 'daily-work-day')[0].textContent).toContain('Mon');
-    expect(all(f, 'daily-work-day')[0].textContent).toContain('8h / 4h');
-    expect(all(f, 'daily-work-axis')[0].textContent).toContain('8h');
+  it('draws Monday to Sunday with a scheduled bar beside a worked bar and the expected hours as a dash', () => {
+    const f = render(week);
+    expect(all(f, 'bar-chart-col').length).toBe(7);
+    expect(all(f, 'bar-chart-label')[0].textContent).toContain('Mon');
+    // 8h is the tallest figure: a round 0-5-10h axis.
+    expect(all(f, 'bar-chart-axis')[0].textContent).toBe('10h5h0h');
+    expect(all(f, 'bar-chart-stack')[0].style.height).toBe('80%');
+    expect(all(f, 'bar-chart-pair')[0].style.height).toBe('40%');
+    expect(all(f, 'bar-chart-col')[0].querySelector('[data-segment=scheduled]')).not.toBeNull();
+    expect(all(f, 'bar-chart-marker').length).toBe(5);
+    expect(all(f, 'bar-chart-marker')[0].style.bottom).toBe('80%');
+    expect(all(f, 'bar-chart-legend')[0].textContent).toContain('Scheduled');
+    expect(all(f, 'bar-chart-legend')[0].textContent).toContain('Expected');
   });
 
-  it('without the planner shows worked against expected and no scheduled bars', () => {
-    const f = render(days((i) => (i === 0 ? { scheduledMinutes: 480, workedMinutes: 240 } : {})), false);
-
-    expect(all(f, 'daily-work-scheduled').length).toBe(0);
-    expect(all(f, 'daily-work-day')[0].textContent).toContain('4h / 8h');
-    expect(f.nativeElement.textContent).not.toContain('Scheduled');
+  it('without the planner shows only worked bars and no Scheduled key', () => {
+    const f = render(week, { showScheduled: false });
+    expect(all(f, 'bar-chart-pair').length).toBe(0);
+    expect(all(f, 'bar-chart-col')[0].querySelector('[data-segment=worked]')).not.toBeNull();
+    expect(all(f, 'bar-chart-col')[0].querySelector('[data-segment=scheduled]')).toBeNull();
+    expect(all(f, 'bar-chart-legend')[0].textContent).not.toContain('Scheduled');
   });
 
-  it('draws the expected line through all seven days', () => {
-    const f = render(days());
-    const points = all(f, 'daily-work-expected-line')[0].getAttribute('points') ?? '';
-
-    expect(points.trim().split(' ').length).toBe(7);
-    expect(points).not.toContain('NaN');
+  it('with a heading, reads the week then the hovered day against its schedule', () => {
+    const f = render(week, { heading: 'Daily Work vs Schedule' });
+    expect(headline(f)).toEqual(['Daily Work vs Schedule', '20h worked', 'of 40h expected']);
+    all(f, 'bar-chart-col')[0].dispatchEvent(new Event('mouseenter'));
+    f.detectChanges();
+    expect(headline(f)).toEqual(['Mon 26 Oct', '4h worked', 'of 8h scheduled']);
   });
 
   it('copes with an empty week', () => {
     const f = render(days(() => ({ expectedMinutes: 0 })));
-
-    expect(all(f, 'daily-work-worked').every((b) => b.style.height === '0%')).toBe(true);
+    expect(all(f, 'bar-chart-stack').length).toBe(0);
+    expect(all(f, 'bar-chart-empty').length).toBe(1);
     expect(f.nativeElement.innerHTML).not.toContain('NaN');
   });
 
-  it('compact hides the axis and the hours line', () => {
-    const f = render(days((i) => (i === 0 ? { workedMinutes: 240 } : {})), true, true);
-
-    expect(all(f, 'daily-work-axis').length).toBe(0);
-    expect(all(f, 'daily-work-day')[0].textContent).not.toContain('/');
+  it('compact hides the axis', () => {
+    const f = render(week, { compact: true });
+    expect(all(f, 'bar-chart-axis').length).toBe(0);
   });
 });

@@ -1,0 +1,114 @@
+.dk {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dk-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  transition: opacity 150ms ease;
+}
+
+.dk-row--zero {
+  opacity: 0.55;
+}
+
+.dk-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  flex: none;
+  border-radius: 9999px;
+}
+
+.dk-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dk-row--on .dk-label {
+  color: var(--color-text-primary);
+}
+
+/* The share sits right beside the name: "Completed 12%". */
+.dk-pct {
+  flex: none;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dk-value {
+  flex: none;
+  margin-left: auto;
+  padding-left: 0.5rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* list: one 28px row per slice (DASHBOARD_DONUT_LEGEND_ROW_PX). */
+.dk--list .dk-row {
+  height: 28px;
+  font-size: 0.8125rem;
+}
+
+/* compact: a short column beside a 2x2 donut. */
+.dk--compact {
+  gap: 0.375rem;
+  font-size: 0.75rem;
+}
+
+.dk--compact .dk-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+/* wrap: side by side, wrapping (2-row cards). */
+.dk--wrap {
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: 0.875rem;
+  row-gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.dk--wrap .dk-row {
+  gap: 0.375rem;
+}
+
+.dk--wrap .dk-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+/* chips: a soft background per row (beside the donut on a wide card). */
+.dk--chips {
+  gap: 0.375rem;
+}
+
+.dk--chips .dk-row {
+  border-radius: 0.5rem;
+  background: var(--color-surface-secondary);
+  padding: 0.3125rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.dk--chips .dk-row--on {
+  background: var(--color-surface-tertiary, var(--color-border));
+}
+
+.dk--chips .dk-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+}

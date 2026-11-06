@@ -164,11 +164,11 @@ describe('TeamScheduleCardComponent', () => {
     ]);
   });
 
-  it('300x636 is xs: the 140px item donut over its legend, the chips, then rows', async () => {
+  it('300x636 is xs: the 168px item donut over its legend, the chips, then rows', async () => {
     const { el } = await setup(response(), { width: 300, height: 636 });
 
     expect(q(el, 'tsc-layout')!.getAttribute('data-view')).toBe('xs');
-    expect((q(el, 'tsc-donut') as HTMLElement).style.width).toBe('140px');
+    expect((q(el, 'tsc-donut') as HTMLElement).style.width).toBe('168px');
     expect(squash(q(el, 'tsc-center'))).toBe('5items');
     expect(all(el, 'tsc-legend-row').map((r) => r.getAttribute('data-key'))).toEqual([
       'completed',

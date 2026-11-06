@@ -127,35 +127,28 @@
             <h3 id="tp-dist-heading" class="tp-panel__title">Status Distribution</h3>
             @if (overview(); as ov) {
               <div class="tp-dist">
-                <div class="tp-donut">
-                  <svg viewBox="0 0 42 42" role="img" [attr.aria-label]="donutLabel()" data-testid="tp-donut">
-                    <circle cx="21" cy="21" r="15.915" fill="none" stroke="var(--color-surface-secondary)" stroke-width="5"></circle>
-                    @for (part of donutParts(); track part.key) {
-                      @if (part.hours > 0) {
-                        <circle
-                          cx="21" cy="21" r="15.915" fill="none" stroke-width="5"
-                          [attr.stroke]="part.color"
-                          [attr.stroke-dasharray]="part.dash"
-                          [attr.stroke-dashoffset]="part.offset"
-                        ></circle>
-                      }
-                    }
-                  </svg>
+                <app-dashboard-donut
+                  class="tp-donut"
+                  data-testid="tp-donut"
+                  [size]="statusDonutPx"
+                  [strokeWidth]="5"
+                  [slices]="donutSlices()"
+                  [ariaLabel]="donutLabel()"
+                  [(active)]="hoveredPart"
+                >
                   <div class="tp-donut__center" aria-hidden="true">
                     <strong>{{ formatHours(ov.totalHours) }} h</strong>
                     <span>{{ isPeriod() ? periodCaption() : 'Total' }}</span>
                   </div>
-                </div>
-                <ul class="tp-legend" aria-hidden="true">
-                  @for (part of donutParts(); track part.key) {
-                    <li data-testid="tp-legend-row">
-                      <span class="tp-dot" [class]="part.bgClass"></span>
-                      <span class="tp-legend__label">{{ part.label }}</span>
-                      <span class="tp-legend__hours">{{ formatHours(part.hours) }} h</span>
-                      <span class="tp-legend__pct">({{ part.percent }})</span>
-                    </li>
-                  }
-                </ul>
+                </app-dashboard-donut>
+                <app-donut-key
+                  class="tp-legend"
+                  rowTestId="tp-legend-row"
+                  ariaLabel="Status distribution"
+                  [showValue]="true"
+                  [slices]="donutSlices()"
+                  [(active)]="hoveredPart"
+                />
               </div>
               <ul class="tp-notes" data-testid="tp-overview-notes">
                 @if (donutHasOverdue()) {
@@ -188,10 +181,10 @@
                 <button type="button" class="tp-text-button" data-testid="tp-weekly-retry" (click)="retryWeekly()">Retry</button>
               </div>
             } @else if (weekly().status === 'ready' && weekly().data; as wc) {
-              <app-completion-combo-chart
+              <app-weekly-completion-chart
                 class="tp-weekly__chart"
                 data-testid="tp-weekly-chart"
-                [buckets]="wc.weeks"
+                [weeks]="wc.weeks"
                 [allocatedHours]="wc.allocatedHours"
                 [granularity]="wc.granularity ?? 'week'"
                 [rangeLabel]="weeklyRange()"
@@ -422,34 +415,24 @@
               <div class="tp-overdue-body">
                 <div class="tp-overdue-chart">
                   <p class="tp-overdue-chart__title">By project</p>
-                  <div class="tp-overdue-pie" data-testid="tp-overdue-pie" [style.width.px]="overduePiePx" [style.height.px]="overduePiePx">
-                    <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" aria-label="Overdue hours by project">
-                      <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-                      @for (arc of ov.arcs; track arc.key) {
-                        <circle
-                          cx="21"
-                          cy="21"
-                          r="15.9155"
-                          fill="none"
-                          stroke-width="6"
-                          [attr.stroke]="arc.color"
-                          [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-                          [attr.stroke-dashoffset]="arc.offset"
-                        />
-                      }
-                    </svg>
+                  <app-dashboard-donut
+                    class="tp-overdue-pie"
+                    data-testid="tp-overdue-pie"
+                    ariaLabel="Overdue hours by project"
+                    [size]="overduePiePx"
+                    [slices]="overdueSlices(ov.slices)"
+                    [(active)]="hoveredOverdue"
+                  >
                     <p class="tp-overdue-pie__center"><strong>{{ formatHours(ov.total) }} h</strong><span>overdue</span></p>
-                  </div>
-                  <ul class="tp-overdue-legend" aria-label="Overdue hours by project">
-                    @for (s of ov.slices; track s.projectId) {
-                      <li data-testid="tp-overdue-slice">
-                        <span class="tp-overdue-dot" [style.background]="s.color"></span>
-                        <span class="tp-overdue-legend__name">{{ s.name }}</span>
-                        <span class="tp-overdue-legend__hours">{{ formatHours(s.hours) }} h</span>
-                        <span class="tp-muted">{{ s.percent }}</span>
-                      </li>
-                    }
-                  </ul>
+                  </app-dashboard-donut>
+                  <app-donut-key
+                    class="tp-overdue-legend"
+                    rowTestId="tp-overdue-slice"
+                    ariaLabel="Overdue hours by project"
+                    [showValue]="true"
+                    [slices]="overdueSlices(ov.slices)"
+                    [(active)]="hoveredOverdue"
+                  />
                 </div>
                 <div class="tp-overdue-table-wrap">
                   <table class="tp-mini-table tp-overdue-table" data-testid="tp-overdue-list">

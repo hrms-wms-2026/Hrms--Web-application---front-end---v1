@@ -3,7 +3,7 @@
  * TEAM_PROGRESS_DONUT_PX): a bigger card shows more detail, never bigger graphics. */
 export type TeamProgressMode = 'mini' | 'xs' | 'small' | 'medium' | 'wide' | 'tall' | 'large' | 'maximum';
 
-import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from './dashboard-donut.util';
 
 /** The donut's diameter in every view that shows it (the shared dashboard size). */
 export const TEAM_PROGRESS_DONUT_PX = DASHBOARD_DONUT_PX;
@@ -107,7 +107,7 @@ const MINI_LEGEND_ROW_PX = 22;
  * completion figure (from 4 columns at 1440px, 3 at 1920px). */
 const MINI_INLINE_LEGEND_WIDTH_PX = 320;
 /** Body width from which a 2-row card with the donut has room for the total beside it. */
-const MINI_FIGURE_WIDTH_PX = TEAM_PROGRESS_DONUT_PX + 12 + 80;
+const MINI_FIGURE_WIDTH_PX = DASHBOARD_MINI_DONUT_PX + 12 + 80;
 const VIEW_DETAILS_PX = 36 + GAP_PX;
 /** xs: the four-status legend under the donut (four shared legend rows). */
 const XS_LEGEND_PX = GAP_PX + 4 * DASHBOARD_DONUT_LEGEND_ROW_PX;
@@ -160,7 +160,7 @@ function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
   switch (mode) {
     // The donut, or (stretched sideways) the completion figure beside the stacked status bar.
     case 'mini':
-      return TEAM_PROGRESS_DONUT_PX;
+      return DASHBOARD_MINI_DONUT_PX;
     // The donut; its legend and the completion figure follow when they fit.
     case 'xs':
       return TEAM_PROGRESS_DONUT_PX;
@@ -170,9 +170,9 @@ function baseHeight(mode: TeamProgressMode, bodyWidth: number): number {
     // Stacked bar, total line and the four status tiles.
     case 'medium':
       return 176;
-    // Donut beside the status rows, metric tiles under them.
+    // Donut, its colour key and the weekly completion chart in one band (no metric tiles).
     case 'wide':
-      return TEAM_PROGRESS_DONUT_PX + GAP_PX + 60;
+      return TEAM_PROGRESS_DONUT_PX;
     // Donut over (or beside) the status list, the weekly chart and the View details button.
     case 'tall':
       return (
@@ -207,7 +207,7 @@ export function planTeamProgressLayout(mode: TeamProgressMode, width: number, he
   switch (mode) {
     case 'mini':
       // The bar layout (figure + bar, 80px) is shorter than the donut, so it budgets on its own height.
-      if (bodyWidth >= MINI_INLINE_LEGEND_WIDTH_PX && rest + TEAM_PROGRESS_DONUT_PX - 80 >= MINI_LEGEND_ROW_PX) plan.miniLegend = 'inline';
+      if (bodyWidth >= MINI_INLINE_LEGEND_WIDTH_PX && rest + DASHBOARD_MINI_DONUT_PX - 80 >= MINI_LEGEND_ROW_PX) plan.miniLegend = 'inline';
       else plan.miniFigure = bodyWidth >= MINI_FIGURE_WIDTH_PX;
       return plan;
     case 'xs':

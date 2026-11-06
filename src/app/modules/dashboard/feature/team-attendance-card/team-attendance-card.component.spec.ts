@@ -9,7 +9,7 @@ import {
   TeamAttendanceTrendPoint
 } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { TeamAttendanceCardComponent } from './team-attendance-card.component';
 
 class FakeResizeObserver {
@@ -116,7 +116,7 @@ describe('TeamAttendanceCardComponent', () => {
     setup();
     let el = resize(206, 204);
     expect(q(el, 'ta-mini')).toBeTruthy();
-    expect((q(el, 'ta-donut') as HTMLElement).style.width).toBe(`${DASHBOARD_DONUT_PX}px`);
+    expect((q(el, 'ta-donut') as HTMLElement).style.width).toBe(`${DASHBOARD_MINI_DONUT_PX}px`);
     expect(q(el, 'ta-today-rate')?.textContent?.trim()).toBe('96%');
     expect(el.textContent).not.toContain('24/25 in today');
 
@@ -143,7 +143,7 @@ describe('TeamAttendanceCardComponent', () => {
 
   it('a narrow card stacks the donut over the rate and hides the period switch and the refreshed label', () => {
     setup();
-    const el = resize(315, 312);
+    const el = resize(315, 528);
     expect(q(el, 'ta-layout')?.getAttribute('data-view')).toBe('xs');
     expect(el.querySelector('select')).toBeNull();
     expect(q(el, 'refreshed-label')).toBeNull();
@@ -156,27 +156,31 @@ describe('TeamAttendanceCardComponent', () => {
     const donutWidth = () => (q(fixture.nativeElement, 'ta-donut') as HTMLElement).style.width;
 
     let el = resize(760, 312);
+    expect(q(el, 'ta-tiles')).toBeNull();
+    expect(donutWidth()).toBe(`${DASHBOARD_DONUT_PX}px`);
+
+    el = resize(760, 420);
     expect(q(el, 'ta-tiles')).toBeTruthy();
     expect(q(el, 'ta-trend')).toBeNull();
-    expect(donutWidth()).toBe(`${DASHBOARD_DONUT_PX}px`);
 
     el = resize(760, 528);
     expect(q(el, 'ta-trend')).toBeTruthy();
     expect(q(el, 'ta-ranking')).toBeNull();
     expect(getEmployees).not.toHaveBeenCalled();
 
-    el = resize(760, 636);
+    el = resize(760, 744);
     expect(q(el, 'ta-ranking')).toBeTruthy();
     expect(donutWidth()).toBe(`${DASHBOARD_DONUT_PX}px`);
     expect(getEmployees).toHaveBeenCalledWith(expect.objectContaining({ sort: 'rate', page: 1, pageSize: 10, mode: 'week' }));
   });
 
-  it('keeps the donut one size in every view that shows it', () => {
+  it('keeps the donut one size in every view that shows it (the mini size on a 2x2 card)', () => {
     setup();
     for (const [w, h] of [[206, 204], [315, 312], [350, 350], [640, 350], [480, 640]]) {
       const donut = q(resize(w, h), 'ta-donut') as HTMLElement;
-      expect(donut.style.width).toBe(`${DASHBOARD_DONUT_PX}px`);
-      expect(donut.style.height).toBe(`${DASHBOARD_DONUT_PX}px`);
+      const size = h === 204 ? DASHBOARD_MINI_DONUT_PX : DASHBOARD_DONUT_PX;
+      expect(donut.style.width).toBe(`${size}px`);
+      expect(donut.style.height).toBe(`${size}px`);
     }
   });
 
@@ -232,14 +236,14 @@ describe('TeamAttendanceCardComponent', () => {
 
   it('the ranking shows as many top employees as fit, best rate first, with the top three marked', () => {
     setup();
-    let rows = [...resize(760, 636).querySelectorAll('[data-testid=ta-rank-row]')];
-    expect(rows.length).toBe(3);
+    let rows = [...resize(760, 744).querySelectorAll('[data-testid=ta-rank-row]')];
+    expect(rows.length).toBe(5);
     expect(rows[0].textContent).toContain('Ann');
     expect(rows[0].textContent).toContain('100%');
     expect(rows[0].querySelector('.ta-rank--top')).toBeTruthy();
 
     rows = [...resize(760, 960).querySelectorAll('[data-testid=ta-rank-row]')];
-    expect(rows.length).toBeGreaterThan(3);
+    expect(rows.length).toBeGreaterThan(5);
     expect(getEmployees).toHaveBeenCalledTimes(1);
   });
 
@@ -258,7 +262,7 @@ describe('TeamAttendanceCardComponent', () => {
     setup();
     const legend = [...resize(760, 350).querySelectorAll('[data-testid=ta-legend-row]')].map((r) => parts(r));
 
-    expect(legend).toEqual(['Present 23 92%', 'Absent 1 4%', 'Late 1 4%', 'On leave 0 0%']);
+    expect(legend).toEqual(['Present 92% 23', 'Absent 4% 1', 'Late 4% 1', 'On leave 0% 0']);
   });
 
   it('an empty team shows the empty state', () => {
@@ -279,7 +283,7 @@ describe('TeamAttendanceCardComponent', () => {
 
   it('View all opens the detail dialog, which closes back to the card', () => {
     setup();
-    const el = resize(760, 640);
+    const el = resize(760, 744);
 
     (q(el, 'ta-view-all') as HTMLButtonElement).click();
     fixture.detectChanges();

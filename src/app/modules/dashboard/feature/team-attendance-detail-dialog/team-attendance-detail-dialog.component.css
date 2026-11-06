@@ -121,9 +121,31 @@
   min-width: 0;
   flex-direction: column;
   gap: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
+}
+
+/* Sections are split by a line, not boxed (like the dashboard cards): a line under each section,
+ * and a line between the charts side by side. */
+.tad-charts + .tad-panel,
+.tad-panel + .tad-panel,
+.tad-panel + .tad-charts {
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+
+.tad-charts > .tad-panel + .tad-panel {
+  border-top: 0;
+  padding-top: 0;
+  border-left: 1px solid var(--color-border);
+  padding-left: 1rem;
+}
+
+@media (max-width: 767px) {
+  .tad-charts > .tad-panel + .tad-panel {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+  }
 }
 
 .tad-title {
@@ -136,15 +158,7 @@
   color: var(--color-text-primary);
 }
 
-.tad-delta {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-tint-green-text);
-}
-
-.tad-delta--down { color: var(--color-danger); }
-
-.tad-chart { height: 11rem; }
+.tad-chart { height: 13rem; }
 
 .tad-dept-list {
   display: flex;

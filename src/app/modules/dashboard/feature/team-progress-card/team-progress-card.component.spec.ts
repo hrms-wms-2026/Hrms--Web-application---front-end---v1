@@ -15,7 +15,7 @@ import {
 } from '../../models/team-progress-detail.model';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { ledTime, workloadRow } from '../../utils/team-progress-time.testing';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
@@ -324,13 +324,13 @@ describe('TeamProgressCardComponent', () => {
         ['team-progress-legend', 'team-progress-metrics', 'team-progress-modules', 'team-progress-view-details', 'team-progress-period']],
       ['3x4', 315, 420, 'xs', ['team-progress-donut', 'team-progress-legend'], ['team-progress-metrics', 'team-progress-period']],
       ['3x5', 315, 528, 'xs',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-view-details'],
-        ['team-progress-modules']],
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-completion'],
+        ['team-progress-modules', 'team-progress-view-details']],
       ['4x3', 424, 312, 'small',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion', 'team-progress-metrics'],
-        ['team-progress-modules', 'team-progress-view-details', 'team-progress-weekly']],
+        ['team-progress-donut', 'team-progress-legend', 'team-progress-completion'],
+        ['team-progress-metrics', 'team-progress-modules', 'team-progress-view-details', 'team-progress-weekly']],
       ['4x5', 424, 528, 'small', ['team-progress-donut', 'team-progress-legend', 'team-progress-view-details'], ['team-progress-modules']],
-      ['6x3', 642, 312, 'wide', ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics'], ['team-progress-modules']],
+      ['6x3', 642, 312, 'wide', ['team-progress-donut', 'team-progress-key', 'team-progress-weekly'], ['team-progress-legend', 'team-progress-metrics']],
       ['6x4', 642, 420, 'medium',
         ['team-progress-total', 'team-progress-status-bar', 'team-progress-tiles', 'team-progress-metrics', 'team-progress-view-details'],
         ['team-progress-donut', 'team-progress-modules']],
@@ -338,9 +338,9 @@ describe('TeamProgressCardComponent', () => {
         ['team-progress-status-bar', 'team-progress-tiles', 'team-progress-modules', 'team-progress-overdue'],
         ['team-progress-donut', 'team-progress-view-details']],
       ['8x4', 860, 420, 'wide',
-        ['team-progress-donut', 'team-progress-legend', 'team-progress-metrics', 'team-progress-modules', 'team-progress-overdue'],
-        ['team-progress-weekly', 'team-progress-top-members']],
-      ['12x4', 1296, 420, 'wide', ['team-progress-donut', 'team-progress-metrics'], ['team-progress-projects', 'team-progress-weekly']],
+        ['team-progress-donut', 'team-progress-key', 'team-progress-weekly', 'team-progress-modules', 'team-progress-overdue'],
+        ['team-progress-legend', 'team-progress-metrics', 'team-progress-top-members']],
+      ['12x4', 1296, 420, 'wide', ['team-progress-donut', 'team-progress-weekly'], ['team-progress-legend', 'team-progress-metrics']],
       ['4x6', 424, 636, 'tall',
         ['team-progress-donut', 'team-progress-legend', 'team-progress-weekly', 'team-progress-view-details'],
         ['team-progress-metrics', 'team-progress-projects']],
@@ -357,10 +357,10 @@ describe('TeamProgressCardComponent', () => {
     it('small view: KPI cards fill the space under the donut, in progress and overdue first', async () => {
       const fixture = await setup(sample());
       resize(fixture, 424, 312);
+      expect(has(fixture, 'team-progress-kpi-in-progress')).toBe(false);
+      resize(fixture, 424, 420);
       expect(text(fixture, 'team-progress-kpi-in-progress')).toMatch(/h\s*In progress · \d+%/);
       expect(text(fixture, 'team-progress-kpi-overdue')).toContain('Overdue · 1 task');
-      expect(has(fixture, 'team-progress-kpi-tasks')).toBe(false);
-      resize(fixture, 424, 420);
       expect(has(fixture, 'team-progress-kpi-tasks')).toBe(true);
       expect(text(fixture, 'team-progress-kpi-at-risk')).toContain('Module at risk');
     });
@@ -379,7 +379,8 @@ describe('TeamProgressCardComponent', () => {
             expect(text(fixture, `team-progress-legend-${key}-percent`)).toMatch(/%\)?$/);
           }
         }
-        expect(text(fixture, 'team-progress-completion')).toBe('30%');
+        // The completion figure, wherever it shows (the wide view and a 3x4 xs card have no room for it).
+        if (has(fixture, 'team-progress-completion')) expect(text(fixture, 'team-progress-completion')).toBe('30%');
       });
     }
 
@@ -388,19 +389,50 @@ describe('TeamProgressCardComponent', () => {
       for (const [w, h] of [[315, 312], [424, 312], [860, 420], [424, 636], [860, 636], [1296, 852]]) {
         resize(fixture, w, h);
         const center = fixture.nativeElement.querySelector('[data-testid="team-progress-total"] span') as HTMLElement;
-        expect(center.style.fontSize).toBe('17px');
+        expect(center.style.fontSize).toBe('15px');
       }
     });
 
-    it('shows three metric tiles in the wide layout and four from 1000px', async () => {
+    it('wide colour key: every colour with its share beside the label', async () => {
       const fixture = await setup(sample());
-      const tiles = (): number => fixture.nativeElement.querySelectorAll('[data-testid="team-progress-metrics"] .tp-tile').length;
-      resize(fixture, 900, 420);
-      expect(tiles()).toBe(3);
-      expect(has(fixture, 'team-progress-at-risk')).toBe(false);
-      resize(fixture, 1300, 420);
-      expect(tiles()).toBe(4);
-      expect(text(fixture, 'team-progress-at-risk')).toBe('1');
+      resize(fixture, 1160, 420);
+      const pcts = [...fixture.nativeElement.querySelectorAll('[data-testid="team-progress-key-row-percent"]')] as HTMLElement[];
+      expect(pcts.length).toBe(LEGEND.length);
+      for (const pct of pcts) expect(pct.textContent?.trim()).toMatch(/%$/);
+      const completed = fixture.nativeElement.querySelector('[data-testid="team-progress-key"] li') as HTMLElement;
+      expect(completed.textContent?.replace(/\s+/g, ' ').trim()).toMatch(/^Completed\s*\S+%$/);
+    });
+
+    it('hovering a donut slice or a legend row puts that status in the donut centre', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 1160, 420);
+      const segment = fixture.nativeElement.querySelector('[data-testid="donut-segment"]') as SVGCircleElement;
+      segment.dispatchEvent(new Event('mouseenter'));
+      fixture.detectChanges();
+      expect(has(fixture, 'team-progress-total')).toBe(false);
+      expect(text(fixture, 'donut-hover')).toMatch(/^[\d,.]+ h\s*Completed · \S+%$/);
+      expect(segment.classList).toContain('dd-arc--on');
+
+      fixture.nativeElement.querySelector('[data-testid="team-progress-donut"]').dispatchEvent(new Event('mouseleave'));
+      fixture.detectChanges();
+      expect(has(fixture, 'donut-hover')).toBe(false);
+      expect(has(fixture, 'team-progress-total')).toBe(true);
+
+      const keyRows = fixture.nativeElement.querySelectorAll('[data-testid="team-progress-key"] li');
+      keyRows[1].dispatchEvent(new Event('mouseenter'));
+      fixture.detectChanges();
+      expect(text(fixture, 'donut-hover')).toContain('In progress');
+      keyRows[1].dispatchEvent(new Event('mouseleave'));
+      fixture.detectChanges();
+      expect(has(fixture, 'donut-hover')).toBe(false);
+    });
+
+    it('shows no metric tiles in the wide layout', async () => {
+      const fixture = await setup(sample());
+      for (const w of [900, 1300]) {
+        resize(fixture, w, 420);
+        expect(has(fixture, 'team-progress-metrics')).toBe(false);
+      }
     });
 
     it('coalesces several size reports into one frame and uses the last one', async () => {
@@ -478,13 +510,13 @@ describe('TeamProgressCardComponent', () => {
       expect(has(fixture, 'team-progress-overdue')).toBe(true);
     });
 
-    it('2x2 shows the mini view: the full-size donut with the completion in it, no period switch', async () => {
+    it('2x2 shows the mini view: the mini donut with the completion in it, no period switch', async () => {
       const fixture = await setup(sample());
       resize(fixture, 206, 204);
       expect(layoutMode(fixture)).toBe('mini');
       expect(has(fixture, 'team-progress-mini')).toBe(true);
       const donut = fixture.nativeElement.querySelector('[data-testid="team-progress-donut"]') as HTMLElement;
-      expect(donut.style.width).toBe(`${DASHBOARD_DONUT_PX}px`);
+      expect(donut.style.width).toBe(`${DASHBOARD_MINI_DONUT_PX}px`);
       expect(has(fixture, 'team-progress-period')).toBe(false);
       expect(has(fixture, 'team-progress-legend')).toBe(false);
       expect(has(fixture, 'team-progress-status-bar')).toBe(false);
@@ -607,16 +639,16 @@ describe('TeamProgressCardComponent', () => {
     });
 
     describe('weekly completion', () => {
-      it('is fetched only in the tall, large and maximum views, once per data load', async () => {
+      it('is fetched only in the wide, tall, large and maximum views, once per data load', async () => {
         const fixture = await setup(sample());
-        for (const [w, h] of [[315, 312], [424, 312], [642, 420], [860, 420]]) resize(fixture, w, h);
+        for (const [w, h] of [[315, 312], [424, 312], [642, 420]]) resize(fixture, w, h);
         expect(getWeeklyCompletion).not.toHaveBeenCalled();
 
         resize(fixture, 424, 636);
         expect(getWeeklyCompletion).toHaveBeenCalledOnce();
         expect(getWeeklyCompletion).toHaveBeenCalledWith(10);
         expect(text(fixture, 'team-progress-weekly')).toContain('Weekly completion · last 10 weeks');
-        expect(fixture.nativeElement.querySelectorAll('[data-testid="weekly-completion-bar"]').length).toBe(10);
+        expect(fixture.nativeElement.querySelectorAll('[data-testid="bar-chart-col"]').length).toBe(10);
 
         // Resizing between (and out of and back into) the weekly views never refetches.
         resize(fixture, 860, 636);
@@ -655,7 +687,7 @@ describe('TeamProgressCardComponent', () => {
         pending.next(weeklyPayload());
         fixture.detectChanges();
         expect(has(fixture, 'team-progress-weekly-loading')).toBe(false);
-        expect(has(fixture, 'weekly-completion-chart')).toBe(true);
+        expect(has(fixture, 'bar-chart')).toBe(true);
       });
 
       it('notes completed hours without a date', async () => {
@@ -678,6 +710,35 @@ describe('TeamProgressCardComponent', () => {
         expect(has(fixture, 'team-progress-weekly')).toBe(false);
         expect(has(fixture, 'team-progress-modules')).toBe(true);
         expect(has(fixture, 'team-progress-view-details')).toBe(true);
+      });
+
+      it('replaces the status bars and KPI tiles in the wide view with the weekly chart', async () => {
+        const fixture = await setup(sample());
+        resize(fixture, 1160, 420);
+        expect(layoutMode(fixture)).toBe('wide');
+        expect(has(fixture, 'team-progress-weekly')).toBe(true);
+        expect(has(fixture, 'team-progress-key')).toBe(true);
+        expect(has(fixture, 'team-progress-legend')).toBe(false);
+        expect(has(fixture, 'team-progress-metrics')).toBe(false);
+      });
+
+      it('lets the wide band grow into the body when no lists show under it', async () => {
+        const fixture = await setup(sample());
+        const hero = (): HTMLElement => fixture.nativeElement.querySelector('[data-testid="team-progress-wide-hero"]');
+        resize(fixture, 1160, 312);
+        expect(has(fixture, 'team-progress-modules')).toBe(false);
+        expect(hero().classList.contains('tp-hero--grow')).toBe(true);
+        resize(fixture, 860, 420);
+        expect(has(fixture, 'team-progress-modules')).toBe(true);
+        expect(hero().classList.contains('tp-hero--grow')).toBe(false);
+      });
+
+      it('falls back to the status bars beside the donut when the wide view cannot load the weekly chart', async () => {
+        getWeeklyCompletion = vi.fn(() => throwError(() => new Error('404')));
+        const failing = await setup(sample());
+        resize(failing, 1160, 420);
+        expect(has(failing, 'team-progress-weekly')).toBe(false);
+        expect(has(failing, 'team-progress-legend')).toBe(true);
       });
     });
 

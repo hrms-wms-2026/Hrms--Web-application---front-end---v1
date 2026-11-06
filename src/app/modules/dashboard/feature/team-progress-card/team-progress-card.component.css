@@ -37,7 +37,7 @@
 
 .tp-donut-caption {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--color-text-secondary);
 }
@@ -261,6 +261,43 @@
   flex: none;
   align-items: center;
   gap: 1.5rem;
+}
+
+/* Wide: donut, its colour key, then the weekly completion chart at the donut's height. */
+.tp-hero--weekly .tp-weekly {
+  height: 168px; /* DASHBOARD_DONUT_PX */
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+/* With no lists under it, the band takes the whole body: the chart grows taller, the donut (fixed
+ * 168px) and its key stay centred beside it. */
+.tp-hero--grow {
+  min-height: 0;
+  flex: 1 1 0;
+  align-items: stretch;
+}
+
+.tp-hero--grow > .tp-donut,
+.tp-hero--grow > .tp-key {
+  align-self: center;
+}
+
+.tp-hero--grow .tp-weekly {
+  height: auto;
+}
+
+.tp-key {
+  flex: none;
+}
+
+/* The share beside each colour: "Completed 12%". */
+.tp-key-pct {
+  flex: none;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Maximum: donut | rows | tiles in one 132px band ---- */
@@ -556,7 +593,7 @@
 
 .tp-weekly-skeleton > span {
   flex: 1 1 0;
-  border-radius: 4px 4px 0 0;
+  border-radius: 0.375rem 0.375rem 0.125rem 0.125rem;
   background: var(--color-surface-secondary);
   animation: tp-pulse 1.5s ease-in-out infinite;
 }

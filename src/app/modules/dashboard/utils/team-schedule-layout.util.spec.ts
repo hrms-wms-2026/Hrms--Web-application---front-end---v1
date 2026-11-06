@@ -113,7 +113,8 @@ describe('schedule layout ladder', () => {
 
   it('the timeline head (donut and status tiles) comes once two lines fit under it', () => {
     expect(planScheduleLayout('timeline', 900, rows(3), 8, true).head).toBe(false);
-    const tall = planScheduleLayout('timeline', 900, rows(4), 8, true);
+    expect(planScheduleLayout('timeline', 900, rows(4), 8, true).head).toBe(false);
+    const tall = planScheduleLayout('timeline', 900, rows(5), 8, true);
     expect(tall.head).toBe(true);
     expect(tall.rows).toBeGreaterThanOrEqual(2);
   });

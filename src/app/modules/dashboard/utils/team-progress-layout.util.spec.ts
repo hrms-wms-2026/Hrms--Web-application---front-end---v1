@@ -199,15 +199,15 @@ describe('team-progress-layout.util', () => {
       expect(planTeamProgressLayout('xs', cols(3), rows(3)).miniLegend).toBe('none');
     });
 
-    it('xs: only the donut and completion at 3x3; taller cards add the legend, tiles and View details', () => {
+    it('xs: only the donut and completion at 3x3; taller cards add the legend, then tiles', () => {
       expect(plan(3, 3)).toMatchObject({ legend: false, tileRows: 0, viewDetails: false, listRows: 0 });
       expect(plan(3, 4)).toMatchObject({ legend: true, tileRows: 0, viewDetails: false });
-      expect(plan(3, 5)).toMatchObject({ legend: true, tileRows: 1, viewDetails: true });
+      expect(plan(3, 5)).toMatchObject({ legend: true, tileRows: 1, viewDetails: false });
     });
 
-    it('small: KPI card rows grow with height (one already at 3 rows), then View details', () => {
-      expect(plan(4, 3)).toMatchObject({ tileRows: 1, viewDetails: false, listRows: 0 });
-      expect(plan(4, 4)).toMatchObject({ tileRows: 2, viewDetails: true });
+    it('small: KPI card rows from 4 rows, then View details', () => {
+      expect(plan(4, 3)).toMatchObject({ tileRows: 0, viewDetails: false, listRows: 0 });
+      expect(plan(4, 4)).toMatchObject({ tileRows: 2, viewDetails: false });
       expect(plan(4, 5)).toMatchObject({ tileRows: 2, viewDetails: true });
     });
 
@@ -217,11 +217,11 @@ describe('team-progress-layout.util', () => {
       expect(plan(6, 5).viewDetails).toBe(false);
     });
 
-    it('wide: lists only when there is room under the tiles', () => {
+    it('wide: lists only when there is room under the donut band', () => {
       expect(plan(6, 3).listRows).toBe(0);
       expect(plan(8, 3).listRows).toBe(0);
-      expect(plan(8, 4).listRows).toBe(1);
-      expect(plan(8, 5).listRows).toBeGreaterThan(plan(8, 4).listRows);
+      expect(plan(8, 4).listRows).toBe(2);
+      expect(plan(8, 5).listRows).toBeGreaterThanOrEqual(plan(8, 4).listRows);
       expect(plan(8, 4).weeklyFallbackRows).toBe(0);
     });
 
@@ -234,7 +234,7 @@ describe('team-progress-layout.util', () => {
       expect(plan(8, 8).listRows).toBeGreaterThan(plan(8, 6).listRows);
       // The planned-vs-worked bucket chart takes about two rows of a 12x8 card (2026-11-02 design match).
       expect(plan(12, 8)).toMatchObject({ timeChart: true, timeBand: false });
-      expect(plan(12, 8).listRows).toBeGreaterThanOrEqual(4);
+      expect(plan(12, 8).listRows).toBeGreaterThanOrEqual(3);
       for (const [c, r] of [[4, 6], [8, 6], [12, 8]]) {
         expect(plan(c, r).weeklyFallbackRows).toBeGreaterThanOrEqual(3);
       }
@@ -265,8 +265,9 @@ describe('team progress layout: planned-vs-worked sections (coverage audit)', ()
 
   it('large and maximum add the band, then the chart in its place, then the top-5 workload as they grow', () => {
     expect(planTeamProgressLayout('large', 900, rows(6))).toMatchObject({ timeBand: false, timeChart: false, workloadRows: 0 });
-    expect(planTeamProgressLayout('large', 900, rows(7))).toMatchObject({ timeBand: true, timeChart: false });
-    expect(planTeamProgressLayout('large', 900, rows(8))).toMatchObject({ timeBand: false, timeChart: true, workloadRows: 0 });
+    expect(planTeamProgressLayout('large', 900, rows(7))).toMatchObject({ timeBand: false, timeChart: false });
+    expect(planTeamProgressLayout('large', 900, rows(8))).toMatchObject({ timeBand: true, timeChart: false });
+    expect(planTeamProgressLayout('large', 900, rows(9))).toMatchObject({ timeBand: false, timeChart: true, workloadRows: 0 });
     expect(planTeamProgressLayout('maximum', 1300, rows(11))).toMatchObject({ timeChart: true, workloadRows: 5 });
   });
 

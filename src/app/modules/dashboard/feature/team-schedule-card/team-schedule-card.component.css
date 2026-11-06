@@ -1,5 +1,5 @@
 /* Today's team schedule (2026-11-05 merged-widget design): the Team Attendance card's visual tokens (slate text scale,
-   140px donut). Heights here are the ones SCHEDULE_SECTION_PX budgets with; change both together. */
+   168px donut). Heights here are the ones SCHEDULE_SECTION_PX budgets with; change both together. */
 
 .tsc-off-chip {
   border-radius: 9999px;
@@ -93,50 +93,25 @@
 }
 
 .tsc-donut-value {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 700;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .tsc-donut-of {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   color: var(--color-text-secondary);
 }
 
-/* The donut legend every widget shares: 28px rows of dot, label, value (see DASHBOARD_DONUT_LEGEND_ROW_PX). */
+/* The donut legend every widget shares (the shared donut key, 28px rows; see DASHBOARD_DONUT_LEGEND_ROW_PX). */
 .tsc-legend-list {
-  display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  flex-direction: column;
 }
 
 .tsc-hero--stacked .tsc-legend-list {
   width: 100%;
-}
-
-.tsc-legend-row {
-  display: grid;
-  height: 28px;
-  align-items: center;
-  grid-template-columns: 0.625rem minmax(0, 1fr) auto;
-  column-gap: 0.625rem;
-  font-size: 0.8125rem;
-}
-
-.tsc-legend-label {
-  overflow: hidden;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.tsc-legend-count {
-  text-align: right;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  font-variant-numeric: tabular-nums;
 }
 
 .tsc-dot {

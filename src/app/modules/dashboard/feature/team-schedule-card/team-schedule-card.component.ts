@@ -27,6 +27,8 @@ import { TeamScheduleStore } from '../../state/team-schedule.store';
 import { PlannedActualDayChartComponent } from '../../ui/planned-actual-day-chart/planned-actual-day-chart.component';
 import { PlannedActualWeekChartComponent } from '../../ui/planned-actual-week-chart/planned-actual-week-chart.component';
 import { DASHBOARD_DONUT_PX, donutValueFontPx } from '../../utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { injectHostSize } from '../../utils/host-size.util';
 import { plannedActualTiles, summarizePlannedActual } from '../../utils/planned-actual-format.util';
 import {
@@ -106,6 +108,8 @@ interface LegendRow {
   standalone: true,
   imports: [
     NgTemplateOutlet,
+    DashboardDonutComponent,
+    DonutKeyComponent,
     AvatarComponent,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -178,6 +182,12 @@ export class TeamScheduleCardComponent implements OnInit {
       { key: 'meetings', label: 'Meetings', count: s.meetings, color: SCHEDULE_COLORS.meeting },
     ];
   });
+  /** The donut and its key: today's items by status, each with its share of all of them. */
+  protected readonly donutSlices = computed<DashboardDonutSlice[]>(() =>
+    this.legend().map((row) => ({ key: row.key, label: row.label, value: row.count, color: row.color })),
+  );
+  /** The slice the donut lights (hovered there or on a key row). */
+  protected readonly hovered = signal<string | null>(null);
   protected readonly totalItems = computed(() => {
     const s = this.store.data()?.summary;
     return s ? totalItems(s) : 0;
