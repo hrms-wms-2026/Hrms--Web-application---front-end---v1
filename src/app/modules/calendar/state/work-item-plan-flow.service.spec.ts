@@ -167,4 +167,39 @@ describe('WorkItemPlanFlow', () => {
     expect(createBlock).toHaveBeenCalledWith('t9', slot.startIso, slot.endIso, { quiet: true });
     expect(flow.state()).toEqual({ kind: 'done', taskId: 't9' });
   });
+
+  describe('a plan carried over to later days', () => {
+    const next: CreateSlot = { date: '2026-11-11', startMinutes: 540, endMinutes: 750, startIso: '2026-11-11T09:00:00.000Z', endIso: '2026-11-11T12:30:00.000Z' };
+
+    it('plans every part, in order, on the one item', async () => {
+      const { flow, createTask, createBlock } = setup();
+
+      await flow.createAndPlan('o1', dto, slot, [next]);
+
+      expect(createTask).toHaveBeenCalledTimes(1);
+      expect(createBlock.mock.calls.map((c: unknown[]) => c[1])).toEqual([slot.startIso, next.startIso]);
+      expect(flow.state()).toEqual({ kind: 'done', taskId: 't1' });
+    });
+
+    it('a refused later part says the first is planned, and a retry sends only the rest', async () => {
+      const { flow, createBlock } = setup({ blocks: [true, false, true] });
+
+      await flow.createAndPlan('o1', dto, slot, [next]);
+      expect(flow.state()).toMatchObject({ kind: 'notPlanned', reason: 'the first part is planned, the rest is not. This overlaps another planned block.' });
+
+      await flow.retryPlanning();
+
+      expect(createBlock.mock.calls.map((c: unknown[]) => c[1])).toEqual([slot.startIso, next.startIso, next.startIso]);
+      expect(flow.state()).toEqual({ kind: 'done', taskId: 't1' });
+    });
+
+    it('an approval plans one slot, so the rest is not sent', async () => {
+      const { flow, createTask, createBlock } = setup({ create: of({ approvalRequestId: 'r1' }) });
+
+      await flow.createAndPlan('o1', dto, slot, [next]);
+
+      expect(createTask).toHaveBeenCalledTimes(1);
+      expect(createBlock).not.toHaveBeenCalled();
+    });
+  });
 });

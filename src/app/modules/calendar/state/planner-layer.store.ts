@@ -57,7 +57,8 @@ export const PlannerLayerStore = signalStore(
           patchState(store, { active: false, range: null, focus: null });
           return;
         }
-        patchState(store, { error: plannerErrorMessage(errorCode(err)) });
+        // The planner is on and this read failed (the API restarting, say): stay the Planner and say so, not a plain calendar.
+        patchState(store, { active: true, error: plannerErrorMessage(errorCode(err)) });
       }
     }
 

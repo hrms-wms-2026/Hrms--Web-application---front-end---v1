@@ -109,7 +109,7 @@ describe('MainLayoutComponent tray activation gate', () => {
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+          useValue: { pageSubSidebar: signal(null), pageSubSidebarActions: signal(null), activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
         { provide: FileApiService, useValue: fileApiStub }
@@ -197,7 +197,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+          useValue: { pageSubSidebar: signal(null), pageSubSidebarActions: signal(null), activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
         { provide: FileApiService, useValue: fileApiStub }

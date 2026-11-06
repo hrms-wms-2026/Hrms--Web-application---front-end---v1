@@ -1,4 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
+import { NavigationStateService } from '../../../../layouts/main-layout/nav/navigation-state.service';
+import { openSelect, selectDisplayText } from '../../../../shared/ui/select/select.testing';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -187,10 +189,9 @@ describe('CalendarPageComponent planner layer', () => {
 
     http.expectNone((r) => r.url.startsWith(base));
     expect(q('planner-focus-panel')).toBeNull();
-    expect(q('planner-focus-toggle')).toBeNull();
   });
 
-  it('Day view shows the day totals and the Focus panel, which cannot be closed there', async () => {
+  it('Day view shows the day totals and the Task list', async () => {
     setup();
     fixture.componentInstance.setView('day');
     await settle();
@@ -200,9 +201,7 @@ describe('CalendarPageComponent planner layer', () => {
     expect(totals).toContain(workingDay ? 'Working hours 7h' : 'Working hours 0m');
     expect(totals).toContain('Actual / attendance 45m / 2h');
     expect(q('planner-focus-panel')).not.toBeNull();
-    expect(q('planner-focus-close')).toBeNull();
-    expect(q('planner-focus-toggle')!.textContent).toContain('Task list');
-    expect(q('planner-focus-count')!.textContent!.trim()).toBe('3');
+    expect(q('queue-total')!.textContent!.trim()).toBe('3');
   });
 
   it('the period label opens a date picker, and picking a date moves the week there', async () => {
@@ -240,23 +239,46 @@ describe('CalendarPageComponent planner layer', () => {
     expect(q('planner-header')!.textContent!.trim()).toBe('Planner');
   });
 
-  it('Week view shows the panel until it is closed, and remembers that', async () => {
-    setup();
-    fixture.componentInstance.setView('week');
-    await settle();
-    expect(q('planner-focus-panel')).not.toBeNull();
+  describe('Task list placement', () => {
+    const nav = () => TestBed.inject(NavigationStateService);
+    const original = window.matchMedia;
+    afterEach(() => { window.matchMedia = original; });
 
-    q('planner-focus-close')!.click();
-    fixture.detectChanges();
+    it('goes in the shared sub-sidebar on a wide screen, leaves it for My team, and clears it with the page', async () => {
+      window.matchMedia = vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) as unknown as typeof window.matchMedia;
+      setup(true, true);
+      await settle();
 
-    expect(q('planner-focus-panel')).toBeNull();
-    expect(localStorage.getItem('planner.focusOpen')).toBe('false');
-    q('planner-focus-toggle')!.click();
-    fixture.detectChanges();
-    expect(q('planner-focus-panel')).not.toBeNull();
+      expect(nav().pageSubSidebar()).not.toBeNull();
+      expect(nav().pageSubSidebarActions()).not.toBeNull();
+      expect(q('planner-focus-panel')).toBeNull();
+
+      fixture.componentInstance.setScope('team');
+      fixture.detectChanges();
+      TestBed.tick();
+      expect(nav().pageSubSidebar()).toBeNull();
+
+      fixture.componentInstance.setScope('me');
+      fixture.detectChanges();
+      TestBed.tick();
+      expect(nav().pageSubSidebar()).not.toBeNull();
+
+      fixture.destroy();
+      expect(nav().pageSubSidebar()).toBeNull();
+      expect(nav().pageSubSidebarActions()).toBeNull();
+    });
+
+    it('stays on the page where the layout has no sub-sidebar', async () => {
+      window.matchMedia = vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })) as unknown as typeof window.matchMedia;
+      setup();
+      await settle();
+
+      expect(nav().pageSubSidebar()).toBeNull();
+      expect(q('planner-focus-panel')).not.toBeNull();
+    });
   });
 
-  it('Week view leaves out rest days until Show weekend is on', async () => {
+  it('Work week leaves out rest days until Show weekend, at the end of the view list, is on', async () => {
     setup();
     fixture.componentInstance.setView('week');
     await settle();
@@ -264,12 +286,21 @@ describe('CalendarPageComponent planner layer', () => {
     const grid = () => fixture.debugElement.query((de) => de.name === 'app-calendar-hour-grid').componentInstance;
 
     expect(grid().days().length).toBe(5);
-    expect(q('planner-show-weekend')!.getAttribute('role')).toBe('switch');
-    expect(q('planner-show-weekend')!.getAttribute('aria-checked')).toBe('false');
-    q('planner-show-weekend')!.click();
+    expect(selectDisplayText(q('calendar-view-select')!)).toBe('Work week');
+    const options = openSelect(q('calendar-view-select')!, () => fixture.detectChanges());
+    expect(options.map((o) => o.textContent!.trim())).toEqual(['Month', 'Work week', 'Day']);
+
+    const toggle = () => document.querySelector<HTMLElement>('[data-testid="planner-show-weekend"]')!;
+    expect(toggle().textContent!.trim()).toBe('Show weekend');
+    expect(toggle().getAttribute('role')).toBe('switch');
+    expect(toggle().getAttribute('aria-checked')).toBe('false');
+    toggle().click();
     fixture.detectChanges();
+
     expect(grid().days().length).toBe(7);
-    expect(q('planner-show-weekend')!.getAttribute('aria-checked')).toBe('true');
+    expect(toggle().getAttribute('aria-checked')).toBe('true');
+    expect(selectDisplayText(q('calendar-view-select')!)).toBe('Week');
+    expect(localStorage.getItem('planner.showWeekend')).toBe('true');
     expect(week()).toBeTruthy();
   });
 
@@ -299,20 +330,6 @@ describe('CalendarPageComponent planner layer', () => {
 
     const chip = fixture.nativeElement.querySelector(`[data-date="${today}"] [data-testid="planner-month-summary"]`) as HTMLElement;
     expect(chip.textContent!.replace(/\s+/g, ' ').trim()).toBe('2 tasks · 1 meeting · 2h 30m');
-  });
-
-  it('Agenda lists planned blocks among the events, in time order', async () => {
-    setup();
-    const today = fixture.componentInstance.dayDate();
-    events.set([{ id: 'e1', title: 'Standup', startDate: `${today}T09:30:00Z`, endDate: `${today}T09:45:00Z`, isAllDay: false,
-      participants: null } as CalendarEventResponse]);
-    blocksFor = (d) => (d === today ? [block('a', d, '09:00', '09:30'), block('b', d, '10:00', '11:00')] : []);
-    fixture.componentInstance.setView('agenda');
-    await settle();
-
-    const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="calendar-agenda-row"], [data-testid="planner-agenda-block"]'))
-      .map((e) => Array.from((e as HTMLElement).querySelectorAll('span')).map((s) => s.textContent!.trim()).filter(Boolean).join(' '));
-    expect(rows.slice(0, 3)).toEqual(['09:00 Planned task Task a', '09:30 Standup', '10:00 Planned task Task b']);
   });
 
   it('writes block times in the planner zone even before the calendar knows it', async () => {
@@ -376,15 +393,31 @@ describe('CalendarPageComponent planner layer', () => {
       expect(fixture.componentInstance.createSlot()).toMatchObject({ date: editableDate(), startMinutes: 540, endMinutes: 600 });
     });
 
-    it('slot click when the planner is off opens the event form', async () => {
+    it('slot click when the planner is off opens the popover, with no Work item tab', async () => {
       setup(false);
       await settle();
 
       fixture.componentInstance.onSlotClick({ date: '2026-11-10', hour: 9 });
       fixture.detectChanges();
 
-      expect(q('create-popover-panel')).toBeNull();
-      expect(fixture.componentInstance.formOpen()).toBe(true);
+      expect(q('create-popover-panel')).not.toBeNull();
+      expect(fixture.componentInstance.formOpen()).toBe(false);
+      expect(fixture.componentInstance.createTabs()).not.toContain('workItem');
+    });
+
+    it('New event late at night opens the popover at the day\'s last hour', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-04T23:40:00Z'));
+      try {
+        setup();
+        await settle();
+
+        fixture.componentInstance.onNewEvent();
+
+        expect(fixture.componentInstance.createSlot()).toMatchObject({ date: '2026-11-04', startMinutes: 1380, endMinutes: 1440 });
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('drag range fills start and end', async () => {
@@ -433,24 +466,10 @@ describe('CalendarPageComponent planner layer', () => {
       expect(fixture.componentInstance.createSlot()).toBeNull();
     });
 
-    it('More options on the Event tab opens the event form with the draft', async () => {
-      setup();
-      await settle();
-      fixture.componentInstance.onSlotClick({ date: editableDate(), hour: 9 });
-      const draft = { title: 'Doctor', description: null, start: `${editableDate()}T09:00`, end: `${editableDate()}T10:00`,
-        isAllDay: false, timezone: 'UTC', repeat: 'none' as const, location: 'Clinic' };
-
-      fixture.componentInstance.onEventMoreOptions(draft);
-
-      expect(fixture.componentInstance.createSlot()).toBeNull();
-      expect(fixture.componentInstance.formOpen()).toBe(true);
-      expect(fixture.componentInstance.eventPrefill()).toEqual(draft);
-    });
-
     describe('Work item More options (full form)', () => {
       const slotOf = (date: string) => ({ date, startMinutes: 540, endMinutes: 660, startIso: `${date}T09:00:00.000Z`, endIso: `${date}T11:00:00.000Z` });
-      const draftOf = (date: string) => ({ title: 'Fix login bug', projectId: 'p1', objectiveId: 'o1', categoryId: 'c2',
-        priority: 'high' as const, estimatedHours: 8, dueDate: null, slot: slotOf(date) });
+      const draftOf = (date: string) => ({ description: null, title: 'Fix login bug', projectId: 'p1', objectiveId: 'o1', categoryId: 'c2',
+        priority: 'high' as const, estimatedHours: 8, dueDate: null, slot: slotOf(date), continuation: [] });
       const flow = () => fixture.debugElement.injector.get(WorkItemPlanFlow);
 
       it('More options loads the project, then opens the form with projectId, prefillModuleId and prefill', async () => {
@@ -476,7 +495,7 @@ describe('CalendarPageComponent planner layer', () => {
         await fixture.componentInstance.onWorkItemFormCreated('t-another');
 
         expect(plan).toHaveBeenCalledTimes(1);
-        expect(plan).toHaveBeenCalledWith('t-new', '', slotOf(editableDate()));
+        expect(plan).toHaveBeenCalledWith('t-new', '', slotOf(editableDate()), []);
       });
 
       it('created(\'\') (sent for approval) plans nothing', async () => {
@@ -709,7 +728,7 @@ describe('CalendarPageComponent planner layer', () => {
 
       expect(fixture.componentInstance.createSlot()).toBeNull();
       expect(fixture.nativeElement.querySelector('app-team-planner')).not.toBeNull();
-      expect(q('calendar-view-week')).toBeNull();
+      expect(q('calendar-view-select')).toBeNull();
       expect(teamReads().length).toBe(1);
 
       q('planner-scope-me')!.click();

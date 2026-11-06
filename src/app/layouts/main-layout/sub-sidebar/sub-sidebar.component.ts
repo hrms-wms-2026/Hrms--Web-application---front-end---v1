@@ -1,3 +1,4 @@
+import { Portal, PortalModule } from '@angular/cdk/portal';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavItem } from '../nav/nav-item.model';
@@ -11,7 +12,7 @@ import { NavigationStateService } from '../nav/navigation-state.service';
 @Component({
   selector: 'app-sub-sidebar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, PortalModule],
   templateUrl: './sub-sidebar.component.html',
   styleUrl: './sub-sidebar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -21,6 +22,10 @@ export class SubSidebarComponent {
 
   sectionLabel = input.required<string>();
   items = input.required<readonly NavItem[]>();
+  /** A page's own content, shown under the links. */
+  content = input<Portal<unknown> | null>(null);
+  /** A page's own buttons, beside the collapse button. */
+  actions = input<Portal<unknown> | null>(null);
 
   /** Consecutive items with the same section form one titled group; items without a section form an untitled one. */
   readonly groups = computed(() => {

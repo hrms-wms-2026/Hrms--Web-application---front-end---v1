@@ -108,15 +108,26 @@
       <small class="nlw-counter">{{ (draft().reason ?? '').length }} / {{ reasonMaxLength }}</small>
     </div>
 
-    @if (selectedLeaveType()?.requiresDocument) {
-      <p class="nlw-muted" data-testid="document-note">
-        @if (selectedLeaveType()?.documentRequiredAfterHours; as hours) { A supporting document is required when this leave is longer than {{ hours }} hours. } @else { A supporting document is required for this leave. }
-      </p>
-      <label class="nlw-field">
-        <span class="ui-field-label">Supporting document</span>
-        <input type="file" data-testid="document-input" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,application/pdf,image/png,image/jpeg" [disabled]="uploadingDocument" (change)="onDocumentPicked($event)" />
-      </label>
-      @if (uploadingDocument) { <p class="nlw-muted">Uploading…</p> }
+    <div class="nlw-field">
+      <span class="ui-field-label" id="nlw-document-label">
+        Supporting document
+        @if (documentRequired()) {
+          <span class="ui-field-required" data-testid="document-required" aria-hidden="true">*</span>
+        } @else {
+          <span class="nlw-optional" data-testid="document-optional">(optional)</span>
+        }
+      </span>
+      <input #documentInput hidden type="file" data-testid="document-input" aria-labelledby="nlw-document-label" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,application/pdf,image/png,image/jpeg,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" [disabled]="uploadingDocument" (change)="onDocumentPicked($event)" />
+      <button type="button" class="nlw-upload" data-testid="document-upload" [disabled]="uploadingDocument" (click)="documentInput.click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+        <span>{{ uploadingDocument ? 'Uploading…' : 'Upload a document' }}</span>
+        <small>PDF, image or Word, up to 25 MB</small>
+      </button>
+      @if (selectedLeaveType()?.requiresDocument && !previewError) {
+        <p class="nlw-muted" data-testid="document-note">
+          @if (selectedLeaveType()?.documentRequiredAfterHours; as hours) { A supporting document is required when this leave is longer than {{ hours }} hours. } @else { A supporting document is required for this leave. }
+        </p>
+      }
       @if (documentUploadError) { <p class="nlw-error">{{ documentUploadError }}</p> }
       @for (doc of uploadedDocuments; track doc.id) {
         <p class="nlw-file">
@@ -124,7 +135,7 @@
           <app-button variant="secondary" size="sm" (pressed)="documentRemoved.emit(doc.id)">Remove</app-button>
         </p>
       }
-    }
+    </div>
 
     @if (previewError) {
       <p class="nlw-error" data-testid="preview-error">{{ previewError }}</p>

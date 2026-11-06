@@ -1,6 +1,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
+import { selectDisplayText } from '../../../../shared/ui/select/select.testing';
 import { CalendarEventStore } from '../../state/calendar-event.store';
 import { eventCreateRequest } from '../../utils/event-draft';
 import { EventTabComponent } from './event-tab.component';
@@ -43,10 +45,43 @@ describe('EventTabComponent', () => {
     expect(created).toHaveBeenCalledTimes(1);
   });
 
+  it('a new date moves the event, keeping its times', async () => {
+    const { fixture, q, createEvent } = setup();
+
+    fixture.debugElement.query(By.css('[data-testid="event-tab-date"]')).triggerEventHandler('valueChange', '2026-11-14');
+    q('event-tab-save').click();
+    await fixture.whenStable();
+
+    expect(createEvent).toHaveBeenCalledWith(eventCreateRequest({
+      title: 'Doctor', description: null, start: '2026-11-14T09:00', end: '2026-11-14T11:00', isAllDay: false,
+      timezone: 'Asia/Colombo', repeat: 'none', location: null,
+    }));
+  });
+
   it('shows the dragged time in the start and end inputs', () => {
     const { q } = setup();
     expect((q('event-tab-start') as HTMLInputElement).value).toBe('09:00');
     expect((q('event-tab-end') as HTMLInputElement).value).toBe('11:00');
+  });
+
+  it('Repeat reads "Repeat" until one is chosen, and is saved', () => {
+    const { fixture, q } = setup();
+    expect(selectDisplayText(q('event-tab-repeat'))).toBe('Repeat');
+
+    fixture.componentInstance.setRepeat('weekly');
+    fixture.detectChanges();
+
+    expect(selectDisplayText(q('event-tab-repeat'))).toBe('Weekly');
+    expect(fixture.componentInstance.draft().repeat).toBe('weekly');
+  });
+
+  it('shows the planner zone, and a picked zone is saved', () => {
+    const { fixture, q } = setup();
+    expect(selectDisplayText(q('event-tab-timezone'))).toBe('Asia/Colombo');
+
+    fixture.componentInstance.pickedZone.set('Europe/London');
+
+    expect(fixture.componentInstance.draft().timezone).toBe('Europe/London');
   });
 
   it('Save needs a title', () => {
@@ -70,16 +105,4 @@ describe('EventTabComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('People or a video call');
   });
 
-  it('More options emits the full EventDraft', () => {
-    const { fixture, q } = setup();
-    const spy = vi.fn();
-    fixture.componentInstance.moreOptions.subscribe(spy);
-    (q('event-tab-repeat') as HTMLSelectElement).value = 'weekly';
-    q('event-tab-repeat').dispatchEvent(new Event('change'));
-    q('event-tab-more').click();
-    expect(spy).toHaveBeenCalledWith({
-      title: 'Doctor', description: null, start: '2026-11-10T09:00', end: '2026-11-10T11:00', isAllDay: false,
-      timezone: 'Asia/Colombo', repeat: 'weekly', location: null,
-    });
-  });
 });

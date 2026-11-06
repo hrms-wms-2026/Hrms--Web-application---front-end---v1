@@ -50,7 +50,7 @@ export type TaskFormMode = 'create' | 'edit';
 
 /** Create-mode values handed over by the Planner create popover's Work item tab ("More options"). */
 export interface TaskFormPrefill {
-  title: string; categoryId: string | null; priority: WorkTask['priority'] | null; estimatedHours: number | null;
+  title: string; description?: string | null; categoryId: string | null; priority: WorkTask['priority'] | null; estimatedHours: number | null;
   dueDate: string | null; assigneeEmployeeId: string | null;
 }
 /** The system key of a project's "Meeting" category (TaskCategorySystemKeys.Meeting on the backend). */
@@ -2880,6 +2880,7 @@ export class TaskFormModalComponent {
       const prefill = this.prefill();
       if (prefill && this.currentEffectiveMode() === 'create') {
         this.title.set(prefill.title);
+        if (prefill.description) this.description.set(prefill.description);
         if (prefill.categoryId && this.taskCategories().some((c) => c.id === prefill.categoryId)) this.categoryId.set(prefill.categoryId);
         if (prefill.priority) this.priority.set(prefill.priority);
         this.estimatedHours.set(prefill.estimatedHours);

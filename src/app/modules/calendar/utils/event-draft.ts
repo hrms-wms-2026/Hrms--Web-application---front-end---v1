@@ -4,7 +4,6 @@ import { RecurrenceFrequency, buildRecurrenceRule } from './recurrence-rule.util
 
 /**
  * A personal event as the Planner create popover holds it: wall-clock `start`/`end` ("YYYY-MM-DDTHH:mm") in `timezone`.
- * The same draft prefills the full event form ("More options").
  */
 export interface EventDraft {
   title: string;

@@ -1,3 +1,4 @@
+import { Portal } from '@angular/cdk/portal';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
@@ -169,7 +170,12 @@ export class NavigationStateService {
     return this.navigationCount > 1;
   }
 
-  readonly hasSubSidebar = computed(() => this.activeChildren().length > 1 || !!this.activeItem()?.customSubSidebar);
+  /** What the open page shows in the sub-sidebar, for a page whose list needs the page's own state (the Planner's Task list). */
+  readonly pageSubSidebar = signal<Portal<unknown> | null>(null);
+  /** The page's buttons in the sub-sidebar header, beside the collapse button. */
+  readonly pageSubSidebarActions = signal<Portal<unknown> | null>(null);
+
+  readonly hasSubSidebar = computed(() => this.activeChildren().length > 1 || !!this.activeItem()?.customSubSidebar || this.pageSubSidebar() !== null);
 
   /** The active module's own sub-sidebar, when it renders one instead of child links. */
   readonly customSubSidebar = computed(() => this.activeItem()?.customSubSidebar ?? null);

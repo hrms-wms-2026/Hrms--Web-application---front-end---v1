@@ -38,11 +38,13 @@ export class WorkItemPlanFlow {
 
   private readonly current = signal<PlanFlowState>({ kind: 'idle' });
   readonly state = this.current.asReadonly();
-  private planned: { taskId: string; shortId: string; slot: CreateSlot } | null = null;
+  /** `slots` are the blocks still to make, in order: a block leaves it once it is planned, so a retry sends only the rest. */
+  private planned: { taskId: string; shortId: string; slots: readonly CreateSlot[]; madeOne: boolean } | null = null;
   /** The assign failed, so a retry assigns again before the block (a block needs the item to be mine). */
   private assignPending = false;
 
-  async createAndPlan(objectiveId: string, dto: CreateTaskRequestDto, slot: CreateSlot): Promise<void> {
+  /** `rest` is planned after `slot`, on later days. An approval plans `slot` only. */
+  async createAndPlan(objectiveId: string, dto: CreateTaskRequestDto, slot: CreateSlot, rest: readonly CreateSlot[] = []): Promise<void> {
     // Only a fresh start or a refused create may send it; every other state means the item exists or may exist.
     const kind = this.current().kind;
     if (kind !== 'idle' && kind !== 'error') return;
@@ -63,7 +65,7 @@ export class WorkItemPlanFlow {
       this.current.set({ kind: 'pending' });
       return;
     }
-    this.planned = { taskId: created.id, shortId: created.shortId, slot };
+    this.planned = { taskId: created.id, shortId: created.shortId, slots: [slot, ...rest], madeOne: false };
     this.assignPending = !!me;
     await this.assignThenPlan();
   }
@@ -76,9 +78,9 @@ export class WorkItemPlanFlow {
   }
 
   /** Plans an item created elsewhere (the full work item form, "More options"). */
-  async planExisting(taskId: string, shortId: string, slot: CreateSlot): Promise<void> {
+  async planExisting(taskId: string, shortId: string, slot: CreateSlot, rest: readonly CreateSlot[] = []): Promise<void> {
     if (this.current().kind === 'busy') return;
-    this.planned = { taskId, shortId, slot };
+    this.planned = { taskId, shortId, slots: [slot, ...rest], madeOne: false };
     this.current.set({ kind: 'busy' });
     await this.plan();
   }
@@ -105,11 +107,19 @@ export class WorkItemPlanFlow {
   }
 
   private async plan(): Promise<void> {
-    const { taskId, shortId, slot } = this.planned!;
-    // Quiet: whoever runs the flow shows a refusal once, from the notPlanned state.
-    const ok = await this.planner.createBlock(taskId, slot.startIso, slot.endIso, { quiet: true });
-    this.current.set(ok
-      ? { kind: 'done', taskId }
-      : { kind: 'notPlanned', taskId, shortId, reason: this.planner.error() ?? 'It could not be planned.' });
+    const planned = this.planned!;
+    const { taskId, shortId } = planned;
+    for (const slot of planned.slots) {
+      // Quiet: whoever runs the flow shows a refusal once, from the notPlanned state.
+      const ok = await this.planner.createBlock(taskId, slot.startIso, slot.endIso, { quiet: true });
+      if (!ok) {
+        const reason = this.planner.error() ?? 'It could not be planned.';
+        this.current.set({ kind: 'notPlanned', taskId, shortId, reason: planned.madeOne ? `the first part is planned, the rest is not. ${reason}` : reason });
+        return;
+      }
+      planned.slots = planned.slots.slice(1);
+      planned.madeOne = true;
+    }
+    this.current.set({ kind: 'done', taskId });
   }
 }

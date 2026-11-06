@@ -40,6 +40,25 @@ describe('timezone.util', () => {
       expect(new Date(iso).toISOString()).toBe('2026-09-01T09:00:00.000Z');
     });
 
+    it('keeps the date for an evening time whose UTC reading falls on the next local day', () => {
+      expect(localPartsToUtcIso('2026-11-06', '20:30', 'Asia/Colombo')).toBe('2026-11-06T15:00:00.000Z');
+      expect(localPartsToUtcIso('2026-11-06', '23:45', 'Asia/Colombo')).toBe('2026-11-06T18:15:00.000Z');
+    });
+
+    it('keeps the date for a morning time west of UTC', () => {
+      expect(localPartsToUtcIso('2026-11-06', '02:00', 'America/New_York')).toBe('2026-11-06T07:00:00.000Z');
+    });
+
+    it('handles midnight on both sides of UTC', () => {
+      expect(localPartsToUtcIso('2026-11-06', '00:00', 'Asia/Colombo')).toBe('2026-11-05T18:30:00.000Z');
+      expect(localPartsToUtcIso('2026-11-06', '00:00', 'America/New_York')).toBe('2026-11-06T05:00:00.000Z');
+    });
+
+    it('crosses a daylight saving change', () => {
+      expect(localPartsToUtcIso('2026-03-07', '23:00', 'America/New_York')).toBe('2026-03-08T04:00:00.000Z');
+      expect(localPartsToUtcIso('2026-03-08', '12:00', 'America/New_York')).toBe('2026-03-08T16:00:00.000Z');
+    });
+
     it('round-trips through utcIsoToLocalParts', () => {
       const original = '2026-03-10T15:45:00Z';
       const { date, time } = utcIsoToLocalParts(original, 'America/New_York');

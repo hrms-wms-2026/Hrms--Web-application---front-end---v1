@@ -80,6 +80,17 @@ describe('PlannerLayerStore', () => {
     expect(availability.markAvailable).toHaveBeenCalledWith(false);
   });
 
+  it('stays the planner when a load fails for any other reason, and keeps the error', async () => {
+    const work = store.load('2026-11-02', '2026-11-08');
+    http.expectOne((r) => r.url === `${base}/me/range`).flush(null, { status: 500, statusText: 'Down' });
+    http.expectOne(`${base}/me/focus`).flush(null, { status: 500, statusText: 'Down' });
+    await work;
+
+    expect(store.active()).toBe(true);
+    expect(store.error()).toBeTruthy();
+    expect(availability.markAvailable).not.toHaveBeenCalled();
+  });
+
   it('refetches the last range after a write', async () => {
     await loadWeek();
 
