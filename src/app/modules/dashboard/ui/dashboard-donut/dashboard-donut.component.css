@@ -15,11 +15,20 @@
   stroke: var(--color-surface-secondary);
 }
 
-/* Hovering a slice lifts it and fades the others. */
+/* Hovering a slice lifts it outward and fades the others. */
 .dd-arc {
+  transform-box: view-box;
+  transform-origin: center;
   transition:
     opacity 150ms ease,
-    stroke-width 150ms ease;
+    transform 180ms ease;
+}
+
+/* A 'transparent' slice is the unfilled rest of a progress ring (Weekly Work Progress): drawn in the track colour,
+   rounded and spaced like the others. CSS wins over the slice's own fill/stroke attributes. */
+.dd-arc--rest {
+  fill: var(--color-surface-secondary);
+  stroke: var(--color-surface-secondary);
 }
 
 .dd-svg--hover .dd-arc {
@@ -28,7 +37,26 @@
 
 .dd-svg--hover .dd-arc--on {
   opacity: 1;
-  stroke-width: 7;
+  transform: scale(1.045);
+}
+
+/* A card's refresh replay (dashboard-motion.css) restarts this no-op animation; the component hears it start and
+   grows the slices in again. */
+:host-context(.dash-replay-a) .dd-svg {
+  animation: dd-replay-a 1ms;
+}
+:host-context(.dash-replay-b) .dd-svg {
+  animation: dd-replay-b 1ms;
+}
+@keyframes dd-replay-a {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dd-replay-b {
+  to {
+    opacity: 1;
+  }
 }
 
 .dd-slot {

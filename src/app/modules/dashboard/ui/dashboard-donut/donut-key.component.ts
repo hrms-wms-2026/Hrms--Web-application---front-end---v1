@@ -22,7 +22,7 @@ export type DonutKeyVariant = 'list' | 'compact' | 'wrap' | 'chips';
   templateUrl: './donut-key.component.html',
   styleUrl: './donut-key.component.css',
   host: { class: 'block min-w-0' },
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DonutKeyComponent {
   readonly slices = input.required<readonly DashboardDonutSlice[]>();

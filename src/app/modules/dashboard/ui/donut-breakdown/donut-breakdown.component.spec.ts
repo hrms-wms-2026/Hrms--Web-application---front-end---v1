@@ -54,6 +54,10 @@ describe('DonutBreakdownComponent', () => {
   it('a single slice closes the ring', () => {
     const { el } = setup([SLICES[0]]);
 
-    expect(arc(el, 'worked')!.getAttribute('stroke-dasharray')).toBe('100 0');
+    // A lone slice is the whole ring with no gap: an outer and an inner circle, filled even-odd, no rounding stroke.
+    const ring = arc(el, 'worked')!;
+    expect(ring.getAttribute('fill-rule')).toBe('evenodd');
+    expect(ring.getAttribute('stroke-width')).toBe('0');
+    expect(ring.getAttribute('d')!.match(/M /g)).toHaveLength(2);
   });
 });

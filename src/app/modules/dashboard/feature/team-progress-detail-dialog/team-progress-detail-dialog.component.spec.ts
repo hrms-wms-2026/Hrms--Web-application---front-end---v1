@@ -186,7 +186,7 @@ describe('TeamProgressDetailDialogComponent', () => {
   it('hovering a donut slice or a legend row puts that status in the donut centre', () => {
     openWith();
     const hover = () => q('tp-donut')!.querySelector('[data-testid="donut-hover"]');
-    const slice = q('tp-donut')!.querySelector('circle.dd-arc') as SVGCircleElement;
+    const slice = q('tp-donut')!.querySelector('.dd-arc') as SVGPathElement;
     slice.dispatchEvent(new Event('mouseenter'));
     fixture.detectChanges();
     expect(hover()?.querySelector('.dd-value')?.textContent?.trim()).toBe('50 h');
