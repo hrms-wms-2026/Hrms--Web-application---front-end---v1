@@ -294,4 +294,16 @@ describe('team progress layout: planned-vs-worked sections (coverage audit)', ()
       expect(planTeamProgressLayout(mode, 400, rows(8))).toMatchObject({ timeBand: false, timeChart: false, timeCallout: false, workloadRows: 0 });
     }
   });
+
+  it('budgets one taller summary-cards row in place of the small and medium views tiles when asked', () => {
+    // small 424 x 420: two rows of KPI cards, or one 140px row of summary cards.
+    expect(planTeamProgressLayout('small', 424, 420).tileRows).toBe(2);
+    expect(planTeamProgressLayout('small', 424, 420, 140).tileRows).toBe(1);
+    expect(planTeamProgressLayout('small', 424, 400, 140).tileRows).toBe(0);
+    // medium 642 x 420: the cards row fits where the extra tiles were.
+    expect(planTeamProgressLayout('medium', 642, 420, 140).tileRows).toBe(1);
+    expect(planTeamProgressLayout('medium', 642, 400, 140).tileRows).toBe(0);
+    // Other views keep their own tiles: the cards row never replaces them.
+    expect(planTeamProgressLayout('xs', 315, 528, 140).tileRows).toBe(0);
+  });
 });

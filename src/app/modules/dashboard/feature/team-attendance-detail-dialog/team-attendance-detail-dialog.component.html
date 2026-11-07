@@ -52,10 +52,10 @@
       </div>
 
       <!-- All five period tiles on one row. -->
-      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Period attendance" />
+      <app-kpi-tiles data-section="summary" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Period attendance" />
 
       <div class="tad-charts">
-        <section class="tad-panel">
+        <section class="tad-panel" data-section="trend">
           <app-attendance-day-chart
             class="tad-chart"
             heading="Daily attendance"
@@ -64,7 +64,7 @@
             [points]="data.trend"
           />
         </section>
-        <section class="tad-panel tad-departments" data-testid="tad-departments">
+        <section class="tad-panel tad-departments" data-testid="tad-departments" data-section="departments">
           <p class="tad-title">By department</p>
           @if (departmentBars().length === 0) {
             <p class="tad-muted">No attendance to compare.</p>
@@ -90,7 +90,7 @@
         </section>
       </div>
 
-      <section class="tad-panel">
+      <section class="tad-panel" data-section="ranking">
         <div class="tad-table-head">
           <p class="tad-title">Employee ranking <span class="tad-muted">· best attendance rate first</span></p>
           <div class="tad-table-actions">

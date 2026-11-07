@@ -21,6 +21,7 @@ import {
   percentOf
 } from '../../utils/team-progress-format.util';
 import {
+  TEAM_PROGRESS_CARD_CHROME,
   TeamProgressMode,
   TeamProgressPlan,
   planTeamProgressLayout,
@@ -29,6 +30,12 @@ import {
 import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
 import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
+import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
+import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';
+import { SummaryCardModel } from '../../models/summary-card.model';
+import { teamProgressSummaryCards } from '../../utils/team-progress-summary-cards.util';
+import { SUMMARY_CARD_ROWS } from '../../utils/team-attendance-summary-cards.util';
 import { ProjectHoursChartComponent } from '../../ui/project-hours-chart/project-hours-chart.component';
 import { orderProjectsForChart } from '../../utils/project-hours-chart.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
@@ -144,6 +151,9 @@ function storePeriod(period: LedProgressPeriod): void {
 
 /** Views that show the weekly completion chart. */
 const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['wide', 'tall', 'large', 'maximum']);
+/** The 2-row strip's card positions that need their own data: weekly completion is the first, the members behind the fourth. */
+const WEEKLY_CARD_POSITION = 1;
+const BEHIND_CARD_POSITION = 4;
 
 const EMPTY_PLAN: TeamProgressPlan = {
   miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
@@ -162,7 +172,7 @@ const EMPTY_PLAN: TeamProgressPlan = {
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [IconComponent, DashboardDonutComponent, DonutKeyComponent, TeamProgressTimeComponent, ProjectHoursChartComponent,
+  imports: [IconComponent, DashboardDonutComponent, DonutKeyComponent, DashboardSummaryStripComponent, DashboardSummaryRowComponent, TeamProgressTimeComponent, ProjectHoursChartComponent,
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -199,12 +209,43 @@ export class TeamProgressCardComponent implements OnInit {
   /** The donut slice (or legend row) under the pointer: the shared donut lights it and reads it in the centre. */
   protected readonly hoveredStatus = signal<string | null>(null);
   /** Optional sections and list rows the current view has room for. */
-  readonly plan = signal<TeamProgressPlan>(EMPTY_PLAN);
+  /** The last measured host size: the layout below follows it and the loaded data. */
+  private readonly size = signal<{ width: number; height: number } | null>(null);
+  /** The sections at the current size. A taller small or medium view puts two summary cards of what it is not already
+   * showing in its tiles' place, budgeted at the cards' height; without room or two such cards it keeps the tiles. */
+  private readonly layout = computed(() => {
+    const size = this.size();
+    const mode = this.mode();
+    if (!size) return { plan: EMPTY_PLAN, cards: [] as SummaryCardModel[] };
+    const overdue = (this.store.data()?.overdueTotal ?? 0) > 0;
+    return withSummaryRow(
+      (rowPx) => {
+        const plan = planTeamProgressLayout(mode, size.width, size.height, rowPx);
+        return { ...plan, tiles: (mode === 'small' || mode === 'medium') && plan.tileRows > 0 };
+      },
+      this.summaryCards(),
+      (plan) => shownProgressCards(mode, plan, overdue),
+      summaryRowCount(size.width - TEAM_PROGRESS_CARD_CHROME.width)
+    );
+  });
+  readonly plan = computed<TeamProgressPlan>(() => this.layout().plan, { equal: samePlan });
+  /** Taller small / medium views: the summary cards in the tiles' place (empty: the tiles). */
+  protected readonly rowCards = computed(() => this.layout().cards);
+  /** Plain booleans for the data effects, so they re-run only when these change (not on every card list). */
+  private readonly weeklyInRow = computed(() => this.rowCards().some((c) => c.id === 'tp-weekly'));
+  private readonly behindInRow = computed(() => this.rowCards().some((c) => c.id === 'tp-behind'));
   /** Rendered card width, rounded to 100px steps so it only changes the layout at those steps. */
   protected readonly widthStep = signal(0);
   /** Placeholder bar heights (%) for the weekly chart skeleton. */
   protected readonly skeletonBars = [40, 65, 30, 80, 55, 70, 45, 85, 60, 35];
   readonly detailOpen = signal(false);
+  /** The popup section a summary card asked for (null: the top). */
+  readonly detailSection = signal<string | null>(null);
+  /** mini: how many summary cards the 2-row strip shows. */
+  protected readonly shownCards = signal(0);
+  /** The members furthest behind (sort 'completionRate'), loaded once their summary card is shown. */
+  private readonly behind = signal<{ for: LedWorkProgressResponse; period: LedProgressPeriod; rows: LedEmployeeProgress[] | null; error: boolean } | null>(null);
+  private behindSub: Subscription | null = null;
   private timeRequestedFor: { data: LedWorkProgressResponse; period: LedTimePeriod } | null = null;
 
   /** The period switch: 'all' is the bootstrap led-progress payload; week / month use the period endpoint. */
@@ -228,6 +269,8 @@ export class TeamProgressCardComponent implements OnInit {
    * not tied to the period switch. A failure hides the section and gives its space to the lists. */
   private readonly weekly = signal<{ for: LedWorkProgressResponse; payload: LedWeeklyCompletion | null } | null>(null);
   private weeklyRequestedFor: LedWorkProgressResponse | null = null;
+  /** Bumped by Try again on the weekly summary card, to fetch weekly completion again. */
+  private readonly weeklyRetry = signal(0);
   private weeklySub: Subscription | null = null;
 
   /** The weekly payload for the current data load; null while loading or after a failure. */
@@ -266,7 +309,9 @@ export class TeamProgressCardComponent implements OnInit {
     effect(() => {
       const mode = this.mode();
       const data = this.store.data();
-      if (!WEEKLY_MODES.has(mode) || !data || this.weeklyRequestedFor === data) return;
+      this.weeklyRetry(); // Try again on the weekly card re-runs this effect.
+      const wanted = WEEKLY_MODES.has(mode) || (mode === 'mini' && this.shownCards() >= WEEKLY_CARD_POSITION) || this.weeklyInRow();
+      if (!wanted || !data || this.weeklyRequestedFor === data) return;
       this.weeklyRequestedFor = data;
       untracked(() => {
         this.weeklySub?.unsubscribe();
@@ -317,9 +362,57 @@ export class TeamProgressCardComponent implements OnInit {
           });
       });
     });
+
+    // The 2-row strip's fourth card: the members furthest behind, for the shown period.
+    effect(() => {
+      const data = this.store.data();
+      const period = this.period();
+      const inStrip = this.mode() === 'mini' && this.shownCards() >= BEHIND_CARD_POSITION;
+      if (!data || (!inStrip && !this.behindInRow())) return;
+      const current = untracked(this.behind);
+      // Already loaded (or failed: Try again retries) for this data and period.
+      if (current?.for === data && current.period === period) return;
+      untracked(() => this.loadBehind(data, period));
+    });
   }
 
   protected readonly formatHourValue = formatHourValue;
+
+  /** The 2-row strip's cards, each summarising a section of the popup. */
+  protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
+    const data = this.store.data();
+    if (!data) return [];
+    const behind = this.behind();
+    const current = behind?.for === data && behind.period === this.period() ? behind : null;
+    const weekly = this.weekly();
+    const weeklyFailed = weekly?.for === data && weekly.payload === null;
+    return teamProgressSummaryCards(data, this.weeklyData(), { rows: current?.rows ?? null, error: current?.error ?? false }, weeklyFailed);
+  });
+
+  /** Try again on a failed summary card: weekly completion refetches through its effect; the members behind reload. */
+  retryCard(id: string): void {
+    const data = this.store.data();
+    if (!data) return;
+    if (id === 'tp-weekly') {
+      this.weeklyRequestedFor = null;
+      this.weekly.set(null);
+      this.weeklyRetry.update((n) => n + 1);
+      return;
+    }
+    this.loadBehind(data, this.period());
+  }
+
+  private loadBehind(data: LedWorkProgressResponse, period: LedProgressPeriod): void {
+    this.behindSub?.unsubscribe();
+    this.behind.set({ for: data, period, rows: null, error: false });
+    this.behindSub = this.detailApi
+      .getEmployees({ pageNumber: 1, pageSize: SUMMARY_CARD_ROWS, sort: 'completionRate', direction: 'asc', ...(period === 'all' ? {} : { period }) })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (page) => this.behind.set({ for: data, period, rows: page.items, error: false }),
+        error: () => this.behind.set({ for: data, period, rows: null, error: true })
+      });
+  }
 
   /** A reload sets `loading`; only a first load (no data yet) shows the skeleton. */
   protected readonly widgetState = computed<WidgetState>(() => {
@@ -655,8 +748,7 @@ export class TeamProgressCardComponent implements OnInit {
     const widthStep = Math.floor(size.width / 100) * 100;
     if (widthStep !== this.widthStep()) this.widthStep.set(widthStep);
     if (!(size.height > 0)) return;
-    const plan = planTeamProgressLayout(mode, size.width, size.height);
-    if (!samePlan(plan, this.plan())) this.plan.set(plan);
+    this.size.set({ width: size.width, height: size.height });
   }
 
   private stopObservingSize(): void {
@@ -681,11 +773,20 @@ export class TeamProgressCardComponent implements OnInit {
   openDetail(event?: Event): void {
     event?.stopPropagation();
     if (!this.store.data()) return;
+    this.detailSection.set(null);
+    this.detailOpen.set(true);
+  }
+
+  /** A summary card: open the popup at the section it summarises. */
+  openSection(section: string): void {
+    if (!this.store.data()) return;
+    this.detailSection.set(section);
     this.detailOpen.set(true);
   }
 
   closeDetail(): void {
     this.detailOpen.set(false);
+    this.detailSection.set(null);
   }
 
 
@@ -699,6 +800,18 @@ export class TeamProgressCardComponent implements OnInit {
   assigneeNames(task: LedOverdueTask): string {
     return task.assignees.map((a) => a.displayName).join(', ');
   }
+}
+
+/** The summary cards whose popup section a taller view already shows as its own section. */
+function shownProgressCards(mode: TeamProgressMode, plan: TeamProgressPlan, overdue: boolean): ReadonlySet<string> {
+  const shown = new Set<string>();
+  if (WEEKLY_MODES.has(mode)) shown.add('tp-weekly');
+  if (plan.listRows > 0) {
+    shown.add('tp-projects');
+    if (overdue) shown.add('tp-overdue');
+  }
+  if (mode === 'large' || mode === 'maximum') shown.add('tp-behind');
+  return shown;
 }
 
 function samePlan(a: TeamProgressPlan, b: TeamProgressPlan): boolean {

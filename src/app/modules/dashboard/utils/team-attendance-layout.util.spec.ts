@@ -64,4 +64,12 @@ describe('team attendance layout', () => {
     expect(planTeamAttendanceLayout('xs', 315, rows(6))).toMatchObject({ legend: true, tiles: false, trend: true, rankingRows: 0 });
     expect(planTeamAttendanceLayout('xs', 315, rows(8)).rankingRows).toBeGreaterThanOrEqual(3);
   });
+
+  it('budgets a taller summary-cards row in the tiles place when asked', () => {
+    expect(planTeamAttendanceLayout('standard', 760, 528).trend).toBe(true);
+    const withCards = planTeamAttendanceLayout('standard', 760, 528, 140);
+    expect(withCards.tiles).toBe(true);
+    expect(withCards.trend).toBe(false);
+    expect(planTeamAttendanceLayout('standard', 760, 420, 140).tiles).toBe(false);
+  });
 });

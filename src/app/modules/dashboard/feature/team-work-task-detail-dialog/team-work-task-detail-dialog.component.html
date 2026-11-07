@@ -69,10 +69,10 @@
         }
       </div>
 
-      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Work vs task totals" />
+      <app-kpi-tiles data-section="summary" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Work vs task totals" />
 
       <div class="wtd-charts">
-        <section class="wtd-panel">
+        <section class="wtd-panel" data-section="daily">
           <app-work-task-day-chart
             class="wtd-chart"
             [heading]="chartTitle()"
@@ -112,7 +112,7 @@
         </section>
       </div>
 
-      <section class="wtd-panel">
+      <section class="wtd-panel" data-section="employees">
         <div class="wtd-table-head">
           <p class="wtd-title">
             Team members <span class="wtd-muted">· highest task share first</span>

@@ -92,42 +92,23 @@
 
     @switch (view()) {
       @case ('mini') {
-        @if (miniBar()) {
-          <div class="wt-mini wt-mini--bar" data-testid="wt-mini">
-            <div class="min-w-0 shrink-0">
-              <p class="wt-rate wt-rate--mini" data-testid="wt-utilization">
-                {{ util(data.totals.utilization) }}
-              </p>
-              <ng-container [ngTemplateOutlet]="figureTpl" />
-            </div>
-            <div class="wt-mini-bar">
-              <div
-                class="wt-status-bar"
-                role="img"
-                [attr.aria-label]="donutLabel()"
-                data-testid="wt-status-bar"
-              >
-                @for (arc of donut(); track arc.key) {
-                  <span
-                    class="h-full"
-                    [style.background]="arc.color"
-                    [style.width.%]="arc.length"
-                  ></span>
-                }
-              </div>
-              <app-donut-key variant="wrap" ariaLabel="Time split" [showValue]="true" [slices]="donutSlices()" [(active)]="hovered" />
-            </div>
-          </div>
-        } @else {
-          <div class="wt-mini wt-mini--donut" data-testid="wt-mini">
-            <ng-container [ngTemplateOutlet]="donutTpl" />
-            @if (miniFigure()) {
-              <div class="min-w-0">
-                <ng-container [ngTemplateOutlet]="figureTpl" />
-              </div>
-            }
-          </div>
-        }
+        <!-- 2-row cards: the shared strip. The donut with the task share in it, then its key, then summary cards of
+        the popup's sections as the card widens. -->
+        <app-dashboard-summary-strip
+          class="wt-mini"
+          data-testid="wt-mini"
+          [slices]="donutSlices()"
+          [keySlices]="donutSlices()"
+          [cards]="summaryCards()"
+          [donutLabel]="donutLabel()"
+          [(active)]="hovered"
+          (cardOpened)="openSection($event)"
+        >
+          <p class="wt-donut-center">
+            <span class="wt-donut-value wt-donut-value--rate" data-testid="wt-utilization">{{ util(data.totals.utilization) }}</span>
+            <span class="wt-donut-of">on tasks</span>
+          </p>
+        </app-dashboard-summary-strip>
       }
       @default {
         <div
@@ -179,7 +160,10 @@
             }
           </div>
 
-          @if (plan().tiles) {
+          @if (plan().tiles && rowCards().length > 0) {
+            <!-- Taller views: summary cards of what the card is not already showing, in the tiles' place. -->
+            <app-dashboard-summary-row data-testid="wt-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" />
+          } @else if (plan().tiles) {
             <ul
               class="wt-tiles"
               [class.wt-tiles--4]="plan().tileColumns === 4"
@@ -261,4 +245,4 @@
   }
 </app-widget-card>
 
-<app-team-work-task-detail-dialog [open]="detailOpen()" (closed)="closeDetail()" />
+<app-team-work-task-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

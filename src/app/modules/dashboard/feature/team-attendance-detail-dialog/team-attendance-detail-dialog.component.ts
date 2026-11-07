@@ -15,14 +15,14 @@ import {
   TeamAttendancePage
 } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
+import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import { DashboardBarChip } from '../../ui/dashboard-bar-chart/dashboard-bar-chart.component';
 import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/attendance-day-chart.component';
 import {
   TEAM_ATTENDANCE_COLORS,
   TEAM_ATTENDANCE_LABELS,
   teamAttendanceDelta,
-  teamAttendanceRangeLabel
-} from '../../utils/team-attendance-format.util';
+  teamAttendanceRangeLabel, departmentsWorstFirst } from '../../utils/team-attendance-format.util';
 
 const PAGE_SIZE = 20;
 const EXPORT_PAGE_SIZE = 50;
@@ -51,6 +51,8 @@ function dateHeader(iso: string): { day: number; weekday: string } {
 })
 export class TeamAttendanceDetailDialogComponent {
   readonly open = input(false);
+  /** Opened from a summary card: the section to scroll to (trend, departments, ranking, summary). */
+  readonly focusSection = input<string | null>(null);
   readonly closed = output<void>();
 
   protected readonly store = inject(TeamAttendanceStore);
@@ -113,13 +115,7 @@ export class TeamAttendanceDetailDialogComponent {
   /** Department comparison bars: width = rate, coloured green from 90%, amber from 75%, else red. */
   protected readonly departmentBars = computed(() =>
     // Worst rate first so problem departments sit at the top; departments with no rate (all on leave) go last.
-    [...(this.store.data()?.departmentRates ?? [])]
-      .sort((a, b) => {
-        if (a.rate === null || b.rate === null) {
-          return a.rate === b.rate ? a.name.localeCompare(b.name) : a.rate === null ? 1 : -1;
-        }
-        return a.rate - b.rate || a.name.localeCompare(b.name);
-      })
+    departmentsWorstFirst(this.store.data()?.departmentRates ?? [])
       .map((d) => ({
       key: d.id ?? 'none',
       name: d.name,
@@ -139,6 +135,7 @@ export class TeamAttendanceDetailDialogComponent {
   );
 
   constructor() {
+    injectPopupSectionFocus(this.open, this.focusSection);
     // Reload the matrix for the shown period, department, search and page; a new period starts at page 1.
     effect(() => {
       const data = this.store.data();

@@ -137,26 +137,71 @@ describe('TeamScheduleCardComponent', () => {
     expect(el.textContent).toContain("Couldn't load the team's schedule.");
   });
 
-  it('204x204 is mini: the item count, a stacked bar and the three status chips', async () => {
+  /** Reports the 2-row strip's size for a widget host width (the strip fills the body: host minus 32px). */
+  function stripResize(fixture: ComponentFixture<TeamScheduleCardComponent>, hostWidth: number): void {
+    FakeResizeObserver.instances.at(-1)!.trigger(hostWidth - 32, 150);
+    fixture.detectChanges();
+  }
+
+  it('204x204 is mini: the shared strip with the item donut and the count in it, no stacked bar', async () => {
     const { el } = await setup(response(), { width: 204, height: 204 });
 
+    expect(q(el, 'tsc-mini')).toBeTruthy();
+    expect(q(el, 'summary-strip-donut')).toBeTruthy();
     expect(q(el, 'tsc-mini-count')!.textContent!.trim()).toBe('5');
-    expect(q(el, 'tsc-mini-bar')).toBeTruthy();
-    expect(q(el, 'tsc-donut')).toBeNull();
-    // Bob has no plan; nobody is over capacity or on leave.
-    expect(all(el, 'tsc-chip').map((c) => c.textContent!.trim())).toEqual([
-      '0 over capacity',
-      '1 not planned',
-      '0 on leave',
-    ]);
+    expect(q(el, 'tsc-mini-bar')).toBeNull();
     // The planner link lives only in the popup now.
     expect(q(el, 'tsc-open-planner')).toBeNull();
+  });
+
+  it('a wide 2-row card adds the key and four summary cards, loading the week once the first card shows', async () => {
+    const { el, fixture, getTeamWeek } = await setup(response(), { width: 1812, height: 204 });
+    expect(getTeamWeek).not.toHaveBeenCalled();
+    stripResize(fixture, 1812);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.querySelector('app-donut-key')).toBeTruthy();
+    expect(el.querySelectorAll('app-dashboard-summary-card').length).toBe(4);
+    expect(getTeamWeek).toHaveBeenCalledOnce();
+    expect(el.textContent).toContain('Needs a plan');
+    stripResize(fixture, 1700);
+    expect(getTeamWeek).toHaveBeenCalledOnce();
+  });
+
+  it('browsing to another week in the popup leaves the coverage card on the current week', async () => {
+    const { el, fixture, getTeamWeek } = await setup(response(), { width: 1812, height: 204 });
+    getTeamWeek.mockImplementation((start: string | null) =>
+      of(start ? weekResponse({ weekStart: start, totals: { plannedMinutes: 60, clockedMinutes: 0, scheduledMinutes: 6, unscheduledMinutes: 0, coveragePercent: 10 } }) : weekResponse({ totals: { plannedMinutes: 600, clockedMinutes: 0, scheduledMinutes: 480, unscheduledMinutes: 0, coveragePercent: 80 } })),
+    );
+    stripResize(fixture, 1812);
+    expect(el.textContent).toContain('80%');
+    TestBed.inject(TeamScheduleWeekStore).shiftWeek(-1);
+    fixture.detectChanges();
+    expect(getTeamWeek).toHaveBeenCalledTimes(2);
+    expect(el.textContent).toContain('80%');
+    expect(el.textContent).not.toContain('10%');
+  });
+
+  it('a failed week shows the week cards as failed', async () => {
+    const { el, fixture, getTeamWeek } = await setup(response(), { width: 1812, height: 204 });
+    getTeamWeek.mockImplementation(() => throwError(() => new Error('down')));
+    stripResize(fixture, 1812);
+    expect(el.querySelectorAll('[data-testid="summary-retry"]').length).toBe(2);
+  });
+
+  it('a summary card opens the popup at its section', async () => {
+    const { el, fixture } = await setup(response(), { width: 1812, height: 204 });
+    stripResize(fixture, 1812);
+    (el.querySelectorAll('[data-testid="summary-card"]')[3] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.detailOpen()).toBe(true);
+    expect(fixture.componentInstance.detailSection()).toBe('status');
   });
 
   it('the chips count over capacity and on leave over everyone', async () => {
     const busy = { ...planned, plannedTaskMinutes: 540, expectedMinutes: 480 };
     const away = { ...noPlan, presenceStatus: 'on_leave', notRankedReason: 'on_leave' as const };
-    const { el } = await setup(response({ members: [busy, away] }), { width: 420, height: 204 });
+    const { el } = await setup(response({ members: [busy, away] }), { width: 300, height: 636 });
     expect(all(el, 'tsc-chip').map((c) => c.textContent!.trim())).toEqual([
       '1 over capacity',
       '0 not planned',
@@ -231,6 +276,25 @@ describe('TeamScheduleCardComponent', () => {
     expect(all(el, 'tsc-badge-not-planned').length).toBe(1);
     expect(all(el, 'tsc-badge-leave').length).toBe(1);
     expect(all(el, 'tsc-leave-bar').length).toBe(1);
+  });
+
+  it('the timeline head swaps its status chips for two summary cards of what the card is not showing', async () => {
+    const { el, fixture, getTeamWeek } = await setup(response(), { width: 900, height: 636 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const head = q(el, 'tsc-head')!;
+    const titles = [...head.querySelectorAll('[data-testid="summary-title"]')].map((t) => t.textContent?.trim());
+    // The lines already show each person's status and Not planned badge, so those cards are left out.
+    expect(titles).toEqual(['Coverage', 'Planned vs actual']);
+    expect(head.querySelector('[data-testid="tsc-chip"]')).toBeNull();
+    expect(getTeamWeek).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the head chips when the week chart leaves only one new card', async () => {
+    const { el } = await setup(response(), { width: 1300, height: 852 });
+    const head = q(el, 'tsc-head')!;
+    expect(head.querySelector('app-dashboard-summary-row')).toBeNull();
+    expect(head.querySelector('[data-testid="tsc-chip"]')).toBeTruthy();
   });
 
   it('900x852 adds the daily planned-vs-actual chart with a row per shown person', async () => {

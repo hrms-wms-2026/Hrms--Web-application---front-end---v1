@@ -7,6 +7,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -102,6 +103,12 @@ export function sortWorkTaskRows(
 })
 export class TeamWorkTaskDetailDialogComponent {
   readonly open = input(false);
+  /** Opened from a summary card: the section to scroll to (summary, daily, employees). */
+  readonly focusSection = input<string | null>(null);
+
+  constructor() {
+    injectPopupSectionFocus(this.open, this.focusSection);
+  }
   readonly closed = output<void>();
 
   protected readonly store = inject(TeamWorkTaskStore);

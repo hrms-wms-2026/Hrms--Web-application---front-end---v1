@@ -148,16 +148,22 @@
             <ng-container [ngTemplateOutlet]="totalTpl" />
             <span class="tsc-off-chip tsc-off-chip--center" data-testid="tsc-planner-off">Planner is off</span>
           } @else {
-            <p class="tsc-mini-figure">
-              <span class="tsc-mini-value" data-testid="tsc-mini-count">{{ totalItems() }}</span>
-              <span class="tsc-mini-of">items today</span>
-            </p>
-            <div class="tsc-stack" role="img" [attr.aria-label]="donutLabel()" data-testid="tsc-mini-bar">
-              @for (arc of donut(); track arc.key) {
-                <span [style.background]="arc.color" [style.width.%]="arc.length"></span>
-              }
-            </div>
-            <ng-container [ngTemplateOutlet]="chipsTpl" [ngTemplateOutletContext]="{ big: false }" />
+            <!-- The shared 2-row strip: today's item donut, then its key, then summary cards of the popup's sections. -->
+            <app-dashboard-summary-strip
+              [slices]="donutSlices()"
+              [keySlices]="donutSlices()"
+              [cards]="summaryCards()"
+              [donutLabel]="donutLabel()"
+              [(active)]="hovered"
+              (cardOpened)="openSection($event)"
+              (cardRetried)="retryWeek()"
+              (shownCards)="shownCards.set($event)"
+            >
+              <p class="tsc-donut-center">
+                <span class="tsc-donut-value" data-testid="tsc-mini-count">{{ totalItems() }}</span>
+                <span class="tsc-donut-of">items</span>
+              </p>
+            </app-dashboard-summary-strip>
           }
         </div>
       }
@@ -170,7 +176,11 @@
                   <ng-container [ngTemplateOutlet]="donutTpl" />
                   <ng-container [ngTemplateOutlet]="legendTpl" />
                 </div>
-                <ng-container [ngTemplateOutlet]="chipsTpl" [ngTemplateOutletContext]="{ big: true }" />
+                @if (headCards().length > 0) {
+                  <app-dashboard-summary-row class="tsc-head-cards" [cards]="headCards()" (cardOpened)="openSection($event)" (cardRetried)="retryWeek()" />
+                } @else {
+                  <ng-container [ngTemplateOutlet]="chipsTpl" [ngTemplateOutletContext]="{ big: true }" />
+                }
               </div>
             }
 
@@ -374,4 +384,4 @@
   }
 </app-widget-card>
 
-<app-team-schedule-detail-dialog [open]="detailOpen()" (closed)="closeDetail()" />
+<app-team-schedule-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

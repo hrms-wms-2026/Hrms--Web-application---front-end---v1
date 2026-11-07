@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.service';
 import {
@@ -83,10 +83,17 @@ describe('TeamAttendanceCardComponent', () => {
     fixture.detectChanges();
   }
 
+  /** The card's own observer is the first one created; the 2-row strip adds its own after it. */
   function resize(width: number, height: number): HTMLElement {
-    FakeResizeObserver.instances.at(-1)!.trigger(width, height);
+    FakeResizeObserver.instances[0].trigger(width, height);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
+  }
+
+  /** Reports the 2-row strip's size for a widget host width (the strip fills the body: host minus 32px). */
+  function stripResize(hostWidth: number): void {
+    FakeResizeObserver.instances.at(-1)!.trigger(hostWidth - 32, 150);
+    fixture.detectChanges();
   }
 
   const q = (el: HTMLElement, id: string) => el.querySelector(`[data-testid=${id}]`);
@@ -112,24 +119,51 @@ describe('TeamAttendanceCardComponent', () => {
     expect(getSummary).toHaveBeenCalledTimes(1);
   });
 
-  it('a 2-row card shows the donut with the rate in it; stretched sideways, a stacked bar instead', () => {
+  it('a 2-row card shows the donut with the rate in it, then the key, then summary cards as it widens', () => {
     setup();
     let el = resize(206, 204);
     expect(q(el, 'ta-mini')).toBeTruthy();
-    expect((q(el, 'ta-donut') as HTMLElement).style.width).toBe(`${DASHBOARD_MINI_DONUT_PX}px`);
+    expect((q(el, 'summary-strip-donut') as HTMLElement).style.width).toBe(`${DASHBOARD_MINI_DONUT_PX}px`);
     expect(q(el, 'ta-today-rate')?.textContent?.trim()).toBe('96%');
-    expect(el.textContent).not.toContain('24/25 in today');
 
-    el = resize(292, 204);
-    expect(q(el, 'ta-donut')).toBeTruthy();
-    expect(el.textContent).toContain('24/25 in today');
+    el = resize(1812, 204);
+    stripResize(1812);
+    expect(q(el, 'ta-status-bar')).toBeNull();
+    expect(el.querySelector('app-donut-key')).toBeTruthy();
+    expect(el.querySelectorAll('app-dashboard-summary-card').length).toBe(4);
+    expect(el.textContent).toContain('Attendance rate');
+    expect(el.textContent).toContain('On leave today');
+  });
 
-    el = resize(760, 204);
-    expect(q(el, 'ta-mini')).toBeTruthy();
-    expect(q(el, 'ta-donut')).toBeNull();
-    expect(q(el, 'ta-status-bar')).toBeTruthy();
-    expect(q(el, 'ta-today-rate')?.textContent?.trim()).toBe('96%');
-    expect(el.textContent).toContain('24/25 in today');
+  it('loads the attention ranking only once its summary card is shown', () => {
+    setup();
+    resize(1812, 204);
+    stripResize(900);
+    expect(getEmployees).not.toHaveBeenCalled();
+    stripResize(1812);
+    expect(getEmployees).toHaveBeenCalledTimes(1);
+    expect(getEmployees.mock.calls[0][0]).toMatchObject({ sort: 'attention', pageSize: 3, page: 1 });
+    stripResize(1700);
+    expect(getEmployees).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed attention ranking fails only its own card', () => {
+    setup();
+    getEmployees.mockReturnValue(throwError(() => new Error('down')));
+    const el = resize(1812, 204);
+    stripResize(1812);
+    expect(el.querySelectorAll('[data-testid="summary-retry"]').length).toBe(1);
+    expect(el.querySelectorAll('app-dashboard-summary-card').length).toBe(4);
+  });
+
+  it('a summary card opens the popup at its section', () => {
+    setup();
+    const el = resize(1812, 204);
+    stripResize(1812);
+    (el.querySelector('[data-testid="summary-card"]') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.detailOpen()).toBe(true);
+    expect(fixture.componentInstance.detailSection()).toBe('trend');
   });
 
   it('shows today\'s rate, attended of eligible and the change in points beside the donut', () => {
@@ -163,21 +197,26 @@ describe('TeamAttendanceCardComponent', () => {
     expect(q(el, 'ta-tiles')).toBeTruthy();
     expect(q(el, 'ta-trend')).toBeNull();
 
+    // Taller, two summary cards take the tiles' place first; the trend then needs more height.
     el = resize(760, 528);
+    expect(q(el, 'ta-tiles')).toBeNull();
+    expect(q(el, 'ta-summary-row')).toBeTruthy();
+    expect(q(el, 'ta-trend')).toBeNull();
+
+    el = resize(760, 636);
     expect(q(el, 'ta-trend')).toBeTruthy();
     expect(q(el, 'ta-ranking')).toBeNull();
-    expect(getEmployees).not.toHaveBeenCalled();
 
     el = resize(760, 744);
     expect(q(el, 'ta-ranking')).toBeTruthy();
     expect(donutWidth()).toBe(`${DASHBOARD_DONUT_PX}px`);
-    expect(getEmployees).toHaveBeenCalledWith(expect.objectContaining({ sort: 'rate', page: 1, pageSize: 10, mode: 'week' }));
+    expect(getEmployees).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'rate', page: 1, pageSize: 10, mode: 'week' }));
   });
 
   it('keeps the donut one size in every view that shows it (the mini size on a 2x2 card)', () => {
     setup();
     for (const [w, h] of [[206, 204], [315, 312], [350, 350], [640, 350], [480, 640]]) {
-      const donut = q(resize(w, h), 'ta-donut') as HTMLElement;
+      const donut = q(resize(w, h), h === 204 ? 'summary-strip-donut' : 'ta-donut') as HTMLElement;
       const size = h === 204 ? DASHBOARD_MINI_DONUT_PX : DASHBOARD_DONUT_PX;
       expect(donut.style.width).toBe(`${size}px`);
       expect(donut.style.height).toBe(`${size}px`);
@@ -236,14 +275,15 @@ describe('TeamAttendanceCardComponent', () => {
 
   it('the ranking shows as many top employees as fit, best rate first, with the top three marked', () => {
     setup();
+    // The summary cards row sits above it (cards first), so 744px leaves room for three ranked people.
     let rows = [...resize(760, 744).querySelectorAll('[data-testid=ta-rank-row]')];
-    expect(rows.length).toBe(5);
+    expect(rows.length).toBe(3);
     expect(rows[0].textContent).toContain('Ann');
     expect(rows[0].textContent).toContain('100%');
     expect(rows[0].querySelector('.ta-rank--top')).toBeTruthy();
 
     rows = [...resize(760, 960).querySelectorAll('[data-testid=ta-rank-row]')];
-    expect(rows.length).toBeGreaterThan(5);
+    expect(rows.length).toBeGreaterThan(3);
     expect(getEmployees).toHaveBeenCalledTimes(1);
   });
 
@@ -275,7 +315,7 @@ describe('TeamAttendanceCardComponent', () => {
 
   it('a period with no working days says so instead of drawing the chart', () => {
     setup(summary({ trend: trend().map((p) => ({ ...p, present: 0, late: 0, absent: 0, onLeave: 0, rate: null })) }));
-    const el = resize(760, 528);
+    const el = resize(760, 636);
 
     expect(q(el, 'ta-no-days')).toBeTruthy();
     expect(el.querySelector('app-attendance-day-chart')).toBeNull();
@@ -294,5 +334,26 @@ describe('TeamAttendanceCardComponent', () => {
     fixture.componentInstance.closeDetail();
     fixture.detectChanges();
     expect(fixture.componentInstance.detailOpen()).toBe(false);
+  });
+
+  it('a tall card swaps the tiles for two summary cards of what it is not already showing', () => {
+    setup();
+    // The trend and the ranking are on the card, so their cards are left out.
+    let el = resize(760, 744);
+    const titles = () => [...el.querySelectorAll('[data-testid="ta-summary-row"] [data-testid="summary-title"]')].map((t) => t.textContent?.trim());
+    expect(q(el, 'ta-tiles')).toBeNull();
+    expect(titles()).toEqual(['By department', 'On leave today']);
+
+    // Without the ranking on the card, its attention card comes in and loads its own ranking.
+    el = resize(760, 636);
+    expect(titles()).toEqual(['By department', 'Needs attention']);
+    expect(getEmployees).toHaveBeenCalledWith(expect.objectContaining({ sort: 'attention', pageSize: 3 }));
+  });
+
+  it('keeps the tiles when the summary cards do not fit', () => {
+    setup();
+    const el = resize(760, 420);
+    expect(q(el, 'ta-tiles')).toBeTruthy();
+    expect(q(el, 'ta-summary-row')).toBeNull();
   });
 });

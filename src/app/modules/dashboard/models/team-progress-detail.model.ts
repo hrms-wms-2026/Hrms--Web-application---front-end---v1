@@ -5,7 +5,8 @@ export type LedSortDirection = 'asc' | 'desc';
 
 export type LedTaskStatus = 'completed' | 'inProgress' | 'notStarted';
 
-export type LedEmployeeSort = 'totalHours' | 'completedHours' | 'inProgressHours' | 'notStartedHours' | 'name';
+/** 'completionRate': completed share of a person's hours (no hours last in both directions). */
+export type LedEmployeeSort = 'totalHours' | 'completedHours' | 'inProgressHours' | 'notStartedHours' | 'name' | 'completionRate';
 
 interface LedPage<T> {
   items: T[];

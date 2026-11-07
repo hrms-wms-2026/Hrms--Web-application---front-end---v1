@@ -108,6 +108,6 @@ export interface TeamAttendanceEmployeesQuery extends TeamAttendancePeriodQuery 
   readonly search?: string | null;
   readonly page: number;
   readonly pageSize: number;
-  /** 'rate': best attendance first (the ranking); the default is by name. */
-  readonly sort?: 'name' | 'rate';
+  /** 'rate': best attendance first (the ranking); 'attention': most late + absent + leave days first; the default is by name. */
+  readonly sort?: 'name' | 'rate' | 'attention';
 }

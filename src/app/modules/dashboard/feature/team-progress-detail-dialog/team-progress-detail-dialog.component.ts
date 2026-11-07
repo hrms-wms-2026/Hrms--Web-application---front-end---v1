@@ -23,6 +23,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
+import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
@@ -75,7 +76,8 @@ interface PeriodQuery {
 }
 
 /** Team members bar list tabs: the server sort fields with hours. */
-type MemberTab = Exclude<LedEmployeeSort, 'name'>;
+/** The members tabs sort by an hour column; 'completionRate' is the summary card's ranking, not a tab. */
+type MemberTab = Exclude<LedEmployeeSort, 'name' | 'completionRate'>;
 
 /** Weekly completion request: no period = the last 10 weeks. */
 interface WeeklyQuery {
@@ -179,6 +181,8 @@ interface OverdueHoursView {
 })
 export class TeamProgressDetailDialogComponent {
   readonly open = input(false);
+  /** Opened from a summary card: the section to scroll to (weekly, projects, overdue, members). */
+  readonly focusSection = input<string | null>(null);
   readonly summary = input<LedWorkProgressResponse | null>(null);
   /** Due-date window. The card owns it: the dropdown only emits `periodChange`. */
   readonly period = input<LedProgressPeriod>('all');
@@ -547,6 +551,7 @@ export class TeamProgressDetailDialogComponent {
   private cacheFor: LedWorkProgressResponse | null = null;
 
   constructor() {
+    injectPopupSectionFocus(this.open, this.focusSection);
     // The period select drives both the allocation-period and the time calls.
     effect(() => {
       if (!this.open() || !this.summary()) return;

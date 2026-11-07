@@ -36,4 +36,14 @@ describe('team-work-task-layout', () => {
     const tall = planTeamWorkTaskLayout('xs', 300, 420);
     expect([tall.legend, tall.figure]).toEqual([true, true]);
   });
+
+  it('budgets a taller summary-cards row in the tiles place when asked', () => {
+    // 760 x 528: tiles (52) leave room for the daily chart; the 140px cards row does not.
+    expect(planTeamWorkTaskLayout('standard', 760, 528).trend).toBe(true);
+    const withCards = planTeamWorkTaskLayout('standard', 760, 528, 140);
+    expect(withCards.tiles).toBe(true);
+    expect(withCards.trend).toBe(false);
+    // 760 x 420: there is no room for the cards row at all.
+    expect(planTeamWorkTaskLayout('standard', 760, 420, 140).tiles).toBe(false);
+  });
 });

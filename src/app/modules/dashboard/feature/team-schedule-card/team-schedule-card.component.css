@@ -15,7 +15,12 @@
   align-self: center;
 }
 
-/* ---- Mini: the count, the stacked bar, the chips ---- */
+/* ---- Mini: the shared summary strip (planner off: the clocked total and a chip) ---- */
+.tsc-mini app-dashboard-summary-strip {
+  flex: 1;
+  min-height: 0;
+}
+
 .tsc-mini {
   display: flex;
   height: 100%;
@@ -23,43 +28,6 @@
   flex-direction: column;
   gap: 0.625rem;
   overflow: hidden;
-}
-
-.tsc-mini-figure {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  line-height: 1;
-}
-
-.tsc-mini-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.tsc-mini-of {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
-.tsc-mini .tsc-chips {
-  margin-top: auto;
-}
-
-.tsc-stack {
-  display: flex;
-  height: 0.75rem;
-  flex: none;
-  gap: 2px;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: var(--color-surface-secondary);
-}
-
-.tsc-stack span {
-  height: 100%;
 }
 
 /* ---- Donut and legend ---- */
@@ -361,6 +329,12 @@
   height: 160px;
   flex: none;
   gap: 1rem;
+}
+
+/* Summary cards in the chips' place: the rest of the head's width, centred in its 160px. */
+.tsc-head-cards {
+  flex: 1 1 0;
+  align-self: center;
 }
 
 .tsc-head-donut {

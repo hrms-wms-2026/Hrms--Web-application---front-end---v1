@@ -23,6 +23,7 @@ import {
   TeamWeekMember,
   TeamWeekTotals,
 } from '../../models/team-schedule.model';
+import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import { TeamScheduleWeekStore } from '../../state/team-schedule-week.store';
 import { listPage } from '../../utils/list-page.util';
 import { TeamScheduleStore } from '../../state/team-schedule.store';
@@ -95,6 +96,9 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const TOP_WORKLOAD = 3;
 
 export type ScheduleMode = 'day' | 'week';
+
+/** Summary-card sections that live in the week view. */
+const WEEK_SECTIONS: ReadonlySet<string> = new Set(['coverage', 'planned-actual']);
 export type ScheduleStatusFilter = 'all' | 'working' | 'in_meeting' | 'on_break' | 'on_leave' | 'unscheduled';
 
 export const SCHEDULE_STATUS_FILTERS: { value: ScheduleStatusFilter; label: string }[] = [
@@ -152,6 +156,8 @@ const NOW_TICK_MS = 60_000;
 })
 export class TeamScheduleDetailDialogComponent {
   readonly open = input(false);
+  /** Opened from a summary card: the section to scroll to. Coverage and planned-actual live in the week view. */
+  readonly focusSection = input<string | null>(null);
   readonly closed = output<void>();
 
   protected readonly store = inject(TeamScheduleStore);
@@ -183,6 +189,13 @@ export class TeamScheduleDetailDialogComponent {
   });
 
   constructor() {
+    // A summary card for a week section opens the week view; one for a day section, the day view.
+    effect(() => {
+      const section = this.focusSection();
+      if (!this.open() || !section) return;
+      untracked(() => this.setMode(WEEK_SECTIONS.has(section) ? 'week' : 'day'));
+    });
+    injectPopupSectionFocus(this.open, this.focusSection);
     // A new filter, search, day or week starts every list on its first page.
     effect(() => {
       this.search();

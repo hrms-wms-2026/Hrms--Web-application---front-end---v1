@@ -95,38 +95,25 @@
 
     @switch (view()) {
       @case ('mini') {
-        <!-- 2-row cards: the donut with today's rate in it; stretched sideways a stacked bar and its legend. -->
-        @if (miniBar()) {
-          <div class="ta-mini ta-mini--bar" data-testid="ta-mini">
-            <div class="min-w-0 shrink-0">
-              <p class="ta-rate ta-rate--mini" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</p>
-              <p class="ta-caption">{{ attendedToday() }}/{{ data.eligibleToday }} in today</p>
-              @if (delta(); as d) {
-                <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
-              }
-            </div>
-            <div class="ta-mini-bar">
-              <div class="ta-status-bar" role="img" [attr.aria-label]="donutLabel()" data-testid="ta-status-bar">
-                @for (arc of donut(); track arc.key) {
-                  <span class="h-full" [style.background]="arc.color" [style.width.%]="arc.length"></span>
-                }
-              </div>
-              <app-donut-key variant="wrap" ariaLabel="Today" [showValue]="true" [slices]="keySlices()" [(active)]="hovered" />
-            </div>
-          </div>
-        } @else {
-          <div class="ta-mini ta-mini--donut" data-testid="ta-mini">
-            <ng-container [ngTemplateOutlet]="donutTpl" [ngTemplateOutletContext]="{ rateCenter: true }" />
-            @if (miniFigure()) {
-              <div class="min-w-0">
-                <p class="ta-caption">{{ attendedToday() }}/{{ data.eligibleToday }} in today</p>
-                @if (delta(); as d) {
-                  <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
-                }
-              </div>
-            }
-          </div>
-        }
+        <!-- 2-row cards: the shared strip. The donut with today's rate in it, then its key, then summary cards of the
+        popup's sections as the card widens. -->
+        <app-dashboard-summary-strip
+          class="ta-mini"
+          data-testid="ta-mini"
+          [slices]="donutSlices()"
+          [keySlices]="keySlices()"
+          [cards]="summaryCards()"
+          [donutLabel]="donutLabel()"
+          [(active)]="hovered"
+          (cardOpened)="openSection($event)"
+          (cardRetried)="retryAttention()"
+          (shownCards)="shownCards.set($event)"
+        >
+          <p class="ta-donut-center">
+            <span class="ta-donut-value ta-donut-value--rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</span>
+            <span class="ta-donut-of">today</span>
+          </p>
+        </app-dashboard-summary-strip>
       }
       @default {
         <!-- xs (narrow) and standard: the donut keeps its place at the top; a taller card adds today's
@@ -177,7 +164,10 @@
             }
           </div>
 
-          @if (plan().tiles) {
+          @if (plan().tiles && rowCards().length > 0) {
+            <!-- Taller views: summary cards of what the card is not already showing, in the tiles' place. -->
+            <app-dashboard-summary-row data-testid="ta-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" (cardRetried)="retryAttention()" />
+          } @else if (plan().tiles) {
             <ul class="ta-tiles" [class.ta-tiles--4]="plan().tileColumns === 4" aria-label="Today" data-testid="ta-tiles">
               @for (row of legend(); track row.key) {
                 <li class="ta-tile" [style.--tone]="row.color" [attr.data-testid]="'ta-tile-' + row.key">
@@ -230,4 +220,4 @@
   }
 </app-widget-card>
 
-<app-team-attendance-detail-dialog [open]="detailOpen()" (closed)="closeDetail()" />
+<app-team-attendance-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

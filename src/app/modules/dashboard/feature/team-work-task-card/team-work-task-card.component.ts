@@ -22,6 +22,11 @@ import { WorkTaskDayChartComponent } from '../../ui/work-task-day-chart/work-tas
 import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
 import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
+import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
+import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';
+import { SummaryCardModel } from '../../models/summary-card.model';
+import { teamWorkTaskSummaryCards } from '../../utils/team-work-task-summary-cards.util';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
   TEAM_WORK_TASK_COLORS,
@@ -35,7 +40,6 @@ import {
 } from '../../utils/team-work-task-format.util';
 import {
   EMPTY_TEAM_WORK_TASK_PLAN,
-  TEAM_WORK_TASK_BREAKPOINTS,
   TEAM_WORK_TASK_CARD_CHROME,
   TEAM_WORK_TASK_HERO_LEGEND_WIDTH_PX,
   TeamWorkTaskPlan,
@@ -63,6 +67,27 @@ interface KpiTileRow {
  * opens the popup with the full table. The period and ‹ › navigation live in the store, so a resize or the dialog
  * never resets them.
  */
+/** The summary cards whose popup section a taller view already shows as its own section. */
+function shownWorkTaskCards(view: string, plan: TeamWorkTaskPlan): ReadonlySet<string> {
+  const shown = new Set<string>();
+  if (view === 'standard' || plan.figure) shown.add('wt-share');
+  if (plan.trend || plan.heroTrend) shown.add('wt-days');
+  if (plan.rankingRows > 0) shown.add('wt-gap');
+  return shown;
+}
+
+function samePlan(a: TeamWorkTaskPlan, b: TeamWorkTaskPlan): boolean {
+  return (
+    a.heroTrend === b.heroTrend &&
+    a.legend === b.legend &&
+    a.figure === b.figure &&
+    a.tiles === b.tiles &&
+    a.tileColumns === b.tileColumns &&
+    a.trend === b.trend &&
+    a.rankingRows === b.rankingRows
+  );
+}
+
 @Component({
   selector: 'app-team-work-task-card',
   standalone: true,
@@ -70,6 +95,8 @@ interface KpiTileRow {
     NgTemplateOutlet,
     DashboardDonutComponent,
     DonutKeyComponent,
+    DashboardSummaryStripComponent,
+    DashboardSummaryRowComponent,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
     AvatarComponent,
@@ -98,11 +125,33 @@ export class TeamWorkTaskCardComponent implements OnInit {
   private measured = false;
 
   readonly view = signal<TeamWorkTaskView>('standard');
-  readonly plan = signal<TeamWorkTaskPlan>(EMPTY_TEAM_WORK_TASK_PLAN);
+  /** The last measured host size: the layout below follows it and the loaded data. */
+  private readonly size = signal<{ width: number; height: number } | null>(null);
+  /** The sections at the current size. A taller view puts two summary cards of what it is not already showing in the
+   * tiles' place, budgeted at the cards' height; without room or two such cards it keeps the tiles. */
+  private readonly layout = computed(() => {
+    const size = this.size();
+    const view = this.view();
+    if (!size) return { plan: EMPTY_TEAM_WORK_TASK_PLAN, cards: [] as SummaryCardModel[] };
+    return withSummaryRow(
+      (rowPx) => planTeamWorkTaskLayout(view, size.width, size.height, rowPx),
+      this.summaryCards(),
+      (plan) => shownWorkTaskCards(view, plan),
+      summaryRowCount(size.width - TEAM_WORK_TASK_CARD_CHROME.width),
+    );
+  });
+  readonly plan = computed<TeamWorkTaskPlan>(() => this.layout().plan, { equal: samePlan });
+  /** Taller views: the summary cards in the tiles' place (empty: the tiles). */
+  protected readonly rowCards = computed(() => this.layout().cards);
   readonly heroLegend = signal(false);
-  readonly miniBar = signal(false);
-  readonly miniFigure = signal(false);
   readonly detailOpen = signal(false);
+  /** The popup section a summary card asked for (null: the top). */
+  readonly detailSection = signal<string | null>(null);
+  /** The 2-row strip's cards, all from the response the card already has. */
+  protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
+    const data = this.store.data();
+    return data ? teamWorkTaskSummaryCards(data) : [];
+  });
 
   /** Full size, or the mini size in the 2x2 view. */
   protected readonly donutPx = computed(() => dashboardDonutPx(this.view()));
@@ -244,11 +293,20 @@ export class TeamWorkTaskCardComponent implements OnInit {
   openDetail(event?: Event): void {
     event?.stopPropagation();
     if (!this.store.data()) return;
+    this.detailSection.set(null);
+    this.detailOpen.set(true);
+  }
+
+  /** A summary card: open the popup at the section it summarises. */
+  openSection(section: string): void {
+    if (!this.store.data()) return;
+    this.detailSection.set(section);
     this.detailOpen.set(true);
   }
 
   closeDetail(): void {
     this.detailOpen.set(false);
+    this.detailSection.set(null);
   }
 
   private observeSize(): void {
@@ -281,24 +339,10 @@ export class TeamWorkTaskCardComponent implements OnInit {
     );
     if (size.width > 0 && size.height > 0) this.measured = true;
     if (view !== this.view()) this.view.set(view);
-    const plan = planTeamWorkTaskLayout(view, size.width, size.height);
-    const current = this.plan();
-    if (
-      plan.heroTrend !== current.heroTrend ||
-      plan.legend !== current.legend ||
-      plan.figure !== current.figure ||
-      plan.tiles !== current.tiles ||
-      plan.tileColumns !== current.tileColumns ||
-      plan.trend !== current.trend ||
-      plan.rankingRows !== current.rankingRows
-    ) {
-      this.plan.set(plan);
-    }
+    this.size.set({ width: size.width, height: size.height });
     this.heroLegend.set(
       size.width - TEAM_WORK_TASK_CARD_CHROME.width >= TEAM_WORK_TASK_HERO_LEGEND_WIDTH_PX,
     );
-    this.miniBar.set(size.width >= TEAM_WORK_TASK_BREAKPOINTS.miniBarWidth);
-    this.miniFigure.set(size.width >= TEAM_WORK_TASK_BREAKPOINTS.miniFigureWidth);
   }
 
   private stopObservingSize(): void {

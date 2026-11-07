@@ -194,8 +194,10 @@ function rowsFor(space: number): number {
   return Math.max(0, Math.min(20, Math.floor((space - PANEL_CHROME_PX) / TEAM_PROGRESS_LIST_ROW_PX)));
 }
 
-/** The sections and list rows a view shows at a host size. */
-export function planTeamProgressLayout(mode: TeamProgressMode, width: number, height: number): TeamProgressPlan {
+/** The sections and list rows a view shows at a host size. `rowPx` asks the small and medium views for one taller
+ * row (a summary-cards row) in place of their tiles; every other view then plans no tile rows. */
+export function planTeamProgressLayout(mode: TeamProgressMode, width: number, height: number, rowPx?: number): TeamProgressPlan {
+  if (rowPx !== undefined && mode !== 'small' && mode !== 'medium') return { ...planTeamProgressLayout(mode, width, height), tileRows: 0 };
   const plan: TeamProgressPlan = {
     miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
     timeBand: false, timeChart: false, timeCallout: false, workloadRows: 0
@@ -227,21 +229,31 @@ export function planTeamProgressLayout(mode: TeamProgressMode, width: number, he
       plan.viewDetails = plan.tileRows > 0 && rest >= VIEW_DETAILS_PX;
       return plan;
     case 'small':
+      if (rowPx !== undefined) {
+        if (rest >= GAP_PX + rowPx) {
+          plan.tileRows = 1;
+          rest -= GAP_PX + rowPx;
+        }
+        plan.viewDetails = plan.tileRows === 1 && rest >= VIEW_DETAILS_PX;
+        return plan;
+      }
       while (plan.tileRows < 2 && rest >= KPI_ROW_PX) {
         plan.tileRows++;
         rest -= KPI_ROW_PX;
       }
       plan.viewDetails = plan.tileRows === 2 && rest >= VIEW_DETAILS_PX;
       return plan;
-    case 'medium':
-      if (rest >= TILE_ROW_PX) {
+    case 'medium': {
+      const tilePx = rowPx === undefined ? TILE_ROW_PX : GAP_PX + rowPx;
+      if (rest >= tilePx) {
         plan.tileRows = 1;
-        rest -= TILE_ROW_PX;
+        rest -= tilePx;
       }
       rest = reserveWorkload(plan, rest, 3);
       plan.listRows = rowsFor(rest - GAP_PX);
       plan.viewDetails = plan.listRows === 0 && plan.tileRows > 0 && rest >= VIEW_DETAILS_PX;
       return plan;
+    }
     case 'wide':
     case 'large':
     case 'maximum':

@@ -102,7 +102,7 @@
   @if (mode() === 'day') {
     @if (store.data(); as data) {
       <div class="tsd">
-        <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Today" />
+        <app-kpi-tiles data-section="status" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Today" />
 
         @if (!data.plannerEnabled) {
           <p class="tsd-note" data-testid="tsd-planner-off">
@@ -306,7 +306,7 @@
           </section>
 
           <!-- Execution ranking and planned vs actual in one table (2026-11-05): rank, score, planned, actual and the difference. -->
-          <section class="tsd-panel" data-testid="tsd-ranking-panel">
+          <section class="tsd-panel" data-testid="tsd-ranking-panel" data-section="ranking">
             <div class="tsd-table-head">
               <p class="tsd-title">Execution ranking · planned vs actual (today)</p>
               <span class="tsd-legend" aria-hidden="true">
@@ -533,8 +533,8 @@
     <div class="tsd">
       @if (weekStore.data(); as week) {
         @if (week.plannerEnabled) {
-          <app-kpi-tiles [tiles]="weekTiles()" [maxColumns]="4" ariaLabel="This week" />
-          <section class="tsd-panel tsd-week-panel" data-testid="tsd-week-chart">
+          <app-kpi-tiles data-section="coverage" [tiles]="weekTiles()" [maxColumns]="4" ariaLabel="This week" />
+          <section class="tsd-panel tsd-week-panel" data-testid="tsd-week-chart" data-section="planned-actual">
             @if (weekDays(); as days) {
               <app-planned-actual-week-chart
                 heading="Planned vs actual by day"

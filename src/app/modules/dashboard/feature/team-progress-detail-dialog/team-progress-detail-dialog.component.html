@@ -170,7 +170,7 @@
             }
           </section>
 
-          <section class="tp-panel tp-panel--weekly" aria-labelledby="tp-weekly-heading" data-testid="tp-weekly">
+          <section class="tp-panel tp-panel--weekly" aria-labelledby="tp-weekly-heading" data-testid="tp-weekly" data-section="weekly">
             <div class="tp-panel__head">
               <h3 id="tp-weekly-heading" class="tp-panel__title">Weekly completion</h3>
               <span class="tp-tag" data-testid="tp-weekly-range">{{ weeklyRange() }}</span>
@@ -204,7 +204,7 @@
           @if (!isPeriod() && chartProjects().length > 0) {
             <!-- Projects as stacked hour bars, the same chart as the card (2026-11-06): hovering a colour reads that
                  project's hours in that state; an at-risk project has a red border and says why. -->
-            <section class="tp-panel tp-panel--projects" aria-labelledby="tp-projects-heading" data-testid="tp-projects">
+            <section class="tp-panel tp-panel--projects" aria-labelledby="tp-projects-heading" data-testid="tp-projects" data-section="projects">
               <h3 id="tp-projects-heading" class="tp-panel__title">Projects</h3>
               <app-project-hours-chart
                 class="tp-project-chart"
@@ -215,7 +215,7 @@
             </section>
           }
 
-          <section class="tp-panel tp-panel--employees" aria-labelledby="tp-ov-emp-heading" data-testid="tp-ov-employees">
+          <section class="tp-panel tp-panel--employees" aria-labelledby="tp-ov-emp-heading" data-testid="tp-ov-employees" data-section="members">
             <div class="tp-panel__head">
               <h3 id="tp-ov-emp-heading" class="tp-panel__title">Team members</h3>
               <span class="tp-members-tools">
@@ -384,7 +384,7 @@
 
         <!-- Overdue (always as of today, whatever the period); hidden when nothing is overdue. -->
         @if (overdueTasks().length > 0) {
-          <section class="tp-panel tp-panel--overdue" aria-labelledby="tp-overdue-heading" data-testid="tp-overdue">
+          <section class="tp-panel tp-panel--overdue" aria-labelledby="tp-overdue-heading" data-testid="tp-overdue" data-section="overdue">
             <div class="tp-panel__head">
               <h3 id="tp-overdue-heading" class="tp-panel__title">Overdue tasks</h3>
               <span class="tp-tag" data-testid="tp-overdue-count">

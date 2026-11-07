@@ -269,51 +269,25 @@
       } @else {
         @switch (mode()) {
           @case ('mini') {
-            <!-- 2-row cards: the donut, with the completion in its centre (the total beside it when there
-            is room). Stretched sideways the stacked status bar and a one-line legend take its place. -->
-            @if (plan().miniLegend === 'inline') {
-              <div class="tp-mini tp-mini--wide" data-testid="team-progress-mini">
-                <p class="tp-mini-figure">
-                  <span class="tp-completion-big text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
-                  <span class="tp-completion-caption">
-                    completed of
-                    <span class="font-semibold text-[var(--color-text-primary)] tabular-nums">{{ totalText() }}</span>
-                  </span>
-                </p>
-                <div class="tp-mini-bar">
-                  <div class="tp-status-bar" role="img" [attr.aria-label]="donutLabel()" data-testid="team-progress-status-bar">
-                    @for (seg of donutSegments(); track seg.key) {
-                      <span class="h-full" [style.background]="seg.color" [style.width.%]="seg.length"></span>
-                    }
-                  </div>
-                  <ul class="tp-mini-legend" data-testid="team-progress-legend">
-                    @for (row of statusRows(); track row.key) {
-                      <li
-                        class="tp-mini-legend-item"
-                        [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'"
-                        (mouseenter)="hoveredStatus.set(row.key)"
-                        (mouseleave)="hoveredStatus.set(null)"
-                      >
-                        <span class="h-2 w-2 shrink-0 rounded-full" [class]="row.bgClass" aria-hidden="true"></span>
-                        <span class="tp-mini-legend-label">{{ row.label }}</span>
-                        <span class="tp-key-pct" [attr.data-testid]="'team-progress-mini-' + row.testId + '-percent'">{{ row.percentText }}</span>
-                        <span class="tp-mini-legend-hours" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
-                      </li>
-                    }
-                  </ul>
-                </div>
-              </div>
-            } @else {
-              <div class="tp-mini tp-mini--donut" data-testid="team-progress-mini">
-                <ng-container *ngTemplateOutlet="donutTpl; context: { completionCenter: true }" />
-                @if (plan().miniFigure) {
-                  <p class="tp-mini-figure">
-                    <span class="font-bold text-[var(--color-text-primary)] tabular-nums" data-testid="team-progress-total">{{ totalText() }}</span>
-                    <span class="tp-completion-caption">{{ period() === 'all' ? 'allocated' : periodCaption().toLowerCase() }}</span>
-                  </p>
-                }
-              </div>
-            }
+            <!-- 2-row cards: the shared strip. The donut with the completion in it, then its key, then summary cards
+            of the popup's sections as the card widens. -->
+            <app-dashboard-summary-strip
+              class="tp-mini"
+              data-testid="team-progress-mini"
+              [slices]="donutSlices()"
+              [keySlices]="donutSlices()"
+              [cards]="summaryCards()"
+              [donutLabel]="donutLabel()"
+              [(active)]="hoveredStatus"
+              (cardOpened)="openSection($event)"
+              (cardRetried)="retryCard($event)"
+              (shownCards)="shownCards.set($event)"
+            >
+              <p class="tp-donut-center">
+                <span class="text-lg font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+                <span class="tp-donut-caption">completed</span>
+              </p>
+            </app-dashboard-summary-strip>
           }
 
           @case ('xs') {
@@ -376,7 +350,10 @@
               </ul>
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
-            @if (visibleExtraTiles().length > 0) {
+            @if (rowCards().length > 0) {
+              <!-- Taller views: summary cards of what the card is not already showing, in the tiles' place. -->
+              <app-dashboard-summary-row data-testid="team-progress-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" (cardRetried)="retryCard($event)" appStopClickPropagation />
+            } @else if (visibleExtraTiles().length > 0) {
               <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: visibleExtraTiles().length }" />
             }
             <ng-container *ngTemplateOutlet="timeTpl" />
@@ -501,7 +478,9 @@
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
             <!-- KPI cards in the popup's Overview style, two per row, as many rows as the height allows. -->
-            @if (visibleKpiCards().length > 0) {
+            @if (rowCards().length > 0) {
+              <app-dashboard-summary-row data-testid="team-progress-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" (cardRetried)="retryCard($event)" appStopClickPropagation />
+            } @else if (visibleKpiCards().length > 0) {
               <ul class="tp-kpis" data-testid="team-progress-metrics">
                 @for (card of visibleKpiCards(); track card.key) {
                   <li class="tp-kpi" [class]="'tone-' + card.tone" [title]="card.label + ': ' + card.value" [attr.data-testid]="'team-progress-kpi-' + card.key">
@@ -526,6 +505,7 @@
 
 <app-team-progress-detail-dialog
   [open]="detailOpen()"
+  [focusSection]="detailSection()"
   [summary]="store.data()"
   [period]="period()"
   (periodChange)="setPeriod($event)"

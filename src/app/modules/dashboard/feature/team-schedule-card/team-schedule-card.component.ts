@@ -21,6 +21,7 @@ import {
   TeamScheduleItem,
   TeamScheduleMember,
   TeamScheduleResponse,
+  TeamScheduleWeekResponse,
 } from '../../models/team-schedule.model';
 import { TeamScheduleWeekStore } from '../../state/team-schedule-week.store';
 import { TeamScheduleStore } from '../../state/team-schedule.store';
@@ -29,6 +30,11 @@ import { PlannedActualWeekChartComponent } from '../../ui/planned-actual-week-ch
 import { DASHBOARD_DONUT_PX, donutValueFontPx } from '../../utils/dashboard-donut.util';
 import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
+import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
+import { pickSummaryCards } from '../../utils/summary-row.util';
+import { SummaryCardModel } from '../../models/summary-card.model';
+import { teamScheduleSummaryCards } from '../../utils/team-schedule-summary-cards.util';
 import { injectHostSize } from '../../utils/host-size.util';
 import { plannedActualTiles, summarizePlannedActual } from '../../utils/planned-actual-format.util';
 import {
@@ -110,6 +116,8 @@ interface LegendRow {
     NgTemplateOutlet,
     DashboardDonutComponent,
     DonutKeyComponent,
+    DashboardSummaryStripComponent,
+    DashboardSummaryRowComponent,
     AvatarComponent,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -143,6 +151,32 @@ export class TeamScheduleCardComponent implements OnInit {
   protected readonly colors = SCHEDULE_COLORS;
   protected readonly now = signal(new Date());
   readonly detailOpen = signal(false);
+  /** The popup section a summary card asked for (null: the top). */
+  readonly detailSection = signal<string | null>(null);
+  /** mini: how many summary cards the 2-row strip shows. The first two read the week. */
+  protected readonly shownCards = signal(0);
+  /** The 2-row strip's cards, each summarising a section of the popup. */
+  protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
+    const data = this.store.data();
+    if (!data) return [];
+    // The popup can browse other weeks through the same store; the cards keep the current week.
+    const current = this.weekStore.weekStart() === null;
+    const week = current ? this.weekStore.data() : this.currentWeek();
+    return teamScheduleSummaryCards(data, week, current && !this.weekStore.data() && !!this.weekStore.error());
+  });
+  /** Timeline head: two summary cards of what the card is not already showing, in the status chips' place (empty:
+   * the chips). The head is taller than a cards row, so nothing else moves. The lines show each person's status and
+   * Not planned badge, and the maximum size adds the week chart. */
+  protected readonly headCards = computed(() => {
+    const plan = this.plan();
+    if (this.drawn() !== 'timeline' || !plan.head) return [];
+    const shown = new Set(['ts-needs-plan', 'ts-now', ...(plan.weekChart ? ['ts-plan-actual'] : [])]);
+    return pickSummaryCards(this.summaryCards(), shown, 2) ?? [];
+  });
+  /** A plain boolean for the week effect, so it re-runs only when this changes. */
+  private readonly weekInHead = computed(() => this.headCards().some((c) => c.id === 'ts-coverage' || c.id === 'ts-plan-actual'));
+  /** The last current-week payload, kept while the popup shows another week. */
+  private readonly currentWeek = signal<TeamScheduleWeekResponse | null>(null);
 
   readonly view = computed<ScheduleView>(() => {
     const { width, height } = this.size();
@@ -270,9 +304,14 @@ export class TeamScheduleCardComponent implements OnInit {
   });
 
   constructor() {
+    effect(() => {
+      const week = this.weekStore.data();
+      if (week && this.weekStore.weekStart() === null) untracked(() => this.currentWeek.set(week));
+    });
     // The week costs a request, so it loads only once the card first reaches the maximum size.
     effect(() => {
-      if (!this.plan().weekChart || this.weekRequested) return;
+      const wanted = this.plan().weekChart || (this.drawn() === 'mini' && this.shownCards() > 0) || this.weekInHead();
+      if (!wanted || this.weekRequested) return;
       this.weekRequested = true;
       untracked(() => this.weekStore.load(null));
     });
@@ -397,11 +436,27 @@ export class TeamScheduleCardComponent implements OnInit {
 
   openDetail(event?: Event): void {
     event?.stopPropagation();
-    if (this.store.data()) this.detailOpen.set(true);
+    if (!this.store.data()) return;
+    this.detailSection.set(null);
+    this.detailOpen.set(true);
   }
+
+  /** A summary card: open the popup at the section it summarises. */
+  openSection(section: string): void {
+    if (!this.store.data()) return;
+    this.detailSection.set(section);
+    this.detailOpen.set(true);
+  }
+
+  /** Try again on a week card: reload the week. */
+  retryWeek(): void {
+    this.weekStore.load(null);
+  }
+
 
   closeDetail(): void {
     this.detailOpen.set(false);
+    this.detailSection.set(null);
   }
 
   private onVisibilityChange(): void {

@@ -25,6 +25,7 @@ import { TEAM_PROGRESS_PERIOD_STORAGE_KEY, TeamProgressCardComponent } from './t
 @Component({ selector: 'app-team-progress-detail-dialog', standalone: true, template: '' })
 class StubDetailDialogComponent {
   readonly open = input(false);
+  readonly focusSection = input<string | null>(null);
   readonly summary = input<LedWorkProgressResponse | null>(null);
   readonly period = input<LedProgressPeriod>('all');
   readonly periodChange = output<LedProgressPeriod>();
@@ -289,9 +290,19 @@ describe('TeamProgressCardComponent', () => {
       for (const cb of queued) cb(0);
     }
 
-    /** Reports a host size and runs the queued animation frame. */
+    /** Reports a host size and runs the queued animation frame. The card's observer is the first one created;
+     * the 2-row summary strip adds its own after it. */
     function resize(fixture: ComponentFixture<TeamProgressCardComponent>, width: number, height: number): void {
-      FakeResizeObserver.instances[FakeResizeObserver.instances.length - 1].trigger(width, height);
+      FakeResizeObserver.instances[0].trigger(width, height);
+      flushFrames();
+      fixture.detectChanges();
+    }
+
+    /** Reports the 2-row strip's size for a widget host width (the strip fills the body: host minus 32px). */
+    function stripResize(fixture: ComponentFixture<TeamProgressCardComponent>, hostWidth: number): void {
+      FakeResizeObserver.instances[FakeResizeObserver.instances.length - 1].trigger(hostWidth - 32, 150);
+      flushFrames();
+      fixture.detectChanges();
       flushFrames();
       fixture.detectChanges();
     }
@@ -332,7 +343,7 @@ describe('TeamProgressCardComponent', () => {
       ['4x5', 424, 528, 'small', ['team-progress-donut', 'team-progress-legend', 'team-progress-view-details'], ['team-progress-project-chart']],
       ['6x3', 642, 312, 'wide', ['team-progress-donut', 'team-progress-key', 'team-progress-weekly'], ['team-progress-legend', 'team-progress-metrics']],
       ['6x4', 642, 420, 'medium',
-        ['team-progress-total', 'team-progress-status-bar', 'team-progress-tiles', 'team-progress-metrics', 'team-progress-view-details'],
+        ['team-progress-total', 'team-progress-status-bar', 'team-progress-tiles', 'team-progress-summary-row'],
         ['team-progress-donut', 'team-progress-project-chart']],
       ['6x5', 642, 528, 'medium',
         ['team-progress-status-bar', 'team-progress-tiles', 'team-progress-project-chart', 'team-progress-overdue'],
@@ -358,7 +369,8 @@ describe('TeamProgressCardComponent', () => {
       const fixture = await setup(sample());
       resize(fixture, 424, 312);
       expect(has(fixture, 'team-progress-kpi-in-progress')).toBe(false);
-      resize(fixture, 424, 420);
+      // 400px tall: room for the KPI cards but not for the taller summary cards row.
+      resize(fixture, 424, 400);
       expect(text(fixture, 'team-progress-kpi-in-progress')).toMatch(/h\s*In progress · \d+%/);
       expect(text(fixture, 'team-progress-kpi-overdue')).toContain('Overdue · 1 task');
       expect(has(fixture, 'team-progress-kpi-tasks')).toBe(true);
@@ -515,7 +527,7 @@ describe('TeamProgressCardComponent', () => {
       resize(fixture, 206, 204);
       expect(layoutMode(fixture)).toBe('mini');
       expect(has(fixture, 'team-progress-mini')).toBe(true);
-      const donut = fixture.nativeElement.querySelector('[data-testid="team-progress-donut"]') as HTMLElement;
+      const donut = fixture.nativeElement.querySelector('[data-testid="summary-strip-donut"]') as HTMLElement;
       expect(donut.style.width).toBe(`${DASHBOARD_MINI_DONUT_PX}px`);
       expect(has(fixture, 'team-progress-period')).toBe(false);
       expect(has(fixture, 'team-progress-legend')).toBe(false);
@@ -523,19 +535,70 @@ describe('TeamProgressCardComponent', () => {
       expect(text(fixture, 'team-progress-completion')).toBe('30%');
       expect(has(fixture, 'team-progress-total')).toBe(false);
 
-      // A little wider, the total sits beside the donut.
-      resize(fixture, 292, 204);
-      expect(has(fixture, 'team-progress-donut')).toBe(true);
-      expect(has(fixture, 'team-progress-total')).toBe(true);
-
-      // Stretched sideways (2 rows), the stacked status bar and its legend replace the donut.
-      resize(fixture, 860, 204);
+      // Wider, the colour key, then summary cards of the popup's sections; never the old stacked bar.
+      resize(fixture, 1812, 204);
+      stripResize(fixture, 1812);
       expect(layoutMode(fixture)).toBe('mini');
-      expect(has(fixture, 'team-progress-status-bar')).toBe(true);
-      expect(has(fixture, 'team-progress-donut')).toBe(false);
-      for (const key of ['completed', 'in-progress', 'not-started', 'untasked']) {
-        expect(text(fixture, `team-progress-legend-${key}`)).toMatch(/ h$/);
-      }
+      expect(has(fixture, 'team-progress-status-bar')).toBe(false);
+      expect(fixture.nativeElement.querySelector('app-donut-key')).not.toBeNull();
+      expect(fixture.nativeElement.querySelectorAll('app-dashboard-summary-card').length).toBe(4);
+      expect(fixture.nativeElement.textContent).toContain('Overdue tasks');
+    });
+
+    it('2-row summary cards load weekly completion with the first card and the members behind with the fourth', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 1812, 204);
+      stripResize(fixture, 660);
+      expect(getWeeklyCompletion).toHaveBeenCalledOnce();
+      expect(getEmployees).not.toHaveBeenCalled();
+      stripResize(fixture, 1812);
+      expect(getEmployees).toHaveBeenCalledOnce();
+      expect(getEmployees).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 3, sort: 'completionRate', direction: 'asc' });
+      stripResize(fixture, 1700);
+      expect(getEmployees).toHaveBeenCalledOnce();
+      expect(getWeeklyCompletion).toHaveBeenCalledOnce();
+    });
+
+    it('a failed weekly completion shows its card as failed, and Try again fetches it again', async () => {
+      getWeeklyCompletion = vi.fn(() => throwError(() => new Error('down')));
+      const fixture = await setup(sample());
+      resize(fixture, 1812, 204);
+      stripResize(fixture, 1812);
+      const retry = fixture.nativeElement.querySelector('[data-testid="summary-retry"]') as HTMLButtonElement;
+      expect(retry).not.toBeNull();
+      expect(getWeeklyCompletion).toHaveBeenCalledOnce();
+      retry.click();
+      flushFrames();
+      fixture.detectChanges();
+      expect(getWeeklyCompletion).toHaveBeenCalledTimes(2);
+    });
+
+    it('a taller small or medium card swaps its tiles for two summary cards of what it is not showing', async () => {
+      const fixture = await setup(sample());
+      const titles = () =>
+        [...fixture.nativeElement.querySelectorAll('[data-testid="team-progress-summary-row"] [data-testid="summary-title"]')].map((t: Element) => t.textContent?.trim());
+      resize(fixture, 424, 420);
+      expect(layoutMode(fixture)).toBe('small');
+      expect(has(fixture, 'team-progress-metrics')).toBe(false);
+      expect(titles()).toEqual(['Weekly completion', 'Projects']);
+      expect(getWeeklyCompletion).toHaveBeenCalledOnce();
+
+      // medium with the project and overdue lists on the card: their cards are left out.
+      resize(fixture, 642, 528);
+      expect(layoutMode(fixture)).toBe('medium');
+      expect(has(fixture, 'team-progress-project-chart')).toBe(true);
+      expect(titles()).toEqual(['Weekly completion', 'Falling behind']);
+      expect(getEmployees).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 3, sort: 'completionRate', direction: 'asc' });
+    });
+
+    it('a summary card opens the popup at its section, not at the top', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 1812, 204);
+      stripResize(fixture, 1812);
+      (fixture.nativeElement.querySelectorAll('[data-testid="summary-card"]')[2] as HTMLElement).click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.detailOpen()).toBe(true);
+      expect(fixture.componentInstance.detailSection()).toBe('overdue');
     });
 
     it('the donut is the shared dashboard size in every view that shows it', async () => {
@@ -656,7 +719,8 @@ describe('TeamProgressCardComponent', () => {
     describe('weekly completion', () => {
       it('is fetched only in the wide, tall, large and maximum views, once per data load', async () => {
         const fixture = await setup(sample());
-        for (const [w, h] of [[315, 312], [424, 312], [642, 420]]) resize(fixture, w, h);
+        // 642 x 400 is medium without room for summary cards (they would bring the weekly card).
+        for (const [w, h] of [[315, 312], [424, 312], [642, 400]]) resize(fixture, w, h);
         expect(getWeeklyCompletion).not.toHaveBeenCalled();
 
         resize(fixture, 424, 636);
