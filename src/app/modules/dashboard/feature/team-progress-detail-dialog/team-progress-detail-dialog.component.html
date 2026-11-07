@@ -201,27 +201,17 @@
           </section>
 
 
-          @if (!isPeriod() && projectBreakdown().length > 0) {
+          @if (!isPeriod() && chartProjects().length > 0) {
+            <!-- Projects as stacked hour bars, the same chart as the card (2026-11-06): hovering a colour reads that
+                 project's hours in that state; an at-risk project has a red border and says why. -->
             <section class="tp-panel tp-panel--projects" aria-labelledby="tp-projects-heading" data-testid="tp-projects">
-              <h3 id="tp-projects-heading" class="tp-panel__title">Project breakdown</h3>
-              <div class="tp-project-chart" role="img" [attr.aria-label]="projectChartLabel()">
-                @for (p of projectBreakdown(); track p.id) {
-                  <div class="tp-project-row" data-testid="tp-project-row" [title]="p.name + ': ' + formatHours(p.completed) + ' h of ' + formatHours(p.allocated) + ' h'">
-                    <p class="tp-project-head">
-                      <span class="tp-project-name">{{ p.name }}</span>
-                      <span class="tp-project-figures">{{ formatHours(p.completed) }} h / {{ formatHours(p.allocated) }} h · {{ p.percent }}</span>
-                    </p>
-                    <span class="tp-project-track" aria-hidden="true">
-                      <span class="tp-project-allocated" data-testid="tp-project-allocated" [style.width.%]="p.allocatedShare"></span>
-                      <span class="tp-project-completed" data-testid="tp-project-completed" [style.width.%]="p.completedShare"></span>
-                    </span>
-                  </div>
-                }
-              </div>
-              <ul class="tp-project-legend" aria-hidden="true">
-                <li><span class="tp-project-key tp-project-key--allocated"></span>Allocated</li>
-                <li><span class="tp-project-key tp-project-key--completed"></span>Completed</li>
-              </ul>
+              <h3 id="tp-projects-heading" class="tp-panel__title">Projects</h3>
+              <app-project-hours-chart
+                class="tp-project-chart"
+                heading="Allocated across these projects"
+                [projects]="chartProjects()"
+                [overdueByProject]="summary()?.overdueByProject ?? []"
+              />
             </section>
           }
 

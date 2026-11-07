@@ -310,9 +310,8 @@
   min-height: 0;
   flex-direction: column;
   gap: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 0.625rem 0.75rem;
+  border-top: 1px solid var(--color-border); /* no card inside the card: a line above the section */
+  padding: 0.625rem 0 0;
 }
 
 /* The trend panel: 150px including its title. */

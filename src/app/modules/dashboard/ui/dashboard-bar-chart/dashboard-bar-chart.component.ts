@@ -6,6 +6,15 @@ export interface DashboardBarSegment {
   readonly key: string;
   readonly value: number;
   readonly color: string;
+  /** What the headline reads while this part of the bar is hovered; without it the whole bar's reading shows. */
+  readonly hover?: DashboardBarSegmentHover;
+}
+
+/** The headline for one hovered part of a bar ("Watercraft · In progress", "700 h", "35% of 2,000 h allocated"). */
+export interface DashboardBarSegmentHover {
+  readonly label: string;
+  readonly value: string;
+  readonly chip?: string;
 }
 
 /** Whether a bar is a finished bucket, the running one (drawn lighter) or one still to come (empty track). */
@@ -41,6 +50,9 @@ export interface DashboardBar {
   readonly dim?: boolean;
   readonly tooltip: string;
   readonly state?: DashboardBarState;
+  /** Why this bar needs attention ("At risk: …"). Draws a red border round its track and, while the bar is
+   * hovered, a red line under the headline that says why. */
+  readonly alert?: string;
 }
 
 /** One entry of the chart's legend: a bar colour, or the target dash. */
@@ -57,6 +69,8 @@ export interface DashboardBarHeadline {
   readonly chip?: DashboardBarChip | null;
   /** Hover text for the label (what the numbers mean). */
   readonly hint?: string;
+  /** A red line under the headline: why the hovered bar has a red border. */
+  readonly alert?: string;
   /** A smaller line under the value (the comparison figure); `orders` layout. */
   readonly sub?: string;
 }
@@ -132,6 +146,11 @@ export class DashboardBarChartComponent {
 
   /** The hovered bar's index. */
   protected readonly active = signal<number | null>(null);
+  /** The hovered part of the active bar (a segment key), when that part has its own hover reading. */
+  protected readonly activeSegment = signal<string | null>(null);
+
+  /** Keeps a line under the headline for the alert text whenever any bar has one, so hovering never shifts the plot. */
+  protected readonly alertLine = computed(() => this.bars().some((bar) => !!bar.alert));
 
   /** Each bar's largest figure on the axis: its stack, its pair or its target. */
   private readonly tallest = computed(() =>
@@ -183,11 +202,36 @@ export class DashboardBarChartComponent {
     const bar = index === null ? undefined : this.bars()[index];
     if (!bar) return resting;
     if (bar.state === 'future') return { label: bar.title, value: '—', chip: null };
+    const segmentKey = this.activeSegment();
+    const hover =
+      segmentKey === null
+        ? undefined
+        : [...bar.segments, ...(bar.pair ?? [])].find((s) => s.key === segmentKey)?.hover;
+    if (hover) {
+      return {
+        label: hover.label,
+        value: hover.value,
+        chip: hover.chip ? { text: hover.chip, tone: 'neutral' } : null,
+        sub: bar.sub,
+        alert: bar.alert,
+      };
+    }
     return {
       label: bar.title,
       value: bar.valueText,
       chip: bar.chip ? { text: bar.chip, tone: 'neutral' } : null,
       sub: bar.sub,
+      alert: bar.alert,
     };
   });
+
+  protected enterBar(index: number): void {
+    this.active.set(index);
+    this.activeSegment.set(null);
+  }
+
+  protected leaveChart(): void {
+    this.active.set(null);
+    this.activeSegment.set(null);
+  }
 }

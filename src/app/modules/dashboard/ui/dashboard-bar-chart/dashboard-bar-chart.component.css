@@ -94,6 +94,18 @@
   color: var(--color-text-secondary);
 }
 
+/* Why the hovered bar has a red border; the line is kept even when empty so the plot never moves. */
+.bc-alert {
+  height: 1rem;
+  overflow: hidden;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1rem;
+  color: var(--color-danger-text, #be123c);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* ---- Plot: round axis on the left, one column per bucket ---- */
 .bc-plot {
   display: flex;
@@ -189,6 +201,19 @@
 .bc-seg {
   width: 100%;
   flex: none;
+  transition: opacity 150ms ease;
+}
+
+/* The hovered part of a bar, when it has its own reading: the other parts fade back. */
+.bc-col--active .bc-stack:has(.bc-seg--on) .bc-seg:not(.bc-seg--on) {
+  opacity: 0.45;
+}
+
+/* A bar that needs attention (an at-risk project): a red border round its track, hovered or not. */
+.bc-col--alert .bc-track,
+.bc-col--alert.bc-col--active .bc-track {
+  outline: 2px solid var(--color-danger, #ef4444);
+  outline-offset: 2px;
 }
 
 /* The running bucket is not over yet: lighter so it doesn't read as a full one. */
@@ -418,4 +443,14 @@
   :host(.bc--orders) .bc-head-value {
     animation: none;
   }
+}
+
+/* Orders layout has no visible track: the red border goes round the bars themselves. */
+:host(.bc--orders) .bc-col--alert .bc-track {
+  outline: none;
+}
+
+:host(.bc--orders) .bc-col--alert .bc-stack {
+  outline: 2px solid var(--color-danger, #ef4444);
+  outline-offset: 1px;
 }

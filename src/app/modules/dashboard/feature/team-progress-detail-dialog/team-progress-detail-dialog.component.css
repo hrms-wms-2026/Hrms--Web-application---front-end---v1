@@ -103,7 +103,7 @@
 .tp-panel__title { margin: 0; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
 /* Team members: one full-width table, estimate hours then the period's planned / worked time. */
 .tp-panel--employees { grid-column: 1 / -1; }
-/* Project breakdown fills its own row under Status / Weekly / Unscheduled work. */
+/* The project chart fills its own row under Status / Weekly / Unscheduled work. */
 .tp-panel--projects { grid-column: 1 / -1; }
 .tp-members-tools { display: inline-flex; align-items: center; gap: 10px; }
 .tp-members-note { margin: -4px 0 0; font-size: 11px; }
@@ -220,80 +220,9 @@
   .tp-search { width: 100%; max-width: none; }
 }
 
-/* Project breakdown (2026-11-02 design match): allocated vs completed hours, one bar row per project on one scale. */
+/* Projects: the shared stacked hour bars, one per project (2026-11-06). */
 .tp-project-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.tp-project-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 4px;
-  font-size: 12px;
-}
-.tp-project-name {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.tp-project-figures {
-  flex: none;
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-.tp-project-track {
-  position: relative;
-  display: block;
-  height: 14px;
-  border-radius: 4px;
-  background: var(--color-surface-secondary);
-}
-.tp-project-allocated,
-.tp-project-completed {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  border-radius: 4px;
-}
-.tp-project-allocated {
-  background: var(--color-border-strong);
-}
-.tp-project-completed {
-  top: 3px;
-  height: 8px;
-  background: #10b981;
-}
-.tp-project-legend {
-  display: flex;
-  gap: 14px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: 11px;
-  color: var(--color-text-secondary);
-}
-.tp-project-legend li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.tp-project-key {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-.tp-project-key--allocated {
-  background: var(--color-border-strong);
-}
-.tp-project-key--completed {
-  background: #10b981;
+  height: 15rem;
 }
 
 /* Overdue tasks: head (title + count), total line, then a fixed pie column beside the task table.

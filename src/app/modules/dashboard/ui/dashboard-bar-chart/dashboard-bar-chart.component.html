@@ -22,6 +22,10 @@
       @if (h.sub) {
         <p class="bc-head-sub" data-testid="bar-chart-sub">{{ h.sub }}</p>
       }
+      @if (alertLine()) {
+        <!-- Kept whenever a bar has an alert, so the plot never jumps; it reads only for a hovered alert bar. -->
+        <p class="bc-alert" [title]="h.alert ?? ''" data-testid="bar-chart-alert">{{ h.alert ?? '' }}</p>
+      }
     </div>
   }
   @if (variant() === 'orders' && legend().length > 0) {
@@ -42,7 +46,7 @@
     role="img"
     [attr.aria-label]="ariaLabel()"
     data-testid="bar-chart"
-    (mouseleave)="active.set(null)"
+    (mouseleave)="leaveChart()"
   >
     @for (col of columns(); track col.bar.key; let i = $index) {
       <div
@@ -50,10 +54,11 @@
         [class.bc-col--active]="active() === i"
         [class.bc-col--dim]="col.bar.dim"
         [class.bc-col--pair]="col.pair !== null"
+        [class.bc-col--alert]="!!col.bar.alert"
         [title]="col.bar.tooltip"
         data-testid="bar-chart-col"
         [attr.data-key]="col.bar.key"
-        (mouseenter)="active.set(i)"
+        (mouseenter)="enterBar(i)"
       >
         <div class="bc-track">
           <div class="bc-stacks">
@@ -68,9 +73,12 @@
                   @for (seg of col.segments; track seg.key) {
                     <div
                       class="bc-seg"
+                      [class.bc-seg--on]="active() === i && activeSegment() === seg.key"
                       [attr.data-segment]="seg.key"
                       [style.height.%]="seg.share"
                       [style.background]="seg.color"
+                      (mouseenter)="seg.hover && activeSegment.set(seg.key)"
+                      (mouseleave)="activeSegment.set(null)"
                     ></div>
                   }
                 </div>
@@ -88,9 +96,12 @@
                     @for (seg of pair.segments; track seg.key) {
                       <div
                         class="bc-seg"
+                        [class.bc-seg--on]="active() === i && activeSegment() === seg.key"
                         [attr.data-segment]="seg.key"
                         [style.height.%]="seg.share"
                         [style.background]="seg.color"
+                        (mouseenter)="seg.hover && activeSegment.set(seg.key)"
+                        (mouseleave)="activeSegment.set(null)"
                       ></div>
                     }
                   </div>

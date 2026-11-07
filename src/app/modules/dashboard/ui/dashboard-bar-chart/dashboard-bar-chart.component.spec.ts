@@ -157,4 +157,52 @@ describe('DashboardBarChartComponent', () => {
     f.detectChanges();
     expect((f.nativeElement as HTMLElement).classList).not.toContain('bc--boxy');
   });
+  it('hovering one part of a bar reads that part; leaving it reads the whole bar again', () => {
+    const withHover: DashboardBar = {
+      ...bar('p', 30, 10),
+      segments: [
+        { key: 'a', value: 30, color: '#10b981', hover: { label: 'P · Completed', value: '30 h', chip: '75% of 40 h' } },
+        { key: 'b', value: 10, color: '#f59e0b' },
+      ],
+    };
+    const f = setup([withHover], { label: 'All', value: '40 h' });
+    const col = q(f, '[data-testid=bar-chart-col]')!;
+    col.dispatchEvent(new Event('mouseenter'));
+    const segA = q(f, '[data-segment=a]')!;
+    segA.dispatchEvent(new Event('mouseenter'));
+    f.detectChanges();
+    expect(headline(f)).toEqual(['P · Completed', '30 h', '75% of 40 h']);
+    expect(segA.classList).toContain('bc-seg--on');
+
+    // A part without its own reading leaves the whole bar's reading.
+    segA.dispatchEvent(new Event('mouseleave'));
+    q(f, '[data-segment=b]')!.dispatchEvent(new Event('mouseenter'));
+    f.detectChanges();
+    expect(headline(f)).toEqual(['Day p', '40 h', '30 done']);
+
+    q(f, '[data-testid=bar-chart]')!.dispatchEvent(new Event('mouseleave'));
+    f.detectChanges();
+    expect(headline(f)).toEqual(['All', '40 h']);
+  });
+
+  it('an alert bar has a red border and says why under the headline while hovered', () => {
+    const f = setup([{ ...bar('r', 5), alert: 'At risk: work is past due' }, bar('ok', 5)], { label: 'All', value: '10 h' });
+    const cols = all(f, '[data-testid=bar-chart-col]');
+    expect(cols[0].classList).toContain('bc-col--alert');
+    expect(cols[1].classList).not.toContain('bc-col--alert');
+    // The line is kept (empty) at rest, so hovering never moves the plot.
+    expect(q(f, '[data-testid=bar-chart-alert]')?.textContent?.trim()).toBe('');
+
+    cols[0].dispatchEvent(new Event('mouseenter'));
+    f.detectChanges();
+    expect(q(f, '[data-testid=bar-chart-alert]')?.textContent?.trim()).toBe('At risk: work is past due');
+    cols[1].dispatchEvent(new Event('mouseenter'));
+    f.detectChanges();
+    expect(q(f, '[data-testid=bar-chart-alert]')?.textContent?.trim()).toBe('');
+  });
+
+  it('no alert line when no bar has an alert', () => {
+    const f = setup([bar('1', 5)], { label: 'All', value: '5 h' });
+    expect(q(f, '[data-testid=bar-chart-alert]')).toBeNull();
+  });
 });

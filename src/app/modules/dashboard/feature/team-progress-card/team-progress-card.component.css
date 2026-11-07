@@ -533,15 +533,40 @@
   flex: 1 1 0;
 }
 
+/* No card inside the card: sections are split by a line (like Team Attendance and the popups), never boxed. */
 .tp-panel {
   display: flex;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 0.625rem;
-  padding: 0.5rem 0.625rem;
+}
+
+/* A row of sections sits under a full-width line... */
+.tp-panels {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+  column-gap: 1.25rem;
+}
+
+/* ...and side-by-side sections get a line between them. */
+.tp-panels.grid-cols-2 > .tp-panel + .tp-panel,
+.tp-panels--weekly-members > .tp-panel + .tp-panel,
+.tp-panels[style*='grid-template-columns'] > .tp-panel + .tp-panel {
+  border-left: 1px solid var(--color-border);
+  padding-left: 1.25rem;
+}
+
+/* The weekly chart beside the donut key (wide): a line on its left, like the attendance trend. */
+.tp-hero--weekly > .tp-weekly {
+  border-left: 1px solid var(--color-border);
+  padding-left: 1.5rem;
+}
+
+/* The weekly chart on its own row (tall): a line above it. */
+.tp-body > .tp-weekly {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
 }
 
 .team-progress-heading {
@@ -561,6 +586,16 @@
 .tp-weekly {
   height: 196px;
   flex: none;
+}
+
+/* The project chart fills its panel under the heading. */
+.tp-panel--chart {
+  min-height: 9.5rem;
+}
+
+.tp-project-chart {
+  min-height: 0;
+  flex: 1 1 0;
 }
 
 .tp-panels--fixed .tp-weekly {

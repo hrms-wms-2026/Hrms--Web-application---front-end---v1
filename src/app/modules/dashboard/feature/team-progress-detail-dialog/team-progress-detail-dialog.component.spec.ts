@@ -560,29 +560,33 @@ describe('TeamProgressDetailDialogComponent', () => {
     http.expectNone((r) => !isSide(r));
   });
 
-  it('project breakdown is a bar chart of allocated vs completed hours, most allocated first, on one scale', () => {
+  it('projects are stacked hour bars, at-risk first with a red border that says why', () => {
     openWith();
 
-    const rows = [...el().querySelectorAll<HTMLElement>('[data-testid="tp-project-row"]')];
-    expect(rows.map((r) => r.querySelector('.tp-project-name')!.textContent!.trim())).toEqual(['Apollo', 'Zeus']);
-    expect(rows.map((r) => r.querySelector('.tp-project-figures')!.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
-      '40 h / 120 h · 33%',
-      '10 h / 80 h · 13%',
+    const cols = [...q('tp-projects')!.querySelectorAll<HTMLElement>('[data-testid="bar-chart-col"]')];
+    expect(cols.map((c) => c.getAttribute('data-key'))).toEqual(['p1', 'p2']);
+    expect(cols.map((c) => c.classList.contains('bc-col--alert'))).toEqual([true, false]);
+    expect(cols.map((c) => c.querySelector('[data-testid="bar-chart-label"]')!.textContent!.trim())).toEqual(['APO', 'ZEU']);
+    expect([...cols[0].querySelectorAll('[data-segment]')].map((s) => s.getAttribute('data-segment'))).toEqual([
+      'completed',
+      'inProgress',
+      'notStarted',
+      'untasked',
     ]);
-    const width = (r: HTMLElement, id: string) => (r.querySelector(`[data-testid="${id}"]`) as HTMLElement).style.width;
-    // The largest allocation (120 h) is the full track.
-    expect(width(rows[0], 'tp-project-allocated')).toBe('100%');
-    expect(width(rows[0], 'tp-project-completed')).toBe('33.3%');
-    expect(width(rows[1], 'tp-project-allocated')).toBe('66.7%');
-    expect(width(rows[1], 'tp-project-completed')).toBe('8.3%');
-    expect(q('tp-projects')!.querySelector('[role="img"]')!.getAttribute('aria-label')).toContain('Apollo: 40 h completed of 120 h allocated');
+    expect(q('tp-projects')!.querySelector('[role="img"]')!.getAttribute('aria-label')).toContain('Apollo: 120 h allocated.');
+
+    cols[0].dispatchEvent(new Event('mouseenter'));
+    (cols[0].querySelector('[data-segment="completed"]') as HTMLElement).dispatchEvent(new Event('mouseenter'));
+    render();
+    expect(q('tp-projects')!.querySelector('[data-testid="bar-chart-headline"]')!.textContent!.replace(/\s+/g, ' ').trim()).toContain('Apollo · Completed40 h33% of 120 h allocated');
+    expect(q('tp-projects')!.querySelector('[data-testid="bar-chart-alert"]')!.textContent!.trim()).toBe('At risk: 6 overdue tasks (20 h) in Backend');
   });
 
-  it('the project breakdown follows the project filter', () => {
+  it('the project chart follows the project filter', () => {
     openWith();
     fixture.componentInstance.setProject('p2');
     render();
-    expect([...el().querySelectorAll('[data-testid="tp-project-row"]')].length).toBe(1);
+    expect(q('tp-projects')!.querySelectorAll('[data-testid="bar-chart-col"]').length).toBe(1);
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
   });
@@ -625,8 +629,8 @@ describe('TeamProgressDetailDialogComponent', () => {
       ['Not started', '3%', '6 h'],
       ['Not yet tasked', '50%', '100 h'],
     ]);
-    const slices = [...q('tp-donut')!.querySelectorAll('circle[stroke-dasharray]')];
-    expect(slices.map((c) => c.getAttribute('stroke'))).toContain('#ef4444');
+    const slices = [...q('tp-donut')!.querySelectorAll('[data-testid="donut-segment"]')];
+    expect(slices.map((c) => c.getAttribute('fill'))).toContain('#ef4444');
     expect(q('tp-donut-overdue')).toBeNull();
     expect(q('tp-donut')!.querySelector('svg')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
     expect(q('tp-legend-note')!.textContent).toContain('without the overdue');

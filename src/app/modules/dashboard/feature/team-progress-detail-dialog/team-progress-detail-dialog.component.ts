@@ -1,3 +1,5 @@
+import { ProjectHoursChartComponent } from '../../ui/project-hours-chart/project-hours-chart.component';
+import { orderProjectsForChart } from '../../utils/project-hours-chart.util';
 import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -160,7 +162,17 @@ interface OverdueHoursView {
 @Component({
   selector: 'app-team-progress-detail-dialog',
   standalone: true,
-  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent, DashboardDonutComponent, DonutKeyComponent],
+  imports: [
+    DatePipe,
+    ModalComponent,
+    SelectComponent,
+    EmptyStateComponent,
+    ErrorStateComponent,
+    WeeklyCompletionChartComponent,
+    DashboardDonutComponent,
+    DonutKeyComponent,
+    ProjectHoursChartComponent
+  ],
   templateUrl: './team-progress-detail-dialog.component.html',
   styleUrl: './team-progress-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -316,32 +328,13 @@ export class TeamProgressDetailDialogComponent {
 
   /** Project breakdown chart: the (filtered) projects, most allocated first. Allocated and completed bars share one scale
    * (the largest allocation, or completion when it is larger); % = completed of allocated, "—" without allocation. */
-  protected readonly projectBreakdown = computed(() => {
+  /** Projects for the chart (the picked one alone when filtered): at-risk first, then the largest allocation. */
+  protected readonly chartProjects = computed(() => {
     const summary = this.summary();
     if (!summary) return [];
     const selected = this.selectedProject();
-    const projects = selected ? [selected] : summary.projects;
-    const scale = Math.max(1, ...projects.map((p) => Math.max(p.hours.allocatedHours, p.hours.completedHours)));
-    const share = (h: number) => Math.round((h * 1000) / scale) / 10;
-    return projects
-      .map((p) => ({
-        id: p.projectId,
-        name: p.projectName,
-        allocated: p.hours.allocatedHours,
-        completed: p.hours.completedHours,
-        percent: p.hours.allocatedHours > 0 ? formatPercent(p.hours.completedHours, p.hours.allocatedHours) : '—',
-        allocatedShare: share(p.hours.allocatedHours),
-        completedShare: share(p.hours.completedHours),
-      }))
-      .sort((a, b) => b.allocated - a.allocated || a.name.localeCompare(b.name));
+    return orderProjectsForChart(selected ? [selected] : summary.projects);
   });
-  protected readonly projectChartLabel = computed(
-    () =>
-      'Allocated vs completed hours by project. ' +
-      this.projectBreakdown()
-        .map((p) => `${p.name}: ${formatHourValue(p.completed)} h completed of ${formatHourValue(p.allocated)} h allocated (${p.percent})`)
-        .join('; ')
-  );
 
   protected readonly overviewHours = computed<LedHourTotals | null>(() => {
     const summary = this.summary();

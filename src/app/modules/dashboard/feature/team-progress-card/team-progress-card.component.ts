@@ -29,11 +29,16 @@ import {
 import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
 import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { ProjectHoursChartComponent } from '../../ui/project-hours-chart/project-hours-chart.component';
+import { orderProjectsForChart } from '../../utils/project-hours-chart.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
 import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
 
 /** Per-viewer memory of the period switch. A convenience only: when storage is blocked the card
  * simply starts on All time. */
+/** Width of one project bar in the card's chart, with its gap. */
+const CHART_BAR_PX = 44;
+
 export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'onevo.teamProgress.period';
 
 type DatedPeriod = Exclude<LedProgressPeriod, 'all'>;
@@ -81,11 +86,6 @@ export interface StatusRow {
   tone: MetricTone;
 }
 
-export interface HourSegment {
-  key: ProgressStatusKey;
-  percent: number;
-  bgClass: string;
-}
 
 interface DonutSegment {
   key: ProgressStatusKey;
@@ -96,30 +96,7 @@ interface DonutSegment {
   offset: number;
 }
 
-interface ProgressRow {
-  key: string;
-  objectiveId: string;
-  projectId: string;
-  title: string;
-  /** Shown after a led module's title only when it differs from it. */
-  projectName: string | null;
-  depth: number;
-  atRisk: boolean;
-  hours: LedHourTotals;
-  completionPercent: number;
-  completionRounded: number;
-  completionText: string;
-}
 
-interface ProjectRow {
-  projectId: string;
-  name: string;
-  identifier: string;
-  hours: LedHourTotals;
-  completionPercent: number;
-  completionRounded: number;
-  completionText: string;
-}
 
 const LEGEND_TEST_IDS: Record<ProgressStatusKey, string> = {
   completed: 'completed',
@@ -185,7 +162,7 @@ const EMPTY_PLAN: TeamProgressPlan = {
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [IconComponent, DashboardDonutComponent, DonutKeyComponent, TeamProgressTimeComponent, 
+  imports: [IconComponent, DashboardDonutComponent, DonutKeyComponent, TeamProgressTimeComponent, ProjectHoursChartComponent,
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -568,57 +545,11 @@ export class TeamProgressCardComponent implements OnInit {
     return this.period() === 'all' && !!h && (h.overTaskedHours > 0 || h.unestimatedTaskCount > 0);
   });
 
-  /** Led modules (depth 0) ordered at-risk first, then least complete; ties keep the backend order. */
-  protected readonly moduleRows = computed<ProgressRow[]>(() => {
-    const rows: { row: ProgressRow; index: number }[] = [];
-    for (const project of this.store.data()?.projects ?? []) {
-      for (const module of project.modules) {
-        if (module.depth !== 0) continue;
-        const base = completionBase(module.hours);
-        rows.push({
-          index: rows.length,
-          row: {
-            key: module.objectiveId,
-            objectiveId: module.objectiveId,
-            projectId: project.projectId,
-            title: module.title,
-            projectName: project.projectName && project.projectName !== module.title ? project.projectName : null,
-            depth: module.depth,
-            atRisk: module.atRisk,
-            hours: module.hours,
-            completionPercent: Math.min(100, percentOf(module.hours.completedHours, base)),
-            completionRounded: Math.round(Math.min(100, percentOf(module.hours.completedHours, base))),
-            completionText: formatPercent(module.hours.completedHours, base)
-          }
-        });
-      }
-    }
-    return rows
-      .sort(
-        (a, b) =>
-          Number(b.row.atRisk) - Number(a.row.atRisk) ||
-          a.row.completionPercent - b.row.completionPercent ||
-          a.index - b.index
-      )
-      .map((r) => r.row);
-  });
-
-  protected readonly ledModuleCount = computed(() => this.moduleRows().length);
-
-  protected readonly projectRows = computed<ProjectRow[]>(() =>
-    (this.store.data()?.projects ?? []).map((project) => {
-      const base = completionBase(project.hours);
-      return {
-        projectId: project.projectId,
-        name: project.projectName,
-        identifier: project.identifier,
-        hours: project.hours,
-        completionPercent: Math.min(100, percentOf(project.hours.completedHours, base)),
-        completionRounded: Math.round(Math.min(100, percentOf(project.hours.completedHours, base))),
-        completionText: formatPercent(project.hours.completedHours, base)
-      };
-    })
+  /** How many modules the viewer leads directly (depth 0), for the maximum layout's tile. */
+  protected readonly ledModuleCount = computed(() =>
+    (this.store.data()?.projects ?? []).reduce((n, p) => n + p.modules.filter((m) => m.depth === 0).length, 0)
   );
+
 
   /** List rows in the current view: the plan's rows, plus the weekly panel's space when it is hidden,
    * minus one for the over-tasked / unestimated note. */
@@ -632,16 +563,24 @@ export class TeamProgressCardComponent implements OnInit {
   /** Whether the current view has room for list panels. */
   protected readonly showLists = computed(() => this.effectiveBudget() > 0);
 
-  protected readonly visibleModules = computed(() => this.moduleRows().slice(0, this.effectiveBudget()));
-  protected readonly hiddenModuleCount = computed(() => this.moduleRows().length - this.visibleModules().length);
-  protected readonly visibleProjects = computed(() => this.projectRows().slice(0, this.effectiveBudget()));
-  protected readonly hiddenProjectCount = computed(() => this.projectRows().length - this.visibleProjects().length);
+  /** Every led project for the chart: at-risk ones first, then the largest allocation. */
+  protected readonly chartProjects = computed(() => orderProjectsForChart(this.store.data()?.projects ?? []));
+  /** As many bars as the chart panel's width holds (about 44px each), never fewer than three. */
+  protected readonly maxChartBars = computed(() => {
+    const panels = (this.store.data()?.overdueTotal ?? 0) > 0 ? 2 : 1;
+    const panelWidth = this.widthStep() / panels - 80;
+    return Math.max(3, Math.floor(panelWidth / CHART_BAR_PX));
+  });
+  protected readonly visibleChartProjects = computed(() => this.chartProjects().slice(0, this.maxChartBars()));
+  protected readonly hiddenChartProjectCount = computed(
+    () => this.chartProjects().length - this.visibleChartProjects().length
+  );
   protected readonly visibleOverdue = computed(() => (this.store.data()?.overdueTasks ?? []).slice(0, this.effectiveBudget()));
   protected readonly hiddenOverdueCount = computed(() =>
     Math.max(0, (this.store.data()?.overdueTotal ?? 0) - this.visibleOverdue().length)
   );
-  /** Maximum layout list columns: projects, modules and overdue tasks (when there are any). */
-  protected readonly maximumPanelCount = computed(() => 2 + Number((this.store.data()?.overdueTotal ?? 0) > 0));
+  /** Maximum layout list columns: the project chart and overdue tasks (when there are any). */
+  protected readonly maximumPanelCount = computed(() => 1 + Number((this.store.data()?.overdueTotal ?? 0) > 0));
 
   ngOnInit(): void {
     this.feed.start();
@@ -737,15 +676,6 @@ export class TeamProgressCardComponent implements OnInit {
     this.feed.reload();
   }
 
-  /** Bar segments sized against the larger of the allocation and the task estimates, so an
-   * over-tasked module fills the bar and an under-tasked one shows its untasked share. */
-  hourSegments(hours: LedHourTotals): HourSegment[] {
-    const scale = Math.max(hours.allocatedHours, hours.completedHours + hours.inProgressHours + hours.notStartedHours);
-    if (scale <= 0) return [];
-    return PROGRESS_STATUSES.map((s) => ({ key: s.key, hours: HOURS_BY_KEY[s.key](hours), bgClass: s.bgClass }))
-      .filter((s) => s.hours > 0)
-      .map((s) => ({ key: s.key, bgClass: s.bgClass, percent: (s.hours / scale) * 100 }));
-  }
 
   /** Expand, "View all", "+N more" and a click anywhere on a loaded card open the detail dialog. */
   openDetail(event?: Event): void {
@@ -758,10 +688,6 @@ export class TeamProgressCardComponent implements OnInit {
     this.detailOpen.set(false);
   }
 
-  openModule(projectId: string, objectiveId: string, event?: Event): void {
-    event?.stopPropagation();
-    void this.router.navigate(['/work', projectId, 'milestones', objectiveId, 'tree']);
-  }
 
   openOverdueTask(task: LedOverdueTask, event?: Event): void {
     event?.stopPropagation();
