@@ -142,6 +142,14 @@ describe('DashboardSummaryCardComponent', () => {
     expect(bars[1].style.height).toBe('100%');
   });
 
+  it('counts a decimal figure up with its decimals', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    vi.stubGlobal('requestAnimationFrame', () => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    const { el } = setup(card({ kind: 'bars', figure: '12.5 h', delta: null, values: [1] }));
+    expect(q(el, 'summary-figure')?.textContent?.trim()).toBe('0.0 h');
+  });
+
   it('starts hidden and counts up when motion is allowed', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: false }));
     vi.stubGlobal('requestAnimationFrame', () => 1);

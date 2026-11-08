@@ -230,6 +230,9 @@ export class DashboardSummaryCardComponent {
     if (progress >= 1) return text;
     const found = firstNumber(text);
     if (!found) return text;
-    return text.replace(found.match, Math.round(found.value * progress).toLocaleString('en-US'));
+    // Keep the figure's own decimals while counting ("12.5 h" counts 0.0, 0.1, ... 12.5).
+    const decimals = found.match.split('.')[1]?.length ?? 0;
+    const value = (found.value * progress).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return text.replace(found.match, value);
   }
 }

@@ -91,7 +91,8 @@ describe('teamProgressSummaryCards', () => {
   it("shows this week's completed hours, the change on last week and the last seven weeks", () => {
     const w = body(byId(teamProgressSummaryCards(led(), weekly, ready), 'tp-weekly'), 'bars');
     expect(w.figure).toBe('312 h');
-    expect(w.delta).toEqual({ text: '+18%', good: true, suffix: 'vs last week' });
+    // The current week is still running: the change says so.
+    expect(w.delta).toEqual({ text: '+18%', good: true, suffix: 'so far vs last week' });
     expect(w.values).toEqual([180, 210, 190, 240, 230, 265, 312]);
   });
 
@@ -142,5 +143,18 @@ describe('teamProgressSummaryCards', () => {
     const card = byId(teamProgressSummaryCards(led(), null, ready, true), 'tp-weekly');
     expect(card.state).toBe('error');
     expect(card.body).toBeNull();
+  });
+
+  it('leaves people who have finished everything out of Falling behind', () => {
+    const rows = [member('Dinesh V', 1, 12), member('Done D', 10, 10)];
+    const b = body(byId(teamProgressSummaryCards(led(), weekly, { rows, error: false }), 'tp-behind'), 'rank');
+    expect(b.rows.map((r) => r.name)).toEqual(['Dinesh V']);
+    const all = body(byId(teamProgressSummaryCards(led(), weekly, { rows: [member('Done D', 10, 10)], error: false }), 'tp-behind'), 'rank');
+    expect(all.rows).toEqual([]);
+  });
+
+  it('leaves the all-time Projects card out while the widget shows a week or month', () => {
+    const ids = teamProgressSummaryCards(led(), weekly, ready, false, false).map((c) => c.id);
+    expect(ids).toEqual(['tp-weekly', 'tp-overdue', 'tp-behind']);
   });
 });

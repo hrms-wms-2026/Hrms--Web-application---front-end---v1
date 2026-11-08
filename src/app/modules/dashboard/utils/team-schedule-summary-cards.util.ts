@@ -5,7 +5,13 @@ import { SUMMARY_CARD_ROWS } from './team-attendance-summary-cards.util';
 import { inMeetingNow, isNotPlanned, isOnLeave, isOverCapacity, loadMinutes } from './team-schedule-format.util';
 
 const TONE = { coverage: 'var(--color-cat-blue)', planActual: 'var(--color-cat-teal)', needsPlan: 'var(--color-cat-amber)', now: 'var(--color-cat-violet)' } as const;
-const NOW_TONE = { working: 'var(--color-cat-green)', meeting: 'var(--color-cat-violet)', break: 'var(--color-cat-amber)', leave: 'var(--color-cat-indigo)', notPlanned: 'var(--color-cat-slate)' } as const;
+const NOW_TONE = {
+  working: 'var(--color-cat-green)',
+  meeting: 'var(--color-cat-violet)',
+  break: 'var(--color-cat-amber)',
+  leave: 'var(--color-cat-indigo)',
+  notPlanned: 'var(--color-cat-slate)'
+} as const;
 const RED = 'var(--color-cat-red)';
 const AMBER = 'var(--color-cat-amber)';
 /** From this load an over-capacity chip is red. */
@@ -111,7 +117,8 @@ export function teamScheduleSummaryCards(dayData: TeamScheduleResponse, week: Te
           { label: 'In meeting', value: meeting, tone: NOW_TONE.meeting },
           { label: 'On break', value: onBreak, tone: NOW_TONE.break },
           { label: 'On leave', value: onLeave, tone: NOW_TONE.leave },
-          { label: 'Not planned', value: members.filter(isNotPlanned).length, tone: NOW_TONE.notPlanned }
+          // Presence only, so the chips add up to the head count; Not planned has its own card.
+          { label: 'Not in', value: Math.max(0, members.length - working - meeting - onBreak - onLeave), tone: NOW_TONE.notPlanned }
         ]
       }
     }

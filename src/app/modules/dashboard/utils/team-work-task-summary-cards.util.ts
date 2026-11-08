@@ -61,7 +61,8 @@ export function teamWorkTaskSummaryCards(data: TeamWorkTaskHoursResponse): Summa
       body: {
         kind: 'pair',
         figure: `${hours(t.workedMinutes)} / ${hours(t.taskMinutes)} h`,
-        delta: summaryDelta(hours(t.workedMinutes - t.taskMinutes), 'h', false, 'not on tasks'),
+        // Only worth a line when some worked time went elsewhere.
+        delta: t.workedMinutes > t.taskMinutes ? summaryDelta(hours(t.workedMinutes - t.taskMinutes), 'h', false, 'not on tasks') : null,
         pairs: data.trend.map((d) => [hours(d.workedMinutes), hours(d.taskMinutes)] as const),
         legend: ['Worked', 'Task']
       }

@@ -154,12 +154,13 @@ describe('teamScheduleSummaryCards', () => {
     ];
     const c = body(byId(teamScheduleSummaryCards(day(members), week()), 'ts-now'), 'chips');
     expect(c.count).toBe('5');
+    // Presence only, so the chips add up to the head count (Not planned has its own card).
     expect(c.items.map((i) => [i.label, i.value])).toEqual([
       ['Working', 1],
       ['In meeting', 1],
       ['On break', 1],
       ['On leave', 1],
-      ['Not planned', 1]
+      ['Not in', 1]
     ]);
   });
 

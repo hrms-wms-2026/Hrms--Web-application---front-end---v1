@@ -386,7 +386,13 @@ export class TeamProgressCardComponent implements OnInit {
     const current = behind?.for === data && behind.period === this.period() ? behind : null;
     const weekly = this.weekly();
     const weeklyFailed = weekly?.for === data && weekly.payload === null;
-    return teamProgressSummaryCards(data, this.weeklyData(), { rows: current?.rows ?? null, error: current?.error ?? false }, weeklyFailed);
+    return teamProgressSummaryCards(
+      data,
+      this.weeklyData(),
+      { rows: current?.rows ?? null, error: current?.error ?? false },
+      weeklyFailed,
+      this.period() === 'all'
+    );
   });
 
   /** Try again on a failed summary card: weekly completion refetches through its effect; the members behind reload. */
@@ -404,7 +410,9 @@ export class TeamProgressCardComponent implements OnInit {
 
   private loadBehind(data: LedWorkProgressResponse, period: LedProgressPeriod): void {
     this.behindSub?.unsubscribe();
-    this.behind.set({ for: data, period, rows: null, error: false });
+    // A refresh of the same period keeps the shown list until the new one lands (no skeleton flash).
+    const previous = untracked(this.behind);
+    this.behind.set({ for: data, period, rows: previous?.period === period ? previous.rows : null, error: false });
     this.behindSub = this.detailApi
       .getEmployees({ pageNumber: 1, pageSize: SUMMARY_CARD_ROWS, sort: 'completionRate', direction: 'asc', ...(period === 'all' ? {} : { period }) })
       .pipe(takeUntilDestroyed(this.destroyRef))

@@ -591,6 +591,34 @@ describe('TeamProgressCardComponent', () => {
       expect(getEmployees).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 3, sort: 'completionRate', direction: 'asc' });
     });
 
+    it('a refresh keeps the members behind on screen until the new list arrives', async () => {
+      getEmployees = vi.fn(() => of(employeePage([member('e1', 'Asha Perera', 40)])));
+      const { fixture, getLedProgress } = await setupWithApi(sample());
+      resize(fixture, 1812, 204);
+      stripResize(fixture, 1812);
+      expect(getEmployees).toHaveBeenCalledOnce();
+      getEmployees.mockReturnValue(new Subject());
+      getLedProgress.mockReturnValue(of(structuredClone(sample())));
+      (fixture.nativeElement.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      flushFrames();
+      fixture.detectChanges();
+      expect(getEmployees).toHaveBeenCalledTimes(2);
+      expect(fixture.nativeElement.querySelector('[data-testid="summary-skeleton"]')).toBeNull();
+    });
+
+    it('leaves the all-time Projects card out while a week or month is shown', async () => {
+      const fixture = await setup(sample());
+      resize(fixture, 1812, 204);
+      stripResize(fixture, 1812);
+      fixture.componentInstance.setPeriod('week');
+      fixture.detectChanges();
+      flushFrames();
+      fixture.detectChanges();
+      const titles = [...fixture.nativeElement.querySelectorAll('[data-testid="summary-title"]')].map((t: Element) => t.textContent?.trim());
+      expect(titles).not.toContain('Projects');
+    });
+
     it('a summary card opens the popup at its section, not at the top', async () => {
       const fixture = await setup(sample());
       resize(fixture, 1812, 204);

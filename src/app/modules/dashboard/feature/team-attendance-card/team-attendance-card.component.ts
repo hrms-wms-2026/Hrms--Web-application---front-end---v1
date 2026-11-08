@@ -141,6 +141,8 @@ export class TeamAttendanceCardComponent implements OnInit {
   private readonly attention = signal<readonly TeamAttendanceEmployeeRow[] | null>(null);
   private readonly attentionError = signal(false);
   private attentionKey = '';
+  /** The period and department the shown attention ranking belongs to. */
+  private attentionScope = '';
   private attentionSub: Subscription | null = null;
 
   protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
@@ -314,12 +316,17 @@ export class TeamAttendanceCardComponent implements OnInit {
   private loadAttention(mode: 'week' | 'month', anchor: string, departmentId: string | null): void {
     this.attentionSub?.unsubscribe();
     this.attentionError.set(false);
-    this.attention.set(null);
+    // A refresh of the same period keeps the shown ranking until the new one lands (no skeleton flash); another
+    // period or department starts from the skeleton.
+    const scope = `${mode}|${anchor}|${departmentId ?? ''}`;
+    if (scope !== this.attentionScope) this.attention.set(null);
+    this.attentionScope = scope;
     this.attentionSub = this.api
       .getEmployees({ mode, anchor, departmentId, page: 1, pageSize: SUMMARY_CARD_ROWS, sort: 'attention' })
       .subscribe({
         next: (page) => this.attention.set(page.items),
         error: () => {
+          this.attention.set(null);
           this.attentionError.set(true);
           this.attentionKey = '';
         }

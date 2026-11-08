@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.service';
 import {
@@ -145,6 +145,17 @@ describe('TeamAttendanceCardComponent', () => {
     expect(getEmployees.mock.calls[0][0]).toMatchObject({ sort: 'attention', pageSize: 3, page: 1 });
     stripResize(1700);
     expect(getEmployees).toHaveBeenCalledTimes(1);
+  });
+
+  it('a refresh keeps the attention ranking on screen until the new one arrives', () => {
+    setup();
+    resize(1812, 204);
+    stripResize(1812);
+    getEmployees.mockReturnValue(new Subject());
+    store.seed(summary({ calculatedAtUtc: '2026-10-28T10:05:00Z' }));
+    fixture.detectChanges();
+    expect(getEmployees).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.querySelector('[data-testid="summary-skeleton"]')).toBeNull();
   });
 
   it('a failed attention ranking fails only its own card', () => {

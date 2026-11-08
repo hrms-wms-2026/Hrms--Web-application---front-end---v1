@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, model, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, linkedSignal, model, output } from '@angular/core';
 import { SummaryCardModel } from '../../models/summary-card.model';
 import { DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { injectHostSize } from '../../utils/host-size.util';
@@ -39,16 +39,17 @@ export class DashboardSummaryStripComponent {
 
   protected readonly donutPx = DASHBOARD_MINI_DONUT_PX;
   private readonly size = injectHostSize();
-  private previous: SummaryStripPlan | null = null;
   private emitted = -1;
 
-  protected readonly plan = computed(() => {
-    // The strip fills the card's body; the plan's thresholds are in widget host widths (body + card padding).
-    const width = this.size().width;
-    const plan = planSummaryStrip(width > 0 ? width + SUMMARY_STRIP_PX.chrome : 0, this.cards().length, this.previous);
-    // Only a measured plan is sticky: the first real size picks its plan with no hysteresis.
-    if (width > 0) this.previous = plan;
-    return plan;
+  /** The plan for the current width, keeping the previous measured plan inside the hysteresis band. The strip fills
+   * the card's body; the plan's thresholds are in widget host widths (body + card padding). Only a measured plan is
+   * sticky: the first real size picks its plan with no hysteresis. */
+  protected readonly plan = linkedSignal<{ width: number; available: number }, SummaryStripPlan>({
+    source: () => ({ width: this.size().width, available: this.cards().length }),
+    computation: (source, previous) => {
+      const measuredBefore = previous !== undefined && previous.source.width > 0 ? previous.value : null;
+      return planSummaryStrip(source.width > 0 ? source.width + SUMMARY_STRIP_PX.chrome : 0, source.available, measuredBefore);
+    }
   });
 
   protected readonly shown = computed(() => this.cards().slice(0, this.plan().cards));

@@ -31,7 +31,10 @@ export function teamProgressSummaryCards(
   led: LedWorkProgressResponse,
   weekly: LedWeeklyCompletion | null,
   behind: BehindRows,
-  weeklyFailed = false
+  weeklyFailed = false,
+  /** False while the widget shows a week or month: the all-time Projects card (whose popup section only exists for
+   * all time) is left out. */
+  allTime = true
 ): SummaryCardModel[] {
   const weeks = weekly?.weeks ?? [];
   const current = weeks.at(-1)?.completedHours ?? 0;
@@ -53,14 +56,15 @@ export function teamProgressSummaryCards(
     }));
 
   const behindRows: SummaryRankRow[] = (behind.rows ?? [])
-    .filter((m) => m.totalHours > 0)
+    // Only people with work left: someone with everything done is not behind.
+    .filter((m) => m.totalHours > 0 && m.completedHours < m.totalHours)
     .slice(0, SUMMARY_CARD_ROWS)
     .map((m) => {
       const done = share(m.completedHours, m.totalHours) ?? 0;
       return { id: m.employeeId, name: m.displayName, avatarFileId: null, chips: [{ text: `${done}% done`, tone: done < BEHIND_RED_PERCENT ? RED : AMBER }] };
     });
 
-  return [
+  const cards: SummaryCardModel[] = [
     {
       id: 'tp-weekly',
       title: 'Weekly completion',
@@ -72,7 +76,8 @@ export function teamProgressSummaryCards(
         ? {
             kind: 'bars',
             figure: `${formatHourValue(current)} h`,
-            delta: summaryDelta(change, '%', true, 'vs last week'),
+            // The current week is still running, so its total is compared with last week's so far.
+            delta: summaryDelta(change, '%', true, 'so far vs last week'),
             values: weeks.slice(-WEEKLY_BARS).map((w) => w.completedHours)
           }
         : null
@@ -106,7 +111,8 @@ export function teamProgressSummaryCards(
       tone: TONE.behind,
       section: 'members',
       state: behind.rows !== null ? 'ready' : behind.error ? 'error' : 'loading',
-      body: behind.rows !== null ? { kind: 'rank', count: null, countLabel: '', rows: behindRows, empty: 'No one has hours yet' } : null
+      body: behind.rows !== null ? { kind: 'rank', count: null, countLabel: '', rows: behindRows, empty: 'No one is behind' } : null
     }
   ];
+  return allTime ? cards : cards.filter((c) => c.id !== 'tp-projects');
 }

@@ -123,4 +123,10 @@ describe('teamWorkTaskSummaryCards', () => {
     expect(b.delta).toEqual({ text: '+11 h', good: false, suffix: 'vs last week' });
     expect(b.values).toEqual([10, 12]);
   });
+
+  it('shows no "not on tasks" line when task hours cover the worked hours', () => {
+    const base = response();
+    const d = body(byId(teamWorkTaskSummaryCards(response({ totals: { ...base.totals, workedMinutes: 600, taskMinutes: 780 } })), 'wt-days'), 'pair');
+    expect(d.delta).toBeNull();
+  });
 });
