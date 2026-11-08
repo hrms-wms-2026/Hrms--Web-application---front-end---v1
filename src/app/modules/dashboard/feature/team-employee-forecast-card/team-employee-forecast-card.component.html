@@ -1,0 +1,151 @@
+<app-widget-card
+  class="group block h-full"
+  data-testid="team-employee-forecast-card"
+  title="Employee overtime forecast"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load the employee forecast."
+  emptyMessage="No one in your team yet."
+  (retry)="retry()"
+>
+  <div widget-actions class="flex min-w-0 items-center gap-1">
+    <app-popout-header-actions
+      [refreshing]="refreshing()"
+      [expanded]="false"
+      [canExpand]="true"
+      [revealOnHover]="true"
+      (refresh)="retry()"
+      (expand)="openDetail()"
+    />
+  </div>
+
+  @if (store.data(); as data) {
+    <ng-template #centreTpl>
+      <p class="ef-donut-center">
+        <span class="ef-donut-value" data-testid="ef-rate">{{ rate(data.totals.teamRate) }}</span>
+        <span class="ef-donut-of">task rate · last 4 wk</span>
+      </p>
+    </ng-template>
+
+    <ng-template #chartTpl>
+      <app-employee-forecast-rate-chart class="ef-chart" heading="Task rate vs required" [items]="data.items" [teamRate]="data.totals.teamRate" />
+    </ng-template>
+
+    @switch (view()) {
+      @case ('mini') {
+        <app-dashboard-summary-strip
+          class="ef-mini"
+          data-testid="ef-mini"
+          [slices]="donutSlices()"
+          [keySlices]="donutSlices()"
+          [cards]="summaryCards()"
+          [donutLabel]="donutLabel()"
+          [(active)]="hovered"
+          (cardOpened)="openSection($event)"
+        >
+          <ng-container [ngTemplateOutlet]="centreTpl" />
+        </app-dashboard-summary-strip>
+      }
+      @default {
+        <div class="ef-grow" [class.ef-grow--xs]="view() === 'xs'" data-testid="ef-layout" [attr.data-view]="view()">
+          <div class="ef-hero" data-testid="ef-hero">
+            <app-dashboard-donut
+              class="ef-donut"
+              data-testid="ef-donut"
+              [size]="donutPx()"
+              [slices]="donutSlices()"
+              [ariaLabel]="donutLabel()"
+              [(active)]="hovered"
+            >
+              <ng-container [ngTemplateOutlet]="centreTpl" />
+            </app-dashboard-donut>
+            @if (view() === 'xs' && plan().legend) {
+              <app-donut-key
+                class="ef-xs-legend"
+                data-testid="ef-xs-legend"
+                ariaLabel="Remaining hours"
+                rowTestId="ef-legend-row"
+                [showValue]="true"
+                [slices]="donutSlices()"
+                [(active)]="hovered"
+              />
+            }
+            @if (view() !== 'xs' || plan().figure) {
+              <div class="ef-hero-figure">
+                <p class="ef-figure" [class.ef-figure--ok]="data.totals.overtimeHours <= 0" data-testid="ef-hero-figure">{{ hero() }}</p>
+                <p class="ef-caption" data-testid="ef-caption">{{ caption() }}</p>
+                <p class="ef-window">{{ window() }}</p>
+              </div>
+            }
+            @if (plan().heroChart) {
+              <div class="ef-hero-chart" data-testid="ef-chart">
+                <ng-container [ngTemplateOutlet]="chartTpl" />
+              </div>
+            }
+            @if (view() === 'standard' && heroLegend()) {
+              <app-donut-key
+                class="ef-legend"
+                variant="chips"
+                ariaLabel="Remaining hours"
+                rowTestId="ef-legend-row"
+                [showValue]="true"
+                [slices]="donutSlices()"
+                [(active)]="hovered"
+              />
+            }
+          </div>
+
+          @if (plan().tiles && rowCards().length > 0) {
+            <app-dashboard-summary-row data-testid="ef-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" />
+          } @else if (plan().tiles) {
+            <ul class="ef-tiles" [class.ef-tiles--4]="plan().tileColumns === 4" aria-label="Totals" data-testid="ef-tiles">
+              @for (tile of tiles(); track tile.key) {
+                <li class="ef-tile" [style.--tone]="tile.color" [attr.data-testid]="'ef-tile-' + tile.key" [title]="tile.label + ': ' + tile.title">
+                  <span class="ef-tile-count">{{ tile.value }}</span>
+                  <span class="ef-tile-label">{{ tile.label }}</span>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (plan().chart) {
+            <section class="ef-panel ef-chart-panel" data-testid="ef-chart">
+              <ng-container [ngTemplateOutlet]="chartTpl" />
+            </section>
+          }
+
+          @if (plan().rankingRows > 0) {
+            <section class="ef-panel ef-ranking" data-testid="ef-ranking">
+              <div class="ef-list-head">
+                <p class="ef-section-title">People at risk</p>
+                <button type="button" class="ef-link" data-testid="ef-view-all" (click)="openDetail($event)">View all ›</button>
+              </div>
+              <ol>
+                @for (row of ranking(); track row.employeeId; let i = $index) {
+                  <li
+                    class="ef-rank-row"
+                    data-testid="ef-rank-row"
+                    [title]="row.name + ': task rate ' + rate(row.conversionRate) + ', needs ' + rate(row.requiredRate)"
+                  >
+                    <span class="ef-rank" [class.ef-rank--top]="i < 3">{{ i + 1 }}</span>
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(row.avatarFileId)" [userName]="row.name" />
+                    <span class="ef-row-name">{{ row.name }}</span>
+                    <span class="ef-rank-bar" aria-hidden="true"
+                      ><span [style.width.%]="bar(row.conversionRate)"></span
+                      ><i [style.left.%]="bar(row.requiredRate)"></i
+                    ></span>
+                    <span class="ef-chip" [style.--tone]="statusMeta[row.status].color">{{ chip(row.overtimeHours, row.status) }}</span>
+                  </li>
+                } @empty {
+                  <li class="ef-row-empty">Everyone is on track</li>
+                }
+              </ol>
+            </section>
+          }
+        </div>
+      }
+    }
+  }
+</app-widget-card>
+
+<app-team-employee-forecast-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

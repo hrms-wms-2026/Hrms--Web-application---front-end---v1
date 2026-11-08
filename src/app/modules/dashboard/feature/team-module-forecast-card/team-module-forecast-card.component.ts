@@ -13,6 +13,7 @@ import { ModuleForecastProjectChartComponent } from '../../ui/module-forecast-pr
 import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
 import {
   FORECAST_STATUS_META,
+  ForecastTileRow,
   forecastDonutLabel,
   forecastHeroCaption,
   forecastHeroText,
@@ -24,7 +25,7 @@ import {
 } from '../../utils/overtime-forecast-format.util';
 import { sameForecastPlan } from '../../utils/overtime-forecast-layout.util';
 import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';
-import { ForecastTileRow, moduleForecastTiles, modulesAtRisk } from '../../utils/team-module-forecast-format.util';
+import { moduleForecastTiles, modulesAtRisk } from '../../utils/team-module-forecast-format.util';
 import {
   EMPTY_MODULE_FORECAST_PLAN,
   MODULE_FORECAST_CARD_CHROME,

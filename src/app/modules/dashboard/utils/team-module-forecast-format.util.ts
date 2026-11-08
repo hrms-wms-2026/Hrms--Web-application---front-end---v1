@@ -1,8 +1,6 @@
 import { ModuleForecastItem, ModuleForecastTotals } from '../models/team-module-forecast.model';
 import { FORECAST_COLORS, ForecastTileRow, forecastHoursText, forecastSlices, rateText } from './overtime-forecast-format.util';
 
-export type { ForecastTileRow } from './overtime-forecast-format.util';
-
 /** The card's four tiles: Allocated, Predicted, Task rate, Overtime h. */
 export function moduleForecastTiles(t: ModuleForecastTotals): ForecastTileRow[] {
   return [
