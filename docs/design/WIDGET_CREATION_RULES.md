@@ -1,0 +1,112 @@
+# Dashboard Widget Creation Rules
+
+> **Read this file before you create or rework ANY dashboard widget (My Work or My Team).**
+> It is the standard the team settled on over many rounds: Team Progress, Team Attendance, Weekly Work
+> Progress, Work vs task hours, Today's team schedule. These rules come from the shipped widgets. Do not
+> reinvent anything they already solve.
+>
+> **Reference implementation:** `team-work-task-card` (card) + `team-work-task-detail-dialog` (popup), with
+> `utils/team-work-task-{layout,format,summary-cards}.util.ts`, `state/team-work-task.store.ts`,
+> `data-access/team-work-task-api.service.ts`. Copy its shape first, then change the content.
+
+---
+
+## 1. Files a widget needs (frontend)
+
+All under `src/app/modules/dashboard/`. `<w>` is the widget's kebab name, `<p>` a 2–3 letter CSS prefix (e.g. `wt-`).
+
+| File | Purpose |
+|---|---|
+| `models/<w>.model.ts` | Response types, matching the backend DTO exactly (camelCase). |
+| `data-access/<w>-api.service.ts` | One `get(query)` per endpoint. No logic. |
+| `state/<w>.store.ts` | `signalStore({ providedIn: 'root' })` with `query / data / loading / error / loadedAt`, `seed(data)`, `load()`, `markLoading()`. Cancels the in-flight request when a newer one starts. The card and popup **share** this store, so a resize or the popup never resets the period/filter. |
+| `utils/<w>-layout.util.ts` | `classify…Size`, `resolve…View` (hysteresis), `…_BREAKPOINTS`, `…_CARD_CHROME`, `…_SECTION_PX`, `plan…Layout`. Pure functions with a spec. |
+| `utils/<w>-format.util.ts` | Colours (`<W>_COLORS`), text formatters, donut slices. Pure, with a spec. |
+| `utils/<w>-summary-cards.util.ts` | `<w>SummaryCards(data): SummaryCardModel[]`. Pure, with a spec. |
+| `feature/<w>-card/` | The card (`.ts/.html/.css/.spec.ts`). |
+| `feature/<w>-detail-dialog/` | The popup (`.ts/.html/.css/.spec.ts`). |
+| `widgets/widget-registry.ts` | Add `'<key>': { component: <W>CardComponent }`. |
+
+- **Always `styleUrl`.** Never a shared imported styles constant: the build hangs when 3+ components do that.
+- `ChangeDetectionStrategy.OnPush`, standalone, `host: { class: 'block h-full' }`.
+- Load data through `injectWidgetDataFeed({ apply, fetch, refreshing })` so the dashboard bootstrap payload is used when there is one. Reload on `visibilitychange` → visible.
+
+## 2. Backend registration (every widget)
+
+- `Features/Dashboard/Layout/Registry/DashboardWidgetRegistry.cs`: `new("<key>", DashboardKeys.MyTeam|MyWork, "Title", "One-line description", minW: 2, minH: 2, maxW: 12, maxH: 8, hasProvider)`.
+  **minW and minH are always 2**, on the backend definition too, not only in the frontend.
+- `Features/Dashboard/Layout/Access/DashboardWidgetAccess.cs`: a key constant and its access gate. Mirror the gate in a frontend `…Visible(capabilities)` helper (`utils/my-team-widget-visibility.util.ts`) when the card must hide itself.
+- A new widget is **catalog only** (offered in the widget store) unless the user asks for it in the default layout.
+- Endpoints return `Result<T>`, check the permission first, and use the **same population as the screen they mirror**. My Team people widgets use `CoveredTeam` (the Team Status population). Numbers that appear on two screens must come from the same query.
+- Prefer pre-aggregated, trigger-maintained tables and paged SQL-side filtering over per-request aggregation. Big lists are paged: the card asks for the top N, the popup pages.
+
+## 3. Size and layout
+
+- Grid: 96px rows, 12px gap → 2 rows = 204px, 3 = 312, 4 = 420, 5 = 528, 6 = 636. A column is ~97px at 1440px wide, ~140px at 1920px.
+- **Every widget works at 2x2**, and all the way up to 12x8.
+- The card picks its view from **its own rendered size** (ResizeObserver + rAF, like the reference card's `observeSize/applySize`), never from grid w/h. **20px hysteresis.** A 0x0 host renders the standard view first.
+- View ladder: **`mini`** (2 rows, height < ~260px), **`xs`** (narrow but tall, width < ~330px: donut over the figure), **`standard`**.
+- **Grow by adding detail, never by scaling.** A taller card adds sections in priority order: KPI tiles / summary row → trend chart → top-N ranking (min 3 rows, max 10). Each section has a fixed height in `…_SECTION_PX`, and the plan only adds a section when its full height fits.
+- **A card never scrolls.** Every view must fit its size. Measure section heights **in the browser**, never guess them (a guessed 64px tile was really 102px). To verify, check `scrollHeight - clientHeight` of the frame's `overflow-auto` div at every size from 2x2 to 12x8.
+- Card chrome is tight: padding `px-4 py-3`, header gap `mb-2`. No wasted space.
+- Hide secondary controls (period select, ‹ › range) in mini/xs views. Period switches live in the popup or the standard view only.
+
+## 4. Charts: shared components only
+
+- **Donut:** always `app-dashboard-donut` + `app-donut-key` (variants `list | compact | wrap | chips`), bound to one `[(active)]` signal. Hovering a slice or key row lights it, and the centre shows value + `label · %`. The key shows the % right beside the label ("Completed 12%"). **Never hand-draw a donut SVG.**
+- **One donut size:** `dashboardDonutPx(view)` → 168px (`DASHBOARD_DONUT_PX`), 140px only in 2x2 mini views. A donut never resizes otherwise. If it doesn't fit, leave it out.
+- **Bar charts:** always `app-dashboard-bar-chart` behind a thin adapter component in `ui/` (see `work-task-day-chart`). It supports `pair` stacks, a target `marker`, a count `badge`, `dim`, a legend and `axisSuffix`. Pass `heading` so the hover headline replaces the title. No overlay polylines.
+- Percentages go through `formatPercent`, so a tiny value reads 0.5%, not 0%. All numbers use `font-variant-numeric: tabular-nums`.
+
+## 5. The 2-row (mini) view and summary cards
+
+- At 2 rows use `app-dashboard-summary-strip`: donut only at 2x2, donut + key at ~2x4, then **summary cards** as it widens. Never a stacked bar.
+- Taller views put `app-dashboard-summary-row` (via `withSummaryRow` + `summaryRowCount`) in the KPI tiles' place, showing only cards for sections the view is **not** already showing (`shown…Cards(view, plan)`). Without room, or with fewer than two such cards, keep the KPI tiles.
+- Each `SummaryCardModel` summarises **one popup section**: `section` = the popup's `data-section` id. Clicking it opens the popup scrolled to that section (`openSection` → `focusSection`).
+- Body kinds: `spark`, `bars`, `pair`, `meter`, `hbars`, `rank`, `people`, `chips`. Ranked-people cards show at most `SUMMARY_CARD_ROWS`. Deltas use `summaryDelta(value, unit, higherIsGood, 'vs last week')`.
+- Order the cards by importance. The 2-row strip shows four. A fifth card is for taller views only.
+
+## 6. The popup (detail dialog)
+
+- Same shell as Team Progress: `app-modal size="2xl"`, with its default header hidden by the component CSS and our own header (title, range/period controls, close). Full-screen under 640px.
+- **Overview first, no tabs.** Top: one row of KPI tiles (`app-kpi-tiles`, `maxColumns` 4–5, `data-section="summary"`). Then chart panels. Then the table.
+- Every section has a `data-section` id that the summary cards point at.
+- Tables are ranked with a `#` column where order means something, sortable, searchable, and paged when long, with **CSV export**.
+- Inputs: `[open]`, `[focusSection]`, `(closed)`. The popup reads the shared store and can change its period.
+
+## 7. Visual style
+
+The source of truth is `feature/team-attendance-card/team-attendance-card.component.css`. Copy its values under your prefix.
+
+- **Text:** strong `rgb(15 23 42)`, body `rgb(51 65 85)`, muted `rgb(100 116 139)`, faint `rgb(148 163 184)`. **Borders** `rgb(226 232 240)`, panel border / donut track `#f1f5f9`, soft row bg `rgb(248 250 252)`, link `rgb(37 99 235)`, focus ring 2px `rgb(59 130 246)`. **Deltas:** up `rgb(5 150 105)`, down `rgb(220 38 38)`.
+- **Type:** hero figure 2.25rem/700 (1.5rem xs, 1.625rem mini). Donut centre 1.5rem/700 + 0.75rem muted sub-label. Section title 0.8125rem/600. Body rows 0.8125rem. Captions, links and deltas 0.75rem. Tile label 0.6875rem.
+- **KPI tile:** 52px, radius 0.625rem, `--tone` → border `color-mix(tone 28%, #fff)`, bg `color-mix(tone 8%, #fff)`, count 1.125rem/700. 2 or 4 columns (4 from ~400px body width), gap 0.5rem.
+- **Panel:** 1px slate-100 border, radius 0.75rem, padding 0.625rem 0.75rem. Trend panel fixed 150px.
+- **Ranking row:** 40px, grid `auto auto 1fr minmax(3rem,6rem) 2.75rem`: rank pill (top 3 emerald), avatar, name, 6px bar, bold right-aligned value. Header "View all ›" opens the popup.
+- **Status colours:** good `#10b981`, in progress `#3b82f6`, neutral `#cbd5e1`, warning `#fbbf24` / `#fcd34d`, bad `#f87171`. Summary-card tones use `var(--color-cat-*)`.
+- Motion comes from `dashboard-motion.css` via `app-widget-frame`. Don't add global styles.
+
+## 8. Card shell
+
+```html
+<app-widget-card title="…" [nowrapTitle]="true" [state]="widgetState()" errorMessage="…" emptyMessage="…" (retry)="retry()">
+  <div widget-actions>
+    <app-popout-header-actions [refreshing]="refreshing()" [expanded]="false" [canExpand]="true"
+      [revealOnHover]="true" (refresh)="retry()" (expand)="openDetail()" />
+  </div>
+  @switch (view()) { @case ('mini') { <app-dashboard-summary-strip … /> } @default { …grow column… } }
+</app-widget-card>
+<app-<w>-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />
+```
+
+- `widgetState`: `loading` (no data yet), `error` (no data + error), `empty` (nothing to show, with a helpful message), `ready`.
+- `refreshing` = loading while data exists. The card keeps showing the old data.
+- Clicking the card or expand opens the popup. Inner buttons call `event.stopPropagation()`.
+
+## 9. Done checklist
+
+1. Backend: registry entry (min 2x2), access gate, endpoint + handler + unit tests, architecture tests green.
+2. Frontend: specs for the layout, format and summary-card utils, the card (each view) and the dialog.
+3. `npm run check:warnings`: **zero warnings** (template diagnostics are build errors). `ng build` clean.
+4. Browser pass at `https://<tenant>.onexso.com:4200` (the user signs in): 2x2, 2x4, 3x3, 4x4, 6x4, 12x8 and the default slot. No scroll at any size, hover on every donut/bar, every summary card opens its section, CSV export works.
+5. Update this file if the widget established a new rule.
