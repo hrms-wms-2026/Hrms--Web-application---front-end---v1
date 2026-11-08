@@ -35,6 +35,16 @@ export const FORECAST_STATUS_META: Record<ForecastStatus, ForecastStatusMeta> = 
   no_history: { label: 'No history', color: FORECAST_COLORS.noHistory },
 };
 
+/** One of the card's KPI tiles. */
+export interface ForecastTileRow {
+  readonly key: string;
+  readonly label: string;
+  readonly value: string;
+  /** The exact figure, as the tile's tooltip. */
+  readonly title: string;
+  readonly color: string;
+}
+
 /** Summary-card tones (theme tokens) per status. */
 export const FORECAST_STATUS_TONE: Record<ForecastStatus, string> = {
   on_track: 'var(--color-cat-green)',

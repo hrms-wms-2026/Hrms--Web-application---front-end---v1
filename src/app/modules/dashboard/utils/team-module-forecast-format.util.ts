@@ -1,15 +1,7 @@
 import { ModuleForecastItem, ModuleForecastTotals } from '../models/team-module-forecast.model';
-import { FORECAST_COLORS, forecastHoursText, forecastSlices, rateText } from './overtime-forecast-format.util';
+import { FORECAST_COLORS, ForecastTileRow, forecastHoursText, forecastSlices, rateText } from './overtime-forecast-format.util';
 
-/** One of the card's KPI tiles. */
-export interface ForecastTileRow {
-  readonly key: string;
-  readonly label: string;
-  readonly value: string;
-  /** The exact figure, as the tile's tooltip. */
-  readonly title: string;
-  readonly color: string;
-}
+export type { ForecastTileRow } from './overtime-forecast-format.util';
 
 /** The card's four tiles: Allocated, Predicted, Task rate, Overtime h. */
 export function moduleForecastTiles(t: ModuleForecastTotals): ForecastTileRow[] {
