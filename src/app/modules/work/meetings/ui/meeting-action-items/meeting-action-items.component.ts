@@ -18,9 +18,9 @@ import { meetingErrorMessage } from '../../utils/meeting-error-messages';
   standalone: true,
   imports: [TaskFormModalComponent],
   template: `
-    <div class="flex flex-col gap-1 text-xs">
+    <div class="flex flex-col gap-2 text-xs">
       @for (item of items(); track item.taskId) {
-        <div data-testid="action-item-row" class="flex items-center justify-between gap-2">
+        <div data-testid="action-item-row" class="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border)] px-3 py-2">
           <span class="truncate"><span class="text-[var(--color-text-secondary)]">{{ item.shortId }}</span> {{ item.title }}</span>
           <span class="flex shrink-0 items-center gap-2 text-[var(--color-text-secondary)]">
             <span>{{ item.statusName }}</span>
@@ -34,7 +34,12 @@ import { meetingErrorMessage } from '../../utils/meeting-error-messages';
       @if (error()) {
         <p class="text-[var(--color-danger)]">{{ error() }}</p>
       }
-      <button type="button" data-testid="action-item-add" class="self-start rounded-md border px-2 py-1" (click)="formOpen.set(true)">Add action item</button>
+      <button type="button" data-testid="action-item-add"
+        class="flex w-full items-center gap-3 rounded-xl border border-dashed border-[var(--color-border-strong)] px-4 py-3 text-left text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-secondary)]"
+        (click)="formOpen.set(true)">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Add action item
+      </button>
     </div>
     @if (formOpen()) {
       <app-task-form-modal [open]="true" mode="create" [projectId]="projectId()" [prefillModuleId]="objectiveId()"

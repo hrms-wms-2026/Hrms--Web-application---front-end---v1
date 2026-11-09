@@ -15,10 +15,11 @@ describe('MeetingLinkPanelComponent', () => {
   });
   const organizerView = (l: MeetingLinkResponse | null): MeetingSeriesLinkResponse => ({ joinUrl: l?.joinUrl ?? null, link: l });
 
-  async function build(isOrganizer: boolean): Promise<void> {
+  async function build(isOrganizer: boolean, ended = false): Promise<void> {
     fixture = TestBed.createComponent(MeetingLinkPanelComponent);
     fixture.componentRef.setInput('seriesId', 's1');
     fixture.componentRef.setInput('isOrganizer', isOrganizer);
+    fixture.componentRef.setInput('ended', ended);
     fixture.detectChanges();
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
@@ -98,5 +99,38 @@ describe('MeetingLinkPanelComponent', () => {
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
     expect(text()).toContain('Kept for other meetings in this series');
+  });
+
+  it('keeps the added link on show: its address, Join and Copy', async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    api.getLink.mockReturnValue(of(organizerView(link('active', { provider: 'microsoft_teams', joinUrl: 'https://teams.microsoft.com/l/meetup-join/abc' }))));
+    await build(true);
+
+    expect(testId('meeting-link-url')?.textContent?.trim()).toBe('https://teams.microsoft.com/l/meetup-join/abc');
+    expect((testId('meeting-link-join') as HTMLAnchorElement).href).toBe('https://teams.microsoft.com/l/meetup-join/abc');
+
+    testId('meeting-link-copy')!.click();
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(writeText).toHaveBeenCalledWith('https://teams.microsoft.com/l/meetup-join/abc');
+    expect(testId('meeting-link-copy')?.textContent?.trim()).toBe('Copied');
+    await vi.advanceTimersByTimeAsync(2000);
+    fixture.detectChanges();
+    expect(testId('meeting-link-copy')?.textContent?.trim()).toBe('Copy link');
+  });
+
+  it('after the meeting the link stays, but nothing can be added or changed', async () => {
+    api.getLink.mockReturnValue(of(organizerView(link('active'))));
+    await build(true, true);
+    expect(testId('meeting-link-url')?.textContent?.trim()).toBe('https://zoom.us/j/1');
+    expect(testId('meeting-link-regenerate')).toBeNull();
+    expect(testId('meeting-link-remove')).toBeNull();
+    expect(testId('meeting-link-add')).toBeNull();
+
+    api.getLink.mockReturnValue(of(organizerView(null)));
+    await build(true, true);
+    expect(testId('meeting-link-add')).toBeNull();
+    expect(testId('meeting-link-none')?.textContent?.trim()).toBe('No online meeting link was added.');
   });
 });
