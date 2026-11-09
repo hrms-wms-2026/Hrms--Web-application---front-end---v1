@@ -4,18 +4,32 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TeamModuleForecastApiService } from '../../data-access/team-module-forecast-api.service';
 import { ModuleForecastQuery } from '../../models/team-module-forecast.model';
 import { TeamModuleForecastStore } from '../../state/team-module-forecast.store';
-import { MODULE_FORECAST_ITEMS, moduleForecastResponse } from '../../utils/team-module-forecast.testing';
-import { TeamModuleForecastDetailDialogComponent, moduleForecastCsv } from './team-module-forecast-detail-dialog.component';
+import {
+  MODULE_FORECAST_ITEMS,
+  moduleForecastResponse,
+} from '../../utils/team-module-forecast.testing';
+import {
+  TeamModuleForecastDetailDialogComponent,
+  moduleForecastCsv,
+} from './team-module-forecast-detail-dialog.component';
 
 describe('TeamModuleForecastDetailDialogComponent', () => {
   let fixture: ComponentFixture<TeamModuleForecastDetailDialogComponent>;
   let get: ReturnType<typeof vi.fn<(q: ModuleForecastQuery) => unknown>>;
 
   function setup(total = 5): HTMLElement {
-    get = vi.fn((q: ModuleForecastQuery) => of(moduleForecastResponse({ total, page: q.page, pageSize: q.pageSize })));
+    get = vi.fn((q: ModuleForecastQuery) =>
+      of(moduleForecastResponse({ total, page: q.page, pageSize: q.pageSize })),
+    );
     TestBed.configureTestingModule({
       imports: [TeamModuleForecastDetailDialogComponent],
-      providers: [TeamModuleForecastStore, { provide: TeamModuleForecastApiService, useValue: { get: (q: ModuleForecastQuery) => get(q) } }],
+      providers: [
+        TeamModuleForecastStore,
+        {
+          provide: TeamModuleForecastApiService,
+          useValue: { get: (q: ModuleForecastQuery) => get(q) },
+        },
+      ],
     });
     TestBed.inject(TeamModuleForecastStore).load();
     fixture = TestBed.createComponent(TeamModuleForecastDetailDialogComponent);
@@ -34,7 +48,9 @@ describe('TeamModuleForecastDetailDialogComponent', () => {
 
   it('opening loads the first table page of 25', () => {
     setup();
-    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 25, sort: 'overtime' }));
+    expect(get).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 25, sort: 'overtime' }),
+    );
   });
 
   it('shows the KPI tiles, the pie with its explanation, the project chart and every module', () => {
@@ -46,7 +62,8 @@ describe('TeamModuleForecastDetailDialogComponent', () => {
     expect(q(el, 'module-forecast-project-chart')).toBeTruthy();
     expect(all(el, 'mfd-row').length).toBe(5);
     expect(all(el, 'mfd-status')[0].textContent?.trim()).toBe('Overtime');
-    for (const s of ['summary', 'forecast', 'projects', 'modules']) expect(el.querySelector(`[data-section=${s}]`)).toBeTruthy();
+    for (const s of ['summary', 'forecast', 'projects', 'modules'])
+      expect(el.querySelector(`[data-section=${s}]`)).toBeTruthy();
   });
 
   it('expanding a module lists its team members', () => {
@@ -96,7 +113,7 @@ describe('TeamModuleForecastDetailDialogComponent', () => {
     const download = vi.fn();
     fixture.componentInstance.downloadFile = download;
     fixture.componentInstance.exportCsv();
-    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 500 }));
+    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 100 }));
     const [name, csv] = download.mock.calls[0] as [string, string];
     expect(name).toBe('module-overtime-forecast-2026-11-08.csv');
     expect(csv.split('\n')[0]).toContain('Required rate %');

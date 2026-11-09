@@ -16,7 +16,11 @@ export function classifyForecastSize(width: number, height: number): ForecastVie
 }
 
 /** The view for a rendered size, keeping the previous one while the size is within the hysteresis band of it. */
-export function resolveForecastView(width: number, height: number, previous: ForecastView | null = null): ForecastView {
+export function resolveForecastView(
+  width: number,
+  height: number,
+  previous: ForecastView | null = null,
+): ForecastView {
   if (!(width > 0) || !(height > 0)) return previous ?? 'standard';
   const next = classifyForecastSize(width, height);
   if (!previous || next === previous) return next;
@@ -72,7 +76,12 @@ export const EMPTY_FORECAST_PLAN: ForecastPlan = {
 };
 
 /** `rowPx` replaces the KPI tile row's height (one row, any width): a taller view's summary-cards row. */
-export function planForecastLayout(view: ForecastView, width: number, height: number, rowPx?: number): ForecastPlan {
+export function planForecastLayout(
+  view: ForecastView,
+  width: number,
+  height: number,
+  rowPx?: number,
+): ForecastPlan {
   if (view === 'mini' || !(width > 0) || !(height > 0)) return EMPTY_FORECAST_PLAN;
   const s = FORECAST_SECTION_PX;
   const bodyWidth = width - FORECAST_CARD_CHROME.width;

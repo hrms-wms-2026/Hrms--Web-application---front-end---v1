@@ -5,7 +5,7 @@
   [nowrapTitle]="true"
   [state]="widgetState()"
   errorMessage="Couldn't load the module forecast."
-  emptyMessage="No open modules with a deadline ahead."
+  emptyMessage="No open modules you lead with a deadline ahead."
   (retry)="retry()"
 >
   <div widget-actions class="flex min-w-0 items-center gap-1">
@@ -28,7 +28,11 @@
     </ng-template>
 
     <ng-template #chartTpl>
-      <app-module-forecast-project-chart class="mf-chart" heading="Overtime by project" [projects]="data.projects" />
+      <app-module-forecast-project-chart
+        class="mf-chart"
+        heading="Overtime by project"
+        [projects]="data.projects"
+      />
     </ng-template>
 
     @switch (view()) {
@@ -47,7 +51,12 @@
         </app-dashboard-summary-strip>
       }
       @default {
-        <div class="mf-grow" [class.mf-grow--xs]="view() === 'xs'" data-testid="mf-layout" [attr.data-view]="view()">
+        <div
+          class="mf-grow"
+          [class.mf-grow--xs]="view() === 'xs'"
+          data-testid="mf-layout"
+          [attr.data-view]="view()"
+        >
           <div class="mf-hero" data-testid="mf-hero">
             <app-dashboard-donut
               class="mf-donut"
@@ -72,7 +81,13 @@
             }
             @if (view() !== 'xs' || plan().figure) {
               <div class="mf-hero-figure">
-                <p class="mf-figure" [class.mf-figure--ok]="data.totals.overtimeHours <= 0" data-testid="mf-hero-figure">{{ hero() }}</p>
+                <p
+                  class="mf-figure"
+                  [class.mf-figure--ok]="data.totals.overtimeHours <= 0"
+                  data-testid="mf-hero-figure"
+                >
+                  {{ hero() }}
+                </p>
                 <p class="mf-caption" data-testid="mf-caption">{{ caption() }}</p>
                 <p class="mf-window">{{ window() }}</p>
               </div>
@@ -96,11 +111,25 @@
           </div>
 
           @if (plan().tiles && rowCards().length > 0) {
-            <app-dashboard-summary-row data-testid="mf-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" />
+            <app-dashboard-summary-row
+              data-testid="mf-summary-row"
+              [cards]="rowCards()"
+              (cardOpened)="openSection($event)"
+            />
           } @else if (plan().tiles) {
-            <ul class="mf-tiles" [class.mf-tiles--4]="plan().tileColumns === 4" aria-label="Totals" data-testid="mf-tiles">
+            <ul
+              class="mf-tiles"
+              [class.mf-tiles--4]="plan().tileColumns === 4"
+              aria-label="Totals"
+              data-testid="mf-tiles"
+            >
               @for (tile of tiles(); track tile.key) {
-                <li class="mf-tile" [style.--tone]="tile.color" [attr.data-testid]="'mf-tile-' + tile.key" [title]="tile.label + ': ' + tile.title">
+                <li
+                  class="mf-tile"
+                  [style.--tone]="tile.color"
+                  [attr.data-testid]="'mf-tile-' + tile.key"
+                  [title]="tile.label + ': ' + tile.title"
+                >
                   <span class="mf-tile-count">{{ tile.value }}</span>
                   <span class="mf-tile-label">{{ tile.label }}</span>
                 </li>
@@ -118,23 +147,42 @@
             <section class="mf-panel mf-ranking" data-testid="mf-ranking">
               <div class="mf-list-head">
                 <p class="mf-section-title">Modules at risk</p>
-                <button type="button" class="mf-link" data-testid="mf-view-all" (click)="openDetail($event)">View all ›</button>
+                <button
+                  type="button"
+                  class="mf-link"
+                  data-testid="mf-view-all"
+                  (click)="openDetail($event)"
+                >
+                  View all ›
+                </button>
               </div>
               <ol>
                 @for (row of ranking(); track row.moduleId; let i = $index) {
                   <li
                     class="mf-rank-row"
                     data-testid="mf-rank-row"
-                    [title]="row.path + ': task rate ' + rate(row.conversionRate) + ', needs ' + rate(row.requiredRate)"
+                    [title]="
+                      row.path +
+                      ': task rate ' +
+                      rate(row.conversionRate) +
+                      ', needs ' +
+                      rate(row.requiredRate)
+                    "
                   >
                     <span class="mf-rank" [class.mf-rank--top]="i < 3">{{ i + 1 }}</span>
-                    <span class="mf-dot" [style.--tone]="statusMeta[row.status].color" aria-hidden="true"></span>
+                    <span
+                      class="mf-dot"
+                      [style.--tone]="statusMeta[row.status].color"
+                      aria-hidden="true"
+                    ></span>
                     <span class="mf-row-name">{{ row.title }}</span>
                     <span class="mf-rank-bar" aria-hidden="true"
                       ><span [style.width.%]="bar(row.conversionRate)"></span
                       ><i [style.left.%]="bar(row.requiredRate)"></i
                     ></span>
-                    <span class="mf-chip" [style.--tone]="statusMeta[row.status].color">{{ chip(row.overtimeHours, row.status) }}</span>
+                    <span class="mf-chip" [style.--tone]="statusMeta[row.status].color">{{
+                      chip(row.overtimeHours, row.status)
+                    }}</span>
                   </li>
                 } @empty {
                   <li class="mf-row-empty">Every module is on track</li>
@@ -148,4 +196,8 @@
   }
 </app-widget-card>
 
-<app-team-module-forecast-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />
+<app-team-module-forecast-detail-dialog
+  [open]="detailOpen()"
+  [focusSection]="detailSection()"
+  (closed)="closeDetail()"
+/>

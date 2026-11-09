@@ -1,11 +1,26 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
-import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-card/widget-card.component';
+import {
+  WidgetCardComponent,
+  WidgetState,
+} from '../../../../shared/ui/widget-card/widget-card.component';
 import { SummaryCardModel } from '../../models/summary-card.model';
 import { ModuleForecastResponse } from '../../models/team-module-forecast.model';
 import { TeamModuleForecastStore } from '../../state/team-module-forecast.store';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import {
+  DashboardDonutComponent,
+  DashboardDonutSlice,
+} from '../../ui/dashboard-donut/dashboard-donut.component';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
 import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
@@ -105,7 +120,9 @@ export class TeamModuleForecastCardComponent implements OnInit {
       summaryRowCount(size.width - MODULE_FORECAST_CARD_CHROME.width),
     );
   });
-  readonly plan = computed<ModuleForecastPlan>(() => this.layout().plan, { equal: sameForecastPlan });
+  readonly plan = computed<ModuleForecastPlan>(() => this.layout().plan, {
+    equal: sameForecastPlan,
+  });
   protected readonly rowCards = computed(() => this.layout().cards);
 
   protected readonly donutPx = computed(() => dashboardDonutPx(this.view()));
@@ -129,9 +146,13 @@ export class TeamModuleForecastCardComponent implements OnInit {
 
   protected readonly hovered = signal<string | null>(null);
 
-  protected readonly donutLabel = computed(() => forecastDonutLabel(this.store.data()?.totals.teamRate ?? null, this.donutSlices()));
+  protected readonly donutLabel = computed(() =>
+    forecastDonutLabel(this.store.data()?.totals.teamRate ?? null, this.donutSlices()),
+  );
 
-  protected readonly hero = computed(() => forecastHeroText(this.store.data()?.totals.overtimeHours ?? 0));
+  protected readonly hero = computed(() =>
+    forecastHeroText(this.store.data()?.totals.overtimeHours ?? 0),
+  );
 
   protected readonly caption = computed(() => {
     const t = this.store.data()?.totals;
@@ -148,7 +169,9 @@ export class TeamModuleForecastCardComponent implements OnInit {
     return t ? moduleForecastTiles(t) : [];
   });
 
-  protected readonly ranking = computed(() => modulesAtRisk(this.store.data()?.items ?? []).slice(0, this.plan().rankingRows));
+  protected readonly ranking = computed(() =>
+    modulesAtRisk(this.store.data()?.items ?? []).slice(0, this.plan().rankingRows),
+  );
 
   ngOnInit(): void {
     this.feed.start();
@@ -206,17 +229,24 @@ export class TeamModuleForecastCardComponent implements OnInit {
   applySize(size: { width: number; height: number } | null = this.pendingSize): void {
     if (!size) return;
     this.pendingSize = null;
-    const view = resolveModuleForecastView(size.width, size.height, this.measured ? this.view() : null);
+    const view = resolveModuleForecastView(
+      size.width,
+      size.height,
+      this.measured ? this.view() : null,
+    );
     if (size.width > 0 && size.height > 0) this.measured = true;
     if (view !== this.view()) this.view.set(view);
     this.size.set({ width: size.width, height: size.height });
-    this.heroLegend.set(size.width - MODULE_FORECAST_CARD_CHROME.width >= MODULE_FORECAST_HERO_LEGEND_WIDTH_PX);
+    this.heroLegend.set(
+      size.width - MODULE_FORECAST_CARD_CHROME.width >= MODULE_FORECAST_HERO_LEGEND_WIDTH_PX,
+    );
   }
 
   private stopObservingSize(): void {
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
-    if (this.frameId !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.frameId);
+    if (this.frameId !== null && typeof cancelAnimationFrame === 'function')
+      cancelAnimationFrame(this.frameId);
     this.frameId = null;
   }
 

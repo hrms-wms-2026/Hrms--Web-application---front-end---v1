@@ -56,7 +56,9 @@ export class ModuleForecastProjectChartComponent {
   ];
 
   private readonly shown = computed(() =>
-    [...this.projects()].sort((a, b) => b.overtimeHours - a.overtimeHours || b.remainingHours - a.remainingHours).slice(0, this.limit()),
+    [...this.projects()]
+      .sort((a, b) => b.overtimeHours - a.overtimeHours || b.remainingHours - a.remainingHours)
+      .slice(0, this.limit()),
   );
 
   protected readonly bars = computed<DashboardBar[]>(() =>
@@ -70,7 +72,10 @@ export class ModuleForecastProjectChartComponent {
       segments: [{ key: 'remaining', value: p.remainingHours, color: FORECAST_COLORS.remaining }],
       pair: [{ key: 'predicted', value: p.predictedHours, color: FORECAST_COLORS.covered }],
       marker: p.capacityHours,
-      alert: p.overtimeHours > 0 ? `${p.modulesAtRisk} module${p.modulesAtRisk === 1 ? '' : 's'} at risk · ~${forecastHoursText(p.overtimeHours)} overtime` : undefined,
+      alert:
+        p.overtimeHours > 0
+          ? `${p.modulesAtRisk} module${p.modulesAtRisk === 1 ? '' : 's'} at risk · ~${forecastHoursText(p.overtimeHours)} overtime`
+          : undefined,
       tooltip: `${p.name}: ${forecastHoursText(p.remainingHours)} left, ${forecastHoursText(p.predictedHours)} predicted, ${forecastHoursText(p.capacityHours)} capacity`,
     })),
   );
@@ -91,7 +96,10 @@ export class ModuleForecastProjectChartComponent {
     () =>
       'Remaining against predicted hours by project. ' +
       this.shown()
-        .map((p) => `${p.name}: ${forecastHoursText(p.remainingHours)} left, ${forecastHoursText(p.predictedHours)} predicted`)
+        .map(
+          (p) =>
+            `${p.name}: ${forecastHoursText(p.remainingHours)} left, ${forecastHoursText(p.predictedHours)} predicted`,
+        )
         .join('; '),
   );
 }

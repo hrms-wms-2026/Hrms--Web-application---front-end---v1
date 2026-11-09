@@ -1,6 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { EmployeeForecastItem } from '../../models/team-employee-forecast.model';
-import { FORECAST_COLORS, FORECAST_STATUS_META, forecastHoursText, rateText } from '../../utils/overtime-forecast-format.util';
+import {
+  FORECAST_COLORS,
+  FORECAST_STATUS_META,
+  forecastHoursText,
+  rateText,
+} from '../../utils/overtime-forecast-format.util';
 import {
   DashboardBar,
   DashboardBarChartComponent,
@@ -11,9 +16,17 @@ import {
 import { shortBarLabel } from '../module-forecast-project-chart/module-forecast-project-chart.component';
 
 /** The people the chart draws: the most overtime first, then the highest required rate. */
-export function rateChartPeople(items: readonly EmployeeForecastItem[], limit: number): EmployeeForecastItem[] {
+export function rateChartPeople(
+  items: readonly EmployeeForecastItem[],
+  limit: number,
+): EmployeeForecastItem[] {
   return [...items]
-    .sort((a, b) => b.overtimeHours - a.overtimeHours || (b.requiredRate ?? 0) - (a.requiredRate ?? 0) || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        b.overtimeHours - a.overtimeHours ||
+        (b.requiredRate ?? 0) - (a.requiredRate ?? 0) ||
+        a.name.localeCompare(b.name),
+    )
     .slice(0, limit);
 }
 
@@ -69,16 +82,25 @@ export class EmployeeForecastRateChartComponent {
       title: e.name,
       valueText: `${rateText(e.conversionRate)} rate`,
       chip: `needs ${rateText(e.requiredRate)}`,
-      sub: e.overtimeHours > 0 ? `~${forecastHoursText(e.overtimeHours)} overtime` : FORECAST_STATUS_META[e.status].label,
+      sub:
+        e.overtimeHours > 0
+          ? `~${forecastHoursText(e.overtimeHours)} overtime`
+          : FORECAST_STATUS_META[e.status].label,
       segments: [{ key: 'rate', value: percent(e.conversionRate), color: FORECAST_COLORS.covered }],
       pair: [
         {
           key: 'required',
           value: percent(e.requiredRate),
-          color: e.requiredRate !== null && e.requiredRate > 1 ? FORECAST_COLORS.overtime : FORECAST_COLORS.raise,
+          color:
+            e.requiredRate !== null && e.requiredRate > 1
+              ? FORECAST_COLORS.overtime
+              : FORECAST_COLORS.raise,
         },
       ],
-      alert: e.status === 'overtime' ? `Needs ~${forecastHoursText(e.overtimeHours)} overtime` : undefined,
+      alert:
+        e.status === 'overtime'
+          ? `Needs ~${forecastHoursText(e.overtimeHours)} overtime`
+          : undefined,
       tooltip: `${e.name}: task rate ${rateText(e.conversionRate)}, needs ${rateText(e.requiredRate)}`,
     })),
   );
@@ -88,8 +110,11 @@ export class EmployeeForecastRateChartComponent {
     return {
       label: this.heading(),
       value: `${rateText(this.teamRate())} team rate`,
-      hint: 'Each person\'s task rate over the last 4 weeks beside the rate needed to finish before their deadline',
-      sub: this.variant() === 'orders' ? `${this.shown().length} people with the most overtime` : undefined,
+      hint: "Each person's task rate over the last 4 weeks beside the rate needed to finish before their deadline",
+      sub:
+        this.variant() === 'orders'
+          ? `${this.shown().length} people with the most overtime`
+          : undefined,
     };
   });
 
@@ -97,7 +122,9 @@ export class EmployeeForecastRateChartComponent {
     () =>
       'Task rate against required rate by person. ' +
       this.shown()
-        .map((e) => `${e.name}: ${rateText(e.conversionRate)} rate, needs ${rateText(e.requiredRate)}`)
+        .map(
+          (e) => `${e.name}: ${rateText(e.conversionRate)} rate, needs ${rateText(e.requiredRate)}`,
+        )
         .join('; '),
   );
 }

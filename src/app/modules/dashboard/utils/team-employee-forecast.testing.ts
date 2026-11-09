@@ -1,8 +1,16 @@
 import { ForecastStatus } from '../models/overtime-forecast.model';
-import { EmployeeForecastItem, EmployeeForecastResponse } from '../models/team-employee-forecast.model';
+import {
+  EmployeeForecastItem,
+  EmployeeForecastResponse,
+} from '../models/team-employee-forecast.model';
 
 /** A fixed forecast (as of Sun 8 Nov 2026, window 11 Oct – 7 Nov) for the Employee overtime forecast specs. */
-export function employeeForecastItem(name: string, status: ForecastStatus, overtimeHours: number, over: Partial<EmployeeForecastItem> = {}): EmployeeForecastItem {
+export function employeeForecastItem(
+  name: string,
+  status: ForecastStatus,
+  overtimeHours: number,
+  over: Partial<EmployeeForecastItem> = {},
+): EmployeeForecastItem {
   return {
     employeeId: name,
     name,
@@ -19,8 +27,24 @@ export function employeeForecastItem(name: string, status: ForecastStatus, overt
     overtimeHours,
     status,
     modules: [
-      { moduleId: `${name}-m1`, projectId: 'p1', projectName: 'Atlas', title: `${name} Billing`, endDate: '2026-11-20', remainingHours: 30, openTasks: 3 },
-      { moduleId: `${name}-m2`, projectId: 'p2', projectName: 'Borealis', title: `${name} Search`, endDate: '2026-12-04', remainingHours: 20, openTasks: 1 },
+      {
+        moduleId: `${name}-m1`,
+        projectId: 'p1',
+        projectName: 'Atlas',
+        title: `${name} Billing`,
+        endDate: '2026-11-20',
+        remainingHours: 30,
+        openTasks: 3,
+      },
+      {
+        moduleId: `${name}-m2`,
+        projectId: 'p2',
+        projectName: 'Borealis',
+        title: `${name} Search`,
+        endDate: '2026-12-04',
+        remainingHours: 20,
+        openTasks: 1,
+      },
     ],
     ...over,
   };
@@ -31,10 +55,16 @@ export const EMPLOYEE_FORECAST_ITEMS: EmployeeForecastItem[] = [
   employeeForecastItem('Bob', 'raise_rate', 12.5),
   employeeForecastItem('Cat', 'raise_rate', 4),
   employeeForecastItem('Dan', 'on_track', 0, { conversionRate: 0.6, requiredRate: 0.3 }),
-  employeeForecastItem('Eve', 'no_history', 0, { conversionRate: null, workedMinutes: 0, taskMinutes: 0 }),
+  employeeForecastItem('Eve', 'no_history', 0, {
+    conversionRate: null,
+    workedMinutes: 0,
+    taskMinutes: 0,
+  }),
 ];
 
-export function employeeForecastResponse(over: Partial<EmployeeForecastResponse> = {}): EmployeeForecastResponse {
+export function employeeForecastResponse(
+  over: Partial<EmployeeForecastResponse> = {},
+): EmployeeForecastResponse {
   return {
     asOf: '2026-11-08',
     windowStart: '2026-10-11',

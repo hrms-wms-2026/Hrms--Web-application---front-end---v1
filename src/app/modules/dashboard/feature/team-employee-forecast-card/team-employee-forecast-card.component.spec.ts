@@ -2,7 +2,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamEmployeeForecastApiService } from '../../data-access/team-employee-forecast-api.service';
-import { EmployeeForecastQuery, EmployeeForecastResponse } from '../../models/team-employee-forecast.model';
+import {
+  EmployeeForecastQuery,
+  EmployeeForecastResponse,
+} from '../../models/team-employee-forecast.model';
 import { TeamEmployeeForecastStore } from '../../state/team-employee-forecast.store';
 import { DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
@@ -17,7 +20,13 @@ describe('TeamEmployeeForecastCardComponent', () => {
     get = vi.fn((_q: EmployeeForecastQuery) => of(data));
     TestBed.configureTestingModule({
       imports: [TeamEmployeeForecastCardComponent],
-      providers: [TeamEmployeeForecastStore, { provide: TeamEmployeeForecastApiService, useValue: { get: (q: EmployeeForecastQuery) => get(q) } }],
+      providers: [
+        TeamEmployeeForecastStore,
+        {
+          provide: TeamEmployeeForecastApiService,
+          useValue: { get: (q: EmployeeForecastQuery) => get(q) },
+        },
+      ],
     });
     fixture = TestBed.createComponent(TeamEmployeeForecastCardComponent);
     fixture.detectChanges();
@@ -41,7 +50,9 @@ describe('TeamEmployeeForecastCardComponent', () => {
 
   it('loads the top 10 people by overtime on start', () => {
     setup();
-    expect(get).toHaveBeenCalledWith(expect.objectContaining({ sort: 'overtime', page: 1, pageSize: 10 }));
+    expect(get).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'overtime', page: 1, pageSize: 10 }),
+    );
     expect(q(fixture.nativeElement, 'team-employee-forecast-card')).toBeTruthy();
   });
 
@@ -49,7 +60,9 @@ describe('TeamEmployeeForecastCardComponent', () => {
     setup();
     const el = resize(206, 204);
     expect(q(el, 'ef-mini')).toBeTruthy();
-    expect((q(el, 'summary-strip-donut') as HTMLElement).style.width).toBe(`${DASHBOARD_MINI_DONUT_PX}px`);
+    expect((q(el, 'summary-strip-donut') as HTMLElement).style.width).toBe(
+      `${DASHBOARD_MINI_DONUT_PX}px`,
+    );
     expect(q(el, 'ef-rate')?.textContent?.trim()).toBe('40%');
     expect(el.textContent).toContain('task rate · last 4 wk');
   });
@@ -117,7 +130,9 @@ describe('TeamEmployeeForecastCardComponent', () => {
   it('an empty team shows the empty state', () => {
     const base = employeeForecastResponse();
     setup(employeeForecastResponse({ totals: { ...base.totals, people: 0 }, items: [] }));
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No one in your team yet.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'No one in your team yet.',
+    );
   });
 
   it('the expand button opens the popup at the top', () => {

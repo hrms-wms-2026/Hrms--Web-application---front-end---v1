@@ -2,7 +2,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamModuleForecastApiService } from '../../data-access/team-module-forecast-api.service';
-import { ModuleForecastQuery, ModuleForecastResponse } from '../../models/team-module-forecast.model';
+import {
+  ModuleForecastQuery,
+  ModuleForecastResponse,
+} from '../../models/team-module-forecast.model';
 import { TeamModuleForecastStore } from '../../state/team-module-forecast.store';
 import { DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
@@ -17,7 +20,13 @@ describe('TeamModuleForecastCardComponent', () => {
     get = vi.fn((_q: ModuleForecastQuery) => of(data));
     TestBed.configureTestingModule({
       imports: [TeamModuleForecastCardComponent],
-      providers: [TeamModuleForecastStore, { provide: TeamModuleForecastApiService, useValue: { get: (q: ModuleForecastQuery) => get(q) } }],
+      providers: [
+        TeamModuleForecastStore,
+        {
+          provide: TeamModuleForecastApiService,
+          useValue: { get: (q: ModuleForecastQuery) => get(q) },
+        },
+      ],
     });
     fixture = TestBed.createComponent(TeamModuleForecastCardComponent);
     fixture.detectChanges();
@@ -41,7 +50,9 @@ describe('TeamModuleForecastCardComponent', () => {
 
   it('loads the top 10 modules by overtime on start', () => {
     setup();
-    expect(get).toHaveBeenCalledWith(expect.objectContaining({ sort: 'overtime', page: 1, pageSize: 10 }));
+    expect(get).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'overtime', page: 1, pageSize: 10 }),
+    );
     expect(q(fixture.nativeElement, 'team-module-forecast-card')).toBeTruthy();
   });
 
@@ -49,7 +60,9 @@ describe('TeamModuleForecastCardComponent', () => {
     setup();
     const el = resize(206, 204);
     expect(q(el, 'mf-mini')).toBeTruthy();
-    expect((q(el, 'summary-strip-donut') as HTMLElement).style.width).toBe(`${DASHBOARD_MINI_DONUT_PX}px`);
+    expect((q(el, 'summary-strip-donut') as HTMLElement).style.width).toBe(
+      `${DASHBOARD_MINI_DONUT_PX}px`,
+    );
     expect(q(el, 'mf-rate')?.textContent?.trim()).toBe('42%');
     expect(el.textContent).toContain('task rate · last 4 wk');
   });
@@ -116,8 +129,12 @@ describe('TeamModuleForecastCardComponent', () => {
 
   it('no open modules shows the empty state', () => {
     const base = moduleForecastResponse();
-    setup(moduleForecastResponse({ totals: { ...base.totals, modules: 0 }, items: [], projects: [] }));
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No open modules with a deadline ahead.');
+    setup(
+      moduleForecastResponse({ totals: { ...base.totals, modules: 0 }, items: [], projects: [] }),
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'No open modules you lead with a deadline ahead.',
+    );
   });
 
   it('the expand button opens the popup at the top', () => {

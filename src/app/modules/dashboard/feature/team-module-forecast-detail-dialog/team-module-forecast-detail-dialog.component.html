@@ -1,12 +1,24 @@
 <!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS. -->
-<app-modal [open]="open()" title="Module overtime forecast" size="2xl" panelClass="team-module-forecast-detail" (closed)="close()">
+<app-modal
+  [open]="open()"
+  title="Module overtime forecast"
+  size="2xl"
+  panelClass="team-module-forecast-detail"
+  (closed)="close()"
+>
   <div class="mfd-head">
     <div class="mfd-head__row">
       <div class="mfd-head__title">
         <h2>Module overtime forecast</h2>
         <p>{{ subtitle() }}</p>
       </div>
-      <button type="button" class="mfd-close" aria-label="Close" data-testid="mfd-close" (click)="close()">
+      <button
+        type="button"
+        class="mfd-close"
+        aria-label="Close"
+        data-testid="mfd-close"
+        (click)="close()"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
       </button>
     </div>
@@ -14,10 +26,19 @@
 
   @if (store.data(); as data) {
     <div class="mfd">
-      <app-kpi-tiles data-section="summary" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Module forecast totals" />
+      <app-kpi-tiles
+        data-section="summary"
+        [tiles]="tiles()"
+        [maxColumns]="5"
+        ariaLabel="Module forecast totals"
+      />
 
       <div class="mfd-charts">
-        <section class="mfd-panel mfd-distribution" data-section="forecast" data-testid="mfd-distribution">
+        <section
+          class="mfd-panel mfd-distribution"
+          data-section="forecast"
+          data-testid="mfd-distribution"
+        >
           <p class="mfd-title">Where the remaining hours go</p>
           <div class="mfd-distribution-body">
             <app-dashboard-donut
@@ -60,7 +81,12 @@
         <div class="mfd-table-head">
           <p class="mfd-title">Modules <span class="mfd-muted">· most overtime first</span></p>
           <div class="mfd-table-actions">
-            <app-input class="mfd-search" placeholder="Search module or project…" [value]="search()" (valueChange)="onSearch($event)" />
+            <app-input
+              class="mfd-search"
+              placeholder="Search module or project…"
+              [value]="search()"
+              (valueChange)="onSearch($event)"
+            />
             <app-select
               class="mfd-select"
               ariaLabel="Status"
@@ -70,7 +96,13 @@
               [value]="store.tableQuery().status ?? 'all'"
               (valueChange)="onStatus($event)"
             />
-            <button type="button" class="mfd-button" data-testid="mfd-export" [disabled]="exporting()" (click)="exportCsv()">
+            <button
+              type="button"
+              class="mfd-button"
+              data-testid="mfd-export"
+              [disabled]="exporting()"
+              (click)="exportCsv()"
+            >
               {{ exporting() ? 'Exporting…' : 'Export CSV' }}
             </button>
           </div>
@@ -84,24 +116,62 @@
           <table class="mfd-table">
             <thead>
               <tr>
-                <th class="mfd-sticky mfd-sticky--name" scope="col" [attr.aria-sort]="ariaSort('name')">
+                <th
+                  class="mfd-sticky mfd-sticky--name"
+                  scope="col"
+                  [attr.aria-sort]="ariaSort('name')"
+                >
                   <span class="mfd-rank-head">#</span>
-                  <button type="button" class="mfd-sort" data-testid="mfd-sort-name" (click)="sortBy('name')">Module</button>
+                  <button
+                    type="button"
+                    class="mfd-sort"
+                    data-testid="mfd-sort-name"
+                    (click)="sortBy('name')"
+                  >
+                    Module
+                  </button>
                 </th>
                 <th scope="col">Project</th>
                 <th scope="col" [attr.aria-sort]="ariaSort('endDate')">
-                  <button type="button" class="mfd-sort" data-testid="mfd-sort-endDate" (click)="sortBy('endDate')">Deadline</button>
+                  <button
+                    type="button"
+                    class="mfd-sort"
+                    data-testid="mfd-sort-endDate"
+                    (click)="sortBy('endDate')"
+                  >
+                    Deadline
+                  </button>
                 </th>
                 <th class="mfd-num" scope="col">Days left</th>
                 <th class="mfd-num" scope="col">Allocated</th>
                 <th class="mfd-num" scope="col">Remaining</th>
                 <th class="mfd-num" scope="col">Predicted</th>
-                <th class="mfd-num" scope="col" title="The module team's task rate over the last 4 weeks">Task rate</th>
+                <th
+                  class="mfd-num"
+                  scope="col"
+                  title="The module team's task rate over the last 4 weeks"
+                >
+                  Task rate
+                </th>
                 <th class="mfd-num" scope="col" [attr.aria-sort]="ariaSort('requiredRate')">
-                  <button type="button" class="mfd-sort" data-testid="mfd-sort-requiredRate" (click)="sortBy('requiredRate')">Required</button>
+                  <button
+                    type="button"
+                    class="mfd-sort"
+                    data-testid="mfd-sort-requiredRate"
+                    (click)="sortBy('requiredRate')"
+                  >
+                    Required
+                  </button>
                 </th>
                 <th class="mfd-num" scope="col" [attr.aria-sort]="ariaSort('overtime')">
-                  <button type="button" class="mfd-sort" data-testid="mfd-sort-overtime" (click)="sortBy('overtime')">Overtime</button>
+                  <button
+                    type="button"
+                    class="mfd-sort"
+                    data-testid="mfd-sort-overtime"
+                    (click)="sortBy('overtime')"
+                  >
+                    Overtime
+                  </button>
                 </th>
                 <th scope="col">Status</th>
               </tr>
@@ -111,13 +181,17 @@
                 <tr data-testid="mfd-row">
                   <th class="mfd-sticky mfd-sticky--name" scope="row">
                     <span class="mfd-person">
-                      <span class="mfd-rank" [class.mfd-rank--top]="offset() + i < 3">{{ offset() + i + 1 }}</span>
+                      <span class="mfd-rank" [class.mfd-rank--top]="offset() + i < 3">{{
+                        offset() + i + 1
+                      }}</span>
                       <button
                         type="button"
                         class="mfd-expand"
                         data-testid="mfd-expand"
                         [attr.aria-expanded]="expanded().has(m.moduleId)"
-                        [attr.aria-label]="(expanded().has(m.moduleId) ? 'Hide' : 'Show') + ' the team of ' + m.title"
+                        [attr.aria-label]="
+                          (expanded().has(m.moduleId) ? 'Hide' : 'Show') + ' the team of ' + m.title
+                        "
                         (click)="toggle(m.moduleId)"
                       >
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
@@ -137,21 +211,37 @@
                   <td class="mfd-num">
                     <span class="mfd-util">
                       <span class="mfd-util-bar" aria-hidden="true"
-                        ><span [style.width.%]="bar(m.conversionRate)"></span><i [style.left.%]="bar(m.requiredRate)"></i
+                        ><span [style.width.%]="bar(m.conversionRate)"></span
+                        ><i [style.left.%]="bar(m.requiredRate)"></i
                       ></span>
                       <span>{{ rate(m.conversionRate) }}</span>
                     </span>
                   </td>
-                  <td class="mfd-num" [class.mfd-over]="m.requiredRate !== null && m.requiredRate > 1">{{ rate(m.requiredRate) }}</td>
-                  <td class="mfd-num" [class.mfd-over]="m.overtimeHours > 0">{{ m.overtimeHours > 0 ? '~' + hours(m.overtimeHours) : '—' }}</td>
+                  <td
+                    class="mfd-num"
+                    [class.mfd-over]="m.requiredRate !== null && m.requiredRate > 1"
+                  >
+                    {{ rate(m.requiredRate) }}
+                  </td>
+                  <td class="mfd-num" [class.mfd-over]="m.overtimeHours > 0">
+                    {{ m.overtimeHours > 0 ? '~' + hours(m.overtimeHours) : '—' }}
+                  </td>
                   <td>
-                    <span class="mfd-chip" [style.--tone]="statusMeta[m.status].color" data-testid="mfd-status">{{ statusMeta[m.status].label }}</span>
+                    <span
+                      class="mfd-chip"
+                      [style.--tone]="statusMeta[m.status].color"
+                      data-testid="mfd-status"
+                      >{{ statusMeta[m.status].label }}</span
+                    >
                   </td>
                 </tr>
                 @if (expanded().has(m.moduleId)) {
                   <tr class="mfd-sub-row" data-testid="mfd-members">
                     <td colspan="11">
-                      <p class="mfd-sub-title">Team of {{ m.title }} · {{ m.memberCount }} {{ m.memberCount === 1 ? 'person' : 'people' }}</p>
+                      <p class="mfd-sub-title">
+                        Team of {{ m.title }} · {{ m.memberCount }}
+                        {{ m.memberCount === 1 ? 'person' : 'people' }}
+                      </p>
                       <table class="mfd-sub">
                         <thead>
                           <tr>
@@ -166,7 +256,11 @@
                             <tr data-testid="mfd-member">
                               <th scope="row" class="mfd-left">
                                 <span class="mfd-person">
-                                  <app-avatar size="xs" [avatarUrl]="avatarUrl(p.avatarFileId)" [userName]="p.name" />
+                                  <app-avatar
+                                    size="xs"
+                                    [avatarUrl]="avatarUrl(p.avatarFileId)"
+                                    [userName]="p.name"
+                                  />
                                   <span class="mfd-name">{{ p.name }}</span>
                                 </span>
                               </th>
@@ -176,7 +270,9 @@
                             </tr>
                           } @empty {
                             <tr>
-                              <td class="mfd-muted mfd-pad" colspan="4">No one is assigned to this module.</td>
+                              <td class="mfd-muted mfd-pad" colspan="4">
+                                No one is assigned to this module.
+                              </td>
                             </tr>
                           }
                         </tbody>
@@ -186,7 +282,9 @@
                 }
               } @empty {
                 <tr>
-                  <td class="mfd-muted mfd-pad" colspan="11">{{ store.tableLoading() ? 'Loading modules…' : 'No modules match.' }}</td>
+                  <td class="mfd-muted mfd-pad" colspan="11">
+                    {{ store.tableLoading() ? 'Loading modules…' : 'No modules match.' }}
+                  </td>
                 </tr>
               }
             </tbody>
@@ -196,15 +294,32 @@
         @if (page(); as p) {
           <div class="mfd-pager" data-testid="mfd-pager">
             <span class="mfd-muted">{{ p.total }} {{ p.total === 1 ? 'module' : 'modules' }}</span>
-            <button type="button" class="mfd-button" data-testid="mfd-prev" [disabled]="p.page <= 1" (click)="goToPage(p.page - 1)">‹ Prev</button>
+            <button
+              type="button"
+              class="mfd-button"
+              data-testid="mfd-prev"
+              [disabled]="p.page <= 1"
+              (click)="goToPage(p.page - 1)"
+            >
+              ‹ Prev
+            </button>
             <span class="mfd-muted">Page {{ p.page }} of {{ totalPages() }}</span>
-            <button type="button" class="mfd-button" data-testid="mfd-next" [disabled]="p.page >= totalPages()" (click)="goToPage(p.page + 1)">Next ›</button>
+            <button
+              type="button"
+              class="mfd-button"
+              data-testid="mfd-next"
+              [disabled]="p.page >= totalPages()"
+              (click)="goToPage(p.page + 1)"
+            >
+              Next ›
+            </button>
           </div>
         }
         <p class="mfd-note">
-          Task rate = completed task hours ÷ working time over the last 4 weeks, pooled over the module's team (their work
-          on other projects counts too). Predicted = working capacity to the deadline × task rate. Required = remaining ÷
-          capacity; over 100% cannot fit in normal hours. Overtime = the extra working hours needed at the current rate.
+          Task rate = completed task hours ÷ working time over the last 4 weeks, pooled over the
+          module's team (their work on other projects counts too). Predicted = working capacity to
+          the deadline × task rate. Required = remaining ÷ capacity; over 100% cannot fit in normal
+          hours. Overtime = the extra working hours needed at the current rate.
         </p>
       </section>
     </div>

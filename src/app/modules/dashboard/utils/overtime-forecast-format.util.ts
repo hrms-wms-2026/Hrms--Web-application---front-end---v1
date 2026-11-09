@@ -88,14 +88,18 @@ export function forecastHeroCaption(teamRate: number | null, requiredRate: numbe
 
 /** The overtime chip of a ranking row: "~12 h" or the status label when nothing is short. */
 export function overtimeChipText(overtimeHours: number, status: ForecastStatus): string {
-  return overtimeHours > 0 ? `~${forecastHoursText(overtimeHours)}` : FORECAST_STATUS_META[status].label;
+  return overtimeHours > 0
+    ? `~${forecastHoursText(overtimeHours)}`
+    : FORECAST_STATUS_META[status].label;
 }
 
 /**
  * The donut: where the remaining hours go. Covered = min(predicted, remaining); a higher rate =
  * min(capacity, remaining) − covered; overtime = max(0, remaining − capacity). Shares are of the remaining hours.
  */
-export function forecastSlices(t: Pick<ForecastHours, 'remainingHours' | 'predictedHours' | 'capacityHours'>): DashboardDonutSlice[] {
+export function forecastSlices(
+  t: Pick<ForecastHours, 'remainingHours' | 'predictedHours' | 'capacityHours'>,
+): DashboardDonutSlice[] {
   const remaining = Math.max(0, t.remainingHours);
   const covered = Math.min(Math.max(0, t.predictedHours), remaining);
   const raise = Math.max(0, Math.min(Math.max(0, t.capacityHours), remaining) - covered);
@@ -112,8 +116,14 @@ export function forecastSlices(t: Pick<ForecastHours, 'remainingHours' | 'predic
 }
 
 /** The donut's accessible reading. */
-export function forecastDonutLabel(teamRate: number | null, slices: readonly DashboardDonutSlice[]): string {
-  return `Team task rate ${rateText(teamRate)} over the last 4 weeks. Remaining hours: ` + slices.map((s) => `${s.label} ${s.valueText}`).join(', ');
+export function forecastDonutLabel(
+  teamRate: number | null,
+  slices: readonly DashboardDonutSlice[],
+): string {
+  return (
+    `Team task rate ${rateText(teamRate)} over the last 4 weeks. Remaining hours: ` +
+    slices.map((s) => `${s.label} ${s.valueText}`).join(', ')
+  );
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

@@ -2,8 +2,16 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { Observable, Subscription } from 'rxjs';
 import { TeamEmployeeForecastApiService } from '../data-access/team-employee-forecast-api.service';
-import { EmployeeForecastQuery, EmployeeForecastResponse } from '../models/team-employee-forecast.model';
-import { FORECAST_EXPORT_PAGE_SIZE, FORECAST_TABLE_PAGE_SIZE, forecastErrorText, nextTableQuery } from './overtime-forecast-store.util';
+import {
+  EmployeeForecastQuery,
+  EmployeeForecastResponse,
+} from '../models/team-employee-forecast.model';
+import {
+  FORECAST_TABLE_PAGE_SIZE,
+  fetchAllForecastPages,
+  forecastErrorText,
+  nextTableQuery,
+} from './overtime-forecast-store.util';
 
 /** The card's read: the 10 people that need the most overtime. */
 export const EMPLOYEE_FORECAST_CARD_QUERY: EmployeeForecastQuery = {
@@ -52,7 +60,11 @@ export const TeamEmployeeForecastStore = signalStore(
       patchState(store, { tableQuery, tableLoading: true, tableError: null });
       tableFlight = api.get(tableQuery).subscribe({
         next: (table) => patchState(store, { table, tableLoading: false }),
-        error: (err) => patchState(store, { tableError: forecastErrorText(err, 'Failed to load the team members.'), tableLoading: false }),
+        error: (err) =>
+          patchState(store, {
+            tableError: forecastErrorText(err, 'Failed to load the team members.'),
+            tableLoading: false,
+          }),
       });
     };
 
@@ -70,7 +82,11 @@ export const TeamEmployeeForecastStore = signalStore(
         patchState(store, { loading: true, error: null });
         cardFlight = api.get(EMPLOYEE_FORECAST_CARD_QUERY).subscribe({
           next: (data) => patchState(store, { data, loading: false, loadedAt: new Date() }),
-          error: (err) => patchState(store, { error: forecastErrorText(err, 'Failed to load the employee forecast.'), loading: false }),
+          error: (err) =>
+            patchState(store, {
+              error: forecastErrorText(err, 'Failed to load the employee forecast.'),
+              loading: false,
+            }),
         });
       },
       /** Reloads the table; a filter, search or sort change goes back to page 1. */
@@ -79,7 +95,7 @@ export const TeamEmployeeForecastStore = signalStore(
       },
       /** Every row of the current filter, for the CSV. */
       fetchAll(): Observable<EmployeeForecastResponse> {
-        return api.get({ ...store.tableQuery(), page: 1, pageSize: FORECAST_EXPORT_PAGE_SIZE });
+        return fetchAllForecastPages((q: EmployeeForecastQuery) => api.get(q), store.tableQuery());
       },
     };
   }),

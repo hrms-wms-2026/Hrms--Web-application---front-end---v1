@@ -2,16 +2,25 @@ import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TeamEmployeeForecastApiService } from '../data-access/team-employee-forecast-api.service';
-import { EmployeeForecastQuery, EmployeeForecastResponse } from '../models/team-employee-forecast.model';
+import {
+  EmployeeForecastQuery,
+  EmployeeForecastResponse,
+} from '../models/team-employee-forecast.model';
 import { employeeForecastResponse } from '../utils/team-employee-forecast.testing';
-import { EMPLOYEE_FORECAST_CARD_QUERY, TeamEmployeeForecastStore } from './team-employee-forecast.store';
+import {
+  EMPLOYEE_FORECAST_CARD_QUERY,
+  TeamEmployeeForecastStore,
+} from './team-employee-forecast.store';
 
 describe('TeamEmployeeForecastStore', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   function setup(get = vi.fn((_q: EmployeeForecastQuery) => of(employeeForecastResponse()))) {
     TestBed.configureTestingModule({
-      providers: [TeamEmployeeForecastStore, { provide: TeamEmployeeForecastApiService, useValue: { get } }],
+      providers: [
+        TeamEmployeeForecastStore,
+        { provide: TeamEmployeeForecastApiService, useValue: { get } },
+      ],
     });
     return { store: TestBed.inject(TeamEmployeeForecastStore), get };
   }
@@ -35,7 +44,10 @@ describe('TeamEmployeeForecastStore', () => {
 
   it('only the latest table request lands', () => {
     const first = new Subject<EmployeeForecastResponse>();
-    const get = vi.fn().mockReturnValueOnce(first).mockReturnValue(of(employeeForecastResponse({ total: 2 })));
+    const get = vi
+      .fn()
+      .mockReturnValueOnce(first)
+      .mockReturnValue(of(employeeForecastResponse({ total: 2 })));
     const { store } = setup(get);
     store.loadTable({ search: 'b' });
     store.loadTable({ search: 'bi' });
@@ -64,6 +76,8 @@ describe('TeamEmployeeForecastStore', () => {
     const { store, get } = setup();
     store.loadTable({ status: 'raise_rate', page: 2 });
     store.fetchAll().subscribe();
-    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'raise_rate', page: 1, pageSize: 500 }));
+    expect(get).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'raise_rate', page: 1, pageSize: 100 }),
+    );
   });
 });

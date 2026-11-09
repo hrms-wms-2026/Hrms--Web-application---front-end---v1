@@ -1,12 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 import { EMPLOYEE_FORECAST_ITEMS } from '../../utils/team-employee-forecast.testing';
-import { EmployeeForecastRateChartComponent, rateChartPeople } from './employee-forecast-rate-chart.component';
+import {
+  EmployeeForecastRateChartComponent,
+  rateChartPeople,
+} from './employee-forecast-rate-chart.component';
 
 describe('EmployeeForecastRateChartComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('draws each person\'s rate beside the rate they need, red over 100%', () => {
+  it("draws each person's rate beside the rate they need, red over 100%", () => {
     const fixture = TestBed.createComponent(EmployeeForecastRateChartComponent);
     fixture.componentRef.setInput('items', EMPLOYEE_FORECAST_ITEMS);
     fixture.componentRef.setInput('teamRate', 0.4);
@@ -20,7 +23,9 @@ describe('EmployeeForecastRateChartComponent', () => {
     expect(cols[0].querySelector('[data-segment=rate]')).not.toBeNull();
     expect(cols[0].querySelector('[data-segment=required]')).not.toBeNull();
     expect(el.textContent).toContain('40% team rate');
-    expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('Ann: 38% rate, needs 130%');
+    expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain(
+      'Ann: 38% rate, needs 130%',
+    );
   });
 
   it('picks the people with the most overtime', () => {

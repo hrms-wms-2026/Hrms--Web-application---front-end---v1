@@ -11,10 +11,16 @@ export {
   planForecastLayout as planModuleForecastLayout,
   resolveForecastView as resolveModuleForecastView,
 } from './overtime-forecast-layout.util';
-export type { ForecastPlan as ModuleForecastPlan, ForecastView as ModuleForecastView } from './overtime-forecast-layout.util';
+export type {
+  ForecastPlan as ModuleForecastPlan,
+  ForecastView as ModuleForecastView,
+} from './overtime-forecast-layout.util';
 
 /** The summary cards whose popup section a taller view already shows as its own section. */
-export function shownModuleForecastCards(view: ForecastView, plan: ForecastPlan): ReadonlySet<string> {
+export function shownModuleForecastCards(
+  view: ForecastView,
+  plan: ForecastPlan,
+): ReadonlySet<string> {
   const shown = new Set<string>();
   if (view === 'standard' || plan.figure) shown.add('mf-rate');
   if (plan.chart || plan.heroChart) shown.add('mf-overtime');

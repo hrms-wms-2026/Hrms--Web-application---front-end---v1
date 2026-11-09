@@ -3,8 +3,8 @@ import { Subject, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TeamModuleForecastApiService } from '../data-access/team-module-forecast-api.service';
 import { ModuleForecastQuery, ModuleForecastResponse } from '../models/team-module-forecast.model';
-import { moduleForecastResponse } from '../utils/team-module-forecast.testing';
-import { nextTableQuery } from './overtime-forecast-store.util';
+import { moduleForecastItem, moduleForecastResponse } from '../utils/team-module-forecast.testing';
+import { fetchAllForecastPages, nextTableQuery } from './overtime-forecast-store.util';
 import { MODULE_FORECAST_CARD_QUERY, TeamModuleForecastStore } from './team-module-forecast.store';
 
 describe('TeamModuleForecastStore', () => {
@@ -12,7 +12,10 @@ describe('TeamModuleForecastStore', () => {
 
   function setup(get = vi.fn((_q: ModuleForecastQuery) => of(moduleForecastResponse()))) {
     TestBed.configureTestingModule({
-      providers: [TeamModuleForecastStore, { provide: TeamModuleForecastApiService, useValue: { get } }],
+      providers: [
+        TeamModuleForecastStore,
+        { provide: TeamModuleForecastApiService, useValue: { get } },
+      ],
     });
     return { store: TestBed.inject(TeamModuleForecastStore), get };
   }
@@ -36,7 +39,10 @@ describe('TeamModuleForecastStore', () => {
 
   it('only the latest table request lands', () => {
     const first = new Subject<ModuleForecastResponse>();
-    const get = vi.fn().mockReturnValueOnce(first).mockReturnValue(of(moduleForecastResponse({ total: 2 })));
+    const get = vi
+      .fn()
+      .mockReturnValueOnce(first)
+      .mockReturnValue(of(moduleForecastResponse({ total: 2 })));
     const { store } = setup(get);
     store.loadTable({ search: 'b' });
     store.loadTable({ search: 'bi' });
@@ -65,7 +71,33 @@ describe('TeamModuleForecastStore', () => {
     const { store, get } = setup();
     store.loadTable({ status: 'raise_rate', page: 2 });
     store.fetchAll().subscribe();
-    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'raise_rate', page: 1, pageSize: 500 }));
+    expect(get).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'raise_rate', page: 1, pageSize: 100 }),
+    );
+  });
+});
+
+describe('fetchAllForecastPages', () => {
+  it('reads every page of 100 and joins the items in order', () => {
+    const get = vi.fn((q: ModuleForecastQuery) =>
+      of(
+        moduleForecastResponse({
+          total: 250,
+          page: q.page,
+          items: [moduleForecastItem(`p${q.page}`, 'overtime', 1)],
+        }),
+      ),
+    );
+    let rows: string[] = [];
+    fetchAllForecastPages(get, { ...MODULE_FORECAST_CARD_QUERY, page: 3 }).subscribe(
+      (r) => (rows = r.items.map((m) => m.title)),
+    );
+    expect(get.mock.calls.map(([q]) => [q.page, q.pageSize])).toEqual([
+      [1, 100],
+      [2, 100],
+      [3, 100],
+    ]);
+    expect(rows).toEqual(['p1', 'p2', 'p3']);
   });
 });
 

@@ -4,7 +4,12 @@
  */
 export type ForecastStatus = 'on_track' | 'raise_rate' | 'overtime' | 'no_history';
 
-export const FORECAST_STATUSES: readonly ForecastStatus[] = ['on_track', 'raise_rate', 'overtime', 'no_history'];
+export const FORECAST_STATUSES: readonly ForecastStatus[] = [
+  'on_track',
+  'raise_rate',
+  'overtime',
+  'no_history',
+];
 
 /** One week of the team's pooled task rate (the four weeks of the window); null without working time. */
 export interface ForecastRateTrendPoint {

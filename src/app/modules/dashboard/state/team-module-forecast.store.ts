@@ -3,7 +3,12 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { Observable, Subscription } from 'rxjs';
 import { TeamModuleForecastApiService } from '../data-access/team-module-forecast-api.service';
 import { ModuleForecastQuery, ModuleForecastResponse } from '../models/team-module-forecast.model';
-import { FORECAST_EXPORT_PAGE_SIZE, FORECAST_TABLE_PAGE_SIZE, forecastErrorText, nextTableQuery } from './overtime-forecast-store.util';
+import {
+  FORECAST_TABLE_PAGE_SIZE,
+  fetchAllForecastPages,
+  forecastErrorText,
+  nextTableQuery,
+} from './overtime-forecast-store.util';
 
 /** The card's read: the 10 modules that need the most overtime. */
 export const MODULE_FORECAST_CARD_QUERY: ModuleForecastQuery = {
@@ -53,7 +58,11 @@ export const TeamModuleForecastStore = signalStore(
       patchState(store, { tableQuery, tableLoading: true, tableError: null });
       tableFlight = api.get(tableQuery).subscribe({
         next: (table) => patchState(store, { table, tableLoading: false }),
-        error: (err) => patchState(store, { tableError: forecastErrorText(err, 'Failed to load the modules.'), tableLoading: false }),
+        error: (err) =>
+          patchState(store, {
+            tableError: forecastErrorText(err, 'Failed to load the modules.'),
+            tableLoading: false,
+          }),
       });
     };
 
@@ -71,7 +80,11 @@ export const TeamModuleForecastStore = signalStore(
         patchState(store, { loading: true, error: null });
         cardFlight = api.get(MODULE_FORECAST_CARD_QUERY).subscribe({
           next: (data) => patchState(store, { data, loading: false, loadedAt: new Date() }),
-          error: (err) => patchState(store, { error: forecastErrorText(err, 'Failed to load the module forecast.'), loading: false }),
+          error: (err) =>
+            patchState(store, {
+              error: forecastErrorText(err, 'Failed to load the module forecast.'),
+              loading: false,
+            }),
         });
       },
       /** Reloads the table; a filter, search or sort change goes back to page 1. */
@@ -80,7 +93,7 @@ export const TeamModuleForecastStore = signalStore(
       },
       /** Every row of the current filter, for the CSV. */
       fetchAll(): Observable<ModuleForecastResponse> {
-        return api.get({ ...store.tableQuery(), page: 1, pageSize: FORECAST_EXPORT_PAGE_SIZE });
+        return fetchAllForecastPages((q: ModuleForecastQuery) => api.get(q), store.tableQuery());
       },
     };
   }),

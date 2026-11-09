@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -6,9 +17,16 @@ import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
-import { EmployeeForecastItem, EmployeeForecastResponse, EmployeeForecastSort } from '../../models/team-employee-forecast.model';
+import {
+  EmployeeForecastItem,
+  EmployeeForecastResponse,
+  EmployeeForecastSort,
+} from '../../models/team-employee-forecast.model';
 import { TeamEmployeeForecastStore } from '../../state/team-employee-forecast.store';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import {
+  DashboardDonutComponent,
+  DashboardDonutSlice,
+} from '../../ui/dashboard-donut/dashboard-donut.component';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { EmployeeForecastRateChartComponent } from '../../ui/employee-forecast-rate-chart/employee-forecast-rate-chart.component';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
@@ -21,7 +39,12 @@ import {
   shortDate,
   windowLabel,
 } from '../../utils/overtime-forecast-format.util';
-import { FORECAST_SEARCH_DEBOUNCE_MS, FORECAST_STATUS_OPTIONS, forecastSortDirection, parseForecastStatus } from '../../utils/overtime-forecast-table.util';
+import {
+  FORECAST_SEARCH_DEBOUNCE_MS,
+  FORECAST_STATUS_OPTIONS,
+  forecastSortDirection,
+  parseForecastStatus,
+} from '../../utils/overtime-forecast-table.util';
 import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import { employeeForecastExplanation } from '../../utils/team-employee-forecast-format.util';
 
@@ -132,11 +155,46 @@ export class TeamEmployeeForecastDetailDialogComponent {
     if (!t) return [];
     const short = t.teamRate !== null && t.requiredRate !== null && t.teamRate < t.requiredRate;
     return [
-      { label: 'Remaining', value: forecastHoursText(t.remainingHours), hint: `open estimated tasks · ${t.people} people`, icon: 'clipboard-list', tone: 'accent', testId: 'efd-tile-remaining' },
-      { label: 'Capacity', value: forecastHoursText(t.capacityHours), hint: 'working hours to the deadlines', icon: 'clock', tone: 'neutral', testId: 'efd-tile-capacity' },
-      { label: 'Predicted', value: forecastHoursText(t.predictedHours), hint: 'task hours before the deadlines at the current rates', icon: 'trending-up', tone: 'success', testId: 'efd-tile-predicted' },
-      { label: 'Task rate vs required', value: `${rateText(t.teamRate)} / ${rateText(t.requiredRate)}`, hint: 'team, last 4 weeks / needed to finish in normal hours', icon: 'layers', tone: short ? 'warning' : 'success', testId: 'efd-tile-rate' },
-      { label: 'Overtime', value: forecastHoursText(t.overtimeHours), hint: `${t.overtime} need overtime · ${t.raiseRate} need a higher rate`, icon: 'alert-triangle', tone: t.overtimeHours > 0 ? 'danger' : 'success', testId: 'efd-tile-overtime' },
+      {
+        label: 'Remaining',
+        value: forecastHoursText(t.remainingHours),
+        hint: `open estimated tasks · ${t.people} people`,
+        icon: 'clipboard-list',
+        tone: 'accent',
+        testId: 'efd-tile-remaining',
+      },
+      {
+        label: 'Capacity',
+        value: forecastHoursText(t.capacityHours),
+        hint: 'working hours to the deadlines',
+        icon: 'clock',
+        tone: 'neutral',
+        testId: 'efd-tile-capacity',
+      },
+      {
+        label: 'Predicted',
+        value: forecastHoursText(t.predictedHours),
+        hint: 'task hours before the deadlines at the current rates',
+        icon: 'trending-up',
+        tone: 'success',
+        testId: 'efd-tile-predicted',
+      },
+      {
+        label: 'Task rate vs required',
+        value: `${rateText(t.teamRate)} / ${rateText(t.requiredRate)}`,
+        hint: 'team, last 4 weeks / needed to finish in normal hours',
+        icon: 'layers',
+        tone: short ? 'warning' : 'success',
+        testId: 'efd-tile-rate',
+      },
+      {
+        label: 'Overtime',
+        value: forecastHoursText(t.overtimeHours),
+        hint: `${t.overtime} need overtime · ${t.raiseRate} need a higher rate`,
+        icon: 'alert-triangle',
+        tone: t.overtimeHours > 0 ? 'danger' : 'success',
+        testId: 'efd-tile-overtime',
+      },
     ];
   });
 
@@ -210,7 +268,10 @@ export class TeamEmployeeForecastDetailDialogComponent {
     this.store.fetchAll().subscribe({
       next: (all) => {
         this.exporting.set(false);
-        this.downloadFile(`employee-overtime-forecast-${data.asOf}.csv`, toCsv(employeeForecastCsv(all.items)));
+        this.downloadFile(
+          `employee-overtime-forecast-${data.asOf}.csv`,
+          toCsv(employeeForecastCsv(all.items)),
+        );
       },
       error: () => this.exporting.set(false),
     });

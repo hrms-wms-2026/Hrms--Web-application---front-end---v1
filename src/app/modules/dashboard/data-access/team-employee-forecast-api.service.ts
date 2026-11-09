@@ -2,7 +2,10 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { EmployeeForecastQuery, EmployeeForecastResponse } from '../models/team-employee-forecast.model';
+import {
+  EmployeeForecastQuery,
+  EmployeeForecastResponse,
+} from '../models/team-employee-forecast.model';
 import { forecastParams } from './overtime-forecast-params.util';
 
 /** The My Team "Employee overtime forecast" widget's one read. Unset filters are left out of the query string. */

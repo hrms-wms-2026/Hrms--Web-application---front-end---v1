@@ -1,7 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 import { moduleForecastResponse } from '../../utils/team-module-forecast.testing';
-import { ModuleForecastProjectChartComponent, shortBarLabel } from './module-forecast-project-chart.component';
+import {
+  ModuleForecastProjectChartComponent,
+  shortBarLabel,
+} from './module-forecast-project-chart.component';
 
 describe('ModuleForecastProjectChartComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -18,7 +21,9 @@ describe('ModuleForecastProjectChartComponent', () => {
     expect(cols[0].querySelector('[data-segment=predicted]')).not.toBeNull();
     expect(cols[0].textContent).toContain('Atlas');
     expect(el.textContent).toContain('~950 h overtime');
-    expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('Atlas: 900 h left, 700 h predicted');
+    expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain(
+      'Atlas: 900 h left, 700 h predicted',
+    );
   });
 
   it('shortens long names', () => {

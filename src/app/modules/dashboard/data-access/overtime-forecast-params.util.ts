@@ -9,7 +9,10 @@ export function forecastParams(query: {
   readonly page: number;
   readonly pageSize: number;
 }): HttpParams {
-  let params = new HttpParams().set('sort', query.sort).set('page', query.page).set('pageSize', query.pageSize);
+  let params = new HttpParams()
+    .set('sort', query.sort)
+    .set('page', query.page)
+    .set('pageSize', query.pageSize);
   if (query.status) params = params.set('status', query.status);
   if (query.projectId) params = params.set('projectId', query.projectId);
   const search = query.search.trim();

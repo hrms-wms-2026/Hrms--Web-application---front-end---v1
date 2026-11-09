@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -6,9 +17,16 @@ import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
-import { ModuleForecastItem, ModuleForecastResponse, ModuleForecastSort } from '../../models/team-module-forecast.model';
+import {
+  ModuleForecastItem,
+  ModuleForecastResponse,
+  ModuleForecastSort,
+} from '../../models/team-module-forecast.model';
 import { TeamModuleForecastStore } from '../../state/team-module-forecast.store';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import {
+  DashboardDonutComponent,
+  DashboardDonutSlice,
+} from '../../ui/dashboard-donut/dashboard-donut.component';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { ModuleForecastProjectChartComponent } from '../../ui/module-forecast-project-chart/module-forecast-project-chart.component';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
@@ -22,7 +40,12 @@ import {
   shortDate,
   windowLabel,
 } from '../../utils/overtime-forecast-format.util';
-import { FORECAST_SEARCH_DEBOUNCE_MS, FORECAST_STATUS_OPTIONS, forecastSortDirection, parseForecastStatus } from '../../utils/overtime-forecast-table.util';
+import {
+  FORECAST_SEARCH_DEBOUNCE_MS,
+  FORECAST_STATUS_OPTIONS,
+  forecastSortDirection,
+  parseForecastStatus,
+} from '../../utils/overtime-forecast-table.util';
 import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import { moduleForecastExplanation } from '../../utils/team-module-forecast-format.util';
 
@@ -137,11 +160,46 @@ export class TeamModuleForecastDetailDialogComponent {
     if (!t) return [];
     const short = t.teamRate !== null && t.requiredRate !== null && t.teamRate < t.requiredRate;
     return [
-      { label: 'Allocated', value: forecastHoursText(t.allocatedHours), hint: `${forecastHoursText(t.completedHours)} completed · ${t.modules} modules`, icon: 'clipboard-list', tone: 'accent', testId: 'mfd-tile-allocated' },
-      { label: 'Remaining', value: forecastHoursText(t.remainingHours), hint: `${forecastHoursText(t.capacityHours)} working capacity left`, icon: 'clock', tone: 'neutral', testId: 'mfd-tile-remaining' },
-      { label: 'Predicted', value: forecastHoursText(t.predictedHours), hint: 'task hours before the deadlines at the current rate', icon: 'trending-up', tone: 'success', testId: 'mfd-tile-predicted' },
-      { label: 'Task rate vs required', value: `${rateText(t.teamRate)} / ${rateText(t.requiredRate)}`, hint: 'last 4 weeks / needed to finish in normal hours', icon: 'layers', tone: short ? 'warning' : 'success', testId: 'mfd-tile-rate' },
-      { label: 'Overtime', value: forecastHoursText(t.overtimeHours), hint: `${t.overtime} need overtime · ${t.raiseRate} need a higher rate`, icon: 'alert-triangle', tone: t.overtimeHours > 0 ? 'danger' : 'success', testId: 'mfd-tile-overtime' },
+      {
+        label: 'Allocated',
+        value: forecastHoursText(t.allocatedHours),
+        hint: `${forecastHoursText(t.completedHours)} completed · ${t.modules} modules`,
+        icon: 'clipboard-list',
+        tone: 'accent',
+        testId: 'mfd-tile-allocated',
+      },
+      {
+        label: 'Remaining',
+        value: forecastHoursText(t.remainingHours),
+        hint: `${forecastHoursText(t.capacityHours)} working capacity left`,
+        icon: 'clock',
+        tone: 'neutral',
+        testId: 'mfd-tile-remaining',
+      },
+      {
+        label: 'Predicted',
+        value: forecastHoursText(t.predictedHours),
+        hint: 'task hours before the deadlines at the current rate',
+        icon: 'trending-up',
+        tone: 'success',
+        testId: 'mfd-tile-predicted',
+      },
+      {
+        label: 'Task rate vs required',
+        value: `${rateText(t.teamRate)} / ${rateText(t.requiredRate)}`,
+        hint: 'last 4 weeks / needed to finish in normal hours',
+        icon: 'layers',
+        tone: short ? 'warning' : 'success',
+        testId: 'mfd-tile-rate',
+      },
+      {
+        label: 'Overtime',
+        value: forecastHoursText(t.overtimeHours),
+        hint: `${t.overtime} need overtime · ${t.raiseRate} need a higher rate`,
+        icon: 'alert-triangle',
+        tone: t.overtimeHours > 0 ? 'danger' : 'success',
+        testId: 'mfd-tile-overtime',
+      },
     ];
   });
 
@@ -216,7 +274,10 @@ export class TeamModuleForecastDetailDialogComponent {
     this.store.fetchAll().subscribe({
       next: (all) => {
         this.exporting.set(false);
-        this.downloadFile(`module-overtime-forecast-${data.asOf}.csv`, toCsv(moduleForecastCsv(all.items)));
+        this.downloadFile(
+          `module-overtime-forecast-${data.asOf}.csv`,
+          toCsv(moduleForecastCsv(all.items)),
+        );
       },
       error: () => this.exporting.set(false),
     });

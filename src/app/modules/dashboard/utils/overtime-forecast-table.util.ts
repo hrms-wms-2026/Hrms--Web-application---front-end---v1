@@ -10,7 +10,9 @@ export const FORECAST_STATUS_OPTIONS: SelectOption[] = [
 
 /** A status filter value, null for "all" or anything unknown. */
 export function parseForecastStatus(value: string): ForecastStatus | null {
-  return (FORECAST_STATUSES as readonly string[]).includes(value) ? (value as ForecastStatus) : null;
+  return (FORECAST_STATUSES as readonly string[]).includes(value)
+    ? (value as ForecastStatus)
+    : null;
 }
 
 /** How long the table waits after the last key before it searches. */

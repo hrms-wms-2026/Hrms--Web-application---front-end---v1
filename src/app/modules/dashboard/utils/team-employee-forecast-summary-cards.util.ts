@@ -1,12 +1,23 @@
 import { FORECAST_STATUSES } from '../models/overtime-forecast.model';
 import { SummaryCardModel, SummaryRankRow } from '../models/summary-card.model';
 import { EmployeeForecastResponse } from '../models/team-employee-forecast.model';
-import { FORECAST_STATUS_META, FORECAST_STATUS_TONE, forecastHoursText, overtimeChipText, rateText } from './overtime-forecast-format.util';
+import {
+  FORECAST_STATUS_META,
+  FORECAST_STATUS_TONE,
+  forecastHoursText,
+  overtimeChipText,
+  rateText,
+} from './overtime-forecast-format.util';
 import { summaryDelta } from './summary-card-format.util';
 import { SUMMARY_CARD_ROWS } from './team-attendance-summary-cards.util';
 import { peopleAtRisk } from './team-employee-forecast-format.util';
 
-const STATUS_COUNT = { on_track: 'onTrack', raise_rate: 'raiseRate', overtime: 'overtime', no_history: 'noHistory' } as const;
+const STATUS_COUNT = {
+  on_track: 'onTrack',
+  raise_rate: 'raiseRate',
+  overtime: 'overtime',
+  no_history: 'noHistory',
+} as const;
 /** The overtime card's bars: the people who need the most. */
 const OVERTIME_BARS = 8;
 
@@ -14,13 +25,21 @@ const OVERTIME_BARS = 8;
  * Employee overtime forecast's summary cards (design 2026-11-08), from the response the card already loads: the team
  * task rate trend (KPI row), overtime per person (the rate chart), the people at risk and the status split (the table).
  */
-export function teamEmployeeForecastSummaryCards(data: EmployeeForecastResponse): SummaryCardModel[] {
+export function teamEmployeeForecastSummaryCards(
+  data: EmployeeForecastResponse,
+): SummaryCardModel[] {
   const t = data.totals;
   const risk = peopleAtRisk(data.items);
-  const rows: SummaryRankRow[] = risk
-    .slice(0, SUMMARY_CARD_ROWS)
-    .map((e) => ({ id: e.employeeId, name: e.name, avatarFileId: e.avatarFileId, chips: [{ text: overtimeChipText(e.overtimeHours, e.status), tone: FORECAST_STATUS_TONE[e.status] }] }));
-  const gap = t.teamRate === null || t.requiredRate === null ? null : (t.teamRate - t.requiredRate) * 100;
+  const rows: SummaryRankRow[] = risk.slice(0, SUMMARY_CARD_ROWS).map((e) => ({
+    id: e.employeeId,
+    name: e.name,
+    avatarFileId: e.avatarFileId,
+    chips: [
+      { text: overtimeChipText(e.overtimeHours, e.status), tone: FORECAST_STATUS_TONE[e.status] },
+    ],
+  }));
+  const gap =
+    t.teamRate === null || t.requiredRate === null ? null : (t.teamRate - t.requiredRate) * 100;
 
   return [
     {
@@ -33,8 +52,13 @@ export function teamEmployeeForecastSummaryCards(data: EmployeeForecastResponse)
       body: {
         kind: 'spark',
         figure: rateText(t.teamRate),
-        delta: gap === null ? null : summaryDelta(gap, 'pp', true, `vs ${rateText(t.requiredRate)} needed`),
-        points: data.rateTrend.map((p) => (p.rate === null ? null : Math.round(p.rate * 1000) / 10)),
+        delta:
+          gap === null
+            ? null
+            : summaryDelta(gap, 'pp', true, `vs ${rateText(t.requiredRate)} needed`),
+        points: data.rateTrend.map((p) =>
+          p.rate === null ? null : Math.round(p.rate * 1000) / 10,
+        ),
       },
     },
     {
@@ -58,7 +82,13 @@ export function teamEmployeeForecastSummaryCards(data: EmployeeForecastResponse)
       tone: 'var(--color-cat-amber)',
       section: 'employees',
       state: 'ready',
-      body: { kind: 'rank', count: String(t.raiseRate + t.overtime), countLabel: 'at risk', rows, empty: 'Everyone is on track' },
+      body: {
+        kind: 'rank',
+        count: String(t.raiseRate + t.overtime),
+        countLabel: 'at risk',
+        rows,
+        empty: 'Everyone is on track',
+      },
     },
     {
       id: 'ef-status',
@@ -71,7 +101,11 @@ export function teamEmployeeForecastSummaryCards(data: EmployeeForecastResponse)
         kind: 'chips',
         count: String(t.people),
         countLabel: 'people',
-        items: FORECAST_STATUSES.map((s) => ({ label: FORECAST_STATUS_META[s].label, value: t[STATUS_COUNT[s]], tone: FORECAST_STATUS_TONE[s] })),
+        items: FORECAST_STATUSES.map((s) => ({
+          label: FORECAST_STATUS_META[s].label,
+          value: t[STATUS_COUNT[s]],
+          tone: FORECAST_STATUS_TONE[s],
+        })),
       },
     },
   ];

@@ -11,8 +11,13 @@ describe('TeamEmployeeForecastApiService', () => {
   });
 
   function setup() {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
-    return { api: TestBed.inject(TeamEmployeeForecastApiService), http: TestBed.inject(HttpTestingController) };
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    return {
+      api: TestBed.inject(TeamEmployeeForecastApiService),
+      http: TestBed.inject(HttpTestingController),
+    };
   }
 
   it('asks for one page, leaving unset filters out', () => {
@@ -26,7 +31,9 @@ describe('TeamEmployeeForecastApiService', () => {
 
   it('sends status and search when set', () => {
     const { api, http } = setup();
-    api.get({ status: 'overtime', search: ' api ', sort: 'rate', page: 2, pageSize: 25 }).subscribe();
+    api
+      .get({ status: 'overtime', search: ' api ', sort: 'rate', page: 2, pageSize: 25 })
+      .subscribe();
     const req = http.expectOne((r) => r.url.endsWith('/work/forecast/employees'));
     expect(req.request.params.get('status')).toBe('overtime');
     expect(req.request.params.get('search')).toBe('api');
