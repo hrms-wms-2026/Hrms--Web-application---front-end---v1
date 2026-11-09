@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { EmployeeForecastItem } from '../../models/team-employee-forecast.model';
 import {
+  DEFAULT_MAX_TASK_RATE,
   FORECAST_COLORS,
   FORECAST_STATUS_META,
-  shortHoursText,
+  OVERLOAD_BADGE_TEXT,
   rateText,
+  shortHoursText,
 } from '../../utils/overtime-forecast-format.util';
 import {
   DashboardBar,
@@ -54,7 +56,7 @@ export const RATE_CHART_CAP_PERCENT = 200;
       [bars]="bars()"
       [headline]="headline()"
       [compactHeadline]="compactHeadline()"
-      [legend]="legend"
+      [legend]="legend()"
       [variant]="variant()"
       [ariaLabel]="summary()"
     />
@@ -70,22 +72,33 @@ export class EmployeeForecastRateChartComponent {
   readonly limit = input(8);
   readonly compactHeadline = input(true);
   readonly variant = input<DashboardBarVariant>('earnings');
+  /** The realistic task-rate limit, drawn as the target dash on every bar; a required rate above it is overload. */
+  readonly maxTaskRate = input(DEFAULT_MAX_TASK_RATE);
 
-  protected readonly legend: DashboardBarLegendItem[] = [
+  protected readonly legend = computed<DashboardBarLegendItem[]>(() => [
     { label: 'Task rate', color: FORECAST_COLORS.covered },
     { label: 'Required', color: FORECAST_COLORS.raise },
-    { label: 'Required > 100%', color: FORECAST_COLORS.overtime },
-  ];
+    { label: 'Overload', color: FORECAST_COLORS.overload },
+    {
+      label: `${rateText(this.maxTaskRate())} limit`,
+      color: 'var(--color-text-secondary)',
+      marker: true,
+    },
+  ]);
 
   private readonly shown = computed(() => rateChartPeople(this.items(), this.limit()));
 
-  protected readonly bars = computed<DashboardBar[]>(() =>
-    this.shown().map((e) => ({
+  protected readonly bars = computed<DashboardBar[]>(() => {
+    const limit = this.maxTaskRate();
+    return this.shown().map((e) => ({
       key: e.employeeId,
       label: shortBarLabel(e.name.split(' ')[0] ?? e.name, 8),
       title: e.name,
       valueText: `${rateText(e.conversionRate)} rate`,
-      chip: `needs ${rateText(e.requiredRate)}`,
+      chip:
+        e.status === 'overload'
+          ? `${OVERLOAD_BADGE_TEXT} · needs ${rateText(e.requiredRate)}`
+          : `needs ${rateText(e.requiredRate)}`,
       sub:
         e.overtimeHours > 0
           ? `${shortHoursText(e.overtimeHours)} won't fit at today's rate`
@@ -109,18 +122,19 @@ export class EmployeeForecastRateChartComponent {
           key: 'required',
           value: Math.min(RATE_CHART_CAP_PERCENT, percent(e.requiredRate)),
           color:
-            e.requiredRate !== null && e.requiredRate > 1
-              ? FORECAST_COLORS.overtime
+            e.requiredRate !== null && e.requiredRate > limit
+              ? FORECAST_COLORS.overload
               : FORECAST_COLORS.raise,
         },
       ],
+      marker: Math.min(RATE_CHART_CAP_PERCENT, percent(limit)),
       alert:
-        e.status === 'overtime'
-          ? `${shortHoursText(e.overtimeHours)} won't fit at today's rate`
+        e.status === 'overload'
+          ? `Overload: needs ${rateText(e.requiredRate)}, above the ${rateText(limit)} limit`
           : undefined,
-      tooltip: `${e.name}: task rate ${rateText(e.conversionRate)}, needs ${rateText(e.requiredRate)}`,
-    })),
-  );
+      tooltip: `${e.name}: task rate ${rateText(e.conversionRate)}, needs ${rateText(e.requiredRate)}${e.status === 'overload' ? ' (overload)' : ''}`,
+    }));
+  });
 
   protected readonly headline = computed<DashboardBarHeadline | null>(() => {
     if (!this.heading()) return null;

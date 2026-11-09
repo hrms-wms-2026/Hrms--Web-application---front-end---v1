@@ -229,7 +229,7 @@
 .mf-rank-row {
   display: grid;
   height: 40px;
-  grid-template-columns: auto auto minmax(0, 1fr) minmax(3rem, 6rem) 4rem;
+  grid-template-columns: auto auto minmax(0, 1fr) minmax(3rem, 6rem) 6rem;
   align-items: center;
   gap: 0.5rem;
   border-bottom: 1px solid var(--color-border);
@@ -318,4 +318,41 @@
   padding: 0.75rem 0;
   font-size: 0.75rem;
   color: var(--color-text-secondary);
+}
+
+/* Name over its "26% → 45%" line in a 40px ranking row. */
+.mf-row-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.mf-row-rate {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Overload: a filled dark-red badge with a warning sign, never the light "won't fit" red. */
+.mf-badge {
+  display: inline-flex;
+  justify-self: end;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  background: var(--tone);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--color-text-on-solid);
+}
+
+.mf-badge--hero {
+  align-self: flex-start;
+  margin-top: 0.375rem;
 }

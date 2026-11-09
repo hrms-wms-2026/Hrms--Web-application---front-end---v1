@@ -36,6 +36,7 @@ import {
   forecastSlices,
   overtimeChipText,
   rateBarPercent,
+  rateVsRequiredShort,
   rateText,
   windowLabel,
 } from '../../utils/overtime-forecast-format.util';
@@ -135,6 +136,7 @@ export class TeamModuleForecastCardComponent implements OnInit {
   protected readonly rate = rateText;
   protected readonly statusMeta = FORECAST_STATUS_META;
   protected readonly chip = overtimeChipText;
+  protected readonly rateVsRequired = rateVsRequiredShort;
   protected readonly bar = rateBarPercent;
 
   protected readonly widgetState = computed<WidgetState>(() => {
@@ -147,7 +149,7 @@ export class TeamModuleForecastCardComponent implements OnInit {
 
   protected readonly donutSlices = computed<DashboardDonutSlice[]>(() => {
     const t = this.store.data()?.totals;
-    return t ? forecastSlices(t) : [];
+    return t ? forecastSlices(t, t.maxTaskRate) : [];
   });
 
   protected readonly hovered = signal<string | null>(null);

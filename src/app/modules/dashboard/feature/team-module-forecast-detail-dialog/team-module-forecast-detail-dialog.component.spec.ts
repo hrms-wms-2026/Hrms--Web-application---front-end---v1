@@ -61,7 +61,12 @@ describe('TeamModuleForecastDetailDialogComponent', () => {
     expect(q(el, 'mfd-explanation')?.textContent).toContain('completes about 1,100 h');
     expect(q(el, 'module-forecast-project-chart')).toBeTruthy();
     expect(all(el, 'mfd-row').length).toBe(5);
-    expect(all(el, 'mfd-status')[0].textContent?.trim()).toBe('Overtime');
+    expect(all(el, 'mfd-status')[0].textContent?.trim()).toBe('⚠ Overload');
+    expect(all(el, 'mfd-status')[1].textContent?.trim()).toBe('Overtime risk');
+    expect(all(el, 'mfd-rate')[0].textContent?.trim()).toBe('42% → needs 120%');
+    expect(q(el, 'mfd-count-overload')?.textContent).toContain('1');
+    expect(q(el, 'mfd-count-raise_rate')?.textContent).toContain('2 Overtime risk');
+    expect(el.textContent).toContain('Above 90% task rate is treated as overload.');
     for (const s of ['summary', 'forecast', 'projects', 'modules'])
       expect(el.querySelector(`[data-section=${s}]`)).toBeTruthy();
   });
@@ -85,8 +90,8 @@ describe('TeamModuleForecastDetailDialogComponent', () => {
     const c = fixture.componentInstance;
     c.goToPage(2);
     expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }));
-    c.onStatus('overtime');
-    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'overtime', page: 1 }));
+    c.onStatus('overload');
+    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'overload', page: 1 }));
     c.sortBy('endDate');
     expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'endDate' }));
     c.onSearch(' bill');
@@ -127,6 +132,6 @@ describe('moduleForecastCsv', () => {
     expect(rows[1].slice(0, 4)).toEqual(['1', 'Billing', 'Atlas › Billing', 'Borealis']);
     expect(rows[1][9]).toBe('42.0');
     expect(rows[5][9]).toBe('');
-    expect(rows[1][12]).toBe('Overtime');
+    expect(rows[1][12]).toBe('Overload');
   });
 });

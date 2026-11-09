@@ -20,7 +20,7 @@ export interface ModuleForecastTotals {
   readonly modules: number;
   readonly onTrack: number;
   readonly raiseRate: number;
-  readonly overtime: number;
+  readonly overload: number;
   readonly noHistory: number;
   readonly allocatedHours: number;
   readonly completedHours: number;
@@ -30,6 +30,8 @@ export interface ModuleForecastTotals {
   readonly overtimeHours: number;
   readonly teamRate: number | null;
   readonly requiredRate: number | null;
+  /** The highest task rate a team realistically reaches (tenant setting, default 0.9); above it is overload. */
+  readonly maxTaskRate: number;
 }
 
 export interface ModuleForecastProject {

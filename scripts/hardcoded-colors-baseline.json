@@ -46,7 +46,7 @@
   "src/app/modules/dashboard/ui/working-hours-chart/working-hours-chart.component.css": 4,
   "src/app/modules/dashboard/util/time-of-day.util.ts": 4,
   "src/app/modules/dashboard/util/timeline-segments.util.ts": 1,
-  "src/app/modules/dashboard/utils/overtime-forecast-format.util.ts": 5,
+  "src/app/modules/dashboard/utils/overtime-forecast-format.util.ts": 6,
   "src/app/modules/dashboard/utils/planned-actual-format.util.ts": 5,
   "src/app/modules/dashboard/utils/team-attendance-format.util.ts": 5,
   "src/app/modules/dashboard/utils/team-presence-format.util.ts": 3,

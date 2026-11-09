@@ -130,3 +130,15 @@ The source of truth is `feature/team-attendance-card/team-attendance-card.compon
   (`colspan` = column count) holding a small nested table.
 - **Without a range row**, the standard view fits the KPI tiles at 3 rows (312px). The summary-cards row (140px)
   fits from 4 rows.
+- **Severity badge (Overload).** When one status is worse than "behind", give it its own treatment, never a darker
+  copy of the hours colour. Use a filled chip (`background: var(--tone)`, `color: var(--color-text-on-solid)`) with
+  `<span aria-hidden="true">⚠</span>` before the word, in a dark red (`#991b1b`) kept apart from the light
+  "won't fit" red (`#f87171`). Use it in card rankings, popup tables, status counts and the summary-card rank chip
+  (`⚠ 26% → 120%`). Keep plain chips for the other statuses.
+- **Threshold marker.** A limit that applies to every bar (the tenant's realistic task-rate limit, `maxTaskRate`) is the
+  bar chart's `marker` on each bar, plus a legend item with `marker: true` ("90% limit"). A pair value above the limit
+  takes the severity colour. When the limit changes what is reachable, the donut's last slice is "Beyond the 90%
+  limit" (capacity × limit), and the popup intro says the rule in one line ("Above 90% task rate is treated as overload.").
+- **Rate rows show both rates:** "26% → needs 45%" in tables, "26% → 45%" in tight spots (a ranking row's second line,
+  chips). Merge the current and required rate columns into one sortable column.
+

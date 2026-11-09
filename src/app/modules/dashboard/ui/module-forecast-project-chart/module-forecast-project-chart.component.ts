@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { ModuleForecastProject } from '../../models/team-module-forecast.model';
 import {
+  DEFAULT_MAX_TASK_RATE,
   FORECAST_COLORS,
   forecastHoursText,
+  rateText,
   shortHoursText,
 } from '../../utils/overtime-forecast-format.util';
 import {
@@ -36,7 +38,7 @@ export function shortBarLabel(name: string, max = 10): string {
       [bars]="bars()"
       [headline]="headline()"
       [compactHeadline]="compactHeadline()"
-      [legend]="legend"
+      [legend]="legend()"
       [variant]="variant()"
       [ariaLabel]="summary()"
     />
@@ -53,11 +55,18 @@ export class ModuleForecastProjectChartComponent {
   readonly compactHeadline = input(true);
   readonly variant = input<DashboardBarVariant>('earnings');
 
-  protected readonly legend: DashboardBarLegendItem[] = [
+  /** The realistic task-rate limit: the dash is the most task hours the team can reach (capacity × limit). */
+  readonly maxTaskRate = input(DEFAULT_MAX_TASK_RATE);
+
+  protected readonly legend = computed<DashboardBarLegendItem[]>(() => [
     { label: 'Remaining', color: FORECAST_COLORS.remaining },
     { label: 'Predicted', color: FORECAST_COLORS.covered },
-    { label: 'Capacity', color: 'var(--color-text-secondary)', marker: true },
-  ];
+    {
+      label: `Capacity at ${rateText(this.maxTaskRate())}`,
+      color: 'var(--color-text-secondary)',
+      marker: true,
+    },
+  ]);
 
   private readonly shown = computed(() =>
     [...this.projects()]
@@ -75,7 +84,7 @@ export class ModuleForecastProjectChartComponent {
       sub: `${forecastHoursText(p.predictedHours)} predicted · ${forecastHoursText(p.capacityHours)} capacity`,
       segments: [{ key: 'remaining', value: p.remainingHours, color: FORECAST_COLORS.remaining }],
       pair: [{ key: 'predicted', value: p.predictedHours, color: FORECAST_COLORS.covered }],
-      marker: p.capacityHours,
+      marker: p.capacityHours * this.maxTaskRate(),
       alert:
         p.overtimeHours > 0
           ? `${p.modulesAtRisk} module${p.modulesAtRisk === 1 ? '' : 's'} at risk · ${shortHoursText(p.overtimeHours)} won't fit at today's rate`

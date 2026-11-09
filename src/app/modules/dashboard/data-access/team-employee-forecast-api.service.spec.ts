@@ -32,10 +32,10 @@ describe('TeamEmployeeForecastApiService', () => {
   it('sends status and search when set', () => {
     const { api, http } = setup();
     api
-      .get({ status: 'overtime', search: ' api ', sort: 'rate', page: 2, pageSize: 25 })
+      .get({ status: 'overload', search: ' api ', sort: 'rate', page: 2, pageSize: 25 })
       .subscribe();
     const req = http.expectOne((r) => r.url.endsWith('/work/forecast/employees'));
-    expect(req.request.params.get('status')).toBe('overtime');
+    expect(req.request.params.get('status')).toBe('overload');
     expect(req.request.params.get('search')).toBe('api');
     expect(req.request.params.get('sort')).toBe('rate');
     expect(req.request.params.get('page')).toBe('2');

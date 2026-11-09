@@ -37,8 +37,8 @@ describe('TeamEmployeeForecastStore', () => {
     const { store, get } = setup();
     store.loadTable({ page: 3 });
     expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ page: 3, pageSize: 25 }));
-    store.loadTable({ status: 'overtime' });
-    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'overtime', page: 1 }));
+    store.loadTable({ status: 'overload' });
+    expect(get).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'overload', page: 1 }));
     expect(store.table()?.total).toBe(5);
   });
 

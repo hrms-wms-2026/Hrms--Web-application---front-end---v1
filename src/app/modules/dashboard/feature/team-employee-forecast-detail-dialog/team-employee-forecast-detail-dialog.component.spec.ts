@@ -55,6 +55,10 @@ describe('TeamEmployeeForecastDetailDialogComponent', () => {
     expect(q(el, 'employee-forecast-rate-chart')).toBeTruthy();
     expect(all(el, 'efd-row').length).toBe(5);
     expect(all(el, 'efd-row')[0].textContent).toContain('130%');
+    expect(all(el, 'efd-rate')[0].textContent?.trim()).toBe('38% → needs 130%');
+    expect(all(el, 'efd-status')[0].textContent?.trim()).toBe('⚠ Overload');
+    expect(q(el, 'efd-count-overload')?.textContent).toContain('1');
+    expect(el.textContent).toContain('Above 90% task rate is treated as overload.');
     for (const s of ['summary', 'forecast', 'rates', 'employees'])
       expect(el.querySelector(`[data-section=${s}]`)).toBeTruthy();
   });

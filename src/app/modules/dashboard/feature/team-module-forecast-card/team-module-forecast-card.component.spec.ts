@@ -112,14 +112,23 @@ describe('TeamModuleForecastCardComponent', () => {
     const rows = all(el, 'mf-rank-row');
     expect(rows.length).toBe(3);
     expect(rows[0].textContent).toContain('Billing');
-    expect(rows[0].textContent).toContain('+140 h');
+    // Overload first: the filled badge, with the current and required rate under the name.
+    expect(rows[0].querySelector('[data-testid=mf-overload]')?.textContent?.trim()).toBe(
+      '⚠ Overload',
+    );
+    expect(rows[0].querySelector('[data-testid=mf-row-rate]')?.textContent?.trim()).toBe(
+      '42% → 120%',
+    );
+    expect(rows[1].querySelector('[data-testid=mf-overload]')).toBeNull();
+    expect(rows[1].textContent).toContain('+');
+    expect(q(el, 'mf-hero-overload')?.textContent).toContain('1 in overload');
   });
 
   it('nothing short: the hero says On track and the ranking says so', () => {
     const base = moduleForecastResponse();
     setup(
       moduleForecastResponse({
-        totals: { ...base.totals, overtimeHours: 0, remainingHours: 0, raiseRate: 0, overtime: 0 },
+        totals: { ...base.totals, overtimeHours: 0, remainingHours: 0, raiseRate: 0, overload: 0 },
         items: base.items.map((m) => ({ ...m, status: 'on_track', overtimeHours: 0 })),
       }),
     );

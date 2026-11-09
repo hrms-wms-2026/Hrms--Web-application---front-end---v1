@@ -35,7 +35,7 @@ describe('TeamModuleForecastApiService', () => {
     const { api, http } = setup();
     api
       .get({
-        status: 'overtime',
+        status: 'overload',
         projectId: 'p1',
         search: ' api ',
         sort: 'endDate',
@@ -44,7 +44,7 @@ describe('TeamModuleForecastApiService', () => {
       })
       .subscribe();
     const req = http.expectOne((r) => r.url.endsWith('/work/forecast/modules'));
-    expect(req.request.params.get('status')).toBe('overtime');
+    expect(req.request.params.get('status')).toBe('overload');
     expect(req.request.params.get('projectId')).toBe('p1');
     expect(req.request.params.get('search')).toBe('api');
     expect(req.request.params.get('sort')).toBe('endDate');

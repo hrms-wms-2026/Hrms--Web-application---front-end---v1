@@ -27,6 +27,7 @@ import {
   DashboardDonutComponent,
   DashboardDonutSlice,
 } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { FORECAST_STATUSES, ForecastStatus } from '../../models/overtime-forecast.model';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { ModuleForecastProjectChartComponent } from '../../ui/module-forecast-project-chart/module-forecast-project-chart.component';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
@@ -36,7 +37,9 @@ import {
   forecastSlices,
   minutesAsHours,
   rateBarPercent,
+  overloadLimitText,
   rateText,
+  rateVsRequiredText,
   shortDate,
   windowLabel,
 } from '../../utils/overtime-forecast-format.util';
@@ -128,6 +131,7 @@ export class TeamModuleForecastDetailDialogComponent {
   protected readonly hours = forecastHoursText;
   protected readonly memberHours = minutesAsHours;
   protected readonly rate = rateText;
+  protected readonly rateVsRequired = rateVsRequiredText;
   protected readonly bar = rateBarPercent;
   protected readonly date = shortDate;
   protected readonly donutPx = DASHBOARD_DONUT_PX;
@@ -152,7 +156,7 @@ export class TeamModuleForecastDetailDialogComponent {
   protected readonly subtitle = computed(() => {
     const data = this.store.data();
     const window = data ? ` (${windowLabel(data.windowStart, data.windowEnd)})` : '';
-    return `Can each module finish its remaining hours before the deadline? Predicted from the module team's task rate over the last 4 weeks${window}.`;
+    return `Can each module finish its remaining hours before the deadline? Predicted from the module team's task rate over the last 4 weeks${window}. ${data ? overloadLimitText(data.totals.maxTaskRate) : ''}`.trim();
   });
 
   protected readonly tiles = computed<KpiTile[]>(() => {
@@ -195,7 +199,7 @@ export class TeamModuleForecastDetailDialogComponent {
       {
         label: "Won't fit at today's rate",
         value: forecastHoursText(t.overtimeHours),
-        hint: `${t.overtime} need overtime · ${t.raiseRate} need a higher rate`,
+        hint: `${t.overload} in overload · ${t.raiseRate} at overtime risk`,
         icon: 'alert-triangle',
         tone: t.overtimeHours > 0 ? 'danger' : 'success',
         testId: 'mfd-tile-overtime',
@@ -203,9 +207,27 @@ export class TeamModuleForecastDetailDialogComponent {
     ];
   });
 
+  /** The status counts beside the tiles: On track / Overtime risk / Overload / No history. */
+  protected readonly statusCounts = computed(() => {
+    const t = this.store.data()?.totals;
+    if (!t) return [];
+    const count: Record<ForecastStatus, number> = {
+      on_track: t.onTrack,
+      raise_rate: t.raiseRate,
+      overload: t.overload,
+      no_history: t.noHistory,
+    };
+    return FORECAST_STATUSES.map((s) => ({
+      key: s,
+      label: FORECAST_STATUS_META[s].label,
+      count: count[s],
+      color: FORECAST_STATUS_META[s].color,
+    }));
+  });
+
   protected readonly donutSlices = computed<DashboardDonutSlice[]>(() => {
     const t = this.store.data()?.totals;
-    return t ? forecastSlices(t) : [];
+    return t ? forecastSlices(t, t.maxTaskRate) : [];
   });
 
   protected readonly explanation = computed(() => {

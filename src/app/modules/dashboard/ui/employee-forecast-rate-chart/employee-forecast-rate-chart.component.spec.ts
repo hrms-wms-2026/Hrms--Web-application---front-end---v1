@@ -54,4 +54,20 @@ describe('EmployeeForecastRateChartComponent', () => {
     expect(cols[1].querySelector('[data-testid=bar-chart-badge]')).toBeNull();
     expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('needs 853%');
   });
+
+  it('draws the rate limit as a dash on every bar and colours a required rate above it as overload', () => {
+    const fixture = TestBed.createComponent(EmployeeForecastRateChartComponent);
+    fixture.componentRef.setInput('items', EMPLOYEE_FORECAST_ITEMS.slice(0, 2));
+    fixture.componentRef.setInput('maxTaskRate', 0.9);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const cols = el.querySelectorAll('[data-testid=bar-chart-col]');
+    expect(cols[0].querySelector('[data-testid=bar-chart-marker]')).not.toBeNull();
+    expect(el.textContent).toContain('90% limit');
+    const required = (i: number) =>
+      (cols[i].querySelector('[data-segment=required]') as HTMLElement).style.background;
+    // Ann needs 130% (> 90%): overload; Bob needs 70%: the amber "higher rate".
+    expect(required(0)).not.toBe(required(1));
+    expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('Ann');
+  });
 });

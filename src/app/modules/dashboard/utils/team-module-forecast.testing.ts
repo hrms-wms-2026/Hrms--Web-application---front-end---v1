@@ -50,7 +50,11 @@ export function moduleForecastItem(
 }
 
 export const MODULE_FORECAST_ITEMS: ModuleForecastItem[] = [
-  moduleForecastItem('Billing', 'overtime', 140, { projectId: 'p2', projectName: 'Borealis' }),
+  moduleForecastItem('Billing', 'overload', 140, {
+    projectId: 'p2',
+    projectName: 'Borealis',
+    requiredRate: 1.2,
+  }),
   moduleForecastItem('Search', 'raise_rate', 60),
   moduleForecastItem('Reports', 'raise_rate', 20),
   moduleForecastItem('Login', 'on_track', 0, {
@@ -72,7 +76,7 @@ export function moduleForecastResponse(
       modules: 5,
       onTrack: 1,
       raiseRate: 2,
-      overtime: 1,
+      overload: 1,
       noHistory: 1,
       allocatedHours: 2400,
       completedHours: 900,
@@ -82,6 +86,7 @@ export function moduleForecastResponse(
       overtimeHours: 950,
       teamRate: 0.42,
       requiredRate: 0.58,
+      maxTaskRate: 0.9,
     },
     rateTrend: [
       { weekStart: '2026-10-12', rate: 0.31 },

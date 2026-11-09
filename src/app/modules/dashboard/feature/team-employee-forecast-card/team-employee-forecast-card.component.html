@@ -31,6 +31,7 @@
 
     <ng-template #chartTpl>
       <app-employee-forecast-rate-chart
+        [maxTaskRate]="data.totals.maxTaskRate"
         class="ef-chart"
         heading="Task rate vs required"
         [items]="data.items"
@@ -93,6 +94,14 @@
                 </p>
                 <p class="ef-sub" data-testid="ef-hero-sub">{{ heroSub() }}</p>
                 <p class="ef-caption" data-testid="ef-caption">{{ caption() }}</p>
+                @if (view() !== 'xs' && data.totals.overload > 0) {
+                  <span
+                    class="ef-badge ef-badge--hero"
+                    data-testid="ef-hero-overload"
+                    [style.--tone]="statusMeta.overload.color"
+                    ><span aria-hidden="true">⚠</span> {{ data.totals.overload }} in overload</span
+                  >
+                }
                 @if (view() !== 'xs') {
                   <p class="ef-window">{{ window() }}</p>
                 }
@@ -185,14 +194,28 @@
                       [avatarUrl]="avatarUrl(row.avatarFileId)"
                       [userName]="row.name"
                     />
-                    <span class="ef-row-name">{{ row.name }}</span>
+                    <span class="ef-row-text">
+                      <span class="ef-row-name">{{ row.name }}</span>
+                      <span class="ef-row-rate" data-testid="ef-row-rate">{{
+                        rateVsRequired(row.conversionRate, row.requiredRate)
+                      }}</span>
+                    </span>
                     <span class="ef-rank-bar" aria-hidden="true"
                       ><span [style.width.%]="bar(row.conversionRate)"></span
                       ><i [style.left.%]="bar(row.requiredRate)"></i
                     ></span>
-                    <span class="ef-chip" [style.--tone]="statusMeta[row.status].color">{{
-                      chip(row.overtimeHours, row.status)
-                    }}</span>
+                    @if (row.status === 'overload') {
+                      <span
+                        class="ef-badge"
+                        data-testid="ef-overload"
+                        [style.--tone]="statusMeta.overload.color"
+                        ><span aria-hidden="true">⚠</span> Overload</span
+                      >
+                    } @else {
+                      <span class="ef-chip" [style.--tone]="statusMeta[row.status].color">{{
+                        chip(row.overtimeHours, row.status)
+                      }}</span>
+                    }
                   </li>
                 } @empty {
                   <li class="ef-row-empty">Everyone is on track</li>

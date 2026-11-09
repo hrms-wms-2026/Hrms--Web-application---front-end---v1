@@ -19,7 +19,7 @@ export interface EmployeeForecastTotals {
   readonly people: number;
   readonly onTrack: number;
   readonly raiseRate: number;
-  readonly overtime: number;
+  readonly overload: number;
   readonly noHistory: number;
   readonly remainingHours: number;
   readonly capacityHours: number;
@@ -27,6 +27,8 @@ export interface EmployeeForecastTotals {
   readonly overtimeHours: number;
   readonly teamRate: number | null;
   readonly requiredRate: number | null;
+  /** The highest task rate a team realistically reaches (tenant setting, default 0.9); above it is overload. */
+  readonly maxTaskRate: number;
 }
 
 /** A module the person has open assigned tasks in, or is a member of. */

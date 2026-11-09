@@ -31,6 +31,7 @@
 
     <ng-template #chartTpl>
       <app-module-forecast-project-chart
+        [maxTaskRate]="data.totals.maxTaskRate"
         class="mf-chart"
         heading="Won't fit by project"
         [projects]="data.projects"
@@ -92,6 +93,14 @@
                 </p>
                 <p class="mf-sub" data-testid="mf-hero-sub">{{ heroSub() }}</p>
                 <p class="mf-caption" data-testid="mf-caption">{{ caption() }}</p>
+                @if (view() !== 'xs' && data.totals.overload > 0) {
+                  <span
+                    class="mf-badge mf-badge--hero"
+                    data-testid="mf-hero-overload"
+                    [style.--tone]="statusMeta.overload.color"
+                    ><span aria-hidden="true">⚠</span> {{ data.totals.overload }} in overload</span
+                  >
+                }
                 @if (view() !== 'xs') {
                   <p class="mf-window">{{ window() }}</p>
                 }
@@ -184,14 +193,28 @@
                       [style.--tone]="statusMeta[row.status].color"
                       aria-hidden="true"
                     ></span>
-                    <span class="mf-row-name">{{ row.title }}</span>
+                    <span class="mf-row-text">
+                      <span class="mf-row-name">{{ row.title }}</span>
+                      <span class="mf-row-rate" data-testid="mf-row-rate">{{
+                        rateVsRequired(row.conversionRate, row.requiredRate)
+                      }}</span>
+                    </span>
                     <span class="mf-rank-bar" aria-hidden="true"
                       ><span [style.width.%]="bar(row.conversionRate)"></span
                       ><i [style.left.%]="bar(row.requiredRate)"></i
                     ></span>
-                    <span class="mf-chip" [style.--tone]="statusMeta[row.status].color">{{
-                      chip(row.overtimeHours, row.status)
-                    }}</span>
+                    @if (row.status === 'overload') {
+                      <span
+                        class="mf-badge"
+                        data-testid="mf-overload"
+                        [style.--tone]="statusMeta.overload.color"
+                        ><span aria-hidden="true">⚠</span> Overload</span
+                      >
+                    } @else {
+                      <span class="mf-chip" [style.--tone]="statusMeta[row.status].color">{{
+                        chip(row.overtimeHours, row.status)
+                      }}</span>
+                    }
                   </li>
                 } @empty {
                   <li class="mf-row-empty">Every module is on track</li>

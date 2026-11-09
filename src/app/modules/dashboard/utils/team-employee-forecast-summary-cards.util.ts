@@ -5,7 +5,7 @@ import {
   FORECAST_STATUS_META,
   FORECAST_STATUS_TONE,
   shortHoursText,
-  overtimeChipText,
+  forecastRankChip,
   rateText,
 } from './overtime-forecast-format.util';
 import { summaryDelta } from './summary-card-format.util';
@@ -15,7 +15,7 @@ import { peopleAtRisk } from './team-employee-forecast-format.util';
 const STATUS_COUNT = {
   on_track: 'onTrack',
   raise_rate: 'raiseRate',
-  overtime: 'overtime',
+  overload: 'overload',
   no_history: 'noHistory',
 } as const;
 /** The overtime card's bars: the people who need the most. */
@@ -34,9 +34,7 @@ export function teamEmployeeForecastSummaryCards(
     id: e.employeeId,
     name: e.name,
     avatarFileId: e.avatarFileId,
-    chips: [
-      { text: overtimeChipText(e.overtimeHours, e.status), tone: FORECAST_STATUS_TONE[e.status] },
-    ],
+    chips: [forecastRankChip(e.conversionRate, e.requiredRate, e.status)],
   }));
   const gap =
     t.teamRate === null || t.requiredRate === null ? null : (t.teamRate - t.requiredRate) * 100;
@@ -84,7 +82,7 @@ export function teamEmployeeForecastSummaryCards(
       state: 'ready',
       body: {
         kind: 'rank',
-        count: String(t.raiseRate + t.overtime),
+        count: String(t.raiseRate + t.overload),
         countLabel: 'at risk',
         rows,
         empty: 'Everyone is on track',

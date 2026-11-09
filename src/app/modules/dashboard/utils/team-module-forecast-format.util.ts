@@ -41,12 +41,13 @@ export function moduleForecastTiles(t: ModuleForecastTotals): ForecastTileRow[] 
   ];
 }
 
-/** The modules that need a higher rate or overtime, most overtime first. */
+/** The modules at overtime risk or in overload, overload first, then the most hours that won't fit. */
 export function modulesAtRisk(items: readonly ModuleForecastItem[]): ModuleForecastItem[] {
   return items
-    .filter((m) => m.status === 'raise_rate' || m.status === 'overtime')
+    .filter((m) => m.status === 'raise_rate' || m.status === 'overload')
     .sort(
       (a, b) =>
+        Number(b.status === 'overload') - Number(a.status === 'overload') ||
         b.overtimeHours - a.overtimeHours ||
         (b.requiredRate ?? 0) - (a.requiredRate ?? 0) ||
         a.title.localeCompare(b.title),
@@ -60,7 +61,7 @@ export function moduleForecastExplanation(t: ModuleForecastTotals): string {
     return `All ${t.modules} modules have their allocated hours completed.`;
   if (t.teamRate === null)
     return `Nobody on these modules clocked working time in the last 4 weeks, so the forecast assumes every working hour becomes task hours. ${forecastHoursText(t.remainingHours)} remain.`;
-  const [covered, raise, overtime] = forecastSlices(t).map((s) => s.value);
+  const [covered, raise, overload] = forecastSlices(t, t.maxTaskRate).map((s) => s.value);
   const parts = [
     `Of ${forecastHoursText(t.remainingHours)} still to do, the team's ${rateText(t.teamRate)} task rate (last 4 weeks) completes about ${forecastHoursText(covered)} before the deadlines.`,
   ];
@@ -68,8 +69,10 @@ export function moduleForecastExplanation(t: ModuleForecastTotals): string {
     parts.push(
       `A higher rate (${rateText(t.requiredRate)} is needed) would cover another ${forecastHoursText(raise)} in normal hours.`,
     );
-  if (overtime > 0)
-    parts.push(`${forecastHoursText(overtime)} do not fit in normal working hours even at 100%.`);
+  if (overload > 0)
+    parts.push(
+      `${forecastHoursText(overload)} don't fit even at the ${rateText(t.maxTaskRate)} task-rate limit: that is overload.`,
+    );
   if (t.overtimeHours > 0)
     parts.push(`~${forecastHoursText(t.overtimeHours)} won't fit at today's rate.`);
   else parts.push("Everything fits at today's rate.");

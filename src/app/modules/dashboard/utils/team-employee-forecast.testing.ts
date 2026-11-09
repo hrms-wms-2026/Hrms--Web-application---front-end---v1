@@ -51,7 +51,7 @@ export function employeeForecastItem(
 }
 
 export const EMPLOYEE_FORECAST_ITEMS: EmployeeForecastItem[] = [
-  employeeForecastItem('Ann', 'overtime', 40, { requiredRate: 1.3 }),
+  employeeForecastItem('Ann', 'overload', 40, { requiredRate: 1.3 }),
   employeeForecastItem('Bob', 'raise_rate', 12.5),
   employeeForecastItem('Cat', 'raise_rate', 4),
   employeeForecastItem('Dan', 'on_track', 0, { conversionRate: 0.6, requiredRate: 0.3 }),
@@ -73,7 +73,7 @@ export function employeeForecastResponse(
       people: 5,
       onTrack: 1,
       raiseRate: 2,
-      overtime: 1,
+      overload: 1,
       noHistory: 1,
       remainingHours: 250,
       capacityHours: 360,
@@ -81,6 +81,7 @@ export function employeeForecastResponse(
       overtimeHours: 56.5,
       teamRate: 0.4,
       requiredRate: 0.55,
+      maxTaskRate: 0.9,
     },
     rateTrend: [
       { weekStart: '2026-10-12', rate: 0.3 },

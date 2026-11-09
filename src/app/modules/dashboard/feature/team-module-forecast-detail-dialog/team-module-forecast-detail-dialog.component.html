@@ -32,6 +32,23 @@
         [maxColumns]="5"
         ariaLabel="Module forecast totals"
       />
+      <ul class="mfd-counts" aria-label="Status counts" data-testid="mfd-counts">
+        @for (c of statusCounts(); track c.key) {
+          <li
+            class="mfd-count"
+            [class.mfd-count--overload]="c.key === 'overload'"
+            [style.--tone]="c.color"
+            [attr.data-testid]="'mfd-count-' + c.key"
+          >
+            @if (c.key === 'overload') {
+              <span aria-hidden="true">⚠</span>
+            } @else {
+              <span class="mfd-count-dot" aria-hidden="true"></span>
+            }
+            <b>{{ c.count }}</b> {{ c.label }}
+          </li>
+        }
+      </ul>
 
       <div class="mfd-charts">
         <section
@@ -67,6 +84,7 @@
         </section>
         <section class="mfd-panel" data-section="projects">
           <app-module-forecast-project-chart
+            [maxTaskRate]="data.totals.maxTaskRate"
             class="mfd-chart"
             heading="Won't fit by project"
             variant="orders"
@@ -151,18 +169,16 @@
                 <th
                   class="mfd-num"
                   scope="col"
-                  title="The module team's task rate over the last 4 weeks"
+                  title="The module team's task rate over the last 4 weeks, and the rate the module needs"
+                  [attr.aria-sort]="ariaSort('requiredRate')"
                 >
-                  Task rate
-                </th>
-                <th class="mfd-num" scope="col" [attr.aria-sort]="ariaSort('requiredRate')">
                   <button
                     type="button"
                     class="mfd-sort"
                     data-testid="mfd-sort-requiredRate"
                     (click)="sortBy('requiredRate')"
                   >
-                    Required
+                    Task rate → required
                   </button>
                 </th>
                 <th class="mfd-num" scope="col" [attr.aria-sort]="ariaSort('overtime')">
@@ -216,30 +232,35 @@
                         ><span [style.width.%]="bar(m.conversionRate)"></span
                         ><i [style.left.%]="bar(m.requiredRate)"></i
                       ></span>
-                      <span>{{ rate(m.conversionRate) }}</span>
+                      <span data-testid="mfd-rate" [class.mfd-over]="m.status === 'overload'">{{
+                        rateVsRequired(m.conversionRate, m.requiredRate)
+                      }}</span>
                     </span>
-                  </td>
-                  <td
-                    class="mfd-num"
-                    [class.mfd-over]="m.requiredRate !== null && m.requiredRate > 1"
-                  >
-                    {{ rate(m.requiredRate) }}
                   </td>
                   <td class="mfd-num" [class.mfd-over]="m.overtimeHours > 0">
                     {{ m.overtimeHours > 0 ? '+' + hours(m.overtimeHours) : '—' }}
                   </td>
                   <td>
-                    <span
-                      class="mfd-chip"
-                      [style.--tone]="statusMeta[m.status].color"
-                      data-testid="mfd-status"
-                      >{{ statusMeta[m.status].label }}</span
-                    >
+                    @if (m.status === 'overload') {
+                      <span
+                        class="mfd-badge"
+                        [style.--tone]="statusMeta.overload.color"
+                        data-testid="mfd-status"
+                        ><span aria-hidden="true">⚠</span> Overload</span
+                      >
+                    } @else {
+                      <span
+                        class="mfd-chip"
+                        [style.--tone]="statusMeta[m.status].color"
+                        data-testid="mfd-status"
+                        >{{ statusMeta[m.status].label }}</span
+                      >
+                    }
                   </td>
                 </tr>
                 @if (expanded().has(m.moduleId)) {
                   <tr class="mfd-sub-row" data-testid="mfd-members">
-                    <td colspan="11">
+                    <td colspan="10">
                       <p class="mfd-sub-title">
                         Team of {{ m.title }} · {{ m.memberCount }}
                         {{ m.memberCount === 1 ? 'person' : 'people' }}
@@ -284,7 +305,7 @@
                 }
               } @empty {
                 <tr>
-                  <td class="mfd-muted mfd-pad" colspan="11">
+                  <td class="mfd-muted mfd-pad" colspan="10">
                     {{ store.tableLoading() ? 'Loading modules…' : 'No modules match.' }}
                   </td>
                 </tr>

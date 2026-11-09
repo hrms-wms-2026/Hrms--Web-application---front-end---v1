@@ -61,9 +61,9 @@ describe('team-module-forecast utils', () => {
     expect(rate?.kind === 'spark' && rate.delta?.text).toBe('−16.0 pp');
     const risk = cards[2].body;
     expect(risk?.kind === 'rank' && risk.rows.map((r) => r.chips[0].text)).toEqual([
-      '+140 h',
-      '+60 h',
-      '+20 h',
+      '⚠ 42% → 120%',
+      '42% → 83%',
+      '42% → 83%',
     ]);
     const status = cards[3].body;
     expect(status?.kind === 'chips' && status.items.map((i) => i.value)).toEqual([1, 2, 1, 1]);

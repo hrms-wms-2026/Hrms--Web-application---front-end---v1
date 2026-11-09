@@ -59,9 +59,9 @@ describe('team-employee-forecast utils', () => {
     expect(overtime?.kind === 'bars' && overtime.values).toEqual([40, 13, 4]);
     const risk = cards[2].body;
     expect(risk?.kind === 'rank' && risk.rows.map((r) => r.chips[0].text)).toEqual([
-      '+40 h',
-      '+13 h',
-      '+4 h',
+      '⚠ 38% → 130%',
+      '38% → 70%',
+      '38% → 70%',
     ]);
   });
 

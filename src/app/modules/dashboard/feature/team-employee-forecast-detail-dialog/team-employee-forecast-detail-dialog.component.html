@@ -32,6 +32,23 @@
         [maxColumns]="5"
         ariaLabel="Employee forecast totals"
       />
+      <ul class="efd-counts" aria-label="Status counts" data-testid="efd-counts">
+        @for (c of statusCounts(); track c.key) {
+          <li
+            class="efd-count"
+            [class.efd-count--overload]="c.key === 'overload'"
+            [style.--tone]="c.color"
+            [attr.data-testid]="'efd-count-' + c.key"
+          >
+            @if (c.key === 'overload') {
+              <span aria-hidden="true">⚠</span>
+            } @else {
+              <span class="efd-count-dot" aria-hidden="true"></span>
+            }
+            <b>{{ c.count }}</b> {{ c.label }}
+          </li>
+        }
+      </ul>
 
       <div class="efd-charts">
         <section
@@ -67,6 +84,7 @@
         </section>
         <section class="efd-panel" data-section="rates">
           <app-employee-forecast-rate-chart
+            [maxTaskRate]="data.totals.maxTaskRate"
             class="efd-chart"
             heading="Task rate vs required"
             variant="orders"
@@ -135,7 +153,11 @@
                   </button>
                 </th>
                 <th scope="col" class="efd-left">Department</th>
-                <th class="efd-num" scope="col" [attr.aria-sort]="ariaSort('rate')">
+                <th
+                  class="efd-num"
+                  scope="col"
+                  [attr.aria-sort]="ariaSort('rate') ?? ariaSort('requiredRate')"
+                >
                   <button
                     type="button"
                     class="efd-sort"
@@ -144,15 +166,14 @@
                   >
                     Task rate (4 wk)
                   </button>
-                </th>
-                <th class="efd-num" scope="col" [attr.aria-sort]="ariaSort('requiredRate')">
+                  →
                   <button
                     type="button"
                     class="efd-sort"
                     data-testid="efd-sort-requiredRate"
                     (click)="sortBy('requiredRate')"
                   >
-                    Required
+                    required
                   </button>
                 </th>
                 <th scope="col" title="The deadline whose window has the most hours that won't fit">
@@ -210,14 +231,10 @@
                         ><span [style.width.%]="bar(e.conversionRate)"></span
                         ><i [style.left.%]="bar(e.requiredRate)"></i
                       ></span>
-                      <span>{{ rate(e.conversionRate) }}</span>
+                      <span data-testid="efd-rate" [class.efd-over]="e.status === 'overload'">{{
+                        rateVsRequired(e.conversionRate, e.requiredRate)
+                      }}</span>
                     </span>
-                  </td>
-                  <td
-                    class="efd-num"
-                    [class.efd-over]="e.requiredRate !== null && e.requiredRate > 1"
-                  >
-                    {{ rate(e.requiredRate) }}
                   </td>
                   <td>{{ date(e.deadline) }}</td>
                   <td class="efd-num">{{ hours(e.remainingHours) }}</td>
@@ -226,17 +243,26 @@
                     {{ e.overtimeHours > 0 ? '+' + hours(e.overtimeHours) : '—' }}
                   </td>
                   <td>
-                    <span
-                      class="efd-chip"
-                      [style.--tone]="statusMeta[e.status].color"
-                      data-testid="efd-status"
-                      >{{ statusMeta[e.status].label }}</span
-                    >
+                    @if (e.status === 'overload') {
+                      <span
+                        class="efd-badge"
+                        [style.--tone]="statusMeta.overload.color"
+                        data-testid="efd-status"
+                        ><span aria-hidden="true">⚠</span> Overload</span
+                      >
+                    } @else {
+                      <span
+                        class="efd-chip"
+                        [style.--tone]="statusMeta[e.status].color"
+                        data-testid="efd-status"
+                        >{{ statusMeta[e.status].label }}</span
+                      >
+                    }
                   </td>
                 </tr>
                 @if (expanded().has(e.employeeId)) {
                   <tr class="efd-sub-row" data-testid="efd-modules">
-                    <td colspan="9">
+                    <td colspan="8">
                       <p class="efd-sub-title">Modules {{ e.name }} is connected to</p>
                       <table class="efd-sub">
                         <thead>
@@ -273,7 +299,7 @@
                 }
               } @empty {
                 <tr>
-                  <td class="efd-muted efd-pad" colspan="9">
+                  <td class="efd-muted efd-pad" colspan="8">
                     {{ store.tableLoading() ? 'Loading team members…' : 'No employees match.' }}
                   </td>
                 </tr>

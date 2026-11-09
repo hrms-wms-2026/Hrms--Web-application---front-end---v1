@@ -5,7 +5,7 @@ import {
   FORECAST_STATUS_META,
   FORECAST_STATUS_TONE,
   shortHoursText,
-  overtimeChipText,
+  forecastRankChip,
   rateText,
 } from './overtime-forecast-format.util';
 import { summaryDelta } from './summary-card-format.util';
@@ -15,7 +15,7 @@ import { modulesAtRisk } from './team-module-forecast-format.util';
 const STATUS_COUNT = {
   on_track: 'onTrack',
   raise_rate: 'raiseRate',
-  overtime: 'overtime',
+  overload: 'overload',
   no_history: 'noHistory',
 } as const;
 
@@ -32,9 +32,7 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
       id: m.moduleId,
       name: m.title,
       avatarFileId: null,
-      chips: [
-        { text: overtimeChipText(m.overtimeHours, m.status), tone: FORECAST_STATUS_TONE[m.status] },
-      ],
+      chips: [forecastRankChip(m.conversionRate, m.requiredRate, m.status)],
     }));
   const gap =
     t.teamRate === null || t.requiredRate === null ? null : (t.teamRate - t.requiredRate) * 100;
@@ -82,7 +80,7 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
       state: 'ready',
       body: {
         kind: 'rank',
-        count: String(t.raiseRate + t.overtime),
+        count: String(t.raiseRate + t.overload),
         countLabel: 'at risk',
         rows: risk,
         empty: 'Every module is on track',

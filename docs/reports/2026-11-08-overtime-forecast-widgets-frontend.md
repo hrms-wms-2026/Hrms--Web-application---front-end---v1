@@ -89,3 +89,16 @@ Gates after the fixes:
 - 101 forecast and widget-card specs are green.
 - The dashboard and shared-ui specs pass, apart from a `pan-zoom-canvas` flake that passes on its own (9/9).
 - ESLint finds nothing in the new code. The 7 errors in `calendar` were there before.
+
+## Overload indicator (2026-11-09)
+
+Built against the backend names the other session relayed. They are not yet confirmed against a backend build: the
+`overload` status (replacing `overtime`), `totals.overload` and `totals.maxTaskRate`. `raise_rate` now reads
+"Overtime risk".
+
+- **Rows:** card rankings, popup tables and summary-card chips show the current and required rate together ("26% → needs 45%"; short form "26% → 45%"). In the popups the two rate columns are merged into one sortable column.
+- **Overload treatment:** a filled dark-red **⚠ Overload** badge (`#991b1b`), kept apart from the light "won't fit" red. The card hero says "⚠ N in overload". The popups list the counts On track / Overtime risk / Overload / No history under the KPI tiles.
+- **Charts:** the rate chart draws `maxTaskRate` as a dash on every bar with a "90% limit" legend item, and a required rate above it takes the overload colour. The project chart's dash is capacity × limit.
+- **Donut:** the last slice is now "Beyond the 90% limit" (remaining − capacity × limit).
+- **Popup intro:** ends with "Above 90% task rate is treated as overload."
+- **Gates:** `check:warnings` is clean. 102 forecast, registry and widget-card specs are green. ESLint finds nothing in the new code; the 7 errors in `calendar` were already there.

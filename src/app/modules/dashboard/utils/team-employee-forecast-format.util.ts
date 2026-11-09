@@ -44,12 +44,13 @@ export function employeeForecastTiles(t: EmployeeForecastTotals): ForecastTileRo
   ];
 }
 
-/** The people who need a higher rate or overtime, most overtime first. */
+/** The people at overtime risk or in overload, overload first, then the most hours that won't fit. */
 export function peopleAtRisk(items: readonly EmployeeForecastItem[]): EmployeeForecastItem[] {
   return items
-    .filter((e) => e.status === 'raise_rate' || e.status === 'overtime')
+    .filter((e) => e.status === 'raise_rate' || e.status === 'overload')
     .sort(
       (a, b) =>
+        Number(b.status === 'overload') - Number(a.status === 'overload') ||
         b.overtimeHours - a.overtimeHours ||
         (b.requiredRate ?? 0) - (a.requiredRate ?? 0) ||
         a.name.localeCompare(b.name),
@@ -63,17 +64,19 @@ export function employeeForecastExplanation(t: EmployeeForecastTotals): string {
     return 'Nobody has open estimated tasks due from today, so no one needs overtime.';
   if (t.teamRate === null)
     return `Nobody clocked working time in the last 4 weeks, so the forecast assumes every working hour becomes task hours. ${forecastHoursText(t.remainingHours)} of open tasks remain.`;
-  const [covered, raise, overtime] = forecastSlices(t).map((s) => s.value);
+  const [covered, raise, overload] = forecastSlices(t, t.maxTaskRate).map((s) => s.value);
   const parts = [
     `Of ${forecastHoursText(t.remainingHours)} of open tasks due, each person's own task rate (team ${rateText(t.teamRate)}, last 4 weeks) completes about ${forecastHoursText(covered)} before their deadlines.`,
   ];
   if (raise > 0)
     parts.push(`Higher rates would cover another ${forecastHoursText(raise)} in normal hours.`);
-  if (overtime > 0)
-    parts.push(`${forecastHoursText(overtime)} do not fit in normal working hours even at 100%.`);
+  if (overload > 0)
+    parts.push(
+      `${forecastHoursText(overload)} don't fit even at the ${rateText(t.maxTaskRate)} task-rate limit: that is overload.`,
+    );
   if (t.overtimeHours > 0)
     parts.push(
-      `~${forecastHoursText(t.overtimeHours)} won't fit at today's rates, across ${t.overtime + t.raiseRate} people.`,
+      `~${forecastHoursText(t.overtimeHours)} won't fit at today's rates, across ${t.overload + t.raiseRate} people.`,
     );
   else parts.push("Everything fits at today's rates.");
   return parts.join(' ');
