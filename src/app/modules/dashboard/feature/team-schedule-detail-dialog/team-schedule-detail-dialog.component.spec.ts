@@ -1,8 +1,9 @@
+import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TeamScheduleApiService } from '../../data-access/team-schedule-api.service';
-import { TeamScheduleResponse, TeamScheduleWeekResponse } from '../../models/team-schedule.model';
+import { TeamScheduleItem, TeamScheduleResponse, TeamScheduleWeekResponse } from '../../models/team-schedule.model';
 import { TeamScheduleWeekStore } from '../../state/team-schedule-week.store';
 import { TeamScheduleStore } from '../../state/team-schedule.store';
 import { at, scheduleMember, scheduleResponse, weekResponse } from '../../utils/team-schedule.testing';
@@ -77,6 +78,7 @@ describe('TeamScheduleDetailDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [TeamScheduleDetailDialogComponent],
       providers: [
+        provideRouter([]),
         TeamScheduleStore,
         TeamScheduleWeekStore,
         { provide: TeamScheduleApiService, useValue: { getTeamDay, getTeamWeek } },
@@ -108,45 +110,149 @@ describe('TeamScheduleDetailDialogComponent', () => {
     expect(store.date()).toBeNull();
   });
 
+  it('pages every per-person list 10 at a time, each list on its own, and a search starts again at page 1', async () => {
+    const people = Array.from({ length: 12 }, (_, i) =>
+      scheduleMember({ employeeId: `e${i}`, displayName: `Person ${String(i + 1).padStart(2, '0')}` }),
+    );
+    const { fixture, doc } = await setup(scheduleResponse(people));
+    const rows = () => [...doc.querySelectorAll('[data-testid="tsd-row"]')];
+    const pager = (list: string) => doc.querySelector(`[data-testid="tsd-pager"][data-list="${list}"]`)!;
+    const next = (list: string) => [...pager(list).querySelectorAll('button')].find((b) => b.textContent!.includes('Next'))!;
+
+    expect(rows()).toHaveLength(10);
+    expect(doc.querySelectorAll('[data-testid="tsd-rank-row"]')).toHaveLength(10);
+    expect(pager('table').textContent).toContain('Page 1 of 2');
+
+    next('table').click();
+    fixture.detectChanges();
+    expect(rows()).toHaveLength(2);
+    expect(rows()[0].textContent).toContain('11');
+    expect(rows()[0].textContent).toContain('Person 11');
+    expect(next('table').disabled).toBe(true);
+    // The ranking keeps its own page.
+    expect(pager('ranking').textContent).toContain('Page 1 of 2');
+
+    fixture.componentInstance.search.set('Person');
+    fixture.detectChanges();
+    expect(pager('table').textContent).toContain('Page 1 of 2');
+    expect(rows()).toHaveLength(10);
+  });
+
+  it('no pager when everyone fits on one page', async () => {
+    const { doc } = await setup(scheduleResponse([ranked, onLeave, noPlan]));
+    expect(q(doc, 'tsd-pager')).toBeNull();
+  });
+
+  it('the Team schedule table has a colour guide for every kind of block', async () => {
+    const { doc } = await setup(scheduleResponse([ranked, onLeave, noPlan]));
+    const guide = q(doc, 'tsd-schedule-legend');
+    expect(guide).toBeTruthy();
+    const labels = [...guide!.querySelectorAll(':scope > span')].map((s) => s.textContent?.trim());
+    expect(labels).toEqual([
+      'Completed',
+      'In progress',
+      'Pending',
+      'Meeting',
+      'Break',
+      'Unscheduled',
+      'On leave',
+      'Cancelled',
+    ]);
+  });
+
+  it('today the Team schedule table shows a current-time line in every row and a time badge on the axis', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 29, 11, 30));
+    try {
+      const { doc } = await setup(scheduleResponse([ranked, onLeave, noPlan]));
+      const badge = q(doc, 'tsd-now') as HTMLElement | null;
+      expect(badge?.textContent?.trim()).toBe('11:30 AM');
+      const lines = [...doc.querySelectorAll('[data-testid="tsd-now-line"]')] as HTMLElement[];
+      expect(lines.length).toBe(3);
+      expect(lines[0].style.left).toBe(badge!.style.left);
+      expect(q(doc, 'tsd-schedule-legend')?.textContent).toContain('Now');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('no current-time line when the clock is outside the shown day', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 3, 11, 30));
+    try {
+      const { doc } = await setup(scheduleResponse([ranked, onLeave, noPlan]));
+      expect(q(doc, 'tsd-now')).toBeNull();
+      expect(doc.querySelectorAll('[data-testid="tsd-now-line"]').length).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('ranking shows both parts with the score, and "Not ranked · reason" otherwise', async () => {
     const { doc } = await setup(scheduleResponse([ranked, onLeave, noPlan]));
 
     const rows = [...doc.querySelectorAll('[data-testid="tsd-rank-row"]')].map((r) =>
       r.textContent!.replace(/\s+/g, ' ').trim(),
     );
-    expect(rows[0]).toContain('Items 50% · Time 100%');
-    expect(rows[0]).toContain('70%');
+    // The score as a percentage only; its parts sit in its tooltip.
+    expect(q(doc, 'tsd-score')!.textContent!.trim()).toBe('70%');
+    expect(q(doc, 'tsd-score')!.getAttribute('title')).toBe('Items 50% · Time 100%');
     expect(rows[1]).toContain('Not ranked · On leave');
     expect(rows[2]).toContain('No plan');
     expect(rows[2]).toContain('Not ranked · Nothing due yet');
     expect(rows[2]).toContain('Unscheduled 2h');
   });
 
-  it('a missing completion is "—" or "No plan", never 0%', async () => {
-    const { doc } = await setup(scheduleResponse([onLeave, { ...ranked, itemCompletionPercent: null }]));
+  it('done is the items-done percent; "—" without a plan, never 0%', async () => {
+    const { doc } = await setup(scheduleResponse([onLeave, ranked]));
     const completion = [...doc.querySelectorAll('[data-testid="tsd-completion"]')].map((c) => c.textContent!.trim());
-    expect(completion).toEqual(['No plan', '—']);
+    expect(completion).toEqual(['—', '50%']);
   });
 
-  it('day tiles: Total items, Completed, In progress, Pending and Meetings with %', async () => {
-    const data = scheduleResponse([ranked], {
-      summary: { ...scheduleResponse([]).summary, people: 1, tasksPlanned: 2, tasksCompleted: 1, tasksInProgress: 1, tasksPending: 0, meetings: 2 },
+  it('day tiles are hours: planned, completed, in progress, pending and meetings, with % of planned', async () => {
+    const item = (taskId: string, kind: TeamScheduleItem['kind'], status: TeamScheduleItem['status'], from: string, to: string): TeamScheduleItem =>
+      ({ kind, taskId, title: taskId, start: from, end: to, status, isPrivate: false });
+    const busy = scheduleMember({
+      displayName: 'Busy',
+      items: [
+        item('done', 'task', 'completed', at(9), at(10)),
+        item('doing', 'task', 'in_progress', at(10), at(11, 30)),
+        item('todo', 'task', 'pending', at(13), at(13, 30)),
+        item('unclocked', 'task', 'scheduled_not_clocked', at(14), at(14, 30)),
+        item('sync', 'meeting', 'finished', at(11, 30), at(12)),
+        item('dropped', 'meeting', 'cancelled', at(15), at(16)),
+      ],
     });
-    const { doc } = await setup(data);
+    const { doc } = await setup(scheduleResponse([busy]));
 
-    expect(q(doc, 'tsd-tile-total')!.textContent!.trim()).toBe('4');
-    const completed = q(doc, 'tsd-tile-completed')!.closest('[data-testid="kpi-tile"]')!.textContent!;
-    expect(completed).toContain('25%');
+    // Cancelled meetings are left out: 1h + 1h 30m + 30m + 30m + 30m = 4h.
+    expect(q(doc, 'tsd-tile-total')!.textContent!.trim()).toBe('4h');
+    expect(q(doc, 'tsd-tile-completed')!.textContent!.trim()).toBe('1h');
+    expect(q(doc, 'tsd-tile-completed')!.closest('[data-testid="kpi-tile"]')!.textContent!).toContain('25');
+    expect(q(doc, 'tsd-tile-progress')!.textContent!.trim()).toBe('1h 30m');
+    expect(q(doc, 'tsd-tile-pending')!.textContent!.trim()).toBe('1h');
+    expect(q(doc, 'tsd-tile-meetings')!.textContent!.trim()).toBe('30m');
   });
 
-  it('day table: workload level, planned and actual, side column with top workload', async () => {
-    const busy = { ...ranked, plannedTaskMinutes: 420, plannedMeetingMinutes: 60, expectedMinutes: 480, scheduledMinutes: 200, noPlanMinutes: 30 };
+  it('day table: load against capacity, planned and actual, an Open plan link; side summary and top workload', async () => {
+    const busy = { ...ranked, plannedTaskMinutes: 465, plannedMeetingMinutes: 60, expectedMinutes: 480, scheduledMinutes: 200, noPlanMinutes: 30 };
     const { doc } = await setup(scheduleResponse([busy, noPlan]));
 
-    expect(q(doc, 'tsd-workload')!.textContent!.trim()).toBe('High');
+    const load = q(doc, 'tsd-load')!;
+    expect(load.textContent!.trim()).toBe('8h 45m / 8h');
+    expect(load.classList).toContain('tsd-load--over');
+    expect(q(doc, 'tsd-badge-not-planned')).toBeTruthy();
     expect(q(doc, 'tsd-actual')!.textContent!.trim()).toBe('3h 50m');
-    expect(q(doc, 'tsd-top-workload')!.textContent).toContain('Ada');
-    expect(q(doc, 'tsd-day-chart')).toBeTruthy();
+    expect(q(doc, 'tsd-open-plan')!.getAttribute('href')).toContain('person=');
+    expect(q(doc, 'tsd-summary')!.textContent!.replace(/\s+/g, ' ')).toContain('Over capacity1');
+    expect(q(doc, 'tsd-top-workload')!.textContent).toContain('109% · 8h 45m');
+    // Ranking and planned vs actual are one table: actual 3h 50m against 8h 45m planned is 4h 55m behind.
+    const diff = q(doc, 'tsd-diff')!;
+    expect(diff.textContent!.trim()).toBe('−4h 55m');
+    expect(diff.querySelector('.tsd-diff--behind')).toBeTruthy();
+    // The double bar: planned (the page's largest, so full width) over actual split by in plan / outside / no plan.
+    expect((q(doc, 'tsd-pa-planned') as HTMLElement).style.width).toBe('100%');
+    expect((q(doc, 'tsd-pa-actual')!.firstElementChild as HTMLElement).style.width).toBe('38.1%');
   });
 
   it('week mode loads week store and steps by 7 days', async () => {
@@ -163,6 +269,38 @@ describe('TeamScheduleDetailDialogComponent', () => {
     (q(doc, 'tsd-prev') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(getTeamWeek).toHaveBeenLastCalledWith('2026-10-19');
+  });
+
+  it('week is the same ranking table: ranked by coverage, double bar, planned, actual and difference', async () => {
+    const member = (employeeId: string, displayName: string, coveragePercent: number | null, planned: number, clocked: number) => ({
+      employeeId,
+      displayName,
+      avatarFileId: null,
+      plannedMinutes: planned,
+      clockedMinutes: clocked,
+      scheduledMinutes: clocked,
+      unscheduledMinutes: 0,
+      coveragePercent,
+    });
+    const week = weekResponse({
+      members: [
+        member('a', 'Low', 40, 600, 240),
+        member('b', 'None', null, 0, 0),
+        member('c', 'High', 90, 300, 360),
+      ],
+    });
+    const { fixture, doc } = await setup(scheduleResponse([ranked]), week);
+    (q(doc, 'tsd-mode-week') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const rows = [...doc.querySelectorAll('[data-testid="tsd-week-row"]')];
+    expect(rows.map((r) => r.querySelector('.tsd-name')!.textContent!.trim())).toEqual(['High', 'Low', 'None']);
+    expect(rows.map((r) => r.querySelector('.tsd-rank')!.textContent!.trim())).toEqual(['1', '2', '—']);
+    expect(rows[0].querySelector('[data-testid="tsd-week-coverage"]')!.textContent!.trim()).toBe('90%');
+    expect(rows[2].textContent).toContain('Not ranked');
+    // High worked 1h over plan, Low 6h under; None has neither, so "—".
+    expect(rows.map((r) => r.querySelector('[data-testid="tsd-week-diff"]')!.textContent!.trim())).toEqual(['+1h', '−6h', '—']);
+    expect(doc.querySelectorAll('[data-testid="tsd-week-pa"]')).toHaveLength(3);
   });
 
   it('future week arrow disabled', async () => {
@@ -232,11 +370,8 @@ describe('TeamScheduleDetailDialogComponent', () => {
   it('lists unscheduled work and conflicts with masked titles', async () => {
     const { doc } = await setup(scheduleResponse([ranked, noPlan]));
 
-    expect(q(doc, 'tsd-unscheduled-panel')!.textContent).toContain(
-      'Worked without a matching Planner slot.',
-    );
     expect(q(doc, 'tsd-unscheduled-panel')!.textContent).toContain('Fix bug');
-    expect(q(doc, 'tsd-conflicts-panel')!.textContent).toContain('Write report / Private meeting');
+    expect(q(doc, 'tsd-conflicts-panel')!.textContent).toContain('Write report · Private meeting');
     const blockTitles = [...doc.querySelectorAll('[data-testid="tsd-block"]')].map(
       (b) => b.getAttribute('title') ?? '',
     );

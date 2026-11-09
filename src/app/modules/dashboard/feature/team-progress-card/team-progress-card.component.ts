@@ -21,25 +21,32 @@ import {
   percentOf
 } from '../../utils/team-progress-format.util';
 import {
-  TEAM_PROGRESS_DONUT_PX,
+  TEAM_PROGRESS_CARD_CHROME,
   TeamProgressMode,
   TeamProgressPlan,
   planTeamProgressLayout,
   resolveTeamProgressMode
 } from '../../utils/team-progress-layout.util';
+import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
+import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
+import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';
+import { SummaryCardModel } from '../../models/summary-card.model';
+import { teamProgressSummaryCards } from '../../utils/team-progress-summary-cards.util';
+import { SUMMARY_CARD_ROWS } from '../../utils/team-attendance-summary-cards.util';
+import { ProjectHoursChartComponent } from '../../ui/project-hours-chart/project-hours-chart.component';
+import { orderProjectsForChart } from '../../utils/project-hours-chart.util';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
-import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.component';
 
 /** Per-viewer memory of the period switch. A convenience only: when storage is blocked the card
  * simply starts on All time. */
 export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'crownus.teamProgress.period';
 
-export const TEAM_PROGRESS_PERIODS: readonly { value: LedProgressPeriod; label: string }[] = [
-  { value: 'all', label: 'All time' },
-  { value: 'month', label: 'This month' },
-  { value: 'week', label: 'This week' }
-];
+/** Width of one project bar in the card's chart, with its gap. */
+const CHART_BAR_PX = 44;
 
 type DatedPeriod = Exclude<LedProgressPeriod, 'all'>;
 type TaskStatusKey = Exclude<ProgressStatusKey, 'untasked'>;
@@ -52,6 +59,11 @@ export interface MetricTile {
   value: string;
   label: string;
   tone: MetricTone;
+}
+
+/** A KPI card of the small view: a metric tile with an icon badge, like the popup's Overview tiles. */
+export interface KpiCard extends MetricTile {
+  icon: IconName;
 }
 
 /** One of the hour states, ready for the donut, legends, tiles and bars. */
@@ -81,11 +93,6 @@ export interface StatusRow {
   tone: MetricTone;
 }
 
-export interface HourSegment {
-  key: ProgressStatusKey;
-  percent: number;
-  bgClass: string;
-}
 
 interface DonutSegment {
   key: ProgressStatusKey;
@@ -96,30 +103,7 @@ interface DonutSegment {
   offset: number;
 }
 
-interface ProgressRow {
-  key: string;
-  objectiveId: string;
-  projectId: string;
-  title: string;
-  /** Shown after a led module's title only when it differs from it. */
-  projectName: string | null;
-  depth: number;
-  atRisk: boolean;
-  hours: LedHourTotals;
-  completionPercent: number;
-  completionRounded: number;
-  completionText: string;
-}
 
-interface ProjectRow {
-  projectId: string;
-  name: string;
-  identifier: string;
-  hours: LedHourTotals;
-  completionPercent: number;
-  completionRounded: number;
-  completionText: string;
-}
 
 const LEGEND_TEST_IDS: Record<ProgressStatusKey, string> = {
   completed: 'completed',
@@ -166,7 +150,10 @@ function storePeriod(period: LedProgressPeriod): void {
 }
 
 /** Views that show the weekly completion chart. */
-const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['tall', 'large', 'maximum']);
+const WEEKLY_MODES: ReadonlySet<TeamProgressMode> = new Set<TeamProgressMode>(['wide', 'tall', 'large', 'maximum']);
+/** The 2-row strip's card positions that need their own data: weekly completion is the first, the members behind the fourth. */
+const WEEKLY_CARD_POSITION = 1;
+const BEHIND_CARD_POSITION = 4;
 
 const EMPTY_PLAN: TeamProgressPlan = {
   miniLegend: 'none', miniFigure: false, legend: false, tileRows: 0, viewDetails: false, listRows: 0, weeklyFallbackRows: 0,
@@ -176,7 +163,7 @@ const EMPTY_PLAN: TeamProgressPlan = {
 /**
  * Team Progress: the estimated-hours (task estimate weightage, not time worked) picture of the
  * modules the viewer leads. The card picks one of seven views from its own rendered size (see
- * team-progress-layout.util). Every component keeps one fixed size (the donut is always DASHBOARD_DONUT_PX, or absent where it doesn't fit): a
+ * team-progress-layout.util). Every component keeps one fixed size (the donut is always DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX in the 2x2 view, or absent where it does not fit): a
  * bigger card shows more sections and list rows, never bigger graphics. Resizing only re-lays out
  * what is loaded, it never fetches.
  * A period switch (All time / This month / This week) narrows the figures to tasks due in it.
@@ -185,7 +172,7 @@ const EMPTY_PLAN: TeamProgressPlan = {
 @Component({
   selector: 'app-team-progress-card',
   standalone: true,
-  imports: [StopClickPropagationDirective, IconComponent, TeamProgressTimeComponent, 
+  imports: [IconComponent, DashboardDonutComponent, DonutKeyComponent, DashboardSummaryStripComponent, DashboardSummaryRowComponent, TeamProgressTimeComponent, ProjectHoursChartComponent,
     NgTemplateOutlet,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -219,18 +206,50 @@ export class TeamProgressCardComponent implements OnInit {
 
   /** Layout for the card's current size. 'small' until the first measurement (and without ResizeObserver). */
   readonly mode = signal<TeamProgressMode>('small');
+  /** The donut slice (or legend row) under the pointer: the shared donut lights it and reads it in the centre. */
+  protected readonly hoveredStatus = signal<string | null>(null);
   /** Optional sections and list rows the current view has room for. */
-  readonly plan = signal<TeamProgressPlan>(EMPTY_PLAN);
+  /** The last measured host size: the layout below follows it and the loaded data. */
+  private readonly size = signal<{ width: number; height: number } | null>(null);
+  /** The sections at the current size. A taller small or medium view puts two summary cards of what it is not already
+   * showing in its tiles' place, budgeted at the cards' height; without room or two such cards it keeps the tiles. */
+  private readonly layout = computed(() => {
+    const size = this.size();
+    const mode = this.mode();
+    if (!size) return { plan: EMPTY_PLAN, cards: [] as SummaryCardModel[] };
+    const overdue = (this.store.data()?.overdueTotal ?? 0) > 0;
+    return withSummaryRow(
+      (rowPx) => {
+        const plan = planTeamProgressLayout(mode, size.width, size.height, rowPx);
+        return { ...plan, tiles: (mode === 'small' || mode === 'medium') && plan.tileRows > 0 };
+      },
+      this.summaryCards(),
+      (plan) => shownProgressCards(mode, plan, overdue),
+      summaryRowCount(size.width - TEAM_PROGRESS_CARD_CHROME.width)
+    );
+  });
+  readonly plan = computed<TeamProgressPlan>(() => this.layout().plan, { equal: samePlan });
+  /** Taller small / medium views: the summary cards in the tiles' place (empty: the tiles). */
+  protected readonly rowCards = computed(() => this.layout().cards);
+  /** Plain booleans for the data effects, so they re-run only when these change (not on every card list). */
+  private readonly weeklyInRow = computed(() => this.rowCards().some((c) => c.id === 'tp-weekly'));
+  private readonly behindInRow = computed(() => this.rowCards().some((c) => c.id === 'tp-behind'));
   /** Rendered card width, rounded to 100px steps so it only changes the layout at those steps. */
   protected readonly widthStep = signal(0);
   /** Placeholder bar heights (%) for the weekly chart skeleton. */
   protected readonly skeletonBars = [40, 65, 30, 80, 55, 70, 45, 85, 60, 35];
   readonly detailOpen = signal(false);
+  /** The popup section a summary card asked for (null: the top). */
+  readonly detailSection = signal<string | null>(null);
+  /** mini: how many summary cards the 2-row strip shows. */
+  protected readonly shownCards = signal(0);
+  /** The members furthest behind (sort 'completionRate'), loaded once their summary card is shown. */
+  private readonly behind = signal<{ for: LedWorkProgressResponse; period: LedProgressPeriod; rows: LedEmployeeProgress[] | null; error: boolean } | null>(null);
+  private behindSub: Subscription | null = null;
   private timeRequestedFor: { data: LedWorkProgressResponse; period: LedTimePeriod } | null = null;
 
   /** The period switch: 'all' is the bootstrap led-progress payload; week / month use the period endpoint. */
   readonly period = signal<LedProgressPeriod>(readStoredPeriod());
-  protected readonly periods = TEAM_PROGRESS_PERIODS;
   /** Period payloads, each with the led-progress load it was fetched for. A newer load (refresh or
    * tab return) refetches the selected period and keeps showing the older payload until the new one lands. */
   private readonly periodCache = signal<Partial<Record<DatedPeriod, { payload: LedPeriodProgress; for: LedWorkProgressResponse }>>>({});
@@ -250,6 +269,8 @@ export class TeamProgressCardComponent implements OnInit {
    * not tied to the period switch. A failure hides the section and gives its space to the lists. */
   private readonly weekly = signal<{ for: LedWorkProgressResponse; payload: LedWeeklyCompletion | null } | null>(null);
   private weeklyRequestedFor: LedWorkProgressResponse | null = null;
+  /** Bumped by Try again on the weekly summary card, to fetch weekly completion again. */
+  private readonly weeklyRetry = signal(0);
   private weeklySub: Subscription | null = null;
 
   /** The weekly payload for the current data load; null while loading or after a failure. */
@@ -288,7 +309,9 @@ export class TeamProgressCardComponent implements OnInit {
     effect(() => {
       const mode = this.mode();
       const data = this.store.data();
-      if (!WEEKLY_MODES.has(mode) || !data || this.weeklyRequestedFor === data) return;
+      this.weeklyRetry(); // Try again on the weekly card re-runs this effect.
+      const wanted = WEEKLY_MODES.has(mode) || (mode === 'mini' && this.shownCards() >= WEEKLY_CARD_POSITION) || this.weeklyInRow();
+      if (!wanted || !data || this.weeklyRequestedFor === data) return;
       this.weeklyRequestedFor = data;
       untracked(() => {
         this.weeklySub?.unsubscribe();
@@ -339,9 +362,65 @@ export class TeamProgressCardComponent implements OnInit {
           });
       });
     });
+
+    // The 2-row strip's fourth card: the members furthest behind, for the shown period.
+    effect(() => {
+      const data = this.store.data();
+      const period = this.period();
+      const inStrip = this.mode() === 'mini' && this.shownCards() >= BEHIND_CARD_POSITION;
+      if (!data || (!inStrip && !this.behindInRow())) return;
+      const current = untracked(this.behind);
+      // Already loaded (or failed: Try again retries) for this data and period.
+      if (current?.for === data && current.period === period) return;
+      untracked(() => this.loadBehind(data, period));
+    });
   }
 
   protected readonly formatHourValue = formatHourValue;
+
+  /** The 2-row strip's cards, each summarising a section of the popup. */
+  protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
+    const data = this.store.data();
+    if (!data) return [];
+    const behind = this.behind();
+    const current = behind?.for === data && behind.period === this.period() ? behind : null;
+    const weekly = this.weekly();
+    const weeklyFailed = weekly?.for === data && weekly.payload === null;
+    return teamProgressSummaryCards(
+      data,
+      this.weeklyData(),
+      { rows: current?.rows ?? null, error: current?.error ?? false },
+      weeklyFailed,
+      this.period() === 'all'
+    );
+  });
+
+  /** Try again on a failed summary card: weekly completion refetches through its effect; the members behind reload. */
+  retryCard(id: string): void {
+    const data = this.store.data();
+    if (!data) return;
+    if (id === 'tp-weekly') {
+      this.weeklyRequestedFor = null;
+      this.weekly.set(null);
+      this.weeklyRetry.update((n) => n + 1);
+      return;
+    }
+    this.loadBehind(data, this.period());
+  }
+
+  private loadBehind(data: LedWorkProgressResponse, period: LedProgressPeriod): void {
+    this.behindSub?.unsubscribe();
+    // A refresh of the same period keeps the shown list until the new one lands (no skeleton flash).
+    const previous = untracked(this.behind);
+    this.behind.set({ for: data, period, rows: previous?.period === period ? previous.rows : null, error: false });
+    this.behindSub = this.detailApi
+      .getEmployees({ pageNumber: 1, pageSize: SUMMARY_CARD_ROWS, sort: 'completionRate', direction: 'asc', ...(period === 'all' ? {} : { period }) })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (page) => this.behind.set({ for: data, period, rows: page.items, error: false }),
+        error: () => this.behind.set({ for: data, period, rows: null, error: true })
+      });
+  }
 
   /** A reload sets `loading`; only a first load (no data yet) shows the skeleton. */
   protected readonly widgetState = computed<WidgetState>(() => {
@@ -401,6 +480,18 @@ export class TeamProgressCardComponent implements OnInit {
   });
 
   /** Donut arcs share the circle by the states' hours. A tiny state gets a tiny arc. */
+  /** The donut's slices: each status's hours, with its share of the base (allocation or period total). */
+  protected readonly donutSlices = computed<DashboardDonutSlice[]>(() =>
+    this.statusRows().map((row) => ({
+      key: row.key,
+      label: row.label,
+      value: Math.max(0, row.hours),
+      valueText: `${row.hoursText} h`,
+      percentText: row.percentText,
+      color: row.color
+    }))
+  );
+
   protected readonly donutSegments = computed<DonutSegment[]>(() => {
     const rows = this.statusRows();
     const total = rows.reduce((sum, row) => sum + Math.max(0, row.hours), 0);
@@ -424,11 +515,12 @@ export class TeamProgressCardComponent implements OnInit {
   });
 
   /** Centre number size in px: fixed, one step smaller only for a long total, so it fits the ring. */
-  protected readonly donutPx = TEAM_PROGRESS_DONUT_PX;
+  /** Full size, or the mini size in the 2x2 view. */
+  protected readonly donutPx = computed(() => dashboardDonutPx(this.mode()));
 
   protected readonly totalFontPx = computed(() => {
     const length = this.totalText().length;
-    return length <= 8 ? 17 : length <= 10 ? 15 : 13;
+    return length <= 8 ? 15 : length <= 10 ? 14 : 12;
   });
 
   protected readonly donutLabel = computed(() => {
@@ -480,14 +572,6 @@ export class TeamProgressCardComponent implements OnInit {
     ];
   });
 
-  /** The wide layout's three tiles (four on a card 1000px+ wide): completion, a task count, then not
-   * yet tasked (All time) or the tasks due (period). */
-  protected readonly wideTiles = computed<MetricTile[]>(() => {
-    const tiles = this.metricTiles();
-    if (tiles.length < 4 || this.widthStep() >= 1000) return tiles;
-    return this.period() === 'all' ? [tiles[0], tiles[1], tiles[3]] : [tiles[0], tiles[2], tiles[1]];
-  });
-
   private readonly overdueTile = computed<MetricTile>(() => {
     const overdue = this.store.data()?.overdueTotal ?? 0;
     return { key: 'overdue', value: String(overdue), label: 'Overdue tasks', tone: overdue > 0 ? 'rose' : 'gray' };
@@ -517,63 +601,56 @@ export class TeamProgressCardComponent implements OnInit {
     this.extraTiles().slice(0, this.plan().tileRows * (this.mode() === 'medium' ? 4 : 2))
   );
 
+  /** The small view's KPI cards, in the detail popup's Overview style (value, label, icon badge):
+   * in progress and overdue first, then the task count and modules at risk (or, for a period, the
+   * tasks due and not started). Two per row. */
+  protected readonly kpiCards = computed<KpiCard[]>(() => {
+    const data = this.store.data();
+    if (!data) return [];
+    const inProgress = this.statusRows().find((row) => row.key === 'inProgress');
+    const overdue = data.overdueTotal;
+    const cards: KpiCard[] = [];
+    if (inProgress) {
+      cards.push({ key: 'in-progress', value: `${inProgress.hoursText} h`, label: `In progress · ${inProgress.percentText}`, icon: 'clock', tone: 'blue' });
+    }
+    cards.push({
+      key: 'overdue',
+      value: `${formatHourValue(data.overdueHours)} h`,
+      label: `Overdue · ${overdue} ${overdue === 1 ? 'task' : 'tasks'}`,
+      icon: 'alert-triangle',
+      tone: overdue > 0 ? 'rose' : 'gray'
+    });
+    if (this.period() !== 'all') {
+      const p = this.periodData();
+      if (p) {
+        cards.push(
+          { key: 'tasks', value: formatHourValue(p.taskCount), label: this.period() === 'week' ? 'Tasks due this week' : 'Tasks due this month', icon: 'clipboard-list', tone: 'gray' },
+          { key: 'not-started-tasks', value: formatHourValue(p.notStartedTaskCount), label: 'Tasks not started', icon: 'layers', tone: 'gray' }
+        );
+      }
+      return cards;
+    }
+    const atRisk = data.modulesAtRisk;
+    cards.push(
+      { key: 'tasks', value: formatHourValue(data.hours.taskCount), label: 'Total tasks', icon: 'clipboard-list', tone: 'gray' },
+      { key: 'at-risk', value: String(atRisk), label: atRisk === 1 ? 'Module at risk' : 'Modules at risk', icon: 'layers', tone: atRisk > 0 ? 'rose' : 'gray' }
+    );
+    return cards;
+  });
+
+  protected readonly visibleKpiCards = computed(() => this.kpiCards().slice(0, this.plan().tileRows * 2));
+
   /** Over-tasked / unestimated notes only make sense against the allocation (All time). */
   protected readonly showNotes = computed(() => {
     const h = this.store.data()?.hours;
     return this.period() === 'all' && !!h && (h.overTaskedHours > 0 || h.unestimatedTaskCount > 0);
   });
 
-  /** Led modules (depth 0) ordered at-risk first, then least complete; ties keep the backend order. */
-  protected readonly moduleRows = computed<ProgressRow[]>(() => {
-    const rows: { row: ProgressRow; index: number }[] = [];
-    for (const project of this.store.data()?.projects ?? []) {
-      for (const module of project.modules) {
-        if (module.depth !== 0) continue;
-        const base = completionBase(module.hours);
-        rows.push({
-          index: rows.length,
-          row: {
-            key: module.objectiveId,
-            objectiveId: module.objectiveId,
-            projectId: project.projectId,
-            title: module.title,
-            projectName: project.projectName && project.projectName !== module.title ? project.projectName : null,
-            depth: module.depth,
-            atRisk: module.atRisk,
-            hours: module.hours,
-            completionPercent: Math.min(100, percentOf(module.hours.completedHours, base)),
-            completionRounded: Math.round(Math.min(100, percentOf(module.hours.completedHours, base))),
-            completionText: formatPercent(module.hours.completedHours, base)
-          }
-        });
-      }
-    }
-    return rows
-      .sort(
-        (a, b) =>
-          Number(b.row.atRisk) - Number(a.row.atRisk) ||
-          a.row.completionPercent - b.row.completionPercent ||
-          a.index - b.index
-      )
-      .map((r) => r.row);
-  });
-
-  protected readonly ledModuleCount = computed(() => this.moduleRows().length);
-
-  protected readonly projectRows = computed<ProjectRow[]>(() =>
-    (this.store.data()?.projects ?? []).map((project) => {
-      const base = completionBase(project.hours);
-      return {
-        projectId: project.projectId,
-        name: project.projectName,
-        identifier: project.identifier,
-        hours: project.hours,
-        completionPercent: Math.min(100, percentOf(project.hours.completedHours, base)),
-        completionRounded: Math.round(Math.min(100, percentOf(project.hours.completedHours, base))),
-        completionText: formatPercent(project.hours.completedHours, base)
-      };
-    })
+  /** How many modules the viewer leads directly (depth 0), for the maximum layout's tile. */
+  protected readonly ledModuleCount = computed(() =>
+    (this.store.data()?.projects ?? []).reduce((n, p) => n + p.modules.filter((m) => m.depth === 0).length, 0)
   );
+
 
   /** List rows in the current view: the plan's rows, plus the weekly panel's space when it is hidden,
    * minus one for the over-tasked / unestimated note. */
@@ -587,16 +664,24 @@ export class TeamProgressCardComponent implements OnInit {
   /** Whether the current view has room for list panels. */
   protected readonly showLists = computed(() => this.effectiveBudget() > 0);
 
-  protected readonly visibleModules = computed(() => this.moduleRows().slice(0, this.effectiveBudget()));
-  protected readonly hiddenModuleCount = computed(() => this.moduleRows().length - this.visibleModules().length);
-  protected readonly visibleProjects = computed(() => this.projectRows().slice(0, this.effectiveBudget()));
-  protected readonly hiddenProjectCount = computed(() => this.projectRows().length - this.visibleProjects().length);
+  /** Every led project for the chart: at-risk ones first, then the largest allocation. */
+  protected readonly chartProjects = computed(() => orderProjectsForChart(this.store.data()?.projects ?? []));
+  /** As many bars as the chart panel's width holds (about 44px each), never fewer than three. */
+  protected readonly maxChartBars = computed(() => {
+    const panels = (this.store.data()?.overdueTotal ?? 0) > 0 ? 2 : 1;
+    const panelWidth = this.widthStep() / panels - 80;
+    return Math.max(3, Math.floor(panelWidth / CHART_BAR_PX));
+  });
+  protected readonly visibleChartProjects = computed(() => this.chartProjects().slice(0, this.maxChartBars()));
+  protected readonly hiddenChartProjectCount = computed(
+    () => this.chartProjects().length - this.visibleChartProjects().length
+  );
   protected readonly visibleOverdue = computed(() => (this.store.data()?.overdueTasks ?? []).slice(0, this.effectiveBudget()));
   protected readonly hiddenOverdueCount = computed(() =>
     Math.max(0, (this.store.data()?.overdueTotal ?? 0) - this.visibleOverdue().length)
   );
-  /** Maximum layout list columns: projects, modules and overdue tasks (when there are any). */
-  protected readonly maximumPanelCount = computed(() => 2 + Number((this.store.data()?.overdueTotal ?? 0) > 0));
+  /** Maximum layout list columns: the project chart and overdue tasks (when there are any). */
+  protected readonly maximumPanelCount = computed(() => 1 + Number((this.store.data()?.overdueTotal ?? 0) > 0));
 
   ngOnInit(): void {
     this.feed.start();
@@ -614,10 +699,6 @@ export class TeamProgressCardComponent implements OnInit {
     this.periodFailed.set(false);
     this.period.set(period);
     storePeriod(period);
-  }
-
-  onPeriodSelect(event: Event): void {
-    this.setPeriod((event.target as HTMLSelectElement).value as LedProgressPeriod);
   }
 
   retryPeriod(event?: Event): void {
@@ -675,8 +756,7 @@ export class TeamProgressCardComponent implements OnInit {
     const widthStep = Math.floor(size.width / 100) * 100;
     if (widthStep !== this.widthStep()) this.widthStep.set(widthStep);
     if (!(size.height > 0)) return;
-    const plan = planTeamProgressLayout(mode, size.width, size.height);
-    if (!samePlan(plan, this.plan())) this.plan.set(plan);
+    this.size.set({ width: size.width, height: size.height });
   }
 
   private stopObservingSize(): void {
@@ -696,31 +776,27 @@ export class TeamProgressCardComponent implements OnInit {
     this.feed.reload();
   }
 
-  /** Bar segments sized against the larger of the allocation and the task estimates, so an
-   * over-tasked module fills the bar and an under-tasked one shows its untasked share. */
-  hourSegments(hours: LedHourTotals): HourSegment[] {
-    const scale = Math.max(hours.allocatedHours, hours.completedHours + hours.inProgressHours + hours.notStartedHours);
-    if (scale <= 0) return [];
-    return PROGRESS_STATUSES.map((s) => ({ key: s.key, hours: HOURS_BY_KEY[s.key](hours), bgClass: s.bgClass }))
-      .filter((s) => s.hours > 0)
-      .map((s) => ({ key: s.key, bgClass: s.bgClass, percent: (s.hours / scale) * 100 }));
-  }
 
   /** Expand, "View all", "+N more" and a click anywhere on a loaded card open the detail dialog. */
   openDetail(event?: Event): void {
     event?.stopPropagation();
     if (!this.store.data()) return;
+    this.detailSection.set(null);
+    this.detailOpen.set(true);
+  }
+
+  /** A summary card: open the popup at the section it summarises. */
+  openSection(section: string): void {
+    if (!this.store.data()) return;
+    this.detailSection.set(section);
     this.detailOpen.set(true);
   }
 
   closeDetail(): void {
     this.detailOpen.set(false);
+    this.detailSection.set(null);
   }
 
-  openModule(projectId: string, objectiveId: string, event?: Event): void {
-    event?.stopPropagation();
-    void this.router.navigate(['/work', projectId, 'milestones', objectiveId, 'tree']);
-  }
 
   openOverdueTask(task: LedOverdueTask, event?: Event): void {
     event?.stopPropagation();
@@ -732,6 +808,18 @@ export class TeamProgressCardComponent implements OnInit {
   assigneeNames(task: LedOverdueTask): string {
     return task.assignees.map((a) => a.displayName).join(', ');
   }
+}
+
+/** The summary cards whose popup section a taller view already shows as its own section. */
+function shownProgressCards(mode: TeamProgressMode, plan: TeamProgressPlan, overdue: boolean): ReadonlySet<string> {
+  const shown = new Set<string>();
+  if (WEEKLY_MODES.has(mode)) shown.add('tp-weekly');
+  if (plan.listRows > 0) {
+    shown.add('tp-projects');
+    if (overdue) shown.add('tp-overdue');
+  }
+  if (mode === 'large' || mode === 'maximum') shown.add('tp-behind');
+  return shown;
 }
 
 function samePlan(a: TeamProgressPlan, b: TeamProgressPlan): boolean {

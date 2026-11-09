@@ -51,3 +51,7 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat �
 ## Added 2026-10-28 (migrated from loose `plans/` files)
 
 - `2026-08-25-tray-app-employee-access-toggle-frontend.md` — Tray App Employee Access Toggle (Phase A, Frontend) Implementation Plan — **pending**: only the API method exists (people-api.service setTrayAppAccess, unused); no UI and no backend endpoint
+
+## Added 2026-11-06
+
+- `2026-11-06-boardui-angular-conversion/` — status: pending. Rebuild the BoardUI look (React design system) in Angular from scratch, mostly on the dashboard. README.md holds the method, Phase 0 foundations and the per-screen change log; `boardui-reference/` holds the BoardUI theming/motion/patterns/catalog notes.

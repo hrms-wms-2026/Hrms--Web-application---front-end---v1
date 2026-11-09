@@ -1,0 +1,33 @@
+/* The strip fills what is left of the card under its title and never grows past it: in a flex-column card body it
+   takes the remaining height (flex-basis 0), elsewhere the full height of its box. The cards then fit that height. */
+:host {
+  display: block;
+  flex: 1 1 0%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Widths match SUMMARY_STRIP_PX: donut 140, gap 14, key 200 to 256, cards at least 220 sharing the rest. */
+.ss {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.ss-donut {
+  flex: none;
+  align-self: center;
+}
+.ss-key {
+  flex: 0 1 256px;
+  min-width: 200px;
+  align-self: center;
+}
+.ss-card {
+  flex: 1 1 0;
+  min-width: 0;
+}

@@ -51,51 +51,53 @@ describe('PlannedActualWeekChartComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('seven columns labelled by weekday, today marked', () => {
+  const cols = (el: HTMLElement) => [...el.querySelectorAll<HTMLElement>('[data-testid="bar-chart-col"]')];
+  const label = (c: HTMLElement) => c.querySelector('[data-testid="bar-chart-label"]')!.textContent!.trim();
+
+  it('seven columns labelled by weekday, today drawn as the running one', () => {
     const el = render();
-    const cols = [...el.querySelectorAll('[data-testid="paw-col"]')];
-    expect(cols.length).toBe(7);
-    expect(cols.map((c) => c.querySelector('.paw-label')!.textContent!.trim())).toEqual([
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun',
-    ]);
-    expect(cols[2].classList.contains('paw-col--today')).toBe(true);
+    expect(cols(el).length).toBe(7);
+    expect(cols(el).map(label)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    expect(cols(el)[2].querySelector('[data-testid="bar-chart-label"]')!.classList).toContain('bc-label--current');
   });
 
-  it('future days have no actual bar, past and today do', () => {
+  it('a planned bar beside the actual bar (in plan, outside slot, no plan); future days planned only', () => {
     const el = render();
-    const cols = [...el.querySelectorAll('[data-testid="paw-col"]')];
-    expect(cols[0].querySelector('[data-testid="paw-actual"]')).toBeTruthy();
-    expect(cols[2].querySelector('[data-testid="paw-actual"]')).toBeTruthy();
-    expect(cols[3].querySelector('[data-testid="paw-actual"]')).toBeNull();
-    expect(cols[3].querySelector('[data-testid="paw-planned"]')).toBeTruthy();
+    const c = cols(el);
+    expect(c[0].querySelector('[data-testid="bar-chart-stack"] [data-segment="planned"]')).toBeTruthy();
+    const actual = c[0].querySelector('[data-testid="bar-chart-pair"]')!;
+    expect([...actual.querySelectorAll('[data-segment]')].map((s) => s.getAttribute('data-segment'))).toEqual(['scheduled', 'outside', 'noPlan']);
+    expect(c[2].querySelector('[data-testid="bar-chart-pair"]')).toBeTruthy();
+    expect(c[3].querySelector('[data-testid="bar-chart-pair"]')).toBeNull();
+    expect(c[3].querySelector('[data-testid="bar-chart-stack"]')).toBeTruthy();
+    expect(el.querySelector('[data-testid="bar-chart-legend"]')!.textContent).toContain('Outside slot');
   });
 
-  it('coverage line skips null days', () => {
-    const el = render();
-    expect(el.querySelectorAll('[data-testid="paw-coverage-point"]').length).toBe(2);
-    expect(el.querySelector('[data-testid="paw-coverage"]')).toBeTruthy();
-  });
-
-  it('no coverage line when it is off', () => {
-    expect(
-      render({ coverageLine: false }).querySelector('[data-testid="paw-coverage"]'),
-    ).toBeNull();
+  it("each day's coverage is in its hover readout and tooltip, unless switched off", () => {
+    const fixture = TestBed.createComponent(PlannedActualWeekChartComponent);
+    fixture.componentRef.setInput('days', WEEK);
+    fixture.componentRef.setInput('today', '2026-10-28');
+    fixture.componentRef.setInput('heading', 'This week');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid="bar-chart-value"]')!.textContent!.trim()).toBe('15.3h actual');
+    cols(el)[0].dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="bar-chart-value"]')!.textContent!.trim()).toBe('7h actual');
+    expect(el.querySelector('[data-testid="bar-chart-chip"]')!.textContent!.trim()).toBe('of 8h planned · coverage 62.5%');
+    expect(cols(el)[0].title).toContain('coverage 62.5%');
+    TestBed.resetTestingModule();
+    expect(cols(render({ coverageLine: false }))[0].title).not.toContain('coverage');
   });
 
   it('labels override the weekday names (month buckets)', () => {
     const el = render({ labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7'] });
-    expect(el.querySelector('[data-testid="paw-col"] .paw-label')!.textContent!.trim()).toBe('W1');
+    expect(label(cols(el)[0])).toBe('W1');
   });
 
   it('aria-label summary names planned, actual and coverage per day', () => {
-    const label = render().querySelector('[role="img"]')!.getAttribute('aria-label')!;
-    expect(label).toContain('Mon: planned 8h, actual 7h, coverage 62.5%');
-    expect(label).toContain('Thu: planned 4h');
+    const text = render().querySelector('[role="img"]')!.getAttribute('aria-label')!;
+    expect(text).toContain('Mon: planned 8h, actual 7h, coverage 62.5%');
+    expect(text).toContain('Thu: planned 4h');
   });
 });

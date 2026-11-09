@@ -9,22 +9,7 @@
   (retry)="retry()"
 >
   <div widget-actions class="flex min-w-0 items-center gap-1">
-    @if (store.data(); as data) {
-      @if (view() === 'standard') {
-        <select
-          class="wt-period"
-          data-testid="wt-period"
-          aria-label="Period"
-          [value]="data.period"
-          appStopClickPropagation
-          (change)="onPeriodSelect($event)"
-        >
-          <option value="day" [selected]="data.period === 'day'">Day</option>
-          <option value="week" [selected]="data.period === 'week'">Week</option>
-          <option value="month" [selected]="data.period === 'month'">Month</option>
-        </select>
-      }
-    }
+    <!-- The Day / Week / Month switch lives in the popup only (2026-11-05); the card follows the shared store. -->
     <app-popout-header-actions
       [refreshing]="refreshing()"
       [expanded]="false"
@@ -66,39 +51,21 @@
 
     <!-- One donut size (DASHBOARD_DONUT_PX) in every view: task hours, other work time and break. -->
     <ng-template #donutTpl>
-      <div
+      <app-dashboard-donut
         class="wt-donut"
-        [style.width.px]="donutPx"
-        [style.height.px]="donutPx"
         data-testid="wt-donut"
+        [size]="donutPx()"
+        [slices]="donutSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hovered"
       >
-        <svg
-          viewBox="0 0 42 42"
-          class="block h-full w-full"
-          role="img"
-          [attr.aria-label]="donutLabel()"
-        >
-          <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-          @for (arc of donut(); track arc.key) {
-            <circle
-              cx="21"
-              cy="21"
-              r="15.9155"
-              fill="none"
-              stroke-width="6"
-              [attr.stroke]="arc.color"
-              [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-              [attr.stroke-dashoffset]="arc.offset"
-            />
-          }
-        </svg>
         <p class="wt-donut-center">
           <span class="wt-donut-value wt-donut-value--rate" data-testid="wt-utilization">{{
             util(data.totals.utilization)
           }}</span>
           <span class="wt-donut-of">on tasks</span>
         </p>
-      </div>
+      </app-dashboard-donut>
     </ng-template>
 
     <ng-template #figureTpl>
@@ -116,6 +83,7 @@
       } @else {
         <app-work-task-day-chart
           class="wt-chart"
+          heading="Work vs task by day"
           [points]="data.trend"
           [highlight]="data.period === 'day' ? data.rangeStart : null"
         />
@@ -124,50 +92,23 @@
 
     @switch (view()) {
       @case ('mini') {
-        @if (miniBar()) {
-          <div class="wt-mini wt-mini--bar" data-testid="wt-mini">
-            <div class="min-w-0 shrink-0">
-              <p class="wt-rate wt-rate--mini" data-testid="wt-utilization">
-                {{ util(data.totals.utilization) }}
-              </p>
-              <ng-container [ngTemplateOutlet]="figureTpl" />
-            </div>
-            <div class="wt-mini-bar">
-              <div
-                class="wt-status-bar"
-                role="img"
-                [attr.aria-label]="donutLabel()"
-                data-testid="wt-status-bar"
-              >
-                @for (arc of donut(); track arc.key) {
-                  <span
-                    class="h-full"
-                    [style.background]="arc.color"
-                    [style.width.%]="arc.length"
-                  ></span>
-                }
-              </div>
-              <ul class="wt-mini-legend">
-                @for (row of slices(); track row.key) {
-                  <li class="wt-mini-legend-item">
-                    <span class="wt-dot" [style.background]="row.color"></span>
-                    <span class="wt-legend-label">{{ row.label }}</span>
-                    <span class="wt-legend-count">{{ hours(row.minutes) }}</span>
-                  </li>
-                }
-              </ul>
-            </div>
-          </div>
-        } @else {
-          <div class="wt-mini wt-mini--donut" data-testid="wt-mini">
-            <ng-container [ngTemplateOutlet]="donutTpl" />
-            @if (miniFigure()) {
-              <div class="min-w-0">
-                <ng-container [ngTemplateOutlet]="figureTpl" />
-              </div>
-            }
-          </div>
-        }
+        <!-- 2-row cards: the shared strip. The donut with the task share in it, then its key, then summary cards of
+        the popup's sections as the card widens. -->
+        <app-dashboard-summary-strip
+          class="wt-mini"
+          data-testid="wt-mini"
+          [slices]="donutSlices()"
+          [keySlices]="donutSlices()"
+          [cards]="summaryCards()"
+          [donutLabel]="donutLabel()"
+          [(active)]="hovered"
+          (cardOpened)="openSection($event)"
+        >
+          <p class="wt-donut-center">
+            <span class="wt-donut-value wt-donut-value--rate" data-testid="wt-utilization">{{ util(data.totals.utilization) }}</span>
+            <span class="wt-donut-of">on tasks</span>
+          </p>
+        </app-dashboard-summary-strip>
       }
       @default {
         <div
@@ -182,15 +123,15 @@
           <div class="wt-hero" data-testid="wt-hero">
             <ng-container [ngTemplateOutlet]="donutTpl" />
             @if (view() === 'xs' && plan().legend) {
-              <ul class="wt-xs-legend" aria-label="Time split" data-testid="wt-xs-legend">
-                @for (row of slices(); track row.key) {
-                  <li class="wt-xs-legend-row" data-testid="wt-legend-row">
-                    <span class="wt-dot" [style.background]="row.color"></span>
-                    <span class="wt-legend-label">{{ row.label }}</span>
-                    <span class="wt-legend-count">{{ hours(row.minutes) }}</span>
-                  </li>
-                }
-              </ul>
+              <app-donut-key
+                class="wt-xs-legend"
+                data-testid="wt-xs-legend"
+                ariaLabel="Time split"
+                rowTestId="wt-legend-row"
+                [showValue]="true"
+                [slices]="donutSlices()"
+                [(active)]="hovered"
+              />
             }
             @if (view() !== 'xs' || plan().figure) {
               <div class="wt-hero-figure">
@@ -203,25 +144,26 @@
             }
             @if (plan().heroTrend) {
               <div class="wt-hero-trend" data-testid="wt-trend">
-                <p class="wt-section-title">Work vs task by day</p>
                 <ng-container [ngTemplateOutlet]="chartTpl" />
               </div>
             }
             @if (view() === 'standard' && heroLegend()) {
-              <ul class="wt-legend" aria-label="Time split">
-                @for (row of slices(); track row.key) {
-                  <li class="wt-legend-row" data-testid="wt-legend-row">
-                    <span class="wt-dot" [style.background]="row.color"></span>
-                    <span class="wt-legend-label">{{ row.label }}</span>
-                    <span class="wt-legend-count">{{ hours(row.minutes) }}</span>
-                    <span class="wt-legend-pct" [style.color]="row.color">{{ row.percent }}%</span>
-                  </li>
-                }
-              </ul>
+              <app-donut-key
+                class="wt-legend"
+                variant="chips"
+                ariaLabel="Time split"
+                rowTestId="wt-legend-row"
+                [showValue]="true"
+                [slices]="donutSlices()"
+                [(active)]="hovered"
+              />
             }
           </div>
 
-          @if (plan().tiles) {
+          @if (plan().tiles && rowCards().length > 0) {
+            <!-- Taller views: summary cards of what the card is not already showing, in the tiles' place. -->
+            <app-dashboard-summary-row data-testid="wt-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" />
+          } @else if (plan().tiles) {
             <ul
               class="wt-tiles"
               [class.wt-tiles--4]="plan().tileColumns === 4"
@@ -244,15 +186,6 @@
 
           @if (plan().trend) {
             <section class="wt-panel wt-trend-panel" data-testid="wt-trend">
-              <p class="wt-section-title">
-                Work vs task by day
-                <span class="wt-key"
-                  ><span class="wt-dot" [style.background]="colors.other"></span>Worked</span
-                >
-                <span class="wt-key"
-                  ><span class="wt-dot" [style.background]="colors.task"></span>Task</span
-                >
-              </p>
               <ng-container [ngTemplateOutlet]="chartTpl" />
             </section>
           }
@@ -312,4 +245,4 @@
   }
 </app-widget-card>
 
-<app-team-work-task-detail-dialog [open]="detailOpen()" (closed)="closeDetail()" />
+<app-team-work-task-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

@@ -1,4 +1,4 @@
-import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from './dashboard-donut.util';
 
 /** How the Working / Break / Leave card lays itself out at its rendered size. The detail dialog is the popup. */
 export type PresenceView = 'mini' | 'xs' | 'standard';
@@ -158,7 +158,7 @@ export function planPresenceLayout(view: PresenceView, width: number, height: nu
   if (view === 'mini') {
     const miniInline = bodyWidth >= PRESENCE_BREAKPOINTS.miniInlineWidth;
     // The donut leaves room for the pill only on a card taller than a mini one usually is.
-    const pill = miniInline || body >= DASHBOARD_DONUT_PX + s.gap + s.pill;
+    const pill = miniInline || body >= DASHBOARD_MINI_DONUT_PX + s.gap + s.pill;
     return { ...EMPTY_PRESENCE_PLAN, miniInline, pill };
   }
 

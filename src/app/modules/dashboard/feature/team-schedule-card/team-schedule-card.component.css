@@ -1,58 +1,47 @@
-/* Today's team schedule (2026-11-02 design match): the Team Attendance card's visual tokens (slate text scale, 140px
-   donut). Heights here are the ones SCHEDULE_SECTION_PX budgets with; change both together. */
+/* Today's team schedule (2026-11-05 merged-widget design): the Team Attendance card's visual tokens (slate text scale,
+   168px donut). Heights here are the ones SCHEDULE_SECTION_PX budgets with; change both together. */
+
+.tsc-off-chip {
+  border-radius: 9999px;
+  background: var(--color-surface-secondary);
+  padding: 0.0625rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.tsc-off-chip--center {
+  align-self: center;
+}
+
+/* ---- Mini: the shared summary strip (planner off: the clocked total and a chip) ---- */
+.tsc-mini app-dashboard-summary-strip {
+  flex: 1;
+  min-height: 0;
+}
+
 .tsc-mini {
   display: flex;
   height: 100%;
   min-height: 0;
   flex-direction: column;
-  justify-content: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
   overflow: hidden;
 }
 
-.tsc-hero,
-.tsc-xs-head {
+/* ---- Donut and legend ---- */
+.tsc-hero {
   display: flex;
   min-width: 0;
+  flex: none;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
-.tsc-xs-head {
-  flex: none;
+.tsc-hero--stacked {
   flex-direction: column;
   gap: 0.75rem;
-}
-
-/* The donut legend every widget shares at this size: 28px rows of dot, label, value (see DASHBOARD_DONUT_LEGEND_ROW_PX). */
-.tsc-xs-head .tsc-legend-list {
-  width: 100%;
-  gap: 0;
-}
-
-.tsc-xs-head .tsc-legend-row {
-  display: grid;
-  height: 28px;
-  grid-template-columns: 0.625rem minmax(0, 1fr) auto;
-  column-gap: 0.5rem;
-  font-size: 0.8125rem;
-}
-
-.tsc-xs-head .tsc-dot {
-  width: 0.625rem;
-  height: 0.625rem;
-}
-
-.tsc-xs-head .tsc-legend-label {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.tsc-xs-head .tsc-legend-count {
-  text-align: right;
-  font-weight: 700;
 }
 
 .tsc-donut {
@@ -72,74 +61,40 @@
 }
 
 .tsc-donut-value {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 700;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .tsc-donut-of {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   color: var(--color-text-secondary);
 }
 
+/* The donut legend every widget shares (the shared donut key, 28px rows; see DASHBOARD_DONUT_LEGEND_ROW_PX). */
 .tsc-legend-list {
-  display: flex;
   min-width: 0;
-  flex-direction: column;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-}
-
-.tsc-mini .tsc-stack + .tsc-legend-list {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.tsc-legend-row {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.tsc-legend-label {
   flex: 1 1 auto;
-  color: var(--color-text-primary);
 }
 
-.tsc-legend-count {
-  font-weight: 600;
-  color: var(--color-text-primary);
-  font-variant-numeric: tabular-nums;
+.tsc-hero--stacked .tsc-legend-list {
+  width: 100%;
 }
 
 .tsc-dot {
   display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.625rem;
+  height: 0.625rem;
   flex: none;
   border-radius: 9999px;
   background: var(--tone, var(--color-text-muted));
 }
 
-.tsc-stack {
-  display: flex;
-  height: 0.75rem;
-  flex: none;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: var(--color-surface-secondary);
-}
-
-.tsc-stack span {
-  height: 100%;
-}
-
 .tsc-total {
   display: flex;
   height: 72px;
-  flex: none;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -154,71 +109,86 @@
   font-variant-numeric: tabular-nums;
 }
 
-.tsc-pill {
+/* ---- Status chips: over capacity (orange), not planned (slate), on leave (yellow) ---- */
+.tsc-chips {
   display: flex;
-  height: 36px;
-  width: 100%;
+  min-height: 28px;
   flex: none;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.tsc-chip {
+  display: inline-flex;
+  height: 24px;
   align-items: center;
-  gap: 0.5rem;
-  border-radius: 0.625rem;
+  gap: 0.375rem;
+  border: 1px solid transparent;
+  border-radius: 9999px;
   background: var(--color-surface-secondary);
-  padding: 0 0.75rem;
+  padding: 0 0.625rem;
   font-size: 0.75rem;
+  font-weight: 500;
   color: var(--color-text-primary);
-  text-align: left;
+  white-space: nowrap;
 }
 
-.tsc-pill--alert {
-  background: var(--color-tint-red-bg);
-  color: var(--color-tint-red-text);
+.tsc-chip[data-key='overCapacity'] {
+  background: var(--color-warning-subtle);
+  color: var(--color-tint-amber-text);
 }
 
-.tsc-pill-text {
+.tsc-chip[data-key='onLeave'] {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+}
+
+.tsc-chip--zero {
+  opacity: 0.55;
+}
+
+/* The timeline head's large tiles. */
+.tsc-chips--tiles {
+  display: grid;
   min-width: 0;
   flex: 1 1 auto;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  align-content: center;
+  gap: 0.75rem;
 }
 
-.tsc-off-chip {
-  border-radius: 9999px;
-  background: var(--color-surface-secondary);
-  padding: 0.0625rem 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-}
-
-.tsc-avatars {
-  display: flex;
-  height: 36px;
-  flex: none;
-  align-items: center;
-}
-
-.tsc-avatar {
-  margin-right: -0.375rem;
-  border-radius: 9999px;
-  box-shadow: 0 0 0 2px #fff;
-}
-
-.tsc-avatar-more {
-  display: inline-flex;
-  height: 2rem;
-  min-width: 2rem;
-  align-items: center;
+.tsc-chips--tiles .tsc-chip {
+  height: 3.5rem;
   justify-content: center;
-  margin-left: 0.625rem;
-  border-radius: 9999px;
+  gap: 0.5rem;
+  border-color: var(--color-border);
+  border-radius: 0.875rem;
   background: var(--color-surface-secondary);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
 }
 
+.tsc-chips--tiles .tsc-chip[data-key='overCapacity'] {
+  border-color: var(--color-warning-subtle);
+  background: var(--color-tint-amber-bg);
+}
+
+.tsc-chips--tiles .tsc-chip[data-key='onLeave'] {
+  border-color: var(--color-warning-subtle);
+  background: var(--color-tint-amber-bg);
+}
+
+.tsc-chip svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Layout ---- */
 .tsc {
   display: flex;
   height: 100%;
@@ -241,6 +211,7 @@
   overflow: hidden;
 }
 
+/* ---- Rows (xs and rows views): name and load, the load bar or a badge, done ---- */
 .tsc-rows {
   display: flex;
   flex: none;
@@ -249,70 +220,85 @@
 
 .tsc-row {
   display: grid;
-  height: 52px;
+  height: 48px;
   align-items: center;
-  grid-template-columns: auto minmax(5rem, 9rem) minmax(0, 1fr) 4.5rem;
-  gap: 0.625rem;
-  border-bottom: 1px solid var(--color-border);
+  grid-template-columns: auto minmax(0, 1fr) 2.75rem;
+  gap: 0.75rem;
 }
 
 .tsc-row-main {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tsc-row-top {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .tsc-name {
   display: block;
+  min-width: 0;
   overflow: hidden;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-text-primary);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.tsc-presence {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.6875rem;
+.tsc-load {
+  flex: none;
+  font-size: 0.75rem;
   color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.tsc-presence--alert {
-  --tone: #ef4444;
-  color: var(--color-tint-red-text);
+.tsc-load--over {
+  color: var(--color-tint-amber-text);
 }
 
-.tsc-plan-bar {
-  position: relative;
-  height: 14px;
+.tsc-load-track {
+  display: block;
+  height: 5px;
   overflow: hidden;
-  border-radius: 0.25rem;
+  border-radius: 9999px;
   background: var(--color-surface-secondary);
 }
 
-.tsc-plan-seg {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-right: 1px solid #fff;
+.tsc-load-track span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--color-info);
 }
 
-.tsc-plan-seg--cancelled {
-  opacity: 0.3;
+.tsc-badge {
+  display: inline-block;
+  align-self: flex-start;
+  border-radius: 9999px;
+  background: var(--color-surface-secondary);
+  padding: 0 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.125rem;
+  color: var(--color-text-primary);
+  white-space: nowrap;
 }
 
-.tsc-hatch {
-  background: repeating-linear-gradient(135deg, #ef4444 0 3px, #fecaca 3px 7px);
-}
-
-.tsc-hatch--soft {
-  background: repeating-linear-gradient(135deg, #fee2e2 0 4px, #fff 4px 8px);
+.tsc-badge--leave {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
 }
 
 .tsc-completion {
   text-align: right;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
@@ -324,61 +310,117 @@
   color: var(--color-text-secondary);
 }
 
-.tsc-clocked-track {
-  display: block;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: var(--color-border);
-}
-
-.tsc-clocked-track span {
-  display: block;
-  height: 100%;
-  border-radius: 9999px;
-  background: #3b82f6;
-}
-
 .tsc-link {
   height: 28px;
   flex: none;
-  align-self: flex-start;
-  font-size: 0.75rem;
+  align-self: flex-end;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--color-cat-blue);
+  color: var(--color-tint-blue-strong);
 }
 
 .tsc-link:hover {
   text-decoration: underline;
 }
 
+/* ---- Timeline head: the donut panel beside the status tiles ---- */
+.tsc-head {
+  display: flex;
+  height: 160px;
+  flex: none;
+  gap: 1rem;
+}
+
+/* Summary cards in the chips' place: the rest of the head's width, centred in its 160px. */
+.tsc-head-cards {
+  flex: 1 1 0;
+  align-self: center;
+}
+
+.tsc-head-donut {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1.25rem;
+  /* no card inside the card: the donut block is not boxed */
+  padding: 0.5rem 0;
+}
+
+.tsc-head-donut .tsc-legend-list {
+  width: 10rem;
+}
+
+/* ---- Timeline: member, status, hours track, done ---- */
 .tsc-timeline {
   display: flex;
   flex: none;
   flex-direction: column;
+  border-top: 1px solid var(--color-border);
 }
 
 .tsc-axis,
 .tsc-line {
   display: grid;
-  grid-template-columns: 10rem minmax(0, 1fr);
+  grid-template-columns: 200px 104px minmax(0, 1fr) 48px;
+  column-gap: 12px;
   align-items: center;
 }
 
 .tsc-axis {
-  height: 24px;
-  background: var(--color-surface-secondary);
+  height: 32px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
 }
 
-.tsc-axis-name {
+.tsc-col-member,
+.tsc-col-status {
   min-width: 0;
-  padding-right: 0.5rem;
+}
+
+.tsc-col-done {
+  text-align: right;
 }
 
 .tsc-person {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
+}
+
+.tsc-person-text {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tsc-col-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.tsc-presence {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.tsc-presence .tsc-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+.tsc-presence--alert {
+  --tone: #ef4444;
+  color: var(--color-tint-red-text);
 }
 
 .tsc-axis-track {
@@ -388,28 +430,44 @@
 
 .tsc-tick {
   position: absolute;
-  top: 0.375rem;
-  transform: translateX(-50%);
-  font-size: 0.625rem;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.6875rem;
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
+.tsc-now-badge {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: var(--color-danger);
+  padding: 0.0625rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-on-solid);
+  white-space: nowrap;
+}
+
 .tsc-line {
-  height: 44px;
+  height: 52px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .tsc-track {
   position: relative;
-  height: 28px;
+  height: 36px;
   overflow: hidden;
+  border-radius: 0.375rem;
+  background: var(--color-surface-secondary);
 }
 
 .tsc-block,
 .tsc-unscheduled,
-.tsc-no-plan {
+.tsc-leave {
   position: absolute;
   top: 2px;
   bottom: 2px;
@@ -418,8 +476,12 @@
   border-radius: 0.3125rem;
 }
 
+.tsc-block {
+  border-right: 1px solid var(--color-surface);
+}
+
 .tsc-block--break {
-  background: #fde68a;
+  background: #f59e0b;
 }
 
 .tsc-block--cancelled {
@@ -427,68 +489,93 @@
 }
 
 .tsc-block--conflict {
-  box-shadow: inset 0 0 0 2px #ef4444;
+  box-shadow: inset 0 0 0 2px var(--color-danger);
 }
 
 .tsc-block-label {
   display: block;
   overflow: hidden;
-  padding: 0 0.375rem;
-  font-size: 0.6875rem;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  line-height: 24px;
-  color: #fff;
-  text-align: center;
+  line-height: 32px;
+  color: var(--color-text-on-solid);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.tsc-block--break .tsc-block-label {
-  color: rgb(146 64 14);
+/* Pending blocks are pale grey: dark text on them. */
+.tsc-block--light .tsc-block-label {
+  color: var(--color-text-primary);
 }
 
-.tsc-no-plan {
+.tsc-hatch {
+  background: repeating-linear-gradient(135deg, #f97316 0 4px, var(--color-warning-subtle) 4px 8px);
+}
+
+.tsc-leave {
   left: 0;
   right: 0;
-  font-size: 0.6875rem;
+  background: repeating-linear-gradient(135deg, var(--color-warning-subtle) 0 8px, var(--color-tint-amber-bg) 8px 16px);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  line-height: 24px;
-  color: var(--color-tint-red-text);
-  text-align: center;
+  line-height: 32px;
+  color: var(--color-warning-text);
+}
+
+.tsc-leave-key {
+  background: repeating-linear-gradient(135deg, var(--color-warning-subtle) 0 3px, var(--color-tint-amber-bg) 3px 6px);
 }
 
 .tsc-now {
   position: absolute;
   top: 0;
   bottom: 0;
+  z-index: 1;
   width: 2px;
-  background: #ef4444;
+  background: var(--color-danger);
+}
+
+.tsc-foot {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tsc-foot .tsc-link {
+  align-self: center;
 }
 
 .tsc-legend {
   display: flex;
-  height: 24px;
+  min-width: 0;
   flex-wrap: wrap;
   align-items: center;
   gap: 0 0.875rem;
   overflow: hidden;
-  font-size: 0.6875rem;
+  max-height: 28px;
+  font-size: 0.75rem;
   color: var(--color-text-secondary);
 }
 
 .tsc-legend li {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
+  line-height: 28px;
 }
 
 .tsc-key {
   display: inline-block;
-  width: 0.625rem;
+  width: 0.75rem;
   height: 0.625rem;
   border-radius: 0.125rem;
 }
 
+/* ---- Panels (day chart, week chart, side column) ---- */
 .tsc-panel {
   display: flex;
   min-height: 0;
@@ -496,29 +583,26 @@
   flex-direction: column;
   gap: 0.5rem;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 0.625rem 0.75rem;
+  border-top: 1px solid var(--color-border); /* no card inside the card: a line above the section */
+  padding: 0.75rem 0 0;
 }
 
 .tsc-section-title {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .tsc-day {
-  padding: 0;
-  border: 0;
   gap: 0;
 }
 
 .tsc-day-head {
   display: flex;
-  height: 64px;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.25rem;
+  height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .tsc-figures {
@@ -528,8 +612,7 @@
 
 .tsc-figures li {
   display: flex;
-  align-items: baseline;
-  gap: 0.375rem;
+  flex-direction: column;
 }
 
 .tsc-figure-value {
@@ -566,17 +649,41 @@
   overflow: hidden;
 }
 
-.tsc-side .tsc-hero {
-  justify-content: flex-start;
+.tsc-summary {
+  display: flex;
+  flex-direction: column;
+}
+
+.tsc-summary-row {
+  display: flex;
+  height: 26px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.tsc-summary-row dd {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tsc-summary-row dd.tsc-summary--alert {
+  color: var(--color-tint-amber-text);
 }
 
 .tsc-count {
-  margin-left: 0.25rem;
-  border-radius: 9999px;
-  background: var(--color-danger-subtle);
-  padding: 0 0.375rem;
-  font-size: 0.625rem;
-  color: var(--color-tint-red-text);
+  margin-left: 0.125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.tsc-side-person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
 }
 
 .tsc-side-row {
@@ -587,12 +694,12 @@
 
 .tsc-side-meta {
   overflow: hidden;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: var(--color-text-secondary);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .tsc-side-meta--alert {
-  color: var(--color-tint-red-text);
+  color: var(--color-tint-amber-text);
 }

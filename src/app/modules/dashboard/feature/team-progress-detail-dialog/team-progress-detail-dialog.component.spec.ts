@@ -7,7 +7,12 @@ import { ledTime, workloadRow } from '../../utils/team-progress-time.testing';
 import { environment } from '../../../../../environments/environment';
 import { pickSelectOption } from '../../../../shared/ui/select/select.testing';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
-import { LedEmployeeProgressPage, LedPeriodProgress, LedProgressPeriod, LedWeeklyCompletion } from '../../models/team-progress-detail.model';
+import {
+  LedEmployeeProgressPage,
+  LedPeriodProgress,
+  LedProgressPeriod,
+  LedWeeklyCompletion
+} from '../../models/team-progress-detail.model';
 import { TeamProgressDetailDialogComponent } from './team-progress-detail-dialog.component';
 
 const BASE = `${environment.apiUrl}/work/led-progress`;
@@ -70,6 +75,7 @@ function employeePage(extra: Partial<LedEmployeeProgressPage> = {}): LedEmployee
     ...extra
   };
 }
+
 
 function periodSummary(period: 'week' | 'month', extra: Partial<LedPeriodProgress> = {}): LedPeriodProgress {
   return {
@@ -134,6 +140,9 @@ describe('TeamProgressDetailDialogComponent', () => {
   const isWeekly = (r: { url: string }): boolean => r.url === `${BASE}/weekly-completion`;
   const isPeriod = (r: { url: string }): boolean => r.url === `${BASE}/period`;
   const isTime = (r: { url: string }): boolean => r.url === `${BASE}/time`;
+  const isUnscheduled = (r: { url: string }): boolean => r.url === `${BASE}/time/unscheduled`;
+  /** The time and unscheduled-work calls: answered by their own tests, or in afterEach. */
+  const isSide = (r: { url: string }): boolean => isTime(r) || isUnscheduled(r);
   const expectEmployees = (): TestRequest => http.expectOne(isEmployees);
   const expectWeekly = (): TestRequest => http.expectOne(isWeekly);
   const expectPeriod = (): TestRequest => http.expectOne(isPeriod);
@@ -160,7 +169,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     fixture.componentRef.setInput('open', false);
     render();
     expect(el().querySelector('[role="dialog"]')).toBeNull();
-    http.expectNone((r) => !isTime(r));
+    http.expectNone((r) => !isSide(r));
   });
 
   it('is Overview only: no tabs, no project/module status panel, no task list', () => {
@@ -174,6 +183,28 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(el().textContent).not.toContain('Status by Project');
   });
 
+  it('hovering a donut slice or a legend row puts that status in the donut centre', () => {
+    openWith();
+    const hover = () => q('tp-donut')!.querySelector('[data-testid="donut-hover"]');
+    const slice = q('tp-donut')!.querySelector('.dd-arc') as SVGPathElement;
+    slice.dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    expect(hover()?.querySelector('.dd-value')?.textContent?.trim()).toBe('50 h');
+    expect(hover()?.textContent).toContain('Completed · 25%');
+
+    q('tp-donut')!.dispatchEvent(new Event('mouseleave'));
+    fixture.detectChanges();
+    expect(hover()).toBeNull();
+
+    const rows = [...el().querySelectorAll('[data-testid="tp-legend-row"]')];
+    rows[0].dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    expect(hover()?.querySelector('.dd-value')?.textContent?.trim()).toBe('50 h');
+    rows[0].dispatchEvent(new Event('mouseleave'));
+    fixture.detectChanges();
+    expect(hover()).toBeNull();
+  });
+
   it('renders the overview from the summary: tiles, donut, notes, three panels and overdue tasks', () => {
     openWith();
     expect(el().querySelector('[role="dialog"]')).not.toBeNull();
@@ -183,8 +214,8 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-tile-completed')?.textContent).toContain('25%');
     expect(q('tp-tile-untasked')?.textContent).toContain('100');
     expect(q('tp-completion')?.textContent?.trim()).toBe('25%');
-    expect(q('tp-donut')?.getAttribute('role')).toBe('img');
-    expect(q('tp-donut')?.getAttribute('aria-label')).toContain('Completed 50 h');
+    expect(q('tp-donut')?.querySelector('svg')?.getAttribute('role')).toBe('img');
+    expect(q('tp-donut')?.querySelector('svg')?.getAttribute('aria-label')).toContain('Completed 50 h');
     expect(q('tp-note-overtasked')?.textContent).toContain('5 h');
     expect(q('tp-note-unestimated')?.textContent).toContain('2 tasks');
     expect(q('tp-note-risk')?.textContent).toContain('1');
@@ -194,15 +225,14 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(panels).toEqual(['tp-distribution', 'tp-weekly', 'tp-projects', 'tp-ov-employees']);
     expect(q('tp-weekly')?.textContent).toContain('Weekly completion');
     expect(q('tp-weekly-range')?.textContent?.trim()).toBe('Last 10 weeks');
-    expect(q('tp-weekly')?.textContent).toContain('Allocated task hours completed per week');
-    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="weekly-completion-bar"]').length).toBe(10);
+    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="bar-chart-col"]').length).toBe(10);
     expect(q('tp-weekly-undated')).toBeNull();
-    expect(q('tp-ov-employee-e1')?.textContent).toContain('AL');
-    expect(q('tp-ov-employee-e1')?.textContent).toContain('24 h');
+    expect(q('tp-member-bar-e1')?.textContent).toContain('AL');
+    expect(q('tp-member-bar-e1')?.textContent).toContain('24 h');
     expect(q('tp-ov-employee-range')?.textContent?.trim()).toBe('1–2 of 45');
     expect(q('tp-overdue-count')?.textContent).toContain('2 of 9');
     expect(q('tp-overdue-t1')?.closest('tr')?.textContent).toContain('10 Jan 2026');
-    http.expectNone((r) => !isTime(r));
+    http.expectNone((r) => !isSide(r));
   });
 
   it('hides the overdue section when nothing is overdue', () => {
@@ -236,7 +266,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     http.expectNone(isWeekly);
   });
 
-  it('narrows the weekly chart by the project / module filters, caches each, and ignores the period', () => {
+  it('narrows the weekly chart by the project / module filters and the period, caching each', () => {
     openWith();
     fixture.componentInstance.setProject('p2');
     render();
@@ -262,12 +292,40 @@ describe('TeamProgressDetailDialogComponent', () => {
     http.expectNone(isWeekly);
     expectEmployees().flush(employeePage());
 
-    // The period dropdown never refetches the weekly chart.
+    // This month asks for the month's weeks; the range tag follows what the server answered.
     fixture.componentRef.setInput('period', 'month');
     render();
-    http.expectNone(isWeekly);
+    req = expectWeekly();
+    expect(req.request.params.get('period')).toBe('month');
+    req.flush(weekly({ granularity: 'week', weeks: weekly().weeks.slice(0, 5) }));
     expectPeriod().flush(periodSummary('month'));
     expectEmployees().flush(employeePage());
+    render();
+    expect(q('tp-weekly-range')?.textContent?.trim()).toBe('This month');
+    expect(q('tp-weekly-chart')?.querySelectorAll('[data-testid="bar-chart-col"]').length).toBe(5);
+
+    // This week asks for its days.
+    fixture.componentRef.setInput('period', 'week');
+    render();
+    req = expectWeekly();
+    expect(req.request.params.get('period')).toBe('week');
+    req.flush(weekly({ granularity: 'day', weeks: weekly().weeks.slice(0, 7) }));
+    expectPeriod().flush(periodSummary('week'));
+    expectEmployees().flush(employeePage());
+    render();
+    expect(q('tp-weekly-range')?.textContent?.trim()).toBe('This week');
+
+    // Back to All time: cached.
+    fixture.componentRef.setInput('period', 'all');
+    render();
+    http.expectNone(isWeekly);
+    expectEmployees().flush(employeePage());
+  });
+
+  it('keeps saying "Last 10 weeks" when the server answers a period request without one', () => {
+    openWith(summary(), 'month', weekly());
+    expectPeriod().flush(periodSummary('month'));
+    expect(q('tp-weekly-range')?.textContent?.trim()).toBe('Last 10 weeks');
   });
 
   it('drops the weekly cache when the card passes a new summary', () => {
@@ -347,7 +405,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     input.value = 'bo';
     input.dispatchEvent(new Event('input'));
     render();
-    http.expectNone((r) => !isTime(r));
+    http.expectNone((r) => !isSide(r));
     vi.advanceTimersByTime(300);
     render();
     req = expectEmployees();
@@ -356,10 +414,10 @@ describe('TeamProgressDetailDialogComponent', () => {
     req.flush(employeePage());
     render();
 
-    expect(q('tp-ov-employee-e2')?.querySelector('button')).toBeNull();
-    q('tp-ov-employee-e2')!.click();
+    expect(q('tp-member-bar-e2')?.querySelector('button')).toBeNull();
+    q('tp-member-bar-e2')!.click();
     render();
-    http.expectNone((r) => !isTime(r));
+    http.expectNone((r) => !isSide(r));
     expect(closedCount).toBe(0);
   });
 
@@ -374,14 +432,14 @@ describe('TeamProgressDetailDialogComponent', () => {
     render();
     expectEmployees().flush(employeePage());
     render();
-    expect(q('tp-ov-employee-e1')).not.toBeNull();
+    expect(q('tp-member-bar-e1')).not.toBeNull();
   });
 
   it('emits periodChange from the period dropdown and leaves the value to the card', () => {
     openWith();
     pickSelectOption(q('tp-period-filter')!, 'This week', () => render());
     expect(periodChanges).toEqual(['week']);
-    http.expectNone((r) => !isTime(r));
+    http.expectNone((r) => !isSide(r));
     expect(q('tp-tile-untasked')).not.toBeNull();
   });
 
@@ -410,7 +468,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-completion')?.textContent?.trim()).toBe('30%');
     expect(q('tp-note-overtasked')).toBeNull();
     expect(q('tp-note-unestimated')?.textContent).toContain('1 task has');
-    expect(q('tp-donut')?.getAttribute('aria-label')).toContain('due this week');
+    expect(q('tp-donut')?.querySelector('svg')?.getAttribute('aria-label')).toContain('due this week');
     // The weekly chart is its own 10-week timeline, still shown.
     expect(q('tp-weekly-chart')).not.toBeNull();
   });
@@ -452,7 +510,8 @@ describe('TeamProgressDetailDialogComponent', () => {
     emp = expectEmployees();
     expect(emp.request.params.get('projectId')).toBe('p2');
     emp.flush(employeePage());
-    expectWeekly().flush(weekly());
+    // The weekly chart follows the period too (its own test covers the requests).
+    http.match(isWeekly).filter((r) => !r.cancelled).forEach((r) => r.flush(weekly()));
   });
 
   it('shows an error with Retry when the period summary fails', () => {
@@ -477,7 +536,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     openWith(null);
     expect(el().textContent).toContain('No team progress yet');
     expect(q('team-progress-detail')).toBeNull();
-    http.expectNone((r) => !isTime(r));
+    http.expectNone((r) => !isSide(r));
   });
 
   it('filters the overview client-side by project and module', () => {
@@ -498,32 +557,36 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-overdue-t1')).not.toBeNull();
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
-    http.expectNone((r) => !isTime(r));
+    http.expectNone((r) => !isSide(r));
   });
 
-  it('project breakdown is a bar chart of allocated vs completed hours, most allocated first, on one scale', () => {
+  it('projects are stacked hour bars, at-risk first with a red border that says why', () => {
     openWith();
 
-    const rows = [...el().querySelectorAll<HTMLElement>('[data-testid="tp-project-row"]')];
-    expect(rows.map((r) => r.querySelector('.tp-project-name')!.textContent!.trim())).toEqual(['Apollo', 'Zeus']);
-    expect(rows.map((r) => r.querySelector('.tp-project-figures')!.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
-      '40 h / 120 h · 33%',
-      '10 h / 80 h · 13%',
+    const cols = [...q('tp-projects')!.querySelectorAll<HTMLElement>('[data-testid="bar-chart-col"]')];
+    expect(cols.map((c) => c.getAttribute('data-key'))).toEqual(['p1', 'p2']);
+    expect(cols.map((c) => c.classList.contains('bc-col--alert'))).toEqual([true, false]);
+    expect(cols.map((c) => c.querySelector('[data-testid="bar-chart-label"]')!.textContent!.trim())).toEqual(['APO', 'ZEU']);
+    expect([...cols[0].querySelectorAll('[data-segment]')].map((s) => s.getAttribute('data-segment'))).toEqual([
+      'completed',
+      'inProgress',
+      'notStarted',
+      'untasked',
     ]);
-    const width = (r: HTMLElement, id: string) => (r.querySelector(`[data-testid="${id}"]`) as HTMLElement).style.width;
-    // The largest allocation (120 h) is the full track.
-    expect(width(rows[0], 'tp-project-allocated')).toBe('100%');
-    expect(width(rows[0], 'tp-project-completed')).toBe('33.3%');
-    expect(width(rows[1], 'tp-project-allocated')).toBe('66.7%');
-    expect(width(rows[1], 'tp-project-completed')).toBe('8.3%');
-    expect(q('tp-projects')!.querySelector('[role="img"]')!.getAttribute('aria-label')).toContain('Apollo: 40 h completed of 120 h allocated');
+    expect(q('tp-projects')!.querySelector('[role="img"]')!.getAttribute('aria-label')).toContain('Apollo: 120 h allocated.');
+
+    cols[0].dispatchEvent(new Event('mouseenter'));
+    (cols[0].querySelector('[data-segment="completed"]') as HTMLElement).dispatchEvent(new Event('mouseenter'));
+    render();
+    expect(q('tp-projects')!.querySelector('[data-testid="bar-chart-headline"]')!.textContent!.replace(/\s+/g, ' ').trim()).toContain('Apollo · Completed40 h33% of 120 h allocated');
+    expect(q('tp-projects')!.querySelector('[data-testid="bar-chart-alert"]')!.textContent!.trim()).toBe('At risk: 6 overdue tasks (20 h) in Backend');
   });
 
-  it('the project breakdown follows the project filter', () => {
+  it('the project chart follows the project filter', () => {
     openWith();
     fixture.componentInstance.setProject('p2');
     render();
-    expect([...el().querySelectorAll('[data-testid="tp-project-row"]')].length).toBe(1);
+    expect(q('tp-projects')!.querySelectorAll('[data-testid="bar-chart-col"]').length).toBe(1);
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
   });
@@ -536,7 +599,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     const slices = [...el().querySelectorAll('[data-testid="tp-overdue-slice"]')].map((r) =>
       [...r.children].map((c) => c.textContent!.trim()).filter((t) => t !== '').join(' '),
     );
-    expect(slices).toEqual(['Apollo 20 h 77%', 'Zeus 6 h 23%']);
+    expect(slices).toEqual(['Apollo 77% 20 h', 'Zeus 23% 6 h']);
     expect(q('tp-overdue-pie')).not.toBeNull();
     const row = (id: string) => q(id)!.closest('tr')!.textContent!.replace(/\s+/g, ' ');
     expect(row('tp-overdue-t1')).toContain('6 h');
@@ -551,7 +614,7 @@ describe('TeamProgressDetailDialogComponent', () => {
     expect(q('tp-tile-count-overdue')!.textContent).toContain('9 tasks');
   });
 
-  /** The Status Distribution legend rows as [label, hours, percent]. */
+  /** The Status Distribution legend rows as [label, percent, hours] (the share sits beside the colour). */
   const legendRows = () =>
     [...el().querySelectorAll('[data-testid="tp-legend-row"]')].map((r) =>
       [...r.children].map((c) => c.textContent!.trim()).filter((t) => t !== ''),
@@ -560,16 +623,16 @@ describe('TeamProgressDetailDialogComponent', () => {
   it('status distribution: overdue is its own slice, carved out of In progress / Not started so it still adds up', () => {
     openWith();
     expect(legendRows()).toEqual([
-      ['Completed', '50 h', '(25%)'],
-      ['In progress', '18 h', '(9%)'],
-      ['Overdue', '26 h', '(13%)'],
-      ['Not started', '6 h', '(3%)'],
-      ['Not yet tasked', '100 h', '(50%)'],
+      ['Completed', '25%', '50 h'],
+      ['In progress', '9%', '18 h'],
+      ['Overdue', '13%', '26 h'],
+      ['Not started', '3%', '6 h'],
+      ['Not yet tasked', '50%', '100 h'],
     ]);
-    const slices = [...q('tp-donut')!.querySelectorAll('circle[stroke-dasharray]')];
-    expect(slices.map((c) => c.getAttribute('stroke'))).toContain('#ef4444');
+    const slices = [...q('tp-donut')!.querySelectorAll('[data-testid="donut-segment"]')];
+    expect(slices.map((c) => c.getAttribute('fill'))).toContain('#ef4444');
     expect(q('tp-donut-overdue')).toBeNull();
-    expect(q('tp-donut')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
+    expect(q('tp-donut')!.querySelector('svg')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
     expect(q('tp-legend-note')!.textContent).toContain('without the overdue');
   });
 
@@ -577,8 +640,8 @@ describe('TeamProgressDetailDialogComponent', () => {
     openWith();
     fixture.componentInstance.setProject('p2');
     render();
-    expect(legendRows()).toContainEqual(['Overdue', '6 h', '(7.5%)']);
-    expect(legendRows()).toContainEqual(['Not started', '4 h', '(5%)']);
+    expect(legendRows()).toContainEqual(['Overdue', '7.5%', '6 h']);
+    expect(legendRows()).toContainEqual(['Not started', '5%', '4 h']);
     expectEmployees().flush(employeePage());
     expectWeekly().flush(weekly());
   });
@@ -622,23 +685,48 @@ describe('TeamProgressDetailDialogComponent', () => {
   });
 
   describe('planned vs worked sections', () => {
-    it('loads the week for All time and draws planned vs worked, unscheduled work and the workload ranking', () => {
+    it('has no Unscheduled work panel and never asks for unscheduled work', () => {
+      openWith(summary(), 'week');
+      http.match(isPeriod).forEach((r) => r.flush({}));
+      render();
+      expect(q('tptd-unscheduled')).toBeNull();
+      expect(el().textContent).not.toContain('Unscheduled work');
+      http.expectNone(isUnscheduled);
+    });
+
+    it('Team members shows a ranked bar list by default and switches to the table', () => {
       openWith(summary(), 'all');
-      const req = http.expectOne(isTime);
-      expect(req.request.params.get('period')).toBe('week');
-      req.flush(ledTime({
-        plannedMinutes: 600, clockedMinutes: 540, scheduledMinutes: 360, outsideSlotMinutes: 60, noPlanMinutes: 120, coveragePercent: 80,
-        buckets: [{ from: '2026-10-26', to: '2026-10-26', plannedMinutes: 120, scheduledMinutes: 60, unscheduledMinutes: 30 }],
-        workload: [workloadRow({ displayName: 'Ada', plannedMinutes: 600, utilizationPercent: 125, expectedMinutes: 480 })],
-        unscheduled: [{ employeeId: 'e1', displayName: 'Ada', taskId: 't1', shortId: 'T-1', title: 'Fix bug', start: '2026-10-26T09:00:00Z', end: '2026-10-26T10:30:00Z', minutes: 90, kind: 'no_plan' }],
-        unscheduledTotal: 1
-      }));
+      http.expectOne(isTime).flush(ledTime());
       render();
 
-      expect(q('tptd-coverage')!.textContent).toContain('80%');
-      expect(q('tptd-unscheduled')!.textContent).toContain('Worked without a matching Planner slot.');
-      expect(el().querySelectorAll('[data-testid="tptd-unscheduled-row"]').length).toBe(1);
-      expect(q('tptd-workload')).toBeNull();
+      expect(q('tp-members-chart')).not.toBeNull();
+      expect(q('tp-member-bar-e1')!.getAttribute('aria-label')).toContain('10 h completed');
+      expect(q('tp-member-bar-e1')!.querySelector('.tp-barlist__value')!.textContent!.trim()).toBe('24 h');
+      expect(q('tp-members-tab-totalHours')!.getAttribute('aria-pressed')).toBe('true');
+      expect(q('tp-ov-employee-e1')).toBeNull();
+
+      q('tp-members-view-table')!.click();
+      render();
+      expect(q('tp-members-chart')).toBeNull();
+      expect(q('tp-ov-employee-e1')).not.toBeNull();
+      expect(q('tp-members-view-table')!.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('a Team members tab ranks by that status on the server, from page 1, and shows its hours', () => {
+      openWith(summary(), 'all');
+      http.expectOne(isTime).flush(ledTime());
+      render();
+
+      q('tp-members-tab-completedHours')!.click();
+      render();
+      const req = expectEmployees();
+      expect(req.request.params.get('sort')).toBe('completedHours');
+      expect(req.request.params.get('direction')).toBe('desc');
+      expect(req.request.params.get('pageNumber')).toBe('1');
+      req.flush(employeePage());
+      render();
+      expect(q('tp-members-tab-completedHours')!.getAttribute('aria-pressed')).toBe('true');
+      expect(q('tp-member-bar-e1')!.querySelector('.tp-barlist__value')!.textContent!.trim()).toBe('10 h');
     });
 
     it('one Team members table: estimate hours and this week time side by side, matched by employee', () => {
@@ -648,6 +736,8 @@ describe('TeamProgressDetailDialogComponent', () => {
           workloadRow({ employeeId: 'e1', displayName: 'Ann Lee', plannedMinutes: 600, clockedMinutes: 540, unscheduledMinutes: 30, utilizationPercent: 125, expectedMinutes: 480 })
         ]
       }));
+      render();
+      q('tp-members-view-table')!.click();
       render();
 
       expect(q('tp-ov-employees')!.textContent).toContain('Team members');
@@ -683,29 +773,9 @@ describe('TeamProgressDetailDialogComponent', () => {
       render();
       http.match(isEmployees).forEach((r) => r.flush(employeePage()));
       http.match(isPeriod).forEach((r) => r.flush({}));
+      http.match(isWeekly).forEach((r) => r.flush(weekly()));
 
       expect(http.expectOne(isTime).request.params.get('period')).toBe('month');
-    });
-
-    it('coverage is "—" without a plan, and Planner off hides the plan sections', () => {
-      openWith(summary(), 'all');
-      http.expectOne(isTime).flush(ledTime({ plannerEnabled: false, clockedMinutes: 120 }));
-      render();
-
-      expect(q('tptd-planner-off')!.textContent).toContain('2h clocked');
-      expect(q('tptd-unscheduled')).toBeNull();
-      expect(q('tptd-coverage')).toBeNull();
-    });
-
-    it('shows a retry on failure', () => {
-      openWith(summary(), 'all');
-      http.expectOne(isTime).flush('boom', { status: 500, statusText: 'Server Error' });
-      render();
-
-      expect(q('tptd-error')).not.toBeNull();
-      (q('tptd-error')!.querySelector('button') as HTMLButtonElement).click();
-      render();
-      expect(http.expectOne(isTime).request.params.get('period')).toBe('week');
     });
   });
 });

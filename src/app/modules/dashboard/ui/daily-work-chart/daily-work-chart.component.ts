@@ -1,26 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { WeekDayProgress } from '../../models/weekly-work-progress.model';
+import { barDayTitle, barWeekday } from '../dashboard-bar-chart/bar-chart-dates.util';
+import {
+  DashboardBar,
+  DashboardBarChartComponent,
+  DashboardBarHeadline,
+  DashboardBarLegendItem
+} from '../dashboard-bar-chart/dashboard-bar-chart.component';
 
-interface DayColumn {
-  key: string;
-  name: string;
-  /** "6h / 5h": scheduled / worked, or worked / expected without the planner. */
-  hoursText: string;
-  scheduledHeight: number;
-  workedHeight: number;
-  tooltip: string;
-}
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** The axis used when nothing was expected, scheduled or worked all week. */
-const EMPTY_AXIS_MINUTES = 8 * 60;
-
-/** Day name and "26 Oct" from a yyyy-MM-dd date, without going through UTC (no time-zone shift). */
-function describeDate(isoDate: string): { name: string; short: string } {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  return { name: DAY_NAMES[new Date(y, m - 1, d).getDay()], short: `${d} ${MONTHS[m - 1] ?? ''}`.trim() };
-}
+const SCHEDULED_COLOR = '#3b82f6';
+const WORKED_COLOR = '#22c55e';
+const EXPECTED_COLOR = 'var(--color-text-secondary)';
 
 /** "6h" or "5.5h" from minutes. */
 export function formatDayHours(minutes: number): string {
@@ -28,71 +18,84 @@ export function formatDayHours(minutes: number): string {
 }
 
 /**
- * Daily Work vs Schedule (Weekly Work Progress card and popup): per day a Scheduled bar and a Worked bar, and the
- * Expected hours as a dashed line. The axis is the week's largest figure rounded up to an even number of hours.
- * Without the planner the Scheduled series is left out and the labels read worked / expected.
+ * Daily Work vs Schedule (Weekly Work Progress card and popup), drawn by the shared dashboard bar chart: per day a
+ * Scheduled bar beside a Worked bar, and the Expected hours as a dash across the day. Without the planner the
+ * Scheduled bar is left out. With a `heading`, the headline reads the week's worked hours until a day is hovered,
+ * then that day's worked hours against its schedule (or expected hours).
  */
 @Component({
   selector: 'app-daily-work-chart',
   standalone: true,
-  templateUrl: './daily-work-chart.component.html',
-  styleUrl: './daily-work-chart.component.css',
-  host: { class: 'flex flex-col' },
+  imports: [DashboardBarChartComponent],
+  template: `
+    <app-dashboard-bar-chart
+      class="min-h-0 flex-1"
+      data-testid="daily-work-chart"
+      axisSuffix="h"
+      emptyText="Nothing expected, scheduled or worked this week"
+      [bars]="bars()"
+      [headline]="headline()"
+      [compactHeadline]="compactHeadline()"
+      [hideAxis]="compact()"
+      [legend]="legend()"
+      [ariaLabel]="summary()"
+    />
+  `,
+  host: { class: 'flex min-h-0 flex-col' },
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DailyWorkChartComponent {
   readonly days = input.required<readonly WeekDayProgress[]>();
   readonly showScheduled = input(true);
-  /** Hides the hour axis and the per-day hours line where space is tight. */
+  /** Hides the hour axis where space is tight. */
   readonly compact = input(false);
+  /** The headline's label; empty leaves the headline out. */
+  readonly heading = input('');
+  /** The headline on one line (cards). */
+  readonly compactHeadline = input(true);
 
-  protected readonly axisMinutes = computed(() => {
-    const max = Math.max(
-      0,
-      ...this.days().map((d) => Math.max(d.expectedMinutes, d.workedMinutes, this.showScheduled() ? d.scheduledMinutes : 0))
-    );
-    if (max === 0) return EMPTY_AXIS_MINUTES;
-    return Math.ceil(max / 120) * 120;
-  });
+  protected readonly legend = computed<DashboardBarLegendItem[]>(() => [
+    ...(this.showScheduled() ? [{ label: 'Scheduled', color: SCHEDULED_COLOR }] : []),
+    { label: 'Worked', color: WORKED_COLOR },
+    { label: 'Expected', color: EXPECTED_COLOR, marker: true }
+  ]);
 
-  protected readonly axisLabels = computed(() => {
-    const axis = this.axisMinutes();
-    return [axis, axis / 2, 0].map(formatDayHours);
-  });
-
-  protected readonly columns = computed<DayColumn[]>(() => {
-    const axis = this.axisMinutes();
+  protected readonly bars = computed<DashboardBar[]>(() => {
     const scheduled = this.showScheduled();
     return this.days().map((d) => {
-      const { name, short } = describeDate(d.date);
+      const title = barDayTitle(d.date);
       const parts = [
         scheduled ? `scheduled ${formatDayHours(d.scheduledMinutes)}` : null,
         `worked ${formatDayHours(d.workedMinutes)}`,
         `expected ${formatDayHours(d.expectedMinutes)}`
       ].filter((p): p is string => p !== null);
+      const worked = [{ key: 'worked', value: d.workedMinutes / 60, color: WORKED_COLOR }];
       return {
         key: d.date,
-        name,
-        hoursText: scheduled
-          ? `${formatDayHours(d.scheduledMinutes)} / ${formatDayHours(d.workedMinutes)}`
-          : `${formatDayHours(d.workedMinutes)} / ${formatDayHours(d.expectedMinutes)}`,
-        scheduledHeight: (d.scheduledMinutes / axis) * 100,
-        workedHeight: (d.workedMinutes / axis) * 100,
-        tooltip: `${name} ${short}: ${parts.join(', ')}`
+        label: barWeekday(d.date),
+        title,
+        valueText: `${formatDayHours(d.workedMinutes)} worked`,
+        chip: scheduled
+          ? `of ${formatDayHours(d.scheduledMinutes)} scheduled`
+          : `of ${formatDayHours(d.expectedMinutes)} expected`,
+        segments: scheduled ? [{ key: 'scheduled', value: d.scheduledMinutes / 60, color: SCHEDULED_COLOR }] : worked,
+        pair: scheduled ? worked : undefined,
+        marker: d.expectedMinutes / 60,
+        tooltip: `${title}: ${parts.join(', ')}`
       };
     });
   });
 
-  /** Points of the Expected line in a 0-100 box: one per day, at the centre of its column. */
-  protected readonly expectedPoints = computed(() => {
-    const days = this.days();
-    const axis = this.axisMinutes();
-    return days
-      .map((d, i) => `${(((i + 0.5) / days.length) * 100).toFixed(2)},${(100 - (d.expectedMinutes / axis) * 100).toFixed(2)}`)
-      .join(' ');
+  protected readonly headline = computed<DashboardBarHeadline | null>(() => {
+    if (!this.heading()) return null;
+    const worked = this.days().reduce((n, d) => n + d.workedMinutes, 0);
+    const expected = this.days().reduce((n, d) => n + d.expectedMinutes, 0);
+    return {
+      label: this.heading(),
+      value: `${formatDayHours(worked)} worked`,
+      chip: expected > 0 ? { text: `of ${formatDayHours(expected)} expected`, tone: 'neutral' } : null
+    };
   });
 
-  protected readonly summary = computed(() =>
-    `Daily work against schedule: ${this.columns().map((c) => c.tooltip).join('; ')}`
-  );
+  protected readonly summary = computed(() => `Daily work against schedule: ${this.bars().map((b) => b.tooltip).join('; ')}`);
 }

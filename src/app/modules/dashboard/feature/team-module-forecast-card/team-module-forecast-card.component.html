@@ -1,0 +1,237 @@
+<app-widget-card
+  class="group block h-full"
+  data-testid="team-module-forecast-card"
+  title="Module overtime forecast"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load the module forecast."
+  emptyMessage="No open modules you lead with a deadline ahead."
+  (retry)="retry()"
+>
+  <div widget-actions class="flex min-w-0 items-center gap-1">
+    <app-popout-header-actions
+      [refreshing]="refreshing()"
+      [expanded]="false"
+      [canExpand]="true"
+      [revealOnHover]="true"
+      (refresh)="retry()"
+      (expand)="openDetail()"
+    />
+  </div>
+
+  @if (store.data(); as data) {
+    <ng-template #centreTpl>
+      <p class="mf-donut-center">
+        <span class="mf-donut-value" data-testid="mf-rate">{{ rate(data.totals.teamRate) }}</span>
+        <span class="mf-donut-of">4-wk rate</span>
+      </p>
+    </ng-template>
+
+    <ng-template #chartTpl>
+      <app-module-forecast-project-chart
+        [limit]="chartFit().bars"
+        [labelChars]="chartFit().labelChars"
+        [compactHeadline]="!narrowChart()"
+        [overloadCounts]="overloadCounts()"
+        [maxTaskRate]="data.totals.maxTaskRate"
+        class="mf-chart"
+        heading="Won't fit by project"
+        [projects]="data.projects"
+      />
+    </ng-template>
+
+    @switch (view()) {
+      @case ('mini') {
+        <app-dashboard-summary-strip
+          class="mf-mini"
+          data-testid="mf-mini"
+          [slices]="donutSlices()"
+          [keySlices]="donutSlices()"
+          [cards]="summaryCards()"
+          [donutLabel]="donutLabel()"
+          [(active)]="hovered"
+          (cardOpened)="openSection($event)"
+        >
+          <ng-container [ngTemplateOutlet]="centreTpl" />
+        </app-dashboard-summary-strip>
+      }
+      @default {
+        <div
+          class="mf-grow"
+          [class.mf-grow--xs]="view() === 'xs'"
+          data-testid="mf-layout"
+          [attr.data-view]="view()"
+        >
+          <div class="mf-hero" data-testid="mf-hero">
+            <app-dashboard-donut
+              class="mf-donut"
+              data-testid="mf-donut"
+              [size]="donutPx()"
+              [slices]="donutSlices()"
+              [ariaLabel]="donutLabel()"
+              [(active)]="hovered"
+            >
+              <ng-container [ngTemplateOutlet]="centreTpl" />
+            </app-dashboard-donut>
+            @if (view() === 'xs' && plan().legend) {
+              <app-donut-key
+                class="mf-xs-legend"
+                data-testid="mf-xs-legend"
+                ariaLabel="Remaining hours"
+                rowTestId="mf-legend-row"
+                [showValue]="true"
+                [slices]="donutSlices()"
+                [(active)]="hovered"
+              />
+            }
+            @if (view() !== 'xs' || plan().figure) {
+              <div class="mf-hero-figure">
+                <p
+                  class="mf-figure"
+                  [class.mf-figure--ok]="data.totals.overtimeHours <= 0"
+                  data-testid="mf-hero-figure"
+                >
+                  {{ hero() }}
+                </p>
+                <p class="mf-sub" data-testid="mf-hero-sub">{{ heroSub() }}</p>
+                <p class="mf-caption" data-testid="mf-caption">{{ caption() }}</p>
+                @if (view() !== 'xs' && data.totals.overload > 0) {
+                  <span
+                    class="mf-badge mf-badge--hero"
+                    data-testid="mf-hero-overload"
+                    [style.--tone]="statusMeta.overload.color"
+                    ><span aria-hidden="true">⚠</span> {{ data.totals.overload }} in overload</span
+                  >
+                }
+                @if (view() !== 'xs') {
+                  <p class="mf-window">{{ window() }}</p>
+                }
+              </div>
+            }
+            @if (plan().heroChart) {
+              <div class="mf-hero-chart" data-testid="mf-chart">
+                <ng-container [ngTemplateOutlet]="chartTpl" />
+              </div>
+            }
+            @if (view() === 'standard' && heroLegend()) {
+              <app-donut-key
+                class="mf-legend"
+                variant="chips"
+                ariaLabel="Remaining hours"
+                rowTestId="mf-legend-row"
+                [showValue]="true"
+                [slices]="donutSlices()"
+                [(active)]="hovered"
+              />
+            }
+          </div>
+
+          @if (plan().tiles && rowCards().length > 0) {
+            <app-dashboard-summary-row
+              data-testid="mf-summary-row"
+              [cards]="rowCards()"
+              (cardOpened)="openSection($event)"
+            />
+          } @else if (plan().tiles) {
+            <ul
+              class="mf-tiles"
+              [class.mf-tiles--4]="plan().tileColumns === 4"
+              aria-label="Totals"
+              data-testid="mf-tiles"
+            >
+              @for (tile of tiles(); track tile.key) {
+                <li
+                  class="mf-tile"
+                  [style.--tone]="tile.color"
+                  [attr.data-testid]="'mf-tile-' + tile.key"
+                  [title]="tile.label + ': ' + tile.title"
+                >
+                  <span class="mf-tile-count">{{ tile.value }}</span>
+                  <span class="mf-tile-label">{{ tile.label }}</span>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (plan().chart) {
+            <section
+              class="mf-panel mf-chart-panel"
+              data-testid="mf-chart"
+              [style.height.px]="plan().chartPx"
+            >
+              <ng-container [ngTemplateOutlet]="chartTpl" />
+            </section>
+          }
+
+          @if (plan().rankingRows > 0) {
+            <section class="mf-panel mf-ranking" data-testid="mf-ranking">
+              <div class="mf-list-head">
+                <p class="mf-section-title">Modules at risk</p>
+                <button
+                  type="button"
+                  class="mf-link"
+                  data-testid="mf-view-all"
+                  (click)="openDetail($event)"
+                >
+                  View all ›
+                </button>
+              </div>
+              <ol>
+                @for (row of ranking(); track row.moduleId; let i = $index) {
+                  <li
+                    class="mf-rank-row"
+                    data-testid="mf-rank-row"
+                    [title]="
+                      row.path +
+                      ': task rate ' +
+                      rate(row.conversionRate) +
+                      ', needs ' +
+                      rate(row.requiredRate)
+                    "
+                  >
+                    <span class="mf-rank" [class.mf-rank--top]="i < 3">{{ i + 1 }}</span>
+                    <span
+                      class="mf-dot"
+                      [style.--tone]="statusMeta[row.status].color"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="mf-row-text">
+                      <span class="mf-row-name">{{ row.title }}</span>
+                      <span class="mf-row-rate" data-testid="mf-row-rate">{{
+                        rowRate(row, data.totals)
+                      }}</span>
+                    </span>
+                    <span class="mf-rank-bar" aria-hidden="true"
+                      ><span [style.width.%]="bar(row.conversionRate)"></span
+                      ><i [style.left.%]="bar(row.requiredRate)"></i
+                    ></span>
+                    @if (row.status === 'overload') {
+                      <span
+                        class="mf-badge"
+                        data-testid="mf-overload"
+                        [style.--tone]="statusMeta.overload.color"
+                        ><span aria-hidden="true">⚠</span> Overload</span
+                      >
+                    } @else {
+                      <span class="mf-chip" [style.--tone]="statusMeta[row.status].color">{{
+                        chip(row.overtimeHours, row.status)
+                      }}</span>
+                    }
+                  </li>
+                } @empty {
+                  <li class="mf-row-empty">Every module is on track</li>
+                }
+              </ol>
+            </section>
+          }
+        </div>
+      }
+    }
+  }
+</app-widget-card>
+
+<app-team-module-forecast-detail-dialog
+  [open]="detailOpen()"
+  [focusSection]="detailSection()"
+  (closed)="closeDetail()"
+/>

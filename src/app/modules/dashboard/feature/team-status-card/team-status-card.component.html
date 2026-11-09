@@ -21,40 +21,34 @@
   @if (store.data(); as data) {
     <!-- One donut size (DASHBOARD_DONUT_PX) in every view: the team total in the middle. -->
     <ng-template #donutTpl>
-      <div class="wbl-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="wbl-donut">
-        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
-          <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-          @for (arc of donut(); track arc.key) {
-            <circle
-              cx="21"
-              cy="21"
-              r="15.9155"
-              fill="none"
-              stroke-width="6"
-              [attr.stroke]="arc.color"
-              [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-              [attr.stroke-dashoffset]="arc.offset"
-            />
-          }
-        </svg>
+      <app-dashboard-donut
+        class="wbl-donut"
+        data-testid="wbl-donut"
+        [size]="donutPx()"
+        [slices]="hourSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hovered"
+      >
         <p class="wbl-donut-center" data-testid="wbl-center">
           @let worked = minutes(hours().worked);
           <span class="wbl-donut-value" [style.font-size.px]="valueFontPx(worked)">{{ worked }}</span>
           <span class="wbl-donut-of">Working hours</span>
         </p>
-      </div>
+      </app-dashboard-donut>
     </ng-template>
 
-    <ng-template #countsTpl>
-      <ul class="wbl-counts" aria-label="Team time today" data-testid="wbl-legend">
-        @for (row of hourLegend(); track row.key) {
-          <li [attr.data-testid]="'wbl-count-' + row.key">
-            <span class="wbl-dot" [style.background]="row.color"></span>
-            <span class="wbl-count-label">{{ row.label }}</span>
-            <span class="wbl-count">{{ minutes(row.minutes) }}</span>
-          </li>
-        }
-      </ul>
+    <ng-template #countsTpl let-variant>
+      <app-donut-key
+        class="wbl-counts"
+        data-testid="wbl-legend"
+        ariaLabel="Team time today"
+        rowTestId="wbl-count"
+        [keyedTestIds]="true"
+        [variant]="variant"
+        [showValue]="true"
+        [slices]="hourSlices()"
+        [(active)]="hovered"
+      />
     </ng-template>
 
     <ng-template #pillTpl>
@@ -84,7 +78,7 @@
                 <span [style.background]="arc.color" [style.width.%]="arc.length"></span>
               }
             </div>
-            <ng-container [ngTemplateOutlet]="countsTpl" />
+            <ng-container [ngTemplateOutlet]="countsTpl" [ngTemplateOutletContext]="{ $implicit: 'wrap' }" />
             @if (plan().pill) {
               <ng-container [ngTemplateOutlet]="pillTpl" />
             }
@@ -93,7 +87,7 @@
           <div class="wbl-mini" data-testid="wbl-mini">
             <div class="wbl-hero">
               <ng-container [ngTemplateOutlet]="donutTpl" />
-              <ng-container [ngTemplateOutlet]="countsTpl" />
+              <ng-container [ngTemplateOutlet]="countsTpl" [ngTemplateOutletContext]="{ $implicit: 'compact' }" />
             </div>
             @if (plan().pill) {
               <ng-container [ngTemplateOutlet]="pillTpl" />
@@ -106,7 +100,7 @@
           @if (view() === 'xs') {
             <div class="wbl-xs-head">
               <ng-container [ngTemplateOutlet]="donutTpl" />
-              <ng-container [ngTemplateOutlet]="countsTpl" />
+              <ng-container [ngTemplateOutlet]="countsTpl" [ngTemplateOutletContext]="{ $implicit: 'list' }" />
             </div>
             <ng-container [ngTemplateOutlet]="pillTpl" />
             @if (plan().rows > 0) {
@@ -256,9 +250,8 @@
 
           @if (plan().trend) {
             <section class="wbl-trend" data-testid="wbl-trend" aria-label="Working hours this week">
-              <p class="wbl-section-title">Working hours this week</p>
               @if (trendDays(); as days) {
-                <app-working-hours-chart class="wbl-trend-chart" [days]="days" />
+                <app-working-hours-chart class="wbl-trend-chart" heading="Working hours this week" [days]="days" />
               } @else {
                 <p class="wbl-trend-note">{{ trendFailed() ? "Couldn't load this week's hours." : 'Loading…' }}</p>
               }
