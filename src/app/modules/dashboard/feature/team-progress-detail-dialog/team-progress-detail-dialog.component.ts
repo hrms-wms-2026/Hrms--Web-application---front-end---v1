@@ -1,3 +1,5 @@
+import { ProjectHoursChartComponent } from '../../ui/project-hours-chart/project-hours-chart.component';
+import { orderProjectsForChart } from '../../utils/project-hours-chart.util';
 import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -21,6 +23,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
+import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
@@ -33,16 +36,18 @@ import {
 import {
   LedEmployeeProgressPage,
   LedEmployeeQuery,
+  LedEmployeeSort,
   LedPeriodProgress,
   LedProgressPeriod,
   LedTaskStatus,
   LedTimeProgress,
   LedWeeklyCompletion
 } from '../../models/team-progress-detail.model';
-import { TeamProgressTimeDetailComponent } from '../../ui/team-progress-time-detail/team-progress-time-detail.component';
 import { hoursText, timePeriodFor } from '../../utils/team-progress-time-format.util';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
 import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import {
   PROGRESS_STATUSES,
   PROGRESS_STATUS_BY_KEY,
@@ -68,6 +73,16 @@ interface ScopeFilters {
 interface PeriodQuery {
   period: DatedPeriod;
   filters: ScopeFilters;
+}
+
+/** Team members bar list tabs: the server sort fields with hours. */
+/** The members tabs sort by an hour column; 'completionRate' is the summary card's ranking, not a tab. */
+type MemberTab = Exclude<LedEmployeeSort, 'name' | 'completionRate'>;
+
+/** Weekly completion request: no period = the last 10 weeks. */
+interface WeeklyQuery {
+  filters: ScopeFilters;
+  period?: DatedPeriod;
 }
 
 interface OverviewTile {
@@ -149,13 +164,25 @@ interface OverdueHoursView {
 @Component({
   selector: 'app-team-progress-detail-dialog',
   standalone: true,
-  imports: [DatePipe, ModalComponent, SelectComponent, EmptyStateComponent, ErrorStateComponent, WeeklyCompletionChartComponent, TeamProgressTimeDetailComponent],
+  imports: [
+    DatePipe,
+    ModalComponent,
+    SelectComponent,
+    EmptyStateComponent,
+    ErrorStateComponent,
+    WeeklyCompletionChartComponent,
+    DashboardDonutComponent,
+    DonutKeyComponent,
+    ProjectHoursChartComponent
+  ],
   templateUrl: './team-progress-detail-dialog.component.html',
   styleUrl: './team-progress-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TeamProgressDetailDialogComponent {
   readonly open = input(false);
+  /** Opened from a summary card: the section to scroll to (weekly, projects, overdue, members). */
+  readonly focusSection = input<string | null>(null);
   readonly summary = input<LedWorkProgressResponse | null>(null);
   /** Due-date window. The card owns it: the dropdown only emits `periodChange`. */
   readonly period = input<LedProgressPeriod>('all');
@@ -167,7 +194,6 @@ export class TeamProgressDetailDialogComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly formatHours = formatHourValue;
-  protected readonly weekCount = TEAM_PROGRESS_WEEKS;
 
   protected readonly periodOptions: readonly SelectOption[] = [
     { value: 'all', label: 'All time' },
@@ -188,14 +214,21 @@ export class TeamProgressDetailDialogComponent {
   protected readonly overviewEmployeeSearchText = signal('');
   private readonly overviewEmployeeSearch = signal('');
   /** Pages reset to 1 whenever the period changes (linkedSignal), in the same change as the period. */
-  protected readonly overviewEmployeePage = linkedSignal({ source: this.period, computation: () => 1 });
+  protected readonly overviewEmployeePage = linkedSignal({ source: () => `${this.period()}|${this.membersTab()}`, computation: () => 1 });
   protected readonly overviewEmployees = signal<RemoteState<LedEmployeeProgressPage>>({ status: 'idle', data: null });
 
   // ---- Period summary (server, week / month only) ----
   protected readonly periodSummary = signal<RemoteState<LedPeriodProgress>>({ status: 'idle', data: null });
 
-  // ---- Weekly completion (server, last 10 weeks, never filtered by the period) ----
+  // ---- Weekly completion (server: last 10 weeks for All time, the days of this week or the weeks of this month) ----
   protected readonly weekly = signal<RemoteState<LedWeeklyCompletion>>({ status: 'idle', data: null });
+  /** What the chart's buckets cover. A server without period support (no `granularity`) always sends
+   * the last 10 weeks, so the tag says so whatever period is selected. */
+  protected readonly weeklyRange = computed(() => {
+    const period = this.period();
+    if (period === 'all' || !this.weekly().data?.granularity) return `Last ${TEAM_PROGRESS_WEEKS} weeks`;
+    return period === 'week' ? 'This week' : 'This month';
+  });
 
   // ---- Planned vs worked (server, the period's week / month - All time reads the week - and the filters) ----
   protected readonly time = signal<RemoteState<LedTimeProgress>>({ status: 'idle', data: null });
@@ -205,12 +238,35 @@ export class TeamProgressDetailDialogComponent {
   protected readonly plannerEnabled = computed(() => this.time().data?.plannerEnabled ?? false);
   protected readonly timePeriodLabel = computed(() => (this.time().data?.period === 'month' ? 'This month' : 'This week'));
 
+  /** Team members: a ranked bar list per person (default) or the full table. */
+  protected readonly membersView = signal<'chart' | 'table'>('chart');
+  /** The bar list's tab: which hours rank the people (sorted on the server, highest first). */
+  protected readonly membersTab = signal<MemberTab>('totalHours');
+  protected readonly memberTabs: readonly { key: MemberTab; label: string; color: string }[] = [
+    { key: 'totalHours', label: 'Total', color: 'var(--color-info)' },
+    { key: 'completedHours', label: PROGRESS_STATUS_BY_KEY.completed.label, color: PROGRESS_STATUS_BY_KEY.completed.color },
+    { key: 'inProgressHours', label: PROGRESS_STATUS_BY_KEY.inProgress.label, color: PROGRESS_STATUS_BY_KEY.inProgress.color },
+    { key: 'notStartedHours', label: PROGRESS_STATUS_BY_KEY.notStarted.label, color: PROGRESS_STATUS_BY_KEY.notStarted.color }
+  ];
+  protected readonly memberTabColor = computed(() => this.memberTabs.find((t) => t.key === this.membersTab())?.color ?? 'var(--color-info)');
+  /** The page's people: the tab's hours, the bar as a share of the page's largest value. */
+  protected readonly memberBars = computed(() => {
+    const items = this.overviewEmployees().data?.items ?? [];
+    const tab = this.membersTab();
+    const scale = Math.max(0, ...items.map((e) => e[tab]));
+    return items.map((e) => ({ row: e, hours: e[tab], width: scale > 0 ? (e[tab] / scale) * 100 : 0 }));
+  });
+
+  setMembersTab(tab: MemberTab): void {
+    this.membersTab.set(tab);
+  }
+
+  setMembersView(view: 'chart' | 'table'): void {
+    this.membersView.set(view);
+  }
+
   /** The file download; a field so a test can stand in for the browser download. */
   downloadFile = downloadCsv;
-  protected readonly timeStatus = computed<'loading' | 'ready' | 'error'>(() => {
-    const status = this.time().status;
-    return status === 'idle' ? 'loading' : status;
-  });
   private timeKey: string | null = null;
   private timeSub: Subscription | null = null;
 
@@ -276,32 +332,13 @@ export class TeamProgressDetailDialogComponent {
 
   /** Project breakdown chart: the (filtered) projects, most allocated first. Allocated and completed bars share one scale
    * (the largest allocation, or completion when it is larger); % = completed of allocated, "—" without allocation. */
-  protected readonly projectBreakdown = computed(() => {
+  /** Projects for the chart (the picked one alone when filtered): at-risk first, then the largest allocation. */
+  protected readonly chartProjects = computed(() => {
     const summary = this.summary();
     if (!summary) return [];
     const selected = this.selectedProject();
-    const projects = selected ? [selected] : summary.projects;
-    const scale = Math.max(1, ...projects.map((p) => Math.max(p.hours.allocatedHours, p.hours.completedHours)));
-    const share = (h: number) => Math.round((h * 1000) / scale) / 10;
-    return projects
-      .map((p) => ({
-        id: p.projectId,
-        name: p.projectName,
-        allocated: p.hours.allocatedHours,
-        completed: p.hours.completedHours,
-        percent: p.hours.allocatedHours > 0 ? formatPercent(p.hours.completedHours, p.hours.allocatedHours) : '—',
-        allocatedShare: share(p.hours.allocatedHours),
-        completedShare: share(p.hours.completedHours),
-      }))
-      .sort((a, b) => b.allocated - a.allocated || a.name.localeCompare(b.name));
+    return orderProjectsForChart(selected ? [selected] : summary.projects);
   });
-  protected readonly projectChartLabel = computed(
-    () =>
-      'Allocated vs completed hours by project. ' +
-      this.projectBreakdown()
-        .map((p) => `${p.name}: ${formatHourValue(p.completed)} h completed of ${formatHourValue(p.allocated)} h allocated (${p.percent})`)
-        .join('; ')
-  );
 
   protected readonly overviewHours = computed<LedHourTotals | null>(() => {
     const summary = this.summary();
@@ -339,6 +376,35 @@ export class TeamProgressDetailDialogComponent {
 
   /** The donut and its legend. Overdue tasks are open work, so their hours come out of In progress / Not started and
    * show as their own slice: the parts still add up to the total. */
+  /** The Status Distribution slice (or legend row) under the pointer: the shared donut lights it. */
+  protected readonly hoveredPart = signal<string | null>(null);
+  /** The same for the overdue-by-project pie. */
+  protected readonly hoveredOverdue = signal<string | null>(null);
+  /** The Status Distribution donut: a little larger than the cards' (the popup has the room). */
+  protected readonly statusDonutPx = 192;
+
+  protected readonly donutSlices = computed<DashboardDonutSlice[]>(() =>
+    this.donutParts().map((p) => ({
+      key: p.key,
+      label: p.label,
+      value: Math.max(0, p.hours),
+      valueText: `${formatHourValue(p.hours)} h`,
+      percentText: p.percent,
+      color: p.color
+    }))
+  );
+
+  protected overdueSlices(slices: readonly { projectId: string; name: string; hours: number; color: string; percent: string }[]): DashboardDonutSlice[] {
+    return slices.map((s) => ({
+      key: s.projectId,
+      label: s.name,
+      value: s.hours,
+      valueText: `${formatHourValue(s.hours)} h`,
+      percentText: s.percent,
+      color: s.color
+    }));
+  }
+
   protected readonly donutParts = computed<DonutPart[]>(() => {
     const ov = this.overview();
     if (!ov) return [];
@@ -451,7 +517,7 @@ export class TeamProgressDetailDialogComponent {
       search: this.overviewEmployeeSearch() || undefined,
       ...this.serverFilters(),
       period: this.periodParam(),
-      sort: 'totalHours',
+      sort: this.membersTab(),
       direction: 'desc'
     };
   });
@@ -463,10 +529,11 @@ export class TeamProgressDetailDialogComponent {
     return { period, filters: this.serverFilters() };
   });
 
-  /** Only while open; narrowed by the project / module filters, never by the period. */
-  private readonly weeklyQuery = computed<ScopeFilters | null>(() => {
+  /** Only while open; narrowed by the project / module filters and the period. */
+  private readonly weeklyQuery = computed<WeeklyQuery | null>(() => {
     if (!this.open() || !this.summary()) return null;
-    return this.serverFilters();
+    const period = this.period();
+    return { filters: this.serverFilters(), period: period === 'all' ? undefined : period };
   });
 
   private readonly overviewEmployeeRequests = new Subject<LedEmployeeQuery>();
@@ -475,7 +542,7 @@ export class TeamProgressDetailDialogComponent {
   private overviewEmployeeKey: string | null = null;
   private readonly periodRequests = new Subject<PeriodQuery>();
   private periodKey: string | null = null;
-  private readonly weeklyRequests = new Subject<ScopeFilters>();
+  private readonly weeklyRequests = new Subject<WeeklyQuery>();
   private weeklyKey: string | null = null;
   /** Period summaries and weekly charts by query key, so flipping week / month / filters back and
    * forth doesn't refetch. Dropped when the card hands in a new summary (a refresh). */
@@ -484,6 +551,7 @@ export class TeamProgressDetailDialogComponent {
   private cacheFor: LedWorkProgressResponse | null = null;
 
   constructor() {
+    injectPopupSectionFocus(this.open, this.focusSection);
     // The period select drives both the allocation-period and the time calls.
     effect(() => {
       if (!this.open() || !this.summary()) return;
@@ -494,7 +562,9 @@ export class TeamProgressDetailDialogComponent {
       this.timeKey = key;
       untracked(() => this.loadTime(period, filters));
     });
-    inject(DestroyRef).onDestroy(() => this.timeSub?.unsubscribe());
+    inject(DestroyRef).onDestroy(() => {
+      this.timeSub?.unsubscribe();
+    });
 
     this.connect(
       this.overviewEmployeeRequests,
@@ -511,7 +581,7 @@ export class TeamProgressDetailDialogComponent {
     );
     this.connect(
       this.weeklyRequests,
-      (q) => cached(this.weeklyCache, JSON.stringify(q), () => this.api.getWeeklyCompletion(TEAM_PROGRESS_WEEKS, q)),
+      (q) => cached(this.weeklyCache, JSON.stringify(q), () => this.api.getWeeklyCompletion(TEAM_PROGRESS_WEEKS, q.filters, q.period)),
       this.weekly,
       () => (this.weeklyKey = null)
     );

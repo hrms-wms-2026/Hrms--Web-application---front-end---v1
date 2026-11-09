@@ -5,7 +5,8 @@ export type LedSortDirection = 'asc' | 'desc';
 
 export type LedTaskStatus = 'completed' | 'inProgress' | 'notStarted';
 
-export type LedEmployeeSort = 'totalHours' | 'completedHours' | 'inProgressHours' | 'notStartedHours' | 'name';
+/** 'completionRate': completed share of a person's hours (no hours last in both directions). */
+export type LedEmployeeSort = 'totalHours' | 'completedHours' | 'inProgressHours' | 'notStartedHours' | 'name' | 'completionRate';
 
 interface LedPage<T> {
   items: T[];
@@ -94,7 +95,11 @@ export interface LedWeeklyCompletionWeek {
  * partial week. Done tasks without a completion date can't be placed in a week: they are reported
  * as `undated*` instead of being guessed. */
 export interface LedWeeklyCompletion {
+  /** Buckets, oldest first. With `period=week` each one is a day, with `period=month` an ISO week clipped to the month. */
   weeks: LedWeeklyCompletionWeek[];
+  /** 'day' for `period=week`, else 'week'. Missing on servers without period support: then `weeks` are
+   * always the last N weeks, whatever period was asked for. */
+  granularity?: 'week' | 'day';
   /** Allocation of the (filtered) led scope, so a week can be read as a share of it. */
   allocatedHours: number;
   undatedCompletedHours: number;
@@ -167,4 +172,33 @@ export interface LedTimeProgress {
   /** The newest 200; unscheduledTotal is the full count. */
   unscheduled: LedUnscheduledRow[];
   unscheduledTotal: number;
+}
+
+export type LedUnscheduledKind = 'all' | 'no_plan' | 'outside_slot';
+
+/** Rows and minutes of one unscheduled-work kind (or all of them) in the window. */
+export interface LedUnscheduledKindTotal {
+  count: number;
+  minutes: number;
+}
+
+/** GET led-progress/time/unscheduled: one page (newest first) of the selected kind, plus every kind's totals for the tabs. */
+export interface LedUnscheduledPage extends LedPage<LedUnscheduledRow> {
+  period: LedTimePeriod;
+  from: string;
+  to: string;
+  plannerEnabled: boolean;
+  kind: LedUnscheduledKind;
+  all: LedUnscheduledKindTotal;
+  noPlan: LedUnscheduledKindTotal;
+  outsideSlot: LedUnscheduledKindTotal;
+}
+
+export interface LedUnscheduledQuery {
+  period: LedTimePeriod;
+  kind?: LedUnscheduledKind;
+  pageNumber?: number;
+  pageSize?: number;
+  projectId?: string;
+  objectiveId?: string;
 }

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TeamScheduleApiService } from '../../data-access/team-schedule-api.service';
@@ -98,6 +99,7 @@ describe('TeamScheduleCardComponent', () => {
     await TestBed.configureTestingModule({
       imports: [TeamScheduleCardComponent],
       providers: [
+        provideRouter([]),
         TeamScheduleStore,
         TeamScheduleWeekStore,
         { provide: TeamScheduleApiService, useValue: { getTeamDay, getTeamWeek } },
@@ -135,65 +137,117 @@ describe('TeamScheduleCardComponent', () => {
     expect(el.textContent).toContain("Couldn't load the team's schedule.");
   });
 
-  it('204x204 is mini: the 140px item donut with total items and its legend', async () => {
+  /** Reports the 2-row strip's size for a widget host width (the strip fills the body: host minus 32px). */
+  function stripResize(fixture: ComponentFixture<TeamScheduleCardComponent>, hostWidth: number): void {
+    FakeResizeObserver.instances.at(-1)!.trigger(hostWidth - 32, 150);
+    fixture.detectChanges();
+  }
+
+  it('204x204 is mini: the shared strip with the item donut and the count in it, no stacked bar', async () => {
     const { el } = await setup(response(), { width: 204, height: 204 });
 
-    expect((q(el, 'tsc-donut') as HTMLElement).style.width).toBe('140px');
-    expect(squash(q(el, 'tsc-center'))).toBe('5Totalitems');
+    expect(q(el, 'tsc-mini')).toBeTruthy();
+    expect(q(el, 'summary-strip-donut')).toBeTruthy();
+    expect(q(el, 'tsc-mini-count')!.textContent!.trim()).toBe('5');
+    expect(q(el, 'tsc-mini-bar')).toBeNull();
+    // The planner link lives only in the popup now.
+    expect(q(el, 'tsc-open-planner')).toBeNull();
+  });
+
+  it('a wide 2-row card adds the key and four summary cards, loading the week once the first card shows', async () => {
+    const { el, fixture, getTeamWeek } = await setup(response(), { width: 1812, height: 204 });
+    expect(getTeamWeek).not.toHaveBeenCalled();
+    stripResize(fixture, 1812);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el.querySelector('app-donut-key')).toBeTruthy();
+    expect(el.querySelectorAll('app-dashboard-summary-card').length).toBe(4);
+    expect(getTeamWeek).toHaveBeenCalledOnce();
+    expect(el.textContent).toContain('Needs a plan');
+    stripResize(fixture, 1700);
+    expect(getTeamWeek).toHaveBeenCalledOnce();
+  });
+
+  it('browsing to another week in the popup leaves the coverage card on the current week', async () => {
+    const { el, fixture, getTeamWeek } = await setup(response(), { width: 1812, height: 204 });
+    getTeamWeek.mockImplementation((start: string | null) =>
+      of(start ? weekResponse({ weekStart: start, totals: { plannedMinutes: 60, clockedMinutes: 0, scheduledMinutes: 6, unscheduledMinutes: 0, coveragePercent: 10 } }) : weekResponse({ totals: { plannedMinutes: 600, clockedMinutes: 0, scheduledMinutes: 480, unscheduledMinutes: 0, coveragePercent: 80 } })),
+    );
+    stripResize(fixture, 1812);
+    expect(el.textContent).toContain('80%');
+    TestBed.inject(TeamScheduleWeekStore).shiftWeek(-1);
+    fixture.detectChanges();
+    expect(getTeamWeek).toHaveBeenCalledTimes(2);
+    expect(el.textContent).toContain('80%');
+    expect(el.textContent).not.toContain('10%');
+  });
+
+  it('a failed week shows the week cards as failed', async () => {
+    const { el, fixture, getTeamWeek } = await setup(response(), { width: 1812, height: 204 });
+    getTeamWeek.mockImplementation(() => throwError(() => new Error('down')));
+    stripResize(fixture, 1812);
+    expect(el.querySelectorAll('[data-testid="summary-retry"]').length).toBe(2);
+  });
+
+  it('a summary card opens the popup at its section', async () => {
+    const { el, fixture } = await setup(response(), { width: 1812, height: 204 });
+    stripResize(fixture, 1812);
+    (el.querySelectorAll('[data-testid="summary-card"]')[3] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.detailOpen()).toBe(true);
+    expect(fixture.componentInstance.detailSection()).toBe('status');
+  });
+
+  it('the chips count over capacity and on leave over everyone', async () => {
+    const busy = { ...planned, plannedTaskMinutes: 540, expectedMinutes: 480 };
+    const away = { ...noPlan, presenceStatus: 'on_leave', notRankedReason: 'on_leave' as const };
+    const { el } = await setup(response({ members: [busy, away] }), { width: 300, height: 636 });
+    expect(all(el, 'tsc-chip').map((c) => c.textContent!.trim())).toEqual([
+      '1 over capacity',
+      '0 not planned',
+      '1 on leave',
+    ]);
+  });
+
+  it('300x636 is xs: the 168px item donut over its legend, the chips, then rows', async () => {
+    const { el } = await setup(response(), { width: 300, height: 636 });
+
+    expect(q(el, 'tsc-layout')!.getAttribute('data-view')).toBe('xs');
+    expect((q(el, 'tsc-donut') as HTMLElement).style.width).toBe('168px');
+    expect(squash(q(el, 'tsc-center'))).toBe('5items');
     expect(all(el, 'tsc-legend-row').map((r) => r.getAttribute('data-key'))).toEqual([
       'completed',
       'inProgress',
       'pending',
       'meetings',
     ]);
-  });
-
-  it('420x204 is the inline mini: a stacked bar and the unscheduled-work pill', async () => {
-    const { el } = await setup(response(), { width: 420, height: 204 });
-
-    expect(q(el, 'tsc-mini-bar')).toBeTruthy();
-    expect(q(el, 'tsc-donut')).toBeNull();
-    expect(q(el, 'tsc-pill')!.textContent).toContain('1 employee has unscheduled work');
-  });
-
-  it('the pill says so when no one worked off-plan', async () => {
-    const { el } = await setup(scheduleResponse([planned]), { width: 420, height: 204 });
-    expect(q(el, 'tsc-pill')!.textContent).toContain('No unscheduled work');
-  });
-
-  it('300x636 is xs: the donut, an avatar stack, the pill, then rows', async () => {
-    const { el } = await setup(response(), { width: 300, height: 636 });
-
-    expect(q(el, 'tsc-layout')!.getAttribute('data-view')).toBe('xs');
-    expect(q(el, 'tsc-donut')).toBeTruthy();
-    expect(all(el, 'tsc-avatar').length).toBe(2);
-    expect(q(el, 'tsc-pill')).toBeTruthy();
+    expect(q(el, 'tsc-chips')).toBeTruthy();
     expect(all(el, 'tsc-row').length).toBe(2);
   });
 
-  it('600x420 is rows: a segmented plan bar with break and unscheduled segments, and completion', async () => {
-    const withBreak = response({
-      members: [{ ...planned, breaks: [{ start: at(12), end: at(12, 30) }] }, noPlan],
-    });
-    const { el } = await setup(withBreak, { width: 600, height: 420 });
+  it('600x420 is rows: load against capacity with its bar, a Not planned badge, and done', async () => {
+    const { el } = await setup(response(), { width: 600, height: 420 });
 
     expect(q(el, 'tsc-layout')!.getAttribute('data-view')).toBe('rows');
-    expect(all(el, 'tsc-completion').map((c) => c.textContent!.trim())).toEqual(['75%', 'No plan']);
-    expect(all(el, 'tsc-plan-break').length).toBe(1);
-    expect(all(el, 'tsc-plan-unscheduled').length).toBe(1);
-    expect(el.textContent).toContain('Working');
+    expect(all(el, 'tsc-load').map((c) => c.textContent!.trim())).toEqual(['2h / 8h', '0h / 8h']);
+    expect((all(el, 'tsc-load-bar')[0] as HTMLElement).style.width).toBe('25%');
+    expect(q(el, 'tsc-badge-not-planned')).toBeTruthy();
+    expect(all(el, 'tsc-completion').map((c) => c.textContent!.trim())).toEqual(['75%', '—']);
   });
 
-  it('900x636 is the timeline: labelled blocks, a hatched unscheduled strip, a conflict outline, a legend', async () => {
+  it('900x636 is the timeline: the donut head, titled blocks, a hatched unscheduled strip, a conflict outline, a legend', async () => {
     const { el } = await setup(response(), { width: 900, height: 636 });
 
+    expect(q(el, 'tsc-head')).toBeTruthy();
+    expect(squash(q(el, 'tsc-center'))).toBe('5Totalitems');
     expect(q(el, 'tsc-timeline')).toBeTruthy();
     expect(all(el, 'tsc-block').length).toBe(2);
     expect(all(el, 'tsc-unscheduled-seg').length).toBe(1);
     expect(el.querySelectorAll('.tsc-block--conflict').length).toBe(2);
     expect(all(el, 'tsc-block').map((b) => b.getAttribute('title'))).toContain('Private meeting · Finished');
-    expect(all(el, 'tsc-block-label').map((l) => l.textContent!.trim())).toContain('Task');
+    expect(all(el, 'tsc-block-label').map((l) => l.textContent!.trim())).toContain('Write report');
     expect(q(el, 'tsc-legend')).toBeTruthy();
+    expect(q(el, 'tsc-view-all')!.textContent).toContain('View all 2 members');
   });
 
   it('block label hidden under 48px', async () => {
@@ -216,9 +270,31 @@ describe('TeamScheduleCardComponent', () => {
     expect(blocks[1].querySelector('[data-testid="tsc-block-label"]')).toBeNull();
   });
 
-  it('a person without any plan gets a "No scheduled work" strip on the timeline', async () => {
-    const { el } = await setup(response(), { width: 900, height: 636 });
-    expect(all(el, 'tsc-no-plan').length).toBe(1);
+  it('on the timeline a person without a plan gets a Not planned badge, and one on leave a leave strip', async () => {
+    const away = { ...planned, employeeId: 'c', displayName: 'Cy', presenceStatus: 'on_leave', notRankedReason: 'on_leave' as const, items: [], conflicts: [] };
+    const { el } = await setup(response({ members: [planned, noPlan, away] }), { width: 900, height: 636 });
+    expect(all(el, 'tsc-badge-not-planned').length).toBe(1);
+    expect(all(el, 'tsc-badge-leave').length).toBe(1);
+    expect(all(el, 'tsc-leave-bar').length).toBe(1);
+  });
+
+  it('the timeline head swaps its status chips for two summary cards of what the card is not showing', async () => {
+    const { el, fixture, getTeamWeek } = await setup(response(), { width: 900, height: 636 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const head = q(el, 'tsc-head')!;
+    const titles = [...head.querySelectorAll('[data-testid="summary-title"]')].map((t) => t.textContent?.trim());
+    // The lines already show each person's status and Not planned badge, so those cards are left out.
+    expect(titles).toEqual(['Coverage', 'Planned vs actual']);
+    expect(head.querySelector('[data-testid="tsc-chip"]')).toBeNull();
+    expect(getTeamWeek).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the head chips when the week chart leaves only one new card', async () => {
+    const { el } = await setup(response(), { width: 1300, height: 852 });
+    const head = q(el, 'tsc-head')!;
+    expect(head.querySelector('app-dashboard-summary-row')).toBeNull();
+    expect(head.querySelector('[data-testid="tsc-chip"]')).toBeTruthy();
   });
 
   it('900x852 adds the daily planned-vs-actual chart with a row per shown person', async () => {
@@ -250,7 +326,7 @@ describe('TeamScheduleCardComponent', () => {
     expect(q(wide.el, 'tsc-timeline')).toBeNull();
     expect(q(wide.el, 'tsc-planner-off')).toBeTruthy();
     expect(q(wide.el, 'tsc-day-chart')).toBeNull();
-    const bar = q(wide.el, 'tsc-clocked-bar') as HTMLElement;
+    const bar = q(wide.el, 'tsc-load-bar') as HTMLElement;
     expect(bar.style.width).toBe('50%');
     expect(wide.el.textContent).toContain('4h / 8h');
     TestBed.resetTestingModule();

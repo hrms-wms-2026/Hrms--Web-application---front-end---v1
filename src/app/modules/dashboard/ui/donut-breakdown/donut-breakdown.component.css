@@ -14,31 +14,7 @@
   }
 }
 
-.db-donut {
-  position: relative;
-  flex: none;
-}
-
-.db-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.db-arc {
-  cursor: pointer;
-  transition:
-    opacity 150ms ease,
-    stroke-width 150ms ease;
-}
-.db-arc--dim {
-  opacity: 0.3;
-}
-.db-arc--on {
-  stroke-width: 7;
-}
-
-/* Sits inside the ring's hole (about 86px of the 140px donut), so the copy stays short and small. */
+/* Sits inside the ring's hole (about 104px of the 168px donut), so the copy stays short and small. */
 .db-center {
   position: absolute;
   inset: 0;
@@ -51,68 +27,19 @@
   padding: 0 30px;
   text-align: center;
   line-height: 1.1;
-  pointer-events: none;
 }
 .db-value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-primary);
   white-space: nowrap;
 }
 .db-label {
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--color-text-secondary);
 }
 
 .db-legend {
-  display: flex;
-  min-width: 0;
   flex: 1 1 auto;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.8125rem;
-}
-.db-legend li {
-  display: grid;
-  grid-template-columns: 0.5rem minmax(0, 1fr) auto 3rem;
-  align-items: center;
-  gap: 0.5rem;
-  border-radius: 6px;
-  padding: 3px 6px;
-  cursor: default;
-  outline: none;
-}
-.db-legend li.db-row--on,
-.db-legend li:focus-visible {
-  background: var(--color-surface-secondary);
-}
-.db-row--zero {
-  opacity: 0.55;
-}
-
-.db-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
-}
-.db-row-label {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--color-text-secondary);
-}
-.db-row-value {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary);
-}
-.db-row-pct {
-  text-align: right;
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-secondary);
 }

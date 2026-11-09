@@ -84,7 +84,8 @@
   stroke-linecap: round;
 }
 
-.tad {
+/* Body wrapper: same 24px side padding as .wtd-head and the other My Team popups. */
+.wtd {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -190,9 +191,31 @@
   min-width: 0;
   flex-direction: column;
   gap: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
+}
+
+/* Sections are split by a line, not boxed (like the dashboard cards): a line under each section,
+ * and a line between the charts side by side. */
+.wtd-charts + .wtd-panel,
+.wtd-panel + .wtd-panel,
+.wtd-panel + .wtd-charts {
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+
+.wtd-charts > .wtd-panel + .wtd-panel {
+  border-top: 0;
+  padding-top: 0;
+  border-left: 1px solid var(--color-border);
+  padding-left: 1rem;
+}
+
+@media (max-width: 767px) {
+  .wtd-charts > .wtd-panel + .wtd-panel {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+  }
 }
 
 .wtd-title {
@@ -205,18 +228,9 @@
   color: var(--color-text-primary);
 }
 
-.wtd-delta {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-tint-green-text);
-}
-
-.wtd-delta--down {
-  color: var(--color-danger);
-}
-
+/* The Orders chart card's proportions: header, then a tall plot. */
 .wtd-chart {
-  height: 11rem;
+  height: 18rem;
 }
 
 .wtd-distribution-body {
@@ -227,40 +241,30 @@
 }
 
 .wtd-donut {
-  width: 7.5rem;
-  height: 7.5rem;
   flex: none;
 }
 
-.wtd-legend {
+.wtd-donut-center {
+  position: absolute;
+  inset: 0;
   display: flex;
-  min-width: 0;
-  flex: 1 1 0;
   flex-direction: column;
-  gap: 0.375rem;
-  font-size: 0.8125rem;
-}
-
-.wtd-legend li {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.wtd-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
-}
-
-.wtd-legend-label {
+  justify-content: center;
+  margin: 0;
+  line-height: 1.15;
+  font-size: 10px;
   color: var(--color-text-secondary);
 }
-.wtd-legend-count {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+
+.wtd-donut-center strong {
+  font-size: 15px;
   color: var(--color-text-primary);
+}
+
+.wtd-legend {
+  min-width: 0;
+  flex: 1 1 0;
 }
 
 .wtd-table-head {

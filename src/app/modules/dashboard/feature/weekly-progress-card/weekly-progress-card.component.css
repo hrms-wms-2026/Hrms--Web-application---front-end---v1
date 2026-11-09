@@ -40,7 +40,7 @@
 }
 
 .wp-percent {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
   line-height: 1;
   color: var(--color-text-primary);
@@ -48,11 +48,11 @@
 }
 
 .wp-percent--big {
-  font-size: 2.25rem;
+  font-size: 2rem;
 }
 
 .wp-status {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 500;
   color: var(--color-text-secondary);
 }

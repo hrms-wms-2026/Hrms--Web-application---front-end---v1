@@ -1,0 +1,93 @@
+/* The shared dashboard donut: a fixed-size square; the projected centre content positions itself over it. */
+:host {
+  position: relative;
+  display: block;
+  flex: none;
+}
+
+.dd-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.dd-track {
+  stroke: var(--color-surface-secondary);
+}
+
+/* Hovering a slice lifts it outward and fades the others. */
+.dd-arc {
+  transform-box: view-box;
+  transform-origin: center;
+  transition:
+    opacity 150ms ease,
+    transform 180ms ease;
+}
+
+/* A 'transparent' slice is the unfilled rest of a progress ring (Weekly Work Progress): drawn in the track colour,
+   rounded and spaced like the others. CSS wins over the slice's own fill/stroke attributes. */
+.dd-arc--rest {
+  fill: var(--color-surface-secondary);
+  stroke: var(--color-surface-secondary);
+}
+
+.dd-svg--hover .dd-arc {
+  opacity: 0.35;
+}
+
+.dd-svg--hover .dd-arc--on {
+  opacity: 1;
+  transform: scale(1.045);
+}
+
+/* A card's refresh replay (dashboard-motion.css) restarts this no-op animation; the component hears it start and
+   grows the slices in again. */
+:host-context(.dash-replay-a) .dd-svg {
+  animation: dd-replay-a 1ms;
+}
+:host-context(.dash-replay-b) .dd-svg {
+  animation: dd-replay-b 1ms;
+}
+@keyframes dd-replay-a {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dd-replay-b {
+  to {
+    opacity: 1;
+  }
+}
+
+.dd-slot {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.dd-center {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.25rem;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.dd-value {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dd-caption {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}

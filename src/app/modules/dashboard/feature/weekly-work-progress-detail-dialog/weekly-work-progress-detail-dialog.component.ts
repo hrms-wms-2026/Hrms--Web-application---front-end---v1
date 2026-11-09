@@ -7,7 +7,8 @@ import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-prog
 import { WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
 import { DailyWorkChartComponent } from '../../ui/daily-work-chart/daily-work-chart.component';
 import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { WeeklyInsight, buildWeeklyInsights, progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
 import {
   WEEKLY_STATUS_LABELS,
@@ -31,14 +32,6 @@ export function weekRangeLabel(weekStart: string, weekEnd: string): string {
   return ys === ye ? `${start} – ${end}` : `${start}, ${ys} – ${end}`;
 }
 
-interface LegendRow {
-  readonly key: string;
-  readonly label: string;
-  readonly value: string;
-  readonly share: string;
-  readonly color: string;
-}
-
 /**
  * The Weekly Work Progress popup: the full week (KPI tiles, Daily Work vs Schedule, schedule adherence, last week
  * comparison, task weightage and key insights), with a This week / Last week switch. Same shell as the Team Progress
@@ -47,7 +40,7 @@ interface LegendRow {
 @Component({
   selector: 'app-weekly-work-progress-detail-dialog',
   standalone: true,
-  imports: [ModalComponent, KpiTilesComponent, SelectComponent, DailyWorkChartComponent],
+  imports: [ModalComponent, KpiTilesComponent, SelectComponent, DailyWorkChartComponent, DashboardDonutComponent, DonutKeyComponent],
   templateUrl: './weekly-work-progress-detail-dialog.component.html',
   styleUrl: './weekly-work-progress-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -93,13 +86,8 @@ export class WeeklyWorkProgressDetailDialogComponent {
   /** Schedule adherence: of the scheduled time, how much was worked; the centre shows coverage of Expected. */
   protected readonly adherence = computed(() => {
     const w = this.data().thisWeek;
-    const worked = Math.min(w.workedMinutes, w.scheduledMinutes);
     const notWorked = Math.max(0, w.scheduledMinutes - w.workedMinutes);
-    const arcs: DonutArc[] = donutArcs([
-      { key: 'worked', count: worked, color: COLORS.worked },
-      { key: 'notWorked', count: notWorked, color: COLORS.notWorked }
-    ]);
-    return { arcs, coverage: Math.round(w.planningCoveragePercent), worked: w.workedMinutes, scheduled: w.scheduledMinutes, notWorked };
+    return { coverage: Math.round(w.planningCoveragePercent), worked: w.workedMinutes, scheduled: w.scheduledMinutes, notWorked };
   });
 
   protected readonly taskTotal = computed(() => {
@@ -107,27 +95,42 @@ export class WeeklyWorkProgressDetailDialogComponent {
     return t.completedHours + t.inProgressHours + t.notStartedHours;
   });
 
-  protected readonly taskArcs = computed(() => {
+  /** The task donut and its key: completed, in progress and not started estimate hours, each with its share. */
+  protected readonly taskSlices = computed<DashboardDonutSlice[]>(() => {
     const t = this.data().tasks;
-    return donutArcs([
-      { key: 'completed', count: t.completedHours, color: COLORS.completed },
-      { key: 'inProgress', count: t.inProgressHours, color: COLORS.inProgress },
-      { key: 'notStarted', count: t.notStartedHours, color: COLORS.notStarted }
-    ]);
-  });
-
-  protected readonly taskLegend = computed<LegendRow[]>(() => {
-    const t = this.data().tasks;
-    const total = this.taskTotal();
-    const row = (key: string, label: string, hours: number, color: string): LegendRow => ({
-      key, label, value: `${hours}h`, share: `(${total > 0 ? Math.round((hours * 100) / total) : 0}%)`, color
-    });
+    const slice = (key: string, label: string, hours: number, color: string): DashboardDonutSlice =>
+      ({ key, label, value: hours, valueText: `${hours}h`, color });
     return [
-      row('completed', 'Completed', t.completedHours, COLORS.completed),
-      row('inProgress', 'In Progress', t.inProgressHours, COLORS.inProgress),
-      row('notStarted', 'Not Started', t.notStartedHours, COLORS.notStarted)
+      slice('completed', 'Completed', t.completedHours, COLORS.completed),
+      slice('inProgress', 'In progress', t.inProgressHours, COLORS.inProgress),
+      slice('notStarted', 'Not started', t.notStartedHours, COLORS.notStarted)
     ];
   });
+
+  /** The adherence donut and its key: of the scheduled time, worked and not worked. */
+  protected readonly adherenceSlices = computed<DashboardDonutSlice[]>(() => {
+    const a = this.adherence();
+    return [
+      { key: 'worked', label: 'Worked', value: Math.min(a.worked, a.scheduled), valueText: formatWeekHours(a.worked), color: COLORS.worked },
+      { key: 'notWorked', label: 'Not Worked', value: a.notWorked, valueText: formatWeekHours(a.notWorked), color: COLORS.notWorked }
+    ];
+  });
+
+  /** The progress ring as two slices: worked, then what is left of the week's expected hours. */
+  protected readonly ringSlices = computed<DashboardDonutSlice[]>(() => {
+    const w = this.data().thisWeek;
+    const ring = this.ring();
+    const left = Math.max(0, w.expectedMinutes - w.workedMinutes);
+    return [
+      { key: 'worked', label: 'Worked', value: w.workedMinutes, valueText: formatWeekHours(w.workedMinutes), percentText: `${Math.round(ring)}%`, color: '#2563eb' },
+      { key: 'left', label: 'Left', value: left, valueText: formatWeekHours(left), percentText: `${Math.round(100 - ring)}%`, color: 'transparent' }
+    ];
+  });
+
+  /** The slice each donut lights while hovered (there or on its key). */
+  protected readonly hoveredRing = signal<string | null>(null);
+  protected readonly hoveredAdherence = signal<string | null>(null);
+  protected readonly hoveredTask = signal<string | null>(null);
 
   constructor() {
     // The card refreshes the current week every minute; only a new week (Monday rolled over) makes the cached last

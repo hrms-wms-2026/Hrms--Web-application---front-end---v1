@@ -4,66 +4,61 @@ import { TeamWorkingHoursDay } from '../../models/my-team-today.model';
 import { WorkingHoursChartComponent } from './working-hours-chart.component';
 
 const DAYS: TeamWorkingHoursDay[] = [
-  {
-    date: '2026-10-26',
-    workedMinutes: 960,
-    breakMinutes: 120,
-    onLeaveCount: 1,
-    peopleWithRecord: 2,
-  },
-  {
-    date: '2026-10-27',
-    workedMinutes: 480,
-    breakMinutes: 60,
-    onLeaveCount: 0,
-    peopleWithRecord: 1,
-  },
-  { date: '2026-10-28', workedMinutes: 0, breakMinutes: 0, onLeaveCount: 2, peopleWithRecord: 0 },
+  { date: '2026-10-26', workedMinutes: 960, breakMinutes: 120, onLeaveCount: 1, peopleWithRecord: 2 },
+  { date: '2026-10-27', workedMinutes: 480, breakMinutes: 60, onLeaveCount: 0, peopleWithRecord: 1 },
+  { date: '2026-10-28', workedMinutes: 0, breakMinutes: 0, onLeaveCount: 2, peopleWithRecord: 0 }
 ];
 
-describe('WorkingHoursChartComponent', () => {
+describe('WorkingHoursChartComponent (on the shared dashboard bar chart)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  function render(inputs: { teamAverage?: boolean; showLeave?: boolean } = {}) {
-    TestBed.configureTestingModule({ imports: [WorkingHoursChartComponent] });
+  function setup(inputs: Record<string, unknown> = {}) {
     const fixture = TestBed.createComponent(WorkingHoursChartComponent);
     fixture.componentRef.setInput('days', DAYS);
-    if (inputs.teamAverage !== undefined)
-      fixture.componentRef.setInput('teamAverage', inputs.teamAverage);
-    if (inputs.showLeave !== undefined)
-      fixture.componentRef.setInput('showLeave', inputs.showLeave);
+    for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
     fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
+    return { fixture, el: fixture.nativeElement as HTMLElement };
   }
+  const cols = (el: HTMLElement) => [...el.querySelectorAll<HTMLElement>('[data-testid=bar-chart-col]')];
+  const headline = (el: HTMLElement) =>
+    [...el.querySelectorAll('[data-testid=bar-chart-headline] .bc-head-label, [data-testid=bar-chart-headline] .bc-head-row > span')].map(
+      (n) => n.textContent?.trim()
+    );
 
-  it('old usage unchanged: stacked worked and break bars against the busiest day, no line, no leave marks', () => {
-    const el = render();
-
-    expect(el.querySelectorAll('[data-testid="hours-bar"]').length).toBe(3);
-    const worked = el.querySelectorAll<HTMLElement>('[data-segment="worked"]');
-    expect(worked[0].style.height).toBe('88.9%');
-    expect(el.querySelector('[data-testid="hours-average"]')).toBeNull();
-    expect(el.querySelector('[data-testid="hours-leave"]')).toBeNull();
+  it('stacks worked and break hours per day against a round hour axis, weekday labels, no leave marks', () => {
+    const { el } = setup();
+    expect(cols(el).length).toBe(3);
+    expect(cols(el).map((c) => c.querySelector('[data-testid=bar-chart-label]')?.textContent?.trim())).toEqual(['Mon', 'Tue', 'Wed']);
+    // Busiest day 18h (16h worked + 2h break): a 0-10-20h axis.
+    expect([...el.querySelectorAll('[data-testid=bar-chart-axis] > span')].map((s) => s.textContent?.trim())).toEqual(['20h', '10h', '0h']);
+    expect(cols(el)[0].querySelector<HTMLElement>('[data-testid=bar-chart-stack]')?.style.height).toBe('90%');
+    expect(cols(el)[0].querySelector<HTMLElement>('[data-segment=worked]')?.style.height).toBe(`${(16 / 18) * 100}%`);
+    expect(cols(el)[2].querySelector('[data-testid=bar-chart-stack]')).toBeNull();
+    expect(el.querySelector('[data-testid=bar-chart-badge]')).toBeNull();
+    expect(el.querySelector('[data-testid=bar-chart-headline]')).toBeNull();
   });
 
-  it('draws the team average line: worked minutes per person with a record, skipping days without one', () => {
-    const el = render({ teamAverage: true });
+  it('with a heading, reads the week then the hovered day, with the average per person when asked', () => {
+    const { fixture, el } = setup({ heading: 'Working hours', teamAverage: true });
+    expect(headline(el)).toEqual(['Working hours', '24h worked', '8h avg per person']);
 
-    const line = el.querySelector('[data-testid="hours-average"]')!;
-    expect(line).toBeTruthy();
-    // 960/2 = 480 and 480/1 = 480 per person; the third day has no record and no point.
-    expect(el.querySelectorAll('[data-testid="hours-average-point"]').length).toBe(2);
-    expect(
-      el.querySelector('[data-testid="working-hours-chart"]')!.getAttribute('aria-label'),
-    ).toContain('8h average per person');
+    cols(el)[0].dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    expect(headline(el)).toEqual(['Mon 26 Oct', '16h worked', '8h per person']);
+    expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('8h average per person');
+  });
+
+  it('without the average, the hover reads the break', () => {
+    const { fixture, el } = setup({ heading: 'Working hours' });
+    cols(el)[1].dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    expect(headline(el)).toEqual(['Tue 27 Oct', '8h worked', '1h break']);
   });
 
   it('leave marks only when showLeave, with the count in the tooltip', () => {
-    expect(render({ showLeave: false }).querySelector('[data-testid="hours-leave"]')).toBeNull();
+    expect(setup({ showLeave: false }).el.querySelector('[data-testid=bar-chart-badge]')).toBeNull();
     TestBed.resetTestingModule();
-
-    const el = render({ showLeave: true });
-    const marks = [...el.querySelectorAll<HTMLElement>('[data-testid="hours-leave"]')];
+    const marks = [...setup({ showLeave: true }).el.querySelectorAll<HTMLElement>('[data-testid=bar-chart-badge]')];
     expect(marks.length).toBe(2);
     expect(marks[0].textContent!.trim()).toBe('1');
     expect(marks[0].getAttribute('title')).toBe('1 on leave');

@@ -120,11 +120,11 @@ describe('TeamStatusDetailDialogComponent', () => {
     expect(doc.querySelector('[data-testid="wbld-banner-break"]')).toBeNull();
   });
 
-  it('draws the trend with the team average line and leave marks', async () => {
+  it('draws the trend with the average per person in its headline and leave marks', async () => {
     const { doc } = await setup(presenceResponse(team));
 
-    expect(doc.querySelector('[data-testid="hours-average"]')).toBeTruthy();
-    expect(doc.querySelectorAll('[data-testid="hours-leave"]').length).toBe(1);
+    expect(doc.querySelector('[data-testid="working-hours-chart"] [data-testid="bar-chart-chip"]')!.textContent).toContain('avg per person');
+    expect(doc.querySelectorAll('[data-testid="bar-chart-badge"]').length).toBe(1);
   });
 
   it('loads the week of working hours when opened and draws it', async () => {
@@ -132,7 +132,7 @@ describe('TeamStatusDetailDialogComponent', () => {
 
     expect(getWeek).toHaveBeenCalledWith(null);
     expect(getWeek).toHaveBeenCalledWith('2026-10-19');
-    expect(doc.querySelectorAll('[data-testid="hours-bar"]').length).toBe(2);
+    expect(doc.querySelectorAll('[data-testid="working-hours-chart"] [data-testid="bar-chart-col"]').length).toBe(2);
   });
 
   it('offers a retry when the week fails to load', async () => {
@@ -183,10 +183,10 @@ describe('TeamStatusDetailDialogComponent', () => {
     const { doc } = await setup(presenceResponse(team));
     const donut = doc.querySelector('[data-testid="wbld-status-donut"]')!;
 
-    expect(donut.querySelector('[data-testid="db-arc-working"]')).toBeTruthy();
-    expect(donut.querySelector('[data-testid="db-arc-leave"]')).toBeTruthy();
-    expect(donut.querySelector('[data-testid="db-arc-absent"]')).toBeTruthy();
-    expect(donut.querySelector('[data-testid="db-arc-break"]')).toBeNull();
+    expect(donut.querySelector('[data-testid="donut-segment"][data-key="working"]')).toBeTruthy();
+    expect(donut.querySelector('[data-testid="donut-segment"][data-key="leave"]')).toBeTruthy();
+    expect(donut.querySelector('[data-testid="donut-segment"][data-key="absent"]')).toBeTruthy();
+    expect(donut.querySelector('[data-testid="donut-segment"][data-key="break"]')).toBeNull();
     expect(donut.querySelector('[data-testid="db-row-absent"]')!.textContent).toContain('33%');
   });
 
@@ -195,7 +195,7 @@ describe('TeamStatusDetailDialogComponent', () => {
     const donut = doc.querySelector('[data-testid="wbld-hours-donut"]')!;
 
     expect(donut.querySelector('[data-testid="db-center-value"]')!.textContent!.trim()).toBe('5h');
-    expect(donut.querySelector('[data-testid="db-arc-worked"]')).toBeTruthy();
+    expect(donut.querySelector('[data-testid="donut-segment"][data-key="worked"]')).toBeTruthy();
   });
 });
 

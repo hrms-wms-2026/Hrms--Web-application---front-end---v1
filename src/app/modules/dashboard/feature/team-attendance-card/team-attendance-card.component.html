@@ -56,22 +56,14 @@
 
     <!-- One donut size (DASHBOARD_DONUT_PX) in every view; a view without room for it leaves it out. -->
     <ng-template #donutTpl let-rateCenter="rateCenter">
-      <div class="ta-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="ta-donut">
-        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
-          <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-          @for (arc of donut(); track arc.key) {
-            <circle
-              cx="21"
-              cy="21"
-              r="15.9155"
-              fill="none"
-              stroke-width="6"
-              [attr.stroke]="arc.color"
-              [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-              [attr.stroke-dashoffset]="arc.offset"
-            />
-          }
-        </svg>
+      <app-dashboard-donut
+        class="ta-donut"
+        data-testid="ta-donut"
+        [size]="donutPx()"
+        [slices]="donutSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hovered"
+      >
         @if (rateCenter) {
           <p class="ta-donut-center">
             <span class="ta-donut-value ta-donut-value--rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</span>
@@ -83,59 +75,45 @@
             <span class="ta-donut-of">/ {{ data.eligibleToday }}</span>
           </p>
         }
-      </div>
+      </app-dashboard-donut>
     </ng-template>
 
     <ng-template #chartTpl let-compact="compact">
       @if (noWorkingDays()) {
         <p class="ta-no-days" data-testid="ta-no-days">No working days in this period</p>
       } @else {
-        <app-attendance-day-chart class="ta-chart" [points]="data.trend" [compact]="compact" />
+        <!-- The shared bar chart: its headline reads the period's rate, or the hovered day. -->
+        <app-attendance-day-chart
+          class="ta-chart"
+          heading="Trend"
+          [rate]="percentText(data.periodRate)"
+          [points]="data.trend"
+          [compact]="compact"
+        />
       }
     </ng-template>
 
     @switch (view()) {
       @case ('mini') {
-        <!-- 2-row cards: the donut with today's rate in it; stretched sideways a stacked bar and its legend. -->
-        @if (miniBar()) {
-          <div class="ta-mini ta-mini--bar" data-testid="ta-mini">
-            <div class="min-w-0 shrink-0">
-              <p class="ta-rate ta-rate--mini" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</p>
-              <p class="ta-caption">{{ attendedToday() }}/{{ data.eligibleToday }} in today</p>
-              @if (delta(); as d) {
-                <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
-              }
-            </div>
-            <div class="ta-mini-bar">
-              <div class="ta-status-bar" role="img" [attr.aria-label]="donutLabel()" data-testid="ta-status-bar">
-                @for (arc of donut(); track arc.key) {
-                  <span class="h-full" [style.background]="arc.color" [style.width.%]="arc.length"></span>
-                }
-              </div>
-              <ul class="ta-mini-legend">
-                @for (row of legend(); track row.key) {
-                  <li class="ta-mini-legend-item">
-                    <span class="ta-dot" [style.background]="row.color"></span>
-                    <span class="ta-legend-label">{{ row.label }}</span>
-                    <span class="ta-legend-count">{{ row.count }}</span>
-                  </li>
-                }
-              </ul>
-            </div>
-          </div>
-        } @else {
-          <div class="ta-mini ta-mini--donut" data-testid="ta-mini">
-            <ng-container [ngTemplateOutlet]="donutTpl" [ngTemplateOutletContext]="{ rateCenter: true }" />
-            @if (miniFigure()) {
-              <div class="min-w-0">
-                <p class="ta-caption">{{ attendedToday() }}/{{ data.eligibleToday }} in today</p>
-                @if (delta(); as d) {
-                  <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
-                }
-              </div>
-            }
-          </div>
-        }
+        <!-- 2-row cards: the shared strip. The donut with today's rate in it, then its key, then summary cards of the
+        popup's sections as the card widens. -->
+        <app-dashboard-summary-strip
+          class="ta-mini"
+          data-testid="ta-mini"
+          [slices]="donutSlices()"
+          [keySlices]="keySlices()"
+          [cards]="summaryCards()"
+          [donutLabel]="donutLabel()"
+          [(active)]="hovered"
+          (cardOpened)="openSection($event)"
+          (cardRetried)="retryAttention()"
+          (shownCards)="shownCards.set($event)"
+        >
+          <p class="ta-donut-center">
+            <span class="ta-donut-value ta-donut-value--rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</span>
+            <span class="ta-donut-of">today</span>
+          </p>
+        </app-dashboard-summary-strip>
       }
       @default {
         <!-- xs (narrow) and standard: the donut keeps its place at the top; a taller card adds today's
@@ -148,15 +126,15 @@
             <ng-container [ngTemplateOutlet]="donutTpl" />
             @if (view() === 'xs' && plan().legend) {
               <!-- Narrow cards: the legend right under the donut, the same place every widget puts it. -->
-              <ul class="ta-xs-legend" aria-label="Today" data-testid="ta-xs-legend">
-                @for (row of legend(); track row.key) {
-                  <li class="ta-xs-legend-row" data-testid="ta-legend-row">
-                    <span class="ta-dot" [style.background]="row.color"></span>
-                    <span class="ta-legend-label">{{ row.label }}</span>
-                    <span class="ta-legend-count">{{ row.count }}</span>
-                  </li>
-                }
-              </ul>
+              <app-donut-key
+                class="ta-xs-legend"
+                data-testid="ta-xs-legend"
+                ariaLabel="Today"
+                rowTestId="ta-legend-row"
+                [showValue]="true"
+                [slices]="keySlices()"
+                [(active)]="hovered"
+              />
             }
             @if (view() !== 'xs' || plan().figure) {
               <div class="ta-hero-figure">
@@ -170,25 +148,26 @@
             @if (plan().heroTrend) {
               <!-- Wide card: the trend fills the row between the rate and the legend. -->
               <div class="ta-hero-trend" data-testid="ta-trend">
-                <p class="ta-section-title">Trend · {{ percentText(data.periodRate) }}</p>
                 <ng-container [ngTemplateOutlet]="chartTpl" [ngTemplateOutletContext]="{ compact: true }" />
               </div>
             }
             @if (view() === 'standard' && heroLegend()) {
-              <ul class="ta-legend" aria-label="Today">
-                @for (row of legend(); track row.key) {
-                  <li class="ta-legend-row" data-testid="ta-legend-row">
-                    <span class="ta-dot" [style.background]="row.color"></span>
-                    <span class="ta-legend-label">{{ row.label }}</span>
-                    <span class="ta-legend-count">{{ row.count }}</span>
-                    <span class="ta-legend-pct" [style.color]="row.color">{{ row.percent }}%</span>
-                  </li>
-                }
-              </ul>
+              <app-donut-key
+                class="ta-legend"
+                variant="chips"
+                ariaLabel="Today"
+                rowTestId="ta-legend-row"
+                [showValue]="true"
+                [slices]="keySlices()"
+                [(active)]="hovered"
+              />
             }
           </div>
 
-          @if (plan().tiles) {
+          @if (plan().tiles && rowCards().length > 0) {
+            <!-- Taller views: summary cards of what the card is not already showing, in the tiles' place. -->
+            <app-dashboard-summary-row data-testid="ta-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" (cardRetried)="retryAttention()" />
+          } @else if (plan().tiles) {
             <ul class="ta-tiles" [class.ta-tiles--4]="plan().tileColumns === 4" aria-label="Today" data-testid="ta-tiles">
               @for (row of legend(); track row.key) {
                 <li class="ta-tile" [style.--tone]="row.color" [attr.data-testid]="'ta-tile-' + row.key">
@@ -201,7 +180,6 @@
 
           @if (plan().trend) {
             <section class="ta-panel ta-trend-panel" data-testid="ta-trend">
-              <p class="ta-section-title">Trend · {{ percentText(data.periodRate) }}</p>
               <ng-container [ngTemplateOutlet]="chartTpl" [ngTemplateOutletContext]="{ compact: true }" />
             </section>
           }
@@ -242,4 +220,4 @@
   }
 </app-widget-card>
 
-<app-team-attendance-detail-dialog [open]="detailOpen()" (closed)="closeDetail()" />
+<app-team-attendance-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

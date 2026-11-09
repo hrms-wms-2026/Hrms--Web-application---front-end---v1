@@ -11,6 +11,10 @@ The dev-env gate scripts live outside this repo, in `../dev-env/scripts/`. They 
 - `pwsh ../dev-env/scripts/security-scan.ps1 frontend -Baseline origin/Development` runs the security scanners and shows only Semgrep findings new on this branch.
 - `npm run lint` runs ESLint (`eslint.config.js`). It must report **0 errors and 0 warnings**; the accessibility template rules are errors.
 
+## Dashboard widgets
+
+**Before creating or reworking any dashboard widget, read [`docs/design/WIDGET_CREATION_RULES.md`](docs/design/WIDGET_CREATION_RULES.md)** and follow it: 2x2 minimum, size-driven views, shared donut and bar chart, summary cards, the popup shell, and the done checklist.
+
 ## Accessibility rules
 
 - A clickable element should be a `<button>`. If it must stay a `div`/`section` (cards, rows, tabs), give it `role="button" tabindex="0" appKeyboardClick` (`shared/directives/keyboard-click.directive.ts`) so Enter and Space fire its `(click)`.

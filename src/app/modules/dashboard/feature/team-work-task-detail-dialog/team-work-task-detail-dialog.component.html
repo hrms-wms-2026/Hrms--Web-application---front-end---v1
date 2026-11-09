@@ -69,69 +69,50 @@
         }
       </div>
 
-      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Work vs task totals" />
+      <app-kpi-tiles data-section="summary" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Work vs task totals" />
 
       <div class="wtd-charts">
-        <section class="wtd-panel">
-          <p class="wtd-title">
-            {{ chartTitle() }}
-            @if (delta(); as d) {
-              <span class="wtd-delta" [class.wtd-delta--down]="d.down">{{ d.text }}</span>
-            }
-          </p>
+        <section class="wtd-panel" data-section="daily">
           <app-work-task-day-chart
             class="wtd-chart"
+            [heading]="chartTitle()"
+            [chip]="deltaChip()"
+            [compactHeadline]="false"
+            variant="orders"
             [points]="data.trend"
             [highlight]="data.period === 'day' ? data.rangeStart : null"
           />
-          <p class="wtd-note">
-            <span class="wtd-dot" [style.background]="colors.other"></span> Worked &nbsp;<span
-              class="wtd-dot"
-              [style.background]="colors.task"
-            ></span>
-            Task hours completed
-          </p>
         </section>
         <section class="wtd-panel wtd-distribution" data-testid="wtd-distribution">
           <p class="wtd-title">Where the time went</p>
           <div class="wtd-distribution-body">
-            <svg
-              viewBox="0 0 42 42"
+            <app-dashboard-donut
               class="wtd-donut"
-              role="img"
-              aria-label="Time split for the period"
+              data-testid="wtd-donut"
+              ariaLabel="Time split for the period"
+              [size]="donutPx"
+              [slices]="donutSlices()"
+              [(active)]="hovered"
             >
-              <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-              @for (arc of arcs(); track arc.key) {
-                <circle
-                  cx="21"
-                  cy="21"
-                  r="15.9155"
-                  fill="none"
-                  stroke-width="6"
-                  [attr.stroke]="arc.color"
-                  [attr.stroke-dasharray]="arc.length + ' ' + (100 - arc.length)"
-                  [attr.stroke-dashoffset]="arc.offset"
-                />
-              }
-            </svg>
-            <ul class="wtd-legend">
-              @for (row of slices(); track row.key) {
-                <li>
-                  <span class="wtd-dot" [style.background]="row.color"></span>
-                  <span class="wtd-legend-label">{{ row.label }}</span>
-                  <span class="wtd-legend-count"
-                    >{{ hours(row.minutes) }} · {{ row.percent }}%</span
-                  >
-                </li>
-              }
-            </ul>
+              <p class="wtd-donut-center">
+                <strong>{{ hours(totalMinutes()) }}</strong>
+                <span>tracked</span>
+              </p>
+            </app-dashboard-donut>
+            <app-donut-key
+              class="wtd-legend"
+              ariaLabel="Time split for the period"
+              rowTestId="wtd-legend-row"
+              [showValue]="true"
+              [slices]="donutSlices()"
+              [(active)]="hovered"
+            />
           </div>
           <p class="wtd-note" data-testid="wtd-explanation">{{ explanation() }}</p>
         </section>
       </div>
 
-      <section class="wtd-panel">
+      <section class="wtd-panel" data-section="employees">
         <div class="wtd-table-head">
           <p class="wtd-title">
             Team members <span class="wtd-muted">· highest task share first</span>

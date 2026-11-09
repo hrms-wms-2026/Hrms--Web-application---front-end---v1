@@ -16,12 +16,13 @@ describe('team-work-task-layout', () => {
 
   it('adds tiles, then the chart, then ranking rows as the card grows taller', () => {
     expect(planTeamWorkTaskLayout('mini', 760, 204).tiles).toBe(false);
-    const three = planTeamWorkTaskLayout('standard', 760, 312);
-    expect([three.tiles, three.trend, three.rankingRows]).toEqual([true, false, 0]);
+    expect(planTeamWorkTaskLayout('standard', 760, 312).tiles).toBe(false);
+    const four = planTeamWorkTaskLayout('standard', 760, 420);
+    expect([four.tiles, four.trend, four.rankingRows]).toEqual([true, false, 0]);
     const five = planTeamWorkTaskLayout('standard', 760, 528);
     expect([five.tiles, five.trend, five.rankingRows]).toEqual([true, true, 0]);
-    const six = planTeamWorkTaskLayout('standard', 760, 636);
-    expect(six.rankingRows).toBeGreaterThanOrEqual(3);
+    const seven = planTeamWorkTaskLayout('standard', 760, 744);
+    expect(seven.rankingRows).toBeGreaterThanOrEqual(3);
     expect(planTeamWorkTaskLayout('standard', 760, 2000).rankingRows).toBe(10);
   });
 
@@ -31,8 +32,18 @@ describe('team-work-task-layout', () => {
   });
 
   it('xs shows the legend, then the figure, under the donut', () => {
-    expect(planTeamWorkTaskLayout('xs', 300, 312).legend).toBe(true);
+    expect(planTeamWorkTaskLayout('xs', 300, 312).legend).toBe(false);
     const tall = planTeamWorkTaskLayout('xs', 300, 420);
     expect([tall.legend, tall.figure]).toEqual([true, true]);
+  });
+
+  it('budgets a taller summary-cards row in the tiles place when asked', () => {
+    // 760 x 528: tiles (52) leave room for the daily chart; the 140px cards row does not.
+    expect(planTeamWorkTaskLayout('standard', 760, 528).trend).toBe(true);
+    const withCards = planTeamWorkTaskLayout('standard', 760, 528, 140);
+    expect(withCards.tiles).toBe(true);
+    expect(withCards.trend).toBe(false);
+    // 760 x 420: there is no room for the cards row at all.
+    expect(planTeamWorkTaskLayout('standard', 760, 420, 140).tiles).toBe(false);
   });
 });

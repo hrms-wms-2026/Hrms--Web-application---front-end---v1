@@ -1,0 +1,21 @@
+<ul class="dk" [class]="'dk dk--' + variant()" [attr.aria-label]="ariaLabel() || null">
+  @for (s of slices(); track s.key) {
+    <li
+      class="dk-row"
+      [class.dk-row--on]="active() === s.key"
+      [class.dk-row--zero]="s.value <= 0"
+      [title]="s.label + ': ' + valueText(s) + ' (' + share(s) + ')'"
+      [attr.data-testid]="testId(s)"
+      [attr.data-key]="s.key"
+      (mouseenter)="active.set(s.key)"
+      (mouseleave)="active.set(null)"
+    >
+      <span class="dk-dot" [style.background]="s.color" aria-hidden="true"></span>
+      <span class="dk-label">{{ s.label }}</span>
+      <span class="dk-pct" [attr.data-testid]="testId(s) + '-percent'">{{ share(s) }}</span>
+      @if (showValue()) {
+        <span class="dk-value" [attr.data-testid]="testId(s) + '-value'">{{ valueText(s) }}</span>
+      }
+    </li>
+  }
+</ul>

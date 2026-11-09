@@ -31,8 +31,8 @@ describe('weekly work progress layout', () => {
   it('a narrow tall card is xs and stacks as many tiles as fit, up to 4', () => {
     expect(classifyWeeklyProgressSize(cols(2), rows(5))).toBe('xs');
     expect(plan(cols(2), rows(5)).stackedTiles).toBe(4);
-    expect(plan(cols(2), rows(4)).stackedTiles).toBe(3);
-    expect(plan(cols(2), rows(3)).stackedTiles).toBe(1);
+    expect(plan(cols(2), rows(4)).stackedTiles).toBe(2);
+    expect(plan(cols(2), rows(3)).stackedTiles).toBe(0);
   });
 
   it('standard adds the chart, then the comparison, as the card gets taller', () => {

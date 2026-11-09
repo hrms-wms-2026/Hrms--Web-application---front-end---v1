@@ -75,4 +75,15 @@ describe('WidgetCardComponent', () => {
 
     expect(f.componentInstance.retries).toBe(1);
   });
+
+  it('a nowrap title truncates with an ellipsis and keeps the full title on hover', () => {
+    const fixture = TestBed.createComponent(WidgetCardComponent);
+    fixture.componentRef.setInput('title', 'Employee overtime forecast');
+    fixture.componentRef.setInput('nowrapTitle', true);
+    fixture.detectChanges();
+    const h2 = (fixture.nativeElement as HTMLElement).querySelector('h2') as HTMLElement;
+    expect(h2.classList).toContain('truncate');
+    expect(h2.classList).toContain('min-w-0');
+    expect(h2.getAttribute('title')).toBe('Employee overtime forecast');
+  });
 });

@@ -15,14 +15,14 @@ import {
   TeamAttendancePage
 } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
+import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
+import { DashboardBarChip } from '../../ui/dashboard-bar-chart/dashboard-bar-chart.component';
 import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/attendance-day-chart.component';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
 import {
   TEAM_ATTENDANCE_COLORS,
   TEAM_ATTENDANCE_LABELS,
   teamAttendanceDelta,
-  teamAttendanceRangeLabel
-} from '../../utils/team-attendance-format.util';
+  teamAttendanceRangeLabel, departmentsWorstFirst } from '../../utils/team-attendance-format.util';
 
 const PAGE_SIZE = 20;
 const EXPORT_PAGE_SIZE = 50;
@@ -51,6 +51,8 @@ function dateHeader(iso: string): { day: number; weekday: string } {
 })
 export class TeamAttendanceDetailDialogComponent {
   readonly open = input(false);
+  /** Opened from a summary card: the section to scroll to (trend, departments, ranking, summary). */
+  readonly focusSection = input<string | null>(null);
   readonly closed = output<void>();
 
   protected readonly store = inject(TeamAttendanceStore);
@@ -74,6 +76,12 @@ export class TeamAttendanceDetailDialogComponent {
   protected readonly rangeLabel = computed(() => {
     const data = this.store.data();
     return data ? teamAttendanceRangeLabel(data.mode, data.rangeStart, data.rangeEnd) : '';
+  });
+
+  /** The change against the previous period, as the chart headline's pill. */
+  protected readonly deltaChip = computed<DashboardBarChip | null>(() => {
+    const d = this.delta();
+    return d ? { text: d.text, tone: d.down ? 'down' : 'up' } : null;
   });
 
   protected readonly delta = computed(() => {
@@ -104,19 +112,30 @@ export class TeamAttendanceDetailDialogComponent {
     ];
   });
 
-  protected readonly distribution = computed<{ arcs: DonutArc[]; rows: { key: string; label: string; count: number; color: string }[] }>(() => {
-    const c = this.store.data()?.periodCounts;
-    if (!c) return { arcs: [], rows: [] };
-    const rows = [
-      { key: 'present', label: 'Present', count: c.present, color: TEAM_ATTENDANCE_COLORS.present },
-      { key: 'absent', label: 'Absent', count: c.absent, color: TEAM_ATTENDANCE_COLORS.absent },
-      { key: 'late', label: 'Late', count: c.late, color: TEAM_ATTENDANCE_COLORS.late },
-      { key: 'leave', label: 'On leave', count: c.onLeave, color: TEAM_ATTENDANCE_COLORS.leave }
-    ];
-    return { arcs: donutArcs(rows), rows };
-  });
+  /** Department comparison bars: width = rate, coloured green from 90%, amber from 75%, else red. */
+  protected readonly departmentBars = computed(() =>
+    // Worst rate first so problem departments sit at the top; departments with no rate (all on leave) go last.
+    departmentsWorstFirst(this.store.data()?.departmentRates ?? [])
+      .map((d) => ({
+      key: d.id ?? 'none',
+      name: d.name,
+      people: d.people,
+      rate: d.rate,
+      width: d.rate ?? 0,
+      color:
+        d.rate === null
+          ? TEAM_ATTENDANCE_COLORS.leave
+          : d.rate >= 90
+            ? TEAM_ATTENDANCE_COLORS.present
+            : d.rate >= 75
+              ? TEAM_ATTENDANCE_COLORS.late
+              : TEAM_ATTENDANCE_COLORS.absent,
+      title: `${d.name}: ${d.attended} of ${d.expected} expected days attended · ${d.people} ${d.people === 1 ? 'person' : 'people'}`,
+    })),
+  );
 
   constructor() {
+    injectPopupSectionFocus(this.open, this.focusSection);
     // Reload the matrix for the shown period, department, search and page; a new period starts at page 1.
     effect(() => {
       const data = this.store.data();

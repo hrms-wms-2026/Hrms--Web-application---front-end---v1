@@ -20,6 +20,9 @@ export type WidgetState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden';
         <h2
           class="text-base font-semibold text-[var(--color-text-primary)]"
           [class.whitespace-nowrap]="nowrapTitle()"
+          [class.truncate]="nowrapTitle()"
+          [class.min-w-0]="nowrapTitle()"
+          [attr.title]="nowrapTitle() ? title() : null"
         >{{ title() }}</h2>
         <ng-content select="[widget-actions]" />
       </header>
