@@ -43,11 +43,13 @@ import {
   rateText,
   windowLabel,
 } from '../../utils/overtime-forecast-format.util';
-import { sameForecastPlan } from '../../utils/overtime-forecast-layout.util';
+import { FORECAST_CARD_CHROME, sameForecastPlan } from '../../utils/overtime-forecast-layout.util';
+import { chartFit } from '../../ui/module-forecast-project-chart/module-forecast-project-chart.component';
 import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';
 import {
   moduleForecastTiles,
   moduleRowRateText,
+  projectOverloadCounts,
   modulesAtRisk,
 } from '../../utils/team-module-forecast-format.util';
 import {
@@ -117,6 +119,12 @@ export class TeamModuleForecastCardComponent implements OnInit {
     () => modulesAtRisk(this.store.data()?.items ?? []).length,
   );
 
+  /** Modules in overload per project, for the chart's badges. */
+  protected readonly overloadCounts = computed(() => {
+    const data = this.store.data();
+    return data ? projectOverloadCounts(data.projects, data.items) : {};
+  });
+
   protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
     const data = this.store.data();
     return data ? teamModuleForecastSummaryCards(data) : [];
@@ -140,6 +148,16 @@ export class TeamModuleForecastCardComponent implements OnInit {
   protected readonly rowCards = computed(() => this.layout().cards);
 
   protected readonly donutPx = computed(() => dashboardDonutPx(this.view()));
+  /** The card body's width. */
+  private readonly bodyWidth = computed(
+    () => (this.size()?.width ?? 0) - FORECAST_CARD_CHROME.width,
+  );
+  /** A narrow body (under 360px): the chart's title and figure on two lines, fewer and wider bars. */
+  protected readonly narrowChart = computed(() => this.bodyWidth() > 0 && this.bodyWidth() < 360);
+  /** How many bars the card's chart shows and how long their labels can be (the hero chart is never narrow). */
+  protected readonly chartFit = computed(() =>
+    this.bodyWidth() > 0 ? chartFit(this.plan().heroChart ? 480 : this.bodyWidth()) : chartFit(480),
+  );
   protected readonly rate = rateText;
   protected readonly statusMeta = FORECAST_STATUS_META;
   protected readonly chip = overtimeChipText;

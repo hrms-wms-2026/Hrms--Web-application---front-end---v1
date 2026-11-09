@@ -102,3 +102,15 @@ Built against the backend names the other session relayed. They are not yet conf
 - **Donut:** the last slice is now "Beyond the 90% limit" (remaining − capacity × limit).
 - **Popup intro:** ends with "Above 90% task rate is treated as overload."
 - **Gates:** `check:warnings` is clean. 102 forecast, registry and widget-card specs are green. ESLint finds nothing in the new code; the 7 errors in `calendar` were already there.
+
+## Narrow chart alignment (2026-11-09)
+
+From the user's screenshot of the module card at 3 columns (~270px body):
+- **Heading:** under 360px the chart title sits over its figure, with no mid-word truncation.
+- **Red frames:** gone from every bar. A project with modules in overload gets a small "⚠ N" badge. The count comes from `modulesOverload` when the backend sends it (an optional field, not yet in the contract), else it is counted from the card's items.
+- **Axis:** it scales to remaining and predicted. The capacity-at-limit dash is drawn only within 1.25× of the tallest bar; above that it appears only in the hover.
+- **Labels:** at most `chartFit(body)` bars (3 at 270px, 6 at 470px), with readable labels, a "+N more projects in the popup" line, and the full name in the hover.
+- **Donut:** the centre label is always "4-wk rate" in both cards.
+- **Employee rate chart:** the same narrow fit. Overload is a "⚠" badge (with the real figure, "⚠ 853%", when it is drawn at the 200% cap) instead of a red frame.
+
+Specs at ~270px and ~470px bodies for both cards. `check:warnings` is clean, and 95 forecast and bar-chart specs are green.

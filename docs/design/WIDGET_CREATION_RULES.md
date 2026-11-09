@@ -141,4 +141,15 @@ The source of truth is `feature/team-attendance-card/team-attendance-card.compon
   limit" (capacity × limit), and the popup intro says the rule in one line ("Above 90% task rate is treated as overload.").
 - **Rate rows show both rates:** "26% → needs 45%" in tables, "26% → 45%" in tight spots (a ranking row's second line,
   chips). Merge the current and required rate columns into one sortable column.
+- **Bar charts in narrow cards (body under ~360px).** Pass `compactHeadline=false` so the title sits over the figure,
+  and never truncate the title mid-word. Show only the bars that fit at a readable width (`chartFit(bodyWidth)`: about
+  64px a bar after the axis, top N by the widget's ranking) with a "+N more … in the popup" line. Shorten labels to the
+  width they get. The full name stays in the bar's `title` and the aria label.
+- **Never let a target dash set the scale.** Draw a `marker` only when it lands within 1.25× of the tallest bar.
+  Otherwise leave it out and give its value in the hover (`sub` and tooltip), so one huge project can't flatten the
+  others into stubs.
+- **No red frames on many bars.** `alert` is for a single exceptional bar. To mark several, use the bar's small
+  `badge` ("⚠ 2") and keep the neutral track.
+- **Donut centre labels stay short** in cards ("4-wk rate"). A longer sub-label overlaps the ring at 140px and in
+  narrow standard views at 168px.
 

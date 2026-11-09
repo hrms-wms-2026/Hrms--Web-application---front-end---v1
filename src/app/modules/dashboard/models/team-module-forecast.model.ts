@@ -43,6 +43,8 @@ export interface ModuleForecastProject {
   readonly capacityHours: number;
   readonly overtimeHours: number;
   readonly modulesAtRisk: number;
+  /** Modules of this project in overload; absent = counted from the items the response carries. */
+  readonly modulesOverload?: number;
 }
 
 export interface ModuleForecastMember {

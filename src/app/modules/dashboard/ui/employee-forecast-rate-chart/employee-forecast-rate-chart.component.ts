@@ -39,9 +39,29 @@ const percent = (rate: number | null): number => (rate === null ? 0 : Math.round
 export const RATE_CHART_CAP_PERCENT = 200;
 
 /**
+ * The small badge over a person's bar: "⚠" for overload (never a red frame round the bar), with the real required
+ * rate when it is drawn at the cap ("⚠ 853%"); a capped rate alone reads "853%".
+ */
+export function rateChartBadge(
+  requiredRate: number | null,
+  overload: boolean,
+): { readonly text: string; readonly title: string } | undefined {
+  const real = percent(requiredRate);
+  const capped = real > RATE_CHART_CAP_PERCENT;
+  if (!overload && !capped) return undefined;
+  const figure = capped ? `${Math.round(real)}%` : '';
+  return {
+    text: overload ? `⚠${figure ? ` ${figure}` : ''}` : figure,
+    title:
+      (overload ? `Overload: needs ${rateText(requiredRate)}` : `Needs ${rateText(requiredRate)}`) +
+      (capped ? `, drawn at ${RATE_CHART_CAP_PERCENT}%` : ''),
+  };
+}
+
+/**
  * Employee overtime forecast: each person's task rate over the last 4 weeks beside the rate they need to finish their
  * open tasks before the deadline (a `pair` stack, in percent). A required rate over 100% is drawn red: it can't fit in
- * normal hours. People who need overtime get the alert border. Drawn by the shared dashboard bar chart.
+ * normal hours. People in overload get a small ⚠ badge over the bar, never a red frame. Drawn by the shared dashboard bar chart.
  */
 @Component({
   selector: 'app-employee-forecast-rate-chart',
@@ -70,6 +90,8 @@ export class EmployeeForecastRateChartComponent {
   readonly teamRate = input<number | null>(null);
   readonly heading = input('');
   readonly limit = input(8);
+  /** The longest bar label (characters); the full name is in the hover. */
+  readonly labelChars = input(8);
   readonly compactHeadline = input(true);
   readonly variant = input<DashboardBarVariant>('earnings');
   /** The realistic task-rate limit, drawn as the target dash on every bar; a required rate above it is overload. */
@@ -92,7 +114,7 @@ export class EmployeeForecastRateChartComponent {
     const limit = this.maxTaskRate();
     return this.shown().map((e) => ({
       key: e.employeeId,
-      label: shortBarLabel(e.name.split(' ')[0] ?? e.name, 8),
+      label: shortBarLabel(e.name.split(' ')[0] ?? e.name, this.labelChars()),
       title: e.name,
       valueText: `${rateText(e.conversionRate)} rate`,
       chip:
@@ -110,13 +132,7 @@ export class EmployeeForecastRateChartComponent {
           color: FORECAST_COLORS.covered,
         },
       ],
-      badge:
-        percent(e.requiredRate) > RATE_CHART_CAP_PERCENT
-          ? {
-              text: `${Math.round(percent(e.requiredRate))}%`,
-              title: `Needs ${rateText(e.requiredRate)}, drawn at ${RATE_CHART_CAP_PERCENT}%`,
-            }
-          : undefined,
+      badge: rateChartBadge(e.requiredRate, e.status === 'overload'),
       pair: [
         {
           key: 'required',
@@ -128,10 +144,6 @@ export class EmployeeForecastRateChartComponent {
         },
       ],
       marker: Math.min(RATE_CHART_CAP_PERCENT, percent(limit)),
-      alert:
-        e.status === 'overload'
-          ? `Overload: needs ${rateText(e.requiredRate)}, above the ${rateText(limit)} limit`
-          : undefined,
       tooltip: `${e.name}: task rate ${rateText(e.conversionRate)}, needs ${rateText(e.requiredRate)}${e.status === 'overload' ? ' (overload)' : ''}`,
     }));
   });

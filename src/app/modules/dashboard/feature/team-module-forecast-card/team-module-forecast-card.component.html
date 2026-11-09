@@ -23,14 +23,16 @@
     <ng-template #centreTpl>
       <p class="mf-donut-center">
         <span class="mf-donut-value" data-testid="mf-rate">{{ rate(data.totals.teamRate) }}</span>
-        <span class="mf-donut-of">{{
-          view() === 'mini' ? '4-wk rate' : 'task rate · last 4 wk'
-        }}</span>
+        <span class="mf-donut-of">4-wk rate</span>
       </p>
     </ng-template>
 
     <ng-template #chartTpl>
       <app-module-forecast-project-chart
+        [limit]="chartFit().bars"
+        [labelChars]="chartFit().labelChars"
+        [compactHeadline]="!narrowChart()"
+        [overloadCounts]="overloadCounts()"
         [maxTaskRate]="data.totals.maxTaskRate"
         class="mf-chart"
         heading="Won't fit by project"

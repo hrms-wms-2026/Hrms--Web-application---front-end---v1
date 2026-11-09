@@ -151,4 +151,19 @@ describe('TeamEmployeeForecastCardComponent', () => {
     expect(fixture.componentInstance.detailOpen()).toBe(true);
     expect(fixture.componentInstance.detailSection()).toBeNull();
   });
+
+  it('a ~270px body puts the chart title over its figure, with fewer, wider bars; ~470px keeps one line', () => {
+    setup();
+    // ~270px body (3 columns): the chart's title and figure on two lines, three bars at most, the short donut label.
+    let el = resize(302, 900);
+    const head = () => q(el, 'bar-chart-headline') as HTMLElement;
+    expect(head().classList).not.toContain('bc-head--compact');
+    expect(all(el, 'bar-chart-col').length).toBeLessThanOrEqual(3);
+    expect(q(el, 'ef-rate')?.parentElement?.textContent).toContain('4-wk rate');
+    expect(el.textContent).not.toContain('task rate · last 4 wk');
+    // ~470px body: one compact line.
+    el = resize(502, 900);
+    expect(head().classList).toContain('bc-head--compact');
+    expect(q(el, 'employee-forecast-rate-chart')).toBeTruthy();
+  });
 });

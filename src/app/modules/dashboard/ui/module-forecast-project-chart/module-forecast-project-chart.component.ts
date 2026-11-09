@@ -20,10 +20,29 @@ export function shortBarLabel(name: string, max = 10): string {
   return name.length > max ? `${name.slice(0, max - 1)}…` : name;
 }
 
+/** Headroom over the tallest bar: a target dash above this is left out of the plot (the hover still reads it). */
+export const MARKER_HEADROOM = 1.25;
+
+/**
+ * How many bars fit a plot this wide at a readable width (`slotPx` each, after the axis), and how many characters
+ * their labels get. Used by narrow cards so labels never shrink to "E-p…".
+ */
+export function chartFit(
+  bodyWidth: number,
+  slotPx = 64,
+  max = 8,
+): { readonly bars: number; readonly labelChars: number } {
+  const plot = Math.max(0, bodyWidth - 40);
+  const bars = Math.max(2, Math.min(max, Math.floor(plot / slotPx)));
+  return { bars, labelChars: Math.max(5, Math.floor(plot / bars / 7)) };
+}
+
 /**
  * Module overtime forecast, per project: the hours still to do beside the hours the team is predicted to complete
- * before the deadlines (a `pair` stack), with the normal working capacity as the target dash. A project that needs
- * overtime gets the red alert border. Drawn by the shared dashboard bar chart.
+ * before the deadlines (a `pair` stack). The dash is the capacity at the rate limit; it is drawn only when it lands
+ * within {@link MARKER_HEADROOM} of the tallest bar, so one huge project can't flatten the rest (the hover still reads
+ * it). A project with modules in overload gets a small "⚠ N" badge over its bar, never a red frame. Narrow cards pass
+ * `limit` and `labelChars` from {@link chartFit}; the rest show as "+N more". Drawn by the shared dashboard bar chart.
  */
 @Component({
   selector: 'app-module-forecast-project-chart',
@@ -42,6 +61,14 @@ export function shortBarLabel(name: string, max = 10): string {
       [variant]="variant()"
       [ariaLabel]="summary()"
     />
+    @if (hiddenCount() > 0) {
+      <p
+        class="mt-1 text-[0.6875rem] text-[var(--color-text-muted)]"
+        data-testid="project-chart-more"
+      >
+        +{{ hiddenCount() }} more {{ hiddenCount() === 1 ? 'project' : 'projects' }} in the popup
+      </p>
+    }
   `,
   host: { class: 'flex min-h-0 flex-col' },
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,6 +79,10 @@ export class ModuleForecastProjectChartComponent {
   readonly heading = input('');
   /** The most projects to draw (the ones with the most hours left). */
   readonly limit = input(8);
+  /** The longest bar label (characters); the full name is in the hover. */
+  readonly labelChars = input(10);
+  /** Modules in overload per project id (the response's count when it has one, else counted from the items). */
+  readonly overloadCounts = input<Readonly<Record<string, number | undefined>>>({});
   readonly compactHeadline = input(true);
   readonly variant = input<DashboardBarVariant>('earnings');
 
@@ -74,24 +105,39 @@ export class ModuleForecastProjectChartComponent {
       .slice(0, this.limit()),
   );
 
-  protected readonly bars = computed<DashboardBar[]>(() =>
-    this.shown().map((p) => ({
-      key: p.projectId,
-      label: shortBarLabel(p.name),
-      title: p.name,
-      valueText: `${forecastHoursText(p.remainingHours)} left`,
-      chip: p.overtimeHours > 0 ? `${shortHoursText(p.overtimeHours)} won't fit` : 'On track',
-      sub: `${forecastHoursText(p.predictedHours)} predicted · ${forecastHoursText(p.capacityHours)} capacity`,
-      segments: [{ key: 'remaining', value: p.remainingHours, color: FORECAST_COLORS.remaining }],
-      pair: [{ key: 'predicted', value: p.predictedHours, color: FORECAST_COLORS.covered }],
-      marker: p.capacityHours * this.maxTaskRate(),
-      alert:
-        p.overtimeHours > 0
-          ? `${p.modulesAtRisk} module${p.modulesAtRisk === 1 ? '' : 's'} at risk · ${shortHoursText(p.overtimeHours)} won't fit at today's rate`
-          : undefined,
-      tooltip: `${p.name}: ${forecastHoursText(p.remainingHours)} left, ${forecastHoursText(p.predictedHours)} predicted, ${forecastHoursText(p.capacityHours)} capacity`,
-    })),
+  protected readonly hiddenCount = computed(() =>
+    Math.max(0, this.projects().length - this.shown().length),
   );
+
+  protected readonly bars = computed<DashboardBar[]>(() => {
+    const shown = this.shown();
+    const limit = this.maxTaskRate();
+    const tallest = Math.max(0, ...shown.map((p) => Math.max(p.remainingHours, p.predictedHours)));
+    const counts = this.overloadCounts();
+    return shown.map((p) => {
+      const reachable = p.capacityHours * limit;
+      const overload = counts[p.projectId] ?? 0;
+      return {
+        key: p.projectId,
+        label: shortBarLabel(p.name, this.labelChars()),
+        title: p.name,
+        valueText: `${forecastHoursText(p.remainingHours)} left`,
+        chip: p.overtimeHours > 0 ? `${shortHoursText(p.overtimeHours)} won't fit` : 'On track',
+        sub: `${forecastHoursText(p.predictedHours)} predicted · capacity at ${rateText(limit)}: ${forecastHoursText(reachable)}`,
+        segments: [{ key: 'remaining', value: p.remainingHours, color: FORECAST_COLORS.remaining }],
+        pair: [{ key: 'predicted', value: p.predictedHours, color: FORECAST_COLORS.covered }],
+        marker: reachable > 0 && reachable <= tallest * MARKER_HEADROOM ? reachable : undefined,
+        badge:
+          overload > 0
+            ? {
+                text: `⚠ ${overload}`,
+                title: `${overload} module${overload === 1 ? '' : 's'} in overload`,
+              }
+            : undefined,
+        tooltip: `${p.name}: ${forecastHoursText(p.remainingHours)} left, ${forecastHoursText(p.predictedHours)} predicted, capacity at ${rateText(limit)} ${forecastHoursText(reachable)}${overload > 0 ? `, ${overload} in overload` : ''}`,
+      };
+    });
+  });
 
   protected readonly headline = computed<DashboardBarHeadline | null>(() => {
     if (!this.heading()) return null;

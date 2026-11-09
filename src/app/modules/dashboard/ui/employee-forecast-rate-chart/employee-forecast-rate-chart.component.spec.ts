@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { EMPLOYEE_FORECAST_ITEMS } from '../../utils/team-employee-forecast.testing';
 import {
   EmployeeForecastRateChartComponent,
+  rateChartBadge,
   rateChartPeople,
 } from './employee-forecast-rate-chart.component';
 
@@ -69,5 +70,22 @@ describe('EmployeeForecastRateChartComponent', () => {
     // Ann needs 130% (> 90%): overload; Bob needs 70%: the amber "higher rate".
     expect(required(0)).not.toBe(required(1));
     expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('Ann');
+  });
+
+  it('marks overload with a small badge, never a red frame round the bar', () => {
+    expect(rateChartBadge(1.3, true)).toEqual({ text: '⚠', title: 'Overload: needs 130%' });
+    expect(rateChartBadge(8.53, true)?.text).toBe('⚠ 853%');
+    expect(rateChartBadge(8.53, false)?.text).toBe('853%');
+    expect(rateChartBadge(0.7, false)).toBeUndefined();
+    const fixture = TestBed.createComponent(EmployeeForecastRateChartComponent);
+    fixture.componentRef.setInput('items', EMPLOYEE_FORECAST_ITEMS.slice(0, 2));
+    fixture.componentRef.setInput('labelChars', 5);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.bc-col--alert, [data-testid=bar-chart-alert]')).toBeNull();
+    const badges = [...el.querySelectorAll('[data-testid=bar-chart-badge]')].map((b) =>
+      b.textContent?.trim(),
+    );
+    expect(badges).toEqual(['⚠']);
   });
 });

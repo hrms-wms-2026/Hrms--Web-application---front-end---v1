@@ -53,6 +53,7 @@ import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import {
   moduleForecastExplanation,
   moduleRowRateText,
+  projectOverloadCounts,
 } from '../../utils/team-module-forecast-format.util';
 
 const csvHours = (h: number): string => h.toFixed(1);
@@ -227,6 +228,12 @@ export class TeamModuleForecastDetailDialogComponent {
       count: count[s],
       color: FORECAST_STATUS_META[s].color,
     }));
+  });
+
+  /** Modules in overload per project, for the chart's badges. */
+  protected readonly overloadCounts = computed(() => {
+    const data = this.store.data();
+    return data ? projectOverloadCounts(data.projects, data.items) : {};
   });
 
   protected readonly donutSlices = computed<DashboardDonutSlice[]>(() => {

@@ -23,14 +23,15 @@
     <ng-template #centreTpl>
       <p class="ef-donut-center">
         <span class="ef-donut-value" data-testid="ef-rate">{{ rate(data.totals.teamRate) }}</span>
-        <span class="ef-donut-of">{{
-          view() === 'mini' ? '4-wk rate' : 'task rate · last 4 wk'
-        }}</span>
+        <span class="ef-donut-of">4-wk rate</span>
       </p>
     </ng-template>
 
     <ng-template #chartTpl>
       <app-employee-forecast-rate-chart
+        [limit]="chartFit().bars"
+        [labelChars]="chartFit().labelChars"
+        [compactHeadline]="!narrowChart()"
         [maxTaskRate]="data.totals.maxTaskRate"
         class="ef-chart"
         heading="Task rate vs required"
