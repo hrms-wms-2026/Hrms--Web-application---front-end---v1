@@ -89,85 +89,129 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
     SelectComponent, TimePickerComponent, CalendarParticipantPickerComponent, MeetingBulkInvitePanelComponent, MeetingScopeDialogComponent, AvailabilityWarningsComponent],
   template: `
     <ng-template #formTpl>
-      <form [formGroup]="form" class="mf" (ngSubmit)="save()">
-        @if (mode() === 'create') {
-          <div class="mf-grid">
-            <div class="mf-field">
-              <span class="mf-label">Project</span>
-              <!-- "Office" is the tenant's Office project: a meeting with no other project still lands in a project. -->
-              <app-select data-testid="meeting-project" icon="folder" ariaLabel="Project" [options]="projectOptions()"
-                [value]="projectId() ?? ''" (valueChange)="selectProject($event)" />
+      <form [formGroup]="form" class="mf" [class.mf--cards]="cards()" (ngSubmit)="save()">
+        @if (cards() && occurrence(); as occ) {
+          <!-- The same hero as the meeting drawer: what is being edited, where it lives -->
+          <header class="mf-hero" data-testid="meeting-form-hero">
+            <div class="mf-hero__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5" /><path d="M3 9.5h18M8 2.5v4M16 2.5v4" /></svg>
             </div>
-            <div class="mf-field">
-              <span class="mf-label">Module</span>
-              <app-select data-testid="meeting-module" icon="layers" ariaLabel="Module" placeholder="Choose a module"
-                [options]="moduleOptions()" [value]="objectiveId() ?? ''" [disabled]="!projectId()"
-                (valueChange)="objectiveId.set($event || null)" />
+            <div class="mf-hero__body">
+              <span class="mf-hero__title">{{ values().title || 'Untitled meeting' }}</span>
+              <span class="mf-hero__meta">
+                @if (occ.shortId) { <span>{{ occ.shortId }}</span> }
+                <span class="mf-hero__chip" [class.mf-hero__chip--done]="occ.status === 'completed'">{{ notesOnly() ? 'Editing notes' : 'Editing meeting' }}</span>
+              </span>
+              <span class="mf-hero__place">{{ occ.placement.isOffice ? 'Office' : (occ.placement.projectName ?? '') + ' / ' + (occ.placement.moduleTitle ?? '') }}</span>
             </div>
-          </div>
-        } @else if (occurrence(); as occ) {
-          <p class="mf-note">
-            {{ occ.placement.isOffice ? 'Office' : occ.placement.projectName + ' / ' + occ.placement.moduleTitle }}
-          </p>
+          </header>
         }
 
-        <label class="mf-field">
-          <span class="mf-label">Meeting title</span>
-          <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="ui-input" [readOnly]="notesOnly()" />
-        </label>
-        <app-rich-text-editor class="mf-agenda" [initialHtml]="form.controls.description.value ?? ''" ariaLabel="Agenda"
-          placeholder="Add meeting agenda, discussion points or notes..." [compact]="true" [allowAttachments]="false"
-          [allowImages]="false" (htmlChange)="onAgenda($event)" />
+        <section class="mf-card">
+          <h3 class="mf-card__title">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h10l4 4V20a.5.5 0 0 1-.5.5h-13A.5.5 0 0 1 5 20V3.5Z" /><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4" /></svg>
+            {{ notesOnly() ? 'Notes' : 'Details' }}
+          </h3>
+          @if (mode() === 'create') {
+            <div class="mf-grid">
+              <div class="mf-field">
+                <span class="mf-label">Project</span>
+                <!-- "Office" is the tenant's Office project: a meeting with no other project still lands in a project. -->
+                <app-select data-testid="meeting-project" icon="folder" ariaLabel="Project" [options]="projectOptions()"
+                  [value]="projectId() ?? ''" (valueChange)="selectProject($event)" />
+              </div>
+              <div class="mf-field">
+                <span class="mf-label">Module</span>
+                <app-select data-testid="meeting-module" icon="layers" ariaLabel="Module" placeholder="Choose a module"
+                  [options]="moduleOptions()" [value]="objectiveId() ?? ''" [disabled]="!projectId()"
+                  (valueChange)="objectiveId.set($event || null)" />
+              </div>
+            </div>
+          } @else if (!cards() && occurrence(); as occ) {
+            <p class="mf-note">
+              {{ occ.placement.isOffice ? 'Office' : occ.placement.projectName + ' / ' + occ.placement.moduleTitle }}
+            </p>
+          }
+
+          <label class="mf-field">
+            <span class="mf-label">Meeting title</span>
+            <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="ui-input" [readOnly]="notesOnly()" />
+          </label>
+          <div class="mf-field">
+            @if (cards()) { <span class="mf-label">{{ notesOnly() ? 'Meeting notes' : 'Agenda' }}</span> }
+            <app-rich-text-editor class="mf-agenda" [initialHtml]="form.controls.description.value ?? ''" ariaLabel="Agenda"
+              placeholder="Add meeting agenda, discussion points or notes..." [compact]="true" [allowAttachments]="false"
+              [allowImages]="false" (htmlChange)="onAgenda($event)" />
+          </div>
+        </section>
 
         @if (!notesOnly()) {
-          <div class="mf-when">
-            <div class="mf-field mf-field--tight mf-date">
-              <span class="mf-label mf-label--sm">Date</span>
-              <app-date-picker data-testid="meeting-date" ariaLabel="Date" [showClear]="false" [value]="values().date"
-                (valueChange)="form.controls.date.setValue($event)" />
-            </div>
-            @if (!values().isAllDay) {
-              <div class="mf-field mf-field--tight mf-time">
-                <span class="mf-label mf-label--sm">Start</span>
-                <app-time-picker data-testid="meeting-start" [value]="values().time" (valueChange)="form.controls.time.setValue($event)" />
+          <section class="mf-card">
+            <h3 class="mf-card__title">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5V12l3 2" /></svg>
+              Date &amp; time
+            </h3>
+            <div class="mf-when">
+              <div class="mf-field mf-field--tight mf-date">
+                <span class="mf-label mf-label--sm">Date</span>
+                <app-date-picker data-testid="meeting-date" ariaLabel="Date" [showClear]="false" [value]="values().date"
+                  (valueChange)="form.controls.date.setValue($event)" />
               </div>
-              <svg class="mf-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              <div class="mf-field mf-field--tight mf-time">
-                <div class="mf-end-head">
-                  <span class="mf-label mf-label--sm">End</span>
-                  <span class="mf-duration" data-testid="meeting-duration">{{ durationLabel() }}</span>
+              @if (!values().isAllDay) {
+                <div class="mf-field mf-field--tight mf-time">
+                  <span class="mf-label mf-label--sm">Start</span>
+                  <app-time-picker data-testid="meeting-start" [value]="values().time" (valueChange)="form.controls.time.setValue($event)" />
                 </div>
-                <app-time-picker data-testid="meeting-end" [value]="endTime()" (valueChange)="setEndTime($event)" />
-              </div>
-            }
-            <label class="mf-check"><input type="checkbox" formControlName="isAllDay" /> All day</label>
-            <app-select class="mf-link" data-testid="meeting-recurrence" icon="repeat" ariaLabel="Repeat" placeholder="Repeat" [searchable]="false"
-              [options]="recurrenceOptions()" [value]="values().recurrence === 'none' ? null : values().recurrence"
-              (valueChange)="setRecurrence($event)" />
-            <app-select class="mf-link" data-testid="meeting-timezone" icon="globe" ariaLabel="Time zone" searchPlaceholder="Search time zones"
-              [options]="timezoneOptions()" [value]="values().timezone" (valueChange)="form.controls.timezone.setValue($event)" />
-          </div>
-          @if (durationOutOfRange()) {
-            <p data-testid="meeting-duration-invalid" role="alert" class="mf-error">A meeting runs from 15 minutes to 8 hours. Pick another end time.</p>
-          }
-          @if (values().recurrence === 'custom') {
-            <input formControlName="customRule" placeholder="RRULE, e.g. FREQ=WEEKLY;BYDAY=MO,WE" aria-label="Custom repeat rule" class="ui-input" />
-          }
-          @if (!compact()) {
-            <div class="mf-row">
-              <span class="mf-label">Location</span>
-              <div class="mf-inline">
-                <input data-testid="meeting-location" formControlName="location" placeholder="Location" aria-label="Location" class="ui-input" />
-                <label class="mf-check"><input type="checkbox" data-testid="meeting-private" formControlName="isPrivate" /> Private</label>
-              </div>
+                <svg class="mf-arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                <div class="mf-field mf-field--tight mf-time">
+                  <div class="mf-end-head">
+                    <span class="mf-label mf-label--sm">End</span>
+                    <span class="mf-duration" data-testid="meeting-duration">{{ durationLabel() }}</span>
+                  </div>
+                  <app-time-picker data-testid="meeting-end" [value]="endTime()" (valueChange)="setEndTime($event)" />
+                </div>
+              }
+              <label class="mf-check"><input type="checkbox" formControlName="isAllDay" /> All day</label>
+              <app-select class="mf-link" data-testid="meeting-recurrence" icon="repeat" ariaLabel="Repeat" placeholder="Repeat" [searchable]="false"
+                [options]="recurrenceOptions()" [value]="values().recurrence === 'none' ? null : values().recurrence"
+                (valueChange)="setRecurrence($event)" />
+              <app-select class="mf-link" data-testid="meeting-timezone" icon="globe" ariaLabel="Time zone" searchPlaceholder="Search time zones"
+                [options]="timezoneOptions()" [value]="values().timezone" (valueChange)="form.controls.timezone.setValue($event)" />
             </div>
+            @if (durationOutOfRange()) {
+              <p data-testid="meeting-duration-invalid" role="alert" class="mf-error">A meeting runs from 15 minutes to 8 hours. Pick another end time.</p>
+            }
+            @if (values().recurrence === 'custom') {
+              <input formControlName="customRule" placeholder="RRULE, e.g. FREQ=WEEKLY;BYDAY=MO,WE" aria-label="Custom repeat rule" class="ui-input" />
+            }
+          </section>
+
+          @if (!compact()) {
+            <section class="mf-card">
+              <h3 class="mf-card__title">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+                Location
+              </h3>
+              <div class="mf-row">
+                <span class="mf-label">Location</span>
+                <div class="mf-inline">
+                  <input data-testid="meeting-location" formControlName="location" placeholder="Room, address or Teams/Zoom" aria-label="Location" class="ui-input" />
+                  <label class="mf-check"><input type="checkbox" data-testid="meeting-private" formControlName="isPrivate" /> Private</label>
+                </div>
+              </div>
+            </section>
           }
         } @else {
           <p class="mf-note">This meeting has ended: only its notes can change.</p>
         }
 
         @if (mode() === 'create') {
+          <section class="mf-card">
+            <h3 class="mf-card__title">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M21.5 20a6.5 6.5 0 0 0-4-6" /></svg>
+              Online meeting &amp; people
+            </h3>
           <div class="mf-row">
             <span class="mf-label">Platform</span>
             <app-select data-testid="meeting-platform" icon="video" ariaLabel="Platform" [searchable]="false" [options]="platformOptions"
@@ -210,6 +254,7 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
               }
             </div>
           </div>
+          </section>
           <!-- In the CDK overlay: the Planner popover scrolls, and would clip a dropdown this low in the form. -->
           <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="peopleOrigin" [cdkConnectedOverlayOpen]="peopleOpen()"
             [cdkConnectedOverlayPositions]="peoplePositions" [cdkConnectedOverlayWidth]="peopleWidth()" [cdkConnectedOverlayPush]="true"
@@ -264,6 +309,28 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
     .mf-label--sm { font-size: 12px; }
     .mf-note { margin: 0; font-size: 12px; color: var(--color-text-secondary); }
     .mf-error { margin: 0; font-size: 12px; color: var(--color-danger); }
+
+    /* A section of the form. Plain (embedded in the work item dialog or the Planner popover) it adds nothing;
+       in its own modal it is a card with an icon title, like the meeting drawer's. */
+    .mf-card { display: contents; }
+    .mf-card__title { display: none; }
+    .mf--cards { gap: 16px; }
+    .mf--cards .mf-card { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border: 1px solid var(--color-border);
+      border-radius: 16px; background: var(--color-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); }
+    .mf--cards .mf-card__title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+    .mf--cards .mf-card__title svg { color: var(--color-text-secondary); }
+    .mf--cards .mf-footer { border-top: 0; padding-top: 4px; }
+    .mf--cards .mf-btn { height: 2.5rem; padding: 0 20px; border-radius: 12px; }
+
+    .mf-hero { display: flex; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--color-border); }
+    .mf-hero__icon { display: flex; flex: none; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 16px;
+      color: var(--color-accent); background: var(--color-accent-subtle); }
+    .mf-hero__body { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+    .mf-hero__title { overflow: hidden; font-size: 19px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-primary); }
+    .mf-hero__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13px; color: var(--color-text-secondary); }
+    .mf-hero__chip { padding: 1px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--color-accent); background: var(--color-accent-subtle); }
+    .mf-hero__chip--done { color: var(--color-success-text); background: var(--color-success-subtle); }
+    .mf-hero__place { font-size: 12px; color: var(--color-text-muted); }
 
     /* The leading icons sit in the field, with no divider beside them. */
     .mf ::ng-deep .ui-field__addon { min-width: 0; padding: 0 0 0 12px; border-right: 0; color: var(--color-text-primary); }
@@ -349,6 +416,8 @@ export class MeetingFormModalComponent implements OnInit {
   readonly occurrence = input<MeetingOccurrenceResponse | null>(null);
   /** Render the form without its own modal: the work item dialog hosts it when the category is "meeting". */
   readonly embedded = input(false);
+  /** In its own modal the form is laid out in cards under a hero; embedded or compact it stays plain. */
+  readonly cards = computed(() => !this.embedded() && !this.compact());
   readonly carryOver = input<MeetingCarryOver | null>(null);
   readonly saved = output<MeetingCreatedEvent | MeetingEditSaved>();
   readonly closed = output<void>();
