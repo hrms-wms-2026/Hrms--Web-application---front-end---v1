@@ -54,7 +54,7 @@ export class TrayActivationGateComponent implements OnInit {
   }
 
   regenerate(): void {
-    void this.presence.retry();
+    void this.presence.regenerateCode();
   }
 
   retry(): void {
