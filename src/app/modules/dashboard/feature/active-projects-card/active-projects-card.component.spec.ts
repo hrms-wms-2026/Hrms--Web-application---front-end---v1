@@ -40,6 +40,17 @@ describe('ActiveProjectsCardComponent', () => {
   const q = (fixture: ComponentFixture<unknown>, id: string): HTMLElement | null =>
     (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
 
+  it('has one card frame and one themed View All link', async () => {
+    const fixture = await setup(vi.fn(() => of(page([]))));
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelectorAll('section').length).toBe(1);
+    expect(el.querySelector('section')!.classList.contains('group')).toBe(true);
+    const links = el.querySelectorAll('[data-testid="active-projects-view-all"]');
+    expect(links.length).toBe(1);
+    expect(links[0].className).toContain('var(--color-border)');
+    expect(links[0].className).not.toContain('border-slate-200');
+  });
+
   it('the hover refresh button reloads the projects and keeps the list on screen', async () => {
     const listMine = vi.fn(() => of(page([project('a', { isActive: true })])));
     const fixture = await setup(listMine);

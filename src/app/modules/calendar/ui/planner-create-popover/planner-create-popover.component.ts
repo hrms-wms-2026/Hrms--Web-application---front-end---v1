@@ -12,8 +12,8 @@ import { CREATE_TAB_LABELS, CREATE_TAB_ORDER, CreateSlot, CreateTab, SharedCreat
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="pcp-backdrop" data-testid="create-popover-backdrop" (click)="closed.emit()"></div>
-    <section class="pcp-panel" [class.pcp-panel--wide]="active() === 'meeting' || active() === 'workItem'" data-testid="create-popover-panel" role="dialog" aria-label="Create" (click)="$event.stopPropagation()">
+    <div role="presentation" class="pcp-backdrop" data-testid="create-popover-backdrop" (click)="closed.emit()"></div>
+    <section class="pcp-panel" [class.pcp-panel--wide]="active() === 'meeting' || active() === 'workItem'" data-testid="create-popover-panel" role="dialog" aria-label="Create" (click)="$event.stopPropagation()" (keyup)="$event.stopPropagation()">
       <header class="pcp-tabs">
         <div role="tablist" class="pcp-tablist">
           @for (tab of visibleTabs(); track tab) {
