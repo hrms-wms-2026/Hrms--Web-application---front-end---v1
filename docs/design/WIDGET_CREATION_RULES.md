@@ -110,3 +110,23 @@ The source of truth is `feature/team-attendance-card/team-attendance-card.compon
 3. `npm run check:warnings`: **zero warnings** (template diagnostics are build errors). `ng build` clean.
 4. Browser pass at `https://<tenant>.onexso.com:4200` (the user signs in): 2x2, 2x4, 3x3, 4x4, 6x4, 12x8 and the default slot. No scroll at any size, hover on every donut/bar, every summary card opens its section, CSV export works.
 5. Update this file if the widget established a new rule.
+
+## 10. Rules added by the overtime forecast widgets (2026-11-08)
+
+- **Sibling widgets share their language in one util.** When two widgets show the same concept (Module and
+  Employee overtime forecast), the colours, status chips, donut slices and text formatters live in one shared
+  `utils/<topic>-format.util.ts` (and the size ladder in `utils/<topic>-layout.util.ts`). Each widget still has its own
+  model, api, store, layout/format/summary-cards utils, card and dialog, which wrap the shared ones.
+- **Chart palettes are data.** Hex colours belong only in the format util that defines the series. Add that one file
+  to `scripts/hardcoded-colors-baseline.json` by hand. Never run `--update`, because it would also lock in other
+  people's violations. CSS and templates use `var(--color-*)`; per-row colours go in through `[style.--tone]`.
+- **Long popup tables page on the server.** The store keeps the card's read (`data`, top N) apart from the popup's
+  `tableQuery` / `table` page. A filter, search or sort change goes back to page 1 (`nextTableQuery`), and a newer table
+  read cancels the one in flight. Search waits 250ms after the last key. Sort buttons exist only for the keys the
+  endpoint sorts by.
+- **CSV exports every row, not the page.** The backend clamps `pageSize` (1..100), so read page 1 and then the other
+  pages in parallel (`fetchAllForecastPages`).
+- **Expandable rows** use a `<button aria-expanded>` in the row header cell. The detail is a full-width `<tr>`
+  (`colspan` = column count) holding a small nested table.
+- **Without a range row**, the standard view fits the KPI tiles at 3 rows (312px). The summary-cards row (140px)
+  fits from 4 rows.
