@@ -63,7 +63,7 @@ describe('TeamModuleForecastDetailDialogComponent', () => {
     expect(all(el, 'mfd-row').length).toBe(5);
     expect(all(el, 'mfd-status')[0].textContent?.trim()).toBe('⚠ Overload');
     expect(all(el, 'mfd-status')[1].textContent?.trim()).toBe('Overtime risk');
-    expect(all(el, 'mfd-rate')[0].textContent?.trim()).toBe('42% → needs 120%');
+    expect(all(el, 'mfd-rate')[0].textContent?.trim()).toBe('42% → needs 120%, limit 90%');
     expect(q(el, 'mfd-count-overload')?.textContent).toContain('1');
     expect(q(el, 'mfd-count-raise_rate')?.textContent).toContain('2 Overtime risk');
     expect(el.textContent).toContain('Above 90% task rate is treated as overload.');

@@ -117,7 +117,7 @@ describe('TeamModuleForecastCardComponent', () => {
       '⚠ Overload',
     );
     expect(rows[0].querySelector('[data-testid=mf-row-rate]')?.textContent?.trim()).toBe(
-      '42% → 120%',
+      '42% → 120% · limit 90%',
     );
     expect(rows[1].querySelector('[data-testid=mf-overload]')).toBeNull();
     expect(rows[1].textContent).toContain('+');

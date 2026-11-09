@@ -15,7 +15,11 @@ import {
   WidgetState,
 } from '../../../../shared/ui/widget-card/widget-card.component';
 import { SummaryCardModel } from '../../models/summary-card.model';
-import { ModuleForecastResponse } from '../../models/team-module-forecast.model';
+import {
+  ModuleForecastItem,
+  ModuleForecastResponse,
+  ModuleForecastTotals,
+} from '../../models/team-module-forecast.model';
 import { TeamModuleForecastStore } from '../../state/team-module-forecast.store';
 import {
   DashboardDonutComponent,
@@ -36,13 +40,16 @@ import {
   forecastSlices,
   overtimeChipText,
   rateBarPercent,
-  rateVsRequiredShort,
   rateText,
   windowLabel,
 } from '../../utils/overtime-forecast-format.util';
 import { sameForecastPlan } from '../../utils/overtime-forecast-layout.util';
 import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';
-import { moduleForecastTiles, modulesAtRisk } from '../../utils/team-module-forecast-format.util';
+import {
+  moduleForecastTiles,
+  moduleRowRateText,
+  modulesAtRisk,
+} from '../../utils/team-module-forecast-format.util';
 import {
   EMPTY_MODULE_FORECAST_PLAN,
   MODULE_FORECAST_CARD_CHROME,
@@ -136,7 +143,8 @@ export class TeamModuleForecastCardComponent implements OnInit {
   protected readonly rate = rateText;
   protected readonly statusMeta = FORECAST_STATUS_META;
   protected readonly chip = overtimeChipText;
-  protected readonly rateVsRequired = rateVsRequiredShort;
+  protected readonly rowRate = (m: ModuleForecastItem, t: ModuleForecastTotals): string =>
+    moduleRowRateText(m, t, true);
   protected readonly bar = rateBarPercent;
 
   protected readonly widgetState = computed<WidgetState>(() => {

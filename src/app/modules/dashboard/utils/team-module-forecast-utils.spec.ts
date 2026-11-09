@@ -3,6 +3,7 @@ import { EMPTY_FORECAST_PLAN } from './overtime-forecast-layout.util';
 import {
   moduleForecastExplanation,
   moduleForecastTiles,
+  moduleRowRateText,
   modulesAtRisk,
 } from './team-module-forecast-format.util';
 import { shownModuleForecastCards } from './team-module-forecast-layout.util';
@@ -88,5 +89,15 @@ describe('team-module-forecast utils', () => {
         rankingRows: 3,
       }),
     ]).toEqual(['mf-rate', 'mf-overtime', 'mf-risk']);
+  });
+
+  it('an overload row names its own legal entity limit, else the response limit', () => {
+    const t = moduleForecastResponse().totals;
+    const billing = MODULE_FORECAST_ITEMS[0];
+    expect(moduleRowRateText(billing, t)).toBe('42% → needs 120%, limit 90%');
+    expect(moduleRowRateText({ ...billing, requiredRate: 0.96, maxTaskRate: 0.85 }, t, true)).toBe(
+      '42% → 96% · limit 85%',
+    );
+    expect(moduleRowRateText(MODULE_FORECAST_ITEMS[1], t)).toBe('42% → needs 83%');
   });
 });

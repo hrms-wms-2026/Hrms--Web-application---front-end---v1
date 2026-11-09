@@ -74,6 +74,8 @@ export interface ModuleForecastItem {
   readonly overtimeHours: number;
   readonly status: ForecastStatus;
   readonly memberCount: number;
+  /** This module's legal entity's task-rate limit; absent = `totals.maxTaskRate`. */
+  readonly maxTaskRate?: number;
   readonly members: readonly ModuleForecastMember[];
 }
 

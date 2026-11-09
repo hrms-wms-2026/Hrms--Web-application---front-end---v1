@@ -128,6 +128,18 @@ export function forecastRankChip(
     : { text, tone: FORECAST_STATUS_TONE[status] };
 }
 
+/** An overload row's rate text with its own limit: "42% → needs 96%, limit 90%" (short: "42% → 96% · limit 90%"). */
+export function overloadRateText(
+  rate: number | null,
+  requiredRate: number | null,
+  maxTaskRate: number,
+  short = false,
+): string {
+  return short
+    ? `${rateVsRequiredShort(rate, requiredRate)} · limit ${rateText(maxTaskRate)}`
+    : `${rateVsRequiredText(rate, requiredRate)}, limit ${rateText(maxTaskRate)}`;
+}
+
 /** The overload badge's text. */
 export const OVERLOAD_BADGE_TEXT = '⚠ Overload';
 

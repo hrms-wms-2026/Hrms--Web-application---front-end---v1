@@ -233,7 +233,7 @@
                         ><i [style.left.%]="bar(m.requiredRate)"></i
                       ></span>
                       <span data-testid="mfd-rate" [class.mfd-over]="m.status === 'overload'">{{
-                        rateVsRequired(m.conversionRate, m.requiredRate)
+                        rowRate(m, data.totals)
                       }}</span>
                     </span>
                   </td>

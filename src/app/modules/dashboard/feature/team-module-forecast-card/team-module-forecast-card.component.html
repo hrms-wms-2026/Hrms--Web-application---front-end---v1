@@ -196,7 +196,7 @@
                     <span class="mf-row-text">
                       <span class="mf-row-name">{{ row.title }}</span>
                       <span class="mf-row-rate" data-testid="mf-row-rate">{{
-                        rateVsRequired(row.conversionRate, row.requiredRate)
+                        rowRate(row, data.totals)
                       }}</span>
                     </span>
                     <span class="mf-rank-bar" aria-hidden="true"

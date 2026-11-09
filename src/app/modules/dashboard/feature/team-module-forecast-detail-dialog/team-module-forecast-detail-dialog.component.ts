@@ -21,6 +21,7 @@ import {
   ModuleForecastItem,
   ModuleForecastResponse,
   ModuleForecastSort,
+  ModuleForecastTotals,
 } from '../../models/team-module-forecast.model';
 import { TeamModuleForecastStore } from '../../state/team-module-forecast.store';
 import {
@@ -39,7 +40,6 @@ import {
   rateBarPercent,
   overloadLimitText,
   rateText,
-  rateVsRequiredText,
   shortDate,
   windowLabel,
 } from '../../utils/overtime-forecast-format.util';
@@ -50,7 +50,10 @@ import {
   parseForecastStatus,
 } from '../../utils/overtime-forecast-table.util';
 import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
-import { moduleForecastExplanation } from '../../utils/team-module-forecast-format.util';
+import {
+  moduleForecastExplanation,
+  moduleRowRateText,
+} from '../../utils/team-module-forecast-format.util';
 
 const csvHours = (h: number): string => h.toFixed(1);
 const csvRate = (r: number | null): string => (r === null ? '' : (r * 100).toFixed(1));
@@ -131,7 +134,8 @@ export class TeamModuleForecastDetailDialogComponent {
   protected readonly hours = forecastHoursText;
   protected readonly memberHours = minutesAsHours;
   protected readonly rate = rateText;
-  protected readonly rateVsRequired = rateVsRequiredText;
+  protected readonly rowRate = (m: ModuleForecastItem, t: ModuleForecastTotals): string =>
+    moduleRowRateText(m, t);
   protected readonly bar = rateBarPercent;
   protected readonly date = shortDate;
   protected readonly donutPx = DASHBOARD_DONUT_PX;

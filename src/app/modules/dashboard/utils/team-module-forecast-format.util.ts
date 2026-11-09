@@ -4,7 +4,10 @@ import {
   ForecastTileRow,
   forecastHoursText,
   forecastSlices,
+  overloadRateText,
   rateText,
+  rateVsRequiredShort,
+  rateVsRequiredText,
 } from './overtime-forecast-format.util';
 
 /** The card's four tiles: Allocated, Predicted, Task rate, Won't fit. */
@@ -52,6 +55,24 @@ export function modulesAtRisk(items: readonly ModuleForecastItem[]): ModuleForec
         (b.requiredRate ?? 0) - (a.requiredRate ?? 0) ||
         a.title.localeCompare(b.title),
     );
+}
+
+/** A module's own task-rate limit (its legal entity's), else the response's. */
+export function moduleRateLimit(m: ModuleForecastItem, totals: ModuleForecastTotals): number {
+  return m.maxTaskRate ?? totals.maxTaskRate;
+}
+
+/** A module row's rate text: "42% → needs 45%"; in overload with its own limit, "42% → needs 96%, limit 90%". */
+export function moduleRowRateText(
+  m: ModuleForecastItem,
+  totals: ModuleForecastTotals,
+  short = false,
+): string {
+  if (m.status === 'overload')
+    return overloadRateText(m.conversionRate, m.requiredRate, moduleRateLimit(m, totals), short);
+  return short
+    ? rateVsRequiredShort(m.conversionRate, m.requiredRate)
+    : rateVsRequiredText(m.conversionRate, m.requiredRate);
 }
 
 /** Plain words under the popup's pie. */
