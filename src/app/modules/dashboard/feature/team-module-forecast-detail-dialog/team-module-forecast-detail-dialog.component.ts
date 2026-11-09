@@ -66,7 +66,7 @@ export function moduleForecastCsv(items: readonly ModuleForecastItem[]): string[
     'Predicted h',
     'Task rate %',
     'Required rate %',
-    'Overtime h',
+    "Won't fit h",
     'Status',
     'Team',
   ];
@@ -193,7 +193,7 @@ export class TeamModuleForecastDetailDialogComponent {
         testId: 'mfd-tile-rate',
       },
       {
-        label: 'Overtime',
+        label: "Won't fit at today's rate",
         value: forecastHoursText(t.overtimeHours),
         hint: `${t.overtime} need overtime · ${t.raiseRate} need a higher rate`,
         icon: 'alert-triangle',

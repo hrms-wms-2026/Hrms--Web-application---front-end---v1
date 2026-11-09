@@ -68,7 +68,7 @@
         <section class="mfd-panel" data-section="projects">
           <app-module-forecast-project-chart
             class="mfd-chart"
-            heading="Overtime by project"
+            heading="Won't fit by project"
             variant="orders"
             [compactHeadline]="false"
             [limit]="12"
@@ -79,7 +79,9 @@
 
       <section class="mfd-panel" data-section="modules">
         <div class="mfd-table-head">
-          <p class="mfd-title">Modules <span class="mfd-muted">· most overtime first</span></p>
+          <p class="mfd-title">
+            Modules <span class="mfd-muted">· most hours that won't fit first</span>
+          </p>
           <div class="mfd-table-actions">
             <app-input
               class="mfd-search"
@@ -170,7 +172,7 @@
                     data-testid="mfd-sort-overtime"
                     (click)="sortBy('overtime')"
                   >
-                    Overtime
+                    Won't fit
                   </button>
                 </th>
                 <th scope="col">Status</th>
@@ -224,7 +226,7 @@
                     {{ rate(m.requiredRate) }}
                   </td>
                   <td class="mfd-num" [class.mfd-over]="m.overtimeHours > 0">
-                    {{ m.overtimeHours > 0 ? '~' + hours(m.overtimeHours) : '—' }}
+                    {{ m.overtimeHours > 0 ? '+' + hours(m.overtimeHours) : '—' }}
                   </td>
                   <td>
                     <span
@@ -319,7 +321,8 @@
           Task rate = completed task hours ÷ working time over the last 4 weeks, pooled over the
           module's team (their work on other projects counts too). Predicted = working capacity to
           the deadline × task rate. Required = remaining ÷ capacity; over 100% cannot fit in normal
-          hours. Overtime = the extra working hours needed at the current rate.
+          hours. Won't fit = remaining − predicted: the task hours that won't be done by the
+          deadline at today's rate (a higher rate or overtime has to cover them).
         </p>
       </section>
     </div>

@@ -1,6 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { ModuleForecastProject } from '../../models/team-module-forecast.model';
-import { FORECAST_COLORS, forecastHoursText } from '../../utils/overtime-forecast-format.util';
+import {
+  FORECAST_COLORS,
+  forecastHoursText,
+  shortHoursText,
+} from '../../utils/overtime-forecast-format.util';
 import {
   DashboardBar,
   DashboardBarChartComponent,
@@ -67,14 +71,14 @@ export class ModuleForecastProjectChartComponent {
       label: shortBarLabel(p.name),
       title: p.name,
       valueText: `${forecastHoursText(p.remainingHours)} left`,
-      chip: p.overtimeHours > 0 ? `~${forecastHoursText(p.overtimeHours)} overtime` : 'On track',
+      chip: p.overtimeHours > 0 ? `${shortHoursText(p.overtimeHours)} won't fit` : 'On track',
       sub: `${forecastHoursText(p.predictedHours)} predicted · ${forecastHoursText(p.capacityHours)} capacity`,
       segments: [{ key: 'remaining', value: p.remainingHours, color: FORECAST_COLORS.remaining }],
       pair: [{ key: 'predicted', value: p.predictedHours, color: FORECAST_COLORS.covered }],
       marker: p.capacityHours,
       alert:
         p.overtimeHours > 0
-          ? `${p.modulesAtRisk} module${p.modulesAtRisk === 1 ? '' : 's'} at risk · ~${forecastHoursText(p.overtimeHours)} overtime`
+          ? `${p.modulesAtRisk} module${p.modulesAtRisk === 1 ? '' : 's'} at risk · ${shortHoursText(p.overtimeHours)} won't fit at today's rate`
           : undefined,
       tooltip: `${p.name}: ${forecastHoursText(p.remainingHours)} left, ${forecastHoursText(p.predictedHours)} predicted, ${forecastHoursText(p.capacityHours)} capacity`,
     })),
@@ -86,7 +90,7 @@ export class ModuleForecastProjectChartComponent {
     const remaining = this.projects().reduce((n, p) => n + p.remainingHours, 0);
     return {
       label: this.heading(),
-      value: overtime > 0 ? `~${forecastHoursText(overtime)} overtime` : 'On track',
+      value: overtime > 0 ? `${shortHoursText(overtime)} won't fit` : 'On track',
       hint: 'Remaining hours beside the predicted task hours before the deadlines; the dash is the working capacity',
       sub: this.variant() === 'orders' ? `${forecastHoursText(remaining)} still to do` : undefined,
     };

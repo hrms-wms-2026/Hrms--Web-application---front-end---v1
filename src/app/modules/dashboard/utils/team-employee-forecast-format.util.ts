@@ -10,7 +10,7 @@ import {
   rateText,
 } from './overtime-forecast-format.util';
 
-/** The card's four tiles: Remaining, Predicted, Task rate, Overtime h. */
+/** The card's four tiles: Remaining, Predicted, Task rate, Won't fit. */
 export function employeeForecastTiles(t: EmployeeForecastTotals): ForecastTileRow[] {
   return [
     {
@@ -36,9 +36,9 @@ export function employeeForecastTiles(t: EmployeeForecastTotals): ForecastTileRo
     },
     {
       key: 'overtime',
-      label: 'Overtime h',
+      label: "Won't fit",
       value: forecastHoursText(t.overtimeHours),
-      title: `${forecastHoursText(t.overtimeHours)} of overtime at the current rates`,
+      title: `${forecastHoursText(t.overtimeHours)} of task hours won't fit before the deadlines at today's rates`,
       color: FORECAST_COLORS.overtime,
     },
   ];
@@ -73,8 +73,8 @@ export function employeeForecastExplanation(t: EmployeeForecastTotals): string {
     parts.push(`${forecastHoursText(overtime)} do not fit in normal working hours even at 100%.`);
   if (t.overtimeHours > 0)
     parts.push(
-      `At today's rates that is ~${forecastHoursText(t.overtimeHours)} of overtime across ${t.overtime + t.raiseRate} people.`,
+      `~${forecastHoursText(t.overtimeHours)} won't fit at today's rates, across ${t.overtime + t.raiseRate} people.`,
     );
-  else parts.push("No overtime is needed at today's rates.");
+  else parts.push("Everything fits at today's rates.");
   return parts.join(' ');
 }

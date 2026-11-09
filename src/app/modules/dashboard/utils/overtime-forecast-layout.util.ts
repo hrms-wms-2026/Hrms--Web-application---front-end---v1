@@ -62,6 +62,8 @@ export interface ForecastPlan {
   tiles: boolean;
   tileColumns: 2 | 4;
   chart: boolean;
+  /** The chart panel's height: its fixed 150px plus any height the ranking can't use. */
+  chartPx: number;
   rankingRows: number;
 }
 
@@ -72,15 +74,21 @@ export const EMPTY_FORECAST_PLAN: ForecastPlan = {
   tiles: false,
   tileColumns: 4,
   chart: false,
+  chartPx: FORECAST_SECTION_PX.chart,
   rankingRows: 0,
 };
 
-/** `rowPx` replaces the KPI tile row's height (one row, any width): a taller view's summary-cards row. */
+/**
+ * `rowPx` replaces the KPI tile row's height (one row, any width): a taller view's summary-cards row.
+ * `rankingItems` is how many rows the ranking has to show; the plan never budgets more (it still keeps the minimum
+ * three for the empty line). Height the ranking can't use goes to the chart, so a card never ends in blank space.
+ */
 export function planForecastLayout(
   view: ForecastView,
   width: number,
   height: number,
   rowPx?: number,
+  rankingItems: number = FORECAST_MAX_RANKING_ROWS,
 ): ForecastPlan {
   if (view === 'mini' || !(width > 0) || !(height > 0)) return EMPTY_FORECAST_PLAN;
   const s = FORECAST_SECTION_PX;
@@ -112,7 +120,12 @@ export function planForecastLayout(
   }
 
   const rows = Math.floor((rest - s.gap - s.rankingHead) / s.rankingRow);
-  if (rows >= MIN_RANKING_ROWS) plan.rankingRows = Math.min(rows, FORECAST_MAX_RANKING_ROWS);
+  if (rows >= MIN_RANKING_ROWS) {
+    const wanted = Math.max(MIN_RANKING_ROWS, Math.min(rankingItems, FORECAST_MAX_RANKING_ROWS));
+    plan.rankingRows = Math.min(rows, wanted);
+    rest -= s.gap + s.rankingHead + plan.rankingRows * s.rankingRow;
+  }
+  if (plan.chart) plan.chartPx = s.chart + Math.max(0, rest);
   return plan;
 }
 
@@ -124,6 +137,7 @@ export function sameForecastPlan(a: ForecastPlan, b: ForecastPlan): boolean {
     a.tiles === b.tiles &&
     a.tileColumns === b.tileColumns &&
     a.chart === b.chart &&
+    a.chartPx === b.chartPx &&
     a.rankingRows === b.rankingRows
   );
 }

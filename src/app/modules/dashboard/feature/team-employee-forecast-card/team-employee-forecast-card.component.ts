@@ -33,6 +33,7 @@ import {
   ForecastTileRow,
   forecastDonutLabel,
   forecastHeroCaption,
+  forecastHeroSub,
   forecastHeroText,
   forecastSlices,
   overtimeChipText,
@@ -109,6 +110,11 @@ export class TeamEmployeeForecastCardComponent implements OnInit {
   readonly detailOpen = signal(false);
   readonly detailSection = signal<string | null>(null);
 
+  /** How many rows the ranking has to show (the plan gives the chart any height it can't use). */
+  private readonly atRiskCount = computed(
+    () => peopleAtRisk(this.store.data()?.items ?? []).length,
+  );
+
   protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
     const data = this.store.data();
     return data ? teamEmployeeForecastSummaryCards(data) : [];
@@ -120,7 +126,8 @@ export class TeamEmployeeForecastCardComponent implements OnInit {
     const view = this.view();
     if (!size) return { plan: EMPTY_EMPLOYEE_FORECAST_PLAN, cards: [] as SummaryCardModel[] };
     return withSummaryRow(
-      (rowPx) => planEmployeeForecastLayout(view, size.width, size.height, rowPx),
+      (rowPx) =>
+        planEmployeeForecastLayout(view, size.width, size.height, rowPx, this.atRiskCount()),
       this.summaryCards(),
       (plan) => shownEmployeeForecastCards(view, plan),
       summaryRowCount(size.width - EMPLOYEE_FORECAST_CARD_CHROME.width),
@@ -158,6 +165,10 @@ export class TeamEmployeeForecastCardComponent implements OnInit {
 
   protected readonly hero = computed(() =>
     forecastHeroText(this.store.data()?.totals.overtimeHours ?? 0),
+  );
+
+  protected readonly heroSub = computed(() =>
+    forecastHeroSub(this.store.data()?.totals.overtimeHours ?? 0),
   );
 
   protected readonly caption = computed(() => {

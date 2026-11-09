@@ -74,9 +74,22 @@ export function rateBarPercent(rate: number | null): number {
   return Math.min(100, Math.max(0, rate * 100));
 }
 
-/** The hero figure: "~950 h overtime", or "On track" when nothing is short. */
+/**
+ * The hours that won't fit before the deadline at today's rate (`overtimeHours` = max(0, remaining − predicted),
+ * task hours, never above remaining), signed: "+7,621 h". A minus or a tilde reads as a negative at chip size.
+ */
+export function shortHoursText(hours: number): string {
+  return `+${forecastHoursText(hours)}`;
+}
+
+/** The hero figure: "~7,621 h", or "On track" when everything fits. */
 export function forecastHeroText(overtimeHours: number): string {
-  return overtimeHours > 0 ? `~${forecastHoursText(overtimeHours)} overtime` : 'On track';
+  return overtimeHours > 0 ? `~${forecastHoursText(overtimeHours)}` : 'On track';
+}
+
+/** The line under the hero figure. */
+export function forecastHeroSub(overtimeHours: number): string {
+  return overtimeHours > 0 ? "won't fit at today's rate" : "Everything fits at today's rate";
 }
 
 /** "Needs 58% task rate · now 42%"; without history "No task history in the last 4 weeks". */
@@ -86,11 +99,9 @@ export function forecastHeroCaption(teamRate: number | null, requiredRate: numbe
   return `Needs ${rateText(requiredRate)} task rate · now ${rateText(teamRate)}`;
 }
 
-/** The overtime chip of a ranking row: "~12 h" or the status label when nothing is short. */
+/** The chip of a ranking row: "+12 h" (won't fit) or the status label when everything fits. */
 export function overtimeChipText(overtimeHours: number, status: ForecastStatus): string {
-  return overtimeHours > 0
-    ? `~${forecastHoursText(overtimeHours)}`
-    : FORECAST_STATUS_META[status].label;
+  return overtimeHours > 0 ? shortHoursText(overtimeHours) : FORECAST_STATUS_META[status].label;
 }
 
 /**

@@ -3,7 +3,7 @@ import { EmployeeForecastItem } from '../../models/team-employee-forecast.model'
 import {
   FORECAST_COLORS,
   FORECAST_STATUS_META,
-  forecastHoursText,
+  shortHoursText,
   rateText,
 } from '../../utils/overtime-forecast-format.util';
 import {
@@ -31,6 +31,10 @@ export function rateChartPeople(
 }
 
 const percent = (rate: number | null): number => (rate === null ? 0 : Math.round(rate * 1000) / 10);
+
+/** The highest rate the chart plots: a required 853% would flatten every task-rate bar. Taller ones are drawn at the
+ * cap with a badge showing the real figure; the hover reads the real figure too. */
+export const RATE_CHART_CAP_PERCENT = 200;
 
 /**
  * Employee overtime forecast: each person's task rate over the last 4 weeks beside the rate they need to finish their
@@ -84,13 +88,26 @@ export class EmployeeForecastRateChartComponent {
       chip: `needs ${rateText(e.requiredRate)}`,
       sub:
         e.overtimeHours > 0
-          ? `~${forecastHoursText(e.overtimeHours)} overtime`
+          ? `${shortHoursText(e.overtimeHours)} won't fit at today's rate`
           : FORECAST_STATUS_META[e.status].label,
-      segments: [{ key: 'rate', value: percent(e.conversionRate), color: FORECAST_COLORS.covered }],
+      segments: [
+        {
+          key: 'rate',
+          value: Math.min(RATE_CHART_CAP_PERCENT, percent(e.conversionRate)),
+          color: FORECAST_COLORS.covered,
+        },
+      ],
+      badge:
+        percent(e.requiredRate) > RATE_CHART_CAP_PERCENT
+          ? {
+              text: `${Math.round(percent(e.requiredRate))}%`,
+              title: `Needs ${rateText(e.requiredRate)}, drawn at ${RATE_CHART_CAP_PERCENT}%`,
+            }
+          : undefined,
       pair: [
         {
           key: 'required',
-          value: percent(e.requiredRate),
+          value: Math.min(RATE_CHART_CAP_PERCENT, percent(e.requiredRate)),
           color:
             e.requiredRate !== null && e.requiredRate > 1
               ? FORECAST_COLORS.overtime
@@ -99,7 +116,7 @@ export class EmployeeForecastRateChartComponent {
       ],
       alert:
         e.status === 'overtime'
-          ? `Needs ~${forecastHoursText(e.overtimeHours)} overtime`
+          ? `${shortHoursText(e.overtimeHours)} won't fit at today's rate`
           : undefined,
       tooltip: `${e.name}: task rate ${rateText(e.conversionRate)}, needs ${rateText(e.requiredRate)}`,
     })),
@@ -113,7 +130,7 @@ export class EmployeeForecastRateChartComponent {
       hint: "Each person's task rate over the last 4 weeks beside the rate needed to finish before their deadline",
       sub:
         this.variant() === 'orders'
-          ? `${this.shown().length} people with the most overtime`
+          ? `${this.shown().length} people with the most hours that won't fit`
           : undefined,
     };
   });

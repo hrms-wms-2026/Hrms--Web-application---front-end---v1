@@ -23,7 +23,7 @@ describe('team-employee-forecast utils', () => {
       ['Remaining', '250 h'],
       ['Predicted', '140 h'],
       ['Task rate', '40%'],
-      ['Overtime h', '57 h'],
+      ["Won't fit", '57 h'],
     ]);
   });
 
@@ -32,7 +32,9 @@ describe('team-employee-forecast utils', () => {
     expect(employeeForecastExplanation(t)).toContain(
       "Of 250 h of open tasks due, each person's own task rate (team 40%, last 4 weeks) completes about 140 h",
     );
-    expect(employeeForecastExplanation(t)).toContain('~57 h of overtime across 3 people');
+    expect(employeeForecastExplanation(t)).toContain(
+      "~57 h won't fit at today's rates, across 3 people.",
+    );
     expect(employeeForecastExplanation({ ...t, teamRate: null })).toContain(
       'Nobody clocked working time',
     );
@@ -57,9 +59,9 @@ describe('team-employee-forecast utils', () => {
     expect(overtime?.kind === 'bars' && overtime.values).toEqual([40, 13, 4]);
     const risk = cards[2].body;
     expect(risk?.kind === 'rank' && risk.rows.map((r) => r.chips[0].text)).toEqual([
-      '~40 h',
-      '~13 h',
-      '~4 h',
+      '+40 h',
+      '+13 h',
+      '+4 h',
     ]);
   });
 

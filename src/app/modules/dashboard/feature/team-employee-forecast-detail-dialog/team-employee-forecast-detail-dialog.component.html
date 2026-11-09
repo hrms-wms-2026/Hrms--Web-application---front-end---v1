@@ -80,7 +80,9 @@
 
       <section class="efd-panel" data-section="employees">
         <div class="efd-table-head">
-          <p class="efd-title">Team members <span class="efd-muted">· most overtime first</span></p>
+          <p class="efd-title">
+            Team members <span class="efd-muted">· most hours that won't fit first</span>
+          </p>
           <div class="efd-table-actions">
             <app-input
               class="efd-search"
@@ -153,7 +155,7 @@
                     Required
                   </button>
                 </th>
-                <th scope="col" title="The deadline of the window that needs the most overtime">
+                <th scope="col" title="The deadline whose window has the most hours that won't fit">
                   Deadline
                 </th>
                 <th class="efd-num" scope="col">Remaining</th>
@@ -165,7 +167,7 @@
                     data-testid="efd-sort-overtime"
                     (click)="sortBy('overtime')"
                   >
-                    Overtime
+                    Won't fit
                   </button>
                 </th>
                 <th scope="col">Status</th>
@@ -221,7 +223,7 @@
                   <td class="efd-num">{{ hours(e.remainingHours) }}</td>
                   <td class="efd-num">{{ hours(e.predictedHours) }}</td>
                   <td class="efd-num" [class.efd-over]="e.overtimeHours > 0">
-                    {{ e.overtimeHours > 0 ? '~' + hours(e.overtimeHours) : '—' }}
+                    {{ e.overtimeHours > 0 ? '+' + hours(e.overtimeHours) : '—' }}
                   </td>
                   <td>
                     <span
@@ -308,8 +310,9 @@
           Task rate = completed task hours ÷ working time over the last 4 weeks (tasks from every
           project count). For each deadline, the open estimated tasks due by then (shared tasks
           split between their assignees) are compared with the working hours to that date × the task
-          rate; the row shows the deadline that needs the most overtime. Required over 100% cannot
-          fit in normal hours.
+          rate; the row shows the deadline whose window has the most hours that won't fit (remaining
+          − predicted). Required over 100% cannot fit in normal hours; the chart draws it at 200%
+          with the real figure on top.
         </p>
       </section>
     </div>

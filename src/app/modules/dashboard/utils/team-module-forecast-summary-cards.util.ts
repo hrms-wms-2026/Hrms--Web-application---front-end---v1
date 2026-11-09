@@ -4,7 +4,7 @@ import { ModuleForecastResponse } from '../models/team-module-forecast.model';
 import {
   FORECAST_STATUS_META,
   FORECAST_STATUS_TONE,
-  forecastHoursText,
+  shortHoursText,
   overtimeChipText,
   rateText,
 } from './overtime-forecast-format.util';
@@ -61,14 +61,14 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
     },
     {
       id: 'mf-overtime',
-      title: 'Overtime needed',
+      title: "Won't fit",
       icon: 'clock',
       tone: 'var(--color-cat-red)',
       section: 'projects',
       state: 'ready',
       body: {
         kind: 'bars',
-        figure: t.overtimeHours > 0 ? `~${forecastHoursText(t.overtimeHours)}` : 'None',
+        figure: t.overtimeHours > 0 ? shortHoursText(t.overtimeHours) : 'None',
         delta: null,
         values: data.projects.map((p) => Math.round(p.overtimeHours)),
       },

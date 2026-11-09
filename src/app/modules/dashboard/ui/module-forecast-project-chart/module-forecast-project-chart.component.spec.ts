@@ -20,7 +20,7 @@ describe('ModuleForecastProjectChartComponent', () => {
     expect(cols[0].querySelector('[data-segment=remaining]')).not.toBeNull();
     expect(cols[0].querySelector('[data-segment=predicted]')).not.toBeNull();
     expect(cols[0].textContent).toContain('Atlas');
-    expect(el.textContent).toContain('~950 h overtime');
+    expect(el.textContent).toContain("+950 h won't fit");
     expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain(
       'Atlas: 900 h left, 700 h predicted',
     );

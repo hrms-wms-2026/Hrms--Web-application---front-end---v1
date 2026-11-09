@@ -24,7 +24,7 @@ describe('team-module-forecast utils', () => {
       ['Allocated', '2,400 h'],
       ['Predicted', '1,100 h'],
       ['Task rate', '42%'],
-      ['Overtime h', '950 h'],
+      ["Won't fit", '950 h'],
     ]);
   });
 
@@ -35,7 +35,7 @@ describe('team-module-forecast utils', () => {
       "Of 1,500 h still to do, the team's 42% task rate (last 4 weeks) completes about 1,100 h",
     );
     expect(text).toContain('58% is needed');
-    expect(text).toContain('~950 h of overtime');
+    expect(text).toContain("~950 h won't fit at today's rate.");
     expect(moduleForecastExplanation({ ...t, teamRate: null })).toContain(
       'Nobody on these modules clocked',
     );
@@ -61,9 +61,9 @@ describe('team-module-forecast utils', () => {
     expect(rate?.kind === 'spark' && rate.delta?.text).toBe('−16.0 pp');
     const risk = cards[2].body;
     expect(risk?.kind === 'rank' && risk.rows.map((r) => r.chips[0].text)).toEqual([
-      '~140 h',
-      '~60 h',
-      '~20 h',
+      '+140 h',
+      '+60 h',
+      '+20 h',
     ]);
     const status = cards[3].body;
     expect(status?.kind === 'chips' && status.items.map((i) => i.value)).toEqual([1, 2, 1, 1]);

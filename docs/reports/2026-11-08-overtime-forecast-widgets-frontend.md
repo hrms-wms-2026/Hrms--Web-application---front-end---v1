@@ -67,3 +67,25 @@ The backend notes (`side-session-notes/.../backend-forecast-contract-notes.md`) 
   - Every summary card opens its section.
   - Expandable rows, paging and CSV.
 - The section heights come from the reference widget's measured values. They have not been re-measured for these cards, whose hero has one more caption line (the rate window).
+
+## Browser pass follow-up (2026-11-09)
+
+Fixes from the user's browser pass, all approved:
+
+- **Wording:** the backend now sends `overtimeHours` = max(0, remaining − predicted), which is task hours. The UI matches.
+  - The hero reads "~7,621 h" over "won't fit at today's rate".
+  - The tiles, summary cards, table column and CSV say "Won't fit".
+  - The popup explanation says "~X won't fit at today's rate". The divided-by-rate "that is ~X h of overtime" sentence is gone.
+- **Chips** read "+902 h". The old "~" read as a minus at chip size.
+- **Employee rate chart:** values are plotted up to 200%. A taller required rate is drawn at the cap with a badge showing its real figure ("853%"), and the hover and aria text keep the real figure.
+- **Employee popup padding:** the body rule was still named `.mfd` from the copy, so it never applied. It is now `.efd`.
+- **2x2 donut:** the centre sub-label is "4-wk rate" in the mini view. "task rate · last 4 wk" stays at 168px.
+- **Long titles:** `app-widget-card` with `nowrapTitle` now truncates with an ellipsis (`truncate min-w-0`) and keeps the full title as a tooltip. This is a shared change, and every nowrap card benefits.
+- **Blank space at 6x6:** the planner now gives the chart any height the ranking can't use (`ForecastPlan.chartPx`). The ranking never budgets more rows than it has items, with a minimum of 3 for the empty line.
+- **Default size:** it comes from the backend catalog (`defaultW`/`defaultH`), so it is a backend registry change, not a frontend one.
+
+Gates after the fixes:
+- `check:warnings` is clean.
+- 101 forecast and widget-card specs are green.
+- The dashboard and shared-ui specs pass, apart from a `pan-zoom-canvas` flake that passes on its own (9/9).
+- ESLint finds nothing in the new code. The 7 errors in `calendar` were there before.

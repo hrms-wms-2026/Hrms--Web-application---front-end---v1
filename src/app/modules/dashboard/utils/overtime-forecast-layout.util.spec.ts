@@ -40,4 +40,18 @@ describe('overtime-forecast-layout', () => {
     const withCards = planForecastLayout('standard', 760, 528, 140);
     expect([withCards.tiles, withCards.chart]).toEqual([true, false]);
   });
+
+  it('gives the chart the height the ranking cannot use, so the card never ends in blank space', () => {
+    // 6 x 6 at 1440px: the cards row and the chart leave 86px, too little for three ranking rows.
+    const six = planForecastLayout('standard', 642, 636, 140);
+    expect([six.chart, six.rankingRows, six.chartPx]).toEqual([true, 0, 236]);
+    // Tall, with only one module at risk: three rows are kept (room for the list), the rest goes to the chart.
+    const tall = planForecastLayout('standard', 760, 1000, undefined, 1);
+    expect(tall.rankingRows).toBe(3);
+    expect(tall.chartPx).toBe(150 + (1000 - 68 - 168 - 64 - 162 - 36 - 3 * 40));
+    // Enough rows of data: the ranking takes the height and the chart keeps its 150px plus the remainder.
+    const full = planForecastLayout('standard', 760, 1000);
+    expect(full.rankingRows).toBe(10);
+    expect(full.chartPx).toBe(150 + (1000 - 68 - 168 - 64 - 162 - 36 - 10 * 40));
+  });
 });

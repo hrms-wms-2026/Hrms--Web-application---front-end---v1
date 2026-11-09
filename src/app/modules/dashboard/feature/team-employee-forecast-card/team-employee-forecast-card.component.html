@@ -23,7 +23,9 @@
     <ng-template #centreTpl>
       <p class="ef-donut-center">
         <span class="ef-donut-value" data-testid="ef-rate">{{ rate(data.totals.teamRate) }}</span>
-        <span class="ef-donut-of">task rate · last 4 wk</span>
+        <span class="ef-donut-of">{{
+          view() === 'mini' ? '4-wk rate' : 'task rate · last 4 wk'
+        }}</span>
       </p>
     </ng-template>
 
@@ -89,8 +91,11 @@
                 >
                   {{ hero() }}
                 </p>
+                <p class="ef-sub" data-testid="ef-hero-sub">{{ heroSub() }}</p>
                 <p class="ef-caption" data-testid="ef-caption">{{ caption() }}</p>
-                <p class="ef-window">{{ window() }}</p>
+                @if (view() !== 'xs') {
+                  <p class="ef-window">{{ window() }}</p>
+                }
               </div>
             }
             @if (plan().heroChart) {
@@ -139,7 +144,11 @@
           }
 
           @if (plan().chart) {
-            <section class="ef-panel ef-chart-panel" data-testid="ef-chart">
+            <section
+              class="ef-panel ef-chart-panel"
+              data-testid="ef-chart"
+              [style.height.px]="plan().chartPx"
+            >
               <ng-container [ngTemplateOutlet]="chartTpl" />
             </section>
           }

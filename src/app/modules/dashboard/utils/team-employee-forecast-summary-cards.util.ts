@@ -4,7 +4,7 @@ import { EmployeeForecastResponse } from '../models/team-employee-forecast.model
 import {
   FORECAST_STATUS_META,
   FORECAST_STATUS_TONE,
-  forecastHoursText,
+  shortHoursText,
   overtimeChipText,
   rateText,
 } from './overtime-forecast-format.util';
@@ -63,14 +63,14 @@ export function teamEmployeeForecastSummaryCards(
     },
     {
       id: 'ef-overtime',
-      title: 'Overtime needed',
+      title: "Won't fit",
       icon: 'clock',
       tone: 'var(--color-cat-red)',
       section: 'rates',
       state: 'ready',
       body: {
         kind: 'bars',
-        figure: t.overtimeHours > 0 ? `~${forecastHoursText(t.overtimeHours)}` : 'None',
+        figure: t.overtimeHours > 0 ? shortHoursText(t.overtimeHours) : 'None',
         delta: null,
         values: risk.slice(0, OVERTIME_BARS).map((e) => Math.round(e.overtimeHours)),
       },

@@ -64,7 +64,7 @@ export function employeeForecastCsv(items: readonly EmployeeForecastItem[]): str
     'Deadline',
     'Remaining h',
     'Predicted h',
-    'Overtime h',
+    "Won't fit h",
     'Status',
     'Modules',
   ];
@@ -188,7 +188,7 @@ export class TeamEmployeeForecastDetailDialogComponent {
         testId: 'efd-tile-rate',
       },
       {
-        label: 'Overtime',
+        label: "Won't fit at today's rate",
         value: forecastHoursText(t.overtimeHours),
         hint: `${t.overtime} need overtime · ${t.raiseRate} need a higher rate`,
         icon: 'alert-triangle',

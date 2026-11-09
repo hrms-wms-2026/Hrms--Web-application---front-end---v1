@@ -31,6 +31,7 @@ import {
   ForecastTileRow,
   forecastDonutLabel,
   forecastHeroCaption,
+  forecastHeroSub,
   forecastHeroText,
   forecastSlices,
   overtimeChipText,
@@ -103,6 +104,11 @@ export class TeamModuleForecastCardComponent implements OnInit {
   readonly detailOpen = signal(false);
   readonly detailSection = signal<string | null>(null);
 
+  /** How many rows the ranking has to show (the plan gives the chart any height it can't use). */
+  private readonly atRiskCount = computed(
+    () => modulesAtRisk(this.store.data()?.items ?? []).length,
+  );
+
   protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
     const data = this.store.data();
     return data ? teamModuleForecastSummaryCards(data) : [];
@@ -114,7 +120,7 @@ export class TeamModuleForecastCardComponent implements OnInit {
     const view = this.view();
     if (!size) return { plan: EMPTY_MODULE_FORECAST_PLAN, cards: [] as SummaryCardModel[] };
     return withSummaryRow(
-      (rowPx) => planModuleForecastLayout(view, size.width, size.height, rowPx),
+      (rowPx) => planModuleForecastLayout(view, size.width, size.height, rowPx, this.atRiskCount()),
       this.summaryCards(),
       (plan) => shownModuleForecastCards(view, plan),
       summaryRowCount(size.width - MODULE_FORECAST_CARD_CHROME.width),
@@ -152,6 +158,10 @@ export class TeamModuleForecastCardComponent implements OnInit {
 
   protected readonly hero = computed(() =>
     forecastHeroText(this.store.data()?.totals.overtimeHours ?? 0),
+  );
+
+  protected readonly heroSub = computed(() =>
+    forecastHeroSub(this.store.data()?.totals.overtimeHours ?? 0),
   );
 
   protected readonly caption = computed(() => {

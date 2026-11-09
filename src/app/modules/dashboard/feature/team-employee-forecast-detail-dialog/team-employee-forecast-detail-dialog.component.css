@@ -85,7 +85,7 @@
 }
 
 /* Body wrapper: same 24px side padding as .efd-head and the other My Team popups. */
-.mfd {
+.efd {
   display: flex;
   min-width: 0;
   flex-direction: column;

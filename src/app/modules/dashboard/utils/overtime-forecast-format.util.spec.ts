@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   forecastHeroCaption,
+  forecastHeroSub,
   forecastHeroText,
   forecastHoursText,
   forecastSlices,
@@ -44,12 +45,14 @@ describe('overtime-forecast-format', () => {
     expect(forecastHoursText(950.4)).toBe('950 h');
     expect(forecastHoursText(2.46)).toBe('2.5 h');
     expect(forecastHoursText(1234)).toBe('1,234 h');
-    expect(forecastHeroText(950)).toBe('~950 h overtime');
+    expect(forecastHeroText(950)).toBe('~950 h');
+    expect(forecastHeroSub(950)).toBe("won't fit at today's rate");
+    expect(forecastHeroSub(0)).toBe("Everything fits at today's rate");
     expect(forecastHeroText(0)).toBe('On track');
     expect(forecastHeroCaption(0.42, 0.58)).toBe('Needs 58% task rate · now 42%');
     expect(forecastHeroCaption(null, 0.5)).toBe('No task history in the last 4 weeks');
     expect(forecastHeroCaption(0.4, null)).toBe('No working days left · now 40%');
-    expect(overtimeChipText(12.5, 'overtime')).toBe('~13 h');
+    expect(overtimeChipText(12.5, 'overtime')).toBe('+13 h');
     expect(overtimeChipText(0, 'raise_rate')).toBe('Raise rate');
   });
 

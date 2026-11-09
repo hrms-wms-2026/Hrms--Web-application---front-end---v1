@@ -64,7 +64,8 @@ describe('TeamEmployeeForecastCardComponent', () => {
       `${DASHBOARD_MINI_DONUT_PX}px`,
     );
     expect(q(el, 'ef-rate')?.textContent?.trim()).toBe('40%');
-    expect(el.textContent).toContain('task rate · last 4 wk');
+    expect(el.textContent).toContain('4-wk rate');
+    expect(el.textContent).not.toContain('task rate · last 4 wk');
   });
 
   it('a wide 2-row card adds the key and four summary cards; a card opens its popup section', () => {
@@ -86,13 +87,13 @@ describe('TeamEmployeeForecastCardComponent', () => {
     const el = resize(315, 420);
     expect(q(el, 'ef-layout')?.getAttribute('data-view')).toBe('xs');
     expect(all(el, 'ef-legend-row').length).toBe(3);
-    expect(q(el, 'ef-hero-figure')?.textContent?.trim()).toBe('~57 h overtime');
+    expect(q(el, 'ef-hero-figure')?.textContent?.trim()).toBe('~57 h');
   });
 
   it('the hero reads the overtime and the rate the team needs', () => {
     setup();
     let el = resize(760, 312);
-    expect(q(el, 'ef-hero-figure')?.textContent?.trim()).toBe('~57 h overtime');
+    expect(q(el, 'ef-hero-figure')?.textContent?.trim()).toBe('~57 h');
     expect(q(el, 'ef-caption')?.textContent?.trim()).toBe('Needs 55% task rate · now 40%');
     expect(q(el, 'ef-tile-overtime')?.textContent).toContain('57 h');
     // Taller, two summary cards it is not showing take the tiles' place.
@@ -111,7 +112,7 @@ describe('TeamEmployeeForecastCardComponent', () => {
     const rows = all(el, 'ef-rank-row');
     expect(rows.length).toBe(3);
     expect(rows[0].textContent).toContain('Ann');
-    expect(rows[0].textContent).toContain('~40 h');
+    expect(rows[0].textContent).toContain('+40 h');
   });
 
   it('nothing short: the hero says On track and the ranking says so', () => {

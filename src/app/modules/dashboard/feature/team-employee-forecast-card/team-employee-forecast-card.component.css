@@ -96,6 +96,13 @@
   color: var(--color-text-secondary);
 }
 
+.ef-sub {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .ef-window {
   margin-top: 0.125rem;
   font-size: 0.75rem;

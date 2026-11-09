@@ -31,4 +31,27 @@ describe('EmployeeForecastRateChartComponent', () => {
   it('picks the people with the most overtime', () => {
     expect(rateChartPeople(EMPLOYEE_FORECAST_ITEMS, 2).map((e) => e.name)).toEqual(['Ann', 'Bob']);
   });
+
+  it('plots rates at most 200% and marks a taller required rate with its real figure', () => {
+    const fixture = TestBed.createComponent(EmployeeForecastRateChartComponent);
+    fixture.componentRef.setInput('items', [
+      { ...EMPLOYEE_FORECAST_ITEMS[0], requiredRate: 8.53 },
+      EMPLOYEE_FORECAST_ITEMS[1],
+    ]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const cols = el.querySelectorAll('[data-testid=bar-chart-col]');
+    // A 0-100-200% axis, not 0-5K%: the 38% task rate stays visible.
+    expect(el.textContent).toContain('200%');
+    expect(el.textContent).not.toContain('K%');
+    expect(
+      (cols[0].querySelector('[data-testid=bar-chart-pair]') as HTMLElement).style.height,
+    ).toBe('100%');
+    expect(
+      (cols[0].querySelector('[data-testid=bar-chart-stack]') as HTMLElement).style.height,
+    ).toBe('19%');
+    expect(cols[0].textContent).toContain('853%');
+    expect(cols[1].querySelector('[data-testid=bar-chart-badge]')).toBeNull();
+    expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('needs 853%');
+  });
 });
