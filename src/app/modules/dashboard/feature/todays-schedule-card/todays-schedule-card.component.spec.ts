@@ -1,12 +1,14 @@
 import { provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse, CalendarEventsResponse } from '../../../calendar/models/calendar-event.model';
 import { TodaysScheduleCardComponent } from './todays-schedule-card.component';
 import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
 import { MeetingListItem } from '../../../work/meetings/models/meeting.models';
+import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
+import { PlannerRangeBlockView, PlannerRangeResponse } from '../../../work/planner/models/planner.models';
 
 function event(partial: Partial<CalendarEventResponse> & { id: string; title: string; startDate: string; endDate: string }): CalendarEventResponse {
   return {
@@ -17,6 +19,8 @@ function event(partial: Partial<CalendarEventResponse> & { id: string; title: st
     ...partial
   };
 }
+
+const noPlan: PlannerRangeResponse = { timezone: 'UTC', today: '', days: [] };
 
 describe('TodaysScheduleCardComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -37,7 +41,8 @@ describe('TodaysScheduleCardComponent', () => {
       providers: [
         provideRouter([]),
         { provide: CalendarEventApiService, useValue: { getEvents, getMyTimezone } },
-        { provide: MeetingApiService, useValue: { list: vi.fn(() => of([])) } }
+        { provide: MeetingApiService, useValue: { list: vi.fn(() => of([])) } },
+        { provide: PlannerApiService, useValue: { getRange: vi.fn(() => of(noPlan)) } }
       ]
     }).compileComponents();
 
@@ -226,7 +231,8 @@ describe('TodaysScheduleCardComponent - meetings', () => {
       providers: [
         provideRouter([]),
         { provide: CalendarEventApiService, useValue: { getEvents: vi.fn(() => of({ events })), getMyTimezone: vi.fn(() => of({ timezone: 'UTC' })) } },
-        { provide: MeetingApiService, useValue: { list } }
+        { provide: MeetingApiService, useValue: { list } },
+        { provide: PlannerApiService, useValue: { getRange: vi.fn(() => of(noPlan)) } }
       ]
     }).compileComponents();
     const fixture = TestBed.createComponent(TodaysScheduleCardComponent);
@@ -280,5 +286,141 @@ describe('TodaysScheduleCardComponent - meetings', () => {
       [event({ id: 'a', title: 'Morning standup', startDate: m.startAt, endDate: m.endAt, itemKind: 'meeting' })], [m]);
     expect(fixture.nativeElement.querySelectorAll('[data-testid="todays-schedule-item"]').length).toBe(0);
     expect(fixture.nativeElement.querySelectorAll('[data-testid="todays-meetings-item"]').length).toBe(1);
+  });
+});
+
+describe('TodaysScheduleCardComponent - planner blocks', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  // Fixed hours of today in UTC, the viewer zone here, so a test never depends on the time it runs at.
+  const today = new Date();
+  const todayAt = (h: number, m = 0): string =>
+    new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), h, m)).toISOString();
+
+  const block = (id: string, title: string, start: string, end: string, more: Partial<PlannerRangeBlockView> = {}): PlannerRangeBlockView => ({
+    id, taskId: `task-${id}`, projectId: 'proj-1', projectName: 'E-pos_System', taskTitle: title, startAt: start, endAt: end,
+    plannedMinutes: 60, actualMinutes: 0, stillAssigned: true, ...more
+  });
+  const meeting = (id: string, title: string, start: string, end: string): MeetingListItem => ({
+    taskId: id, shortId: `ACME-${id}`, seriesId: `s-${id}`, originalStart: start, startAt: start, endAt: end, isAllDay: false,
+    title, status: 'scheduled', isPrivate: false, projectId: 'p1', objectiveId: 'o1', myRole: 'attendee', myResponse: 'accepted',
+  } as MeetingListItem);
+
+  async function setup(options: {
+    blocks?: PlannerRangeBlockView[]; otherDayBlocks?: PlannerRangeBlockView[]; meetings?: MeetingListItem[];
+    events?: CalendarEventResponse[]; plannerFails?: boolean;
+  }) {
+    const getRange = vi.fn((from: string): Observable<PlannerRangeResponse> => options.plannerFails
+      ? throwError(() => new Error('503 planner_disabled'))
+      : of({
+          timezone: 'UTC', today: from,
+          days: [
+            { date: '1999-01-01', editable: false, workWindow: null, blocks: options.otherDayBlocks ?? [], blockMinutes: 0, workingMinutes: 0 },
+            { date: from, editable: true, workWindow: null, blocks: options.blocks ?? [], blockMinutes: 0, workingMinutes: 0 },
+          ]
+        }));
+    await TestBed.configureTestingModule({
+      imports: [TodaysScheduleCardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: CalendarEventApiService, useValue: { getEvents: vi.fn(() => of({ events: options.events ?? [] })), getMyTimezone: vi.fn(() => of({ timezone: 'UTC' })) } },
+        { provide: MeetingApiService, useValue: { list: vi.fn(() => of(options.meetings ?? [])) } },
+        { provide: PlannerApiService, useValue: { getRange } }
+      ]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(TodaysScheduleCardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { el: fixture.nativeElement as HTMLElement, getRange };
+  }
+
+  const taskRows = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>('[data-testid="todays-schedule-task"]'));
+
+  it("asks the planner for today only, in the viewer's zone", async () => {
+    const { getRange } = await setup({});
+    const expected = today.toISOString().slice(0, 10);
+    expect(getRange).toHaveBeenCalledExactlyOnceWith(expected, expected);
+  });
+
+  it('lists a planned task with its time, project and a Task badge', async () => {
+    const { el } = await setup({ blocks: [block('a', 'Due-today demo task 8', todayAt(14), todayAt(15, 30))] });
+    const row = taskRows(el)[0];
+    expect(row.textContent).toContain('Due-today demo task 8');
+    expect(row.textContent).toContain('E-pos_System');
+    expect(row.querySelector('[data-testid="todays-schedule-task-badge"]')?.textContent?.trim()).toBe('Task');
+  });
+
+  it("links a planned task to it on its project's board", async () => {
+    const { el } = await setup({ blocks: [block('a', 'Fix login', todayAt(14), todayAt(15))] });
+    const link = el.querySelector<HTMLAnchorElement>('[data-testid="todays-schedule-task-link"]')!;
+    expect(link.getAttribute('href')).toBe('/work/proj-1/board?taskId=task-a');
+  });
+
+  it("leaves out another day's blocks", async () => {
+    const { el } = await setup({ blocks: [block('a', 'Today', todayAt(9), todayAt(10))], otherDayBlocks: [block('b', 'Elsewhere', todayAt(11), todayAt(12))] });
+    expect(taskRows(el).length).toBe(1);
+    expect(el.textContent).not.toContain('Elsewhere');
+  });
+
+  it('merges tasks, meetings and events into one numbered timeline in time order', async () => {
+    const { el } = await setup({
+      blocks: [block('t', 'Afternoon task', todayAt(14), todayAt(15))],
+      meetings: [meeting('m', 'Morning standup', todayAt(9), todayAt(10))],
+      events: [event({ id: 'e', title: 'Lunch talk', startDate: todayAt(12), endDate: todayAt(13) })],
+    });
+    const rows = Array.from(el.querySelectorAll<HTMLElement>(
+      '[data-testid="todays-meetings-item"], [data-testid="todays-schedule-item"], [data-testid="todays-schedule-task"]'));
+    expect(rows.map((r) => r.dataset['testid'])).toEqual(['todays-meetings-item', 'todays-schedule-item', 'todays-schedule-task']);
+    expect(el.textContent).toContain('3 items scheduled today');
+  });
+
+  it('marks a planned task by the time now', async () => {
+    const at = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString();
+    const { el } = await setup({ blocks: [
+      block('done', 'Done', at(-120), at(-90)), block('now', 'Now', at(-10), at(20)), block('next', 'Next', at(90), at(120))
+    ] });
+    expect(taskRows(el).map((r) => r.dataset['status'])).toEqual(['completed', 'inProgress', 'upcoming']);
+  });
+
+  it('counts tasks in the summary', async () => {
+    const { el } = await setup({ blocks: [block('a', 'One', todayAt(9), todayAt(10)), block('b', 'Two', todayAt(11), todayAt(12))] });
+    expect(el.querySelector('[data-testid="todays-schedule-tasks-count"]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('2 Tasks');
+  });
+
+  it('counts overlapping time once in the total', async () => {
+    const { el } = await setup({
+      blocks: [block('a', 'Long task', todayAt(9, 30), todayAt(11, 30))],
+      meetings: [meeting('m', 'Weekly sync', todayAt(10), todayAt(11))],
+    });
+    expect(el.textContent).toContain('2h');
+    expect(el.textContent).not.toContain('3h');
+  });
+
+  it('still shows the rest of the day when the planner is off', async () => {
+    const { el } = await setup({ plannerFails: true, events: [event({ id: 'e', title: 'Dentist', startDate: todayAt(12), endDate: todayAt(13) })] });
+    expect(el.textContent).toContain('Dentist');
+    expect(taskRows(el).length).toBe(0);
+    expect(el.querySelector('[data-testid="todays-schedule-skeleton"]')).toBeNull();
+  });
+
+  it('a day with only planned tasks is not shown as empty', async () => {
+    const { el } = await setup({ blocks: [block('a', 'Only task', todayAt(9), todayAt(10))] });
+    expect(el.querySelector('[data-testid="todays-schedule-empty"]')).toBeNull();
+  });
+
+  it('has one Open planner link and one card frame', async () => {
+    const { el } = await setup({});
+    expect(el.querySelectorAll('[data-testid="todays-schedule-view-link"]').length).toBe(1);
+    expect(el.querySelectorAll('section').length).toBe(1);
+  });
+
+  it('keeps the hover refresh and uses theme colours on the link', async () => {
+    const { el } = await setup({});
+    expect(el.querySelector('section')!.classList.contains('group')).toBe(true);
+    expect(el.querySelector('[data-testid="popout-refresh"]')).not.toBeNull();
+    const link = el.querySelector('[data-testid="todays-schedule-view-link"]')!;
+    expect(link.className).toContain('var(--color-accent)');
+    expect(link.className).not.toContain('border-blue-400');
   });
 });
