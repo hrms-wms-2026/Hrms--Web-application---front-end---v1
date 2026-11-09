@@ -61,6 +61,7 @@ describe('CalendarPageComponent planner layer', () => {
   const events = signal<readonly CalendarEventResponse[]>([]);
   let blocksFor: (date: string) => PlannerRangeBlockView[] = () => [];
   let rangeZone = 'UTC';
+  let rangeReads = 0;
   const projectError = signal<string | null>(null);
   const projects = { loadProject: vi.fn(async () => undefined), loadMyMilestones: vi.fn(async () => undefined), projectError };
 
@@ -75,6 +76,7 @@ describe('CalendarPageComponent planner layer', () => {
   }
 
   function answerRange(req: TestRequest): void {
+    rangeReads++;
     const days: PlannerRangeDay[] = datesBetween(req.request.params.get('from')!, req.request.params.get('to')!).map((date) => {
       const window = { ...weekday, isWorkingDay: !isWeekend(date), workingMinutes: isWeekend(date) ? 0 : 420 };
       const blocks = blocksFor(date);
@@ -418,6 +420,22 @@ describe('CalendarPageComponent planner layer', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it('an open popover does not reload the planner when the planner answers', async () => {
+      // The Work item tab depends on the planner's editable days; reloading on that kept the planner calling the API
+      // until the rate limit stopped it.
+      setup();
+      await settle();
+      const before = rangeReads;
+
+      fixture.componentInstance.onSlotRange({ date: editableDate(), startMinutes: 600, endMinutes: 660 });
+      fixture.detectChanges();
+      await settle();
+      await settle();
+
+      expect(fixture.componentInstance.createSlot()).not.toBeNull();
+      expect(rangeReads).toBe(before);
     });
 
     it('drag range fills start and end', async () => {
