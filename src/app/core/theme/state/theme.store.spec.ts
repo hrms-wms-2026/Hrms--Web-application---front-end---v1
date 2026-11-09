@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ThemeStore } from './theme.store';
 
-const STORAGE_KEY = 'onevo.theme.preset';
+const STORAGE_KEY = 'crownus.theme.preset';
 
 describe('ThemeStore', () => {
   beforeEach(() => {
@@ -58,7 +58,7 @@ describe('ThemeStore', () => {
   });
 
   describe('colour mode', () => {
-    const MODE_KEY = 'onevo.color.mode';
+    const MODE_KEY = 'crownus.color.mode';
     let listeners: ((event: MediaQueryListEvent) => void)[] = [];
 
     function mockSystemDark(matches: boolean): void {

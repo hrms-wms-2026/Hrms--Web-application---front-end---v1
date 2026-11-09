@@ -34,11 +34,11 @@ export class LandingPageComponent {
   private readonly meta = inject(Meta);
 
   constructor() {
-    this.title.setTitle('ONEVO Workspace | Turning Workforce Visibility Into Performance');
+    this.title.setTitle('CROWNUS Workspace | Turning Workforce Visibility Into Performance');
     this.meta.updateTag({
       name: 'description',
       content:
-        'ONEVO Workspace unifies zero-touch attendance, Actual vs Reported work intelligence, and exception-based leadership into one clear platform.'
+        'CROWNUS Workspace unifies zero-touch attendance, Actual vs Reported work intelligence, and exception-based leadership into one clear platform.'
     });
   }
 }

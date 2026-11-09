@@ -1,7 +1,7 @@
 <app-widget-card
   class="group block h-full"
   data-testid="weekly-progress-card"
-  title="Weekly Work Progress"
+  title="My weekly progress"
   [nowrapTitle]="true"
   [state]="widgetState()"
   errorMessage="Couldn't load this week's progress."
@@ -41,7 +41,7 @@
         role="button"
         tabindex="0"
         appKeyboardClick
-        aria-label="Open weekly work progress details"
+        aria-label="Open my weekly progress details"
         (click)="openDetail()"
       >
         <!-- One donut size (DASHBOARD_DONUT_PX) in every view; a view without room for it leaves it out. -->
@@ -121,25 +121,42 @@
           }
           @default {
             <div class="wp-standard">
-              <!-- The tiles always sit beside the donut, so this block never grows; more sections appear only on taller cards. -->
-              <div class="wp-hero">
-                <div class="wp-hero-donut">
-                  <ng-container [ngTemplateOutlet]="donut" />
+              <!-- This summary never changes height; more sections appear only on taller cards. -->
+              <div class="wp-summary" data-testid="wp-summary">
+                <span class="wp-summary-icon" aria-hidden="true"><app-icon name="calendar" /></span>
+                <div class="wp-summary-hours">
+                  <p class="wp-hours" data-testid="wp-hours">
+                    {{ formatMinutes(data.thisWeek.workedMinutes) }}
+                    <span class="wp-hours-target">/ {{ formatMinutes(data.thisWeek.expectedMinutes) }}</span>
+                  </p>
+                  <p class="wp-summary-label">Worked / Expected</p>
+                </div>
+                <div class="wp-summary-progress">
+                  <span class="wp-percent wp-percent--big" data-testid="wp-percent">{{ percentText(data.thisWeek) }}</span>
+                  <span class="wp-summary-label">Progress</span>
+                </div>
+              </div>
+              <span class="wp-week-track wp-week-track--summary" data-testid="wp-progress-bar">
+                <span class="wp-week-fill" [style.width.%]="barWidth(data.thisWeek)"></span>
+              </span>
+              <ul class="wp-tiles" data-testid="wp-tiles" aria-label="This week">
+                @for (tile of summaryTiles(); track tile.key) {
+                  <li class="wp-tile" data-testid="wp-tile">
+                    @if (tile.icon; as icon) {
+                      <span class="wp-tile-icon" aria-hidden="true"><app-icon [name]="icon" /></span>
+                    }
+                    <span class="wp-tile-text">
+                      <span class="wp-stacked-label">{{ tile.label }}</span>
+                      <span class="wp-tile-value">{{ tile.value }} @if (tile.hint) {<small>{{ tile.hint }}</small>}</span>
+                    </span>
+                  </li>
+                }
+              </ul>
+              @if (delta()) {
+                <div class="wp-footer">
                   <ng-container [ngTemplateOutlet]="deltaLine" />
                 </div>
-                @if (sections().tilesOneRow) {
-                  <app-kpi-tiles class="wp-tiles" [tiles]="tiles()" [maxColumns]="4" ariaLabel="This week" />
-                } @else if (sections().sideTiles > 0) {
-                  <ul class="wp-side-tiles" data-testid="wp-side-tiles" aria-label="This week">
-                    @for (tile of tiles().slice(0, sections().sideTiles); track tile.key) {
-                      <li [class]="'wp-side-tile wp-tone--' + tile.tone" data-testid="wp-side-tile">
-                        <span class="wp-stacked-label">{{ tile.label }}</span>
-                        <span class="wp-side-value">{{ tile.value }} @if (tile.hint) {<small>{{ tile.hint }}</small>}</span>
-                      </li>
-                    }
-                  </ul>
-                }
-              </div>
+              }
               @if (sections().chart) {
                 <section class="wp-section">
                   <app-daily-work-chart

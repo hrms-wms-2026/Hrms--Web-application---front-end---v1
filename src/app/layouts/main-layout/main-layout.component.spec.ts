@@ -66,6 +66,7 @@ describe('MainLayoutComponent', () => {
     expect(el.querySelector('app-top-navbar')).toBeTruthy();
     expect(el.querySelector('app-side-navbar')).toBeTruthy();
     expect(el.textContent).not.toContain('ONEVO');
+    expect(el.textContent).not.toContain('ONEXSO');
     expect(el.textContent).not.toContain('Navigation will be configured later');
   });
 

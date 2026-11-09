@@ -22,7 +22,12 @@ export type FieldIcon =
   | 'module'
   | 'status'
   | 'category'
-  | 'sprint';
+  | 'sprint'
+  | 'folder'
+  | 'layers'
+  | 'repeat'
+  | 'video'
+  | 'flag';
 
 const FIELD_ICON_PATHS: Record<FieldIcon, string> = {
   hash: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18',
@@ -45,7 +50,12 @@ const FIELD_ICON_PATHS: Record<FieldIcon, string> = {
   module: 'M4 5h16v14H4z M8 9h8M8 13h5',
   status: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z M12 8v4l2.5 2',
   category: 'M4 6h16M7 12h10M10 18h4',
-  sprint: 'M4 5h16v14H4z M8 9h8M8 13h5'
+  sprint: 'M4 5h16v14H4z M8 9h8M8 13h5',
+  folder: 'M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  layers: 'M12 3 3 7.5 12 12l9-4.5z M3 12l9 4.5 9-4.5 M3 16.5 12 21l9-4.5',
+  repeat: 'M17 2l4 4-4 4 M3 11V9a3 3 0 0 1 3-3h15 M7 22l-4-4 4-4 M21 13v2a3 3 0 0 1-3 3H3',
+  video: 'M3 8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M16 10.5 21 7.5v9l-5-3',
+  flag: 'M5 21V4 M5 4h13l-2.5 4 2.5 4H5'
 };
 
 /** Decorative 16px outline icon used in a field's leading addon. */

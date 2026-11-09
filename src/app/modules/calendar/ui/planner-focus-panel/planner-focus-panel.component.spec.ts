@@ -37,7 +37,6 @@ describe('PlannerFocusPanelComponent', () => {
     { value: vi.fn(() => ({ matches }) as MediaQueryList), configurable: true, writable: true });
 
   beforeEach(async () => {
-    localStorage.removeItem('planner.queueGroupBy');
     await TestBed.configureTestingModule({ imports: [PlannerFocusPanelComponent] }).compileComponents();
     drag = TestBed.inject(PlannerDragService);
     drag.end();
@@ -45,12 +44,13 @@ describe('PlannerFocusPanelComponent', () => {
     fixture.componentRef.setInput('focus', focus);
     fixture.detectChanges();
   });
-  afterEach(() => { vi.restoreAllMocks(); localStorage.removeItem('planner.queueGroupBy'); });
+  afterEach(() => { vi.restoreAllMocks(); });
 
   const q = (sel: string): HTMLElement | null => fixture.nativeElement.querySelector(sel);
   const titles = (): string[] => text('[data-testid="planner-focus-title"]');
   const click = (sel: string) => { q(sel)!.click(); fixture.detectChanges(); };
   const search = (value: string) => {
+    if (!q('[data-testid="queue-search"]')) click('[data-testid="queue-search-toggle"]');
     const input = q('[data-testid="queue-search"]') as HTMLInputElement;
     input.value = value;
     input.dispatchEvent(new Event('input'));
@@ -62,7 +62,7 @@ describe('PlannerFocusPanelComponent', () => {
     expect(q('[data-testid="queue-total"]')!.textContent!.trim()).toBe('10');
   });
 
-  it('by due date: one section per non-empty group, three cards each, and See all shows the rest', () => {
+  it('one section per non-empty due-date group, three cards each, and See all shows the rest', () => {
     expect(text('[data-testid="queue-section-title"]')).toEqual(['Overdue 1', 'Due today 1', 'Due this week 1', 'Assigned backlog 7']);
     const backlog = q('[data-testid="queue-section-backlog"]')!;
     expect(backlog.querySelectorAll('[data-testid="planner-focus-card"]').length).toBe(3);
@@ -72,14 +72,10 @@ describe('PlannerFocusPanelComponent', () => {
     expect(q('[data-testid="queue-section-backlog"]')!.querySelectorAll('[data-testid="planner-focus-card"]').length).toBe(7);
   });
 
-  it('by type: one section per kind present, in kind order, with no empty kinds, and the choice is remembered', () => {
-    click('[data-testid="queue-group-by-kind"]');
-
-    expect(text('[data-testid="queue-section-title"]')).toEqual(['Task 7', 'Bug 1', 'Story 1', 'Testing 1']);
-    expect(q('[data-testid="queue-section-kind-feature"]')).toBeNull();
-    expect(localStorage.getItem('planner.queueGroupBy')).toBe('kind');
-    click('[data-testid="queue-group-by-due"]');
-    expect(localStorage.getItem('planner.queueGroupBy')).toBe('due');
+  it('has no Group by switch or drag hint: due date is the only order', () => {
+    expect(q('[data-testid="queue-group-by-due"]')).toBeNull();
+    expect(q('[data-testid="queue-group-by-kind"]')).toBeNull();
+    expect(q('[data-testid="planner-focus-hint"]')).toBeNull();
   });
 
   it('type chips list the kinds present with counts, select several, and All clears them', () => {
@@ -102,6 +98,19 @@ describe('PlannerFocusPanelComponent', () => {
     expect(titles()).toEqual(['Release notes', 'Backlog 1', 'Backlog 2', 'Backlog 3']);
   });
 
+  it('the search stays closed until its icon is pressed, and closing it clears the filter', () => {
+    expect(q('[data-testid="queue-search"]')).toBeNull();
+
+    search('zzz');
+    expect(titles()).toEqual([]);
+    expect(q('[data-testid="queue-search-toggle"]')!.getAttribute('aria-pressed')).toBe('true');
+
+    q('[data-testid="queue-search"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(q('[data-testid="queue-search"]')).toBeNull();
+    expect(titles().length).toBeGreaterThan(0);
+  });
+
   it('search matches the title or the project, and says so when nothing matches', () => {
     search('release 1.2');
     expect(titles()).toEqual(['Test cases']);
@@ -111,20 +120,32 @@ describe('PlannerFocusPanelComponent', () => {
     expect(q('[data-testid="queue-no-match"]')!.textContent!.trim()).toBe('No tasks match');
   });
 
-  it('a card shows its kind tile, title, and project with a meta line that fits its group', () => {
-    const meta = text('[data-testid="planner-focus-meta"]');
-    expect(meta[0]).toBe('Portal · Open 6 days');
-    expect(q('[data-testid="planner-focus-meta"] [data-testid="meta-age"]')!.className).toContain('text-[var(--color-danger)]');
-    expect(meta[1]).toBe('Portal · 1h left · Planned Wed +1');
-    expect(meta[2]).toBe('Release 1.2 · Fri · 2h');
-    expect(meta[3]).toBe('Portal · No due date');
+  const hover = (card: HTMLElement) => { card.dispatchEvent(new MouseEvent('mouseenter')); fixture.detectChanges(); };
+
+  it('a card shows only its kind tile and title; hovering shows the project and a status line that fits its group', () => {
+    expect(q('[data-testid="planner-focus-meta"]')).toBeNull();
+    expect(cards()[0].textContent).not.toContain('Portal');
+
+    const status = cards().slice(0, 4).map((card) => { hover(card); return q('[data-testid="planner-focus-meta"]')!.textContent!.trim(); });
+    expect(status).toEqual(['Open 6 days', '1h left · Planned Wed +1', 'Fri · 2h', 'No due date']);
+
+    hover(cards()[2]);
+    expect(q('[data-testid="planner-focus-path"]')!.textContent!.trim()).toContain('Release 1.2');
+    expect(q('[data-testid="planner-focus-tooltip"]')!.getAttribute('role')).toBe('tooltip');
+    hover(cards()[0]);
+    expect(q('[data-testid="meta-age"]')!.className).toContain('text-[var(--color-danger)]');
+
+    cards()[0].dispatchEvent(new MouseEvent('mouseleave'));
+    fixture.detectChanges();
+    expect(q('[data-testid="planner-focus-tooltip"]')).toBeNull();
+
     const first = cards()[0];
     expect(first.querySelector('[data-testid="task-kind-icon"]')!.getAttribute('data-kind')).toBe('bug');
     expect(first.querySelector('[data-testid="planner-priority-dot"]')).toBeNull();
     expect(cards()[1].getAttribute('data-fully-planned')).toBe('true');
   });
 
-  it('by due date with no filter, a section shows its full server count, past the 50 cards loaded', () => {
+  it('with no filter, a section shows its full server count, past the 50 cards loaded', () => {
     fixture.componentRef.setInput('focus', { ...focus, groups: [
       { reason: 'overdue', count: 73, items: [item('A'), item('B')] },
       { reason: 'due_today', count: 0, items: [] }, { reason: 'due_this_week', count: 0, items: [] }, { reason: 'backlog', count: 0, items: [] },
@@ -145,7 +166,8 @@ describe('PlannerFocusPanelComponent', () => {
     ] });
     fixture.detectChanges();
 
-    expect(text('[data-testid="planner-focus-meta"]')).toEqual(['Portal · Open today']);
+    hover(cards()[0]);
+    expect(text('[data-testid="planner-focus-meta"]')).toEqual(['Open today']);
   });
 
   it('the Plan button is always visible', () => {
@@ -243,14 +265,5 @@ describe('PlannerFocusPanelComponent', () => {
 
     expect(drag.dragging()).toBeNull();
     expect(picked).toHaveBeenCalledWith(expect.objectContaining({ taskId: 't-Payroll export fix' }));
-  });
-
-  it('closes when closable', () => {
-    const closed = vi.fn();
-    fixture.componentInstance.closed.subscribe(closed);
-
-    (fixture.nativeElement.querySelector('[data-testid="planner-focus-close"]') as HTMLButtonElement).click();
-
-    expect(closed).toHaveBeenCalled();
   });
 });

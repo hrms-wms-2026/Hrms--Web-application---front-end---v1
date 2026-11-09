@@ -19,7 +19,7 @@ const plan = (w: number, h: number) =>
 describe('weekly work progress layout', () => {
   it('2x2 is the mini view: the donut only', () => {
     expect(classifyWeeklyProgressSize(cols(2), rows(2))).toBe('mini');
-    expect(plan(cols(2), rows(2))).toEqual({ miniTiles: false, stackedTiles: 0, tilesOneRow: false, sideTiles: 0, chart: false, comparison: false });
+    expect(plan(cols(2), rows(2))).toEqual({ miniTiles: false, stackedTiles: 0, chart: false, comparison: false });
   });
 
   it('a wide 2-row card is mini-wide, adding tiles from 640 px', () => {
@@ -37,15 +37,14 @@ describe('weekly work progress layout', () => {
 
   it('standard adds the chart, then the comparison, as the card gets taller', () => {
     expect(classifyWeeklyProgressSize(cols(6), rows(3))).toBe('standard');
-    expect(plan(cols(6), rows(3))).toMatchObject({ tilesOneRow: true, chart: false, comparison: false });
+    expect(plan(cols(6), rows(3))).toMatchObject({ chart: false, comparison: false });
     expect(plan(cols(6), rows(5))).toMatchObject({ chart: true, comparison: false });
     expect(plan(cols(6), rows(7))).toMatchObject({ chart: true, comparison: true });
   });
 
-  it('a standard card under 520 px of body lists the tiles as compact rows beside the donut, never under it', () => {
-    // The default My Work slot (4x3) must fit without scrolling: donut + four rows beside it, nothing below.
-    expect(plan(cols(4), rows(3))).toEqual({ miniTiles: false, stackedTiles: 0, tilesOneRow: false, sideTiles: 4, chart: false, comparison: false });
-    expect(plan(cols(4), rows(5))).toMatchObject({ sideTiles: 4, chart: true, comparison: false });
+  it('the default 4x3 slot holds the summary alone, and a 4x5 card adds the chart', () => {
+    expect(plan(cols(4), rows(3))).toEqual({ miniTiles: false, stackedTiles: 0, chart: false, comparison: false });
+    expect(plan(cols(4), rows(5))).toMatchObject({ chart: true, comparison: false });
   });
 
   it('never plans more than the body can hold', () => {
@@ -55,7 +54,7 @@ describe('weekly work progress layout', () => {
         const p = plan(cols(w), rows(h));
         const view = classifyWeeklyProgressSize(cols(w), rows(h));
         if (view !== 'standard') continue;
-        const used = 162 + (p.chart ? 12 + 186 : 0) + (p.comparison ? 12 + 116 : 0);
+        const used = 234 + (p.chart ? 12 + 186 : 0) + (p.comparison ? 12 + 116 : 0);
         expect(used, `${w}x${h}`).toBeLessThanOrEqual(bodyH);
       }
     }

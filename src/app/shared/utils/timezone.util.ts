@@ -31,12 +31,14 @@ export function localPartsToUtcIso(date: string, time: string, timezone: string)
   const target = Date.UTC(year, month - 1, day, hour, minute);
   let candidate = new Date(target);
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    // The whole wall clock, date included: an evening in Colombo reads as the next day from UTC, and comparing
+    // hours alone would then land on the right time of the wrong day.
     const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false
+      timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
     }).formatToParts(candidate);
-    const shownHour = Number(part(parts, 'hour'));
-    const shownMinute = Number(part(parts, 'minute'));
-    const delta = ((shownHour * 60 + shownMinute) - (hour * 60 + minute)) * 60_000;
+    const shown = Date.UTC(Number(part(parts, 'year')), Number(part(parts, 'month')) - 1, Number(part(parts, 'day')),
+      Number(part(parts, 'hour')), Number(part(parts, 'minute')));
+    const delta = shown - target;
     if (!delta) return candidate.toISOString();
     candidate = new Date(candidate.getTime() - delta);
   }

@@ -73,7 +73,7 @@ export const LeaveRequestStore = signalStore(
       }
     },
     clearPreview(): void {
-      patchState(store, { previewResult: null, previewError: null });
+      patchState(store, { previewResult: null, previewError: null, documentUploadError: null });
     },
     async uploadDocument(file: File): Promise<LeaveUploadedDocument | null> {
       patchState(store, { uploadingDocument: true, documentUploadError: null });

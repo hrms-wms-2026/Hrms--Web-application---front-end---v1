@@ -22,7 +22,9 @@ export type IconName =
   | 'list-checks'
   | 'trending-up'
   | 'trending-down'
-  | 'arrow-up-right';
+  | 'arrow-up-right'
+  | 'calendar'
+  | 'play';
 
 /**
  * Hand-authored inline SVGs (no icon library dependency), mirroring app-nav-icon's pattern.
@@ -138,6 +140,13 @@ export type IconName =
         }
         @case ('arrow-up-right') {
           <path d="M7 17 17 7M8 7h9v9" />
+        }
+        @case ('calendar') {
+          <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+          <path d="M3.5 10h17M8 3v4M16 3v4" />
+        }
+        @case ('play') {
+          <path d="M7 4.5v15l12-7.5z" stroke-linejoin="round" />
         }
       }
     </svg>

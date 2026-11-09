@@ -7,6 +7,7 @@ import { PlannerLeave } from '../../state/planner-leave-layer.store';
 
 @Component({
   selector: 'app-calendar-week-view',
+  host: { class: 'block h-full' },
   standalone: true,
   imports: [CommonModule, CalendarHourGridComponent],
   templateUrl: './calendar-week-view.component.html',

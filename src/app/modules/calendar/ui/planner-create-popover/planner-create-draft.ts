@@ -16,6 +16,8 @@ export interface CreateSlot {
   endMinutes: number;
   startIso: string;
   endIso: string;
+  /** New event's stand-in for a time nobody picked: a tab that plans work asks for one instead of using it. */
+  isDefault?: boolean;
 }
 
 /** What every tab shares while the popover is open: switching tabs keeps them. */

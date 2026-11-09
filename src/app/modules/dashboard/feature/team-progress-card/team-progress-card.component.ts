@@ -43,10 +43,10 @@ import { IconComponent, IconName } from '../../../../shared/ui/icon/icon.compone
 
 /** Per-viewer memory of the period switch. A convenience only: when storage is blocked the card
  * simply starts on All time. */
+export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'crownus.teamProgress.period';
+
 /** Width of one project bar in the card's chart, with its gap. */
 const CHART_BAR_PX = 44;
-
-export const TEAM_PROGRESS_PERIOD_STORAGE_KEY = 'onevo.teamProgress.period';
 
 type DatedPeriod = Exclude<LedProgressPeriod, 'all'>;
 type TaskStatusKey = Exclude<ProgressStatusKey, 'untasked'>;

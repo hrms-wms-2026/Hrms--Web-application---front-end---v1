@@ -107,6 +107,8 @@ interface DragSelection {
 
 @Component({
   selector: 'app-calendar-hour-grid',
+  // Fills the page's calendar area on wide screens, so the hours scroll here and the page itself never does.
+  host: { class: 'block h-full' },
   standalone: true,
   imports: [CommonModule, PlannerAvatarStackComponent, TaskKindIconComponent],
   templateUrl: './calendar-hour-grid.component.html',
@@ -183,7 +185,8 @@ export class CalendarHourGridComponent {
   // it and self-heals that load-order race within one interval. Same pattern as DashboardGreeting.
   private readonly now = signal(Date.now());
   private autoScrollTimer: ReturnType<typeof setTimeout> | null = null;
-  private didAutoScroll = false;
+  /** The time zone the "now" line was last centred for. */
+  private autoScrolledZone: string | null = null;
 
   constructor() {
     const tick = setInterval(() => this.now.set(Date.now()), 30_000);
@@ -193,10 +196,10 @@ export class CalendarHourGridComponent {
     });
 
     // On first load, scroll the viewport so the "now" line is centred once today is in view -
-    // the grid otherwise opens parked at midnight. Debounced so it settles on the
-    // timezone-corrected position (loadMyTimezone resolves a beat after first paint) rather than
-    // the transient UTC one. One-shot: it never fights the user's own scrolling afterwards, and
-    // does nothing when the shown day isn't today.
+    // the grid otherwise opens parked at midnight. Debounced, and once per time zone: on a full
+    // page load loadMyTimezone can resolve well after this fires, moving the line off its UTC
+    // position, so it centres again for the real zone. It never fights the user's own scrolling
+    // after that, and does nothing when the shown day isn't today.
     // A Focus card being dragged: follow the pointer over the columns and drop on release. Capture phase, so the drop
     // lands before the panel's own pointerup ends the drag.
     effect((onCleanup) => {
@@ -216,10 +219,11 @@ export class CalendarHourGridComponent {
 
     effect(() => {
       const showsToday = this.columns().some((c) => c.nowFraction !== null);
-      if (this.didAutoScroll || !showsToday) return;
+      const zone = this.timezone();
+      if (this.autoScrolledZone === zone || !showsToday) return;
       if (this.autoScrollTimer !== null) clearTimeout(this.autoScrollTimer);
       this.autoScrollTimer = setTimeout(() => {
-        this.didAutoScroll = true;
+        this.autoScrolledZone = zone;
         const line = this.host.nativeElement.querySelector('[data-testid="calendar-now-line"]');
         line?.scrollIntoView?.({ block: 'center' });
       }, 300);
@@ -529,7 +533,7 @@ export class CalendarHourGridComponent {
   private minutesAt(clientY: number, columnEl: HTMLElement): number {
     const rect = columnEl.getBoundingClientRect();
     // scrollHeight is the full 24-hour stack (24 x h-12); rect.height is only the
-    // slice visible inside the max-h-[70vh] scroll viewport. The pointer maps to
+    // slice visible inside the scroll viewport. The pointer maps to
     // the former - `rect.top` already tracks the internal scroll.
     const fullHeight = columnEl.scrollHeight || rect.height;
     if (!fullHeight) return 0;

@@ -4,16 +4,16 @@
 
   <div class="device-activation__body">
     <section class="device-activation__content" aria-labelledby="activation-title">
-      <a routerLink="/" class="device-brand" aria-label="ONEXSO Workspace, go to homepage">
+      <a routerLink="/" class="device-brand" aria-label="CROWNUS Workspace, go to homepage">
         <img
           ngSrc="assets/brand/onexso-mark.png"
-          alt="ONEXSO"
+          alt="CROWNUS"
           width="44"
           height="43"
           priority
           class="device-brand__logo-img"
         />
-        <span class="device-brand__logo-text">ONEXSO</span>
+        <span class="device-brand__logo-text">CROWNUS</span>
       </a>
 
       @if (state() === 'loading') {
@@ -23,7 +23,7 @@
         </div>
       } @else if (state() === 'ready' && preview(); as device) {
         <div class="device-center-box">
-          <p class="device-eyebrow">ONEXSO device approval</p>
+          <p class="device-eyebrow">CROWNUS device approval</p>
           <h1 id="activation-title" class="device-title">Connect this Windows tray app?</h1>
           <p class="device-subtitle">Review the device details before approving this one-time pairing request.</p>
 
@@ -85,7 +85,7 @@
             </svg>
           </div>
           <h1 id="activation-title" class="device-title">This activation link is invalid or expired</h1>
-          <p class="device-subtitle">Request a new activation link from the ONEXSO tray app.</p>
+          <p class="device-subtitle">Request a new activation link from the CROWNUS tray app.</p>
           <button class="device-btn device-btn--secondary" type="button" (click)="returnToWorkspace()">Return to workspace</button>
         </div>
       }

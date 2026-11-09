@@ -1,11 +1,11 @@
 <!-- Same shell as the Team Progress / Team Attendance popups: app-modal's own header is hidden by this component's CSS
      (its title still names the dialog for screen readers); the header below has the title and week on the left and
      the week switch and close button on the right. -->
-<app-modal [open]="open()" title="Weekly Work Progress" size="2xl" panelClass="weekly-work-progress-detail" (closed)="close()">
+<app-modal [open]="open()" title="My weekly progress" size="2xl" panelClass="weekly-work-progress-detail" (closed)="close()">
   <div class="wwp-head">
     <div class="wwp-head__row">
       <div class="wwp-head__title">
-        <h2>Weekly Work Progress</h2>
+        <h2>My weekly progress</h2>
         <p data-testid="wwp-range">{{ rangeLabel() }}</p>
       </div>
       <div class="wwp-head__controls">

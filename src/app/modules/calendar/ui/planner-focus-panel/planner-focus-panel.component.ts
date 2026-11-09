@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, model, output, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PlannerFocusGroup, PlannerFocusItem, PlannerFocusReason, PlannerFocusResponse } from '../../../work/planner/models/planner.models';
 import { PlannerDragService } from '../../state/planner-drag.service';
@@ -17,25 +17,27 @@ const REASON_DOTS: Record<PlannerFocusReason, string> = {
 };
 /** Cards per section before "See all". */
 const SECTION_SIZE = 3;
-const GROUP_BY_KEY = 'planner.queueGroupBy';
-type GroupBy = 'due' | 'kind';
-
-function readGroupBy(): GroupBy {
-  try {
-    return localStorage.getItem(GROUP_BY_KEY) === 'kind' ? 'kind' : 'due';
-  } catch {
-    return 'due';
-  }
-}
 
 /** How far a press must move before it is a drag rather than a click. */
 const DRAG_THRESHOLD_PX = 4;
+const TOOLTIP_GAP_PX = 6;
+/** Room above a card for the tooltip's three lines. */
+const TOOLTIP_ROOM_PX = 90;
 
 function duration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m}m`;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/** A queue card: its task, and what the hover tooltip says about it (redesign D20). */
+interface QueueCard {
+  readonly item: PlannerFocusItem;
+  readonly kind: TaskKind;
+  readonly age: string | null;
+  /** The rest of the status line, after the age. */
+  readonly rest: string;
 }
 
 function localDate(date: string): Date {
@@ -52,32 +54,34 @@ function localDate(date: string): Date {
   selector: 'app-planner-focus-panel',
   standalone: true,
   imports: [CommonModule, TaskKindIconComponent],
+  host: { class: 'block' },
   templateUrl: './planner-focus-panel.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlannerFocusPanelComponent {
   focus = input<PlannerFocusResponse | null>(null);
-  closable = input(true);
   /** The planner's time zone, for the date a task was created on ("Open N days"); the browser's when null. */
   timezone = input<string | null>(null);
 
-  closed = output<void>();
   /** Narrow screens: plan this task with the picker. */
   pick = output<PlannerFocusItem>();
   /** Open the task itself. */
   open = output<PlannerFocusItem>();
 
   private readonly drag = inject(PlannerDragService);
-  /** Sections opened with "See all", by section key (a reason or a kind). */
+  /** Sections opened with "See all", by group. */
   private readonly expanded = signal<ReadonlySet<string>>(new Set());
   /** The card being dragged, drawn dimmed and dashed in the list. */
   readonly draggingId = signal<string | null>(null);
   readonly ghost = signal<{ title: string; length: string | null; x: number; y: number } | null>(null);
   private justDragged = false;
+  /** The card's details, above it, or below when it is too near the top of the window. */
+  readonly tooltip = signal<{ card: QueueCard; left: number; top: number; above: boolean } | null>(null);
 
-  /** Sections by due date (Overdue, Due today, ...) or by type; remembered per browser. */
-  readonly groupBy = signal<GroupBy>(readGroupBy());
   readonly query = signal('');
+  /** The search opens from an icon (the page's, in the sub-sidebar header); closing it clears it. */
+  readonly searchOpen = model(false);
+  private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
   /** Selected type chips; none selected is "All". */
   readonly kinds = signal<ReadonlySet<TaskKind>>(new Set());
 
@@ -96,14 +100,11 @@ export class PlannerFocusPanelComponent {
   });
   readonly sections = computed(() => {
     const items = this.visibleItems();
-    // Unfiltered, a due-date section counts every task in its group; the server sends at most 50 of them.
+    // Unfiltered, a section counts every task in its group; the server sends at most 50 of them.
     const unfiltered = this.query().trim() === '' && this.kinds().size === 0;
     const serverCount = (r: PlannerFocusReason) => (this.focus()?.groups ?? []).find((g) => g.reason === r)?.count;
-    const raw = this.groupBy() === 'due'
-      ? REASONS.map((r) => ({ key: r as string, testid: `queue-section-${r}`, title: GROUP_TITLES[r], dot: REASON_DOTS[r],
-          items: items.filter((i) => i.reason === r), count: unfiltered ? serverCount(r) : undefined }))
-      : TASK_KINDS.map((k) => ({ key: `kind-${k}`, testid: `queue-section-kind-${k}`, title: KIND_META[k].label, dot: KIND_META[k].bar,
-          items: items.filter((i) => kindOf(i.categoryKind) === k), count: undefined as number | undefined }));
+    const raw = REASONS.map((r) => ({ key: r as string, testid: `queue-section-${r}`, title: GROUP_TITLES[r], dot: REASON_DOTS[r],
+      items: items.filter((i) => i.reason === r), count: unfiltered ? serverCount(r) : undefined }));
     return raw.filter((section) => section.items.length > 0).map((section) => {
       const all = this.expanded().has(section.key);
       return {
@@ -116,17 +117,43 @@ export class PlannerFocusPanelComponent {
   readonly noMatch = computed(() => this.allItems().length > 0 && this.visibleItems().length === 0);
   readonly empty = computed(() => (this.focus()?.groups ?? []).every((g: PlannerFocusGroup) => g.count === 0));
 
-  expand(key: string): void {
-    this.expanded.update((set) => new Set([...set, key]));
+  constructor() {
+    // The sub-sidebar around the panel is what scrolls, and scroll events do not bubble.
+    const hide = () => this.hideTooltip();
+    document.addEventListener('scroll', hide, { capture: true, passive: true });
+    inject(DestroyRef).onDestroy(() => document.removeEventListener('scroll', hide, { capture: true }));
+    effect(() => {
+      if (this.searchOpen()) setTimeout(() => this.searchInput()?.nativeElement.focus());
+      else this.query.set('');
+    });
   }
 
-  setGroupBy(value: GroupBy): void {
-    this.groupBy.set(value);
-    try {
-      localStorage.setItem(GROUP_BY_KEY, value);
-    } catch {
-      // Storage can be unavailable (private mode); the choice then lasts for this page only.
-    }
+  toggleSearch(): void {
+    this.searchOpen.update((open) => !open);
+  }
+
+  closeSearch(): void {
+    this.searchOpen.set(false);
+  }
+
+  showTooltip(card: QueueCard, event: Event): void {
+    if (this.draggingId()) return;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const above = rect.top > TOOLTIP_ROOM_PX;
+    this.tooltip.set({ card, left: rect.left, top: above ? rect.top - TOOLTIP_GAP_PX : rect.bottom + TOOLTIP_GAP_PX, above });
+  }
+
+  hideTooltip(): void {
+    this.tooltip.set(null);
+  }
+
+  /** "Project › Category", leaving out a category the task does not have. */
+  pathOf(item: PlannerFocusItem): string {
+    return [item.projectName, item.categoryName].filter((part) => !!part).join(' › ');
+  }
+
+  expand(key: string): void {
+    this.expanded.update((set) => new Set([...set, key]));
   }
 
   toggleKind(kind: TaskKind): void {
@@ -192,8 +219,8 @@ export class PlannerFocusPanelComponent {
     return typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 767px)').matches;
   }
 
-  /** A card's look and its meta line, which fits its group (redesign D20). */
-  private card(item: PlannerFocusItem) {
+  /** A card's look and its status line, which fits its group (redesign D20). */
+  private card(item: PlannerFocusItem): QueueCard {
     const left = item.remainingMinutes === null ? null : duration(item.remainingMinutes);
     let detail: string;
     let age: string | null = null;
@@ -216,7 +243,7 @@ export class PlannerFocusPanelComponent {
       ? `Planned ${localDate(item.firstPlannedDate).toLocaleDateString('en-US', { weekday: 'short' })}`
         + (item.plannedDayCount > 1 ? ` +${item.plannedDayCount - 1}` : '')
       : null;
-    return { item, kind: kindOf(item.categoryKind), detail, age, planned };
+    return { item, kind: kindOf(item.categoryKind), age, rest: [detail, planned].filter((part) => !!part).join(' · ') };
   }
 
   private dueLabel(dueDate: string | null): string {

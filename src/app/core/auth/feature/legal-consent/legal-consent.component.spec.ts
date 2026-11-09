@@ -5,8 +5,8 @@ import { LegalDocumentDto } from '../../models/dto/legal-document.dto';
 
 describe('LegalConsentComponent', () => {
   const docs: LegalDocumentDto[] = [
-    { document_type: 'privacy_notice', version: '1.0', title: 'ONEVO Privacy Notice', effective_at: '2026-07-28T08:55:29Z', content_url: null },
-    { document_type: 'terms', version: '1.0', title: 'ONEVO Terms & Conditions', effective_at: '2026-07-28T08:55:29Z', content_url: null }
+    { document_type: 'privacy_notice', version: '1.0', title: 'CROWNUS Privacy Notice', effective_at: '2026-07-28T08:55:29Z', content_url: null },
+    { document_type: 'terms', version: '1.0', title: 'CROWNUS Terms & Conditions', effective_at: '2026-07-28T08:55:29Z', content_url: null }
   ];
 
   function setup(authStoreOverrides: Record<string, unknown>) {
@@ -104,8 +104,8 @@ describe('LegalConsentComponent', () => {
     });
 
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('ONEVO Privacy Notice');
-    expect(text).toContain('ONEVO Terms & Conditions');
+    expect(text).toContain('CROWNUS Privacy Notice');
+    expect(text).toContain('CROWNUS Terms & Conditions');
   });
 
   it('accepts with a decision per pending document, then redirects to continue_url when every gate clears', async () => {

@@ -571,7 +571,7 @@ export class PositionManagementComponent {
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData(
-        'application/x-onevo-reporting-branches',
+        'application/x-crownus-reporting-branches',
         JSON.stringify([...this.selectedPeopleIds()])
       );
     }

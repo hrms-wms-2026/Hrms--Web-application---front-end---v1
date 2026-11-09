@@ -74,17 +74,17 @@ describe('NavigationStateService', () => {
     expect(service.isSubSidebarCollapsed()).toBe(true);
     expect(service.hasVisibleSubSidebar()).toBe(false);
     expect(service.canExpandSubSidebar()).toBe(true);
-    expect(localStorage.getItem('onevo.sub_sidebar_collapsed')).toBe('true');
+    expect(localStorage.getItem('crownus.sub_sidebar_collapsed')).toBe('true');
 
     service.expandSubSidebar();
     expect(service.isSubSidebarCollapsed()).toBe(false);
     expect(service.hasVisibleSubSidebar()).toBe(true);
     expect(service.canExpandSubSidebar()).toBe(false);
-    expect(localStorage.getItem('onevo.sub_sidebar_collapsed')).toBe('false');
+    expect(localStorage.getItem('crownus.sub_sidebar_collapsed')).toBe('false');
 
     service.toggleSubSidebar();
     expect(service.isSubSidebarCollapsed()).toBe(true);
-    expect(localStorage.getItem('onevo.sub_sidebar_collapsed')).toBe('true');
+    expect(localStorage.getItem('crownus.sub_sidebar_collapsed')).toBe('true');
   });
 
   it('shows every module on the mobile bar, with no More, when five or fewer are reachable', () => {
@@ -142,7 +142,7 @@ describe('NavigationStateService', () => {
 
       expect(ids(full.mobileBarItems())).toEqual(['home', 'work', 'inbox', 'organization']);
       expect(full.canPin(item('settings'))).toBe(false);
-      expect(JSON.parse(localStorage.getItem('onevo.mobile_nav_pinned')!)).toEqual(['work', 'inbox', 'organization']);
+      expect(JSON.parse(localStorage.getItem('crownus.mobile_nav_pinned')!)).toEqual(['work', 'inbox', 'organization']);
 
       await fullRouter.navigateByUrl('/settings/roles');
       expect(ids(full.mobileBarItems())).toEqual(['home', 'work', 'inbox', 'organization']);
