@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
@@ -10,6 +11,8 @@ import { CalendarEventResponse } from '../../../calendar/models/calendar-event.m
 import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { MeetingListItem } from '../../../work/meetings/models/meeting.models';
+import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
+import { PlannerRangeBlockView } from '../../../work/planner/models/planner.models';
 
 const MAX_AGENDA_ITEMS = 5;
 
@@ -38,6 +41,22 @@ const STATUS_META: Record<ScheduleItemStatus, {
 /** A calendar event with a meeting link is a Meeting; any other calendar event is an Event. Never guessed from the title. */
 export type AgendaItemKind = 'Meeting' | 'Event';
 
+interface TimelineRowBase {
+  readonly key: string;
+  readonly start: number;
+  readonly end: number;
+  readonly title: string;
+  readonly allDay: boolean;
+  readonly status: ScheduleItemStatus;
+}
+
+/** One row of the day: a meeting, a calendar event or a task block from the planner. */
+type TimelineRow = TimelineRowBase & (
+  | { readonly kind: 'meeting'; readonly meeting: MeetingListItem }
+  | { readonly kind: 'event'; readonly event: CalendarEventResponse }
+  | { readonly kind: 'task'; readonly block: PlannerRangeBlockView }
+);
+
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
@@ -52,9 +71,11 @@ export class TodaysScheduleCardComponent implements OnInit {
   private readonly authStore = inject(AuthStore, { optional: true });
 
   private readonly meetings = inject(MeetingApiService);
+  private readonly planner = inject(PlannerApiService);
 
   private readonly rawEvents = signal<readonly CalendarEventResponse[]>([]);
   private readonly rawMeetings = signal<readonly MeetingListItem[]>([]);
+  private readonly rawBlocks = signal<readonly PlannerRangeBlockView[]>([]);
   private readonly todayWindow = signal<{ from: string; to: string } | null>(null);
   protected readonly loading = signal(true);
   /** A refresh from the header button: the list stays on screen while it reloads. */
@@ -93,8 +114,31 @@ export class TodaysScheduleCardComponent implements OnInit {
       .slice(0, MAX_AGENDA_ITEMS);
   });
 
-  /** Everything listed today: the meetings plus the calendar events. */
-  protected readonly totalItemsCount = computed(() => this.todaysMeetings().length + this.agendaItems().length);
+  /** The whole day in one list, in time order: meetings, calendar events and planned task blocks. */
+  protected readonly timeline = computed<readonly TimelineRow[]>(() => {
+    const now = Date.now();
+    const rows: TimelineRow[] = [
+      ...this.todaysMeetings().map((meeting): TimelineRow => ({
+        kind: 'meeting', key: `meeting-${meeting.taskId}`, meeting, title: this.meetingTitle(meeting), allDay: meeting.isAllDay,
+        start: Date.parse(meeting.startAt), end: Date.parse(meeting.endAt), status: this.meetingStatus(meeting)
+      })),
+      ...this.agendaItems().map(({ event, status }): TimelineRow => ({
+        kind: 'event', key: `event-${event.id}`, event, title: event.title || '', allDay: event.isAllDay,
+        start: Date.parse(event.startDate), end: Date.parse(event.endDate), status
+      })),
+      ...this.rawBlocks().map((block): TimelineRow => ({
+        kind: 'task', key: `task-${block.id}`, block, title: block.taskTitle, allDay: false,
+        start: Date.parse(block.startAt), end: Date.parse(block.endAt), status: timeStatus(Date.parse(block.startAt), Date.parse(block.endAt), now)
+      })),
+    ];
+    return rows.sort((a, b) => a.start - b.start || a.end - b.end || a.title.localeCompare(b.title));
+  });
+
+  /** Everything listed today. */
+  protected readonly totalItemsCount = computed(() => this.timeline().length);
+
+  /** Planned task blocks. */
+  protected readonly tasksCount = computed(() => this.rawBlocks().length);
 
   /** Today's meetings plus the calendar events that carry a meeting link. */
   protected readonly meetingsCount = computed(() =>
@@ -104,31 +148,9 @@ export class TodaysScheduleCardComponent implements OnInit {
   protected readonly eventsCount = computed(() =>
     this.agendaItems().filter((item) => this.itemKind(item.event) === 'Event').length);
 
-  /** Total scheduled time formatted, e.g. "8h" or "2h 30m" */
+  /** Scheduled time formatted, e.g. "8h" or "2h 30m". Overlapping items count once, as the planner's "Planned" does. */
   protected readonly totalTimeLabel = computed(() => {
-    let totalMinutes = 0;
-
-    for (const m of this.todaysMeetings()) {
-      if (m.startAt && m.endAt && !m.isAllDay) {
-        const start = new Date(m.startAt).getTime();
-        const end = new Date(m.endAt).getTime();
-        if (end > start) {
-          totalMinutes += Math.round((end - start) / 60_000);
-        }
-      }
-    }
-
-    for (const item of this.agendaItems()) {
-      const e = item.event;
-      if (e.startDate && e.endDate && !e.isAllDay) {
-        const start = new Date(e.startDate).getTime();
-        const end = new Date(e.endDate).getTime();
-        if (end > start) {
-          totalMinutes += Math.round((end - start) / 60_000);
-        }
-      }
-    }
-
+    const totalMinutes = Math.round(busyMilliseconds(this.timeline().filter((row) => !row.allDay)) / 60_000);
     if (totalMinutes <= 0) return '0m';
     const hours = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
@@ -148,6 +170,10 @@ export class TodaysScheduleCardComponent implements OnInit {
 
   protected meetingTitle(meeting: MeetingListItem): string {
     return meeting.isPrivate && !meeting.myRole ? 'Private meeting' : meeting.title;
+  }
+
+  protected taskTimeRange(block: PlannerRangeBlockView): string {
+    return `${formatEventTimeLabel(block.startAt, false)} – ${formatEventTimeLabel(block.endAt, false)}`;
   }
 
   protected meetingTimeRange(meeting: MeetingListItem): string {
@@ -281,17 +307,19 @@ export class TodaysScheduleCardComponent implements OnInit {
       error: () => this.rawMeetings.set([])
     });
 
-    this.api.getEvents(from, to).subscribe({
-      next: (response) => {
-        this.rawEvents.set(response.events);
-        this.loading.set(false);
-        this.refreshing.set(false);
-      },
-      error: () => {
-        this.rawEvents.set([]);
-        this.loading.set(false);
-        this.refreshing.set(false);
-      }
+    // Together, so a day of only planned tasks never flashes the empty state. Each source fails on its own: the
+    // planner answers 503 when it is off, and the card is then the plain calendar.
+    forkJoin({
+      events: this.api.getEvents(from, to).pipe(map((response) => response.events), catchError(() => of<readonly CalendarEventResponse[]>([]))),
+      blocks: this.planner.getRange(today, today).pipe(
+        map((range) => range.days.find((day) => day.date === today)?.blocks ?? []),
+        catchError(() => of<readonly PlannerRangeBlockView[]>([]))
+      )
+    }).subscribe(({ events, blocks }) => {
+      this.rawEvents.set(events);
+      this.rawBlocks.set(blocks);
+      this.loading.set(false);
+      this.refreshing.set(false);
     });
   }
 }
@@ -300,11 +328,27 @@ export class TodaysScheduleCardComponent implements OnInit {
  * events count as In Progress for the whole day. */
 export function scheduleItemStatus(event: CalendarEventResponse, now: number): ScheduleItemStatus {
   if (event.isAllDay) return 'inProgress';
-  const start = new Date(event.startDate).getTime();
-  const end = new Date(event.endDate).getTime();
+  return timeStatus(new Date(event.startDate).getTime(), new Date(event.endDate).getTime(), now);
+}
+
+function timeStatus(start: number, end: number, now: number): ScheduleItemStatus {
   if (end <= now && end > start) return 'completed';
   if (start <= now && now < end) return 'inProgress';
   return start > now ? 'upcoming' : 'completed';
+}
+
+/** The time covered by at least one range: overlaps count once. */
+function busyMilliseconds(ranges: readonly { start: number; end: number }[]): number {
+  let total = 0;
+  let coveredTo = -Infinity;
+  for (const { start, end } of [...ranges].filter((r) => r.end > r.start).sort((a, b) => a.start - b.start)) {
+    const from = Math.max(start, coveredTo);
+    if (end > from) {
+      total += end - from;
+      coveredTo = end;
+    }
+  }
+  return total;
 }
 
 function formatEventTimeLabel(iso: string, isAllDay: boolean): string {
