@@ -55,11 +55,11 @@ describe('LoginComponent', () => {
   }
 
   function setLastTenantCookie(value: string): void {
-    document.cookie = `onevo_last_tenant=${value}; path=/`;
+    document.cookie = `crownus_last_tenant=${value}; path=/`;
   }
 
   function clearLastTenantCookie(): void {
-    document.cookie = 'onevo_last_tenant=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    document.cookie = 'crownus_last_tenant=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
   }
 
   async function settleRememberedAccountCheck(): Promise<void> {

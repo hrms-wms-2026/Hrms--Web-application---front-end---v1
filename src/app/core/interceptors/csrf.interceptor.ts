@@ -1,9 +1,9 @@
+import { CSRF_COOKIE_NAMES } from '../auth/auth-cookie-names';
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 
 const CSRF_HEADER = 'X-CSRF-Token';
-const CSRF_COOKIE_NAMES = ['onevo_csrf', 'onevo_legal_csrf'];
 const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 
 function readCsrfToken(document: Document): string | null {
