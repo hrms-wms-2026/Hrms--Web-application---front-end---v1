@@ -46,7 +46,7 @@ export class AuthApiService {
   }
 
   /**
-   * Root-host-only, like login(): the onevo_legal_pending/onevo_legal_csrf cookies backing this
+   * Root-host-only, like login(): the crownus_legal_pending/crownus_legal_csrf cookies backing this
    * request are issued by the root/system host during login(), so this must retarget the same way
    * or a request made from a tenant host will 401 against a session the tenant host never had.
    */
