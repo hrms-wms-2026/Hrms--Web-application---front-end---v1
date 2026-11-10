@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingDelegatesModalComponent } from '../../ui/meeting-delegates-modal/meeting-delegates-modal.component';
 import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -112,7 +113,7 @@ const WIDE_SCREEN = '(min-width: 769px)';
     CalendarDayViewComponent, CalendarEventFormModalComponent, MeetingFormModalComponent,
     MeetingOccurrenceDrawerComponent, PlannerFocusPanelComponent, PlannerBlockPickerComponent, TaskFormModalComponent, DatePickerComponent,
     PlannerCreatePopoverComponent, EventTabComponent, WorkItemTabComponent, TimeOffTabComponent, NewLeaveRequestWizardComponent,
-    TeamPlannerComponent, SelectComponent
+    TeamPlannerComponent, SelectComponent, MeetingDelegatesModalComponent
   ],
   // The planner layer belongs to this page: it loads with the visible range and goes away with the page.
   providers: [PlannerLayerStore, WorkItemPlanFlow, PlannerLeaveLayerStore, TeamPlannerStore],
@@ -122,6 +123,8 @@ const WIDE_SCREEN = '(min-width: 769px)';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalendarPageComponent {
+  /** The "Meeting delegates" dialog: who may run the caller's meetings. */
+  protected readonly meetingDelegatesOpen = signal(false);
   readonly store = inject(CalendarEventStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
