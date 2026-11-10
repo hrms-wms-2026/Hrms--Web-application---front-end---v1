@@ -44,7 +44,11 @@ const RESPONSE_LABELS: Record<string, string> = { accepted: 'Accepted', rejected
           <section class="text-xs text-[var(--color-text-secondary)]">
             <div>{{ when(occ.startAt, occ.endAt) }}</div>
             <div>{{ occ.placement.isOffice ? 'Office' : occ.placement.projectName + ' / ' + occ.placement.moduleTitle }}@if (occ.location) { · {{ occ.location }} }</div>
-            <div>Organizer: {{ occ.organizer.name }}</div>
+            <div data-testid="meeting-organized-by">Organized by {{ occ.organizer.name }}</div>
+            <!-- Set when a meeting delegate created it for the organizer; the server sends it to the organizer role only. -->
+            @if (occ.scheduledByName) {
+              <div data-testid="meeting-scheduled-by">Scheduled by {{ occ.scheduledByName }}</div>
+            }
           </section>
 
           @if (isOrganizer() && occ.status !== 'cancelled') {
