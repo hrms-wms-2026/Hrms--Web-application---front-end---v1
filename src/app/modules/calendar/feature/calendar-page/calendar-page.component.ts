@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingDelegatesModalComponent } from '../../ui/meeting-delegates-modal/meeting-delegates-modal.component';
+import { MeetingPrincipalsStore } from '../../../work/meetings/state/meeting-principals.store';
 import { MeetingsAvailabilityService } from '../../../work/meetings/state/meetings-availability.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -125,6 +126,15 @@ const WIDE_SCREEN = '(min-width: 769px)';
 export class CalendarPageComponent {
   /** The "Meeting delegates" dialog: who may run the caller's meetings. */
   protected readonly meetingDelegatesOpen = signal(false);
+  /** The people whose meetings the caller may run; the "whose calendar" selector shows only when there is one. */
+  readonly principals = inject(MeetingPrincipalsStore);
+  /** A principal's calendar shown to their meeting delegate; null = the caller's own. Their days are read-only here:
+   * a delegate schedules meetings for them, nothing else. */
+  readonly viewingFor = signal<string | null>(null);
+  readonly viewingForOptions = computed<readonly SelectOption[]>(() => [
+    { value: '', label: 'My calendar' },
+    ...this.principals.principals().map((p) => ({ value: p.employeeId, label: `${p.name}'s calendar` })),
+  ]);
   readonly store = inject(CalendarEventStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -152,7 +162,7 @@ export class CalendarPageComponent {
   readonly pickerItem = signal<PlannerFocusItem | PlannerRangeBlockView | null>(null);
 
   /** The Task list goes with the planner; the team view has its own controls. */
-  readonly taskListOn = computed(() => this.planner.active() && !this.teamMode());
+  readonly taskListOn = computed(() => this.planner.active() && !this.teamMode() && !this.viewingFor());
   /** The layout hides its sub-sidebar on a phone, so the page shows the Task list itself there. */
   readonly wideScreen = signal(typeof window !== 'undefined' && !!window.matchMedia?.(WIDE_SCREEN).matches);
   private readonly navState = inject(NavigationStateService);
@@ -177,7 +187,9 @@ export class CalendarPageComponent {
 
   readonly plannerBlocks = computed(() => new Map([...this.planner.dayByDate()].map(([date, day]) => [date, day.blocks])));
   readonly plannerWindows = computed(() => new Map([...this.planner.dayByDate()].map(([date, day]) => [date, day.workWindow])));
-  readonly plannerEditable = computed(() => new Set([...this.planner.dayByDate().values()].filter((d) => d.editable).map((d) => d.date)));
+  readonly plannerEditable = computed(() => this.viewingFor()
+    ? new Set<string>()
+    : new Set([...this.planner.dayByDate().values()].filter((d) => d.editable).map((d) => d.date)));
   readonly editableDateList = computed(() => [...this.plannerEditable()].sort());
 
   /** Each day's load: blocks and busy calendar items, overlapping time counted once (design call C2). */
@@ -240,7 +252,7 @@ export class CalendarPageComponent {
 
   private readonly rangeEffect = effect(() => {
     const { from, to } = this.currentRange();
-    this.store.loadEvents(from, to);
+    this.store.loadEvents(from, to, this.viewingFor());
   });
 
   /** Separate from createTabs: that also depends on the planner's editable days, so reading it here would make every
@@ -250,9 +262,11 @@ export class CalendarPageComponent {
 
   private readonly plannerRangeEffect = effect(() => {
     const { from, to } = this.plannerRange();
-    void this.planner.load(from, to);
-    // Your own leave on the Planner (2026-11-03): only while the Planner is on, and where you can ask for it.
-    if (this.planner.active() && this.canRequestTimeOff()) {
+    const forEmployeeId = this.viewingFor();
+    void this.planner.load(from, to, forEmployeeId);
+    // Your own leave on the Planner (2026-11-03): only while the Planner is on, and where you can ask for it - not on a
+    // principal's calendar.
+    if (this.planner.active() && this.canRequestTimeOff() && !forEmployeeId) {
       void untracked(() => this.leaveLayer.load(from, to));
       untracked(() => this.leaveLayer.startAutoRefresh());
     } else {
@@ -263,7 +277,8 @@ export class CalendarPageComponent {
   /** Day view's actual minutes and attendance come from the day read. */
   private readonly plannerDayEffect = effect(() => {
     const date = this.dayDate();
-    if (this.view() !== 'day' || !this.planner.active()) {
+    // The day read is the caller's own day: a principal's Day view has no totals.
+    if (this.view() !== 'day' || !this.planner.active() || this.viewingFor()) {
       this.plannerDay.set(null);
       return;
     }
@@ -298,6 +313,8 @@ export class CalendarPageComponent {
     });
     this.store.loadMyTimezone();
     this.store.loadMeetingConnectionStatus();
+    // Read again on each visit: a principal may have added or removed the caller since.
+    void this.principals.load(true);
     this.handleCalendarConnectionRedirect();
     this.applyTeamParams();
   }
@@ -308,9 +325,17 @@ export class CalendarPageComponent {
   private readonly myTeam = inject(MyTeamCapabilitiesStore);
   readonly scope = signal<'me' | 'team'>('me');
   /** My team is offered while the planner is on to someone with a direct report. */
-  readonly canViewTeam = computed(() => this.planner.active() && this.myTeam.capabilities()?.canViewTeamPlan === true);
+  readonly canViewTeam = computed(() =>
+    this.planner.active() && !this.viewingFor() && this.myTeam.capabilities()?.canViewTeamPlan === true);
   /** The team view shows only while it is offered; a deep link waits for the capability check. */
   readonly teamMode = computed(() => this.scope() === 'team' && this.canViewTeam());
+
+  /** Shows a principal's calendar (their meeting delegate only), or the caller's own with null. */
+  viewFor(employeeId: string | null): void {
+    this.closeCreate();
+    this.scope.set('me');
+    this.viewingFor.set(employeeId || null);
+  }
 
   setScope(scope: 'me' | 'team'): void {
     this.closeCreate();
@@ -475,9 +500,9 @@ export class CalendarPageComponent {
   /** A saved task may change its estimate, due date or title: refresh the Focus list, blocks and events. */
   onTaskSaved(): void {
     const { from, to } = this.plannerRange();
-    void this.planner.load(from, to);
+    void this.planner.load(from, to, this.viewingFor());
     const range = this.currentRange();
-    this.store.loadEvents(range.from, range.to);
+    this.store.loadEvents(range.from, range.to, this.viewingFor());
   }
 
   onPickerSubmitted(e: { date: string; startMinutes: number; minutes: number }): void {
@@ -565,6 +590,8 @@ export class CalendarPageComponent {
   /** The picked time while the create popover is open; null when closed. */
   readonly createSlot = signal<CreateSlot | null>(null);
   readonly createTabs = computed<readonly CreateTab[]>(() => CREATE_TAB_ORDER.filter((tab) => {
+    // On a principal's calendar a delegate schedules meetings for them, and nothing else.
+    if (this.viewingFor()) return tab === 'meeting' && this.meetingsAvailability.canCreate();
     // A work item is planned on the spot: it needs the planner, and a picked slot must be on a day that can be planned.
     if (tab === 'workItem') {
       const slot = this.createSlot();
@@ -607,7 +634,7 @@ export class CalendarPageComponent {
     this.closeCreate();
     void this.reloadEvents();
     const { from, to } = this.plannerRange();
-    void this.planner.load(from, to);
+    void this.planner.load(from, to, this.viewingFor());
   }
 
   readonly clockOf = clock;
@@ -701,7 +728,7 @@ export class CalendarPageComponent {
   /** A work item was created but its block was refused: place it with the block picker instead. */
   onPickAnotherTime(item: WorkItemToPlace): void {
     this.closeCreate();
-    void this.planner.load(this.plannerRange().from, this.plannerRange().to);
+    void this.planner.load(this.plannerRange().from, this.plannerRange().to, this.viewingFor());
     this.pickerItem.set({
       taskId: item.taskId, projectId: item.projectId, projectName: '', title: item.title, priority: 'medium', dueDate: null,
       estimatedMinutes: item.estimatedMinutes, loggedMinutes: 0, remainingMinutes: item.estimatedMinutes, plannedAheadMinutes: 0,
@@ -763,7 +790,7 @@ export class CalendarPageComponent {
   /** The create/update responses carry no participants, organizer or conflict flags, so the saved event is re-read from the server. */
   private reloadEvents(): Promise<void> {
     const { from, to } = this.currentRange();
-    return this.store.loadEvents(from, to);
+    return this.store.loadEvents(from, to, this.viewingFor());
   }
 
   async onDelete(scope: RecurrenceEditScope | null): Promise<void> {
@@ -775,7 +802,7 @@ export class CalendarPageComponent {
       await this.store.cancelOccurrence(editing.recurrenceMasterId, editing.originalStart!, from, to);
     } else if (scope === 'AllEvents' && editing.recurrenceMasterId) {
       await this.store.deleteEvent(editing.recurrenceMasterId);
-      await this.store.loadEvents(from, to);
+      await this.store.loadEvents(from, to, this.viewingFor());
     } else {
       await this.store.deleteEvent(editing.id);
     }

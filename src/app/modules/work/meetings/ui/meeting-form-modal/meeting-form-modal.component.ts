@@ -21,6 +21,7 @@ import { TimePickerComponent } from '../../../../../shared/ui/time-picker/time-p
 import { CalendarParticipantPickerComponent } from '../../../../calendar/ui/calendar-participant-picker/calendar-participant-picker.component';
 import { ProjectApiService } from '../../../data-access/project-api.service';
 import { MeetingApiService } from '../../data-access/meeting-api.service';
+import { MeetingPrincipalsStore } from '../../state/meeting-principals.store';
 import {
   CreateMeetingRequest, EditMeetingRequest, MeetingEditResponse, MeetingOccurrenceResponse, MeetingPlatform,
   MeetingScope
@@ -111,6 +112,14 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
           </p>
         }
 
+        @if (showOrganizer()) {
+          <div class="mf-field">
+            <span class="mf-label">Organizer</span>
+            <!-- A meeting delegate schedules for a principal: invitees see the principal as the organizer. -->
+            <app-select data-testid="meeting-organizer" icon="user" ariaLabel="Organizer" [searchable]="false"
+              [options]="organizerOptions()" [value]="organizerChoice()" (valueChange)="organizerChoice.set($event)" />
+          </div>
+        }
         <label class="mf-field">
           <span class="mf-label">Meeting title</span>
           <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="ui-input" [readOnly]="notesOnly()" />
@@ -350,6 +359,18 @@ export class MeetingFormModalComponent implements OnInit {
   /** Render the form without its own modal: the work item dialog hosts it when the category is "meeting". */
   readonly embedded = input(false);
   readonly carryOver = input<MeetingCarryOver | null>(null);
+  /** Set by the calendar on a principal's calendar: the meeting is created for them, and no Organizer select shows. */
+  readonly organizerEmployeeId = input<string | null>(null);
+  private readonly principalsStore = inject(MeetingPrincipalsStore);
+  /** '' = the caller; otherwise a principal's employee id. */
+  readonly organizerChoice = signal('');
+  readonly organizerOptions = computed<readonly SelectOption[]>(() => [
+    { value: '', label: 'Me' },
+    ...this.principalsStore.principals().map((p) => ({ value: p.employeeId, label: p.name })),
+  ]);
+  /** Offered on the full create form to someone who is a meeting delegate; the compact popover tab stays as it is. */
+  readonly showOrganizer = computed(() => this.mode() === 'create' && !this.compact() && !this.organizerEmployeeId()
+    && this.principalsStore.principals().length > 0);
   readonly saved = output<MeetingCreatedEvent | MeetingEditSaved>();
   readonly closed = output<void>();
 
@@ -427,6 +448,7 @@ export class MeetingFormModalComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.mode() === 'create' && !this.compact()) void this.principalsStore.load();
     this.form.controls.platform.valueChanges.subscribe((p) => this.platformChoice.set(p));
     this.form.controls.title.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((title) => this.sharedTitle()?.set(title ?? ''));
@@ -650,7 +672,9 @@ export class MeetingFormModalComponent implements OnInit {
 
   buildCreateRequest(): CreateMeetingRequest {
     const v = this.form.getRawValue();
+    const organizer = this.organizerEmployeeId() ?? (this.showOrganizer() ? this.organizerChoice() || null : null);
     return {
+      ...(organizer ? { organizerEmployeeId: organizer } : {}),
       projectId: this.projectId(),
       objectiveId: this.projectId() ? this.objectiveId() : null,
       title: v.title.trim(),

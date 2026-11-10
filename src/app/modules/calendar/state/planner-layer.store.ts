@@ -17,6 +17,8 @@ interface PlannerLayerState {
   readonly error: string | null;
   readonly from: string | null;
   readonly to: string | null;
+  /** A principal's days the caller is viewing as their meeting delegate; null = the caller's own. */
+  readonly forEmployeeId: string | null;
 }
 
 function errorCode(err: unknown): string | undefined {
@@ -28,7 +30,7 @@ function errorCode(err: unknown): string | undefined {
  * and the Focus list. It stays empty unless the planner is on, so the page falls back to the plain calendar.
  */
 export const PlannerLayerStore = signalStore(
-  withState<PlannerLayerState>({ active: false, range: null, focus: null, saving: false, error: null, from: null, to: null }),
+  withState<PlannerLayerState>({ active: false, range: null, focus: null, saving: false, error: null, from: null, to: null, forEmployeeId: null }),
   withComputed((store) => ({
     dayByDate: computed<ReadonlyMap<string, PlannerRangeDay>>(() => new Map((store.range()?.days ?? []).map((d) => [d.date, d]))),
     focusCount: computed(() => (store.focus()?.groups ?? []).reduce((sum, g) => sum + g.count, 0)),
@@ -39,15 +41,18 @@ export const PlannerLayerStore = signalStore(
     // range on screen.
     let latest = 0;
 
-    async function load(from: string, to: string): Promise<void> {
+    async function load(from: string, to: string, forEmployeeId: string | null = null): Promise<void> {
       const mine = ++latest;
-      patchState(store, { from, to });
+      patchState(store, { from, to, forEmployeeId });
       if (availability.state() !== 'on') {
         patchState(store, { active: false });
         return;
       }
       try {
-        const [range, focus] = await Promise.all([firstValueFrom(api.getRange(from, to)), firstValueFrom(api.getFocus())]);
+        const [range, focus] = await Promise.all([
+          firstValueFrom(api.getRange(from, to, forEmployeeId)),
+          forEmployeeId ? Promise.resolve(null) : firstValueFrom(api.getFocus()),
+        ]);
         if (mine !== latest) return;
         patchState(store, { active: true, range, focus, error: null });
       } catch (err) {
@@ -69,7 +74,7 @@ export const PlannerLayerStore = signalStore(
         await firstValueFrom(call);
         patchState(store, { saving: false });
         const { from, to } = { from: store.from(), to: store.to() };
-        if (from && to) await load(from, to);
+        if (from && to) await load(from, to, store.forEmployeeId());
         return true;
       } catch (err) {
         const message = plannerErrorMessage(errorCode(err));

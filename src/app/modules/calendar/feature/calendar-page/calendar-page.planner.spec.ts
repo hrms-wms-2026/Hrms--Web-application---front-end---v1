@@ -75,8 +75,12 @@ describe('CalendarPageComponent planner layer', () => {
     };
   }
 
+  /** The forEmployeeId of each planner range read, in order (null = my own). */
+  let rangeFor: (string | null)[] = [];
+
   function answerRange(req: TestRequest): void {
     rangeReads++;
+    rangeFor.push(req.request.params.get('forEmployeeId'));
     const days: PlannerRangeDay[] = datesBetween(req.request.params.get('from')!, req.request.params.get('to')!).map((date) => {
       const window = { ...weekday, isWorkingDay: !isWeekend(date), workingMinutes: isWeekend(date) ? 0 : 420 };
       const blocks = blocksFor(date);
@@ -767,6 +771,92 @@ describe('CalendarPageComponent planner layer', () => {
       await setupAt('/?scope=team&date=2026-11-05&person=e1');
       await settle();
       expect(http.match((r) => r.url === `${base}/employees/e1/range`).length).toBe(1);
+    });
+  });
+
+  describe('a principal\'s calendar (meeting delegates, 2026-11-10)', () => {
+    const principalsUrl = `${environment.apiUrl}/meetings/delegates/principals`;
+    const answerPrincipals = (rows: { employeeId: string; name: string }[]) =>
+      http.match(principalsUrl).forEach((r) => r.flush(rows));
+    const page = () => fixture.componentInstance;
+    const store = () => TestBed.inject(CalendarEventStore) as unknown as { loadEvents: ReturnType<typeof vi.fn> };
+
+    async function asDelegateOf(): Promise<void> {
+      setup();
+      answerPrincipals([{ employeeId: 'ceo', name: 'Asha Perera' }]);
+      await settle();
+      rangeFor = [];
+      store().loadEvents.mockClear();
+    }
+
+    it('the selector is hidden for someone with no principals', async () => {
+      setup();
+      answerPrincipals([]);
+      await settle();
+
+      expect(q('calendar-viewing-for')).toBeNull();
+    });
+
+    it('choosing a principal reloads the calendar and planner for them', async () => {
+      await asDelegateOf();
+      expect(selectDisplayText(q('calendar-viewing-for')!)).toBe('My calendar');
+
+      const option = openSelect(q('calendar-viewing-for')!, () => fixture.detectChanges())
+        .find((o) => o.textContent?.trim() === 'Asha Perera\'s calendar');
+      option!.click();
+      await settle();
+
+      expect(page().viewingFor()).toBe('ceo');
+      expect(store().loadEvents).toHaveBeenCalledWith(expect.any(String), expect.any(String), 'ceo');
+      expect(rangeFor).toContain('ceo');
+    });
+
+    it('a principal\'s planner is read-only and has no Task list', async () => {
+      await asDelegateOf();
+
+      page().viewFor('ceo');
+      await settle();
+
+      expect(page().plannerEditable().size).toBe(0);
+      expect(page().taskListOn()).toBe(false);
+    });
+
+    it('on a principal\'s calendar the popover offers only the meeting tab', async () => {
+      await asDelegateOf();
+      page().viewFor('ceo');
+      await settle();
+
+      page().onNewEvent();
+      fixture.detectChanges();
+
+      expect(page().createTabs()).toEqual(['meeting']);
+    });
+
+    it('a meeting created there is sent with organizerEmployeeId', async () => {
+      await asDelegateOf();
+      page().viewFor('ceo');
+      await settle();
+      page().onNewEvent();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const form = fixture.debugElement.query(By.directive(MeetingFormModalComponent)).componentInstance as MeetingFormModalComponent;
+      expect(form.buildCreateRequest().organizerEmployeeId).toBe('ceo');
+    });
+
+    it('back on my calendar, loads are my own again', async () => {
+      await asDelegateOf();
+      page().viewFor('ceo');
+      await settle();
+      rangeFor = [];
+      store().loadEvents.mockClear();
+
+      page().viewFor(null);
+      await settle();
+
+      expect(store().loadEvents).toHaveBeenCalledWith(expect.any(String), expect.any(String), null);
+      expect(rangeFor.every((f) => f === null)).toBe(true);
     });
   });
 });
