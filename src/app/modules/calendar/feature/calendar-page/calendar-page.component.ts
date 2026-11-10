@@ -240,11 +240,16 @@ export class CalendarPageComponent {
     this.store.loadEvents(from, to);
   });
 
+  /** Separate from createTabs: that also depends on the planner's editable days, so reading it here would make every
+   * planner response reload the planner. */
+  private readonly canRequestTimeOff = computed(() =>
+    this.permissions.hasModule('leave') && this.permissions.hasPermission('leave:read-own'));
+
   private readonly plannerRangeEffect = effect(() => {
     const { from, to } = this.plannerRange();
     void this.planner.load(from, to);
     // Your own leave on the Planner (2026-11-03): only while the Planner is on, and where you can ask for it.
-    if (this.planner.active() && this.createTabs().includes('timeOff')) {
+    if (this.planner.active() && this.canRequestTimeOff()) {
       void untracked(() => this.leaveLayer.load(from, to));
       untracked(() => this.leaveLayer.startAutoRefresh());
     } else {
@@ -563,7 +568,7 @@ export class CalendarPageComponent {
       return this.planner.active() && (!slot || !!slot.isDefault || this.canPlan(slot.date));
     }
     if (tab === 'meeting') return this.meetingsAvailability.canCreate();
-    if (tab === 'timeOff') return this.permissions.hasModule('leave') && this.permissions.hasPermission('leave:read-own');
+    if (tab === 'timeOff') return this.canRequestTimeOff();
     return true;
   }));
 
