@@ -54,6 +54,10 @@ describe('MeetingApiService', () => {
     ['unlinkActionItem', (s) => s.unlinkActionItem('t1', 'a1'), 'DELETE', `${base}/occurrences/t1/action-items/a1`],
     ['bulkPreview', (s) => s.bulkPreview({ projectId: null, objectiveId: null, departmentIds: ['d'], managerEmployeeIds: [], employeeIds: [],
       seriesId: null, platform: 'zoom' }), 'POST', `${base}/bulk-preview`],
+    ['listDelegates', (s) => s.listDelegates(), 'GET', `${base}/delegates`],
+    ['addDelegate', (s) => s.addDelegate('e1'), 'POST', `${base}/delegates`],
+    ['revokeDelegate', (s) => s.revokeDelegate('d1'), 'DELETE', `${base}/delegates/d1`],
+    ['listPrincipals', (s) => s.listPrincipals(), 'GET', `${base}/delegates/principals`],
   ];
 
   it.each(cases)('%s calls the contract route', (_name, call, method, url) => {
@@ -116,5 +120,13 @@ describe('MeetingApiService', () => {
     service.removeLink(series).subscribe((r) => (result = r));
     http.expectOne(`${base}/series/${series}/link`).flush(null, { status: 204, statusText: 'No Content' });
     expect(result).toBeNull();
+  });
+
+  it('addDelegate sends the end date only when one is given', () => {
+    service.addDelegate('e1').subscribe();
+    expect(http.expectOne(`${base}/delegates`).request.body).toEqual({ delegateEmployeeId: 'e1' });
+
+    service.addDelegate('e2', '2026-12-01T00:00:00Z').subscribe();
+    expect(http.expectOne(`${base}/delegates`).request.body).toEqual({ delegateEmployeeId: 'e2', expiresAt: '2026-12-01T00:00:00Z' });
   });
 });

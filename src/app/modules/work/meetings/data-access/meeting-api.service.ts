@@ -5,7 +5,8 @@ import { environment } from '../../../../../environments/environment';
 import { SILENT_HTTP_ERRORS } from '../../../../core/interceptors/error.interceptor';
 import {
   CreateMeetingRequest, EditMeetingRequest, MeetingActionItemView, MeetingAttendanceResponse,
-  MeetingAttendanceStatusResponse, MeetingAttendeesRequest, MeetingAttendeesResponse, MeetingBulkPreviewRequest,
+  MeetingAttendanceStatusResponse, MeetingAttendeesRequest, MeetingAttendeesResponse, MeetingBulkPreviewRequest, MeetingDelegateView,
+  MeetingPrincipalView,
   MeetingBulkPreviewResponse, MeetingCreatedResponse, MeetingEditResponse, MeetingLinkRequest, MeetingLinkResponse, MeetingListItem,
   MeetingMoveResponse, MeetingOccurrenceResponse, MeetingScope, MeetingSeriesLinkResponse, MeetingSeriesResponse, MoveMeetingRequest,
   RespondToMeetingRequest
@@ -125,6 +126,26 @@ export class MeetingApiService {
 
   bulkPreview(request: MeetingBulkPreviewRequest): Observable<MeetingBulkPreviewResponse> {
     return this.watched(this.http.post<MeetingBulkPreviewResponse>(`${this.baseUrl}/bulk-preview`, request, this.silent));
+  }
+
+  /** My meeting delegates (people allowed to run my meetings), expired ones included. */
+  listDelegates(): Observable<MeetingDelegateView[]> {
+    return this.http.get<MeetingDelegateView[]>(`${this.baseUrl}/delegates`);
+  }
+
+  /** Lets someone run my meetings; without an end date it lasts until revoked. */
+  addDelegate(employeeId: string, expiresAt?: string): Observable<MeetingDelegateView> {
+    const body = expiresAt ? { delegateEmployeeId: employeeId, expiresAt } : { delegateEmployeeId: employeeId };
+    return this.http.post<MeetingDelegateView>(`${this.baseUrl}/delegates`, body, this.silent);
+  }
+
+  revokeDelegate(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/delegates/${id}`, this.silent);
+  }
+
+  /** The people whose meetings I may run. */
+  listPrincipals(): Observable<MeetingPrincipalView[]> {
+    return this.http.get<MeetingPrincipalView[]>(`${this.baseUrl}/delegates/principals`);
   }
 
   private watched<T>(request: Observable<T>): Observable<T> {
