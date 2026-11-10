@@ -744,6 +744,8 @@ export class CalendarPageComponent {
       this.openMeeting.set({ seriesId: found.meetingSeriesId, originalStart: found.originalStart ?? found.startDate });
       return;
     }
+    // A delegate runs a principal's meetings only: the principal's own events stay theirs to change.
+    if (this.viewingFor()) return;
     this.editingEvent.set(found);
     this.formOpen.set(true);
   }

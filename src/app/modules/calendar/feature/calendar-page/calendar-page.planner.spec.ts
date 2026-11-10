@@ -845,6 +845,24 @@ describe('CalendarPageComponent planner layer', () => {
       expect(form.buildCreateRequest().organizerEmployeeId).toBe('ceo');
     });
 
+    it('a principal\'s own (non-meeting) event does not open the edit form there, and a meeting opens its drawer', async () => {
+      await asDelegateOf();
+      page().viewFor('ceo');
+      await settle();
+      events.set([
+        { id: 'ev1', title: 'Dentist', startDate: '2026-11-03T05:00:00Z', endDate: '2026-11-03T06:00:00Z', isAllDay: false,
+          itemKind: 'event', participants: null } as CalendarEventResponse,
+        { id: 'm1', title: 'Board', startDate: '2026-11-03T07:00:00Z', endDate: '2026-11-03T08:00:00Z', isAllDay: false,
+          itemKind: 'meeting', meetingSeriesId: 's1', originalStart: '2026-11-03T07:00:00Z', participants: null } as CalendarEventResponse,
+      ]);
+
+      page().openEdit('ev1');
+      expect(page().formOpen()).toBe(false);
+
+      page().openEdit('m1');
+      expect(page().openMeeting()).toEqual({ seriesId: 's1', originalStart: '2026-11-03T07:00:00Z' });
+    });
+
     it('back on my calendar, loads are my own again', async () => {
       await asDelegateOf();
       page().viewFor('ceo');
