@@ -39,6 +39,17 @@ export interface TeamAttendanceDepartment {
   readonly name: string;
 }
 
+/** One department over the period: attended = present + late days, expected = present + late + absent. id null = no
+ * department. */
+export interface TeamAttendanceDepartmentRate {
+  readonly id: string | null;
+  readonly name: string;
+  readonly people: number;
+  readonly attended: number;
+  readonly expected: number;
+  readonly rate: number | null;
+}
+
 /** GET attendance/time-tracking/team/attendance-summary. Today* is today's snapshot; period*, trend and the
  * comparison cover the selected range. deltaPp is in percentage points. */
 export interface TeamAttendanceSummaryResponse {
@@ -60,6 +71,8 @@ export interface TeamAttendanceSummaryResponse {
   readonly teamSize: number;
   readonly calculatedAtUtc: string;
   readonly isProvisional: boolean;
+  /** The department comparison for the period, best rate first (no rate last), over the filtered team. */
+  readonly departmentRates: readonly TeamAttendanceDepartmentRate[];
 }
 
 export interface TeamAttendanceDayCell {
@@ -95,6 +108,6 @@ export interface TeamAttendanceEmployeesQuery extends TeamAttendancePeriodQuery 
   readonly search?: string | null;
   readonly page: number;
   readonly pageSize: number;
-  /** 'rate': best attendance first (the ranking); the default is by name. */
-  readonly sort?: 'name' | 'rate';
+  /** 'rate': best attendance first (the ranking); 'attention': most late + absent + leave days first; the default is by name. */
+  readonly sort?: 'name' | 'rate' | 'attention';
 }

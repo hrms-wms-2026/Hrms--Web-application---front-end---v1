@@ -138,7 +138,7 @@ describe('WeeklyProgressCardComponent', () => {
     expect(qa(f, 'wp-stacked-tile').map(tileText)).toEqual([
       'Expected 40h', 'Scheduled 32h (80%)', 'Worked 27h (68%)', 'Remaining 13h (33%)'
     ]);
-    expect(q(f, 'wp-donut')?.style.width).toBe('140px');
+    expect(q(f, 'wp-donut')?.style.width).toBe('168px');
   });
 
   it('the default 4x3 slot shows hours, percent, bar, three tiles and the change, with nothing below', () => {

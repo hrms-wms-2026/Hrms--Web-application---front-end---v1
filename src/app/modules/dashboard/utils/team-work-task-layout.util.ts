@@ -12,10 +12,6 @@ export const TEAM_WORK_TASK_BREAKPOINTS = {
   minHeight: 260,
   /** Below this width a card with height shows the xs view: the donut over the figure. */
   xsWidth: 330,
-  /** From this width a 2-row card swaps the donut for a stacked bar and legend beside the figure. */
-  miniBarWidth: 360,
-  /** From this width a 2-row card with the donut has room for task-of-worked hours beside it. */
-  miniFigureWidth: 256,
 } as const;
 
 export const TEAM_WORK_TASK_HYSTERESIS = 20;
@@ -89,10 +85,12 @@ export const EMPTY_TEAM_WORK_TASK_PLAN: TeamWorkTaskPlan = {
   rankingRows: 0,
 };
 
+/** `rowPx` replaces the KPI tile row's height (one row, any width): a taller view's summary-cards row. */
 export function planTeamWorkTaskLayout(
   view: TeamWorkTaskView,
   width: number,
   height: number,
+  rowPx?: number,
 ): TeamWorkTaskPlan {
   if (view === 'mini' || !(width > 0) || !(height > 0)) return EMPTY_TEAM_WORK_TASK_PLAN;
   const s = TEAM_WORK_TASK_SECTION_PX;
@@ -101,7 +99,7 @@ export function planTeamWorkTaskLayout(
   let rest = height - TEAM_WORK_TASK_CARD_CHROME.height - base;
 
   const tileColumns: 2 | 4 = bodyWidth >= TILES_ONE_ROW_WIDTH_PX ? 4 : 2;
-  const tilesPx = s.gap + (tileColumns === 4 ? s.tileRow : s.tileRow * 2 + 8);
+  const tilesPx = s.gap + (rowPx ?? (tileColumns === 4 ? s.tileRow : s.tileRow * 2 + 8));
   const heroTrend = view === 'standard' && bodyWidth >= HERO_TREND_WIDTH_PX;
   const plan: TeamWorkTaskPlan = { ...EMPTY_TEAM_WORK_TASK_PLAN, heroTrend, tileColumns };
   if (view === 'xs') {

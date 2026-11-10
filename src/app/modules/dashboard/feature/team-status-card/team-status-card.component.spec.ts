@@ -119,7 +119,7 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     expect(el.textContent).toContain('No one in your team to show.');
   });
 
-  it('204x204 is mini: the 140px donut with the team total working hours, its legend in hours', async () => {
+  it('204x204 is mini: the 140px mini donut with the team total working hours, its legend in hours', async () => {
     const { el } = await setup(presenceResponse(TEAM), { width: 204, height: 204 });
 
     expect(has(el, 'wbl-mini')).toBe(true);

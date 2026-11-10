@@ -1,5 +1,5 @@
 /* Working / Break / Leave (2026-11-02 design match): the Team Attendance card's visual tokens (slate text scale, tone
-   tiles, 140px donut). Heights here are the ones PRESENCE_SECTION_PX budgets with; change both together. */
+   tiles, 168px donut). Heights here are the ones PRESENCE_SECTION_PX budgets with; change both together. */
 .wbl-mini {
   display: flex;
   height: 100%;
@@ -46,65 +46,15 @@
 }
 
 .wbl-donut-value {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 700;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .wbl-donut-of {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   color: var(--color-text-secondary);
-}
-
-.wbl-counts {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-}
-
-/* The donut legend every widget shares at this size: 28px rows of dot, label, value (see DASHBOARD_DONUT_LEGEND_ROW_PX). */
-.wbl-xs-head .wbl-counts {
-  width: 100%;
-  gap: 0;
-}
-
-.wbl-xs-head .wbl-counts li {
-  display: grid;
-  height: 28px;
-  grid-template-columns: 0.625rem minmax(0, 1fr) auto;
-  column-gap: 0.5rem;
-  font-size: 0.8125rem;
-}
-
-.wbl-xs-head .wbl-dot {
-  width: 0.625rem;
-  height: 0.625rem;
-}
-
-.wbl-xs-head .wbl-count-label {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.wbl-xs-head .wbl-count {
-  text-align: right;
-  font-weight: 700;
-}
-
-.wbl-mini--inline .wbl-counts {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.wbl-counts li {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
 }
 
 .wbl-dot {
@@ -114,17 +64,6 @@
   flex: none;
   border-radius: 9999px;
   background: var(--tone, var(--color-text-muted));
-}
-
-.wbl-count-label {
-  flex: 1 1 auto;
-  color: var(--color-text-primary);
-}
-
-.wbl-count {
-  font-weight: 600;
-  color: var(--color-text-primary);
-  font-variant-numeric: tabular-nums;
 }
 
 .wbl-stack {
@@ -460,15 +399,8 @@
   flex: none;
   flex-direction: column;
   gap: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 0.625rem 0.75rem;
-}
-
-.wbl-section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
+  border-top: 1px solid var(--color-border); /* no card inside the card: a line above the section */
+  padding: 0.625rem 0 0;
 }
 
 .wbl-trend-chart {
@@ -507,4 +439,9 @@
 .wbl-hours-bar span {
   height: 100%;
   flex: none;
+}
+
+/* The donut's key (shared donut key): full width under the donut on a narrow card. */
+.wbl-xs-head .wbl-counts {
+  width: 100%;
 }
