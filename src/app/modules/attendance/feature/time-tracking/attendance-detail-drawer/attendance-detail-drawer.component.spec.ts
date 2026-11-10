@@ -92,6 +92,14 @@ describe('AttendanceDetailDrawerComponent', () => {
     return { fixture, store };
   }
 
+  it('shows the tray label for both onevo.agent.trayapp and crownus.agent.trayapp', async () => {
+    // Activity recorded before the rename keeps the old process name.
+    const { fixture } = await setup();
+    const component = fixture.componentInstance;
+    expect(component.appLabel('onevo.agent.trayapp.exe')).toBe('WorkPulse');
+    expect(component.appLabel('crownus.agent.trayapp.exe')).toBe('WorkPulse');
+  });
+
   it('requests the detail for the given selection on open', async () => {
     const { store } = await setup();
     expect(store.loadDayDetail).toHaveBeenCalledWith('employee-1', '2026-08-27');

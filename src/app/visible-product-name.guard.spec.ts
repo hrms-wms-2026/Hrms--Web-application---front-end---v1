@@ -16,6 +16,7 @@ const ALLOWED = /onexso\.dashboard_layout|onexso\.my_team_widget_order|onevo\.ag
 const SOURCE = /\.(ts|html|json|scss|css)$/;
 
 const srcDir = join(__dirname, '..');
+const publicDir = join(__dirname, '..', '..', 'public');
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -44,6 +45,13 @@ describe('visible product name guard', () => {
             findings.push(`${rel}:${index + 1}: ${line.trim().slice(0, 140)}`);
           }
         });
+    }
+
+    for (const file of walk(publicDir)) {
+      const rel = `public/${relative(publicDir, file).replace(/\\/g, '/')}`;
+      if (OLD_NAME.test(rel)) {
+        findings.push(`${rel}: file name`);
+      }
     }
 
     expect(findings, `old product name found:\n${findings.join('\n')}`).toEqual([]);
