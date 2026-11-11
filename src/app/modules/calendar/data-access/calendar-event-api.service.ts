@@ -14,8 +14,10 @@ export class CalendarEventApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/calendar`;
 
-  getEvents(from: string, to: string): Observable<CalendarEventsResponse> {
-    return this.http.get<CalendarEventsResponse>(this.baseUrl, { params: { from, to } });
+  /** The caller's calendar, or a principal's when the caller is their meeting delegate (`forEmployeeId`). */
+  getEvents(from: string, to: string, forEmployeeId?: string | null): Observable<CalendarEventsResponse> {
+    const params: Record<string, string> = forEmployeeId ? { from, to, forEmployeeId } : { from, to };
+    return this.http.get<CalendarEventsResponse>(this.baseUrl, { params });
   }
 
   create(payload: CreateCalendarEventRequest): Observable<CalendarEventResponse> {

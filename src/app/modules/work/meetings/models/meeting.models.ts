@@ -21,6 +21,24 @@ export interface CreateMeetingRequest {
   participantEmployeeIds: string[];
   guestEmails: string[];
   platform: MeetingPlatform | null;
+  /** Someone the caller is a meeting delegate of; they become the organizer. Left out for the caller's own meeting. */
+  organizerEmployeeId?: string | null;
+}
+
+/** One of my meeting delegates: someone allowed to run my meetings. */
+export interface MeetingDelegateView {
+  id: string;
+  employeeId: string;
+  name: string;
+  createdAt: string;
+  expiresAt: string | null;
+  state: 'active' | 'expired';
+}
+
+/** Someone whose meetings I may run. */
+export interface MeetingPrincipalView {
+  employeeId: string;
+  name: string;
 }
 
 export interface MeetingSkippedAttendee { employeeId: string; reason: string; }
@@ -70,6 +88,8 @@ export interface MeetingOccurrenceResponse {
   myResponse: MeetingResponseStatus | null;
   attendees: MeetingAttendee[];
   canEdit: boolean;
+  /** Who created it, when a delegate scheduled it for the organizer; shown to the organizer role only. */
+  scheduledByName?: string | null;
 }
 
 export interface MeetingListItem {

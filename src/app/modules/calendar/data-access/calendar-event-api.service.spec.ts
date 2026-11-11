@@ -157,4 +157,12 @@ describe('CalendarEventApiService', () => {
     expect(req.request.params.get('email')).toBe('a+b@x.co');
     req.flush(null);
   });
+
+  it('getEvents asks for a principal\'s calendar only when forEmployeeId is given', () => {
+    service.getEvents('2026-11-10T00:00:00Z', '2026-11-17T00:00:00Z').subscribe();
+    expect(http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).request.params.has('forEmployeeId')).toBe(false);
+
+    service.getEvents('2026-11-10T00:00:00Z', '2026-11-17T00:00:00Z', 'ceo').subscribe();
+    expect(http.expectOne((r) => r.url === `${environment.apiUrl}/calendar`).request.params.get('forEmployeeId')).toBe('ceo');
+  });
 });

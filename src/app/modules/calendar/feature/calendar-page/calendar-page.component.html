@@ -48,6 +48,12 @@
     </div>
 
     <div class="flex items-center gap-2">
+      @if (principals.principals().length > 0) {
+        <div class="w-48">
+          <app-select data-testid="calendar-viewing-for" size="sm" ariaLabel="Whose calendar" [searchable]="false"
+            [options]="viewingForOptions()" [value]="viewingFor() ?? ''" (valueChange)="viewFor($event || null)" />
+        </div>
+      }
       <div class="w-36">
         <app-select data-testid="calendar-view-select" size="sm" ariaLabel="Calendar view" [searchable]="false"
           [options]="viewOptions()" [value]="view()" (valueChange)="setView($any($event))">
@@ -72,6 +78,8 @@
           <svg class="mr-1.5 inline h-4 w-4 align-[-2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>My team
         </app-button>
       }
+      <app-button type="button" variant="secondary" data-testid="calendar-meeting-delegates" (click)="meetingDelegatesOpen.set(true)"
+        title="People who can schedule and change your meetings">Delegates</app-button>
       <app-button type="button" data-testid="calendar-new-event" (click)="onNewEvent()">
         <svg data-testid="calendar-new-event-icon" class="mr-1 inline h-4 w-4 align-[-2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New event
       </app-button>
@@ -174,6 +182,7 @@
     @if (createPop.isRendered('meeting')) {
       <div [hidden]="createPop.active() !== 'meeting'">
         <app-meeting-form-modal [open]="true" [embedded]="true" [compact]="true" mode="create" [sharedTitle]="createPop.shared.title"
+          [organizerEmployeeId]="viewingFor()"
           [prefill]="{ title: createPop.shared.title(), start: slot.date + 'T' + clockOf(slot.startMinutes), end: slot.date + 'T' + clockOf(slot.endMinutes),
             timezone: plannerZone(), isAllDay: createPop.shared.isAllDay() }"
           (saved)="closeCreate(); onMeetingSaved($any($event))" (closed)="closeCreate()" />
@@ -236,3 +245,5 @@
 @if (openMeeting(); as key) {
   <app-meeting-occurrence-drawer [key]="key" (closed)="onMeetingDrawerClosed()" />
 }
+
+<app-meeting-delegates-modal [open]="meetingDelegatesOpen()" (closed)="meetingDelegatesOpen.set(false)" />

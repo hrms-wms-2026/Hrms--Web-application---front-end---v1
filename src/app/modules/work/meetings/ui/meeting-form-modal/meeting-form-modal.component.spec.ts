@@ -14,7 +14,7 @@ import { MeetingCreatedResponse, MeetingEditResponse, MeetingOccurrenceResponse 
 import { MeetingFormModalComponent } from './meeting-form-modal.component';
 import { toZonedParts } from '../../utils/meeting-time';
 import { SelectComponent } from '../../../../../shared/ui/select/select.component';
-import { openSelect, selectDisplayText } from '../../../../../shared/ui/select/select.testing';
+import { openSelect, pickSelectOption, selectDisplayText } from '../../../../../shared/ui/select/select.testing';
 
 /** The specs' clock: 2026-10-30 10:10 in Colombo, before the 2026-11-02 meetings they create. */
 const NOW = '2026-10-30T04:40:00Z';
@@ -22,7 +22,7 @@ const NOW = '2026-10-30T04:40:00Z';
 describe('MeetingFormModalComponent', () => {
   let fixture: ComponentFixture<MeetingFormModalComponent>;
   let form: MeetingFormModalComponent;
-  const api = { create: vi.fn(), edit: vi.fn(), getOccurrenceAt: vi.fn() };
+  const api = { create: vi.fn(), edit: vi.fn(), getOccurrenceAt: vi.fn(), listPrincipals: vi.fn() };
   const notify = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() };
   const calendarApi = { checkConflicts: vi.fn() };
 
@@ -48,6 +48,7 @@ describe('MeetingFormModalComponent', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(NOW));
     Object.values(api).forEach((f) => f.mockReset());
+    api.listPrincipals.mockReturnValue(of([]));
     Object.values(notify).forEach((f) => f.mockReset());
     calendarApi.checkConflicts.mockReset();
     calendarApi.checkConflicts.mockReturnValue(of({ conflicts: [] }));
@@ -531,5 +532,55 @@ describe('MeetingFormModalComponent', () => {
   it('an empty description carried over stays empty', () => {
     build({ mode: 'create', embedded: true, carryOver: { title: '', description: '<p></p>' } });
     expect(form.form.controls.description.value).toBeNull();
+  });
+
+  describe('Organizer (meeting delegates, 2026-11-10)', () => {
+    const organizerSelect = () => fixture.nativeElement.querySelector('[data-testid="meeting-organizer"]') as HTMLElement | null;
+
+    async function buildAsDelegate(): Promise<void> {
+      api.listPrincipals.mockReturnValue(of([{ employeeId: 'ceo', name: 'Asha Perera' }]));
+      build({ mode: 'create' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('is not offered to someone with no principals, and the request names no organizer', async () => {
+      build({ mode: 'create' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      fillOffice();
+
+      expect(organizerSelect()).toBeNull();
+      expect('organizerEmployeeId' in form.buildCreateRequest()).toBe(false);
+    });
+
+    it('the meeting form\'s organizer select sends the chosen principal', async () => {
+      await buildAsDelegate();
+      fillOffice();
+      expect(selectDisplayText(organizerSelect()!)).toBe('Me');
+
+      pickSelectOption(organizerSelect()!, 'Asha Perera', () => fixture.detectChanges());
+
+      expect(form.buildCreateRequest().organizerEmployeeId).toBe('ceo');
+    });
+
+    it('is not shown on the compact popover tab, where the page sets the organizer', async () => {
+      api.listPrincipals.mockReturnValue(of([{ employeeId: 'ceo', name: 'Asha Perera' }]));
+      build({ mode: 'create', compact: true, organizerEmployeeId: 'ceo' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(organizerSelect()).toBeNull();
+      expect(form.buildCreateRequest().organizerEmployeeId).toBe('ceo');
+    });
+
+    it('is not shown when editing', async () => {
+      api.listPrincipals.mockReturnValue(of([{ employeeId: 'ceo', name: 'Asha Perera' }]));
+      build({ mode: 'edit', occurrence: occurrence() });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(organizerSelect()).toBeNull();
+    });
   });
 });

@@ -24,10 +24,11 @@ export class PlannerApiService {
     return this.http.get<PlannerDayResponse>(`${this.baseUrl}/employees/${employeeId}`, { params: this.dateParams(date), ...this.silent });
   }
 
-  getRange(from: string, to: string): Observable<PlannerRangeResponse> {
-    return this.http.get<PlannerRangeResponse>(`${this.baseUrl}/me/range`, {
-      params: new HttpParams().set('from', from).set('to', to), ...this.silent,
-    });
+  /** The caller's days, or a principal's (read-only) when the caller is their meeting delegate (`forEmployeeId`). */
+  getRange(from: string, to: string, forEmployeeId?: string | null): Observable<PlannerRangeResponse> {
+    let params = new HttpParams().set('from', from).set('to', to);
+    if (forEmployeeId) params = params.set('forEmployeeId', forEmployeeId);
+    return this.http.get<PlannerRangeResponse>(`${this.baseUrl}/me/range`, { params, ...this.silent });
   }
 
   /** Team planner (2026-11-03): a manager's direct reports for one day, with detail. */

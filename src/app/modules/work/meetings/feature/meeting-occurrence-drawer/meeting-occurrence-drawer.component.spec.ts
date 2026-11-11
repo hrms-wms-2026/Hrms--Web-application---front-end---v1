@@ -182,4 +182,29 @@ describe('MeetingOccurrenceDrawerComponent', () => {
 
     expect(api.respond).toHaveBeenCalledWith('s1', { status: 'accepted', reason: null, originalStart: '2026-11-02T03:30:00Z' });
   });
+
+  describe('who organized and who scheduled it (meeting delegates, 2026-11-10)', () => {
+    const at = { seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' };
+
+    it('shows Organized by with the organizer\'s name', async () => {
+      api.getOccurrenceAt.mockReturnValue(of(occurrence()));
+      await open(at);
+
+      expect(testId('meeting-organized-by')?.textContent?.trim()).toBe('Organized by Priya K.');
+    });
+
+    it('shows Scheduled by when scheduledByName is set', async () => {
+      api.getOccurrenceAt.mockReturnValue(of(occurrence({ scheduledByName: 'Sara Fernando' })));
+      await open(at);
+
+      expect(testId('meeting-scheduled-by')?.textContent?.trim()).toBe('Scheduled by Sara Fernando');
+    });
+
+    it('shows no Scheduled by line when it is null', async () => {
+      api.getOccurrenceAt.mockReturnValue(of(occurrence({ scheduledByName: null })));
+      await open(at);
+
+      expect(testId('meeting-scheduled-by')).toBeNull();
+    });
+  });
 });

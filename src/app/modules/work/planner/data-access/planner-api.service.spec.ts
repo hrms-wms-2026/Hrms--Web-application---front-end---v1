@@ -82,4 +82,12 @@ describe('PlannerApiService', () => {
     }
     expect(plannerErrorMessage('planner_block_overlap')).toBe('This overlaps another planned block.');
   });
+
+  it('getRange asks for a principal\'s days only when forEmployeeId is given', () => {
+    service.getRange('2026-11-10', '2026-11-16').subscribe();
+    expect(http.expectOne((r) => r.url === `${base}/me/range`).request.params.has('forEmployeeId')).toBe(false);
+
+    service.getRange('2026-11-10', '2026-11-16', 'ceo').subscribe();
+    expect(http.expectOne((r) => r.url === `${base}/me/range`).request.params.get('forEmployeeId')).toBe('ceo');
+  });
 });

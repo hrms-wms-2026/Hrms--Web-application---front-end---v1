@@ -25,6 +25,8 @@ interface CalendarEventState {
   readonly hasZoomCapableConnection: boolean;
   readonly meetingActionSaving: boolean;
   readonly participantActionSaving: boolean;
+  /** A principal's calendar the caller is viewing as their meeting delegate; null = the caller's own. */
+  readonly forEmployeeId: string | null;
 }
 
 export const CalendarEventStore = signalStore(
@@ -33,13 +35,13 @@ export const CalendarEventStore = signalStore(
     events: [], loading: false, loadError: null, saving: false, actionError: null,
     conflicts: [], checkingConflicts: false, myTimezone: 'UTC', eligibleNominees: [],
     hasTeamsCapableConnection: false, hasZoomCapableConnection: false, meetingActionSaving: false,
-    participantActionSaving: false
+    participantActionSaving: false, forEmployeeId: null
   }),
   withMethods((store, api = inject(CalendarEventApiService), connectionApi = inject(CalendarConnectionApiService)) => ({
-    async loadEvents(from: string, to: string): Promise<void> {
-      patchState(store, { loading: true, loadError: null });
+    async loadEvents(from: string, to: string, forEmployeeId: string | null = null): Promise<void> {
+      patchState(store, { loading: true, loadError: null, forEmployeeId });
       try {
-        const response = await firstValueFrom(api.getEvents(from, to));
+        const response = await firstValueFrom(api.getEvents(from, to, forEmployeeId));
         patchState(store, { events: response.events, loading: false });
       } catch (err) {
         patchState(store, { loading: false, loadError: toSafeErrorMessage(err, 'Failed to load calendar events.') });
@@ -87,7 +89,7 @@ export const CalendarEventStore = signalStore(
         // A this-event/all-events edit can change which virtual occurrences exist (a detached
         // row swaps in for one virtual date) - re-fetching the range is the simplest correct way
         // to reconcile state rather than patching the returned single item into the flat list.
-        const response = await firstValueFrom(api.getEvents(from, to));
+        const response = await firstValueFrom(api.getEvents(from, to, store.forEmployeeId()));
         patchState(store, { saving: false, events: response.events });
         return true;
       } catch (err) {
@@ -99,7 +101,7 @@ export const CalendarEventStore = signalStore(
       patchState(store, { saving: true, actionError: null });
       try {
         await firstValueFrom(api.cancelOccurrence(masterId, originalStart));
-        const response = await firstValueFrom(api.getEvents(from, to));
+        const response = await firstValueFrom(api.getEvents(from, to, store.forEmployeeId()));
         patchState(store, { saving: false, events: response.events });
         return true;
       } catch (err) {
@@ -114,7 +116,7 @@ export const CalendarEventStore = signalStore(
       patchState(store, { saving: true, actionError: null });
       try {
         await firstValueFrom(api.respond(eventId, responseStatus, reason, nomineeEmployeeId));
-        const response = await firstValueFrom(api.getEvents(from, to));
+        const response = await firstValueFrom(api.getEvents(from, to, store.forEmployeeId()));
         patchState(store, { saving: false, events: response.events });
         return true;
       } catch (err) {
