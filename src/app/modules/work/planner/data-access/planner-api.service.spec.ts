@@ -90,4 +90,28 @@ describe('PlannerApiService', () => {
     service.getRange('2026-11-10', '2026-11-16', 'ceo').subscribe();
     expect(http.expectOne((r) => r.url === `${base}/me/range`).request.params.get('forEmployeeId')).toBe('ceo');
   });
+
+  it('focus and block writes act for a principal only when forEmployeeId is given', () => {
+    const forParam = (url: string) => http.expectOne((r) => r.url === url).request.params.get('forEmployeeId');
+
+    service.getFocus().subscribe();
+    expect(forParam(`${base}/me/focus`)).toBeNull();
+    service.getFocus('ceo').subscribe();
+    expect(forParam(`${base}/me/focus`)).toBe('ceo');
+
+    service.createBlock({ taskId: 't1', startAt: 'a', endAt: 'b' }, 'ceo').subscribe();
+    expect(forParam(`${base}/me/blocks`)).toBe('ceo');
+    service.moveBlock('b1', { startAt: 'a', endAt: 'b', expectedVersion: 'v1' }, 'ceo').subscribe();
+    const move = http.expectOne((r) => r.url === `${base}/me/blocks/b1`);
+    expect([move.request.params.get('forEmployeeId'), move.request.body.expectedVersion]).toEqual(['ceo', 'v1']);
+  });
+
+  it('deleteBlock sends expectedVersion and forEmployeeId as query parameters only when given', () => {
+    service.deleteBlock('b1').subscribe();
+    expect(http.expectOne((r) => r.url === `${base}/me/blocks/b1`).request.params.keys()).toEqual([]);
+
+    service.deleteBlock('b1', 'v1', 'ceo').subscribe();
+    const params = http.expectOne((r) => r.url === `${base}/me/blocks/b1`).request.params;
+    expect([params.get('expectedVersion'), params.get('forEmployeeId')]).toEqual(['v1', 'ceo']);
+  });
 });

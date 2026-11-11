@@ -129,4 +129,13 @@ describe('MeetingApiService', () => {
     service.addDelegate('e2', '2026-12-01T00:00:00Z').subscribe();
     expect(http.expectOne(`${base}/delegates`).request.body).toEqual({ delegateEmployeeId: 'e2', expiresAt: '2026-12-01T00:00:00Z' });
   });
+
+  it('addDelegate sends canPlanTasks only when it is on, and updateDelegate PATCHes it', () => {
+    service.addDelegate('e1', undefined, true).subscribe();
+    expect(http.expectOne(`${base}/delegates`).request.body).toEqual({ delegateEmployeeId: 'e1', canPlanTasks: true });
+
+    service.updateDelegate('d1', false).subscribe();
+    const req = http.expectOne(`${base}/delegates/d1`);
+    expect([req.request.method, req.request.body]).toEqual(['PATCH', { canPlanTasks: false }]);
+  });
 });

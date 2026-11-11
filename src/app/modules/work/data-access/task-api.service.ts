@@ -56,8 +56,9 @@ export class TaskApiService {
     return this.http.get<WorkTaskDto[]>(`${this.baseUrl}/projects/${projectId}/tasks`);
   }
 
-  getTaskById(taskId: string): Observable<WorkTaskDto> {
-    return this.http.get<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`);
+  /** `forEmployeeId`: a principal's task, read by their planning delegate (read-only task form). */
+  getTaskById(taskId: string, forEmployeeId?: string | null): Observable<WorkTaskDto> {
+    return this.http.get<WorkTaskDto>(`${this.baseUrl}/tasks/${taskId}`, forEmployeeId ? { params: { forEmployeeId } } : {});
   }
 
   getTaskHistory(taskId: string): Observable<TaskHistoryEntryDto[]> {

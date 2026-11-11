@@ -341,4 +341,12 @@ it('reorderTaskStatuses posts to projects/{projectId}/task-statuses/reorder', ()
   it('getFileUrl builds the content url', () => {
     expect(service.getFileUrl('f1')).toBe(`${environment.apiUrl}/work/tasks/files/f1`);
   });
+
+  it('getTaskById reads a principal\'s task only when forEmployeeId is given', () => {
+    service.getTaskById('t1').subscribe();
+    expect(httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/tasks/t1`).request.params.has('forEmployeeId')).toBe(false);
+
+    service.getTaskById('t1', 'ceo').subscribe();
+    expect(httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/tasks/t1`).request.params.get('forEmployeeId')).toBe('ceo');
+  });
 });

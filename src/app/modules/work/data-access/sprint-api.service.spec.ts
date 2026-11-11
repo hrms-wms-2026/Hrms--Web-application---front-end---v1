@@ -75,4 +75,12 @@ describe('SprintApiService', () => {
     expect(req.request.method).toBe('PATCH');
     req.flush({ approvalRequestId: 'ar-1' }, { status: 202, statusText: 'Accepted' });
   });
+
+  it('getByProject reads a principal\'s sprints only when forEmployeeId is given', () => {
+    service.getByProject('p-1').subscribe();
+    expect(httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/projects/p-1/sprints`).request.params.has('forEmployeeId')).toBe(false);
+
+    service.getByProject('p-1', 'ceo').subscribe();
+    expect(httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/projects/p-1/sprints`).request.params.get('forEmployeeId')).toBe('ceo');
+  });
 });

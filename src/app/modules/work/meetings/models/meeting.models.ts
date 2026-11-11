@@ -33,12 +33,16 @@ export interface MeetingDelegateView {
   createdAt: string;
   expiresAt: string | null;
   state: 'active' | 'expired';
+  /** "Can also plan my tasks": the delegate also sees and plans my tasks. */
+  canPlanTasks?: boolean;
 }
 
 /** Someone whose meetings I may run. */
 export interface MeetingPrincipalView {
   employeeId: string;
   name: string;
+  /** I may also plan this person's tasks on their planner. */
+  canPlanTasks?: boolean;
 }
 
 export interface MeetingSkippedAttendee { employeeId: string; reason: string; }

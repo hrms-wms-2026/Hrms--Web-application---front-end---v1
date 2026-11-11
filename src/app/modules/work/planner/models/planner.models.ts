@@ -58,6 +58,8 @@ export interface CreatePlannedBlockRequest {
 export interface MovePlannedBlockRequest {
   startAt: string;
   endAt: string;
+  /** The block's `version` as last read; a block written since is refused with 409 planner_block_changed. */
+  expectedVersion?: string;
 }
 
 /** A day's working hours from the legal entity, as wall-clock in the employee's zone (planner API v1.1). */
@@ -88,6 +90,10 @@ export interface PlannerRangeBlockView {
   categoryKind?: string;
   /** The category's picked icon; none shows the kind's own. */
   categoryIcon?: string | null;
+  /** Who planned it, when that was not the employee (their meeting delegate). */
+  plannedByName?: string | null;
+  /** The last write, sent back as expectedVersion on a move or remove. */
+  version?: string;
 }
 
 export interface PlannerRangeDay {

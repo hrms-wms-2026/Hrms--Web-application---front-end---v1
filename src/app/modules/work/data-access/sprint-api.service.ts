@@ -18,8 +18,9 @@ export class SprintApiService {
     return this.http.get<SprintDto[]>(`${this.baseUrl}/objectives/${objectiveId}/sprints`, { params });
   }
 
-  getByProject(projectId: string): Observable<SprintDto[]> {
-    return this.http.get<SprintDto[]>(`${this.baseUrl}/projects/${projectId}/sprints`);
+  /** `forEmployeeId`: a principal's project sprints, read by their planning delegate (read-only task form). */
+  getByProject(projectId: string, forEmployeeId?: string | null): Observable<SprintDto[]> {
+    return this.http.get<SprintDto[]>(`${this.baseUrl}/projects/${projectId}/sprints`, forEmployeeId ? { params: { forEmployeeId } } : {});
   }
 
   /** 201 = created; 202 = sent for approval (every mutating sprint call below: 200 applied / 202 pending). */

@@ -242,4 +242,12 @@ describe('ProjectApiService', () => {
     req.flush(graph);
     expect(received).toEqual(graph);
   });
+
+  it('getById reads a principal\'s project only when forEmployeeId is given', () => {
+    service.getById('p1').subscribe();
+    expect(httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/projects/p1`).request.params.has('forEmployeeId')).toBe(false);
+
+    service.getById('p1', 'ceo').subscribe();
+    expect(httpMock.expectOne((r) => r.url === `${environment.apiUrl}/work/projects/p1`).request.params.get('forEmployeeId')).toBe('ceo');
+  });
 });

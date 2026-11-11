@@ -52,20 +52,30 @@ export class PlannerApiService {
     });
   }
 
-  getFocus(): Observable<PlannerFocusResponse> {
-    return this.http.get<PlannerFocusResponse>(`${this.baseUrl}/me/focus`, this.silent);
+  /** The caller's Focus list, or a principal's for their planning delegate (`forEmployeeId`). */
+  getFocus(forEmployeeId?: string | null): Observable<PlannerFocusResponse> {
+    return this.http.get<PlannerFocusResponse>(`${this.baseUrl}/me/focus`, { params: this.forParams(forEmployeeId), ...this.silent });
   }
 
-  createBlock(request: CreatePlannedBlockRequest): Observable<PlannerDayResponse> {
-    return this.http.post<PlannerDayResponse>(`${this.baseUrl}/me/blocks`, request, this.silent);
+  /** `forEmployeeId`: on a principal's planner, by their planning delegate. */
+  createBlock(request: CreatePlannedBlockRequest, forEmployeeId?: string | null): Observable<PlannerDayResponse> {
+    return this.http.post<PlannerDayResponse>(`${this.baseUrl}/me/blocks`, request, { params: this.forParams(forEmployeeId), ...this.silent });
   }
 
-  moveBlock(blockId: string, request: MovePlannedBlockRequest): Observable<PlannerDayResponse> {
-    return this.http.patch<PlannerDayResponse>(`${this.baseUrl}/me/blocks/${blockId}`, request, this.silent);
+  moveBlock(blockId: string, request: MovePlannedBlockRequest, forEmployeeId?: string | null): Observable<PlannerDayResponse> {
+    return this.http.patch<PlannerDayResponse>(`${this.baseUrl}/me/blocks/${blockId}`, request,
+      { params: this.forParams(forEmployeeId), ...this.silent });
   }
 
-  deleteBlock(blockId: string): Observable<PlannerDayResponse> {
-    return this.http.delete<PlannerDayResponse>(`${this.baseUrl}/me/blocks/${blockId}`, this.silent);
+  /** `expectedVersion`: the block's `version` as last read (409 when it changed since). */
+  deleteBlock(blockId: string, expectedVersion?: string | null, forEmployeeId?: string | null): Observable<PlannerDayResponse> {
+    let params = this.forParams(forEmployeeId);
+    if (expectedVersion) params = params.set('expectedVersion', expectedVersion);
+    return this.http.delete<PlannerDayResponse>(`${this.baseUrl}/me/blocks/${blockId}`, { params, ...this.silent });
+  }
+
+  private forParams(forEmployeeId?: string | null): HttpParams {
+    return forEmployeeId ? new HttpParams().set('forEmployeeId', forEmployeeId) : new HttpParams();
   }
 
   private dateParams(date: string | null): HttpParams {

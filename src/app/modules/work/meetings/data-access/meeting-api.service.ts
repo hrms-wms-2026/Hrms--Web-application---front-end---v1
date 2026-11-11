@@ -134,9 +134,18 @@ export class MeetingApiService {
   }
 
   /** Lets someone run my meetings; without an end date it lasts until revoked. */
-  addDelegate(employeeId: string, expiresAt?: string): Observable<MeetingDelegateView> {
-    const body = expiresAt ? { delegateEmployeeId: employeeId, expiresAt } : { delegateEmployeeId: employeeId };
+  addDelegate(employeeId: string, expiresAt?: string, canPlanTasks = false): Observable<MeetingDelegateView> {
+    const body = {
+      delegateEmployeeId: employeeId,
+      ...(expiresAt ? { expiresAt } : {}),
+      ...(canPlanTasks ? { canPlanTasks: true } : {}),
+    };
     return this.http.post<MeetingDelegateView>(`${this.baseUrl}/delegates`, body, this.silent);
+  }
+
+  /** Turns "Can also plan my tasks" on or off for one of my delegates. */
+  updateDelegate(id: string, canPlanTasks: boolean): Observable<MeetingDelegateView> {
+    return this.http.patch<MeetingDelegateView>(`${this.baseUrl}/delegates/${id}`, { canPlanTasks }, this.silent);
   }
 
   revokeDelegate(id: string): Observable<void> {

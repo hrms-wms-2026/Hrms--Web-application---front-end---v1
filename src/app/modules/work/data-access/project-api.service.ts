@@ -22,8 +22,9 @@ export class ProjectApiService {
     return this.http.get<PagedResultDto<ProjectListItemDto>>(`${this.base}/mine`, { params });
   }
 
-  getById(id: string): Observable<ProjectDetailDto> {
-    return this.http.get<ProjectDetailDto>(`${this.base}/${id}`);
+  /** `forEmployeeId`: a principal's project, read by their planning delegate (read-only task form). */
+  getById(id: string, forEmployeeId?: string | null): Observable<ProjectDetailDto> {
+    return this.http.get<ProjectDetailDto>(`${this.base}/${id}`, forEmployeeId ? { params: { forEmployeeId } } : {});
   }
 
   getLogoUrl(projectId: string, logoFileId: string): string {
