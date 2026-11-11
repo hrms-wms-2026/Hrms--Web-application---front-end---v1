@@ -300,8 +300,11 @@ export class CalendarHourGridComponent {
             block, range, top: p.top, height: p.height, left: p.left, width: p.width, times,
             duration: duration(range.end - range.start), short: range.end - range.start < 30,
             kind: kindOf(block.categoryKind), meta: KIND_META[kindOf(block.categoryKind)],
-            subtitle: [block.categoryName, block.projectName].filter((part) => !!part).join(' · '),
-            tooltip: `${block.taskTitle} · ${times} · ${duration(block.plannedMinutes)} planned · ${duration(block.actualMinutes)} actual`,
+            // A block the employee's meeting delegate planned says so (delegate task planning).
+            subtitle: [block.categoryName, block.projectName, block.plannedByName ? `Planned by ${block.plannedByName}` : null]
+              .filter((part) => !!part).join(' · '),
+            tooltip: `${block.taskTitle} · ${times} · ${duration(block.plannedMinutes)} planned · ${duration(block.actualMinutes)} actual`
+              + (block.plannedByName ? ` · Planned by ${block.plannedByName}` : ''),
             overlaps: segments.map((s) => band(s.start, s.end)),
             clash: first ? { title: first.title, end: first.end } : null,
           }];

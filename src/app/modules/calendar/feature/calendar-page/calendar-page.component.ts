@@ -131,6 +131,11 @@ export class CalendarPageComponent {
   /** A principal's calendar shown to their meeting delegate; null = the caller's own. Their days are read-only here:
    * a delegate schedules meetings for them, nothing else. */
   readonly viewingFor = signal<string | null>(null);
+  /** On a principal's calendar, the caller may also plan their tasks ("Can also plan my tasks"). */
+  readonly canPlanFor = computed(() => {
+    const id = this.viewingFor();
+    return !!id && this.principals.principals().some((p) => p.employeeId === id && !!p.canPlanTasks);
+  });
   readonly viewingForOptions = computed<readonly SelectOption[]>(() => [
     { value: '', label: 'My calendar' },
     ...this.principals.principals().map((p) => ({ value: p.employeeId, label: `${p.name}'s calendar` })),
@@ -162,7 +167,7 @@ export class CalendarPageComponent {
   readonly pickerItem = signal<PlannerFocusItem | PlannerRangeBlockView | null>(null);
 
   /** The Task list goes with the planner; the team view has its own controls. */
-  readonly taskListOn = computed(() => this.planner.active() && !this.teamMode() && !this.viewingFor());
+  readonly taskListOn = computed(() => this.planner.active() && !this.teamMode() && (!this.viewingFor() || this.canPlanFor()));
   /** The layout hides its sub-sidebar on a phone, so the page shows the Task list itself there. */
   readonly wideScreen = signal(typeof window !== 'undefined' && !!window.matchMedia?.(WIDE_SCREEN).matches);
   private readonly navState = inject(NavigationStateService);
@@ -187,7 +192,7 @@ export class CalendarPageComponent {
 
   readonly plannerBlocks = computed(() => new Map([...this.planner.dayByDate()].map(([date, day]) => [date, day.blocks])));
   readonly plannerWindows = computed(() => new Map([...this.planner.dayByDate()].map(([date, day]) => [date, day.workWindow])));
-  readonly plannerEditable = computed(() => this.viewingFor()
+  readonly plannerEditable = computed(() => this.viewingFor() && !this.canPlanFor()
     ? new Set<string>()
     : new Set([...this.planner.dayByDate().values()].filter((d) => d.editable).map((d) => d.date)));
   readonly editableDateList = computed(() => [...this.plannerEditable()].sort());
@@ -263,7 +268,7 @@ export class CalendarPageComponent {
   private readonly plannerRangeEffect = effect(() => {
     const { from, to } = this.plannerRange();
     const forEmployeeId = this.viewingFor();
-    void this.planner.load(from, to, forEmployeeId);
+    void this.planner.load(from, to, forEmployeeId, this.canPlanFor());
     // Your own leave on the Planner (2026-11-03): only while the Planner is on, and where you can ask for it - not on a
     // principal's calendar.
     if (this.planner.active() && this.canRequestTimeOff() && !forEmployeeId) {
@@ -329,6 +334,23 @@ export class CalendarPageComponent {
     this.planner.active() && !this.viewingFor() && this.myTeam.capabilities()?.canViewTeamPlan === true);
   /** The team view shows only while it is offered; a deep link waits for the capability check. */
   readonly teamMode = computed(() => this.scope() === 'team' && this.canViewTeam());
+
+  /** A write for the principal answered 404: read who I may act for again, and fall back to what is left. */
+  private readonly accessLostEffect = effect(() => {
+    const lost = this.planner.accessLost();
+    if (!lost) return;
+    untracked(() => void this.onPlanningAccessLost(lost));
+  });
+
+  private async onPlanningAccessLost(principalId: string): Promise<void> {
+    const name = this.principals.principals().find((p) => p.employeeId === principalId)?.name ?? 'this person';
+    this.planner.clearAccessLost();
+    await this.principals.load(true);
+    if (this.viewingFor() === principalId && !this.principals.principals().some((p) => p.employeeId === principalId)) {
+      this.viewFor(null);
+    }
+    this.notificationService.warning(`You can no longer plan for ${name}.`);
+  }
 
   /** Shows a principal's calendar (their meeting delegate only), or the caller's own with null. */
   viewFor(employeeId: string | null): void {
@@ -500,7 +522,7 @@ export class CalendarPageComponent {
   /** A saved task may change its estimate, due date or title: refresh the Focus list, blocks and events. */
   onTaskSaved(): void {
     const { from, to } = this.plannerRange();
-    void this.planner.load(from, to, this.viewingFor());
+    void this.planner.load(from, to, this.viewingFor(), this.canPlanFor());
     const range = this.currentRange();
     this.store.loadEvents(range.from, range.to, this.viewingFor());
   }
@@ -634,7 +656,7 @@ export class CalendarPageComponent {
     this.closeCreate();
     void this.reloadEvents();
     const { from, to } = this.plannerRange();
-    void this.planner.load(from, to, this.viewingFor());
+    void this.planner.load(from, to, this.viewingFor(), this.canPlanFor());
   }
 
   readonly clockOf = clock;
@@ -728,7 +750,7 @@ export class CalendarPageComponent {
   /** A work item was created but its block was refused: place it with the block picker instead. */
   onPickAnotherTime(item: WorkItemToPlace): void {
     this.closeCreate();
-    void this.planner.load(this.plannerRange().from, this.plannerRange().to, this.viewingFor());
+    void this.planner.load(this.plannerRange().from, this.plannerRange().to, this.viewingFor(), this.canPlanFor());
     this.pickerItem.set({
       taskId: item.taskId, projectId: item.projectId, projectName: '', title: item.title, priority: 'medium', dueDate: null,
       estimatedMinutes: item.estimatedMinutes, loggedMinutes: 0, remainingMinutes: item.estimatedMinutes, plannedAheadMinutes: 0,

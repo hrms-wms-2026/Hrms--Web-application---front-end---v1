@@ -9,6 +9,7 @@ const MESSAGES: Record<string, string> = {
   planner_task_not_plannable: 'Only a task assigned to you can be planned.',
   planner_invalid_time: 'A block lasts at least 15 minutes.',
   planner_not_found: 'This plan is not available.',
+  planner_block_changed: 'This block was changed by someone else. Refresh and try again.',
 };
 
 /** Copy for a planner ProblemDetails `code` (backend PlannerErrorCodes). */

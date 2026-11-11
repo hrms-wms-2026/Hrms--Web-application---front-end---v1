@@ -77,6 +77,8 @@ describe('CalendarPageComponent planner layer', () => {
 
   /** The forEmployeeId of each planner range read, in order (null = my own). */
   let rangeFor: (string | null)[] = [];
+  /** The forEmployeeId of each Focus read (null = my own). */
+  let focusFor: (string | null)[] = [];
 
   function answerRange(req: TestRequest): void {
     rangeReads++;
@@ -95,7 +97,7 @@ describe('CalendarPageComponent planner layer', () => {
     for (let i = 0; i < 4; i++) {
       await new Promise((resolve) => setTimeout(resolve));
       http.match((r) => r.url === `${base}/me/range`).forEach(answerRange);
-      http.match(`${base}/me/focus`).forEach((r) => r.flush(focus));
+      http.match((r) => r.url === `${base}/me/focus`).forEach((r) => { focusFor.push(r.request.params.get('forEmployeeId')); r.flush(focus); });
       http.match((r) => r.url === `${base}/me`).forEach((r) => r.flush({
         date: r.request.params.get('date'), timezone: 'UTC', editable: true, blocks: [], meetings: [], dueTasks: [],
         totals: { plannedMinutes: 0, actualMinutes: 45 }, attendanceMinutes: 120,
@@ -861,6 +863,91 @@ describe('CalendarPageComponent planner layer', () => {
 
       page().openEdit('m1');
       expect(page().openMeeting()).toEqual({ seriesId: 's1', originalStart: '2026-11-03T07:00:00Z' });
+    });
+
+    // Delegate task planning (2026-11-11): with "Can also plan my tasks", the principal's planner is plannable.
+
+    async function asPlanningDelegateOf(blocks?: (date: string) => PlannerRangeBlockView[]): Promise<void> {
+      setup();
+      if (blocks) blocksFor = blocks;
+      answerPrincipals([{ employeeId: 'ceo', name: 'Asha Perera', canPlanTasks: true } as never]);
+      await settle();
+      page().viewFor('ceo');
+      await settle();
+    }
+
+    it('a planning delegate sees the principal\'s Task list', async () => {
+      focusFor = [];
+      await asPlanningDelegateOf();
+
+      expect(focusFor).toContain('ceo');
+      expect(page().taskListOn()).toBe(true);
+    });
+
+    it('a planning delegate\'s editable days are the principal\'s', async () => {
+      await asPlanningDelegateOf();
+
+      expect(page().plannerEditable().size).toBeGreaterThan(0);
+    });
+
+    it('a block planned there is sent with forEmployeeId', async () => {
+      await asPlanningDelegateOf();
+
+      void page().planner.createBlock('t1', '2026-11-03T09:00:00Z', '2026-11-03T10:00:00Z');
+      const req = http.expectOne((r) => r.method === 'POST' && r.url === `${base}/me/blocks`);
+
+      expect(req.request.params.get('forEmployeeId')).toBe('ceo');
+    });
+
+    it('a move sends the block\'s version as expectedVersion', async () => {
+      await asPlanningDelegateOf((date) => [{ ...block('b1', date, '09:00', '10:00'), version: 'v-b1' }]);
+
+      void page().planner.moveBlock('b1', '2026-11-03T11:00:00Z', '2026-11-03T12:00:00Z');
+      const req = http.expectOne((r) => r.method === 'PATCH' && r.url === `${base}/me/blocks/b1`);
+
+      expect([req.request.params.get('forEmployeeId'), req.request.body.expectedVersion]).toEqual(['ceo', 'v-b1']);
+    });
+
+    it('a 409 says the block changed and reloads the range', async () => {
+      await asPlanningDelegateOf();
+      rangeFor = [];
+
+      const moved = page().planner.moveBlock('b1', '2026-11-03T11:00:00Z', '2026-11-03T12:00:00Z');
+      http.expectOne((r) => r.method === 'PATCH').flush({ code: 'planner_block_changed' }, { status: 409, statusText: 'Conflict' });
+      await moved;
+      await settle();
+
+      expect(notify.error).toHaveBeenCalledWith('This block was changed by someone else. Refresh and try again.');
+      expect(rangeFor).toContain('ceo');
+    });
+
+    it('a 404 on a write reloads principals and falls back', async () => {
+      await asPlanningDelegateOf();
+
+      const removed = page().planner.removeBlock('b1');
+      http.expectOne((r) => r.method === 'DELETE').flush({ code: 'planner_not_found' }, { status: 404, statusText: 'Not Found' });
+      await removed;
+      await settle();
+      answerPrincipals([]);
+      await settle();
+
+      expect(page().viewingFor()).toBeNull();
+      expect(notify.warning).toHaveBeenCalledWith('You can no longer plan for Asha Perera.');
+    });
+
+    it('a block with plannedByName shows Planned by <name>', async () => {
+      await asPlanningDelegateOf((date) => [{ ...block(`b-${date}`, date, '09:00', '10:00'), plannedByName: 'Sara Fernando' }]);
+
+      expect(fixture.nativeElement.textContent).toContain('Planned by Sara Fernando');
+    });
+
+    it('the popover still offers only Meeting on a principal\'s calendar', async () => {
+      await asPlanningDelegateOf();
+
+      page().onNewEvent();
+      fixture.detectChanges();
+
+      expect(page().createTabs()).toEqual(['meeting']);
     });
 
     it('back on my calendar, loads are my own again', async () => {
