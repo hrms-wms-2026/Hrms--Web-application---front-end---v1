@@ -239,6 +239,7 @@
 
 @if (openedTask(); as task) {
   <app-task-form-modal [open]="true" mode="edit" [projectId]="task.projectId" [taskId]="task.taskId"
+    [readOnly]="!!task.actingFor" [actingFor]="task.actingFor ?? null" [actingForName]="task.actingForName ?? null"
     (saved)="onTaskSaved()" (closed)="closeTask()" />
 }
 

@@ -941,6 +941,32 @@ describe('CalendarPageComponent planner layer', () => {
       expect(fixture.nativeElement.textContent).toContain('Planned by Sara Fernando');
     });
 
+    it('a principal\'s task opens read-only for a planning delegate', async () => {
+      await asPlanningDelegateOf();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+      projects.loadProject.mockClear();
+      projects.loadMyMilestones.mockClear();
+
+      await page().openTask('p1', 't1');
+
+      expect(projects.loadProject).toHaveBeenCalledWith('p1', 'ceo');
+      expect(projects.loadMyMilestones).not.toHaveBeenCalled();
+      expect(page().openedTask()).toEqual({ projectId: 'p1', taskId: 't1', actingFor: 'ceo', actingForName: 'Asha Perera' });
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('a principal\'s task that cannot be read says so and opens nothing', async () => {
+      await asPlanningDelegateOf();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+      projects.loadProject.mockImplementationOnce(async () => { projectError.set('not found'); });
+
+      await page().openTask('p1', 't1');
+
+      expect(page().openedTask()).toBeNull();
+      expect(navigate).not.toHaveBeenCalled();
+      expect(notify.error).toHaveBeenCalledWith('This task is not available.');
+    });
+
     it('the popover still offers only Meeting on a principal\'s calendar', async () => {
       await asPlanningDelegateOf();
 

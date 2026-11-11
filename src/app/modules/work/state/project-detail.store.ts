@@ -68,10 +68,11 @@ export const ProjectDetailStore = signalStore(
     let membersLoadedForProjectId: string | null = null;
 
     return {
-    async loadProject(id: string): Promise<void> {
+    /** `forEmployeeId`: the principal's project, for their planning delegate's read-only task view. */
+    async loadProject(id: string, forEmployeeId?: string | null): Promise<void> {
       patchState(store, { projectLoading: true, projectError: null });
       try {
-        const dto = await firstValueFrom(api.getById(id));
+        const dto = await firstValueFrom(forEmployeeId ? api.getById(id, forEmployeeId) : api.getById(id));
         patchState(store, { project: toProjectDetail(dto), projectLoading: false });
       } catch (err) {
         patchState(store, { projectError: extractError(err, 'Failed to load project.'), projectLoading: false, project: null });

@@ -1652,4 +1652,93 @@ describe('TaskFormModalComponent - subtasks section', () => {
   });
 });
 
+// Delegate task planning (2026-11-11): a planning delegate opens the principal's task read-only.
+describe('TaskFormModalComponent - read-only for a delegate', () => {
+  let fixture: ComponentFixture<TaskFormModalComponent>;
+  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let sprintApi: { getByProject: ReturnType<typeof vi.fn> };
+  let projectStore: { milestones: ReturnType<typeof signal>; loadProjectMembers: ReturnType<typeof vi.fn>; projectMembers: () => unknown[]; project: () => null };
+  let boardStore: { createTask: ReturnType<typeof vi.fn>; error: () => null; tasks: () => unknown[]; loadSubtasks: ReturnType<typeof vi.fn> };
+  const q = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
 
+  beforeEach(async () => {
+    api = baseApi();
+    sprintApi = { getByProject: vi.fn().mockReturnValue(of([])) };
+    projectStore = { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [], project: () => null };
+    boardStore = { createTask: vi.fn(), error: () => null, tasks: () => [], loadSubtasks: vi.fn().mockResolvedValue(undefined) };
+    await TestBed.configureTestingModule({
+      imports: [TaskFormModalComponent],
+      providers: [
+        { provide: TaskApiService, useValue: api },
+        { provide: TaskCommentApiService, useValue: baseCommentApi() },
+        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
+        { provide: SprintApiService, useValue: sprintApi },
+        { provide: TaskBoardStore, useValue: boardStore },
+        { provide: ProjectDetailStore, useValue: projectStore },
+        { provide: CurrentEmployeeStore, useValue: { id: signal('sec'), ensureLoaded: vi.fn() } },
+        { provide: TaskDraftApiService, useValue: taskDraftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(TaskFormModalComponent);
+    fixture.componentRef.setInput('projectId', 'p1');
+    fixture.componentRef.setInput('mode', 'edit');
+    fixture.componentRef.setInput('taskId', 't1');
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.componentRef.setInput('actingFor', 'ceo');
+    fixture.componentRef.setInput('actingForName', 'Asha Perera');
+    fixture.componentRef.setInput('open', true);
+    await flush(fixture);
+  });
+
+  it('reads the task and sprints with forEmployeeId, and statuses and categories without', () => {
+    expect(api['getTaskById']).toHaveBeenCalledWith('t1', 'ceo');
+    expect(sprintApi.getByProject).toHaveBeenCalledWith('p1', 'ceo');
+    expect(api['getStatuses']).toHaveBeenCalledWith('p1');
+    expect(api['getCategories']).toHaveBeenCalledWith('p1');
+    expect(fixture.componentInstance.title()).toBe('First');
+  });
+
+  it('names the principal as the assignee without reading the project members', () => {
+    expect(fixture.componentInstance.assignableMembers()).toEqual([{ employeeId: 'ceo', name: 'Asha Perera', avatarUrl: null }]);
+  });
+
+  it('makes no other request', async () => {
+    fixture.componentInstance.dueDate.set('2026-10-07');
+    fixture.componentInstance.estimatedHours.set(10);
+    fixture.detectChanges();
+    const checkTask = vi.spyOn(TestBed.inject(ProjectMonitorApiService), 'checkTask');
+    await new Promise((r) => setTimeout(r, MONITOR_CHECK_DEBOUNCE_MS + 50));
+    await flush(fixture);
+
+    expect(api['getTaskHistory']).not.toHaveBeenCalled();
+    expect(boardStore.loadSubtasks).not.toHaveBeenCalled();
+    expect(projectStore.loadProjectMembers).not.toHaveBeenCalled();
+    expect(checkTask).not.toHaveBeenCalled();
+  });
+
+  it('shows no edit control', () => {
+    const text = fixture.nativeElement.textContent as string;
+
+    expect(text).not.toContain('Save changes');
+    expect(text).not.toContain('Request changes');
+    expect(q('task-more-actions-button')).toBeNull();
+    expect(q('task-activity-section')).toBeNull();
+    expect(q('tab-comments')).toBeNull();
+    expect((q('task-form-readonly') as HTMLFieldSetElement | null)?.disabled).toBe(true);
+  });
+
+  it('makes no write call when every control is clicked', async () => {
+    for (const button of Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]) {
+      if (!button.textContent?.includes('Cancel')) button.click();
+    }
+    await flush(fixture);
+
+    for (const write of ['editTask', 'deleteTask', 'duplicateTask', 'convertToSubtask', 'assignTask', 'unassignTask', 'moveTaskStatus', 'uploadPendingFile']) {
+      expect(api[write], write).not.toHaveBeenCalled();
+    }
+    expect(taskDraftApiStub.create).not.toHaveBeenCalled();
+    expect(taskDraftApiStub.update).not.toHaveBeenCalled();
+  });
+});

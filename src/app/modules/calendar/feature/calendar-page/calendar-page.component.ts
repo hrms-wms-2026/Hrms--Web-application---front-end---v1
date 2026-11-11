@@ -145,7 +145,7 @@ export class CalendarPageComponent {
   private readonly router = inject(Router);
   private readonly projects = inject(ProjectDetailStore);
   /** A task opened from a block or a Focus card: shown over the planner, so closing it stays here. */
-  readonly openedTask = signal<{ projectId: string; taskId: string } | null>(null);
+  readonly openedTask = signal<{ projectId: string; taskId: string; actingFor?: string; actingForName?: string } | null>(null);
   private readonly notificationService = inject(NotificationService);
 
   readonly view = signal<CalendarView>('week');
@@ -505,6 +505,20 @@ export class CalendarPageComponent {
   }
 
   async openTask(projectId: string, taskId: string): Promise<void> {
+    // A principal's task opens read-only for their planning delegate (delegate task planning); a meeting-only delegate
+    // has no task view.
+    const principal = this.viewingFor();
+    if (principal) {
+      if (!this.canPlanFor()) return;
+      await this.projects.loadProject(projectId, principal);
+      if (this.projects.projectError()) {
+        this.notificationService.error('This task is not available.');
+        return;
+      }
+      const name = this.principals.principals().find((p) => p.employeeId === principal)?.name ?? '';
+      this.openedTask.set({ projectId, taskId, actingFor: principal, actingForName: name });
+      return;
+    }
     // The task form reads its project from ProjectDetailStore (as the people drill-down does).
     await this.projects.loadProject(projectId);
     if (this.projects.projectError()) {

@@ -1,6 +1,6 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { TaskAssigneeIdentity, TaskStatusColumn, WorkTask } from '../../models/task.model';
@@ -211,7 +211,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                   <span>Share</span>
                 </button>
-                @if (headerTask.taskKind !== 'employee_checklist') {
+                @if (headerTask.taskKind !== 'employee_checklist' && !readOnly()) {
                 <div class="tfm-chip-anchor">
                   <button
                     type="button"
@@ -259,6 +259,8 @@ const TASK_CATEGORY_MEETING = 'meeting';
           </header>
 
           <div role="presentation" class="tfm__body scroll-fade" (click)="closePopover()">
+            <!-- A delegate's read-only view (delegate task planning): every native control in the body is disabled. -->
+            <fieldset class="tfm-readonly" data-testid="task-form-readonly" [disabled]="readOnly()">
             <ng-template #descriptionEditorTpl>
               <app-rich-text-editor
                 #descRte
@@ -1107,7 +1109,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                 }
 
                 <!-- Unified Activity Hub (matching image reference) -->
-                @if (currentEffectiveMode() === 'edit' && taskId(); as tid) {
+                @if (!readOnly() && currentEffectiveMode() === 'edit' && taskId(); as tid) {
                   <div class="tfm-activity-section" data-testid="task-activity-section">
                     <!-- Activity Header & Tabs -->
                     <div class="tfm-activity-header">
@@ -1220,6 +1222,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                 }
               </div>
             }
+            </fieldset>
           </div>
 
           <!-- The embedded meeting form brings its own Cancel and Create. Hidden, not removed: the footer holds templates the body uses. -->
@@ -1278,7 +1281,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                   </div>
                 }
               </div>
-            } @else {
+            } @else if (!readOnly()) {
               <app-button variant="primary" [loading]="submitting()" (pressed)="submit()">{{ primaryLabel() }}</app-button>
             }
             <!-- Subtasks Section Template (Used in both Create and Edit modes) -->
@@ -1778,6 +1781,8 @@ const TASK_CATEGORY_MEETING = 'meeting';
     />
   `,
   styles: [`
+    /* Read-only wrapper: no box of its own, so the body lays out exactly as before. */
+    .tfm-readonly { display: contents; border: 0; margin: 0; padding: 0; min-width: 0; }
     .tfm-scrim { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-start; justify-content: center; padding: 40px 24px; background: rgba(0,0,0,.5); overflow-y: auto; }
     .tfm { display: flex; flex-direction: column; width: 100%; max-width: 1180px; max-height: calc(100vh - 80px); border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-modal); overflow: hidden; }
     .tfm--create { max-width: 820px; max-height: none; overflow: visible; }
@@ -2184,6 +2189,12 @@ export class TaskFormModalComponent {
   readonly mode = input<TaskFormMode>('create');
   readonly projectId = input.required<string>();
   readonly taskId = input<string>('');
+  /** A meeting delegate's view of the principal's task (delegate task planning): nothing can be changed. */
+  readonly readOnly = input(false);
+  /** The principal the read-only form reads for: task and sprints go with forEmployeeId. */
+  readonly actingFor = input<string | null>(null);
+  /** The principal's name: the read-only view shows them as the assignee without reading the project's members. */
+  readonly actingForName = input<string | null>(null);
   readonly prefillModuleId = input<string>('');
   readonly prefillSprintId = input<string>('');
   /** Set when the task is an action item raised from a meeting occurrence (meetings-as-tasks spec 5.4); null otherwise. */
@@ -2374,7 +2385,8 @@ export class TaskFormModalComponent {
   private loadCheckTimer: ReturnType<typeof setTimeout> | null = null;
   private loadCheckVersion = 0;
   private readonly loadCheckEffect = effect(() => {
-    const projectId = this.open() ? this.projectId() : '';
+    // A read-only view changes nothing, so it has nothing to check.
+    const projectId = this.open() && !this.readOnly() ? this.projectId() : '';
     const request = {
       taskId: this.mode() === 'create' ? null : this.activeTaskId() || null,
       assigneeEmployeeIds: this.assigneeEmployeeId() ? [this.assigneeEmployeeId()] : [],
@@ -2384,6 +2396,12 @@ export class TaskFormModalComponent {
     untracked(() => this.scheduleLoadCheck(projectId, request));
   });
   private readonly loadCheckCleanup = inject(DestroyRef).onDestroy(() => this.clearLoadCheckTimer());
+
+  /** The task itself, or the principal's task for their planning delegate (read-only view). */
+  private readTask(taskId: string) {
+    const forEmployeeId = this.actingFor();
+    return forEmployeeId ? this.taskApi.getTaskById(taskId, forEmployeeId) : this.taskApi.getTaskById(taskId);
+  }
 
   private scheduleLoadCheck(projectId: string, request: {
     taskId: string | null; assigneeEmployeeIds: string[]; dueDate: string | null; estimatedHours: number | null;
@@ -2780,11 +2798,12 @@ export class TaskFormModalComponent {
     this.loadError.set(null);
     try {
       const [taskDto, statusDtos, categoryDtos, sprintDtos, historyEntries] = await Promise.all([
-        firstValueFrom(this.taskApi.getTaskById(taskId)),
+        firstValueFrom(this.readTask(taskId)),
         firstValueFrom(this.taskApi.getStatuses(this.projectId())),
         firstValueFrom(this.taskApi.getCategories(this.projectId())),
-        firstValueFrom(this.sprintApi.getByProject(this.projectId())),
-        firstValueFrom(this.taskApi.getTaskHistory(taskId))
+        firstValueFrom(this.actingFor() ? this.sprintApi.getByProject(this.projectId(), this.actingFor()) : this.sprintApi.getByProject(this.projectId())),
+        // The read-only view hides history, so it does not read it.
+        firstValueFrom(this.readOnly() ? of([]) : this.taskApi.getTaskHistory(taskId))
       ]);
       const t = toWorkTask(taskDto);
       this.task.set(t);
@@ -2795,7 +2814,7 @@ export class TaskFormModalComponent {
           this.parentTask.set(parentFromStore);
         } else if (!this.parentTask() || this.parentTask()?.id !== t.parentTaskId) {
           try {
-            const parentDto = await firstValueFrom(this.taskApi.getTaskById(t.parentTaskId));
+            const parentDto = await firstValueFrom(this.readTask(t.parentTaskId));
             this.parentTask.set(toWorkTask(parentDto));
           } catch {
             this.parentTask.set(null);
@@ -2805,7 +2824,7 @@ export class TaskFormModalComponent {
         this.parentTask.set(null);
       }
 
-      if (this.boardStore.loadSubtasks && !t.parentTaskId) {
+      if (this.boardStore.loadSubtasks && !t.parentTaskId && !this.readOnly()) {
         void this.boardStore.loadSubtasks(t.id);
       }
       this.statuses.set(statusDtos);
@@ -2813,7 +2832,13 @@ export class TaskFormModalComponent {
       this.sprints.set(sprintDtos.map(toSprint));
       this.history.set(historyEntries);
       this.seedForm(t);
-      await this.loadMembers();
+      if (this.readOnly()) {
+        // The member list is project-members-only; the read-only view names the principal it reads for instead.
+        const principal = this.actingFor();
+        this.assignableMembers.set(principal ? [{ employeeId: principal, name: this.actingForName() ?? 'Assignee', avatarUrl: null }] : []);
+      } else {
+        await this.loadMembers();
+      }
     } catch {
       this.loadError.set('Failed to load this task.');
     } finally {
