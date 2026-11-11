@@ -21,7 +21,8 @@ import { MeetingDelegateView } from '../../../work/meetings/models/meeting.model
   template: `
     <app-modal [open]="open()" title="Meeting delegates" (closed)="closed.emit()">
       <div class="mdm">
-        <p class="mdm__help">These people can schedule, change and cancel your meetings. Invitees see you as the organizer.</p>
+        <p class="mdm__help">These people can schedule, change and cancel your meetings. Invitees see you as the organizer.
+          With "Tasks" on, they can also see your tasks and plan them on your planner.</p>
         @if (delegates().length > 0) {
           <ul class="mdm__list">
             @for (row of delegates(); track row.id) {
@@ -31,7 +32,15 @@ import { MeetingDelegateView } from '../../../work/meetings/models/meeting.model
                   <span class="mdm__state" [class.mdm__state--expired]="row.state === 'expired'">
                     {{ row.state === 'expired' ? 'Expired' : 'Active' }}{{ row.expiresAt && row.state === 'active' ? ' · until ' + (row.expiresAt | date: 'd MMM y') : '' }}
                   </span>
+                  <span class="mdm__scope">{{ row.canPlanTasks ? 'Meetings · Tasks' : 'Meetings' }}</span>
                 </span>
+                @if (row.state === 'active') {
+                  <button type="button" role="switch" class="mdm__switch" [attr.data-testid]="'meeting-delegate-tasks-' + row.id"
+                    [attr.aria-checked]="!!row.canPlanTasks" [attr.aria-label]="'Let ' + row.name + ' plan your tasks'"
+                    title="Can also plan my tasks" (click)="toggleTasks(row)">
+                    <span class="mdm__switch-knob" [class.mdm__switch-knob--on]="row.canPlanTasks"></span>
+                  </button>
+                }
                 <button type="button" class="mdm__remove" [attr.data-testid]="'meeting-delegate-remove-' + row.id"
                   [attr.aria-label]="'Remove ' + row.name + ' as a meeting delegate'" (click)="remove(row.id)">Remove</button>
               </li>
@@ -49,6 +58,10 @@ import { MeetingDelegateView } from '../../../work/meetings/models/meeting.model
             (toggled)="pickById($event)" />
         }
         <app-date-picker label="Until (optional)" [value]="until()" (valueChange)="until.set($event)" />
+        <label class="mdm__check">
+          <input type="checkbox" data-testid="meeting-delegate-plan-tasks" [checked]="planTasks()" (change)="planTasks.set(!planTasks())" />
+          Can also plan my tasks
+        </label>
         @if (error()) { <p class="mdm__error" role="alert" data-testid="meeting-delegate-error">{{ error() }}</p> }
         <div class="mdm__actions">
           <button type="button" class="mdm__secondary" (click)="closed.emit()">Close</button>
@@ -67,6 +80,12 @@ import { MeetingDelegateView } from '../../../work/meetings/models/meeting.model
     .mdm__who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .mdm__state { color: var(--color-success); font-size: 11px; font-weight: 600; }
     .mdm__state--expired { color: var(--color-text-secondary); }
+    .mdm__scope { color: var(--color-text-secondary); font-size: 11px; }
+    .mdm__check { display: flex; align-items: center; gap: 8px; color: var(--color-text-primary); cursor: pointer; }
+    .mdm__switch { position: relative; flex-shrink: 0; width: 28px; height: 16px; padding: 0; border: 0; border-radius: 999px; background: var(--color-border); cursor: pointer; }
+    .mdm__switch[aria-checked='true'] { background: var(--color-accent); }
+    .mdm__switch-knob { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--color-surface); transition: transform .15s; }
+    .mdm__switch-knob--on { transform: translateX(12px); }
     .mdm__label { color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
     .mdm__remove { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-weight: 600; cursor: pointer; }
     .mdm__error { margin: 0; color: var(--color-danger); font-size: 12px; }
@@ -88,6 +107,8 @@ export class MeetingDelegatesModalComponent {
   protected readonly chosen = signal<{ id: string; name: string } | null>(null);
   /** The last day, as the date picker gives it (yyyy-MM-dd); empty means until revoked. */
   protected readonly until = signal('');
+  /** "Can also plan my tasks" for the person being added. */
+  protected readonly planTasks = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly canSave = computed(() => !this.saving() && !!this.chosen());
@@ -98,6 +119,7 @@ export class MeetingDelegatesModalComponent {
       untracked(() => {
         this.chosen.set(null);
         this.until.set('');
+        this.planTasks.set(false);
         this.error.set(null);
         void this.load();
       });
@@ -142,14 +164,26 @@ export class MeetingDelegatesModalComponent {
     try {
       // "Until 1 Dec" lasts to the end of that day, in the viewer's time zone.
       const expiresAt = this.until() ? new Date(`${this.until()}T23:59:59`).toISOString() : undefined;
-      const created = await firstValueFrom(this.api.addDelegate(person.id, expiresAt));
+      const created = await firstValueFrom(this.api.addDelegate(person.id, expiresAt, this.planTasks()));
       this.delegates.update((rows) => [...rows.filter((r) => r.employeeId !== created.employeeId), created]);
       this.chosen.set(null);
       this.until.set('');
+      this.planTasks.set(false);
     } catch (err) {
       this.error.set(toSafeErrorMessage(err, 'Could not add the delegate.'));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** Turns "Can also plan my tasks" on or off; the row keeps its old value when the server refuses. */
+  protected async toggleTasks(row: MeetingDelegateView): Promise<void> {
+    this.error.set(null);
+    try {
+      const updated = await firstValueFrom(this.api.updateDelegate(row.id, !row.canPlanTasks));
+      this.delegates.update((rows) => rows.map((r) => (r.id === updated.id ? updated : r)));
+    } catch (err) {
+      this.error.set(toSafeErrorMessage(err, 'Could not change what this delegate may do.'));
     }
   }
 
