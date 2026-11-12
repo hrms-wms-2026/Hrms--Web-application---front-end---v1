@@ -464,13 +464,15 @@ describe('DashboardShellComponent', () => {
     expect(q(ctx.el, 'slot-retry')).toBeNull();
   });
 
-  it('shows_loader_while_the_dashboard_is_loading', async () => {
+  it('shows_the_skeleton_while_the_dashboard_is_loading', async () => {
     const ctx = setup();
     ctx.api.listMine.mockReturnValue(new (await import('rxjs')).Observable(() => undefined) as never);
     ctx.fixture.detectChanges();
     await ctx.fixture.whenStable();
     ctx.fixture.detectChanges();
-    expect(ctx.el.querySelector('app-loader')).not.toBeNull();
+    expect(ctx.el.querySelector('app-dashboard-skeleton')).not.toBeNull();
+    expect(ctx.el.querySelector('app-loader')).toBeNull();
+    expect(ctx.el.querySelector('app-dashboard-grid')).toBeNull();
   });
 
   it('shows_error_state_and_reload_calls_load_again', async () => {

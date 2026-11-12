@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
-import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { breakpointForWidth, injectBreakpoint } from '../../grid/breakpoint';
 import { DashboardKey } from '../../models/dashboard-layout.model';
 import { DashboardStore } from '../../state/dashboard.store';
 import { DashboardGridComponent, GridReorderEvent, GridResizeEvent, PinnedSize } from '../../ui/dashboard-grid/dashboard-grid.component';
+import { DashboardSkeletonComponent } from '../../ui/dashboard-skeleton/dashboard-skeleton.component';
 import { QuickActionsCardComponent } from '../quick-actions-card/quick-actions-card.component';
 import { WidgetStoreDrawerComponent } from '../widget-store-drawer/widget-store-drawer.component';
 
@@ -41,7 +41,7 @@ function clearLegacyDashboardStorage(): void {
   selector: 'app-dashboard-shell',
   standalone: true,
   providers: [DashboardStore],
-  imports: [DashboardGridComponent, WidgetStoreDrawerComponent, ConfirmModalComponent, LoaderComponent, QuickActionsCardComponent],
+  imports: [DashboardGridComponent, WidgetStoreDrawerComponent, ConfirmModalComponent, DashboardSkeletonComponent, QuickActionsCardComponent],
   host: { class: 'block', '[class.dashboard-shell--team]': "dashboardKey() === 'my-team'", '(document:keydown.escape)': 'onEscape($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -104,9 +104,8 @@ function clearLegacyDashboardStorage(): void {
           <button type="button" class="mt-2 text-sm font-semibold text-[var(--color-accent)] hover:underline" data-testid="dashboard-retry" (click)="reload()">Try again</button>
         </div>
       } @else {
-        <div class="flex min-h-[200px] items-center justify-center rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)]">
-          <app-loader label="Loading your dashboard" />
-        </div>
+        <!-- Grey widget cards on the dashboard's grid while the layout loads, not a spinner. -->
+        <app-dashboard-skeleton />
       }
     </div>
 
@@ -133,6 +132,11 @@ function clearLegacyDashboardStorage(): void {
     }
     :host(.dashboard-shell--team) ::ng-deep app-widget-card > section {
       --color-surface-secondary: var(--color-dashboard-team-widget-inset);
+    }
+    /* The loading skeleton matches: My Team's gray cards, no outline, darker blocks. */
+    :host(.dashboard-shell--team) app-dashboard-skeleton {
+      --dsk-card-border: transparent;
+      --dsk-block: var(--color-dashboard-team-widget-inset);
     }
     /* Flat gray cards on the page: no outline or shadow (border kept transparent so sizes don't shift). */
     :host(.dashboard-shell--team) ::ng-deep app-widget-card > section,
