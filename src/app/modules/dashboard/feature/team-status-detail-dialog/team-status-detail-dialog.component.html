@@ -51,16 +51,21 @@
       </div>
 
       <section class="wbld-panel">
-        <p class="wbld-title">
-          Working hours trend <span class="wbld-muted">· attendance time, breaks on top, dashed = average per person</span>
-        </p>
         @if (weekError()) {
+          <p class="wbld-title">Working hours trend</p>
           <p class="wbld-muted">
             Couldn't load the working hours.
             <button type="button" class="wbld-link" (click)="retryWeek()">Try again</button>
           </p>
         } @else if (week(); as w) {
-          <app-working-hours-chart class="wbld-chart" [days]="w.days" [teamAverage]="true" [showLeave]="true" />
+          <app-working-hours-chart
+            class="wbld-chart"
+            heading="Working hours trend · attendance time, breaks on top"
+            [compactHeadline]="false"
+            [days]="w.days"
+            [teamAverage]="true"
+            [showLeave]="true"
+          />
         } @else {
           <p class="wbld-muted" aria-busy="true">Loading…</p>
         }

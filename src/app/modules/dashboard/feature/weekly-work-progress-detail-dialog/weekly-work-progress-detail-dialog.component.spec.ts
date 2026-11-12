@@ -85,7 +85,8 @@ describe('WeeklyWorkProgressDetailDialogComponent', () => {
 
   it('weighs tasks by status with hours, shares and the total in the centre', () => {
     const f = render();
-    expect(text(f, 'wwp-tasks')).toContain('Completed 24h (60%)');
+    const completed = (f.nativeElement as HTMLElement).querySelector('[data-testid="wwp-task-row"][data-key="completed"]') as HTMLElement;
+    expect([...completed.children].map((c) => c.textContent!.trim()).filter((t) => t !== '')).toEqual(['Completed', '60%', '24h']);
     expect(text(f, 'wwp-tasks')).toContain('40h Total');
   });
 

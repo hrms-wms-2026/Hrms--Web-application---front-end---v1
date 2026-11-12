@@ -11,20 +11,7 @@
   (retry)="retry()"
 >
   <div widget-actions class="flex min-w-0 items-center gap-1">
-    @if (store.data() && mode() !== 'xs' && mode() !== 'mini') {
-      <select
-        class="tp-period"
-        data-testid="team-progress-period"
-        aria-label="Period"
-        [value]="period()"
-        appStopClickPropagation
-        (change)="onPeriodSelect($event)"
-      >
-        @for (option of periods; track option.value) {
-          <option [value]="option.value" [selected]="option.value === period()">{{ option.label }}</option>
-        }
-      </select>
-    }
+    <!-- The period switch lives in the popup only (2026-11-05); the popup's periodChange still sets the card's period. -->
     <app-popout-header-actions
       [refreshing]="refreshing()"
       [expanded]="false"
@@ -36,28 +23,19 @@
   </div>
 
   @if (store.data(); as data) {
-    <!-- Donut: arcs on a circle with circumference 100, so an arc's dash length is its share. -->
+    <!-- The shared dashboard donut: hovering a slice (or a legend row) puts that status in the centre. -->
     <ng-template #donutTpl let-completionCenter="completionCenter">
-      <div class="tp-donut" [style.width.px]="donutPx" [style.height.px]="donutPx" data-testid="team-progress-donut">
-        <svg viewBox="0 0 42 42" class="block h-full w-full" role="img" [attr.aria-label]="donutLabel()">
-          <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-          @for (seg of donutSegments(); track seg.key) {
-            <circle
-              data-testid="donut-segment"
-              cx="21"
-              cy="21"
-              r="15.9155"
-              fill="none"
-              stroke-width="6"
-              [attr.stroke]="seg.color"
-              [attr.stroke-dasharray]="seg.length + ' ' + (100 - seg.length)"
-              [attr.stroke-dashoffset]="seg.offset"
-            />
-          }
-        </svg>
+      <app-dashboard-donut
+        class="tp-donut"
+        data-testid="team-progress-donut"
+        [size]="donutPx()"
+        [slices]="donutSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hoveredStatus"
+      >
         @if (completionCenter) {
           <p class="tp-donut-center">
-            <span class="text-xl font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+            <span class="text-lg font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
             <span class="tp-donut-caption">completed</span>
           </p>
         } @else {
@@ -66,14 +44,19 @@
             <span class="tp-donut-caption">{{ periodCaption() }}</span>
           </p>
         }
-      </div>
+      </app-dashboard-donut>
     </ng-template>
 
     <!-- Every status, always: dot + label (text, not colour only) + hours + share. -->
     <ng-template #statusListTpl let-variant>
       <ul class="tp-legend" [class]="'tp-legend--' + variant" data-testid="team-progress-legend">
         @for (row of statusRows(); track row.key) {
-          <li class="tp-legend-row" [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'">
+          <li
+            class="tp-legend-row"
+            [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'"
+            (mouseenter)="hoveredStatus.set(row.key)"
+            (mouseleave)="hoveredStatus.set(null)"
+          >
             <span class="h-2.5 w-2.5 rounded-full" [class]="row.bgClass" aria-hidden="true"></span>
             <span class="tp-legend-label" [title]="row.label">{{ row.label }}</span>
             <span class="tp-legend-hours" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
@@ -124,14 +107,6 @@
       </dl>
     </ng-template>
 
-    <ng-template #viewAllTpl>
-      <button
-        type="button"
-        class="team-progress-link text-xs font-semibold"
-        data-testid="team-progress-toggle"
-        (click)="openDetail($event)"
-      >View all ({{ ledModuleCount() }})</button>
-    </ng-template>
 
     <ng-template #moreTpl let-count>
       @if (count > 0) {
@@ -144,49 +119,22 @@
       }
     </ng-template>
 
-    <ng-template #modulesTpl>
-      <section class="tp-panel" aria-label="Led modules" data-testid="team-progress-modules">
+    <ng-template #projectChartTpl>
+      <!-- Projects as stacked hour bars (2026-11-06; replaced the Led modules and Projects lists): hovering a colour
+           reads that project's hours in that state, an at-risk project has a red border and says why. -->
+      <section class="tp-panel tp-panel--chart" aria-label="Projects" data-testid="team-progress-project-chart">
         <h3 class="team-progress-heading">
-          <span class="truncate">Led modules ({{ ledModuleCount() }}){{ period() === 'all' ? '' : ' · all time' }}</span>
-          @if (hiddenModuleCount() > 0) {
-              } @else {
-            <ng-container *ngTemplateOutlet="viewAllTpl" />
-          }
+          <span class="truncate">Projects ({{ chartProjects().length }}){{ period() === 'all' ? '' : ' · all time' }}</span>
+          <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenChartProjectCount() }" />
         </h3>
-        <ul class="min-h-0">
-          @for (row of visibleModules(); track row.key) {
-            <li [attr.data-depth]="row.depth" data-testid="team-progress-module">
-              <button
-                type="button"
-                class="team-progress-row"
-                [attr.aria-label]="'Open module ' + row.title"
-                (click)="openModule(row.projectId, row.objectiveId, $event)"
-              >
-                <span class="flex min-w-0 items-center gap-2">
-                  <span class="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text-primary)]" [title]="row.title">{{ row.title }}</span>
-                  @if (row.atRisk) {
-                    <span class="shrink-0 rounded-md bg-[var(--color-danger-subtle)] px-1.5 py-px text-[10px] font-semibold text-[var(--color-danger-text)]">At risk</span>
-                  }
-                  <span class="shrink-0 text-xs font-semibold text-[var(--color-text-secondary)] tabular-nums">{{ row.completionText }}</span>
-                </span>
-                <span
-                  class="mt-1.5 flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]"
-                  role="progressbar"
-                  [attr.aria-label]="row.title + ' completed hours'"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                  [attr.aria-valuenow]="row.completionRounded"
-                  [attr.aria-valuetext]="row.completionText + ' completed'"
-                >
-                  @for (seg of hourSegments(row.hours); track seg.key) {
-                    <span class="h-full" [class]="seg.bgClass" [style.width.%]="seg.percent"></span>
-                  }
-                </span>
-              </button>
-            </li>
-          }
-        </ul>
-        <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenModuleCount() }" />
+        <app-project-hours-chart
+          class="tp-project-chart"
+          heading="Allocated"
+          [projects]="visibleChartProjects()"
+          [overdueByProject]="data.overdueByProject"
+          [compactHeadline]="true"
+          [showLegend]="false"
+        />
       </section>
     </ng-template>
 
@@ -246,52 +194,15 @@
       </section>
     </ng-template>
 
-    <ng-template #projectsTpl>
-      <section class="tp-panel" aria-label="Projects" data-testid="team-progress-projects">
-        <h3 class="team-progress-heading">
-          <span class="truncate">Projects ({{ projectRows().length }}){{ period() === 'all' ? '' : ' · all time' }}</span>
-          <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenProjectCount() }" />
-        </h3>
-        <ul class="min-h-0">
-          @for (project of visibleProjects(); track project.projectId) {
-            <li class="team-progress-row cursor-default hover:bg-transparent" data-testid="team-progress-project">
-              <span class="flex min-w-0 items-center gap-2">
-                <span class="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text-primary)]" [title]="project.name">{{ project.name }}</span>
-                <span class="shrink-0 text-xs text-[var(--color-text-secondary)] tabular-nums">{{ formatHourValue(project.hours.completedHours) }} / {{ formatHourValue(project.hours.allocatedHours) }} h</span>
-                <span class="w-11 shrink-0 text-right text-xs font-semibold text-[var(--color-text-secondary)] tabular-nums">{{ project.completionText }}</span>
-              </span>
-              <span
-                class="mt-1.5 flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]"
-                role="progressbar"
-                [attr.aria-label]="project.name + ' completed hours'"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                [attr.aria-valuenow]="project.completionRounded"
-                [attr.aria-valuetext]="project.completionText + ' completed'"
-              >
-                @for (seg of hourSegments(project.hours); track seg.key) {
-                  <span class="h-full" [class]="seg.bgClass" [style.width.%]="seg.percent"></span>
-                }
-              </span>
-            </li>
-          }
-        </ul>
-      </section>
-    </ng-template>
 
     <ng-template #weeklyTpl>
       @if (weeklyState() !== 'hidden') {
         <section class="tp-panel tp-weekly" aria-label="Weekly completion, last 10 weeks" data-testid="team-progress-weekly">
-          <h3 class="team-progress-heading" title="Estimated hours of tasks completed each week (task weightage, not time worked).">
-            <span class="truncate">Weekly completion · last 10 weeks</span>
-          </h3>
           @if (weeklyShown(); as weekly) {
             <app-weekly-completion-chart
               class="tp-weekly-chart"
               [weeks]="weekly.weeks"
               [allocatedHours]="weekly.allocatedHours"
-              [percentLine]="true"
-              [compact]="mode() === 'tall' && widthStep() < 500"
             />
             @if (undatedText()) {
               <p class="tp-footnote" data-testid="team-progress-weekly-undated">{{ undatedText() }}</p>
@@ -327,18 +238,20 @@
       </button>
     </ng-template>
 
-    <!-- Lists beside each other: led modules, then overdue tasks (or projects when nothing is overdue). -->
+    <!-- The project chart, with overdue tasks beside it when there are some. -->
     <ng-template #listPairTpl>
-      <div class="tp-panels tp-panels--grow grid-cols-2">
-        <ng-container *ngTemplateOutlet="modulesTpl" />
-        <ng-container *ngTemplateOutlet="data.overdueTotal > 0 || projectRows().length < 2 ? overdueTpl : projectsTpl" />
+      <div class="tp-panels tp-panels--grow" [class.grid-cols-2]="data.overdueTotal > 0">
+        <ng-container *ngTemplateOutlet="projectChartTpl" />
+        @if (data.overdueTotal > 0) {
+          <ng-container *ngTemplateOutlet="overdueTpl" />
+        }
       </div>
     </ng-template>
 
     <div class="tp-body" [class.tp-body--narrow]="widthStep() < 300" data-testid="team-progress-layout" [attr.data-mode]="mode()" [attr.data-period]="period()">
       @if (periodState() === 'loading') {
         <div class="tp-message" data-testid="team-progress-period-loading" aria-busy="true">
-          <span class="tp-donut-skeleton animate-pulse" [style.width.px]="donutPx" [style.height.px]="donutPx" aria-hidden="true"></span>
+          <span class="tp-donut-skeleton animate-pulse" [style.width.px]="donutPx()" [style.height.px]="donutPx()" aria-hidden="true"></span>
           <span>Loading {{ period() === 'week' ? 'this week' : 'this month' }}…</span>
         </div>
       } @else if (periodState() === 'error') {
@@ -356,45 +269,25 @@
       } @else {
         @switch (mode()) {
           @case ('mini') {
-            <!-- 2-row cards: the donut, with the completion in its centre (the total beside it when there
-            is room). Stretched sideways the stacked status bar and a one-line legend take its place. -->
-            @if (plan().miniLegend === 'inline') {
-              <div class="tp-mini tp-mini--wide" data-testid="team-progress-mini">
-                <p class="tp-mini-figure">
-                  <span class="tp-completion-big text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
-                  <span class="tp-completion-caption">
-                    completed of
-                    <span class="font-semibold text-[var(--color-text-primary)] tabular-nums">{{ totalText() }}</span>
-                  </span>
-                </p>
-                <div class="tp-mini-bar">
-                  <div class="tp-status-bar" role="img" [attr.aria-label]="donutLabel()" data-testid="team-progress-status-bar">
-                    @for (seg of donutSegments(); track seg.key) {
-                      <span class="h-full" [style.background]="seg.color" [style.width.%]="seg.length"></span>
-                    }
-                  </div>
-                  <ul class="tp-mini-legend" data-testid="team-progress-legend">
-                    @for (row of statusRows(); track row.key) {
-                      <li class="tp-mini-legend-item" [title]="row.label + ': ' + row.hoursText + ' h (' + row.percentText + ')'">
-                        <span class="h-2 w-2 shrink-0 rounded-full" [class]="row.bgClass" aria-hidden="true"></span>
-                        <span class="tp-mini-legend-label">{{ row.label }}</span>
-                        <span class="tp-mini-legend-hours" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
-                      </li>
-                    }
-                  </ul>
-                </div>
-              </div>
-            } @else {
-              <div class="tp-mini tp-mini--donut" data-testid="team-progress-mini">
-                <ng-container *ngTemplateOutlet="donutTpl; context: { completionCenter: true }" />
-                @if (plan().miniFigure) {
-                  <p class="tp-mini-figure">
-                    <span class="font-bold text-[var(--color-text-primary)] tabular-nums" data-testid="team-progress-total">{{ totalText() }}</span>
-                    <span class="tp-completion-caption">{{ period() === 'all' ? 'allocated' : periodCaption().toLowerCase() }}</span>
-                  </p>
-                }
-              </div>
-            }
+            <!-- 2-row cards: the shared strip. The donut with the completion in it, then its key, then summary cards
+            of the popup's sections as the card widens. -->
+            <app-dashboard-summary-strip
+              class="tp-mini"
+              data-testid="team-progress-mini"
+              [slices]="donutSlices()"
+              [keySlices]="donutSlices()"
+              [cards]="summaryCards()"
+              [donutLabel]="donutLabel()"
+              [(active)]="hoveredStatus"
+              (cardOpened)="openSection($event)"
+              (cardRetried)="retryCard($event)"
+              (shownCards)="shownCards.set($event)"
+            >
+              <p class="tp-donut-center">
+                <span class="text-lg font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+                <span class="tp-donut-caption">completed</span>
+              </p>
+            </app-dashboard-summary-strip>
           }
 
           @case ('xs') {
@@ -457,7 +350,10 @@
               </ul>
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
-            @if (visibleExtraTiles().length > 0) {
+            @if (rowCards().length > 0) {
+              <!-- Taller views: summary cards of what the card is not already showing, in the tiles' place. -->
+              <app-dashboard-summary-row data-testid="team-progress-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" (cardRetried)="retryCard($event)" appStopClickPropagation />
+            } @else if (visibleExtraTiles().length > 0) {
               <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: visibleExtraTiles().length }" />
             }
             <ng-container *ngTemplateOutlet="timeTpl" />
@@ -469,12 +365,30 @@
           }
 
           @case ('wide') {
-            <div class="tp-hero">
+            <!-- Donut + colour key + weekly completion, no KPI tiles: the status bars only repeated the donut,
+                 so they show only as a fallback when the weekly chart can't load. -->
+            <div
+              class="tp-hero"
+              [class.tp-hero--weekly]="weeklyState() !== 'hidden'"
+              [class.tp-hero--grow]="weeklyState() !== 'hidden' && !showLists()"
+              data-testid="team-progress-wide-hero"
+            >
               <ng-container *ngTemplateOutlet="donutTpl" />
-              <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
+              @if (weeklyState() !== 'hidden') {
+                <app-donut-key
+                  class="tp-key"
+                  data-testid="team-progress-key"
+                  ariaLabel="Donut colours"
+                  rowTestId="team-progress-key-row"
+                  [slices]="donutSlices()"
+                  [(active)]="hoveredStatus"
+                />
+                <ng-container *ngTemplateOutlet="weeklyTpl" />
+              } @else {
+                <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'bars' }" />
+              }
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
-            <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: wideTiles(), columns: wideTiles().length }" />
             <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <ng-container *ngTemplateOutlet="listPairTpl" />
@@ -496,7 +410,7 @@
             <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
               <div class="tp-panels tp-panels--grow">
-                <ng-container *ngTemplateOutlet="modulesTpl" />
+                <ng-container *ngTemplateOutlet="projectChartTpl" />
               </div>
             }
             <ng-container *ngTemplateOutlet="viewDetailsTpl" />
@@ -541,10 +455,9 @@
             }
             <ng-container *ngTemplateOutlet="timeTpl" />
             @if (showLists()) {
-              <!-- Overdue tasks only take a column when there are some. -->
+              <!-- The project chart; overdue tasks only take a column when there are some. -->
               <div class="tp-panels tp-panels--grow" [style.grid-template-columns]="'repeat(' + maximumPanelCount() + ', minmax(0, 1fr))'">
-                <ng-container *ngTemplateOutlet="projectsTpl" />
-                <ng-container *ngTemplateOutlet="modulesTpl" />
+                <ng-container *ngTemplateOutlet="projectChartTpl" />
                 @if (data.overdueTotal > 0) {
                   <ng-container *ngTemplateOutlet="overdueTpl" />
                 }
@@ -564,8 +477,21 @@
               <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'compact' }" />
             </div>
             <ng-container *ngTemplateOutlet="notesTpl" />
-            @if (visibleExtraTiles().length > 0) {
-              <ng-container *ngTemplateOutlet="tilesTpl; context: { $implicit: visibleExtraTiles(), columns: 2 }" />
+            <!-- KPI cards in the popup's Overview style, two per row, as many rows as the height allows. -->
+            @if (rowCards().length > 0) {
+              <app-dashboard-summary-row data-testid="team-progress-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" (cardRetried)="retryCard($event)" appStopClickPropagation />
+            } @else if (visibleKpiCards().length > 0) {
+              <ul class="tp-kpis" data-testid="team-progress-metrics">
+                @for (card of visibleKpiCards(); track card.key) {
+                  <li class="tp-kpi" [class]="'tone-' + card.tone" [title]="card.label + ': ' + card.value" [attr.data-testid]="'team-progress-kpi-' + card.key">
+                    <span class="tp-kpi-text">
+                      <span class="tp-kpi-value tp-tone-text">{{ card.value }}</span>
+                      <span class="tp-kpi-label">{{ card.label }}</span>
+                    </span>
+                    <span class="tp-kpi-icon tp-tone-text" aria-hidden="true"><app-icon [name]="card.icon" /></span>
+                  </li>
+                }
+              </ul>
             }
             @if (plan().viewDetails) {
               <ng-container *ngTemplateOutlet="viewDetailsTpl" />
@@ -579,6 +505,7 @@
 
 <app-team-progress-detail-dialog
   [open]="detailOpen()"
+  [focusSection]="detailSection()"
   [summary]="store.data()"
   [period]="period()"
   (periodChange)="setPeriod($event)"

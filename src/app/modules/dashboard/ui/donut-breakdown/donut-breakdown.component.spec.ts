@@ -21,37 +21,43 @@ describe('DonutBreakdownComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
+  /** The donut centre's text: the whole, or the lit slice. */
   const center = (el: HTMLElement) =>
-    [...el.querySelectorAll('.db-center span')].map((s) => s.textContent!.trim()).join(' ');
+    [...el.querySelectorAll('.db-center span, .dd-center span')].map((s) => s.textContent!.trim()).join(' ');
+  const arc = (el: HTMLElement, key: string) => el.querySelector(`[data-testid="donut-segment"][data-key="${key}"]`);
 
-  it('draws an arc per non-zero slice and keeps zero slices in the legend', () => {
+  it('draws an arc per non-zero slice and keeps zero slices in the key, each with its share', () => {
     const { el } = setup();
 
-    expect(el.querySelectorAll('.db-arc')).toHaveLength(2);
-    expect(el.querySelector('[data-testid="db-row-leave"]')!.classList).toContain('db-row--zero');
-    expect(el.querySelector('[data-testid="db-row-worked"]')!.textContent).toContain('75%');
+    expect(el.querySelectorAll('[data-testid="donut-segment"]')).toHaveLength(2);
+    expect(el.querySelector('[data-testid="db-row-leave"]')!.classList).toContain('dk-row--zero');
+    expect(el.querySelector('[data-testid="db-row-worked-percent"]')!.textContent!.trim()).toBe('75%');
     expect(center(el)).toBe('2h of 8h');
   });
 
-  it('hovering a legend row puts that slice in the centre and dims the others', () => {
+  it('hovering a key row puts that slice in the centre and fades the others', () => {
     const { fixture, el } = setup();
 
     el.querySelector('[data-testid="db-row-break"]')!.dispatchEvent(new Event('mouseenter'));
     fixture.detectChanges();
 
     expect(center(el)).toBe('30m Break · 25%');
-    expect(el.querySelector('[data-testid="db-arc-worked"]')!.classList).toContain('db-arc--dim');
+    expect(arc(el, 'break')!.classList).toContain('dd-arc--on');
+    expect(arc(el, 'worked')!.classList).not.toContain('dd-arc--on');
+    expect(el.querySelector('svg')!.classList).toContain('dd-svg--hover');
 
-    el.querySelector('.db')!.dispatchEvent(new Event('mouseleave'));
+    el.querySelector('app-dashboard-donut')!.dispatchEvent(new Event('mouseleave'));
     fixture.detectChanges();
     expect(center(el)).toBe('2h of 8h');
   });
 
-  it('a single slice closes the ring without a gap', () => {
+  it('a single slice closes the ring', () => {
     const { el } = setup([SLICES[0]]);
 
-    expect(
-      el.querySelector('[data-testid="db-arc-worked"]')!.getAttribute('stroke-dasharray'),
-    ).toBe('100 0');
+    // A lone slice is the whole ring with no gap: an outer and an inner circle, filled even-odd, no rounding stroke.
+    const ring = arc(el, 'worked')!;
+    expect(ring.getAttribute('fill-rule')).toBe('evenodd');
+    expect(ring.getAttribute('stroke-width')).toBe('0');
+    expect(ring.getAttribute('d')!.match(/M /g)).toHaveLength(2);
   });
 });

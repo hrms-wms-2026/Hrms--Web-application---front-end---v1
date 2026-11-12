@@ -7,6 +7,7 @@ import {
 } from '../models/team-schedule.model';
 import { PlannedActualDay, PlannedActualRow } from './planned-actual-format.util';
 import { DonutArc, donutArcs } from './status-donut.util';
+import { minutesText } from './team-presence-format.util';
 
 /** Item colours (2026-11-02 design match). Breaks are amber; unscheduled work is a red hatched strip. */
 export const SCHEDULE_COLORS = {
@@ -77,8 +78,121 @@ export function hasPlan(member: TeamScheduleMember): boolean {
   return member.plannedTaskMinutes > 0 || member.items.some((i) => i.kind === 'task');
 }
 
+/** "33%": the items done of those due so far. "—" without a plan (never 0%). */
 export function completionText(member: TeamScheduleMember): string {
-  return hasPlan(member) ? percentText(member.itemCompletionPercent) : 'No plan';
+  return hasPlan(member) ? percentText(member.itemCompletionPercent) : '—';
+}
+
+/** Planned task + meeting minutes: the load the person's capacity is measured against. */
+export function loadMinutes(member: TeamScheduleMember): number {
+  return member.plannedTaskMinutes + member.plannedMeetingMinutes;
+}
+
+/** Working (or no presence) with a meeting on right now. */
+export function inMeetingNow(member: TeamScheduleMember): boolean {
+  if (member.presenceStatus && member.presenceStatus !== 'working') return false;
+  return member.items.some((i) => i.kind === 'meeting' && i.status === 'in_meeting');
+}
+
+export function isOnLeave(member: TeamScheduleMember): boolean {
+  return member.presenceStatus === 'on_leave' || member.notRankedReason === 'on_leave';
+}
+
+/** No planned task today and not on leave. */
+export function isNotPlanned(member: TeamScheduleMember): boolean {
+  return !isOnLeave(member) && !hasPlan(member);
+}
+
+/** More planned than the work window holds. Never without a work window. */
+export function isOverCapacity(member: TeamScheduleMember): boolean {
+  return !isOnLeave(member) && !!member.expectedMinutes && loadMinutes(member) > member.expectedMinutes;
+}
+
+/** The work window: 0 on leave, null when Team Status has none for this person. */
+export function capacityMinutes(member: TeamScheduleMember): number | null {
+  if (isOnLeave(member)) return 0;
+  return member.expectedMinutes ?? null;
+}
+
+/** Hours for the load figures: "0h" for nothing, else minutesText ("8h", "8h 45m"). */
+function loadHours(minutes: number): string {
+  return minutes > 0 ? minutesText(minutes) : '0h';
+}
+
+/** "6h / 8h" (load of capacity); just the load without a work window. */
+export function loadText(member: TeamScheduleMember): string {
+  const capacity = capacityMinutes(member);
+  const load = isOnLeave(member) ? 0 : loadMinutes(member);
+  return capacity === null ? loadHours(load) : `${loadHours(load)} / ${loadHours(capacity)}`;
+}
+
+/** The load bar's fill (0-100), null without a work window. */
+export function loadPercent(member: TeamScheduleMember): number | null {
+  const capacity = capacityMinutes(member);
+  if (!capacity) return null;
+  return Math.min(100, (loadMinutes(member) * 100) / capacity);
+}
+
+/** Load bar colours: light blue under capacity, blue at it, burnt orange over it. */
+export const LOAD_COLORS = { under: '#93c5fd', full: '#1d4ed8', over: '#c2410c' } as const;
+
+export function loadColor(member: TeamScheduleMember): string {
+  if (isOverCapacity(member)) return LOAD_COLORS.over;
+  return (loadPercent(member) ?? 0) >= 100 ? LOAD_COLORS.full : LOAD_COLORS.under;
+}
+
+export interface ScheduleFlags {
+  readonly overCapacity: number;
+  readonly notPlanned: number;
+  readonly onLeave: number;
+}
+
+export function scheduleFlags(members: readonly TeamScheduleMember[]): ScheduleFlags {
+  return {
+    overCapacity: members.filter(isOverCapacity).length,
+    notPlanned: members.filter(isNotPlanned).length,
+    onLeave: members.filter(isOnLeave).length,
+  };
+}
+
+/** The three status chips, in the design's order, with their counts. */
+export function scheduleFlagChips(flags: ScheduleFlags): { key: keyof ScheduleFlags; text: string; count: number }[] {
+  return [
+    { key: 'overCapacity', text: `${flags.overCapacity} over capacity`, count: flags.overCapacity },
+    { key: 'notPlanned', text: `${flags.notPlanned} not planned`, count: flags.notPlanned },
+    { key: 'onLeave', text: `${flags.onLeave} on leave`, count: flags.onLeave },
+  ];
+}
+
+/** Total items today: planned tasks plus meetings (the donut's centre). */
+export function totalItems(summary: TeamScheduleSummary): number {
+  return summary.tasksPlanned + summary.meetings;
+}
+
+/** Today's planned time by status, in minutes, from every item's start-end (cancelled meetings left out).
+    Pending includes "scheduled, not clocked". The popup's hour tiles; total = the four parts. */
+export interface ScheduleHours {
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  meetings: number;
+}
+
+export function scheduleHours(members: readonly TeamScheduleMember[]): ScheduleHours {
+  const h: ScheduleHours = { total: 0, completed: 0, inProgress: 0, pending: 0, meetings: 0 };
+  for (const m of members) {
+    for (const item of m.items) {
+      if (item.status === 'cancelled') continue;
+      const minutes = Math.max(0, (new Date(item.end).getTime() - new Date(item.start).getTime()) / 60_000);
+      if (item.kind === 'meeting') h.meetings += minutes;
+      else if (item.status === 'completed') h.completed += minutes;
+      else if (item.status === 'in_progress') h.inProgress += minutes;
+      else h.pending += minutes;
+      h.total += minutes;
+    }
+  }
+  return h;
 }
 
 export function unscheduledMinutes(member: TeamScheduleMember): number {

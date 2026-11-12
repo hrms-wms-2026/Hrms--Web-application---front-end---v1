@@ -13,7 +13,7 @@ export class LegalConsentComponent implements OnInit {
   store = inject(AuthStore);
 
   ngOnInit(): void {
-    // acceptLegalDocuments() posts to the root/system host that issued onevo_legal_pending; a
+    // acceptLegalDocuments() posts to the root/system host that issued crownus_legal_pending; a
     // tenant host that somehow reached this route with a pending base-login acceptance has to be
     // bounced back to the root host, which is the only place that cookie is valid.
     if (this.store.legalAcceptanceRequired() && isTenantHostname(window.location.hostname)) {

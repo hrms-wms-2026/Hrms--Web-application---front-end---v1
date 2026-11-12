@@ -48,7 +48,7 @@
 .wwp-hero { display: flex; flex: none; flex-direction: column; align-items: center; gap: 6px; }
 .wwp-kpis { min-width: 0; flex: 1 1 0; }
 
-.wwp-donut { position: relative; flex: none; }
+.wwp-donut { flex: none; }
 .wwp-donut-center {
   position: absolute;
   inset: 0;
@@ -58,9 +58,9 @@
   justify-content: center;
   text-align: center;
 }
-.wwp-big { font-size: 28px; font-weight: 700; line-height: 1; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
-.wwp-mid { font-size: 22px; font-weight: 700; line-height: 1.1; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
-.wwp-status { max-width: 90px; font-size: 11px; line-height: 1.2; color: var(--color-text-secondary); }
+.wwp-big { font-size: 24px; font-weight: 700; line-height: 1; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.wwp-mid { font-size: 20px; font-weight: 700; line-height: 1.1; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.wwp-status { max-width: 96px; font-size: 10px; line-height: 1.2; color: var(--color-text-secondary); }
 
 .wwp-delta { display: flex; gap: 4px; font-size: 12px; white-space: nowrap; color: var(--color-text-secondary); }
 .wwp-delta strong, .wwp-stat strong { color: var(--color-tint-green-text); }
@@ -72,18 +72,32 @@
   min-width: 0;
   flex-direction: column;
   gap: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 12px 14px;
+}
+
+/* Sections are split by a line, not boxed (like the dashboard cards): a line above each row under the
+ * wide chart, and a line before the right-hand column (the wide chart is the first child). */
+.wwp-grid > .wwp-panel:not(:first-child) {
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+.wwp-grid > .wwp-panel:nth-child(odd):not(:first-child) {
+  border-left: 1px solid var(--color-border);
+  padding-left: 14px;
+}
+@media (max-width: 767px) {
+  .wwp-grid > .wwp-panel:nth-child(odd):not(:first-child) {
+    border-left: 0;
+    padding-left: 0;
+  }
 }
 .wwp-panel--wide { grid-column: 1 / -1; }
 .wwp-title { margin: 0; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
 .wwp-chart { height: 220px; }
 
 .wwp-split { display: flex; align-items: center; gap: 16px; }
-.wwp-legend { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--color-text-secondary); }
-.wwp-legend b { margin-left: 4px; color: var(--color-text-primary); }
-.wwp-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 9999px; }
+.wwp-legend { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; }
+.wwp-legend-total { margin: 0; font-size: 12px; color: var(--color-text-secondary); }
+.wwp-legend-total b { margin-left: 4px; color: var(--color-text-primary); }
 
 .wwp-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .wwp-stat { display: flex; flex-direction: column; gap: 2px; border-radius: 10px; background: var(--color-surface-secondary); padding: 10px 12px; font-size: 12px; }

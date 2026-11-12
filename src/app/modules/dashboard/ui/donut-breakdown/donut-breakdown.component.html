@@ -1,53 +1,17 @@
-<div class="db" (mouseleave)="setActive(null)">
-  <div class="db-donut" [style.width.px]="donutPx" [style.height.px]="donutPx">
-    <svg viewBox="0 0 42 42" class="db-svg" role="img" [attr.aria-label]="ariaLabel()">
-      <circle cx="21" cy="21" r="15.9155" fill="none" style="stroke: var(--color-surface-secondary)" stroke-width="6" />
-      @for (arc of arcs(); track arc.key) {
-        <circle
-          class="db-arc"
-          [class.db-arc--dim]="active() !== null && active() !== arc.key"
-          [class.db-arc--on]="active() === arc.key"
-          cx="21"
-          cy="21"
-          r="15.9155"
-          fill="none"
-          stroke-width="6"
-          [attr.stroke]="arc.color"
-          [attr.stroke-dasharray]="arc.dash"
-          [attr.stroke-dashoffset]="arc.offset"
-          [attr.data-testid]="'db-arc-' + arc.key"
-          (mouseenter)="setActive(arc.key)"
-        >
-          <title>{{ labelOf(arc.key) }}</title>
-        </circle>
-      }
-    </svg>
-    <p class="db-center" aria-live="polite">
-      @if (activeSlice(); as s) {
-        <span class="db-value" [style.color]="s.color">{{ s.valueText }}</span>
-        <span class="db-label">{{ s.label }} · {{ share(s) }}</span>
-      } @else {
-        <span class="db-value" data-testid="db-center-value">{{ centerValue() }}</span>
-        <span class="db-label">{{ centerLabel() }}</span>
-      }
+<div class="db">
+  <app-dashboard-donut class="db-donut" [slices]="slices()" [ariaLabel]="ariaLabel()" [(active)]="active">
+    <p class="db-center">
+      <span class="db-value" data-testid="db-center-value">{{ centerValue() }}</span>
+      <span class="db-label">{{ centerLabel() }}</span>
     </p>
-  </div>
-  <ul class="db-legend">
-    @for (s of slices(); track s.key) {
-      <li
-        tabindex="0"
-        [class.db-row--on]="active() === s.key"
-        [class.db-row--zero]="s.value <= 0"
-        [attr.data-testid]="'db-row-' + s.key"
-        (mouseenter)="setActive(s.key)"
-        (focus)="setActive(s.key)"
-        (blur)="setActive(null)"
-      >
-        <span class="db-dot" [style.background]="s.color"></span>
-        <span class="db-row-label">{{ s.label }}</span>
-        <span class="db-row-value">{{ s.valueText }}</span>
-        <span class="db-row-pct">{{ share(s) }}</span>
-      </li>
-    }
-  </ul>
+  </app-dashboard-donut>
+  <app-donut-key
+    class="db-legend"
+    rowTestId="db-row"
+    [keyedTestIds]="true"
+    [showValue]="true"
+    [ariaLabel]="ariaLabel()"
+    [slices]="slices()"
+    [(active)]="active"
+  />
 </div>

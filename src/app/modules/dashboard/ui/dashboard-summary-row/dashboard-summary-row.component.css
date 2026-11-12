@@ -1,0 +1,12 @@
+/* Height matches SUMMARY_ROW_PX (summary-row.util), which the widgets' layout plans budget with. */
+:host {
+  display: block;
+  flex: none;
+  height: 140px;
+  min-width: 0;
+}
+.sr {
+  display: grid;
+  gap: 14px;
+  height: 100%;
+}

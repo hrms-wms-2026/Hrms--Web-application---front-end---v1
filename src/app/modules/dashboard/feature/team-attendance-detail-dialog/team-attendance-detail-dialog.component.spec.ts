@@ -25,6 +25,11 @@ function summary(over: Partial<TeamAttendanceSummaryResponse> = {}): TeamAttenda
     periodCounts: { present: 40, late: 3, absent: 2, onLeave: 1, pending: 0 }, periodRate: 95.6, previousRate: 90, deltaPp: 5.6,
     trend: dates('2026-10-26', 7).map((date) => ({ date, ...zero, present: 2, rate: 100 })), todayPreview: [],
     departments: [{ id: 'd1', name: 'Development' }], teamSize: 2, calculatedAtUtc: '2026-10-28T10:00:00Z', isProvisional: true,
+    departmentRates: [
+      { id: 'd1', name: 'Development', people: 2, attended: 18, expected: 19, rate: 94.7 },
+      { id: 'd2', name: 'Sales', people: 3, attended: 12, expected: 15, rate: 80 },
+      { id: null, name: 'No department', people: 1, attended: 0, expected: 0, rate: null }
+    ],
     ...over
   };
 }
@@ -126,6 +131,17 @@ describe('TeamAttendanceDetailDialogComponent', () => {
     expect(tiles[0]).toContain('2');
     expect(tiles[1]).toContain('40');
     expect(tiles[1]).toContain('days');
+  });
+
+  it('compares departments with rate bars, worst rate first, instead of repeating the tiles in a donut', () => {
+    const el = setup();
+    const doc = el.ownerDocument;
+    const depts = [...doc.querySelectorAll('[data-testid="tad-dept"]')] as HTMLElement[];
+    expect(depts.map((d) => d.querySelector('.tad-dept-name')!.textContent!.trim())).toEqual(['Sales', 'Development', 'No department']);
+    expect([...doc.querySelectorAll('[data-testid="tad-dept-rate"]')].map((r) => r.textContent!.trim())).toEqual(['80%', '94.7%', '—']);
+    expect((depts[0].querySelector('.tad-dept-bar') as HTMLElement).style.width).toBe('80%');
+    expect(depts[1].title).toContain('18 of 19 expected days attended');
+    expect(doc.querySelector('.tad-donut')).toBeNull();
   });
 
   it('searches after a pause', () => {

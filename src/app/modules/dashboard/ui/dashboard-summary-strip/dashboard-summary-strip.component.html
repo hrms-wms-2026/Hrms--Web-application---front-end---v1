@@ -1,0 +1,11 @@
+<div class="ss" data-testid="summary-strip" [attr.data-cards]="plan().cards">
+  <app-dashboard-donut class="ss-donut" data-testid="summary-strip-donut" [size]="donutPx" [slices]="slices()" [ariaLabel]="donutLabel()" [(active)]="active">
+    <ng-content />
+  </app-dashboard-donut>
+  @if (plan().key) {
+    <app-donut-key class="ss-key" variant="list" [showValue]="true" [ariaLabel]="donutLabel()" [slices]="keySlices()" [(active)]="active" />
+  }
+  @for (card of shown(); track card.id; let i = $index) {
+    <app-dashboard-summary-card class="ss-card" [card]="card" [index]="i" (opened)="cardOpened.emit($event)" (retried)="cardRetried.emit(card.id)" />
+  }
+</div>

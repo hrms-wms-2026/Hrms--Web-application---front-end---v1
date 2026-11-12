@@ -3,8 +3,19 @@ import {
   WORKLOAD_HIGH,
   WORKLOAD_MEDIUM,
   breakSegments,
+  LOAD_COLORS,
+  capacityMinutes,
   completionText,
+  isNotPlanned,
+  isOnLeave,
+  isOverCapacity,
   itemDonut,
+  loadColor,
+  loadPercent,
+  loadText,
+  scheduleFlagChips,
+  scheduleFlags,
+  totalItems,
   timelineLabel,
   toPlannedActualRows,
   toWeekChartDays,
@@ -17,6 +28,7 @@ import {
   taskStatusDonut,
   timelineSpan,
 } from './team-schedule-format.util';
+import { TeamScheduleItem } from '../models/team-schedule.model';
 import { at, scheduleMember, scheduleResponse, weekResponse } from './team-schedule.testing';
 
 describe("Today's team schedule format", () => {
@@ -36,32 +48,58 @@ describe("Today's team schedule format", () => {
     expect(arcs[2].length).toBeCloseTo(50);
   });
 
-  it('a no-plan worker reads "No plan", never 0%', () => {
-    expect(completionText(scheduleMember({ noPlanMinutes: 120, clockedMinutes: 120 }))).toBe(
-      'No plan',
-    );
-    expect(
-      completionText(
-        scheduleMember({
-          plannedTaskMinutes: 60,
-          itemCompletionPercent: null,
-          items: [
-            {
-              kind: 'task',
-              taskId: 't',
-              title: 'A',
-              start: at(15),
-              end: at(16),
-              status: 'pending',
-              isPrivate: false,
-            },
-          ],
-        }),
-      ),
-    ).toBe('—');
-    expect(
-      completionText(scheduleMember({ plannedTaskMinutes: 60, itemCompletionPercent: 50 })),
-    ).toBe('50%');
+  it('done is the items-done percent; a no-plan worker reads "—", never 0%', () => {
+    expect(completionText(scheduleMember({ noPlanMinutes: 120, clockedMinutes: 120 }))).toBe('—');
+    const task: TeamScheduleItem = {
+      kind: 'task', taskId: 't', title: 'A', start: at(15), end: at(16), status: 'pending', isPrivate: false,
+    };
+    expect(completionText(scheduleMember({ plannedTaskMinutes: 60, itemCompletionPercent: 33, items: [task] }))).toBe('33%');
+    expect(completionText(scheduleMember({ plannedTaskMinutes: 60, itemCompletionPercent: null, items: [task] }))).toBe('—');
+  });
+
+  it('load is planned task + meeting minutes against the work window', () => {
+    const vithya = scheduleMember({ plannedTaskMinutes: 300, plannedMeetingMinutes: 60, expectedMinutes: 480 });
+    expect(loadText(vithya)).toBe('6h / 8h');
+    expect(loadPercent(vithya)).toBe(75);
+    expect(loadColor(vithya)).toBe(LOAD_COLORS.under);
+    expect(isOverCapacity(vithya)).toBe(false);
+
+    const nadesh = scheduleMember({ plannedTaskMinutes: 465, plannedMeetingMinutes: 60, expectedMinutes: 480 });
+    expect(loadText(nadesh)).toBe('8h 45m / 8h');
+    expect(loadPercent(nadesh)).toBe(100);
+    expect(isOverCapacity(nadesh)).toBe(true);
+    expect(loadColor(nadesh)).toBe(LOAD_COLORS.over);
+
+    const kiru = scheduleMember({ plannedTaskMinutes: 450, plannedMeetingMinutes: 30, expectedMinutes: 480 });
+    expect(loadColor(kiru)).toBe(LOAD_COLORS.full);
+
+    // Without a work window: just the load, no bar, never over capacity.
+    const unknown = scheduleMember({ plannedTaskMinutes: 600, expectedMinutes: null });
+    expect(loadText(unknown)).toBe('10h');
+    expect(loadPercent(unknown)).toBeNull();
+    expect(capacityMinutes(unknown)).toBeNull();
+    expect(isOverCapacity(unknown)).toBe(false);
+  });
+
+  it('flags count over capacity, not planned and on leave; leave beats not planned', () => {
+    const task: TeamScheduleItem = {
+      kind: 'task', taskId: 't', title: 'A', start: at(9), end: at(17), status: 'pending', isPrivate: false,
+    };
+    const over = scheduleMember({ plannedTaskMinutes: 540, expectedMinutes: 480, items: [task] });
+    const idle = scheduleMember({ expectedMinutes: 480, noPlanMinutes: 90 });
+    const away = scheduleMember({ presenceStatus: 'on_leave', notRankedReason: 'on_leave', expectedMinutes: 480 });
+    expect(isNotPlanned(idle)).toBe(true);
+    expect(isOnLeave(away)).toBe(true);
+    expect(isNotPlanned(away)).toBe(false);
+    expect(loadText(away)).toBe('0h / 0h');
+
+    const flags = scheduleFlags([over, idle, away]);
+    expect(flags).toEqual({ overCapacity: 1, notPlanned: 1, onLeave: 1 });
+    expect(scheduleFlagChips(flags).map((c) => c.text)).toEqual(['1 over capacity', '1 not planned', '1 on leave']);
+  });
+
+  it('total items is planned tasks plus meetings', () => {
+    expect(totalItems({ ...scheduleResponse([]).summary, tasksPlanned: 8, meetings: 3 })).toBe(11);
   });
 
   it('a missing percentage is "—" and every not-ranked reason has words', () => {

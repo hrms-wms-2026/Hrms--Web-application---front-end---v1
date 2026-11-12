@@ -11,7 +11,7 @@ function summary(over: Partial<TeamAttendanceSummaryResponse> = {}): TeamAttenda
     mode: 'week', rangeStart: '2026-10-26', rangeEnd: '2026-11-01', timezone: 'UTC', today: '2026-10-28',
     eligibleToday: 0, todayCounts: zero, todayRate: null, periodCounts: zero, periodRate: null, previousRate: null,
     deltaPp: null, trend: [], todayPreview: [], departments: [], teamSize: 0, calculatedAtUtc: '2026-10-28T10:00:00Z',
-    isProvisional: true, ...over
+    isProvisional: true, departmentRates: [], ...over
   };
 }
 

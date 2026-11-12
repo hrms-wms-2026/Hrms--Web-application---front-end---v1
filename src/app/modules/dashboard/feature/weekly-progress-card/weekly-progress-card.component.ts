@@ -10,7 +10,8 @@ import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-c
 import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
 import { WeekProgress, WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
 import { DailyWorkChartComponent } from '../../ui/daily-work-chart/daily-work-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
 import { injectHostSize } from '../../utils/host-size.util';
 import { progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
 import {
@@ -44,6 +45,7 @@ import { WeeklyWorkProgressDetailDialogComponent } from '../weekly-work-progress
   standalone: true,
   imports: [
     NgTemplateOutlet,
+    DashboardDonutComponent,
     IconComponent,
     WidgetCardComponent,
     PopoutHeaderActionsComponent,
@@ -90,7 +92,8 @@ export class WeeklyProgressCardComponent implements OnInit {
     );
   });
 
-  protected readonly donutPx = DASHBOARD_DONUT_PX;
+  /** Full size, or the mini size in the 2x2 view. */
+  protected readonly donutPx = computed(() => dashboardDonutPx(this.view()));
   protected readonly statusLabels = WEEKLY_STATUS_LABELS;
   protected readonly formatMinutes = formatWeekHours;
 
@@ -136,6 +139,24 @@ export class WeeklyProgressCardComponent implements OnInit {
 
   /** Arc length of the progress ring out of 100; a week at or past its target closes the ring. */
   protected readonly ring = computed(() => Math.min(100, Math.max(0, this.shown()?.thisWeek.progressPercent ?? 0)));
+
+  /** The ring as the shared donut's two slices: worked, then what is left of the week's expected hours. */
+  protected readonly ringSlices = computed<DashboardDonutSlice[]>(() => {
+    const week = this.shown()?.thisWeek;
+    if (!week) return [];
+    const ring = this.ring();
+    const left = Math.max(0, week.expectedMinutes - week.workedMinutes);
+    return [
+      { key: 'worked', label: 'Worked', value: week.workedMinutes, valueText: formatWeekHours(week.workedMinutes), percentText: `${Math.round(ring)}%`, color: 'var(--color-cat-blue)' },
+      { key: 'left', label: 'Left', value: left, valueText: formatWeekHours(left), percentText: `${Math.round(100 - ring)}%`, color: 'transparent' }
+    ];
+  });
+  protected readonly ringLabel = computed(() => {
+    const week = this.shown()?.thisWeek;
+    return week ? `This week: ${formatWeekHours(week.workedMinutes)} worked of ${formatWeekHours(week.expectedMinutes)} expected` : '';
+  });
+  /** The slice the ring lights while hovered. */
+  protected readonly hovered = signal<string | null>(null);
 
   protected readonly weekSelectShown = computed(() => {
     const view = this.view();

@@ -1,7 +1,7 @@
 /* The app-modal panel is rendered inside this component's view; the doubled class outranks app-modal's size rule. */
 :host ::ng-deep .team-schedule-detail.team-schedule-detail {
   width: 100%;
-  max-width: min(1280px, 100%);
+  max-width: min(1440px, 96vw);
   max-height: 92vh;
   padding: 0;
   --popup-pad: 0px;
@@ -34,7 +34,7 @@
 }
 .tsd-head__row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
@@ -53,21 +53,45 @@
   font-size: 12px;
   color: var(--color-text-secondary);
 }
-.tsd-head__controls {
+/* Second header row: range + Day/Week on the left, filters + planner link on the right. */
+.tsd-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+.tsd-toolbar__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+/* "Open team planner" is a filled button, only in this popup (the card no longer links to the planner). */
+.tsd-toolbar__group .tsd-open {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  border-radius: 8px;
+  background: var(--color-accent-solid);
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--color-text-on-solid);
+}
+.tsd-toolbar__group .tsd-open:hover {
+  background: var(--color-accent-solid-hover);
+  text-decoration: none;
 }
 
 @media (max-width: 767px) {
-  .tsd-head__row {
-    flex-direction: column;
-  }
-  .tsd-head__controls {
+  .tsd-toolbar__group {
     width: 100%;
-    justify-content: space-between;
+  }
+  .tsd-search {
+    flex: 1 1 140px;
   }
 }
 
@@ -149,9 +173,14 @@
   min-width: 0;
   flex-direction: column;
   gap: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
+}
+
+/* Sections are split by a line, not boxed (like the dashboard cards). */
+.tsd-main > .tsd-panel + .tsd-panel,
+.tsd-main > .tsd-panel + .tsd-stack,
+.tsd > .tsd-panel + .tsd-panel {
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
 }
 
 .tsd-title {
@@ -195,8 +224,8 @@
 
 .tsd-table {
   width: 100%;
-  /* # 32 + employee 176 + workload 88 + planned/actual 2 x 80 + completion 160 + the schedule's 320 minimum. */
-  min-width: 940px;
+  /* # 32 + employee 208 + load 144 + planned/actual/done 3 x 80 + plan 96 + the schedule's 320 minimum. */
+  min-width: 1040px;
   border-collapse: collapse;
   font-size: 0.8125rem;
 }
@@ -210,6 +239,7 @@
 }
 .tsd-table thead th {
   height: 28px;
+  white-space: nowrap;
   font-size: 0.6875rem;
   font-weight: 600;
   color: var(--color-text-secondary);
@@ -219,11 +249,19 @@
   position: sticky;
   left: 0;
   z-index: 1;
-  width: 11rem;
+  width: 13rem;
+  max-width: 13rem;
   background: var(--color-surface);
+}
+.tsd-sticky .tsd-person > .min-w-0 {
+  overflow: hidden;
+}
+.tsd-sticky .tsd-name {
+  display: block;
 }
 .tsd-num {
   width: 5rem;
+  white-space: nowrap;
   text-align: right !important;
   font-variant-numeric: tabular-nums;
 }
@@ -235,7 +273,16 @@
   min-width: 320px;
 }
 .tsd-workload-col {
-  width: 5.5rem;
+  width: 9rem;
+  min-width: 9rem;
+}
+td.tsd-workload-col {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+.tsd-plan-col {
+  width: 6rem;
+  white-space: nowrap;
 }
 .tsd-axis {
   position: relative;
@@ -282,7 +329,7 @@
   opacity: 0.3;
 }
 .tsd-unscheduled {
-  background: repeating-linear-gradient(135deg, #ef4444 0 3px, #fecaca 3px 7px);
+  background: repeating-linear-gradient(135deg, #ef4444 0 3px, var(--color-tint-red-line) 3px 7px);
 }
 
 .tsd-person {
@@ -299,11 +346,6 @@
   text-overflow: ellipsis;
 }
 
-.tsd-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.75rem;
-}
 .tsd-stack {
   display: flex;
   min-width: 0;
@@ -311,19 +353,11 @@
   gap: 0.75rem;
 }
 
-@media (max-width: 767px) {
-  .tsd-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.tsd-ranking,
 .tsd-list {
   display: flex;
   flex-direction: column;
 }
 
-.tsd-rank-row,
 .tsd-list li {
   display: flex;
   min-height: 40px;
@@ -333,7 +367,6 @@
   border-bottom: 1px solid var(--color-border);
   font-size: 0.8125rem;
 }
-.tsd-rank-row:last-child,
 .tsd-list li:last-child {
   border-bottom: 0;
 }
@@ -409,15 +442,46 @@
 .tsd-search {
   width: 180px;
 }
+/* The schedule table takes the full popup width; the four side panels sit in one row under it. */
 .tsd-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
   gap: 0.75rem;
-  align-items: start;
 }
-@media (max-width: 1023.98px) {
-  .tsd-main {
+.tsd-main > .tsd-stack {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 1rem;
+}
+/* The side panels: a line between neighbours, and between rows once they wrap. */
+.tsd-stack > .tsd-panel:not(:first-child) {
+  border-left: 1px solid var(--color-border);
+  padding-left: 1rem;
+}
+@media (max-width: 1099.98px) {
+  .tsd-main > .tsd-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tsd-stack > .tsd-panel:nth-child(odd) {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .tsd-stack > .tsd-panel:nth-child(n + 3) {
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
+  }
+}
+@media (max-width: 639.98px) {
+  .tsd-main > .tsd-stack {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .tsd-stack > .tsd-panel:not(:first-child) {
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
   }
 }
 .tsd-hash {
@@ -440,96 +504,115 @@
   border-radius: 9999px;
   background: var(--tone, var(--color-text-muted));
 }
-.tsd-workload {
-  font-size: 11px;
+/* Load / capacity: "6h / 8h" over its bar, or a Not planned / On leave badge (2026-11-05 merged-widget design). */
+.tsd-load-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.tsd-load {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tsd-load--over {
+  color: var(--color-tint-amber-text);
   font-weight: 600;
 }
-.tsd-workload[data-level='High'] {
-  color: var(--color-tint-red-text);
-}
-.tsd-workload[data-level='Medium'] {
-  color: var(--color-tint-amber-text);
-}
-.tsd-workload[data-level='Low'] {
-  color: rgb(21 128 61);
-}
-.tsd-completion-col {
-  width: 160px;
-}
-.tsd-bar-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.tsd-bar {
+.tsd-load-track {
   display: block;
-  height: 6px;
-  min-width: 48px;
-  flex: 1 1 auto;
+  height: 5px;
   overflow: hidden;
   border-radius: 9999px;
-  background: var(--color-border);
+  background: var(--color-surface-secondary);
 }
-.tsd-bar span {
+.tsd-load-track span {
   display: block;
   height: 100%;
   border-radius: 9999px;
-  background: #10b981;
+}
+.tsd-badge--leave {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning-text);
+}
+.tsd-load-cell .tsd-badge {
+  align-self: flex-start;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.tsd-leave {
+  position: absolute;
+  inset: 2px;
+  border-radius: 0.25rem;
+  background: repeating-linear-gradient(135deg, var(--color-warning-subtle) 0 8px, var(--color-tint-amber-bg) 8px 16px);
+}
+.tsd-done {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.tsd-open,
+.tsd-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-tint-blue-strong);
+  white-space: nowrap;
+}
+.tsd-open:hover,
+.tsd-link:hover {
+  text-decoration: underline;
 }
 .tsd-pct {
-  width: 52px;
+  width: 76px;
   flex: none;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 .tsd-summary {
   display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.tsd-donut {
-  position: relative;
-  flex: none;
-}
-.tsd-donut-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.1;
 }
-.tsd-donut-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-.tsd-legend {
+.tsd-summary-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-}
-.tsd-legend li {
-  display: flex;
+  height: 28px;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--color-text-secondary);
 }
-.tsd-legend-label {
-  flex: 1 1 auto;
-}
-.tsd-legend-count {
+.tsd-summary-row dd {
   font-weight: 600;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
 }
-.tsd-top-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 80px 52px;
-  align-items: center;
+.tsd-summary-row dd.tsd-summary--alert {
+  color: var(--color-tint-amber-text);
+}
+.tsd-list li.tsd-side-item {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding: 4px 0;
+}
+.tsd-alert {
+  font-size: 12px;
+  color: var(--color-tint-amber-text);
+}
+.tsd-list li.tsd-top-row {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 4px;
+  border-bottom: 0;
+}
+.tsd-top-line {
+  display: flex;
+  justify-content: space-between;
   gap: 8px;
 }
-.tsd-top-row .tsd-bar span {
-  background: #f59e0b;
+.tsd-top-line .tsd-pct {
+  width: auto;
 }
 .tsd-week-panel {
   height: 300px;
@@ -537,4 +620,155 @@
 .tsd-week-chart {
   min-height: 0;
   flex: 1 1 auto;
+}
+
+.tsd-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.tsd-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Merged ranking + planned vs actual table (2026-11-05). */
+.tsd-rank-table {
+  min-width: 1080px;
+}
+.tsd-rank-table .tsd-hash {
+  width: 56px;
+}
+.tsd-rank-name {
+  width: 17rem;
+  min-width: 17rem;
+  max-width: 17rem;
+}
+.tsd-score-cell {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tsd-diff-col {
+  width: 7rem;
+}
+.tsd-diff {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.tsd-diff--behind {
+  color: var(--color-tint-amber-text);
+}
+.tsd-diff--ahead {
+  color: var(--color-tint-green-strong);
+}
+/* Planned vs actual double bar (the old day chart's look): light planned bar over the split actual bar. */
+/* Wide enough for "84.5%" and an "Unscheduled 1h 36m" badge on one line, so every row keeps the same height. */
+.tsd-score-col {
+  width: 15rem;
+  min-width: 15rem;
+}
+.tsd-score-cell .tsd-score {
+  min-width: 3.25rem;
+}
+.tsd-score-cell .tsd-badge {
+  line-height: 18px;
+  white-space: nowrap;
+}
+.tsd-pa-col {
+  width: 100%;
+  min-width: 220px;
+}
+.tsd-pa {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.tsd-pa-planned {
+  display: block;
+  height: 7px;
+  border-radius: 9999px;
+}
+.tsd-pa-actual {
+  display: flex;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+.tsd-pa-actual span {
+  height: 100%;
+  flex: none;
+}
+.tsd-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.tsd-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tsd-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+/* The Team schedule table's colour guide sits between the title and Export CSV. */
+.tsd-schedule-legend {
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+/* Swatches drawn like the timeline's own strips. */
+.tsd-legend .tsd-key-unscheduled {
+  background: repeating-linear-gradient(135deg, #ef4444 0 2px, var(--color-tint-red-line) 2px 4px);
+}
+.tsd-legend .tsd-key-leave {
+  background: repeating-linear-gradient(135deg, var(--color-warning-subtle) 0 3px, var(--color-tint-amber-bg) 3px 6px);
+  box-shadow: inset 0 0 0 1px var(--color-warning-subtle);
+}
+.tsd-legend .tsd-key-cancelled {
+  opacity: 0.3;
+}
+.tsd-legend .tsd-key-now {
+  width: 2px;
+  border-radius: 0;
+  background: var(--color-danger);
+}
+
+/* Current time: a red line through each row and a time badge on the axis (today only). */
+.tsd-now {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  z-index: 1;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--color-danger);
+  pointer-events: none;
+}
+.tsd-now-badge {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: var(--color-danger);
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text-on-solid);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }

@@ -22,6 +22,17 @@ export const TEAM_ATTENDANCE_LABELS: Record<TeamAttendanceBucket, string> = {
 };
 
 /** "26 Oct – 1 Nov" for a week, "October 2026" for a month; dates are read without a time zone. */
+/** Departments worst rate first, so problem departments come first; departments with no rate go last, then by name.
+ * The popup's department bars and the summary card use this one order. */
+export function departmentsWorstFirst<T extends { readonly name: string; readonly rate: number | null }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => {
+    if (a.rate === null || b.rate === null) {
+      return a.rate === b.rate ? a.name.localeCompare(b.name) : a.rate === null ? 1 : -1;
+    }
+    return a.rate - b.rate || a.name.localeCompare(b.name);
+  });
+}
+
 export function teamAttendanceRangeLabel(mode: TeamAttendancePeriodMode, start: string, end: string): string {
   const [sy, sm, sd] = start.split('-').map(Number);
   const [, em, ed] = end.split('-').map(Number);
