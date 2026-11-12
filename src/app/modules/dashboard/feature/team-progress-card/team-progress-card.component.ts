@@ -432,8 +432,8 @@ export class TeamProgressCardComponent implements OnInit {
 
   protected readonly emptyMessage = computed(() =>
     (this.store.data()?.projects.length ?? 0) === 0
-      ? "You don't lead any active modules"
-      : 'No hours allocated or tasks in the modules you lead'
+      ? "You don't lead any active milestones"
+      : 'No hours allocated or tasks in the milestones you lead'
   );
 
   protected readonly refreshing = computed(() => this.store.loading() && !!this.store.data());
@@ -567,7 +567,7 @@ export class TeamProgressCardComponent implements OnInit {
     return [
       completed,
       { key: 'tasks', value: formatHourValue(data.hours.taskCount), label: 'Total tasks', tone: 'gray' },
-      { key: 'at-risk', value: String(atRisk), label: atRisk === 1 ? 'Module at risk' : 'Modules at risk', tone: atRisk > 0 ? 'rose' : 'gray' },
+      { key: 'at-risk', value: String(atRisk), label: atRisk === 1 ? 'Milestone at risk' : 'Milestones at risk', tone: atRisk > 0 ? 'rose' : 'gray' },
       { key: 'untasked', value: this.untaskedText(), label: 'Not yet tasked', tone: 'amber' }
     ];
   });
@@ -585,7 +585,7 @@ export class TeamProgressCardComponent implements OnInit {
     return [
       ...tiles,
       this.overdueTile(),
-      { key: 'modules', value: String(modules), label: modules === 1 ? 'Led module' : 'Led modules', tone: 'gray' }
+      { key: 'modules', value: String(modules), label: modules === 1 ? 'Led milestone' : 'Led milestones', tone: 'gray' }
     ];
   });
 
@@ -633,7 +633,7 @@ export class TeamProgressCardComponent implements OnInit {
     const atRisk = data.modulesAtRisk;
     cards.push(
       { key: 'tasks', value: formatHourValue(data.hours.taskCount), label: 'Total tasks', icon: 'clipboard-list', tone: 'gray' },
-      { key: 'at-risk', value: String(atRisk), label: atRisk === 1 ? 'Module at risk' : 'Modules at risk', icon: 'layers', tone: atRisk > 0 ? 'rose' : 'gray' }
+      { key: 'at-risk', value: String(atRisk), label: atRisk === 1 ? 'Milestone at risk' : 'Milestones at risk', icon: 'layers', tone: atRisk > 0 ? 'rose' : 'gray' }
     );
     return cards;
   });

@@ -59,7 +59,7 @@ const DURATION_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'gt3m', label: 'Over 3 months' }
 ];
 const ITEM_TYPE_OPTIONS: readonly WorkDropdownOption[] = [
-  { value: 'objective', label: 'Module' },
+  { value: 'objective', label: 'Milestone' },
   { value: 'sprint', label: 'Sprint' },
   { value: 'task', label: 'Task' }
 ];
@@ -175,7 +175,7 @@ export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
     const sprintOptions = [...new Map(sprints.map((s) => [s.value, s])).values()];
     const people = this.assignableMembers().map((m) => ({ value: m.employeeId, label: m.name }));
     return [
-      { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: modules },
+      { key: 'module', label: 'Milestone', icon: 'module', kind: 'multi', options: modules },
       { key: 'owner', label: 'Owner', icon: 'people', kind: 'multi', options: people },
       { key: 'activeStatus', label: 'Active', icon: 'status', kind: 'multi', options: ACTIVE_STATUS_OPTIONS },
       { key: 'dueDate', label: 'Due date', icon: 'calendar', kind: 'multi', options: DUE_DATE_OPTIONS },
@@ -593,7 +593,7 @@ onExpandLeafRequested(node: MilestoneTreeNode): void {
         // modal is closing right now — use the non-modal-scoped signal instead so the
         // warning is actually visible, and doesn't leak into a later, unrelated dialog.
         this.createAssetWarning.set(
-          `"${event.payload.title}" was created, but ${failedFileCount} file(s) failed to upload — open Module settings on it to retry.`
+          `"${event.payload.title}" was created, but ${failedFileCount} file(s) failed to upload — open Milestone settings on it to retry.`
         );
       }
       await this.loadTree({ force: true });

@@ -285,7 +285,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     { value: 'critical', label: 'Critical' }
   ];
   protected readonly filterFields = computed<FilterFieldConfig[]>(() => [
-    { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
+    { key: 'module', label: 'Milestone', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
     { key: 'sprint', label: 'Sprint', icon: 'sprint', kind: 'single', options: this.sprintOptions(), defaultValues: ['all'] },
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
     { key: 'assignee', label: 'Assignee', icon: 'people', kind: 'multi', options: this.assigneeFilterOptions() },

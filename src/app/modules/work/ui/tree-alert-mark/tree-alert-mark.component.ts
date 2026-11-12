@@ -29,7 +29,7 @@ export class TreeAlertMarkComponent {
   protected readonly muted = computed(() => this.alerts().every((alert) => alert.inAchievedModule));
   protected readonly tooltip = computed(() => {
     const lines = this.alerts().map((alert) => `• ${alert.message}`).join('\n');
-    return this.muted() ? `Achieved module - no action needed\n${lines}` : lines;
+    return this.muted() ? `Achieved milestone - no action needed\n${lines}` : lines;
   });
   protected readonly label = computed(() => `${this.alerts().length} project alert${this.alerts().length === 1 ? '' : 's'}`);
 }

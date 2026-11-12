@@ -161,19 +161,19 @@
   height: 3.5rem;
   justify-content: center;
   gap: 0.5rem;
-  border-color: var(--color-border);
+  border-color: var(--dashboard-kpi-border, var(--color-border));
   border-radius: 0.875rem;
   background: var(--color-surface-secondary);
   font-size: 0.9375rem;
 }
 
 .tsc-chips--tiles .tsc-chip[data-key='overCapacity'] {
-  border-color: var(--color-warning-subtle);
+  border-color: var(--dashboard-kpi-border, var(--color-warning-subtle));
   background: var(--color-tint-amber-bg);
 }
 
 .tsc-chips--tiles .tsc-chip[data-key='onLeave'] {
-  border-color: var(--color-warning-subtle);
+  border-color: var(--dashboard-kpi-border, var(--color-warning-subtle));
   background: var(--color-tint-amber-bg);
 }
 

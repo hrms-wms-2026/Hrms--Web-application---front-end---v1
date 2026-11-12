@@ -1,7 +1,7 @@
 <!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS. -->
 <app-modal
   [open]="open()"
-  title="Module overtime forecast"
+  title="My team milestone overtime forecast"
   size="2xl"
   panelClass="team-module-forecast-detail"
   (closed)="close()"
@@ -9,7 +9,7 @@
   <div class="mfd-head">
     <div class="mfd-head__row">
       <div class="mfd-head__title">
-        <h2>Module overtime forecast</h2>
+        <h2>My team milestone overtime forecast</h2>
         <p>{{ subtitle() }}</p>
       </div>
       <button
@@ -30,7 +30,7 @@
         data-section="summary"
         [tiles]="tiles()"
         [maxColumns]="5"
-        ariaLabel="Module forecast totals"
+        ariaLabel="Milestone forecast totals"
       />
       <ul class="mfd-counts" aria-label="Status counts" data-testid="mfd-counts">
         @for (c of statusCounts(); track c.key) {
@@ -90,7 +90,6 @@
             variant="orders"
             [compactHeadline]="false"
             [limit]="12"
-            [overloadCounts]="overloadCounts()"
             [projects]="data.projects"
           />
         </section>
@@ -104,7 +103,7 @@
           <div class="mfd-table-actions">
             <app-input
               class="mfd-search"
-              placeholder="Search module or project…"
+              placeholder="Search milestone or project…"
               [value]="search()"
               (valueChange)="onSearch($event)"
             />
@@ -170,7 +169,7 @@
                 <th
                   class="mfd-num"
                   scope="col"
-                  title="The module team's task rate over the last 4 weeks, and the rate the module needs"
+                  title="The milestone team's task rate over the last 4 weeks, and the rate the milestone needs"
                   [attr.aria-sort]="ariaSort('requiredRate')"
                 >
                   <button
@@ -307,7 +306,7 @@
               } @empty {
                 <tr>
                   <td class="mfd-muted mfd-pad" colspan="10">
-                    {{ store.tableLoading() ? 'Loading modules…' : 'No modules match.' }}
+                    {{ store.tableLoading() ? 'Loading milestones…' : 'No milestones match.' }}
                   </td>
                 </tr>
               }

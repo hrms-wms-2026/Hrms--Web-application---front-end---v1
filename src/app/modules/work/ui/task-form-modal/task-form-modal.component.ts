@@ -92,7 +92,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                     class="tfm-header-module-btn"
                     data-testid="header-module-button"
                     (click)="togglePopover('headerModule', $event)"
-                    [title]="'Module: ' + selectedModuleTitle()"
+                    [title]="'Milestone: ' + selectedModuleTitle()"
                   >
                     <svg class="tfm-subtask-module-cube-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -102,13 +102,13 @@ const TASK_CATEGORY_MEETING = 'meeting';
                     <span data-testid="header-module-name">{{ selectedModuleTitle() }}</span>
                   </button>
                   @if (activePopover() === 'headerModule') {
-                    <div class="tfm-popover" role="dialog" aria-label="Select module" appStopClickPropagation>
+                    <div class="tfm-popover" role="dialog" aria-label="Select milestone" appStopClickPropagation>
                       @if (modules().length > 4) {
                         <div class="tfm-popover__search-box">
                           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                           <input
                             type="text"
-                            placeholder="Search modules..."
+                            placeholder="Search milestones..."
                             [value]="moduleSearchQuery()"
                             (input)="moduleSearchQuery.set($any($event.target).value)"
                           />
@@ -488,7 +488,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                             <input
                               type="text"
-                              placeholder="Search modules..."
+                              placeholder="Search milestones..."
                               [value]="moduleSearchQuery()"
                               (input)="moduleSearchQuery.set($any($event.target).value)"
                             />
@@ -1549,7 +1549,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                       class="tfm-subtask-icon-btn"
                       data-testid="subtask-add-module-button"
                       (click)="toggleSubtaskPopover('new', 'module', $event)"
-                      [title]="newSubtaskModuleId() ? ('Module: ' + getSubtaskModuleName(newSubtaskModuleId())) : 'Module'"
+                      [title]="newSubtaskModuleId() ? ('Milestone: ' + getSubtaskModuleName(newSubtaskModuleId())) : 'Milestone'"
                       [class.tfm-subtask-icon-btn--active]="newSubtaskModuleId()"
                     >
                       <svg class="tfm-subtask-module-cube-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1559,13 +1559,13 @@ const TASK_CATEGORY_MEETING = 'meeting';
                       </svg>
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'module') {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Choose module" appStopClickPropagation>
+                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Choose milestone" appStopClickPropagation>
                         @if (modules().length > 4) {
                           <div class="tfm-popover__search-box">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                             <input
                               type="text"
-                              placeholder="Search modules..."
+                              placeholder="Search milestones..."
                               [value]="moduleSearchQuery()"
                               (input)="moduleSearchQuery.set($any($event.target).value)"
                             />
@@ -1590,7 +1590,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                               }
                             </button>
                           } @empty {
-                            <p style="margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12px; text-align: center;">No matching modules</p>
+                            <p style="margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12px; text-align: center;">No matching milestones</p>
                           }
                         </div>
                       </div>
@@ -2585,8 +2585,8 @@ export class TaskFormModalComponent {
 
   selectedModuleTitle = computed(() => {
     const id = this.selectedObjectiveId();
-    if (!id) return 'Select module';
-    return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Select module';
+    if (!id) return 'Select milestone';
+    return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Select milestone';
   });
 
   selectedSprintTitle = computed(() => {
@@ -3657,7 +3657,7 @@ export class TaskFormModalComponent {
   async submitCreateWithAction(action: 'create_and_close' | 'create_and_add_another' | 'create_and_open' = 'create_and_close'): Promise<void> {
     const errs: Record<string, string> = {};
     if (!this.title().trim()) errs['title'] = 'Title is required.';
-    if (!this.selectedObjectiveId()) errs['objectiveId'] = 'Module is required.';
+    if (!this.selectedObjectiveId()) errs['objectiveId'] = 'Milestone is required.';
     if (!this.categoryId()) errs['categoryId'] = 'Category is required.';
     if (!this.priority()) errs['priority'] = 'Priority is required.';
     this.errors.set(errs);

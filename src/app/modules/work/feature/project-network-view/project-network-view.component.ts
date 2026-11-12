@@ -15,8 +15,8 @@ const EMPTY_GRAPH: ProjectWorkGraphDto = { nodes: [], links: [], hiddenTaskCount
 
 /** No status rows: a circle's fill already says not started / started / completed. */
 const PROJECT_LEGEND: readonly ExplorerLegendItem[] = [
-  { key: 'default-module', label: 'Default module' },
-  { key: 'module', label: 'Module' },
+  { key: 'default-module', label: 'Default milestone' },
+  { key: 'module', label: 'Milestone' },
   { key: 'sprint', label: 'Sprint' },
   { key: 'task', label: 'Task' },
   { key: 'done', label: 'Completed' },

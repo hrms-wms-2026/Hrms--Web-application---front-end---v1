@@ -1,7 +1,7 @@
 <!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS. -->
 <app-modal
   [open]="open()"
-  title="Employee overtime forecast"
+  title="My team employee overtime forecast"
   size="2xl"
   panelClass="team-employee-forecast-detail"
   (closed)="close()"
@@ -9,7 +9,7 @@
   <div class="efd-head">
     <div class="efd-head__row">
       <div class="efd-head__title">
-        <h2>Employee overtime forecast</h2>
+        <h2>My team employee overtime forecast</h2>
         <p>{{ subtitle() }}</p>
       </div>
       <button
@@ -209,7 +209,7 @@
                         [attr.aria-expanded]="expanded().has(e.employeeId)"
                         [attr.aria-label]="
                           (expanded().has(e.employeeId) ? 'Hide' : 'Show') +
-                          ' the modules of ' +
+                          ' the milestones of ' +
                           e.name
                         "
                         (click)="toggle(e.employeeId)"
@@ -263,11 +263,11 @@
                 @if (expanded().has(e.employeeId)) {
                   <tr class="efd-sub-row" data-testid="efd-modules">
                     <td colspan="8">
-                      <p class="efd-sub-title">Modules {{ e.name }} is connected to</p>
+                      <p class="efd-sub-title">Milestones {{ e.name }} is connected to</p>
                       <table class="efd-sub">
                         <thead>
                           <tr>
-                            <th scope="col" class="efd-left">Module</th>
+                            <th scope="col" class="efd-left">Milestone</th>
                             <th scope="col" class="efd-left">Project</th>
                             <th scope="col">Deadline</th>
                             <th scope="col" class="efd-num">Remaining</th>

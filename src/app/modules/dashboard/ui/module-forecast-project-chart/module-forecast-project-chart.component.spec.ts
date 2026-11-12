@@ -51,16 +51,27 @@ describe('ModuleForecastProjectChartComponent', () => {
     expect(el.querySelector('.bc-col--alert, [data-testid=bar-chart-alert]')).toBeNull();
   });
 
-  it('marks only projects with modules in overload, with a small badge', () => {
+  it('draws no badges or red frames on the bars', () => {
     const fixture = TestBed.createComponent(ModuleForecastProjectChartComponent);
     fixture.componentRef.setInput('projects', moduleForecastResponse().projects);
-    fixture.componentRef.setInput('overloadCounts', { p2: 1 });
     fixture.detectChanges();
-    const badges = [
-      ...(fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid=bar-chart-badge]'),
-    ];
-    expect(badges.map((b) => b.textContent?.trim())).toEqual(['⚠ 1']);
-    expect(badges[0].getAttribute('title')).toBe('1 module in overload');
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid=bar-chart-badge]')).toBeNull();
+    expect(el.querySelector('.bc-col--alert')).toBeNull();
+  });
+
+  it('a narrow chart drops the axis and shortens the dash legend to one line', () => {
+    const fixture = TestBed.createComponent(ModuleForecastProjectChartComponent);
+    fixture.componentRef.setInput('projects', moduleForecastResponse().projects);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid=bar-chart-axis]')).not.toBeNull();
+    expect(el.textContent).toContain('Capacity at 90%');
+    fixture.componentRef.setInput('narrow', true);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid=bar-chart-axis]')).toBeNull();
+    expect(el.textContent).toContain('90% cap');
+    expect(el.textContent).not.toContain('Capacity at');
   });
 
   it('a narrow card shows the top projects with readable labels and "+N more"', () => {
@@ -96,5 +107,8 @@ describe('ModuleForecastProjectChartComponent', () => {
     expect(chartFit(470)).toEqual({ bars: 6, labelChars: 10 });
     expect(chartFit(2000).bars).toBe(8);
     expect(chartFit(80).bars).toBe(2);
+    // Without the axis the plot gets the whole body.
+    expect(chartFit(230, 64, 8, 0).bars).toBe(3);
+    expect(chartFit(230).bars).toBe(2);
   });
 });

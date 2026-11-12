@@ -16,8 +16,8 @@ const REQUEST_TYPE_META: Record<string, InboxTypeMeta> = {
   task_update: { label: 'Task Update', tone: 'accent', icon: 'task' },
   task_deletion: { label: 'Task Deletion', tone: 'neutral', icon: 'trash' },
   allocation: { label: 'Allocation', tone: 'accent', icon: 'clock' },
-  module_update: { label: 'Module Update', tone: 'accent', icon: 'module' },
-  invitation: { label: 'Module Invitation', tone: 'accent', icon: 'user-plus' },
+  module_update: { label: 'Milestone Update', tone: 'accent', icon: 'module' },
+  invitation: { label: 'Milestone Invitation', tone: 'accent', icon: 'user-plus' },
   sprint: { label: 'Sprint', tone: 'neutral', icon: 'sprint' },
   status_template: { label: 'Status Template', tone: 'neutral', icon: 'status' },
   other: { label: 'Request', tone: 'neutral', icon: 'task' }
@@ -38,24 +38,24 @@ function requestTypeKey(actionType: string): string {
 const ACTION_TITLES: Record<string, string> = {
   'task.create': 'Add new task', 'task.edit': 'Update task details', 'task.delete': 'Delete task',
   'task.status_change': 'Change task status',
-  'module.edit': 'Change module details', 'module.delete': 'Delete module', 'module.transfer': 'Transfer module owner',
-  'module.achieve': 'Achieve module', 'module.unachieve': 'Reopen module', 'module.allocation_extend': 'Change allocated hours',
-  'module.member_add': 'Add module member', 'module.member_remove': 'Remove module member',
-  'module.invitation': 'Add member to module',
+  'module.edit': 'Change milestone details', 'module.delete': 'Delete milestone', 'module.transfer': 'Transfer milestone owner',
+  'module.achieve': 'Achieve milestone', 'module.unachieve': 'Reopen milestone', 'module.allocation_extend': 'Change allocated hours',
+  'module.member_add': 'Add milestone member', 'module.member_remove': 'Remove milestone member',
+  'module.invitation': 'Add member to milestone',
   'sprint.create': 'Create sprint', 'sprint.edit': 'Update sprint', 'sprint.start': 'Start sprint',
   'sprint.complete': 'Complete sprint', 'sprint.achieve': 'Achieve sprint', 'sprint.delete': 'Delete sprint',
   'project.status_template_change': 'Change task statuses'
 };
 
 const ALERT_TITLES: Record<string, string> = {
-  'monitor.module_over_capacity': 'Module over capacity',
-  'monitor.module_capacity_shortfall': 'Module cannot finish in time',
+  'monitor.module_over_capacity': 'Milestone over capacity',
+  'monitor.module_capacity_shortfall': 'Milestone cannot finish in time',
   'monitor.employee_deadline_overload': 'Assignee overloaded before the deadline',
   'monitor.task_clocked_over_estimate': 'Clocked hours exceed the estimate',
   'monitor.module_clocked_over_allocated': 'Clocked hours exceed the allocation',
   'monitor.sprint_overdue': 'Sprint past its end date',
   'monitor.task_overdue': 'Task past its due date',
-  'monitor.module_overdue': 'Module past its end date'
+  'monitor.module_overdue': 'Milestone past its end date'
 };
 
 export function isAlert(item: InboxItemDto): boolean {

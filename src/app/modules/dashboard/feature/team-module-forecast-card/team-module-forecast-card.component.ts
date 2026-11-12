@@ -49,13 +49,13 @@ import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';
 import {
   moduleForecastTiles,
   moduleRowRateText,
-  projectOverloadCounts,
   modulesAtRisk,
 } from '../../utils/team-module-forecast-format.util';
 import {
   EMPTY_MODULE_FORECAST_PLAN,
   MODULE_FORECAST_CARD_CHROME,
   MODULE_FORECAST_HERO_LEGEND_WIDTH_PX,
+  MODULE_FORECAST_NARROW_BODY_PX,
   ModuleForecastPlan,
   ModuleForecastView,
   planModuleForecastLayout,
@@ -119,12 +119,6 @@ export class TeamModuleForecastCardComponent implements OnInit {
     () => modulesAtRisk(this.store.data()?.items ?? []).length,
   );
 
-  /** Modules in overload per project, for the chart's badges. */
-  protected readonly overloadCounts = computed(() => {
-    const data = this.store.data();
-    return data ? projectOverloadCounts(data.projects, data.items) : {};
-  });
-
   protected readonly summaryCards = computed<SummaryCardModel[]>(() => {
     const data = this.store.data();
     return data ? teamModuleForecastSummaryCards(data) : [];
@@ -153,11 +147,18 @@ export class TeamModuleForecastCardComponent implements OnInit {
     () => (this.size()?.width ?? 0) - FORECAST_CARD_CHROME.width,
   );
   /** A narrow body (under 360px): the chart's title and figure on two lines, fewer and wider bars. */
-  protected readonly narrowChart = computed(() => this.bodyWidth() > 0 && this.bodyWidth() < 360);
-  /** How many bars the card's chart shows and how long their labels can be (the hero chart is never narrow). */
-  protected readonly chartFit = computed(() =>
-    this.bodyWidth() > 0 ? chartFit(this.plan().heroChart ? 480 : this.bodyWidth()) : chartFit(480),
+  protected readonly narrowChart = computed(
+    () => this.bodyWidth() > 0 && this.bodyWidth() < MODULE_FORECAST_NARROW_BODY_PX,
   );
+  /**
+   * How many bars the card's chart shows and how long their labels can be (the hero chart is never narrow). A narrow
+   * chart has no axis, so its bars get the full body width.
+   */
+  protected readonly chartFit = computed(() => {
+    const width = this.bodyWidth();
+    if (!(width > 0) || this.plan().heroChart) return chartFit(480);
+    return this.narrowChart() ? chartFit(width, 64, 8, 0) : chartFit(width);
+  });
   protected readonly rate = rateText;
   protected readonly statusMeta = FORECAST_STATUS_META;
   protected readonly chip = overtimeChipText;

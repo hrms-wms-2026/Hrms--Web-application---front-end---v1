@@ -25,7 +25,7 @@ All under `src/app/modules/dashboard/`. `<w>` is the widget's kebab name, `<p>` 
 | `utils/<w>-summary-cards.util.ts` | `<w>SummaryCards(data): SummaryCardModel[]`. Pure, with a spec. |
 | `feature/<w>-card/` | The card (`.ts/.html/.css/.spec.ts`). |
 | `feature/<w>-detail-dialog/` | The popup (`.ts/.html/.css/.spec.ts`). |
-| `widgets/widget-registry.ts` | Add `'<key>': { component: <W>CardComponent }`. |
+| `widgets/widget-registry.ts` | Add `'<key>': { load: () => import('../feature/<w>-card/<w>-card.component').then((m) => m.<W>CardComponent) }`. **Never a static import** of the card here: the dynamic import makes each card its own lazy chunk, downloaded only when the user's layout contains it. A static import puts every card and every detail dialog in one chunk for every user (see `docs/reports/performance/2026-11-11-frontend-bundle-size.md`). |
 
 - **Always `styleUrl`.** Never a shared imported styles constant: the build hangs when 3+ components do that.
 - `ChangeDetectionStrategy.OnPush`, standalone, `host: { class: 'block h-full' }`.

@@ -14,7 +14,8 @@
   height: 100%;
   min-width: 0;
   padding: 0.625rem 0.75rem;
-  border: 1px solid;
+  /* Tone border; a dashboard can flatten it with --dashboard-summary-card-border (My Team sets it transparent). */
+  border: 1px solid var(--dashboard-summary-card-border, var(--sc-border, transparent));
   border-radius: 0.875rem;
   overflow: hidden;
   cursor: pointer;

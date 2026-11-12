@@ -179,14 +179,14 @@ describe('InboxItemCardComponent', () => {
         status: 'open', direction: 'info', severity: 'high',
         availableActions: [{ key: 'open_target', label: 'Open', tone: 'neutral', needsComment: false, needsPayload: false }] }));
 
-    expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Module cannot finish in time');
+    expect(el.querySelector('[data-testid="inbox-card-title"]')?.textContent).toContain('Milestone cannot finish in time');
     expect(el.querySelector('[data-testid="inbox-card-description"]')?.textContent).toContain('220 h of work remain');
     const details = el.querySelector('[data-testid="inbox-card-details"]')!;
     expect(details.querySelector('h4')!.textContent).toBe('Evidence & details');
     expect(Array.from(details.querySelectorAll('[data-testid="inbox-card-detail-row"]'))
       .map((r) => `${r.querySelector('dt')!.textContent!.trim()}: ${r.querySelector('dd')!.textContent!.trim()}`))
       .toEqual([
-        'Module: Hardware integration portal', 'Project: Apollo', 'Deadline: Oct 16, 2026', 'Expected finish: Oct 19, 2026',
+        'Milestone: Hardware integration portal', 'Project: Apollo', 'Deadline: Oct 16, 2026', 'Expected finish: Oct 19, 2026',
         'Late by: 1 working day', 'Work remaining: 220 hours', 'Time available: 200 hours', 'Short by: 20 hours', 'Team size: 5 people'
       ]);
     expect(el.textContent).not.toContain('employeeId');

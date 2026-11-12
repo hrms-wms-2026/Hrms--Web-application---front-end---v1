@@ -42,7 +42,7 @@ function clearLegacyDashboardStorage(): void {
   standalone: true,
   providers: [DashboardStore],
   imports: [DashboardGridComponent, WidgetStoreDrawerComponent, ConfirmModalComponent, LoaderComponent, QuickActionsCardComponent],
-  host: { class: 'block', '(document:keydown.escape)': 'onEscape($event)' },
+  host: { class: 'block', '[class.dashboard-shell--team]': "dashboardKey() === 'my-team'", '(document:keydown.escape)': 'onEscape($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let boot = store.bootstrap();
@@ -122,6 +122,29 @@ function clearLegacyDashboardStorage(): void {
     />
   `,
   styles: `
+    /* My Team widgets sit on a light gray instead of the plain surface; their inner gray (bar tracks, chips,
+       skeletons) moves one step darker so it still shows against the card. */
+    :host(.dashboard-shell--team) {
+      --widget-card-bg: var(--color-dashboard-team-widget-bg);
+      /* Flat look: KPI tiles and summary cards inside My Team widgets and their popups lose their outlines too. */
+      --kpi-tile-border: transparent;
+      --kpi-tile-shadow: none;
+      --dashboard-kpi-border: transparent;
+      --dashboard-summary-card-border: transparent;
+    }
+    :host(.dashboard-shell--team) ::ng-deep app-widget-card > section {
+      --color-surface-secondary: var(--color-dashboard-team-widget-inset);
+    }
+    /* Flat gray cards on the page: no outline or shadow (border kept transparent so sizes don't shift). */
+    :host(.dashboard-shell--team) ::ng-deep app-widget-card > section,
+    :host(.dashboard-shell--team) ::ng-deep .qa-card {
+      border-color: transparent;
+      box-shadow: none;
+    }
+    /* ...and the page behind them is white with a touch of the theme colour (only while My Team is on screen). */
+    ::ng-deep main.main-content:has(app-dashboard-shell.dashboard-shell--team) {
+      background: var(--color-dashboard-team-page-bg);
+    }
     .shell-btn {
       border-radius: 0.5rem;
       border: 1px solid var(--color-border-strong);

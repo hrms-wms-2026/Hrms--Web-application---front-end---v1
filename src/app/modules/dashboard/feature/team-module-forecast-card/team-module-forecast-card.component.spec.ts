@@ -75,7 +75,7 @@ describe('TeamModuleForecastCardComponent', () => {
     FakeResizeObserver.instances.at(-1)!.trigger(1812 - 32, 150);
     fixture.detectChanges();
     expect(el.querySelectorAll('app-dashboard-summary-card').length).toBe(4);
-    expect(el.textContent).toContain('Modules at risk');
+    expect(el.textContent).toContain('Milestones at risk');
     (el.querySelectorAll('[data-testid="summary-card"]')[2] as HTMLElement).click();
     fixture.detectChanges();
     expect(fixture.componentInstance.detailSection()).toBe('modules');
@@ -134,7 +134,7 @@ describe('TeamModuleForecastCardComponent', () => {
     );
     const el = resize(760, 860);
     expect(q(el, 'mf-hero-figure')?.textContent?.trim()).toBe('On track');
-    expect(el.textContent).toContain('Every module is on track');
+    expect(el.textContent).toContain('Every milestone is on track');
   });
 
   it('no open modules shows the empty state', () => {
@@ -143,7 +143,7 @@ describe('TeamModuleForecastCardComponent', () => {
       moduleForecastResponse({ totals: { ...base.totals, modules: 0 }, items: [], projects: [] }),
     );
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'No open modules you lead with a deadline ahead.',
+      'No open milestones you lead with a deadline ahead.',
     );
   });
 
@@ -167,5 +167,15 @@ describe('TeamModuleForecastCardComponent', () => {
     el = resize(502, 900);
     expect(head().classList).toContain('bc-head--compact');
     expect(q(el, 'module-forecast-project-chart')).toBeTruthy();
+  });
+
+  it('a narrow card has no chart axis and a ranking without the rate bar', () => {
+    setup();
+    const el = resize(262, 900);
+    expect(q(el, 'module-forecast-project-chart')).toBeTruthy();
+    expect(q(el, 'bar-chart-axis')).toBeNull();
+    expect(q(el, 'bar-chart-badge')).toBeNull();
+    expect(q(el, 'mf-ranking')?.classList).toContain('mf-ranking--narrow');
+    expect(all(el, 'bar-chart-col').length).toBeLessThanOrEqual(3);
   });
 });

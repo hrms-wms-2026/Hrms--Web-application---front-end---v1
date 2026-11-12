@@ -152,7 +152,7 @@
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-surface));
+  border: 1px solid var(--dashboard-kpi-border, color-mix(in srgb, var(--tone) 28%, var(--color-surface)));
   border-radius: 0.625rem;
   background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
   padding: 0 0.625rem;

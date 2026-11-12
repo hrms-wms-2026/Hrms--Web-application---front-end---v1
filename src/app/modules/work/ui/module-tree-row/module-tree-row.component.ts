@@ -71,7 +71,7 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
 
       <span class="relative flex items-center justify-end gap-px" data-testid="row-actions" #actionsCell>
         @if (node().isOwner) {
-          <button type="button" class="{{ iconClass() }}" data-testid="create-sub-button" aria-label="Create sub Module" (click)="emit($event, createRequested)">
+          <button type="button" class="{{ iconClass() }}" data-testid="create-sub-button" aria-label="Create sub Milestone" (click)="emit($event, createRequested)">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -94,7 +94,7 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
           @if (actionsOpen()) {
             <div class="absolute right-0 top-7 z-30 min-w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-lg" data-testid="shortcut-menu">
               <button type="button" class="{{ menuItemClass() }}" data-testid="menu-create-sub-button" (click)="emit($event, createRequested)">
-                <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Sub module</span>
+                <span class="{{ menuIconClass() }}" aria-hidden="true">+</span><span>Sub milestone</span>
               </button>
               <button type="button" class="{{ menuItemClass() }}" data-testid="menu-edit-button" (click)="emit($event, editRequested)">
                 <span class="{{ menuIconClass() }}" aria-hidden="true">✎</span><span>Edit</span>
@@ -111,7 +111,7 @@ import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-c
                 </button>
               }
               <button type="button" class="{{ menuItemClass() }}" data-testid="menu-achieve-button" (click)="emit($event, achieveRequested)">
-                <span class="{{ menuIconClass() }}" aria-hidden="true">★</span><span>{{ node().isAchieved ? 'Unachieve module' : 'Achieve module' }}</span>
+                <span class="{{ menuIconClass() }}" aria-hidden="true">★</span><span>{{ node().isAchieved ? 'Unachieve milestone' : 'Achieve milestone' }}</span>
               </button>
             </div>
           }

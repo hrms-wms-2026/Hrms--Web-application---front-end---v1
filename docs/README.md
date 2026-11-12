@@ -16,7 +16,7 @@ Start here. Every document about this repo lives under `docs/`, apart from the r
 
 ### Report areas
 
-`attendance`, `auth`, `clock-in-policy`, `code-quality`, `employee`, `employee-onboarding`, `legal-entity`, `organization`, `time-tracking`, `work-management`.
+`attendance`, `auth`, `clock-in-policy`, `code-quality`, `employee`, `employee-onboarding`, `legal-entity`, `organization`, `performance`, `time-tracking`, `work-management`.
 
 ## Quality, testing and security
 

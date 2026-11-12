@@ -17,7 +17,7 @@
     data-testid="summary-card"
     [attr.aria-label]="card().title"
     [style.background]="tint(6)"
-    [style.border-color]="tint(22)"
+    [style.--sc-border]="tint(22)"
   >
     <ng-container [ngTemplateOutlet]="headTpl" />
     <span class="sc-error">
@@ -33,7 +33,7 @@
   [class.sc--on]="revealed()"
   [style.--sc-tone]="card().tone"
   [style.background]="tint(6)"
-  [style.border-color]="tint(22)"
+  [style.--sc-border]="tint(22)"
   [attr.aria-label]="ariaLabel()"
   (click)="open($event)"
   (animationstart)="onReplay($event)"

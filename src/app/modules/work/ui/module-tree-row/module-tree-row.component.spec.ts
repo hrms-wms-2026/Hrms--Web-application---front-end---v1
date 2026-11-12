@@ -70,11 +70,11 @@ describe('ModuleTreeRowComponent', () => {
     (fixture.nativeElement.querySelector('[data-testid="shortcut-menu-button"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Sub module');
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Sub milestone');
     expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Edit');
     expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Members');
     expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Create sprint');
-    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Achieve module');
+    expect(fixture.nativeElement.querySelector('[data-testid="shortcut-menu"]')?.textContent).toContain('Achieve milestone');
   });
 
   it('closes the shortcut menu on an outside document click', () => {

@@ -881,7 +881,7 @@ describe('TaskBacklogComponent', () => {
       const inst = fixture.componentInstance as unknown as { bulkActions(): { id: string; disabled?: boolean; disabledReason?: string }[] };
       const moveToSprint = inst.bulkActions().find((action) => action.id === 'move-to-sprint')!;
       expect(moveToSprint.disabled).toBe(true);
-      expect(moveToSprint.disabledReason).toBe('You can only do this for tasks in modules you own.');
+      expect(moveToSprint.disabledReason).toBe('You can only do this for tasks in milestones you own.');
     });
 
     it('status picker hides private statuses unless every selected module is owned', async () => {

@@ -30,11 +30,11 @@
 }
 
 @if (store.milestonesLoading()) {
-  <app-loader label="Loading modules…" />
+  <app-loader label="Loading milestones…" />
 } @else if (store.milestonesError()) {
   <app-error-state [message]="store.milestonesError()!" [retryable]="true" (retry)="retryMilestones()" />
 } @else if (store.milestones().length === 0) {
-  <app-empty-state title="No modules yet" />
+  <app-empty-state title="No milestones yet" />
 } @else {
   <div class="project-detail-content">
     <router-outlet />

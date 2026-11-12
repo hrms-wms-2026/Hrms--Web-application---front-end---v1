@@ -208,7 +208,7 @@ describe('TeamProgressDetailDialogComponent', () => {
   it('renders the overview from the summary: tiles, donut, notes, three panels and overdue tasks', () => {
     openWith();
     expect(el().querySelector('[role="dialog"]')).not.toBeNull();
-    expect(el().textContent).toContain('Team Progress');
+    expect(el().textContent).toContain('My team progress');
     expect(q('tp-tile-allocated')?.textContent).toContain('200');
     expect(q('tp-tile-completed')?.textContent).toContain('50');
     expect(q('tp-tile-completed')?.textContent).toContain('25%');

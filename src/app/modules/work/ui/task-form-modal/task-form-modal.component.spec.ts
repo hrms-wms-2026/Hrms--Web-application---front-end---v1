@@ -101,7 +101,7 @@ describe('TaskFormModalComponent - edit mode', () => {
   beforeEach(async () => {
     api = baseApi();
     milestones = signal<{ objectiveId: string; title: string; isOwner: boolean; isEffectiveOwner: boolean }[]>(
-      [{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]
+      [{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: true }]
     );
     members = [
       { employeeId: 'e1', name: 'Ann', avatarUrl: 'https://api.test/employees/e1/avatar' },
@@ -263,20 +263,20 @@ describe('TaskFormModalComponent - edit mode', () => {
   it('shows the module name as visible text next to the header module icon', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement;
-    expect(el.textContent?.trim()).toBe('Module 1');
+    expect(el.textContent?.trim()).toBe('Milestone 1');
   });
 
   it('updates the module name if milestones finishes loading after the modal already opened', () => {
     milestones.set([]);
     fixture.detectChanges();
     expect((fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement).textContent?.trim())
-      .toBe('Select module');
+      .toBe('Select milestone');
 
-    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]);
+    milestones.set([{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: true }]);
     fixture.detectChanges();
 
     expect((fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement).textContent?.trim())
-      .toBe('Module 1');
+      .toBe('Milestone 1');
   });
 
   it('shows the task creation date near the kebab menu', () => {
@@ -344,7 +344,7 @@ describe('TaskFormModalComponent - edit mode', () => {
 
   it('scopes the Duplicate dialog module list to modules the caller owns', () => {
     milestones.set([
-      { objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true },
+      { objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: true },
       { objectiveId: 'o2', title: 'Module 2 (member only)', isOwner: false, isEffectiveOwner: false }
     ]);
     fixture.detectChanges();
@@ -353,7 +353,7 @@ describe('TaskFormModalComponent - edit mode', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.duplicateDialogOpen()).toBe(true);
-    expect(fixture.componentInstance.duplicateModuleOptions()).toEqual([{ objectiveId: 'o1', title: 'Module 1' }]);
+    expect(fixture.componentInstance.duplicateModuleOptions()).toEqual([{ objectiveId: 'o1', title: 'Milestone 1' }]);
   });
 
   it('confirming duplicate calls duplicateTask with the chosen options and emits saved + closed', async () => {
@@ -491,7 +491,7 @@ describe('TaskFormModalComponent - edit mode', () => {
   });
 
   it('edit by non-owner calls editTask (not an edit request) and shows the "sent for approval" info toast on 202', async () => {
-    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: false, isEffectiveOwner: false }]);
+    milestones.set([{ objectiveId: 'o1', title: 'Milestone 1', isOwner: false, isEffectiveOwner: false }]);
     api['editTask'].mockReturnValue(of({ approvalRequestId: 'r1' }));
     const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
     fixture.detectChanges();
@@ -504,7 +504,7 @@ describe('TaskFormModalComponent - edit mode', () => {
   it('a member whose field edits go for approval still gets the reassignment applied', async () => {
     // Reassignment is its own, separately-permitted action: it applies even when the backend
     // answers the field edit with a 202 "sent for approval".
-    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: false }]);
+    milestones.set([{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: false }]);
     api['editTask'].mockReturnValue(of({ approvalRequestId: 'r1' }));
     fixture.detectChanges();
     fixture.componentInstance.title.set('Edited');
@@ -588,7 +588,7 @@ describe('TaskFormModalComponent - assignee display outside milestone scope', ()
           useValue: {
             // The viewer's reachable milestones only surface e1/e2 - e3 (the actual assignee) is
             // outside that scope, mirroring an admin-assigned task a lower-permission viewer opens.
-            milestones: signal([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]),
+            milestones: signal([{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: true }]),
             loadProjectMembers: vi.fn().mockResolvedValue(undefined),
             projectMembers: () => [
               { employeeId: 'e1', name: 'Ann', avatarUrl: null },
@@ -1276,8 +1276,8 @@ describe('TaskFormModalComponent - subtasks section', () => {
 
   it('allows changing subtask module via module popover without showing module text in row', async () => {
     fixture.componentInstance.modules.set([
-      { objectiveId: 'o1', title: 'Module One', isOwner: true },
-      { objectiveId: 'o2', title: 'Module Two', isOwner: false }
+      { objectiveId: 'o1', title: 'Milestone One', isOwner: true },
+      { objectiveId: 'o2', title: 'Milestone Two', isOwner: false }
     ]);
     (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
     fixture.detectChanges();
@@ -1301,11 +1301,11 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
 
     // Save and verify o2 is passed
-    fixture.componentInstance.newSubtaskTitle.set('Changed module subtask');
+    fixture.componentInstance.newSubtaskTitle.set('Changed milestone subtask');
     await fixture.componentInstance.saveNewSubtask('t1');
 
     expect(boardStore.createSubtask).toHaveBeenCalledWith('t1', expect.objectContaining({
-      title: 'Changed module subtask',
+      title: 'Changed milestone subtask',
       objectiveId: 'o2',
       categoryId: 'c1'
     }));

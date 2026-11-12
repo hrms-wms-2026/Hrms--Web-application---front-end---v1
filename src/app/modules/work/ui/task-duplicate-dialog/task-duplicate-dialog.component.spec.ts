@@ -82,8 +82,8 @@ describe('TaskDuplicateDialogComponent', () => {
   });
 
   it('shows the error message when set', () => {
-    setup({ error: 'This module is in an active event; a due date is required.' });
-    expect(fixture.nativeElement.textContent).toContain('This module is in an active event');
+    setup({ error: 'This milestone is in an active event; a due date is required.' });
+    expect(fixture.nativeElement.textContent).toContain('This milestone is in an active event');
   });
 
   it('resets the fields each time the dialog re-opens', () => {

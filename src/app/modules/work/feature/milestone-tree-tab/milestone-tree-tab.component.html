@@ -4,7 +4,7 @@
       role="group" aria-label="Tree view mode">
       @for (mode of ['tree', 'network']; track mode) {
       <button type="button" [attr.data-testid]="'tree-view-switch-' + mode" [attr.aria-pressed]="viewMode() === mode"
-        [title]="mode === 'tree' ? 'Module list' : 'Network diagram'"
+        [title]="mode === 'tree' ? 'Milestone list' : 'Network diagram'"
         class="inline-flex h-[26px] items-center gap-1.5 rounded-[6px] px-2 text-[13px] font-medium transition-colors"
         [class.bg-[var(--color-accent)]]="viewMode() === mode" [class.text-[var(--color-text-on-solid)]]="viewMode() === mode"
         [class.text-[var(--color-text-secondary)]]="viewMode() !== mode" (click)="viewMode.set($any(mode))">
@@ -30,7 +30,7 @@
         <circle cx="11" cy="11" r="8" />
         <path d="m21 21-4.35-4.35" />
       </svg></span>
-      <input #treeSearchInput type="search" placeholder="Search modules, sprints, tasks…"
+      <input #treeSearchInput type="search" placeholder="Search milestones, sprints, tasks…"
         [value]="searchTerm()" (input)="onSearchChanged($any($event.target).value)"
         class="ui-field__control" />
       <span class="ui-field__trailing"><button type="button" data-testid="tree-search-close" aria-label="Close search" title="Close search"
@@ -71,7 +71,7 @@
       {{ allExpanded() ? 'Collapse all' : 'Expand all' }}
     </button>
     @if (canCreateModule()) {
-    <app-button variant="primary" (pressed)="onCreateModuleRequested()">Create module</app-button>
+    <app-button variant="primary" (pressed)="onCreateModuleRequested()">Create milestone</app-button>
     }
   </div>
 </ng-template>
@@ -94,7 +94,7 @@
     <app-project-network-view [projectId]="projectId()" [rootObjectiveId]="tree.id" [reloadKey]="networkReloadKey()"
       (nodeSelected)="onNetworkNodeSelected($event)" />
     } @else {
-    <app-empty-state title="No modules" description="This project has no modules to draw yet" />
+    <app-empty-state title="No milestones" description="This project has no milestones to draw yet" />
     }
     } @else {
     @if (store.subtreeLoading()) {
@@ -111,7 +111,7 @@
       }
       @if (monitor.count() > 0) {
       <span data-testid="monitor-alert-count" role="status"
-        title="Problems the project monitor found (capacity, deadlines, clocked hours). Red dots mark the rows; faded dots on achieved modules are not counted."
+        title="Problems the project monitor found (capacity, deadlines, clocked hours). Red dots mark the rows; faded dots on achieved milestones are not counted."
         class="text-xs text-[var(--color-text-secondary)]">
         {{ monitor.count() }} {{ monitor.count() === 1 ? 'alert' : 'alerts' }}
       </span>
@@ -120,7 +120,7 @@
     }
     <div
       class="grid grid-cols-[minmax(0,1fr)_112px_40px_88px_140px] items-center gap-3 border-b border-[var(--color-border)] px-2 pb-2 text-xs font-medium text-[var(--color-text-secondary)]">
-      <span data-testid="tree-column-header">Module</span>
+      <span data-testid="tree-column-header">Milestone</span>
       <span>Progress</span>
       <span>Owner</span>
       <span>Due date</span>
@@ -150,7 +150,7 @@
       (completeSprintRequested)="onCompleteSprintRequested($event)" (deleteRequested)="onDeleteRequested($event)"
       (deleteSprintRequested)="onDeleteRequested($event)" (allocationRequested)="onAllocationRequested($event)" />
     } @else {
-    <app-empty-state title="No selection" description="Select a module, sprint, or task to see its details" />
+    <app-empty-state title="No selection" description="Select a milestone, sprint, or task to see its details" />
     }
   </div>
 </div>

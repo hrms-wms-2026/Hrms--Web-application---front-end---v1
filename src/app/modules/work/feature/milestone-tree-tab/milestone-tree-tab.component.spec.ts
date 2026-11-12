@@ -38,7 +38,7 @@ describe('MilestoneTreeTabComponent', () => {
   };
 
   const inactiveSibling: MilestoneTreeNode = {
-    id: 'o4', title: 'Retired Module', description: null, startDate: '2026-02-01', endDate: '2026-03-01',
+    id: 'o4', title: 'Retired Milestone', description: null, startDate: '2026-02-01', endDate: '2026-03-01',
     progress: 100, allocatedHours: 6, completedHours: 6, isActive: false, isAchieved: false,
     ownerName: 'Sam', isOwner: true, children: []
   };
@@ -182,7 +182,7 @@ describe('MilestoneTreeTabComponent', () => {
     expect(toolbar.host.querySelector('[data-testid="tree-search"] input')).not.toBeNull();
 
     const createButton = Array.from(toolbar.host.querySelectorAll('button'))
-      .find((button) => button.textContent?.trim() === 'Create module') as HTMLButtonElement;
+      .find((button) => button.textContent?.trim() === 'Create milestone') as HTMLButtonElement;
     expect(createButton).toBeTruthy();
     createButton.click();
     expect(fixture.componentInstance.createModalOpen()).toBe(true);
@@ -246,7 +246,7 @@ describe('MilestoneTreeTabComponent', () => {
 
     const toolbar = renderToolbar();
     const createButton = Array.from(toolbar.host.querySelectorAll('button'))
-      .find((button) => button.textContent?.trim() === 'Create module');
+      .find((button) => button.textContent?.trim() === 'Create milestone');
     expect(createButton).toBeUndefined();
     toolbar.view.destroy();
   });
@@ -307,8 +307,8 @@ describe('MilestoneTreeTabComponent', () => {
       fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
       fixture.detectChanges();
 
-      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Retired Module']));
-      expect(highlightedTitles()).toEqual(['Retired Module']);
+      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Retired Milestone']));
+      expect(highlightedTitles()).toEqual(['Retired Milestone']);
       expect(fixture.nativeElement.querySelector('[data-testid="highlight-match-count"]').textContent.trim()).toBe('1 match');
     });
 
@@ -369,7 +369,7 @@ describe('MilestoneTreeTabComponent', () => {
     it('labels the first column "Module"', () => {
       setup('o1');
       fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).toContain('Module');
+      expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).toContain('Milestone');
       expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).not.toContain('Work item');
     });
 
@@ -446,12 +446,12 @@ describe('MilestoneTreeTabComponent', () => {
   });
 
   it('always shows achieved modules in the tree', () => {
-    const achieved: MilestoneTreeNode = { ...sibling, id: 'o5', title: 'Shipped Module', isAchieved: true };
+    const achieved: MilestoneTreeNode = { ...sibling, id: 'o5', title: 'Shipped Milestone', isAchieved: true };
     storeStub.selectedSubtree = () => ({ ...tree, children: [child, achieved] });
     setup('o1');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Shipped Module');
+    expect(fixture.nativeElement.textContent).toContain('Shipped Milestone');
   });
 
   it('renders the root tree node', () => {
@@ -576,7 +576,7 @@ describe('MilestoneTreeTabComponent', () => {
     const banner = fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]') as HTMLElement;
     expect(banner).toBeTruthy();
     expect(banner.textContent).toContain(
-      '"Design Phase" was created, but 1 file(s) failed to upload — open Module settings on it to retry.'
+      '"Design Phase" was created, but 1 file(s) failed to upload — open Milestone settings on it to retry.'
     );
   });
 
@@ -1173,7 +1173,7 @@ describe('MilestoneTreeTabComponent', () => {
       const host = toolbar();
 
       expect(host.querySelector('[data-testid="tree-view-switch-tree"]')).not.toBeNull();
-      expect(host.textContent).toContain('Create module');
+      expect(host.textContent).toContain('Create milestone');
     });
 
     it('paints the selected mode with the accent background and the other with the secondary text colour', () => {

@@ -96,11 +96,11 @@ export function projectOverloadCounts(
 
 /** Plain words under the popup's pie. */
 export function moduleForecastExplanation(t: ModuleForecastTotals): string {
-  if (t.modules === 0) return 'No open modules with a deadline ahead.';
+  if (t.modules === 0) return 'No open milestones with a deadline ahead.';
   if (t.remainingHours <= 0)
-    return `All ${t.modules} modules have their allocated hours completed.`;
+    return `All ${t.modules} milestones have their allocated hours completed.`;
   if (t.teamRate === null)
-    return `Nobody on these modules clocked working time in the last 4 weeks, so the forecast assumes every working hour becomes task hours. ${forecastHoursText(t.remainingHours)} remain.`;
+    return `Nobody on these milestones clocked working time in the last 4 weeks, so the forecast assumes every working hour becomes task hours. ${forecastHoursText(t.remainingHours)} remain.`;
   const [covered, raise, overload] = forecastSlices(t, t.maxTaskRate).map((s) => s.value);
   const parts = [
     `Of ${forecastHoursText(t.remainingHours)} still to do, the team's ${rateText(t.teamRate)} task rate (last 4 weeks) completes about ${forecastHoursText(covered)} before the deadlines.`,

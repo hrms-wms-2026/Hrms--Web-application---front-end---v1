@@ -76,10 +76,11 @@ const TONE_COLOR: Record<KpiTileTone, string> = {
       gap: 0.75rem;
       min-width: 0;
       padding: 0.75rem 0.875rem;
-      border: 1px solid var(--color-border);
+      /* A host page can flatten the tiles (My Team dashboard sets both to transparent/none). */
+      border: 1px solid var(--kpi-tile-border, var(--color-border));
       border-radius: var(--radius-content);
       background: var(--color-surface);
-      box-shadow: 0 1px 2px var(--color-card-shadow);
+      box-shadow: var(--kpi-tile-shadow, 0 1px 2px var(--color-card-shadow));
     }
     .kpi-tile__icon {
       display: flex;

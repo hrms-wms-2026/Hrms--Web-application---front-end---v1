@@ -295,8 +295,11 @@
     }
   </div>
 
+  <!-- @defer: the drawer brings the task form and rich-text editor (~550 kB raw); load it only when a meeting is opened. -->
   @if (openMeeting(); as key) {
-    <app-meeting-occurrence-drawer [key]="key" (closed)="openMeeting.set(null)" />
+    @defer (on immediate) {
+      <app-meeting-occurrence-drawer [key]="key" (closed)="openMeeting.set(null)" />
+    }
   }
 </section>
 

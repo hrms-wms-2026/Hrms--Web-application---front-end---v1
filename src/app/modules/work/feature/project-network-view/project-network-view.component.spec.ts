@@ -166,7 +166,7 @@ describe('ProjectNetworkViewComponent', () => {
 
       expect(labels).not.toContain('In progress');
       expect(labels).not.toContain('Not started');
-      expect(labels).toEqual(['Default module', 'Module', 'Sprint', 'Task', 'Completed', 'Has an alert']);
+      expect(labels).toEqual(['Default milestone', 'Milestone', 'Sprint', 'Task', 'Completed', 'Has an alert']);
     });
   });
 

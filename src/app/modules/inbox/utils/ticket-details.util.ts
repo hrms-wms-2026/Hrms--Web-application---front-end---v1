@@ -159,7 +159,7 @@ const MONITOR_ORDER = Object.keys(MONITOR_ROWS);
 /** What a monitor rule is about, from its action type ("monitor.module_capacity_shortfall" → Module). */
 function monitorTargetLabel(actionType: string): string {
   if (actionType.includes('sprint_')) return 'Sprint';
-  if (actionType.includes('module_')) return 'Module';
+  if (actionType.includes('module_')) return 'Milestone';
   return 'Task';
 }
 

@@ -42,7 +42,7 @@ describe('DraftModalHostComponent', () => {
     load: vi.fn(async () => {})
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     activeDraft.set(null);
     storeStub.closeDraft.mockClear();
     storeStub.load.mockClear();
@@ -55,6 +55,7 @@ describe('DraftModalHostComponent', () => {
         remove: { imports: [TaskFormModalComponent, AddEmployeeWizardComponent] },
         add: { imports: [StubTaskFormModalComponent, StubAddEmployeeWizardComponent] }
       });
+    await TestBed.compileComponents();
 
     fixture = TestBed.createComponent(DraftModalHostComponent);
     fixture.detectChanges();
@@ -65,16 +66,22 @@ describe('DraftModalHostComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="stub-add-employee-wizard"]')).toBeNull();
   });
 
-  it('renders task modal when activeDraft is a task draft', () => {
+  it('renders task modal when activeDraft is a task draft', async () => {
     activeDraft.set({ kind: 'task', id: 't-123', label: 'Task Draft', badge: null, projectId: 'proj-1' });
+    fixture.detectChanges();
+    // The modal sits in an @defer block (lazy chunk); let it load, then render it.
+    await fixture.whenStable();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="stub-task-modal"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="stub-add-employee-wizard"]')).toBeNull();
   });
 
-  it('renders add-employee wizard when activeDraft is an employee draft', () => {
+  it('renders add-employee wizard when activeDraft is an employee draft', async () => {
     activeDraft.set({ kind: 'employee', id: 'emp-123', label: 'Jane Doe', badge: null, projectId: null });
+    fixture.detectChanges();
+    // The modal sits in an @defer block (lazy chunk); let it load, then render it.
+    await fixture.whenStable();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="stub-add-employee-wizard"]')).not.toBeNull();

@@ -370,7 +370,7 @@ export interface QuickTaskCreatedEvent {
                   class="quick-task-chip"
                   [attr.aria-expanded]="activePopover() === 'module'"
                   (click)="togglePopover('module', $event)"
-                  title="Module"
+                  title="Milestone"
                 >
                   <svg class="quick-task-chip__svg" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z" />
@@ -1325,7 +1325,7 @@ export class TaskBoardColumnComponent {
 
   selectedModuleTitle = computed(() => {
     const id = this.selectedModuleId();
-    return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Module';
+    return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Milestone';
   });
 
   toggleMenu(event: MouseEvent): void {
@@ -1484,7 +1484,7 @@ export class TaskBoardColumnComponent {
 
     const objId = this.selectedModuleId() || this.defaultObjectiveId() || this.modules()[0]?.objectiveId;
     if (!objId) {
-      this.errorMessage.set('Please select or create a milestone/module first.');
+      this.errorMessage.set('Please select or create a milestone first.');
       return;
     }
 

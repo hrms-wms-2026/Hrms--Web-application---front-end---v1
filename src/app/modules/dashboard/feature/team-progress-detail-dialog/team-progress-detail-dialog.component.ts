@@ -304,7 +304,7 @@ export class TeamProgressDetailDialogComponent {
     const scoped = this.projectFilter() ? this.projects().filter((p) => p.projectId === this.projectFilter()) : this.projects();
     const showProject = scoped.length > 1;
     return [
-      { value: '', label: 'All modules' },
+      { value: '', label: 'All milestones' },
       ...scoped.flatMap((p) =>
         p.modules.map((m) => ({
           value: m.objectiveId,

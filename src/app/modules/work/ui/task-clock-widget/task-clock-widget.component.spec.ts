@@ -237,8 +237,8 @@ describe('TaskClockWidgetComponent', () => {
     httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({movedToStatus:null});await pending;
     expect(success).not.toHaveBeenCalled();expect(emitted).toHaveBeenCalledOnce();emitted.mockClear();
     pending=fixture.componentInstance.onClockIn();
-    httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({detail:'Ask the module owner to move the task first.'},{status:409,statusText:'Conflict'});await pending;
-    expect(error).toHaveBeenCalledWith('Ask the module owner to move the task first.');expect(emitted).not.toHaveBeenCalled();
+    httpMock.expectOne(environment.apiUrl+'/work/tasks/t1/clock-in').flush({detail:'Ask the milestone owner to move the task first.'},{status:409,statusText:'Conflict'});await pending;
+    expect(error).toHaveBeenCalledWith('Ask the milestone owner to move the task first.');expect(emitted).not.toHaveBeenCalled();
   });
 
 });

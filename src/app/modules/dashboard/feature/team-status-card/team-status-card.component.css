@@ -134,7 +134,7 @@
   min-width: 0;
   align-items: center;
   gap: 0.625rem;
-  border: 1px solid color-mix(in srgb, var(--tone) 22%, var(--color-surface));
+  border: 1px solid var(--dashboard-kpi-border, color-mix(in srgb, var(--tone) 22%, var(--color-surface)));
   border-radius: 0.75rem;
   background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
   padding: 0 0.75rem;

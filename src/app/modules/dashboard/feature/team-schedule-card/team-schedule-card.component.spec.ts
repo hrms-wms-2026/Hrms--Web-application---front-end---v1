@@ -124,7 +124,7 @@ describe('TeamScheduleCardComponent', () => {
 
     expect(getTeamDay).toHaveBeenCalledWith(null);
     expect(getTeamWeek).not.toHaveBeenCalled();
-    expect(el.textContent).toContain("Today's team schedule");
+    expect(el.textContent).toContain("My team schedule today");
   });
 
   it('shows "No one reports to you" when there are no members', async () => {

@@ -404,7 +404,7 @@ describe('MilestoneTreeNodeComponent - meetings', () => {
   it('puts a module\'s meetings with its own tasks: after them, before its sprints and sub-modules', () => {
     const task = (id: string): MilestoneTreeNode => ({ ...child, id, title: `Task ${id}`, kind: 'task' });
     const sprint: MilestoneTreeNode = { ...child, id: 'sp1', title: 'Sprint 1', kind: 'sprint' };
-    const sub: MilestoneTreeNode = { ...child, id: 'o3', title: 'Sub module' };
+    const sub: MilestoneTreeNode = { ...child, id: 'o3', title: 'Sub milestone' };
     const module: MilestoneTreeNode = { ...child, id: 'o2', children: [task('t1'), task('t2'), sprint, sub] };
     TestBed.configureTestingModule({
       imports: [MilestoneTreeNodeComponent],
@@ -419,11 +419,11 @@ describe('MilestoneTreeNodeComponent - meetings', () => {
       .map((el) => (el as HTMLElement).textContent?.trim());
     expect(order.indexOf('Standup')).toBe(order.indexOf('Task t2') + 1);
     expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sprint 1'));
-    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sub module'));
+    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sub milestone'));
   });
 
   it('lists the meetings of a module with no tasks before its sub-modules', () => {
-    const sub: MilestoneTreeNode = { ...child, id: 'o3', title: 'Sub module' };
+    const sub: MilestoneTreeNode = { ...child, id: 'o3', title: 'Sub milestone' };
     const module: MilestoneTreeNode = { ...child, id: 'o2', children: [sub] };
     TestBed.configureTestingModule({
       imports: [MilestoneTreeNodeComponent],
@@ -436,6 +436,6 @@ describe('MilestoneTreeNodeComponent - meetings', () => {
 
     const order = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="title-text"], [data-testid="meeting-card-title"]'))
       .map((el) => (el as HTMLElement).textContent?.trim());
-    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sub module'));
+    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sub milestone'));
   });
 });

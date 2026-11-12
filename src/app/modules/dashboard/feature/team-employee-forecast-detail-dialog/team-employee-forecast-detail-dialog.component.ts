@@ -69,7 +69,7 @@ export function employeeForecastCsv(items: readonly EmployeeForecastItem[]): str
     'Predicted h',
     "Won't fit h",
     'Status',
-    'Modules',
+    'Milestones',
   ];
   return [
     header,

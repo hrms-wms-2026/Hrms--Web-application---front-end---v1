@@ -21,7 +21,7 @@ function item(extra: Partial<InboxItemDto> = {}): InboxItemDto {
 describe('inbox item util', () => {
   it('titles requests by action and alerts by rule', () => {
     expect(inboxTitle(item())).toBe('Update task details');
-    expect(inboxTitle(item({ kind: 'invitation', actionType: 'module.invitation' }))).toBe('Add member to module');
+    expect(inboxTitle(item({ kind: 'invitation', actionType: 'module.invitation' }))).toBe('Add member to milestone');
     expect(inboxTitle(item({ category: 'alert', kind: 'monitor_alert', actionType: 'monitor.task_overdue' }))).toBe('Task past its due date');
     expect(inboxTitle(item({ source: 'leave', kind: 'request', actionType: 'leave.request' }))).toBe('Audit events');
   });
@@ -33,7 +33,7 @@ describe('inbox item util', () => {
 
   it('maps type meta for requests, invitations and alerts', () => {
     expect(inboxTypeMeta(item({ actionType: 'task.create' })).icon).toBe('task-plus');
-    expect(inboxTypeMeta(item({ actionType: 'module.invitation' })).label).toBe('Module Invitation');
+    expect(inboxTypeMeta(item({ actionType: 'module.invitation' })).label).toBe('Milestone Invitation');
     expect(inboxTypeMeta(item({ category: 'alert', actionType: 'monitor.module_over_capacity', severity: 'high' }))).toEqual({ label: 'Alert', tone: 'danger', icon: 'alert' });
     expect(inboxTypeMeta(item({ category: 'alert', actionType: 'monitor.x', severity: 'medium' })).tone).toBe('warning');
   });
@@ -91,7 +91,7 @@ describe('inbox item util', () => {
     const fields: InboxFilterFieldDto[] = [
       { key: 'project', label: 'Project', multi: true, options: [{ value: 'p1', label: 'Apollo' }] },
       { key: 'requestedBy', label: 'Requested by', multi: true, options: [] },
-      { key: 'module', label: 'Module', multi: true, options: [{ value: 'm1', label: 'Payments' }] },
+      { key: 'module', label: 'Milestone', multi: true, options: [{ value: 'm1', label: 'Payments' }] },
       { key: 'odd', label: 'Odd', multi: false, options: [{ value: 'x', label: 'X' }] },
       { key: 'direction', label: 'Direction', multi: true, options: [{ value: 'sent', label: 'Sent' }] }
     ];

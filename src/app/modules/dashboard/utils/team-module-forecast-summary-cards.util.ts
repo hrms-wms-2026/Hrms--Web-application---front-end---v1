@@ -73,7 +73,7 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
     },
     {
       id: 'mf-risk',
-      title: 'Modules at risk',
+      title: 'Milestones at risk',
       icon: 'alert-triangle',
       tone: 'var(--color-cat-amber)',
       section: 'modules',
@@ -83,7 +83,7 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
         count: String(t.raiseRate + t.overload),
         countLabel: 'at risk',
         rows: risk,
-        empty: 'Every module is on track',
+        empty: 'Every milestone is on track',
       },
     },
     {

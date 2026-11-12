@@ -1,11 +1,11 @@
 <!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS (its
      title still names the dialog for screen readers); the header below has the title on the left and the
      period / department dropdowns and the close button on the right. -->
-<app-modal [open]="open()" title="Team attendance" size="2xl" panelClass="team-attendance-detail" (closed)="close()">
+<app-modal [open]="open()" title="My team attendance" size="2xl" panelClass="team-attendance-detail" (closed)="close()">
   <div class="tad-head">
     <div class="tad-head__row">
       <div class="tad-head__title">
-        <h2>Team attendance</h2>
+        <h2>My team attendance</h2>
         <p>Daily attendance and the team ranked by attendance rate</p>
       </div>
       <div class="tad-head__controls" data-testid="tad-controls">

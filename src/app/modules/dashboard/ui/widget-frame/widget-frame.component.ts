@@ -1,8 +1,20 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, effect, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Type,
+  ViewEncapsulation,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked
+} from '@angular/core';
 import { BootstrapWidget } from '../../models/dashboard-layout.model';
 import { WIDGET_DATA, WidgetDataStore } from '../../widgets/widget-data';
-import { WIDGET_REGISTRY } from '../../widgets/widget-registry';
+import { WIDGET_REGISTRY, WidgetRegistryEntry } from '../../widgets/widget-registry';
 import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-widget.component';
 
 /**
@@ -68,7 +80,11 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
           [attr.inert]="editing() ? '' : null"
         >
           @if (entry(); as e) {
-            <ng-container *ngComponentOutlet="e.component; inputs: e.inputs" />
+            @if (loadFailed()) {
+              <app-unsupported-widget [title]="widget().title" />
+            } @else if (component(); as c) {
+              <ng-container *ngComponentOutlet="c; inputs: e.inputs" />
+            }
           } @else {
             <app-unsupported-widget [title]="widget().title" />
           }
@@ -112,11 +128,48 @@ export class WidgetFrameComponent {
 
   protected readonly overflowVisible = computed(() => this.entry()?.overflowVisible === true);
 
+  /** The card component once its lazy chunk has loaded, tagged with the entry it belongs to. */
+  private readonly loaded = signal<{ entry: WidgetRegistryEntry; component: Type<unknown> } | null>(null);
+  private readonly failedEntry = signal<WidgetRegistryEntry | null>(null);
+
+  /** Loaded component for the current entry; null while its chunk is still downloading. */
+  protected readonly component = computed(() => {
+    const l = this.loaded();
+    return l && l.entry === this.entry() ? l.component : null;
+  });
+
+  protected readonly loadFailed = computed(() => {
+    const e = this.entry();
+    return e !== null && this.failedEntry() === e;
+  });
+
   private boundId: string | null = null;
   private boundState: unknown = null;
   private boundData: unknown = null;
 
   constructor() {
+    effect(() => {
+      const e = this.entry();
+      if (!e || this.loaded()?.entry === e) {
+        return;
+      }
+      untracked(() => {
+        e.load().then(
+          (component) => {
+            if (this.entry() === e) {
+              this.loaded.set({ entry: e, component });
+            }
+          },
+          () => {
+            // Chunk download failed (offline, or a deploy replaced the hashed file): show the placeholder.
+            if (this.entry() === e) {
+              this.failedEntry.set(e);
+            }
+          }
+        );
+      });
+    });
+
     effect(() => {
       const w = this.widget();
       // Layout-only changes (move/resize) replace the widget object; only re-seed when the seed itself changed.
