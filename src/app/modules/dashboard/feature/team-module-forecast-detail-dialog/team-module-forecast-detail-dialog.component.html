@@ -26,7 +26,7 @@
 
   @if (store.data(); as data) {
     <div class="mfd">
-      <app-kpi-tiles palette="widget" palette="widget"
+      <app-kpi-tiles palette="widget"
         data-section="summary"
         [tiles]="tiles()"
         [maxColumns]="5"
@@ -251,7 +251,6 @@
                     } @else {
                       <span
                         class="mfd-chip"
-                        [style.--tone]="statusMeta[m.status].color"
                         data-testid="mfd-status"
                         >{{ statusMeta[m.status].label }}</span
                       >

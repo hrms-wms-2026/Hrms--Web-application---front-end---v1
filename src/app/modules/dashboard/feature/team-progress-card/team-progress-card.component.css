@@ -500,14 +500,10 @@
   color: var(--color-text-secondary);
 }
 
-.tone-green { background: var(--color-widget-mild); border-color: var(--color-widget-mild-line); }
-.tone-green .tp-tone-text { color: var(--color-widget-shade-1); }
-.tone-blue { background: var(--color-widget-mild); border-color: var(--color-widget-mild-line); }
-.tone-blue .tp-tone-text { color: var(--color-widget-shade-1); }
+.tone-green, .tone-blue, .tone-amber { background: var(--color-widget-mild); border-color: var(--color-widget-mild-line); }
+.tone-green .tp-tone-text, .tone-blue .tp-tone-text, .tone-amber .tp-tone-text { color: var(--color-widget-shade-1); }
 .tone-gray { background: var(--color-surface-secondary); border-color: var(--color-border); }
 .tone-gray .tp-tone-text { color: var(--color-text-primary); }
-.tone-amber { background: var(--color-widget-mild); border-color: var(--color-widget-mild-line); }
-.tone-amber .tp-tone-text { color: var(--color-widget-shade-1); }
 .tone-rose { background: var(--color-widget-maroon-soft); border-color: color-mix(in srgb, var(--color-widget-maroon) 25%, var(--color-widget-maroon-soft)); }
 .tone-rose .tp-tone-text { color: var(--color-widget-maroon); }
 
@@ -663,7 +659,7 @@
   outline-offset: 2px;
 }
 
-/* Top members: name, blue bar, hours (like the reference). 30px rows. */
+/* Top members: name, shade-2 bar, hours (like the reference). 30px rows. */
 .tp-member {
   display: grid;
   height: 1.875rem;

@@ -112,7 +112,7 @@ export class TeamAttendanceDetailDialogComponent {
     ];
   });
 
-  /** Department comparison bars: width = rate, coloured green from 90%, amber from 75%, else red. */
+  /** Department comparison bars: width = rate, shade 1 from 90%, shade 3 from 75%, else maroon. */
   protected readonly departmentBars = computed(() =>
     // Worst rate first so problem departments sit at the top; departments with no rate (all on leave) go last.
     departmentsWorstFirst(this.store.data()?.departmentRates ?? [])

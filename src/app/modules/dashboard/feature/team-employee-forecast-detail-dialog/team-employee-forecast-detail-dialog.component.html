@@ -26,7 +26,7 @@
 
   @if (store.data(); as data) {
     <div class="efd">
-      <app-kpi-tiles palette="widget" palette="widget"
+      <app-kpi-tiles palette="widget"
         data-section="summary"
         [tiles]="tiles()"
         [maxColumns]="5"
@@ -253,7 +253,6 @@
                     } @else {
                       <span
                         class="efd-chip"
-                        [style.--tone]="statusMeta[e.status].color"
                         data-testid="efd-status"
                         >{{ statusMeta[e.status].label }}</span
                       >

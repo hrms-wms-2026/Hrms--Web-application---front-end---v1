@@ -11,7 +11,7 @@ const TONE = { rate: WIDGET.shade1, departments: WIDGET.shade2, attention: WIDGE
 const CHIP = { late: WIDGET.shade3, absent: WIDGET.maroon, leave: WIDGET.shade2 } as const;
 /** Every colour these cards use, for the colour guard spec. */
 export const TEAM_ATTENDANCE_CARD_COLORS = { ...TONE, ...CHIP } as const;
-/** A department under this rate is drawn amber. */
+/** A department under this rate gets the shade-3 (old amber) tone. */
 const DEPARTMENT_WARN_RATE = 90;
 
 const pct = (rate: number | null): string => (rate === null ? '—' : `${rate}%`);

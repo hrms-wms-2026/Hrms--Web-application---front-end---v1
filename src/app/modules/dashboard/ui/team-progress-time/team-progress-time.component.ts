@@ -16,7 +16,7 @@ const UNSCHEDULED_TOP = 3;
 
 /**
  * Team Progress's planned-vs-worked sections on the card (My Team widgets design 2026-10-29, section 6.1): the band
- * (scheduled blue, outside-slot amber, no-plan amber stripes against the planned marker, coverage beside it), the
+ * (scheduled shade 1, outside-slot shade 3, no-plan shade-3 stripes against the planned marker, coverage beside it), the
  * unscheduled-work callout and the top of the workload ranking. Minutes only: nothing here is an estimate hour or sits on
  * the allocation's axis. Which sections show is the card's layout plan.
  */
