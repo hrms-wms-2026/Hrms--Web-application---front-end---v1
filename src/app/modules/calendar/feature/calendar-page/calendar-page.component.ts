@@ -230,7 +230,7 @@ export class CalendarPageComponent {
     const c = this.cursor();
     switch (this.view()) {
       case 'month': return c.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-      case 'week': return `Week of ${this.weekStart()}`;
+      case 'week': return weekMonthLabel(this.weekStart());
       case 'day': return this.dayDate();
     }
   });
@@ -836,4 +836,17 @@ export class CalendarPageComponent {
     const ok = await this.store.removeGuest(editing.id, email);
     if (ok) this.editingEvent.set(this.store.events().find((e) => e.id === editing.id) ?? null);
   }
+}
+
+/** The month a week falls in, as the toolbar shows it: "November 2026", "Nov – Dec 2026" across two months, "Dec 2026 – Jan 2027" across a year. */
+export function weekMonthLabel(weekStart: string): string {
+  const [y, m, d] = weekStart.split('-').map(Number);
+  const start = new Date(y, m - 1, d);
+  const end = new Date(y, m - 1, d + 6);
+  const month = (date: Date, style: 'long' | 'short') => date.toLocaleDateString('en-US', { month: style });
+  if (start.getFullYear() !== end.getFullYear()) {
+    return `${month(start, 'short')} ${start.getFullYear()} – ${month(end, 'short')} ${end.getFullYear()}`;
+  }
+  if (start.getMonth() !== end.getMonth()) return `${month(start, 'short')} – ${month(end, 'short')} ${end.getFullYear()}`;
+  return `${month(start, 'long')} ${start.getFullYear()}`;
 }
