@@ -131,7 +131,7 @@ describe('errorInterceptor', () => {
     const req = httpMock.expectOne('/api/v1/work/projects/p1');
     req.flush(
       {
-        type: 'https://onevo.com/errors/csrf',
+        type: 'urn:crownus:error:csrf',
         title: 'Forbidden',
         status: 403,
         detail: 'A valid CSRF token is required for this request.'

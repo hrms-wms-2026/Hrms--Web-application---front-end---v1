@@ -19,13 +19,13 @@ describe('csrfInterceptor', () => {
   });
 
   afterEach(() => {
-    document.cookie = 'onevo_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    document.cookie = 'onevo_legal_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'crownus_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'crownus_legal_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     httpMock.verify();
   });
 
-  it('sets X-CSRF-Token from onevo_csrf on a POST', () => {
-    document.cookie = 'onevo_csrf=full-session-token';
+  it('sets X-CSRF-Token from crownus_csrf on a POST', () => {
+    document.cookie = 'crownus_csrf=full-session-token';
 
     http.post('/api/v1/employees', {}).subscribe();
 
@@ -35,8 +35,8 @@ describe('csrfInterceptor', () => {
     req.flush({});
   });
 
-  it('falls back to onevo_legal_csrf when onevo_csrf is absent', () => {
-    document.cookie = 'onevo_legal_csrf=pending-consent-token';
+  it('falls back to crownus_legal_csrf when crownus_csrf is absent', () => {
+    document.cookie = 'crownus_legal_csrf=pending-consent-token';
 
     http.post('/api/v1/legal/acceptances/complete-login', {}).subscribe();
 
@@ -45,8 +45,19 @@ describe('csrfInterceptor', () => {
     req.flush({});
   });
 
+  it('ignores a leftover pre-rename onevo_csrf cookie', () => {
+    document.cookie = 'onevo_csrf=old-token';
+
+    http.post('/api/v1/employees', {}).subscribe();
+
+    const req = httpMock.expectOne('/api/v1/employees');
+    expect(req.request.headers.has('X-CSRF-Token')).toBe(false);
+    req.flush({});
+    document.cookie = 'onevo_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  });
+
   it('does not set the header on a GET', () => {
-    document.cookie = 'onevo_csrf=full-session-token';
+    document.cookie = 'crownus_csrf=full-session-token';
 
     http.get('/api/v1/employees').subscribe();
 
