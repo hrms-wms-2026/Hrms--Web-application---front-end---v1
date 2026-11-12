@@ -59,11 +59,11 @@
 
 .wp-status--ahead,
 .wp-status--on_track {
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
 }
 
 .wp-status--behind {
-  color: var(--color-warning);
+  color: var(--color-widget-shade-1);
 }
 
 .wp-delta {
@@ -78,12 +78,12 @@
 
 .wp-delta-value {
   font-weight: 700;
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
 }
 
 .wp-delta-value--down,
 .wp-down {
-  color: var(--color-warning);
+  color: var(--color-widget-shade-1);
 }
 
 .wp-delta-caption {
@@ -151,11 +151,11 @@
   display: block;
   height: 100%;
   border-radius: 9999px;
-  background: var(--color-cat-blue);
+  background: var(--color-widget-shade-2);
 }
 
 .wp-week-fill--last {
-  background: #93c5fd;
+  background: var(--color-widget-shade-2);
 }
 
 .wp-week-hours {
@@ -192,11 +192,11 @@
 }
 
 .wp-tone--success {
-  --tone: var(--color-success);
+  --tone: var(--color-widget-shade-1);
 }
 
 .wp-tone--warning {
-  --tone: var(--color-warning-text);
+  --tone: var(--color-widget-shade-3);
 }
 
 .wp-stacked-label {
@@ -433,11 +433,11 @@
 }
 
 .wp-compare-value small {
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
 }
 
 .wp-compare-value small.wp-down {
-  color: var(--color-warning);
+  color: var(--color-widget-shade-1);
 }
 
 .wp-compare-caption {

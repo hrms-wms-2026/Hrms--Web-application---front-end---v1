@@ -63,8 +63,8 @@
 .wwp-status { max-width: 96px; font-size: 10px; line-height: 1.2; color: var(--color-text-secondary); }
 
 .wwp-delta { display: flex; gap: 4px; font-size: 12px; white-space: nowrap; color: var(--color-text-secondary); }
-.wwp-delta strong, .wwp-stat strong { color: var(--color-tint-green-text); }
-.wwp-down { color: var(--color-warning) !important; }
+.wwp-delta strong, .wwp-stat strong { color: var(--color-widget-shade-1); }
+.wwp-down { color: var(--color-widget-shade-1) !important; }
 
 .wwp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .wwp-panel {
@@ -106,8 +106,8 @@
 
 .wwp-insights { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .wwp-insight { border-left: 3px solid var(--color-accent); padding-left: 8px; font-size: 12px; color: var(--color-text-primary); }
-.wwp-insight--positive { border-left-color: var(--color-success); }
-.wwp-insight--warning { border-left-color: var(--color-warning-text); }
+.wwp-insight--positive { border-left-color: var(--color-widget-shade-1); }
+.wwp-insight--warning { border-left-color: var(--color-widget-shade-3); }
 
 .wwp-muted { font-size: 12px; color: var(--color-text-secondary); }
 

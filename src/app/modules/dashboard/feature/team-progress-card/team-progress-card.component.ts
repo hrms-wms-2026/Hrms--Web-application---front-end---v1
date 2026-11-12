@@ -78,7 +78,6 @@ export interface StatusRow {
   key: ProgressStatusKey;
   label: string;
   color: string;
-  bgClass: string;
   hours: number;
   hoursText: string;
   /** Share of the base (allocation, task estimates when nothing is allocated, or the period total). */
@@ -847,7 +846,6 @@ function statusRow(status: (typeof PROGRESS_STATUSES)[number], value: number, ba
     key: status.key,
     label: status.label,
     color: status.color,
-    bgClass: status.bgClass,
     hours: value,
     hoursText: formatHourValue(value),
     percentText: formatPercent(value, base),

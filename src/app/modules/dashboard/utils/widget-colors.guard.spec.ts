@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { PROGRESS_STATUSES } from './team-progress-format.util';
+import { TEAM_PROGRESS_CARD_COLORS } from './team-progress-summary-cards.util';
 import { isWidgetColor } from './widget-palette';
 
 /**
@@ -58,8 +60,8 @@ describe('dashboard widget colour guard', () => {
   });
 
   // Task 4: Team Progress + Weekly Work Progress
-  it.todo('team progress statuses are widget colours');
-  it.todo('team progress summary cards are widget colours');
+  it('team progress statuses are widget colours', () => expectColorFields(PROGRESS_STATUSES));
+  it('team progress summary cards are widget colours', () => expectColorMap(TEAM_PROGRESS_CARD_COLORS));
 
   // Task 5: Work vs task hours + Team Status
   it.todo('work vs task hours colours are widget colours');

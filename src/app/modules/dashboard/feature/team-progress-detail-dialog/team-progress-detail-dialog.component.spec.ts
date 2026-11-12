@@ -630,7 +630,7 @@ describe('TeamProgressDetailDialogComponent', () => {
       ['Not yet tasked', '50%', '100 h'],
     ]);
     const slices = [...q('tp-donut')!.querySelectorAll('[data-testid="donut-segment"]')];
-    expect(slices.map((c) => c.getAttribute('fill'))).toContain('#ef4444');
+    expect(slices.map((c) => (c as SVGElement).style.fill)).toContain('var(--color-widget-maroon)');
     expect(q('tp-donut-overdue')).toBeNull();
     expect(q('tp-donut')!.querySelector('svg')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
     expect(q('tp-legend-note')!.textContent).toContain('without the overdue');

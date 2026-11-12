@@ -7,14 +7,14 @@
     <div class="flex flex-wrap items-center gap-6">
       <div class="relative h-32 w-32 shrink-0">
         <svg viewBox="0 0 120 120" class="h-32 w-32 -rotate-90" data-testid="task-progress-donut">
-          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-surface-secondary)" stroke-width="16" />
+          <circle cx="60" cy="60" r="50" fill="none" style="stroke: var(--color-widget-track)" stroke-width="16" />
           @for (segment of segments(); track segment.bucket) {
             <circle
               cx="60"
               cy="60"
               r="50"
               fill="none"
-              [attr.stroke]="bucketColor(segment.bucket)"
+              [style.stroke]="bucketColor(segment.bucket)"
               stroke-width="16"
               [attr.stroke-dasharray]="segment.dashArray"
               [attr.stroke-dashoffset]="segment.dashOffset"

@@ -60,7 +60,7 @@
 .tp-stats--period[aria-busy='true'] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
 .tp-stat {
-  --tone: #10b981;
+  --tone: var(--color-widget-shade-1);
   display: flex;
   min-height: 64px;
   min-width: 0;
@@ -68,22 +68,27 @@
   justify-content: space-between;
   gap: 8px;
   padding: 10px 14px;
-  border: 1px solid var(--dashboard-kpi-border, color-mix(in srgb, var(--tone) 30%, var(--color-surface)));
+  /* The mild theme card (monochrome widgets): --tone only colours the icon badge. */
+  border: 1px solid var(--color-widget-mild-line);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
+  background: var(--color-widget-mild);
 }
-.tp-stat--completed { --tone: #10b981; }
-.tp-stat--inProgress { --tone: #3b82f6; }
-.tp-stat--notStarted { --tone: #94a3b8; }
-.tp-stat--untasked { --tone: #f59e0b; }
-.tp-stat--overdue { --tone: #ef4444; }
-.tp-stat--skeleton { --tone: #94a3b8; opacity: .6; }
-.tp-stat__value { font-size: 20px; font-weight: 700; line-height: 1.2; color: color-mix(in srgb, var(--tone) 72%, var(--color-text-primary)); white-space: nowrap; }
+.tp-stat--completed { --tone: var(--color-widget-shade-1); }
+.tp-stat--inProgress { --tone: var(--color-widget-shade-2); }
+.tp-stat--notStarted { --tone: var(--color-widget-shade-4); }
+.tp-stat--untasked { --tone: var(--color-widget-shade-3); }
+.tp-stat--overdue { --tone: var(--color-widget-maroon); }
+.tp-stat--skeleton { --tone: var(--color-widget-shade-4); opacity: .6; }
+.tp-stat__value { font-size: 20px; font-weight: 700; line-height: 1.2; color: var(--color-widget-shade-1); white-space: nowrap; }
+.tp-stat--overdue .tp-stat__value { color: var(--color-widget-maroon); }
 .tp-stat__value small { font-size: 14px; font-weight: 600; }
-.tp-stat__label { margin-top: 2px; overflow: hidden; font-size: 11px; color: color-mix(in srgb, var(--tone) 55%, var(--color-text-secondary)); text-overflow: ellipsis; white-space: nowrap; }
+.tp-stat__label { margin-top: 2px; overflow: hidden; font-size: 11px; color: var(--color-text-secondary); text-overflow: ellipsis; white-space: nowrap; }
 .tp-stat__pct { margin-left: 6px; font-weight: 700; }
 .tp-stat__count { margin-left: 2px; }
-.tp-stat__icon { display: inline-flex; width: 26px; height: 26px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 9999px; background: var(--tone); color: #fff; }
+.tp-stat__icon { display: inline-flex; width: 26px; height: 26px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 9999px; background: var(--tone); color: var(--color-widget-on-solid); }
+.tp-stat--notStarted .tp-stat__icon,
+.tp-stat--untasked .tp-stat__icon,
+.tp-stat--skeleton .tp-stat__icon { color: var(--color-widget-shade-1); }
 .tp-stat--untasked .tp-stat__icon { border-radius: 6px; }
 .tp-stat__icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -92,7 +97,7 @@
 .tp-total__value small { font-size: 15px; font-weight: 600; }
 .tp-total__label { font-size: 12px; color: var(--color-text-secondary); }
 .tp-total__meta { font-size: 11px; color: var(--color-text-secondary); }
-.tp-total__meta span { font-weight: 700; color: #059669; }
+.tp-total__meta span { font-weight: 700; color: var(--color-widget-shade-1); }
 
 .tp-panels { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 12px; }
 .tp-panel { display: flex; min-width: 0; flex-direction: column; gap: 10px; }
@@ -111,7 +116,7 @@
 .tp-members-groups td { border: 0; }
 .tp-mini-table .tp-members-time { border-left: 1px solid var(--color-border); }
 .tp-mini-table td:first-child { width: 22%; }
-.tp-over { font-weight: 600; color: #b45309; }
+.tp-over { font-weight: 600; color: var(--color-widget-shade-1); }
 .tp-panel__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-top: auto; }
 
 /* Status distribution */
@@ -149,14 +154,14 @@
 .tp-mini-table tbody tr:last-child td { border-bottom: 0; }
 .tp-mini-table__empty { padding: 14px 8px !important; text-align: center !important; color: var(--color-text-secondary) !important; }
 .tp-person { display: flex; width: 100%; min-width: 0; align-items: center; gap: 8px; }
-.tp-avatar { display: inline-flex; width: 22px; height: 22px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 9999px; background: var(--color-accent); color: #fff; font-size: 9px; font-weight: 700; }
+.tp-avatar { display: inline-flex; width: 22px; height: 22px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 9999px; background: var(--color-widget-shade-2); color: var(--color-widget-on-solid); font-size: 9px; font-weight: 700; }
 .tp-mini-pager { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-text-secondary); }
 .tp-mini-pager span { margin-right: 4px; }
 .tp-mini-pager button { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-primary); cursor: pointer; }
 .tp-mini-pager button:hover:not(:disabled) { background: var(--color-surface-secondary); }
 .tp-mini-pager button:disabled { opacity: .35; cursor: not-allowed; }
 .tp-mini-pager svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.tp-inline-error { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 8px; background: var(--color-danger-subtle); font-size: 12px; color: var(--color-danger-text); }
+.tp-inline-error { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 8px; background: var(--color-widget-maroon-soft); font-size: 12px; color: var(--color-widget-maroon); }
 
 /* Overdue */
 .tp-overdue-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -174,7 +179,7 @@
 .tp-overdue:hover { border-color: var(--color-accent); }
 .tp-overdue:focus-visible, .tp-link-button:focus-visible,
 .tp-close:focus-visible, .tp-text-button:focus-visible, .tp-mini-pager button:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-.tp-overdue__days { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--color-danger-text); }
+.tp-overdue__days { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--color-widget-maroon); }
 
 .tp-link-button { padding: 5px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); font-size: 12px; color: var(--color-text-primary); cursor: pointer; }
 
@@ -228,7 +233,7 @@
 /* Overdue tasks: head (title + count), total line, then a fixed pie column beside the task table.
    Text columns are left-aligned under their headers, number / date columns right-aligned. */
 .tp-overdue-total { margin: -2px 0 0; font-size: 13px; color: var(--color-text-primary); }
-.tp-overdue-total strong { font-size: 18px; color: var(--color-danger-text); }
+.tp-overdue-total strong { font-size: 18px; color: var(--color-widget-maroon); }
 .tp-overdue-body { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: stretch; }
 .tp-overdue-chart { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-secondary); }
 .tp-overdue-chart__title { align-self: flex-start; margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; color: var(--color-text-secondary); }
@@ -264,7 +269,7 @@
 
 /* Team members bar list (BoardUI Bar List Card look): underline tabs pick the ranking, each row's tinted
    bar behind the name is its share of the page's largest value, the hours sit on the right. */
-.tp-barlist { --tp-barlist-color: var(--color-info); display: flex; flex-direction: column; gap: 8px; }
+.tp-barlist { --tp-barlist-color: var(--color-widget-shade-2); display: flex; flex-direction: column; gap: 8px; }
 .tp-barlist__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--color-border); }
 .tp-barlist__tabs { display: flex; min-width: 0; gap: 18px; overflow-x: auto; scrollbar-width: none; }
 .tp-barlist__tab { position: relative; flex-shrink: 0; padding: 4px 0 8px; border: 0; background: transparent; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); white-space: nowrap; cursor: pointer; transition: color 150ms ease; }

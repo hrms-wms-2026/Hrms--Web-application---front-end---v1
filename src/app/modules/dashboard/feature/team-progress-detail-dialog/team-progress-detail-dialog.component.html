@@ -161,7 +161,7 @@
                   <li data-testid="tp-note-unestimated">{{ ov.unestimatedTaskCount }} {{ ov.unestimatedTaskCount === 1 ? 'task has' : 'tasks have' }} no estimate and add no hours.</li>
                 }
                 <li data-testid="tp-note-risk">
-                  <span class="font-semibold" [class.text-[var(--color-danger-text)]]="modulesAtRisk() > 0">{{ modulesAtRisk() }}</span>
+                  <span class="font-semibold" [class.text-[var(--color-widget-maroon)]]="modulesAtRisk() > 0">{{ modulesAtRisk() }}</span>
                   {{ modulesAtRisk() === 1 ? 'module' : 'modules' }} at risk (overdue work in the subtree).
                 </li>
               </ul>

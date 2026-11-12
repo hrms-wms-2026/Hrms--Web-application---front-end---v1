@@ -10,6 +10,7 @@ import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
 import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
 import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
 import { WeeklyInsight, buildWeeklyInsights, progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
+import { WIDGET } from '../../utils/widget-palette';
 import {
   WEEKLY_STATUS_LABELS,
   WeeklyDelta,
@@ -21,7 +22,7 @@ import {
 } from '../../utils/weekly-work-progress-format.util';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const COLORS = { worked: '#22c55e', notWorked: '#f59e0b', scheduled: '#3b82f6', completed: '#22c55e', inProgress: '#3b82f6', notStarted: '#f59e0b' };
+const COLORS = { worked: 'var(--color-widget-shade-1)', notWorked: 'var(--color-widget-shade-3)', scheduled: 'var(--color-widget-shade-2)', completed: 'var(--color-widget-shade-1)', inProgress: 'var(--color-widget-shade-2)', notStarted: 'var(--color-widget-shade-3)' };
 
 /** "Oct 26 – Nov 1, 2026", or with both years when the week spans New Year. */
 export function weekRangeLabel(weekStart: string, weekEnd: string): string {
@@ -122,7 +123,7 @@ export class WeeklyWorkProgressDetailDialogComponent {
     const ring = this.ring();
     const left = Math.max(0, w.expectedMinutes - w.workedMinutes);
     return [
-      { key: 'worked', label: 'Worked', value: w.workedMinutes, valueText: formatWeekHours(w.workedMinutes), percentText: `${Math.round(ring)}%`, color: '#2563eb' },
+      { key: 'worked', label: 'Worked', value: w.workedMinutes, valueText: formatWeekHours(w.workedMinutes), percentText: `${Math.round(ring)}%`, color: WIDGET.shade1 },
       { key: 'left', label: 'Left', value: left, valueText: formatWeekHours(left), percentText: `${Math.round(100 - ring)}%`, color: 'transparent' }
     ];
   });

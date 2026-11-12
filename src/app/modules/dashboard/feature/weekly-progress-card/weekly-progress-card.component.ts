@@ -14,6 +14,7 @@ import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
 import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
 import { injectHostSize } from '../../utils/host-size.util';
 import { progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
+import { WIDGET } from '../../utils/widget-palette';
 import {
   WEEKLY_PROGRESS_CARD_CHROME,
   WeeklyProgressView,
@@ -147,7 +148,7 @@ export class WeeklyProgressCardComponent implements OnInit {
     const ring = this.ring();
     const left = Math.max(0, week.expectedMinutes - week.workedMinutes);
     return [
-      { key: 'worked', label: 'Worked', value: week.workedMinutes, valueText: formatWeekHours(week.workedMinutes), percentText: `${Math.round(ring)}%`, color: 'var(--color-cat-blue)' },
+      { key: 'worked', label: 'Worked', value: week.workedMinutes, valueText: formatWeekHours(week.workedMinutes), percentText: `${Math.round(ring)}%`, color: WIDGET.shade1 },
       { key: 'left', label: 'Left', value: left, valueText: formatWeekHours(left), percentText: `${Math.round(100 - ring)}%`, color: 'transparent' }
     ];
   });

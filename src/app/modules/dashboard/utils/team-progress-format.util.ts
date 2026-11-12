@@ -1,3 +1,5 @@
+import { WIDGET } from './widget-palette';
+
 /** Shared by the Team Progress card and its detail dialog, so both read the same colours, labels and
  * number formats. Hours here are task estimates (weightage), never time actually worked. */
 
@@ -6,17 +8,15 @@ export type ProgressStatusKey = 'completed' | 'inProgress' | 'notStarted' | 'unt
 export interface ProgressStatusMeta {
   readonly key: ProgressStatusKey;
   readonly label: string;
-  /** Hex for SVG fills. */
+  /** Monochrome widget colour (a `var(--color-widget-*)` string) for donuts, dots and bar segments. */
   readonly color: string;
-  /** Tailwind background class for dots and bar segments. */
-  readonly bgClass: string;
 }
 
 export const PROGRESS_STATUSES: readonly ProgressStatusMeta[] = [
-  { key: 'completed', label: 'Completed', color: '#10b981', bgClass: 'bg-emerald-500' },
-  { key: 'inProgress', label: 'In progress', color: '#3b82f6', bgClass: 'bg-blue-500' },
-  { key: 'notStarted', label: 'Not started', color: '#cbd5e1', bgClass: 'bg-slate-300' },
-  { key: 'untasked', label: 'Not yet tasked', color: '#fcd34d', bgClass: 'bg-amber-300' }
+  { key: 'completed', label: 'Completed', color: WIDGET.shade1 },
+  { key: 'inProgress', label: 'In progress', color: WIDGET.shade2 },
+  { key: 'notStarted', label: 'Not started', color: WIDGET.shade3 },
+  { key: 'untasked', label: 'Not yet tasked', color: WIDGET.shade4 }
 ];
 
 export const PROGRESS_STATUS_BY_KEY: Readonly<Record<ProgressStatusKey, ProgressStatusMeta>> = Object.fromEntries(

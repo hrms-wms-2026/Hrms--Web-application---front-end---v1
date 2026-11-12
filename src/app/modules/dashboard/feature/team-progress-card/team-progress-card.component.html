@@ -35,7 +35,7 @@
       >
         @if (completionCenter) {
           <p class="tp-donut-center">
-            <span class="text-lg font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+            <span class="text-lg font-bold text-[var(--color-widget-shade-1)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
             <span class="tp-donut-caption">completed</span>
           </p>
         } @else {
@@ -57,7 +57,7 @@
             (mouseenter)="hoveredStatus.set(row.key)"
             (mouseleave)="hoveredStatus.set(null)"
           >
-            <span class="h-2.5 w-2.5 rounded-full" [class]="row.bgClass" aria-hidden="true"></span>
+            <span class="h-2.5 w-2.5 rounded-full" [style.background]="row.color" aria-hidden="true"></span>
             <span class="tp-legend-label" [title]="row.label">{{ row.label }}</span>
             <span class="tp-legend-hours" [attr.data-testid]="'team-progress-legend-' + row.testId">{{ row.hoursText }} h</span>
             <span class="tp-legend-pct" [attr.data-testid]="'team-progress-legend-' + row.testId + '-percent'">{{ variant === 'compact' ? '(' + row.percentText + ')' : row.percentText }}</span>
@@ -70,7 +70,7 @@
                 aria-valuemax="100"
                 [attr.aria-valuenow]="row.percentRounded"
                 [attr.aria-valuetext]="row.percentText"
-              ><span [class]="row.bgClass" [style.width.%]="row.percentValue"></span></span>
+              ><span [style.background]="row.color" [style.width.%]="row.percentValue"></span></span>
             }
           </li>
         }
@@ -81,7 +81,7 @@
       @if (showNotes()) {
         <p class="shrink-0 truncate text-xs">
           @if (data.hours.overTaskedHours > 0) {
-            <span class="font-medium text-[var(--color-danger)]" data-testid="team-progress-over-tasked">Tasks exceed the allocation by {{ formatHourValue(data.hours.overTaskedHours) }} h</span>
+            <span class="font-medium text-[var(--color-widget-maroon)]" data-testid="team-progress-over-tasked">Tasks exceed the allocation by {{ formatHourValue(data.hours.overTaskedHours) }} h</span>
           }
           @if (data.hours.overTaskedHours > 0 && data.hours.unestimatedTaskCount > 0) {
             <span class="mx-1 text-[var(--color-text-muted)]">·</span>
@@ -142,7 +142,7 @@
       <section class="tp-panel" aria-label="Overdue tasks" data-testid="team-progress-overdue">
         <h3 class="team-progress-heading">
           <span class="truncate">Overdue tasks ({{ data.overdueTotal }})
-            · <span class="text-[var(--color-danger)] tabular-nums" data-testid="team-progress-overdue-hours">{{ formatHourValue(data.overdueHours) }} h</span></span>
+            · <span class="text-[var(--color-widget-maroon)] tabular-nums" data-testid="team-progress-overdue-hours">{{ formatHourValue(data.overdueHours) }} h</span></span>
           <ng-container *ngTemplateOutlet="moreTpl; context: { $implicit: hiddenOverdueCount() }" />
         </h3>
         @if (visibleOverdue().length === 0) {
@@ -162,7 +162,7 @@
                       @if (task.shortId) { <span class="mr-1 text-[var(--color-text-muted)]">{{ task.shortId }}</span> }{{ task.title }}
                     </span>
                     <span class="shrink-0 text-xs text-[var(--color-text-secondary)] tabular-nums" data-testid="team-progress-overdue-task-hours">{{ task.estimatedHours === null ? '—' : formatHourValue(task.estimatedHours) + ' h' }}</span>
-                    <span class="shrink-0 text-xs font-semibold text-[var(--color-danger)] tabular-nums">{{ task.daysOverdue }}d overdue</span>
+                    <span class="shrink-0 text-xs font-semibold text-[var(--color-widget-maroon)] tabular-nums">{{ task.daysOverdue }}d overdue</span>
                   </span>
                   <span class="block truncate text-xs text-[var(--color-text-secondary)]">{{ assigneeNames(task) || 'Unassigned' }}</span>
                 </button>
@@ -284,7 +284,7 @@
               (shownCards)="shownCards.set($event)"
             >
               <p class="tp-donut-center">
-                <span class="text-lg font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+                <span class="text-lg font-bold text-[var(--color-widget-shade-1)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
                 <span class="tp-donut-caption">completed</span>
               </p>
             </app-dashboard-summary-strip>
@@ -301,7 +301,7 @@
             }
             @if (plan().miniFigure) {
               <p class="tp-completion">
-                <span class="tp-completion-big text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+                <span class="tp-completion-big text-[var(--color-widget-shade-1)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
                 <span class="tp-completion-caption">Completed</span>
               </p>
             }
@@ -332,7 +332,7 @@
                   <p class="text-xs text-[var(--color-text-secondary)]">{{ period() === 'all' ? 'Total allocated' : periodCaption() }}</p>
                 </div>
                 <p class="shrink-0 text-right text-xs text-[var(--color-text-secondary)]">
-                  <span class="block text-lg font-bold leading-tight text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
+                  <span class="block text-lg font-bold leading-tight text-[var(--color-widget-shade-1)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span>
                   completed
                 </p>
               </div>
@@ -400,7 +400,7 @@
               <div class="tp-tall-side">
                 <ng-container *ngTemplateOutlet="donutTpl" />
                 <p class="text-xs text-[var(--color-text-secondary)]">
-                  <span class="font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span> completed
+                  <span class="font-bold text-[var(--color-widget-shade-1)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span> completed
                 </p>
               </div>
               <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'list' }" />
@@ -471,7 +471,7 @@
               <div class="tp-small-side">
                 <ng-container *ngTemplateOutlet="donutTpl" />
                 <p class="text-xs text-[var(--color-text-secondary)]">
-                  <span class="font-bold text-[var(--color-success)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span> completed
+                  <span class="font-bold text-[var(--color-widget-shade-1)] tabular-nums" data-testid="team-progress-completion">{{ completionText() }}</span> completed
                 </p>
               </div>
               <ng-container *ngTemplateOutlet="statusListTpl; context: { $implicit: 'compact' }" />
