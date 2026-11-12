@@ -133,6 +133,15 @@ function clearLegacyDashboardStorage(): void {
     :host(.dashboard-shell--team) ::ng-deep app-widget-card > section {
       --color-surface-secondary: var(--color-dashboard-team-widget-inset);
     }
+    /* Widget popups open inside the shell and take the same theme-tinted gray as the widget cards. */
+    :host(.dashboard-shell--team) ::ng-deep app-modal [role='dialog'] {
+      --color-surface-secondary: var(--color-dashboard-team-widget-inset);
+      background: var(--color-dashboard-team-widget-bg);
+    }
+    /* The popups' sticky headers paint over the body, so they take the same gray. */
+    :host(.dashboard-shell--team) ::ng-deep app-modal [role='dialog'] :is(.tp-head, .tad-head, .tad-sticky, .efd-head, .efd-sticky, .mfd-head, .mfd-sticky, .tsd-head, .tsd-sticky, .wbld-head, .wtd-head, .wtd-sticky, .wwp-head) {
+      background: var(--color-dashboard-team-widget-bg);
+    }
     /* The loading skeleton matches: My Team's gray cards, no outline, darker blocks. */
     :host(.dashboard-shell--team) app-dashboard-skeleton {
       --dsk-card-border: transparent;
