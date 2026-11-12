@@ -14,6 +14,8 @@ export const WIDGET = {
   shade3b: 'var(--color-widget-shade-3b)',
   shade4: 'var(--color-widget-shade-4)',
   track: 'var(--color-widget-track)',
+  /** Neutral gray with no theme tint, for a category that should read as plain grey (Team schedule meetings). */
+  gray: 'var(--color-widget-gray)',
   maroon: 'var(--color-widget-maroon)',
   maroonSoft: 'var(--color-widget-maroon-soft)',
   mild: 'var(--color-widget-mild)',

@@ -92,7 +92,8 @@ Every widget, popup and shared chart is drawn in shades of the theme colour, wit
 Spec: `docs/superpowers/specs/2026-11-12-monochrome-dashboard-widgets-design.md`.
 
 - **Tokens** (`shared/styles/theme-tokens.css`, light + dark, all derived from `--color-accent`):
-  `--color-widget-shade-1 … -4` (plus `-2b`, `-3b` in-between steps), `--color-widget-track`, `--color-widget-maroon`,
+  `--color-widget-shade-1 … -4` (plus `-2b`, `-3b` in-between steps), `--color-widget-track`, `--color-widget-gray` (plain
+  neutral gray with no theme tint, only where a category must read as grey: Team schedule meetings), `--color-widget-maroon`,
   `--color-widget-maroon-soft`, `--color-widget-mild`, `--color-widget-mild-line`, `--color-widget-on-solid`
   (text on solid shade-1 / maroon) and `--color-widget-on-light` (text on lighter shade fills).
 - **In TS** use `WIDGET` from `utils/widget-palette.ts`: `WIDGET.shade1` … `WIDGET.maroon`. They are `var()` strings;

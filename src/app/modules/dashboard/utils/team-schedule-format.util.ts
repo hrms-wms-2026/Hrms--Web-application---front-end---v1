@@ -10,13 +10,13 @@ import { DonutArc, donutArcs } from './status-donut.util';
 import { minutesText } from './team-presence-format.util';
 import { WIDGET } from './widget-palette';
 
-/** Item colours (monochrome, approved mockup): completed, in progress, meetings and pending are theme shades
- * darkest to lightest; breaks sit between; unscheduled work and conflicts are maroon. */
+/** Item colours (monochrome): completed, in progress and pending are theme shades darkest to lightest; meetings are
+ * plain gray; breaks sit between; unscheduled work and conflicts are maroon. */
 export const SCHEDULE_COLORS = {
   completed: WIDGET.shade1,
   inProgress: WIDGET.shade2,
   pending: WIDGET.shade4,
-  meeting: WIDGET.shade3,
+  meeting: WIDGET.gray,
   break: WIDGET.shade3b,
   unscheduled: WIDGET.maroon,
   conflict: WIDGET.maroon,

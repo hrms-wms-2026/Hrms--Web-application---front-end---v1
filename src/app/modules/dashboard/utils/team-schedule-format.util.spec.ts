@@ -179,10 +179,10 @@ describe("Today's team schedule format", () => {
 });
 
 describe("Today's team schedule format (coverage audit)", () => {
-  it('a meeting is the third shade whatever its status; a task colour follows its status', () => {
+  it('a meeting is plain gray whatever its status; a task colour follows its status', () => {
     const item = (kind: 'task' | 'meeting', status: string) =>
       ({ kind, taskId: 't', title: 'x', start: at(9), end: at(10), status, isPrivate: false }) as never;
-    expect(itemColor(item('meeting', 'finished'))).toBe('var(--color-widget-shade-3)');
+    expect(itemColor(item('meeting', 'finished'))).toBe('var(--color-widget-gray)');
     expect(itemColor(item('task', 'completed'))).toBe('var(--color-widget-shade-1)');
     expect(itemColor(item('task', 'in_progress'))).toBe('var(--color-widget-shade-2)');
     expect(itemColor(item('task', 'scheduled_not_clocked'))).toBe('var(--color-widget-shade-4)');

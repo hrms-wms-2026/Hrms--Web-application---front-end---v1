@@ -27,6 +27,7 @@
   --color-widget-shade-3b: color-mix(in srgb, var(--color-accent) 20%, #bac5d2); /* in-between step (5-6 series) */
   --color-widget-shade-4: color-mix(in srgb, var(--color-accent) 12%, #ccd4de); /* neutral / nothing yet */
   --color-widget-track: color-mix(in srgb, var(--color-accent) 6%, #e1e6ec); /* empty bar tracks, chart dividers */
+  --color-widget-gray: #a3a3a3; /* neutral gray, no theme tint: meetings in Team schedule */
   --color-widget-maroon: #8a1c2c; /* was red: absent, overload, won't fit, negative deltas */
   --color-widget-maroon-soft: #f4e3e6; /* background of maroon chips */
   --color-widget-mild: color-mix(in srgb, var(--color-accent) 11%, #ffffff); /* KPI / summary / note card bg */
@@ -142,6 +143,7 @@ html.dark {
   --color-widget-shade-3b: color-mix(in srgb, var(--color-accent) 28%, #788596);
   --color-widget-shade-4: color-mix(in srgb, var(--color-accent) 22%, #6c7889);
   --color-widget-track: color-mix(in srgb, var(--color-accent) 8%, #29313d);
+  --color-widget-gray: #8a8a8a;
   --color-widget-maroon: #ee95a2;
   --color-widget-maroon-soft: #3a1a20;
   --color-widget-mild: color-mix(in srgb, var(--color-accent) 14%, #181e27);
