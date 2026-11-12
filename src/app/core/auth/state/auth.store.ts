@@ -175,7 +175,7 @@ export const AuthStore = signalStore(
 
     /**
      * Tenant-host-only: consumes the one-time code from continue_url and, on success, is the call
-     * that actually establishes onevo_session/onevo_csrf - login()/acceptLegalDocuments() never do
+     * that actually establishes crownus_session/crownus_csrf - login()/acceptLegalDocuments() never do
      * this themselves anymore once redirectRequired is true.
      */
     async exchangeSession(code: string): Promise<void> {

@@ -43,7 +43,7 @@ describe('InboxRealtimeService', () => {
   let fakeDocument: { cookie: string };
 
   function setup(): void {
-    fakeDocument = { cookie: 'other=1; onevo_csrf=tok%2B1' };
+    fakeDocument = { cookie: 'other=1; crownus_csrf=tok%2B1' };
     TestBed.configureTestingModule({
       providers: [
         { provide: AuthStore, useValue: { authenticated } },
@@ -176,7 +176,7 @@ describe('InboxRealtimeService', () => {
       const reconnected = vi.fn();
       service.reconnected$.subscribe(reconnected);
 
-      fakeDocument.cookie = 'onevo_csrf=tok2';
+      fakeDocument.cookie = 'crownus_csrf=tok2';
       hub.closed!(new Error('gone'));
       expect(service.connected()).toBe(false);
       await vi.advanceTimersByTimeAsync(2000);

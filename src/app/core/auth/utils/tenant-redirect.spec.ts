@@ -9,13 +9,13 @@ import {
 
 describe('remembered tenant hint', () => {
   it('reads a valid tenant slug from a cookie header', () => {
-    expect(readLastTenantSlug('theme=dark; onevo_last_tenant=acme-team; other=value')).toBe('acme-team');
+    expect(readLastTenantSlug('theme=dark; crownus_last_tenant=acme-team; other=value')).toBe('acme-team');
   });
 
   it('rejects malformed and encoded-host tenant values', () => {
-    expect(readLastTenantSlug('onevo_last_tenant=acme.evil.test')).toBeNull();
-    expect(readLastTenantSlug('onevo_last_tenant=acme%2Eevil%2Etest')).toBeNull();
-    expect(readLastTenantSlug('onevo_last_tenant=%E0%A4%A')).toBeNull();
+    expect(readLastTenantSlug('crownus_last_tenant=acme.evil.test')).toBeNull();
+    expect(readLastTenantSlug('crownus_last_tenant=acme%2Eevil%2Etest')).toBeNull();
+    expect(readLastTenantSlug('crownus_last_tenant=%E0%A4%A')).toBeNull();
   });
 
   it('accepts DNS-label tenant slugs only', () => {

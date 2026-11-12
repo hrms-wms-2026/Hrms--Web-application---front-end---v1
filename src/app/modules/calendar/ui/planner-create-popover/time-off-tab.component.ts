@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { SubmitLeaveRequestRequest } from '../../../leave/models/leave-request.model';
 import { LeaveBalanceStore } from '../../../leave/state/leave-balance.store';
 import { LeaveRequestStore } from '../../../leave/state/leave-request.store';
@@ -16,13 +17,12 @@ export interface TimeOffDraft { leaveTypeId: string; startIso: string; endIso: s
 @Component({
   selector: 'app-planner-time-off-tab',
   standalone: true,
+  imports: [SelectComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-2 text-sm">
-      <select data-testid="time-off-type" aria-label="Leave type" (change)="chooseType($any($event.target).value)">
-        <option value="" [selected]="!leaveTypeId()">Choose a leave type</option>
-        @for (t of activeTypes(); track t.id) { <option [value]="t.id" [selected]="t.id === leaveTypeId()">{{ typeLabel(t.id, t.name) }}</option> }
-      </select>
+      <app-select data-testid="time-off-type" ariaLabel="Leave type" placeholder="Choose a leave type" searchPlaceholder="Search leave types"
+        [options]="typeOptions()" [value]="leaveTypeId()" (valueChange)="chooseType($event)" />
       <p data-testid="time-off-range" class="text-xs">From {{ slot().date }} {{ startClock() }} · To {{ slot().date }} {{ endClock() }}</p>
       <textarea data-testid="time-off-reason" class="ui-input" rows="2" placeholder="Reason" [value]="reason() ?? ''"
         (input)="reason.set($any($event.target).value || null)"></textarea>
@@ -60,6 +60,7 @@ export class TimeOffTabComponent implements OnInit {
   private readonly sending = signal(false);
 
   readonly activeTypes = computed(() => this.types.items().filter((t) => t.isActive));
+  readonly typeOptions = computed<SelectOption[]>(() => this.activeTypes().map((t) => ({ value: t.id, label: this.typeLabel(t.id, t.name) })));
   readonly startClock = computed(() => this.clockOf(this.slot().startMinutes));
   readonly endClock = computed(() => this.clockOf(this.slot().endMinutes));
   readonly hours = computed(() => (Date.parse(this.slot().endIso) - Date.parse(this.slot().startIso)) / 3_600_000);

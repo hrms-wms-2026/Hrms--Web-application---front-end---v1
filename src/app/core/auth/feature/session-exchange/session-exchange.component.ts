@@ -7,7 +7,7 @@ import { CardComponent } from '../../../../shared/ui/card/card.component';
 /**
  * Landing page for continue_url (https://{slug}.{rootDomain}/auth/continue?code=...). Consumes the
  * one-time exchange code against this same tenant host's POST /auth/session-exchange - the call
- * that actually sets onevo_session/onevo_csrf. The base host never sets those cookies itself.
+ * that actually sets crownus_session/crownus_csrf. The base host never sets those cookies itself.
  */
 @Component({
   selector: 'app-session-exchange',

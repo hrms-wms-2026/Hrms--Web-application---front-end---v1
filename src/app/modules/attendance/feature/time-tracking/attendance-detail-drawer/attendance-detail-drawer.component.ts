@@ -194,7 +194,8 @@ export class AttendanceDetailDrawerComponent {
       cmd: 'Command Prompt',
       searchhost: 'Windows Search',
       snippingtool: 'Snipping Tool',
-      'onevo.agent.trayapp': 'WorkPulse'
+      'onevo.agent.trayapp': 'WorkPulse',
+      'crownus.agent.trayapp': 'WorkPulse'
     };
     return known[key] ?? trimmed;
   }

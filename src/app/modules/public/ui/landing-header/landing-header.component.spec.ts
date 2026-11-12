@@ -31,7 +31,7 @@ describe('LandingHeaderComponent', () => {
     }).compileComponents();
     document = TestBed.inject(DOCUMENT);
     if (lastTenantCookie !== undefined) {
-      document.cookie = `onevo_last_tenant=${lastTenantCookie}`;
+      document.cookie = `crownus_last_tenant=${lastTenantCookie}`;
     }
     const fixture = TestBed.createComponent(LandingHeaderComponent);
     setScrollY(0);
@@ -42,7 +42,7 @@ describe('LandingHeaderComponent', () => {
 
   afterEach(() => {
     setScrollY(0);
-    document.cookie = 'onevo_last_tenant=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'crownus_last_tenant=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   });
 
   it('renders the primary navigation links', async () => {
@@ -57,7 +57,7 @@ describe('LandingHeaderComponent', () => {
     expect(signIn.getAttribute('routerLink') ?? signIn.getAttribute('href')).toContain('/auth/login');
   });
 
-  it('shows "Go to Workspace" linking to the remembered tenant when onevo_last_tenant is set', async () => {
+  it('shows "Go to Workspace" linking to the remembered tenant when crownus_last_tenant is set', async () => {
     const fixture = await createComponent('acme');
 
     const signIn = fixture.debugElement.query(By.css('.landing-header__signin')).nativeElement as HTMLAnchorElement;
@@ -66,14 +66,14 @@ describe('LandingHeaderComponent', () => {
     expect(signIn.getAttribute('href')).toContain('/dashboard');
   });
 
-  it('still shows Login when onevo_last_tenant is absent', async () => {
+  it('still shows Login when crownus_last_tenant is absent', async () => {
     const fixture = await createComponent();
 
     const signIn = fixture.debugElement.query(By.css('.landing-header__signin')).nativeElement as HTMLAnchorElement;
     expect(signIn.textContent?.trim()).toBe('Login');
   });
 
-  it('still shows Login when onevo_last_tenant is present but empty', async () => {
+  it('still shows Login when crownus_last_tenant is present but empty', async () => {
     const fixture = await createComponent('');
 
     const signIn = fixture.debugElement.query(By.css('.landing-header__signin')).nativeElement as HTMLAnchorElement;

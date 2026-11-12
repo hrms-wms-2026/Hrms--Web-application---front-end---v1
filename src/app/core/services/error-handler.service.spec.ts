@@ -124,7 +124,7 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
     // title is "Validation Error", the generic sentence lives in detail, and the real
     // per-field message lives in errors - all three are present at once.
     const err = makeError(400, {
-      type: 'https://onevo.com/errors/validation-error',
+      type: 'urn:crownus:error:validation-error',
       title: 'Validation Error',
       status: 400,
       detail: 'One or more validation errors occurred.',

@@ -1,3 +1,4 @@
+import { CSRF_COOKIE_NAMES } from '../auth/auth-cookie-names';
 import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, InjectionToken, effect, inject, signal, untracked } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, IHttpConnectionOptions, LogLevel } from '@microsoft/signalr';
@@ -18,7 +19,6 @@ import {
   ParticipantRemovedEvent
 } from './inbox-realtime.models';
 
-const CSRF_COOKIE_NAMES = ['onevo_csrf', 'onevo_legal_csrf'];
 /** Waits before each new connection attempt once the built-in auto-reconnect has given up (or a start failed). */
 const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 30_000];
 

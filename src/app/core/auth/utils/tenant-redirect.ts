@@ -1,4 +1,6 @@
-const LAST_TENANT_COOKIE = 'onevo_last_tenant';
+import { AUTH_COOKIE_NAMES } from '../auth-cookie-names';
+
+const LAST_TENANT_COOKIE = AUTH_COOKIE_NAMES.lastTenant;
 const TENANT_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 export function isValidTenantSlug(value: string): boolean {
@@ -41,7 +43,7 @@ export function getRootHostname(hostname: string): string {
 
 /**
  * Builds the URL for a tenant's own subdomain, reusing the current protocol/hostname/port so
- * this works unchanged across dev ({slug}.localhost:4200) and production ({slug}.onevo.com).
+ * this works unchanged across dev ({slug}.localhost:4200) and production ({slug}.<root domain>).
  * Login always happens on the root domain, but if called from a tenant host, getRootHostname
  * ensures the root domain is used.
  */
