@@ -17,6 +17,20 @@
   --color-dashboard-team-page-bg: color-mix(in srgb, var(--color-accent) 6%, #ffffff);
   --color-dashboard-team-widget-bg: color-mix(in srgb, var(--color-dashboard-team-page-bg) 96%, #000000);
   --color-dashboard-team-widget-inset: color-mix(in srgb, var(--color-dashboard-team-widget-bg) 94%, #000000);
+  /* Dashboard widget palette (monochrome): every chart, chip and KPI/summary card inside a dashboard widget uses
+     these. Series are told apart by lightness of the theme colour mixed with gray; only "bad" gets maroon.
+     Use them through WIDGET in modules/dashboard/utils/widget-palette.ts. */
+  --color-widget-shade-1: color-mix(in srgb, var(--color-accent) 48%, #3a4656); /* main / done series, card values */
+  --color-widget-shade-2: color-mix(in srgb, var(--color-accent) 50%, #7387a0); /* second series: in progress, leave */
+  --color-widget-shade-2b: color-mix(in srgb, var(--color-accent) 40%, #8c9db2); /* in-between step (5-6 series) */
+  --color-widget-shade-3: color-mix(in srgb, var(--color-accent) 30%, #a7b5c6); /* third series, old amber warnings */
+  --color-widget-shade-3b: color-mix(in srgb, var(--color-accent) 20%, #bac5d2); /* in-between step (5-6 series) */
+  --color-widget-shade-4: color-mix(in srgb, var(--color-accent) 12%, #ccd4de); /* neutral / nothing yet */
+  --color-widget-track: color-mix(in srgb, var(--color-accent) 6%, #e1e6ec); /* empty bar tracks, chart dividers */
+  --color-widget-maroon: #8a1c2c; /* was red: absent, overload, won't fit, negative deltas */
+  --color-widget-maroon-soft: #f4e3e6; /* background of maroon chips */
+  --color-widget-mild: color-mix(in srgb, var(--color-accent) 11%, #ffffff); /* KPI / summary / note card bg */
+  --color-widget-mild-line: color-mix(in srgb, var(--color-accent) 26%, #ffffff); /* KPI / summary / note card border */
   --color-text-primary: #09090b;
   --color-text-secondary: #71717a;
   --color-text-inverse: #ffffff;
@@ -132,6 +146,19 @@ html.dark {
   --color-dashboard-team-widget-bg: var(--color-surface);
   --color-dashboard-team-widget-inset: #252c36;
   --color-dashboard-team-page-bg: color-mix(in srgb, var(--color-accent) 4%, #11171e);
+  /* Dashboard widget palette, dark: theme mixed with slates; shade 1 brightest, shade 4 nearest the card but
+     still >= 3:1 against it. Maroon is lightened so its text passes 4.5:1. */
+  --color-widget-shade-1: color-mix(in srgb, var(--color-accent) 45%, #dbe3ee);
+  --color-widget-shade-2: color-mix(in srgb, var(--color-accent) 45%, #a9b6c6);
+  --color-widget-shade-2b: color-mix(in srgb, var(--color-accent) 40%, #96a3b4);
+  --color-widget-shade-3: color-mix(in srgb, var(--color-accent) 34%, #8592a3);
+  --color-widget-shade-3b: color-mix(in srgb, var(--color-accent) 28%, #788596);
+  --color-widget-shade-4: color-mix(in srgb, var(--color-accent) 22%, #6c7889);
+  --color-widget-track: color-mix(in srgb, var(--color-accent) 8%, #29313d);
+  --color-widget-maroon: #ee95a2;
+  --color-widget-maroon-soft: #3a1a20;
+  --color-widget-mild: color-mix(in srgb, var(--color-accent) 14%, #181e27);
+  --color-widget-mild-line: color-mix(in srgb, var(--color-accent) 30%, #181e27);
   --color-text-primary: #f1f4f8;
   --color-text-secondary: #a3adba;
   --color-text-inverse: #11171e;
