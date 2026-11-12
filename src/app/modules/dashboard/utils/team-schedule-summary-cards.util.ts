@@ -6,10 +6,10 @@ import { inMeetingNow, isNotPlanned, isOnLeave, isOverCapacity, loadMinutes } fr
 import { WIDGET } from './widget-palette';
 
 const TONE = { coverage: WIDGET.shade2, planActual: WIDGET.shade2b, needsPlan: WIDGET.shade3, now: WIDGET.shade1 } as const;
-/** "Right now" segments, darkest to lightest by importance; the key names them. */
+/** "Right now" segments, darkest to lightest by importance (meetings plain gray, as in the schedule); the key names them. */
 const NOW_TONE = {
   working: WIDGET.shade1,
-  meeting: WIDGET.shade3,
+  meeting: WIDGET.gray,
   break: WIDGET.shade3b,
   leave: WIDGET.shade2,
   notPlanned: WIDGET.shade4
