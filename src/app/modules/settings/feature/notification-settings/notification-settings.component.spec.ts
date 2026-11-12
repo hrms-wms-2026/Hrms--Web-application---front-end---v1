@@ -7,7 +7,7 @@ import { NotificationSettingsApiService } from '../../data-access/notification-s
 import { NotificationSetting } from '../../models/notification-setting.model';
 import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { unsavedChangesGuard } from '../../../../core/guards/unsaved-changes.guard';
-import { openSelect } from '../../../../shared/ui/select/select.testing';
+import { openSelect, selectDisplayText } from '../../../../shared/ui/select/select.testing';
 
 function setting(overrides: Partial<NotificationSetting> = {}): NotificationSetting {
   return {
@@ -109,12 +109,16 @@ describe('NotificationSettingsComponent', () => {
   });
 
   it('only offers published templates for the event', () => {
-    const field = el.querySelector('[data-testid="template-work_approval_requested"]')!;
-    const options = openSelect(field, () => fixture.detectChanges());
+    const host = el.querySelector('[data-testid="template-work_approval_requested"]')!;
+    const detect = () => fixture.detectChanges();
+    expect(selectDisplayText(host)).toBe('Default');
+
+    const options = openSelect(host, detect);
     expect(options.map((o) => o.textContent?.trim())).toEqual(['Default', 'Friendly']);
 
     options[1].click();
-    fixture.detectChanges();
+    detect();
+    expect(selectDisplayText(host)).toBe('Friendly');
     button('save-work_approval_requested').click();
 
     expect(api.update).toHaveBeenCalledWith('work_approval_requested', expect.objectContaining({ templateId: 'tpl-friendly' }));
