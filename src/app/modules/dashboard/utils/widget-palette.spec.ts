@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WIDGET, WIDGET_RAMP, isWidgetColor, widgetRamp, widgetShadeFor } from './widget-palette';
+import { WIDGET, WIDGET_RAMP, isWidgetColor, widgetInkOn, widgetRamp, widgetShadeFor } from './widget-palette';
 
 describe('widget palette', () => {
   it('widgetRamp(4) is the four main shades in lightness order', () => {
@@ -37,6 +37,12 @@ describe('widget palette', () => {
   it('widgetShadeFor spreads different keys over the ramp', () => {
     const shades = new Set(Array.from({ length: 40 }, (_, i) => widgetShadeFor(`project-${i}`)));
     expect(shades.size).toBeGreaterThan(3);
+  });
+
+  it('widgetInkOn: solid text on the two darkest shades, dark text on the lighter ones', () => {
+    expect(widgetInkOn(WIDGET.shade1)).toBe(WIDGET.onSolid);
+    expect(widgetInkOn(WIDGET.shade2)).toBe(WIDGET.onSolid);
+    for (const s of [WIDGET.shade2b, WIDGET.shade3, WIDGET.shade3b, WIDGET.shade4]) expect(widgetInkOn(s)).toBe(WIDGET.onLight);
   });
 
   it('isWidgetColor accepts widget tokens and transparent only', () => {

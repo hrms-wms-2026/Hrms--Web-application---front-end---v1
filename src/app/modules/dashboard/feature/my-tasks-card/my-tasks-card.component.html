@@ -5,7 +5,7 @@
       <div class="flex items-center gap-2">
         <h2 class="text-sm font-bold text-[var(--color-text-primary)]">My Tasks</h2>
         @if (overdueTasks().length > 0) {
-          <span class="text-[10px] font-bold text-[var(--color-danger)] bg-[var(--color-danger-subtle)] border border-[var(--color-danger-subtle)] px-1.5 py-0.5 rounded tracking-wide uppercase">
+          <span class="text-[10px] font-bold text-[var(--color-widget-maroon)] bg-[var(--color-widget-maroon-soft)] border border-[var(--color-widget-maroon-soft)] px-1.5 py-0.5 rounded tracking-wide uppercase">
             OVERDUE
           </span>
         }
@@ -56,7 +56,7 @@
                     </p>
                     <p class="text-[11px] text-[var(--color-text-muted)] mt-0.5 truncate">{{ task.projectName }}</p>
                   </div>
-                  <span class="px-2 py-0.5 bg-[var(--color-danger-subtle)] text-[var(--color-danger)] text-[10px] font-medium rounded border border-[var(--color-danger-subtle)] shrink-0">
+                  <span class="px-2 py-0.5 bg-[var(--color-widget-maroon-soft)] text-[var(--color-widget-maroon)] text-[10px] font-medium rounded border border-[var(--color-widget-maroon-soft)] shrink-0">
                     {{ dueDateLabel(task.dueDate) }}
                   </span>
                 </a>
@@ -81,7 +81,7 @@
                     </p>
                     <p class="text-[11px] text-[var(--color-text-muted)] mt-0.5 truncate">{{ task.projectName }}</p>
                   </div>
-                  <span class="px-2 py-0.5 bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)] text-[10px] font-medium rounded border border-[var(--color-warning-subtle)]/60 shrink-0">
+                  <span class="px-2 py-0.5 bg-[var(--color-widget-mild)] text-[var(--color-widget-shade-1)] text-[10px] font-medium rounded border border-[var(--color-widget-mild-line)] shrink-0">
                     {{ dueDateLabel(task.dueDate) }}
                   </span>
                 </a>

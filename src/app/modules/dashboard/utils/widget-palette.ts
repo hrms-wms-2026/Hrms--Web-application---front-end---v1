@@ -19,7 +19,9 @@ export const WIDGET = {
   mild: 'var(--color-widget-mild)',
   mildLine: 'var(--color-widget-mild-line)',
   /** Text on a solid shade1 or maroon chip (white in light mode, dark in dark mode). */
-  onSolid: 'var(--color-widget-on-solid)'
+  onSolid: 'var(--color-widget-on-solid)',
+  /** Text on a light shade fill (shade2b and lighter): dark in both modes. */
+  onLight: 'var(--color-widget-on-light)'
 } as const;
 
 /** Lightness order, darkest first: shade1, shade2, shade2b, shade3, shade3b, shade4. */
@@ -51,6 +53,11 @@ export function widgetShadeFor(key: string): string {
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return WIDGET_RAMP[hash % WIDGET_RAMP.length];
+}
+
+/** Readable text on a shade fill, e.g. initials on a project swatch. */
+export function widgetInkOn(shade: string): string {
+  return shade === WIDGET.shade1 || shade === WIDGET.shade2 || shade === WIDGET.maroon ? WIDGET.onSolid : WIDGET.onLight;
 }
 
 const WIDGET_VALUES = new Set<string>(Object.values(WIDGET));

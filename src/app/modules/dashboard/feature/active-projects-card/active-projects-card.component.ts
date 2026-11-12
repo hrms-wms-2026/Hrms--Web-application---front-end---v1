@@ -5,13 +5,12 @@ import { ProjectApiService } from '../../../work/data-access/project-api.service
 import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
+import { widgetInkOn, widgetShadeFor } from '../../utils/widget-palette';
 
 /** `/work/projects/mine` has no status filter, so one page this size is fetched and filtered here -
  * the count stops at this many projects. */
 const PROJECT_PAGE_SIZE = 100;
 const PREVIEW_COUNT = 4;
-/** Tile colours for projects without their own colour, by list position. */
-const FALLBACK_COLORS: readonly string[] = ['#6366f1', '#22c55e', '#8b5cf6', '#f97316', '#0ea5e9'];
 
 /** Small card: how many of my projects are still running, with the first few and how far along
  * they are. Progress is completed / allocated hours - the project list carries no task counts. */
@@ -83,8 +82,13 @@ export class ActiveProjectsCardComponent implements OnInit {
     return (project.name.trim()[0] ?? '?').toUpperCase();
   }
 
-  protected color(project: ProjectListItemDto, index: number): string {
-    return project.color || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+  /** Monochrome widgets: a theme shade picked from the project id (stable across re-sorts), never the stored colour. */
+  protected color(project: ProjectListItemDto): string {
+    return widgetShadeFor(project.id);
+  }
+
+  protected ink(project: ProjectListItemDto): string {
+    return widgetInkOn(this.color(project));
   }
 
   protected hoursLabel(project: ProjectListItemDto): string {

@@ -178,13 +178,13 @@ export class WorkPatternCardComponent implements OnInit {
   protected segmentColor(type: WorkPatternSegmentType): string {
     switch (type) {
       case 'focus':
-        return '#2563eb';
+        return 'var(--color-widget-shade-1)';
       case 'meeting':
-        return '#60a5fa';
+        return 'var(--color-widget-shade-2)';
       case 'admin':
-        return '#94a3b8';
+        return 'var(--color-widget-shade-4)';
       case 'idle':
-        return '#f59e0b';
+        return 'var(--color-widget-shade-3)';
     }
   }
 }

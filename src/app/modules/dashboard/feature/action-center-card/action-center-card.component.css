@@ -29,14 +29,14 @@
 }
 
 .inbox-badge--leave { background: var(--color-accent-subtle); color: var(--color-accent); }
-.inbox-badge--attendance { background: color-mix(in srgb, var(--color-cat-indigo) 14%, var(--color-surface)); color: var(--color-cat-indigo); }
-.inbox-badge--location { background: color-mix(in srgb, var(--color-cat-teal) 14%, var(--color-surface)); color: var(--color-cat-teal); }
+.inbox-badge--attendance { background: color-mix(in srgb, var(--color-widget-shade-2b) 14%, var(--color-surface)); color: var(--color-widget-shade-1); }
+.inbox-badge--location { background: color-mix(in srgb, var(--color-widget-shade-3b) 14%, var(--color-surface)); color: var(--color-widget-shade-1); }
 .inbox-badge--device { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
-.inbox-badge--alert { background: var(--color-warning-subtle); color: var(--color-warning); }
+.inbox-badge--alert { background: var(--color-widget-mild); color: var(--color-widget-shade-1); }
 .inbox-badge--alert svg { stroke-width: 3.4; }
-.inbox-badge--task { background: var(--color-success-subtle); color: var(--color-success); }
-.inbox-badge--objective { background: var(--color-cat-violet-subtle); color: var(--color-cat-violet); }
-.inbox-badge--overdue { background: var(--color-danger-subtle); color: var(--color-danger); }
+.inbox-badge--task { background: var(--color-widget-mild); color: var(--color-widget-shade-1); }
+.inbox-badge--objective { background: var(--color-widget-mild); color: var(--color-widget-shade-1); }
+.inbox-badge--overdue { background: var(--color-widget-maroon-soft); color: var(--color-widget-maroon); }
 
 /* Row actions: icon-only ghost buttons. Approve and Open stay neutral gray; Reject keeps its red
    so the one destructive action is still easy to pick out at a glance. */
@@ -75,13 +75,13 @@
 }
 
 .inbox-btn--reject {
-  color: var(--color-danger);
+  color: var(--color-widget-maroon);
 }
 
 .inbox-btn--reject:hover:not(:disabled),
 .inbox-btn--reject.inbox-btn--active {
   background: var(--color-border);
-  color: var(--color-danger);
+  color: var(--color-widget-maroon);
 }
 
 .inbox-btn--open {
@@ -115,7 +115,7 @@
   align-items: center;
   gap: 6px;
   border-radius: 999px;
-  border: 1px solid var(--color-attention-line);
+  border: 1px solid var(--color-widget-mild-line);
   background: var(--color-surface);
   color: var(--color-text-secondary);
   padding: 3px 10px;

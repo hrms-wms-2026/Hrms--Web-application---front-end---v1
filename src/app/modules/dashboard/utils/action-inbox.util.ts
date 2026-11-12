@@ -144,8 +144,8 @@ export function filterInbox(items: readonly InboxItem[], filter: InboxFilter): I
 }
 
 const AGE_CLASS = {
-  late: 'text-[var(--color-danger)] font-semibold',
-  soon: 'text-[var(--color-warning)] font-semibold',
+  late: 'text-[var(--color-widget-maroon)] font-semibold',
+  soon: 'text-[var(--color-widget-shade-1)] font-semibold',
   fresh: 'text-[var(--color-text-muted)]'
 } as const;
 

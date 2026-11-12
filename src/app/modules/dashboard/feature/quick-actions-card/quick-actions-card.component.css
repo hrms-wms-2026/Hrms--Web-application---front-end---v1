@@ -44,11 +44,11 @@
 }
 
 .qa-btn[data-tone='emerald'] {
-  --qa-accent: var(--color-success);
+  --qa-accent: var(--color-accent);
 }
 
 .qa-btn[data-tone='blue'] {
-  --qa-accent: var(--color-cat-blue);
+  --qa-accent: var(--color-accent);
 }
 
 .qa-btn:hover:not(:disabled) {
