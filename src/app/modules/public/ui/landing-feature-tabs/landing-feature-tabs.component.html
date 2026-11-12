@@ -1,9 +1,16 @@
-<section id="features" class="tabs-sec">
+<section
+  id="features"
+  class="tabs-sec"
+  (mouseenter)="pauseAutoRotation()"
+  (mouseleave)="resumeAutoRotation()"
+  (focusin)="pauseAutoRotation()"
+  (focusout)="resumeAutoRotation()"
+>
   <div class="tabs-sec__header">
-    <span class="tabs-sec__tag">INTERACTIVE MODULE EXPLORER</span>
+    <span class="tabs-sec__tag">MODULE EXPLORER // 4 CORE WORKSPACES</span>
     <h2 class="tabs-sec__title font-serif">Explore the CROWNUS Workspace</h2>
     <p class="tabs-sec__subtitle">
-      Click each module to see how CROWNUS unifies workday tracking, employee org structures, activity intelligence, and sprint execution.
+      Select any module below to inspect how CROWNUS unifies workday telemetry, multi-company legal entities, privacy-hashed activity streams, and GitHub-synced sprints.
     </p>
   </div>
 
@@ -13,10 +20,15 @@
       [class.tabs-sec__tab-item--active]="activeTab() === 'workday'"
       (click)="selectTab('workday')"
     >
-      <div class="tabs-sec__tab-title">Workday & Attendance</div>
-      <div class="tabs-sec__tab-sub">Zero-touch time & face check-in</div>
+      <span class="tabs-sec__tab-idx">MOD // 01</span>
+      <div class="tabs-sec__tab-title">Workday &amp; Attendance</div>
+      <div class="tabs-sec__tab-sub">Today at a Glance &amp; shift timeline</div>
       @if (activeTab() === 'workday') {
-        <div class="tabs-sec__nav-line"></div>
+        <div
+          class="tabs-sec__nav-line"
+          [class.tabs-sec__nav-line--paused]="isPaused()"
+          [class.tabs-sec__nav-line--static]="!isAutoPlaying()"
+        ></div>
       }
     </div>
 
@@ -25,10 +37,15 @@
       [class.tabs-sec__tab-item--active]="activeTab() === 'hr'"
       (click)="selectTab('hr')"
     >
-      <div class="tabs-sec__tab-title">Org & Employee Management</div>
-      <div class="tabs-sec__tab-sub">Multi-company legal entities & seats</div>
+      <span class="tabs-sec__tab-idx">MOD // 02</span>
+      <div class="tabs-sec__tab-title">Org &amp; Employee Management</div>
+      <div class="tabs-sec__tab-sub">Department tree &amp; seat occupancy</div>
       @if (activeTab() === 'hr') {
-        <div class="tabs-sec__nav-line"></div>
+        <div
+          class="tabs-sec__nav-line"
+          [class.tabs-sec__nav-line--paused]="isPaused()"
+          [class.tabs-sec__nav-line--static]="!isAutoPlaying()"
+        ></div>
       }
     </div>
 
@@ -37,10 +54,15 @@
       [class.tabs-sec__tab-item--active]="activeTab() === 'intelligence'"
       (click)="selectTab('intelligence')"
     >
+      <span class="tabs-sec__tab-idx">MOD // 03</span>
       <div class="tabs-sec__tab-title">WorkPulse Intelligence</div>
-      <div class="tabs-sec__tab-sub">Active app tracking & privacy logs</div>
+      <div class="tabs-sec__tab-sub">Monitoring defaults &amp; overrides</div>
       @if (activeTab() === 'intelligence') {
-        <div class="tabs-sec__nav-line"></div>
+        <div
+          class="tabs-sec__nav-line"
+          [class.tabs-sec__nav-line--paused]="isPaused()"
+          [class.tabs-sec__nav-line--static]="!isAutoPlaying()"
+        ></div>
       }
     </div>
 
@@ -49,76 +71,145 @@
       [class.tabs-sec__tab-item--active]="activeTab() === 'worksync'"
       (click)="selectTab('worksync')"
     >
-      <div class="tabs-sec__tab-title">WorkSync Sprints & Tasks</div>
-      <div class="tabs-sec__tab-sub">Kanban boards & GitHub PR sync</div>
+      <span class="tabs-sec__tab-idx">MOD // 04</span>
+      <div class="tabs-sec__tab-title">WorkSync Sprints &amp; Tasks</div>
+      <div class="tabs-sec__tab-sub">Project boards &amp; milestone tracking</div>
       @if (activeTab() === 'worksync') {
-        <div class="tabs-sec__nav-line"></div>
+        <div
+          class="tabs-sec__nav-line"
+          [class.tabs-sec__nav-line--paused]="isPaused()"
+          [class.tabs-sec__nav-line--static]="!isAutoPlaying()"
+        ></div>
       }
     </div>
   </div>
 
+  <!-- Real CROWNUS App Shell Frame (No fake browser dots or URL bar) -->
   <div class="tabs-sec__content">
-    <div class="tabs-sec__app-window">
-      <div class="tabs-sec__window-bar">
-        <div class="tabs-sec__window-dots">
-          <span class="dot dot--red"></span>
-          <span class="dot dot--yellow"></span>
-          <span class="dot dot--green"></span>
+    <div class="tabs-sec__shell">
+      <aside class="tabs-sec__rail" aria-label="Module rail">
+        <div class="tabs-sec__rail-logo">CR</div>
+        <div class="tabs-sec__rail-divider"></div>
+        <div
+          role="button"
+          tabindex="0"
+          [attr.aria-pressed]="activeTab() === 'workday'"
+          appKeyboardClick
+          class="tabs-sec__rail-item"
+          [class.tabs-sec__rail-item--active]="activeTab() === 'workday'"
+          (click)="setTab('workday')"
+        >
+          <span class="tabs-sec__rail-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </span>
+          <span>Attendance</span>
         </div>
-        <div class="tabs-sec__window-url">
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <span>https://company.onexso.com/app/{{ activeTab() }}</span>
+        <div
+          role="button"
+          tabindex="0"
+          [attr.aria-pressed]="activeTab() === 'hr'"
+          appKeyboardClick
+          class="tabs-sec__rail-item"
+          [class.tabs-sec__rail-item--active]="activeTab() === 'hr'"
+          (click)="setTab('hr')"
+        >
+          <span class="tabs-sec__rail-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/></svg>
+          </span>
+          <span>Org</span>
         </div>
-        <span class="tabs-sec__live-badge">Live Workspace</span>
-      </div>
+        <div
+          role="button"
+          tabindex="0"
+          [attr.aria-pressed]="activeTab() === 'intelligence'"
+          appKeyboardClick
+          class="tabs-sec__rail-item"
+          [class.tabs-sec__rail-item--active]="activeTab() === 'intelligence'"
+          (click)="setTab('intelligence')"
+        >
+          <span class="tabs-sec__rail-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+          </span>
+          <span>Settings</span>
+        </div>
+        <div
+          role="button"
+          tabindex="0"
+          [attr.aria-pressed]="activeTab() === 'worksync'"
+          appKeyboardClick
+          class="tabs-sec__rail-item"
+          [class.tabs-sec__rail-item--active]="activeTab() === 'worksync'"
+          (click)="setTab('worksync')"
+        >
+          <span class="tabs-sec__rail-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          </span>
+          <span>Work</span>
+        </div>
+      </aside>
 
-      <div class="tabs-sec__app-body">
-        <aside class="tabs-sec__app-sidebar">
-          <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'workday'" appKeyboardClick class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'workday'" (click)="setTab('workday')">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            <span>Workday</span>
+      <div class="tabs-sec__workspace">
+        <!-- Real Top Navbar -->
+        <div class="tabs-sec__topbar">
+          <div class="tabs-sec__company">
+            <span class="tabs-sec__company-badge">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/></svg>
+            </span>
+            <span>CROWNUS Technologies</span>
+            <span class="tabs-sec__chev">▾</span>
           </div>
-          <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'hr'" appKeyboardClick class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'hr'" (click)="setTab('hr')">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-            <span>Employees</span>
+          <div class="tabs-sec__search">
+            <span>Search</span>
+            <kbd>Ctrl K</kbd>
           </div>
-          <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'intelligence'" appKeyboardClick class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'intelligence'" (click)="setTab('intelligence')">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            <span>WorkPulse</span>
-          </div>
-          <div role="button" tabindex="0" [attr.aria-pressed]="activeTab() === 'worksync'" appKeyboardClick class="tabs-sec__side-item" [class.tabs-sec__side-item--active]="activeTab() === 'worksync'" (click)="setTab('worksync')">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-            <span>WorkSync</span>
-          </div>
-        </aside>
+          <span class="tabs-sec__live-badge">Active Entity</span>
+        </div>
 
-        <main class="tabs-sec__app-main">
+        <div class="tabs-sec__app-main">
           @switch (activeTab()) {
             @case ('workday') {
               <div class="tabs-sec__canvas">
                 <div class="tabs-sec__canvas-head">
                   <div>
-                    <h4>Zero-Touch Workday & Attendance</h4>
-                    <p>Automatic time capture, face verification, and daily work timeline.</p>
+                    <h4>Today at a Glance &amp; Shift Activity Timeline</h4>
+                    <p>Real-time working duration, time remaining to finish, and segmented shift bar.</p>
                   </div>
-                  <span class="tabs-sec__status-pill tabs-sec__status-pill--green">Checked In: 09:01 AM</span>
+                  <span class="tabs-sec__status-pill tabs-sec__status-pill--green">Clocked in · Started at 8:58 AM</span>
                 </div>
 
                 <div class="tabs-sec__dashboard-grid">
                   <div class="tabs-sec__metric-box">
-                    <span class="lbl">Total Workday Time</span>
-                    <span class="val">7h 45m</span>
-                    <span class="sub">100% Accurate</span>
+                    <span class="lbl">Working duration</span>
+                    <span class="val">5h 42m</span>
+                    <span class="sub">Clocked in · Active</span>
                   </div>
                   <div class="tabs-sec__metric-box">
-                    <span class="lbl">Focus Tool Time</span>
-                    <span class="val">5h 20m</span>
-                    <span class="sub">VS Code & Figma</span>
+                    <span class="lbl">Time left to finish</span>
+                    <span class="val">2h 18m</span>
+                    <span class="sub">Finish at 5:30 PM</span>
                   </div>
                   <div class="tabs-sec__metric-box">
-                    <span class="lbl">Verified Check-in</span>
-                    <span class="val">Biometric</span>
-                    <span class="sub">Face Verified</span>
+                    <span class="lbl">Team attendance</span>
+                    <span class="val">94%</span>
+                    <span class="sub">45 / 48 in today</span>
+                  </div>
+                </div>
+
+                <div class="tabs-sec__timeline-strip">
+                  <div class="tabs-sec__timeline-head">
+                    <span>Today's Activity (09:00 AM – 05:30 PM)</span>
+                    <span>Now: 2:40 PM</span>
+                  </div>
+                  <div class="tabs-sec__timeline-track">
+                    <span class="tabs-sec__seg tabs-sec__seg--deep" style="width: 44%" title="Working: 3h 30m"></span>
+                    <span class="tabs-sec__seg tabs-sec__seg--meet" style="width: 8%" title="Break: 30m"></span>
+                    <span class="tabs-sec__seg tabs-sec__seg--deep" style="width: 24%" title="Working: 2h 12m"></span>
+                    <span class="tabs-sec__seg tabs-sec__seg--break" style="width: 24%" title="Upcoming: 2h 18m"></span>
+                  </div>
+                  <div class="tabs-sec__timeline-legend">
+                    <span><i class="dot-sm dot-sm--deep"></i> Working (5h 42m)</span>
+                    <span><i class="dot-sm dot-sm--meet"></i> Break (30m)</span>
+                    <span><i class="dot-sm dot-sm--break"></i> Upcoming (2h 18m)</span>
                   </div>
                 </div>
               </div>
@@ -128,30 +219,42 @@
               <div class="tabs-sec__canvas">
                 <div class="tabs-sec__canvas-head">
                   <div>
-                    <h4>Multi-Company Legal Entities & Position Hierarchy</h4>
-                    <p>Manage legal company entities, nested departments, and position seat occupancy.</p>
+                    <h4>Organization › Departments &amp; Position Seats</h4>
+                    <p>Hierarchical department tree with head positions and real-time seat occupancy.</p>
                   </div>
-                  <span class="tabs-sec__status-pill tabs-sec__status-pill--blue">Entity: CROWNUS Tech</span>
+                  <span class="tabs-sec__status-pill tabs-sec__status-pill--blue">CROWNUS Technologies</span>
                 </div>
 
                 <div class="tabs-sec__tree-table">
                   <div class="tabs-sec__table-row tabs-sec__table-row--head">
-                    <span>Department</span>
-                    <span>Positions</span>
-                    <span>Occupancy</span>
-                    <span>Status</span>
+                    <span>DEPARTMENT</span>
+                    <span>HEAD POSITION</span>
+                    <span>OCCUPANCY</span>
+                    <span>STATUS</span>
                   </div>
                   <div class="tabs-sec__table-row">
-                    <span>Engineering</span>
-                    <span>VP Eng, Sr Backend</span>
-                    <span>4 / 4 Seats</span>
-                    <span class="tabs-sec__tag-green">Full</span>
+                    <span>Operations &amp; Delivery <code class="tabs-sec__code">OPS</code></span>
+                    <span>VP of Operations</span>
+                    <span>7 positions • 34 employees</span>
+                    <span class="tabs-sec__tag-green">Active</span>
                   </div>
                   <div class="tabs-sec__table-row">
-                    <span>Operations & HR</span>
-                    <span>HR Director, People Ops</span>
-                    <span>3 / 4 Seats</span>
+                    <span>Human Resources <code class="tabs-sec__code">HR</code></span>
+                    <span>People &amp; Culture Director</span>
+                    <span>4 positions • 12 employees</span>
+                    <span class="tabs-sec__tag-green">Active</span>
+                  </div>
+                  <div class="tabs-sec__table-row">
+                    <span>Finance &amp; Legal <code class="tabs-sec__code">FIN</code></span>
+                    <span>Group Financial Controller</span>
+                    <span>5 positions • 18 employees</span>
                     <span class="tabs-sec__tag-amber">1 Vacant Seat</span>
+                  </div>
+                  <div class="tabs-sec__table-row">
+                    <span>Customer Support <code class="tabs-sec__code">CS</code></span>
+                    <span>Head of Enterprise CS</span>
+                    <span>3 positions • 16 employees</span>
+                    <span class="tabs-sec__tag-green">Active</span>
                   </div>
                 </div>
               </div>
@@ -161,24 +264,36 @@
               <div class="tabs-sec__canvas">
                 <div class="tabs-sec__canvas-head">
                   <div>
-                    <h4>WorkPulse Activity Intelligence Stream</h4>
-                    <p>Transparent active window title tracking with SHA-256 privacy hashing.</p>
+                    <h4>Settings › Monitoring Defaults &amp; Scoped Overrides</h4>
+                    <p>Configure company-wide verification rules with per-department, position, or role overrides.</p>
                   </div>
-                  <span class="tabs-sec__status-pill tabs-sec__status-pill--green">Agent Stream Active</span>
+                  <span class="tabs-sec__status-pill tabs-sec__status-pill--green">Company Default Active</span>
                 </div>
 
                 <div class="tabs-sec__stream-box">
                   <div class="tabs-sec__stream-row">
-                    <span class="app">VS Code</span>
-                    <span class="title">OrderService.cs — API Validation</span>
-                    <span class="hash">SHA-256: 8f9b...a12c</span>
-                    <span class="time">3h 40m</span>
+                    <span class="app">Location tracking</span>
+                    <span class="title">Apply during allowed attendance or work-time window</span>
+                    <span class="hash">Allowed range: 250m</span>
+                    <span class="time tabs-sec__tag-green">On</span>
                   </div>
                   <div class="tabs-sec__stream-row">
-                    <span class="app">Slack</span>
-                    <span class="title">#engineering-sprint-24</span>
-                    <span class="hash">SHA-256: 4c3d...b8e9</span>
-                    <span class="time">1h 15m</span>
+                    <span class="app">Keyboard &amp; mouse</span>
+                    <span class="title">Counts activity events; does not capture typed keys</span>
+                    <span class="hash">Idle threshold: 10m</span>
+                    <span class="time tabs-sec__tag-green">On</span>
+                  </div>
+                  <div class="tabs-sec__stream-row">
+                    <span class="app">Application usage</span>
+                    <span class="title">Records application activity via authorized agent contract</span>
+                    <span class="hash">Inherited by 4 depts</span>
+                    <span class="time tabs-sec__tag-green">On</span>
+                  </div>
+                  <div class="tabs-sec__stream-row">
+                    <span class="app">Screenshot capture</span>
+                    <span class="title">Permits authorized capture flows; never random capture</span>
+                    <span class="hash">Scoped override only</span>
+                    <span class="time">Inherited</span>
                   </div>
                 </div>
               </div>
@@ -188,21 +303,30 @@
               <div class="tabs-sec__canvas">
                 <div class="tabs-sec__canvas-head">
                   <div>
-                    <h4>WorkSync Sprint Execution & GitHub PR Sync</h4>
-                    <p>Kanban sprint backlogs linked directly to developer commits and pull requests.</p>
+                    <h4>Work › Project Board, Milestones &amp; Logged Hours</h4>
+                    <p>Track project progress, overdue task alerts, and milestone deliverables across departments.</p>
                   </div>
-                  <span class="tabs-sec__status-pill tabs-sec__status-pill--purple">Sprint 24 Active</span>
+                  <span class="tabs-sec__status-pill tabs-sec__status-pill--blue">HRMS Platform v3.4 · 78%</span>
                 </div>
 
                 <div class="tabs-sec__kanban-preview">
                   <div class="tabs-sec__kanban-col">
                     <span class="col-title">In Progress (2)</span>
                     <div class="tabs-sec__kanban-card">
-                      <div class="card-key">WORK-104</div>
-                      <div class="card-desc">Rotate JWT sessions & payload validation</div>
+                      <div class="card-key">Operations &amp; Delivery</div>
+                      <div class="card-desc">Implement customizable FLIP dashboard widget grid</div>
                       <div class="card-github">
-                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                        <span>Merged PR #142 → Auto-Closed</span>
+                        <span>14h / 16h logged • Due Nov 12</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tabs-sec__kanban-col">
+                    <span class="col-title">Completed (4)</span>
+                    <div class="tabs-sec__kanban-card">
+                      <div class="card-key">Platform Reliability</div>
+                      <div class="card-desc">Ship Today at a Glance live shift activity bar</div>
+                      <div class="card-github">
+                        <span>12h / 12h logged • Verified</span>
                       </div>
                     </div>
                   </div>
@@ -210,7 +334,7 @@
               </div>
             }
           }
-        </main>
+        </div>
       </div>
     </div>
   </div>

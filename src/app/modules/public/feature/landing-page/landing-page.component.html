@@ -1,11 +1,14 @@
 <div class="landing-page">
+  <a href="#main-content" class="landing-skip-link">Skip to main content</a>
   <div class="landing-page__container">
     <app-landing-header />
-    <main>
+    <main id="main-content" tabindex="-1">
       <app-landing-hero />
+      <app-landing-stats-bar />
       <app-landing-bento-grid />
       <app-landing-feature-tabs />
       <app-landing-walkthrough />
+      <app-landing-pricing />
       <app-landing-faq />
     </main>
   </div>

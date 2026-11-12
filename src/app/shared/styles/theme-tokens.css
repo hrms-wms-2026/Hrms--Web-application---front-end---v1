@@ -26,6 +26,11 @@
   --color-greeting-card-border: #e5edfa;
   --radius-content: 12px;
 
+  /* Motion easing curves (Emil Kowalski design engineering standards) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
   /* Glassmorphism & backdrop tokens */
   --color-glass-bg: rgba(255, 255, 255, 0.68);
   --color-glass-border: rgba(0, 0, 0, 0.08);
