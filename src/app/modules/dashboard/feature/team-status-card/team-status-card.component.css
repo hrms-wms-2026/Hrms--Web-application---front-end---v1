@@ -87,7 +87,7 @@
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.625rem;
-  background: var(--color-tint-sky-bg);
+  background: var(--color-widget-mild);
   padding: 0 0.75rem;
   font-size: 0.75rem;
   color: var(--color-text-primary);
@@ -95,7 +95,7 @@
 }
 
 .wbl-pill:hover {
-  background: var(--color-tint-sky-line);
+  background: var(--color-widget-mild-line);
 }
 
 .wbl-pill-text {
@@ -129,7 +129,7 @@
 }
 
 .wbl-tile {
-  --tone: #3b82f6;
+  --tone: var(--color-widget-shade-2);
   display: flex;
   min-width: 0;
   align-items: center;
@@ -283,7 +283,7 @@
 .wbl-late {
   margin-left: 0.25rem;
   border-radius: 0.25rem;
-  background: var(--color-warning-subtle);
+  background: var(--color-widget-mild);
   padding: 0 0.25rem;
   font-size: 0.625rem;
   font-weight: 600;
@@ -349,7 +349,7 @@
 }
 
 .wbl-chip {
-  --tone: #3b82f6;
+  --tone: var(--color-widget-shade-2);
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
@@ -386,7 +386,7 @@
   align-self: flex-start;
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
 }
 
 .wbl-link:hover {

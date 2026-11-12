@@ -6,6 +6,7 @@ import {
   trendLabel,
   utilizationText,
 } from '../../utils/team-work-task-format.util';
+import { WIDGET } from '../../utils/widget-palette';
 import { barDayTitle, barHours } from '../dashboard-bar-chart/bar-chart-dates.util';
 import {
   DashboardBar,
@@ -15,6 +16,9 @@ import {
   DashboardBarLegendItem,
   DashboardBarVariant,
 } from '../dashboard-bar-chart/dashboard-bar-chart.component';
+
+/** Worked hours are the main series (darkest shade); the task pair is the light shade, as in the approved mockup. */
+const WORKED_COLOR = WIDGET.shade1;
 
 /**
  * Working time against completed task hours per day, as two bars side by side (work, then task) on one axis, drawn
@@ -57,7 +61,7 @@ export class WorkTaskDayChartComponent {
   readonly variant = input<DashboardBarVariant>('earnings');
 
   protected readonly legend: DashboardBarLegendItem[] = [
-    { label: 'Worked', color: TEAM_WORK_TASK_COLORS.other },
+    { label: 'Worked', color: WORKED_COLOR },
     { label: 'Task', color: TEAM_WORK_TASK_COLORS.task },
   ];
 
@@ -76,7 +80,7 @@ export class WorkTaskDayChartComponent {
         : `${barHours(p.taskMinutes)} task · ${utilizationText(p.utilization)}`,
       sub: `${barHours(p.taskMinutes)} task hours · ${p.completedTasks} completed`,
       segments: [
-        { key: 'worked', value: p.workedMinutes / 60, color: TEAM_WORK_TASK_COLORS.other },
+        { key: 'worked', value: p.workedMinutes / 60, color: WORKED_COLOR },
       ],
       pair: [{ key: 'task', value: p.taskMinutes / 60, color: TEAM_WORK_TASK_COLORS.task }],
       dim: highlight !== null && p.date !== highlight,

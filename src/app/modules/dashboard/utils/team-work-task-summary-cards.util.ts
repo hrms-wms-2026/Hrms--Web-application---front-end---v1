@@ -2,16 +2,20 @@ import { SummaryCardModel, SummaryRankRow } from '../models/summary-card.model';
 import { TeamWorkTaskHoursResponse, TeamWorkTaskPeriod } from '../models/team-work-task.model';
 import { summaryDelta } from './summary-card-format.util';
 import { SUMMARY_CARD_ROWS } from './team-attendance-summary-cards.util';
+import { WIDGET } from './widget-palette';
 
 const TONE = {
-  share: 'var(--color-cat-blue)',
-  days: 'var(--color-cat-teal)',
-  gap: 'var(--color-cat-amber)',
-  done: 'var(--color-cat-green)',
-  break: 'var(--color-cat-violet)'
+  share: WIDGET.shade2,
+  days: WIDGET.shade2b,
+  gap: WIDGET.shade3,
+  done: WIDGET.shade1,
+  break: WIDGET.shade3b
 } as const;
-const RED = 'var(--color-cat-red)';
-const AMBER = 'var(--color-cat-amber)';
+/** Chip tones: a big gap is maroon, a small one the mild chip. */
+const RED = WIDGET.maroon;
+const AMBER = WIDGET.shade3;
+/** Every colour these cards use, for the colour guard spec. */
+export const TEAM_WORK_TASK_CARD_COLORS = { ...TONE, red: RED, amber: AMBER } as const;
 /** From this many hours worked off tasks a gap chip is red. */
 const GAP_RED_HOURS = 8;
 

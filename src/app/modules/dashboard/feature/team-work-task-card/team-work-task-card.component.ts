@@ -248,7 +248,7 @@ export class TeamWorkTaskCardComponent implements OnInit {
         label: 'Tasks done',
         value: String(t.completedTasks),
         title: `${t.completedTasks} completed`,
-        color: '#8b5cf6',
+        color: 'var(--color-widget-shade-2b)',
       },
     ];
   });

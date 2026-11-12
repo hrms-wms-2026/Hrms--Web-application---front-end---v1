@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { PLANNED_ACTUAL_COLORS } from './planned-actual-format.util';
+import { PRESENCE_COLORS } from './team-presence-format.util';
 import { PROGRESS_STATUSES } from './team-progress-format.util';
 import { TEAM_PROGRESS_CARD_COLORS } from './team-progress-summary-cards.util';
+import { TEAM_WORK_TASK_COLORS } from './team-work-task-format.util';
+import { TEAM_WORK_TASK_CARD_COLORS } from './team-work-task-summary-cards.util';
 import { isWidgetColor } from './widget-palette';
 
 /**
@@ -64,10 +68,10 @@ describe('dashboard widget colour guard', () => {
   it('team progress summary cards are widget colours', () => expectColorMap(TEAM_PROGRESS_CARD_COLORS));
 
   // Task 5: Work vs task hours + Team Status
-  it.todo('work vs task hours colours are widget colours');
-  it.todo('work vs task hours summary cards are widget colours');
-  it.todo('planned vs actual colours are widget colours');
-  it.todo('team presence colours are widget colours');
+  it('work vs task hours colours are widget colours', () => expectColorMap(TEAM_WORK_TASK_COLORS));
+  it('work vs task hours summary cards are widget colours', () => expectColorMap(TEAM_WORK_TASK_CARD_COLORS));
+  it('planned vs actual colours are widget colours', () => expectColorMap(PLANNED_ACTUAL_COLORS));
+  it('team presence colours are widget colours', () => expectColorMap(PRESENCE_COLORS));
 
   // Task 6: Team Schedule
   it.todo('team schedule colours are widget colours');

@@ -1,11 +1,13 @@
 import { TeamWorkTaskPeriod, TeamWorkTaskTotals } from '../models/team-work-task.model';
 import { minutesText } from './team-presence-format.util';
+import { WIDGET } from './widget-palette';
 
-/** Task time (completed estimates), the rest of the working time, and breaks. */
+/** Task time (completed estimates), the rest of the working time, and breaks. Monochrome (approved mockup): the
+ * task share is the light shade on the mid shade of the worked rest. */
 export const TEAM_WORK_TASK_COLORS = {
-  task: '#10b981',
-  other: '#3b82f6',
-  break: '#f59e0b',
+  task: WIDGET.shade4,
+  other: WIDGET.shade2,
+  break: WIDGET.shade3,
 } as const;
 
 export type TeamWorkTaskSlice = keyof typeof TEAM_WORK_TASK_COLORS;

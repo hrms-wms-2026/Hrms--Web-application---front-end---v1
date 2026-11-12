@@ -176,7 +176,7 @@
 
 .wbld-link {
   font-weight: 600;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
 }
 
 .wbld-person {
@@ -193,7 +193,7 @@
 }
 
 .wbld-chip {
-  --tone: #64748b;
+  --tone: var(--color-widget-shade-4);
   border-radius: 9999px;
   background: color-mix(in srgb, var(--tone) 12%, var(--color-surface));
   padding: 0.0625rem 0.5rem;
@@ -209,7 +209,7 @@
 
 .wbld-attention {
   font-size: 0.75rem;
-  color: var(--color-tint-amber-text);
+  color: var(--color-widget-shade-1);
 }
 
 .wbld-progress {
@@ -245,7 +245,7 @@
   list-style: none;
 }
 .wbld-banner {
-  --tone: #3b82f6;
+  --tone: var(--color-widget-shade-2);
   border: 1px solid color-mix(in srgb, var(--tone) 22%, var(--color-surface));
   border-radius: 12px;
   background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
