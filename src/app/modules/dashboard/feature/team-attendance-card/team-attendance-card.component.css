@@ -14,7 +14,7 @@
 }
 
 .ta-period:hover { border-color: var(--color-border-strong); }
-.ta-period:focus-visible { outline: 2px solid rgb(59 130 246); outline-offset: 1px; }
+.ta-period:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
 
 /* ---- Range navigation ---- */
 .ta-range {
@@ -41,7 +41,7 @@
 
 .ta-nav:hover:not(:disabled) { background: var(--color-surface-secondary); }
 .ta-nav:disabled { opacity: 0.35; cursor: default; }
-.ta-nav:focus-visible { outline: 2px solid rgb(59 130 246); outline-offset: 1px; }
+.ta-nav:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
 
 .ta-range-label {
   min-width: 0;

@@ -684,7 +684,7 @@
   display: block;
   height: 100%;
   border-radius: 9999px;
-  background: rgb(96 165 250);
+  background: var(--color-widget-shade-2);
 }
 
 .team-progress-link {
