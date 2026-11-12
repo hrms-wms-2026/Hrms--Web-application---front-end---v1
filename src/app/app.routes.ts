@@ -230,6 +230,28 @@ export const routes: Routes = [
             data: { title: 'Calendar Sync', permissions: ['calendar:read'], modules: ['calendar'] }
           },
           {
+            path: 'support',
+            canActivate: [permissionGuard],
+            data: { title: 'Support', permissions: ['support:manage'] },
+            children: [
+              {
+                path: '',
+                loadComponent: () =>
+                  import('./modules/settings/feature/support-tickets/support-tickets.component').then(
+                    (m) => m.SupportTicketsComponent
+                  )
+              },
+              {
+                path: ':id',
+                loadComponent: () =>
+                  import('./modules/settings/feature/support-ticket-detail/support-ticket-detail.component').then(
+                    (m) => m.SupportTicketDetailComponent
+                  ),
+                data: { title: 'Support ticket' }
+              }
+            ]
+          },
+          {
             // /settings has no permission of its own - it's reachable if ANY child page is
             // (nav-access.ts "Part 2A" design), so a static redirectTo: 'general' sent every
             // such user to General Settings first regardless of which child actually let them

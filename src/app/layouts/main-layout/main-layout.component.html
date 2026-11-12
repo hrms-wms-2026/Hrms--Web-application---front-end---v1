@@ -30,6 +30,7 @@
     <app-mobile-section-nav />
     <div class="main-content__viewport">
       @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
+        <app-announcement-banner />
         <router-outlet />
       } @else {
         <app-locked-workspace-preview />

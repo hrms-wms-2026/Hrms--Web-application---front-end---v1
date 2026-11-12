@@ -56,6 +56,9 @@ class UnsavedChangesDialogStubComponent {}
 @Component({ selector: 'app-locked-workspace-preview', standalone: true, template: '' })
 class LockedWorkspacePreviewStubComponent {}
 
+@Component({ selector: 'app-announcement-banner', standalone: true, template: '' })
+class AnnouncementBannerStubComponent {}
+
 // eslint-disable-next-line @angular-eslint/component-selector -- the stub must match the real <router-outlet> selector
 @Component({ selector: 'router-outlet', standalone: true, template: '' })
 class RouterOutletStubComponent {}
@@ -129,7 +132,8 @@ describe('MainLayoutComponent tray activation gate', () => {
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
-          LockedWorkspacePreviewStubComponent
+          LockedWorkspacePreviewStubComponent,
+          AnnouncementBannerStubComponent
         ]
       }
     });
@@ -217,7 +221,8 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
-          LockedWorkspacePreviewStubComponent
+          LockedWorkspacePreviewStubComponent,
+          AnnouncementBannerStubComponent
         ]
       }
     });

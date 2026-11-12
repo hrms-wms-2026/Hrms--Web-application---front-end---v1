@@ -42,7 +42,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'settings-time-off', label: 'Time Off', description: 'Leave types, policies, entitlements and holidays.', path: '/settings/time-off', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
       { id: 'settings-clock-in-policy', label: 'Clock-in Policy', description: 'When and where people can clock in.', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
       { id: 'settings-monitoring', label: 'Monitoring', description: 'Activity and presence monitoring.', path: '/settings/monitoring', requiredModules: ['time_attendance'], requiredPermissions: ['monitoring:read'] },
-      { id: 'settings-calendar-connections', label: 'Calendar Sync', description: 'Connect Outlook and Google calendars.', path: '/settings/calendar-connections', requiredModules: ['calendar'], requiredPermissions: ['calendar:read'] }
+      { id: 'settings-calendar-connections', label: 'Calendar Sync', description: 'Connect Outlook and Google calendars.', path: '/settings/calendar-connections', requiredModules: ['calendar'], requiredPermissions: ['calendar:read'] },
+      { id: 'settings-support', label: 'Support', description: 'Raise and follow up tickets with CROWNUS support.', path: '/settings/support', requiredPermissions: ['support:manage'] }
       // Audit log is intentionally not listed yet.
     ]
   }
