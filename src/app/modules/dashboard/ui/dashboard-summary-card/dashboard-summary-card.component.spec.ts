@@ -1,13 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SummaryCardBody, SummaryCardModel } from '../../models/summary-card.model';
+import { WIDGET } from '../../utils/widget-palette';
 import { DashboardSummaryCardComponent } from './dashboard-summary-card.component';
 
 const card = (body: SummaryCardBody | null, extra: Partial<SummaryCardModel> = {}): SummaryCardModel => ({
   id: 'att-rate',
   title: 'Attendance rate',
   icon: 'calendar-check',
-  tone: '#10b981',
+  tone: WIDGET.shade1,
   section: 'trend',
   state: 'ready',
   body,
@@ -51,6 +52,26 @@ describe('DashboardSummaryCardComponent', () => {
     expect(q(el, 'summary-card')?.getAttribute('aria-label')).toBe('Attendance rate: 96%. Open details');
   });
 
+  it('is the mild theme card, whatever its tone, with the figure in the darkest shade', () => {
+    const { el } = setup(card(spark, { tone: WIDGET.shade3 }));
+    const root = q(el, 'summary-card') as HTMLElement;
+    expect(root.style.background).toBe('var(--color-widget-mild)');
+    expect(root.style.getPropertyValue('--sc-border')).toBe('var(--color-widget-mild-line)');
+    expect((el.querySelector('.sc-icon') as HTMLElement).style.color).toBe('var(--color-widget-shade-1)');
+  });
+
+  it('a maroon chip is maroon on maroon-soft; any other chip is the mild chip', () => {
+    const rows = [
+      { id: 'a', name: 'Ravi K', avatarFileId: null, chips: [{ text: '2 absent', tone: WIDGET.maroon }, { text: '3 late', tone: WIDGET.shade3 }] }
+    ];
+    const { el } = setup(card({ kind: 'rank', count: null, countLabel: '', rows, empty: '' }));
+    const [bad, other] = Array.from(el.querySelectorAll('.sc-chip')) as HTMLElement[];
+    expect(bad.style.background).toBe('var(--color-widget-maroon-soft)');
+    expect(bad.style.color).toBe('var(--color-widget-maroon)');
+    expect(other.style.background).toBe('var(--color-widget-mild)');
+    expect(other.style.color).toBe('var(--color-widget-shade-1)');
+  });
+
   it('draws a sparkline that skips missing points without NaN', () => {
     const { el } = setup(card(spark));
     const line = q(el, 'summary-spark-line') as SVGPathElement;
@@ -66,7 +87,7 @@ describe('DashboardSummaryCardComponent', () => {
 
   it('shows one row per ranked person, or the empty line', () => {
     const rows = [
-      { id: 'a', name: 'Ravi K', avatarFileId: null, chips: [{ text: '3 late', tone: '#f59e0b' }] },
+      { id: 'a', name: 'Ravi K', avatarFileId: null, chips: [{ text: '3 late', tone: WIDGET.shade3 }] },
       { id: 'b', name: 'Anu S', avatarFileId: null, chips: [] }
     ];
     const { el } = setup(card({ kind: 'rank', count: null, countLabel: '', rows, empty: 'No one needs attention' }));
@@ -83,9 +104,9 @@ describe('DashboardSummaryCardComponent', () => {
       { kind: 'bars', figure: '312 h', delta: null, values: [1, 2, 3] },
       { kind: 'pair', figure: '92%', delta: null, pairs: [[8, 7], [8, 6]], legend: ['Planned', 'Actual'] },
       { kind: 'meter', figure: '78%', delta: null, percent: 78, caption: '156 / 200 h planned' },
-      { kind: 'hbars', headline: 'Overall 94%', rows: [{ label: 'Sales', percent: 88, tone: '#f59e0b' }] },
+      { kind: 'hbars', headline: 'Overall 94%', rows: [{ label: 'Sales', percent: 88, tone: WIDGET.shade3 }] },
       { kind: 'people', count: '3', countLabel: 'people', rows: [{ id: 'p', name: 'Priya N', avatarFileId: null, chip: 'Design' }], empty: 'No one' },
-      { kind: 'chips', count: '25', countLabel: 'people', items: [{ label: 'Working', value: 15, tone: '#10b981' }] }
+      { kind: 'chips', count: '25', countLabel: 'people', items: [{ label: 'Working', value: 15, tone: WIDGET.shade1 }] }
     ];
     const expected = ['summary-bar', 'summary-pair', 'summary-meter', 'summary-hbar', 'summary-person', 'summary-chip'];
     bodies.forEach((body, i) => {

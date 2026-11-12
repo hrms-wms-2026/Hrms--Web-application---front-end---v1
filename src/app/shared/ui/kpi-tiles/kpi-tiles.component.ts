@@ -25,6 +25,18 @@ const TONE_COLOR: Record<KpiTileTone, string> = {
   neutral: 'var(--color-text-secondary)'
 };
 
+/** Dashboard widgets (palette="widget"): the monochrome mild theme card. Every tone is the darkest theme shade,
+ * except danger, whose value turns maroon. Tokens live in shared/styles/theme-tokens.css. */
+const WIDGET_TONE_COLOR: Record<KpiTileTone, string> = {
+  accent: 'var(--color-widget-shade-1)',
+  success: 'var(--color-widget-shade-1)',
+  warning: 'var(--color-widget-shade-1)',
+  danger: 'var(--color-widget-maroon)',
+  neutral: 'var(--color-widget-shade-1)'
+};
+
+export type KpiTilesPalette = 'default' | 'widget';
+
 /** A single row of compact KPI tiles: icon badge, label, value and optional hint — the same card shape as the
  * People overview KPI strip. Column count follows the number of tiles (max 4) so 2, 3 or 4 tiles fill one row. */
 @Component({
@@ -40,6 +52,8 @@ const TONE_COLOR: Record<KpiTileTone, string> = {
           data-testid="kpi-tile"
           [class.kpi-tile--warning]="tone === 'warning'"
           [class.kpi-tile--danger]="tone === 'danger'"
+          [style.background]="widget() ? 'var(--color-widget-mild)' : null"
+          [style.borderColor]="widget() ? 'var(--color-widget-mild-line)' : null"
         >
           @if (tile.icon) {
             <span
@@ -53,7 +67,11 @@ const TONE_COLOR: Record<KpiTileTone, string> = {
           }
           <div class="kpi-tile__body">
             <p class="kpi-tile__label">{{ tile.label }}</p>
-            <p class="kpi-tile__value" [attr.data-testid]="tile.testId || null">{{ tile.value }}</p>
+            <p
+              class="kpi-tile__value"
+              [attr.data-testid]="tile.testId || null"
+              [style.color]="widget() ? toneColor(tone) : null"
+            >{{ tile.value }}</p>
             @if (tile.hint) {
               <p class="kpi-tile__hint" [title]="tile.hint">{{ tile.hint }}</p>
             }
@@ -131,14 +149,18 @@ export class KpiTilesComponent {
   readonly ariaLabel = input('');
   /** The most tiles one row holds before wrapping; a wide panel can raise it to keep them on one row. */
   readonly maxColumns = input(4);
+  /** 'widget' = the dashboard's monochrome mild cards. Other pages keep the default tone colours. */
+  readonly palette = input<KpiTilesPalette>('default');
+
+  readonly widget = computed(() => this.palette() === 'widget');
 
   readonly columns = computed(() => Math.min(Math.max(this.tiles().length, 1), this.maxColumns()));
 
   toneColor(tone: KpiTileTone): string {
-    return TONE_COLOR[tone];
+    return (this.widget() ? WIDGET_TONE_COLOR : TONE_COLOR)[tone];
   }
 
   toneBackground(tone: KpiTileTone): string {
-    return `color-mix(in srgb, ${TONE_COLOR[tone]} 14%, transparent)`;
+    return `color-mix(in srgb, ${this.toneColor(tone)} 14%, transparent)`;
   }
 }

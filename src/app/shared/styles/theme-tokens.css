@@ -31,6 +31,7 @@
   --color-widget-maroon-soft: #f4e3e6; /* background of maroon chips */
   --color-widget-mild: color-mix(in srgb, var(--color-accent) 11%, #ffffff); /* KPI / summary / note card bg */
   --color-widget-mild-line: color-mix(in srgb, var(--color-accent) 26%, #ffffff); /* KPI / summary / note card border */
+  --color-widget-on-solid: #ffffff; /* text on a solid shade-1 or maroon chip */
   --color-text-primary: #09090b;
   --color-text-secondary: #71717a;
   --color-text-inverse: #ffffff;
@@ -159,6 +160,7 @@ html.dark {
   --color-widget-maroon-soft: #3a1a20;
   --color-widget-mild: color-mix(in srgb, var(--color-accent) 14%, #181e27);
   --color-widget-mild-line: color-mix(in srgb, var(--color-accent) 30%, #181e27);
+  --color-widget-on-solid: #11171e; /* dark shade 1 and maroon are light, so solid chips take dark text */
   --color-text-primary: #f1f4f8;
   --color-text-secondary: #a3adba;
   --color-text-inverse: #11171e;

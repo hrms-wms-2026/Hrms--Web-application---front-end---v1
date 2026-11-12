@@ -17,7 +17,9 @@ export const WIDGET = {
   maroon: 'var(--color-widget-maroon)',
   maroonSoft: 'var(--color-widget-maroon-soft)',
   mild: 'var(--color-widget-mild)',
-  mildLine: 'var(--color-widget-mild-line)'
+  mildLine: 'var(--color-widget-mild-line)',
+  /** Text on a solid shade1 or maroon chip (white in light mode, dark in dark mode). */
+  onSolid: 'var(--color-widget-on-solid)'
 } as const;
 
 /** Lightness order, darkest first: shade1, shade2, shade2b, shade3, shade3b, shade4. */

@@ -5,10 +5,11 @@ import { KpiTile, KpiTilesComponent } from './kpi-tiles.component';
 @Component({
   standalone: true,
   imports: [KpiTilesComponent],
-  template: `<app-kpi-tiles ariaLabel="Totals" [tiles]="tiles()" />`
+  template: `<app-kpi-tiles ariaLabel="Totals" [tiles]="tiles()" [palette]="palette()" />`
 })
 class TestHostComponent {
   readonly tiles = signal<readonly KpiTile[]>([]);
+  readonly palette = signal<'default' | 'widget'>('default');
 }
 
 describe('KpiTilesComponent', () => {
@@ -44,5 +45,26 @@ describe('KpiTilesComponent', () => {
     const el = render([{ label: 'Over-utilized', value: 3, icon: 'alert-triangle', tone: 'danger' }, { label: 'Lines', value: 9 }]);
     expect(el.querySelectorAll('.kpi-tile--danger').length).toBe(1);
     expect(el.querySelectorAll('.kpi-tile__icon').length).toBe(1);
+  });
+
+  it('keeps the default tone colours when the widget palette is off (Leave, People pages)', () => {
+    const el = render([{ label: 'Done', value: 4, icon: 'alert-triangle', tone: 'success' }]);
+    const icon = el.querySelector('.kpi-tile__icon') as HTMLElement;
+    expect(icon.style.color).toBe('var(--color-success)');
+    expect((el.querySelector('.kpi-tile') as HTMLElement).style.background).toBe('');
+  });
+
+  it('palette="widget" draws every tile as the mild theme card, with maroon values for danger', () => {
+    fixture.componentInstance.palette.set('widget');
+    const el = render([
+      { label: 'Done', value: 4, icon: 'alert-triangle', tone: 'success' },
+      { label: 'Absent', value: 2, icon: 'alert-triangle', tone: 'danger' }
+    ]);
+    const [done, absent] = Array.from(el.querySelectorAll('.kpi-tile')) as HTMLElement[];
+    expect(done.style.background).toBe('var(--color-widget-mild)');
+    expect(done.style.borderColor).toBe('var(--color-widget-mild-line)');
+    expect((done.querySelector('.kpi-tile__icon') as HTMLElement).style.color).toBe('var(--color-widget-shade-1)');
+    expect((done.querySelector('.kpi-tile__value') as HTMLElement).style.color).toBe('var(--color-widget-shade-1)');
+    expect((absent.querySelector('.kpi-tile__value') as HTMLElement).style.color).toBe('var(--color-widget-maroon)');
   });
 });

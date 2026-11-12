@@ -130,7 +130,6 @@ function clearLegacyDashboardStorage(): void {
       --kpi-tile-border: transparent;
       --kpi-tile-shadow: none;
       --dashboard-kpi-border: transparent;
-      --dashboard-summary-card-border: transparent;
     }
     :host(.dashboard-shell--team) ::ng-deep app-widget-card > section {
       --color-surface-secondary: var(--color-dashboard-team-widget-inset);
