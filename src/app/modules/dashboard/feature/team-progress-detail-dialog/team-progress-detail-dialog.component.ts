@@ -56,7 +56,7 @@ import {
   formatHourValue,
   formatPercent
 } from '../../utils/team-progress-format.util';
-import { WIDGET, widgetShadeFor } from '../../utils/widget-palette';
+import { WIDGET, WIDGET_RAMP, widgetRamp } from '../../utils/widget-palette';
 
 export const TEAM_PROGRESS_SEARCH_DEBOUNCE_MS = 300;
 /** Rows in the Overview's compact Employee Breakdown. */
@@ -488,9 +488,11 @@ export class TeamProgressDetailDialogComponent {
       taskCount = project ? all.reduce((sum, p) => sum + p.taskCount, 0) : summary.overdueTotal;
     }
     const total = rows.reduce((sum, r) => sum + r.hours, 0);
+    // Shades by rank (widgetRamp), not by project hash: neighbouring pie slices must never share a shade.
+    const ramp = widgetRamp(Math.min(rows.length, WIDGET_RAMP.length));
     const slices = rows
       .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name))
-      .map((r) => ({ ...r, color: widgetShadeFor(r.projectId), percent: formatPercent(r.hours, total) }));
+      .map((r, i) => ({ ...r, color: ramp[i % ramp.length], percent: formatPercent(r.hours, total) }));
     const arcs: DonutArc[] = donutArcs(slices.map((s) => ({ key: s.projectId, count: s.hours, color: s.color })));
     return { total, taskCount, unestimated, listedOnly, slices, arcs };
   });

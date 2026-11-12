@@ -202,9 +202,10 @@
         <div
           data-testid="work-pattern-segment"
           [attr.data-segment-type]="segment.type"
-          class="flex h-full items-center justify-center text-[10px] font-bold text-[var(--color-text-on-solid)] first:rounded-l-full last:rounded-r-full transition-all"
+          class="flex h-full items-center justify-center text-[10px] font-bold first:rounded-l-full last:rounded-r-full transition-all"
           [style.width.%]="segment.widthPercent"
           [style.background-color]="segmentColor(segment.type)"
+          [style.color]="segmentInk(segment.type)"
           [attr.title]="segmentLabel(segment.type)"
         >
           @if (segment.widthPercent >= 8) {

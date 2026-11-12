@@ -161,7 +161,7 @@ export class TeamStatusDetailDialogComponent {
     const tiles: KpiTile[] = [
       { label: 'Working', value: g.working, hint: ofTeam(g.working), icon: 'users', tone: 'accent', testId: 'wbld-tile-working' },
       { label: 'On break', value: g.onBreak, hint: ofTeam(g.onBreak), icon: 'clock', tone: 'warning', testId: 'wbld-tile-break' },
-      { label: 'On leave', value: g.onLeave, hint: ofTeam(g.onLeave), icon: 'layers', tone: 'danger', testId: 'wbld-tile-leave' },
+      { label: 'On leave', value: g.onLeave, hint: ofTeam(g.onLeave), icon: 'layers', tone: 'accent', testId: 'wbld-tile-leave' },
       {
         label: 'Avg working time',
         value: average === null ? '—' : minutesText(average),

@@ -99,6 +99,12 @@ describe('TeamStatusDetailDialogComponent', () => {
     expect(tileText(doc, 'wbld-tile-rate')).toContain('↑ 4 pts vs last week');
   });
 
+  it('monochrome tiles: being on leave is not a problem, so its value is not maroon', async () => {
+    const { doc } = await setup(presenceResponse(team));
+    const leave = doc.querySelector('[data-testid="wbld-tile-leave"]') as HTMLElement;
+    expect(leave.style.color).toBe('var(--color-widget-shade-1)');
+  });
+
   it('drops the attendance rate tile when its source cannot be read', async () => {
     const { doc } = await setup(presenceResponse(team), WEEK, 'error');
 

@@ -622,9 +622,9 @@
   border-color: var(--tone);
   background: var(--tone);
   font-weight: 600;
-  color: var(--color-text-on-solid);
+  color: var(--color-widget-on-solid);
 }
 
 .mfd-count--overload b {
-  color: var(--color-text-on-solid);
+  color: var(--color-widget-on-solid);
 }

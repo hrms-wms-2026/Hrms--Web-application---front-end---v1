@@ -601,6 +601,9 @@ describe('TeamProgressDetailDialogComponent', () => {
     );
     expect(slices).toEqual(['Apollo 77% 20 h', 'Zeus 23% 6 h']);
     expect(q('tp-overdue-pie')).not.toBeNull();
+    // Neighbouring pie slices never share a shade: the ramp spreads them by rank.
+    const arcFills = [...q('tp-overdue-pie')!.querySelectorAll('[data-testid="donut-segment"]')].map((a) => (a as SVGElement).style.fill);
+    expect(arcFills).toEqual(['var(--color-widget-shade-1)', 'var(--color-widget-shade-4)']);
     const row = (id: string) => q(id)!.closest('tr')!.textContent!.replace(/\s+/g, ' ');
     expect(row('tp-overdue-t1')).toContain('6 h');
     expect(q('tp-overdue-t2')!.closest('tr')!.querySelector('[data-testid="tp-overdue-task-hours"]')!.textContent!.trim()).toBe('—');

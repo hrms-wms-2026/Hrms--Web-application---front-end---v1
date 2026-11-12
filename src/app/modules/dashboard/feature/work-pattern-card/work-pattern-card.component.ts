@@ -3,6 +3,7 @@ import { TimeTrackingRange } from '../../../attendance/models/time-tracking.mode
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { WorkPatternApiService } from '../../data-access/work-pattern-api.service';
 import { WorkPatternDay } from '../../models/work-pattern.model';
+import { widgetInkOn } from '../../utils/widget-palette';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
@@ -173,6 +174,11 @@ export class WorkPatternCardComponent implements OnInit {
 
   protected segmentLabel(type: WorkPatternSegmentType): string {
     return SEGMENT_LABELS[type];
+  }
+
+  /** Label text that stays readable on the segment's shade (light and dark mode). */
+  protected segmentInk(type: WorkPatternSegmentType): string {
+    return widgetInkOn(this.segmentColor(type));
   }
 
   protected segmentColor(type: WorkPatternSegmentType): string {
