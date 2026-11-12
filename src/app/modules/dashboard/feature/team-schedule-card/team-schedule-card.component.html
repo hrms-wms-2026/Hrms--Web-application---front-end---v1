@@ -234,7 +234,7 @@
                           data-testid="tsc-block"
                           [class.tsc-block--cancelled]="item.status === 'cancelled'"
                           [class.tsc-block--conflict]="inConflict(m, item)"
-                          [class.tsc-block--light]="item.kind === 'task' && item.status !== 'completed' && item.status !== 'in_progress'"
+                          [class.tsc-block--light]="item.kind === 'meeting' || (item.kind === 'task' && item.status !== 'completed' && item.status !== 'in_progress')"
                           [style.left.%]="pos.left"
                           [style.width.%]="pos.width"
                           [style.background]="itemColor(item)"

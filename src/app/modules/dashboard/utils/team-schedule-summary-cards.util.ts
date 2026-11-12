@@ -3,17 +3,22 @@ import { TeamScheduleMember, TeamScheduleResponse, TeamScheduleWeekResponse } fr
 import { summaryDelta } from './summary-card-format.util';
 import { SUMMARY_CARD_ROWS } from './team-attendance-summary-cards.util';
 import { inMeetingNow, isNotPlanned, isOnLeave, isOverCapacity, loadMinutes } from './team-schedule-format.util';
+import { WIDGET } from './widget-palette';
 
-const TONE = { coverage: 'var(--color-cat-blue)', planActual: 'var(--color-cat-teal)', needsPlan: 'var(--color-cat-amber)', now: 'var(--color-cat-violet)' } as const;
+const TONE = { coverage: WIDGET.shade2, planActual: WIDGET.shade2b, needsPlan: WIDGET.shade3, now: WIDGET.shade1 } as const;
+/** "Right now" segments, darkest to lightest by importance; the key names them. */
 const NOW_TONE = {
-  working: 'var(--color-cat-green)',
-  meeting: 'var(--color-cat-violet)',
-  break: 'var(--color-cat-amber)',
-  leave: 'var(--color-cat-indigo)',
-  notPlanned: 'var(--color-cat-slate)'
+  working: WIDGET.shade1,
+  meeting: WIDGET.shade3,
+  break: WIDGET.shade3b,
+  leave: WIDGET.shade2,
+  notPlanned: WIDGET.shade4
 } as const;
-const RED = 'var(--color-cat-red)';
-const AMBER = 'var(--color-cat-amber)';
+/** Chip tones: over capacity is maroon, a milder warning the mild chip. */
+const RED = WIDGET.maroon;
+const AMBER = WIDGET.shade3;
+/** Every colour these cards use, for the colour guard spec. */
+export const TEAM_SCHEDULE_CARD_COLORS = { ...TONE, ...NOW_TONE, red: RED, amber: AMBER } as const;
 /** From this load an over-capacity chip is red. */
 const LOAD_RED_PERCENT = 120;
 

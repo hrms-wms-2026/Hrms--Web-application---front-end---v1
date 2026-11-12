@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { SEGMENT_COLORS } from '../util/timeline-segments.util';
 import { PLANNED_ACTUAL_COLORS } from './planned-actual-format.util';
 import { PRESENCE_COLORS } from './team-presence-format.util';
 import { PROGRESS_STATUSES } from './team-progress-format.util';
+import { LOAD_COLORS, SCHEDULE_COLORS } from './team-schedule-format.util';
+import { TEAM_SCHEDULE_CARD_COLORS } from './team-schedule-summary-cards.util';
 import { TEAM_PROGRESS_CARD_COLORS } from './team-progress-summary-cards.util';
 import { TEAM_WORK_TASK_COLORS } from './team-work-task-format.util';
 import { TEAM_WORK_TASK_CARD_COLORS } from './team-work-task-summary-cards.util';
@@ -74,8 +77,12 @@ describe('dashboard widget colour guard', () => {
   it('team presence colours are widget colours', () => expectColorMap(PRESENCE_COLORS));
 
   // Task 6: Team Schedule
-  it.todo('team schedule colours are widget colours');
-  it.todo('team schedule summary cards are widget colours');
+  it('team schedule colours are widget colours', () => {
+    expectColorMap(SCHEDULE_COLORS);
+    expectColorMap(LOAD_COLORS);
+  });
+  it('team schedule summary cards are widget colours', () => expectColorMap(TEAM_SCHEDULE_CARD_COLORS));
+  it('timeline segment colours (Today at a glance, Activity timeline) are widget colours', () => expectColorMap(SEGMENT_COLORS));
 
   // Task 7: Overtime forecasts + Team Attendance
   it.todo('overtime forecast colours, statuses and tones are widget colours');

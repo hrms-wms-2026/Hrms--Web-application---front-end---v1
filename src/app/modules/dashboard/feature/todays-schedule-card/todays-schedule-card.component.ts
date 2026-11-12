@@ -22,17 +22,17 @@ const STATUS_META: Record<ScheduleItemStatus, {
   label: string; chip: string; dot: string; node: string; rail: string; card: string; step: string;
 }> = {
   completed: {
-    label: 'Completed', chip: 'bg-[var(--color-success-subtle)] text-[var(--color-success-text)]', dot: '#10b981',
-    node: 'bg-[var(--color-success)] text-[var(--color-text-on-solid)] shadow-xs font-bold', rail: 'bg-[var(--color-success)]',
+    label: 'Completed', chip: 'bg-[var(--color-widget-mild)] text-[var(--color-widget-shade-1)]', dot: 'var(--color-widget-shade-1)',
+    node: 'bg-[var(--color-widget-shade-1)] text-[var(--color-widget-on-solid)] shadow-xs font-bold', rail: 'bg-[var(--color-widget-shade-1)]',
     card: 'border-[var(--color-border)]/80 bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] hover:shadow-xs', step: 'Completed step'
   },
   inProgress: {
-    label: 'In progress', chip: 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]', dot: '#2563eb',
-    node: 'bg-[var(--color-accent)] text-[var(--color-text-on-solid)] shadow-xs font-bold', rail: 'bg-[var(--color-accent)]',
+    label: 'In progress', chip: 'bg-[var(--color-widget-mild)] text-[var(--color-widget-shade-1)]', dot: 'var(--color-widget-shade-2)',
+    node: 'bg-[var(--color-widget-shade-2)] text-[var(--color-widget-on-solid)] shadow-xs font-bold', rail: 'bg-[var(--color-widget-shade-2)]',
     card: 'border-[var(--color-accent-subtle)] bg-[var(--color-accent-subtle)]/40 shadow-xs', step: 'In progress step'
   },
   upcoming: {
-    label: 'Upcoming', chip: 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]', dot: '#94a3b8',
+    label: 'Upcoming', chip: 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]', dot: 'var(--color-widget-shade-4)',
     node: 'border border-[var(--color-border)] bg-[var(--color-surface)] font-semibold text-[var(--color-text-primary)] shadow-2xs', rail: 'bg-[var(--color-border)]',
     card: 'border-[var(--color-border)]/80 bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] hover:shadow-xs', step: 'Step'
   }

@@ -131,9 +131,9 @@ describe('teamScheduleSummaryCards', () => {
     ];
     const r = body(byId(teamScheduleSummaryCards(day(members), week()), 'ts-needs-plan'), 'rank');
     expect(r.rows.map((x) => [x.name, x.chips[0].text, x.chips[0].tone])).toEqual([
-      ['Hari S', 'not planned', 'var(--color-cat-slate)'],
-      ['Meena L', '120% load', 'var(--color-cat-red)'],
-      ['Joel P', '110% load', 'var(--color-cat-amber)']
+      ['Hari S', 'not planned', 'var(--color-widget-shade-4)'],
+      ['Meena L', '120% load', 'var(--color-widget-maroon)'],
+      ['Joel P', '110% load', 'var(--color-widget-shade-3)']
     ]);
   });
 
