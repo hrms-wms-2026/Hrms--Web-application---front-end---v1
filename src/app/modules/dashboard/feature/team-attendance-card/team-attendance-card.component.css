@@ -111,11 +111,11 @@
 .ta-delta {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
   white-space: nowrap;
 }
 
-.ta-delta--down { color: var(--color-danger); }
+.ta-delta--down { color: var(--color-widget-maroon); }
 .ta-delta--inline { font-weight: 500; }
 
 .ta-chart {
@@ -233,7 +233,7 @@
 .ta-tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
 .ta-tile {
-  --tone: #10b981;
+  --tone: var(--color-widget-shade-1);
   display: flex;
   height: 52px;
   min-width: 0;
@@ -293,7 +293,7 @@
 .ta-link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
   white-space: nowrap;
 }
 
@@ -325,7 +325,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ta-rank--top { background: var(--color-tint-green-line); color: var(--color-tint-green-strong); }
+.ta-rank--top { background: var(--color-widget-mild-line); color: var(--color-widget-shade-1); }
 
 .ta-row-name {
   overflow: hidden;
@@ -346,7 +346,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #34d399;
+  background: var(--color-widget-shade-1);
 }
 
 .ta-rank-rate {

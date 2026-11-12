@@ -1,22 +1,24 @@
 import { ForecastHours, ForecastStatus } from '../models/overtime-forecast.model';
 import { DashboardDonutSlice } from '../ui/dashboard-donut/dashboard-donut.component';
 import { formatPercent } from './team-progress-format.util';
+import { WIDGET } from './widget-palette';
 
 /**
  * The shared visual language of the two overtime forecast widgets (design 2026-11-08, §5): where the remaining
  * hours go (covered at the current rate, needing a higher rate, beyond the realistic rate limit) and the four status
- * chips. Overload has its own darker red and a filled badge, so it never reads as the "won't fit" hours red.
+ * chips. Monochrome: theme shades, with maroon for the hours that won't fit and for Overload, which also gets a
+ * filled warning badge so it never reads as the "won't fit" maroon-soft chip.
  */
 export const FORECAST_COLORS = {
-  covered: '#10b981',
-  raise: '#fbbf24',
+  covered: WIDGET.shade1,
+  raise: WIDGET.shade3,
   /** Hours that won't fit at today's rate. */
-  overtime: '#f87171',
-  /** Required rate above the realistic limit: a darker, filled treatment. */
-  overload: '#991b1b',
-  noHistory: '#94a3b8',
+  overtime: WIDGET.maroon,
+  /** Required rate above the realistic limit: the filled maroon treatment. */
+  overload: WIDGET.maroon,
+  noHistory: WIDGET.shade4,
   /** Hours still to do (bar charts). */
-  remaining: '#3b82f6',
+  remaining: WIDGET.shade2,
 } as const;
 
 export type ForecastSliceKey = 'covered' | 'raise' | 'overload';
@@ -54,10 +56,10 @@ export interface ForecastTileRow {
 
 /** Summary-card tones (theme tokens) per status. */
 export const FORECAST_STATUS_TONE: Record<ForecastStatus, string> = {
-  on_track: 'var(--color-cat-green)',
-  raise_rate: 'var(--color-cat-amber)',
-  overload: 'var(--color-danger-text)',
-  no_history: 'var(--color-cat-slate)',
+  on_track: WIDGET.shade1,
+  raise_rate: WIDGET.shade3,
+  overload: WIDGET.maroon,
+  no_history: WIDGET.shade4,
 };
 
 /** Hours as the widgets print them: whole from 10 h ("950 h"), one decimal below ("12.5 h" stays, "2.5 h"). */

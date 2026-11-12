@@ -1,15 +1,16 @@
 import { TeamAttendanceBucket, TeamAttendancePeriodMode } from '../models/team-attendance.model';
+import { WIDGET } from './widget-palette';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const LONG_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** Status colours, the same palette as the day chart. */
+/** Status colours, the same palette as the day chart (monochrome: absent is the one maroon). */
 export const TEAM_ATTENDANCE_COLORS: Record<Exclude<TeamAttendanceBucket, 'off'>, string> = {
-  present: '#34d399',
-  late: '#fbbf24',
-  absent: '#f87171',
-  leave: '#60a5fa',
-  pending: '#cbd5e1'
+  present: WIDGET.shade1,
+  late: WIDGET.shade3,
+  absent: WIDGET.maroon,
+  leave: WIDGET.shade2,
+  pending: WIDGET.shade4
 };
 
 export const TEAM_ATTENDANCE_LABELS: Record<TeamAttendanceBucket, string> = {

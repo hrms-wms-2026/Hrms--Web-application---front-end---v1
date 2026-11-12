@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { SEGMENT_COLORS } from '../util/timeline-segments.util';
+import { FORECAST_COLORS, FORECAST_STATUS_META, FORECAST_STATUS_TONE, forecastRankChip } from './overtime-forecast-format.util';
 import { PLANNED_ACTUAL_COLORS } from './planned-actual-format.util';
+import { TEAM_ATTENDANCE_COLORS } from './team-attendance-format.util';
+import { TEAM_ATTENDANCE_CARD_COLORS } from './team-attendance-summary-cards.util';
+import { teamEmployeeForecastSummaryCards } from './team-employee-forecast-summary-cards.util';
+import { employeeForecastResponse } from './team-employee-forecast.testing';
+import { teamModuleForecastSummaryCards } from './team-module-forecast-summary-cards.util';
+import { moduleForecastResponse } from './team-module-forecast.testing';
 import { PRESENCE_COLORS } from './team-presence-format.util';
 import { PROGRESS_STATUSES } from './team-progress-format.util';
 import { LOAD_COLORS, SCHEDULE_COLORS } from './team-schedule-format.util';
@@ -85,8 +92,16 @@ describe('dashboard widget colour guard', () => {
   it('timeline segment colours (Today at a glance, Activity timeline) are widget colours', () => expectColorMap(SEGMENT_COLORS));
 
   // Task 7: Overtime forecasts + Team Attendance
-  it.todo('overtime forecast colours, statuses and tones are widget colours');
-  it.todo('module and employee forecast summary cards are widget colours');
-  it.todo('team attendance colours are widget colours');
-  it.todo('team attendance summary cards are widget colours');
+  it('overtime forecast colours, statuses and tones are widget colours', () => {
+    expectColorMap(FORECAST_COLORS);
+    expectColorMap(FORECAST_STATUS_TONE);
+    expectColorFields(FORECAST_STATUS_META);
+    expectColorFields([forecastRankChip(0.26, 1.2, 'overload'), forecastRankChip(0.26, 0.45, 'raise_rate')]);
+  });
+  it('module and employee forecast summary cards are widget colours', () => {
+    expectColorFields(teamModuleForecastSummaryCards(moduleForecastResponse()));
+    expectColorFields(teamEmployeeForecastSummaryCards(employeeForecastResponse()));
+  });
+  it('team attendance colours are widget colours', () => expectColorMap(TEAM_ATTENDANCE_COLORS));
+  it('team attendance summary cards are widget colours', () => expectColorMap(TEAM_ATTENDANCE_CARD_COLORS));
 });

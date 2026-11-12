@@ -44,7 +44,7 @@ export function teamEmployeeForecastSummaryCards(
       id: 'ef-rate',
       title: 'Team task rate',
       icon: 'pie-chart',
-      tone: 'var(--color-cat-blue)',
+      tone: 'var(--color-widget-shade-2)',
       section: 'summary',
       state: 'ready',
       body: {
@@ -63,7 +63,7 @@ export function teamEmployeeForecastSummaryCards(
       id: 'ef-overtime',
       title: "Won't fit",
       icon: 'clock',
-      tone: 'var(--color-cat-red)',
+      tone: 'var(--color-widget-maroon)',
       section: 'rates',
       state: 'ready',
       body: {
@@ -77,7 +77,7 @@ export function teamEmployeeForecastSummaryCards(
       id: 'ef-risk',
       title: 'People at risk',
       icon: 'users',
-      tone: 'var(--color-cat-amber)',
+      tone: 'var(--color-widget-shade-3)',
       section: 'employees',
       state: 'ready',
       body: {
@@ -92,7 +92,7 @@ export function teamEmployeeForecastSummaryCards(
       id: 'ef-status',
       title: 'By status',
       icon: 'layers',
-      tone: 'var(--color-cat-teal)',
+      tone: 'var(--color-widget-shade-3b)',
       section: 'employees',
       state: 'ready',
       body: {

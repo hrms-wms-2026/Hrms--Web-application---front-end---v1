@@ -2,12 +2,15 @@ import { SummaryCardModel, SummaryChip, SummaryRankRow } from '../models/summary
 import { TeamAttendanceEmployeeRow, TeamAttendanceSummaryResponse } from '../models/team-attendance.model';
 import { summaryDelta } from './summary-card-format.util';
 import { departmentsWorstFirst } from './team-attendance-format.util';
+import { WIDGET } from './widget-palette';
 
 /** The most rows a card lists (the popup has the rest). */
 export const SUMMARY_CARD_ROWS = 3;
 
-const TONE = { rate: 'var(--color-cat-green)', departments: 'var(--color-cat-blue)', attention: 'var(--color-cat-amber)', leave: 'var(--color-cat-violet)' } as const;
-const CHIP = { late: 'var(--color-cat-amber)', absent: 'var(--color-cat-red)', leave: 'var(--color-cat-blue)' } as const;
+const TONE = { rate: WIDGET.shade1, departments: WIDGET.shade2, attention: WIDGET.shade3, leave: WIDGET.shade2b } as const;
+const CHIP = { late: WIDGET.shade3, absent: WIDGET.maroon, leave: WIDGET.shade2 } as const;
+/** Every colour these cards use, for the colour guard spec. */
+export const TEAM_ATTENDANCE_CARD_COLORS = { ...TONE, ...CHIP } as const;
 /** A department under this rate is drawn amber. */
 const DEPARTMENT_WARN_RATE = 90;
 
