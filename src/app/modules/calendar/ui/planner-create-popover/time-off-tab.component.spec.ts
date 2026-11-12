@@ -35,13 +35,17 @@ describe('TimeOffTabComponent', () => {
     fixture.componentRef.setInput('slot', slot);
     fixture.detectChanges();
     const q = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+    const openTypes = () => {
+      (q('time-off-type')!.querySelector('[data-testid="select-trigger"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      return Array.from(document.querySelectorAll<HTMLButtonElement>('[data-testid="select-option"]'));
+    };
     const chooseType = (id: string) => {
-      const el = q('time-off-type') as HTMLSelectElement;
-      el.value = id;
-      el.dispatchEvent(new Event('change'));
+      const name = types.find((t) => t.id === id)!.name;
+      openTypes().find((b) => b.textContent!.trim().startsWith(name))!.click();
       fixture.detectChanges();
     };
-    return { fixture, q, chooseType, requests };
+    return { fixture, q, openTypes, chooseType, requests };
   }
 
   // Follow-up 6: the preview names the real approvers and the balance left, not a fixed "your manager approves".
@@ -62,9 +66,9 @@ describe('TimeOffTabComponent', () => {
   });
 
   it('lists active leave types with remaining hours', () => {
-    const { q } = setup();
-    const labels = Array.from((q('time-off-type') as HTMLSelectElement).options).map((o) => o.textContent!.trim());
-    expect(labels).toEqual(['Choose a leave type', 'Annual – 64 hours remaining', 'Sick']);
+    const { q, openTypes } = setup();
+    expect(q('time-off-type')!.textContent).toContain('Choose a leave type');
+    expect(openTypes().map((o) => o.textContent!.trim())).toEqual(['Annual – 64 hours remaining', 'Sick']);
   });
 
   it('previews the policy when type and times are set', () => {
