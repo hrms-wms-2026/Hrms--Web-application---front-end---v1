@@ -60,14 +60,14 @@ describe('DashboardSummaryCardComponent', () => {
     expect((el.querySelector('.sc-icon') as HTMLElement).style.color).toBe('var(--color-widget-shade-1)');
   });
 
-  it('a maroon chip is maroon on maroon-soft; any other chip is the mild chip', () => {
+  it('a maroon chip is the solid maroon alert chip; any other chip is the mild chip', () => {
     const rows = [
       { id: 'a', name: 'Ravi K', avatarFileId: null, chips: [{ text: '2 absent', tone: WIDGET.maroon }, { text: '3 late', tone: WIDGET.shade3 }] }
     ];
     const { el } = setup(card({ kind: 'rank', count: null, countLabel: '', rows, empty: '' }));
     const [bad, other] = Array.from(el.querySelectorAll('.sc-chip')) as HTMLElement[];
-    expect(bad.style.background).toBe('var(--color-widget-maroon-soft)');
-    expect(bad.style.color).toBe('var(--color-widget-maroon)');
+    expect(bad.style.background).toBe('var(--color-widget-maroon)');
+    expect(bad.style.color).toBe('var(--color-widget-on-solid)');
     expect(other.style.background).toBe('var(--color-widget-mild)');
     expect(other.style.color).toBe('var(--color-widget-shade-1)');
   });

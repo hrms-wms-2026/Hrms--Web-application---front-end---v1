@@ -246,8 +246,8 @@
 }
 .tptd-kind--no-plan {
   border-color: transparent;
-  background: var(--color-widget-maroon-soft);
-  color: var(--color-widget-maroon);
+  background: var(--color-widget-maroon);
+  color: var(--color-widget-on-solid);
 }
 .tptd-empty {
   padding: 24px 8px;

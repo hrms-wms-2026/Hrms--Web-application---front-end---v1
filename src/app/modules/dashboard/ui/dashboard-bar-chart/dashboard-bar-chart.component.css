@@ -79,15 +79,15 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Monochrome chips: up = solid darkest theme shade, down = maroon on maroon-soft, neutral = the mild card. */
+/* Monochrome chips: up = solid darkest theme shade, down = the solid maroon alert chip, neutral = the mild card. */
 .bc-chip--up {
   background: var(--color-widget-shade-1);
   color: var(--color-widget-on-solid);
 }
 
 .bc-chip--down {
-  background: var(--color-widget-maroon-soft);
-  color: var(--color-widget-maroon);
+  background: var(--color-widget-maroon);
+  color: var(--color-widget-on-solid);
 }
 
 .bc-chip--neutral {

@@ -295,6 +295,7 @@
 }
 .sc-chip--bad {
   box-shadow: none;
+  font-weight: 700;
 }
 .sc-chip--lg {
   padding: 0.1875rem 0.5rem;

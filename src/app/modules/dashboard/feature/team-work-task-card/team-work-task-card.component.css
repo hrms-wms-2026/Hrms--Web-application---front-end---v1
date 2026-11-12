@@ -113,8 +113,10 @@
 .wt-delta--down:not(.wt-delta--inline) {
   display: inline-block;
   border-radius: 999px;
-  background: var(--color-widget-maroon-soft);
+  background: var(--color-widget-maroon);
   padding: 0 0.5rem;
+  font-weight: 700;
+  color: var(--color-widget-on-solid);
 }
 .wt-delta--inline {
   font-weight: 500;

@@ -153,8 +153,10 @@ export class DashboardSummaryCardComponent {
   protected readonly tint = (percent: number, tone?: string): string => `color-mix(in srgb, ${tone ?? this.card().tone} ${percent}%, var(--color-card-bg))`;
   /** Monochrome text on the mild card: maroon for a "bad" tone, otherwise the darkest theme shade. */
   protected readonly ink = (tone: string): string => (tone === WIDGET.maroon ? WIDGET.maroon : WIDGET.shade1);
-  /** Chip background: maroon-soft for a "bad" tone, otherwise the mild card colour. */
-  protected readonly chipBg = (tone: string): string => (tone === WIDGET.maroon ? WIDGET.maroonSoft : WIDGET.mild);
+  /** Chip background: the solid maroon alert chip for a "bad" tone, otherwise the mild card colour. */
+  protected readonly chipBg = (tone: string): string => (tone === WIDGET.maroon ? WIDGET.maroon : WIDGET.mild);
+  /** Chip text: white on the solid maroon alert chip, otherwise the darkest theme shade. */
+  protected readonly chipInk = (tone: string): string => (tone === WIDGET.maroon ? WIDGET.onSolid : WIDGET.shade1);
   protected readonly widget = WIDGET;
 
   constructor() {
