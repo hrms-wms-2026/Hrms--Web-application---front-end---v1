@@ -70,6 +70,10 @@ type TimelineRow = TimelineRowBase & (
   // A size container: the row layout follows the card's own width (Small / Large on the grid).
   host: { class: '@container block' },
   templateUrl: './todays-schedule-card.component.html',
+  /* Same scrollbar as the Inbox list: "auto" turns off the standard thin scrollbar (in Chrome it draws arrow buttons), so the
+     global slim, rounded ::-webkit-scrollbar applies. Component CSS, not a Tailwind class: utilities sit in a cascade layer,
+     and the unlayered global "* { scrollbar-width: thin }" would beat them. */
+  styles: [`.tsc-scroll { scrollbar-width: auto; scrollbar-color: auto; }`],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TodaysScheduleCardComponent implements OnInit {
