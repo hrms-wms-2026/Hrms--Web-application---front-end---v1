@@ -21,7 +21,8 @@ widget is drawn in shades of the theme colour. Only "bad" information keeps its 
    too. They are not pure, saturated theme colour.
 5. **KPI cards and explanation cards use a mild theme tint.** This covers KPI tiles, summary cards, the plain-words
    explanation notes in popups and side panels such as "Biggest gap" and "Tasks completed". They get a light theme
-   tint background and a light theme border. The value text uses the darkest shade. They are not solid fills and not
+   tint background, no border and only a very thin shadow (`--shadow-widget-tile`, like the widget cards; revised
+   2026-11-12 after the browser pass). The value text uses the darkest shade. They are not solid fills and not
    gray panels.
 6. **Applies to every dashboard widget**, including each widget's popup (detail dialog).
 
@@ -91,7 +92,7 @@ approved it in the mockup.
   resolve `var()`, so switch them to `[style.stroke]` / `[style.fill]`, or resolve the variable another way. The donut
   key, bar chart and other shared charts already use `[style.*]` and accept `var()`.
 - **KPI tile and summary-card styles** (the `--tone` → `color-mix(tone 28%/8%, #fff)` pattern) become the mild card:
-  background `--color-widget-mild`, border `--color-widget-mild-line`, value `--color-widget-shade-1`, label in the
+  background `--color-widget-mild`, no border, thin shadow `--shadow-widget-tile`, value `--color-widget-shade-1`, label in the
   secondary text colour. A maroon "bad" tile keeps the mild card but shows its value in maroon.
 - Popup explanation notes (`efd-note`, `mfd-note`, `wtd-note` and their siblings) use the mild card.
 - Hardcoded hex values in widget CSS and TS that this change removes come out of

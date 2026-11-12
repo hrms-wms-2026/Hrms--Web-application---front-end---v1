@@ -1,5 +1,5 @@
 /* Summary card (design 2026-11-07, monochrome 2026-11-12). The mild theme card: --color-widget-mild background,
-   --color-widget-mild-line border, figure in the darkest theme shade. Charts inside use the card's tone. */
+   no border but a thin --shadow-widget-tile lift, figure in the darkest theme shade. Charts inside use the card's tone. */
 :host {
   height: 100%;
 }
@@ -15,6 +15,7 @@
   min-width: 0;
   padding: 0.625rem 0.75rem;
   border: 1px solid var(--sc-border, transparent);
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 0.875rem;
   overflow: hidden;
   cursor: pointer;

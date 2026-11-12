@@ -69,7 +69,8 @@
   gap: 8px;
   padding: 10px 14px;
   /* The mild theme card (monochrome widgets): --tone only colours the icon badge. */
-  border: 1px solid var(--color-widget-mild-line);
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 10px;
   background: var(--color-widget-mild);
 }

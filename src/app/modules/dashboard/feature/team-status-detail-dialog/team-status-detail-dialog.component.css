@@ -247,7 +247,8 @@
 }
 .wbld-banner {
   --tone: var(--color-widget-shade-2);
-  border: 1px solid var(--color-widget-mild-line);
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 12px;
   background: var(--color-widget-mild);
   padding: 12px 14px;

@@ -54,7 +54,8 @@
 }
 .tptd-note {
   margin: 0;
-  border: 1px solid var(--color-widget-mild-line);
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 8px;
   background: var(--color-widget-mild);
   padding: 10px 12px;

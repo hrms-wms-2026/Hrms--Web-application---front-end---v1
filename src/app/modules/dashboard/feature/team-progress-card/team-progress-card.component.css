@@ -500,11 +500,10 @@
   color: var(--color-text-secondary);
 }
 
-.tone-green, .tone-blue, .tone-amber { background: var(--color-widget-mild); border-color: var(--color-widget-mild-line); }
+/* KPI tiles: the mild theme card, no border, a thin shadow; a bad (rose) tile keeps the card and shows a maroon value. */
+.tone-green, .tone-blue, .tone-amber, .tone-gray, .tone-rose { background: var(--color-widget-mild); border-color: transparent; box-shadow: var(--shadow-widget-tile); }
 .tone-green .tp-tone-text, .tone-blue .tp-tone-text, .tone-amber .tp-tone-text { color: var(--color-widget-shade-1); }
-.tone-gray { background: var(--color-surface-secondary); border-color: var(--color-border); }
-.tone-gray .tp-tone-text { color: var(--color-text-primary); }
-.tone-rose { background: var(--color-widget-maroon-soft); border-color: color-mix(in srgb, var(--color-widget-maroon) 25%, var(--color-widget-maroon-soft)); }
+.tone-gray .tp-tone-text { color: var(--color-widget-shade-1); }
 .tone-rose .tp-tone-text { color: var(--color-widget-maroon); }
 
 /* ---- Panels (lists, weekly chart, top members) ---- */

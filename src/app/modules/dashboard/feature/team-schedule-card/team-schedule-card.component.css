@@ -161,20 +161,12 @@
   height: 3.5rem;
   justify-content: center;
   gap: 0.5rem;
-  border-color: var(--dashboard-kpi-border, var(--color-border));
+  /* KPI tiles: the mild theme card, no border, a thin shadow. */
+  border-color: transparent;
   border-radius: 0.875rem;
-  background: var(--color-surface-secondary);
+  background: var(--color-widget-mild);
+  box-shadow: var(--shadow-widget-tile);
   font-size: 0.9375rem;
-}
-
-.tsc-chips--tiles .tsc-chip[data-key='overCapacity'] {
-  border-color: var(--dashboard-kpi-border, var(--color-widget-mild-line));
-  background: var(--color-widget-mild);
-}
-
-.tsc-chips--tiles .tsc-chip[data-key='onLeave'] {
-  border-color: var(--dashboard-kpi-border, var(--color-widget-mild-line));
-  background: var(--color-widget-mild);
 }
 
 .tsc-chip svg {

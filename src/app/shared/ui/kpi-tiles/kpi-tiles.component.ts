@@ -25,7 +25,7 @@ const TONE_COLOR: Record<KpiTileTone, string> = {
   neutral: 'var(--color-text-secondary)'
 };
 
-/** Dashboard widgets (palette="widget"): the monochrome mild theme card. Every tone is the darkest theme shade,
+/** Dashboard widgets (palette="widget"): the monochrome mild theme card, no border, a thin shadow. Every tone is the darkest theme shade,
  * except danger, whose value turns maroon. Tokens live in shared/styles/theme-tokens.css. */
 const WIDGET_TONE_COLOR: Record<KpiTileTone, string> = {
   accent: 'var(--color-widget-shade-1)',
@@ -53,7 +53,8 @@ export type KpiTilesPalette = 'default' | 'widget';
           [class.kpi-tile--warning]="tone === 'warning'"
           [class.kpi-tile--danger]="tone === 'danger'"
           [style.background]="widget() ? 'var(--color-widget-mild)' : null"
-          [style.borderColor]="widget() ? 'var(--color-widget-mild-line)' : null"
+          [style.borderColor]="widget() ? 'transparent' : null"
+          [style.boxShadow]="widget() ? 'var(--shadow-widget-tile)' : null"
         >
           @if (tile.icon) {
             <span

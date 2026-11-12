@@ -240,7 +240,8 @@
   flex-direction: column;
   justify-content: center;
   /* The mild theme card (monochrome widgets); --tone only marks a "bad" tile (maroon value, below). */
-  border: 1px solid var(--color-widget-mild-line);
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 0.625rem;
   background: var(--color-widget-mild);
   padding: 0 0.625rem;

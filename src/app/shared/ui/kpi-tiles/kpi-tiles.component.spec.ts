@@ -54,7 +54,7 @@ describe('KpiTilesComponent', () => {
     expect((el.querySelector('.kpi-tile') as HTMLElement).style.background).toBe('');
   });
 
-  it('palette="widget" draws every tile as the mild theme card, with maroon values for danger', () => {
+  it('palette="widget" draws every tile as the mild theme card (no border, thin shadow), with maroon values for danger', () => {
     fixture.componentInstance.palette.set('widget');
     const el = render([
       { label: 'Done', value: 4, icon: 'alert-triangle', tone: 'success' },
@@ -62,7 +62,8 @@ describe('KpiTilesComponent', () => {
     ]);
     const [done, absent] = Array.from(el.querySelectorAll('.kpi-tile')) as HTMLElement[];
     expect(done.style.background).toBe('var(--color-widget-mild)');
-    expect(done.style.borderColor).toBe('var(--color-widget-mild-line)');
+    expect(done.style.borderColor).toBe('transparent');
+    expect(done.style.boxShadow).toBe('var(--shadow-widget-tile)');
     expect((done.querySelector('.kpi-tile__icon') as HTMLElement).style.color).toBe('var(--color-widget-shade-1)');
     expect((done.querySelector('.kpi-tile__value') as HTMLElement).style.color).toBe('var(--color-widget-shade-1)');
     expect((absent.querySelector('.kpi-tile__value') as HTMLElement).style.color).toBe('var(--color-widget-maroon)');

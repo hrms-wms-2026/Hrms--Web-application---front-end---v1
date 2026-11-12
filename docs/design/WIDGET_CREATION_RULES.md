@@ -80,7 +80,7 @@ The source of truth is `feature/team-attendance-card/team-attendance-card.compon
 
 - **Text:** strong `rgb(15 23 42)`, body `rgb(51 65 85)`, muted `rgb(100 116 139)`, faint `rgb(148 163 184)`. **Borders** `rgb(226 232 240)`, panel border / donut track `#f1f5f9`, soft row bg `rgb(248 250 252)`, link `rgb(37 99 235)`, focus ring 2px `rgb(59 130 246)`. **Deltas:** up = solid shade 1 chip (or shade-1 text), down = maroon (see §7a).
 - **Type:** hero figure 2.25rem/700 (1.5rem xs, 1.625rem mini). Donut centre 1.5rem/700 + 0.75rem muted sub-label. Section title 0.8125rem/600. Body rows 0.8125rem. Captions, links and deltas 0.75rem. Tile label 0.6875rem.
-- **KPI tile:** 52px, radius 0.625rem, the mild card (§7a): bg `--color-widget-mild`, border `--color-widget-mild-line`, count 1.125rem/700 in shade 1 (maroon for a bad figure). 2 or 4 columns (4 from ~400px body width), gap 0.5rem.
+- **KPI tile:** 52px, radius 0.625rem, the mild card (§7a): bg `--color-widget-mild`, no border, `--shadow-widget-tile` shadow, count 1.125rem/700 in shade 1 (maroon for a bad figure). 2 or 4 columns (4 from ~400px body width), gap 0.5rem.
 - **Panel:** 1px slate-100 border, radius 0.75rem, padding 0.625rem 0.75rem. Trend panel fixed 150px.
 - **Ranking row:** 40px, grid `auto auto 1fr minmax(3rem,6rem) 2.75rem`: rank pill (top 3 mild card), avatar, name, 6px bar, bold right-aligned value. Header "View all ›" opens the popup.
 - **Status colours:** monochrome, see §7a. Never a fixed hue (green, blue, amber, violet, teal, slate) in a widget.
@@ -109,8 +109,11 @@ Spec: `docs/superpowers/specs/2026-11-12-monochrome-dashboard-widgets-design.md`
   `--color-widget-on-solid`, or the mild chip where solid is too loud. Every other chip = the mild chip: mild
   background, mild-line border, shade-1 text.
 - **The mild card:** KPI tiles, summary cards and plain-words explanation notes (`*-note`, "Biggest gap", …) use
-  `--color-widget-mild` background, `--color-widget-mild-line` border, shade-1 value and secondary-text label. A bad
-  tile keeps the mild card and shows its value in maroon.
+  `--color-widget-mild` background, **no border** (keep a transparent 1px border so sizes don't shift) and only the
+  very thin `--shadow-widget-tile` lift, like the widget cards themselves, with a shade-1 value and secondary-text
+  label. A bad tile keeps the mild card and shows its value in maroon. Chips keep their mild-line outline.
+- **Header controls** (company switcher, Search, Customize in the top navbar) use the same mild tint: mild background,
+  mild-line border, shade-1 text, so the shell continues the theme colour on every page.
 - **`app-kpi-tiles`** inside the dashboard always sets `palette="widget"`. Without it the tiles keep their default
   look (Leave and People pages).
 - Backgrounds (`--color-dashboard-team-*`), buttons, links, focus rings and the app shell are not widget content and

@@ -56,7 +56,7 @@ describe('DashboardSummaryCardComponent', () => {
     const { el } = setup(card(spark, { tone: WIDGET.shade3 }));
     const root = q(el, 'summary-card') as HTMLElement;
     expect(root.style.background).toBe('var(--color-widget-mild)');
-    expect(root.style.getPropertyValue('--sc-border')).toBe('var(--color-widget-mild-line)');
+    expect(root.style.getPropertyValue('--sc-border')).toBe('transparent');
     expect((el.querySelector('.sc-icon') as HTMLElement).style.color).toBe('var(--color-widget-shade-1)');
   });
 
