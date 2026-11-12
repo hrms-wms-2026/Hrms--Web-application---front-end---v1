@@ -134,9 +134,10 @@
   min-width: 0;
   align-items: center;
   gap: 0.625rem;
-  border: 1px solid var(--dashboard-kpi-border, color-mix(in srgb, var(--tone) 22%, var(--color-surface)));
+  /* The mild theme card (monochrome widgets); --tone colours only the icon badge. */
+  border: 1px solid var(--color-widget-mild-line);
   border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
+  background: var(--color-widget-mild);
   padding: 0 0.75rem;
 }
 
@@ -163,14 +164,14 @@
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.2;
-  color: color-mix(in srgb, var(--tone) 80%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
 }
 
 .wbl-tile-label {
   overflow: hidden;
   font-size: 0.75rem;
-  color: color-mix(in srgb, var(--tone) 70%, var(--color-text-primary));
+  color: var(--color-text-secondary);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -180,7 +181,7 @@
   align-self: flex-end;
   padding-bottom: 0.75rem;
   font-size: 0.75rem;
-  color: color-mix(in srgb, var(--tone) 70%, var(--color-text-primary));
+  color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -354,11 +355,12 @@
   align-items: center;
   gap: 0.25rem;
   border-radius: 0.375rem;
-  background: color-mix(in srgb, var(--tone) 12%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px var(--color-widget-mild-line);
+  background: var(--color-widget-mild);
   padding: 0.125rem 0.375rem;
   font-size: 0.6875rem;
   font-weight: 500;
-  color: color-mix(in srgb, var(--tone) 80%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
 }
 
 .wbl-chip--neutral {

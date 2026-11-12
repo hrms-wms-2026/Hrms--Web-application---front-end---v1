@@ -152,9 +152,10 @@
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  border: 1px solid var(--dashboard-kpi-border, color-mix(in srgb, var(--tone) 28%, var(--color-surface)));
+  /* The mild theme card (monochrome widgets); --tone only marks a "bad" tile (maroon value, below). */
+  border: 1px solid var(--color-widget-mild-line);
   border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
+  background: var(--color-widget-mild);
   padding: 0 0.625rem;
 }
 
@@ -165,8 +166,13 @@
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.2;
-  color: color-mix(in srgb, var(--tone) 75%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
+}
+
+/* A tile whose tone is maroon (absent, won't fit) shows its value in maroon on the same mild card. */
+.mf-tile[style*='--color-widget-maroon'] .mf-tile-count {
+  color: var(--color-widget-maroon);
 }
 
 .mf-tile-label {
