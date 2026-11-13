@@ -570,6 +570,7 @@
                 <div class="flex-1 w-full">
                   <app-input
                     placeholder="Penalty if bypassed (optional e.g. $50 equipment fee)"
+                    [maxlength]="limits.bypassPenaltyDescription"
                     [value]="taskGroup.value.bypassPenaltyDescription || ''"
                     (valueChange)="taskGroup.get('bypassPenaltyDescription')?.setValue($event)"
                   />

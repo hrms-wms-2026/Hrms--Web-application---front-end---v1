@@ -4,6 +4,8 @@ import { PendingUploadPurpose, TaskApiService } from '../../../modules/work/data
 import { ColorSwatchPopoverComponent } from '../../../modules/work/ui/color-swatch-popover/color-swatch-popover.component';
 import { sanitizeEditableHtml } from '../../utils/editable-html.util';
 import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
+import { CHAR_COUNTER_THRESHOLD } from '../../constants/text-limits';
+import { CharCounterComponent } from '../char-counter/char-counter.component';
 
 export interface SlashCommandItem {
   id: string;
@@ -72,7 +74,7 @@ export interface SlashMenuCoords {
 @Component({
   selector: 'app-rich-text-editor',
   standalone: true,
-  imports: [StopClickPropagationDirective, ColorSwatchPopoverComponent],
+  imports: [StopClickPropagationDirective, ColorSwatchPopoverComponent, CharCounterComponent],
   host: {
     '[class.rte--compact]': 'compact()',
     '[class.rte--borderless]': 'borderless()',
@@ -294,10 +296,15 @@ export interface SlashMenuCoords {
                   (keydown)="onEditorSurfaceKeydown($event)"
                   (keyup)="onEditorKeyup()"
                   (mouseup)="onEditorMouseup()"
+                  (beforeinput)="onEditorBeforeInput($event)"
                   (input)="onEditorInput()"
                   (blur)="onEditorBlur()"
                   (click)="onEditorSurfaceClick($event)"
                 ></div>
+
+                @if (showCounter()) {
+                  <app-char-counter class="tfm-editor__counter" [length]="textLength()" [max]="maxLength() ?? 0" />
+                }
 
                 @if (showSlashMenu() && filteredSlashCommands().length > 0) {
                   <div
@@ -453,6 +460,7 @@ export interface SlashMenuCoords {
               </div>
   `,
   styles: [`
+    .tfm-editor__counter { padding: 0 10px 6px; }
     .tfm-editor { position: relative; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 9px; overflow: visible; background: var(--color-surface); min-height: 140px; transition: border-color 150ms ease, box-shadow 150ms ease; }
     .tfm-editor:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 25%, transparent); }
     .tfm-editor__toolbar { border-top-left-radius: 8px; border-top-right-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: var(--color-surface-secondary); border-bottom: 1px solid var(--color-border); user-select: none; }
@@ -604,8 +612,24 @@ export class RichTextEditorComponent {
   readOnly = input<boolean>(false);
   /** Starts as formatted content and reveals editing controls only after interaction. */
   activateOnClick = input<boolean>(true);
+  /**
+   * Limit on the visible text (not the HTML). Typing and pasting stop at it, and a counter
+   * appears from 80% of it. null (default) means no limit.
+   */
+  maxLength = input<number | null>(null);
   editorActive = signal(false);
   contentEmpty = signal(true);
+  /** Visible characters in the editor. */
+  readonly textLength = signal(0);
+  readonly showCounter = computed(() => {
+    const max = this.maxLength();
+    return !!max && !this.isReadOnlyMode() && this.textLength() >= Math.ceil(max * CHAR_COUNTER_THRESHOLD);
+  });
+  /** True when the text is longer than maxLength (e.g. loaded that way, or typed via an IME). */
+  readonly overLimit = computed(() => {
+    const max = this.maxLength();
+    return !!max && this.textLength() > max;
+  });
   isReadOnlyMode = computed(() => this.readOnly() || (this.activateOnClick() && !this.editorActive()));
   private editHistory: string[] = [''];
   private historyIndex = 0;
@@ -754,6 +778,7 @@ export class RichTextEditorComponent {
         const empty = this.isElementVisuallyEmpty(el);
         untracked(() => {
           this.contentEmpty.set(empty);
+          this.textLength.set(this.visibleTextLength(el));
           this.resetHistory(empty ? '' : el.innerHTML);
           this.htmlChange.emit(empty ? '' : el.innerHTML);
         });
@@ -799,6 +824,7 @@ export class RichTextEditorComponent {
     if (html) this.normalizeBlockLines(el);
     const empty = this.isElementVisuallyEmpty(el);
     this.contentEmpty.set(empty);
+    this.textLength.set(this.visibleTextLength(el));
     this.resetHistory(empty ? '' : el.innerHTML);
     this.htmlChange.emit(empty ? '' : el.innerHTML);
   }
@@ -807,6 +833,7 @@ export class RichTextEditorComponent {
     const el = this.contentEditor()?.nativeElement;
     if (el) el.innerHTML = '';
     this.contentEmpty.set(true);
+    this.textLength.set(0);
     this.resetHistory('');
     this.closePopovers();
     this.linkUrlInput.set('');
@@ -1769,6 +1796,7 @@ export class RichTextEditorComponent {
     const raw = el.innerHTML.trim();
     const empty = this.isElementVisuallyEmpty(el);
     this.contentEmpty.set(empty);
+    this.textLength.set(this.visibleTextLength(el));
     // Pasted web content can carry <svg>/<style> or handlers the backend rejects; emit it cleaned.
     const html = empty ? '' : sanitizeEditableHtml(raw);
     if (!this.restoringHistory) this.recordHistory(html);
@@ -1778,6 +1806,39 @@ export class RichTextEditorComponent {
       this.emitMentionsIfChanged(el);
       this.checkMentionTrigger();
     }
+  }
+
+  /**
+   * Stops typing, pasting and dropping text past maxLength. A paste or drop that would overflow is
+   * cut to the room left and inserted as plain text. IME composition can't be cancelled; the
+   * counter then shows how far over the limit the text is.
+   */
+  onEditorBeforeInput(event: InputEvent): void {
+    const max = this.maxLength();
+    if (!max || !event.inputType.startsWith('insert')) return;
+    const incoming = this.incomingText(event);
+    if (incoming === null) return;
+    const selected = window.getSelection()?.toString().length ?? 0;
+    const room = max - (this.textLength() - selected);
+    if (incoming.length <= room) return;
+    if (event.inputType === 'insertCompositionText') return;
+    event.preventDefault();
+    if (room > 0 && (event.inputType === 'insertFromPaste' || event.inputType === 'insertFromDrop')) {
+      document.execCommand('insertText', false, incoming.slice(0, room));
+    }
+  }
+
+  /** Text an insert would add; null when it adds no characters (Enter, line breaks). */
+  private incomingText(event: InputEvent): string | null {
+    if (event.inputType === 'insertParagraph' || event.inputType === 'insertLineBreak') return null;
+    if (event.data !== null) return event.data;
+    const text = event.dataTransfer?.getData('text/plain');
+    return text ?? null;
+  }
+
+  private visibleTextLength(el: HTMLElement): number {
+    const zeroWidthSpace = String.fromCharCode(0x200b);
+    return (el.textContent ?? '').split(zeroWidthSpace).join('').length;
   }
 
   private isElementVisuallyEmpty(el: HTMLElement): boolean {
@@ -1820,6 +1881,7 @@ export class RichTextEditorComponent {
       el.innerHTML = html;
       const empty = this.isElementVisuallyEmpty(el);
       this.contentEmpty.set(empty);
+      this.textLength.set(this.visibleTextLength(el));
       this.htmlChange.emit(empty ? '' : el.innerHTML);
       this.closeSlashMenu();
 

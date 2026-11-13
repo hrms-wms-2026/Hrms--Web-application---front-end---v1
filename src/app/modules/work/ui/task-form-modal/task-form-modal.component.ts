@@ -45,6 +45,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
 import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
 import { MeetingCreatedEvent } from '../../meetings/utils/meeting-created-drawer.util';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 export type TaskFormMode = 'create' | 'edit';
 
@@ -264,6 +265,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                 #descRte
                 [initialHtml]="description()"
                 [cssStyles]="false"
+                [maxLength]="limits.richTextDescription"
                 (htmlChange)="description.set($event)"
                 (filesAttached)="onAttachmentFilesSelected($event)"
                 (uploadFailed)="errorMessage.set($event)"
@@ -1029,6 +1031,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                     [initialHtml]="description()"
                     [cssStyles]="false"
                     placeholder="Add description"
+                    [maxLength]="limits.richTextDescription"
                     (htmlChange)="description.set($event)"
                     (filesAttached)="onAttachmentFilesSelected($event)"
                     (uploadFailed)="errorMessage.set($event)"
@@ -2168,6 +2171,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
   `]
 })
 export class TaskFormModalComponent {
+  readonly limits = TEXT_LIMITS;
   private readonly taskApi = inject(TaskApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly sprintApi = inject(SprintApiService);

@@ -34,9 +34,11 @@
         rows="2"
         placeholder="Add a description (optional)"
         aria-label="Event description"
+        [attr.maxlength]="limits.calendarEventDescription"
         [value]="form.controls.description.value ?? ''"
         (input)="setDescription($any($event.target).value)"
       ></textarea>
+      <app-char-counter [length]="(form.controls.description.value ?? '').length" [max]="limits.calendarEventDescription" />
     </div>
 
     <!-- When: date range, start -> end time, duration -->

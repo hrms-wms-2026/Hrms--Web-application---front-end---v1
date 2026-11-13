@@ -18,6 +18,7 @@ import { windowMinutes } from '../../utils/planner-grid.util';
 import { WorkItemPlanFlow } from '../../state/work-item-plan-flow.service';
 import { MIN_BLOCK_MINUTES, MinuteRange, PlanDay, placeMinutes } from './plan-continuation';
 import { CreateSlot, SharedCreateDraft, clock } from './planner-create-draft';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 /** What the Work item tab held, for the full Create work item form ("More options"). */
 export interface WorkItemDraft {
@@ -83,7 +84,7 @@ function duration(minutes: number): string {
       <input data-testid="work-item-title" class="wi-title" placeholder="Work item title" aria-label="Work item title" [value]="shared().title()"
         (input)="shared().title.set($any($event.target).value)" />
       <app-rich-text-editor class="wi-description" ariaLabel="Description" [compact]="true" [allowAttachments]="false" [allowImages]="false"
-        (htmlChange)="onDescription($event)" />
+        [maxLength]="limits.richTextDescription" (htmlChange)="onDescription($event)" />
 
       <div class="wi-chips">
         <span class="wi-chip-static" title="A work item planned here is yours"><app-field-icon name="user" /> Me</span>
@@ -267,6 +268,7 @@ function duration(minutes: number): string {
   `],
 })
 export class WorkItemTabComponent implements OnInit {
+  readonly limits = TEXT_LIMITS;
   readonly flow = inject(WorkItemPlanFlow);
   private readonly projectApi = inject(ProjectApiService);
   private readonly taskApi = inject(TaskApiService);

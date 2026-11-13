@@ -26,6 +26,7 @@ import {
 } from '../../models/leave-policy.model';
 import { LeavePolicyEdit } from '../../state/leave-policy.store';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 export interface LeavePolicyWizardEntity { readonly id: string; readonly name: string; }
 export interface LeavePolicyWizardEdit { readonly policyId: string; readonly edit: LeavePolicyEdit; }
@@ -60,6 +61,7 @@ function displayDate(iso: string): string {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LeavePolicyFormWizardComponent {
+  readonly limits = TEXT_LIMITS;
   readonly leaveTypes = input<readonly LeaveTypeResponse[]>([]);
   readonly legalEntities = input<readonly LeavePolicyWizardEntity[]>([]);
   readonly departmentOptions = input<readonly SelectOption[]>([]);

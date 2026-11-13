@@ -23,6 +23,8 @@ import { CalendarEventMeetingStatusComponent } from '../calendar-event-meeting-s
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { timezoneDisplayLabel } from '../../../../shared/utils/timezone-label.util';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
+import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
 
 /** Curated set of IANA zones for the "times entered in" picker. The organizer's own
  * tenant zone is always merged in on top of this so it can never be missing. */
@@ -97,7 +99,7 @@ interface AddedPerson {
 @Component({
   selector: 'app-calendar-event-form-modal',
   standalone: true,
-  imports: [
+  imports: [CharCounterComponent, 
     CommonModule, ReactiveFormsModule, RouterLink, ButtonComponent,
     ModalComponent, DateRangePickerComponent, TimePickerComponent, AvatarComponent, AvatarStackComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
     SelectComponent, CalendarEventAttendanceComponent, CalendarEventMeetingStatusComponent
@@ -146,6 +148,7 @@ interface AddedPerson {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
+  readonly limits = TEXT_LIMITS;
   private readonly fb = inject(FormBuilder);
   private readonly unsaved = inject(UnsavedChangesService);
 

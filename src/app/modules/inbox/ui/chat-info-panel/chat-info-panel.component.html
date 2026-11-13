@@ -96,8 +96,9 @@
               }
             </div>
             @if (editingDescription()) {
-              <textarea class="ui-input cip__textarea" data-testid="chat-info-description-input" maxlength="500" rows="3" aria-label="Description"
+              <textarea class="ui-input cip__textarea" data-testid="chat-info-description-input" [attr.maxlength]="limits.conversationDescription" rows="3" aria-label="Description"
                 [value]="descriptionDraft()" (input)="descriptionDraft.set($any($event.target).value)" (keydown.escape)="editingDescription.set(false)"></textarea>
+              <app-char-counter [length]="descriptionDraft().length" [max]="limits.conversationDescription" />
               <div class="cip__edit-actions">
                 <button type="button" class="cip__btn" (click)="editingDescription.set(false)">Cancel</button>
                 <button type="button" class="cip__btn cip__btn--primary" data-testid="chat-info-save-description" [disabled]="saving()" (click)="saveDescription()">Save</button>
