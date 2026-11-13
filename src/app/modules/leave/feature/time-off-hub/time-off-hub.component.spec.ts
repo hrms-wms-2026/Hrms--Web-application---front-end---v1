@@ -5,6 +5,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
+import { MyTeamTodayStore } from '../../../dashboard/state/my-team-today.store';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
 import { LeaveRequestListItemResponse } from '../../models/leave-request.model';
 import { LeaveTypeResponse } from '../../models/leave-type.model';
@@ -28,14 +30,15 @@ describe('TimeOffHubComponent', () => {
   let fixture: ComponentFixture<TimeOffHubComponent>;
   let http: HttpTestingController;
 
-  function setUp(permissions: string[], managesPeople = false): void {
+  function setUp(permissions: string[], managesPeople = false, extraProviders: unknown[] = [], modules = ['leave']): void {
     TestBed.configureTestingModule({
       imports: [TimeOffHubComponent],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        { provide: AuthStore, useValue: { permissions: signal(permissions), activeModules: signal(['leave']), email: signal('anu.raman@dapi.com'), managesPeople: signal(managesPeople) } }
+        { provide: AuthStore, useValue: { permissions: signal(permissions), activeModules: signal(modules), email: signal('anu.raman@dapi.com'), managesPeople: signal(managesPeople) } },
+        ...(extraProviders as never[])
       ]
     });
     http = TestBed.inject(HttpTestingController);
@@ -188,5 +191,49 @@ describe('TimeOffHubComponent', () => {
     await flushEmployeeLoads([], [], []);
     expect(el().querySelector('[data-testid="time-off-not-ready"]')).not.toBeNull();
     expect(el().querySelector('[data-testid="time-off-setup"]')).toBeNull();
+  });
+
+  it('draws each balance ring with the shared donut: remaining share in shade 1, the rest as track, maroon when negative', async () => {
+    setUp(['leave:read-own']);
+    await flushEmployeeLoads([leaveType('al', 'Annual Leave')], [balance('al', 'Annual Leave', 96), { ...balance('cl', 'Casual Leave', -8), isNegative: true }], []);
+    const [annual, casual] = Array.from(el().querySelectorAll('[data-testid="balance-ring"]')) as HTMLElement[];
+    expect(annual.tagName.toLowerCase()).toBe('app-dashboard-donut');
+    expect(annual.style.width).toBe('61px');
+    expect(annual.querySelector('svg')?.getAttribute('aria-label')).toBe('86% of Annual Leave remaining');
+    const [remaining, rest] = Array.from(annual.querySelectorAll('[data-testid="donut-segment"]')) as SVGPathElement[];
+    expect(remaining.dataset['key']).toBe('remaining');
+    expect(remaining.style.fill).toBe(WIDGET.shade1);
+    expect(rest.classList).toContain('dd-arc--rest');
+    expect(annual.querySelector('.hub-ring__label')?.textContent?.trim()).toBe('86%');
+    // A negative balance has no remaining share: only the track, and the label in maroon.
+    expect(casual.classList).toContain('hub-ring--negative');
+    expect(Array.from(casual.querySelectorAll('[data-testid="donut-segment"]')).map((p) => (p as SVGPathElement).dataset['key'])).toEqual(['used']);
+    expect(casual.querySelector('.hub-ring__label')?.textContent?.trim()).toBe('0%');
+  });
+
+  it('draws Team Availability with the shared donut and key in the monochrome palette, sharing one lit slice', async () => {
+    const summary = { total: 25, working: 14, onBreak: 1, clockedOut: 2, late: 0, absent: 1, notStarted: 4, onLeave: 3, notScheduled: 0, needsAttention: 0 };
+    const teamToday = { data: signal({ summary }), load: () => Promise.resolve() };
+    setUp(['leave:read-own', 'leave:read-team', 'attendance:read'], true, [{ provide: MyTeamTodayStore, useValue: teamToday }], ['leave', 'time_attendance']);
+    await flushEmployeeLoads([leaveType('al', 'Annual Leave')], [], []);
+
+    const donut = el().querySelector('[data-testid="team-donut"]') as HTMLElement;
+    expect(donut.querySelector('.hub-donut__centre')?.textContent).toContain('25');
+    expect(donut.querySelector('.hub-donut__centre')?.textContent).toContain('Employees');
+    const colours = Object.fromEntries(
+      (Array.from(donut.querySelectorAll('[data-testid="donut-segment"]')) as SVGPathElement[]).map((p) => [p.dataset['key'], p.style.fill])
+    );
+    expect(colours).toEqual({ work: WIDGET.shade1, leave: WIDGET.shade2, 'not-in': WIDGET.shade4, out: WIDGET.maroon });
+
+    const row = (key: string) => el().querySelector(`[data-testid="team-key-row-${key}"]`) as HTMLElement;
+    expect(row('work').textContent).toContain('At work');
+    expect(row('work').querySelector('[data-testid="team-key-row-work-percent"]')?.textContent?.trim()).toBe('60%');
+    expect(row('work').querySelector('[data-testid="team-key-row-work-value"]')?.textContent?.trim()).toBe('15');
+    expect(row('out').querySelector('[data-testid="team-key-row-out-percent"]')?.textContent?.trim()).toBe('12%');
+
+    // Hovering a key row lights that slice in the donut's centre.
+    row('leave').dispatchEvent(new Event('mouseenter'));
+    fixture.detectChanges();
+    expect(donut.querySelector('[data-testid="donut-hover"]')?.textContent).toContain('On leave · 12%');
   });
 });
