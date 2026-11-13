@@ -11,6 +11,7 @@ import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-ic
 import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 const STEP_ITEMS = [
   { id: 1, label: 'Category', desc: 'Select category' },
@@ -211,7 +212,7 @@ const STEP_ITEMS = [
 
                 </div>
                 <span data-testid="description-field">
-                  <app-input label="Description" [value]="description()" (valueChange)="description.set($event)" />
+                  <app-input label="Description" [maxlength]="limits.projectDescription" [value]="description()" (valueChange)="description.set($event)" />
                 </span>
                 <div class="grid grid-cols-2 gap-3">
                   <!-- One picture per project: picking an icon or emoji replaces the logo, and uploading a logo replaces the icon. -->
@@ -697,6 +698,7 @@ const STEP_ITEMS = [
   `
 })
 export class ProjectFormModalComponent implements OnInit {
+  readonly limits = TEXT_LIMITS;
   protected readonly categoryStore = inject(ProjectCategoryStore);
   protected readonly directory = inject(EmployeeDirectoryStore);
 

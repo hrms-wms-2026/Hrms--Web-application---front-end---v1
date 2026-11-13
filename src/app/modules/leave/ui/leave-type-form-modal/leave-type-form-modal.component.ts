@@ -10,6 +10,7 @@ import { CreateLeaveTypeRequest, LEAVE_TYPE_COLORS, LeaveTypeResponse } from '..
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 import { leaveTypeDefaultIcon } from '../../utils/leave-hub.util';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 export type LeaveTypeFormValue = CreateLeaveTypeRequest;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -41,7 +42,7 @@ export class LeaveTypeFormModalComponent implements OnInit {
   @Output() cancelled = new EventEmitter<void>();
 
   readonly colors = LEAVE_TYPE_COLORS;
-  readonly descriptionMaxLength = 500;
+  readonly descriptionMaxLength = TEXT_LIMITS.leaveTypeDescription;
   readonly genderOptions = [{ value: 'all', label: 'All employees' }, { value: 'male', label: 'Men only' }, { value: 'female', label: 'Women only' }];
   readonly form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],

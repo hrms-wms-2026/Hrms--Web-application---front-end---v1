@@ -15,6 +15,8 @@ import { InboxChatsStore } from '../../state/inbox-chats.store';
 import { InboxStore } from '../../state/inbox.store';
 import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
 import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
+import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
 
 /** Items shown before "View all" (files and members), and per page once opened. */
 export const PREVIEW_COUNT = 5;
@@ -43,12 +45,13 @@ export function fileSize(bytes: number): string {
 @Component({
   selector: 'app-chat-info-panel',
   standalone: true,
-  imports: [AvatarComponent, ChangePhotoDialogComponent, DatePipe, EntityIconComponent, IconPickerComponent, NgTemplateOutlet],
+  imports: [CharCounterComponent, AvatarComponent, ChangePhotoDialogComponent, DatePipe, EntityIconComponent, IconPickerComponent, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat-info-panel.component.html',
   styleUrl: './chat-info-panel.component.css'
 })
 export class ChatInfoPanelComponent {
+  readonly limits = TEXT_LIMITS;
   private readonly api = inject(InboxChatsApiService);
   private readonly conversations = inject(ConversationsApiService);
   private readonly chats = inject(InboxChatsStore);

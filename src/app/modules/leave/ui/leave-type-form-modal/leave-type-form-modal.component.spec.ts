@@ -12,17 +12,21 @@ describe('LeaveTypeFormModalComponent', () => {
       expect(text).not.toContain(removed);
   });
 
-  it('takes the description in a multi-line box with a 500-character counter', () => {
+  it('takes the description in a 500-character box that warns near the limit', () => {
     const fixture = TestBed.createComponent(LeaveTypeFormModalComponent);
     fixture.detectChanges();
-    const textarea = fixture.nativeElement.querySelector('.ltfm-counted textarea') as HTMLTextAreaElement;
+    const textarea = fixture.nativeElement.querySelector('.ltfm-wide.ltfm-counted textarea') as HTMLTextAreaElement;
     expect(textarea).toBeTruthy();
     expect(textarea.getAttribute('maxlength')).toBe('500');
     textarea.value = 'Paid time off';
     textarea.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     expect(fixture.componentInstance.form.controls.description.value).toBe('Paid time off');
-    expect((fixture.nativeElement.querySelector('.ltfm-counter') as HTMLElement).textContent?.trim()).toBe('13 / 500');
+    expect(fixture.nativeElement.querySelector('[data-testid="char-counter"]')).toBeNull();
+    textarea.value = 'x'.repeat(400);
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('[data-testid="char-counter"]') as HTMLElement).textContent?.trim()).toBe('400 / 500');
   });
 
   it('picks a custom colour from its own picker, with no RGB boxes', () => {

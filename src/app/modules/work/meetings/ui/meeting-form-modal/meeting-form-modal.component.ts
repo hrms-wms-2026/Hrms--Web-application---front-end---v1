@@ -30,6 +30,7 @@ import { browserTimeZone, toOffsetIso, toZonedParts } from '../../utils/meeting-
 import { RECURRENCE_PRESET_LABELS, RecurrencePreset, recurrencePresets } from '../../utils/recurrence-presets';
 import { MeetingScopeDialogComponent } from '../meeting-scope-dialog/meeting-scope-dialog.component';
 import { MeetingBulkInvitePanelComponent } from './meeting-bulk-invite-panel.component';
+import { TEXT_LIMITS } from '../../../../../shared/constants/text-limits';
 
 export interface MeetingPlacementInput { projectId: string | null; objectiveId: string | null; }
 /**
@@ -141,7 +142,7 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
             @if (cards()) { <span class="mf-label">{{ notesOnly() ? 'Meeting notes' : 'Agenda' }}</span> }
             <app-rich-text-editor class="mf-agenda" [initialHtml]="form.controls.description.value ?? ''" ariaLabel="Agenda"
               placeholder="Add meeting agenda, discussion points or notes..." [compact]="true" [allowAttachments]="false"
-              [allowImages]="false" (htmlChange)="onAgenda($event)" />
+              [allowImages]="false" [maxLength]="limits.richTextDescription" (htmlChange)="onAgenda($event)" />
           </div>
         </section>
 
@@ -397,6 +398,7 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MeetingFormModalComponent implements OnInit {
+  readonly limits = TEXT_LIMITS;
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly meetings = inject(MeetingApiService);
   private readonly projectApi = inject(ProjectApiService);

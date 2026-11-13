@@ -74,4 +74,39 @@ describe('InputComponent', () => {
     expect(input.type).toBe('text');
     expect(button.getAttribute('aria-label')).toBe('Hide password');
   });
+
+  it('shows a character counter once typing reaches 80% of maxlength', () => {
+    const fixture = TestBed.createComponent(InputComponent);
+    fixture.componentRef.setInput('multiline', true);
+    fixture.componentRef.setInput('maxlength', 10);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const textarea = el.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea.getAttribute('maxlength')).toBe('10');
+
+    textarea.value = 'abcdefg';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="char-counter"]')).toBeNull();
+
+    textarea.value = 'abcdefgh';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="char-counter"]')?.textContent?.trim()).toBe('8 / 10');
+  });
+
+  it('counts a value set by the host, not only typing', () => {
+    const fixture = TestBed.createComponent(InputComponent);
+    fixture.componentRef.setInput('maxlength', 5);
+    fixture.componentRef.setInput('value', 'hello');
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="char-counter"]')?.textContent).toContain('Character limit reached');
+  });
+
+  it('shows no counter without maxlength', () => {
+    const fixture = TestBed.createComponent(InputComponent);
+    fixture.componentRef.setInput('value', 'x'.repeat(5000));
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-char-counter')).toBeNull();
+  });
 });

@@ -13,6 +13,7 @@ import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models
 import { MonitorWarningDto } from '../../models/dto/monitor.dto';
 import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
 import { MonitorWarningCalloutComponent } from '../monitor-warning-callout/monitor-warning-callout.component';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 /** How long the form waits after the last change before asking the monitor for warnings. */
 export const MONITOR_CHECK_DEBOUNCE_MS = 400;
@@ -33,7 +34,7 @@ interface SelectedMember {
           <app-input label="Title" [value]="title()" [error]="errors()['title']" (valueChange)="title.set($event)" />
         </span>
         <span data-testid="description-field">
-          <app-input label="Description" [value]="description()" (valueChange)="description.set($event)" />
+          <app-input label="Description" [maxlength]="limits.subModuleDescription" [value]="description()" (valueChange)="description.set($event)" />
         </span>
         <span data-testid="date-range-field">
           <app-date-range-picker [from]="startDate()" [to]="endDate()" (rangeChange)="onRangeChange($event)" />
@@ -125,6 +126,7 @@ interface SelectedMember {
   `]
 })
 export class SubModuleFormComponent {
+  readonly limits = TEXT_LIMITS;
   private readonly store = inject(ProjectDetailStore);
   private readonly monitorApi = inject(ProjectMonitorApiService);
   protected readonly directory = inject(EmployeeDirectoryStore);

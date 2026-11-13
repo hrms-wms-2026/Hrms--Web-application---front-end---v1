@@ -66,6 +66,7 @@
               [multiline]="true"
               [rows]="3"
               placeholder="Short internal note"
+              [maxlength]="limits.leavePolicyDescription"
               [value]="description()"
               (valueChange)="description.set($event)"
             />

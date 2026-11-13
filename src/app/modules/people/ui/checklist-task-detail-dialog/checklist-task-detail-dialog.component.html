@@ -184,11 +184,12 @@
             <textarea
               class="ui-input"
               rows="2"
-              maxlength="500"
+              [attr.maxlength]="limits.bypassPenaltyDescription"
               placeholder="What happens if this task is bypassed (e.g. deducted from final settlement)"
               [value]="bypassPenaltyDescription()"
               (input)="bypassPenaltyDescription.set($any($event.target).value)"
             ></textarea>
+            <app-char-counter [length]="bypassPenaltyDescription().length" [max]="limits.bypassPenaltyDescription" />
           </label>
         }
 
@@ -200,6 +201,7 @@
               [cssStyles]="false"
               [allowImages]="false"
               placeholder="Add description or press '/' for commands"
+              [maxLength]="limits.richTextDescription"
               (htmlChange)="description.set($event)"
               (filesAttached)="onFilesSelected($event)"
               (uploadFailed)="errorMessage.set($event)"

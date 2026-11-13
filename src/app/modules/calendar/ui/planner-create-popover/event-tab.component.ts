@@ -5,12 +5,14 @@ import { CalendarEventStore } from '../../state/calendar-event.store';
 import { EventDraft, eventCreateRequest } from '../../utils/event-draft';
 import { RecurrenceFrequency } from '../../utils/recurrence-rule.util';
 import { CreateSlot, SharedCreateDraft, clock } from './planner-create-draft';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
+import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
 
 /** Event tab of the Planner create popover: a personal time block (no people or link; those make it a meeting). */
 @Component({
   selector: 'app-planner-event-tab',
   standalone: true,
-  imports: [DatePickerComponent, SelectComponent],
+  imports: [CharCounterComponent, DatePickerComponent, SelectComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-2 text-sm">
@@ -37,7 +39,8 @@ import { CreateSlot, SharedCreateDraft, clock } from './planner-create-draft';
       <input data-testid="event-tab-location" class="ui-input" placeholder="Add location" [value]="location()"
         (input)="location.set($any($event.target).value)" />
       <textarea data-testid="event-tab-description" class="ui-input" rows="2" placeholder="Add description" [value]="description()"
-        (input)="description.set($any($event.target).value)"></textarea>
+        [attr.maxlength]="limits.calendarEventDescription" (input)="description.set($any($event.target).value)"></textarea>
+      <app-char-counter [length]="description().length" [max]="limits.calendarEventDescription" />
       <div class="flex justify-end gap-2 pt-1">
         <button type="button" data-testid="event-tab-save" class="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[var(--color-text-on-solid)]"
           [disabled]="!canSave()" (click)="save()">Save</button>
@@ -63,6 +66,7 @@ import { CreateSlot, SharedCreateDraft, clock } from './planner-create-draft';
   `],
 })
 export class EventTabComponent {
+  readonly limits = TEXT_LIMITS;
   private readonly events = inject(CalendarEventStore);
 
   readonly slot = input.required<CreateSlot>();

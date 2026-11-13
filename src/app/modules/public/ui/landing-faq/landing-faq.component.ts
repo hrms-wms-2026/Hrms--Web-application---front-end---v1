@@ -45,7 +45,7 @@ export class LandingFaqComponent {
       id: 5,
       question: 'How do new customers sign up for CROWNUS?',
       answer:
-        'Phase 1 CROWNUS is sales-led and operator-provisioned. After a demo and agreement, an CROWNUS operator provisions your dedicated tenant domain (e.g. yourcompany.example.com) and initial administrative credentials.'
+        'Phase 1 CROWNUS is sales-led and operator-provisioned. After a demo and agreement, a CROWNUS operator provisions your dedicated tenant domain (e.g. company.crownus.com) and initial administrative credentials.'
     }
   ];
 

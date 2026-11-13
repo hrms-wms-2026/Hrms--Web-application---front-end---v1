@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output, signal } from '@angular/core';
+import { CHAR_COUNTER_THRESHOLD } from '../../constants/text-limits';
 import { nextUniqueId } from '../../utils/unique-id';
+import { CharCounterComponent } from '../char-counter/char-counter.component';
 import { FieldIcon, FieldIconComponent } from '../field-icon/field-icon.component';
 
 export type InputType =
@@ -26,11 +28,12 @@ const DEFAULT_TYPE_ICON: Partial<Record<InputType, FieldIcon>> = {
  * The app's text field, in the standard `.ui-field` style (see shared/styles/fields.css):
  * optional leading icon or prefix with a divider, accent border on focus, green when `success`,
  * red with a message when `error`, grey when disabled. `multiline` renders a textarea.
+ * With `maxlength`, a character counter appears once the text reaches 80% of the limit.
  */
 @Component({
   selector: 'app-input',
   standalone: true,
-  imports: [FieldIconComponent],
+  imports: [FieldIconComponent, CharCounterComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block min-w-0' },
   template: `
@@ -116,6 +119,9 @@ const DEFAULT_TYPE_ICON: Partial<Record<InputType, FieldIcon>> = {
       } @else if (hint()) {
         <span [id]="hintId()" class="ui-field-hint">{{ hint() }}</span>
       }
+      @if (showCounter()) {
+        <app-char-counter [length]="currentLength()" [max]="maxlength() ?? 0" />
+      }
     </div>
   `,
   styles: [`
@@ -151,6 +157,13 @@ export class InputComponent {
 
   readonly showPassword = signal(false);
 
+  /** Length of the text in the field, following `value` and the user's typing. */
+  readonly currentLength = linkedSignal(() => this.value().length);
+  readonly showCounter = computed(() => {
+    const max = this.maxlength();
+    return !!max && this.currentLength() >= Math.ceil(max * CHAR_COUNTER_THRESHOLD);
+  });
+
   readonly effectiveType = computed(() => {
     if (this.type() === 'password') {
       return this.showPassword() ? 'text' : 'password';
@@ -173,6 +186,8 @@ export class InputComponent {
   }
 
   onInput(event: Event): void {
-    this.valueChange.emit((event.target as HTMLInputElement | HTMLTextAreaElement).value);
+    const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
+    this.currentLength.set(value.length);
+    this.valueChange.emit(value);
   }
 }

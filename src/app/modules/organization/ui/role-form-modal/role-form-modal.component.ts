@@ -16,6 +16,8 @@ import {
   DataTableComponent
 } from '../../../../shared/ui/data-table/data-table.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
+import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
 
 export interface RoleFormSubmitValue {
   name: string;
@@ -31,12 +33,13 @@ export interface RoleFormSubmitValue {
   selector: 'app-role-form-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
+  imports: [CharCounterComponent, StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './role-form-modal.component.html',
   styleUrl: './role-form-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RoleFormModalComponent implements OnChanges {
+  readonly limits = TEXT_LIMITS;
   private readonly fb = inject(FormBuilder);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
