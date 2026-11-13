@@ -15,12 +15,68 @@
 } @else if (detail(); as d) {
   <div class="flex max-w-4xl flex-col gap-4">
     <app-card>
+      @if (editing()) {
+        <form class="flex flex-col gap-4" (submit)="$event.preventDefault(); saveEdit()">
+          <app-input
+            label="Subject"
+            [required]="true"
+            [maxlength]="subjectMax"
+            [value]="editSubject()"
+            [error]="editSubjectError()"
+            (valueChange)="editSubject.set($event)"
+          />
+
+          <div class="flex flex-col gap-1">
+            <label for="support-edit-description" class="text-sm font-medium text-[var(--color-text-primary)]">
+              Description <span aria-hidden="true">*</span>
+            </label>
+            <textarea
+              id="support-edit-description"
+              rows="6"
+              class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
+              [attr.maxlength]="textMax"
+              [attr.aria-invalid]="editDescriptionError() ? 'true' : null"
+              [attr.aria-describedby]="editDescriptionError() ? 'support-edit-description-error' : null"
+              [value]="editDescription()"
+              (input)="editDescription.set($any($event.target).value)"
+            ></textarea>
+            @if (editDescriptionError(); as message) {
+              <p id="support-edit-description-error" class="text-xs text-[var(--color-danger)]">{{ message }}</p>
+            }
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <app-select
+              label="Priority"
+              [options]="priorityOptions"
+              [searchable]="false"
+              [value]="editPriority()"
+              (valueChange)="editPriority.set($any($event))"
+            />
+            <app-input
+              label="Category (optional)"
+              placeholder="e.g. payroll, login, billing"
+              [maxlength]="80"
+              [value]="editCategory()"
+              (valueChange)="editCategory.set($event)"
+            />
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <app-button variant="secondary" (pressed)="cancelEdit()">Cancel</app-button>
+            <app-button type="submit" [loading]="savingEdit()">Save changes</app-button>
+          </div>
+        </form>
+      } @else {
       <div class="flex flex-col gap-3">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <h1 class="min-w-0 break-words text-lg font-semibold text-[var(--color-text-primary)]">{{ d.ticket.subject }}</h1>
           <div class="flex items-center gap-2 text-xs">
             <span class="rounded-full border border-[var(--color-border)] px-2 py-0.5">{{ priorityLabels[d.ticket.priority] }}</span>
             <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 font-medium">{{ statusLabels[d.ticket.status] }}</span>
+            @if (canEdit()) {
+              <app-button variant="secondary" size="sm" (pressed)="startEdit()">Edit</app-button>
+            }
           </div>
         </div>
         <p class="text-xs text-[var(--color-text-secondary)]">
@@ -32,6 +88,7 @@
         </p>
         <p class="whitespace-pre-wrap break-words text-sm text-[var(--color-text-primary)]">{{ d.ticket.description }}</p>
       </div>
+      }
     </app-card>
 
     <app-card title="Files">

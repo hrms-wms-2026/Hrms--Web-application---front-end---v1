@@ -96,6 +96,11 @@ export class SupportTicketsApiService {
     return this.http.post<TicketApi>(this.baseUrl, request).pipe(map(mapTicket));
   }
 
+  /** Same body as create. 409 once the ticket is resolved or closed. */
+  update(id: string, request: CreateSupportTicketRequest): Observable<SupportTicket> {
+    return this.http.put<TicketApi>(`${this.baseUrl}/${encodeURIComponent(id)}`, request).pipe(map(mapTicket));
+  }
+
   /** 409 when the ticket is closed. A reply on a resolved ticket reopens it. */
   addComment(id: string, body: string): Observable<SupportTicketComment> {
     return this.http.post<CommentApi>(`${this.baseUrl}/${encodeURIComponent(id)}/comments`, { body }).pipe(map(mapComment));

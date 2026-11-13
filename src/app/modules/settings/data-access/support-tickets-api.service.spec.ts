@@ -112,6 +112,18 @@ describe('SupportTicketsApiService', () => {
     req.flush(ticketApi);
   });
 
+  it('edits a ticket with PUT and the create body', () => {
+    let subject: string | undefined;
+    service
+      .update('t1', { subject: 'New subject', description: 'More detail', priority: 'urgent', category: null })
+      .subscribe((ticket) => (subject = ticket.subject));
+    const req = http.expectOne(`${base}/t1`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ subject: 'New subject', description: 'More detail', priority: 'urgent', category: null });
+    req.flush({ ...ticketApi, subject: 'New subject' });
+    expect(subject).toBe('New subject');
+  });
+
   it('posts a reply with only a body', () => {
     service.addComment('t1', 'Still failing').subscribe();
     const req = http.expectOne(`${base}/t1/comments`);

@@ -44,7 +44,7 @@ function detail(status: SupportTicketStatus = 'open'): SupportTicketDetail {
 describe('SupportTicketDetailComponent', () => {
   let fixture: ComponentFixture<SupportTicketDetailComponent>;
   let component: SupportTicketDetailComponent;
-  let api: Record<'get' | 'addComment' | 'uploadAttachment' | 'getDownloadUrl', ReturnType<typeof vi.fn>>;
+  let api: Record<'get' | 'update' | 'addComment' | 'uploadAttachment' | 'getDownloadUrl', ReturnType<typeof vi.fn>>;
   let notifications: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
 
   async function setup(initial: SupportTicketDetail | 'missing' = detail()) {
@@ -52,6 +52,7 @@ describe('SupportTicketDetailComponent', () => {
       get: vi
         .fn()
         .mockReturnValue(initial === 'missing' ? throwError(() => new HttpErrorResponse({ status: 404 })) : of(initial)),
+      update: vi.fn(),
       addComment: vi.fn(),
       uploadAttachment: vi.fn(),
       getDownloadUrl: vi.fn()
@@ -149,6 +150,69 @@ describe('SupportTicketDetailComponent', () => {
 
     expect(api.uploadAttachment).not.toHaveBeenCalled();
     expect(notifications.error).toHaveBeenCalledWith('Files must be 25 MB or smaller.');
+  });
+
+  it('edits an open ticket and shows the saved values', async () => {
+    await setup();
+    const saved = { ...detail().ticket, subject: 'Payroll export has no rows', priority: 'urgent' as const, category: null };
+    api.update.mockReturnValue(of(saved));
+
+    component.startEdit();
+    expect(component.editing()).toBe(true);
+    expect(component.editSubject()).toBe('Payroll export empty');
+    expect(component.editCategory()).toBe('payroll');
+
+    component.editSubject.set('  Payroll export has no rows ');
+    component.editPriority.set('urgent');
+    component.editCategory.set('  ');
+    component.saveEdit();
+
+    expect(api.update).toHaveBeenCalledWith('t1', {
+      subject: 'Payroll export has no rows',
+      description: 'No rows',
+      priority: 'urgent',
+      category: null
+    });
+    expect(component.editing()).toBe(false);
+    expect(component.detail()?.ticket.subject).toBe('Payroll export has no rows');
+    expect(notifications.success).toHaveBeenCalledWith('Ticket updated.');
+  });
+
+  it('does not save an edit with an empty subject', async () => {
+    await setup();
+    component.startEdit();
+    component.editSubject.set('   ');
+    component.saveEdit();
+
+    expect(component.editSubjectError()).toBe('Subject is required.');
+    expect(api.update).not.toHaveBeenCalled();
+  });
+
+  it('offers Edit only while the ticket is open or in progress', async () => {
+    await setup(detail('in_progress'));
+    expect(component.canEdit()).toBe(true);
+
+    await setup(detail('resolved'));
+    expect(component.canEdit()).toBe(false);
+    component.startEdit();
+    expect(component.editing()).toBe(false);
+  });
+
+  it('reloads the ticket when support resolved it before the edit was saved', async () => {
+    await setup();
+    api.update.mockReturnValue(
+      throwError(
+        () => new HttpErrorResponse({ status: 409, error: { detail: 'A resolved or closed ticket can no longer be edited.' } })
+      )
+    );
+    api.get.mockReturnValue(of(detail('resolved')));
+
+    component.startEdit();
+    component.saveEdit();
+
+    expect(component.editing()).toBe(false);
+    expect(api.get).toHaveBeenCalledTimes(2);
+    expect(notifications.error).toHaveBeenCalledWith('A resolved or closed ticket can no longer be edited.');
   });
 
   it('opens the signed url to download a file', async () => {
