@@ -6,9 +6,9 @@ import {
   TeamScheduleWeekResponse,
 } from '../models/team-schedule.model';
 import { PlannedActualDay, PlannedActualRow } from './planned-actual-format.util';
-import { DonutArc, donutArcs } from './status-donut.util';
+import { DonutArc, donutArcs } from '../../../shared/ui/charts/utils/status-donut.util';
 import { minutesText } from './team-presence-format.util';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 /** Item colours (monochrome): completed, in progress and pending are theme shades darkest to lightest; meetings are
  * plain gray; breaks sit between; unscheduled work and conflicts are maroon. */

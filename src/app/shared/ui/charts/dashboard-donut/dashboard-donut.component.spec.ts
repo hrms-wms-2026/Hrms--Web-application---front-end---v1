@@ -1,8 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
-import { WIDGET } from '../../utils/widget-palette';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { WIDGET } from '../../../utils/widget-palette';
+import { DASHBOARD_DONUT_PX } from '../utils/dashboard-donut.util';
 import {
   DashboardDonutComponent,
   DashboardDonutSlice,

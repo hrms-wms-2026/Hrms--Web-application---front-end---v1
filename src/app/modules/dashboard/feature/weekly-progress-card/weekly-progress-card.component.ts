@@ -10,11 +10,11 @@ import { WidgetCardComponent, WidgetState } from '../../../../shared/ui/widget-c
 import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
 import { WeekProgress, WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
 import { DailyWorkChartComponent } from '../../ui/daily-work-chart/daily-work-chart.component';
-import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
+import { dashboardDonutPx } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
 import { injectHostSize } from '../../utils/host-size.util';
 import { progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
-import { WIDGET } from '../../utils/widget-palette';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 import {
   WEEKLY_PROGRESS_CARD_CHROME,
   WeeklyProgressView,

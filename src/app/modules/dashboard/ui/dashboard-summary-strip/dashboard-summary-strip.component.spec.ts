@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SummaryCardModel } from '../../models/summary-card.model';
 import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
-import { DashboardDonutSlice } from '../dashboard-donut/dashboard-donut.component';
+import { DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
 import { DashboardSummaryStripComponent } from './dashboard-summary-strip.component';
 
 const SLICES: DashboardDonutSlice[] = [

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SummaryCardBody, SummaryCardModel } from '../../models/summary-card.model';
-import { WIDGET } from '../../utils/widget-palette';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 import { DashboardSummaryCardComponent } from './dashboard-summary-card.component';
 
 const card = (body: SummaryCardBody | null, extra: Partial<SummaryCardModel> = {}): SummaryCardModel => ({

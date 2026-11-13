@@ -4,7 +4,7 @@ import { LedEmployeeProgress, LedWeeklyCompletion } from '../models/team-progres
 import { summaryDelta } from './summary-card-format.util';
 import { SUMMARY_CARD_ROWS } from './team-attendance-summary-cards.util';
 import { formatHourValue } from './team-progress-format.util';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 const TONE = { weekly: WIDGET.shade1, projects: WIDGET.shade2, overdue: WIDGET.maroon, behind: WIDGET.shade3 } as const;
 /** Chip tones: "bad" is maroon, the milder warning a theme shade (the mild chip). */

@@ -18,10 +18,10 @@ import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
 import { TeamWorkTaskEmployeeRow } from '../../models/team-work-task.model';
 import { TeamWorkTaskStore } from '../../state/team-work-task.store';
 import { WorkTaskDayChartComponent } from '../../ui/work-task-day-chart/work-task-day-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
-import { DashboardBarChip } from '../../ui/dashboard-bar-chart/dashboard-bar-chart.component';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DASHBOARD_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
+import { DashboardBarChip } from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import {
   TEAM_WORK_TASK_COLORS,
   hoursText,

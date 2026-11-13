@@ -1,5 +1,5 @@
 import { LedHourTotals, LedOverdueProject, LedProjectProgress } from '../models/my-team-led-progress.model';
-import { DashboardBar, DashboardBarSegment } from '../ui/dashboard-bar-chart/dashboard-bar-chart.component';
+import { DashboardBar, DashboardBarSegment } from '../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 import { PROGRESS_STATUSES, ProgressStatusKey, formatHourValue, formatPercent } from './team-progress-format.util';
 
 const HOURS: Record<ProgressStatusKey, (h: LedHourTotals) => number> = {

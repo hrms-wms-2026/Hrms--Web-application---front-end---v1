@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TeamWorkingHoursDay } from '../../models/my-team-today.model';
 import { minutesText } from '../../utils/team-presence-format.util';
-import { WIDGET } from '../../utils/widget-palette';
-import { barDayTitle, barHours, barWeekday } from '../dashboard-bar-chart/bar-chart-dates.util';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
+import { barDayTitle, barHours, barWeekday } from '../../../../shared/ui/charts/dashboard-bar-chart/bar-chart-dates.util';
 import {
   DashboardBar,
   DashboardBarChartComponent,
   DashboardBarHeadline,
   DashboardBarLegendItem
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
 const WORKED_COLOR = WIDGET.shade1;
 const BREAK_COLOR = WIDGET.shade3;

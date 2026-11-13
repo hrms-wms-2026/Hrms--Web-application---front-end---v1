@@ -1,5 +1,5 @@
 import { TeamTodayMember, TeamTodaySummary } from '../models/my-team-today.model';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 /** Working / Break / Leave colours (My Team widgets design 2026-10-29). Everything else is a neutral line, never a 4th colour. */
 export const PRESENCE_COLORS = { working: WIDGET.shade1, break: WIDGET.shade3, leave: WIDGET.shade2 } as const;

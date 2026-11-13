@@ -4,7 +4,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ProjectApiService } from '../../../work/data-access/project-api.service';
 import { ProjectListItemDto } from '../../../work/models/dto/project.dto';
 import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
-import { widgetInkOn, widgetShadeFor } from '../../utils/widget-palette';
+import { widgetInkOn, widgetShadeFor } from '../../../../shared/utils/widget-palette';
 
 /** Same cap as the Active projects card: `/work/projects/mine` has no status filter. */
 const PROJECT_PAGE_SIZE = 100;

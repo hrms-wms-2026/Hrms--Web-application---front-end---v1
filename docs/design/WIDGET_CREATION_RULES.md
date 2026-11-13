@@ -53,6 +53,12 @@ All under `src/app/modules/dashboard/`. `<w>` is the widget's kebab name, `<p>` 
 
 ## 4. Charts: shared components only
 
+The charts live in `src/app/shared/ui/charts/` (`dashboard-donut` + `donut-key`, `donut-breakdown`,
+`dashboard-bar-chart`, and their `utils/`), with the palette in `shared/utils/widget-palette.ts` and
+`formatPercent` in `shared/utils/format-percent.util.ts`. They are the **project-wide** charts: any screen
+(Time Off, Attendance, …) that shows a pie/donut or bar chart uses these, in the monochrome palette below.
+Never build a new chart component on another screen.
+
 - **Donut:** always `app-dashboard-donut` + `app-donut-key` (variants `list | compact | wrap | chips`), bound to one `[(active)]` signal. Hovering a slice or key row lights it, and the centre shows value + `label · %`. The key shows the % right beside the label ("Completed 12%"). **Never hand-draw a donut SVG.**
 - **One donut size:** `dashboardDonutPx(view)` → 168px (`DASHBOARD_DONUT_PX`), 140px only in 2x2 mini views. A donut never resizes otherwise. If it doesn't fit, leave it out.
 - **Bar charts:** always `app-dashboard-bar-chart` behind a thin adapter component in `ui/` (see `work-task-day-chart`). It supports `pair` stacks, a target `marker`, a count `badge`, `dim`, a legend and `axisSuffix`. Pass `heading` so the hover headline replaces the title. No overlay polylines.
@@ -96,7 +102,7 @@ Spec: `docs/superpowers/specs/2026-11-12-monochrome-dashboard-widgets-design.md`
   neutral gray with no theme tint, only where a category must read as grey: Team schedule meetings), `--color-widget-maroon`,
   `--color-widget-maroon-soft`, `--color-widget-mild`, `--color-widget-mild-line`, `--color-widget-on-solid`
   (text on solid shade-1 / maroon) and `--color-widget-on-light` (text on lighter shade fills).
-- **In TS** use `WIDGET` from `utils/widget-palette.ts`: `WIDGET.shade1` … `WIDGET.maroon`. They are `var()` strings;
+- **In TS** use `WIDGET` from `shared/utils/widget-palette.ts`: `WIDGET.shade1` … `WIDGET.maroon`. They are `var()` strings;
   never resolve them to hex, so a theme switch recolours every chart at runtime. SVG fills/strokes bind
   `[style.fill]` / `[style.stroke]`, never `[attr.fill]` (presentation attributes don't resolve `var()`).
 - **Shade order:** main or "done" series = shade 1, then shade 2, shade 3, and neutral or "nothing yet" = shade 4.

@@ -1,6 +1,6 @@
 import { ActivityTimelineSegment } from '../models/activity-timeline.model';
 import { BreakInterval } from '../../attendance/models/time-tracking.model';
-import { WIDGET } from '../utils/widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 export interface TimelineSegment {
   readonly type: 'working' | 'break' | 'focus' | 'idle';

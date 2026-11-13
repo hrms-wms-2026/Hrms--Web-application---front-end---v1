@@ -15,7 +15,7 @@ import { TEAM_SCHEDULE_CARD_COLORS } from './team-schedule-summary-cards.util';
 import { TEAM_PROGRESS_CARD_COLORS } from './team-progress-summary-cards.util';
 import { TEAM_WORK_TASK_COLORS } from './team-work-task-format.util';
 import { TEAM_WORK_TASK_CARD_COLORS } from './team-work-task-summary-cards.util';
-import { isWidgetColor } from './widget-palette';
+import { isWidgetColor } from '../../../shared/utils/widget-palette';
 
 /**
  * Guard: every colour map a dashboard widget draws with must hold only monochrome widget colours

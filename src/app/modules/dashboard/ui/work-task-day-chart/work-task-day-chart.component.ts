@@ -6,8 +6,8 @@ import {
   trendLabel,
   utilizationText,
 } from '../../utils/team-work-task-format.util';
-import { WIDGET } from '../../utils/widget-palette';
-import { barDayTitle, barHours } from '../dashboard-bar-chart/bar-chart-dates.util';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
+import { barDayTitle, barHours } from '../../../../shared/ui/charts/dashboard-bar-chart/bar-chart-dates.util';
 import {
   DashboardBar,
   DashboardBarChartComponent,
@@ -15,7 +15,7 @@ import {
   DashboardBarHeadline,
   DashboardBarLegendItem,
   DashboardBarVariant,
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
 /** Worked hours are the main series (darkest shade); the task pair is the light shade, as in the approved mockup. */
 const WORKED_COLOR = WIDGET.shade1;

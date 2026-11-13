@@ -15,7 +15,7 @@ import {
 } from '../../models/team-progress-detail.model';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
-import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import { ledTime, workloadRow } from '../../utils/team-progress-time.testing';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';

@@ -6,7 +6,7 @@ import { ProjectApiService } from '../../../work/data-access/project-api.service
 import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
 import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
 import { QuickCreateTaskComponent } from './quick-create-task.component';
-import { widgetShadeFor } from '../../utils/widget-palette';
+import { widgetShadeFor } from '../../../../shared/utils/widget-palette';
 
 /** Stands in for Work's task form, which pulls in the whole Work module. */
 @Component({ selector: 'app-task-form-modal', standalone: true, template: `<div data-testid="task-form-stub" [attr.data-open]="open()" [attr.data-project]="projectId()"></div>` })

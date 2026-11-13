@@ -6,7 +6,7 @@ import {
   DashboardBarChartComponent,
   DashboardBarHeadline,
   DashboardBarLegendItem
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
 /**
  * Hours by project as stacked bars (completed, in progress, not started, not yet tasked), drawn by the shared

@@ -24,8 +24,8 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
 import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import { DASHBOARD_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
+import { DonutArc, donutArcs } from '../../../../shared/ui/charts/utils/status-donut.util';
 import {
   LedHourTotals,
   LedModuleProgress,
@@ -46,8 +46,8 @@ import {
 import { hoursText, timePeriodFor } from '../../utils/team-progress-time-format.util';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
 import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import {
   PROGRESS_STATUSES,
   PROGRESS_STATUS_BY_KEY,
@@ -56,7 +56,7 @@ import {
   formatHourValue,
   formatPercent
 } from '../../utils/team-progress-format.util';
-import { WIDGET, WIDGET_RAMP, widgetRamp } from '../../utils/widget-palette';
+import { WIDGET, WIDGET_RAMP, widgetRamp } from '../../../../shared/utils/widget-palette';
 
 export const TEAM_PROGRESS_SEARCH_DEBOUNCE_MS = 300;
 /** Rows in the Overview's compact Employee Breakdown. */

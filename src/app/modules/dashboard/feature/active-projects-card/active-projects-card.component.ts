@@ -5,7 +5,7 @@ import { ProjectApiService } from '../../../work/data-access/project-api.service
 import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
-import { widgetInkOn, widgetShadeFor } from '../../utils/widget-palette';
+import { widgetInkOn, widgetShadeFor } from '../../../../shared/utils/widget-palette';
 
 /** `/work/projects/mine` has no status filter, so one page this size is fetched and filtered here -
  * the count stops at this many projects. */

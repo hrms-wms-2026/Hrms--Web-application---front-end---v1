@@ -7,7 +7,7 @@ import {
   EmployeeForecastResponse,
 } from '../../models/team-employee-forecast.model';
 import { TeamEmployeeForecastStore } from '../../state/team-employee-forecast.store';
-import { DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_MINI_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
 import { employeeForecastResponse } from '../../utils/team-employee-forecast.testing';
 import { TeamEmployeeForecastCardComponent } from './team-employee-forecast-card.component';

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamWorkTaskApiService } from '../../data-access/team-work-task-api.service';
 import { TeamWorkTaskHoursResponse, TeamWorkTaskQuery } from '../../models/team-work-task.model';
 import { TeamWorkTaskStore } from '../../state/team-work-task.store';
-import { DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_MINI_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import { workTaskResponse } from '../../utils/team-work-task.testing';
 import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
 import { TeamWorkTaskCardComponent } from './team-work-task-card.component';

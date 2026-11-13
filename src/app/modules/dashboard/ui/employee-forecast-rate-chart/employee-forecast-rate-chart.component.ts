@@ -14,7 +14,7 @@ import {
   DashboardBarHeadline,
   DashboardBarLegendItem,
   DashboardBarVariant,
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 import { shortBarLabel } from '../module-forecast-project-chart/module-forecast-project-chart.component';
 
 /** The people the chart draws: the most overtime first, then the highest required rate. */

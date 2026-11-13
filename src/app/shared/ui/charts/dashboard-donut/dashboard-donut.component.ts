@@ -11,16 +11,16 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { DASHBOARD_DONUT_PX, donutValueFontPx } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, donutValueFontPx } from '../utils/dashboard-donut.util';
 import {
   ROUNDED_DONUT_STROKE,
   donutSweeps,
   easeOutCubic,
   fullRingPath,
   roundedSlicePath,
-} from '../../utils/rounded-donut.util';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
-import { formatPercent } from '../../utils/team-progress-format.util';
+} from '../utils/rounded-donut.util';
+import { DonutArc, donutArcs } from '../utils/status-donut.util';
+import { formatPercent } from '../../../utils/format-percent.util';
 
 /** One slice of a dashboard donut. */
 export interface DashboardDonutSlice {

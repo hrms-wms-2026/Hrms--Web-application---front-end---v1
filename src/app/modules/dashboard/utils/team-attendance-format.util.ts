@@ -1,5 +1,5 @@
 import { TeamAttendanceBucket, TeamAttendancePeriodMode } from '../models/team-attendance.model';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const LONG_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

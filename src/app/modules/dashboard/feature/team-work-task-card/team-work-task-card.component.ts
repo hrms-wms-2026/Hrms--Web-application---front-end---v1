@@ -19,15 +19,15 @@ import {
 import { TeamWorkTaskHoursResponse } from '../../models/team-work-task.model';
 import { TeamWorkTaskStore } from '../../state/team-work-task.store';
 import { WorkTaskDayChartComponent } from '../../ui/work-task-day-chart/work-task-day-chart.component';
-import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { dashboardDonutPx } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
 import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
 import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';
 import { SummaryCardModel } from '../../models/summary-card.model';
 import { teamWorkTaskSummaryCards } from '../../utils/team-work-task-summary-cards.util';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import { DonutArc, donutArcs } from '../../../../shared/ui/charts/utils/status-donut.util';
 import {
   TEAM_WORK_TASK_COLORS,
   compactHoursText,

@@ -3,7 +3,7 @@
  * TEAM_PROGRESS_DONUT_PX): a bigger card shows more detail, never bigger graphics. */
 export type TeamProgressMode = 'mini' | 'xs' | 'small' | 'medium' | 'wide' | 'tall' | 'large' | 'maximum';
 
-import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../../shared/ui/charts/utils/dashboard-donut.util';
 
 /** The donut's diameter in every view that shows it (the shared dashboard size). */
 export const TEAM_PROGRESS_DONUT_PX = DASHBOARD_DONUT_PX;

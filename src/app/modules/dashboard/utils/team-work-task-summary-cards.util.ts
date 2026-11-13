@@ -2,7 +2,7 @@ import { SummaryCardModel, SummaryRankRow } from '../models/summary-card.model';
 import { TeamWorkTaskHoursResponse, TeamWorkTaskPeriod } from '../models/team-work-task.model';
 import { summaryDelta } from './summary-card-format.util';
 import { SUMMARY_CARD_ROWS } from './team-attendance-summary-cards.util';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 const TONE = {
   share: WIDGET.shade2,

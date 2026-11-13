@@ -1,7 +1,7 @@
 import { ForecastHours, ForecastStatus } from '../models/overtime-forecast.model';
-import { DashboardDonutSlice } from '../ui/dashboard-donut/dashboard-donut.component';
+import { DashboardDonutSlice } from '../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
 import { formatPercent } from './team-progress-format.util';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 /**
  * The shared visual language of the two overtime forecast widgets (design 2026-11-08, §5): where the remaining

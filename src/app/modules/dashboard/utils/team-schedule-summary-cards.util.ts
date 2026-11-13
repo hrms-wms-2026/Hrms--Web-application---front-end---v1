@@ -3,7 +3,7 @@ import { TeamScheduleMember, TeamScheduleResponse, TeamScheduleWeekResponse } fr
 import { summaryDelta } from './summary-card-format.util';
 import { SUMMARY_CARD_ROWS } from './team-attendance-summary-cards.util';
 import { inMeetingNow, isNotPlanned, isOnLeave, isOverCapacity, loadMinutes } from './team-schedule-format.util';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 const TONE = { coverage: WIDGET.shade2, planActual: WIDGET.shade2b, needsPlan: WIDGET.shade3, now: WIDGET.shade1 } as const;
 /** "Right now" segments, darkest to lightest by importance (meetings plain gray, as in the schedule); the key names them. */

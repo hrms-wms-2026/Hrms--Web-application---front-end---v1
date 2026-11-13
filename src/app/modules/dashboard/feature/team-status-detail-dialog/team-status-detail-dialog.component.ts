@@ -25,7 +25,7 @@ import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.
 import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours-api.service';
 import { TeamTodayMember, TeamWorkingHoursResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
-import { DonutBreakdownComponent, DonutSlice } from '../../ui/donut-breakdown/donut-breakdown.component';
+import { DonutBreakdownComponent, DonutSlice } from '../../../../shared/ui/charts/donut-breakdown/donut-breakdown.component';
 import { WorkingHoursChartComponent } from '../../ui/working-hours-chart/working-hours-chart.component';
 import {
   PRESENCE_COLORS,
@@ -40,7 +40,7 @@ import {
   todayHoursText,
 } from '../../utils/team-presence-format.util';
 import { formatPercent } from '../../utils/team-progress-format.util';
-import { WIDGET } from '../../utils/widget-palette';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 
 /** The Team Attendance widget's week rate (the same source, so the two widgets agree); 'error' drops the tile. */
 type AttendanceRate = { readonly periodRate: number | null; readonly deltaPp: number | null } | 'error' | null;

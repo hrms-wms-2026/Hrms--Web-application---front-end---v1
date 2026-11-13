@@ -24,12 +24,12 @@ import { TeamModuleForecastStore } from '../../state/team-module-forecast.store'
 import {
   DashboardDonutComponent,
   DashboardDonutSlice,
-} from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+} from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
 import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
 import { ModuleForecastProjectChartComponent } from '../../ui/module-forecast-project-chart/module-forecast-project-chart.component';
-import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
+import { dashboardDonutPx } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import {
   FORECAST_STATUS_META,
   ForecastTileRow,

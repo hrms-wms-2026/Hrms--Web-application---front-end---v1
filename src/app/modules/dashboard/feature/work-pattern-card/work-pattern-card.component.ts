@@ -3,7 +3,7 @@ import { TimeTrackingRange } from '../../../attendance/models/time-tracking.mode
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { WorkPatternApiService } from '../../data-access/work-pattern-api.service';
 import { WorkPatternDay } from '../../models/work-pattern.model';
-import { widgetInkOn } from '../../utils/widget-palette';
+import { widgetInkOn } from '../../../../shared/utils/widget-palette';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 

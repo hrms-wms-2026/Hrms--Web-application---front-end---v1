@@ -1,6 +1,6 @@
 import { KpiTile } from '../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { minutesText } from './team-presence-format.util';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 /**
  * Planned vs actual (2026-11-02 design match, sections 7.3 and 7.4): Planner minutes only. Planned = task + meeting

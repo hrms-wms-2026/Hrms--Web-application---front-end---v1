@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { PLANNED_ACTUAL_COLORS, PlannedActualDay, actualOf } from '../../utils/planned-actual-format.util';
 import { minutesText } from '../../utils/team-presence-format.util';
-import { barDayTitle, barHours, barWeekday } from '../dashboard-bar-chart/bar-chart-dates.util';
+import { barDayTitle, barHours, barWeekday } from '../../../../shared/ui/charts/dashboard-bar-chart/bar-chart-dates.util';
 import {
   DashboardBar,
   DashboardBarChartComponent,
   DashboardBarHeadline,
   DashboardBarLegendItem
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
 /**
  * Planned vs actual by day, drawn by the shared dashboard bar chart: per column a light planned bar beside the actual

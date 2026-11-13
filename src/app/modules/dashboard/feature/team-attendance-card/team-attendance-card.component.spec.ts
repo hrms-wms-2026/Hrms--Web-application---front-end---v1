@@ -9,7 +9,7 @@ import {
   TeamAttendanceTrendPoint
 } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
-import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import { TeamAttendanceCardComponent } from './team-attendance-card.component';
 
 class FakeResizeObserver {

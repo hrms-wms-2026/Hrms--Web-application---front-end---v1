@@ -1,4 +1,4 @@
-import { WIDGET } from '../../utils/widget-palette';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';

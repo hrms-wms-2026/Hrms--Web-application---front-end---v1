@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProjectApiService } from '../../../work/data-access/project-api.service';
 import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
-import { widgetShadeFor } from '../../utils/widget-palette';
+import { widgetShadeFor } from '../../../../shared/utils/widget-palette';
 import { ActiveProjectsCardComponent } from './active-projects-card.component';
 
 function project(id: string, overrides: Partial<ProjectListItemDto> = {}): ProjectListItemDto {

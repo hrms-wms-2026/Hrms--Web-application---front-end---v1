@@ -2,7 +2,7 @@ import { SummaryCardModel, SummaryChip, SummaryRankRow } from '../models/summary
 import { TeamAttendanceEmployeeRow, TeamAttendanceSummaryResponse } from '../models/team-attendance.model';
 import { summaryDelta } from './summary-card-format.util';
 import { departmentsWorstFirst } from './team-attendance-format.util';
-import { WIDGET } from './widget-palette';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 /** The most rows a card lists (the popup has the rest). */
 export const SUMMARY_CARD_ROWS = 3;

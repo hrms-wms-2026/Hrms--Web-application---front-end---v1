@@ -27,11 +27,11 @@ import { TeamModuleForecastStore } from '../../state/team-module-forecast.store'
 import {
   DashboardDonutComponent,
   DashboardDonutSlice,
-} from '../../ui/dashboard-donut/dashboard-donut.component';
+} from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
 import { FORECAST_STATUSES, ForecastStatus } from '../../models/overtime-forecast.model';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { ModuleForecastProjectChartComponent } from '../../ui/module-forecast-project-chart/module-forecast-project-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import {
   FORECAST_STATUS_META,
   forecastHoursText,

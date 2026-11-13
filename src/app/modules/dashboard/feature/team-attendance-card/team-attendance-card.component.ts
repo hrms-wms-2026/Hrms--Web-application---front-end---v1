@@ -9,12 +9,12 @@ import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.
 import { TeamAttendanceBucket, TeamAttendanceEmployeeRow, TeamAttendanceSummaryResponse } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
 import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/attendance-day-chart.component';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import { DonutArc, donutArcs } from '../../../../shared/ui/charts/utils/status-donut.util';
 import { TeamAttendanceDetailDialogComponent } from '../team-attendance-detail-dialog/team-attendance-detail-dialog.component';
 import { TEAM_ATTENDANCE_COLORS, TEAM_ATTENDANCE_LABELS, teamAttendanceDelta, teamAttendanceRangeLabel } from '../../utils/team-attendance-format.util';
-import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { dashboardDonutPx } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
 import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
 import { summaryRowCount, withSummaryRow } from '../../utils/summary-row.util';

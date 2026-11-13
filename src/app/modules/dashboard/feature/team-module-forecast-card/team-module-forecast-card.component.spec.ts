@@ -7,7 +7,7 @@ import {
   ModuleForecastResponse,
 } from '../../models/team-module-forecast.model';
 import { TeamModuleForecastStore } from '../../state/team-module-forecast.store';
-import { DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_MINI_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import { FakeResizeObserver, stubResizeObserver } from '../../utils/host-size.testing';
 import { moduleForecastResponse } from '../../utils/team-module-forecast.testing';
 import { TeamModuleForecastCardComponent } from './team-module-forecast-card.component';

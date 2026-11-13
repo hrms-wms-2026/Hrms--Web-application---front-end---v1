@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { WeekDayProgress } from '../../models/weekly-work-progress.model';
-import { WIDGET } from '../../utils/widget-palette';
-import { barDayTitle, barWeekday } from '../dashboard-bar-chart/bar-chart-dates.util';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
+import { barDayTitle, barWeekday } from '../../../../shared/ui/charts/dashboard-bar-chart/bar-chart-dates.util';
 import {
   DashboardBar,
   DashboardBarChartComponent,
   DashboardBarHeadline,
   DashboardBarLegendItem
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
 const SCHEDULED_COLOR = WIDGET.shade3;
 const WORKED_COLOR = WIDGET.shade1;

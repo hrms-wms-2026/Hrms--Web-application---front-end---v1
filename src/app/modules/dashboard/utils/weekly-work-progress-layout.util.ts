@@ -1,4 +1,4 @@
-import { DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_PX } from '../../../shared/ui/charts/utils/dashboard-donut.util';
 
 /** How the Weekly Work Progress card lays itself out at its rendered size. The detail dialog is the popup. */
 export type WeeklyProgressView = 'mini' | 'mini-wide' | 'xs' | 'standard';

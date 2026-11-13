@@ -9,11 +9,11 @@ import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours
 import { TeamTodayMember, TeamTodayResponse, TeamWorkingHoursDay } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
 import { WorkingHoursChartComponent } from '../../ui/working-hours-chart/working-hours-chart.component';
-import { dashboardDonutPx, donutValueFontPx } from '../../utils/dashboard-donut.util';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { dashboardDonutPx, donutValueFontPx } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { injectHostSize } from '../../utils/host-size.util';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import { DonutArc, donutArcs } from '../../../../shared/ui/charts/utils/status-donut.util';
 import {
   PRESENCE_COLORS,
   PRESENCE_LABELS,

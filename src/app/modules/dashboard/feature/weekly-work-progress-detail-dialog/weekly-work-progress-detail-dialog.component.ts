@@ -6,11 +6,11 @@ import { SelectComponent, SelectOption } from '../../../../shared/ui/select/sele
 import { WeeklyWorkProgressApiService } from '../../data-access/weekly-work-progress-api.service';
 import { WeeklyWorkProgressResponse } from '../../models/weekly-work-progress.model';
 import { DailyWorkChartComponent } from '../../ui/daily-work-chart/daily-work-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DASHBOARD_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { WeeklyInsight, buildWeeklyInsights, progressDeltaPoints } from '../../utils/weekly-work-progress-insights.util';
-import { WIDGET } from '../../utils/widget-palette';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 import {
   WEEKLY_STATUS_LABELS,
   WeeklyDelta,

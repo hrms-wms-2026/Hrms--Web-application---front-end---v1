@@ -13,7 +13,7 @@ import {
   DashboardBarHeadline,
   DashboardBarLegendItem,
   DashboardBarVariant,
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
 /** A bar label short enough to sit under a narrow bar. */
 export function shortBarLabel(name: string, max = 10): string {
