@@ -210,17 +210,25 @@ describe('CalendarPageComponent planner layer', () => {
     setup();
     fixture.componentInstance.setView('week');
     await settle();
-    expect(q('planner-period-picker')).toBeNull();
+    const calendar = () => document.querySelector('[role="dialog"][aria-label="Go to date"]') as HTMLElement | null;
+    expect(calendar()).toBeNull();
 
     q('planner-period-button')!.click();
     fixture.detectChanges();
-    expect(q('planner-period-picker')).not.toBeNull();
+    // Only the calendar opens: no date box.
+    expect(calendar()).not.toBeNull();
+    expect(q('planner-period-button')!.getAttribute('aria-expanded')).toBe('true');
+    expect(fixture.nativeElement.querySelector('app-date-picker input')).toBeNull();
 
-    fixture.componentInstance.jumpTo('2026-11-12');
+    const day12 = Array.from(calendar()!.querySelectorAll<HTMLButtonElement>('.dp-day-btn:not(.dp-day-btn--outside)'))
+      .find((b) => b.textContent!.trim() === '12')!;
+    day12.click();
     fixture.detectChanges();
 
     expect(fixture.componentInstance.viewLabel()).toBe('November 2026');
-    expect(q('planner-period-picker')).toBeNull();
+    expect(fixture.componentInstance.dayDate()).toBe('2026-11-12');
+    expect(calendar()).toBeNull();
+    expect(q('planner-period-button')!.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('the week label names its month, both months when it crosses one, and both years across New Year', () => {

@@ -439,3 +439,8 @@
   outline: none;
   box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
+
+/* Custom trigger: sizes to the projected element. */
+.dp-custom-trigger {
+  display: inline-flex;
+}
