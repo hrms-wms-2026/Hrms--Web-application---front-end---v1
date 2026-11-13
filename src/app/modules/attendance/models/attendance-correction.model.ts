@@ -66,8 +66,6 @@ export interface RejectAttendanceCorrectionRequest {
   reviewComment: string;
 }
 
-export type CancelAttendanceCorrectionResponse = AttendanceCorrectionResponse;
-
 export const CORRECTION_TYPE_OPTIONS: readonly { value: AttendanceCorrectionType; label: string }[] = [
   { value: 'clock_in', label: 'Clock-in time' },
   { value: 'clock_out', label: 'Clock-out time' },
