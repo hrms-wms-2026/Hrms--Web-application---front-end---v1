@@ -1971,8 +1971,8 @@ const TASK_CATEGORY_MEETING = 'meeting';
     .tfm-subtask-header-meta { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; }
     .tfm-subtask-status-pill { color: var(--color-text-secondary); font-size: 11.5px; font-weight: 500; }
     .tfm-subtask-progress { display: inline-flex; align-items: center; }
-    .tfm-subtask-progress-bar { width: 50px; height: 4px; background: color-mix(in srgb, var(--color-border) 70%, transparent); border-radius: 999px; overflow: hidden; }
-    .tfm-subtask-progress-fill { height: 100%; background: #22c55e; border-radius: 999px; transition: width 160ms ease; }
+    .tfm-subtask-progress-bar { width: 50px; height: 4px; background: var(--color-widget-track); border-radius: 999px; overflow: hidden; }
+    .tfm-subtask-progress-fill { height: 100%; background: var(--color-widget-shade-1); border-radius: 999px; transition: width 160ms ease; }
     .tfm-subtask-for-me-pill { background: var(--color-surface-secondary); color: var(--color-text-secondary); padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; }
 
     /* Table Header */

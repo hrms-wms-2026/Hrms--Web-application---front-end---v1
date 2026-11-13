@@ -113,8 +113,8 @@ import { MonitorAlertDto } from '../../models/dto/monitor.dto';
         }
 
         @if (kind() === 'sprint') {
-          <span data-testid="panel-progress-track" class="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]">
-            <span class="block h-full rounded-full bg-[var(--color-accent)]" [style.width.%]="node().progress"></span>
+          <span data-testid="panel-progress-track" class="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-widget-track)]">
+            <span class="block h-full rounded-full bg-[var(--color-widget-shade-1)]" [style.width.%]="node().progress"></span>
           </span>
         }
 
