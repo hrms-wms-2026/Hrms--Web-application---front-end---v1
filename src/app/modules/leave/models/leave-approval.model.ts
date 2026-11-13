@@ -72,29 +72,9 @@ export interface LeaveApprovalDetailResponse {
   canChangeDecision: boolean;
 }
 
-/** One request the current approver already acted on (Pending Approvals > History). */
-export interface LeaveApprovalHistoryItemResponse {
-  requestId: string;
-  employeeId: string;
-  employeeName: string;
-  leaveTypeName: string;
-  startAt: string;
-  endAt: string;
-  totalHours: number;
-  myAction: 'approved' | 'rejected';
-  actedAt: string;
-  myComment: string | null;
-  requestStatus: 'pending' | 'approved' | 'rejected' | 'cancelled';
-}
-
 export interface ChangeLeaveDecisionRequest {
   decision: 'approve' | 'reject';
   comment: string | null;
-}
-
-export interface LeaveApprovalHistoryFilter {
-  fromDate?: string;
-  toDate?: string;
 }
 
 export interface LeaveApprovalDecisionResponse {
@@ -107,19 +87,6 @@ export interface LeaveApprovalDecisionResponse {
   currentWarnings: LeaveApprovalWarningResponse[];
 }
 
-export interface LeaveApprovalBulkItemResponse {
-  requestId: string;
-  success: boolean;
-  status: string | null;
-  error: string | null;
-}
-
-export interface LeaveApprovalBulkResultResponse {
-  items: LeaveApprovalBulkItemResponse[];
-  successCount: number;
-  failureCount: number;
-}
-
 /** Matches ONEVO.Api.Contracts.Leave.Approvals.* verbatim. */
 export interface ApproveLeaveRequestRequest {
   comment: string | null;
@@ -129,36 +96,11 @@ export interface RejectLeaveRequestRequest {
   reason: string;
 }
 
-
-export interface BulkApproveLeaveRequestsRequest {
-  requestIds: string[];
-  comment: string | null;
-}
-
-export interface BulkRejectLeaveRequestsRequest {
-  requestIds: string[];
-  reason: string;
-}
-
 export interface LeaveApprovalListFilter {
   search?: string;
   leaveTypeId?: string;
   fromDate?: string;
   toDate?: string;
-}
-
-export interface LeaveApprovalDelegateResponse {
-  id: string;
-  delegateEmployeeId: string;
-  delegateName: string;
-  startDate: string;
-  endDate: string;
-}
-
-export interface CreateLeaveApprovalDelegateRequest {
-  delegateEmployeeId: string;
-  startDate: string;
-  endDate: string;
 }
 
 export interface LeaveRequestAllListFilter extends LeaveApprovalListFilter {
