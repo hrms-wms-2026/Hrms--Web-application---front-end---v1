@@ -10,8 +10,10 @@
   /* Neutral surfaces/text/borders - shared across every theme preset. */
   color-scheme: light;
   --color-app-bg: #fafafa;
-  --color-surface: #fafafa;
-  --color-surface-secondary: #f4f4f5;
+  /* Every card, popup and panel takes the dashboard widget card colour (theme-tinted gray) and its inner gray
+     (tracks, chips, hovers) the widget inset, so all pages match the dashboard. Dark mode sets its own below. */
+  --color-surface: var(--color-dashboard-team-widget-bg);
+  --color-surface-secondary: var(--color-dashboard-team-widget-inset);
   /* My Team dashboard: page = white with a touch of the theme colour; widget cards = that same tint with a little
      black mixed in (a bluish gray a step darker); inset = tracks/chips/skeletons inside the cards, one step darker again. */
   --color-dashboard-team-page-bg: color-mix(in srgb, var(--color-accent) 6%, #ffffff);
@@ -63,7 +65,7 @@
   /* App shell (top bar + the frame around the sidebar and content) shares the My Team page tint on every page. */
   --color-shell-bg: var(--color-dashboard-team-page-bg);
   --color-header-bg: var(--color-shell-bg);
-  --color-content-bg: var(--color-surface); /* main panel behind the page's cards */
+  --color-content-bg: var(--color-dashboard-team-page-bg); /* main panel behind the page's cards: the dashboard page tint */
   --color-shell-border: var(--color-border); /* frame around the header + main panel */
   --color-surface-raised: var(--color-surface);
   --shadow-card: 0 1px 3px var(--color-card-shadow);
