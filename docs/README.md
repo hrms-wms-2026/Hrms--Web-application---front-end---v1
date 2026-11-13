@@ -6,7 +6,7 @@ Start here. Every document about this repo lives under `docs/`, apart from the r
 
 | Folder | What's in it |
 |---|---|
-| [core/](core/) | **Living architecture.** [ARCHITECTURE.md](core/ARCHITECTURE.md): stack, folder tree, state management, HTTP interceptors, realtime (SignalR), security (session cookie, CSRF, rich-text sanitizing), error handling. [MODULE_MAP.md](core/MODULE_MAP.md): every module, what it does, its pages and where its docs are. |
+| [core/](core/) | **Living architecture.** [ARCHITECTURE.md](core/ARCHITECTURE.md): stack, folder tree, state management, HTTP interceptors, realtime (SignalR), security (session cookie, CSRF, rich-text sanitizing), error handling. [MODULE_MAP.md](core/MODULE_MAP.md): every module, what it does, its pages and where its docs are. [CODE_CLEANUP_GUIDE.md](core/CODE_CLEANUP_GUIDE.md): set up Knip, jscpd and Roslyn and remove dead or duplicated code safely (frontend + backend). |
 | [design/](design/) | Visual design rules: colour palettes, component design rules, shadows/elevation, icon theme system. |
 | [superpowers/specs/](superpowers/specs/) | Designs. `next/` = approved, not built yet; `finished/<date>/` = built. Index: [specs/SUMMARY.md](superpowers/specs/SUMMARY.md). |
 | [superpowers/plans/](superpowers/plans/) | Implementation plans. Same `next/` / `finished/<date>/` split. Index: [plans/SUMMARY.md](superpowers/plans/SUMMARY.md). |
