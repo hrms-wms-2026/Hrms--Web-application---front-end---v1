@@ -1,173 +1,1107 @@
-<section id="hero" class="hero">
-  <div class="hero__badge" routerLink="/book-a-demo">
-    <span>CROWNUS WORKSPACE — VISIBILITY INTO PERFORMANCE</span>
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 18l6-6-6-6"/>
-    </svg>
-  </div>
+<section class="hero">
+  <div class="hero__bg-aura" aria-hidden="true"></div>
 
-  <h1 class="hero__headline font-serif">
-    Turning Workforce<br />Visibility Into Performance
-  </h1>
+  <div class="hero__container">
+    <div class="hero__badge hero__choreo hero__choreo--1">
+      <span class="hero__badge-tag">CROWNUS PLATFORM</span>
+      <span class="hero__badge-divider" aria-hidden="true"></span>
+      <span class="hero__badge-text">Workday Telemetry, Multi-Entity Org &amp; Sprint Execution</span>
+    </div>
 
-  <p class="hero__subheadline">
-    One Platform. Every Role. Total Visibility. CROWNUS unifies zero-touch attendance, Actual vs Reported work intelligence, and exception-based leadership into one clear workspace.
-  </p>
+    <h1 class="hero__title font-serif hero__choreo hero__choreo--2">
+      Turning Workforce <br />
+      <span class="hero__title-italic">Visibility Into Performance</span>
+    </h1>
 
-  <div class="hero__actions">
-    <a routerLink="/book-a-demo" class="hero__btn hero__btn--primary">
-      <span>Explore CROWNUS Platform</span>
-    </a>
-    <a href="#pillars" class="hero__btn hero__btn--secondary">
-      <span>Get in Touch</span>
-    </a>
-  </div>
+    <p class="hero__subtitle hero__choreo hero__choreo--3">
+      One unified workspace for customizable employee &amp; team dashboards, hierarchical organization trees,
+      action-center approvals, and privacy-first monitoring rules.
+    </p>
 
-  <!-- Interactive Dashboard Frame (ORG-DEPT-01 Department Management Preview) -->
-  <div class="hero__preview-wrapper">
-    <div class="hero__preview-mesh"></div>
-    <div class="hero__preview-card">
-      <div class="hero__preview-header">
-        <div class="hero__preview-window-dots">
-          <span class="hero__dot hero__dot--red"></span>
-          <span class="hero__dot hero__dot--yellow"></span>
-          <span class="hero__dot hero__dot--green"></span>
-        </div>
-        <div class="hero__preview-url">
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    <div class="hero__actions hero__choreo hero__choreo--4">
+      <a routerLink="/book-a-demo" class="hero__btn hero__btn--primary">
+        <span>Book a Personalized Demo</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+        </svg>
+      </a>
+      <a href="#pillars" class="hero__btn hero__btn--secondary">
+        <span>Explore Platform Architecture</span>
+      </a>
+    </div>
+
+    <!-- ClickUp-Style Interactive Workspace Module Switcher -->
+    <div class="hero__switcher-wrap hero__choreo hero__choreo--5">
+      <div class="hero__switcher" role="tablist" aria-label="Interactive CROWNUS Workspace Modules">
+        <button
+          type="button"
+          role="tab"
+          class="hero__switch-pill"
+          [class.hero__switch-pill--active]="activeModule() === 'home'"
+          [attr.aria-selected]="activeModule() === 'home'"
+          (click)="selectModule('home')"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
           </svg>
-          <span>https://onexso-tech.onexso.com/organization/departments</span>
-        </div>
-        <div class="hero__preview-badge">Org Structure • ORG-DEPT-01</div>
-      </div>
+          <span>Home Dashboard</span>
+        </button>
 
-      <div class="hero__app-shell">
-        <aside class="hero__app-sidebar">
-          <div class="hero__app-logo">
-            <span class="hero__app-mark">OT</span>
+        <button
+          type="button"
+          role="tab"
+          class="hero__switch-pill"
+          [class.hero__switch-pill--active]="activeModule() === 'org'"
+          [attr.aria-selected]="activeModule() === 'org'"
+          (click)="selectModule('org')"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/>
+          </svg>
+          <span>Org &amp; Departments</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          class="hero__switch-pill"
+          [class.hero__switch-pill--active]="activeModule() === 'work'"
+          [attr.aria-selected]="activeModule() === 'work'"
+          (click)="selectModule('work')"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+          </svg>
+          <span>Work &amp; Projects</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          class="hero__switch-pill"
+          [class.hero__switch-pill--active]="activeModule() === 'settings'"
+          [attr.aria-selected]="activeModule() === 'settings'"
+          (click)="selectModule('settings')"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Monitoring &amp; Rules</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 1:1 Real CROWNUS App Shell Preview (MainLayoutComponent + SideNavbar + TopNavbar + SubSidebar) -->
+    <div class="hero__workspace-pedestal hero__choreo hero__choreo--5">
+      <div class="cw-shell" [class.cw-shell--has-sub]="activeModule() !== 'home'">
+        <!-- Left Floating Dark Navigation Rail (.nav-rail) -->
+        <aside class="cw-rail" aria-label="Primary workspace navigation">
+          <div class="cw-rail__company-tile" title="CROWNUS Technologies">
+            <span>CR</span>
           </div>
-          <nav class="hero__app-nav">
-            <!-- SVG Icons replacing emojis -->
-            <span class="hero__nav-icon" title="Home">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-            </span>
-            <span class="hero__nav-icon" title="Work">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-            </span>
-            <span class="hero__nav-icon" title="People">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
-            <span class="hero__nav-icon" title="Calendar">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-            </span>
-            <span class="hero__nav-icon" title="Time off">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            </span>
-            <span class="hero__nav-icon" title="Attendance">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            </span>
-            <span class="hero__nav-icon hero__nav-icon--active" title="Organization">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8h20v-8a2 2 0 0 0-2-2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>
-            </span>
-            <span class="hero__nav-icon" title="Settings">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-            </span>
-          </nav>
+          <div class="cw-rail__divider" aria-hidden="true"></div>
+          <button type="button" class="cw-rail__expand-btn" aria-label="Expand sidebar" (click)="selectModule(activeModule() === 'home' ? 'org' : 'home')">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
+            </svg>
+          </button>
+
+          <div class="cw-rail__items">
+            <button
+              type="button"
+              class="cw-rail-item"
+              [class.cw-rail-item--active]="activeModule() === 'home'"
+              (click)="selectModule('home')"
+            >
+              <span class="cw-rail-item__icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+              </span>
+              <span class="cw-rail-item__label">Home</span>
+            </button>
+
+            <button
+              type="button"
+              class="cw-rail-item"
+              [class.cw-rail-item--active]="activeModule() === 'work'"
+              (click)="selectModule('work')"
+            >
+              <span class="cw-rail-item__icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                </svg>
+              </span>
+              <span class="cw-rail-item__label">Work</span>
+            </button>
+
+            <button
+              type="button"
+              class="cw-rail-item"
+              (click)="selectModule('home')"
+            >
+              <span class="cw-rail-item__icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                </svg>
+                @if (approvals().length > 0) {
+                  <span class="cw-rail-item__badge">{{ approvals().length }}</span>
+                }
+              </span>
+              <span class="cw-rail-item__label">Inbox</span>
+            </button>
+
+            <button
+              type="button"
+              class="cw-rail-item"
+              (click)="selectModule('home')"
+            >
+              <span class="cw-rail-item__icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+                </svg>
+              </span>
+              <span class="cw-rail-item__label">Calendar</span>
+            </button>
+
+            <button
+              type="button"
+              class="cw-rail-item"
+              (click)="selectModule('home')"
+            >
+              <span class="cw-rail-item__icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                </svg>
+              </span>
+              <span class="cw-rail-item__label">Time Off</span>
+            </button>
+
+            <button
+              type="button"
+              class="cw-rail-item"
+              (click)="selectModule('home')"
+            >
+              <span class="cw-rail-item__icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </span>
+              <span class="cw-rail-item__label">Attendance</span>
+            </button>
+
+            <button
+              type="button"
+              class="cw-rail-item"
+              [class.cw-rail-item--active]="activeModule() === 'org'"
+              (click)="selectModule('org')"
+            >
+              <span class="cw-rail-item__icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/>
+                </svg>
+              </span>
+              <span class="cw-rail-item__label">Org</span>
+            </button>
+
+            <button
+              type="button"
+              class="cw-rail-item"
+              [class.cw-rail-item--active]="activeModule() === 'settings'"
+              (click)="selectModule('settings')"
+            >
+              <span class="cw-rail-item__icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </span>
+              <span class="cw-rail-item__label">Settings</span>
+            </button>
+          </div>
         </aside>
 
-        <div class="hero__app-main">
-          <header class="hero__app-topbar">
-            <div class="hero__company-selector">
-              <span class="hero__company-name">CROWNUS Technologies</span>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 9l6 6 6-6"/>
+        <!-- Real Top Navbar (.top-navbar) -->
+        <header class="cw-topbar">
+          <div class="cw-topbar__left">
+            <div class="cw-company-selector">
+              <span class="cw-company-selector__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+                </svg>
+              </span>
+              <span class="cw-company-selector__name">CROWNUS Technologies</span>
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
               </svg>
-            </div>
-            <div class="hero__search-bar">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-              </svg>
-              <span>Search people, work, policies...</span>
-            </div>
-            <div class="hero__user-profile">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-              <span class="hero__avatar-circle">HR</span>
-            </div>
-          </header>
-
-          <div class="hero__app-content">
-            <div class="hero__content-header">
-              <div>
-                <h3 class="hero__page-title">Departments</h3>
-                <p class="hero__page-subtitle">Manage department structure for selected Company.</p>
-              </div>
-              <div class="hero__content-actions">
-                <span class="hero__toggle-btn hero__toggle-btn--active">Tree</span>
-                <span class="hero__toggle-btn">List</span>
-                <button type="button" class="hero__add-btn">+ Create Department</button>
-              </div>
-            </div>
-
-            <div class="hero__dept-card">
-              <div class="hero__dept-item hero__dept-item--root">
-                <div class="hero__dept-info">
-                  <span class="hero__dept-name">CROWNUS Technologies</span>
-                  <span class="hero__pill hero__pill--company">Selected Company</span>
-                </div>
-              </div>
-
-              <div class="hero__dept-item hero__dept-item--child">
-                <div class="hero__dept-info">
-                  <span class="hero__dept-name">Human Resources</span>
-                  <span class="hero__dept-code">HR</span>
-                </div>
-                <div class="hero__dept-meta">
-                  <span>Head: HR Manager</span>
-                  <span class="hero__dept-badge">4 positions</span>
-                  <span class="hero__dept-badge hero__badge--green">12 employees</span>
-                </div>
-              </div>
-
-              <div class="hero__dept-item hero__dept-item--child">
-                <div class="hero__dept-info">
-                  <span class="hero__dept-name">Finance</span>
-                  <span class="hero__dept-code">FIN</span>
-                </div>
-                <div class="hero__dept-meta">
-                  <span>Head: Finance Manager</span>
-                  <span class="hero__dept-badge">5 positions</span>
-                  <span class="hero__dept-badge hero__badge--green">18 employees</span>
-                </div>
-              </div>
-
-              <div class="hero__dept-item hero__dept-item--child hero__dept-item--selected">
-                <div class="hero__dept-info">
-                  <span class="hero__dept-name">Operations</span>
-                  <span class="hero__dept-code">OPS</span>
-                </div>
-                <div class="hero__dept-meta">
-                  <span>Head: Operations Manager</span>
-                  <span class="hero__dept-badge">7 positions</span>
-                  <span class="hero__dept-badge hero__badge--green">34 employees</span>
-                </div>
-              </div>
-
-              <div class="hero__dept-item hero__dept-item--grandchild">
-                <div class="hero__dept-info">
-                  <span class="hero__dept-name">Customer Support</span>
-                  <span class="hero__dept-code">CS</span>
-                </div>
-                <div class="hero__dept-meta">
-                  <span>Head: CS Manager</span>
-                  <span class="hero__dept-badge">3 positions</span>
-                  <span class="hero__dept-badge hero__badge--green">16 employees</span>
-                </div>
-              </div>
             </div>
           </div>
-        </div>
+
+          <div class="cw-topbar__center">
+            <div class="cw-topbar__search">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+              </svg>
+              <span>Search</span>
+              <kbd>Ctrl K</kbd>
+            </div>
+          </div>
+
+          <div class="cw-topbar__right">
+            @if (activeModule() === 'home') {
+              <button
+                type="button"
+                class="cw-topbar__customize-btn"
+                [class.cw-topbar__customize-btn--active]="isCustomizing()"
+                (click)="toggleCustomize()"
+              >
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                </svg>
+                <span>Customize</span>
+              </button>
+            }
+            <button type="button" class="cw-topbar__icon-btn" aria-label="Notifications" (click)="selectModule('home')">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="cw-topbar__dot"></span>
+            </button>
+            <div class="cw-topbar__avatar" title="Alex Rivera">
+              <span>AR</span>
+              <i class="cw-topbar__online" aria-hidden="true"></i>
+            </div>
+          </div>
+        </header>
+
+        <!-- Real Sub-Sidebar (.sub-sidebar) when Org, Work, or Settings is active -->
+        @if (activeModule() !== 'home') {
+          <nav class="cw-sub-sidebar" aria-label="Module navigation">
+            <div class="cw-sub-sidebar__header">
+              <button type="button" class="cw-sub-sidebar__collapse" aria-label="Collapse panel" (click)="selectModule('home')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
+                </svg>
+              </button>
+            </div>
+
+            @switch (activeModule()) {
+              @case ('org') {
+                <div class="cw-sub-sidebar__group">
+                  <div class="cw-sub-sidebar__group-label">ORGANIZATION</div>
+                  <button type="button" class="cw-sub-sidebar__item cw-sub-sidebar__item--active">Departments</button>
+                  <button type="button" class="cw-sub-sidebar__item">Positions</button>
+                </div>
+                <div class="cw-sub-sidebar__group">
+                  <div class="cw-sub-sidebar__group-label">PEOPLE</div>
+                  <button type="button" class="cw-sub-sidebar__item">Employees</button>
+                  <button type="button" class="cw-sub-sidebar__item">Checklists</button>
+                  <button type="button" class="cw-sub-sidebar__item">Offboarding</button>
+                </div>
+              }
+              @case ('work') {
+                <div class="cw-sub-sidebar__group">
+                  <div class="cw-sub-sidebar__group-label">WORK</div>
+                  <button type="button" class="cw-sub-sidebar__item">All Projects</button>
+                  <button type="button" class="cw-sub-sidebar__item cw-sub-sidebar__item--active">HRMS Platform v3.4</button>
+                  <button type="button" class="cw-sub-sidebar__item">My Tasks</button>
+                  <button type="button" class="cw-sub-sidebar__item">Objectives &amp; KPIs</button>
+                </div>
+              }
+              @case ('settings') {
+                <div class="cw-sub-sidebar__group">
+                  <div class="cw-sub-sidebar__group-label">COMPANY SETTINGS</div>
+                  <button type="button" class="cw-sub-sidebar__item">Company Profile</button>
+                  <button type="button" class="cw-sub-sidebar__item cw-sub-sidebar__item--active">Monitoring</button>
+                  <button type="button" class="cw-sub-sidebar__item">Roles &amp; Permissions</button>
+                  <button type="button" class="cw-sub-sidebar__item">Appearance</button>
+                </div>
+              }
+            }
+          </nav>
+        }
+
+        <!-- Real Main Content Area (.main-content) -->
+        <main class="cw-main" [class.cw-main--with-sub]="activeModule() !== 'home'">
+          @switch (activeModule()) {
+            <!-- ========================================================================= -->
+            <!-- VIEW 1: REAL HOME DASHBOARD (dashboard-shell + TodayAtAGlance + QuickActions + ActionCenter + TeamAttendance) -->
+            <!-- ========================================================================= -->
+            @case ('home') {
+              <div class="cw-dashboard">
+                @if (isCustomizing()) {
+                  <div class="cw-edit-toolbar">
+                    <div>
+                      <h3 class="cw-edit-toolbar__title">Customize your dashboard</h3>
+                      <p class="cw-edit-toolbar__sub">Drag a widget by its handle, resize from the corner, or use the arrow keys on a focused widget.</p>
+                    </div>
+                    <div class="cw-edit-toolbar__actions">
+                      <button type="button" class="cw-shell-btn">Add widget</button>
+                      <button type="button" class="cw-shell-btn">Reset</button>
+                      <button type="button" class="cw-shell-btn" (click)="toggleCustomize()">Cancel</button>
+                      <button type="button" class="cw-shell-btn cw-shell-btn--primary" (click)="toggleCustomize()">Save</button>
+                    </div>
+                  </div>
+                }
+
+                <div class="cw-dash-top-grid">
+                  <!-- Today at a Glance Card (today-at-a-glance-card.component.html 1:1) -->
+                  <section class="cw-glance-card" [class.cw-widget-editing]="isCustomizing()">
+                    <div class="cw-glance-card__art" aria-hidden="true"></div>
+
+                    <div class="cw-glance-card__head">
+                      <div class="cw-greeting">
+                        <h2 class="cw-greeting__title">
+                          Good morning,
+                          <span class="cw-greeting__name">Alex Rivera!</span>
+                        </h2>
+                        <p class="cw-greeting__sub">Here's what's happening with your work today.</p>
+                        <div class="cw-greeting__date">
+                          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/>
+                          </svg>
+                          <span>Tuesday, 10 November 2026</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Status tiles side-by-side -->
+                    <div class="cw-glance-tiles">
+                      <div class="cw-status-tile cw-status-tile--primary">
+                        <div class="cw-status-tile__avatar">
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                            <path d="M5 5.5A1.5 1.5 0 016.5 4h11A1.5 1.5 0 0119 5.5V15H5V5.5zM7 6v7h10V6H7zM2.5 16.5h19a.5.5 0 01.5.5 2 2 0 01-2 2H4a2 2 0 01-2-2 .5.5 0 01.5-.5z"/>
+                          </svg>
+                          <span class="cw-status-tile__dot" [class.cw-status-tile__dot--break]="onBreak()"></span>
+                        </div>
+                        <div class="cw-status-tile__info">
+                          <p class="cw-status-tile__state">{{ onBreak() ? 'On break' : 'Clocked in' }}</p>
+                          <p class="cw-status-tile__meta">Started at 8:58 AM</p>
+                        </div>
+                        <div class="cw-status-tile__duration">
+                          <span class="cw-status-tile__dur-lbl">Working duration</span>
+                          <span class="cw-status-tile__dur-val">5h 42m</span>
+                        </div>
+                      </div>
+
+                      <div class="cw-status-tile cw-status-tile--amber">
+                        <div class="cw-status-tile__avatar">
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/>
+                          </svg>
+                        </div>
+                        <div class="cw-status-tile__info">
+                          <p class="cw-status-tile__dur-lbl">Time left to finish</p>
+                          <p class="cw-status-tile__dur-val">2h 18m</p>
+                          <p class="cw-status-tile__meta">Finish at 5:30 PM</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Today's Activity Shift Bar -->
+                    <div class="cw-activity-box">
+                      <div class="cw-activity-box__head">
+                        <span class="cw-activity-box__title">
+                          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                            <rect x="4" y="13" width="4" height="7" rx="1" opacity="0.5"/>
+                            <rect x="10" y="9" width="4" height="11" rx="1" opacity="0.75"/>
+                            <rect x="16" y="4" width="4" height="16" rx="1"/>
+                          </svg>
+                          Today's Activity
+                        </span>
+                        <div class="cw-activity-box__legend">
+                          <span><i class="cw-leg-dot cw-leg-dot--work"></i>Working</span>
+                          <span><i class="cw-leg-dot cw-leg-dot--break"></i>Break</span>
+                          <span><i class="cw-leg-dot cw-leg-dot--leave"></i>Leave</span>
+                          <span><i class="cw-leg-dot cw-leg-dot--upcoming"></i>Upcoming</span>
+                        </div>
+                      </div>
+
+                      <div class="cw-shift-bar-wrap">
+                        <span class="cw-shift-now-pin" style="left: 68%">2:40 PM</span>
+                        <span class="cw-shift-now-line" style="left: 68%" aria-hidden="true"></span>
+                        <div class="cw-shift-bar">
+                          <span class="cw-shift-seg cw-shift-seg--work" style="left: 0%; width: 42%"></span>
+                          <span class="cw-shift-seg cw-shift-seg--break" style="left: 42%; width: 7%"></span>
+                          <span class="cw-shift-seg cw-shift-seg--work" style="left: 49%; width: 19%"></span>
+                        </div>
+                        <span class="cw-shift-now-dot" [class.cw-shift-now-dot--break]="onBreak()" style="left: 68%" aria-hidden="true"></span>
+
+                        <div class="cw-shift-ticks" aria-hidden="true">
+                          <span>9 AM</span>
+                          <span>11 AM</span>
+                          <span>1 PM</span>
+                          <span>3 PM</span>
+                          <span>5 PM</span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <!-- Right Column: Pinned Quick Actions Card + Action Center Card -->
+                  <div class="cw-dash-right-stack">
+                    <!-- Quick Actions Card (quick-actions-card.component.html 1:1) -->
+                    <section class="cw-qa-card">
+                      <h3 class="cw-qa-card__title">Quick Actions</h3>
+                      <div class="cw-qa-list">
+                        <button type="button" class="cw-qa-btn cw-qa-btn--emerald" (click)="toggleBreak()">
+                          <span class="cw-qa-icon">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"/>
+                            </svg>
+                          </span>
+                          <span class="cw-qa-label">{{ onBreak() ? 'End Break' : 'Start Break' }}</span>
+                        </button>
+
+                        <button type="button" class="cw-qa-btn cw-qa-btn--blue" (click)="selectModule('org')">
+                          <span class="cw-qa-icon">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M17 20h5v-2a3 3 0 00-5.36-1.86M17 20H7m10 0v-2c0-.66-.13-1.28-.36-1.86M7 20H2v-2a3 3 0 015.36-1.86M7 20v-2c0-.66.13-1.28.36-1.86m0 0a5 5 0 019.28 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                          </span>
+                          <span class="cw-qa-label">My Team</span>
+                        </button>
+
+                        <button type="button" class="cw-qa-btn cw-qa-btn--slate" (click)="selectModule('settings')">
+                          <span class="cw-qa-icon">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <circle cx="12" cy="12" r="3"/><path d="M10.3 4.3c.4-1.7 3-1.7 3.4 0a1.7 1.7 0 002.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 001 2.5c1.8.5 1.8 3 0 3.5a1.7 1.7 0 00-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 00-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 00-2.6-1c-1.5.9-3.3-.9-2.4-2.4a1.7 1.7 0 00-1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 001-2.6c-.9-1.5.9-3.3 2.4-2.4a1.7 1.7 0 002.6-1.1z"/>
+                            </svg>
+                          </span>
+                          <span class="cw-qa-label">Settings</span>
+                        </button>
+                      </div>
+                    </section>
+
+                    <!-- Action Center Card (action-center-card.component.html 1:1) -->
+                    <section class="cw-ac-card" [class.cw-widget-editing]="isCustomizing()">
+                      <div class="cw-ac-head">
+                        <div class="cw-ac-head__left">
+                          <span class="cw-ac-icon" aria-hidden="true">!</span>
+                          <div>
+                            <h3 class="cw-ac-title">Action Center</h3>
+                            <p class="cw-ac-sub">{{ approvals().length }} pending approvals</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="cw-ac-chips">
+                        <button
+                          type="button"
+                          class="cw-inbox-chip"
+                          [class.cw-inbox-chip--active]="actionFilter() === 'all'"
+                          (click)="setActionFilter('all')"
+                        >
+                          All <span class="cw-inbox-chip__count">{{ approvals().length }}</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="cw-inbox-chip"
+                          [class.cw-inbox-chip--active]="actionFilter() === 'leave'"
+                          (click)="setActionFilter('leave')"
+                        >
+                          Leave
+                        </button>
+                        <button
+                          type="button"
+                          class="cw-inbox-chip"
+                          [class.cw-inbox-chip--active]="actionFilter() === 'attendance'"
+                          (click)="setActionFilter('attendance')"
+                        >
+                          Attendance
+                        </button>
+                      </div>
+
+                      @if (filteredApprovals().length === 0) {
+                        <p class="cw-ac-clear">✓ You're all caught up</p>
+                      } @else {
+                        <ul class="cw-ac-list">
+                          @for (item of filteredApprovals(); track item.key) {
+                            <li class="cw-ac-row">
+                              <span class="cw-ac-avatar" [style.background]="item.avatarBg">{{ item.initials }}</span>
+                              <div class="cw-ac-row__text">
+                                <span class="cw-ac-row__title">{{ item.title }}</span>
+                                <span class="cw-ac-row__sub">{{ item.subject }}</span>
+                              </div>
+                              <span class="cw-ac-row__age">{{ item.age }}</span>
+                              <div class="cw-ac-row__btns">
+                                <button type="button" class="cw-ac-btn cw-ac-btn--approve" title="Approve" (click)="resolveApproval(item.key)">
+                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>
+                                </button>
+                                <button type="button" class="cw-ac-btn cw-ac-btn--reject" title="Reject" (click)="resolveApproval(item.key)">
+                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                </button>
+                              </div>
+                            </li>
+                          }
+                        </ul>
+                      }
+                    </section>
+                  </div>
+                </div>
+
+                <!-- Bottom Row: Team Attendance + My Tasks + Active Projects -->
+                <div class="cw-dash-bottom-grid">
+                  <!-- Team Attendance Card (team-attendance-card.component.html 1:1) -->
+                  <section class="cw-widget-card" [class.cw-widget-editing]="isCustomizing()">
+                    <header class="cw-widget-card__head">
+                      <h3 class="cw-widget-card__title">Team attendance</h3>
+                      <span class="cw-ta-period">Week ▾</span>
+                    </header>
+
+                    <div class="cw-ta-hero">
+                      <div class="cw-ta-donut">
+                        <svg viewBox="0 0 42 42" class="cw-ta-donut__svg" aria-hidden="true">
+                          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f4f4f5" stroke-width="6"/>
+                          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#16a34a" stroke-width="6" stroke-dasharray="88 12" stroke-dashoffset="25"/>
+                          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="6" stroke-dasharray="6 94" stroke-dashoffset="-63"/>
+                          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#3b82f6" stroke-width="6" stroke-dasharray="4 96" stroke-dashoffset="-69"/>
+                        </svg>
+                        <div class="cw-ta-donut__center">
+                          <span class="cw-ta-donut__val">45</span>
+                          <span class="cw-ta-donut__of">/ 48</span>
+                        </div>
+                      </div>
+                      <div class="cw-ta-figure">
+                        <p class="cw-ta-rate">94%</p>
+                        <p class="cw-ta-caption">Attendance today</p>
+                        <p class="cw-ta-delta">+2.4 pp vs last week</p>
+                      </div>
+                    </div>
+
+                    <div class="cw-ta-tiles">
+                      <div class="cw-ta-tile" style="--tone: #16a34a">
+                        <span class="cw-ta-tile__count">42</span>
+                        <span class="cw-ta-tile__lbl">Present · 88%</span>
+                      </div>
+                      <div class="cw-ta-tile" style="--tone: #f59e0b">
+                        <span class="cw-ta-tile__count">3</span>
+                        <span class="cw-ta-tile__lbl">Late · 6%</span>
+                      </div>
+                      <div class="cw-ta-tile" style="--tone: #3b82f6">
+                        <span class="cw-ta-tile__count">2</span>
+                        <span class="cw-ta-tile__lbl">On leave · 4%</span>
+                      </div>
+                      <div class="cw-ta-tile" style="--tone: #dc2626">
+                        <span class="cw-ta-tile__count">1</span>
+                        <span class="cw-ta-tile__lbl">Absent · 2%</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <!-- My Tasks Card (my-tasks-card.component.html 1:1) -->
+                  <section class="cw-widget-card" [class.cw-widget-editing]="isCustomizing()">
+                    <header class="cw-widget-card__head">
+                      <div class="cw-widget-card__title-group">
+                        <h3 class="cw-widget-card__title">My Tasks</h3>
+                        <span class="cw-overdue-pill">OVERDUE</span>
+                      </div>
+                      <button type="button" class="cw-pill-link" (click)="selectModule('work')">
+                        <span>View all tasks</span>
+                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                      </button>
+                    </header>
+
+                    <div class="cw-task-list">
+                      <button type="button" class="cw-task-row" (click)="selectModule('work')">
+                        <div class="cw-task-row__info">
+                          <p class="cw-task-row__title">Finalize Q4 multi-entity seat allocations</p>
+                          <p class="cw-task-row__proj">HRMS Platform v3.4</p>
+                        </div>
+                        <span class="cw-due-badge cw-due-badge--danger">Nov 9</span>
+                      </button>
+                      <button type="button" class="cw-task-row" (click)="selectModule('work')">
+                        <div class="cw-task-row__info">
+                          <p class="cw-task-row__title">Verify department idle-threshold overrides</p>
+                          <p class="cw-task-row__proj">WorkPulse Compliance</p>
+                        </div>
+                        <span class="cw-due-badge cw-due-badge--warn">Nov 12</span>
+                      </button>
+                      <button type="button" class="cw-task-row" (click)="selectModule('work')">
+                        <div class="cw-task-row__info">
+                          <p class="cw-task-row__title">Review biometric attendance shift logs</p>
+                          <p class="cw-task-row__proj">Operations &amp; Delivery</p>
+                        </div>
+                        <span class="cw-due-badge cw-due-badge--warn">Nov 14</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <!-- Active Projects Card (active-projects-card.component.html 1:1) -->
+                  <section class="cw-widget-card" [class.cw-widget-editing]="isCustomizing()">
+                    <header class="cw-widget-card__head">
+                      <div class="cw-widget-card__title-group">
+                        <span class="cw-proj-badge-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M12 3l9 4.5-9 4.5-9-4.5L12 3z"/><path d="M3 12l9 4.5 9-4.5M3 16.5L12 21l9-4.5"/>
+                          </svg>
+                        </span>
+                        <h3 class="cw-widget-card__title">Active projects</h3>
+                        <span class="cw-count-chip">3</span>
+                      </div>
+                      <button type="button" class="cw-pill-link" (click)="selectModule('work')">
+                        <span>View All</span>
+                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                      </button>
+                    </header>
+
+                    <div class="cw-proj-list">
+                      <button type="button" class="cw-proj-row" (click)="selectModule('work')">
+                        <span class="cw-proj-tile" style="background: #2563eb">H</span>
+                        <div class="cw-proj-row__info">
+                          <p class="cw-proj-row__name">HRMS Platform v3.4</p>
+                          <p class="cw-proj-row__hours">124h / 160h logged</p>
+                        </div>
+                        <div class="cw-proj-row__prog">
+                          <span>78%</span>
+                          <div class="cw-prog-track"><div class="cw-prog-fill" style="width: 78%; background: #2563eb"></div></div>
+                        </div>
+                      </button>
+
+                      <button type="button" class="cw-proj-row" (click)="selectModule('work')">
+                        <span class="cw-proj-tile" style="background: #7c3aed">W</span>
+                        <div class="cw-proj-row__info">
+                          <p class="cw-proj-row__name">WorkPulse Agent MSIX</p>
+                          <p class="cw-proj-row__hours">92h / 100h logged</p>
+                        </div>
+                        <div class="cw-proj-row__prog">
+                          <span>92%</span>
+                          <div class="cw-prog-track"><div class="cw-prog-fill" style="width: 92%; background: #7c3aed"></div></div>
+                        </div>
+                      </button>
+
+                      <button type="button" class="cw-proj-row" (click)="selectModule('work')">
+                        <span class="cw-proj-tile" style="background: #059669">E</span>
+                        <div class="cw-proj-row__info">
+                          <p class="cw-proj-row__name">Enterprise Org Migration</p>
+                          <p class="cw-proj-row__hours">64h / 100h logged</p>
+                        </div>
+                        <div class="cw-proj-row__prog">
+                          <span>64%</span>
+                          <div class="cw-prog-track"><div class="cw-prog-fill" style="width: 64%; background: #059669"></div></div>
+                        </div>
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            }
+
+            <!-- ========================================================================= -->
+            <!-- VIEW 2: REAL ORGANIZATION > DEPARTMENTS (department-management.component.html 1:1) -->
+            <!-- ========================================================================= -->
+            @case ('org') {
+              <div class="cw-dm-page">
+                <header class="cw-dm-header">
+                  <div class="cw-breadcrumb">
+                    <span class="cw-breadcrumb__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01"/>
+                      </svg>
+                    </span>
+                    <span class="cw-breadcrumb__parent">Organization</span>
+                    <span class="cw-breadcrumb__sep">›</span>
+                    <span class="cw-breadcrumb__current">Departments</span>
+                  </div>
+
+                  <div class="cw-dm-controls">
+                    <div class="cw-view-toggle" role="group" aria-label="View mode">
+                      <button
+                        type="button"
+                        class="cw-view-toggle__btn"
+                        [class.cw-view-toggle__btn--active]="orgViewMode() === 'tree'"
+                        (click)="setOrgViewMode('tree')"
+                      >
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span>Tree</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="cw-view-toggle__btn"
+                        [class.cw-view-toggle__btn--active]="orgViewMode() === 'list'"
+                        (click)="setOrgViewMode('list')"
+                      >
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span>List</span>
+                      </button>
+                    </div>
+
+                    <button type="button" class="cw-dm-filter-btn">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                      <span>Filter</span>
+                    </button>
+
+                    <button type="button" class="cw-dm-primary-btn">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      <span>Create department</span>
+                    </button>
+                  </div>
+                </header>
+
+                @if (orgViewMode() === 'tree') {
+                  <!-- Root Company Card (.dm-company-root-card) -->
+                  <div class="cw-dm-root-card">
+                    <div class="cw-dm-company-icon">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+                      </svg>
+                    </div>
+                    <span class="cw-dm-company-name">CROWNUS Technologies</span>
+                  </div>
+
+                  <!-- Department Tree Nodes (.dtn-node-row) -->
+                  <div class="cw-dtn-list">
+                    @for (dept of visibleDepartments(); track dept.id) {
+                      <div class="cw-dtn-row" [style.padding-left.px]="12 + dept.level * 24">
+                        <div class="cw-dtn-main">
+                          @if (dept.expandable) {
+                            <button
+                              type="button"
+                              class="cw-dtn-expand"
+                              [attr.aria-label]="expandedDepts()[dept.id] ? 'Collapse ' + dept.name : 'Expand ' + dept.name"
+                              (click)="toggleDeptExpand(dept.id)"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="14"
+                                height="14"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                [style.transform]="expandedDepts()[dept.id] ? 'rotate(90deg)' : 'rotate(0deg)'"
+                                aria-hidden="true"
+                              >
+                                <path d="m9 18 6-6-6-6"/>
+                              </svg>
+                            </button>
+                          } @else {
+                            <span class="cw-dtn-spacer"></span>
+                          }
+
+                          <div class="cw-dtn-badge">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                          </div>
+
+                          <div class="cw-dtn-info">
+                            <span class="cw-dtn-name">{{ dept.name }}</span>
+                            <span class="cw-dtn-code">{{ dept.code }}</span>
+                          </div>
+                        </div>
+
+                        <div class="cw-dtn-meta">
+                          <span class="cw-dtn-head-pos">
+                            <span class="cw-dtn-head-lbl">Head position:</span> {{ dept.headPosition }}
+                          </span>
+                          <span class="cw-dtn-counts">
+                            {{ dept.positions }} positions &bull; {{ dept.employees }} employees
+                          </span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <!-- Real List Table (.dm-table) -->
+                  <div class="cw-dm-table-card">
+                    <table class="cw-dm-table">
+                      <thead>
+                        <tr>
+                          <th>DEPARTMENT</th>
+                          <th>CODE</th>
+                          <th>PARENT</th>
+                          <th>HEAD POSITION</th>
+                          <th>POSITIONS</th>
+                          <th>EMPLOYEES</th>
+                          <th>STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (dept of departments; track dept.id) {
+                          <tr>
+                            <td class="cw-dm-td-name">{{ dept.name }}</td>
+                            <td><span class="cw-dtn-code">{{ dept.code }}</span></td>
+                            <td>{{ dept.parentName }}</td>
+                            <td>{{ dept.headPosition }}</td>
+                            <td>{{ dept.positions }}</td>
+                            <td>{{ dept.employees }}</td>
+                            <td><span class="cw-status-active">Active</span></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- ========================================================================= -->
+            <!-- VIEW 3: REAL WORK > PROJECT DETAIL & BOARD (project-detail.component.html 1:1) -->
+            <!-- ========================================================================= -->
+            @case ('work') {
+              <div class="cw-work-page">
+                <header class="cw-dm-header">
+                  <div class="cw-breadcrumb">
+                    <span class="cw-breadcrumb__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                      </svg>
+                    </span>
+                    <span class="cw-breadcrumb__parent">Work</span>
+                    <span class="cw-breadcrumb__sep">›</span>
+                    <span class="cw-breadcrumb__current">HRMS Platform v3.4</span>
+                    <span class="cw-status-active">On Track</span>
+                  </div>
+
+                  <div class="cw-dm-controls">
+                    <div class="cw-view-toggle">
+                      <button type="button" class="cw-view-toggle__btn cw-view-toggle__btn--active">Board</button>
+                      <button type="button" class="cw-view-toggle__btn">Milestones</button>
+                      <button type="button" class="cw-view-toggle__btn">Members (12)</button>
+                    </div>
+                    <button type="button" class="cw-dm-primary-btn">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      <span>New task</span>
+                    </button>
+                  </div>
+                </header>
+
+                <div class="cw-board-grid">
+                  <div class="cw-board-col">
+                    <div class="cw-board-col__head">
+                      <span class="cw-board-col__dot" style="background: #64748b"></span>
+                      <span class="cw-board-col__title">To Do</span>
+                      <span class="cw-count-chip">2</span>
+                    </div>
+                    <article class="cw-board-card">
+                      <div class="cw-board-card__top">
+                        <span class="cw-board-card__dept">Operations &amp; Delivery</span>
+                        <span class="cw-due-badge cw-due-badge--warn">High</span>
+                      </div>
+                      <h4 class="cw-board-card__title">Configure geofence radius for Frankfurt entity</h4>
+                      <div class="cw-board-card__foot">
+                        <span class="cw-board-card__hrs">0h / 6h logged</span>
+                        <span class="cw-ac-avatar" style="background: #2563eb; width: 22px; height: 22px; font-size: 9px">ER</span>
+                      </div>
+                    </article>
+                    <article class="cw-board-card">
+                      <div class="cw-board-card__top">
+                        <span class="cw-board-card__dept">Human Resources</span>
+                        <span class="cw-count-chip">Medium</span>
+                      </div>
+                      <h4 class="cw-board-card__title">Update onboarding checklist templates for Q1</h4>
+                      <div class="cw-board-card__foot">
+                        <span class="cw-board-card__hrs">2h / 8h logged</span>
+                        <span class="cw-ac-avatar" style="background: #7c3aed; width: 22px; height: 22px; font-size: 9px">MV</span>
+                      </div>
+                    </article>
+                  </div>
+
+                  <div class="cw-board-col">
+                    <div class="cw-board-col__head">
+                      <span class="cw-board-col__dot" style="background: #2563eb"></span>
+                      <span class="cw-board-col__title">In Progress</span>
+                      <span class="cw-count-chip">2</span>
+                    </div>
+                    <article class="cw-board-card">
+                      <div class="cw-board-card__top">
+                        <span class="cw-board-card__dept">Platform Reliability</span>
+                        <span class="cw-due-badge cw-due-badge--danger">Urgent</span>
+                      </div>
+                      <h4 class="cw-board-card__title">Implement customizable FLIP dashboard grid</h4>
+                      <div class="cw-board-card__foot">
+                        <span class="cw-board-card__hrs">14h / 16h logged</span>
+                        <span class="cw-ac-avatar" style="background: #059669; width: 22px; height: 22px; font-size: 9px">DK</span>
+                      </div>
+                    </article>
+                    <article class="cw-board-card">
+                      <div class="cw-board-card__top">
+                        <span class="cw-board-card__dept">Finance &amp; Legal</span>
+                        <span class="cw-due-badge cw-due-badge--warn">High</span>
+                      </div>
+                      <h4 class="cw-board-card__title">Audit RBAC permission scopes across 4 subsidiaries</h4>
+                      <div class="cw-board-card__foot">
+                        <span class="cw-board-card__hrs">9h / 12h logged</span>
+                        <span class="cw-ac-avatar" style="background: #e11d48; width: 22px; height: 22px; font-size: 9px">CC</span>
+                      </div>
+                    </article>
+                  </div>
+
+                  <div class="cw-board-col">
+                    <div class="cw-board-col__head">
+                      <span class="cw-board-col__dot" style="background: #16a34a"></span>
+                      <span class="cw-board-col__title">Completed</span>
+                      <span class="cw-count-chip">3</span>
+                    </div>
+                    <article class="cw-board-card">
+                      <div class="cw-board-card__top">
+                        <span class="cw-board-card__dept">Platform Reliability</span>
+                        <span class="cw-status-active">Verified</span>
+                      </div>
+                      <h4 class="cw-board-card__title">Ship Today at a Glance live shift timeline bar</h4>
+                      <div class="cw-board-card__foot">
+                        <span class="cw-board-card__hrs">12h / 12h logged</span>
+                        <span class="cw-ac-avatar" style="background: #2563eb; width: 22px; height: 22px; font-size: 9px">AR</span>
+                      </div>
+                    </article>
+                    <article class="cw-board-card">
+                      <div class="cw-board-card__top">
+                        <span class="cw-board-card__dept">Operations &amp; Delivery</span>
+                        <span class="cw-status-active">Verified</span>
+                      </div>
+                      <h4 class="cw-board-card__title">Enforce SHA-256 privacy hashing on agent telemetry</h4>
+                      <div class="cw-board-card__foot">
+                        <span class="cw-board-card__hrs">8h / 8h logged</span>
+                        <span class="cw-ac-avatar" style="background: #059669; width: 22px; height: 22px; font-size: 9px">DK</span>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ========================================================================= -->
+            <!-- VIEW 4: REAL SETTINGS > MONITORING (monitoring.component.html 1:1) -->
+            <!-- ========================================================================= -->
+            @case ('settings') {
+              <div class="cw-mon-page">
+                <header class="cw-dm-header">
+                  <div class="cw-breadcrumb">
+                    <span class="cw-breadcrumb__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4"/>
+                      </svg>
+                    </span>
+                    <span class="cw-breadcrumb__parent">Settings</span>
+                    <span class="cw-breadcrumb__sep">›</span>
+                    <span class="cw-breadcrumb__current">Monitoring</span>
+                  </div>
+
+                  <button type="button" class="cw-dm-primary-btn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/>
+                    </svg>
+                    <span>Save defaults</span>
+                  </button>
+                </header>
+
+                <section class="cw-mon-section">
+                  <div class="cw-mon-section__head">
+                    <div class="cw-dtn-badge">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="cw-mon-section__title">Company default</h3>
+                      <p class="cw-mon-section__sub">These settings apply unless a department, position, or role has its own rule.</p>
+                    </div>
+                  </div>
+
+                  <div class="cw-mon-grid">
+                    <button
+                      type="button"
+                      class="cw-feature-card"
+                      [class.cw-feature-card--active]="monitoringFlags().workLocationVerification"
+                      (click)="toggleMonitoringFlag('workLocationVerification')"
+                    >
+                      <div class="cw-feature-card__icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+                        </svg>
+                      </div>
+                      <div class="cw-feature-card__body">
+                        <strong>Location tracking</strong>
+                        <small>Apply during the allowed attendance or work-time window.</small>
+                      </div>
+                      <span class="cw-switch" [class.cw-switch--on]="monitoringFlags().workLocationVerification">
+                        <span class="cw-switch__thumb"></span>
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="cw-feature-card"
+                      [class.cw-feature-card--active]="monitoringFlags().activityMonitoring"
+                      (click)="toggleMonitoringFlag('activityMonitoring')"
+                    >
+                      <div class="cw-feature-card__icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>
+                        </svg>
+                      </div>
+                      <div class="cw-feature-card__body">
+                        <strong>Keyboard and mouse activity</strong>
+                        <small>Counts activity events; does not capture typed keys.</small>
+                      </div>
+                      <span class="cw-switch" [class.cw-switch--on]="monitoringFlags().activityMonitoring">
+                        <span class="cw-switch__thumb"></span>
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="cw-feature-card"
+                      [class.cw-feature-card--active]="monitoringFlags().applicationTracking"
+                      (click)="toggleMonitoringFlag('applicationTracking')"
+                    >
+                      <div class="cw-feature-card__icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.01M9 8h.01M12 8h.01M2 12h20"/>
+                        </svg>
+                      </div>
+                      <div class="cw-feature-card__body">
+                        <strong>Application usage</strong>
+                        <small>Records application activity using the existing agent contract.</small>
+                      </div>
+                      <span class="cw-switch" [class.cw-switch--on]="monitoringFlags().applicationTracking">
+                        <span class="cw-switch__thumb"></span>
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="cw-feature-card"
+                      [class.cw-feature-card--active]="monitoringFlags().screenshotCapture"
+                      (click)="toggleMonitoringFlag('screenshotCapture')"
+                    >
+                      <div class="cw-feature-card__icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                        </svg>
+                      </div>
+                      <div class="cw-feature-card__body">
+                        <strong>Screenshot capture</strong>
+                        <small>Permits the existing authorized capture flows; it is not random capture.</small>
+                      </div>
+                      <span class="cw-switch" [class.cw-switch--on]="monitoringFlags().screenshotCapture">
+                        <span class="cw-switch__thumb"></span>
+                      </span>
+                    </button>
+                  </div>
+
+                  <div class="cw-threshold-grid">
+                    <div class="cw-threshold-card">
+                      <div>
+                        <strong>Activity check threshold</strong>
+                        <small>Minutes of no keyboard/mouse activity before the activity check.</small>
+                      </div>
+                      <div class="cw-threshold-pill">10 minutes</div>
+                    </div>
+                    <div class="cw-threshold-card">
+                      <div>
+                        <strong>Allowed range</strong>
+                        <small>Maximum distance from verified location permitted for checks.</small>
+                      </div>
+                      <div class="cw-threshold-pill">250 meters</div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            }
+          }
+        </main>
       </div>
     </div>
   </div>

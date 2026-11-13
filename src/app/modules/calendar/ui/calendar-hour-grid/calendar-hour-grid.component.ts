@@ -71,7 +71,6 @@ interface DayColumnViewModel {
   readonly date: string;
   readonly isToday: boolean;
   /** Day and short month, e.g. '26 Oct'; today shows its day number in a circle instead. */
-  readonly dayLabel: string;
   readonly weekdayLabel: string; // e.g. "SUN"
   readonly dayNumber: number; // 1-31
   readonly allDayEvents: readonly CalendarEventResponse[];
@@ -118,6 +117,10 @@ interface DragSelection {
     '.planner-leave { background: color-mix(in srgb, var(--color-cat-violet) 22%, transparent); color: var(--color-cat-violet); border-left: 3px solid var(--color-cat-violet); }',
     '.planner-leave--pending { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-cat-violet) 10%, transparent) 0 6px, transparent 6px 12px);'
       + ' border: 1px dashed var(--color-cat-violet); border-left-width: 3px; color: var(--color-cat-violet); }',
+    // Next to the Planner's Task list the layout sets these, so the grid joins the list: no left border or corners (the list's
+    // border is the divider). Component CSS so it wins over the Tailwind border/rounded utilities.
+    '.planner-frame { border-left-width: var(--planner-edge-border, 1px); border-top-left-radius: var(--planner-edge-radius, 0.5rem);'
+      + ' border-bottom-left-radius: var(--planner-edge-radius, 0.5rem); }',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -283,7 +286,6 @@ export class CalendarHourGridComponent {
         isToday,
         weekdayLabel: local.toLocaleDateString('en-US', { weekday: 'short' }),
         dayNumber: d,
-        dayLabel: `${d} ${local.toLocaleDateString('en-US', { month: 'short' })}`,
         allDayEvents: dayEvents.filter((e) => e.isAllDay),
         positioned: laidOut.flatMap((p) => p.item.kind === 'event'
           ? [{ event: p.item.event, top: p.top, height: p.height, left: p.left, width: p.width,

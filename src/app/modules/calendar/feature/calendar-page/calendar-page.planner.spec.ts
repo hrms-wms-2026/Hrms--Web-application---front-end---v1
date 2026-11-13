@@ -20,7 +20,7 @@ import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
 import { MyTeamCapabilitiesStore } from '../../../dashboard/state/my-team-capabilities.store';
-import { CalendarPageComponent } from './calendar-page.component';
+import { CalendarPageComponent, weekMonthLabel } from './calendar-page.component';
 
 /** Planner = Calendar (2026-10-27 design): the calendar page with the planner layer on and off. */
 
@@ -61,6 +61,7 @@ describe('CalendarPageComponent planner layer', () => {
   const events = signal<readonly CalendarEventResponse[]>([]);
   let blocksFor: (date: string) => PlannerRangeBlockView[] = () => [];
   let rangeZone = 'UTC';
+  let rangeReads = 0;
   const projectError = signal<string | null>(null);
   const projects = { loadProject: vi.fn(async () => undefined), loadMyMilestones: vi.fn(async () => undefined), projectError };
 
@@ -75,6 +76,7 @@ describe('CalendarPageComponent planner layer', () => {
   }
 
   function answerRange(req: TestRequest): void {
+    rangeReads++;
     const days: PlannerRangeDay[] = datesBetween(req.request.params.get('from')!, req.request.params.get('to')!).map((date) => {
       const window = { ...weekday, isWorkingDay: !isWeekend(date), workingMinutes: isWeekend(date) ? 0 : 420 };
       const blocks = blocksFor(date);
@@ -217,8 +219,14 @@ describe('CalendarPageComponent planner layer', () => {
     fixture.componentInstance.jumpTo('2026-11-12');
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.viewLabel()).toBe('Week of 2026-11-09');
+    expect(fixture.componentInstance.viewLabel()).toBe('November 2026');
     expect(q('planner-period-picker')).toBeNull();
+  });
+
+  it('the week label names its month, both months when it crosses one, and both years across New Year', () => {
+    expect(weekMonthLabel('2026-11-09')).toBe('November 2026');
+    expect(weekMonthLabel('2026-11-30')).toBe('Nov – Dec 2026');
+    expect(weekMonthLabel('2026-12-28')).toBe('Dec 2026 – Jan 2027');
   });
 
   it('New event is a single primary button with a plus, and no menu', async () => {
@@ -418,6 +426,22 @@ describe('CalendarPageComponent planner layer', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it('an open popover does not reload the planner when the planner answers', async () => {
+      // The Work item tab depends on the planner's editable days; reloading on that kept the planner calling the API
+      // until the rate limit stopped it.
+      setup();
+      await settle();
+      const before = rangeReads;
+
+      fixture.componentInstance.onSlotRange({ date: editableDate(), startMinutes: 600, endMinutes: 660 });
+      fixture.detectChanges();
+      await settle();
+      await settle();
+
+      expect(fixture.componentInstance.createSlot()).not.toBeNull();
+      expect(rangeReads).toBe(before);
     });
 
     it('drag range fills start and end', async () => {

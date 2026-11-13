@@ -54,6 +54,7 @@ import { ChecklistTaskDetailDialogComponent } from '../../ui/checklist-task-deta
 import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { AttachmentPill } from '../../../work/ui/task-attachment-list/task-attachment-list.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 const TASK_PLACEHOLDERS: readonly string[] = [
   'Collect signed contract',
@@ -118,6 +119,7 @@ export interface ChecklistTaskFormValue {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChecklistBuilderComponent {
+  readonly limits = TEXT_LIMITS;
   readonly taskCategoryOptions: readonly SelectOption[] = [
     { value: '', label: 'No category' },
     { value: 'asset_return', label: 'Asset Return' },

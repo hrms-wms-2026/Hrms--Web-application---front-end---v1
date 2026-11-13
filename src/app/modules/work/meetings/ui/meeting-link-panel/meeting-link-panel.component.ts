@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { MeetingApiService } from '../../data-access/meeting-api.service';
@@ -26,47 +27,92 @@ const PROVIDERS: Record<MeetingPlatform, string> = { microsoft_teams: 'Teams', z
 @Component({
   selector: 'app-meeting-link-panel',
   standalone: true,
+  imports: [NgTemplateOutlet],
   template: `
-    @if (joinUrl(); as url) {
-      <a data-testid="meeting-link-join" [href]="url" target="_blank" rel="noopener"
-        class="inline-flex rounded-md bg-[var(--color-accent)] px-3 py-1 text-sm text-[var(--color-accent-contrast)]">Join</a>
-    }
-    @if (isOrganizer()) {
-      <div class="mt-2 flex flex-col gap-2 text-sm" data-testid="meeting-link-organizer">
-        @if (link(); as l) {
-          <p class="text-xs text-[var(--color-text-secondary)]">{{ providerName(l.provider) }} · {{ statusLabel(l.status) }}</p>
-          @if (l.status === 'unresolved') {
-            <p class="text-xs">Delete it in Teams/Zoom, then confirm</p>
-            <button type="button" data-testid="meeting-link-cleanup" class="self-start rounded-md border px-3 py-1 text-xs" [disabled]="busy()"
-              (click)="confirmCleanup()">I deleted it</button>
+    <ng-template #teamsIcon>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="18.5" cy="7" r="2.5" fill="#7B83EB" /><path d="M15.5 10.5h6a1 1 0 0 1 1 1v4a3.5 3.5 0 0 1-7 0v-5Z" fill="#7B83EB" /><rect x="1.5" y="6" width="13" height="13" rx="2.5" fill="#5059C9" /><path d="M5 9.5h6M8 9.5v6.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" /></svg>
+    </ng-template>
+    <ng-template #zoomIcon>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#2D8CFF" /><path d="M6.5 9.5h6.5a1.5 1.5 0 0 1 1.5 1.5v4H8a1.5 1.5 0 0 1-1.5-1.5v-4Zm8.5 2 3-2v5.5l-3-2" fill="#fff" /></svg>
+    </ng-template>
+
+    <div class="flex flex-col gap-3 text-sm">
+      <!-- The link once it is there: it stays in the card, before and after the meeting -->
+      @if (joinUrl(); as url) {
+        <div data-testid="meeting-link-box" class="flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] p-3">
+          <div class="flex min-w-0 items-center gap-2">
+            @switch (providerOf(url)) {
+              @case ('zoom') { <ng-container *ngTemplateOutlet="zoomIcon" /> }
+              @case ('microsoft_teams') { <ng-container *ngTemplateOutlet="teamsIcon" /> }
+              @default {
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></svg>
+              }
+            }
+            <a data-testid="meeting-link-url" [href]="url" target="_blank" rel="noopener" [title]="url"
+              class="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-accent)] hover:underline">{{ url }}</a>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <a data-testid="meeting-link-join" [href]="url" target="_blank" rel="noopener"
+              class="inline-flex items-center gap-2 rounded-xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-[var(--color-text-on-solid)] shadow-2xs transition-colors hover:bg-[var(--color-accent-hover)]">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2" /><path d="m15.5 10.5 6-3.5v10l-6-3.5" /></svg>
+              Join
+            </a>
+            <button type="button" data-testid="meeting-link-copy" [class]="button" (click)="copy(url)">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="2" /><path d="M15.5 8.5V5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" /></svg>
+              {{ copied() ? 'Copied' : 'Copy link' }}
+            </button>
+          </div>
+        </div>
+      }
+      @if (isOrganizer()) {
+        <div class="flex flex-col gap-3" data-testid="meeting-link-organizer">
+          @if (link(); as l) {
+            <p class="inline-flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+              <ng-container *ngTemplateOutlet="l.provider === 'zoom' ? zoomIcon : teamsIcon" />
+              {{ providerName(l.provider) }} · {{ statusLabel(l.status) }}
+            </p>
+            @if (l.status === 'unresolved') {
+              <p class="text-xs">Delete it in Teams/Zoom, then confirm</p>
+              <button type="button" data-testid="meeting-link-cleanup" [class]="button + ' self-start'" [disabled]="busy()"
+                (click)="confirmCleanup()">I deleted it</button>
+            }
+            @if (!ended() && (l.status === 'provisioning_unknown' || l.status === 'failed')) {
+              <button type="button" data-testid="meeting-link-retry" [class]="button + ' self-start'" [disabled]="busy()"
+                (click)="retry()">Retry</button>
+            }
+            @if (!ended() && (l.status === 'active' || l.status === 'failed')) {
+              <div class="flex flex-wrap gap-2">
+                <button type="button" data-testid="meeting-link-regenerate" [class]="button" [disabled]="busy()"
+                  (click)="create(l.provider, true)">Regenerate</button>
+                <button type="button" data-testid="meeting-link-remove" [class]="button" [disabled]="busy()"
+                  (click)="remove()">Remove</button>
+              </div>
+            }
+            @if (l.releasePending) {
+              <p class="text-xs text-[var(--color-text-secondary)]">Kept for other meetings in this series</p>
+            }
           }
-          @if (l.status === 'provisioning_unknown' || l.status === 'failed') {
-            <button type="button" data-testid="meeting-link-retry" class="self-start rounded-md border px-3 py-1 text-xs" [disabled]="busy()"
-              (click)="retry()">Retry</button>
-          }
-          @if (l.status === 'active' || l.status === 'failed') {
-            <div class="flex gap-2">
-              <button type="button" data-testid="meeting-link-regenerate" class="rounded-md border px-3 py-1 text-xs" [disabled]="busy()"
-                (click)="create(l.provider, true)">Regenerate</button>
-              <button type="button" data-testid="meeting-link-remove" class="rounded-md border px-3 py-1 text-xs" [disabled]="busy()"
-                (click)="remove()">Remove</button>
+          @if (canAdd() && !ended()) {
+            <div data-testid="meeting-link-add" class="flex flex-wrap gap-3">
+              <button type="button" [class]="button" [disabled]="busy()" (click)="create('microsoft_teams', false)">
+                <ng-container *ngTemplateOutlet="teamsIcon" />
+                Add Teams link
+              </button>
+              <button type="button" [class]="button" [disabled]="busy()" (click)="create('zoom', false)">
+                <ng-container *ngTemplateOutlet="zoomIcon" />
+                Add Zoom link
+              </button>
             </div>
           }
-          @if (l.releasePending) {
-            <p class="text-xs text-[var(--color-text-secondary)]">Kept for other meetings in this series</p>
+          @if (ended() && !joinUrl()) {
+            <p data-testid="meeting-link-none" class="text-xs text-[var(--color-text-secondary)]">No online meeting link was added.</p>
           }
-        }
-        @if (canAdd()) {
-          <div data-testid="meeting-link-add" class="flex gap-2">
-            <button type="button" class="rounded-md border px-3 py-1 text-xs" [disabled]="busy()" (click)="create('microsoft_teams', false)">Add Teams link</button>
-            <button type="button" class="rounded-md border px-3 py-1 text-xs" [disabled]="busy()" (click)="create('zoom', false)">Add Zoom link</button>
-          </div>
-        }
-        @if (error()) {
-          <p class="text-xs text-[var(--color-danger)]">{{ error() }}</p>
-        }
-      </div>
-    }
+          @if (error()) {
+            <p class="text-xs text-[var(--color-danger)]">{{ error() }}</p>
+          }
+        </div>
+      }
+    </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -75,6 +121,13 @@ export class MeetingLinkPanelComponent implements OnInit {
 
   readonly seriesId = input.required<string>();
   readonly isOrganizer = input(false);
+  /** After the meeting the link stays on show, but no new link is added or changed. */
+  readonly ended = input(false);
+  readonly copied = signal(false);
+  private copiedTimer: ReturnType<typeof setTimeout> | null = null;
+
+  protected readonly button =
+    'inline-flex items-center gap-2 rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] shadow-2xs transition-colors hover:bg-[var(--color-surface-secondary)] disabled:opacity-60';
 
   readonly joinUrl = signal<string | null>(null);
   readonly link = signal<MeetingLinkResponse | null>(null);
@@ -89,11 +142,34 @@ export class MeetingLinkPanelComponent implements OnInit {
   private pollStartedAt: number | null = null;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.stopPolling());
+    inject(DestroyRef).onDestroy(() => {
+      this.stopPolling();
+      if (this.copiedTimer) clearTimeout(this.copiedTimer);
+    });
   }
 
   ngOnInit(): void {
     void this.refresh();
+  }
+
+  /** Teams or Zoom from the link's own state, else from its address; null for any other link. */
+  protected providerOf(url: string): MeetingPlatform | null {
+    const provider = this.link()?.provider;
+    if (provider) return provider;
+    if (/teams\.(microsoft|live)\.com/i.test(url)) return 'microsoft_teams';
+    if (/zoom\.us/i.test(url)) return 'zoom';
+    return null;
+  }
+
+  async copy(url: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      return;
+    }
+    this.copied.set(true);
+    if (this.copiedTimer) clearTimeout(this.copiedTimer);
+    this.copiedTimer = setTimeout(() => this.copied.set(false), 2000);
   }
 
   protected statusLabel(status: MeetingLinkStatus): string {

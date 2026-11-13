@@ -32,6 +32,9 @@ function duration(minutes: number): string {
   standalone: true,
   imports: [KeyboardClickDirective, CommonModule],
   templateUrl: './calendar-month-grid.component.html',
+  // Next to the Planner's Task list the layout sets these, so the grid joins the list like the hour grid does.
+  styles: ['.planner-frame { border-left-width: var(--planner-edge-border, 1px); border-top-left-radius: var(--planner-edge-radius, 0.5rem);'
+    + ' border-bottom-left-radius: var(--planner-edge-radius, 0.5rem); }'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalendarMonthGridComponent {

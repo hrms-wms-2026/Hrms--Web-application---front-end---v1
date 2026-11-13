@@ -1,9 +1,10 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, of } from 'rxjs';
 import { dateOnlyInTimezone, localPartsToUtcIso } from '../../../../shared/utils/timezone.util';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
@@ -11,8 +12,13 @@ import { CalendarEventResponse } from '../../../calendar/models/calendar-event.m
 import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
 import { MeetingOccurrenceDrawerComponent } from '../../../work/meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
 import { MeetingListItem } from '../../../work/meetings/models/meeting.models';
+import { MeetingJoinLink, joinLinkOf } from '../../../work/meetings/utils/meeting-join-link';
+
+export { joinLinkOf };
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 import { PlannerRangeBlockView } from '../../../work/planner/models/planner.models';
+import { ProjectDetailStore } from '../../../work/state/project-detail.store';
+import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
 
 const MAX_AGENDA_ITEMS = 5;
 
@@ -60,10 +66,14 @@ type TimelineRow = TimelineRowBase & (
 @Component({
   selector: 'app-todays-schedule-card',
   standalone: true,
-  imports: [NgTemplateOutlet, RouterLink, KeyboardClickDirective, MeetingOccurrenceDrawerComponent, PopoutHeaderActionsComponent],
+  imports: [NgTemplateOutlet, RouterLink, KeyboardClickDirective, StopClickPropagationDirective,MeetingOccurrenceDrawerComponent, PopoutHeaderActionsComponent, TaskFormModalComponent],
   // A size container: the row layout follows the card's own width (Small / Large on the grid).
   host: { class: '@container block' },
   templateUrl: './todays-schedule-card.component.html',
+  /* Same scrollbar as the Inbox list: "auto" turns off the standard thin scrollbar (in Chrome it draws arrow buttons), so the
+     global slim, rounded ::-webkit-scrollbar applies. Component CSS, not a Tailwind class: utilities sit in a cascade layer,
+     and the unlayered global "* { scrollbar-width: thin }" would beat them. */
+  styles: [`.tsc-scroll { scrollbar-width: auto; scrollbar-color: auto; }`],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TodaysScheduleCardComponent implements OnInit {
@@ -72,6 +82,8 @@ export class TodaysScheduleCardComponent implements OnInit {
 
   private readonly meetings = inject(MeetingApiService);
   private readonly planner = inject(PlannerApiService);
+  private readonly projects = inject(ProjectDetailStore);
+  private readonly router = inject(Router);
 
   private readonly rawEvents = signal<readonly CalendarEventResponse[]>([]);
   private readonly rawMeetings = signal<readonly MeetingListItem[]>([]);
@@ -81,6 +93,10 @@ export class TodaysScheduleCardComponent implements OnInit {
   /** A refresh from the header button: the list stays on screen while it reloads. */
   protected readonly refreshing = signal(false);
   protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
+  /** The planned task shown in the task popup, right here on the dashboard. */
+  protected readonly openedTask = signal<{ projectId: string; taskId: string } | null>(null);
+  /** Teams/Zoom join links of today's meetings, by series. */
+  private readonly joinLinks = signal<Record<string, MeetingJoinLink | undefined>>({});
 
   /** Today's meetings-as-tasks occurrences, in chronological start and end order; a cancelled one is left out. */
   protected readonly todaysMeetings = computed(() => {
@@ -189,6 +205,42 @@ export class TodaysScheduleCardComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+  }
+
+  /** The meeting's Teams/Zoom link, shown as Join while hovering the row; null when it has none or it has ended. */
+  protected meetingJoin(meeting: MeetingListItem): MeetingJoinLink | null {
+    if (meeting.status === 'cancelled' || this.meetingStatus(meeting) === 'completed') return null;
+    return this.joinLinks()[meeting.seriesId] ?? null;
+  }
+
+  /** Each of today's series' links, fetched up front so Join is a plain link the browser opens in the meeting app. */
+  private loadJoinLinks(items: readonly MeetingListItem[]): void {
+    const seriesIds = [...new Set(items.filter((m) => m.status !== 'cancelled' && (!m.isPrivate || m.myRole)).map((m) => m.seriesId))];
+    if (!seriesIds.length) {
+      this.joinLinks.set({});
+      return;
+    }
+    forkJoin(seriesIds.map((seriesId) => this.meetings.getLink(seriesId).pipe(
+      map((response): [string, MeetingJoinLink | null] => [seriesId, joinLinkOf(response)]),
+      catchError(() => of<[string, MeetingJoinLink | null]>([seriesId, null]))
+    ))).subscribe((pairs) => {
+      const links: Record<string, MeetingJoinLink | undefined> = {};
+      for (const [seriesId, link] of pairs) if (link) links[seriesId] = link;
+      this.joinLinks.set(links);
+    });
+  }
+
+  /** Opens a planned task in the task popup over the dashboard. The popup reads its project from
+   * ProjectDetailStore (as the calendar's does); if that project can't load, the board opens instead. */
+  protected async openTask(block: PlannerRangeBlockView): Promise<void> {
+    const { projectId, taskId } = block;
+    await this.projects.loadProject(projectId);
+    if (this.projects.projectError()) {
+      void this.router.navigate(['/work', projectId, 'board'], { queryParams: { taskId } });
+      return;
+    }
+    await this.projects.loadMyMilestones(projectId);
+    this.openedTask.set({ projectId, taskId });
   }
 
   protected refresh(): void {
@@ -303,7 +355,10 @@ export class TodaysScheduleCardComponent implements OnInit {
     const to = localPartsToUtcIso(today, '23:59', timezone);
     this.todayWindow.set({ from, to });
     this.meetings.list(from, to).subscribe({
-      next: (items) => this.rawMeetings.set(items),
+      next: (items) => {
+        this.rawMeetings.set(items);
+        this.loadJoinLinks(items);
+      },
       error: () => this.rawMeetings.set([])
     });
 

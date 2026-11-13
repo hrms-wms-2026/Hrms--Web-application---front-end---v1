@@ -1,4 +1,4 @@
-<div class="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-border)]">
+<div class="planner-frame grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-border)]">
   @for (cell of cells(); track cell.day.date) {
     <div role="button" tabindex="0" appKeyboardClick
       data-testid="calendar-day-cell"

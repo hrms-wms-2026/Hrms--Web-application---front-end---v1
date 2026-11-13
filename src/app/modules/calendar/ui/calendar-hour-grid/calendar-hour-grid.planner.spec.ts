@@ -324,7 +324,7 @@ describe('CalendarHourGridComponent planner layer', () => {
 
       const past = qa('[data-testid="calendar-hour-header-cell"]')[0];
       expect(past.querySelector('[data-testid="calendar-hour-weekday"]')!.textContent!.trim()).toBe('Sun');
-      expect(past.querySelector('[data-testid="calendar-hour-daylabel"]')!.textContent!.trim()).toBe('1 Nov');
+      expect(past.querySelector('[data-testid="calendar-hour-daylabel"]')!.textContent!.trim()).toBe('1');
     });
 
     it("today's column and header are tinted, and its date sits in an accent circle", () => {

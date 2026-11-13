@@ -9,6 +9,7 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { ProjectFormFields, validateProjectForm } from '../../utils/project-form.validator';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 export interface ProjectGeneralSettingsSave {
   fields: EditProjectPayload;
@@ -52,7 +53,7 @@ export interface ProjectGeneralSettingsSave {
         </span>
 
         <span class="project-general-settings__wide" data-testid="description-field">
-          <app-input label="Description" [value]="description()" [disabled]="!canEdit() || submitting()" [multiline]="true" [rows]="3" (valueChange)="description.set($event)" />
+          <app-input label="Description" [maxlength]="limits.projectDescription" [value]="description()" [disabled]="!canEdit() || submitting()" [multiline]="true" [rows]="3" (valueChange)="description.set($event)" />
         </span>
 
         <span data-testid="start-date-field">
@@ -146,6 +147,7 @@ export interface ProjectGeneralSettingsSave {
   `]
 })
 export class ProjectGeneralSettingsComponent implements OnInit {
+  readonly limits = TEXT_LIMITS;
   private readonly categoryStore = inject(ProjectCategoryStore);
   private readonly projectApi = inject(ProjectApiService);
 

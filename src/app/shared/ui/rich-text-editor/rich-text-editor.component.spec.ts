@@ -37,6 +37,58 @@ describe('RichTextEditorComponent', () => {
     expect(emitted.at(-1)).toContain('Hello');
   });
 
+  describe('maxLength', () => {
+    function typeText(text: string): HTMLDivElement {
+      const el = comp.contentEditor()!.nativeElement;
+      el.textContent = text;
+      el.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      return el;
+    }
+    function beforeInput(el: HTMLElement, init: InputEventInit): InputEvent {
+      const event = new InputEvent('beforeinput', { cancelable: true, bubbles: true, ...init });
+      el.dispatchEvent(event);
+      return event;
+    }
+
+    beforeEach(() => {
+      fixture.componentRef.setInput('activateOnClick', false);
+      fixture.componentRef.setInput('maxLength', 10);
+      fixture.detectChanges();
+    });
+
+    it('counts visible text, not markup, and shows the counter from 80%', () => {
+      const el = comp.contentEditor()!.nativeElement;
+      el.innerHTML = '<div><b>1234567</b></div>';
+      el.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(comp.textLength()).toBe(7);
+      expect(fixture.nativeElement.querySelector('[data-testid="char-counter"]')).toBeNull();
+
+      typeText('12345678');
+      expect(fixture.nativeElement.querySelector('[data-testid="char-counter"]')?.textContent?.trim()).toBe('8 / 10');
+    });
+
+    it('blocks typing that would go past the limit but allows what fits', () => {
+      const el = typeText('123456789');
+      expect(beforeInput(el, { inputType: 'insertText', data: 'ab' }).defaultPrevented).toBe(true);
+      expect(beforeInput(el, { inputType: 'insertText', data: 'a' }).defaultPrevented).toBe(false);
+    });
+
+    it('still allows new lines and deleting at the limit', () => {
+      const el = typeText('1234567890');
+      expect(beforeInput(el, { inputType: 'insertParagraph' }).defaultPrevented).toBe(false);
+      expect(beforeInput(el, { inputType: 'deleteContentBackward' }).defaultPrevented).toBe(false);
+    });
+
+    it('flags text loaded over the limit', () => {
+      comp.setHtml('<div>12345678901</div>');
+      fixture.detectChanges();
+      expect(comp.overLimit()).toBe(true);
+      expect(fixture.nativeElement.querySelector('[data-testid="char-counter"]')?.textContent).toContain('1 character over the limit');
+    });
+  });
+
   it('hides the attach command when allowAttachments is false', () => {
     fixture.componentRef.setInput('allowAttachments', false);
     expect(comp.allSlashCommands().some((c) => c.id === 'attach')).toBe(false);

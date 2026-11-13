@@ -5,6 +5,7 @@ import { EmojiPickerComponent } from '../../../modules/work/ui/emoji-picker/emoj
 import { TaskAttachmentListComponent, AttachmentPill } from '../../../modules/work/ui/task-attachment-list/task-attachment-list.component';
 import { HostSlashCommand, MentionCandidate, RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { TEXT_LIMITS } from '../../constants/text-limits';
 
 /** A host's own upload for composer attachments (e.g. chat files), with optional count and size limits. */
 export interface ComposerUploader {
@@ -33,6 +34,7 @@ export interface ComposerUploader {
           #editor
           [compact]="true"
           [cssStyles]="false"
+          [maxLength]="maxLength()"
           [initialHtml]="initialContent()"
           [placeholder]="placeholder() + ' Press / for commands'"
           ariaLabel="Comment"
@@ -168,6 +170,8 @@ export interface ComposerUploader {
   `]
 })
 export class CommentComposerComponent {
+  /** Limit on the visible text; a counter appears near it. null turns it off. */
+  maxLength = input<number | null>(TEXT_LIMITS.comment);
   private readonly taskApi = inject(TaskApiService);
   private readonly editor = viewChild<RichTextEditorComponent>('editor');
 

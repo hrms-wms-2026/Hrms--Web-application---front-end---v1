@@ -1,3 +1,4 @@
+import { CSRF_ERROR_TYPE } from '../auth/auth-cookie-names';
 import { HttpContextToken, HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
@@ -12,7 +13,6 @@ const RETRY_DELAYS_MS = [250, 500, 1000];
  *  handling (401, CSRF) still applies. */
 export const SILENT_HTTP_ERRORS = new HttpContextToken<boolean>(() => false);
 const SESSION_EXEMPT_PATH_FRAGMENTS = ['/auth/login', '/auth/me'];
-const CSRF_ERROR_TYPE = 'https://onevo.com/errors/csrf';
 
 function isSessionExempt(url: string): boolean {
   return SESSION_EXEMPT_PATH_FRAGMENTS.some((fragment) => url.includes(fragment));

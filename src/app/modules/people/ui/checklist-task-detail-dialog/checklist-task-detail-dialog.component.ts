@@ -30,6 +30,8 @@ import { ChecklistApiService } from '../../data-access/checklist-api.service';
 import { ChecklistTaskPriority } from '../../models/checklist-template.model';
 import { ChecklistTaskCategory } from '../../models/offboarding.model';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
+import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
 
 type DetailPopover = 'priority' | 'category' | null;
 
@@ -54,12 +56,13 @@ const PRIORITY_OPTIONS: readonly PriorityOption[] = [
 @Component({
   selector: 'app-checklist-task-detail-dialog',
   standalone: true,
-  imports: [StopClickPropagationDirective, CdkTrapFocus, ButtonComponent, RichTextEditorComponent, TaskAttachmentListComponent],
+  imports: [CharCounterComponent, StopClickPropagationDirective, CdkTrapFocus, ButtonComponent, RichTextEditorComponent, TaskAttachmentListComponent],
   templateUrl: './checklist-task-detail-dialog.component.html',
   styleUrl: './checklist-task-detail-dialog.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChecklistTaskDetailDialogComponent implements AfterViewInit, OnDestroy {
+  readonly limits = TEXT_LIMITS;
   private readonly overlay = inject(Overlay);
   private readonly vcr = inject(ViewContainerRef);
   private readonly taskApi = inject(TaskApiService);
