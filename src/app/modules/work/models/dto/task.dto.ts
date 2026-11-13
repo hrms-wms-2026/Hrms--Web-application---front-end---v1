@@ -129,10 +129,6 @@ export interface PushTaskRequestDto {
   reason?: string;
 }
 
-export interface AddReasonRequestDto {
-  reason: string;
-}
-
 /** Shape of a 409 INSUFFICIENT_OBJECTIVE_ALLOCATION error body (backend spec §3.2). */
 export interface InsufficientAllocationErrorDto {
   availableSlackHours: number;

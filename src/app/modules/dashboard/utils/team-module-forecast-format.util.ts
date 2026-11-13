@@ -1,6 +1,5 @@
 import {
   ModuleForecastItem,
-  ModuleForecastProject,
   ModuleForecastTotals,
 } from '../models/team-module-forecast.model';
 import {
@@ -77,21 +76,6 @@ export function moduleRowRateText(
   return short
     ? rateVsRequiredShort(m.conversionRate, m.requiredRate)
     : rateVsRequiredText(m.conversionRate, m.requiredRate);
-}
-
-/** Modules in overload per project: the response's own count when it has one, else counted from `items`. */
-export function projectOverloadCounts(
-  projects: readonly ModuleForecastProject[],
-  items: readonly ModuleForecastItem[],
-): Record<string, number | undefined> {
-  const counts: Record<string, number | undefined> = {};
-  for (const m of items) {
-    if (m.status === 'overload') counts[m.projectId] = (counts[m.projectId] ?? 0) + 1;
-  }
-  for (const p of projects) {
-    if (p.modulesOverload !== undefined) counts[p.projectId] = p.modulesOverload;
-  }
-  return counts;
 }
 
 /** Plain words under the popup's pie. */
