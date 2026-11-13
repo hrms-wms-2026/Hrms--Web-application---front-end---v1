@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-action-bar/bulk-action-bar.component';
@@ -25,7 +24,6 @@ import { EmployeeDirectoryTableComponent } from '../../ui/employee-directory-tab
 import { EmployeeFilterPopoverComponent } from '../../ui/employee-filter-popover/employee-filter-popover.component';
 import { downloadCsv, toEmployeeCsv } from '../../utils/employee-csv';
 import {
-  EMPLOYEE_PAGE_SIZES,
   EmployeeListFilters,
   EmployeeListUrlState,
   filtersToQueryParams,
@@ -67,7 +65,6 @@ export class EmployeeListComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly permissionService = inject(PermissionService);
-  private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly authStore = inject(AuthStore);
@@ -82,7 +79,6 @@ export class EmployeeListComponent {
   readonly searchExpanded = signal(false);
 
   readonly listState = signal<EmployeeListUrlState>(parseEmployeeListState(this.route.snapshot.queryParamMap));
-  readonly pageSizes = EMPLOYEE_PAGE_SIZES;
   readonly visibleColumnKeys = signal<EmployeeColumnKey[]>(loadEmployeeColumns());
   readonly visibleColumns = computed(() => EMPLOYEE_COLUMNS.filter((c) => this.visibleColumnKeys().includes(c.key)));
 
@@ -157,7 +153,6 @@ export class EmployeeListComponent {
       this.onSearchInput('');
     }
   }
-  readonly activeTab = signal<'employees' | 'drafts'>('employees');
 
   private searchDebounceHandle: ReturnType<typeof setTimeout> | null = null;
 
@@ -269,10 +264,6 @@ export class EmployeeListComponent {
   onColumnsApplied(keys: EmployeeColumnKey[]): void {
     this.visibleColumnKeys.set(keys);
     saveEmployeeColumns(keys);
-  }
-
-  onPageSizeChange(value: string): void {
-    this.navigate({ pageSize: Number(value), page: 1 });
   }
 
   onBulkAction(actionId: string): void {

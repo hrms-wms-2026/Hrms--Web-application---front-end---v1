@@ -387,10 +387,6 @@ export class ChecklistBuilderComponent {
     return TASK_PLACEHOLDERS[index % TASK_PLACEHOLDERS.length];
   }
 
-  isCompanyPositionAssignment(taskGroup: FormGroup): boolean {
-    return taskGroup.get('assignmentType')?.value === 'company_position';
-  }
-
   isUnassigned(taskGroup: FormGroup): boolean {
     return taskGroup.get('assignmentType')?.value === 'unassigned';
   }

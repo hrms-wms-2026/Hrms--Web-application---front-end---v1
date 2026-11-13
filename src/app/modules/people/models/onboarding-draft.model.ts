@@ -106,16 +106,6 @@ export type WizardStep =
   | 'checklist_review'
   | 'review_and_submit';
 
-/** Maps backend draft_reason codes to the safe display copy - never render the raw code. */
-export const DRAFT_REASON_LABELS: Record<DraftReason, string> = {
-  saved_manually: 'Saved manually',
-  waiting_for_seat: 'Waiting for seat',
-  waiting_for_position_approval: 'Waiting for position approval',
-  position_approval_rejected: 'Position approval rejected',
-  seat_configuration_required: 'Seat configuration required',
-  invitation_sent: 'Invitation sent'
-};
-
 export const DRAFT_STATUS_LABELS: Record<DraftStatus, string> = {
   draft: 'Draft',
   waiting_for_seat: 'Draft',

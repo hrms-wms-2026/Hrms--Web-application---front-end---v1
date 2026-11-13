@@ -16,7 +16,7 @@ import { LegalEntityStore } from '../../../organization/state/legal-entity.store
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { EMPLOYMENT_TYPE_OPTIONS as ALL_EMPLOYMENT_TYPE_OPTIONS, SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
-import { DRAFT_REASON_LABELS, ReportingChainNode, WizardStep, WorkModeOption } from '../../models/onboarding-draft.model';
+import { WizardStep, WorkModeOption } from '../../models/onboarding-draft.model';
 import { OnboardingApprovalPreview } from '../../models/access-grant-request.model';
 import { ChecklistTemplateMatchLevel, ChecklistTemplateType, DraftChecklistTask } from '../../models/checklist-template.model';
 import { UnsavedChangesService, DirtyFormHandle } from '../../../../shared/services/unsaved-changes.service';
@@ -303,20 +303,6 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       }
     }
     return this.employeeNumberGenerateError() ?? '';
-  });
-
-  readonly employeeNumberFieldHint = computed(() => {
-    if (this.employeeNumberFieldError()) {
-      return '';
-    }
-    const availability = this.employeeNumberAvailability();
-    if (availability === 'checking') {
-      return 'Checking…';
-    }
-    if (availability === 'available') {
-      return 'Available';
-    }
-    return '';
   });
 
   /** In-field availability marker for the employee number (replaces the old "Available" text). */
@@ -866,10 +852,6 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     this.managerSearchTimer = setTimeout(() => void this.store.searchManagers(term), 250);
   }
 
-  chainNodeMeta(node: ReportingChainNode): string {
-    return [node.positionName || 'No position', node.departmentName].filter(Boolean).join(' · ');
-  }
-
   retryLoadWorkModes(): void {
     const companyId = this.store.companyId();
     if (companyId) {
@@ -933,10 +915,6 @@ export class AddEmployeeWizardComponent implements OnDestroy {
 
   onTaskTitleChange(clientId: string, value: string): void {
     this.store.updateDraftTask(clientId, { title: value });
-  }
-
-  onTaskRequiredChange(clientId: string, checked: boolean): void {
-    this.store.updateDraftTask(clientId, { isRequired: checked });
   }
 
   /** Switch a task between the new hire and another person. */
@@ -1326,16 +1304,6 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     if ((event.target as HTMLElement)?.classList.contains('add-emp-modal-backdrop')) {
       this.onCancel();
     }
-  }
-
-  draftReasonLabel(reason: string): string {
-    return DRAFT_REASON_LABELS[reason as keyof typeof DRAFT_REASON_LABELS] ?? reason;
-  }
-
-  stepChipClass(index: number): string {
-    return index === this.stepIndex()
-      ? 'bg-[var(--color-accent)] text-[var(--color-accent-contrast)]'
-      : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
   }
 }
 
