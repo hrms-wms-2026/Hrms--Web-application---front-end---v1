@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked } from '@angular/core';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { breakpointForWidth, injectBreakpoint } from '../../grid/breakpoint';
@@ -29,8 +30,8 @@ function clearLegacyDashboardStorage(): void {
 
 /**
  * Hosts one customizable dashboard: loads it (at the container's real breakpoint), renders the grid and,
- * in edit mode, the toolbar (Add widget / Reset / Cancel / Save) and the widget store drawer. Registers the
- * navbar "Customize" button. Provides its own DashboardStore.
+ * in edit mode, the widget store drawer. Registers the navbar "Customize" circle, which
+ * opens into the Add / Reset / Save capsule while editing (its X cancels). Provides its own DashboardStore.
  *
  * Content slots for the host page:
  *  - [emptyState]: shown below the grid when no gated widget is allowed for the viewer (and capabilities loaded).
@@ -47,26 +48,6 @@ function clearLegacyDashboardStorage(): void {
   template: `
     @let boot = store.bootstrap();
     <div class="flex flex-col gap-3" data-testid="dashboard-shell">
-      @if (store.editing()) {
-        <div
-          class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-accent-subtle)] bg-[var(--color-accent-subtle)]/60 px-4 py-3"
-          data-testid="dashboard-edit-toolbar"
-        >
-          <div>
-            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Customize your dashboard</h2>
-            <p class="text-xs text-[var(--color-text-secondary)]">Drag a widget by its handle, resize from the corner, or use the arrow keys on a focused widget.</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button #addWidgetBtn type="button" class="shell-btn" data-testid="dashboard-add-widget" [disabled]="store.saving()" (click)="openDrawer($event)">Add widget</button>
-            <button type="button" class="shell-btn" data-testid="dashboard-reset" [disabled]="store.saving()" (click)="confirmingReset.set(true)">Reset</button>
-            <button type="button" class="shell-btn" data-testid="dashboard-cancel" [disabled]="store.saving()" (click)="cancel()">Cancel</button>
-            <button type="button" class="shell-btn shell-btn--primary" data-testid="dashboard-save" [disabled]="store.saving()" (click)="store.save()">
-              {{ store.saving() ? 'Saving…' : 'Save' }}
-            </button>
-          </div>
-        </div>
-      }
-
       @if (boot) {
         <app-dashboard-grid
           [widgets]="store.visibleWidgets()"
@@ -157,30 +138,6 @@ function clearLegacyDashboardStorage(): void {
     ::ng-deep main.main-content:has(app-dashboard-shell.dashboard-shell--team) {
       background: var(--color-dashboard-team-page-bg);
     }
-    .shell-btn {
-      border-radius: 0.5rem;
-      border: 1px solid var(--color-border-strong);
-      background: var(--color-surface);
-      padding: 0.375rem 0.75rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--color-text-primary);
-    }
-    .shell-btn:hover:not(:disabled) {
-      background: var(--color-surface-secondary);
-    }
-    .shell-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .shell-btn--primary {
-      border-color: var(--color-accent);
-      background: var(--color-accent);
-      color: var(--color-accent-contrast);
-    }
-    .shell-btn--primary:hover:not(:disabled) {
-      background: var(--color-accent-hover);
-    }
   `
 })
 export class DashboardShellComponent {
@@ -192,7 +149,7 @@ export class DashboardShellComponent {
   private readonly breakpoint = injectBreakpoint(this.host);
   private readonly measured = signal(false);
   private drawerOpener: HTMLElement | null = null;
-  private readonly addWidgetBtn = viewChild<ElementRef<HTMLButtonElement>>('addWidgetBtn');
+  private readonly document = inject(DOCUMENT);
 
   protected readonly drawerOpen = signal(false);
   /** The pinned Quick Actions card's natural size; the grid turns it into the cells of its top-right corner. */
@@ -217,17 +174,24 @@ export class DashboardShellComponent {
       }
     });
 
-    // "Customize" lives in the top navbar; the edit toolbar takes over once editing starts.
-    effect(() => {
-      if (this.store.editing()) {
-        this.pageToolbar.clear();
-      } else {
-        this.pageToolbar.set({
-          label: 'Customize',
-          disabled: () => this.store.bootstrap() === null,
-          onClick: () => this.store.startEditing()
-        });
-      }
+    // "Customize" lives in the top navbar as a small circle; while editing it opens into a capsule with
+    // Add / Reset / Save, and the circle (now an X) cancels.
+    const busy = () => this.store.saving();
+    this.pageToolbar.set({
+      label: 'Customize dashboard',
+      disabled: () => this.store.bootstrap() === null,
+      onClick: () => this.store.startEditing(),
+      expanded: () => this.store.editing(),
+      title: 'Customize your dashboard',
+      hint: 'Drag a widget by its handle, resize from the corner, or use the arrow keys on a focused widget.',
+      collapseLabel: 'Cancel customizing',
+      collapseDisabled: busy,
+      onCollapse: () => this.cancel(),
+      items: [
+        { id: 'dashboard-add-widget', label: () => 'Add', icon: 'add', disabled: busy, onClick: (e) => this.openDrawer(e) },
+        { id: 'dashboard-reset', label: () => 'Reset', icon: 'reset', disabled: busy, onClick: () => this.confirmingReset.set(true) },
+        { id: 'dashboard-save', label: () => (busy() ? 'Saving…' : 'Save'), icon: 'save', primary: true, disabled: busy, onClick: () => void this.store.save() }
+      ]
     });
 
     inject(DestroyRef).onDestroy(() => {
@@ -252,7 +216,8 @@ export class DashboardShellComponent {
 
   /** The grid removed its last focusable widget from the keyboard: keep focus in the edit UI. */
   protected focusAddWidget(): void {
-    this.addWidgetBtn()?.nativeElement.focus();
+    // The Add button sits in the navbar capsule, outside this component's view.
+    this.document.querySelector<HTMLButtonElement>('[data-testid="dashboard-add-widget"]')?.focus();
   }
 
   protected cancel(): void {

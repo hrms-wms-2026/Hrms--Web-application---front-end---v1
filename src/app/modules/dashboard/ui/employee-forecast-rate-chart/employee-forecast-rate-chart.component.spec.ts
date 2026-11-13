@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { EMPLOYEE_FORECAST_ITEMS } from '../../utils/team-employee-forecast.testing';
 import {
   EmployeeForecastRateChartComponent,
-  rateChartBadge,
   rateChartPeople,
 } from './employee-forecast-rate-chart.component';
 
@@ -33,7 +32,7 @@ describe('EmployeeForecastRateChartComponent', () => {
     expect(rateChartPeople(EMPLOYEE_FORECAST_ITEMS, 2).map((e) => e.name)).toEqual(['Ann', 'Bob']);
   });
 
-  it('plots rates at most 200% and marks a taller required rate with its real figure', () => {
+  it('plots rates at most 200% and keeps the real figure of a taller required rate for the hover', () => {
     const fixture = TestBed.createComponent(EmployeeForecastRateChartComponent);
     fixture.componentRef.setInput('items', [
       { ...EMPLOYEE_FORECAST_ITEMS[0], requiredRate: 8.53 },
@@ -51,8 +50,7 @@ describe('EmployeeForecastRateChartComponent', () => {
     expect(
       (cols[0].querySelector('[data-testid=bar-chart-stack]') as HTMLElement).style.height,
     ).toBe('19%');
-    expect(cols[0].textContent).toContain('853%');
-    expect(cols[1].querySelector('[data-testid=bar-chart-badge]')).toBeNull();
+    expect(el.querySelector('[data-testid=bar-chart-badge]')).toBeNull();
     expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('needs 853%');
   });
 
@@ -72,20 +70,15 @@ describe('EmployeeForecastRateChartComponent', () => {
     expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('Ann');
   });
 
-  it('marks overload with a small badge, never a red frame round the bar', () => {
-    expect(rateChartBadge(1.3, true)).toEqual({ text: '⚠', title: 'Overload: needs 130%' });
-    expect(rateChartBadge(8.53, true)?.text).toBe('⚠ 853%');
-    expect(rateChartBadge(8.53, false)?.text).toBe('853%');
-    expect(rateChartBadge(0.7, false)).toBeUndefined();
+  it('draws no badges or frames over the bars (the hover has the details)', () => {
     const fixture = TestBed.createComponent(EmployeeForecastRateChartComponent);
-    fixture.componentRef.setInput('items', EMPLOYEE_FORECAST_ITEMS.slice(0, 2));
-    fixture.componentRef.setInput('labelChars', 5);
+    fixture.componentRef.setInput('items', [
+      { ...EMPLOYEE_FORECAST_ITEMS[0], requiredRate: 8.53 },
+      EMPLOYEE_FORECAST_ITEMS[1],
+    ]);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid=bar-chart-badge]')).toBeNull();
     expect(el.querySelector('.bc-col--alert, [data-testid=bar-chart-alert]')).toBeNull();
-    const badges = [...el.querySelectorAll('[data-testid=bar-chart-badge]')].map((b) =>
-      b.textContent?.trim(),
-    );
-    expect(badges).toEqual(['⚠']);
   });
 });

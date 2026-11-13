@@ -14,15 +14,25 @@ export const SUMMARY_ROW_PX = 140;
  * (a 384px body at 1440px, 418px at 125% display scaling) must still fit two. */
 export const SUMMARY_ROW_CARD_MIN_PX = 180;
 
-/** How many cards fit side by side in a body this wide: two from 2 x row card minimum + gap, else one. */
-export function summaryRowCount(bodyWidth: number): 1 | 2 {
-  return bodyWidth >= SUMMARY_ROW_CARD_MIN_PX * 2 + SUMMARY_STRIP_PX.gap ? 2 : 1;
+/** The narrowest card once a wide row holds three or more (as wide as a 2-row strip card). */
+const SUMMARY_ROW_WIDE_CARD_MIN_PX = SUMMARY_STRIP_PX.cardMin;
+
+/**
+ * How many cards fit side by side in a body this wide: two from 2 x row card minimum + gap, else one. A widget with
+ * more cards to offer may pass `max` (3 or 4): a wide body then takes a third and fourth card once each still gets a
+ * strip card's width.
+ */
+export function summaryRowCount(bodyWidth: number, max: 2 | 3 | 4 = 2): number {
+  if (bodyWidth < SUMMARY_ROW_CARD_MIN_PX * 2 + SUMMARY_STRIP_PX.gap) return 1;
+  const wide = Math.floor((bodyWidth + SUMMARY_STRIP_PX.gap) / (SUMMARY_ROW_WIDE_CARD_MIN_PX + SUMMARY_STRIP_PX.gap));
+  return Math.max(2, Math.min(wide, max));
 }
 
-/** The first `count` cards, in the widget's order, whose card id is not already shown; null when there are fewer. */
+/** Up to `count` cards, in the widget's order, whose card id is not already shown; null when fewer than
+ * min(count, 2) are left (a wide row asking for three still takes two). */
 export function pickSummaryCards(cards: readonly SummaryCardModel[], shown: ReadonlySet<string>, count: number): SummaryCardModel[] | null {
   const picked = cards.filter((c) => !shown.has(c.id)).slice(0, count);
-  return picked.length === count && count > 0 ? picked : null;
+  return count > 0 && picked.length >= Math.min(count, 2) ? picked : null;
 }
 
 /**

@@ -19,8 +19,8 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
 
 /**
  * Hosts one dashboard widget. Provides the per-widget WidgetDataContext to the card it renders.
- * View mode: no chrome, the card fills the frame. Edit mode: drag handle, remove button, resize handle
- * and an overlay that blocks clicks/focus into the card. The grid (F5) targets
+ * View mode: no chrome, the card fills the frame. Edit mode: an overlay that is the drag handle and blocks
+ * clicks/focus into the card, plus floating remove and resize buttons; none of it changes the card's size. The grid (F5) targets
  * `[data-drag-handle]` and `[data-resize-handle]`.
  */
 @Component({
@@ -34,42 +34,15 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
   styleUrl: '../../dashboard-motion.css',
   encapsulation: ViewEncapsulation.None,
   template: `
+    <!-- Edit chrome floats over the card and never takes space from it: the card keeps exactly its saved size,
+         so the customize preview shows the same view (same size tier) as the saved dashboard. The chrome eases
+         in and out (dash-frame rules in dashboard-motion.css). -->
     <div
-      class="relative flex h-full w-full flex-col"
+      class="dash-frame relative flex h-full w-full flex-col"
+      [class.dash-frame--editing]="editing()"
       [class.select-none]="editing()"
-      [class.rounded-2xl]="editing()"
-      [class.bg-[var(--color-surface-secondary)]]="editing()"
-      [class.p-1]="editing()"
-      [class.ring-1]="editing()"
-      [class.ring-[var(--color-border)]]="editing()"
       data-testid="widget-frame"
     >
-      @if (editing()) {
-        <!-- Edit chrome gets its own strip above the card, so it never covers the card's title or controls. -->
-        <div class="flex h-8 shrink-0 items-center gap-1 pl-1" data-testid="widget-edit-bar">
-          <div
-            class="flex h-7 min-w-0 flex-1 cursor-grab touch-none items-center gap-1.5 rounded-lg px-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] active:cursor-grabbing"
-            data-drag-handle
-            aria-hidden="true"
-          >
-            <svg class="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <circle cx="5.5" cy="3.5" r="1.25" /><circle cx="10.5" cy="3.5" r="1.25" />
-              <circle cx="5.5" cy="8" r="1.25" /><circle cx="10.5" cy="8" r="1.25" />
-              <circle cx="5.5" cy="12.5" r="1.25" /><circle cx="10.5" cy="12.5" r="1.25" />
-            </svg>
-            <span class="truncate">{{ widget().title }}</span>
-          </div>
-          <button
-            type="button"
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-danger-subtle)] hover:text-[var(--color-danger)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-            [attr.aria-label]="'Remove ' + widget().title"
-            (click)="remove.emit()"
-          >
-            <span aria-hidden="true">&#10005;</span>
-          </button>
-        </div>
-      }
-
       <div class="relative min-h-0 w-full flex-1">
         <div
           class="dash-motion h-full w-full [&>*]:block [&>*]:h-full"
@@ -90,15 +63,45 @@ import { UnsupportedWidgetComponent } from '../unsupported-widget/unsupported-wi
           }
         </div>
         @if (editing()) {
-          <div class="absolute inset-0 z-10 rounded-2xl" data-testid="widget-edit-overlay"></div>
+          <!-- The whole card is the drag handle while editing; it also blocks clicks into the card. -->
+          <div
+            class="dash-frame__overlay absolute inset-0 z-10 cursor-grab touch-none rounded-xl active:cursor-grabbing"
+            data-testid="widget-edit-overlay"
+            data-drag-handle
+            aria-hidden="true"
+            animate.enter="dash-frame__fade-enter"
+            animate.leave="dash-frame__fade-leave"
+          >
+            <span class="dash-frame__grip">
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <circle cx="3.5" cy="5.5" r="1.25" /><circle cx="8" cy="5.5" r="1.25" /><circle cx="12.5" cy="5.5" r="1.25" />
+                <circle cx="3.5" cy="10.5" r="1.25" /><circle cx="8" cy="10.5" r="1.25" /><circle cx="12.5" cy="10.5" r="1.25" />
+              </svg>
+            </span>
+          </div>
+          <button
+            type="button"
+            class="dash-frame__remove absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full"
+            [attr.aria-label]="'Remove ' + widget().title"
+            [attr.title]="'Remove ' + widget().title"
+            animate.enter="dash-frame__pop-enter"
+            animate.leave="dash-frame__fade-leave"
+            (click)="remove.emit()"
+          >
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
         }
       </div>
 
       @if (editing()) {
         <div
-          class="absolute bottom-0 right-0 z-20 flex h-7 w-7 cursor-nwse-resize touch-none items-center justify-center rounded-br-2xl rounded-tl-lg bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-sm ring-1 ring-[var(--color-border)] hover:text-[var(--color-accent)]"
+          class="absolute bottom-0 right-0 z-20 flex h-7 w-7 cursor-nwse-resize touch-none items-center justify-center rounded-br-xl rounded-tl-lg bg-[var(--color-surface)] text-[var(--color-text-secondary)] shadow-sm ring-1 ring-[var(--color-border)] hover:text-[var(--color-accent)]"
           data-resize-handle
           aria-hidden="true"
+          animate.enter="dash-frame__pop-enter"
+          animate.leave="dash-frame__fade-leave"
         >
           <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
             <path d="M14 6v8H6M14 14 7 7" />

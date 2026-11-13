@@ -159,4 +159,16 @@ describe('WidgetFrameComponent', () => {
     rm.click();
     expect(removed).toBe(1);
   });
+
+  it('edit_mode_chrome_floats_over_the_card_without_shrinking_it', async () => {
+    // Size-driven widgets pick their view from their box, so edit chrome must not take space from the card:
+    // the content stays the frame's only in-flow child, and the drag handle is the overlay itself.
+    registry['fake'] = { load: fake };
+    const el = (await setup(widget(), true)).nativeElement as HTMLElement;
+    const frame = el.querySelector('[data-testid="widget-frame"]') as HTMLElement;
+    expect(frame.children.length).toBe(2); // content box + absolutely positioned resize handle
+    expect(frame.className).not.toMatch(/(^|\s)p-\d/);
+    expect(el.querySelector('[data-testid="widget-edit-bar"]')).toBeNull();
+    expect(el.querySelector('[data-drag-handle]')?.getAttribute('data-testid')).toBe('widget-edit-overlay');
+  });
 });

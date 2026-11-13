@@ -72,4 +72,13 @@ describe('team attendance layout', () => {
     expect(withCards.trend).toBe(false);
     expect(planTeamAttendanceLayout('standard', 760, 420, 140).tiles).toBe(false);
   });
+
+  it('a wide card moves the range into the header, so 4 rows fit the summary-cards row under the hero', () => {
+    // 912 x 420 (8 x 4 at 1440px): donut 168 + gap 12 + row 140 = 320 of a 352px body.
+    expect(planTeamAttendanceLayout('standard', 912, rows(4), 140)).toMatchObject({ heroTrend: true, tiles: true });
+    // ...and 3 rows now fit the status tiles under the donut.
+    expect(planTeamAttendanceLayout('standard', 912, rows(3))).toMatchObject({ heroTrend: true, tiles: true });
+    // A narrower card keeps the range above the donut and has no room for the row at 4 rows.
+    expect(planTeamAttendanceLayout('standard', 760, rows(4), 140).tiles).toBe(false);
+  });
 });

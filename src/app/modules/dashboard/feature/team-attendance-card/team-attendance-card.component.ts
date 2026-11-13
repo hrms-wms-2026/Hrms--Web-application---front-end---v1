@@ -120,7 +120,8 @@ export class TeamAttendanceCardComponent implements OnInit {
       (rowPx) => planTeamAttendanceLayout(view, size.width, size.height, rowPx),
       this.summaryCards(),
       shownAttendanceCards,
-      summaryRowCount(size.width - TEAM_ATTENDANCE_CARD_CHROME.width)
+      // Three of its four cards can be off-screen at once (the rate card is the trend), so a wide row takes three.
+      summaryRowCount(size.width - TEAM_ATTENDANCE_CARD_CHROME.width, 3)
     );
   });
   readonly plan = computed<TeamAttendancePlan>(() => this.layout().plan, { equal: samePlan });

@@ -43,6 +43,11 @@
 .ta-nav:disabled { opacity: 0.35; cursor: default; }
 .ta-nav:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
 
+.ta-range-head {
+  min-width: 0;
+  margin-right: 0.5rem;
+}
+
 .ta-range-label {
   min-width: 0;
   overflow: hidden;
