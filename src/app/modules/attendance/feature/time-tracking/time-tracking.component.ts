@@ -9,13 +9,7 @@ import { AttendanceTodayTimelineComponent } from './today-timeline/attendance-to
 import { AttendanceMonthlyHealthCardComponent } from '../monthly-health-card/attendance-monthly-health-card.component';
 import { AttendanceHistoryListComponent } from './attendance-history-list/attendance-history-list.component';
 import { MyRequestsPanelComponent } from './my-requests-panel/my-requests-panel.component';
-import { NotificationService } from '../../../../core/services/notification.service';
-import {
-  AttendanceCorrectionBreakRequest,
-  AttendanceCorrectionPreviewRequest,
-  AttendanceCorrectionType,
-  CORRECTION_TYPE_OPTIONS
-} from '../../models/attendance-correction.model';
+import { AttendanceCorrectionType } from '../../models/attendance-correction.model';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
@@ -60,7 +54,6 @@ type AttendanceViewMode = 'my' | 'team';
 export class TimeTrackingComponent implements OnInit {
   readonly store = inject(TimeTrackingStore);
   private readonly permissionService = inject(PermissionService);
-  private readonly notifications = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -89,7 +82,6 @@ export class TimeTrackingComponent implements OnInit {
     return 'my';
   });
 
-  readonly deepLinkRequestId = computed(() => this.queryParams().get('requestId'));
   /** Set by the employee profile's "View attendance" link to narrow Team attendance to one person. */
   readonly deepLinkEmployeeId = computed(() => this.queryParams().get('employeeId')?.trim() || null);
   private readonly deepLinkRange = computed<TimeTrackingRange | null>(() => {
@@ -115,12 +107,6 @@ export class TimeTrackingComponent implements OnInit {
   readonly correctionType = signal<AttendanceCorrectionType>('clock_in');
   readonly requestedClockInTime = signal('');
   readonly requestedClockOutTime = signal('');
-  readonly correctionReason = signal('');
-  readonly correctionNotes = signal('');
-  readonly correctionBreaks = signal<CorrectionBreakDraft[]>([{ start: '', end: '' }]);
-  readonly correctionFieldErrors = signal<Record<string, string>>({});
-  readonly correctionFormMessage = signal('');
-  readonly correctionPreviewReady = signal(false);
   readonly workAreaFormOpen = signal(false);
   readonly workAreaReviewReady = signal(false);
   readonly workAreaDate = signal('');
@@ -132,7 +118,6 @@ export class TimeTrackingComponent implements OnInit {
   readonly workAreaOptions = WORK_AREA_OPTIONS;
   readonly workAreaChangeStatusLabel = workAreaChangeStatusLabel;
   readonly workAreaLabel = workAreaLabel;
-  readonly correctionTypeOptions = CORRECTION_TYPE_OPTIONS;
 
   /**
    * Per-activation dedupe key for the team-loading effect below. A plain component field (never a signal), read and
@@ -396,12 +381,6 @@ export class TimeTrackingComponent implements OnInit {
     this.correctionType.set('clock_in');
     this.requestedClockInTime.set(row.clockInAt ? this.localTimeForInput(row.clockInAt) : '');
     this.requestedClockOutTime.set(row.clockOutAt ? this.localTimeForInput(row.clockOutAt) : '');
-    this.correctionReason.set('');
-    this.correctionNotes.set('');
-    this.correctionBreaks.set([{ start: '', end: '' }]);
-    this.correctionFieldErrors.set({});
-    this.correctionFormMessage.set('');
-    this.correctionPreviewReady.set(false);
     this.store.clearCorrectionPreview?.();
   }
 
@@ -446,117 +425,6 @@ export class TimeTrackingComponent implements OnInit {
     this.correctionType.set('clock_out');
   }
 
-  addBreakInterval(): void {
-    this.correctionBreaks.update((items) => [...items, { start: '', end: '' }]);
-  }
-
-  removeBreakInterval(index: number): void {
-    this.correctionBreaks.update((items) => items.length === 1 ? items : items.filter((_, itemIndex) => itemIndex !== index));
-  }
-
-  async previewOrSubmitCorrection(): Promise<void> {
-    const request = this.buildCorrectionRequest();
-    if (!request) return;
-    if (!this.correctionPreviewReady()) {
-      const preview = await this.store.previewCorrection(request);
-      if (!preview) {
-        this.correctionFormMessage.set(this.store.correctionError?.() || 'No eligible attendance approver is configured for this employee.');
-        return;
-      }
-      this.correctionPreviewReady.set(true);
-      this.correctionFormMessage.set(preview.approvalRequired
-        ? preview.approver?.positionName
-          ? `This request will be sent to ${preview.approver.displayName}, ${preview.approver.positionName}.`
-          : preview.approver
-            ? `This request will be sent to ${preview.approver.displayName}.`
-            : 'No eligible attendance approver is configured for this employee.'
-        : 'This correction can be applied without approval.');
-      return;
-    }
-
-    if (this.store.correctionPreview?.()?.approvalRequired && !this.store.correctionPreview?.()?.approver) {
-      this.correctionFormMessage.set('No eligible attendance approver is configured for this employee.');
-      return;
-    }
-    const result = await this.store.submitCorrection(request);
-    if (!result) {
-      this.correctionFormMessage.set(this.store.correctionError?.() || 'Could not submit the correction request. Try again.');
-      return;
-    }
-    this.notifications.success(result.status === 'approved' ? 'Attendance correction applied.' : 'Correction request submitted.');
-    this.closeCorrection();
-    this.closeDetailDrawer();
-    const range = this.store.selectedHistoryRange() ?? this.currentWeekRange;
-    void this.store.loadToday();
-    void this.store.loadMyHistory(range);
-    void this.store.loadMyCorrections();
-  }
-
-
-
-  private buildCorrectionRequest(): AttendanceCorrectionPreviewRequest | null {
-    const row = this.correctionFormOpen();
-    if (!row) return null;
-    const errors: Record<string, string> = {};
-    const reason = this.correctionReason().trim();
-    if (!reason) errors['reason'] = 'Tell us why this correction is needed.';
-    if (reason.length > 255) errors['reason'] = 'Reason must be 255 characters or fewer.';
-    if (this.correctionNotes().length > 2000) errors['notes'] = 'Notes must be 2000 characters or fewer.';
-    const type = this.correctionType();
-    const clockIn = type === 'clock_in' || type === 'full_day' ? this.toDateTimeOffset(this.requestedClockInTime(), row.workDate) : null;
-    const clockOut = type === 'clock_out' || type === 'full_day' ? this.toDateTimeOffset(this.requestedClockOutTime(), row.workDate) : null;
-    if (type === 'clock_in' || type === 'full_day') {
-      if (!this.requestedClockInTime()) errors['requestedClockInAt'] = 'Enter a clock-in time.';
-      else if (!clockIn) errors['requestedClockInAt'] = 'Enter a valid local time.';
-    }
-    if (type === 'clock_out' || type === 'full_day') {
-      if (!this.requestedClockOutTime()) errors['requestedClockOutAt'] = 'Enter a clock-out time.';
-      else if (!clockOut) errors['requestedClockOutAt'] = 'Enter a valid local time.';
-    }
-    if (clockIn && clockOut && new Date(clockOut).getTime() <= new Date(clockIn).getTime()) errors['requestedClockOutAt'] = 'Clock-out must be after clock-in.';
-    let requestedBreaks: readonly AttendanceCorrectionBreakRequest[] | null = null;
-    if (type === 'break') {
-      const intervals = this.correctionBreaks().map((item) => ({
-        start: this.toDateTimeOffset(item.start, row.workDate),
-        end: this.toDateTimeOffset(item.end, row.workDate),
-        rawStart: item.start,
-        rawEnd: item.end
-      }));
-      if (!intervals.length || intervals.some((item) => !item.rawStart || !item.rawEnd || !item.start || !item.end)) {
-        errors['requestedBreaks'] = 'Enter a valid start and end time for each break interval.';
-      } else if (intervals.some((item) => new Date(item.end!).getTime() <= new Date(item.start!).getTime())) {
-        errors['requestedBreaks'] = 'Each break interval must end after it starts.';
-      } else {
-        const ordered = [...intervals].sort((a, b) => new Date(a.start!).getTime() - new Date(b.start!).getTime());
-        if (ordered.some((item, index) => index > 0 && new Date(ordered[index - 1].end!).getTime() > new Date(item.start!).getTime())) errors['requestedBreaks'] = 'Break intervals cannot overlap.';
-        requestedBreaks = intervals.map((item) => ({ breakStart: item.start!, breakEnd: item.end!, breakType: 'other' }));
-      }
-    }
-    this.correctionFieldErrors.set(errors);
-    this.correctionFormMessage.set(Object.keys(errors).length ? 'Please correct the highlighted fields.' : '');
-    if (Object.keys(errors).length) return null;
-    return {
-      workDate: row.workDate,
-      correctionType: type,
-      requestedClockInAt: clockIn,
-      requestedClockOutAt: clockOut,
-      requestedBreaks,
-      reason,
-      notes: this.correctionNotes().trim() || null
-    };
-  }
-
-  private toDateTimeOffset(value: string, workDate: string): string | null {
-    if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
-    try {
-      const timezone = validDisplayTimezoneShared(this.displayTimezone()) ?? SHARED_DISPLAY_TIMEZONE_FALLBACK;
-      const iso = localDateTimeToIso(workDate, value, timezone);
-      return iso && dateOnlyForZone(iso, timezone) === workDate ? iso : null;
-    } catch {
-      return null;
-    }
-  }
-
   private localTimeForInput(value: string): string {
     try {
       const timezone = validDisplayTimezoneShared(this.displayTimezone()) ?? SHARED_DISPLAY_TIMEZONE_FALLBACK;
@@ -599,10 +467,6 @@ export class TimeTrackingComponent implements OnInit {
     return formatMinutesShared(Math.max(0, today.requiredWorkMinutes - today.totalWorkedMinutes));
   }
 
-  employeeLabel(row: AttendanceHistoryRow): string {
-    return row.employee?.displayName ?? 'Current employee';
-  }
-
   attentionClass(severity: string | null | undefined): string {
     const normalized = severity?.trim().toLowerCase();
     if (normalized === 'critical' || normalized === 'error') {
@@ -640,10 +504,6 @@ export class TimeTrackingComponent implements OnInit {
     return true;
   }
 
-  breakOverageHistoryLabel(value: number | null | undefined): string {
-    return `Break exceeded by ${Math.max(0, value ?? 0)} min`;
-  }
-
   private getFriendlyTodayMessages(today: AttendanceTodayResponse | null): readonly string[] {
     if (!today) {
       return [];
@@ -660,30 +520,6 @@ export class TimeTrackingComponent implements OnInit {
     }
     return messages;
   }
-}
-
-interface CorrectionBreakDraft { start: string; end: string }
-
-function localDateTimeToIso(workDate: string, time: string, timezone: string): string | null {
-  const [year, month, day] = workDate.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
-  if (![year, month, day, hour, minute].every(Number.isFinite) || hour > 23 || minute > 59) return null;
-  const target = Date.UTC(year, month - 1, day, hour, minute);
-  let candidate = new Date(target);
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(candidate);
-    const shownHour = Number(parts.find((part) => part.type === 'hour')?.value);
-    const shownMinute = Number(parts.find((part) => part.type === 'minute')?.value);
-    const delta = ((shownHour * 60 + shownMinute) - (hour * 60 + minute)) * 60_000;
-    if (!delta) return candidate.toISOString();
-    candidate = new Date(candidate.getTime() - delta);
-  }
-  return candidate.toISOString();
-}
-
-function dateOnlyForZone(value: string, timezone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value));
-  return `${parts.find((part) => part.type === 'year')?.value}-${parts.find((part) => part.type === 'month')?.value}-${parts.find((part) => part.type === 'day')?.value}`;
 }
 
 function currentWeekRange(reference = new Date(), maxDate?: string): TimeTrackingRange {
