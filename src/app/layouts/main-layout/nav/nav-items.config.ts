@@ -27,7 +27,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { id: 'organization-departments', label: 'Departments', description: 'Departments and who heads them.', path: '/organization/departments', section: 'Organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
       { id: 'organization-positions', label: 'Positions', description: 'Roles, codes and reporting lines.', path: '/organization/positions', section: 'Organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
       { id: 'people-employees', label: 'Employees', description: 'Everyone in your organization.', path: '/people/employees', section: 'People', requiredModules: ['core_hr'], requiredPermissions: [MANAGES_PEOPLE, 'employees:write'] },
-      { id: 'people-checklists', label: 'Checklists', description: 'Onboarding and offboarding task lists.', path: '/people/checklists', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
+      { id: 'people-checklists', label: 'Checklists', description: 'Onboarding and offboarding task lists.', path: '/people/checklists', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['checklists:manage'] },
       { id: 'people-offboarding', label: 'Offboarding', description: 'Employees on their way out.', path: '/people/offboarding', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['employees:offboard', 'employees:write'] }
     ]
   },
