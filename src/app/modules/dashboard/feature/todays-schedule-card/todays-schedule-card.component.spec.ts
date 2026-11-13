@@ -1,14 +1,44 @@
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
+import { Component, input, output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { CalendarEventApiService } from '../../../calendar/data-access/calendar-event-api.service';
 import { CalendarEventResponse, CalendarEventsResponse } from '../../../calendar/models/calendar-event.model';
-import { TodaysScheduleCardComponent } from './todays-schedule-card.component';
+import { TodaysScheduleCardComponent, joinLinkOf } from './todays-schedule-card.component';
 import { MeetingApiService } from '../../../work/meetings/data-access/meeting-api.service';
-import { MeetingListItem } from '../../../work/meetings/models/meeting.models';
+import { MeetingListItem, MeetingSeriesLinkResponse } from '../../../work/meetings/models/meeting.models';
 import { PlannerApiService } from '../../../work/planner/data-access/planner-api.service';
 import { PlannerRangeBlockView, PlannerRangeResponse } from '../../../work/planner/models/planner.models';
+import { ProjectDetailStore } from '../../../work/state/project-detail.store';
+import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
+
+/** Stands in for the task popup, which needs the whole work module behind it. */
+@Component({ selector: 'app-task-form-modal', standalone: true, template: '' })
+class TaskFormModalStub {
+  readonly open = input(false);
+  readonly mode = input('edit');
+  readonly projectId = input('');
+  readonly taskId = input<string | null>(null);
+  readonly saved = output<void>();
+  readonly closed = output<void>();
+}
+
+function projectsStub(projectError: string | null = null) {
+  return {
+    loadProject: vi.fn(() => Promise.resolve()),
+    loadMyMilestones: vi.fn(() => Promise.resolve()),
+    projectError: () => projectError,
+  };
+}
+
+function useTestDoubles(projects = projectsStub()) {
+  TestBed.overrideProvider(ProjectDetailStore, { useValue: projects });
+  TestBed.overrideComponent(TodaysScheduleCardComponent, {
+    remove: { imports: [TaskFormModalComponent] },
+    add: { imports: [TaskFormModalStub] },
+  });
+}
 
 function event(partial: Partial<CalendarEventResponse> & { id: string; title: string; startDate: string; endDate: string }): CalendarEventResponse {
   return {
@@ -23,6 +53,7 @@ function event(partial: Partial<CalendarEventResponse> & { id: string; title: st
 const noPlan: PlannerRangeResponse = { timezone: 'UTC', today: '', days: [] };
 
 describe('TodaysScheduleCardComponent', () => {
+  beforeEach(() => useTestDoubles());
   afterEach(() => TestBed.resetTestingModule());
 
   async function setup(
@@ -41,7 +72,7 @@ describe('TodaysScheduleCardComponent', () => {
       providers: [
         provideRouter([]),
         { provide: CalendarEventApiService, useValue: { getEvents, getMyTimezone } },
-        { provide: MeetingApiService, useValue: { list: vi.fn(() => of([])) } },
+        { provide: MeetingApiService, useValue: { list: vi.fn(() => of([])), getLink: vi.fn(() => of({ joinUrl: null })) } },
         { provide: PlannerApiService, useValue: { getRange: vi.fn(() => of(noPlan)) } }
       ]
     }).compileComponents();
@@ -216,6 +247,7 @@ describe('TodaysScheduleCardComponent', () => {
 });
 
 describe('TodaysScheduleCardComponent - meetings', () => {
+  beforeEach(() => useTestDoubles());
   afterEach(() => TestBed.resetTestingModule());
 
   const at = (minutes: number): string => new Date(Date.now() + minutes * 60_000).toISOString();
@@ -224,14 +256,18 @@ describe('TodaysScheduleCardComponent - meetings', () => {
     title, status: 'scheduled', isPrivate: false, projectId: 'p1', objectiveId: 'o1', myRole: 'attendee', myResponse: 'accepted',
   });
 
-  async function setup(events: CalendarEventResponse[], meetings: MeetingListItem[]) {
+  async function setup(
+    events: CalendarEventResponse[], meetings: MeetingListItem[],
+    getLink: (seriesId: string) => Observable<MeetingSeriesLinkResponse> = () => of({ joinUrl: null })
+  ) {
     const list = vi.fn(() => of(meetings));
+    const getLinkSpy = vi.fn(getLink);
     await TestBed.configureTestingModule({
       imports: [TodaysScheduleCardComponent],
       providers: [
         provideRouter([]),
         { provide: CalendarEventApiService, useValue: { getEvents: vi.fn(() => of({ events })), getMyTimezone: vi.fn(() => of({ timezone: 'UTC' })) } },
-        { provide: MeetingApiService, useValue: { list } },
+        { provide: MeetingApiService, useValue: { list, getLink: getLinkSpy } },
         { provide: PlannerApiService, useValue: { getRange: vi.fn(() => of(noPlan)) } }
       ]
     }).compileComponents();
@@ -239,7 +275,7 @@ describe('TodaysScheduleCardComponent - meetings', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return { fixture, list };
+    return { fixture, list, getLink: getLinkSpy };
   }
 
   it("today's meetings lists only today's items, sorted by start", async () => {
@@ -287,6 +323,66 @@ describe('TodaysScheduleCardComponent - meetings', () => {
     expect(fixture.nativeElement.querySelectorAll('[data-testid="todays-schedule-item"]').length).toBe(0);
     expect(fixture.nativeElement.querySelectorAll('[data-testid="todays-meetings-item"]').length).toBe(1);
   });
+
+  describe('Join', () => {
+    // The clock is noon UTC today (the viewer zone here), so 13:00 is upcoming and 09:00 has ended, whatever the real time.
+    const today = new Date();
+    const todayAt = (h: number) => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), h)).toISOString();
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(todayAt(12)));
+    });
+    afterEach(() => vi.useRealTimers());
+
+    const teams = (url: string): MeetingSeriesLinkResponse => ({ joinUrl: url });
+    const joinOf = (row: HTMLElement) => row.querySelector<HTMLAnchorElement>('[data-testid="todays-meeting-join-btn"]');
+
+    it("offers Join on an upcoming meeting's Teams link, in a new tab, without opening the meeting drawer", async () => {
+      const { fixture, getLink } = await setup([], [meeting('a', 'Sprint review', todayAt(13), todayAt(14))],
+        () => of(teams('https://teams.microsoft.com/l/meetup-join/abc')));
+      const row: HTMLElement = fixture.nativeElement.querySelector('[data-testid="todays-meetings-item"]');
+      const join = joinOf(row)!;
+
+      expect(getLink).toHaveBeenCalledExactlyOnceWith('s-a');
+      expect(join.getAttribute('href')).toBe('https://teams.microsoft.com/l/meetup-join/abc');
+      expect(join.target).toBe('_blank');
+      expect(join.rel).toContain('noopener');
+      // The Meeting badge turns into Join while it is hovered (or the row is focused).
+      const badge = row.querySelector<HTMLElement>('[data-testid="todays-meeting-badge"]')!;
+      expect(badge.textContent?.trim()).toBe('Meeting');
+      expect(badge.className).toContain('group-hover/join:hidden');
+      expect(join.className).toContain('hidden');
+      expect(join.className).toContain('group-hover/join:inline-flex');
+      expect(badge.parentElement).toBe(join.parentElement);
+
+      join.addEventListener('click', (e) => e.preventDefault());
+      join.click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('app-meeting-occurrence-drawer')).toBeNull();
+    });
+
+    it('offers no Join when the meeting has no link, it has ended, or the link could not be read', async () => {
+      const { fixture } = await setup([], [
+        meeting('none', 'No link', todayAt(13), todayAt(14)),
+        meeting('done', 'Ended', todayAt(9), todayAt(10)),
+        meeting('err', 'Broken', todayAt(15), todayAt(16)),
+      ], (seriesId) => seriesId === 's-none' ? of({ joinUrl: null })
+        : seriesId === 's-err' ? throwError(() => new Error('403')) : of(teams('https://zoom.us/j/1')));
+      const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="todays-meetings-item"]'));
+      expect(rows.map((r) => joinOf(r))).toEqual([null, null, null]);
+      // The plain Meeting badge stays, with nothing to swap to.
+      expect(rows.map((r) => r.querySelector('[data-testid="todays-meeting-badge"]')?.textContent?.trim())).toEqual(['Meeting', 'Meeting', 'Meeting']);
+    });
+
+    it("the organizer joins by the organizer link, labelled with the provider", () => {
+      expect(joinLinkOf({
+        joinUrl: 'https://zoom.us/j/1',
+        link: { linkId: 'l', provider: 'zoom', status: 'active', joinUrl: 'https://zoom.us/j/1', organizerJoinUrl: 'https://zoom.us/s/1',
+          failureReason: null, generation: 1, releasePending: false },
+      })).toEqual({ url: 'https://zoom.us/s/1', label: 'Join on Zoom' });
+      expect(joinLinkOf({ joinUrl: 'javascript:alert(1)' })).toBeNull();
+    });
+  });
 });
 
 describe('TodaysScheduleCardComponent - planner blocks', () => {
@@ -308,8 +404,10 @@ describe('TodaysScheduleCardComponent - planner blocks', () => {
 
   async function setup(options: {
     blocks?: PlannerRangeBlockView[]; otherDayBlocks?: PlannerRangeBlockView[]; meetings?: MeetingListItem[];
-    events?: CalendarEventResponse[]; plannerFails?: boolean;
+    events?: CalendarEventResponse[]; plannerFails?: boolean; projectError?: string;
   }) {
+    const projects = projectsStub(options.projectError ?? null);
+    useTestDoubles(projects);
     const getRange = vi.fn((from: string): Observable<PlannerRangeResponse> => options.plannerFails
       ? throwError(() => new Error('503 planner_disabled'))
       : of({
@@ -324,7 +422,7 @@ describe('TodaysScheduleCardComponent - planner blocks', () => {
       providers: [
         provideRouter([]),
         { provide: CalendarEventApiService, useValue: { getEvents: vi.fn(() => of({ events: options.events ?? [] })), getMyTimezone: vi.fn(() => of({ timezone: 'UTC' })) } },
-        { provide: MeetingApiService, useValue: { list: vi.fn(() => of(options.meetings ?? [])) } },
+        { provide: MeetingApiService, useValue: { list: vi.fn(() => of(options.meetings ?? [])), getLink: vi.fn(() => of({ joinUrl: null })) } },
         { provide: PlannerApiService, useValue: { getRange } }
       ]
     }).compileComponents();
@@ -332,7 +430,7 @@ describe('TodaysScheduleCardComponent - planner blocks', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return { el: fixture.nativeElement as HTMLElement, getRange };
+    return { fixture, el: fixture.nativeElement as HTMLElement, getRange, projects };
   }
 
   const taskRows = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>('[data-testid="todays-schedule-task"]'));
@@ -351,10 +449,37 @@ describe('TodaysScheduleCardComponent - planner blocks', () => {
     expect(row.querySelector('[data-testid="todays-schedule-task-badge"]')?.textContent?.trim()).toBe('Task');
   });
 
-  it("links a planned task to it on its project's board", async () => {
-    const { el } = await setup({ blocks: [block('a', 'Fix login', todayAt(14), todayAt(15))] });
-    const link = el.querySelector<HTMLAnchorElement>('[data-testid="todays-schedule-task-link"]')!;
-    expect(link.getAttribute('href')).toBe('/work/proj-1/board?taskId=task-a');
+  it('opens a planned task in the task popup on the dashboard', async () => {
+    const { fixture, el, projects } = await setup({ blocks: [block('a', 'Fix login', todayAt(14), todayAt(15))] });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+    expect(el.querySelector('app-task-form-modal')).toBeNull();
+
+    el.querySelector<HTMLElement>('[data-testid="todays-schedule-task-link"]')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(projects.loadProject).toHaveBeenCalledWith('proj-1');
+    expect(projects.loadMyMilestones).toHaveBeenCalledWith('proj-1');
+    expect(navigate).not.toHaveBeenCalled();
+    const popup = fixture.debugElement.query((d) => d.componentInstance instanceof TaskFormModalStub)!.componentInstance as TaskFormModalStub;
+    expect(popup.taskId()).toBe('task-a');
+    expect(popup.projectId()).toBe('proj-1');
+
+    popup.closed.emit();
+    fixture.detectChanges();
+    expect(el.querySelector('app-task-form-modal')).toBeNull();
+  });
+
+  it("opens the project's board instead when the task's project can't load", async () => {
+    const { fixture, el } = await setup({ blocks: [block('a', 'Fix login', todayAt(14), todayAt(15))], projectError: 'Forbidden' });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    el.querySelector<HTMLElement>('[data-testid="todays-schedule-task-link"]')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(navigate).toHaveBeenCalledWith(['/work', 'proj-1', 'board'], { queryParams: { taskId: 'task-a' } });
+    expect(el.querySelector('app-task-form-modal')).toBeNull();
   });
 
   it("leaves out another day's blocks", async () => {

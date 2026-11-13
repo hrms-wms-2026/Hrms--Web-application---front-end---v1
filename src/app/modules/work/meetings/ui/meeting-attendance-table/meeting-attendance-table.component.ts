@@ -19,11 +19,20 @@ interface AttendanceLine { key: string; name: string; time: string; outcome: str
   selector: 'app-meeting-attendance-table',
   standalone: true,
   template: `
+    <div class="flex flex-col gap-3 text-xs">
+      <div class="flex items-center justify-between gap-2">
+        <h3 class="flex items-center gap-2.5 text-base font-semibold text-[var(--color-text-primary)]">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5" /><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4M9 14.5l2 2 4-4" /></svg>
+          Attendance
+        </h3>
+        @if (attendance(); as a) {
+          <span data-testid="attendance-display" class="rounded-full bg-[var(--color-surface-secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">{{ a.display }}</span>
+        }
+      </div>
     @if (attendance(); as a) {
       <div class="flex flex-col gap-1 text-xs">
-        <div class="text-[var(--color-text-secondary)]">Attendance: {{ a.display }}</div>
         @for (line of lines(); track line.key) {
-          <div data-testid="attendance-row" class="grid grid-cols-[1fr_auto_auto] items-center gap-3">
+          <div data-testid="attendance-row" class="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-1">
             <span class="truncate">{{ line.name }}</span>
             <span data-testid="attendance-time" class="text-[var(--color-text-secondary)]">{{ line.time }}</span>
             <span data-testid="attendance-outcome">{{ line.outcome }}</span>
@@ -35,7 +44,7 @@ interface AttendanceLine { key: string; name: string; time: string; outcome: str
           </div>
         }
         @if (canRecheck()) {
-          <button type="button" data-testid="attendance-recheck" class="self-start rounded-md border px-2 py-1" [disabled]="rechecking()"
+          <button type="button" data-testid="attendance-recheck" class="mt-1 self-start rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--color-surface-secondary)] disabled:opacity-60" [disabled]="rechecking()"
             (click)="recheck()">Recheck attendance</button>
         }
         @if (message()) {
@@ -43,6 +52,7 @@ interface AttendanceLine { key: string; name: string; time: string; outcome: str
         }
       </div>
     }
+    </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
