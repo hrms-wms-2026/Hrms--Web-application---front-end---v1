@@ -34,21 +34,15 @@
       <button type="button" data-testid="calendar-next" aria-label="Next" title="Next" class="flex h-8 w-8 items-center justify-center rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus-ring)]" (click)="next()">
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
       </button>
-      <!-- The period label jumps: pick any date and the view moves to the period that holds it. -->
-      <div class="relative ml-1">
+      <!-- The period label jumps: it opens just the calendar (no date box); pick any date and the view moves to the period that holds it. -->
+      <app-date-picker class="ml-1" variant="custom" panelLabel="Go to date" [value]="dayDate()" [showClear]="false"
+        (valueChange)="jumpTo($event)" (openChange)="periodPickerOpen.set($event)">
         <button type="button" data-testid="planner-period-button" aria-haspopup="dialog" [attr.aria-expanded]="periodPickerOpen()"
-          class="flex items-center gap-1 rounded-md px-1.5 py-1 text-base font-semibold text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]"
-          (click)="periodPickerOpen.set(!periodPickerOpen())">
+          class="flex items-center gap-1 rounded-md px-1.5 py-1 text-base font-semibold text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]">
           {{ viewLabel() }}
           <svg class="h-4 w-4 text-[var(--color-text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
-        @if (periodPickerOpen()) {
-          <div data-testid="planner-period-picker" role="dialog" aria-label="Go to date"
-            class="absolute left-0 top-full z-30 mt-1 w-56 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
-            <app-date-picker size="sm" [value]="dayDate()" (valueChange)="jumpTo($event)" />
-          </div>
-        }
-      </div>
+      </app-date-picker>
       <button type="button" data-testid="calendar-today"
         class="ml-1 h-7 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--color-focus-ring)]"
         (click)="goToToday()">Today</button>

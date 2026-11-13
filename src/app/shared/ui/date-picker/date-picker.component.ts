@@ -69,7 +69,8 @@ export class DatePickerComponent {
   readonlyInput = input(true);
   error = input<string>('');
   hint = input<string>('');
-  variant = input<'input' | 'chip'>('input');
+  /** 'custom': the host projects its own trigger (any button) and the calendar opens from it, with no input box. */
+  variant = input<'input' | 'chip' | 'custom'>('input');
   isCompleted = input(false);
   chipClass = input<string>('');
   btnTestId = input<string>('task-card-due-date-btn');
@@ -80,9 +81,13 @@ export class DatePickerComponent {
   emptyLabel = input<string>('');
   showQuickPresets = input(true);
   showClear = input(true);
+  /** The open calendar's accessible name. */
+  panelLabel = input('Change due date');
 
   valueChange = output<string>();
   blurred = output<void>();
+  /** Fires when the calendar opens or closes, so a custom trigger can reflect it (aria-expanded). */
+  openChange = output<boolean>();
 
   readonly openUpward = signal(false);
   readonly popoverPositions = computed(() => (this.openUpward() ? POSITIONS_UP : POSITIONS_DOWN));
@@ -222,6 +227,7 @@ export class DatePickerComponent {
       }
     }
     this.isOpen.set(nextState);
+    this.openChange.emit(nextState);
     if (!nextState) {
       this.blurred.emit();
     }
@@ -253,6 +259,7 @@ export class DatePickerComponent {
   closePopover(): void {
     if (this.isOpen()) {
       this.isOpen.set(false);
+      this.openChange.emit(false);
       this.blurred.emit();
     }
   }

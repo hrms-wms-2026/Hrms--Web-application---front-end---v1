@@ -47,6 +47,9 @@
     } @else if (hint()) {
       <span [id]="hintId()" class="dp-hint-text ui-field-hint">{{ hint() }}</span>
     }
+  } @else if (variant() === 'custom') {
+    <!-- The host's own trigger: a click on it (or Enter/Space, which click a button) opens the calendar. -->
+    <span class="dp-custom-trigger" role="presentation" (click)="togglePopover($event)"><ng-content /></span>
   } @else {
     <!-- Chip / Button mode for task card, subtask row, and task modal -->
     <button
@@ -83,14 +86,14 @@
     [cdkConnectedOverlayViewportMargin]="8"
     [cdkConnectedOverlayHasBackdrop]="true"
     cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
-    (backdropClick)="isOpen.set(false)"
-    (detach)="isOpen.set(false)"
+    (backdropClick)="closePopover()"
+    (detach)="closePopover()"
   >
     <div
       class="dp-popover task-card__popover task-card__due-date-popover task-table__popover task-table__due-date-popover"
       [class.dp-popover--up]="openUpward()"
       role="dialog"
-      aria-label="Change due date"
+      [attr.aria-label]="panelLabel()"
       appStopClickPropagation
       (wheel)="onWheel($event)"
     >
