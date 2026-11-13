@@ -14,6 +14,7 @@
      (tracks, chips, hovers) the widget inset, so all pages match the dashboard. Dark mode sets its own below. */
   --color-surface: var(--color-dashboard-team-widget-bg);
   --color-surface-secondary: var(--color-dashboard-team-widget-inset);
+  --color-field-bg: #ffffff; /* inputs, selects, textareas stay white on the gray cards */
   /* My Team dashboard: page = white with a touch of the theme colour; widget cards = that same tint with a little
      black mixed in (a bluish gray a step darker); inset = tracks/chips/skeletons inside the cards, one step darker again. */
   --color-dashboard-team-page-bg: color-mix(in srgb, var(--color-accent) 6%, #ffffff);
@@ -135,6 +136,7 @@ html.dark {
   --color-app-bg: #11171e;
   --color-surface: #181e27;
   --color-surface-secondary: #252c36;
+  --color-field-bg: var(--color-surface);
   --color-dashboard-team-widget-bg: var(--color-surface);
   --color-dashboard-team-widget-inset: #252c36;
   --color-dashboard-team-page-bg: color-mix(in srgb, var(--color-accent) 4%, #11171e);
