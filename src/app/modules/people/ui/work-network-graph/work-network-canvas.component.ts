@@ -193,25 +193,6 @@ export class WorkNetworkCanvasComponent implements OnDestroy {
     this.stopSimulation();
   }
 
-  zoomIn(): void {
-    this.zoomBy(1.25);
-  }
-
-  zoomOut(): void {
-    this.zoomBy(0.8);
-  }
-
-  resetView(): void {
-    for (const node of this.layout.nodes) {
-      if (node.data.kind !== 'employee') {
-        node.fx = null;
-        node.fy = null;
-      }
-    }
-    this.camera.set({ x: 0, y: 0, scale: 1 });
-    this.simulation?.alpha(0.3).restart();
-  }
-
   nodeClassOf(node: GraphNode): string {
     return nodeClass(node.data);
   }
