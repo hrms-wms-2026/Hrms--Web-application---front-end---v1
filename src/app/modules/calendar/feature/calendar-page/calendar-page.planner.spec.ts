@@ -20,7 +20,7 @@ import { ProjectDetailStore } from '../../../work/state/project-detail.store';
 import { MeetingFormModalComponent } from '../../../work/meetings/ui/meeting-form-modal/meeting-form-modal.component';
 import { PlannerCreatePopoverComponent } from '../../ui/planner-create-popover/planner-create-popover.component';
 import { MyTeamCapabilitiesStore } from '../../../dashboard/state/my-team-capabilities.store';
-import { CalendarPageComponent } from './calendar-page.component';
+import { CalendarPageComponent, weekMonthLabel } from './calendar-page.component';
 
 /** Planner = Calendar (2026-10-27 design): the calendar page with the planner layer on and off. */
 
@@ -219,8 +219,14 @@ describe('CalendarPageComponent planner layer', () => {
     fixture.componentInstance.jumpTo('2026-11-12');
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.viewLabel()).toBe('Week of 2026-11-09');
+    expect(fixture.componentInstance.viewLabel()).toBe('November 2026');
     expect(q('planner-period-picker')).toBeNull();
+  });
+
+  it('the week label names its month, both months when it crosses one, and both years across New Year', () => {
+    expect(weekMonthLabel('2026-11-09')).toBe('November 2026');
+    expect(weekMonthLabel('2026-11-30')).toBe('Nov – Dec 2026');
+    expect(weekMonthLabel('2026-12-28')).toBe('Dec 2026 – Jan 2027');
   });
 
   it('New event is a single primary button with a plus, and no menu', async () => {

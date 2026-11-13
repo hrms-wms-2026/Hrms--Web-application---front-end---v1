@@ -126,6 +126,16 @@
   .main-content:has(app-calendar-page) .main-content__viewport {
     padding: 0.75rem 1rem;
   }
+
+  /* Next to the Task list sub-sidebar the Planner's hour grid joins the list with no gap: it drops its left border and corners
+     (the list's border is the divider) and its time labels sit right-aligned, so no text touches the edge. The toolbar keeps a
+     small inset. The calendar components read these variables. */
+  .main-layout--has-sub-sidebar .main-content:has(app-calendar-page) .main-content__viewport {
+    padding-left: 0;
+    --planner-edge-border: 0px;
+    --planner-edge-radius: 0px;
+    --planner-toolbar-inset: 0.5rem;
+  }
 }
 
 .main-content:has(app-tray-activation-gate) .main-content__viewport,

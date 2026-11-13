@@ -1,28 +1,32 @@
-<div class="flex h-full flex-col overflow-hidden rounded-lg border border-[var(--color-border)]">
+<div class="planner-frame flex h-full flex-col overflow-hidden rounded-lg border border-[var(--color-border)]">
   <div data-testid="calendar-hour-header-row" class="flex border-b border-[var(--color-border)] bg-[var(--color-surface)]">
     <div
       data-testid="calendar-hour-tz-label"
-      class="flex w-14 shrink-0 items-center justify-center border-r border-[var(--color-border)] px-1 py-2 text-center text-[10px] leading-tight text-[var(--color-text-secondary)]"
+      class="flex w-16 shrink-0 flex-col items-end justify-center border-r border-[var(--color-border)] py-2 pr-2 text-right text-[10px] leading-tight text-[var(--color-text-secondary)]"
     >
-      {{ tzLabel() }}
+      <!-- "GMT" over "+05:30": the whole label is wider than the column, so it would clip on one line. -->
+      <span>{{ tzLabel().slice(0, 3) }}</span>@if (tzLabel().length > 3) {<span>{{ tzLabel().slice(3) }}</span>}
     </div>
     @for (column of columns(); track column.date) {
       <div
         data-testid="calendar-hour-header-cell"
         [attr.data-today]="column.isToday || null"
-        class="flex flex-1 flex-col items-center gap-0.5 border-r border-[var(--color-border)] py-1.5 last:border-r-0"
+        class="flex flex-1 flex-col items-center gap-1 border-r border-[var(--color-border)] py-1.5 last:border-r-0"
         [class.today-tint]="column.isToday"
       >
-        <span data-testid="calendar-hour-weekday" class="text-xs font-medium"
-          [ngClass]="column.isToday ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'">{{ column.weekdayLabel }}</span>
-        @if (column.isToday) {
-          <span
-            data-testid="calendar-hour-header-today"
-            class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)] text-sm font-semibold text-[var(--color-accent-contrast)]"
-          >{{ column.dayNumber }}</span>
-        } @else {
-          <span data-testid="calendar-hour-daylabel" class="flex h-7 items-center justify-center text-sm font-medium text-[var(--color-text-primary)]">{{ column.dayLabel }}</span>
-        }
+        <!-- One line, "Mon 9": the toolbar already names the month. Today's date sits in a filled circle. -->
+        <span class="flex h-7 items-center gap-1.5 text-sm">
+          <span data-testid="calendar-hour-weekday" class="font-medium"
+            [ngClass]="column.isToday ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-secondary)]'">{{ column.weekdayLabel }}</span>
+          @if (column.isToday) {
+            <span
+              data-testid="calendar-hour-header-today"
+              class="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)] text-sm font-semibold text-[var(--color-accent-contrast)]"
+            >{{ column.dayNumber }}</span>
+          } @else {
+            <span data-testid="calendar-hour-daylabel" class="font-medium text-[var(--color-text-primary)]">{{ column.dayNumber }}</span>
+          }
+        </span>
         @if (column.load; as load) {
           <div data-testid="planner-load" [attr.data-over]="load.over" class="mt-0.5 flex w-full flex-col gap-0.5 px-2 text-center text-[10px]">
             <!-- One segment per kind; "· Over" in red says when the day is over-full. -->
@@ -53,7 +57,7 @@
   </div>
 
   <div data-testid="calendar-hour-allday-row" class="flex border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-    <div class="w-14 shrink-0 border-r border-[var(--color-border)] p-1 text-[10px] text-[var(--color-text-secondary)]">All day</div>
+    <div class="w-16 shrink-0 border-r border-[var(--color-border)] py-1 pr-2 text-right text-[10px] text-[var(--color-text-secondary)]">All day</div>
     @for (column of columns(); track column.date) {
       <div class="flex flex-1 flex-col gap-1 border-r border-[var(--color-border)] p-1 last:border-r-0">
         @for (event of column.allDayEvents; track event.id) {
@@ -75,10 +79,11 @@
   </div>
 
   <div class="flex max-h-[70vh] overflow-y-auto scroll-fade md:max-h-none md:min-h-0 md:flex-1">
-    <div class="relative h-[72rem] w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="relative h-[72rem] w-16 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)]">
       @for (hour of hours; track hour) {
-        <div data-testid="calendar-hour-label" class="h-12 border-b border-[var(--color-border)] px-1 text-[10px] text-[var(--color-text-secondary)]">
-          {{ hour === 0 ? '12 AM' : hour < 12 ? hour + ' AM' : hour === 12 ? '12 PM' : (hour - 12) + ' PM' }}
+        <!-- Each label sits right-aligned on its hour line; midnight's would clip at the top of the grid, so it is hidden. -->
+        <div data-testid="calendar-hour-label" class="relative h-12 text-[10px] text-[var(--color-text-secondary)]">
+          <span class="absolute right-2 top-0 -translate-y-1/2 whitespace-nowrap" [class.invisible]="hour === 0">{{ hour === 0 ? '12 AM' : hour < 12 ? hour + ' AM' : hour === 12 ? '12 PM' : (hour - 12) + ' PM' }}</span>
         </div>
       }
       @if (nowMarker(); as marker) {
