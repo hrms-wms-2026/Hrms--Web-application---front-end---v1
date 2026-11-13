@@ -27,11 +27,11 @@ import { TeamModuleForecastStore } from '../../state/team-module-forecast.store'
 import {
   DashboardDonutComponent,
   DashboardDonutSlice,
-} from '../../ui/dashboard-donut/dashboard-donut.component';
+} from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
 import { FORECAST_STATUSES, ForecastStatus } from '../../models/overtime-forecast.model';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { ModuleForecastProjectChartComponent } from '../../ui/module-forecast-project-chart/module-forecast-project-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import {
   FORECAST_STATUS_META,
   forecastHoursText,
@@ -53,7 +53,6 @@ import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import {
   moduleForecastExplanation,
   moduleRowRateText,
-  projectOverloadCounts,
 } from '../../utils/team-module-forecast-format.util';
 
 const csvHours = (h: number): string => h.toFixed(1);
@@ -63,7 +62,7 @@ const csvRate = (r: number | null): string => (r === null ? '' : (r * 100).toFix
 export function moduleForecastCsv(items: readonly ModuleForecastItem[]): string[][] {
   const header = [
     '#',
-    'Module',
+    'Milestone',
     'Path',
     'Project',
     'Deadline',
@@ -161,7 +160,7 @@ export class TeamModuleForecastDetailDialogComponent {
   protected readonly subtitle = computed(() => {
     const data = this.store.data();
     const window = data ? ` (${windowLabel(data.windowStart, data.windowEnd)})` : '';
-    return `Can each module finish its remaining hours before the deadline? Predicted from the module team's task rate over the last 4 weeks${window}. ${data ? overloadLimitText(data.totals.maxTaskRate) : ''}`.trim();
+    return `Can each milestone finish its remaining hours before the deadline? Predicted from the milestone team's task rate over the last 4 weeks${window}. ${data ? overloadLimitText(data.totals.maxTaskRate) : ''}`.trim();
   });
 
   protected readonly tiles = computed<KpiTile[]>(() => {
@@ -172,7 +171,7 @@ export class TeamModuleForecastDetailDialogComponent {
       {
         label: 'Allocated',
         value: forecastHoursText(t.allocatedHours),
-        hint: `${forecastHoursText(t.completedHours)} completed · ${t.modules} modules`,
+        hint: `${forecastHoursText(t.completedHours)} completed · ${t.modules} milestones`,
         icon: 'clipboard-list',
         tone: 'accent',
         testId: 'mfd-tile-allocated',
@@ -228,12 +227,6 @@ export class TeamModuleForecastDetailDialogComponent {
       count: count[s],
       color: FORECAST_STATUS_META[s].color,
     }));
-  });
-
-  /** Modules in overload per project, for the chart's badges. */
-  protected readonly overloadCounts = computed(() => {
-    const data = this.store.data();
-    return data ? projectOverloadCounts(data.projects, data.items) : {};
   });
 
   protected readonly donutSlices = computed<DashboardDonutSlice[]>(() => {

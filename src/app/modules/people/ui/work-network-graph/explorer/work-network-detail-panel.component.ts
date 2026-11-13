@@ -41,7 +41,7 @@ function formatDate(value: string | null | undefined): string {
       <nav class="wgp-tabs" role="tablist">
         <button type="button" role="tab" [attr.aria-selected]="tab() === 'overview'" [class.wgp-tab--on]="tab() === 'overview'" (click)="tab.set('overview')">Overview</button>
         <button type="button" role="tab" data-testid="panel-tab-tasks" [attr.aria-selected]="tab() === 'tasks'" [class.wgp-tab--on]="tab() === 'tasks'" (click)="tab.set('tasks')">
-          {{ node.kind === 'project' ? 'Modules' : 'Tasks' }} ({{ node.kind === 'project' ? modules().length : myTasks().length }})
+          {{ node.kind === 'project' ? 'Milestones' : 'Tasks' }} ({{ node.kind === 'project' ? modules().length : myTasks().length }})
         </button>
         @if (node.kind === 'module') {
           <button type="button" role="tab" data-testid="panel-tab-team" [attr.aria-selected]="tab() === 'team'" [class.wgp-tab--on]="tab() === 'team'" (click)="tab.set('team')">Team</button>
@@ -69,7 +69,7 @@ function formatDate(value: string | null | undefined): string {
 
             <dl class="wgp-rows">
               @if (node.kind === 'module' && node.module; as m) {
-                <div><dt>Module owner</dt><dd>{{ m.owner ? m.owner.name + (isMe(m.owner) ? ' (You)' : '') : '—' }}</dd></div>
+                <div><dt>Milestone owner</dt><dd>{{ m.owner ? m.owner.name + (isMe(m.owner) ? ' (You)' : '') : '—' }}</dd></div>
                 <div>
                   <dt>Members</dt>
                   <dd class="wgp-avatars">
@@ -104,7 +104,7 @@ function formatDate(value: string | null | undefined): string {
               </section>
             } @else {
               <section class="wgp-section">
-                <div class="wgp-section-head"><h4>Modules</h4></div>
+                <div class="wgp-section-head"><h4>Milestones</h4></div>
                 <ng-container *ngTemplateOutlet="moduleList; context: { $implicit: modules().slice(0, 5) }" />
               </section>
             }
@@ -277,11 +277,11 @@ export class WorkNetworkDetailPanelComponent {
   );
   readonly tasksNote = computed(() =>
     this.projectMode()
-      ? 'Open tasks in this module. The overview counts every task in the module.'
-      : `${this.firstName()}'s open tasks in this module. The overview counts every task in the module.`
+      ? 'Open tasks in this milestone. The overview counts every task in the milestone.'
+      : `${this.firstName()}'s open tasks in this milestone. The overview counts every task in the milestone.`
   );
   readonly noModulesNote = computed(() =>
-    this.projectMode() ? 'No modules in this project.' : `No modules in this project for ${this.firstName()}.`
+    this.projectMode() ? 'No milestones in this project.' : `No milestones in this project for ${this.firstName()}.`
   );
   readonly progress = computed(() => progressPercent(this.selected().stats));
   readonly myTasks = computed(() => tasksByParent(this.graph()).get(this.selected().id) ?? []);
@@ -302,11 +302,11 @@ export class WorkNetworkDetailPanelComponent {
     if (node.kind === 'project') return `Project${node.sublabel ? ' • ' + node.sublabel : ''}`;
     if (this.projectMode()) {
       const parent = this.parentModule();
-      const kind = node.kind === 'sprint' ? 'Sprint' : 'Module';
+      const kind = node.kind === 'sprint' ? 'Sprint' : 'Milestone';
       return parent ? `${kind} • ${parent.label}` : kind;
     }
     const role = node.role === 'owner' ? 'You own' : node.role === 'member' ? 'Member' : 'Contributor';
-    return `Module • ${this.projectNode()?.label ?? ''} • ${role}`;
+    return `Milestone • ${this.projectNode()?.label ?? ''} • ${role}`;
   });
 
   constructor() {

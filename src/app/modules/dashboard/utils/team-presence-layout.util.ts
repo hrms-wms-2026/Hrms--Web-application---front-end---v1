@@ -1,4 +1,4 @@
-import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../../shared/ui/charts/utils/dashboard-donut.util';
 
 /** How the Working / Break / Leave card lays itself out at its rendered size. The detail dialog is the popup. */
 export type PresenceView = 'mini' | 'xs' | 'standard';

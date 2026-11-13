@@ -24,9 +24,3 @@ export interface EditTaskCategoryRequestDto {
   /** Omitted: unchanged. Empty: cleared. */
   icon?: string;
 }
-
-export interface ReorderTaskCategoriesRequestDto {
-  categoryId: string;
-  displayOrder: number;
-}
-

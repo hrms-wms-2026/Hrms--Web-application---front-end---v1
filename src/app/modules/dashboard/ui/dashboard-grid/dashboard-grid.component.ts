@@ -131,7 +131,7 @@ const FALLBACK_EASING = 'cubic-bezier(0.2, 0.9, 0.3, 1.1)';
           class="relative min-w-0 scroll-mt-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           [style.--dash-i]="$index"
           [class.z-30]="dragged"
-          [class.rounded-2xl]="editing()"
+          [class.rounded-xl]="editing()"
           [class.shadow-2xl]="dragged && drag()?.kind === 'move'"
           [class.cursor-grabbing]="dragged && drag()?.kind === 'move'"
           [style.transform]="dragTransform(c)"

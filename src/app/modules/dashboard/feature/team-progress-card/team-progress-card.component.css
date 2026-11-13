@@ -500,16 +500,11 @@
   color: var(--color-text-secondary);
 }
 
-.tone-green { background: var(--color-tint-green-bg); border-color: var(--color-tint-green-line); }
-.tone-green .tp-tone-text { color: var(--color-tint-green-text); }
-.tone-blue { background: var(--color-tint-blue-bg); border-color: var(--color-tint-blue-line); }
-.tone-blue .tp-tone-text { color: var(--color-cat-blue); }
-.tone-gray { background: var(--color-surface-secondary); border-color: var(--color-border); }
-.tone-gray .tp-tone-text { color: var(--color-text-primary); }
-.tone-amber { background: var(--color-tint-amber-bg); border-color: var(--color-warning-subtle); }
-.tone-amber .tp-tone-text { color: var(--color-warning); }
-.tone-rose { background: var(--color-tint-rose-bg); border-color: var(--color-tint-rose-line); }
-.tone-rose .tp-tone-text { color: var(--color-tint-rose-text); }
+/* KPI tiles: the mild theme card, no border, a thin shadow; a bad (rose) tile keeps the card and shows a maroon value. */
+.tone-green, .tone-blue, .tone-amber, .tone-gray, .tone-rose { background: var(--color-widget-mild); border-color: transparent; box-shadow: var(--shadow-widget-tile); }
+.tone-green .tp-tone-text, .tone-blue .tp-tone-text, .tone-amber .tp-tone-text { color: var(--color-widget-shade-1); }
+.tone-gray .tp-tone-text { color: var(--color-widget-shade-1); }
+.tone-rose .tp-tone-text { color: var(--color-widget-maroon); }
 
 /* ---- Panels (lists, weekly chart, top members) ---- */
 .tp-panels {
@@ -653,17 +648,17 @@
 }
 
 .team-progress-row:hover {
-  background: color-mix(in srgb, var(--color-tint-blue-bg) 60%, transparent);
+  background: color-mix(in srgb, var(--color-widget-mild) 60%, transparent);
 }
 
 .team-progress-row:focus-visible,
 .team-progress-link:focus-visible,
 .tp-view-details:focus-visible {
-  outline: 2px solid var(--color-info);
+  outline: 2px solid var(--color-widget-shade-2);
   outline-offset: 2px;
 }
 
-/* Top members: name, blue bar, hours (like the reference). 30px rows. */
+/* Top members: name, shade-2 bar, hours (like the reference). 30px rows. */
 .tp-member {
   display: grid;
   height: 1.875rem;
@@ -684,18 +679,18 @@
   display: block;
   height: 100%;
   border-radius: 9999px;
-  background: rgb(96 165 250);
+  background: var(--color-widget-shade-2);
 }
 
 .team-progress-link {
   border-radius: 0.25rem;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .team-progress-link:hover {
-  color: var(--color-tint-blue-strong);
+  color: var(--color-widget-shade-1);
   text-decoration: underline;
 }
 
@@ -712,13 +707,13 @@
   background: var(--color-surface-secondary);
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
   cursor: pointer;
   transition: background-color 150ms ease;
 }
 
 .tp-view-details:hover {
-  background: var(--color-tint-blue-bg);
+  background: var(--color-widget-mild);
 }
 
 /* In the tall view the button sits at the bottom even when the lists end early. */

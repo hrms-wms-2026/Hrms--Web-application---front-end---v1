@@ -3,7 +3,7 @@
      period / project / module dropdowns and the close button on the right. -->
 <app-modal
   [open]="open()"
-  title="Team Progress"
+  title="My team progress"
   size="2xl"
   panelClass="team-progress-detail"
   (closed)="close()"
@@ -11,7 +11,7 @@
   <div class="tp-head">
     <div class="tp-head__row">
       <div class="tp-head__title">
-        <h2>Team Progress</h2>
+        <h2>My team progress</h2>
         <p>Detailed view of task weightage distribution</p>
       </div>
       <div class="tp-head__controls" data-testid="tp-filters">
@@ -40,7 +40,7 @@
           <app-select
             class="tp-compact-select tp-compact-select--wide"
             data-testid="tp-module-filter"
-            ariaLabel="Module"
+            ariaLabel="Milestone"
             icon="module"
             size="sm"
             [options]="moduleOptions()"
@@ -161,7 +161,7 @@
                   <li data-testid="tp-note-unestimated">{{ ov.unestimatedTaskCount }} {{ ov.unestimatedTaskCount === 1 ? 'task has' : 'tasks have' }} no estimate and add no hours.</li>
                 }
                 <li data-testid="tp-note-risk">
-                  <span class="font-semibold" [class.text-[var(--color-danger-text)]]="modulesAtRisk() > 0">{{ modulesAtRisk() }}</span>
+                  <span class="font-semibold" [class.text-[var(--color-widget-maroon)]]="modulesAtRisk() > 0">{{ modulesAtRisk() }}</span>
                   {{ modulesAtRisk() === 1 ? 'module' : 'modules' }} at risk (overdue work in the subtree).
                 </li>
               </ul>
@@ -480,6 +480,6 @@
       </div>
     </div>
   } @else {
-    <app-empty-state title="No team progress yet" description="The Team Progress data hasn't loaded, or you don't lead any modules." />
+    <app-empty-state title="No team progress yet" description="The Team Progress data hasn't loaded, or you don't lead any milestones." />
   }
 </app-modal>

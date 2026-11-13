@@ -42,7 +42,7 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
       id: 'mf-rate',
       title: 'Task rate',
       icon: 'pie-chart',
-      tone: 'var(--color-cat-blue)',
+      tone: 'var(--color-widget-shade-2)',
       section: 'summary',
       state: 'ready',
       body: {
@@ -61,7 +61,7 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
       id: 'mf-overtime',
       title: "Won't fit",
       icon: 'clock',
-      tone: 'var(--color-cat-red)',
+      tone: 'var(--color-widget-maroon)',
       section: 'projects',
       state: 'ready',
       body: {
@@ -73,9 +73,9 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
     },
     {
       id: 'mf-risk',
-      title: 'Modules at risk',
+      title: 'Milestones at risk',
       icon: 'alert-triangle',
-      tone: 'var(--color-cat-amber)',
+      tone: 'var(--color-widget-shade-3)',
       section: 'modules',
       state: 'ready',
       body: {
@@ -83,14 +83,14 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
         count: String(t.raiseRate + t.overload),
         countLabel: 'at risk',
         rows: risk,
-        empty: 'Every module is on track',
+        empty: 'Every milestone is on track',
       },
     },
     {
       id: 'mf-status',
       title: 'By status',
       icon: 'layers',
-      tone: 'var(--color-cat-teal)',
+      tone: 'var(--color-widget-shade-3b)',
       section: 'modules',
       state: 'ready',
       body: {

@@ -90,8 +90,8 @@ function duration(minutes: number): string {
         <span class="wi-chip-static" title="A work item planned here is yours"><app-field-icon name="user" /> Me</span>
         <app-select class="wi-chip" [class.wi-chip--active]="projectId()" data-testid="work-item-project" icon="briefcase" ariaLabel="Project"
           placeholder="Select project" [options]="projectOptions()" [value]="projectId() ?? ''" (valueChange)="selectProject($event)" />
-        <app-select class="wi-chip" [class.wi-chip--active]="objectiveId()" data-testid="work-item-module" icon="folder" ariaLabel="Module"
-          placeholder="Select module" [options]="moduleOptions()" [value]="objectiveId() ?? ''" [disabled]="!projectId()"
+        <app-select class="wi-chip" [class.wi-chip--active]="objectiveId()" data-testid="work-item-module" icon="folder" ariaLabel="Milestone"
+          placeholder="Select milestone" [options]="moduleOptions()" [value]="objectiveId() ?? ''" [disabled]="!projectId()"
           (valueChange)="objectiveId.set($event || null)" />
         <app-select class="wi-chip wi-chip--active" data-testid="work-item-priority" icon="flag" ariaLabel="Priority" [searchable]="false"
           [options]="priorityOptions" [value]="priority()" (valueChange)="setPriority($event)" />

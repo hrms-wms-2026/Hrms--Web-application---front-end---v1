@@ -13,6 +13,16 @@ describe('summaryRowCount', () => {
     expect(summaryRowCount(374)).toBe(2);
     expect(summaryRowCount(373)).toBe(1);
   });
+
+  it('takes a third and fourth card on a wide body only when the widget asks for them', () => {
+    // A wide 8-column Team attendance body (880px) gets three; 3 x 220 + 2 x 14 = 688px is the threshold.
+    expect(summaryRowCount(880)).toBe(2);
+    expect(summaryRowCount(880, 3)).toBe(3);
+    expect(summaryRowCount(688, 3)).toBe(3);
+    expect(summaryRowCount(687, 3)).toBe(2);
+    expect(summaryRowCount(942, 4)).toBe(4);
+    expect(summaryRowCount(373, 4)).toBe(1);
+  });
 });
 
 describe('pickSummaryCards', () => {
@@ -23,6 +33,12 @@ describe('pickSummaryCards', () => {
   it('gives nothing when fewer than the wanted cards are left, so the tiles stay', () => {
     expect(pickSummaryCards(CARDS, new Set(['a', 'b', 'c']), 2)).toBeNull();
     expect(pickSummaryCards([], new Set(), 1)).toBeNull();
+  });
+
+  it('a wide row asking for three takes what is left as long as that is two', () => {
+    expect(pickSummaryCards(CARDS, new Set(['a']), 3)?.map((c) => c.id)).toEqual(['b', 'c', 'd']);
+    expect(pickSummaryCards(CARDS, new Set(['a', 'c']), 3)?.map((c) => c.id)).toEqual(['b', 'd']);
+    expect(pickSummaryCards(CARDS, new Set(['a', 'b', 'c']), 3)).toBeNull();
   });
 });
 

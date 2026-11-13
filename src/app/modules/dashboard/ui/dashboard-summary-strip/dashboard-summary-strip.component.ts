@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, linkedSignal, model, output } from '@angular/core';
 import { SummaryCardModel } from '../../models/summary-card.model';
-import { DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_MINI_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import { injectHostSize } from '../../utils/host-size.util';
 import { SUMMARY_STRIP_PX, SummaryStripPlan, planSummaryStrip } from '../../utils/summary-strip-layout.util';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../dashboard-donut/donut-key.component';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { DashboardSummaryCardComponent } from '../dashboard-summary-card/dashboard-summary-card.component';
 
 /**

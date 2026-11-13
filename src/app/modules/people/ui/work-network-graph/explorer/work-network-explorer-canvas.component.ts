@@ -752,14 +752,14 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
   badgeTitle(node: ExplorerNode, count: number): string {
     const first = this.graph().nodes.find((n) => n.kind === 'employee')?.label.split(/\s+/)[0] ?? 'Employee';
     return node.data.kind === 'project'
-      ? `${count} of ${first}'s modules in this project`
+      ? `${count} of ${first}'s milestones in this project`
       : `${count} open task${count === 1 ? '' : 's'} assigned to ${first}`;
   }
 
   projectSummary(node: ExplorerNode): string {
     const total = node.data.stats?.totalTasks ?? 0;
     const modules = this.graph().nodes.filter((m) => m.kind === 'module' && m.projectId === node.data.projectId).length;
-    return `${total} task${total === 1 ? '' : 's'} • ${modules} module${modules === 1 ? '' : 's'}`;
+    return `${total} task${total === 1 ? '' : 's'} • ${modules} milestone${modules === 1 ? '' : 's'}`;
   }
 
   moduleSummary(node: ExplorerNode): string {
@@ -768,7 +768,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
       return `${count} task${count === 1 ? '' : 's'}`;
     }
     const total = node.data.stats?.totalTasks ?? 0;
-    return `${total} task${total === 1 ? '' : 's'} in module`;
+    return `${total} task${total === 1 ? '' : 's'} in milestone`;
   }
 
   /** Tone dot (employee view) or, with taskDotStyle 'status', the light-blue empty/filled/done dot. */
@@ -793,7 +793,7 @@ export class WorkNetworkExplorerCanvasComponent implements OnDestroy {
     switch (node.data.kind) {
       case 'employee': return `${node.data.label}${node.data.sublabel ? ', ' + node.data.sublabel : ''}`;
       case 'project': return `Project ${node.data.label}, ${this.projectSummary(node)}`;
-      default: return `Module ${node.data.label}, ${node.data.role ?? 'contributor'}, ${this.moduleSummary(node)}`;
+      default: return `Milestone ${node.data.label}, ${node.data.role ?? 'contributor'}, ${this.moduleSummary(node)}`;
     }
   }
 

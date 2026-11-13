@@ -24,8 +24,8 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { TeamProgressDetailApiService } from '../../data-access/team-progress-detail-api.service';
 import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
-import { DonutArc, donutArcs } from '../../utils/status-donut.util';
+import { DASHBOARD_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
+import { DonutArc, donutArcs } from '../../../../shared/ui/charts/utils/status-donut.util';
 import {
   LedHourTotals,
   LedModuleProgress,
@@ -46,8 +46,8 @@ import {
 import { hoursText, timePeriodFor } from '../../utils/team-progress-time-format.util';
 import { downloadCsv, toCsv } from '../../../../shared/utils/csv.util';
 import { WeeklyCompletionChartComponent } from '../../ui/weekly-completion-chart/weekly-completion-chart.component';
-import { DashboardDonutComponent, DashboardDonutSlice } from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import {
   PROGRESS_STATUSES,
   PROGRESS_STATUS_BY_KEY,
@@ -56,6 +56,7 @@ import {
   formatHourValue,
   formatPercent
 } from '../../utils/team-progress-format.util';
+import { WIDGET, WIDGET_RAMP, widgetRamp } from '../../../../shared/utils/widget-palette';
 
 export const TEAM_PROGRESS_SEARCH_DEBOUNCE_MS = 300;
 /** Rows in the Overview's compact Employee Breakdown. */
@@ -118,14 +119,13 @@ interface DonutPart {
   key: string;
   label: string;
   color: string;
-  bgClass: string;
   hours: number;
   percent: string;
   dash: string;
   offset: number;
 }
 
-const OVERDUE_PART = { key: 'overdue', label: 'Overdue', color: '#ef4444', bgClass: 'bg-red-500' } as const;
+const OVERDUE_PART = { key: 'overdue', label: 'Overdue', color: WIDGET.maroon } as const;
 
 /** Status of one server-backed section. */
 interface RemoteState<T> {
@@ -147,8 +147,6 @@ const TASK_STATUS_META: Readonly<Record<LedTaskStatus, ProgressStatusMeta>> = {
  * is open and cached until a filter changes (or the card hands in a new summary).
  * Hours are task estimates (weightage), never time worked.
  */
-/** The overdue pie's project colours (cycled past the sixth project). */
-const OVERDUE_PIE_COLORS = ['#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#10b981', '#64748b'];
 
 interface OverdueHoursView {
   readonly total: number;
@@ -243,12 +241,12 @@ export class TeamProgressDetailDialogComponent {
   /** The bar list's tab: which hours rank the people (sorted on the server, highest first). */
   protected readonly membersTab = signal<MemberTab>('totalHours');
   protected readonly memberTabs: readonly { key: MemberTab; label: string; color: string }[] = [
-    { key: 'totalHours', label: 'Total', color: 'var(--color-info)' },
+    { key: 'totalHours', label: 'Total', color: WIDGET.shade1 },
     { key: 'completedHours', label: PROGRESS_STATUS_BY_KEY.completed.label, color: PROGRESS_STATUS_BY_KEY.completed.color },
     { key: 'inProgressHours', label: PROGRESS_STATUS_BY_KEY.inProgress.label, color: PROGRESS_STATUS_BY_KEY.inProgress.color },
     { key: 'notStartedHours', label: PROGRESS_STATUS_BY_KEY.notStarted.label, color: PROGRESS_STATUS_BY_KEY.notStarted.color }
   ];
-  protected readonly memberTabColor = computed(() => this.memberTabs.find((t) => t.key === this.membersTab())?.color ?? 'var(--color-info)');
+  protected readonly memberTabColor = computed(() => this.memberTabs.find((t) => t.key === this.membersTab())?.color ?? WIDGET.shade1);
   /** The page's people: the tab's hours, the bar as a share of the page's largest value. */
   protected readonly memberBars = computed(() => {
     const items = this.overviewEmployees().data?.items ?? [];
@@ -304,7 +302,7 @@ export class TeamProgressDetailDialogComponent {
     const scoped = this.projectFilter() ? this.projects().filter((p) => p.projectId === this.projectFilter()) : this.projects();
     const showProject = scoped.length > 1;
     return [
-      { value: '', label: 'All modules' },
+      { value: '', label: 'All milestones' },
       ...scoped.flatMap((p) =>
         p.modules.map((m) => ({
           value: m.objectiveId,
@@ -409,7 +407,7 @@ export class TeamProgressDetailDialogComponent {
     const ov = this.overview();
     if (!ov) return [];
     const od = this.overdueSplit();
-    const rows: { key: string; label: string; color: string; bgClass: string; hours: number }[] = [];
+    const rows: { key: string; label: string; color: string; hours: number }[] = [];
     let overdue = 0;
     for (const t of ov.tiles) {
       let hours = t.hours;
@@ -418,7 +416,7 @@ export class TeamProgressDetailDialogComponent {
         hours -= carve;
         overdue += carve;
       }
-      rows.push({ key: t.meta.key, label: t.meta.label, color: t.meta.color, bgClass: t.meta.bgClass, hours });
+      rows.push({ key: t.meta.key, label: t.meta.label, color: t.meta.color, hours });
       if (t.meta.key === 'notStarted' && overdue > 0) {
         rows.splice(rows.length - 1, 0, { ...OVERDUE_PART, hours: overdue });
       }
@@ -490,9 +488,11 @@ export class TeamProgressDetailDialogComponent {
       taskCount = project ? all.reduce((sum, p) => sum + p.taskCount, 0) : summary.overdueTotal;
     }
     const total = rows.reduce((sum, r) => sum + r.hours, 0);
+    // Shades by rank (widgetRamp), not by project hash: neighbouring pie slices must never share a shade.
+    const ramp = widgetRamp(Math.min(rows.length, WIDGET_RAMP.length));
     const slices = rows
       .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name))
-      .map((r, i) => ({ ...r, color: OVERDUE_PIE_COLORS[i % OVERDUE_PIE_COLORS.length], percent: formatPercent(r.hours, total) }));
+      .map((r, i) => ({ ...r, color: ramp[i % ramp.length], percent: formatPercent(r.hours, total) }));
     const arcs: DonutArc[] = donutArcs(slices.map((s) => ({ key: s.projectId, count: s.hours, color: s.color })));
     return { total, taskCount, unestimated, listedOnly, slices, arcs };
   });

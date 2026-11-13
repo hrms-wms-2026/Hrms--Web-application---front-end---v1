@@ -97,8 +97,8 @@ describe('teamAttendanceSummaryCards', () => {
       ['Design', 94],
       ['Engineering', 97]
     ]);
-    expect(d.rows[0].tone).toBe('var(--color-cat-amber)');
-    expect(d.rows[2].tone).toBe('var(--color-cat-blue)');
+    expect(d.rows[0].tone).toBe('var(--color-widget-shade-3)');
+    expect(d.rows[2].tone).toBe('var(--color-widget-shade-2)');
   });
 
   it('ranks people with late, absent or leave days, naming each count', () => {

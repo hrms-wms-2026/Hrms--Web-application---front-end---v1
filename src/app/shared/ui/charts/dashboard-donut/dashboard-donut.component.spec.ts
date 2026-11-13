@@ -1,7 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { WIDGET } from '../../../utils/widget-palette';
+import { DASHBOARD_DONUT_PX } from '../utils/dashboard-donut.util';
 import {
   DashboardDonutComponent,
   DashboardDonutSlice,
@@ -10,9 +11,9 @@ import {
 import { DonutKeyComponent } from './donut-key.component';
 
 const SLICES: DashboardDonutSlice[] = [
-  { key: 'done', label: 'Completed', value: 30, valueText: '30 h', color: '#10b981' },
-  { key: 'doing', label: 'In progress', value: 10, valueText: '10 h', color: '#3b82f6' },
-  { key: 'todo', label: 'Not started', value: 0, color: '#cbd5e1' },
+  { key: 'done', label: 'Completed', value: 30, valueText: '30 h', color: WIDGET.shade1 },
+  { key: 'doing', label: 'In progress', value: 10, valueText: '10 h', color: WIDGET.shade2 },
+  { key: 'todo', label: 'Not started', value: 0, color: WIDGET.shade4 },
 ];
 
 /** A widget using the donut and its key the way the dashboard cards do: one shared hovered slice. */
@@ -57,10 +58,19 @@ describe('DashboardDonutComponent + DonutKeyComponent', () => {
     expect(arcs(el).map((a) => a.getAttribute('data-key'))).toEqual(['done', 'doing']);
     // Rounded, spaced slices: each is a filled ring sector in its colour, fully drawn when there is no motion.
     expect(arcs(el)[0].tagName.toLowerCase()).toBe('path');
-    expect(arcs(el)[0].getAttribute('fill')).toBe('#10b981');
+    expect(arcs(el)[0].style.fill).toBe('var(--color-widget-shade-1)');
     expect(arcs(el)[0].getAttribute('d')).toMatch(/^M .* A .* L .* A .* Z$/);
     expect(arcs(el)[0].getAttribute('fill-opacity')).toBe('1');
     expect(el.querySelector('svg')!.getAttribute('aria-label')).toBe('Hours');
+  });
+
+  it('sets slice colours as styles so var() theme colours resolve on the SVG arcs', () => {
+    const { fixture, el, host } = setup();
+    host.slices.set([{ key: 'doing', label: 'In progress', value: 10, color: WIDGET.shade2 }]);
+    fixture.detectChanges();
+    const arc = el.querySelector('[data-testid="donut-segment"][data-key="doing"]') as SVGPathElement;
+    expect(arc.style.stroke).toBe('var(--color-widget-shade-2)');
+    expect(arc.style.fill).toBe('var(--color-widget-shade-2)');
   });
 
   it('draws a transparent slice (the rest of a progress ring) as a grey track slice, not an invisible one', () => {

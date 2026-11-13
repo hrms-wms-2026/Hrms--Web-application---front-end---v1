@@ -1,3 +1,4 @@
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
@@ -150,7 +151,13 @@ export class DashboardSummaryCardComponent {
   });
 
   protected readonly tint = (percent: number, tone?: string): string => `color-mix(in srgb, ${tone ?? this.card().tone} ${percent}%, var(--color-card-bg))`;
-  protected readonly ink = (tone: string): string => `color-mix(in srgb, ${tone} 72%, var(--color-text-primary))`;
+  /** Monochrome text on the mild card: maroon for a "bad" tone, otherwise the darkest theme shade. */
+  protected readonly ink = (tone: string): string => (tone === WIDGET.maroon ? WIDGET.maroon : WIDGET.shade1);
+  /** Chip background: the solid maroon alert chip for a "bad" tone, otherwise the mild card colour. */
+  protected readonly chipBg = (tone: string): string => (tone === WIDGET.maroon ? WIDGET.maroon : WIDGET.mild);
+  /** Chip text: white on the solid maroon alert chip, otherwise the darkest theme shade. */
+  protected readonly chipInk = (tone: string): string => (tone === WIDGET.maroon ? WIDGET.onSolid : WIDGET.shade1);
+  protected readonly widget = WIDGET;
 
   constructor() {
     // A card that becomes ready (or changes) plays its entrance again.

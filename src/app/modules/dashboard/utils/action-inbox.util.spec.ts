@@ -111,13 +111,13 @@ describe('filters and tones', () => {
     expect(filterInbox(inbox, 'all').length).toBe(2);
   });
 
-  it('reads red at 5d+ or overdue, amber at 3d+', () => {
+  it('reads maroon at 5d+ or overdue, the darkest theme shade at 3d+', () => {
     const [fresh] = buildActionInbox(actionItems([{ pendingCount: 1, topItems: [item('leave.approval', 'a', 1)] }]), null, NOW);
     const [soon] = buildActionInbox(actionItems([{ pendingCount: 1, topItems: [item('leave.approval', 'b', 3)] }]), null, NOW);
     const [late] = buildActionInbox(actionItems([{ pendingCount: 1, topItems: [item('leave.approval', 'c', 5)] }]), null, NOW);
     expect(inboxAgeClass(fresh)).toBe('text-[var(--color-text-muted)]');
-    expect(inboxAgeClass(soon)).toContain('text-[var(--color-warning)]');
-    expect(inboxAgeClass(late)).toContain('text-[var(--color-danger)]');
+    expect(inboxAgeClass(soon)).toContain('text-[var(--color-widget-shade-1)]');
+    expect(inboxAgeClass(late)).toContain('text-[var(--color-widget-maroon)]');
   });
 });
 

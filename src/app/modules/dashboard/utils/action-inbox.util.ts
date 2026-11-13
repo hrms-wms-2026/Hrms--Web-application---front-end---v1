@@ -144,12 +144,12 @@ export function filterInbox(items: readonly InboxItem[], filter: InboxFilter): I
 }
 
 const AGE_CLASS = {
-  late: 'text-[var(--color-danger)] font-semibold',
-  soon: 'text-[var(--color-warning)] font-semibold',
+  late: 'text-[var(--color-widget-maroon)] font-semibold',
+  soon: 'text-[var(--color-widget-shade-1)] font-semibold',
   fresh: 'text-[var(--color-text-muted)]'
 } as const;
 
-/** 5d+ (and any overdue task) red, 3d+ amber. Full class strings for Tailwind JIT. */
+/** 5d+ (and any overdue task) maroon, 3d+ bold shade 1. Full class strings for Tailwind JIT. */
 export function inboxAgeClass(item: InboxItem): string {
   if (item.kind === 'overdue' || item.exceptionStatus === 'Escalated' || item.ageDays >= 5) return AGE_CLASS.late;
   if (item.ageDays >= 3) return AGE_CLASS.soon;

@@ -16,7 +16,7 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
 
 const TASK_TABLE_COLUMNS: readonly DataTableColumn[] = [
-  { key: 'module', label: 'Module', width: '16%' },
+  { key: 'module', label: 'Milestone', width: '16%' },
   { key: 'title', label: 'Title', width: '28%', sortable: true },
   { key: 'assignee', label: 'Assignee', width: '8%' },
   { key: 'status', label: 'Status', width: '11%', sortable: true, interactive: true },

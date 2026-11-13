@@ -1,7 +1,26 @@
+<!-- The ‹ range ›: in the body above the donut, or in the header on a wide card (plan().heroTrend). -->
+  <ng-template #rangeTpl>
+    <div class="ta-range">
+      <button type="button" class="ta-nav" aria-label="Previous period" data-testid="ta-prev" (click)="shift(-1, $event)">‹</button>
+      <span class="ta-range-label" data-testid="ta-range">{{ rangeLabel() }}</span>
+      <button
+        type="button"
+        class="ta-nav"
+        aria-label="Next period"
+        data-testid="ta-next"
+        [disabled]="store.data()?.isProvisional ?? false"
+        (click)="shift(1, $event)"
+      >›</button>
+      @if (store.data()?.isProvisional) {
+        <span class="ta-provisional">Today in progress</span>
+      }
+    </div>
+  </ng-template>
+
 <app-widget-card
   class="group block h-full"
   data-testid="team-attendance-card"
-  title="Team attendance"
+  title="My team attendance"
   [nowrapTitle]="true"
   [state]="widgetState()"
   errorMessage="Couldn't load team attendance."
@@ -11,6 +30,11 @@
   <div widget-actions class="flex min-w-0 items-center gap-1">
     @if (store.data(); as data) {
       <!-- Only the standard view has room for the switch next to the title; elsewhere the delta names the period. -->
+      @if (view() === 'standard' && plan().heroTrend) {
+        <div class="ta-range-head" data-testid="ta-range-head">
+          <ng-container [ngTemplateOutlet]="rangeTpl" />
+        </div>
+      }
       @if (view() === 'standard') {
       <select
         class="ta-period"
@@ -36,23 +60,6 @@
   </div>
 
   @if (store.data(); as data) {
-    <ng-template #rangeTpl>
-      <div class="ta-range">
-        <button type="button" class="ta-nav" aria-label="Previous period" data-testid="ta-prev" (click)="shift(-1, $event)">‹</button>
-        <span class="ta-range-label" data-testid="ta-range">{{ rangeLabel() }}</span>
-        <button
-          type="button"
-          class="ta-nav"
-          aria-label="Next period"
-          data-testid="ta-next"
-          [disabled]="data.isProvisional"
-          (click)="shift(1, $event)"
-        >›</button>
-        @if (data.isProvisional) {
-          <span class="ta-provisional">Today in progress</span>
-        }
-      </div>
-    </ng-template>
 
     <!-- One donut size (DASHBOARD_DONUT_PX) in every view; a view without room for it leaves it out. -->
     <ng-template #donutTpl let-rateCenter="rateCenter">
@@ -119,7 +126,7 @@
         <!-- xs (narrow) and standard: the donut keeps its place at the top; a taller card adds today's
         status tiles, then the period's trend chart, then the top of the employee ranking, below it. -->
         <div class="ta-grow" [class.ta-grow--xs]="view() === 'xs'" data-testid="ta-layout" [attr.data-view]="view()">
-          @if (view() === 'standard') {
+          @if (view() === 'standard' && !plan().heroTrend) {
             <ng-container [ngTemplateOutlet]="rangeTpl" />
           }
           <div class="ta-hero" data-testid="ta-hero">

@@ -99,7 +99,7 @@ describe('TeamAttendanceDetailDialogComponent', () => {
     const close = vi.fn();
     fixture.componentInstance.closed.subscribe(close);
 
-    expect(document.body.querySelector('.tad-head h2')?.textContent?.trim()).toBe('Team attendance');
+    expect(document.body.querySelector('.tad-head h2')?.textContent?.trim()).toBe('My team attendance');
     expect((document.body.querySelector('.kpi-tiles') as HTMLElement).style.getPropertyValue('--kpi-cols')).toBe('5');
     (one('tad-close') as HTMLButtonElement).click();
     expect(close).toHaveBeenCalled();

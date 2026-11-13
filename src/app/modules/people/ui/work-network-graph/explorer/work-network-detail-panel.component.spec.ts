@@ -58,14 +58,14 @@ describe('WorkNetworkDetailPanelComponent', () => {
   it('renders the employee-relative kind line and tasks heading when projectMode is false', () => {
     const { el } = setup(employeeGraph, employeeGraph.nodes[2]);
 
-    expect(kind(el)).toBe('Module • Hardware Integration • You own');
+    expect(kind(el)).toBe('Milestone • Hardware Integration • You own');
     expect(tasksTab(el)).toContain('Tasks');
   });
 
   it('renders Module with the parent module name and no role word when projectMode is true', () => {
     const { el } = setup(projectGraph, projectGraph.nodes[1], true);
 
-    expect(kind(el)).toBe('Module • Hardware integration portal');
+    expect(kind(el)).toBe('Milestone • Hardware integration portal');
   });
 
   it('heads the tasks tab as the module tasks, not the employee tasks, when projectMode is true', () => {
@@ -74,14 +74,14 @@ describe('WorkNetworkDetailPanelComponent', () => {
     fixture.detectChanges();
 
     expect(el.textContent).not.toContain("'s open tasks");
-    expect(el.textContent).toContain('Open tasks in this module');
+    expect(el.textContent).toContain('Open tasks in this milestone');
   });
 
   it('renders without an employee node present in the graph when projectMode is true', () => {
     const { el } = setup(projectGraph, projectGraph.nodes[0], true);
 
     // The root module has no parent, so the kind line carries the project-less label alone.
-    expect(kind(el)).toBe('Module');
+    expect(kind(el)).toBe('Milestone');
     expect(el.textContent).not.toContain('Employee');
   });
 
@@ -117,7 +117,7 @@ describe('WorkNetworkDetailPanelComponent', () => {
       const { fixture, el } = setup(graph, sprint, true);
 
       expect(el.textContent).toContain('Pair over BLE');
-      expect(el.querySelector('.wgp-section-head h4')!.textContent).not.toBe('Modules');
+      expect(el.querySelector('.wgp-section-head h4')!.textContent).not.toBe('Milestones');
 
       el.querySelector<HTMLButtonElement>('[data-testid="panel-tab-tasks"]')!.click();
       fixture.detectChanges();

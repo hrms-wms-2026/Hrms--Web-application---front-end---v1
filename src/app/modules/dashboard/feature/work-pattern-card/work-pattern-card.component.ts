@@ -3,6 +3,7 @@ import { TimeTrackingRange } from '../../../attendance/models/time-tracking.mode
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { WorkPatternApiService } from '../../data-access/work-pattern-api.service';
 import { WorkPatternDay } from '../../models/work-pattern.model';
+import { widgetInkOn } from '../../../../shared/utils/widget-palette';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
@@ -175,16 +176,21 @@ export class WorkPatternCardComponent implements OnInit {
     return SEGMENT_LABELS[type];
   }
 
+  /** Label text that stays readable on the segment's shade (light and dark mode). */
+  protected segmentInk(type: WorkPatternSegmentType): string {
+    return widgetInkOn(this.segmentColor(type));
+  }
+
   protected segmentColor(type: WorkPatternSegmentType): string {
     switch (type) {
       case 'focus':
-        return '#2563eb';
+        return 'var(--color-widget-shade-1)';
       case 'meeting':
-        return '#60a5fa';
+        return 'var(--color-widget-shade-2)';
       case 'admin':
-        return '#94a3b8';
+        return 'var(--color-widget-shade-4)';
       case 'idle':
-        return '#f59e0b';
+        return 'var(--color-widget-shade-3)';
     }
   }
 }

@@ -1,4 +1,4 @@
-import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from '../../../shared/ui/charts/utils/dashboard-donut.util';
 
 /**
  * The size ladder both overtime forecast cards use (the Work vs task hours ladder): mini (2 rows), xs (narrow

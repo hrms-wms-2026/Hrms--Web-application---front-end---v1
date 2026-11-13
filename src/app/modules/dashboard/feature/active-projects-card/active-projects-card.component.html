@@ -1,7 +1,7 @@
 <section class="group flex h-full flex-col rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-5 shadow-xs" data-purpose="active-projects">
   <div class="flex items-center justify-between gap-2">
     <h2 class="flex min-w-0 items-center gap-2.5 text-base font-bold text-[var(--color-text-primary)]">
-      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-indigo)] dark:bg-[var(--color-accent-subtle)] dark:text-[var(--color-text-primary)]">
+      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-widget-mild)] text-[var(--color-widget-shade-1)] dark:bg-[var(--color-accent-subtle)] dark:text-[var(--color-text-primary)]">
         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3l9 4.5-9 4.5-9-4.5L12 3z" stroke-linejoin="round" />
           <path d="M3 12l9 4.5 9-4.5M3 16.5L12 21l9-4.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -53,12 +53,14 @@
     <p class="mt-4 text-sm text-[var(--color-text-secondary)]" data-testid="active-projects-empty">No active projects right now.</p>
   } @else {
     <ul class="mt-4 flex flex-col gap-3.5">
-      @for (project of preview(); track project.id; let i = $index) {
+      @for (project of preview(); track project.id) {
         <li>
           <a [routerLink]="['/work', project.id]" class="group flex items-center gap-3" data-testid="active-projects-item">
             <span
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-[var(--color-text-on-solid)]"
-              [style.background-color]="color(project, i)"
+              data-testid="active-projects-swatch"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
+              [style.background-color]="color(project)"
+              [style.color]="ink(project)"
               aria-hidden="true"
             >{{ initial(project) }}</span>
             <div class="min-w-0 flex-1">
@@ -68,7 +70,7 @@
             <div class="w-20 shrink-0 @sm:w-28">
               <p class="text-right text-xs font-medium text-[var(--color-text-secondary)]" data-testid="active-projects-percent">{{ progress(project) }}%</p>
               <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]">
-                <div class="h-full rounded-full" [style.width.%]="progress(project)" [style.background-color]="color(project, i)"></div>
+                <div class="h-full rounded-full" [style.width.%]="progress(project)" [style.background-color]="color(project)"></div>
               </div>
             </div>
           </a>

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProjectApiService } from '../../../work/data-access/project-api.service';
 import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
+import { widgetShadeFor } from '../../../../shared/utils/widget-palette';
 import { ActiveProjectsCardComponent } from './active-projects-card.component';
 
 function project(id: string, overrides: Partial<ProjectListItemDto> = {}): ProjectListItemDto {
@@ -51,6 +52,21 @@ describe('ActiveProjectsCardComponent', () => {
     fixture.detectChanges();
     expect(listMine).toHaveBeenCalledTimes(2);
     expect(el.querySelector('[data-testid="refreshed-label"]')).toBeNull();
+  });
+
+  it('colours each project by a theme shade picked from its id, never its stored colour', async () => {
+    const listMine = vi.fn(() => of(page([project('p-1', { color: '#ff0000' }), project('p-2', { color: '#00ff00' }), project('p-3')])));
+    const fixture = await setup(listMine);
+    const swatches = () =>
+      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="active-projects-swatch"]')).map(
+        (s) => (s as HTMLElement).style.backgroundColor
+      );
+    expect(swatches()).toEqual([widgetShadeFor('p-1'), widgetShadeFor('p-2'), widgetShadeFor('p-3')]);
+    // The same project keeps its shade when the list reloads in another order.
+    listMine.mockReturnValue(of(page([project('p-3'), project('p-1', { color: '#ff0000' })])));
+    (fixture.nativeElement.querySelector('[data-testid="popout-refresh"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(swatches()).toEqual([widgetShadeFor('p-3'), widgetShadeFor('p-1')]);
   });
 
   it('counts only active, not-achieved projects and previews the first four', async () => {

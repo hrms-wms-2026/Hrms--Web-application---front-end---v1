@@ -12,7 +12,7 @@
 }
 
 .dd-track {
-  stroke: var(--color-surface-secondary);
+  stroke: var(--color-widget-track);
 }
 
 /* Hovering a slice lifts it outward and fades the others. */
@@ -25,10 +25,10 @@
 }
 
 /* A 'transparent' slice is the unfilled rest of a progress ring (Weekly Work Progress): drawn in the track colour,
-   rounded and spaced like the others. CSS wins over the slice's own fill/stroke attributes. */
+   rounded and spaced like the others. The arc gets no inline fill/stroke, so this class colours it. */
 .dd-arc--rest {
-  fill: var(--color-surface-secondary);
-  stroke: var(--color-surface-secondary);
+  fill: var(--color-widget-track);
+  stroke: var(--color-widget-track);
 }
 
 .dd-svg--hover .dd-arc {

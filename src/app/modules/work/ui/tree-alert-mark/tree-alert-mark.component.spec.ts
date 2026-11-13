@@ -32,6 +32,6 @@ describe('TreeAlertMarkComponent', () => {
     const mark = render([{ ...alert('Over capacity'), inAchievedModule: true }]).querySelector('[data-testid="tree-row-alert"]')!;
 
     expect(mark.classList).toContain('tree-alert-mark--muted');
-    expect(mark.getAttribute('title')).toBe('Achieved module - no action needed\n• Over capacity');
+    expect(mark.getAttribute('title')).toBe('Achieved milestone - no action needed\n• Over capacity');
   });
 });

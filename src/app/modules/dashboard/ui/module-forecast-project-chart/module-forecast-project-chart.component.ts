@@ -13,7 +13,7 @@ import {
   DashboardBarHeadline,
   DashboardBarLegendItem,
   DashboardBarVariant,
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
 /** A bar label short enough to sit under a narrow bar. */
 export function shortBarLabel(name: string, max = 10): string {
@@ -31,8 +31,9 @@ export function chartFit(
   bodyWidth: number,
   slotPx = 64,
   max = 8,
+  axisPx = 40,
 ): { readonly bars: number; readonly labelChars: number } {
-  const plot = Math.max(0, bodyWidth - 40);
+  const plot = Math.max(0, bodyWidth - axisPx);
   const bars = Math.max(2, Math.min(max, Math.floor(plot / slotPx)));
   return { bars, labelChars: Math.max(5, Math.floor(plot / bars / 7)) };
 }
@@ -41,8 +42,10 @@ export function chartFit(
  * Module overtime forecast, per project: the hours still to do beside the hours the team is predicted to complete
  * before the deadlines (a `pair` stack). The dash is the capacity at the rate limit; it is drawn only when it lands
  * within {@link MARKER_HEADROOM} of the tallest bar, so one huge project can't flatten the rest (the hover still reads
- * it). A project with modules in overload gets a small "⚠ N" badge over its bar, never a red frame. Narrow cards pass
- * `limit` and `labelChars` from {@link chartFit}; the rest show as "+N more". Drawn by the shared dashboard bar chart.
+ * it). Bars carry no badges or red frames (the user asked for a clean plot, 2026-11-10); overload shows in the
+ * ranking and the popup table. Narrow cards pass `limit` and `labelChars` from {@link chartFit} and `narrow`, which
+ * drops the axis (its ticks overlapped at that width; the headline and hover read the hours) and shortens the legend
+ * to one line; the rest show as "+N more". Drawn by the shared dashboard bar chart.
  */
 @Component({
   selector: 'app-module-forecast-project-chart',
@@ -57,6 +60,7 @@ export function chartFit(
       [bars]="bars()"
       [headline]="headline()"
       [compactHeadline]="compactHeadline()"
+      [hideAxis]="narrow()"
       [legend]="legend()"
       [variant]="variant()"
       [ariaLabel]="summary()"
@@ -81,9 +85,9 @@ export class ModuleForecastProjectChartComponent {
   readonly limit = input(8);
   /** The longest bar label (characters); the full name is in the hover. */
   readonly labelChars = input(10);
-  /** Modules in overload per project id (the response's count when it has one, else counted from the items). */
-  readonly overloadCounts = input<Readonly<Record<string, number | undefined>>>({});
   readonly compactHeadline = input(true);
+  /** A narrow card (body under ~360px): no axis, a one-line legend. */
+  readonly narrow = input(false);
   readonly variant = input<DashboardBarVariant>('earnings');
 
   /** The realistic task-rate limit: the dash is the most task hours the team can reach (capacity × limit). */
@@ -93,7 +97,9 @@ export class ModuleForecastProjectChartComponent {
     { label: 'Remaining', color: FORECAST_COLORS.remaining },
     { label: 'Predicted', color: FORECAST_COLORS.covered },
     {
-      label: `Capacity at ${rateText(this.maxTaskRate())}`,
+      label: this.narrow()
+        ? `${rateText(this.maxTaskRate())} cap`
+        : `Capacity at ${rateText(this.maxTaskRate())}`,
       color: 'var(--color-text-secondary)',
       marker: true,
     },
@@ -113,10 +119,8 @@ export class ModuleForecastProjectChartComponent {
     const shown = this.shown();
     const limit = this.maxTaskRate();
     const tallest = Math.max(0, ...shown.map((p) => Math.max(p.remainingHours, p.predictedHours)));
-    const counts = this.overloadCounts();
     return shown.map((p) => {
       const reachable = p.capacityHours * limit;
-      const overload = counts[p.projectId] ?? 0;
       return {
         key: p.projectId,
         label: shortBarLabel(p.name, this.labelChars()),
@@ -127,14 +131,7 @@ export class ModuleForecastProjectChartComponent {
         segments: [{ key: 'remaining', value: p.remainingHours, color: FORECAST_COLORS.remaining }],
         pair: [{ key: 'predicted', value: p.predictedHours, color: FORECAST_COLORS.covered }],
         marker: reachable > 0 && reachable <= tallest * MARKER_HEADROOM ? reachable : undefined,
-        badge:
-          overload > 0
-            ? {
-                text: `⚠ ${overload}`,
-                title: `${overload} module${overload === 1 ? '' : 's'} in overload`,
-              }
-            : undefined,
-        tooltip: `${p.name}: ${forecastHoursText(p.remainingHours)} left, ${forecastHoursText(p.predictedHours)} predicted, capacity at ${rateText(limit)} ${forecastHoursText(reachable)}${overload > 0 ? `, ${overload} in overload` : ''}`,
+        tooltip: `${p.name}: ${forecastHoursText(p.remainingHours)} left, ${forecastHoursText(p.predictedHours)} predicted, capacity at ${rateText(limit)} ${forecastHoursText(reachable)}`,
       };
     });
   });

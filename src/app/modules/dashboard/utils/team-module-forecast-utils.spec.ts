@@ -6,7 +6,12 @@ import {
   moduleRowRateText,
   modulesAtRisk,
 } from './team-module-forecast-format.util';
-import { shownModuleForecastCards } from './team-module-forecast-layout.util';
+import { planForecastLayout } from './overtime-forecast-layout.util';
+import {
+  MODULE_FORECAST_NARROW_CHART_EXTRA_PX,
+  planModuleForecastLayout,
+  shownModuleForecastCards,
+} from './team-module-forecast-layout.util';
 import { teamModuleForecastSummaryCards } from './team-module-forecast-summary-cards.util';
 import { MODULE_FORECAST_ITEMS, moduleForecastResponse } from './team-module-forecast.testing';
 
@@ -38,13 +43,13 @@ describe('team-module-forecast utils', () => {
     expect(text).toContain('58% is needed');
     expect(text).toContain("~950 h won't fit at today's rate.");
     expect(moduleForecastExplanation({ ...t, teamRate: null })).toContain(
-      'Nobody on these modules clocked',
+      'Nobody on these milestones clocked',
     );
     expect(moduleForecastExplanation({ ...t, remainingHours: 0 })).toBe(
-      'All 5 modules have their allocated hours completed.',
+      'All 5 milestones have their allocated hours completed.',
     );
     expect(moduleForecastExplanation({ ...t, modules: 0 })).toBe(
-      'No open modules with a deadline ahead.',
+      'No open milestones with a deadline ahead.',
     );
   });
 
@@ -78,6 +83,19 @@ describe('team-module-forecast utils', () => {
     });
     expect(cards[1].body?.kind === 'bars' && cards[1].body.figure).toBe('None');
     expect(cards[0].body?.kind === 'spark' && cards[0].body.delta).toBeNull();
+  });
+
+  it('a narrow card gives the chart extra height and the xs caption its second line', () => {
+    // ~230px body, 8 rows tall: the chart panel is taller than the shared 150px and every section still fits.
+    const narrow = planModuleForecastLayout('xs', 262, 852);
+    expect(narrow.chart).toBe(true);
+    expect(narrow.chartPx).toBeGreaterThanOrEqual(150 + MODULE_FORECAST_NARROW_CHART_EXTRA_PX);
+    const shared = planForecastLayout('xs', 262, 852);
+    expect(narrow.rankingRows).toBeLessThanOrEqual(shared.rankingRows);
+    // A wide card keeps the shared plan.
+    expect(planModuleForecastLayout('standard', 760, 860)).toEqual(
+      planForecastLayout('standard', 760, 860),
+    );
   });
 
   it('knows which cards a view already shows', () => {

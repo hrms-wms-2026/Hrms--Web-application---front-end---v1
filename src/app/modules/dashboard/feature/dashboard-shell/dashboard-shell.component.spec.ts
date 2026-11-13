@@ -8,6 +8,7 @@ import { PermissionService } from '../../../../core/auth/state/permission.servic
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
+import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-toolbar.component';
 import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
 import { AvailableWidget, BootstrapWidget, DashboardBootstrap } from '../../models/dashboard-layout.model';
 import { DashboardStore } from '../../state/dashboard.store';
@@ -54,8 +55,9 @@ function avail(key: string, over: Partial<AvailableWidget> = {}): AvailableWidge
 
 @Component({
   standalone: true,
-  imports: [DashboardShellComponent],
+  imports: [DashboardShellComponent, PageToolbarComponent],
   template: `
+    <app-page-toolbar />
     <app-dashboard-shell dashboardKey="my-team">
       <p emptyState data-testid="slot-empty">empty slot</p>
       <p retryState data-testid="slot-retry">retry slot</p>
@@ -194,17 +196,35 @@ describe('DashboardShellComponent', () => {
   it('customize_button_enters_edit_mode', async () => {
     const ctx = setup();
     await ready(ctx.fixture);
-    expect(ctx.toolbar.action()?.label).toBe('Customize');
+    expect(ctx.toolbar.action()?.label).toBe('Customize dashboard');
     expect(ctx.toolbar.action()?.disabled()).toBe(false);
+    expect(ctx.toolbar.action()?.expanded?.()).toBe(false);
     expect(q(ctx.el, 'dashboard-edit-toolbar')).toBeNull();
+    expect(q(ctx.el, 'page-toolbar-close')).toBeNull();
 
-    await enterEdit(ctx);
+    click(ctx.el, 'page-toolbar-open');
+    ctx.fixture.detectChanges();
+    await ctx.fixture.whenStable();
+    ctx.fixture.detectChanges();
 
-    expect(q(ctx.el, 'dashboard-edit-toolbar')?.textContent).toContain('Customize your dashboard');
-    expect(ctx.toolbar.action()).toBeNull();
-    for (const id of ['dashboard-add-widget', 'dashboard-reset', 'dashboard-cancel', 'dashboard-save']) {
+    expect(q(ctx.el, 'page-toolbar-title')?.textContent).toContain('Customize your dashboard');
+    expect(q(ctx.el, 'dashboard-edit-toolbar')).toBeNull();
+    expect(ctx.toolbar.action()?.expanded?.()).toBe(true);
+    expect(q(ctx.el, 'page-toolbar-open')).toBeNull();
+    for (const id of ['dashboard-add-widget', 'dashboard-reset', 'page-toolbar-close', 'dashboard-save']) {
       expect(q(ctx.el, id)).not.toBeNull();
     }
+    expect(q(ctx.el, 'dashboard-add-widget')?.textContent).toContain('Add');
+  });
+
+  it('capsule_x_cancels_editing', async () => {
+    const ctx = setup();
+    await ready(ctx.fixture);
+    await enterEdit(ctx);
+    click(ctx.el, 'page-toolbar-close');
+    ctx.fixture.detectChanges();
+    expect(q(ctx.el, 'page-toolbar-close')).toBeNull();
+    expect(q(ctx.el, 'page-toolbar-open')).not.toBeNull();
   });
 
   it('clears_the_navbar_button_on_destroy', async () => {
@@ -272,7 +292,7 @@ describe('DashboardShellComponent', () => {
     (ctx.el.querySelector('app-confirm-modal app-button button') as HTMLElement).click();
     ctx.fixture.detectChanges();
     expect(ctx.api.reset).not.toHaveBeenCalled();
-    expect(q(ctx.el, 'dashboard-edit-toolbar')).not.toBeNull();
+    expect(q(ctx.el, 'page-toolbar-close')).not.toBeNull();
 
     click(ctx.el, 'dashboard-reset');
     ctx.fixture.detectChanges();
@@ -288,8 +308,8 @@ describe('DashboardShellComponent', () => {
     await enterEdit(ctx);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     ctx.fixture.detectChanges();
-    expect(q(ctx.el, 'dashboard-edit-toolbar')).toBeNull();
-    expect(ctx.toolbar.action()?.label).toBe('Customize');
+    expect(q(ctx.el, 'page-toolbar-close')).toBeNull();
+    expect(ctx.toolbar.action()?.expanded?.()).toBe(false);
   });
 
   it('escape_during_a_drag_cancels_only_the_drag_and_keeps_the_draft', async () => {
@@ -308,7 +328,7 @@ describe('DashboardShellComponent', () => {
 
     expect(q(ctx.el, 'grid-ghost')).toBeNull();
     expect(store.editing()).toBe(true);
-    expect(q(ctx.el, 'dashboard-edit-toolbar')).not.toBeNull();
+    expect(q(ctx.el, 'page-toolbar-close')).not.toBeNull();
     expect(store.draft().map(w => w.instanceId)).toEqual(['w1']);
 
     // Once the drag is over, Escape cancels editing as before.
@@ -327,11 +347,11 @@ describe('DashboardShellComponent', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     ctx.fixture.detectChanges();
     expect(q(ctx.el, 'widget-store-drawer')).toBeNull();
-    expect(q(ctx.el, 'dashboard-edit-toolbar')).not.toBeNull();
+    expect(q(ctx.el, 'page-toolbar-close')).not.toBeNull();
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     ctx.fixture.detectChanges();
-    expect(q(ctx.el, 'dashboard-edit-toolbar')).toBeNull();
+    expect(q(ctx.el, 'page-toolbar-close')).toBeNull();
   });
 
   it('save_is_disabled_while_saving', async () => {
@@ -344,7 +364,7 @@ describe('DashboardShellComponent', () => {
     store.saving.set(true);
     ctx.fixture.detectChanges();
     expect(saveBtn().disabled).toBe(true);
-    for (const id of ['dashboard-add-widget', 'dashboard-reset', 'dashboard-cancel']) {
+    for (const id of ['dashboard-add-widget', 'dashboard-reset', 'page-toolbar-close']) {
       expect((q(ctx.el, id) as HTMLButtonElement).disabled).toBe(true);
     }
   });
@@ -358,14 +378,6 @@ describe('DashboardShellComponent', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     ctx.fixture.detectChanges();
     expect(store.editing()).toBe(true);
-  });
-
-  it('edit_toolbar_buttons_wrap_on_narrow_screens', async () => {
-    const ctx = setup();
-    await ready(ctx.fixture);
-    await enterEdit(ctx);
-    const group = (q(ctx.el, 'dashboard-save') as HTMLElement).parentElement!;
-    expect(group.classList.contains('flex-wrap')).toBe(true);
   });
 
   it('removing_the_last_widget_from_the_keyboard_focuses_add_widget', async () => {
@@ -464,13 +476,15 @@ describe('DashboardShellComponent', () => {
     expect(q(ctx.el, 'slot-retry')).toBeNull();
   });
 
-  it('shows_loader_while_the_dashboard_is_loading', async () => {
+  it('shows_the_skeleton_while_the_dashboard_is_loading', async () => {
     const ctx = setup();
     ctx.api.listMine.mockReturnValue(new (await import('rxjs')).Observable(() => undefined) as never);
     ctx.fixture.detectChanges();
     await ctx.fixture.whenStable();
     ctx.fixture.detectChanges();
-    expect(ctx.el.querySelector('app-loader')).not.toBeNull();
+    expect(ctx.el.querySelector('app-dashboard-skeleton')).not.toBeNull();
+    expect(ctx.el.querySelector('app-loader')).toBeNull();
+    expect(ctx.el.querySelector('app-dashboard-grid')).toBeNull();
   });
 
   it('shows_error_state_and_reload_calls_load_again', async () => {

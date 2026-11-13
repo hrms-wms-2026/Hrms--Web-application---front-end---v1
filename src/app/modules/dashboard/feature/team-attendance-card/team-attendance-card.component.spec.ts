@@ -9,7 +9,7 @@ import {
   TeamAttendanceTrendPoint
 } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
-import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import { TeamAttendanceCardComponent } from './team-attendance-card.component';
 
 class FakeResizeObserver {
@@ -347,7 +347,7 @@ describe('TeamAttendanceCardComponent', () => {
     expect(fixture.componentInstance.detailOpen()).toBe(false);
   });
 
-  it('a tall card swaps the tiles for two summary cards of what it is not already showing', () => {
+  it('a tall card swaps the tiles for summary cards of what it is not already showing', () => {
     setup();
     // The trend and the ranking are on the card, so their cards are left out.
     let el = resize(760, 744);
@@ -355,9 +355,10 @@ describe('TeamAttendanceCardComponent', () => {
     expect(q(el, 'ta-tiles')).toBeNull();
     expect(titles()).toEqual(['By department', 'On leave today']);
 
-    // Without the ranking on the card, its attention card comes in and loads its own ranking.
+    // Without the ranking on the card, its attention card comes in and loads its own ranking. The 728px body is
+    // wide enough for a third card, so On leave today stays too.
     el = resize(760, 636);
-    expect(titles()).toEqual(['By department', 'Needs attention']);
+    expect(titles()).toEqual(['By department', 'Needs attention', 'On leave today']);
     expect(getEmployees).toHaveBeenCalledWith(expect.objectContaining({ sort: 'attention', pageSize: 3 }));
   });
 

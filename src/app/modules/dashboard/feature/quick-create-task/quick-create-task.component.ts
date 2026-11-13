@@ -4,6 +4,7 @@ import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ProjectApiService } from '../../../work/data-access/project-api.service';
 import { ProjectListItemDto } from '../../../work/models/dto/project.dto';
 import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
+import { widgetInkOn, widgetShadeFor } from '../../../../shared/utils/widget-palette';
 
 /** Same cap as the Active projects card: `/work/projects/mine` has no status filter. */
 const PROJECT_PAGE_SIZE = 100;
@@ -59,8 +60,9 @@ type Step = 'idle' | 'loading' | 'pick' | 'none' | 'error' | 'form';
                   (click)="choose(project.id)"
                 >
                   <span
-                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-[var(--color-text-on-solid)]"
-                    [style.background-color]="project.color || '#6366f1'"
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+                    [style.background-color]="shade(project)"
+                    [style.color]="ink(project)"
                     aria-hidden="true"
                   >{{ initial(project) }}</span>
                   <span class="min-w-0 flex-1">
@@ -131,6 +133,15 @@ export class QuickCreateTaskComponent {
   protected choose(projectId: string): void {
     this.projectId.set(projectId);
     this.step.set('form');
+  }
+
+  /** Monochrome widgets: a theme shade picked from the project id, never the stored project colour. */
+  protected shade(project: ProjectListItemDto): string {
+    return widgetShadeFor(project.id);
+  }
+
+  protected ink(project: ProjectListItemDto): string {
+    return widgetInkOn(widgetShadeFor(project.id));
   }
 
   protected initial(project: ProjectListItemDto): string {

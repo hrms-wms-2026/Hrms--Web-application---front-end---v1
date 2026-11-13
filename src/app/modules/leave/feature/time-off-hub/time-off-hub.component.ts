@@ -4,7 +4,7 @@
  * (All my leave types, Leave Requests, Team Availability). Admin screens live in Settings → Time Off.
  */
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { MANAGES_PEOPLE, PermissionService } from '../../../../core/auth/state/permission.service';
@@ -13,6 +13,10 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { DashboardDonutComponent, DashboardDonutSlice } from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
+import { formatPercent } from '../../../../shared/utils/format-percent.util';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 import { MyTeamTodayStore } from '../../../dashboard/state/my-team-today.store';
 import { TimeOfDayInfo, getTimeOfDayInfo } from '../../../dashboard/util/time-of-day.util';
 import { LeaveBalanceResponse } from '../../models/leave-balance.model';
@@ -40,6 +44,17 @@ const BALANCE_CARD_LIMIT = 3;
 const RECENT_LIMIT = 3;
 const UPCOMING_LIMIT = 3;
 
+/** Monochrome slice colours of the Team Availability donut (WIDGET_CREATION_RULES §7a). */
+const AVAILABILITY_COLORS: Readonly<Record<AvailabilitySlice['key'], string>> = {
+  work: WIDGET.shade1,
+  leave: WIDGET.shade2,
+  'not-in': WIDGET.shade4,
+  out: WIDGET.maroon
+};
+
+/** The balance card's small remaining-share ring. */
+const BALANCE_RING_PX = 61;
+
 export interface AvailabilitySlice {
   key: 'work' | 'leave' | 'not-in' | 'out';
   label: string;
@@ -62,7 +77,7 @@ export interface UpcomingRow {
 @Component({
   selector: 'app-time-off-hub',
   standalone: true,
-  imports: [DecimalPipe, NgTemplateOutlet, RouterLink, AvatarComponent, BreadcrumbHeaderComponent, ButtonComponent, ErrorStateComponent, LoaderComponent, LeaveTypeIconComponent, NewLeaveRequestHostComponent],
+  imports: [NgTemplateOutlet, RouterLink, AvatarComponent, BreadcrumbHeaderComponent, ButtonComponent, DashboardDonutComponent, DonutKeyComponent, ErrorStateComponent, LoaderComponent, LeaveTypeIconComponent, NewLeaveRequestHostComponent],
   templateUrl: './time-off-hub.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './time-off-hub.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -181,23 +196,37 @@ export class TimeOffHubComponent {
     return { total: onLeave, slices: [{ key: 'leave', label: 'On leave today', count: onLeave }] };
   });
 
-  /** Donut arcs (stroke-dasharray) for the availability slices; circumference of r=40 is ~251.3. */
-  readonly donutArcs = computed(() => {
+  /** Team Availability donut slices: count per slice, share of the whole team. */
+  readonly teamSlices = computed<DashboardDonutSlice[]>(() => {
     const availability = this.availability();
     if (!availability) return [];
-    const total = availability.slices.reduce((sum, slice) => sum + slice.count, 0);
-    if (total === 0) return [];
-    const circumference = 2 * Math.PI * 40;
-    let offset = 0;
-    return availability.slices
-      .filter((slice) => slice.count > 0)
-      .map((slice) => {
-        const length = (slice.count / total) * circumference;
-        const arc = { key: slice.key, dash: `${length} ${circumference - length}`, offset: -offset };
-        offset += length;
-        return arc;
-      });
+    return availability.slices.map((slice) => ({
+      key: slice.key,
+      label: slice.label,
+      value: slice.count,
+      percentText: formatPercent(slice.count, availability.total),
+      color: AVAILABILITY_COLORS[slice.key]
+    }));
   });
+  /** The slice lit by the donut or its key. */
+  readonly teamActive = signal<string | null>(null);
+
+  readonly balanceRingPx = BALANCE_RING_PX;
+
+  /** Each balance card's ring: the remaining share filled (maroon when negative), the rest drawn as track. */
+  private readonly balanceRings = computed(
+    () =>
+      new Map(
+        this.balanceCards().map((balance) => {
+          const share = remainingShare(balance);
+          const slices: DashboardDonutSlice[] = [
+            { key: 'remaining', label: 'Remaining', value: share, color: balance.isNegative ? WIDGET.maroon : WIDGET.shade1 },
+            { key: 'used', label: 'Used', value: 100 - share, color: 'transparent' }
+          ];
+          return [balance.leaveTypeId, slices] as const;
+        })
+      )
+  );
 
   constructor() {
     // Re-check every minute so the greeting, picture and quote move on at "Good afternoon" and the rest.
@@ -225,13 +254,13 @@ export class TimeOffHubComponent {
     return this.typeById().get(leaveTypeId)?.color ?? 'var(--color-accent)';
   }
 
-  share(balance: LeaveBalanceResponse): number {
-    return remainingShare(balance);
+  ringSlices(balance: LeaveBalanceResponse): readonly DashboardDonutSlice[] {
+    return this.balanceRings().get(balance.leaveTypeId) ?? [];
   }
 
-  percent(count: number): number {
-    const total = this.availability()?.total ?? 0;
-    return total > 0 ? Math.round((count / total) * 100) : 0;
+  /** The remaining share as the ring's centre shows it ("86%"). */
+  share(balance: LeaveBalanceResponse): string {
+    return formatPercent(remainingShare(balance), 100);
   }
 
   dateRange(startAt: string, endAt: string): string {

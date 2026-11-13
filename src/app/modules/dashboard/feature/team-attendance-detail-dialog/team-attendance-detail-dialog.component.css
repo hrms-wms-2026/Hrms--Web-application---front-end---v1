@@ -69,7 +69,7 @@
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.tad-rank--top { background: var(--color-success-subtle); color: var(--color-success-text); }
+.tad-rank--top { background: var(--color-widget-mild); color: var(--color-widget-shade-1); }
 
 .tad-range {
   display: flex;
@@ -354,10 +354,10 @@
   vertical-align: middle;
 }
 
-.tad-cell--present { background: #34d399; }
-.tad-cell--late { background: #fbbf24; border-radius: 0.1875rem; }
-.tad-cell--absent { background: #f87171; border-radius: 0.1875rem; transform: rotate(45deg) scale(0.85); }
-.tad-cell--leave { background: #60a5fa; }
+.tad-cell--present { background: var(--color-widget-shade-1); }
+.tad-cell--late { background: var(--color-widget-shade-3); border-radius: 0.1875rem; }
+.tad-cell--absent { background: var(--color-widget-maroon); border-radius: 0.1875rem; transform: rotate(45deg) scale(0.85); }
+.tad-cell--leave { background: var(--color-widget-shade-2); }
 .tad-cell--pending { background: transparent; border: 2px solid var(--color-border-strong); }
 .tad-cell--off { width: 0.5rem; height: 2px; border-radius: 1px; background: var(--color-border-strong); }
 
@@ -392,5 +392,5 @@
 
 .tad-error {
   font-size: 0.75rem;
-  color: var(--color-danger-text);
+  color: var(--color-widget-maroon);
 }

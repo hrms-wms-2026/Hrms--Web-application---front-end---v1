@@ -8,7 +8,7 @@
   (closed)="collapse()"
 >
   <section role="button" tabindex="0" appKeyboardClick
-    class="group flex h-full flex-col rounded-2xl border border-[var(--color-attention-line)] bg-gradient-to-b from-[var(--color-warning-subtle)] via-[var(--color-warning-subtle)]/70 to-[var(--color-warning-subtle)]/40 p-5 dark:bg-[var(--color-card-bg)] dark:bg-none"
+    class="group flex h-full flex-col rounded-2xl border border-[var(--color-widget-mild-line)] bg-gradient-to-b from-[var(--color-widget-mild)] via-[var(--color-widget-mild)]/70 to-[var(--color-widget-mild)]/40 p-5 dark:bg-[var(--color-card-bg)] dark:bg-none"
     [class.cursor-pointer]="!showAll() && canExpand()"
     [class.ac-fit]="!showAll()"
     data-testid="action-center-card"
@@ -16,7 +16,7 @@
   >
     <div class="ac-head mb-3 flex items-center justify-between gap-3">
       <div class="flex min-w-0 items-center gap-2">
-        <span class="ac-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-warning-subtle)] font-bold text-[var(--color-warning-text)] dark:bg-transparent dark:text-[var(--color-warning)]" aria-hidden="true">!</span>
+        <span class="ac-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-widget-mild)] font-bold text-[var(--color-widget-shade-1)] dark:bg-transparent dark:text-[var(--color-widget-shade-1)]" aria-hidden="true">!</span>
         <div class="min-w-0">
           <h2 class="ac-title text-base font-semibold text-[var(--color-text-primary)]">Action Center</h2>
           @if (subtitle(); as sub) {
@@ -25,7 +25,7 @@
         </div>
       </div>
       <app-popout-header-actions
-        style="--popout-actions-bg: var(--color-attention-actions-bg)"
+        style="--popout-actions-bg: var(--color-widget-mild)"
         [refreshing]="refreshing()"
         [expanded]="showAll()"
         [canExpand]="canExpand()"
@@ -39,7 +39,7 @@
     @if (loading()) {
       <div class="flex flex-col gap-2" data-testid="action-center-skeleton">
         @for (i of [1, 2, 3, 4]; track i) {
-          <div class="h-10 animate-pulse rounded-lg bg-[var(--color-attention-line)]/70"></div>
+          <div class="h-10 animate-pulse rounded-lg bg-[var(--color-widget-mild-line)]/70"></div>
         }
       </div>
     } @else if (errored()) {
@@ -62,7 +62,7 @@
       </div>
 
       @if (unavailableCount() > 0) {
-        <p class="mb-2 text-[11px] text-[var(--color-danger)]" data-testid="action-center-partial">
+        <p class="mb-2 text-[11px] text-[var(--color-widget-maroon)]" data-testid="action-center-partial">
           Some items couldn't be loaded - the counts may be higher.
           <button type="button" class="font-semibold underline cursor-pointer" (click)="$event.stopPropagation(); retry()">Retry</button>
         </p>
@@ -70,11 +70,11 @@
 
       @if (filtered().length === 0) {
         <p class="py-3 text-sm text-[var(--color-text-secondary)]" data-testid="action-center-all-clear">
-          <span class="text-[var(--color-success)]" aria-hidden="true">✓</span>
+          <span class="text-[var(--color-widget-shade-1)]" aria-hidden="true">✓</span>
           {{ filter() === 'all' ? "You're all caught up" : 'Nothing here right now' }}
         </p>
       } @else {
-        <ul class="divide-y divide-[var(--color-attention-line)]/70" data-testid="action-center-inbox">
+        <ul class="divide-y divide-[var(--color-widget-mild-line)]/70" data-testid="action-center-inbox">
           @for (item of visibleRows(); track item.key) {
             <li class="ac-row py-2.5" data-testid="action-center-inbox-row" appStopClickPropagation>
               <div class="flex items-center gap-3">
@@ -165,12 +165,12 @@
               </div>
 
               @if (rowErrors()[item.key]; as rowError) {
-                <p class="mt-2 rounded-lg bg-[var(--color-danger-subtle)] px-3 py-1.5 text-[11px] text-[var(--color-danger-text)]" role="alert" data-testid="action-center-row-error">{{ rowError }}</p>
+                <p class="mt-2 rounded-lg bg-[var(--color-widget-maroon-soft)] px-3 py-1.5 text-[11px] text-[var(--color-widget-maroon)]" role="alert" data-testid="action-center-row-error">{{ rowError }}</p>
               }
 
               @if (form()?.key === item.key) {
                 <div
-                  [class]="'mt-2 rounded-xl border bg-[var(--color-surface)] p-3 ' + (form()?.mode === 'reject' ? 'border-[var(--color-danger-subtle)]' : 'border-[var(--color-success-subtle)]')"
+                  [class]="'mt-2 rounded-xl border bg-[var(--color-surface)] p-3 ' + (form()?.mode === 'reject' ? 'border-[var(--color-widget-maroon-soft)]' : 'border-[var(--color-widget-mild-line)]')"
                   data-testid="action-center-decision-form"
                 >
                   <label class="mb-1 block text-[11px] font-semibold text-[var(--color-text-secondary)]" [attr.for]="'ac-comment-' + item.key">{{ formLabel(item) }}</label>
@@ -184,7 +184,7 @@
                     data-testid="action-center-decision-comment"
                   ></textarea>
                   @if (formError()) {
-                    <p class="mt-1 text-[11px] text-[var(--color-danger)]" data-testid="action-center-decision-validation">{{ formError() }}</p>
+                    <p class="mt-1 text-[11px] text-[var(--color-widget-maroon)]" data-testid="action-center-decision-validation">{{ formError() }}</p>
                   }
                   <div class="mt-2 flex justify-end gap-2">
                     <button type="button" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] cursor-pointer" [disabled]="busyKey() === item.key" (click)="cancelDecision($event)">Cancel</button>
@@ -211,7 +211,7 @@
         }
 
         @if (!showAll() && hiddenCount() > 0) {
-          <div class="ac-foot mt-auto flex justify-end border-t border-[var(--color-attention-line)]/70 pt-3">
+          <div class="ac-foot mt-auto flex justify-end border-t border-[var(--color-widget-mild-line)]/70 pt-3">
             <button
               type="button"
               class="text-xs font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:underline cursor-pointer"
@@ -222,7 +222,7 @@
             </button>
           </div>
         } @else if (showAll()) {
-          <div class="flex justify-end border-t border-[var(--color-attention-line)]/70 pt-3">
+          <div class="flex justify-end border-t border-[var(--color-widget-mild-line)]/70 pt-3">
             <button
               type="button"
               class="text-xs font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:underline cursor-pointer"

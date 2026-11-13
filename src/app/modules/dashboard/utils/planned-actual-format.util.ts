@@ -1,5 +1,6 @@
 import { KpiTile } from '../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { minutesText } from './team-presence-format.util';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 /**
  * Planned vs actual (2026-11-02 design match, sections 7.3 and 7.4): Planner minutes only. Planned = task + meeting
@@ -9,10 +10,10 @@ import { minutesText } from './team-presence-format.util';
 
 /** The in plan / outside slot / no plan colours of Team Progress's planned-vs-worked band (team-progress-time CSS). */
 export const PLANNED_ACTUAL_COLORS = {
-  planned: '#cbd5e1',
-  scheduled: '#3b82f6',
-  outside: '#f59e0b',
-  noPlan: 'repeating-linear-gradient(135deg, #f59e0b 0 4px, #fde68a 4px 8px)',
+  planned: WIDGET.shade4,
+  scheduled: WIDGET.shade1,
+  outside: WIDGET.shade3,
+  noPlan: `repeating-linear-gradient(135deg, ${WIDGET.shade3} 0 4px, ${WIDGET.track} 4px 8px)`,
 } as const;
 
 export interface PlannedActualRow {

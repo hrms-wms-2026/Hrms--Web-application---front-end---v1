@@ -92,9 +92,9 @@ describe('teamWorkTaskSummaryCards', () => {
   it('ranks the biggest gaps between worked and task hours, red from 8 h', () => {
     const g = body(byId(teamWorkTaskSummaryCards(response()), 'wt-gap'), 'rank');
     expect(g.rows.map((r) => [r.name, r.chips[0].text, r.chips[0].tone])).toEqual([
-      ['Vimal R', '+11 h', 'var(--color-cat-red)'],
-      ['Divya K', '+8 h', 'var(--color-cat-red)'],
-      ['Sam A', '+6 h', 'var(--color-cat-amber)']
+      ['Vimal R', '+11 h', 'var(--color-widget-maroon)'],
+      ['Divya K', '+8 h', 'var(--color-widget-maroon)'],
+      ['Sam A', '+6 h', 'var(--color-widget-shade-3)']
     ]);
   });
 

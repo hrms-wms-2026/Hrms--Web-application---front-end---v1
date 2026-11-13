@@ -1,4 +1,4 @@
-import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from './dashboard-donut.util';
+import { DASHBOARD_DONUT_LEGEND_ROW_PX, DASHBOARD_DONUT_PX } from '../../../shared/ui/charts/utils/dashboard-donut.util';
 
 /** How the Team attendance card lays itself out at its rendered size. The detail dialog is the popup. */
 export type TeamAttendanceView = 'mini' | 'xs' | 'standard';
@@ -79,7 +79,8 @@ export const TEAM_ATTENDANCE_MAX_RANKING_ROWS = 10;
 /** The sections a view adds below the donut at a size. Each needs the one before it, so a taller card
  * shows the status tiles first, then the trend chart, then the employee ranking; the donut never moves. */
 export interface TeamAttendancePlan {
-  /** standard on a wide card: the trend chart sits beside the donut, rate and legend instead of below. */
+  /** standard on a wide card: the trend chart sits beside the donut, rate and legend instead of below, and the
+   * ‹ range › moves up into the card header. */
   heroTrend: boolean;
   /** xs: the status legend right under the donut (where every widget puts its legend). */
   legend: boolean;
@@ -98,13 +99,14 @@ export function planTeamAttendanceLayout(view: TeamAttendanceView, width: number
   if (view === 'mini' || !(width > 0) || !(height > 0)) return EMPTY_TEAM_ATTENDANCE_PLAN;
   const s = TEAM_ATTENDANCE_SECTION_PX;
   const bodyWidth = width - TEAM_ATTENDANCE_CARD_CHROME.width;
-  // xs: the donut, then its legend (it stands in for the status tiles) like every widget at this size.
-  const base = view === 'xs' ? DASHBOARD_DONUT_PX : s.range + s.gap + DASHBOARD_DONUT_PX;
+  const heroTrend = view === 'standard' && bodyWidth >= HERO_TREND_WIDTH_PX;
+  // xs: the donut, then its legend (it stands in for the status tiles) like every widget at this size. A wide
+  // standard card (heroTrend) shows the ‹ range › in its header, so the body starts with the donut.
+  const base = view === 'xs' || heroTrend ? DASHBOARD_DONUT_PX : s.range + s.gap + DASHBOARD_DONUT_PX;
   let rest = height - TEAM_ATTENDANCE_CARD_CHROME.height - base;
 
   const tileColumns: 2 | 4 = bodyWidth >= TILES_ONE_ROW_WIDTH_PX ? 4 : 2;
   const tilesPx = s.gap + (rowPx ?? (tileColumns === 4 ? s.tileRow : s.tileRow * 2 + 8));
-  const heroTrend = view === 'standard' && bodyWidth >= HERO_TREND_WIDTH_PX;
   const plan: TeamAttendancePlan = { heroTrend, legend: false, figure: false, tiles: false, tileColumns, trend: false, rankingRows: 0 };
   if (view === 'xs') {
     if (rest >= s.gap + s.xsLegend) {

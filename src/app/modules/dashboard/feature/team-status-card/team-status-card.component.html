@@ -1,7 +1,7 @@
 <app-widget-card
   class="group block h-full"
   data-testid="team-status-card"
-  title="Working / Break / Leave"
+  title="My team working / break / leave"
   [nowrapTitle]="true"
   [state]="widgetState()"
   errorMessage="Couldn't load who is working."
@@ -63,7 +63,7 @@
       @let p = progress(m);
       <span class="wbl-bar" aria-hidden="true">
         @if (p !== null) {
-          <span [style.width.%]="p" [style.background]="stateColor(m) ?? '#94a3b8'"></span>
+          <span [style.width.%]="p" [style.background]="stateColor(m) ?? 'var(--color-widget-shade-4)'"></span>
         }
       </span>
     </ng-template>

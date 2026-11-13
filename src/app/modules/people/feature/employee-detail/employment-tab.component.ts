@@ -268,14 +268,14 @@ export class EmployeeEmploymentTabComponent {
     ];
   });
 
-  /** "3 projects · 5 modules" from the graph, or the plain description until it loads. */
+  /** "3 projects · 5 milestones" from the graph, or the plain description until it loads. */
   readonly graphSubtitle = computed(() => {
     const g = this.graph();
-    if (this.graphState() !== 'ready' || !g) return 'Projects, modules and tasks they work on';
+    if (this.graphState() !== 'ready' || !g) return 'Projects, milestones and tasks they work on';
     const count = (kind: WorkGraphNode['kind']) => g.nodes.filter((n) => n.kind === kind).length;
     const parts = [
       [count('project'), 'project'],
-      [count('module'), 'module'],
+      [count('module'), 'milestone'],
       [count('task') + g.hiddenTaskCount, 'task']
     ] as const;
     return parts

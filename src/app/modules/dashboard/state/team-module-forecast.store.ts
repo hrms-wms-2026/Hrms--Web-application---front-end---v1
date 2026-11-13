@@ -60,7 +60,7 @@ export const TeamModuleForecastStore = signalStore(
         next: (table) => patchState(store, { table, tableLoading: false }),
         error: (err) =>
           patchState(store, {
-            tableError: forecastErrorText(err, 'Failed to load the modules.'),
+            tableError: forecastErrorText(err, 'Failed to load the milestones.'),
             tableLoading: false,
           }),
       });
@@ -82,7 +82,7 @@ export const TeamModuleForecastStore = signalStore(
           next: (data) => patchState(store, { data, loading: false, loadedAt: new Date() }),
           error: (err) =>
             patchState(store, {
-              error: forecastErrorText(err, 'Failed to load the module forecast.'),
+              error: forecastErrorText(err, 'Failed to load the milestone forecast.'),
               loading: false,
             }),
         });

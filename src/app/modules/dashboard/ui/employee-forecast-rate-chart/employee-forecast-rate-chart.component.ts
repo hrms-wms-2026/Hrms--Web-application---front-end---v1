@@ -14,7 +14,7 @@ import {
   DashboardBarHeadline,
   DashboardBarLegendItem,
   DashboardBarVariant,
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 import { shortBarLabel } from '../module-forecast-project-chart/module-forecast-project-chart.component';
 
 /** The people the chart draws: the most overtime first, then the highest required rate. */
@@ -35,33 +35,13 @@ export function rateChartPeople(
 const percent = (rate: number | null): number => (rate === null ? 0 : Math.round(rate * 1000) / 10);
 
 /** The highest rate the chart plots: a required 853% would flatten every task-rate bar. Taller ones are drawn at the
- * cap with a badge showing the real figure; the hover reads the real figure too. */
+ * cap; the hover reads the real figure. No badges over the bars: the red required bar already says overload. */
 export const RATE_CHART_CAP_PERCENT = 200;
-
-/**
- * The small badge over a person's bar: "⚠" for overload (never a red frame round the bar), with the real required
- * rate when it is drawn at the cap ("⚠ 853%"); a capped rate alone reads "853%".
- */
-export function rateChartBadge(
-  requiredRate: number | null,
-  overload: boolean,
-): { readonly text: string; readonly title: string } | undefined {
-  const real = percent(requiredRate);
-  const capped = real > RATE_CHART_CAP_PERCENT;
-  if (!overload && !capped) return undefined;
-  const figure = capped ? `${Math.round(real)}%` : '';
-  return {
-    text: overload ? `⚠${figure ? ` ${figure}` : ''}` : figure,
-    title:
-      (overload ? `Overload: needs ${rateText(requiredRate)}` : `Needs ${rateText(requiredRate)}`) +
-      (capped ? `, drawn at ${RATE_CHART_CAP_PERCENT}%` : ''),
-  };
-}
 
 /**
  * Employee overtime forecast: each person's task rate over the last 4 weeks beside the rate they need to finish their
  * open tasks before the deadline (a `pair` stack, in percent). A required rate over 100% is drawn red: it can't fit in
- * normal hours. People in overload get a small ⚠ badge over the bar, never a red frame. Drawn by the shared dashboard bar chart.
+ * normal hours. No badges or frames on the bars; the hover has the details. Drawn by the shared dashboard bar chart.
  */
 @Component({
   selector: 'app-employee-forecast-rate-chart',
@@ -132,7 +112,6 @@ export class EmployeeForecastRateChartComponent {
           color: FORECAST_COLORS.covered,
         },
       ],
-      badge: rateChartBadge(e.requiredRate, e.status === 'overload'),
       pair: [
         {
           key: 'required',

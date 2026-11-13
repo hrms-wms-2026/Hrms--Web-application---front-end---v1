@@ -23,10 +23,10 @@ const BUCKET_LABELS: Record<TaskProgressBucket, string> = {
 };
 
 const BUCKET_COLORS: Record<TaskProgressBucket, string> = {
-  completed: 'var(--color-success, #16a34a)',
-  inProgress: 'var(--color-accent, #2563eb)',
-  overdue: 'var(--color-danger, #dc2626)',
-  notStarted: 'var(--color-border, #d1d5db)'
+  completed: 'var(--color-widget-shade-1)',
+  inProgress: 'var(--color-widget-shade-2)',
+  overdue: 'var(--color-widget-maroon)',
+  notStarted: 'var(--color-widget-shade-4)'
 };
 
 @Component({

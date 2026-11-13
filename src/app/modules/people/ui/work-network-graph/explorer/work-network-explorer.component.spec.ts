@@ -73,13 +73,13 @@ describe('WorkNetworkExplorerComponent', () => {
     const { el } = setup();
 
     // P1 has a logo, so its code gives way to the image (see the image tests below).
-    expect(node(el, 'project:p1').textContent).toContain('12 tasks • 2 modules');
+    expect(node(el, 'project:p1').textContent).toContain('12 tasks • 2 milestones');
     expect(node(el, 'project:p1').textContent).toContain('40%');
     expect(node(el, 'module:m1').textContent).toContain('M1');
     expect(node(el, 'task:t1')).toBeNull();
     expect(cards(el)).toEqual([]);
     expect(el.textContent).toContain('Projects (1)');
-    expect(el.textContent).toContain('Modules (2)');
+    expect(el.textContent).toContain('Milestones (2)');
     expect(el.textContent).toContain('Open tasks (3)');
   });
 
@@ -144,7 +144,7 @@ describe('WorkNetworkExplorerComponent', () => {
     const { fixture, el } = setup();
     node(el, 'project:p1').dispatchEvent(new Event('click'));
     fixture.detectChanges();
-    expect(panel(el)!.textContent).toContain('Modules (2)');
+    expect(panel(el)!.textContent).toContain('Milestones (2)');
 
     const moduleButtons = Array.from(panel(el)!.querySelectorAll('.wgp-item')) as HTMLButtonElement[];
     moduleButtons.find((b) => b.textContent?.includes('Device Pairing'))!.click();
@@ -270,31 +270,31 @@ describe('WorkNetworkExplorerComponent', () => {
       expect(el.querySelector('h2')!.textContent).toBe('Work Network');
       expect(el.querySelector('[aria-label="Close full work network"]')).not.toBeNull();
       const legend = Array.from(el.querySelectorAll('.wge-legend li')).map((li) => li.textContent!.trim());
-      expect(legend).toEqual(['Project', 'Module you own', 'Module member', 'In progress', 'Not started', 'Overdue']);
+      expect(legend).toEqual(['Project', 'Milestone you own', 'Milestone member', 'In progress', 'Not started', 'Overdue']);
     });
 
     it('renders the given heading and hides the close button when showClose is false', () => {
       const { fixture, el } = setup();
       fixture.componentRef.setInput('heading', 'Project Network');
-      fixture.componentRef.setInput('description', 'Modules and tasks of this project.');
+      fixture.componentRef.setInput('description', 'Milestones and tasks of this project.');
       fixture.componentRef.setInput('showClose', false);
       fixture.detectChanges();
 
       expect(el.querySelector('h2')!.textContent).toBe('Project Network');
-      expect(el.querySelector('.wge-title p')!.textContent).toContain('Modules and tasks of this project.');
+      expect(el.querySelector('.wge-title p')!.textContent).toContain('Milestones and tasks of this project.');
       expect(el.querySelector('[aria-label="Close full work network"]')).toBeNull();
     });
 
     it('renders the given legend items instead of the default legend', () => {
       const { fixture, el } = setup();
       fixture.componentRef.setInput('legend', [
-        { key: 'module', label: 'Module' },
+        { key: 'module', label: 'Milestone' },
         { key: 'overdue', label: 'Needs attention' }
       ]);
       fixture.detectChanges();
 
       const legend = Array.from(el.querySelectorAll('.wge-legend li')).map((li) => li.textContent!.trim());
-      expect(legend).toEqual(['Module', 'Needs attention']);
+      expect(legend).toEqual(['Milestone', 'Needs attention']);
     });
   });
 

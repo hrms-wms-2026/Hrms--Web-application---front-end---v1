@@ -14,24 +14,33 @@ import { AddEmployeeWizardComponent } from '../../../modules/people/feature/add-
   imports: [TaskFormModalComponent, AddEmployeeWizardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <!--
+      @defer keeps the task form (with the rich-text editor) and the add-employee wizard out of the main-layout
+      chunk. This host sits in the layout of every page, so a static import cost every page ~800 kB raw JS.
+      The chunk now downloads only when a draft is opened from the drafts bar.
+    -->
     @if (store.activeDraft(); as draft) {
       @if (draft.kind === 'task') {
-        <app-task-form-modal
-          [open]="true"
-          mode="create"
-          [projectId]="draft.projectId ?? ''"
-          [draftId]="draft.id"
-          (created)="onDone()"
-          (saved)="onDone()"
-          (closed)="onClose()"
-        />
+        @defer (on immediate) {
+          <app-task-form-modal
+            [open]="true"
+            mode="create"
+            [projectId]="draft.projectId ?? ''"
+            [draftId]="draft.id"
+            (created)="onDone()"
+            (saved)="onDone()"
+            (closed)="onClose()"
+          />
+        }
       } @else {
-        <app-add-employee-wizard
-          [isModal]="true"
-          [initialDraftId]="draft.id"
-          (closed)="onClose()"
-          (saved)="onDone()"
-        />
+        @defer (on immediate) {
+          <app-add-employee-wizard
+            [isModal]="true"
+            [initialDraftId]="draft.id"
+            (closed)="onClose()"
+            (saved)="onDone()"
+          />
+        }
       }
     }
   `

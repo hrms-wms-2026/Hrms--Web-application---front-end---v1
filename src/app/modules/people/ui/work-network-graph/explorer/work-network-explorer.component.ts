@@ -15,8 +15,8 @@ export interface ExplorerLegendItem {
 /** What the footer shows when `legend` is left alone: the employee Work Network's own legend. */
 const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
   { key: 'project', label: 'Project' },
-  { key: 'owner', label: 'Module you own' },
-  { key: 'member', label: 'Module member' },
+  { key: 'owner', label: 'Milestone you own' },
+  { key: 'member', label: 'Milestone member' },
   { key: 'progress', label: 'In progress' },
   { key: 'not-started', label: 'Not started' },
   { key: 'overdue', label: 'Overdue' }
@@ -47,8 +47,8 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
           <input class="ui-field__control"
             type="search"
             data-testid="work-network-search"
-            placeholder="Search projects, modules or tasks…"
-            aria-label="Search projects, modules or tasks"
+            placeholder="Search projects, milestones or tasks…"
+            aria-label="Search projects, milestones or tasks"
             [value]="query()"
             (input)="query.set($any($event.target).value)"
             (keydown.enter)="pickFirst()"
@@ -113,7 +113,7 @@ const EMPLOYEE_LEGEND: readonly ExplorerLegendItem[] = [
 
         <ul class="wge-counts" aria-label="Network contents">
           <li><span class="wge-dot wge-dot--project"></span>Projects ({{ counts().projects }})</li>
-          <li><span class="wge-dot wge-dot--module"></span>Modules ({{ counts().modules }})</li>
+          <li><span class="wge-dot wge-dot--module"></span>Milestones ({{ counts().modules }})</li>
           <li><span class="wge-dot wge-dot--task"></span>Open tasks ({{ counts().tasks }})</li>
         </ul>
       </div>
@@ -207,7 +207,7 @@ export class WorkNetworkExplorerComponent {
    */
   readonly heading = input('Work Network');
   readonly description = input(
-    'Projects, modules and tasks. Hover a module to preview its tasks, click it to explore. Drag to move, scroll to zoom.'
+    'Projects, milestones and tasks. Hover a milestone to preview its tasks, click it to explore. Drag to move, scroll to zoom.'
   );
   readonly showClose = input(true);
   readonly legend = input<readonly ExplorerLegendItem[] | null>(null);

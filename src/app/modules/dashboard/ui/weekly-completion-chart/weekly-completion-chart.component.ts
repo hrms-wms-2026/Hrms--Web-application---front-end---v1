@@ -1,16 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { LedWeeklyCompletionWeek } from '../../models/team-progress-detail.model';
 import { formatHourValue, formatPercent } from '../../utils/team-progress-format.util';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 import {
   DashboardBar,
   DashboardBarChartComponent,
   DashboardBarHeadline,
   DashboardBarState
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const COMPLETED_COLOR = '#10b981';
+const COMPLETED_COLOR = WIDGET.shade1;
 
 /** "13 Oct" from a yyyy-MM-dd date, without going through Date (no time-zone shift). */
 function shortDate(isoDate: string): string {

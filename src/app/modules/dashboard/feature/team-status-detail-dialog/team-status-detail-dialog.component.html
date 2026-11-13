@@ -2,7 +2,7 @@
      names the dialog for screen readers); the header below has the title on the left and the close button on the right. -->
 <app-modal
   [open]="open()"
-  title="Working / Break / Leave"
+  title="My team working / break / leave"
   size="2xl"
   panelClass="team-status-detail"
   (closed)="close()"
@@ -10,7 +10,7 @@
   <div class="wbld-head">
     <div class="wbld-head__row">
       <div class="wbld-head__title">
-        <h2>Working / Break / Leave</h2>
+        <h2>My team working / break / leave</h2>
         <p>Who in your team is working, on a break or on leave right now</p>
       </div>
       <button
@@ -27,7 +27,7 @@
 
   @if (store.data(); as data) {
     <div class="wbld">
-      <app-kpi-tiles [tiles]="tiles()" [maxColumns]="5" ariaLabel="Right now" />
+      <app-kpi-tiles palette="widget" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Right now" />
 
       <div class="wbld-charts">
         <section class="wbld-panel" data-testid="wbld-status-donut">
@@ -119,7 +119,7 @@
             <span class="wbld-progress">
               <span class="wbld-bar" aria-hidden="true">
                 @if (p !== null) {
-                  <span [style.width.%]="p" [style.background]="stateColor(row) ?? '#94a3b8'"></span>
+                  <span [style.width.%]="p" [style.background]="stateColor(row) ?? 'var(--color-widget-shade-4)'"></span>
                 }
               </span>
               <span class="wbld-pct">{{ progressText(row) }}</span>

@@ -6,18 +6,20 @@ import {
   TeamScheduleWeekResponse,
 } from '../models/team-schedule.model';
 import { PlannedActualDay, PlannedActualRow } from './planned-actual-format.util';
-import { DonutArc, donutArcs } from './status-donut.util';
+import { DonutArc, donutArcs } from '../../../shared/ui/charts/utils/status-donut.util';
 import { minutesText } from './team-presence-format.util';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
-/** Item colours (2026-11-02 design match). Breaks are amber; unscheduled work is a red hatched strip. */
+/** Item colours (monochrome): completed, in progress and pending are theme shades darkest to lightest; meetings are
+ * plain gray; breaks sit between; unscheduled work and conflicts are maroon. */
 export const SCHEDULE_COLORS = {
-  completed: '#10b981',
-  inProgress: '#3b82f6',
-  pending: '#cbd5e1',
-  meeting: '#8b5cf6',
-  break: '#f59e0b',
-  unscheduled: '#ef4444',
-  conflict: '#ef4444',
+  completed: WIDGET.shade1,
+  inProgress: WIDGET.shade2,
+  pending: WIDGET.shade4,
+  meeting: WIDGET.gray,
+  break: WIDGET.shade3b,
+  unscheduled: WIDGET.maroon,
+  conflict: WIDGET.maroon,
 } as const;
 
 /** Workload level thresholds over (planned task + meeting minutes) / the work window: High at 90% or more, Medium from
@@ -133,8 +135,8 @@ export function loadPercent(member: TeamScheduleMember): number | null {
   return Math.min(100, (loadMinutes(member) * 100) / capacity);
 }
 
-/** Load bar colours: light blue under capacity, blue at it, burnt orange over it. */
-export const LOAD_COLORS = { under: '#93c5fd', full: '#1d4ed8', over: '#c2410c' } as const;
+/** Load bar colours: a light shade under capacity, the darkest at it, maroon over it. */
+export const LOAD_COLORS = { under: WIDGET.shade3, full: WIDGET.shade1, over: WIDGET.maroon } as const;
 
 export function loadColor(member: TeamScheduleMember): string {
   if (isOverCapacity(member)) return LOAD_COLORS.over;

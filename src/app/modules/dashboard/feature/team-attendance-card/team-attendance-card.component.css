@@ -14,7 +14,7 @@
 }
 
 .ta-period:hover { border-color: var(--color-border-strong); }
-.ta-period:focus-visible { outline: 2px solid rgb(59 130 246); outline-offset: 1px; }
+.ta-period:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
 
 /* ---- Range navigation ---- */
 .ta-range {
@@ -41,7 +41,12 @@
 
 .ta-nav:hover:not(:disabled) { background: var(--color-surface-secondary); }
 .ta-nav:disabled { opacity: 0.35; cursor: default; }
-.ta-nav:focus-visible { outline: 2px solid rgb(59 130 246); outline-offset: 1px; }
+.ta-nav:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+
+.ta-range-head {
+  min-width: 0;
+  margin-right: 0.5rem;
+}
 
 .ta-range-label {
   min-width: 0;
@@ -111,11 +116,11 @@
 .ta-delta {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
   white-space: nowrap;
 }
 
-.ta-delta--down { color: var(--color-danger); }
+.ta-delta--down { color: var(--color-widget-maroon); }
 .ta-delta--inline { font-weight: 500; }
 
 .ta-chart {
@@ -233,15 +238,17 @@
 .ta-tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
 .ta-tile {
-  --tone: #10b981;
+  --tone: var(--color-widget-shade-1);
   display: flex;
   height: 52px;
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-surface));
+  /* The mild theme card (monochrome widgets); --tone only marks a "bad" tile (maroon value, below). */
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
+  background: var(--color-widget-mild);
   padding: 0 0.625rem;
 }
 
@@ -249,8 +256,13 @@
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.2;
-  color: color-mix(in srgb, var(--tone) 75%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
+}
+
+/* A tile whose tone is maroon (absent, won't fit) shows its value in maroon on the same mild card. */
+.ta-tile[style*='--color-widget-maroon'] .ta-tile-count {
+  color: var(--color-widget-maroon);
 }
 
 .ta-tile-label {
@@ -293,7 +305,7 @@
 .ta-link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
   white-space: nowrap;
 }
 
@@ -325,7 +337,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.ta-rank--top { background: var(--color-tint-green-line); color: var(--color-tint-green-strong); }
+.ta-rank--top { background: var(--color-widget-mild-line); color: var(--color-widget-shade-1); }
 
 .ta-row-name {
   overflow: hidden;
@@ -346,7 +358,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #34d399;
+  background: var(--color-widget-shade-1);
 }
 
 .ta-rank-rate {

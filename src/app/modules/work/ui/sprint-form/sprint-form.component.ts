@@ -41,7 +41,7 @@ export interface SprintFormModuleOption {
 
         <div class="sprint-form__tasks">
           <span class="sprint-form__label">Tasks</span>
-          <p class="sprint-form__hint">You can add tasks from modules you own. A task already in another sprint will move here.</p>
+          <p class="sprint-form__hint">You can add tasks from milestones you own. A task already in another sprint will move here.</p>
           <div class="sprint-form__picker">
             <app-module-task-picker
               moduleMode="bulk"

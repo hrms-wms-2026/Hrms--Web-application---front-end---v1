@@ -84,7 +84,7 @@ export const ProjectDetailStore = signalStore(
         const dtos = await firstValueFrom(api.getMyMilestones(projectId));
         patchState(store, { milestones: dtos.map(toMilestone), milestonesLoading: false });
       } catch (err) {
-        patchState(store, { milestonesError: extractError(err, 'Failed to load modules.'), milestonesLoading: false });
+        patchState(store, { milestonesError: extractError(err, 'Failed to load milestones.'), milestonesLoading: false });
       }
     },
 
@@ -189,7 +189,7 @@ export const ProjectDetailStore = signalStore(
         patchState(store, { milestoneActionError: null });
         return { success: true, objectiveId: created.id };
       } catch (err) {
-        patchState(store, { milestoneActionError: extractError(err, 'Failed to create sub-module.') });
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to create sub-milestone.') });
         return { success: false };
       }
     },

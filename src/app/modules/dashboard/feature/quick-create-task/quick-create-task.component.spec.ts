@@ -6,6 +6,7 @@ import { ProjectApiService } from '../../../work/data-access/project-api.service
 import { PagedResultDto, ProjectListItemDto } from '../../../work/models/dto/project.dto';
 import { TaskFormModalComponent } from '../../../work/ui/task-form-modal/task-form-modal.component';
 import { QuickCreateTaskComponent } from './quick-create-task.component';
+import { widgetShadeFor } from '../../../../shared/utils/widget-palette';
 
 /** Stands in for Work's task form, which pulls in the whole Work module. */
 @Component({ selector: 'app-task-form-modal', standalone: true, template: `<div data-testid="task-form-stub" [attr.data-open]="open()" [attr.data-project]="projectId()"></div>` })
@@ -66,6 +67,14 @@ describe('QuickCreateTaskComponent', () => {
     expect(form.dataset['open']).toBe('true');
     expect(form.dataset['project']).toBe('2');
     expect(q(fixture, 'quick-create-task-project-1')).toBeNull();
+  });
+
+  it('shows each project in a theme shade picked from its id, not its stored colour', async () => {
+    const { fixture } = await setup(vi.fn().mockReturnValue(of(page([project('p-1', { color: '#ff0000' }), project('p-2', { color: '#00ff00' })]))));
+    const swatch = (id: string) =>
+      ((fixture.nativeElement as HTMLElement).querySelector(`[data-testid="quick-create-task-project-${id}"] span`) as HTMLElement).style.backgroundColor;
+    expect(swatch('p-1')).toBe(widgetShadeFor('p-1'));
+    expect(swatch('p-2')).toBe(widgetShadeFor('p-2'));
   });
 
   it('skips the picker when there is exactly one active project', async () => {

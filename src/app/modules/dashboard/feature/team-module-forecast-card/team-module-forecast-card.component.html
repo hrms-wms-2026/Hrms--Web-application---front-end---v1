@@ -1,11 +1,11 @@
 <app-widget-card
   class="group block h-full"
   data-testid="team-module-forecast-card"
-  title="Module overtime forecast"
+  title="My team milestone overtime forecast"
   [nowrapTitle]="true"
   [state]="widgetState()"
-  errorMessage="Couldn't load the module forecast."
-  emptyMessage="No open modules you lead with a deadline ahead."
+  errorMessage="Couldn't load the milestone forecast."
+  emptyMessage="No open milestones you lead with a deadline ahead."
   (retry)="retry()"
 >
   <div widget-actions class="flex min-w-0 items-center gap-1">
@@ -32,7 +32,7 @@
         [limit]="chartFit().bars"
         [labelChars]="chartFit().labelChars"
         [compactHeadline]="!narrowChart()"
-        [overloadCounts]="overloadCounts()"
+        [narrow]="narrowChart()"
         [maxTaskRate]="data.totals.maxTaskRate"
         class="mf-chart"
         heading="Won't fit by project"
@@ -164,9 +164,13 @@
           }
 
           @if (plan().rankingRows > 0) {
-            <section class="mf-panel mf-ranking" data-testid="mf-ranking">
+            <section
+              class="mf-panel mf-ranking"
+              [class.mf-ranking--narrow]="narrowChart()"
+              data-testid="mf-ranking"
+            >
               <div class="mf-list-head">
-                <p class="mf-section-title">Modules at risk</p>
+                <p class="mf-section-title">Milestones at risk</p>
                 <button
                   type="button"
                   class="mf-link"
@@ -213,13 +217,13 @@
                         ><span aria-hidden="true">⚠</span> Overload</span
                       >
                     } @else {
-                      <span class="mf-chip" [style.--tone]="statusMeta[row.status].color">{{
+                      <span class="mf-chip">{{
                         chip(row.overtimeHours, row.status)
                       }}</span>
                     }
                   </li>
                 } @empty {
-                  <li class="mf-row-empty">Every module is on track</li>
+                  <li class="mf-row-empty">Every milestone is on track</li>
                 }
               </ol>
             </section>

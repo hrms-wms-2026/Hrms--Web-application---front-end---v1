@@ -1,15 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { WeekDayProgress } from '../../models/weekly-work-progress.model';
-import { barDayTitle, barWeekday } from '../dashboard-bar-chart/bar-chart-dates.util';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
+import { barDayTitle, barWeekday } from '../../../../shared/ui/charts/dashboard-bar-chart/bar-chart-dates.util';
 import {
   DashboardBar,
   DashboardBarChartComponent,
   DashboardBarHeadline,
   DashboardBarLegendItem
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
-const SCHEDULED_COLOR = '#3b82f6';
-const WORKED_COLOR = '#22c55e';
+const SCHEDULED_COLOR = WIDGET.shade3;
+const WORKED_COLOR = WIDGET.shade1;
 const EXPECTED_COLOR = 'var(--color-text-secondary)';
 
 /** "6h" or "5.5h" from minutes. */

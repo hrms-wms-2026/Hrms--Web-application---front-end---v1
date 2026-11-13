@@ -1,6 +1,6 @@
 <ng-template #headTpl>
   <span class="sc-head">
-    <span class="sc-icon" [style.background]="tint(18)" [style.color]="card().tone"><app-icon [name]="card().icon" /></span>
+    <span class="sc-icon" [style.background]="widget.mildLine" [style.color]="ink(card().tone)"><app-icon [name]="card().icon" /></span>
     <span class="sc-title" data-testid="summary-title">{{ card().title }}</span>
     @if (headCount(); as hc) {
       <span class="sc-head-count" data-testid="summary-count"><b>{{ hc.count }}</b><span class="sc-head-count-label"> {{ hc.label }}</span></span>
@@ -16,8 +16,8 @@
     role="group"
     data-testid="summary-card"
     [attr.aria-label]="card().title"
-    [style.background]="tint(6)"
-    [style.border-color]="tint(22)"
+    [style.background]="widget.mild"
+    [style.--sc-border]="'transparent'"
   >
     <ng-container [ngTemplateOutlet]="headTpl" />
     <span class="sc-error">
@@ -32,8 +32,8 @@
   data-testid="summary-card"
   [class.sc--on]="revealed()"
   [style.--sc-tone]="card().tone"
-  [style.background]="tint(6)"
-  [style.border-color]="tint(22)"
+  [style.background]="widget.mild"
+  [style.--sc-border]="'transparent'"
   [attr.aria-label]="ariaLabel()"
   (click)="open($event)"
   (animationstart)="onReplay($event)"
@@ -68,13 +68,13 @@
         <span class="sc-viz">
           <svg viewBox="0 0 100 38" preserveAspectRatio="none" class="sc-spark" aria-hidden="true">
             @if (sparkPath(); as p) {
-              <path [attr.d]="p.area" [attr.fill]="tint(22)" class="sc-spark-area" />
+              <path [attr.d]="p.area" [style.fill]="tint(22)" class="sc-spark-area" />
               <path
                 data-testid="summary-spark-line"
                 class="sc-spark-line"
                 [attr.d]="p.line"
                 fill="none"
-                [attr.stroke]="card().tone"
+                [style.stroke]="card().tone"
                 stroke-width="2"
                 vector-effect="non-scaling-stroke"
                 pathLength="1"
@@ -141,12 +141,12 @@
         <span class="sc-rows">
           @for (row of r.rows; track row.id; let i = $index) {
             <span class="sc-rank" data-testid="summary-rank-row">
-              <span class="sc-pill" [class.sc-pill--top]="i === 0" [style.background]="i === 0 ? tint(30) : null" [style.color]="i === 0 ? ink(card().tone) : null">{{ i + 1 }}</span>
+              <span class="sc-pill" [class.sc-pill--top]="i === 0" [style.background]="i === 0 ? widget.mildLine : null" [style.color]="i === 0 ? widget.shade1 : null">{{ i + 1 }}</span>
               <app-avatar size="xs" [avatarUrl]="avatarUrl(row.avatarFileId)" [userName]="row.name" />
               <span class="sc-name">{{ row.name }}</span>
               <span class="sc-chips">
                 @for (chip of row.chips; track chip.text) {
-                  <span class="sc-chip" [style.background]="tint(16, chip.tone)" [style.color]="ink(chip.tone)">{{ chip.text }}</span>
+                  <span class="sc-chip" [class.sc-chip--bad]="chip.tone === widget.maroon" [style.background]="chipBg(chip.tone)" [style.color]="chipInk(chip.tone)">{{ chip.text }}</span>
                 }
               </span>
             </span>
@@ -162,7 +162,7 @@
             <span class="sc-rank sc-rank--person" data-testid="summary-person">
               <app-avatar size="xs" [avatarUrl]="avatarUrl(row.avatarFileId)" [userName]="row.name" />
               <span class="sc-name">{{ row.name }}</span>
-              <span class="sc-chip" [style.background]="tint(14)" [style.color]="ink(card().tone)">{{ row.chip }}</span>
+              <span class="sc-chip" [class.sc-chip--bad]="card().tone === widget.maroon" [style.background]="chipBg(card().tone)" [style.color]="chipInk(card().tone)">{{ row.chip }}</span>
             </span>
           } @empty {
             <span class="sc-empty">{{ pp.empty }}</span>
@@ -180,7 +180,7 @@
         </span>
         <span class="sc-chip-list">
           @for (item of c.items; track item.label) {
-            <span class="sc-chip sc-chip--lg" data-testid="summary-chip" [style.background]="tint(16, item.tone)" [style.color]="ink(item.tone)"><b>{{ item.value }}</b> {{ item.label }}</span>
+            <span class="sc-chip sc-chip--lg" data-testid="summary-chip" [class.sc-chip--bad]="item.tone === widget.maroon" [style.background]="chipBg(item.tone)" [style.color]="chipInk(item.tone)"><b>{{ item.value }}</b> {{ item.label }}</span>
           }
         </span>
       }

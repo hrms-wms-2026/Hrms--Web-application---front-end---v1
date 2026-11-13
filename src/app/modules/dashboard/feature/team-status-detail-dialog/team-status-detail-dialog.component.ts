@@ -25,7 +25,7 @@ import { TeamAttendanceApiService } from '../../data-access/team-attendance-api.
 import { TeamWorkingHoursApiService } from '../../data-access/team-working-hours-api.service';
 import { TeamTodayMember, TeamWorkingHoursResponse } from '../../models/my-team-today.model';
 import { MyTeamTodayStore } from '../../state/my-team-today.store';
-import { DonutBreakdownComponent, DonutSlice } from '../../ui/donut-breakdown/donut-breakdown.component';
+import { DonutBreakdownComponent, DonutSlice } from '../../../../shared/ui/charts/donut-breakdown/donut-breakdown.component';
 import { WorkingHoursChartComponent } from '../../ui/working-hours-chart/working-hours-chart.component';
 import {
   PRESENCE_COLORS,
@@ -40,14 +40,17 @@ import {
   todayHoursText,
 } from '../../utils/team-presence-format.util';
 import { formatPercent } from '../../utils/team-progress-format.util';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
 
 /** The Team Attendance widget's week rate (the same source, so the two widgets agree); 'error' drops the tile. */
 type AttendanceRate = { readonly periodRate: number | null; readonly deltaPp: number | null } | 'error' | null;
 
 /** The neutral statuses' slices: greys, darkest for the ones that worked today. */
-const NEUTRAL_COLORS = { clockedOut: '#64748b', notClockedIn: '#cbd5e1', absent: '#94a3b8', notScheduled: '#e2e8f0' } as const;
+/** The other slices of the 7-slice status donut, in shades between the presence ones (working shade1, leave shade2,
+ * break shade3) so neighbours stay apart; absent is "bad", so maroon. */
+const NEUTRAL_COLORS = { clockedOut: WIDGET.shade2b, notClockedIn: WIDGET.shade3b, absent: WIDGET.maroon, notScheduled: WIDGET.shade4 } as const;
 /** Scheduled time nobody has worked yet today. */
-const NOT_WORKED_COLOR = '#cbd5e1';
+const NOT_WORKED_COLOR = 'var(--color-widget-shade-4)';
 
 /** Today's team minutes: worked, on break, on leave, and the rest of the work windows not worked yet. */
 export function todayHours(members: readonly TeamTodayMember[], now: Date): Record<'worked' | 'break' | 'leave' | 'notWorked', number> {
@@ -158,7 +161,7 @@ export class TeamStatusDetailDialogComponent {
     const tiles: KpiTile[] = [
       { label: 'Working', value: g.working, hint: ofTeam(g.working), icon: 'users', tone: 'accent', testId: 'wbld-tile-working' },
       { label: 'On break', value: g.onBreak, hint: ofTeam(g.onBreak), icon: 'clock', tone: 'warning', testId: 'wbld-tile-break' },
-      { label: 'On leave', value: g.onLeave, hint: ofTeam(g.onLeave), icon: 'layers', tone: 'danger', testId: 'wbld-tile-leave' },
+      { label: 'On leave', value: g.onLeave, hint: ofTeam(g.onLeave), icon: 'layers', tone: 'accent', testId: 'wbld-tile-leave' },
       {
         label: 'Avg working time',
         value: average === null ? '—' : minutesText(average),

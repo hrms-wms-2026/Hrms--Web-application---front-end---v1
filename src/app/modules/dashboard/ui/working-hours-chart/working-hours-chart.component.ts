@@ -1,16 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TeamWorkingHoursDay } from '../../models/my-team-today.model';
 import { minutesText } from '../../utils/team-presence-format.util';
-import { barDayTitle, barHours, barWeekday } from '../dashboard-bar-chart/bar-chart-dates.util';
+import { WIDGET } from '../../../../shared/utils/widget-palette';
+import { barDayTitle, barHours, barWeekday } from '../../../../shared/ui/charts/dashboard-bar-chart/bar-chart-dates.util';
 import {
   DashboardBar,
   DashboardBarChartComponent,
   DashboardBarHeadline,
   DashboardBarLegendItem
-} from '../dashboard-bar-chart/dashboard-bar-chart.component';
+} from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 
-const WORKED_COLOR = '#3b82f6';
-const BREAK_COLOR = '#f59e0b';
+const WORKED_COLOR = WIDGET.shade1;
+const BREAK_COLOR = WIDGET.shade3;
 
 /** Worked minutes per person with a record that day; 0 without one. */
 function perPerson(d: TeamWorkingHoursDay): number {

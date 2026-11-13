@@ -87,7 +87,7 @@ describe('ProjectDetailComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Website Revamp');
-    expect(fixture.nativeElement.textContent).not.toContain('Modules');
+    expect(fixture.nativeElement.textContent).not.toContain('Milestones');
     expect(fixture.nativeElement.querySelector('app-milestone-card')).toBeNull();
   });
 
@@ -151,7 +151,7 @@ describe('ProjectDetailComponent', () => {
     storeStub.milestonesLoading = () => true;
     setup(null);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Loading modules…');
+    expect(fixture.nativeElement.textContent).toContain('Loading milestones…');
   });
 
   it('shows "No modules yet" when there are no milestones', () => {
@@ -159,6 +159,6 @@ describe('ProjectDetailComponent', () => {
     storeStub.milestonesLoading = () => false;
     setup(null);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('No modules yet');
+    expect(fixture.nativeElement.textContent).toContain('No milestones yet');
   });
 });

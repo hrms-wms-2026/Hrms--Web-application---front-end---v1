@@ -74,8 +74,8 @@ describe('MoveTasksToSprintDialogComponent', () => {
   });
 
   it('shows the blocked reason instead of the sprint list when set', () => {
-    setup({ blockedReason: 'Select tasks from a single module to move them together.' });
-    expect(fixture.nativeElement.textContent).toContain('Select tasks from a single module');
+    setup({ blockedReason: 'Select tasks from a single milestone to move them together.' });
+    expect(fixture.nativeElement.textContent).toContain('Select tasks from a single milestone');
     expect(fixture.nativeElement.querySelector('[data-testid="move-target-sp-1"]')).toBeNull();
   });
 

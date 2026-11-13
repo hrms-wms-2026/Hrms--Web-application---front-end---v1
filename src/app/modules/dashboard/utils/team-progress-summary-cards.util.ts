@@ -4,10 +4,14 @@ import { LedEmployeeProgress, LedWeeklyCompletion } from '../models/team-progres
 import { summaryDelta } from './summary-card-format.util';
 import { SUMMARY_CARD_ROWS } from './team-attendance-summary-cards.util';
 import { formatHourValue } from './team-progress-format.util';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
-const TONE = { weekly: 'var(--color-cat-green)', projects: 'var(--color-cat-blue)', overdue: 'var(--color-cat-red)', behind: 'var(--color-cat-amber)' } as const;
-const RED = 'var(--color-cat-red)';
-const AMBER = 'var(--color-cat-amber)';
+const TONE = { weekly: WIDGET.shade1, projects: WIDGET.shade2, overdue: WIDGET.maroon, behind: WIDGET.shade3 } as const;
+/** Chip tones: "bad" is maroon, the milder warning a theme shade (the mild chip). */
+const RED = WIDGET.maroon;
+const AMBER = WIDGET.shade3;
+/** Every colour these cards use, for the colour guard spec. */
+export const TEAM_PROGRESS_CARD_COLORS = { ...TONE, red: RED, amber: AMBER } as const;
 /** Bars the weekly card draws: the current week and the six before it. */
 const WEEKLY_BARS = 7;
 /** From this many days late an overdue chip is red. */

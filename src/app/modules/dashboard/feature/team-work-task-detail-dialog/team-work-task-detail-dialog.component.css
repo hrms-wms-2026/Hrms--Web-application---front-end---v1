@@ -114,8 +114,8 @@
   font-variant-numeric: tabular-nums;
 }
 .wtd-rank--top {
-  background: var(--color-success-subtle);
-  color: var(--color-success-text);
+  background: var(--color-widget-mild);
+  color: var(--color-widget-shade-1);
 }
 
 .wtd-range {
@@ -406,7 +406,7 @@
 
 .wtd-error {
   font-size: 0.75rem;
-  color: var(--color-danger-text);
+  color: var(--color-widget-maroon);
 }
 
 /* Work vs task: numeric columns right-aligned, the utilization bar beside its figure. */
@@ -416,7 +416,7 @@
   padding-right: 0.75rem !important;
 }
 .wtd-gap--over {
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
 }
 .wtd-util {
   display: inline-flex;
@@ -437,7 +437,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  background: #10b981;
+  background: var(--color-widget-shade-1);
 }
 .wtd-sort {
   display: inline-flex;

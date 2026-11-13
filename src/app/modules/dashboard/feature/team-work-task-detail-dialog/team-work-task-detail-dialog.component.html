@@ -1,7 +1,7 @@
 <!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS. -->
 <app-modal
   [open]="open()"
-  title="Work vs task hours"
+  title="My team work vs task hours"
   size="2xl"
   panelClass="team-work-task-detail"
   (closed)="close()"
@@ -9,7 +9,7 @@
   <div class="wtd-head">
     <div class="wtd-head__row">
       <div class="wtd-head__title">
-        <h2>Work vs task hours</h2>
+        <h2>My team work vs task hours</h2>
         <p>
           Working time (clocked time less breaks) against the estimated hours of the tasks your team
           completed
@@ -69,7 +69,7 @@
         }
       </div>
 
-      <app-kpi-tiles data-section="summary" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Work vs task totals" />
+      <app-kpi-tiles palette="widget" data-section="summary" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Work vs task totals" />
 
       <div class="wtd-charts">
         <section class="wtd-panel" data-section="daily">

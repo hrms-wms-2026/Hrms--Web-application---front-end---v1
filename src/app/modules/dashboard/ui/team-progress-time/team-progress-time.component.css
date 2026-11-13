@@ -22,8 +22,10 @@
 }
 
 .tpt-note {
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 0.5rem;
-  background: var(--color-surface-secondary);
+  background: var(--color-widget-mild);
   padding: 0.375rem 0.625rem;
   font-size: 0.75rem;
   color: var(--color-text-secondary);
@@ -41,7 +43,7 @@
 .tpt-coverage {
   margin-left: auto;
   font-weight: 700;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
 }
 
@@ -51,7 +53,7 @@
   height: 12px;
   overflow: visible;
   border-radius: 0.375rem;
-  background: var(--color-surface-secondary);
+  background: var(--color-widget-track);
 }
 
 .tpt-seg {
@@ -62,13 +64,13 @@
   border-radius: 0.375rem 0 0 0.375rem;
 }
 .tpt-seg--scheduled {
-  background: #3b82f6;
+  background: var(--color-widget-shade-1);
 }
 .tpt-seg--outside {
-  background: #f59e0b;
+  background: var(--color-widget-shade-3);
 }
 .tpt-seg--noplan {
-  background: repeating-linear-gradient(135deg, #f59e0b 0 4px, #fde68a 4px 8px);
+  background: repeating-linear-gradient(135deg, var(--color-widget-shade-3) 0 4px, var(--color-widget-track) 4px 8px);
 }
 
 .tpt-marker {
@@ -76,7 +78,7 @@
   top: -3px;
   bottom: -3px;
   width: 2px;
-  background: rgb(15 23 42);
+  background: var(--color-text-primary);
 }
 
 .tpt-legend {
@@ -102,9 +104,9 @@
   height: 84px;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--color-tint-red-line);
+  border: 1px solid color-mix(in srgb, var(--color-widget-maroon) 25%, var(--color-widget-maroon-soft));
   border-radius: 0.625rem;
-  background: var(--color-tint-red-bg);
+  background: var(--color-widget-maroon-soft);
   padding: 3px 0.75rem;
 }
 
@@ -113,7 +115,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 18px;
-  color: var(--color-tint-red-text);
+  color: var(--color-widget-maroon);
 }
 
 .tpt-unscheduled-row {
@@ -126,7 +128,7 @@
 }
 
 .tpt-row-bar.tpt-row-bar--red > span {
-  background: #ef4444;
+  background: var(--color-widget-maroon);
 }
 
 /* The bucket chart: 180px (TEAM_PROGRESS_TIME_PX.chart). */
@@ -173,7 +175,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: var(--color-surface-secondary);
+  background: var(--color-widget-track);
   font-size: 0.6875rem;
   font-weight: 700;
   color: var(--color-text-secondary);
@@ -197,14 +199,14 @@
   height: 6px;
   overflow: hidden;
   border-radius: 9999px;
-  background: var(--color-surface-secondary);
+  background: var(--color-widget-track);
 }
 
 .tpt-row-bar > span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #3b82f6;
+  background: var(--color-widget-shade-1);
 }
 
 .tpt-util {
@@ -215,5 +217,5 @@
 }
 
 .tpt-util--over {
-  color: var(--color-danger);
+  color: var(--color-widget-maroon);
 }

@@ -10,8 +10,33 @@
   /* Neutral surfaces/text/borders - shared across every theme preset. */
   color-scheme: light;
   --color-app-bg: #fafafa;
-  --color-surface: #fafafa;
-  --color-surface-secondary: #f4f4f5;
+  /* Every card, popup and panel takes the dashboard widget card colour (theme-tinted gray) and its inner gray
+     (tracks, chips, hovers) the widget inset, so all pages match the dashboard. Dark mode sets its own below. */
+  --color-surface: var(--color-dashboard-team-widget-bg);
+  --color-surface-secondary: var(--color-dashboard-team-widget-inset);
+  --color-field-bg: #ffffff; /* inputs, selects, textareas stay white on the gray cards */
+  /* My Team dashboard: page = white with a touch of the theme colour; widget cards = that same tint with a little
+     black mixed in (a bluish gray a step darker); inset = tracks/chips/skeletons inside the cards, one step darker again. */
+  --color-dashboard-team-page-bg: color-mix(in srgb, var(--color-accent) 6%, #ffffff);
+  --color-dashboard-team-widget-bg: color-mix(in srgb, var(--color-dashboard-team-page-bg) 96%, #000000);
+  --color-dashboard-team-widget-inset: color-mix(in srgb, var(--color-dashboard-team-widget-bg) 94%, #000000);
+  /* Dashboard widget palette (monochrome): every chart, chip and KPI/summary card inside a dashboard widget uses
+     these. Series are told apart by lightness of the theme colour mixed with gray; only "bad" gets maroon.
+     Use them through WIDGET in modules/dashboard/utils/widget-palette.ts. */
+  --color-widget-shade-1: color-mix(in srgb, var(--color-accent) 48%, #3a4656); /* main / done series, card values */
+  --color-widget-shade-2: color-mix(in srgb, var(--color-accent) 50%, #7387a0); /* second series: in progress, leave */
+  --color-widget-shade-2b: color-mix(in srgb, var(--color-accent) 40%, #8c9db2); /* in-between step (5-6 series) */
+  --color-widget-shade-3: color-mix(in srgb, var(--color-accent) 30%, #a7b5c6); /* third series, old amber warnings */
+  --color-widget-shade-3b: color-mix(in srgb, var(--color-accent) 20%, #bac5d2); /* in-between step (5-6 series) */
+  --color-widget-shade-4: color-mix(in srgb, var(--color-accent) 12%, #ccd4de); /* neutral / nothing yet */
+  --color-widget-track: color-mix(in srgb, var(--color-accent) 6%, #e1e6ec); /* empty bar tracks, chart dividers */
+  --color-widget-gray: #94a3b8; /* blue-gray, no theme tint: meetings in Team schedule */
+  --color-widget-maroon: #8a1c2c; /* was red: absent, overload, won't fit, negative deltas */
+  --color-widget-maroon-soft: #f4e3e6; /* background of maroon chips */
+  --color-widget-mild: color-mix(in srgb, var(--color-accent) 11%, #ffffff); /* KPI / summary / note card bg */
+  --color-widget-mild-line: color-mix(in srgb, var(--color-accent) 26%, #ffffff); /* KPI / summary / note card border */
+  --color-widget-on-solid: #ffffff; /* text on a solid shade-1 or maroon chip */
+  --color-widget-on-light: #18202b; /* text on a light shade fill (shade-2b and lighter) */
   --color-text-primary: #09090b;
   --color-text-secondary: #71717a;
   --color-text-inverse: #ffffff;
@@ -43,11 +68,15 @@
    * soft shadow separate them.
    */
   --color-card-bg: var(--color-surface);
-  --color-header-bg: var(--color-surface);
-  --color-content-bg: var(--color-surface); /* main panel behind the page's cards */
+  /* App shell (top bar + the frame around the sidebar and content) shares the My Team page tint on every page. */
+  --color-shell-bg: var(--color-dashboard-team-page-bg);
+  --color-header-bg: var(--color-shell-bg);
+  --color-content-bg: var(--color-dashboard-team-page-bg); /* main panel behind the page's cards: the dashboard page tint */
   --color-shell-border: var(--color-border); /* frame around the header + main panel */
   --color-surface-raised: var(--color-surface);
   --shadow-card: 0 1px 3px var(--color-card-shadow);
+  /* Dashboard widget KPI tiles, summary cards and explanation notes: no border, this very light lift instead. */
+  --shadow-widget-tile: 0 1px 2px rgba(15, 23, 42, 0.07);
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.08);
   --shadow-modal: 0 20px 48px -12px rgba(0, 0, 0, 0.18);
   --color-selected-outline: var(--color-accent);
@@ -60,22 +89,9 @@
 
   /* Soft status tints for tiles, rows and chips: a pastel in light mode, a dim mix in dark mode. */
   --color-tint-blue-bg: #eff6ff;
-  --color-tint-blue-line: #dbeafe;
   --color-tint-blue-strong: #1d4ed8;
   --color-tint-sky-bg: #f0f9ff;
-  --color-tint-sky-line: #e0f2fe;
-  --color-tint-green-bg: #ecfdf5;
-  --color-tint-green-line: #d1fae5;
-  --color-tint-green-text: #059669;
-  --color-tint-green-strong: #047857;
-  --color-tint-amber-bg: #fffbeb;
-  --color-tint-amber-text: #b45309;
-  --color-tint-rose-bg: #fff1f2;
-  --color-tint-rose-line: #ffe4e6;
-  --color-tint-rose-text: #e11d48;
   --color-tint-red-bg: #fef2f2;
-  --color-tint-red-line: #fecaca;
-  --color-tint-red-text: #b91c1c;
 
   /* "Needs attention" panels (Action Center): amber in light mode, a plain card in dark mode. */
   --color-attention-line: var(--color-warning-subtle);
@@ -101,8 +117,6 @@
   --color-cat-red: #dc2626;
   --color-cat-violet: #7c3aed;
   --color-cat-violet-subtle: #ede9fe;
-  --color-cat-indigo: #6366f1;
-  --color-cat-teal: #0d9488;
   --color-cat-slate: #94a3b8;
 
   /* Mobile bottom navigation: a floating dark pill in both modes. */
@@ -127,6 +141,26 @@ html.dark {
   --color-app-bg: #11171e;
   --color-surface: #181e27;
   --color-surface-secondary: #252c36;
+  --color-field-bg: var(--color-surface);
+  --color-dashboard-team-widget-bg: var(--color-surface);
+  --color-dashboard-team-widget-inset: #252c36;
+  --color-dashboard-team-page-bg: color-mix(in srgb, var(--color-accent) 4%, #11171e);
+  /* Dashboard widget palette, dark: theme mixed with slates; shade 1 brightest, shade 4 nearest the card but
+     still >= 3:1 against it. Maroon is lightened so its text passes 4.5:1. */
+  --color-widget-shade-1: color-mix(in srgb, var(--color-accent) 45%, #dbe3ee);
+  --color-widget-shade-2: color-mix(in srgb, var(--color-accent) 45%, #a9b6c6);
+  --color-widget-shade-2b: color-mix(in srgb, var(--color-accent) 40%, #96a3b4);
+  --color-widget-shade-3: color-mix(in srgb, var(--color-accent) 34%, #8592a3);
+  --color-widget-shade-3b: color-mix(in srgb, var(--color-accent) 28%, #788596);
+  --color-widget-shade-4: color-mix(in srgb, var(--color-accent) 22%, #6c7889);
+  --color-widget-track: color-mix(in srgb, var(--color-accent) 8%, #29313d);
+  --color-widget-gray: #7d8ca3;
+  --color-widget-maroon: #ee95a2;
+  --color-widget-maroon-soft: #3a1a20;
+  --color-widget-mild: color-mix(in srgb, var(--color-accent) 14%, #181e27);
+  --color-widget-mild-line: color-mix(in srgb, var(--color-accent) 30%, #181e27);
+  --color-widget-on-solid: #11171e; /* dark shade 1 and maroon are light, so solid chips take dark text */
+  --color-widget-on-light: #11171e;
   --color-text-primary: #f1f4f8;
   --color-text-secondary: #a3adba;
   --color-text-inverse: #11171e;
@@ -143,8 +177,10 @@ html.dark {
   --color-glass-border: rgba(255, 255, 255, 0.12);
   --color-card-shadow: rgba(0, 0, 0, 0.35);
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-widget-tile: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-modal: 0 20px 48px -12px rgba(0, 0, 0, 0.75);
 
+  --color-shell-bg: var(--color-app-bg); /* dark mode keeps its own navy frame */
   --color-header-bg: var(--color-surface);
   --color-content-bg: var(--color-app-bg);
   --color-shell-border: transparent;
@@ -158,22 +194,9 @@ html.dark {
 
   --color-accent-strong: var(--color-accent);
   --color-tint-blue-bg: color-mix(in srgb, #479eec 14%, var(--color-surface));
-  --color-tint-blue-line: color-mix(in srgb, #479eec 28%, var(--color-surface));
   --color-tint-blue-strong: #7cbcf5;
   --color-tint-sky-bg: color-mix(in srgb, #38bdf8 14%, var(--color-surface));
-  --color-tint-sky-line: color-mix(in srgb, #38bdf8 28%, var(--color-surface));
-  --color-tint-green-bg: color-mix(in srgb, #34d399 14%, var(--color-surface));
-  --color-tint-green-line: color-mix(in srgb, #34d399 28%, var(--color-surface));
-  --color-tint-green-text: #34d399;
-  --color-tint-green-strong: #6ee7b7;
-  --color-tint-amber-bg: color-mix(in srgb, #f59e0b 14%, var(--color-surface));
-  --color-tint-amber-text: #fcd34d;
-  --color-tint-rose-bg: color-mix(in srgb, #fb7185 14%, var(--color-surface));
-  --color-tint-rose-line: color-mix(in srgb, #fb7185 28%, var(--color-surface));
-  --color-tint-rose-text: #fb7185;
   --color-tint-red-bg: color-mix(in srgb, #f87171 14%, var(--color-surface));
-  --color-tint-red-line: color-mix(in srgb, #f87171 28%, var(--color-surface));
-  --color-tint-red-text: #fca5a5;
 
   --color-text-muted: #748092;
   --color-border-strong: #3a4350;
@@ -189,8 +212,6 @@ html.dark {
   --color-cat-red: #f87171;
   --color-cat-violet: #a78bfa;
   --color-cat-violet-subtle: #2e1065;
-  --color-cat-indigo: #818cf8;
-  --color-cat-teal: #2dd4bf;
   --color-cat-slate: #748092;
 
   --color-mobile-nav-bg: #252c36;

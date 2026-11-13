@@ -26,11 +26,11 @@ import { TeamEmployeeForecastStore } from '../../state/team-employee-forecast.st
 import {
   DashboardDonutComponent,
   DashboardDonutSlice,
-} from '../../ui/dashboard-donut/dashboard-donut.component';
+} from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
 import { FORECAST_STATUSES, ForecastStatus } from '../../models/overtime-forecast.model';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { EmployeeForecastRateChartComponent } from '../../ui/employee-forecast-rate-chart/employee-forecast-rate-chart.component';
-import { DASHBOARD_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import {
   FORECAST_STATUS_META,
   forecastHoursText,
@@ -69,7 +69,7 @@ export function employeeForecastCsv(items: readonly EmployeeForecastItem[]): str
     'Predicted h',
     "Won't fit h",
     'Status',
-    'Modules',
+    'Milestones',
   ];
   return [
     header,

@@ -27,7 +27,7 @@ const COMPACT_ROWS = 4;
   template: `
     <section class="tpt group">
       <header class="tpt-head">
-        <h3>Team plan today</h3>
+        <h3>My team plan today</h3>
         <div class="tpt-actions">
           <a data-testid="tpt-open" routerLink="/planner" [queryParams]="{ scope: 'team', teamView: 'day' }">Open team planner ›</a>
           <!-- Refresh in the top-right corner, shown only while the card is hovered (or the button has focus) -->

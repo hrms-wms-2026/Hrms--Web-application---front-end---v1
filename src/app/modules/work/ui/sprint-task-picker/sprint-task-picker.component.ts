@@ -43,7 +43,7 @@ export function orderSprintsForTimeline(sprints: readonly SprintDto[]): SprintDt
                        (change)="onTaskToggled(task.id)" />
                 <span class="truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
                 @if (isTaskLocked(task.objectiveId)) {
-                  <span class="text-xs text-[var(--color-text-secondary)]">included (whole module)</span>
+                  <span class="text-xs text-[var(--color-text-secondary)]">included (whole milestone)</span>
                 }
               </label>
             } @empty {

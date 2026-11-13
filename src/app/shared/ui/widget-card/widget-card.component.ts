@@ -13,7 +13,7 @@ export type WidgetState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden';
   imports: [ErrorStateComponent],
   template: `
     <section
-      class="flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3"
+      class="flex h-full flex-col rounded-xl border border-[var(--color-border)] bg-[var(--widget-card-bg,var(--color-surface))] px-4 py-3"
       [attr.aria-busy]="state() === 'loading'"
     >
       <header class="mb-2 flex items-center justify-between gap-3">

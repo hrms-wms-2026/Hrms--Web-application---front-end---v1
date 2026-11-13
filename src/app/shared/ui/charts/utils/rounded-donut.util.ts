@@ -27,13 +27,28 @@ export interface DonutSweep {
   readonly sweep: number;
 }
 
-/** Slice angles from shares of a ring whose whole is 100 (donutArcs' `length`), in order from 12 o'clock. */
+/**
+ * The smallest angle a non-zero slice is drawn with: room for its two rounded corners plus a gap on each side, at the
+ * inner edge of the ring. Thinner slices would draw their rounding tick over the neighbouring slices.
+ */
+export const MIN_SLICE_SWEEP = ((CORNER * 2 + GAP) / INNER) * (180 / Math.PI);
+
+/**
+ * Slice angles from shares of a ring whose whole is 100 (donutArcs' `length`), in order from 12 o'clock. A tiny
+ * non-zero slice is widened to MIN_SLICE_SWEEP; the bigger slices give that room up in proportion to their size.
+ */
 export function donutSweeps(lengths: readonly number[]): DonutSweep[] {
+  const raw = lengths.map((length) => (length / 100) * 360);
+  const live = raw.filter((sweep) => sweep > 0).length;
+  const tiny = raw.map((sweep) => live > 1 && sweep > 0 && sweep < MIN_SLICE_SWEEP);
+  const needed = raw.reduce((sum, sweep, i) => sum + (tiny[i] ? MIN_SLICE_SWEEP - sweep : 0), 0);
+  const donors = raw.reduce((sum, sweep, i) => sum + (tiny[i] || sweep <= 0 ? 0 : sweep - MIN_SLICE_SWEEP), 0);
+  const take = donors > needed ? needed / donors : 0;
   let start = 0;
-  return lengths.map((length) => {
-    const sweep = (length / 100) * 360;
-    const slice = { start, sweep };
-    start += sweep;
+  return raw.map((sweep, i) => {
+    const drawn = tiny[i] && take > 0 ? MIN_SLICE_SWEEP : sweep > 0 && !tiny[i] ? sweep - (sweep - MIN_SLICE_SWEEP) * take : sweep;
+    const slice = { start, sweep: drawn };
+    start += drawn;
     return slice;
   });
 }

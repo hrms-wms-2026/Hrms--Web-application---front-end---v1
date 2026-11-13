@@ -20,7 +20,7 @@ import { WorkPatternCardComponent } from '../feature/work-pattern-card/work-patt
 import { WIDGET_REGISTRY } from './widget-registry';
 
 describe('WIDGET_REGISTRY', () => {
-  it('maps_each_key_to_its_component', () => {
+  it('maps_each_key_to_a_loader_for_its_component', async () => {
     const expected: Record<string, unknown> = {
       'today-at-a-glance': TodayAtAGlanceCardComponent,
       'todays-schedule': TodaysScheduleCardComponent,
@@ -44,7 +44,7 @@ describe('WIDGET_REGISTRY', () => {
     };
     expect(Object.keys(WIDGET_REGISTRY).sort()).toEqual(Object.keys(expected).sort());
     for (const [key, component] of Object.entries(expected)) {
-      expect(WIDGET_REGISTRY[key].component, key).toBe(component);
+      expect(await WIDGET_REGISTRY[key].load(), key).toBe(component);
     }
   });
 

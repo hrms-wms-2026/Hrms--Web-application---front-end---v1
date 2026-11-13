@@ -82,12 +82,12 @@
   font-size: 2.25rem;
   font-weight: 700;
   line-height: 1;
-  color: var(--color-danger-text);
+  color: var(--color-widget-maroon);
   font-variant-numeric: tabular-nums;
 }
 
 .ef-figure--ok {
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
 }
 
 .ef-caption {
@@ -146,15 +146,17 @@
 }
 
 .ef-tile {
-  --tone: var(--color-cat-green);
+  --tone: var(--color-widget-shade-1);
   display: flex;
   height: 52px;
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-surface));
+  /* The mild theme card (monochrome widgets); --tone only marks a "bad" tile (maroon value, below). */
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
+  background: var(--color-widget-mild);
   padding: 0 0.625rem;
 }
 
@@ -165,8 +167,13 @@
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.2;
-  color: color-mix(in srgb, var(--tone) 75%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
+}
+
+/* A tile whose tone is maroon (absent, won't fit) shows its value in maroon on the same mild card. */
+.ef-tile[style*='--color-widget-maroon'] .ef-tile-count {
+  color: var(--color-widget-maroon);
 }
 
 .ef-tile-label {
@@ -213,7 +220,7 @@
 .ef-link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
   white-space: nowrap;
 }
 
@@ -255,8 +262,8 @@
 }
 
 .ef-rank--top {
-  background: var(--color-tint-green-line);
-  color: var(--color-tint-green-strong);
+  background: var(--color-widget-mild-line);
+  color: var(--color-widget-shade-1);
 }
 
 .ef-row-name {
@@ -279,7 +286,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--color-cat-green);
+  background: var(--color-widget-shade-1);
 }
 
 .ef-rank-bar > i {
@@ -297,13 +304,14 @@
   overflow: hidden;
   max-width: 100%;
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--tone) 16%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px var(--color-widget-mild-line);
+  background: var(--color-widget-mild);
   padding: 0.125rem 0.5rem;
   font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: color-mix(in srgb, var(--tone) 60%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
 }
 
@@ -330,7 +338,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Overload: a filled dark-red badge with a warning sign, never the light "won't fit" red. */
+/* Overload: a filled maroon badge with a warning sign, never the soft "won't fit" maroon chip. */
 .ef-badge {
   display: inline-flex;
   justify-self: end;
@@ -342,7 +350,7 @@
   font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
-  color: var(--color-text-on-solid);
+  color: var(--color-widget-on-solid);
 }
 
 .ef-badge--hero {

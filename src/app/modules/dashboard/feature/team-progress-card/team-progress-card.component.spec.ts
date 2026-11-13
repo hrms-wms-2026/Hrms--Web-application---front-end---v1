@@ -15,7 +15,7 @@ import {
 } from '../../models/team-progress-detail.model';
 import { LedHourTotals, LedModuleProgress, LedWorkProgressResponse } from '../../models/my-team-led-progress.model';
 import { MyTeamLedProgressStore } from '../../state/my-team-led-progress.store';
-import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../utils/dashboard-donut.util';
+import { DASHBOARD_DONUT_PX, DASHBOARD_MINI_DONUT_PX } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import { ledTime, workloadRow } from '../../utils/team-progress-time.testing';
 import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { TeamProgressDetailDialogComponent } from '../team-progress-detail-dialog/team-progress-detail-dialog.component';
@@ -197,12 +197,12 @@ describe('TeamProgressCardComponent', () => {
 
   it('shows "you don\'t lead any active modules" when there are no projects', async () => {
     const fixture = await setup({ hours: hours(0, 0, 0, 0), projects: [], overdueTasks: [], overdueTotal: 0, modulesAtRisk: 0, overdueHours: 0, overdueUnestimatedTaskCount: 0, overdueByProject: [] });
-    expect(fixture.nativeElement.textContent).toContain("You don't lead any active modules");
+    expect(fixture.nativeElement.textContent).toContain("You don't lead any active milestones");
   });
 
   it('shows the empty message when led modules have no hours and no tasks', async () => {
     const fixture = await setup(response([module('o1', 'Payments', hours(0, 0, 0, 0))]));
-    expect(fixture.nativeElement.textContent).toContain('No hours allocated or tasks in the modules you lead');
+    expect(fixture.nativeElement.textContent).toContain('No hours allocated or tasks in the milestones you lead');
   });
 
   it('shows the allocation split into completed, in progress, not started and not-yet-tasked hours', async () => {
@@ -374,7 +374,7 @@ describe('TeamProgressCardComponent', () => {
       expect(text(fixture, 'team-progress-kpi-in-progress')).toMatch(/h\s*In progress · \d+%/);
       expect(text(fixture, 'team-progress-kpi-overdue')).toContain('Overdue · 1 task');
       expect(has(fixture, 'team-progress-kpi-tasks')).toBe(true);
-      expect(text(fixture, 'team-progress-kpi-at-risk')).toContain('Module at risk');
+      expect(text(fixture, 'team-progress-kpi-at-risk')).toContain('Milestone at risk');
     });
 
     for (const [name, width, height, mode, present, absent] of cases) {

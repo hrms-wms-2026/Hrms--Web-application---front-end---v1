@@ -39,7 +39,7 @@
   height: 100vh;
   max-height: 100vh;
   overflow: hidden;
-  background: var(--color-app-bg);
+  background: var(--color-shell-bg, var(--color-app-bg));
 }
 
 .main-layout--has-sub-sidebar {

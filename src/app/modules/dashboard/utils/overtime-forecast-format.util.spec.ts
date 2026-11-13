@@ -70,10 +70,12 @@ describe('overtime-forecast-format', () => {
     expect(overloadLimitText(0.9)).toBe('Above 90% task rate is treated as overload.');
     expect(forecastRankChip(0.26, 1.2, 'overload')).toEqual({
       text: '⚠ 26% → 120%',
-      tone: 'var(--color-danger-text)',
+      tone: 'var(--color-widget-maroon)',
     });
     expect(forecastRankChip(0.26, 0.45, 'raise_rate').text).toBe('26% → 45%');
-    expect(FORECAST_STATUS_META.overload.color).not.toBe(FORECAST_COLORS.overtime);
+    // Monochrome: both are maroon; Overload is told apart by its filled ⚠ badge, not by a second red.
+    expect(FORECAST_STATUS_META.overload.color).toBe(FORECAST_COLORS.overtime);
+    expect(FORECAST_COLORS.overtime).toBe('var(--color-widget-maroon)');
   });
 
   it('prints dates and the rate window', () => {

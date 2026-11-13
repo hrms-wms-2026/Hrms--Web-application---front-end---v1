@@ -119,8 +119,8 @@ describe('teamProgressSummaryCards', () => {
       ['Leave report', '3 d late'],
       ['Login UI', '1 d late']
     ]);
-    expect(o.rows[0].chips[0].tone).toBe('var(--color-cat-red)');
-    expect(o.rows[2].chips[0].tone).toBe('var(--color-cat-amber)');
+    expect(o.rows[0].chips[0].tone).toBe('var(--color-widget-maroon)');
+    expect(o.rows[2].chips[0].tone).toBe('var(--color-widget-shade-3)');
   });
 
   it('says so when nothing is overdue', () => {

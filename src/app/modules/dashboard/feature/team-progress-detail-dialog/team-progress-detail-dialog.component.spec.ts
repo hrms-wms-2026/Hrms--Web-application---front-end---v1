@@ -208,7 +208,7 @@ describe('TeamProgressDetailDialogComponent', () => {
   it('renders the overview from the summary: tiles, donut, notes, three panels and overdue tasks', () => {
     openWith();
     expect(el().querySelector('[role="dialog"]')).not.toBeNull();
-    expect(el().textContent).toContain('Team Progress');
+    expect(el().textContent).toContain('My team progress');
     expect(q('tp-tile-allocated')?.textContent).toContain('200');
     expect(q('tp-tile-completed')?.textContent).toContain('50');
     expect(q('tp-tile-completed')?.textContent).toContain('25%');
@@ -601,6 +601,9 @@ describe('TeamProgressDetailDialogComponent', () => {
     );
     expect(slices).toEqual(['Apollo 77% 20 h', 'Zeus 23% 6 h']);
     expect(q('tp-overdue-pie')).not.toBeNull();
+    // Neighbouring pie slices never share a shade: the ramp spreads them by rank.
+    const arcFills = [...q('tp-overdue-pie')!.querySelectorAll('[data-testid="donut-segment"]')].map((a) => (a as SVGElement).style.fill);
+    expect(arcFills).toEqual(['var(--color-widget-shade-1)', 'var(--color-widget-shade-4)']);
     const row = (id: string) => q(id)!.closest('tr')!.textContent!.replace(/\s+/g, ' ');
     expect(row('tp-overdue-t1')).toContain('6 h');
     expect(q('tp-overdue-t2')!.closest('tr')!.querySelector('[data-testid="tp-overdue-task-hours"]')!.textContent!.trim()).toBe('—');
@@ -630,7 +633,7 @@ describe('TeamProgressDetailDialogComponent', () => {
       ['Not yet tasked', '50%', '100 h'],
     ]);
     const slices = [...q('tp-donut')!.querySelectorAll('[data-testid="donut-segment"]')];
-    expect(slices.map((c) => c.getAttribute('fill'))).toContain('#ef4444');
+    expect(slices.map((c) => (c as SVGElement).style.fill)).toContain('var(--color-widget-maroon)');
     expect(q('tp-donut-overdue')).toBeNull();
     expect(q('tp-donut')!.querySelector('svg')!.getAttribute('aria-label')).toContain('Overdue 26 h (13%)');
     expect(q('tp-legend-note')!.textContent).toContain('without the overdue');

@@ -373,7 +373,7 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   `]
 })
 export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
-  private static readonly OWNER_ONLY_REASON = 'You can only do this for tasks in modules you own.';
+  private static readonly OWNER_ONLY_REASON = 'You can only do this for tasks in milestones you own.';
   protected readonly ownerOnlyReason = TaskBacklogComponent.OWNER_ONLY_REASON;
   protected readonly store = inject(TaskBoardStore);
   protected readonly sprintStore = inject(SprintListStore);
@@ -499,7 +499,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     { value: 'critical', label: 'Critical' }
   ];
   protected readonly filterFields = computed<FilterFieldConfig[]>(() => [
-    { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
+    { key: 'module', label: 'Milestone', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
     { key: 'assignee', label: 'Assignee', icon: 'people', kind: 'multi', options: this.assigneeFilterOptions() },
     { key: 'sprintStatus', label: 'Sprint status', icon: 'sprint', kind: 'single', options: this.sprintStatusOptions, defaultValues: ['all'] },
@@ -588,7 +588,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   // whose module the user owns (backend SprintTaskAssignment/EditTask enforce the same rule).
   protected readonly moveBlockedReason = computed(() =>
     this.selectedTasks().some((task) => !this.ownedObjectiveIds().has(task.objectiveId))
-      ? 'You can only move tasks from modules you own.' : null);
+      ? 'You can only move tasks from milestones you own.' : null);
   protected readonly moveTargets = computed<SprintMoveTarget[]>(() => {
     if (this.selectedTasks().length === 0) return [];
     const order: Record<string, number> = { active: 0, draft: 1 };

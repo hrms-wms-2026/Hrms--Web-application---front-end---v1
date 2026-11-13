@@ -20,14 +20,14 @@ import { TeamEmployeeForecastStore } from '../../state/team-employee-forecast.st
 import {
   DashboardDonutComponent,
   DashboardDonutSlice,
-} from '../../ui/dashboard-donut/dashboard-donut.component';
-import { DonutKeyComponent } from '../../ui/dashboard-donut/donut-key.component';
+} from '../../../../shared/ui/charts/dashboard-donut/dashboard-donut.component';
+import { DonutKeyComponent } from '../../../../shared/ui/charts/dashboard-donut/donut-key.component';
 import { DashboardSummaryRowComponent } from '../../ui/dashboard-summary-row/dashboard-summary-row.component';
 import { DashboardSummaryStripComponent } from '../../ui/dashboard-summary-strip/dashboard-summary-strip.component';
 import { EmployeeForecastRateChartComponent } from '../../ui/employee-forecast-rate-chart/employee-forecast-rate-chart.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
-import { dashboardDonutPx } from '../../utils/dashboard-donut.util';
+import { dashboardDonutPx } from '../../../../shared/ui/charts/utils/dashboard-donut.util';
 import {
   FORECAST_STATUS_META,
   ForecastTileRow,

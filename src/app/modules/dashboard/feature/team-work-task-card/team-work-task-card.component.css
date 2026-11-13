@@ -30,7 +30,7 @@
   cursor: default;
 }
 .wt-nav:focus-visible {
-  outline: 2px solid var(--color-info);
+  outline: 2px solid var(--color-widget-shade-2);
   outline-offset: 1px;
 }
 
@@ -102,12 +102,21 @@
 .wt-delta {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
   white-space: nowrap;
 }
 
 .wt-delta--down {
-  color: var(--color-danger);
+  color: var(--color-widget-maroon);
+}
+/* A drop on its own line is the maroon chip (approved mockup); inside a sentence it stays maroon text. */
+.wt-delta--down:not(.wt-delta--inline) {
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--color-widget-maroon);
+  padding: 0 0.5rem;
+  font-weight: 700;
+  color: var(--color-widget-on-solid);
 }
 .wt-delta--inline {
   font-weight: 500;
@@ -232,15 +241,17 @@
 }
 
 .wt-tile {
-  --tone: #10b981;
+  --tone: var(--color-widget-shade-1);
   display: flex;
   height: 52px;
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-surface));
+  /* The mild theme card (monochrome widgets); --tone only marks a "bad" tile (maroon value, below). */
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
+  background: var(--color-widget-mild);
   padding: 0 0.625rem;
 }
 
@@ -251,8 +262,13 @@
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.2;
-  color: color-mix(in srgb, var(--tone) 75%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
+}
+
+/* A tile whose tone is maroon (absent, won't fit) shows its value in maroon on the same mild card. */
+.wt-tile[style*='--color-widget-maroon'] .wt-tile-count {
+  color: var(--color-widget-maroon);
 }
 
 .wt-tile-label {
@@ -295,7 +311,7 @@
 .wt-link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
   white-space: nowrap;
 }
 
@@ -332,8 +348,8 @@
 }
 
 .wt-rank--top {
-  background: var(--color-tint-green-line);
-  color: var(--color-tint-green-strong);
+  background: var(--color-widget-mild-line);
+  color: var(--color-widget-shade-1);
 }
 
 .wt-row-name {
@@ -355,7 +371,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #10b981;
+  background: var(--color-widget-shade-1);
 }
 
 .wt-rank-rate {

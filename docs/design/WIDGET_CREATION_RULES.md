@@ -25,7 +25,7 @@ All under `src/app/modules/dashboard/`. `<w>` is the widget's kebab name, `<p>` 
 | `utils/<w>-summary-cards.util.ts` | `<w>SummaryCards(data): SummaryCardModel[]`. Pure, with a spec. |
 | `feature/<w>-card/` | The card (`.ts/.html/.css/.spec.ts`). |
 | `feature/<w>-detail-dialog/` | The popup (`.ts/.html/.css/.spec.ts`). |
-| `widgets/widget-registry.ts` | Add `'<key>': { component: <W>CardComponent }`. |
+| `widgets/widget-registry.ts` | Add `'<key>': { load: () => import('../feature/<w>-card/<w>-card.component').then((m) => m.<W>CardComponent) }`. **Never a static import** of the card here: the dynamic import makes each card its own lazy chunk, downloaded only when the user's layout contains it. A static import puts every card and every detail dialog in one chunk for every user (see `docs/reports/performance/2026-11-11-frontend-bundle-size.md`). |
 
 - **Always `styleUrl`.** Never a shared imported styles constant: the build hangs when 3+ components do that.
 - `ChangeDetectionStrategy.OnPush`, standalone, `host: { class: 'block h-full' }`.
@@ -53,6 +53,12 @@ All under `src/app/modules/dashboard/`. `<w>` is the widget's kebab name, `<p>` 
 
 ## 4. Charts: shared components only
 
+The charts live in `src/app/shared/ui/charts/` (`dashboard-donut` + `donut-key`, `donut-breakdown`,
+`dashboard-bar-chart`, and their `utils/`), with the palette in `shared/utils/widget-palette.ts` and
+`formatPercent` in `shared/utils/format-percent.util.ts`. They are the **project-wide** charts: any screen
+(Time Off, Attendance, …) that shows a pie/donut or bar chart uses these, in the monochrome palette below.
+Never build a new chart component on another screen.
+
 - **Donut:** always `app-dashboard-donut` + `app-donut-key` (variants `list | compact | wrap | chips`), bound to one `[(active)]` signal. Hovering a slice or key row lights it, and the centre shows value + `label · %`. The key shows the % right beside the label ("Completed 12%"). **Never hand-draw a donut SVG.**
 - **One donut size:** `dashboardDonutPx(view)` → 168px (`DASHBOARD_DONUT_PX`), 140px only in 2x2 mini views. A donut never resizes otherwise. If it doesn't fit, leave it out.
 - **Bar charts:** always `app-dashboard-bar-chart` behind a thin adapter component in `ui/` (see `work-task-day-chart`). It supports `pair` stacks, a target `marker`, a count `badge`, `dim`, a legend and `axisSuffix`. Pass `heading` so the hover headline replaces the title. No overlay polylines.
@@ -78,13 +84,48 @@ All under `src/app/modules/dashboard/`. `<w>` is the widget's kebab name, `<p>` 
 
 The source of truth is `feature/team-attendance-card/team-attendance-card.component.css`. Copy its values under your prefix.
 
-- **Text:** strong `rgb(15 23 42)`, body `rgb(51 65 85)`, muted `rgb(100 116 139)`, faint `rgb(148 163 184)`. **Borders** `rgb(226 232 240)`, panel border / donut track `#f1f5f9`, soft row bg `rgb(248 250 252)`, link `rgb(37 99 235)`, focus ring 2px `rgb(59 130 246)`. **Deltas:** up `rgb(5 150 105)`, down `rgb(220 38 38)`.
+- **Text:** strong `rgb(15 23 42)`, body `rgb(51 65 85)`, muted `rgb(100 116 139)`, faint `rgb(148 163 184)`. **Borders** `rgb(226 232 240)`, panel border / donut track `#f1f5f9`, soft row bg `rgb(248 250 252)`, link `rgb(37 99 235)`, focus ring 2px `rgb(59 130 246)`. **Deltas:** up = solid shade 1 chip (or shade-1 text), down = maroon (see §7a).
 - **Type:** hero figure 2.25rem/700 (1.5rem xs, 1.625rem mini). Donut centre 1.5rem/700 + 0.75rem muted sub-label. Section title 0.8125rem/600. Body rows 0.8125rem. Captions, links and deltas 0.75rem. Tile label 0.6875rem.
-- **KPI tile:** 52px, radius 0.625rem, `--tone` → border `color-mix(tone 28%, #fff)`, bg `color-mix(tone 8%, #fff)`, count 1.125rem/700. 2 or 4 columns (4 from ~400px body width), gap 0.5rem.
+- **KPI tile:** 52px, radius 0.625rem, the mild card (§7a): bg `--color-widget-mild`, no border, `--shadow-widget-tile` shadow, count 1.125rem/700 in shade 1 (maroon for a bad figure). 2 or 4 columns (4 from ~400px body width), gap 0.5rem.
 - **Panel:** 1px slate-100 border, radius 0.75rem, padding 0.625rem 0.75rem. Trend panel fixed 150px.
-- **Ranking row:** 40px, grid `auto auto 1fr minmax(3rem,6rem) 2.75rem`: rank pill (top 3 emerald), avatar, name, 6px bar, bold right-aligned value. Header "View all ›" opens the popup.
-- **Status colours:** good `#10b981`, in progress `#3b82f6`, neutral `#cbd5e1`, warning `#fbbf24` / `#fcd34d`, bad `#f87171`. Summary-card tones use `var(--color-cat-*)`.
+- **Ranking row:** 40px, grid `auto auto 1fr minmax(3rem,6rem) 2.75rem`: rank pill (top 3 mild card), avatar, name, 6px bar, bold right-aligned value. Header "View all ›" opens the popup.
+- **Status colours:** monochrome, see §7a. Never a fixed hue (green, blue, amber, violet, teal, slate) in a widget.
 - Motion comes from `dashboard-motion.css` via `app-widget-frame`. Don't add global styles.
+
+## 7a. Monochrome colours (2026-11-12)
+
+Every widget, popup and shared chart is drawn in shades of the theme colour, with maroon for anything "bad".
+Spec: `docs/superpowers/specs/2026-11-12-monochrome-dashboard-widgets-design.md`.
+
+- **Tokens** (`shared/styles/theme-tokens.css`, light + dark, all derived from `--color-accent`):
+  `--color-widget-shade-1 … -4` (plus `-2b`, `-3b` in-between steps), `--color-widget-track`, `--color-widget-gray` (plain
+  neutral gray with no theme tint, only where a category must read as grey: Team schedule meetings), `--color-widget-maroon`,
+  `--color-widget-maroon-soft`, `--color-widget-mild`, `--color-widget-mild-line`, `--color-widget-on-solid`
+  (text on solid shade-1 / maroon) and `--color-widget-on-light` (text on lighter shade fills).
+- **In TS** use `WIDGET` from `shared/utils/widget-palette.ts`: `WIDGET.shade1` … `WIDGET.maroon`. They are `var()` strings;
+  never resolve them to hex, so a theme switch recolours every chart at runtime. SVG fills/strokes bind
+  `[style.fill]` / `[style.stroke]`, never `[attr.fill]` (presentation attributes don't resolve `var()`).
+- **Shade order:** main or "done" series = shade 1, then shade 2, shade 3, and neutral or "nothing yet" = shade 4.
+  Old amber warnings = shade 3. Anything red (absent, overload, won't fit, overflow, negative change) = maroon. More
+  than four non-maroon series: `widgetRamp(n)` (up to 6, lightness order). Neighbours must differ clearly.
+- **Data colours** (project colours, avatar hues) inside widgets: `widgetShadeFor(id)` (stable hash, never list
+  position) and `widgetInkOn(shade)` for text on it. Stored data colours are never shown.
+- **Three chip styles only:** bad = maroon-soft background, maroon text; the filled ⚠ Overload badge = solid
+  maroon with `--color-widget-on-solid` text. Main / positive (▲ up delta, "12% completed") = solid shade 1 with
+  `--color-widget-on-solid`, or the mild chip where solid is too loud. Every other chip = the mild chip: mild
+  background, mild-line border, shade-1 text.
+- **The mild card:** KPI tiles, summary cards and plain-words explanation notes (`*-note`, "Biggest gap", …) use
+  `--color-widget-mild` background, **no border** (keep a transparent 1px border so sizes don't shift) and only the
+  very thin `--shadow-widget-tile` lift, like the widget cards themselves, with a shade-1 value and secondary-text
+  label. A bad tile keeps the mild card and shows its value in maroon. Chips keep their mild-line outline.
+- **Header controls** (company switcher, Search, Customize in the top navbar) use the same mild tint: mild background,
+  mild-line border, shade-1 text, so the shell continues the theme colour on every page.
+- **`app-kpi-tiles`** inside the dashboard always sets `palette="widget"`. Without it the tiles keep their default
+  look (Leave and People pages).
+- Backgrounds (`--color-dashboard-team-*`), buttons, links, focus rings and the app shell are not widget content and
+  keep their own tokens.
+- Every exported colour map in `utils/` is listed in `utils/widget-colors.guard.spec.ts`, which fails on any
+  non-widget colour. A new map goes in that spec.
 
 ## 8. Card shell
 
@@ -109,7 +150,8 @@ The source of truth is `feature/team-attendance-card/team-attendance-card.compon
 2. Frontend: specs for the layout, format and summary-card utils, the card (each view) and the dialog.
 3. `npm run check:warnings`: **zero warnings** (template diagnostics are build errors). `ng build` clean.
 4. Browser pass at `https://<tenant>.onexso.com:4200` (the user signs in): 2x2, 2x4, 3x3, 4x4, 6x4, 12x8 and the default slot. No scroll at any size, hover on every donut/bar, every summary card opens its section, CSV export works.
-5. Update this file if the widget established a new rule.
+5. Colour maps pass `widget-colors.guard.spec.ts`, `app-kpi-tiles` has `palette="widget"`, and no fixed hue is left (§7a).
+6. Update this file if the widget established a new rule.
 
 ## 10. Rules added by the overtime forecast widgets (2026-11-08)
 
@@ -117,9 +159,10 @@ The source of truth is `feature/team-attendance-card/team-attendance-card.compon
   Employee overtime forecast), the colours, status chips, donut slices and text formatters live in one shared
   `utils/<topic>-format.util.ts` (and the size ladder in `utils/<topic>-layout.util.ts`). Each widget still has its own
   model, api, store, layout/format/summary-cards utils, card and dialog, which wrap the shared ones.
-- **Chart palettes are data.** Hex colours belong only in the format util that defines the series. Add that one file
-  to `scripts/hardcoded-colors-baseline.json` by hand. Never run `--update`, because it would also lock in other
-  people's violations. CSS and templates use `var(--color-*)`; per-row colours go in through `[style.--tone]`.
+- **Chart palettes are data.** The colour map lives in the format util that defines the series and holds only
+  `WIDGET.*` values (§7a), so no hex and no baseline entry is needed. Never run `--update` on
+  `scripts/hardcoded-colors-baseline.json`, because it would also lock in other people's violations; lower counts by
+  hand. CSS and templates use `var(--color-widget-*)`; per-row colours go in through `[style.--tone]`.
 - **Long popup tables page on the server.** The store keeps the card's read (`data`, top N) apart from the popup's
   `tableQuery` / `table` page. A filter, search or sort change goes back to page 1 (`nextTableQuery`), and a newer table
   read cancels the one in flight. Search waits 250ms after the last key. Sort buttons exist only for the keys the
@@ -130,7 +173,7 @@ The source of truth is `feature/team-attendance-card/team-attendance-card.compon
   (`colspan` = column count) holding a small nested table.
 - **Without a range row**, the standard view fits the KPI tiles at 3 rows (312px). The summary-cards row (140px)
   fits from 4 rows.
-- **Severity badge (Overload).** When one status is worse than "behind", give it its own treatment, never a darker
+- **Severity badge (Overload).** *(Colours superseded by §7a: the badge is solid maroon, "won't fit" is the maroon-soft chip.)* When one status is worse than "behind", give it its own treatment, never a darker
   copy of the hours colour. Use a filled chip (`background: var(--tone)`, `color: var(--color-text-on-solid)`) with
   `<span aria-hidden="true">⚠</span>` before the word, in a dark red (`#991b1b`) kept apart from the light
   "won't fit" red (`#f87171`). Use it in card rankings, popup tables, status counts and the summary-card rank chip

@@ -226,7 +226,7 @@ export function searchGraph(graph: EmployeeWorkGraphResponse, query: string, lim
     .slice(0, limit)
     .map((node) => ({
       node,
-      kindLabel: node.kind === 'project' ? 'Project' : node.kind === 'module' ? 'Module' : node.kind === 'sprint' ? 'Sprint' : 'Task'
+      kindLabel: node.kind === 'project' ? 'Project' : node.kind === 'module' ? 'Milestone' : node.kind === 'sprint' ? 'Sprint' : 'Task'
     }));
 }
 

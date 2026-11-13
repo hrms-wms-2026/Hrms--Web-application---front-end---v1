@@ -48,13 +48,13 @@ describe('AllocationRequestModalComponent', () => {
 
   it('shows the server error', async () => {
     const fixture = render();
-    api.createAllocationRequest.mockReturnValueOnce(throwError(() => ({ error: { detail: 'Module is achieved.' } })));
+    api.createAllocationRequest.mockReturnValueOnce(throwError(() => ({ error: { detail: 'Milestone is achieved.' } })));
     const c = fixture.componentInstance as unknown as { hours: { set(v: string): void }; reason: { set(v: string): void }; submit(): Promise<void>; error(): string | null };
 
     c.hours.set('5');
     c.reason.set('more');
     await c.submit();
 
-    expect(c.error()).toBe('Module is achieved.');
+    expect(c.error()).toBe('Milestone is achieved.');
   });
 });

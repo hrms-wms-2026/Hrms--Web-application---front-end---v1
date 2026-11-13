@@ -2,14 +2,13 @@
 .hub { --hub-radius: 14px; --hub-blue: var(--color-accent); --hub-green: var(--color-success); --hub-amber: var(--color-warning); --hub-red: var(--color-danger);
   --hub-head-icon: var(--color-accent); --hub-head-link: var(--color-link, var(--color-accent));
   --hub-cta-bg: var(--color-accent); --hub-cta-hover: var(--color-accent-hover, var(--color-accent));
-  --hub-not-in-arc: var(--color-accent); --hub-not-in-dot: var(--color-accent);
   --hub-all-bg: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); --hub-all-text: var(--color-accent);
   --hub-date-bg: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
   --hub-approved-bg: color-mix(in srgb, var(--color-success) 14%, transparent);
   --hub-pending-bg: var(--color-warning-subtle); --hub-pending-text: var(--color-warning-text);
   --hub-scene-filter: none; --hub-icon-filter: none; }
 
-/* Dark mode: calmer, mostly neutral colours. Green is muted, links and the "not in" slice go grey,
+/* Dark mode: calmer, mostly neutral colours. Green is muted, links go grey,
    and the solid button is a deep tone of the accent. */
 :host-context([data-mode='dark']) .hub,
 :host-context(html.dark) .hub {
@@ -17,8 +16,6 @@
   --hub-head-icon: var(--color-text-secondary); --hub-head-link: var(--color-text-secondary);
   --hub-cta-bg: color-mix(in srgb, var(--color-accent) 50%, var(--color-surface));
   --hub-cta-hover: color-mix(in srgb, var(--color-accent) 62%, var(--color-surface));
-  --hub-not-in-arc: color-mix(in srgb, var(--color-text-muted) 60%, var(--color-surface));
-  --hub-not-in-dot: var(--color-text-muted);
   --hub-all-bg: var(--color-surface-secondary); --hub-all-text: var(--color-text-secondary);
   --hub-date-bg: var(--color-surface-secondary);
   --hub-approved-bg: color-mix(in srgb, var(--color-success) 22%, transparent);
@@ -93,14 +90,11 @@
 .hub-balance__name { flex: 1; min-width: 0; font-size: .9rem; font-weight: 650; color: var(--color-text-primary); }
 /* Body: % ring | balance | Total / Used / Remaining. */
 .hub-balance__body { display: flex; align-items: center; gap: .7rem; min-width: 0; }
-.hub-ring { position: relative; display: inline-flex; flex: none; width: 3.8rem; height: 3.8rem; }
-.hub-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.hub-ring circle { fill: none; stroke-width: 4.5; }
-.hub-ring__track { stroke: var(--color-surface-secondary); }
-.hub-ring__value { stroke: var(--color-success); stroke-linecap: round; }
-.hub-ring--negative .hub-ring__value { stroke: var(--color-danger); }
-.hub-ring__label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--color-success); font-size: .74rem; font-weight: 700; }
-.hub-ring--negative .hub-ring__label { color: var(--color-danger); }
+/* The shared dashboard donut as a small progress ring; it only shows the share, so it takes no hover and the card
+   link stays the click target. */
+.hub-ring { pointer-events: none; }
+.hub-ring__label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--color-widget-shade-1); font-size: .74rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hub-ring--negative .hub-ring__label { color: var(--color-widget-maroon); }
 .hub-balance__value { display: flex; flex-direction: column; gap: .2rem; min-width: 0; white-space: nowrap; }
 .hub-balance__value small { color: var(--color-text-secondary); font-size: .74rem; }
 .hub-balance__value strong { font-size: 1.2rem; font-weight: 700; color: var(--color-text-primary); }
@@ -154,25 +148,10 @@
 
 /* Team availability donut. */
 .hub-team { display: flex; flex: 1; align-items: center; gap: 1.5rem; }
-.hub-donut { flex: none; width: 9.5rem; height: 9.5rem; transform: rotate(-90deg); }
-.hub-donut circle { fill: none; stroke-width: 13; }
-.hub-donut__track { stroke: var(--color-surface-secondary); }
-.hub-donut__arc--work { stroke: var(--color-success); }
-.hub-donut__arc--leave { stroke: var(--color-warning); }
-.hub-donut__arc--not-in { stroke: var(--hub-not-in-arc); }
-.hub-donut__arc--out { stroke: var(--color-danger); }
-.hub-donut text { transform: rotate(90deg); transform-origin: 50px 50px; text-anchor: middle; fill: var(--color-text-primary); }
-.hub-donut__total { font-size: 20px; font-weight: 700; }
-.hub-donut__label { font-size: 8px; fill: var(--color-text-secondary) !important; }
-.hub-legend { display: flex; flex: 1; flex-direction: column; gap: .85rem; margin: 0; padding: .25rem 0 .25rem 1.25rem; border-left: 1px solid var(--color-border); list-style: none; font-size: .84rem; }
-.hub-legend li { display: flex; align-items: center; gap: .5rem; color: var(--color-text-secondary); }
-.hub-legend strong { margin-left: auto; color: var(--color-text-primary); font-weight: 650; white-space: nowrap; }
-.hub-legend small { margin-left: .3rem; color: var(--color-text-secondary); font-weight: 500; }
-.hub-dot { width: .55rem; height: .55rem; border-radius: 999px; }
-.hub-dot--work { background: var(--color-success); }
-.hub-dot--leave { background: var(--color-warning); }
-.hub-dot--not-in { background: var(--hub-not-in-dot); }
-.hub-dot--out { background: var(--color-danger); }
+.hub-donut__centre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; }
+.hub-donut__centre strong { font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.hub-donut__centre small { font-size: .75rem; color: var(--color-text-secondary); }
+.hub-legend { flex: 1; padding: .25rem 0 .25rem 1.25rem; border-left: 1px solid var(--color-border); }
 
 /* Quick actions. */
 /* Quick actions: two tinted tiles, each with its icon in a lighter square. */

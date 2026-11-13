@@ -82,12 +82,12 @@
   font-size: 2.25rem;
   font-weight: 700;
   line-height: 1;
-  color: var(--color-danger-text);
+  color: var(--color-widget-maroon);
   font-variant-numeric: tabular-nums;
 }
 
 .mf-figure--ok {
-  color: var(--color-tint-green-text);
+  color: var(--color-widget-shade-1);
 }
 
 .mf-caption {
@@ -146,15 +146,17 @@
 }
 
 .mf-tile {
-  --tone: var(--color-cat-green);
+  --tone: var(--color-widget-shade-1);
   display: flex;
   height: 52px;
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-surface));
+  /* The mild theme card (monochrome widgets); --tone only marks a "bad" tile (maroon value, below). */
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
   border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
+  background: var(--color-widget-mild);
   padding: 0 0.625rem;
 }
 
@@ -165,8 +167,13 @@
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.2;
-  color: color-mix(in srgb, var(--tone) 75%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
+}
+
+/* A tile whose tone is maroon (absent, won't fit) shows its value in maroon on the same mild card. */
+.mf-tile[style*='--color-widget-maroon'] .mf-tile-count {
+  color: var(--color-widget-maroon);
 }
 
 .mf-tile-label {
@@ -190,6 +197,7 @@
 .mf-chart-panel {
   height: 150px;
   flex: none;
+  overflow: hidden;
 }
 
 .mf-ranking {
@@ -213,7 +221,7 @@
 .mf-link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-cat-blue);
+  color: var(--color-widget-shade-1);
   white-space: nowrap;
 }
 
@@ -236,6 +244,15 @@
   font-size: 0.8125rem;
 }
 
+/* A narrow card (body under 360px): no rate bar, so the name and the status chip keep their room. */
+.mf-ranking--narrow .mf-rank-row {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
+.mf-ranking--narrow .mf-rank-bar {
+  display: none;
+}
+
 .mf-rank-row:last-child {
   border-bottom: 0;
 }
@@ -255,8 +272,8 @@
 }
 
 .mf-rank--top {
-  background: var(--color-tint-green-line);
-  color: var(--color-tint-green-strong);
+  background: var(--color-widget-mild-line);
+  color: var(--color-widget-shade-1);
 }
 
 .mf-dot {
@@ -286,7 +303,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--color-cat-green);
+  background: var(--color-widget-shade-1);
 }
 
 .mf-rank-bar > i {
@@ -304,13 +321,14 @@
   overflow: hidden;
   max-width: 100%;
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--tone) 16%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px var(--color-widget-mild-line);
+  background: var(--color-widget-mild);
   padding: 0.125rem 0.5rem;
   font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: color-mix(in srgb, var(--tone) 60%, var(--color-text-primary));
+  color: var(--color-widget-shade-1);
   font-variant-numeric: tabular-nums;
 }
 
@@ -337,7 +355,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Overload: a filled dark-red badge with a warning sign, never the light "won't fit" red. */
+/* Overload: a filled maroon badge with a warning sign, never the soft "won't fit" maroon chip. */
 .mf-badge {
   display: inline-flex;
   justify-self: end;
@@ -349,7 +367,9 @@
   font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
-  color: var(--color-text-on-solid);
+  color: var(--color-widget-on-solid);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .mf-badge--hero {

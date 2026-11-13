@@ -16,7 +16,7 @@ import {
 } from '../../models/team-attendance.model';
 import { TeamAttendanceStore } from '../../state/team-attendance.store';
 import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
-import { DashboardBarChip } from '../../ui/dashboard-bar-chart/dashboard-bar-chart.component';
+import { DashboardBarChip } from '../../../../shared/ui/charts/dashboard-bar-chart/dashboard-bar-chart.component';
 import { AttendanceDayChartComponent } from '../../ui/attendance-day-chart/attendance-day-chart.component';
 import {
   TEAM_ATTENDANCE_COLORS,
@@ -112,7 +112,7 @@ export class TeamAttendanceDetailDialogComponent {
     ];
   });
 
-  /** Department comparison bars: width = rate, coloured green from 90%, amber from 75%, else red. */
+  /** Department comparison bars: width = rate, shade 1 from 90%, shade 3 from 75%, else maroon. */
   protected readonly departmentBars = computed(() =>
     // Worst rate first so problem departments sit at the top; departments with no rate (all on leave) go last.
     departmentsWorstFirst(this.store.data()?.departmentRates ?? [])

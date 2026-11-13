@@ -106,7 +106,7 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     const { el, getTeamToday } = await setup();
 
     expect(getTeamToday).toHaveBeenCalledOnce();
-    expect(el.textContent).toContain('Working / Break / Leave');
+    expect(el.textContent).toContain('My team working / break / leave');
   });
 
   it('shows the error state when loading fails', async () => {

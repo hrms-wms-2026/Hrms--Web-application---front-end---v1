@@ -206,3 +206,120 @@
     transition: none !important;
   }
 }
+
+/*
+ * Edit-mode chrome (app-widget-frame): it floats over the card and never resizes it, so the preview matches the
+ * saved dashboard. Entering or leaving Customize eases it in and out instead of snapping: the outline and tint
+ * fade, the grip and remove/resize buttons pop in. Leaving plays it in reverse.
+ */
+.dash-frame {
+  --dash-frame-ms: 380ms;
+  --dash-frame-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Same radius as app-widget-card (rounded-xl), so the outline hugs the card's corners exactly. */
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow var(--dash-frame-ms) var(--dash-frame-ease);
+}
+
+.dash-frame--editing {
+  box-shadow:
+    0 0 0 1.5px var(--color-accent),
+    0 6px 18px -10px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+/* A light veil says "this is a preview you can move", without hiding the card. */
+.dash-frame__overlay {
+  background: color-mix(in srgb, var(--color-accent) 4%, transparent);
+  transition: background-color 150ms ease;
+}
+
+.dash-frame__overlay:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.dash-frame__grip {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 18px;
+  margin-left: -18px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+.dash-frame__grip svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dash-frame__remove {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.16);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.dash-frame__remove:hover {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+}
+
+.dash-frame__remove:active {
+  transform: scale(0.9);
+}
+
+.dash-frame__remove:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.dash-frame__fade-enter {
+  animation: dash-frame-fade-in var(--dash-frame-ms) var(--dash-frame-ease) both;
+}
+
+.dash-frame__pop-enter {
+  animation: dash-frame-pop-in var(--dash-frame-ms) var(--dash-frame-ease) 60ms both;
+}
+
+.dash-frame__fade-leave {
+  animation: dash-frame-fade-out calc(var(--dash-frame-ms) * 0.6) ease both;
+}
+
+@keyframes dash-frame-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dash-frame-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes dash-frame-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-frame {
+    transition: none;
+  }
+  .dash-frame__fade-enter,
+  .dash-frame__pop-enter,
+  .dash-frame__fade-leave {
+    animation: none;
+  }
+}

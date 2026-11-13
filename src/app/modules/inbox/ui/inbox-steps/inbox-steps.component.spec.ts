@@ -8,7 +8,7 @@ describe('InboxStepsComponent', () => {
     fixture.componentRef.setInput('steps', [
       { key: 'requested', label: 'Requested', actor: { id: 'e1', name: 'Bala' }, at: '2026-10-13T08:00:00Z', state: 'done', note: null },
       { key: 'decision', label: 'Waiting for Anu', actor: { id: 'e2', name: 'Anu' }, at: null, state: 'current', note: null },
-      { key: 'resolved', label: 'Resolved', actor: null, at: null, state: 'upcoming', note: 'Not notified: the Module is achieved.' }
+      { key: 'resolved', label: 'Resolved', actor: null, at: null, state: 'upcoming', note: 'Not notified: the Milestone is achieved.' }
     ]);
     fixture.detectChanges();
 

@@ -35,7 +35,7 @@ const MAX_ZOOM = 3;
       [attr.viewBox]="viewBox()"
       preserveAspectRatio="xMidYMid meet"
       role="group"
-      aria-label="Work network: projects, modules and open tasks"
+      aria-label="Work network: projects, milestones and open tasks"
       (pointerdown)="startPan($event)"
       (pointermove)="onPointerMove($event)"
       (pointerup)="endGesture()"
@@ -256,7 +256,7 @@ export class WorkNetworkCanvasComponent implements OnDestroy {
       case 'project':
         return `Project ${node.label}`;
       case 'module':
-        return `Module ${node.label}, ${node.role ?? 'contributor'}`;
+        return `Milestone ${node.label}, ${node.role ?? 'contributor'}`;
       default:
         return `Task ${node.sublabel ?? ''} ${node.label}, ${node.status === 'active' ? 'active' : 'not started'}`.trim();
     }
