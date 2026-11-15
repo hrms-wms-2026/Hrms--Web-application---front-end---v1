@@ -32,9 +32,18 @@ describe('PlannerFocusPanelComponent', () => {
   let drag: PlannerDragService;
   const text = (sel: string): string[] => Array.from(fixture.nativeElement.querySelectorAll(sel)).map((e) => (e as HTMLElement).textContent!.replace(/\s+/g, ' ').trim());
   const cards = (): HTMLElement[] => Array.from(fixture.nativeElement.querySelectorAll('[data-testid="planner-focus-card"]'));
-  // jsdom has no matchMedia.
-  const narrow = (matches: boolean) => Object.defineProperty(window, 'matchMedia',
-    { value: vi.fn(() => ({ matches }) as MediaQueryList), configurable: true, writable: true });
+  // jsdom has no matchMedia. The stub replaces it on the shared window, so it is put back after
+  // each test: a leftover stub without addEventListener breaks ThemeStore in later spec files.
+  const originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+  const narrow = (matches: boolean) => Object.defineProperty(window, 'matchMedia', {
+    value: vi.fn(() => ({ matches, addEventListener: () => undefined, removeEventListener: () => undefined }) as unknown as MediaQueryList),
+    configurable: true,
+    writable: true
+  });
+  afterEach(() => {
+    if (originalMatchMedia) Object.defineProperty(window, 'matchMedia', originalMatchMedia);
+    else delete (window as { matchMedia?: unknown }).matchMedia;
+  });
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({ imports: [PlannerFocusPanelComponent] }).compileComponents();

@@ -213,7 +213,7 @@ describe('MainLayoutComponent', () => {
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([{ path: '**', component: BlankRouteComponent }]),
-        { provide: AuthStore, useValue: authStoreWith(['org:read', 'employees:write'], ['org_structure', 'core_hr']) },
+        { provide: AuthStore, useValue: authStoreWith(['org:read', 'employees:write', 'checklists:manage'], ['org_structure', 'core_hr']) },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
         { provide: FileApiService, useValue: fileApiStub }
