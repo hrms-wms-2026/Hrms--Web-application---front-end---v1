@@ -358,8 +358,4 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   onIncreaseCapacity(issue: BulkOnboardingGroupedIssue): void {
     this.openResolver(issue, 'increase_capacity');
   }
-
-  onResolveCapacity(issue: BulkOnboardingGroupedIssue): void {
-    this.openResolver(issue, 'map_existing');
-  }
 }

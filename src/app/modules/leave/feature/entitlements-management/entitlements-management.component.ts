@@ -100,11 +100,6 @@ export class EntitlementsManagementComponent {
     this.entitlementStore.setFilters({ ...this.entitlementStore.filters(), search: search || undefined });
   }
 
-  onSearchInput(event: Event): void {
-    const search = (event.target as HTMLInputElement).value;
-    this.entitlementStore.setFilters({ ...this.entitlementStore.filters(), search: search || undefined });
-  }
-
   formatHours(value: number): string {
     return value.toFixed(2);
   }

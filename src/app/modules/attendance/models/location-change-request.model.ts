@@ -25,15 +25,3 @@ export interface LocationChangeRequestQuery {
 export interface ReviewLocationChangeRequestPayload {
   reviewComment: string | null;
 }
-
-export const LOCATION_CHANGE_STATUS_LABELS: Readonly<Record<LocationChangeRequestStatus, string>> = {
-  pending: 'Pending',
-  approved: 'Approved',
-  rejected: 'Rejected',
-  cancelled: 'Cancelled',
-  applied: 'Applied'
-};
-
-export function locationChangeStatusLabel(value: string | null | undefined): string {
-  return LOCATION_CHANGE_STATUS_LABELS[value as LocationChangeRequestStatus] ?? 'Request status unavailable';
-}

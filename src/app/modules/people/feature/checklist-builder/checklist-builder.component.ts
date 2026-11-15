@@ -26,7 +26,6 @@ import { firstValueFrom } from 'rxjs';
 
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList } from '@angular/cdk/drag-drop';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectionPositionPair } from '@angular/cdk/overlay';
-import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -148,11 +147,9 @@ export class ChecklistBuilderComponent {
   private readonly departmentApi = inject(DepartmentApiService);
   private readonly positionApi = inject(PositionApiService);
   private readonly peopleApi = inject(PeopleApiService);
-  private readonly permissionService = inject(PermissionService);
   private readonly notificationService = inject(NotificationService);
   private readonly taskApi = inject(TaskApiService);
 
-  readonly canWrite = computed(() => this.permissionService.hasPermission('employees:write'));
   readonly selectedCompany = this.legalEntityStore.selectedLegalEntity;
   readonly isEdit = signal(false);
   readonly templateId = signal<string | null>(null);
@@ -385,10 +382,6 @@ export class ChecklistBuilderComponent {
 
   getTaskPlaceholder(index: number): string {
     return TASK_PLACEHOLDERS[index % TASK_PLACEHOLDERS.length];
-  }
-
-  isCompanyPositionAssignment(taskGroup: FormGroup): boolean {
-    return taskGroup.get('assignmentType')?.value === 'company_position';
   }
 
   isUnassigned(taskGroup: FormGroup): boolean {

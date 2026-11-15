@@ -21,13 +21,3 @@ export interface DeviceChangeRequestQuery {
 export interface ReviewDeviceChangeRequestPayload {
   reviewComment: string | null;
 }
-
-export const DEVICE_CHANGE_STATUS_LABELS: Readonly<Record<DeviceChangeRequestStatus, string>> = {
-  pending: 'Pending',
-  approved: 'Approved',
-  rejected: 'Rejected'
-};
-
-export function deviceChangeStatusLabel(value: string | null | undefined): string {
-  return DEVICE_CHANGE_STATUS_LABELS[value as DeviceChangeRequestStatus] ?? 'Request status unavailable';
-}

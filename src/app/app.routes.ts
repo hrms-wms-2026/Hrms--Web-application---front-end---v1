@@ -92,7 +92,7 @@ export const routes: Routes = [
       {
         path: 'people',
         canActivate: [permissionGuard],
-        data: { permissions: [MANAGES_PEOPLE, 'employees:write', 'employees:offboard'], modules: ['core_hr'] },
+        data: { permissions: [MANAGES_PEOPLE, 'employees:write', 'employees:offboard', 'checklists:manage'], modules: ['core_hr'] },
         loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
       },
       {

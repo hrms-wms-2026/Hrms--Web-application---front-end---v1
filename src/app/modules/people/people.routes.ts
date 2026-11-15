@@ -72,7 +72,7 @@ export const PEOPLE_ROUTES: Routes = [
             (m) => m.ChecklistTemplatesComponent
           ),
         canActivate: [permissionGuard],
-        data: { title: 'Checklists', permissions: ['employees:write'] }
+        data: { title: 'Checklists', permissions: ['checklists:manage'] }
       },
       {
         path: 'new',
