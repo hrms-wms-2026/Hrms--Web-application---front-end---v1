@@ -1099,7 +1099,7 @@ export class RichTextEditorComponent {
         r.collapse(true);
         sel.removeAllRanges();
         sel.addRange(r);
-      } catch {}
+      } catch { /* restoring the caret is best effort */ }
     }
   }
 
@@ -1923,7 +1923,7 @@ export class RichTextEditorComponent {
   onEditorFocus(): void {
     try {
       document.execCommand('defaultParagraphSeparator', false, 'div');
-    } catch {}
+    } catch { /* older browsers may not support this command */ }
   }
 
   onEditorChange(event: Event): void {
@@ -2330,7 +2330,7 @@ export class RichTextEditorComponent {
         isBullet = document.queryCommandState('insertUnorderedList');
         isNumbered = document.queryCommandState('insertOrderedList');
       }
-    } catch {}
+    } catch { /* queryCommandState can throw outside an editable selection */ }
 
     const checkItem = this.findClosestCheckItem(anchor);
     const heading = this.findClosestHeading(anchor);
