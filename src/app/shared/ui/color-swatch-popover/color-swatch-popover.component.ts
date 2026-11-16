@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-color-swatch-popover',

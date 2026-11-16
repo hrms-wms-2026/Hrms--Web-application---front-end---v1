@@ -1,8 +1,9 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { Observable, Subscription, firstValueFrom } from 'rxjs';
-import { PendingUploadPurpose, TaskApiService } from '../../../modules/work/data-access/task-api.service';
-import { ColorSwatchPopoverComponent } from '../../../modules/work/ui/color-swatch-popover/color-swatch-popover.component';
+import { ColorSwatchPopoverComponent } from '../color-swatch-popover/color-swatch-popover.component';
 import { sanitizeEditableHtml } from '../../utils/editable-html.util';
+import { sanitizeBasicRichHtml } from '../../utils/basic-rich-html.util';
+import { RICH_TEXT_IMAGE_UPLOADER, RichTextImagePurpose } from './rich-text-image-uploader';
 import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 import { CHAR_COUNTER_THRESHOLD } from '../../constants/text-limits';
 import { CharCounterComponent } from '../char-counter/char-counter.component';
@@ -57,6 +58,9 @@ export const ALL_SLASH_COMMANDS: SlashCommandItem[] = [
   { id: 'link', label: 'Link', description: 'Add an external hyperlink', category: 'MEDIA & EMBEDS', keywords: ['link', 'url', 'href', 'hyperlink'] },
   { id: 'attach', label: 'Attach file', description: 'Upload a file attachment', category: 'MEDIA & EMBEDS', keywords: ['attach', 'file', 'document', 'pdf'] }
 ];
+
+/** Slash commands whose markup falls outside the basic allowlist. */
+const BASIC_HIDDEN_SLASH_COMMANDS = new Set(['checklist', 'highlight', 'divider', 'image', 'attach']);
 
 export interface SlashMenuCoords {
   top?: number | null;
@@ -135,6 +139,7 @@ export interface SlashMenuCoords {
                     >
                       <u>U</u>
                     </button>
+                    @if (!isBasic()) {
                     <div class="tfm-link-anchor">
                       <button
                         type="button"
@@ -174,6 +179,7 @@ export interface SlashMenuCoords {
                         />
                       }
                     </div>
+                    }
                     <span class="tfm-editor__divider"></span>
                     <button
                       type="button"
@@ -205,6 +211,7 @@ export interface SlashMenuCoords {
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M3 18h3L4 15.5a1.5 1.5 0 0 1 2-1.5" /></svg>
                     </button>
+                    @if (!isBasic()) {
                     <button
                       type="button"
                       class="tfm-editor__tool"
@@ -215,6 +222,7 @@ export interface SlashMenuCoords {
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2" /><path d="m7 12 3 3 7-7" /></svg>
                     </button>
+                    }
                     <span class="tfm-editor__divider"></span>
                     <div class="tfm-link-anchor">
                       <button
@@ -263,7 +271,7 @@ export interface SlashMenuCoords {
                       }
                     </div>
 
-                    @if (allowImages()) {
+                    @if (imagesEnabled()) {
                     <input #imageFileInput type="file" accept="image/png,image/jpeg,image/webp" class="tfm-image-input-hidden" (change)="onImageFileSelected($event)" />
                     <button
                       type="button"
@@ -594,14 +602,23 @@ export interface SlashMenuCoords {
   `]
 })
 export class RichTextEditorComponent {
-  private readonly taskApi = inject(TaskApiService);
+  private readonly imageUploader = inject(RICH_TEXT_IMAGE_UPLOADER, { optional: true });
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** Seeds the editor whenever it is empty and this value is non-empty (e.g. after async load). */
   initialHtml = input<string>('');
   placeholder = input<string>("Write description or press '/' for commands...");
   ariaLabel = input<string>('Description');
-  imageUploadPurpose = input<Extract<PendingUploadPurpose, 'task_description_image' | 'comment_description_image'>>('task_description_image');
+  imageUploadPurpose = input<RichTextImagePurpose>('task_description_image');
+  /**
+   * 'basic' (legal documents, support tickets) offers only what the shared HTML allowlist keeps: no
+   * colours, highlights, checklists, dividers, images, attachments or mentions, and every emitted
+   * value is reduced to that allowlist. 'full' is the task/meeting editor, unchanged.
+   */
+  toolset = input<'full' | 'basic'>('full');
+  readonly isBasic = computed(() => this.toolset() === 'basic');
+  /** Images need an uploader from the host app and are never offered by the basic toolset. */
+  readonly imagesEnabled = computed(() => this.allowImages() && !this.isBasic() && this.imageUploader !== null);
   allowAttachments = input<boolean>(true);
   /** Off where uploaded inline images can't be linked to an owner (e.g. checklist templates). */
   allowImages = input<boolean>(true);
@@ -703,7 +720,10 @@ export class RichTextEditorComponent {
       icon: cmd.icon
     }));
     const builtIn = ALL_SLASH_COMMANDS.filter(
-      (cmd) => (this.allowAttachments() || cmd.id !== 'attach') && (this.allowImages() || cmd.id !== 'image')
+      (cmd) =>
+        ((this.allowAttachments() && !this.isBasic()) || cmd.id !== 'attach') &&
+        (this.imagesEnabled() || cmd.id !== 'image') &&
+        !(this.isBasic() && BASIC_HIDDEN_SLASH_COMMANDS.has(cmd.id))
     );
     return [...host, ...builtIn];
   });
@@ -780,7 +800,7 @@ export class RichTextEditorComponent {
           this.contentEmpty.set(empty);
           this.textLength.set(this.visibleTextLength(el));
           this.resetHistory(empty ? '' : el.innerHTML);
-          this.htmlChange.emit(empty ? '' : el.innerHTML);
+          this.emitHtml(empty ? '' : el.innerHTML);
         });
       }
     });
@@ -826,7 +846,7 @@ export class RichTextEditorComponent {
     this.contentEmpty.set(empty);
     this.textLength.set(this.visibleTextLength(el));
     this.resetHistory(empty ? '' : el.innerHTML);
-    this.htmlChange.emit(empty ? '' : el.innerHTML);
+    this.emitHtml(empty ? '' : el.innerHTML);
   }
 
   clear(): void {
@@ -1751,7 +1771,7 @@ export class RichTextEditorComponent {
 
   applyTextColor(hex: string | null): void {
     this.restoreColorSelectionRange();
-    const useCss = this.cssStyles();
+    const useCss = this.cssStyles() && !this.isBasic();
     document.execCommand('styleWithCSS', false, useCss ? 'true' : 'false');
     document.execCommand('foreColor', false, hex ?? (useCss ? 'inherit' : '#1e293b'));
     this.showTextColorPopover.set(false);
@@ -1775,13 +1795,15 @@ export class RichTextEditorComponent {
     const savedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
 
     try {
-      const uploaded = await firstValueFrom(this.taskApi.uploadPendingFile(file, this.imageUploadPurpose()));
+      const uploader = this.imageUploader;
+      if (!uploader) return;
+      const uploaded = await firstValueFrom(uploader.upload(file, this.imageUploadPurpose()));
 
       if (selection && savedRange) {
         selection.removeAllRanges();
         selection.addRange(savedRange);
       }
-      document.execCommand('insertImage', false, this.taskApi.getFileUrl(uploaded.fileId));
+      document.execCommand('insertImage', false, uploader.fileUrl(uploaded.fileId));
       this.onEditorInput();
     } catch {
       this.uploadFailed.emit(`Failed to insert ${file.name}.`);
@@ -1800,7 +1822,7 @@ export class RichTextEditorComponent {
     // Pasted web content can carry <svg>/<style> or handlers the backend rejects; emit it cleaned.
     const html = empty ? '' : sanitizeEditableHtml(raw);
     if (!this.restoringHistory) this.recordHistory(html);
-    this.htmlChange.emit(html);
+    this.emitHtml(html);
     this.checkSlashMenuTrigger();
     if (this.mentionCandidates() !== null) {
       this.emitMentionsIfChanged(el);
@@ -1882,7 +1904,7 @@ export class RichTextEditorComponent {
       const empty = this.isElementVisuallyEmpty(el);
       this.contentEmpty.set(empty);
       this.textLength.set(this.visibleTextLength(el));
-      this.htmlChange.emit(empty ? '' : el.innerHTML);
+      this.emitHtml(empty ? '' : el.innerHTML);
       this.closeSlashMenu();
 
       el.focus();
@@ -2533,7 +2555,13 @@ export class RichTextEditorComponent {
   }
 
   /** Same rules as the "/" trigger: "@" at the start or after whitespace, no whitespace in the query. */
+  /** Every htmlChange goes through here; the basic toolset never emits markup outside its allowlist. */
+  private emitHtml(html: string): void {
+    this.htmlChange.emit(this.isBasic() ? sanitizeBasicRichHtml(html) : html);
+  }
+
   private getMentionTriggerContext(): MentionTriggerContext | null {
+    if (this.isBasic()) return null;
     const el = this.contentEditor()?.nativeElement;
     const sel = window.getSelection();
     if (!el || !sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;

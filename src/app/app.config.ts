@@ -8,9 +8,11 @@ import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { correlationInterceptor } from './core/interceptors/correlation.interceptor';
 import { csrfInterceptor } from './core/interceptors/csrf.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { provideTaskImageUploader } from './modules/work/data-access/task-image-uploader.provider';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    provideTaskImageUploader(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(
       routes,

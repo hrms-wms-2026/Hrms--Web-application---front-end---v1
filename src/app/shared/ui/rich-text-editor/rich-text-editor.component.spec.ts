@@ -3,6 +3,7 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { RichTextEditorComponent } from './rich-text-editor.component';
 import { TaskApiService } from '../../../modules/work/data-access/task-api.service';
+import { provideTaskImageUploader } from '../../../modules/work/data-access/task-image-uploader.provider';
 
 describe('RichTextEditorComponent', () => {
   let fixture: ComponentFixture<RichTextEditorComponent>;
@@ -18,7 +19,7 @@ describe('RichTextEditorComponent', () => {
     };
     await TestBed.configureTestingModule({
       imports: [RichTextEditorComponent],
-      providers: [{ provide: TaskApiService, useValue: api }]
+      providers: [{ provide: TaskApiService, useValue: api }, provideTaskImageUploader()]
     }).compileComponents();
 
     fixture = TestBed.createComponent(RichTextEditorComponent);
