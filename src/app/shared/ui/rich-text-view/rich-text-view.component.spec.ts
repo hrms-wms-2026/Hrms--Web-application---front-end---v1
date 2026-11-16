@@ -15,6 +15,18 @@ describe('RichTextViewComponent', () => {
     expect(host.querySelectorAll('li').length).toBe(2);
   });
 
+  // Review finding M3: neither app has the typography plugin, so the view styles its own content.
+  it('styles lists and headings itself', () => {
+    const host = render('<h2>Title</h2><ul><li>One</li></ul><ol><li>Two</li></ol>');
+    document.body.appendChild(host);
+
+    expect(getComputedStyle(host.querySelector('ul')!).listStyleType).toBe('disc');
+    expect(getComputedStyle(host.querySelector('ol')!).listStyleType).toBe('decimal');
+    expect(getComputedStyle(host.querySelector('ul')!).paddingLeft).toBe('1.25rem');
+    expect(getComputedStyle(host.querySelector('h2')!).fontWeight).toBe('600');
+    host.remove();
+  });
+
   it('shows old plain text as text and keeps its line breaks', () => {
     const host = render('error at line 5 < 6\nnext');
     const block = host.querySelector('[data-testid="rich-text-plain"]') as HTMLElement;
