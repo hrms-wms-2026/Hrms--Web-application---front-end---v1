@@ -17,14 +17,13 @@ describe('RichTextViewComponent', () => {
 
   // Review finding M3: neither app has the typography plugin, so the view styles its own content.
   it('styles lists and headings itself', () => {
-    const host = render('<h2>Title</h2><ul><li>One</li></ul><ol><li>Two</li></ol>');
-    document.body.appendChild(host);
+    render('<h2>Title</h2><ul><li>One</li></ul><ol><li>Two</li></ol>');
+    // Both test runners (tenant Vitest, admin Jest) add component styles to <head>; computed styles differ.
+    const css = [...document.head.querySelectorAll('style')].map((s) => s.textContent ?? '').join(' ');
 
-    expect(getComputedStyle(host.querySelector('ul')!).listStyleType).toBe('disc');
-    expect(getComputedStyle(host.querySelector('ol')!).listStyleType).toBe('decimal');
-    expect(getComputedStyle(host.querySelector('ul')!).paddingLeft).toBe('1.25rem');
-    expect(getComputedStyle(host.querySelector('h2')!).fontWeight).toBe('600');
-    host.remove();
+    expect(css).toMatch(/ul\s*\{[^}]*list-style-type:\s*disc[^}]*padding-left:\s*1\.25rem/);
+    expect(css).toMatch(/ol\s*\{[^}]*list-style-type:\s*decimal/);
+    expect(css).toMatch(/h2\s*\{[^}]*font-weight:\s*600/);
   });
 
   it('shows old plain text as text and keeps its line breaks', () => {
