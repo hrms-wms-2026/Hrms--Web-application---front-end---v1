@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProfileMenuComponent } from './profile-menu.component';
 import { ThemeStore } from '../../../../core/theme/state/theme.store';
-import { ThemePresetId } from '../../../../core/theme/models/theme-preset.model';
+import { THEME_PRESETS, ThemePresetId } from '../../../../core/theme/models/theme-preset.model';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProfileStore } from '@modules/profile/state/profile.store';
@@ -191,7 +191,7 @@ describe('ProfileMenuComponent', () => {
     fixture.detectChanges();
 
     const options = fixture.nativeElement.querySelectorAll('[aria-label="Theme Presets"] [role="radio"]');
-    expect(options.length).toBe(5);
+    expect(options.length).toBe(THEME_PRESETS.length);
 
     const emeraldOption = Array.from(options).find((el) =>
       (el as HTMLElement).textContent?.includes('Emerald')

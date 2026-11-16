@@ -34,7 +34,7 @@ describe('ProjectListStore', () => {
       id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: null, isActive: true,
       allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null, updatedAt: null,
-      logoFileId: null, labels: [], members: [], memberCount: 0, systemPurpose: null
+      logoFileId: null, labels: [], members: [], memberCount: 0, systemPurpose: null, icon: null
     }]);
     expect(store.totalCount()).toBe(1);
     expect(store.loading()).toBe(false);

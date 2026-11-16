@@ -267,7 +267,10 @@ Never:
 
 ## 6. With an AI agent (Claude Code or Codex)
 
-Give the agent this guide and keep it in **Mode A** first. A prompt that works:
+Full copy-paste prompts (tool setup, scan, report, then one batch at a time) are in
+[`CODE_CLEANUP_AGENT_PROMPT.md`](CODE_CLEANUP_AGENT_PROMPT.md).
+
+Give the agent this guide and keep it in **Mode A** first. A short prompt that works:
 
 > Read `docs/core/CODE_CLEANUP_GUIDE.md`. Run the Mode A scans from section 3 for <frontend|backend>.
 > Limit the results to <module>. Check every finding in the code using section 4.1 and label it CONFIRMED,
