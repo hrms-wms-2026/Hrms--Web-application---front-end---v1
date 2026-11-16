@@ -13,6 +13,9 @@ import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employe
 import { ForgotPasswordRequestDto } from '../models/dto/forgot-password-request.dto';
 import { ResetPasswordRequestDto } from '../models/dto/reset-password-request.dto';
 import { MessageResponseDto } from '../models/dto/message-response.dto';
+import { GoogleSsoConfigDto } from '../models/dto/google-sso-config.dto';
+import { GoogleLoginRequestDto } from '../models/dto/google-login-request.dto';
+import { LoginResultDto, SelectWorkspaceRequestDto } from '../models/dto/workspace-selection.dto';
 
 import { getRootHostname, isValidTenantSlug } from '../utils/tenant-redirect';
 
@@ -40,9 +43,35 @@ export function getTenantApiUrl(apiUrl: string, tenantSlug: string): string {
 export class AuthApiService {
   private http = inject(HttpClient);
 
-  login(payload: LoginRequestDto): Observable<AuthResponseDto> {
+  /** Root-host only. 200 = AuthResponseDto, 202 = WorkspaceSelectionRequiredDto. */
+  login(payload: LoginRequestDto): Observable<LoginResultDto> {
     const baseUrl = getSystemApiUrl(environment.apiUrl);
-    return this.http.post<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.auth.login}`, payload);
+    return this.http.post<LoginResultDto>(`${baseUrl}${API_ENDPOINTS.auth.login}`, payload);
+  }
+
+  /** Anonymous, root-host only (the backend rejects it on a tenant host, like login/google). */
+  getGoogleSsoConfig(): Observable<GoogleSsoConfigDto> {
+    const baseUrl = getSystemApiUrl(environment.apiUrl);
+    return this.http.get<GoogleSsoConfigDto>(`${baseUrl}${API_ENDPOINTS.auth.googleConfig}`);
+  }
+
+  /**
+   * Root-host only, like login(): AuthLoginController.LoginWithGoogle returns 400 on a tenant host.
+   * Same 200/202 outcomes as login(). The ID token is only ever held in this request body.
+   */
+  loginWithGoogle(idToken: string): Observable<LoginResultDto> {
+    const baseUrl = getSystemApiUrl(environment.apiUrl);
+    const payload: GoogleLoginRequestDto = { google_id_token: idToken };
+    return this.http.post<LoginResultDto>(`${baseUrl}${API_ENDPOINTS.auth.loginGoogle}`, payload);
+  }
+
+  /** Root-host only: completes a 202 from login() or loginWithGoogle(). */
+  selectWorkspace(payload: SelectWorkspaceRequestDto): Observable<AuthResponseDto> {
+    const baseUrl = getSystemApiUrl(environment.apiUrl);
+    return this.http.post<AuthResponseDto>(
+      `${baseUrl}${API_ENDPOINTS.auth.selectWorkspace}`,
+      payload,
+    );
   }
 
   /**
@@ -52,7 +81,10 @@ export class AuthApiService {
    */
   acceptLegalDocuments(payload: LegalAcceptanceRequestDto): Observable<AuthResponseDto> {
     const baseUrl = getSystemApiUrl(environment.apiUrl);
-    return this.http.post<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.legal.completeLogin}`, payload);
+    return this.http.post<AuthResponseDto>(
+      `${baseUrl}${API_ENDPOINTS.legal.completeLogin}`,
+      payload,
+    );
   }
 
   /**
@@ -62,7 +94,10 @@ export class AuthApiService {
    */
   sessionExchange(code: string): Observable<AuthResponseDto> {
     const payload: SessionExchangeRequestDto = { code };
-    return this.http.post<AuthResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.sessionExchange}`, payload);
+    return this.http.post<AuthResponseDto>(
+      `${environment.apiUrl}${API_ENDPOINTS.auth.sessionExchange}`,
+      payload,
+    );
   }
 
   /**
@@ -70,12 +105,16 @@ export class AuthApiService {
    * whatever host the invite link opened on.
    */
   getInvitationPreview(token: string): Observable<InvitationPreviewDto> {
-    return this.http.get<InvitationPreviewDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.invitationPreview(token)}`);
+    return this.http.get<InvitationPreviewDto>(
+      `${environment.apiUrl}${API_ENDPOINTS.auth.invitationPreview(token)}`,
+    );
   }
 
   /** Anonymous, tenant-agnostic read of the currently-required legal document versions. */
   getCurrentLegalDocuments(): Observable<PublishedLegalDocumentDto[]> {
-    return this.http.get<PublishedLegalDocumentDto[]>(`${environment.apiUrl}${API_ENDPOINTS.legal.currentDocuments}`);
+    return this.http.get<PublishedLegalDocumentDto[]>(
+      `${environment.apiUrl}${API_ENDPOINTS.legal.currentDocuments}`,
+    );
   }
 
   /**
@@ -84,10 +123,13 @@ export class AuthApiService {
    * resolve to the invitation's tenant, so this must run on whatever host the browser is
    * currently on - it must NOT retarget to the root/system host like login() does.
    */
-  acceptEmployeeInvitation(token: string, payload: AcceptEmployeeInvitationRequestDto): Observable<AuthResponseDto> {
+  acceptEmployeeInvitation(
+    token: string,
+    payload: AcceptEmployeeInvitationRequestDto,
+  ): Observable<AuthResponseDto> {
     return this.http.post<AuthResponseDto>(
       `${environment.apiUrl}${API_ENDPOINTS.auth.acceptEmployeeInvitation(token)}`,
-      payload
+      payload,
     );
   }
 
@@ -125,7 +167,10 @@ export class AuthApiService {
    */
   forgotPassword(email: string): Observable<MessageResponseDto> {
     const payload: ForgotPasswordRequestDto = { email };
-    return this.http.post<MessageResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.forgotPassword}`, payload);
+    return this.http.post<MessageResponseDto>(
+      `${environment.apiUrl}${API_ENDPOINTS.auth.forgotPassword}`,
+      payload,
+    );
   }
 
   /**
@@ -135,6 +180,9 @@ export class AuthApiService {
    */
   resetPassword(token: string, newPassword: string): Observable<MessageResponseDto> {
     const payload: ResetPasswordRequestDto = { token, newPassword };
-    return this.http.post<MessageResponseDto>(`${environment.apiUrl}${API_ENDPOINTS.auth.resetPassword}`, payload);
+    return this.http.post<MessageResponseDto>(
+      `${environment.apiUrl}${API_ENDPOINTS.auth.resetPassword}`,
+      payload,
+    );
   }
 }

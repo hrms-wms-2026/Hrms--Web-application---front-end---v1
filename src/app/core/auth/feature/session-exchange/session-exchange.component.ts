@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthStore } from '../../state/auth.store';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
+import { toSafeInternalPath } from '../../utils/safe-return-path';
 
 /**
  * Landing page for continue_url (https://{slug}.{rootDomain}/auth/continue?code=...). Consumes the
@@ -13,7 +14,7 @@ import { CardComponent } from '../../../../shared/ui/card/card.component';
   selector: 'app-session-exchange',
   standalone: true,
   imports: [LoaderComponent, CardComponent],
-  templateUrl: './session-exchange.component.html'
+  templateUrl: './session-exchange.component.html',
 })
 export class SessionExchangeComponent implements OnInit {
   private route = inject(ActivatedRoute);
@@ -31,7 +32,7 @@ export class SessionExchangeComponent implements OnInit {
 
     try {
       await this.store.exchangeSession(code);
-      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+      const returnUrl = toSafeInternalPath(this.route.snapshot.queryParamMap.get('returnUrl'));
       if (returnUrl) {
         await this.router.navigateByUrl(returnUrl);
       } else {
