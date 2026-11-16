@@ -5,8 +5,7 @@ import { RichTextEditorComponent } from './rich-text-editor.component';
 import { RICH_TEXT_IMAGE_UPLOADER, RichTextImageUploader } from './rich-text-image-uploader';
 
 const uploader: RichTextImageUploader = {
-  upload: vi.fn().mockReturnValue(of({ fileId: 'f1' })),
-  fileUrl: (fileId: string) => `http://test/files/${fileId}`
+  upload: vi.fn().mockReturnValue(of({ fileId: 'f1', url: 'http://test/files/f1' }))
 };
 
 function titles(fixture: ComponentFixture<RichTextEditorComponent>): string[] {

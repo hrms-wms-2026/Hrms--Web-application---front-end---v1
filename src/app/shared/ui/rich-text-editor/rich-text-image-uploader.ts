@@ -9,8 +9,8 @@ export type RichTextImagePurpose = 'task_description_image' | 'comment_descripti
  * provides one, the image tool is not shown. Keeps the editor free of any feature module.
  */
 export interface RichTextImageUploader {
-  upload(file: File, purpose: RichTextImagePurpose): Observable<{ fileId: string }>;
-  fileUrl(fileId: string): string;
+  /** Uploads the file and returns the URL the editor inserts as the image source. */
+  upload(file: File, purpose: RichTextImagePurpose): Observable<{ fileId: string; url: string }>;
 }
 
 export const RICH_TEXT_IMAGE_UPLOADER = new InjectionToken<RichTextImageUploader>('RICH_TEXT_IMAGE_UPLOADER');

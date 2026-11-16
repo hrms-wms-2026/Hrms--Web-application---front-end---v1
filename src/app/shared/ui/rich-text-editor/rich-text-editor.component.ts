@@ -1803,7 +1803,7 @@ export class RichTextEditorComponent {
         selection.removeAllRanges();
         selection.addRange(savedRange);
       }
-      document.execCommand('insertImage', false, uploader.fileUrl(uploaded.fileId));
+      document.execCommand('insertImage', false, uploaded.url);
       this.onEditorInput();
     } catch {
       this.uploadFailed.emit(`Failed to insert ${file.name}.`);
