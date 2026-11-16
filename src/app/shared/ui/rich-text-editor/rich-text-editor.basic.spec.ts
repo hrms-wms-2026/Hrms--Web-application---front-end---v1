@@ -33,6 +33,8 @@ describe('RichTextEditorComponent basic toolset', () => {
     expect(shown.some((t) => t.startsWith('Highlight'))).toBe(false);
     expect(shown.some((t) => t.startsWith('Checklist'))).toBe(false);
     expect(shown.some((t) => t.startsWith('Insert image'))).toBe(false);
+    // Review finding I1: toolbar headings make <span class="tfm-inline-h1">, which the allowlist drops.
+    expect(shown.some((t) => t.startsWith('Apply Heading'))).toBe(false);
     expect(shown.some((t) => t.startsWith('Bold'))).toBe(true);
     expect(shown.some((t) => t.startsWith('Link'))).toBe(true);
   });
@@ -58,6 +60,18 @@ describe('RichTextEditorComponent basic toolset', () => {
     fixture.componentInstance.onEditorInput();
 
     expect(emitted.at(-1)).toBe('<p>Hi <a>there</a></p>');
+  });
+
+  it('emits typed lines as paragraphs', async () => {
+    const fixture = await setup('basic');
+    const emitted: string[] = [];
+    fixture.componentInstance.htmlChange.subscribe((html) => emitted.push(html));
+    const editor = fixture.componentInstance.contentEditor()!.nativeElement;
+
+    editor.innerHTML = 'a<div>b</div>';
+    fixture.componentInstance.onEditorInput();
+
+    expect(emitted.at(-1)).toBe('<p>a</p><p>b</p>');
   });
 
   it('keeps the full toolset unchanged by default', async () => {

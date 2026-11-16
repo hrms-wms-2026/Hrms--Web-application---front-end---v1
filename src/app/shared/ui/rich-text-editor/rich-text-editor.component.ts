@@ -88,6 +88,7 @@ export interface SlashMenuCoords {
               <div class="tfm-editor">
                 <div class="tfm-editor__toolbar" appStopClickPropagation>
                   <div class="tfm-editor__tools-left">
+                    @if (!isBasic()) {
                     <button
                       type="button"
                       class="tfm-editor__tool tfm-editor__tool--text"
@@ -109,6 +110,7 @@ export interface SlashMenuCoords {
                       <span class="tfm-tool-h-label">H2</span>
                     </button>
                     <span class="tfm-editor__divider"></span>
+                    }
                     <button
                       type="button"
                       class="tfm-editor__tool"
