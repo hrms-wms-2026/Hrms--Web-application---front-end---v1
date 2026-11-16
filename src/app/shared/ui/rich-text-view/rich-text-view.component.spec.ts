@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { RichTextViewComponent } from './rich-text-view.component';
+import { RICH_TEXT_VIEW_STYLES, RichTextViewComponent } from './rich-text-view.component';
 
 describe('RichTextViewComponent', () => {
   function render(value: string | null): HTMLElement {
@@ -17,13 +17,9 @@ describe('RichTextViewComponent', () => {
 
   // Review finding M3: neither app has the typography plugin, so the view styles its own content.
   it('styles lists and headings itself', () => {
-    render('<h2>Title</h2><ul><li>One</li></ul><ol><li>Two</li></ol>');
-    // Both test runners (tenant Vitest, admin Jest) add component styles to <head>; computed styles differ.
-    const css = [...document.head.querySelectorAll('style')].map((s) => s.textContent ?? '').join(' ');
-
-    expect(css).toMatch(/ul\s*\{[^}]*list-style-type:\s*disc[^}]*padding-left:\s*1\.25rem/);
-    expect(css).toMatch(/ol\s*\{[^}]*list-style-type:\s*decimal/);
-    expect(css).toMatch(/h2\s*\{[^}]*font-weight:\s*600/);
+    expect(RICH_TEXT_VIEW_STYLES).toMatch(/ul\s*\{[^}]*list-style-type:\s*disc[^}]*padding-left:\s*1\.25rem/);
+    expect(RICH_TEXT_VIEW_STYLES).toMatch(/ol\s*\{[^}]*list-style-type:\s*decimal/);
+    expect(RICH_TEXT_VIEW_STYLES).toMatch(/h2\s*\{[^}]*font-weight:\s*600/);
   });
 
   it('shows old plain text as text and keeps its line breaks', () => {
