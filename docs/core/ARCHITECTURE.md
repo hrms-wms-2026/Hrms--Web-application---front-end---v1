@@ -150,7 +150,8 @@ src/
 │   │   │   └── password-strength/
 │   │   │       └── password-strength.component.ts
 │   │   ├── data-access/
-│   │   │   └── auth-api.service.ts
+│   │   │   ├── auth-api.service.ts
+│   │   │   └── google-identity.service.ts         # Lazy Google Identity Services loader (root login only)
 │   │   ├── state/
 │   │   │   └── auth.store.ts
 │   │   ├── models/
@@ -1311,7 +1312,7 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Forces HTTPS, prevents downgrade attacks |
 | `X-Frame-Options` | `DENY` | Prevents clickjacking via iframe embedding |
 | `X-Content-Type-Options` | `nosniff` | Blocks MIME-sniffing attacks |
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.onevo.com wss://api.onevo.com; frame-ancestors 'none'` | Restricts what scripts/styles/connections the page can load — primary XSS mitigation layer |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: https:; connect-src 'self' https://api.onevo.com wss://api.onevo.com https://accounts.google.com/gsi/; frame-ancestors 'none'` | Restricts what scripts/styles/connections the page can load — primary XSS mitigation layer |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Limits referrer leakage to third parties |
 | `Permissions-Policy` | `geolocation=(), camera=(), microphone=(), payment=()` | Disables unused browser APIs at the origin level |
 
@@ -1322,8 +1323,10 @@ add_header X-Frame-Options "DENY" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 add_header Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()" always;
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.onevo.com wss://api.onevo.com; frame-ancestors 'none'" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: https:; connect-src 'self' https://api.onevo.com wss://api.onevo.com https://accounts.google.com/gsi/; frame-ancestors 'none'" always;
 ```
+
+> **Google sign-in (root login page):** the `accounts.google.com/gsi/` sources are only for Google Identity Services (`core/auth/data-access/google-identity.service.ts`); remove them if Google SSO is dropped. If a `Cross-Origin-Opener-Policy` header is ever added to the SPA document, use `same-origin-allow-popups` (not `same-origin`), or Google's sign-in popup cannot report back. These are frontend-document headers: set them on the static host/reverse proxy, not in the API's `SecurityHeadersMiddleware`. Without them in production the Google button silently does not appear (password login is unaffected).
 
 > **CI gate:** Add a smoke test (e.g. via `curl -I` or Playwright's response headers assertion) against the staging deployment that fails the pipeline if any of these six headers is missing.
 
