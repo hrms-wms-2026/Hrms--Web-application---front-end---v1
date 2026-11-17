@@ -180,7 +180,7 @@ export class InboxChatSidebarComponent implements OnInit {
 
   ngOnInit(): void {
     void this.kinds.ensureLoaded();
-    if (!this.store.loaded()) void this.store.load();
+    void this.store.ensureLoaded();
   }
 
   protected toggleSearch(): void {
