@@ -1,7 +1,7 @@
 import { HttpParams } from '@angular/common/http';
 
 /**
- * The one place that turns a plain object into query-string params for the ONEVO API.
+ * The one place that turns a plain object into query-string params for the backend API.
  *
  * - skips null, undefined and '' (an empty filter must not reach the backend as a value)
  * - keeps false and 0

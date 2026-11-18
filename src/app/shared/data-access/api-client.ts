@@ -11,7 +11,7 @@ export interface ApiRequestOptions {
 }
 
 /**
- * Thin HttpClient wrapper for the ONEVO API. Always targets environment.apiUrl and always builds the
+ * Thin HttpClient wrapper for the backend API. Always targets environment.apiUrl and always builds the
  * query string with toHttpParams. Module API services use this instead of HttpClient/HttpParams and
  * return backend DTOs unchanged; mapping to view models lives in the store or a mapper file.
  */
