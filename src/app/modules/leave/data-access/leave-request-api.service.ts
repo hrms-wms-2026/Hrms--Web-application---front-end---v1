@@ -1,7 +1,6 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environment } from '../../../../environments/environment';
+import { ApiClient } from '../../../shared/data-access/api-client';
 import {
   CancelLeaveRequestRequest,
   CancelLeaveRequestResponse,
@@ -16,36 +15,33 @@ import {
 /** Client for ONEVO.Api's LeaveRequestsController at /api/v1/leave/requests. */
 @Injectable({ providedIn: 'root' })
 export class LeaveRequestApiService {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(ApiClient);
 
   uploadDocument(file: File): Observable<LeaveUploadedDocument> {
     const form = new FormData();
     form.append('file', file, file.name);
-    return this.http.post<LeaveUploadedDocument>(`${environment.apiUrl}/leave/requests/documents`, form);
+    return this.api.post<LeaveUploadedDocument>('/leave/requests/documents', form);
   }
 
   preview(payload: SubmitLeaveRequestRequest): Observable<LeaveRequestResponse> {
-    return this.http.post<LeaveRequestResponse>(`${environment.apiUrl}/leave/requests/preview`, payload);
+    return this.api.post<LeaveRequestResponse>('/leave/requests/preview', payload);
   }
 
   submit(payload: SubmitLeaveRequestRequest): Observable<LeaveRequestResponse> {
-    return this.http.post<LeaveRequestResponse>(`${environment.apiUrl}/leave/requests`, payload);
+    return this.api.post<LeaveRequestResponse>('/leave/requests', payload);
   }
 
   submitOnBehalf(payload: SubmitLeaveRequestOnBehalfRequest): Observable<LeaveRequestResponse> {
-    return this.http.post<LeaveRequestResponse>(`${environment.apiUrl}/leave/requests/on-behalf`, payload);
+    return this.api.post<LeaveRequestResponse>('/leave/requests/on-behalf', payload);
   }
 
   listMine(filter: LeaveRequestListFilter): Observable<LeaveRequestListItemResponse[]> {
-    let params = new HttpParams();
-    if (filter.status) params = params.set('status', filter.status);
-    if (filter.fromDate) params = params.set('fromDate', filter.fromDate);
-    if (filter.toDate) params = params.set('toDate', filter.toDate);
-    if (filter.leaveTypeId) params = params.set('leaveTypeId', filter.leaveTypeId);
-    return this.http.get<LeaveRequestListItemResponse[]>(`${environment.apiUrl}/leave/requests/my`, { params });
+    return this.api.get<LeaveRequestListItemResponse[]>('/leave/requests/my', {
+      params: { status: filter.status, fromDate: filter.fromDate, toDate: filter.toDate, leaveTypeId: filter.leaveTypeId }
+    });
   }
 
   cancel(requestId: string, payload: CancelLeaveRequestRequest): Observable<CancelLeaveRequestResponse> {
-    return this.http.post<CancelLeaveRequestResponse>(`${environment.apiUrl}/leave/requests/${requestId}/cancel`, payload);
+    return this.api.post<CancelLeaveRequestResponse>(`/leave/requests/${requestId}/cancel`, payload);
   }
 }

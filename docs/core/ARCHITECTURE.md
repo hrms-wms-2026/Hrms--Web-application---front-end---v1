@@ -123,9 +123,12 @@ src/
 │   │   ├── date.helpers.ts
 │   │   ├── file.helpers.ts
 │   │   └── validation.helpers.ts
+│   ├── data-access/
+│   │   ├── api-client.ts
+│   │   ├── api-params.ts
+│   │   └── file-api.service.ts
 │   └── models/
-│       ├── api-response.model.ts
-│       ├── pagination.model.ts
+│       ├── paged-result.model.ts
 │       └── dropdown-option.model.ts
 │
 ├── modules/
@@ -831,8 +834,8 @@ export const EmployeeStore = signalStore(
     async loadEmployees(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
-        const res = await firstValueFrom(api.getAll());
-        patchState(store, { employees: res.data, loading: false });
+        const employees = await firstValueFrom(api.list());
+        patchState(store, { employees, loading: false });
       } catch (err: any) {
         patchState(store, { error: err.message ?? 'Failed to load employees', loading: false });
       }
@@ -952,71 +955,50 @@ export class EmployeeService {
 
 ## 5. API & Data Fetching
 
-### 5.1 REST API with Typed Responses
+### 5.1 API Layer Rules (decided 2026-11-18)
+
+There is **no response envelope**. The backend returns the DTO itself, and lists return either an array or `PagedResult<T>` (`shared/models/paged-result.model.ts`: `items`, `pageNumber`, `pageSize`, `totalCount`).
+
+**Rules**
+
+1. **API services call `ApiClient`, not `HttpClient`.** `shared/data-access/api-client.ts` always targets `environment.apiUrl` (paths start with `/`) and has `get`, `getPage`, `getBlob`, `post`, `postBlob`, `put`, `delete`.
+2. **Query strings go through `toHttpParams()`** (`shared/data-access/api-params.ts`), which `ApiClient` calls for every `params` object. Do not write `new HttpParams(`; `npm run lint` runs `scripts/check-http-params.mjs` and fails on new ones.
+   - `null`, `undefined` and `''` are skipped; `false` and `0` are sent.
+   - A `Date` is sent as a full UTC ISO instant. For a date-only value, send `dateOnly(date)` (local calendar day). Never use `toISOString().slice(0, 10)`.
+   - Arrays repeat the key: `ids=a&ids=b`.
+   - Build `params` as an explicit object literal in the order the backend expects. Do not pass a caller's filter object straight through.
+3. **API services return backend DTOs unchanged.** Models in `models/` match the backend response types exactly.
+4. **Mapping to view models happens in the store or a mapper file** (`utils/<x>.mapper.ts`), never in the API service. Error translation that turns a known backend error code into a typed error (for example `LeavePolicyConflictError`) may stay in the service as a `catchError`.
+5. **Components never call an API service directly when a store exists for that data.** They read store signals and call store methods.
+6. Every API service has a header comment naming the backend controller and route it targets.
+
+**Reference module:** Leave (`modules/leave/data-access/`) follows all of these.
 
 ```typescript
-// shared/models/api-response.model.ts
-export interface ApiResponse<T> {
-  data: T;
-  message: string;
-  success: boolean;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-```
-
-```typescript
-// modules/employees/data-access/employee-api.service.ts
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { Employee, CreateEmployeeRequest } from '../models/employee.model';
-import { ApiResponse, PaginatedResponse } from '@shared/models';
-import { API_ENDPOINTS } from '@core/config/api-endpoints';
-
+// modules/leave/data-access/leave-type-api.service.ts
+/** Client for ONEVO.Api's LeaveTypesController at /api/v1/leave/types. */
 @Injectable({ providedIn: 'root' })
-export class EmployeeApiService {
-  constructor(private http: HttpClient) {}
+export class LeaveTypeApiService {
+  private readonly api = inject(ApiClient);
 
-  getAll(page = 1, pageSize = 20): Observable<PaginatedResponse<Employee>> {
-    const params = new HttpParams()
-      .set('page', page)
-      .set('pageSize', pageSize);
-
-    return this.http
-      .get<ApiResponse<PaginatedResponse<Employee>>>(API_ENDPOINTS.employees.list, { params })
-      .pipe(map(res => res.data));
+  list(includeInactive: boolean): Observable<LeaveTypeResponse[]> {
+    return this.api.get<LeaveTypeResponse[]>('/leave/types', { params: { includeInactive } });
   }
 
-  getById(id: number): Observable<Employee> {
-    return this.http
-      .get<ApiResponse<Employee>>(API_ENDPOINTS.employees.detail(id))
-      .pipe(map(res => res.data));
-  }
-
-  create(payload: CreateEmployeeRequest): Observable<Employee> {
-    return this.http
-      .post<ApiResponse<Employee>>(API_ENDPOINTS.employees.create, payload)
-      .pipe(map(res => res.data));
-  }
-
-  update(id: number, payload: Partial<Employee>): Observable<Employee> {
-    return this.http
-      .patch<ApiResponse<Employee>>(API_ENDPOINTS.employees.detail(id), payload)
-      .pipe(map(res => res.data));
-  }
-
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(API_ENDPOINTS.employees.detail(id));
+  deactivate(leaveTypeId: string, confirmed: boolean): Observable<void> {
+    return this.api.post<void>(`/leave/types/${leaveTypeId}/deactivate`, {}, { params: { confirmed } });
   }
 }
 ```
+
+**Known `ApiClient` gaps (add them when the first module needs them, do not fall back to `HttpClient`):**
+
+- no `patch` method (about 12 call sites in modules not moved yet);
+- `ApiRequestOptions` has only `params`: no `headers` (e.g. idempotency keys in People offboarding), no `context` (`HttpContext`, e.g. `SILENT_HTTP_ERRORS` in Inbox), no `observe: 'response' | 'events'` (about 10 sites, e.g. upload progress).
+
+Extend `ApiClient` and its spec in one change, keep `toHttpParams` as the only query builder, and update this list.
+
+Modules not moved yet are listed in `docs/Improvements/person-4-api-layer-and-cleanup/task-04 Shared helpers for the API layer.md`. Move a module by switching its services to `ApiClient`, then run `node scripts/check-http-params.mjs --update` so the baseline shrinks.
 
 ### 5.2 Interceptor Chain — Registration Order
 
