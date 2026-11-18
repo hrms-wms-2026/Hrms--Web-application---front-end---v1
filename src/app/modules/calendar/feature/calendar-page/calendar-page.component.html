@@ -35,7 +35,7 @@
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
       </button>
       <!-- The period label jumps: it opens just the calendar (no date box); pick any date and the view moves to the period that holds it. -->
-      <app-date-picker class="ml-1" variant="custom" panelLabel="Go to date" [value]="dayDate()" [showClear]="false"
+      <app-date-picker class="ml-1" variant="custom" panelLabel="Go to date" [value]="dayDate()" [showQuickPresets]="false" [showClear]="false"
         (valueChange)="jumpTo($event)" (openChange)="periodPickerOpen.set($event)">
         <button type="button" data-testid="planner-period-button" aria-haspopup="dialog" [attr.aria-expanded]="periodPickerOpen()"
           class="flex items-center gap-1 rounded-md px-1.5 py-1 text-base font-semibold text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]">

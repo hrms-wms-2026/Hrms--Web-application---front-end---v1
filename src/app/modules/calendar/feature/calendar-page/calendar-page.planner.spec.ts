@@ -219,6 +219,8 @@ describe('CalendarPageComponent planner layer', () => {
     expect(calendar()).not.toBeNull();
     expect(q('planner-period-button')!.getAttribute('aria-expanded')).toBe('true');
     expect(fixture.nativeElement.querySelector('app-date-picker input')).toBeNull();
+    // Nor the Today / Tomorrow / Next wk row: the toolbar has its own Today.
+    expect(calendar()!.querySelector('.dp-quick-row')).toBeNull();
 
     const day12 = Array.from(calendar()!.querySelectorAll<HTMLButtonElement>('.dp-day-btn:not(.dp-day-btn--outside)'))
       .find((b) => b.textContent!.trim() === '12')!;
