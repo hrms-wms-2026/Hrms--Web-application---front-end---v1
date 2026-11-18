@@ -10,6 +10,8 @@
 
 ---
 
+> **Implemented 2026-11-18.** The shipped `src/app/shared/api-types/api-schema.ts` is the source of truth. It differs from the Task 4 code below: `DeepWritable` lets `readonly` frontend DTOs compare by shape, and `KeysMatchDeep` checks field names both ways at every nesting level.
+
 ## What the backend document actually contains (measured 2026-11-18)
 
 Downloaded from `https://localhost:7229/swagger/v1/swagger.json` (OpenAPI 3.0.4, 535 paths, 621 operations, 220 schemas). Measurements:

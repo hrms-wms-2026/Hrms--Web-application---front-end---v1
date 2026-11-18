@@ -81,7 +81,7 @@ export interface LeaveUploadedDocument {
   originalFileName: string;
 }
 
-/** Generated from the backend contract (`npm run api:types`). */
+/** Generated from the backend contract (`npm run api:types`). Shared by preview and submit. */
 export type SubmitLeaveRequestRequest =
   ApiSchema<'ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestRequest'>;
 
