@@ -28,3 +28,11 @@ The backend exposes Swagger documents (`/swagger/v1/swagger.json`) in Developmen
 - The script runs with one command against a local backend.
 - One module compiles against generated DTO types.
 - The list of backend contract gaps is handed to the backend team (it feeds backend task 16).
+
+## Status (2026-11-18)
+
+- `npm run api:types` generates `src/app/shared/api-types/backend-api.generated.ts` (openapi-typescript 7.13.0, types only) from the local backend or `--input <file>`. The file is committed.
+- `npm run api:types:check` fails when the committed file differs. **CI wiring is blocked:** the repo has no pipeline and the backend publishes no Swagger artifact.
+- Reference module: Leave. All 16 request DTOs are checked with `MatchesContract` (`modules/leave/models/leave-api-contract.ts`). 6 became aliases of generated types: SubmitLeaveRequestRequest, SubmitLeaveRequestOnBehalfRequest, CancelLeaveRequestRequest, ApproveLeaveRequestRequest, GenerateEntitlementsRequest, RecalculateEntitlementRequest. The other 10 stay hand-written because they are stricter than the backend. Response DTOs are not generated, because the backend Swagger has no response schemas.
+- Backend gap report: `task-08-backend-contract-gaps.md`. **To do by a person:** hand it to the backend team (feeds backend task 16).
+- How to regenerate: `docs/core/API_TYPES.md`.
