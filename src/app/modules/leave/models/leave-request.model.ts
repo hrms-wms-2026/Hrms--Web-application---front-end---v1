@@ -81,11 +81,11 @@ export interface LeaveUploadedDocument {
   originalFileName: string;
 }
 
-/** Matches ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestRequest verbatim. Shared by preview and submit. */
+/** Generated from the backend contract (`npm run api:types`). */
 export type SubmitLeaveRequestRequest =
   ApiSchema<'ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestRequest'>;
 
-/** Matches ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestOnBehalfRequest verbatim. */
+/** Generated from the backend contract (`npm run api:types`). */
 export type SubmitLeaveRequestOnBehalfRequest =
   ApiSchema<'ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestOnBehalfRequest'>;
 
@@ -96,7 +96,7 @@ export interface LeaveRequestListFilter {
   leaveTypeId?: string;
 }
 
-/** Matches ONEVO.Api.Contracts.Leave.Requests.CancelLeaveRequestRequest verbatim. */
+/** Generated from the backend contract (`npm run api:types`). */
 export type CancelLeaveRequestRequest =
   ApiSchema<'ONEVO.Api.Contracts.Leave.Requests.CancelLeaveRequestRequest'>;
 

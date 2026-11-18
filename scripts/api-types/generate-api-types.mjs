@@ -18,11 +18,11 @@ import {
 
 async function readSource(values) {
   if (values.input) {
-    return readFile(values.input, 'utf8');
+    return { text: await readFile(values.input, 'utf8'), source: values.input };
   }
   const url = values.url ?? process.env.API_SWAGGER_URL ?? DEFAULT_SWAGGER_URL;
   try {
-    return await download(url);
+    return { text: await download(url), source: url };
   } catch (error) {
     const reason =
       error.message ||
@@ -30,8 +30,7 @@ async function readSource(values) {
       error.errors?.map((e) => e.message).join('; ') ||
       String(error);
     throw new Error(
-      `Could not read ${url}: ${reason}
-` +
+      `Could not read ${url}: ${reason}\n` +
         'Is the backend running in Development (Swagger is only on in Development)? ' +
         'Or pass a saved document with --input <file>.',
     );
@@ -47,14 +46,12 @@ async function main() {
     },
   });
 
-  const text = await readSource(values);
+  const { text, source } = await readSource(values);
   let doc;
   try {
     doc = JSON.parse(text);
   } catch (e) {
-    throw new Error(
-      `Swagger document from ${values.input ?? 'the backend'} is not valid JSON: ${e.message}`,
-    );
+    throw new Error(`Swagger document from ${source} is not valid JSON: ${e.message}`);
   }
   const target = resolve(GENERATED_PATH);
   const generated = await generateTypes(doc, target);
@@ -66,8 +63,8 @@ async function main() {
     });
     if (!sameContent(current, generated)) {
       console.error(
-        `${GENERATED_PATH} is out of date with the backend contract.
-` + 'Run `npm run api:types` and commit the result.',
+        `${GENERATED_PATH} is out of date with the backend contract.\n` +
+          'Run `npm run api:types` and commit the result.',
       );
       process.exit(1);
     }

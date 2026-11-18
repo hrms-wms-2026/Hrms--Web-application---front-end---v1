@@ -40,7 +40,7 @@ export type Contracts = [
 ```
 
 - Schema keys are the full backend type names. Do not shorten them: two `CreateCalendarEventRequest` types exist.
-- `MatchesContract` fails the build when a field is renamed, removed, added or retyped. The frontend type may be stricter (non-null, string union, optional). It also accepts `readonly` properties and arrays in frontend DTOs (it compares by shape).
+- `MatchesContract` fails the build when a field is renamed, removed, added or retyped, at any nesting level (nested objects and array elements included). The frontend type may be stricter (non-null, string union, optional). It also accepts `readonly` properties and arrays in frontend DTOs (it compares by shape).
 - View models (what a component shows) stay hand-written. Only request and response DTOs come from the contract.
 - **Response types are not generated yet.** The backend documents no response schemas. See `docs/Improvements/person-4-api-layer-and-cleanup/task-08-backend-contract-gaps.md`.
 

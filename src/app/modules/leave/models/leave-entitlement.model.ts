@@ -27,6 +27,7 @@ export interface LeaveEntitlementListFilter {
   leaveTypeId?: string;
   search?: string;
 }
+/** Generated from the backend contract (`npm run api:types`). */
 export type GenerateEntitlementsRequest =
   ApiSchema<'ONEVO.Api.Contracts.Leave.Entitlements.GenerateEntitlementsRequest'>;
 export interface LeaveEntitlementGenerationLineResponse {
@@ -83,6 +84,7 @@ export interface AdjustEntitlementRequest {
   reason: string;
   confirmNegativeRemaining: boolean;
 }
+/** Generated from the backend contract (`npm run api:types`). */
 export type RecalculateEntitlementRequest =
   ApiSchema<'ONEVO.Api.Contracts.Leave.Entitlements.RecalculateEntitlementRequest'>;
 export interface LeaveBalanceAuditResponse {

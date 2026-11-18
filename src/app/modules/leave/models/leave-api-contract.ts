@@ -25,7 +25,7 @@ import type { CreateLeaveTypeRequest, UpdateLeaveTypeRequest } from './leave-typ
 
 /**
  * Compile-time check that every Leave request DTO still matches the backend contract
- * (`npm run api:types`). If the backend renames, removes, adds or retypes a field, the build
+ * (`npm run api:types`). If the backend renames, removes, adds or retypes a field (at any nesting level), the build
  * fails here. Response DTOs are not checked: the backend Swagger has no response schemas yet
  * (see docs/Improvements/person-4-api-layer-and-cleanup/task-08-backend-contract-gaps.md).
  */

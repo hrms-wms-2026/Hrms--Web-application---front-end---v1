@@ -88,10 +88,11 @@ export interface LeaveApprovalDecisionResponse {
   currentWarnings: LeaveApprovalWarningResponse[];
 }
 
-/** Matches ONEVO.Api.Contracts.Leave.Approvals.* verbatim. */
+/** Generated from the backend contract (`npm run api:types`). */
 export type ApproveLeaveRequestRequest =
   ApiSchema<'ONEVO.Api.Contracts.Leave.Approvals.ApproveLeaveRequestRequest'>;
 
+/** Matches ONEVO.Api.Contracts.Leave.Approvals.* verbatim. */
 export interface RejectLeaveRequestRequest {
   reason: string;
 }

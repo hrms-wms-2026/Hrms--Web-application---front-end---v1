@@ -65,6 +65,40 @@ type _readonly = Assert<MatchesContract<ReadonlyHand, GenWithArrays>>;
 // @ts-expect-error a readonly array with the wrong element type is still drift
 type _readonlyWrong = Assert<MatchesContract<WrongElementHand, GenWithArrays>>;
 
+interface GenNested {
+  id: string;
+  child: { a: string; b: number } | null;
+  rows: { x: string; y: number }[] | null;
+}
+interface NestedOk {
+  id: string;
+  child: { a: string; b: number };
+  rows: readonly { readonly x: string; readonly y: number }[];
+}
+interface NestedExtraObject {
+  id: string;
+  child: { a: string; b: number; c: boolean };
+  rows: { x: string; y: number }[];
+}
+interface NestedExtraElement {
+  id: string;
+  child: { a: string; b: number };
+  rows: { x: string; y: number; z: boolean }[];
+}
+interface NestedRenamed {
+  id: string;
+  child: { a: string; bee: number };
+  rows: { x: string; y: number }[];
+}
+// Nested object, array element and nullable nested object all match.
+type _nestedOk = Assert<MatchesContract<NestedOk, GenNested>>;
+// @ts-expect-error an extra field inside a nested object is drift
+type _nestedExtraObject = Assert<MatchesContract<NestedExtraObject, GenNested>>;
+// @ts-expect-error an extra field inside an array element is drift
+type _nestedExtraElement = Assert<MatchesContract<NestedExtraElement, GenNested>>;
+// @ts-expect-error a renamed nested field is drift
+type _nestedRenamed = Assert<MatchesContract<NestedRenamed, GenNested>>;
+
 describe('api-schema contract assertions', () => {
   it('are checked by the TypeScript compiler (see the type aliases above)', () => {
     expect(true).toBe(true);

@@ -68,7 +68,7 @@ export function download(url) {
       response.on('data', (chunk) => (body += chunk));
       response.on('end', () => resolvePromise(body));
     });
-    request.setTimeout(30_000, () => request.destroy(new Error(`GET ${url} timed out`)));
+    request.setTimeout(30_000, () => request.destroy(new Error(`GET ${url} idle for 30s`)));
     request.on('error', reject);
   });
 }
