@@ -38,6 +38,8 @@ Small differences here cause real bugs: a date sent in local time in one screen 
 - Reference module: Leave. All 8 API services use `ApiClient`; no `HttpClient` or `HttpParams` left.
 - Guard: `scripts/check-http-params.mjs` runs in `npm run lint`; baseline `scripts/http-params-baseline.json` (31 files, 67 call sites) may only shrink.
 - Rules: `docs/core/ARCHITECTURE.md` §5.1.
+- Before the next module: `ApiClient` has no `patch`, `headers`, `context` (`HttpContext`) or `observe` option yet. People, Inbox and Work need them; see the gap list in `docs/core/ARCHITECTURE.md` §5.1.
+- The HttpParams guard runs first in `npm run lint` (before ESLint), so it still runs while the pre-existing ESLint a11y errors and colour-guard failures on Development are open.
 - Not done here: the two module-local `PagedResultDto` types (attendance, work) still need to move to `shared/models/paged-result.model.ts`.
 
 ### Remaining modules

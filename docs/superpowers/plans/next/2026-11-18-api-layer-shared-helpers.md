@@ -1212,7 +1212,7 @@ Expected: `0`
 In `package.json`, change the `lint` script and add `check:http-params` next to `check:colors`:
 
 ```json
-    "lint": "ng lint && node scripts/check-hardcoded-colors.mjs && node scripts/check-http-params.mjs",
+    "lint": "node scripts/check-http-params.mjs && ng lint && node scripts/check-hardcoded-colors.mjs",
     "check:colors": "node scripts/check-hardcoded-colors.mjs",
     "check:http-params": "node scripts/check-http-params.mjs",
 ```

@@ -834,8 +834,8 @@ export const EmployeeStore = signalStore(
     async loadEmployees(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
-        const res = await firstValueFrom(api.getAll());
-        patchState(store, { employees: res.data, loading: false });
+        const employees = await firstValueFrom(api.list());
+        patchState(store, { employees, loading: false });
       } catch (err: any) {
         patchState(store, { error: err.message ?? 'Failed to load employees', loading: false });
       }
@@ -990,6 +990,13 @@ export class LeaveTypeApiService {
   }
 }
 ```
+
+**Known `ApiClient` gaps (add them when the first module needs them, do not fall back to `HttpClient`):**
+
+- no `patch` method (about 12 call sites in modules not moved yet);
+- `ApiRequestOptions` has only `params`: no `headers` (e.g. idempotency keys in People offboarding), no `context` (`HttpContext`, e.g. `SILENT_HTTP_ERRORS` in Inbox), no `observe: 'response' | 'events'` (about 10 sites, e.g. upload progress).
+
+Extend `ApiClient` and its spec in one change, keep `toHttpParams` as the only query builder, and update this list.
 
 Modules not moved yet are listed in `docs/Improvements/person-4-api-layer-and-cleanup/task-04 Shared helpers for the API layer.md`. Move a module by switching its services to `ApiClient`, then run `node scripts/check-http-params.mjs --update` so the baseline shrinks.
 
