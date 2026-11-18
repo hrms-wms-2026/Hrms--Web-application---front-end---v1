@@ -8,6 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:scripts": "node --test scripts/api-types/api-types.test.mjs",
+    "api:types": "node scripts/api-types/generate-api-types.mjs",
+    "api:types:check": "node scripts/api-types/generate-api-types.mjs --check",
     "lint": "node scripts/check-http-params.mjs && ng lint && node scripts/check-hardcoded-colors.mjs",
     "check:colors": "node scripts/check-hardcoded-colors.mjs",
     "check:http-params": "node scripts/check-http-params.mjs",

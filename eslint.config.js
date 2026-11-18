@@ -6,7 +6,14 @@ const angular = require('angular-eslint');
 
 module.exports = defineConfig([
   {
-    ignores: ['dist/**', '.angular/**', 'coverage/**', 'playwright-report/**', 'test-results/**'],
+    ignores: [
+      'dist/**',
+      '.angular/**',
+      'coverage/**',
+      'playwright-report/**',
+      'test-results/**',
+      'src/app/shared/api-types/*.generated.ts',
+    ],
   },
   {
     files: ['**/*.ts'],
@@ -63,7 +70,10 @@ module.exports = defineConfig([
       // `x != null` is the idiomatic "neither null nor undefined" check.
       '@angular-eslint/template/eqeqeq': ['error', { allowNullOrUndefined: true }],
       // A <label> may label a <button> (e.g. a switch); clicking the label text then toggles it.
-      '@angular-eslint/template/label-has-associated-control': ['error', { controlComponents: ['button'] }],
+      '@angular-eslint/template/label-has-associated-control': [
+        'error',
+        { controlComponents: ['button'] },
+      ],
       // Clickable non-button elements: use <button>, or role="button" + tabindex="0" + appKeyboardClick.
       // Backdrops and click-to-focus boxes are mouse conveniences: role="presentation".
       // Click shields around popovers: appStopClickPropagation instead of (click)="$event.stopPropagation()".
