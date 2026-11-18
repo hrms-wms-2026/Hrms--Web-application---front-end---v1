@@ -7,7 +7,6 @@ import { NotificationSettingsApiService } from '../../data-access/notification-s
 import { NotificationSetting } from '../../models/notification-setting.model';
 import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { unsavedChangesGuard } from '../../../../core/guards/unsaved-changes.guard';
-import { openSelect, selectDisplayText } from '../../../../shared/ui/select/select.testing';
 
 function setting(overrides: Partial<NotificationSetting> = {}): NotificationSetting {
   return {
@@ -80,13 +79,50 @@ describe('NotificationSettingsComponent', () => {
     toggle('work_approval_requested', 'email').click();
     fixture.detectChanges();
 
-    button('save-work_approval_requested').click();
+    button('ns-save').click();
     await settle();
 
     expect(api.update).toHaveBeenCalledWith('work_approval_requested',
       { enabledChannels: ['email'], templateId: null, recipientRule: 'default', revision: null });
     expect(fixture.componentInstance.isDirty()).toBe(false);
     expect(el.textContent).toContain('Customized');
+  });
+
+  it('saves every changed row from the one top-bar Save button', async () => {
+    api.update.mockImplementation((key: string, req: { enabledChannels: string[] }) =>
+      of(key === 'required_event'
+        ? { ...securityLike, enabledChannels: req.enabledChannels as NotificationSetting['enabledChannels'], isOverridden: true, revision: 1 }
+        : setting({ enabledChannels: req.enabledChannels as NotificationSetting['enabledChannels'], isOverridden: true, revision: 1 })));
+    expect(button('ns-save').disabled).toBe(true);
+
+    toggle('work_approval_requested', 'email').click();
+    toggle('required_event', 'in_app').click();
+    fixture.detectChanges();
+    expect(button('ns-save').textContent).toContain('Save 2 changes');
+
+    button('ns-save').click();
+    await settle();
+
+    expect(api.update).toHaveBeenCalledTimes(2);
+    expect(api.update).toHaveBeenCalledWith('work_approval_requested', expect.objectContaining({ enabledChannels: ['in_app', 'email'] }));
+    expect(api.update).toHaveBeenCalledWith('required_event', expect.objectContaining({ enabledChannels: ['in_app', 'email'] }));
+    expect(fixture.componentInstance.isDirty()).toBe(false);
+  });
+
+  it('opens the top-bar search from its icon, and closing it clears the filter', () => {
+    expect(el.querySelector('[data-testid="ns-search"]')).toBeNull();
+    el.querySelector<HTMLButtonElement>('[data-testid="ns-search-toggle"]')!.click();
+    fixture.detectChanges();
+
+    const input = el.querySelector<HTMLInputElement>('[data-testid="ns-search"] input')!;
+    input.value = 'leave';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(el.textContent).not.toContain('Work approval requested');
+
+    el.querySelector<HTMLButtonElement>('[data-testid="ns-search-close"]')!.click();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Work approval requested');
   });
 
   it('disables channels an event does not support, with an explanation', () => {
@@ -97,7 +133,7 @@ describe('NotificationSettingsComponent', () => {
 
   it('shows legacy-delivered events read-only', () => {
     expect(toggle('leave_request_approved', 'in_app').disabled).toBe(true);
-    expect(el.querySelector('[data-testid="save-leave_request_approved"]')).toBeNull();
+    expect(el.querySelector('[data-testid="reset-leave_request_approved"]')).toBeNull();
     expect(el.textContent).toContain('built-in delivery');
   });
 
@@ -108,20 +144,9 @@ describe('NotificationSettingsComponent', () => {
     expect(el.textContent).toContain('Required');
   });
 
-  it('only offers published templates for the event', () => {
-    const host = el.querySelector('[data-testid="template-work_approval_requested"]')!;
-    const detect = () => fixture.detectChanges();
-    expect(selectDisplayText(host)).toBe('Default');
-
-    const options = openSelect(host, detect);
-    expect(options.map((o) => o.textContent?.trim())).toEqual(['Default', 'Friendly']);
-
-    options[1].click();
-    detect();
-    expect(selectDisplayText(host)).toBe('Friendly');
-    button('save-work_approval_requested').click();
-
-    expect(api.update).toHaveBeenCalledWith('work_approval_requested', expect.objectContaining({ templateId: 'tpl-friendly' }));
+  it('does not show a template picker to tenant users (templates are managed by the platform)', () => {
+    expect(el.querySelector('[data-testid="template-work_approval_requested"]')).toBeNull();
+    expect(el.textContent).not.toContain('Template');
   });
 
   it('tracks unsaved changes and registers them with the unsaved-changes guard', () => {
@@ -133,7 +158,7 @@ describe('NotificationSettingsComponent', () => {
 
     expect(fixture.componentInstance.isDirty()).toBe(true);
     expect(unsaved.hasDirtyForm()).toBe(true);
-    expect(button('save-work_approval_requested').disabled).toBe(false);
+    expect(button('ns-save').disabled).toBe(false);
   });
 
   it('makes the route guard prompt for a dirty row, and Discard clears the edits', async () => {
@@ -154,7 +179,7 @@ describe('NotificationSettingsComponent', () => {
     toggle('work_approval_requested', 'email').click();
     fixture.detectChanges();
 
-    button('save-work_approval_requested').click();
+    button('ns-save').click();
     await settle();
 
     expect(el.textContent).toContain('Reload');
@@ -167,7 +192,7 @@ describe('NotificationSettingsComponent', () => {
     toggle('work_approval_requested', 'email').click();
     fixture.detectChanges();
 
-    button('save-work_approval_requested').click();
+    button('ns-save').click();
     await settle();
 
     expect(el.textContent).toContain('Access denied.');

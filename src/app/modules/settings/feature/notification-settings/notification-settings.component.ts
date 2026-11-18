@@ -3,8 +3,6 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
-import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { NotificationSettingsStore } from '../../state/notification-settings.store';
@@ -29,14 +27,15 @@ interface ModuleGroup {
 }
 
 /**
- * Settings → Notification Settings. Each event row maps to In-app / Email / Tray, a published template and a
- * recipient rule. Edits stay local until that row is saved; a stale save (409) keeps the edits and offers a
- * reload. Wording is edited by the platform, not here - this screen only routes.
+ * Settings → Notification Settings. Each event row maps to In-app / Email / Tray and a recipient rule.
+ * Edits stay local until that row is saved; a stale save (409) keeps the edits and offers a reload. Templates
+ * and wording are managed in Platform Administration, not here - this screen only routes. The row's saved
+ * templateId is passed back unchanged on save.
  */
 @Component({
   selector: 'app-notification-settings',
   standalone: true,
-  imports: [BreadcrumbHeaderComponent, ButtonComponent, CardComponent, EmptyStateComponent, ErrorStateComponent, InputComponent, SelectComponent],
+  imports: [BreadcrumbHeaderComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent],
   templateUrl: './notification-settings.component.html',
   styleUrl: './notification-settings.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -46,12 +45,15 @@ export class NotificationSettingsComponent implements OnInit {
   private readonly unsaved = inject(UnsavedChangesService);
 
   readonly search = signal('');
+  protected readonly searchExpanded = signal(false);
+  protected readonly saving = signal(false);
   private readonly edits = signal<Readonly<Record<string, RowEdit>>>({});
 
   protected readonly channels = NOTIFICATION_CHANNELS;
   protected readonly channelLabels = CHANNEL_LABELS;
 
   readonly isDirty = computed(() => Object.keys(this.edits()).length > 0);
+  protected readonly dirtyCount = computed(() => Object.keys(this.edits()).length);
 
   protected readonly groups = computed<ModuleGroup[]>(() => {
     const term = this.search().trim().toLowerCase();
@@ -126,37 +128,40 @@ export class NotificationSettingsComponent implements OnInit {
     this.setEdit(s, { ...current, channels });
   }
 
-  /** Select value: the chosen template, or the product default when none is chosen. */
-  protected selectedTemplate(s: NotificationSetting): string {
-    return this.row(s).templateId ?? s.templates.find((t) => t.isProductDefault)?.id ?? '';
-  }
-
-  protected templateOptions(s: NotificationSetting): SelectOption[] {
-    return s.templates.map((t) => ({ value: t.id, label: t.name }));
-  }
-
   protected recipientOptions(s: NotificationSetting): SelectOption[] {
     return s.recipientRules.map((rule) => ({ value: rule, label: this.recipientLabel(rule) }));
-  }
-
-  protected setTemplate(s: NotificationSetting, templateId: string): void {
-    const option = s.templates.find((t) => t.id === templateId);
-    this.setEdit(s, { ...this.row(s), templateId: !option || option.isProductDefault ? null : option.id });
   }
 
   protected setRecipientRule(s: NotificationSetting, recipientRule: string): void {
     this.setEdit(s, { ...this.row(s), recipientRule });
   }
 
-  protected async save(s: NotificationSetting): Promise<void> {
-    const edit = this.row(s);
-    const saved = await this.store.save(s.eventKey, {
-      enabledChannels: edit.channels,
-      templateId: edit.templateId,
-      recipientRule: edit.recipientRule,
-      revision: s.revision
-    });
-    if (saved) this.clearEdit(s.eventKey);
+  protected toggleSearch(): void {
+    if (this.searchExpanded()) this.search.set('');
+    this.searchExpanded.update((open) => !open);
+  }
+
+  /** Top-bar Save: saves every changed row, one after another. A row that fails keeps its edits and shows its
+   *  own error or conflict message; the other rows still save. */
+  protected async saveAll(): Promise<void> {
+    if (this.saving()) return;
+    this.saving.set(true);
+    try {
+      const byKey = new Map(this.store.settings().map((s) => [s.eventKey, s]));
+      for (const [eventKey, edit] of Object.entries(this.edits())) {
+        const s = byKey.get(eventKey);
+        if (!s) continue;
+        const saved = await this.store.save(eventKey, {
+          enabledChannels: edit.channels,
+          templateId: edit.templateId,
+          recipientRule: edit.recipientRule,
+          revision: s.revision
+        });
+        if (saved) this.clearEdit(eventKey);
+      }
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   protected async reset(s: NotificationSetting): Promise<void> {
