@@ -10,8 +10,12 @@ export interface ActiveAnnouncement {
   readonly severity: 'info' | 'warning' | 'critical';
 }
 
+const SEVERITY_ORDER: Record<ActiveAnnouncement['severity'], number> = { critical: 0, warning: 1, info: 2 };
+const LONG_BODY_CHARS = 90;
+
 /**
- * Published CROWNUS announcements (GET api/v1/announcements/active, any signed-in user). Dismissing hides one for
+ * Published CROWNUS announcements (GET api/v1/announcements/active, any signed-in user), shown as solid strips
+ * above the top navbar on every page (DEC-053): critical first, then warning, then info. Dismissing hides one for
  * the rest of this page session only; nothing is written to browser storage.
  */
 @Component({
@@ -26,8 +30,14 @@ export class AnnouncementBannerComponent implements OnInit {
 
   private readonly announcements = signal<readonly ActiveAnnouncement[]>([]);
   private readonly dismissed = signal<ReadonlySet<string>>(new Set());
+  private readonly expanded = signal<ReadonlySet<string>>(new Set());
 
-  readonly visible = computed(() => this.announcements().filter((a) => !this.dismissed().has(a.id)));
+  readonly visible = computed(() =>
+    this.announcements()
+      .filter((a) => !this.dismissed().has(a.id))
+      .slice()
+      .sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
+  );
 
   ngOnInit(): void {
     this.http
@@ -44,14 +54,31 @@ export class AnnouncementBannerComponent implements OnInit {
     this.dismissed.update((current) => new Set([...current, id]));
   }
 
+  /** A body that may not fit on the strip's single line gets a More/Less toggle. */
+  isLong(announcement: ActiveAnnouncement): boolean {
+    return announcement.body.length > LONG_BODY_CHARS || announcement.body.includes('\n');
+  }
+
+  isExpanded(id: string): boolean {
+    return this.expanded().has(id);
+  }
+
+  toggle(id: string): void {
+    this.expanded.update((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }
+
   toneClass(severity: ActiveAnnouncement['severity']): string {
     switch (severity) {
       case 'critical':
-        return 'border-[var(--color-danger)] bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
+        return 'bg-[var(--color-notice-critical-bg)] text-[var(--color-notice-on-dark)]';
       case 'warning':
-        return 'border-[var(--color-warning)] bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
+        return 'bg-[var(--color-notice-warning-bg)] text-[var(--color-notice-on-warning)]';
       default:
-        return 'border-[var(--color-info)] bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]';
+        return 'bg-[var(--color-notice-info-bg)] text-[var(--color-notice-on-dark)]';
     }
   }
 }

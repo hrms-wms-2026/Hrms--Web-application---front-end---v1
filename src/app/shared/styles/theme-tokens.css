@@ -83,6 +83,13 @@
   --color-overlay: rgba(0, 0, 0, 0.5);
   --color-danger-hover: #b91c1c;
   --color-info: #3b82f6;
+  /* CROWNUS announcement strip (solid fills): the same in light and dark mode and every preset,
+     each pair at 6.5:1 contrast or better. */
+  --color-notice-info-bg: #1d4ed8;
+  --color-notice-warning-bg: #f59e0b;
+  --color-notice-critical-bg: #b91c1c;
+  --color-notice-on-dark: #ffffff;
+  --color-notice-on-warning: #1c1917;
   --color-success-subtle: #dcfce7;
   --color-success-text: #166534;
 

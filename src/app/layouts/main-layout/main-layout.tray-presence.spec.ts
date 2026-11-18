@@ -164,6 +164,15 @@ describe('MainLayoutComponent tray activation gate', () => {
     expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
   });
+
+  it('puts the announcement strip at the top of the layout, above the navbar, even while the workspace is locked', () => {
+    isBlocking.set(true);
+    fixture.detectChanges();
+
+    const layout: HTMLElement = fixture.nativeElement.querySelector('.main-layout');
+    expect(layout.firstElementChild?.tagName.toLowerCase()).toBe('app-announcement-banner');
+    expect(fixture.nativeElement.querySelector('main app-announcement-banner')).toBeNull();
+  });
 });
 
 describe('MainLayoutComponent tray activation gate when monitoring module is not active', () => {
