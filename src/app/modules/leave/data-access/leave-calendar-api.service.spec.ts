@@ -35,3 +35,26 @@ describe('LeaveCalendarApiService', () => {
     req.flush(month);
   });
 });
+
+describe('LeaveCalendarApiService query strings (API helper safety net)', () => {
+  let service: LeaveCalendarApiService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [LeaveCalendarApiService, provideHttpClient(), provideHttpClientTesting()] });
+    service = TestBed.inject(LeaveCalendarApiService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('sends includeTentative=false when it is false', () => {
+    service.getMonth({ year: 2026, month: 9, includeTentative: false }).subscribe();
+    http.expectOne(`${environment.apiUrl}/leave/calendar?year=2026&month=9&includeTentative=false`).flush({});
+  });
+
+  it('lists holidays for a from/to range', () => {
+    service.listHolidays('2026-01-01', '2026-12-31').subscribe();
+    http.expectOne(`${environment.apiUrl}/leave/holidays?from=2026-01-01&to=2026-12-31`).flush([]);
+  });
+});

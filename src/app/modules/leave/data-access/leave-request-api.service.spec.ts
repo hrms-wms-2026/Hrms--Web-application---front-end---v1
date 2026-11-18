@@ -100,3 +100,28 @@ describe('LeaveRequestApiService', () => {
     req.flush(cancelResponse);
   });
 });
+
+describe('LeaveRequestApiService query strings (API helper safety net)', () => {
+  let service: LeaveRequestApiService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [LeaveRequestApiService, provideHttpClient(), provideHttpClientTesting()] });
+    service = TestBed.inject(LeaveRequestApiService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('listMine sends every filter in a fixed order', () => {
+    service.listMine({ leaveTypeId: 'type-1', toDate: '2026-12-31', fromDate: '2026-01-01', status: 'pending' }).subscribe();
+    http
+      .expectOne(`${environment.apiUrl}/leave/requests/my?status=pending&fromDate=2026-01-01&toDate=2026-12-31&leaveTypeId=type-1`)
+      .flush([]);
+  });
+
+  it('listMine skips empty filters', () => {
+    service.listMine({ status: '' }).subscribe();
+    http.expectOne(`${environment.apiUrl}/leave/requests/my`).flush([]);
+  });
+});

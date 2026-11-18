@@ -73,3 +73,27 @@ describe('LeaveApprovalApiService', () => {
     req.flush(cancelResponse);
   });
 });
+
+describe('LeaveApprovalApiService query strings (API helper safety net)', () => {
+  let service: LeaveApprovalApiService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [LeaveApprovalApiService, provideHttpClient(), provideHttpClientTesting()] });
+    service = TestBed.inject(LeaveApprovalApiService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('listAll sends every filter in a fixed order with status last', () => {
+    service
+      .listAll({ status: 'approved', toDate: '2026-01-31', fromDate: '2026-01-01', leaveTypeId: 'type-1', search: 'anu' })
+      .subscribe();
+    http
+      .expectOne(
+        `${environment.apiUrl}/leave/requests/all?search=anu&leaveTypeId=type-1&fromDate=2026-01-01&toDate=2026-01-31&status=approved`
+      )
+      .flush([]);
+  });
+});
