@@ -355,22 +355,61 @@ test.describe('Google sign-in', () => {
     await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
   });
 
-  test('unknown Google user gets the generic failure and stays on login', async ({ page }) => {
+  /**
+   * An unlisted Google account: GIS (stubbed) hands over a credential, the request reaches the
+   * backend, and the backend answers 403 no_access. Signing in with a real unlisted Google account
+   * cannot be automated (Google blocks automated sign-in), so that part stays a manual check.
+   */
+  test('Google account without access reaches the backend and gets the no-access message', async ({
+    page,
+  }) => {
+    await serveFakeGis(page);
+    await mockGoogleConfig(page, true);
+    let sentToken: unknown;
+    await page.route('**/api/v1/auth/login/google', (route) => {
+      sentToken = route.request().postDataJSON()?.google_id_token;
+      return route.fulfill({
+        status: 403,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({
+          status: 403,
+          code: 'no_access',
+          detail:
+            'This Google account does not have access to Crownus. Ask your administrator for an invitation.',
+        }),
+      });
+    });
+
+    await page.goto('/auth/login');
+    await page.getByRole('button', { name: 'Continue with Google' }).click();
+
+    await expect(page.getByRole('alert')).toHaveText(
+      'This Google account does not have access to Crownus. Ask your administrator for an invitation.',
+    );
+    expect(sentToken).toBe(FAKE_ID_TOKEN);
+    await expect(page).toHaveURL(/\/auth\/login$/);
+    await expectPasswordLoginUsable(page);
+  });
+
+  test('a rejected Google token shows the Google failure message', async ({ page }) => {
     await serveFakeGis(page);
     await mockGoogleConfig(page, true);
     await page.route('**/api/v1/auth/login/google', (route) =>
       route.fulfill({
         status: 401,
         contentType: 'application/problem+json',
-        body: JSON.stringify({ status: 401, detail: 'Invalid email or password.' }),
+        body: JSON.stringify({
+          status: 401,
+          code: 'google_auth_failed',
+          detail: 'Google sign-in failed. Please try again.',
+        }),
       }),
     );
 
     await page.goto('/auth/login');
     await page.getByRole('button', { name: 'Continue with Google' }).click();
 
-    await expect(page.getByRole('alert')).toHaveText('Invalid email or password.');
-    await expect(page).toHaveURL(/\/auth\/login$/);
+    await expect(page.getByRole('alert')).toHaveText('Google sign-in failed. Please try again.');
     await expectPasswordLoginUsable(page);
   });
 

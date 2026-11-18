@@ -362,22 +362,40 @@ describe('AuthStore', () => {
       expect(store.workspaceSelection()).toEqual(selectionBody);
     });
 
-    it('shows the generic backend message for an unknown Google user', async () => {
-      const store = setup({
+    const googleFailure = (status: number, code?: string, detail?: string) =>
+      setup({
         loginWithGoogle: () =>
           throwError(
             () =>
-              new HttpErrorResponse({
-                status: 401,
-                error: { detail: 'Invalid email or password.' },
-              }),
+              new HttpErrorResponse({ status, error: { detail: detail ?? 'server text', code } }),
           ),
       } as Partial<AuthApiService>);
 
+    it('shows the no-access message when the Google account has no access (403 no_access)', async () => {
+      const store = googleFailure(403, 'no_access');
+
       await expect(store.loginWithGoogle('id-token-abc')).rejects.toBeTruthy();
 
-      expect(store.error()).toBe('Invalid email or password.');
+      expect(store.error()).toBe(
+        'This Google account does not have access to Crownus. Ask your administrator for an invitation.',
+      );
       expect(store.authenticated()).toBe(false);
+    });
+
+    it('shows the Google failure message for a rejected Google token (401 google_auth_failed)', async () => {
+      const store = googleFailure(401, 'google_auth_failed');
+
+      await expect(store.loginWithGoogle('id-token-abc')).rejects.toBeTruthy();
+
+      expect(store.error()).toBe('Google sign-in failed. Please try again.');
+    });
+
+    it('never shows the password-login message for a Google failure', async () => {
+      const store = googleFailure(401, undefined, 'Invalid email or password.');
+
+      await expect(store.loginWithGoogle('id-token-abc')).rejects.toBeTruthy();
+
+      expect(store.error()).toBe('Google sign-in failed. Please try again.');
     });
 
     it('reports an unreachable server when Google login never reaches the API', async () => {
@@ -397,6 +415,8 @@ describe('AuthStore', () => {
 
       const first = store.loginWithGoogle('id-token-abc');
       const second = store.loginWithGoogle('id-token-abc');
+      // The Google flow is loaded on demand, so the request goes out after a microtask.
+      await vi.waitFor(() => expect(loginWithGoogle).toHaveBeenCalled());
       response.next(authenticatedDto);
       response.complete();
 

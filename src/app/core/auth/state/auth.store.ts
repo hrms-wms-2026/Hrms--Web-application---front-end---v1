@@ -8,13 +8,11 @@ import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-reques
 import { LegalDocumentDto } from '../models/dto/legal-document.dto';
 import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
 import { AuthResponseDto } from '../models/dto/auth-response.dto';
-import {
-  LoginResultDto,
-  WorkspaceSelectionRequiredDto,
-  isWorkspaceSelectionRequired,
-} from '../models/dto/workspace-selection.dto';
+import { WorkspaceSelectionRequiredDto } from '../models/dto/workspace-selection.dto';
 import { toCurrentUserViewModel } from '../utils/auth.mapper';
 import { safeServerDetail } from '../../services/error-handler.service';
+import { UNREACHABLE_MESSAGE } from './auth-messages';
+import type { LoginFlowContext } from './login-flows';
 
 interface AuthState {
   authenticated: boolean;
@@ -54,10 +52,6 @@ const initialState: AuthState = {
   error: null,
 };
 
-const SELECTION_EXPIRED_MESSAGE = 'That sign-in has expired. Please sign in again.';
-
-const UNREACHABLE_MESSAGE = 'We could not reach the server. Check your connection and try again.';
-
 function extractErrorMessage(err: unknown, fallback: string): string {
   return safeServerDetail(err) ?? fallback;
 }
@@ -89,44 +83,27 @@ export const AuthStore = signalStore(
     };
 
     /**
-     * Shared by password login, Google login and workspace selection: a 202 parks the server's
-     * workspace choices in memory; anything else is a normal auth response (legal / continue_url).
+     * Password login, Google login and workspace selection run only on the root-host login page,
+     * so they live in login-flows.ts and are loaded on first use, outside the initial bundle.
      */
-    const applyLoginResult = (body: LoginResultDto): void => {
-      if (isWorkspaceSelectionRequired(body)) {
-        patchState(store, { workspaceSelection: body, loading: false });
-        return;
-      }
-      applyAuthResponse(body);
+    const flowContext: LoginFlowContext = {
+      api,
+      workspaceSelection: () => store.workspaceSelection(),
+      patch: (state) => patchState(store, state),
+      applyAuthResponse,
     };
-
-    // status 0 = the request never reached the API (network/TLS/CORS), so the credentials
-    // were never checked - same convention as exchangeSession() below.
-    const loginErrorMessage = (err: unknown, fallback: string): string =>
-      err instanceof HttpErrorResponse && err.status === 0
-        ? UNREACHABLE_MESSAGE
-        : extractErrorMessage(err, fallback);
 
     return {
       async login(payload: LoginRequestDto): Promise<void> {
-        patchState(store, { loading: true, error: null, workspaceSelection: null });
-        try {
-          applyLoginResult(await firstValueFrom(api.login(payload)));
-        } catch (err) {
-          patchState(store, {
-            loading: false,
-            error: loginErrorMessage(err, 'Invalid email or password.'),
-          });
-          throw err;
-        }
+        const flows = await import('./login-flows');
+        await flows.login(flowContext, payload);
       },
 
       /** Never throws: any failure just means the Google button stays hidden. */
       async loadGoogleSsoConfig(): Promise<void> {
         try {
-          const config = await firstValueFrom(api.getGoogleSsoConfig());
-          const clientId = config.enabled ? config.clientId?.trim() : '';
-          patchState(store, { googleClientId: clientId ? clientId : null });
+          const flows = await import('./login-flows');
+          patchState(store, { googleClientId: await flows.loadGoogleClientId(api) });
         } catch {
           patchState(store, { googleClientId: null });
         }
@@ -139,49 +116,18 @@ export const AuthStore = signalStore(
       async loginWithGoogle(idToken: string): Promise<boolean> {
         if (googleLoginInFlight) return false;
         googleLoginInFlight = true;
-        patchState(store, { loading: true, error: null, workspaceSelection: null });
         try {
-          applyLoginResult(await firstValueFrom(api.loginWithGoogle(idToken)));
+          const flows = await import('./login-flows');
+          await flows.loginWithGoogle(flowContext, idToken);
           return true;
-        } catch (err) {
-          // The backend answers unknown/inactive/unverified users with one generic message.
-          patchState(store, {
-            loading: false,
-            error: loginErrorMessage(err, 'Google sign-in failed. Please try again.'),
-          });
-          throw err;
         } finally {
           googleLoginInFlight = false;
         }
       },
 
       async selectWorkspace(slug: string): Promise<void> {
-        const selection = store.workspaceSelection();
-        if (!selection) {
-          patchState(store, { error: SELECTION_EXPIRED_MESSAGE });
-          throw new Error(SELECTION_EXPIRED_MESSAGE);
-        }
-        // Only a server-offered workspace may be submitted.
-        if (!selection.workspaces.some((w) => w.slug === slug)) {
-          throw new Error('Unknown workspace.');
-        }
-        patchState(store, { loading: true, error: null });
-        try {
-          applyAuthResponse(
-            await firstValueFrom(
-              api.selectWorkspace({ login_challenge: selection.login_challenge, workspace: slug }),
-            ),
-          );
-        } catch (err) {
-          // The challenge is short-lived and single-use server-side; any failure means start over.
-          const unreachable = err instanceof HttpErrorResponse && err.status === 0;
-          patchState(store, {
-            loading: false,
-            workspaceSelection: null,
-            error: unreachable ? UNREACHABLE_MESSAGE : SELECTION_EXPIRED_MESSAGE,
-          });
-          throw err;
-        }
+        const flows = await import('./login-flows');
+        await flows.selectWorkspace(flowContext, slug);
       },
 
       clearWorkspaceSelection(): void {
