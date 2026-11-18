@@ -25,6 +25,9 @@ const INBOX_WORK_KINDS: Record<string, string> = {
 };
 const INBOX_TYPE_PREFIX = 'inbox:';
 
+/** Replies and status changes from Crownus support point at the ticket in Settings > Support. */
+const SUPPORT_TICKET_ENTITY_TYPE = 'support_ticket';
+
 /** Where a notification click should take the viewer - shared by the top-navbar bell dropdown
  * and the dashboard Notifications card so both navigate identically. */
 @Injectable({ providedIn: 'root' })
@@ -62,6 +65,11 @@ export class NotificationNavigationService {
 
     if (type && id && INBOX_WORK_KINDS[type]) {
       await this.router.navigate(['/inbox', 'work', INBOX_WORK_KINDS[type], id]);
+      return;
+    }
+
+    if (type === SUPPORT_TICKET_ENTITY_TYPE && id) {
+      await this.router.navigate(['/settings', 'support', id]);
       return;
     }
 

@@ -1,0 +1,120 @@
+<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <app-breadcrumb-header parentLabel="Settings" currentLabel="Support" icon="settings" />
+  @if (!showForm()) {
+    <app-button (pressed)="openForm()">Raise a ticket</app-button>
+  }
+</header>
+
+<p class="mb-4 max-w-3xl text-sm text-[var(--color-text-secondary)]">
+  Ask CROWNUS support for help. Everyone in your company who can manage support sees these tickets and the replies.
+</p>
+
+@if (showForm()) {
+  <app-card title="New ticket" class="mb-4 block">
+    <form class="flex max-w-3xl flex-col gap-4" (submit)="$event.preventDefault(); submit()">
+      <app-input
+        label="Subject"
+        [required]="true"
+        [maxlength]="subjectMax"
+        [value]="subject()"
+        [error]="subjectError()"
+        (valueChange)="subject.set($event)"
+      />
+
+      <div class="flex flex-col gap-1">
+        <label for="support-description" class="text-sm font-medium text-[var(--color-text-primary)]">
+          Description <span aria-hidden="true">*</span>
+        </label>
+        <textarea
+          id="support-description"
+          rows="6"
+          class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
+          [attr.maxlength]="textMax"
+          [attr.aria-invalid]="descriptionError() ? 'true' : null"
+          [attr.aria-describedby]="descriptionError() ? 'support-description-error' : null"
+          [value]="description()"
+          (input)="description.set($any($event.target).value)"
+        ></textarea>
+        @if (descriptionError(); as message) {
+          <p id="support-description-error" class="text-xs text-[var(--color-danger)]">{{ message }}</p>
+        }
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <app-select
+          label="Priority"
+          [options]="priorityOptions"
+          [searchable]="false"
+          [value]="priority()"
+          (valueChange)="priority.set($any($event))"
+        />
+        <app-input
+          label="Category (optional)"
+          placeholder="e.g. payroll, login, billing"
+          [maxlength]="80"
+          [value]="category()"
+          (valueChange)="category.set($event)"
+        />
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <app-button variant="secondary" (pressed)="cancelForm()">Cancel</app-button>
+        <app-button type="submit" [loading]="saving()">Send ticket</app-button>
+      </div>
+    </form>
+  </app-card>
+}
+
+<div class="mb-3 max-w-xs">
+  <app-select
+    ariaLabel="Filter by status"
+    [options]="statusOptions"
+    [searchable]="false"
+    [value]="statusFilter()"
+    (valueChange)="onStatusFilter($event)"
+  />
+</div>
+
+@if (loading()) {
+  <div class="h-48 rounded-xl bg-[var(--color-surface-secondary)]" aria-busy="true" aria-label="Loading support tickets"></div>
+} @else if (error(); as message) {
+  <app-error-state [message]="message" [retryable]="true" (retry)="load()" />
+} @else if (tickets().length === 0) {
+  <app-empty-state
+    [title]="statusFilter() ? 'No tickets with this status.' : 'No support tickets yet.'"
+    description="Raise a ticket when you need help from CROWNUS support."
+  />
+} @else {
+  <app-card>
+    <ul class="flex flex-col divide-y divide-[var(--color-border)]">
+      @for (ticket of tickets(); track ticket.id) {
+        <li>
+          <a
+            class="flex flex-col gap-1 py-3 hover:bg-[var(--color-surface-secondary)] sm:flex-row sm:items-center sm:justify-between"
+            [routerLink]="['/settings/support', ticket.id]"
+          >
+            <span class="min-w-0">
+              <span class="block truncate text-sm font-medium text-[var(--color-text-primary)]">{{ ticket.subject }}</span>
+              <span class="block text-xs text-[var(--color-text-secondary)]">
+                {{ ticket.raisedBySupport ? 'Opened by CROWNUS support' : 'Raised by ' + ticket.createdByName }}
+                · {{ ticket.createdAt | date: 'mediumDate' }}
+              </span>
+            </span>
+            <span class="flex shrink-0 items-center gap-2 text-xs">
+              <span class="rounded-full border border-[var(--color-border)] px-2 py-0.5">{{ priorityLabels[ticket.priority] }}</span>
+              <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 font-medium">{{ statusLabels[ticket.status] }}</span>
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+  </app-card>
+
+  @if (pageCount() > 1) {
+    <nav class="mt-3 flex items-center justify-end gap-2 text-sm" aria-label="Support ticket pages">
+      <app-button variant="secondary" size="sm" [disabled]="page() <= 1" (pressed)="goToPage(page() - 1)">Previous</app-button>
+      <span>Page {{ page() }} of {{ pageCount() }}</span>
+      <app-button variant="secondary" size="sm" [disabled]="page() >= pageCount()" (pressed)="goToPage(page() + 1)">Next</app-button>
+    </nav>
+  }
+}

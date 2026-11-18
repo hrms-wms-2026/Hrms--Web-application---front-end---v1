@@ -21,11 +21,12 @@ import { MobileSectionNavComponent } from './mobile-section-nav/mobile-section-n
 import { UnsavedChangesDialogComponent } from '../../shared/ui/unsaved-changes-dialog/unsaved-changes-dialog.component';
 import { DraftsBarComponent } from './drafts-bar/drafts-bar.component';
 import { DraftModalHostComponent } from './draft-modal-host/draft-modal-host.component';
+import { AnnouncementBannerComponent } from './announcement-banner/announcement-banner.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, InboxChatSidebarComponent, ToastHostComponent, MobileBottomNavComponent, MobileSectionNavComponent,DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
+  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, InboxChatSidebarComponent, ToastHostComponent, MobileBottomNavComponent, MobileSectionNavComponent,DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent, AnnouncementBannerComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

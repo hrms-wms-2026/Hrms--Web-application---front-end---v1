@@ -184,17 +184,18 @@
             <span class="threshold-card__title">Activity check threshold</span>
             <small class="threshold-card__desc">Minutes of no keyboard/mouse activity before the activity check — a screenshot request if screenshot capture is on, otherwise “Were you working?”.</small>
           </div>
-          <div class="threshold-card__input-group">
+          <div class="ui-field threshold-input">
             <input
               type="number"
-              class="ui-input threshold-input"
+              class="ui-field__control"
+              aria-label="Activity check threshold in minutes"
               min="1"
               max="1440"
               [value]="company.idleThresholdMinutes"
               [disabled]="!hasWriteAccess()"
               (change)="setCompanyThreshold($any($event.target).value)"
             />
-            <span class="threshold-card__unit">minutes</span>
+            <span class="ui-field__trailing threshold-input__unit">minutes</span>
           </div>
         </div>
 
@@ -210,17 +211,18 @@
             <span class="threshold-card__title">Allowed range</span>
             <small class="threshold-card__desc">Maximum distance from the verified location permitted for location tracking checks.</small>
           </div>
-          <div class="threshold-card__input-group">
+          <div class="ui-field threshold-input">
             <input
               type="number"
-              class="ui-input threshold-input"
+              class="ui-field__control"
+              aria-label="Allowed range in meters"
               min="0"
               [value]="company.allowedRadiusMeters ?? ''"
               [disabled]="!hasWriteAccess()"
               (change)="setCompanyAllowedRadius($any($event.target).value)"
               placeholder="No limit"
             />
-            <span class="threshold-card__unit">meters</span>
+            <span class="ui-field__trailing threshold-input__unit">meters</span>
           </div>
         </div>
       </div>

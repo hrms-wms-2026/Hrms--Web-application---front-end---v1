@@ -1,7 +1,7 @@
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
-import { environment } from '../../../../environments/environment';
+import { ApiClient } from '../../../shared/data-access/api-client';
 import {
   AddLeavePolicyVersionRequest,
   CreateLeavePolicyRequest,
@@ -14,53 +14,52 @@ import {
 } from '../models/leave-policy.model';
 
 const CONFLICT_CODE = 'leave_policy.assignment_conflict';
+const BASE = '/leave/policies';
 
 /** Client for ONEVO.Api's LeavePoliciesController at /api/v1/leave/policies. */
 @Injectable({ providedIn: 'root' })
 export class LeavePolicyApiService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.apiUrl}/leave/policies`;
+  private readonly api = inject(ApiClient);
 
   list(includeInactive = false): Observable<readonly LeavePolicyListItem[]> {
-    const params = new HttpParams().set('includeInactive', includeInactive);
-    return this.http.get<readonly LeavePolicyListItem[]>(this.baseUrl, { params });
+    return this.api.get<readonly LeavePolicyListItem[]>(BASE, { params: { includeInactive } });
   }
 
   get(policyId: string): Observable<LeavePolicyDetail> {
-    return this.http.get<LeavePolicyDetail>(`${this.baseUrl}/${policyId}`);
+    return this.api.get<LeavePolicyDetail>(`${BASE}/${policyId}`);
   }
 
   /** Emits the new policy id, or errors with LeavePolicyConflictError. */
   create(payload: CreateLeavePolicyRequest): Observable<string> {
-    return this.http.post<{ id: string }>(this.baseUrl, payload).pipe(map((r) => r.id), catchError(toConflictError));
+    return this.api.post<{ id: string }>(BASE, payload).pipe(map((r) => r.id), catchError(toConflictError));
   }
 
   updateDetails(policyId: string, payload: UpdateLeavePolicyDetailsRequest): Observable<void> {
-    return this.http.put<void>(`${this.baseUrl}/${policyId}`, payload);
+    return this.api.put<void>(`${BASE}/${policyId}`, payload);
   }
 
   addVersion(policyId: string, payload: AddLeavePolicyVersionRequest): Observable<string> {
-    return this.http.post<string>(`${this.baseUrl}/${policyId}/versions`, payload);
+    return this.api.post<string>(`${BASE}/${policyId}/versions`, payload);
   }
 
   deleteVersion(policyId: string, versionId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${policyId}/versions/${versionId}`);
+    return this.api.delete<void>(`${BASE}/${policyId}/versions/${versionId}`);
   }
 
   setAssignments(
     policyId: string, assignments: readonly LeavePolicyAssignmentTarget[], replaceConflicts: boolean
   ): Observable<void> {
-    return this.http
-      .put<unknown>(`${this.baseUrl}/${policyId}/assignments`, { assignments, replaceConflicts })
+    return this.api
+      .put<unknown>(`${BASE}/${policyId}/assignments`, { assignments, replaceConflicts })
       .pipe(map(() => undefined), catchError(toConflictError));
   }
 
   setActive(policyId: string, isActive: boolean): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/${policyId}/${isActive ? 'activate' : 'deactivate'}`, {});
+    return this.api.post<void>(`${BASE}/${policyId}/${isActive ? 'activate' : 'deactivate'}`, {});
   }
 
   clone(policyId: string, name: string): Observable<string> {
-    return this.http.post<string>(`${this.baseUrl}/${policyId}/clone`, { name });
+    return this.api.post<string>(`${BASE}/${policyId}/clone`, { name });
   }
 }
 

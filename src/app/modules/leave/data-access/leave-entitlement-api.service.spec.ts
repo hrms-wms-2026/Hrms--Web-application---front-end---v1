@@ -40,3 +40,38 @@ describe('LeaveEntitlementApiService', () => { let service: LeaveEntitlementApiS
     req.flush(blob);
   });
 });
+
+describe('LeaveEntitlementApiService query strings (API helper safety net)', () => {
+  let service: LeaveEntitlementApiService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [LeaveEntitlementApiService, provideHttpClient(), provideHttpClientTesting()] });
+    service = TestBed.inject(LeaveEntitlementApiService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('list sends every filter in a fixed order', () => {
+    service.list(2026, { search: 'anu', leaveTypeId: 'type-1', departmentId: 'dept-1', legalEntityId: 'le-1' }).subscribe();
+    http
+      .expectOne(`${environment.apiUrl}/leave/entitlements?year=2026&legalEntityId=le-1&departmentId=dept-1&leaveTypeId=type-1&search=anu`)
+      .flush([]);
+  });
+
+  it('balance audit sends every filter, then page and pageSize', () => {
+    service
+      .listBalanceAudit(
+        { toDate: '2026-12-31', fromDate: '2026-01-01', changeType: 'accrual', leaveTypeId: 'type-1', employeeId: 'emp-1' },
+        2,
+        50
+      )
+      .subscribe();
+    http
+      .expectOne(
+        `${environment.apiUrl}/leave/balance-audit?employeeId=emp-1&leaveTypeId=type-1&changeType=accrual&fromDate=2026-01-01&toDate=2026-12-31&page=2&pageSize=50`
+      )
+      .flush([]);
+  });
+});
