@@ -51,7 +51,17 @@ export const InboxChatsStore = signalStore(
   })),
   withMethods((store, api = inject(InboxChatsApiService)) => {
     let request = 0;
+    let firstLoad: Promise<void> | null = null;
     return {
+      /** Loads once for the page and the sidebar together: joins the first load while it runs, no-op once loaded. */
+      ensureLoaded(): Promise<void> {
+        if (store.loaded()) return Promise.resolve();
+        if (!firstLoad) {
+          firstLoad = this.load();
+          void firstLoad.finally(() => { firstLoad = null; });
+        }
+        return firstLoad;
+      },
       async load(): Promise<void> {
         const mine = ++request;
         patchState(store, { loading: true, error: null });
