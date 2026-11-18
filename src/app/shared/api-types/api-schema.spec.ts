@@ -37,6 +37,34 @@ type _lookup = Assert<
   >
 >;
 
+interface GenItem {
+  id: string;
+  tags: string[] | null;
+}
+interface GenWithArrays {
+  items: GenItem[] | null;
+  ids: string[];
+  title: string | null;
+}
+interface ReadonlyItem {
+  readonly id: string;
+  readonly tags: readonly string[];
+}
+interface ReadonlyHand {
+  readonly items: readonly ReadonlyItem[];
+  readonly ids: readonly string[];
+  readonly title: string;
+}
+interface WrongElementHand {
+  readonly items: readonly ReadonlyItem[];
+  readonly ids: readonly number[];
+  readonly title: string;
+}
+// Frontend `readonly` (properties and arrays, also nested) is not drift.
+type _readonly = Assert<MatchesContract<ReadonlyHand, GenWithArrays>>;
+// @ts-expect-error a readonly array with the wrong element type is still drift
+type _readonlyWrong = Assert<MatchesContract<WrongElementHand, GenWithArrays>>;
+
 describe('api-schema contract assertions', () => {
   it('are checked by the TypeScript compiler (see the type aliases above)', () => {
     expect(true).toBe(true);
