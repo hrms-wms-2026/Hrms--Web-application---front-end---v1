@@ -6,7 +6,6 @@ import { permissionGuard } from './core/guards/permission.guard';
 import { redirectIfAuthenticatedGuard } from './core/guards/redirect-if-authenticated.guard';
 import { MANAGES_PEOPLE, PermissionService } from './core/auth/state/permission.service';
 import { canAccessNavItem } from './layouts/main-layout/nav/nav-access';
-import { NAV_ITEMS } from './layouts/main-layout/nav/nav-items.config';
 
 
 const loadPlaceholder = () =>
@@ -238,10 +237,13 @@ export const routes: Routes = [
             // sidebar correctly showed them a Settings page they could open. Land on the first
             // child NAV_ITEMS says this user can actually reach, in the same order the sidebar
             // uses, instead of hardcoding one page.
+            // NAV_ITEMS is imported on demand: a static import puts the whole sidebar menu in the
+            // initial bundle (500 kB budget) just for this redirect.
             path: '',
             pathMatch: 'full',
-            redirectTo: () => {
-              const permissionService = inject(PermissionService);
+            redirectTo: async () => {
+              const permissionService = inject(PermissionService); // before the await: inject() needs the injection context
+              const { NAV_ITEMS } = await import('./layouts/main-layout/nav/nav-items.config');
               const settings = NAV_ITEMS.find((item) => item.id === 'settings');
               const firstReachable = settings?.children?.find((child) => canAccessNavItem(child, permissionService));
               return firstReachable?.path ?? '/dashboard';
