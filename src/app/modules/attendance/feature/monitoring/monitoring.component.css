@@ -321,23 +321,36 @@
   color: var(--color-text-secondary);
 }
 
-.threshold-card__input-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-/* Standard .ui-input; just narrow and centred for a number. */
+/* Standard .ui-field frame with the unit inside the box. The filled field colour is the same grey as this
+   card, so here the field gets the surface fill and a visible border to read as an input. */
 .threshold-input {
-  width: 80px;
-  text-align: center;
+  flex-shrink: 0;
+  width: 9.5rem;
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 
-.threshold-card__unit {
+.threshold-input:hover {
+  border-color: var(--field-border-hover);
+}
+
+.threshold-input:focus-within {
+  border-color: var(--color-accent);
+}
+
+.threshold-input:has(> .ui-field__control:disabled) {
+  background: var(--color-field-bg-disabled);
+  border-color: var(--color-border);
+}
+
+.threshold-input .ui-field__control {
+  text-align: right;
+  padding-right: 0.5rem;
+}
+
+.threshold-input__unit {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
 }
 
 /* ── Scope Tabs (Segmented Control) ───────────────────────── */
@@ -1010,7 +1023,7 @@ select:disabled, input:disabled, textarea:disabled {
     align-items: flex-start;
   }
 
-  .threshold-card__input-group {
+  .threshold-input {
     align-self: flex-start;
   }
 
