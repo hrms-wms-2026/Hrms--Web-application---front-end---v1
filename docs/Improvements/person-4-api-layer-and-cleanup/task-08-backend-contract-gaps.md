@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | From | Frontend, Person 4 (task 08) |
-| For | Backend team. Feeds backend Improvements task 16 (path in the backend repo not verified from the frontend). |
+| For | Backend team, API owner (`person-3-api-and-pagination`). No backend Improvements task covers this yet. Task 16 there is API versioning, which is related but different. Please add a task such as "Document request and response types in Swagger". |
 | Measured | 2026-11-18, `https://localhost:7229/swagger/v1/swagger.json`, OpenAPI 3.0.4 |
 | Size | 535 paths, 621 operations, 220 schemas |
 
