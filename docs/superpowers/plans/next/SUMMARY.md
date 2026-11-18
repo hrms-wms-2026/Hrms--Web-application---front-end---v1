@@ -55,3 +55,7 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat â€
 ## Added 2026-11-06
 
 - `2026-11-06-boardui-angular-conversion/` â€” status: pending. Rebuild the BoardUI look (React design system) in Angular from scratch, mostly on the dashboard. README.md holds the method, Phase 0 foundations and the per-screen change log; `boardui-reference/` holds the BoardUI theming/motion/patterns/catalog notes.
+
+## Added 2026-11-16
+
+- `2026-11-16-google-sso-web-login.md` - status: pending, not started. One file (kept as a single file on user request): wires the backend's existing Google SSO into the web login page. Sections: overview + files-touched table + one-time Google/admin setup + manual test; Part 1 backend anonymous `GET /api/v1/auth/google-config`; Part 2 DTOs, lazy `GoogleIdentityService`, API + store methods (also fixes the unhandled 202 workspace-selection answer for password login); Part 3 Google-drawn button, workspace picker, ARCHITECTURE.md + CSP. Invitation accept-with-Google is out of scope (section 6).
