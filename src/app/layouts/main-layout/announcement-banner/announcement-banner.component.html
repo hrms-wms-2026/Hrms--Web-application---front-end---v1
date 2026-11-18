@@ -1,0 +1,58 @@
+@if (visible().length > 0) {
+  <div class="flex flex-col" aria-label="CROWNUS announcements">
+    @for (announcement of visible(); track announcement.id) {
+      <div
+        data-testid="announcement-strip"
+        class="flex items-start gap-3 px-4 py-2 text-sm"
+        [class]="toneClass(announcement.severity)"
+        [attr.data-severity]="announcement.severity"
+        [attr.role]="announcement.severity === 'critical' ? 'alert' : 'status'"
+      >
+        <span data-testid="announcement-icon" class="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            @switch (announcement.severity) {
+              @case ('critical') {
+                <svg:polygon points="7.9 2 16.1 2 22 7.9 22 16.1 16.1 22 7.9 22 2 16.1 2 7.9" />
+                <svg:path d="M12 8v4M12 16h.01" />
+              }
+              @case ('warning') {
+                <svg:path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+                <svg:path d="M12 9v4M12 17h.01" />
+              }
+              @default {
+                <svg:circle cx="12" cy="12" r="10" />
+                <svg:path d="M12 16v-4M12 8h.01" />
+              }
+            }
+          </svg>
+        </span>
+        <div class="flex min-w-0 flex-1 flex-col gap-x-3 sm:flex-row sm:items-baseline">
+          <p class="shrink-0 font-semibold">{{ announcement.title }}</p>
+          <p
+            data-testid="announcement-body"
+            class="min-w-0 break-words"
+            [class.truncate]="!isExpanded(announcement.id)"
+            [class.whitespace-pre-wrap]="isExpanded(announcement.id)"
+          >{{ announcement.body }}</p>
+          @if (isLong(announcement)) {
+            <button
+              type="button"
+              data-testid="announcement-more"
+              class="shrink-0 self-start font-semibold underline underline-offset-2 sm:self-auto"
+              [attr.aria-expanded]="isExpanded(announcement.id)"
+              (click)="toggle(announcement.id)"
+            >{{ isExpanded(announcement.id) ? 'Less' : 'More' }}</button>
+          }
+        </div>
+        <button
+          type="button"
+          class="-my-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-lg leading-none opacity-80 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current"
+          [attr.aria-label]="'Dismiss announcement: ' + announcement.title"
+          (click)="dismiss(announcement.id)"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    }
+  </div>
+}

@@ -16,7 +16,8 @@ export const MODULE_LABELS: Record<string, string> = {
   time_attendance: 'Time & Attendance',
   calendar: 'Calendar',
   conversations: 'Conversations',
-  monitoring: 'Monitoring'
+  monitoring: 'Monitoring',
+  support: 'Support'
 };
 
 export interface NotificationTemplateOption {

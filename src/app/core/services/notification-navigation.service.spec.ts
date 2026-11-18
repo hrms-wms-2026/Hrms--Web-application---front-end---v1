@@ -117,4 +117,24 @@ describe('NotificationNavigationService', () => {
 
     expect(router.navigate).toHaveBeenCalledWith(['/attendance']);
   });
+
+  it('opens the ticket in Settings > Support when a support reply or status notice is clicked', async () => {
+    const service = TestBed.inject(NotificationNavigationService);
+
+    await service.navigate({
+      relatedEntityType: 'support_ticket', relatedEntityId: 'ticket-1', isNavigable: true, destinationKey: null
+    } as NotificationItem);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/settings', 'support', 'ticket-1']);
+  });
+
+  it('does nothing for a support notice without a ticket id', async () => {
+    const service = TestBed.inject(NotificationNavigationService);
+
+    await service.navigate({
+      relatedEntityType: 'support_ticket', relatedEntityId: null, isNavigable: false, destinationKey: null
+    } as unknown as NotificationItem);
+
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
 });

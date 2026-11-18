@@ -32,8 +32,10 @@
   --nav-rail-width: 5.25rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  /* Row 1: CROWNUS announcement strip across the whole window (empty when there is none). */
+  grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-areas:
+    "banner banner"
     "rail navbar"
     "rail main";
   height: 100vh;
@@ -45,14 +47,22 @@
 .main-layout--has-sub-sidebar {
   grid-template-columns: auto auto minmax(0, 1fr);
   grid-template-areas:
+    "banner banner banner"
     "rail navbar navbar"
     "rail sub-sidebar main";
 }
 
+.main-layout__banner {
+  grid-area: banner;
+  min-width: 0;
+}
+
 .main-layout__rail {
   grid-area: rail;
-  height: 100vh;
-  max-height: 100vh;
+  /* The grid row, not the viewport: the announcement strip may take the top of the window. */
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
