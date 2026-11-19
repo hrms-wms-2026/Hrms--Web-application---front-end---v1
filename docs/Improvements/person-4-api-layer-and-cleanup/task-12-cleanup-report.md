@@ -49,7 +49,7 @@ Duplicated lines by module at base (counted by the first file of each clone):
 | `core/config/feature-flags.ts` | CONFIRMED | Only named in the ARCHITECTURE §2 tree | Deleted, tree line removed |
 | `modules/public/ui/landing-dashboard-preview/` | CONFIRMED | Selector and class referenced nowhere (src, angular.json, routes, widget registry) | Deleted folder (`.ts`, `.css`, `.html`; no spec) |
 | `shared/ui/metric-stat/metric-stat.component.ts` | CONFIRMED | Selector and class referenced nowhere | Deleted folder (single file) |
-| `shared/ui/home-page-profile-capsule/home-page-profile-capsule.component.css` | Checked | Commit `2cb57529` replaced `templateUrl`/`styleUrl` with an inline `<app-avatar>` template on purpose; the `.profile-capsule` class is not used by the live template | Deleted the CSS (not re-linked). The `.html` next to it is also orphaned (Knip does not see it); left for the owner |
+| `shared/ui/home-page-profile-capsule/home-page-profile-capsule.component.css` | Checked | Commit `2cb57529` replaced `templateUrl`/`styleUrl` with an inline `<app-avatar>` template on purpose; the `.profile-capsule` class is not used by the live template | Deleted the CSS (not re-linked). The `.html` next to it was also orphaned (Knip does not see `.html`), so it was deleted in a follow-up commit |
 | `shared/models/problem-details.model.ts` | SUSPECTED | Task 20 may adopt it as the shared error model | Kept |
 | `appendReturnPath` | SUSPECTED | Return-path safety code, see owners list | Kept |
 | `RespondToCalendarEventRequest`, `UpdateCalendarConnectionRequest` | SUSPECTED | Backend request shapes for endpoints that may not be wired yet | Kept |
@@ -95,4 +95,3 @@ Unused exported types (4)
 - `RespondToCalendarEventRequest` and `UpdateCalendarConnectionRequest` (calendar/settings owner): backend request shapes with no caller. Wire the endpoints or delete the types?
 - `shared/models/problem-details.model.ts` (task 20 owner): unused today. Adopt it as the shared error model or delete?
 - `appendReturnPath` (auth owner): still needed? It adds a `return_path` query parameter to a continue URL, but only after `parseSafeReturnPath` accepts it (same origin, `/device/activate` with one `request_id` and one `user_code`). It came in with the tray device-activation gate (`2179d23e`) and nothing calls it yet.
-- `home-page-profile-capsule.component.html` is orphaned after the inline-template change (`2cb57529`); the owner can delete it.
