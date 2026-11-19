@@ -19,15 +19,15 @@ export class LandingFaqComponent {
   readonly faqs: FaqItem[] = [
     {
       id: 1,
-      question: 'How does ONEXSO handle employee privacy during activity monitoring?',
+      question: 'How does CROWNUS handle employee privacy during activity monitoring?',
       answer:
-        'ONEXSO WorkPulse tracks active window titles, application usage, and idle time—never keystrokes or file contents. Raw activity logs are automatically purged after 48 hours. Employers can configure transparency modes (Full, Partial, Covert) per employee and policy.'
+        'CROWNUS WorkPulse tracks active window titles, application usage, and idle time—never keystrokes or file contents. Raw activity logs are automatically purged after 48 hours. Employers can configure transparency modes (Full, Partial, Covert) per employee and policy.'
     },
     {
       id: 2,
-      question: 'Can ONEXSO support multi-company groups under a single tenant?',
+      question: 'Can CROWNUS support multi-company groups under a single tenant?',
       answer:
-        'Yes. ONEXSO natively supports multi-company legal entities under a single tenant. Users can switch their operating company context from the topbar while maintaining proper role-based visibility across departments and positions.'
+        'Yes. CROWNUS natively supports multi-company legal entities under a single tenant. Users can switch their operating company context from the topbar while maintaining proper role-based visibility across departments and positions.'
     },
     {
       id: 3,
@@ -37,15 +37,15 @@ export class LandingFaqComponent {
     },
     {
       id: 4,
-      question: 'Does ONEXSO integrate with GitHub for sprint tracking?',
+      question: 'Does CROWNUS integrate with GitHub for sprint tracking?',
       answer:
-        'Yes. WorkSync features direct GitHub integration via signed webhooks. Commits, pull requests, and GitHub Actions CI build statuses automatically link to ONEXSO tasks and Objectives based on branch and message references.'
+        'Yes. WorkSync features direct GitHub integration via signed webhooks. Commits, pull requests, and GitHub Actions CI build statuses automatically link to CROWNUS tasks and Objectives based on branch and message references.'
     },
     {
       id: 5,
-      question: 'How do new customers sign up for ONEXSO?',
+      question: 'How do new customers sign up for CROWNUS?',
       answer:
-        'Phase 1 ONEXSO is sales-led and operator-provisioned. After a demo and agreement, an ONEXSO operator provisions your dedicated tenant domain (e.g. company.onevo.com) and initial administrative credentials.'
+        'Phase 1 CROWNUS is sales-led and operator-provisioned. After a demo and agreement, a CROWNUS operator provisions your dedicated tenant domain (e.g. company.crownus.com) and initial administrative credentials.'
     }
   ];
 

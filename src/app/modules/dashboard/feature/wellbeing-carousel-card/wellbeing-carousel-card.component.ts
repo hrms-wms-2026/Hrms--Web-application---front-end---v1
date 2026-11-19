@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { FocusStatusApiService } from '../../data-access/focus-status-api.service';
 import { FocusStatus } from '../../models/focus-status.model';
+import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 
 export type WellbeingCardKind = 'reminder' | 'hydration' | 'posture' | 'eye-rest' | 'stretch';
 
@@ -11,7 +12,6 @@ export interface WellbeingCard {
   readonly description: string;
 }
 
-const FOCUS_STATUS_POLL_MS = 90_000;
 const ROTATE_MS = 6_000;
 
 /** Illustration for a card kind, added as each one is supplied. A kind with no entry falls
@@ -22,20 +22,6 @@ const ILLUSTRATIONS: Partial<Record<WellbeingCardKind, string>> = {
   posture: '/assets/wellbeing/posture.png',
   'eye-rest': '/assets/wellbeing/eye-rest.png',
   stretch: '/assets/wellbeing/stretch.png'
-};
-
-/** The 5 illustration PNGs share a roughly-square canvas, but the character fills very
- * different proportions of it (a wide desk scene leaves lots of transparent margin vs. a
- * full-bleed meditating pose) - object-cover alone still leaves some characters looking
- * much smaller than others. These per-kind scale/position values zoom in on the actual
- * figure so all 5 read at a similar visual size inside the fixed illustration box. Tuned
- * by eye against the actual assets in src/assets/wellbeing/ - re-tune if those PNGs change. */
-const ILLUSTRATION_TRANSFORM: Record<WellbeingCardKind, { scale: number; position: string }> = {
-  reminder: { scale: 1.05, position: 'center' },
-  hydration: { scale: 1.15, position: 'top' },
-  posture: { scale: 1.7, position: 'left center' },
-  'eye-rest': { scale: 1.5, position: '30% center' },
-  stretch: { scale: 1.05, position: 'top center' }
 };
 
 const WELLBEING_TIPS: readonly WellbeingCard[] = [
@@ -50,6 +36,7 @@ const WELLBEING_TIPS: readonly WellbeingCard[] = [
   standalone: true,
   imports: [],
   templateUrl: './wellbeing-carousel-card.component.html',
+  styleUrl: './wellbeing-carousel-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
@@ -57,6 +44,13 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   private readonly timeTrackingStore = inject(TimeTrackingStore);
 
   private readonly focusStatus = signal<FocusStatus | null>(null);
+  /** Inside a dashboard frame the first status comes from the bootstrap and reloads go through the widget
+   * context; outside one (or when that data isn't available, or a refresh fails) the card calls its own
+   * API as before - whose failure still means "tips only". */
+  private readonly feed = injectWidgetDataFeed<FocusStatus>({
+    apply: (status) => this.applyFocusStatus(status),
+    fetch: () => this.refreshFocusStatus()
+  });
   protected readonly currentIndex = signal(0);
   protected readonly actionLoading = this.timeTrackingStore.actionLoading;
 
@@ -82,7 +76,6 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
 
   protected readonly contentVisible = signal(true);
 
-  private focusStatusPollId: ReturnType<typeof setInterval> | null = null;
   private rotateId: ReturnType<typeof setInterval> | null = null;
   private fadeTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private wasBreakReminderDue = false;
@@ -104,8 +97,7 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.refreshFocusStatus();
-    this.focusStatusPollId = setInterval(() => this.refreshFocusStatus(), FOCUS_STATUS_POLL_MS);
+    this.feed.start();
     // Respect prefers-reduced-motion: don't auto-advance a rotating carousel for employees who
     // asked the OS not to animate content changes on their behalf. Manual prev/next/dots still work.
     if (!prefersReducedMotion()) {
@@ -114,7 +106,6 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.focusStatusPollId) clearInterval(this.focusStatusPollId);
     if (this.rotateId) clearInterval(this.rotateId);
     if (this.fadeTimeoutId) clearTimeout(this.fadeTimeoutId);
   }
@@ -146,14 +137,6 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
     return ILLUSTRATIONS[kind] ?? null;
   }
 
-  protected illustrationScale(kind: WellbeingCardKind): number {
-    return ILLUSTRATION_TRANSFORM[kind].scale;
-  }
-
-  protected illustrationPosition(kind: WellbeingCardKind): string {
-    return ILLUSTRATION_TRANSFORM[kind].position;
-  }
-
   protected startBreak(): void {
     if (this.actionLoading()) return;
     void this.timeTrackingStore.startBreak();
@@ -161,17 +144,19 @@ export class WellbeingCarouselCardComponent implements OnInit, OnDestroy {
 
   private refreshFocusStatus(): void {
     this.focusStatusApi.getMyFocusStatus().subscribe({
-      next: (status) => {
-        this.focusStatus.set(status);
-        // Jump straight to the reminder card the moment it becomes due, so it isn't missed
-        // mid-rotation - the reminder is always inserted at index 0 in `cards`.
-        if (status.isBreakReminderDue && !this.wasBreakReminderDue) {
-          this.currentIndex.set(0);
-        }
-        this.wasBreakReminderDue = status.isBreakReminderDue;
-      },
+      next: (status) => this.applyFocusStatus(status),
       error: () => this.focusStatus.set(null)
     });
+  }
+
+  private applyFocusStatus(status: FocusStatus): void {
+    this.focusStatus.set(status);
+    // Jump straight to the reminder card the moment it becomes due, so it isn't missed
+    // mid-rotation - the reminder is always inserted at index 0 in `cards`.
+    if (status.isBreakReminderDue && !this.wasBreakReminderDue) {
+      this.currentIndex.set(0);
+    }
+    this.wasBreakReminderDue = status.isBreakReminderDue;
   }
 }
 

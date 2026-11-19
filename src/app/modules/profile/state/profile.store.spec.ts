@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { ProfileStore } from './profile.store';
 import { ProfileApiService } from '../data-access/profile-api.service';
-import { MyProfile } from '../models/profile.model';
+import { EmployeeDocument, MyProfile } from '../models/profile.model';
 import { FileApiService } from '../../../shared/data-access/file-api.service';
 
 const sampleProfile: MyProfile = {
@@ -24,12 +24,19 @@ const sampleProfile: MyProfile = {
 
 describe('ProfileStore', () => {
   let store: InstanceType<typeof ProfileStore>;
-  let apiMock: { getMyProfile: ReturnType<typeof vi.fn>; linkAvatar: ReturnType<typeof vi.fn> };
-  let fileApiMock: { upload: ReturnType<typeof vi.fn> };
+  let apiMock: {
+    getMyProfile: ReturnType<typeof vi.fn>;
+    linkAvatar: ReturnType<typeof vi.fn>;
+    removeAvatar: ReturnType<typeof vi.fn>;
+    listDocuments: ReturnType<typeof vi.fn>;
+    addDocument: ReturnType<typeof vi.fn>;
+    deleteDocument: ReturnType<typeof vi.fn>;
+  };
+  let fileApiMock: { upload: ReturnType<typeof vi.fn>; download: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    apiMock = { getMyProfile: vi.fn(), linkAvatar: vi.fn() };
-    fileApiMock = { upload: vi.fn() };
+    apiMock = { getMyProfile: vi.fn(), linkAvatar: vi.fn(), removeAvatar: vi.fn(), listDocuments: vi.fn(), addDocument: vi.fn(), deleteDocument: vi.fn() };
+    fileApiMock = { upload: vi.fn(), download: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         ProfileStore,
@@ -83,6 +90,25 @@ describe('ProfileStore', () => {
     expect(store.saving()).toBe(false);
   });
 
+  it('removes the avatar then refetches the profile', async () => {
+    const withAvatar = {
+      ...sampleProfile,
+      personalInformation: { ...sampleProfile.personalInformation, avatarFileId: 'old-file-id' }
+    };
+    apiMock.getMyProfile.mockReturnValueOnce(of(withAvatar));
+    await store.loadProfile();
+
+    apiMock.removeAvatar.mockReturnValue(of(undefined));
+    apiMock.getMyProfile.mockReturnValueOnce(of(sampleProfile));
+
+    const result = await store.removeAvatar();
+
+    expect(result).toBe(true);
+    expect(apiMock.removeAvatar).toHaveBeenCalled();
+    expect(store.profile()?.personalInformation.avatarFileId).toBeNull();
+    expect(store.saving()).toBe(false);
+  });
+
   it('sets saveError and does not refetch when the avatar upload fails', async () => {
     apiMock.getMyProfile.mockReturnValueOnce(of(sampleProfile));
     await store.loadProfile();
@@ -96,5 +122,58 @@ describe('ProfileStore', () => {
     expect(store.saveError()).toBe('Upload failed');
     expect(apiMock.linkAvatar).not.toHaveBeenCalled();
     expect(apiMock.getMyProfile).toHaveBeenCalledTimes(1);
+  });
+
+  describe('documents', () => {
+    const doc = (id: string, name = 'My Resume'): EmployeeDocument => ({
+      id, fileId: `file-${id}`, name, documentType: 'cv', fileName: `${name}.pdf`,
+      contentType: 'application/pdf', fileSizeBytes: 1000, uploadedAt: '2026-10-15T00:00:00Z'
+    });
+
+    it('loads documents', async () => {
+      apiMock.listDocuments.mockReturnValue(of([doc('a')]));
+      await store.loadDocuments();
+
+      expect(store.documents().map((d) => d.id)).toEqual(['a']);
+      expect(store.documentsLoading()).toBe(false);
+    });
+
+    it('uploads with the employee_document purpose, links it, and prepends the result', async () => {
+      apiMock.listDocuments.mockReturnValue(of([doc('a')]));
+      await store.loadDocuments();
+      fileApiMock.upload.mockReturnValue(of({ fileId: 'f1', originalFileName: 'cv.pdf', fileSizeBytes: 1, contentType: 'application/pdf' }));
+      apiMock.addDocument.mockReturnValue(of(doc('b', 'New CV')));
+
+      const file = new File(['x'], 'cv.pdf', { type: 'application/pdf' });
+      const ok = await store.uploadDocument({ file, type: 'cv', name: 'New CV' });
+
+      expect(ok).toBe(true);
+      expect(fileApiMock.upload).toHaveBeenCalledWith(file, 'employee_document');
+      expect(apiMock.addDocument).toHaveBeenCalledWith('f1', 'cv', 'New CV');
+      expect(store.documents().map((d) => d.id)).toEqual(['b', 'a']);
+      expect(store.uploadingDocument()).toBe(false);
+    });
+
+    it('keeps the list and reports an error when linking fails', async () => {
+      fileApiMock.upload.mockReturnValue(of({ fileId: 'f1', originalFileName: 'cv.pdf', fileSizeBytes: 1, contentType: 'application/pdf' }));
+      apiMock.addDocument.mockReturnValue(throwError(() => new Error('Nope')));
+
+      const ok = await store.uploadDocument({ file: new File(['x'], 'cv.pdf'), type: 'cv', name: '' });
+
+      expect(ok).toBe(false);
+      expect(store.documentError()).toBe('Nope');
+      expect(store.documents()).toEqual([]);
+    });
+
+    it('removes a deleted document from the list', async () => {
+      apiMock.listDocuments.mockReturnValue(of([doc('a'), doc('b')]));
+      await store.loadDocuments();
+      apiMock.deleteDocument.mockReturnValue(of(undefined));
+
+      await store.deleteDocument('a');
+
+      expect(apiMock.deleteDocument).toHaveBeenCalledWith('a');
+      expect(store.documents().map((d) => d.id)).toEqual(['b']);
+    });
   });
 });

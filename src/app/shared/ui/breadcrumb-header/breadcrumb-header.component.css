@@ -46,6 +46,25 @@
   font-weight: 600;
 }
 
+.bh-breadcrumb__current-btn {
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bh-breadcrumb__current-btn:hover {
+  background: var(--color-surface-secondary);
+}
+
+.bh-breadcrumb__current-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
 .bh-switcher {
   position: relative;
   display: inline-flex;
@@ -89,7 +108,7 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
-  box-shadow: 0 14px 32px rgb(15 23 42 / .16);
+  box-shadow: var(--shadow-modal);
   padding: 8px;
   animation: bh-switcher-in 130ms ease-out;
 }
@@ -186,5 +205,14 @@
 @media (max-width: 640px) {
   .bh-breadcrumb {
     font-size: 0.75rem;
+  }
+}
+
+/* Same breakpoint as the mobile layout, where the back bar names the page. !important because several pages
+   size this element from their own stylesheet (`.gs-header-row app-breadcrumb-header { display: inline-flex }`),
+   which outranks a :host rule. */
+@media (max-width: 768px) {
+  :host(.bh--repeats-back-bar) {
+    display: none !important;
   }
 }

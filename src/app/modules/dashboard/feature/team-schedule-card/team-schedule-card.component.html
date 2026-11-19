@@ -1,0 +1,387 @@
+<app-widget-card
+  class="group block h-full"
+  data-testid="team-schedule-card"
+  title="My team schedule today"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load the team's schedule."
+  emptyMessage="No one reports to you"
+  (retry)="retry()"
+>
+  <div widget-actions class="flex min-w-0 items-center gap-1">
+    @if (!plannerEnabled() && (drawn() === 'rows' || drawn() === 'timeline')) {
+      <!-- The rows view budgets no body height for the note, so it sits beside the title. -->
+      <span class="tsc-off-chip" data-testid="tsc-planner-off" title="Schedules aren't shown. Clocked time still counts.">Planner is off</span>
+    }
+    <app-popout-header-actions
+      [refreshing]="refreshing()"
+      [expanded]="false"
+      [canExpand]="true"
+      [revealOnHover]="true"
+      (refresh)="retry()"
+      (expand)="openDetail()"
+    />
+  </div>
+
+  @if (store.data(); as data) {
+    <!-- One donut size (DASHBOARD_DONUT_PX): today's items, meetings included. -->
+    <ng-template #donutTpl>
+      <app-dashboard-donut
+        class="tsc-donut"
+        data-testid="tsc-donut"
+        [size]="donutPx"
+        [slices]="donutSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hovered"
+      >
+        <p class="tsc-donut-center" data-testid="tsc-center">
+          <span class="tsc-donut-value" [style.font-size.px]="valueFontPx(totalItems() + '')">{{ totalItems() }}</span>
+          <span class="tsc-donut-of">{{ drawn() === 'timeline' ? 'Total items' : 'items' }}</span>
+        </p>
+      </app-dashboard-donut>
+    </ng-template>
+
+    <ng-template #legendTpl>
+      <app-donut-key
+        class="tsc-legend-list"
+        ariaLabel="Items today"
+        rowTestId="tsc-legend-row"
+        [showValue]="true"
+        [slices]="donutSlices()"
+        [(active)]="hovered"
+      />
+    </ng-template>
+
+    <!-- Planner off: the team's clocked time stands in for the donut. -->
+    <ng-template #totalTpl>
+      <div class="tsc-total" data-testid="tsc-clocked-total">
+        <span class="tsc-total-value">{{ minutes(clockedTotal()) }}</span>
+        <span class="tsc-donut-of">clocked by the team today</span>
+      </div>
+    </ng-template>
+
+    <!-- Over capacity, not planned, on leave. -->
+    <ng-template #chipsTpl let-big="big">
+      <div class="tsc-chips" [class.tsc-chips--tiles]="big" data-testid="tsc-chips">
+        @for (chip of chips(); track chip.key) {
+          <button
+            type="button"
+            class="tsc-chip"
+            [attr.data-key]="chip.key"
+            [class.tsc-chip--zero]="chip.count === 0"
+            data-testid="tsc-chip"
+            (click)="openDetail($event)"
+          >
+            @if (big) {
+              @switch (chip.key) {
+                @case ('overCapacity') {
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                }
+                @case ('notPlanned') {
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2" /></svg>
+                }
+                @default {
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16M4 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2" /></svg>
+                }
+              }
+            }
+            {{ chip.text }}
+          </button>
+        }
+      </div>
+    </ng-template>
+
+    <!-- A person's badge under the name: not planned / on leave. -->
+    <ng-template #badgeTpl let-m>
+      @if (onLeave(m)) {
+        <span class="tsc-badge tsc-badge--leave" data-testid="tsc-badge-leave">On leave</span>
+      } @else if (plannerEnabled() && notPlanned(m)) {
+        <span class="tsc-badge" data-testid="tsc-badge-not-planned">Not planned</span>
+      }
+    </ng-template>
+
+    <ng-template #rowsTpl>
+      <ul class="tsc-rows">
+        @for (m of rows(); track m.employeeId) {
+          <li class="tsc-row" data-testid="tsc-row">
+            <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+            <div class="tsc-row-main">
+              <p class="tsc-row-top">
+                <span class="tsc-name">{{ m.displayName }}</span>
+                @if (plannerEnabled()) {
+                  <span class="tsc-load" [class.tsc-load--over]="over(m)" data-testid="tsc-load">{{ load(m) }}</span>
+                } @else {
+                  <span class="tsc-load">{{ clockedText(m) }}</span>
+                }
+              </p>
+              @if (plannerEnabled() && (onLeave(m) || notPlanned(m))) {
+                <ng-container [ngTemplateOutlet]="badgeTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+              } @else {
+                @let fill = plannerEnabled() ? loadFill(m) : clockedShare(m);
+                <span class="tsc-load-track" aria-hidden="true">
+                  @if (fill !== null) {
+                    <span data-testid="tsc-load-bar" [style.width.%]="fill" [style.background]="plannerEnabled() ? loadColor(m) : null"></span>
+                  }
+                </span>
+              }
+            </div>
+            @if (plannerEnabled()) {
+              <span class="tsc-completion" [class.tsc-completion--none]="!hasPlan(m)" data-testid="tsc-completion">{{ completion(m) }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </ng-template>
+
+    <ng-template #viewAllTpl>
+      @if (plan().viewAll) {
+        <button type="button" class="tsc-link" data-testid="tsc-view-all" (click)="openDetail($event)">
+          View all {{ data.members.length }} ›
+        </button>
+      }
+    </ng-template>
+
+    @switch (drawn()) {
+      @case ('mini') {
+        <div class="tsc-mini" data-testid="tsc-mini">
+          @if (!plannerEnabled()) {
+            <ng-container [ngTemplateOutlet]="totalTpl" />
+            <span class="tsc-off-chip tsc-off-chip--center" data-testid="tsc-planner-off">Planner is off</span>
+          } @else {
+            <!-- The shared 2-row strip: today's item donut, then its key, then summary cards of the popup's sections. -->
+            <app-dashboard-summary-strip
+              [slices]="donutSlices()"
+              [keySlices]="donutSlices()"
+              [cards]="summaryCards()"
+              [donutLabel]="donutLabel()"
+              [(active)]="hovered"
+              (cardOpened)="openSection($event)"
+              (cardRetried)="retryWeek()"
+              (shownCards)="shownCards.set($event)"
+            >
+              <p class="tsc-donut-center">
+                <span class="tsc-donut-value" data-testid="tsc-mini-count">{{ totalItems() }}</span>
+                <span class="tsc-donut-of">items</span>
+              </p>
+            </app-dashboard-summary-strip>
+          }
+        </div>
+      }
+      @case ('timeline') {
+        <div class="tsc tsc--main" data-testid="tsc-layout" data-view="timeline">
+          <div class="tsc-column">
+            @if (plan().head) {
+              <div class="tsc-head" data-testid="tsc-head">
+                <div class="tsc-head-donut">
+                  <ng-container [ngTemplateOutlet]="donutTpl" />
+                  <ng-container [ngTemplateOutlet]="legendTpl" />
+                </div>
+                @if (headCards().length > 0) {
+                  <app-dashboard-summary-row class="tsc-head-cards" [cards]="headCards()" (cardOpened)="openSection($event)" (cardRetried)="retryWeek()" />
+                } @else {
+                  <ng-container [ngTemplateOutlet]="chipsTpl" [ngTemplateOutletContext]="{ big: true }" />
+                }
+              </div>
+            }
+
+            <div class="tsc-timeline" data-testid="tsc-timeline">
+              <div class="tsc-axis">
+                <span class="tsc-col-member">Team member</span>
+                <span class="tsc-col-status">Status</span>
+                <div class="tsc-axis-track">
+                  @for (t of ticks(); track t.left) {
+                    <span class="tsc-tick" [style.left.%]="t.left">{{ t.label }}</span>
+                  }
+                  @if (nowLeft(); as left) {
+                    <span class="tsc-now-badge" [style.left.%]="left" data-testid="tsc-now">{{ nowText() }}</span>
+                  }
+                </div>
+                <span class="tsc-col-done">Done</span>
+              </div>
+              @for (m of rows(); track m.employeeId) {
+                <div class="tsc-line" data-testid="tsc-line">
+                  <span class="tsc-col-member tsc-person">
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                    <span class="tsc-person-text">
+                      <span class="tsc-name">{{ m.displayName }}</span>
+                      @if (onLeave(m) || notPlanned(m)) {
+                        <ng-container [ngTemplateOutlet]="badgeTpl" [ngTemplateOutletContext]="{ $implicit: m }" />
+                      } @else {
+                        <span class="tsc-load-track" aria-hidden="true">
+                          @if (loadFill(m); as fill) {
+                            <span data-testid="tsc-load-bar" [style.width.%]="fill" [style.background]="loadColor(m)"></span>
+                          }
+                        </span>
+                      }
+                    </span>
+                  </span>
+                  <span class="tsc-col-status">
+                    @if (presenceLabel(m); as p) {
+                      <span class="tsc-presence" [style.--tone]="presenceColor(m)"><span class="tsc-dot"></span>{{ p }}</span>
+                    } @else if (unscheduled(m) > 0 && !hasPlan(m)) {
+                      <span class="tsc-presence tsc-presence--alert"><span class="tsc-dot"></span>Unscheduled</span>
+                    }
+                    <span class="tsc-load" [class.tsc-load--over]="over(m)" data-testid="tsc-load">{{ load(m) }}</span>
+                  </span>
+                  <div class="tsc-track">
+                    @if (onLeave(m)) {
+                      <span class="tsc-leave" data-testid="tsc-leave-bar">On leave</span>
+                    }
+                    @for (item of m.items; track item.taskId + item.start) {
+                      @if (position(item.start, item.end); as pos) {
+                        <span
+                          class="tsc-block"
+                          data-testid="tsc-block"
+                          [class.tsc-block--cancelled]="item.status === 'cancelled'"
+                          [class.tsc-block--conflict]="inConflict(m, item)"
+                          [class.tsc-block--light]="item.kind === 'meeting' || (item.kind === 'task' && item.status !== 'completed' && item.status !== 'in_progress')"
+                          [style.left.%]="pos.left"
+                          [style.width.%]="pos.width"
+                          [style.background]="itemColor(item)"
+                          [attr.title]="itemTitle(item)"
+                        >
+                          @if (blockLabel(item, pos.width); as label) {
+                            <span class="tsc-block-label" data-testid="tsc-block-label">{{ label }}</span>
+                          }
+                        </span>
+                      }
+                    }
+                    @for (b of breaks(m); track b.start) {
+                      @if (position(b.start, b.end); as pos) {
+                        <span class="tsc-block tsc-block--break" [style.left.%]="pos.left" [style.width.%]="pos.width" title="Break"></span>
+                      }
+                    }
+                    @for (seg of m.unscheduled; track seg.start) {
+                      @if (position(seg.start, seg.end); as pos) {
+                        <span
+                          class="tsc-unscheduled tsc-hatch"
+                          data-testid="tsc-unscheduled-seg"
+                          [style.left.%]="pos.left"
+                          [style.width.%]="pos.width"
+                          [attr.title]="seg.title + ' · ' + minutes(seg.minutes) + ' unscheduled'"
+                        ></span>
+                      }
+                    }
+                    @if (nowLeft(); as left) {
+                      <span class="tsc-now" [style.left.%]="left" aria-hidden="true"></span>
+                    }
+                  </div>
+                  <span class="tsc-col-done tsc-completion" [class.tsc-completion--none]="!hasPlan(m)" data-testid="tsc-completion">{{ completion(m) }}</span>
+                </div>
+              }
+              <div class="tsc-foot">
+                <ul class="tsc-legend" data-testid="tsc-legend" aria-hidden="true">
+                  <li><span class="tsc-key" [style.background]="colors.completed"></span>Completed</li>
+                  <li><span class="tsc-key" [style.background]="colors.inProgress"></span>In progress</li>
+                  <li><span class="tsc-key" [style.background]="colors.pending"></span>Pending</li>
+                  <li><span class="tsc-key" [style.background]="colors.meeting"></span>Meeting</li>
+                  <li><span class="tsc-key" [style.background]="colors.break"></span>Break</li>
+                  <li><span class="tsc-key tsc-hatch"></span>Unscheduled</li>
+                  <li><span class="tsc-key tsc-leave-key"></span>Leave</li>
+                </ul>
+                <button type="button" class="tsc-link" data-testid="tsc-view-all" (click)="openDetail($event)">
+                  View all {{ data.members.length }} members ›
+                </button>
+              </div>
+            </div>
+
+            @if (plan().dayChartRows > 0) {
+              <section class="tsc-panel tsc-day" data-testid="tsc-day-chart" aria-label="Planned vs actual today">
+                <div class="tsc-day-head">
+                  <p class="tsc-section-title">Planned vs actual today</p>
+                  <ul class="tsc-figures">
+                    @for (t of daySummary(); track t.label) {
+                      <li><span class="tsc-figure-value">{{ t.value }}</span><span class="tsc-donut-of">{{ t.label }}</span></li>
+                    }
+                  </ul>
+                </div>
+                <app-planned-actual-day-chart [rows]="plannedActualRows()" [maxRows]="plan().dayChartRows" />
+              </section>
+            }
+
+            @if (plan().weekChart) {
+              <section class="tsc-panel tsc-week" data-testid="tsc-week-chart" aria-label="This week, planned vs actual">
+                @if (weekDays(); as days) {
+                  <app-planned-actual-week-chart
+                    class="tsc-week-chart"
+                    heading="This week · planned vs actual"
+                    [days]="days"
+                    [today]="store.today()"
+                  />
+                } @else {
+                  <p class="tsc-muted-fill">{{ weekStore.error() ? "Couldn't load this week." : 'Loading…' }}</p>
+                }
+              </section>
+            }
+          </div>
+
+          @if (plan().side) {
+            <aside class="tsc-side" data-testid="tsc-side" [style.width.px]="sidePx">
+              <section class="tsc-panel">
+                <p class="tsc-section-title">Schedule summary</p>
+                <dl class="tsc-summary" data-testid="tsc-summary">
+                  @for (r of summaryRows(); track r.label) {
+                    <div class="tsc-summary-row">
+                      <dt>{{ r.label }}</dt>
+                      <dd [class.tsc-summary--alert]="r.alert">{{ r.value }}</dd>
+                    </div>
+                  }
+                </dl>
+              </section>
+              <section class="tsc-panel">
+                <p class="tsc-section-title">Unscheduled work <span class="tsc-count">{{ data.summary.peopleWithUnscheduledWork }}</span></p>
+                @for (m of unscheduledTop(); track m.employeeId) {
+                  <div class="tsc-side-person">
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(m)" [userName]="m.displayName" />
+                    <p class="tsc-side-row">
+                      <span class="tsc-name">{{ m.displayName }}</span>
+                      <span class="tsc-side-meta">{{ minutes(unscheduled(m)) }} {{ hasPlan(m) ? 'outside the plan' : 'no planned tasks' }}</span>
+                    </p>
+                  </div>
+                } @empty {
+                  <p class="tsc-side-meta">Everyone worked to plan.</p>
+                }
+              </section>
+              <section class="tsc-panel">
+                <p class="tsc-section-title">Schedule conflicts <span class="tsc-count">{{ data.summary.conflicts }}</span></p>
+                @for (c of conflictsTop(); track c.member.employeeId + c.conflict.start) {
+                  <div class="tsc-side-person">
+                    <app-avatar size="sm" [avatarUrl]="avatarUrl(c.member)" [userName]="c.member.displayName" />
+                    <p class="tsc-side-row">
+                      <span class="tsc-name">{{ c.member.displayName }}</span>
+                      <span class="tsc-side-meta tsc-side-meta--alert">{{ c.conflict.firstTitle }} · {{ c.conflict.secondTitle }}</span>
+                    </p>
+                  </div>
+                } @empty {
+                  <p class="tsc-side-meta">No overlaps today.</p>
+                }
+              </section>
+            </aside>
+          }
+        </div>
+      }
+      @default {
+        <!-- xs (donut over its legend) and rows (donut beside it), then the chips and one row per person. -->
+        <div class="tsc" data-testid="tsc-layout" [attr.data-view]="drawn()">
+          <div class="tsc-hero" [class.tsc-hero--stacked]="drawn() === 'xs'">
+            @if (plannerEnabled()) {
+              <ng-container [ngTemplateOutlet]="donutTpl" />
+              <ng-container [ngTemplateOutlet]="legendTpl" />
+            } @else {
+              <ng-container [ngTemplateOutlet]="totalTpl" />
+            }
+          </div>
+          @if (plannerEnabled()) {
+            <ng-container [ngTemplateOutlet]="chipsTpl" [ngTemplateOutletContext]="{ big: false }" />
+          }
+          @if (plan().rows > 0) {
+            <ng-container [ngTemplateOutlet]="rowsTpl" />
+          }
+          <ng-container [ngTemplateOutlet]="viewAllTpl" />
+        </div>
+      }
+    }
+  }
+</app-widget-card>
+
+<app-team-schedule-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

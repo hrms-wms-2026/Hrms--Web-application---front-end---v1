@@ -1,0 +1,13 @@
+/* Layout and controls come from the shared UI components and Tailwind utilities; only the page header
+   alignment (same as Clock-in Policy) and the unsaved-row marker live here. */
+.ns-page-header {
+  margin-top: -1.25rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ns-row--dirty {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+  padding-left: 0.75rem;
+}

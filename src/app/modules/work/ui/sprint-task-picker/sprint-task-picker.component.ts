@@ -43,7 +43,7 @@ export function orderSprintsForTimeline(sprints: readonly SprintDto[]): SprintDt
                        (change)="onTaskToggled(task.id)" />
                 <span class="truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
                 @if (isTaskLocked(task.objectiveId)) {
-                  <span class="text-xs text-[var(--color-text-secondary)]">included (whole module)</span>
+                  <span class="text-xs text-[var(--color-text-secondary)]">included (whole milestone)</span>
                 }
               </label>
             } @empty {
@@ -69,7 +69,7 @@ export class SprintTaskPickerComponent {
 
   readonly sprints = signal<SprintDto[]>([]);
   readonly expanded = signal<Set<string>>(new Set());
-  readonly sprintTasks = signal<Record<string, PickerTask[]>>({});
+  readonly sprintTasks = signal<Record<string, PickerTask[] | undefined>>({});
 
   private loadedForProjectId: string | null = null;
 
@@ -121,7 +121,7 @@ export class SprintTaskPickerComponent {
   private async ensureTasks(sprintId: string): Promise<PickerTask[]> {
     const cached = this.sprintTasks()[sprintId];
     if (cached) return cached;
-    let tasks: PickerTask[] = [];
+    let tasks: PickerTask[];
     try {
       const dtos = await firstValueFrom(this.taskApi.getBySprintId(sprintId));
       tasks = dtos.map((d) => ({ id: d.id, title: d.title, objectiveId: d.objectiveId, sprintId: d.sprintId, shortId: d.shortId }));

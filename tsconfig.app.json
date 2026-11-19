@@ -7,13 +7,6 @@
     "rootDir": "./src",
     "types": []
   },
-  "angularCompilerOptions": {
-    "extendedDiagnostics": {
-      "checks": {
-        "nullishCoalescingNotNullable": "suppress"
-      }
-    }
-  },
   "include": [
     "src/**/*.ts"
   ],

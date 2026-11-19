@@ -1,11 +1,14 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { PopoutHeaderActionsComponent, latestDate } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
+import { RouterLink } from '@angular/router';
+import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-panel.component';
 import { WidgetCardComponent } from '../../../../shared/ui/widget-card/widget-card.component';
 import { createWidgetLoader } from '../../../../shared/ui/widget-card/widget-loader';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeChecklistGroup } from '../../models/employee-overview.model';
 import { progressPercent } from '../../utils/employee-overview.utils';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 /** Groups on the compact card. */
 export const CHECKLIST_PREVIEW_LIMIT = 3;
@@ -18,7 +21,7 @@ export const CHECKLIST_PREVIEW_LIMIT = 3;
 @Component({
   selector: 'app-overview-checklists-widget',
   standalone: true,
-  imports: [WidgetCardComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [StopClickPropagationDirective, WidgetCardComponent, PopoutPanelComponent, PopoutHeaderActionsComponent, RouterLink, DatePipe],
   template: `
     <app-popout-panel class="block h-full" [open]="showAll()" label="Checklists" (closed)="showAll.set(false)">
     <app-widget-card
@@ -62,16 +65,44 @@ export const CHECKLIST_PREVIEW_LIMIT = 3;
               >
                 <div class="bar" data-testid="checklist-bar" [class.bar--done]="isDone(group)" [style.width.%]="percent(group)"></div>
               </div>
+              @if (group.tasks?.length) {
+                <ul class="mt-2 space-y-2 border-l-2 border-[var(--color-border)] pl-3">
+                  @for (task of group.tasks; track task.id) {
+                    <li class="rounded-md bg-[var(--color-surface-secondary)] px-3 py-2 text-xs" data-testid="checklist-task">
+                      <div class="flex items-start justify-between gap-2">
+                        <span class="font-medium text-[var(--color-text-primary)]">{{ task.title }}</span>
+                        <span class="shrink-0 text-[var(--color-text-secondary)]">{{ task.status }}</span>
+                      </div>
+                      <div class="mt-1 text-[var(--color-text-secondary)]">
+                        {{ task.assigneeName }} · due {{ task.dueDate | date:'mediumDate':'UTC' }}
+                      </div>
+                      @if (task.completedAt) {
+                        <div class="mt-1 text-[var(--color-text-secondary)]">
+                          Completed@if (task.completedBy) { by {{ task.completedBy }}} · {{ task.completedAt | date:'medium':'UTC' }}
+                        </div>
+                      }
+                      @if (task.canOpenTask && task.workProjectId && task.workTaskId) {
+                        <a
+                          class="mt-1 inline-block font-semibold text-[var(--color-accent)] hover:underline"
+                          [routerLink]="['/work', task.workProjectId, 'board']"
+                          [queryParams]="{ highlightTaskId: task.workTaskId }"
+                          appStopClickPropagation
+                        >Open {{ task.workTaskShortId || 'task' }}</a>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
             </li>
           }
         </ul>
       }
 
       @if (canExpand()) {
-        <div class="mt-3 flex justify-end border-t border-slate-100 pt-3">
+        <div class="mt-3 flex justify-end border-t border-[var(--color-border)] pt-3">
           <button
             type="button"
-            class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+            class="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer"
             data-testid="checklists-toggle"
             [attr.aria-expanded]="showAll()"
             (click)="onToggleClick($event)"

@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
+  EmployeeDocument,
+  EmployeeDocumentType,
   MyProfile,
   PayrollInfo,
   UpdateBankDetailsRequest,
@@ -26,6 +28,22 @@ export class ProfileApiService {
 
   linkAvatar(fileId: string): Observable<{ avatarFileId: string | null }> {
     return this.http.put<{ avatarFileId: string | null }>(`${this.base}/avatar`, { fileId });
+  }
+
+  removeAvatar(): Observable<void> {
+    return this.http.delete<void>(`${this.base}/avatar`);
+  }
+
+  listDocuments(): Observable<EmployeeDocument[]> {
+    return this.http.get<EmployeeDocument[]>(`${this.base}/documents`);
+  }
+
+  addDocument(fileId: string, type: EmployeeDocumentType, name: string): Observable<EmployeeDocument> {
+    return this.http.post<EmployeeDocument>(`${this.base}/documents`, { fileId, type, name });
+  }
+
+  deleteDocument(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/documents/${id}`);
   }
 
   addEmergencyContact(payload: UpsertEmergencyContactRequest): Observable<{ id: string }> {

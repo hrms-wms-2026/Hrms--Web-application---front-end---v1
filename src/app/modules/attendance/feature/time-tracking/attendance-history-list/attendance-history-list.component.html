@@ -1,5 +1,5 @@
 @if (loading()) {
-  <div class="table-skeleton" aria-busy="true" aria-label="Loading attendance history"></div>
+  <app-data-table [columns]="columns()" [rows]="[]" [trackBy]="trackByRecord" [loading]="true" loadingLabel="Loading attendance history" />
 } @else if (error()) {
   <div class="time-tracking-message time-tracking-message--error" role="alert">
     <p>{{ error() }}</p>
@@ -17,51 +17,31 @@
     <p class="empty-copy">{{ emptyMessage() }}</p>
   </div>
 } @else {
-  <div class="table-scroll">
-    <table class="attendance-table">
-      <thead>
-        <tr>
-          @if (showEmployeeColumn()) { <th scope="col">Employee</th> }
-          <th scope="col">Date</th>
-          <th scope="col">Clock in</th>
-          <th scope="col">Clock out</th>
-          <th scope="col">Break</th>
-          <th scope="col">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of rows(); track row.attendanceRecordId) {
-          <tr [class.attendance-table-row--clickable]="row.canViewDetails" (click)="selectRow(row)">
-            @if (showEmployeeColumn()) {
-              <td>
-                <span class="table-primary">{{ employeeLabel(row) }}</span>
-                @if (row.employee?.employeeNumber) { <span class="table-secondary">{{ row.employee?.employeeNumber }}</span> }
-              </td>
-            }
-            <td><span class="table-primary">{{ formatDate(row.workDate) }}</span></td>
-            <td>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</td>
-            <td>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</td>
-            <td>{{ formatMinutes(row.breakMinutes) }}</td>
-            <td>
-              <span
-                class="table-status-pill"
-                [class.table-status-pill--active]="row.status === 'working' || row.status === 'clocked_in'"
-                [class.table-status-pill--warning]="row.status === 'on_break'"
-                [class.table-status-pill--danger]="row.status === 'absent'"
-              >
-                <span class="table-status-dot"></span>
-                {{ statusLabel(row.status, row.statusLabel) }}
-              </span>
-              @if (showStatusNotes()) {
-                @if (row.attentionLabel) { <span class="table-note">{{ row.attentionLabel }}</span> }
-                @if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }
-              }
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+  <app-data-table [columns]="columns()" [rows]="rows()" [trackBy]="trackByRecord" caption="Attendance history" minWidth="420px" [rowClass]="rowClass" (rowClicked)="selectRow($event)">
+    <ng-template appDataTableCell="employee" let-row>
+      <span class="table-primary">{{ employeeLabel(row) }}</span>
+      @if (row.employee?.employeeNumber) { <span class="table-secondary">{{ row.employee?.employeeNumber }}</span> }
+    </ng-template>
+    <ng-template appDataTableCell="date" let-row><span class="table-primary">{{ formatDate(row.workDate) }}</span></ng-template>
+    <ng-template appDataTableCell="clockIn" let-row>{{ formatDateTime(row.clockInAt, displayTimezone()) }}</ng-template>
+    <ng-template appDataTableCell="clockOut" let-row>{{ formatDateTime(row.clockOutAt, displayTimezone()) }}</ng-template>
+    <ng-template appDataTableCell="break" let-row>{{ formatMinutes(row.breakMinutes) }}</ng-template>
+    <ng-template appDataTableCell="status" let-row>
+      <span
+        class="table-status-pill"
+        [class.table-status-pill--active]="row.status === 'working' || row.status === 'clocked_in'"
+        [class.table-status-pill--warning]="row.status === 'on_break'"
+        [class.table-status-pill--danger]="row.status === 'absent'"
+      >
+        <span class="table-status-dot"></span>
+        {{ statusLabel(row.status, row.statusLabel) }}
+      </span>
+      @if (showStatusNotes()) {
+        @if (row.attentionLabel) { <span class="table-note">{{ row.attentionLabel }}</span> }
+        @if (hasBreakOverage(row.breakOverageMinutes, row.isOverBreakAllowance)) { <span class="table-note table-note--warning">{{ breakOverageHistoryLabel(row.breakOverageMinutes) }}</span> }
+      }
+    </ng-template>
+  </app-data-table>
   @if (totalCount() > pageSize()) {
     <div class="tt-pagination">
       <span class="tt-pagination-info">Page {{ page() }} of {{ Math.ceil(totalCount() / pageSize()) }}</span>

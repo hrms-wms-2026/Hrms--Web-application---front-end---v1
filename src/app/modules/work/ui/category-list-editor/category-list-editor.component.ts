@@ -5,29 +5,48 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { TaskCategoryColumn } from '../../models/task-category.model';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
+import { KIND_META, TaskKind, TaskKindMeta, USER_SELECTABLE_KINDS, kindOf } from '../../utils/task-kind';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
+import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 
 interface DraftRow {
   id: string;
   name: string;
+  isSystem: boolean;
+  kind: TaskKind;
+  icon: string | null;
 }
+
+/** New categories start as plain tasks; the Edit dialog changes the type. */
+const NEW_CATEGORY_KIND: TaskKind = 'task';
 
 @Component({
   selector: 'app-category-list-editor',
   standalone: true,
-  imports: [ModalComponent, CdkDropList, CdkDrag, CdkDragHandle, ButtonComponent],
+  imports: [ModalComponent, CdkDropList, CdkDrag, CdkDragHandle, ButtonComponent, EntityIconComponent, IconPickerComponent],
   template: `
     <app-modal [open]="open()" title="Edit task categories" (closed)="closed.emit()" customMaxWidth="max-w-md">
       <div class="category-list__toolbar">
         @if (addingNew()) {
           <div class="category-list__add-form">
+            <app-icon-picker
+              data-testid="category-add-icon"
+              [icon]="newCategoryIcon()"
+              [color]="newCategoryMeta.hex"
+              [defaultIcon]="newCategoryMeta.defaultIcon"
+              [showColors]="false"
+              ariaLabel="Choose an icon for the new category"
+              (iconChange)="newCategoryIcon.set($event)"
+            />
             <input
-              class="category-list__new-input"
+              class="ui-input ui-input--sm"
               placeholder="Category name"
               [value]="newCategoryName()"
               (input)="newCategoryName.set($any($event.target).value)"
               (keydown.enter)="confirmAdd()"
               (keydown.escape)="cancelAdd()"
-              autofocus
+
             />
             <div class="category-list__add-buttons">
               <app-button variant="primary" [loading]="adding()" (pressed)="confirmAdd()">Add</app-button>
@@ -58,22 +77,34 @@ interface DraftRow {
                 <circle cx="15" cy="18" r="1.5" />
               </svg>
             </span>
+            <!-- A system category keeps its type's fixed icon. -->
+            @if (row.isSystem) {
+              <app-entity-icon data-testid="category-icon-fixed" [icon]="meta(row.kind).defaultIcon" [color]="meta(row.kind).hex" />
+            } @else {
+              <app-icon-picker
+                data-testid="category-icon-picker"
+                [icon]="row.icon"
+                [color]="meta(row.kind).hex"
+                [defaultIcon]="meta(row.kind).defaultIcon"
+                [showColors]="false"
+                [ariaLabel]="'Change the icon for ' + row.name"
+                (iconChange)="changeIcon(row, $event)"
+              />
+            }
             <span class="category-list__name">{{ row.name }}</span>
             <div class="category-list__row-actions">
-              <button type="button" class="category-list__edit-icon" aria-label="Rename category" title="Rename" (click)="openRename(row)">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                </svg>
-                <span>Edit</span>
-              </button>
-              <button type="button" class="category-list__delete-icon" aria-label="Delete category" title="Delete" (click)="deleteRow(row.id)">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                <span>Delete</span>
-              </button>
+              @if (row.isSystem) {
+                <span class="category-list__system-badge" title="System category: can't be renamed or deleted." aria-label="System category: can't be renamed or deleted.">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="4" y="11" width="16" height="10" rx="2" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                  <span>System</span>
+                </span>
+              } @else {
+                <button type="button" class="category-list__edit-icon" [attr.aria-label]="'Edit ' + row.name" (click)="openEdit(row)">Edit</button>
+                <button type="button" class="category-list__delete-icon" [attr.aria-label]="'Delete ' + row.name" (click)="deleteRow(row.id)">Delete</button>
+              }
             </div>
           </div>
         }
@@ -96,29 +127,37 @@ interface DraftRow {
       </div>
     </app-modal>
 
-    <app-modal [open]="editingId() !== null" title="Rename task category" (closed)="cancelRename()" customMaxWidth="max-w-sm">
+    <app-modal [open]="editingId() !== null" title="Edit task category" (closed)="cancelEdit()" customMaxWidth="max-w-sm">
       <div class="category-list__rename-container">
+        <label class="category-list__field-label" for="category-edit-name">Name</label>
         <input
+          id="category-edit-name"
           class="category-list__rename-input"
-          aria-label="Category name"
           [value]="editingName()"
           (input)="editingName.set($any($event.target).value)"
-          (keydown.enter)="confirmRename()"
-          autofocus
+          (keydown.enter)="confirmEdit()"
         />
-        @if (renameError()) {
+        <!-- The type drives colours and grouping in the Planner; a category's name never decides it. -->
+        <label class="category-list__field-label" for="category-edit-kind">Type</label>
+        <select id="category-edit-kind" data-testid="category-edit-kind-select" class="category-list__rename-input"
+          [value]="editingKind()" (change)="editingKind.set($any($event.target).value)">
+          @for (kind of kinds; track kind) {
+            <option [value]="kind" [selected]="kind === editingKind()">{{ meta(kind).label }}</option>
+          }
+        </select>
+        @if (editError()) {
           <p class="category-list__error" role="alert">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-            <span>{{ renameError() }}</span>
+            <span>{{ editError() }}</span>
           </p>
         }
         <div class="category-list__actions">
-          <app-button variant="secondary" (pressed)="cancelRename()">Cancel</app-button>
-          <app-button variant="primary" [loading]="renaming()" (pressed)="confirmRename()">Save</app-button>
+          <app-button variant="secondary" (pressed)="cancelEdit()">Cancel</app-button>
+          <app-button variant="primary" [loading]="savingEdit()" (pressed)="confirmEdit()">Save</app-button>
         </div>
       </div>
     </app-modal>
@@ -145,7 +184,11 @@ interface DraftRow {
       background: color-mix(in srgb, var(--color-border) 25%, transparent);
       border-color: color-mix(in srgb, var(--color-border) 50%, var(--color-accent, #2563eb));
     }
-    .category-list__new-input, .category-list__rename-input {
+    .category-list__add-form input { flex: 1; min-width: 0; }
+    .category-list__add-form, .category-list__row { --icon-picker-size: 1.75rem; --entity-icon-size: 1.75rem; }
+    .category-list__field-label { font-size: 12.5px; font-weight: 500; color: var(--color-text-secondary); }
+
+    .category-list__rename-input {
       width: 100%;
       border: 1px solid var(--color-border);
       border-radius: 6px;
@@ -156,11 +199,11 @@ interface DraftRow {
       outline: none;
       transition: border-color 120ms ease, box-shadow 120ms ease;
     }
-    .category-list__new-input:focus, .category-list__rename-input:focus {
+    .category-list__rename-input:focus {
       border-color: var(--color-accent, #2563eb);
       box-shadow: 0 0 0 1px var(--color-accent, #2563eb);
     }
-    .category-list__new-input { flex: 1; }
+
     .category-list__rename-container { display: flex; flex-direction: column; gap: 10px; }
     .category-list__list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; min-height: 28px; }
     .category-list__row {
@@ -171,7 +214,7 @@ interface DraftRow {
       border: 1px solid var(--color-border);
       border-radius: 8px;
       background: var(--color-surface);
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      box-shadow: var(--shadow-card);
       transition: border-color 120ms ease, box-shadow 120ms ease;
     }
     .category-list__row:hover {
@@ -211,15 +254,14 @@ interface DraftRow {
     .category-list__edit-icon, .category-list__delete-icon {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      border-radius: 5px;
-      border: none;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
       background: transparent;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 12.5px;
       font-weight: 500;
-      color: var(--color-text-secondary);
+      color: var(--color-text-primary);
       transition: all 120ms ease;
     }
     .category-list__edit-icon:hover {
@@ -228,7 +270,18 @@ interface DraftRow {
     }
     .category-list__delete-icon:hover {
       color: var(--color-danger-text, #ef4444);
-      background: color-mix(in srgb, #ef4444 10%, transparent);
+      background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    }
+    .category-list__system-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      background: color-mix(in srgb, var(--color-border) 30%, transparent);
     }
     .category-list__error {
       display: flex;
@@ -253,7 +306,7 @@ interface DraftRow {
     .cdk-drag-preview {
       box-sizing: border-box;
       border-radius: 8px;
-      box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.18), 0 6px 10px -2px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow-popover);
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       display: flex;
@@ -290,11 +343,14 @@ export class CategoryListEditorComponent {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly addingNew = signal(false);
   protected readonly newCategoryName = signal('');
+  protected readonly newCategoryIcon = signal<string | null>(null);
+  protected readonly newCategoryMeta = KIND_META[NEW_CATEGORY_KIND];
   protected readonly adding = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly editingName = signal('');
-  protected readonly renaming = signal(false);
-  protected readonly renameError = signal<string | null>(null);
+  protected readonly editingKind = signal<TaskKind>('task');
+  protected readonly savingEdit = signal(false);
+  protected readonly editError = signal<string | null>(null);
 
   constructor() {
     effect(() => {
@@ -302,13 +358,12 @@ export class CategoryListEditorComponent {
         this.rows.set(
           [...this.categories()]
             .sort((a, b) => a.displayOrder - b.displayOrder)
-            .map((category) => ({ id: category.id, name: category.name }))
+            .map((category) => this.toRow(category))
         );
         this.errorMessage.set(null);
       } else {
-        this.addingNew.set(false);
-        this.newCategoryName.set('');
-        this.cancelRename();
+        this.cancelAdd();
+        this.cancelEdit();
       }
     });
   }
@@ -322,6 +377,7 @@ export class CategoryListEditorComponent {
   cancelAdd(): void {
     this.addingNew.set(false);
     this.newCategoryName.set('');
+    this.newCategoryIcon.set(null);
   }
 
   async confirmAdd(): Promise<void> {
@@ -329,12 +385,15 @@ export class CategoryListEditorComponent {
     if (!name) return;
     this.adding.set(true);
     this.errorMessage.set(null);
+    const icon = this.newCategoryIcon();
     try {
       const created = await firstValueFrom(this.taskApi.createCategory(this.projectId(), {
         name,
-        displayOrder: this.rows().length
+        displayOrder: this.rows().length,
+        kind: NEW_CATEGORY_KIND,
+        ...(icon ? { icon } : {})
       }));
-      this.rows.set([...this.rows(), { id: created.id, name: created.name }]);
+      this.rows.set([...this.rows(), this.toRow(created)]);
       this.cancelAdd();
       this.saved.emit();
     } catch (err: unknown) {
@@ -344,41 +403,72 @@ export class CategoryListEditorComponent {
     }
   }
 
-  openRename(row: DraftRow): void {
+  openEdit(row: DraftRow): void {
+    if (row.isSystem) return;
     this.editingId.set(row.id);
     this.editingName.set(row.name);
-    this.renameError.set(null);
+    this.editingKind.set(row.kind);
+    this.editError.set(null);
   }
 
-  cancelRename(): void {
+  cancelEdit(): void {
     this.editingId.set(null);
     this.editingName.set('');
-    this.renameError.set(null);
+    this.editError.set(null);
   }
 
-  async confirmRename(): Promise<void> {
+  async confirmEdit(): Promise<void> {
     const id = this.editingId();
     const name = this.editingName().trim();
     if (!id || !name) return;
     const rowIndex = this.rows().findIndex((row) => row.id === id);
     if (rowIndex < 0) return;
-    this.renaming.set(true);
-    this.renameError.set(null);
+    const kind = this.editingKind();
+    this.savingEdit.set(true);
+    this.editError.set(null);
     try {
-      await firstValueFrom(this.taskApi.editCategory(id, { name, displayOrder: rowIndex }));
+      await firstValueFrom(this.taskApi.editCategory(id, {
+        name,
+        displayOrder: rowIndex,
+        ...(kind !== this.rows()[rowIndex].kind ? { kind } : {})
+      }));
       const next = [...this.rows()];
-      next[rowIndex] = { ...next[rowIndex], name };
+      next[rowIndex] = { ...next[rowIndex], name, kind };
       this.rows.set(next);
-      this.cancelRename();
+      this.cancelEdit();
       this.saved.emit();
     } catch (err: unknown) {
-      this.renameError.set(this.getErrorDetail(err) || 'Failed to rename the category.');
+      this.editError.set(this.getErrorDetail(err) || 'Failed to save the category.');
     } finally {
-      this.renaming.set(false);
+      this.savingEdit.set(false);
+    }
+  }
+
+  protected readonly kinds = USER_SELECTABLE_KINDS;
+
+  protected meta(kind: TaskKind): TaskKindMeta {
+    return KIND_META[kind];
+  }
+
+  /** Saves a row's new icon right away; the API reads an empty value as "clear it". */
+  async changeIcon(row: DraftRow, icon: string | null): Promise<void> {
+    if (row.isSystem) return;
+    const rowIndex = this.rows().findIndex((r) => r.id === row.id);
+    if (rowIndex < 0) return;
+    this.errorMessage.set(null);
+    try {
+      await firstValueFrom(this.taskApi.editCategory(row.id, { name: row.name, displayOrder: rowIndex, icon: icon ?? '' }));
+      const next = [...this.rows()];
+      next[rowIndex] = { ...next[rowIndex], icon };
+      this.rows.set(next);
+      this.saved.emit();
+    } catch (err: unknown) {
+      this.errorMessage.set(this.getErrorDetail(err) || 'Failed to change the icon.');
     }
   }
 
   async deleteRow(id: string): Promise<void> {
+    if (this.rows().find((row) => row.id === id)?.isSystem) return;
     this.errorMessage.set(null);
     try {
       await firstValueFrom(this.taskApi.deleteCategory(id));
@@ -406,8 +496,18 @@ export class CategoryListEditorComponent {
     }
   }
 
+  private toRow(category: TaskCategoryColumn): DraftRow {
+    return {
+      id: category.id,
+      name: category.name,
+      isSystem: category.isSystem ?? false,
+      kind: kindOf(category.kind),
+      icon: category.icon ?? null
+    };
+  }
+
   private getErrorDetail(err: unknown): string | null {
-    return (err as { error?: { detail?: string } })?.error?.detail ?? null;
+    return safeServerDetail(err) ?? null;
   }
 }
 

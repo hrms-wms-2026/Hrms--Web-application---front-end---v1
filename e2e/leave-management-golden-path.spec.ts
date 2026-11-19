@@ -179,6 +179,7 @@ test.describe('Leave Management - golden path', () => {
 
 async function pickDate(page: Page, label: string, dayOfMonth: number): Promise<void> {
   const field = page.locator('.dp-container').filter({ hasText: label });
-  await field.getByLabel('Open calendar picker').click();
-  await field.locator('.dp-day-btn:not(.dp-day-btn--outside)').filter({ hasText: new RegExp(`^${dayOfMonth}$`) }).click();
+  await field.locator('.dp-input').click();
+  // The calendar opens in the CDK overlay, outside the field.
+  await page.locator('.dp-popover .dp-day-btn:not(.dp-day-btn--outside)').filter({ hasText: new RegExp(`^${dayOfMonth}$`) }).click();
 }

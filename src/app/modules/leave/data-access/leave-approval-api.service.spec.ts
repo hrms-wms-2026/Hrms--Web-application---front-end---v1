@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../../environments/environment';
-import { LeaveApprovalDecisionResponse, LeaveApprovalDetailResponse, LeavePendingApprovalListItemResponse, LeaveRequestAllListItemResponse } from '../models/leave-approval.model';
+import { LeaveApprovalDecisionResponse, LeaveApprovalDetailResponse, LeaveRequestAllListItemResponse } from '../models/leave-approval.model';
 import { CancelLeaveRequestRequest, CancelLeaveRequestResponse } from '../models/leave-request.model';
 import { LeaveApprovalApiService } from './leave-approval-api.service';
 
@@ -19,7 +19,7 @@ describe('LeaveApprovalApiService', () => {
     requestId: 'req-1', employeeId: 'emp-1', employeeName: 'Anu Raman', leaveTypeId: 'type-1',
     leaveTypeName: 'Annual Leave', leaveTypeCode: 'ANNUAL', startAt: '2026-09-10', endAt: '2026-09-12',
     totalHours: 3, paidHours: 3, unpaidHours: 0, status: 'pending', reason: 'Trip',
-    approvers: [], infoMessages: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17
+    approvers: [], submissionConflictSnapshotJson: null, currentWarnings: [], remainingHours: 17, canDecide: true, canChangeDecision: false
   };
 
   beforeEach(() => {
@@ -29,21 +29,6 @@ describe('LeaveApprovalApiService', () => {
   });
 
   afterEach(() => httpMock.verify());
-
-  it('lists pending approvals with filters', () => {
-    const items: LeavePendingApprovalListItemResponse[] = [];
-    service.listPending({ search: 'anu', leaveTypeId: 'type-1' }).subscribe((res) => expect(res).toEqual(items));
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/pending-approvals?search=anu&leaveTypeId=type-1`);
-    expect(req.request.method).toBe('GET');
-    req.flush(items);
-  });
-
-  it('lists pending approvals with no filters', () => {
-    service.listPending({}).subscribe();
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/pending-approvals`);
-    expect(req.request.method).toBe('GET');
-    req.flush([]);
-  });
 
   it('lists all requests with filters including status', () => {
     const items: LeaveRequestAllListItemResponse[] = [];
@@ -76,36 +61,6 @@ describe('LeaveApprovalApiService', () => {
     req.flush(decision);
   });
 
-  it('requests information', () => {
-    service.requestInfo('req-1', { question: 'Can you share dates?' }).subscribe((res) => expect(res).toEqual(decision));
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/request-info`);
-    expect(req.request.method).toBe('POST');
-    req.flush(decision);
-  });
-
-  it('responds to an information request', () => {
-    service.respondInfo('req-1', { message: 'Sure, see attached', fileRecordIds: [] }).subscribe((res) => expect(res).toEqual(decision));
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/respond-info`);
-    expect(req.request.method).toBe('POST');
-    req.flush(decision);
-  });
-
-  it('bulk approves requests', () => {
-    const bulkResult = { items: [], successCount: 2, failureCount: 0 };
-    service.bulkApprove({ requestIds: ['req-1', 'req-2'], comment: null }).subscribe((res) => expect(res).toEqual(bulkResult));
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-approve`);
-    expect(req.request.method).toBe('POST');
-    req.flush(bulkResult);
-  });
-
-  it('bulk rejects requests', () => {
-    const bulkResult = { items: [], successCount: 0, failureCount: 2 };
-    service.bulkReject({ requestIds: ['req-1', 'req-2'], reason: 'Team coverage too low' }).subscribe((res) => expect(res).toEqual(bulkResult));
-    const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/bulk-reject`);
-    expect(req.request.method).toBe('POST');
-    req.flush(bulkResult);
-  });
-
   it('cancels a request', () => {
     const cancelResponse: CancelLeaveRequestResponse = {
       requestId: 'req-1', status: 'cancelled', isPartialCancellation: false, effectiveDate: null,
@@ -116,5 +71,29 @@ describe('LeaveApprovalApiService', () => {
     const req = httpMock.expectOne(`${environment.apiUrl}/leave/requests/req-1/cancel`);
     expect(req.request.method).toBe('POST');
     req.flush(cancelResponse);
+  });
+});
+
+describe('LeaveApprovalApiService query strings (API helper safety net)', () => {
+  let service: LeaveApprovalApiService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [LeaveApprovalApiService, provideHttpClient(), provideHttpClientTesting()] });
+    service = TestBed.inject(LeaveApprovalApiService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('listAll sends every filter in a fixed order with status last', () => {
+    service
+      .listAll({ status: 'approved', toDate: '2026-01-31', fromDate: '2026-01-01', leaveTypeId: 'type-1', search: 'anu' })
+      .subscribe();
+    http
+      .expectOne(
+        `${environment.apiUrl}/leave/requests/all?search=anu&leaveTypeId=type-1&fromDate=2026-01-01&toDate=2026-01-31&status=approved`
+      )
+      .flush([]);
   });
 });

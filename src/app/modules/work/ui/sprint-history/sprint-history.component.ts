@@ -114,7 +114,7 @@ export class SprintHistoryComponent {
     const template = VERBS[activity.action];
     if (!template.includes('{n}')) return template;
 
-    let count: number | null = null;
+    let count: number | null;
     try {
       count = activity.detailsJson ? JSON.parse(activity.detailsJson).taskIds.length : null;
     } catch {

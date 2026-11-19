@@ -6,18 +6,39 @@ import { AttendanceCorrectionResponse, correctionStatusLabel, correctionTypeLabe
 import { workAreaChangeStatusLabel, workAreaLabel } from '../../../models/work-area-change-request.model';
 import { TimeTrackingStore } from '../../../state/time-tracking.store';
 import { formatDate, formatDateTime, formatWorkAreaDate } from '../../../utils/attendance-formatters';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../../shared/ui/data-table/data-table.component';
 
 type PersonalRequestTab = 'corrections' | 'work-area';
 
 @Component({
   selector: 'app-my-requests-panel',
   standalone: true,
-  imports: [ButtonComponent, ModalComponent],
+  imports: [DataTableComponent, DataTableCellDirective, ButtonComponent, ModalComponent],
   templateUrl: './my-requests-panel.component.html',
   styleUrl: './my-requests-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MyRequestsPanelComponent implements OnInit {
+  protected readonly correctionColumns: readonly DataTableColumn[] = [
+    { key: 'date', label: 'Date' },
+    { key: 'change', label: 'Change' },
+    { key: 'status', label: 'Status' },
+    { key: 'reason', label: 'Reason', wrap: true },
+    { key: 'review', label: 'Review', wrap: true },
+    { key: 'actions', label: 'Actions', interactive: true, shrink: true }
+  ];
+  protected readonly workAreaColumns: readonly DataTableColumn[] = [
+    { key: 'date', label: 'Date' },
+    { key: 'change', label: 'Change' },
+    { key: 'status', label: 'Status' },
+    { key: 'reason', label: 'Reason', wrap: true },
+    { key: 'sentTo', label: 'Sent to' },
+    { key: 'requested', label: 'Requested' },
+    { key: 'review', label: 'Review', wrap: true },
+    { key: 'actions', label: 'Actions', interactive: true, shrink: true }
+  ];
+  protected readonly trackById = (request: { id: string }): string => request.id;
+
   readonly store = inject(TimeTrackingStore);
   private readonly notifications = inject(NotificationService);
 

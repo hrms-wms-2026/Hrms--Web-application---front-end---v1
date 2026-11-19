@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProfileMenuComponent } from './profile-menu.component';
 import { ThemeStore } from '../../../../core/theme/state/theme.store';
-import { ThemePresetId } from '../../../../core/theme/models/theme-preset.model';
+import { THEME_PRESETS, ThemePresetId } from '../../../../core/theme/models/theme-preset.model';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProfileStore } from '@modules/profile/state/profile.store';
@@ -20,7 +20,7 @@ async function setup(overrides: { logoutResult?: boolean } = {}) {
   await TestBed.configureTestingModule({
     imports: [ProfileMenuComponent],
     providers: [
-      { provide: ThemeStore, useValue: { preset: presetSignal, setPreset } },
+      { provide: ThemeStore, useValue: { preset: presetSignal, setPreset, mode: signal('light'), resolvedMode: signal('light'), setMode: vi.fn() } },
       { provide: AuthStore, useValue: { logout: logoutMock } },
       { provide: Router, useValue: { navigate: navigateMock } },
       { provide: NotificationService, useValue: { error: notificationErrorMock } },
@@ -55,6 +55,24 @@ describe('ProfileMenuComponent', () => {
     expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeFalsy();
+  });
+
+  it('shows the online badge while the browser is connected and hides it when it goes offline', async () => {
+    const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    const { fixture } = await setup();
+    const badge = () => fixture.nativeElement.querySelector('[data-testid="profile-online-badge"]');
+    expect(badge()).toBeTruthy();
+
+    onLine.mockReturnValue(false);
+    window.dispatchEvent(new Event('offline'));
+    fixture.detectChanges();
+    expect(badge()).toBeNull();
+
+    onLine.mockReturnValue(true);
+    window.dispatchEvent(new Event('online'));
+    fixture.detectChanges();
+    expect(badge()).toBeTruthy();
+    onLine.mockRestore();
   });
 
   it('keeps the closed profile trigger flat and the avatar-to-chevron spacing compact', async () => {
@@ -172,8 +190,8 @@ describe('ProfileMenuComponent', () => {
     appearanceBtn.click();
     fixture.detectChanges();
 
-    const options = fixture.nativeElement.querySelectorAll('[role="radio"]');
-    expect(options.length).toBe(5);
+    const options = fixture.nativeElement.querySelectorAll('[aria-label="Theme Presets"] [role="radio"]');
+    expect(options.length).toBe(THEME_PRESETS.length);
 
     const emeraldOption = Array.from(options).find((el) =>
       (el as HTMLElement).textContent?.includes('Emerald')

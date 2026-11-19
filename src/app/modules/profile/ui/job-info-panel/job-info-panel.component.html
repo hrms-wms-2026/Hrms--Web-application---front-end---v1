@@ -1,19 +1,16 @@
 <section class="pf-section">
-  <div class="pf-notice-banner">
-    <div class="pf-notice-banner__icon">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+  <div class="pf-section__header-row">
+    <h3 class="pf-section__title">Employment details</h3>
+    <span class="pf-hr-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </svg>
-    </div>
-    <div class="pf-notice-banner__content">
-      <span class="pf-notice-banner__title">HR Managed Information</span>
-      <p class="pf-notice-banner__text">These employment and organizational details are managed by HR. Contact your administrator if any information requires updating.</p>
-    </div>
+      Managed by HR &middot; contact your administrator to update
+    </span>
   </div>
-
   <div class="pf-grid-container">
     <div class="pf-card-tile">
-      <span class="pf-card-tile__label">Employee Number</span>
+      <span class="pf-card-tile__label">Employee number</span>
       <div class="pf-card-tile__value">
         <span class="pf-mono-badge">{{ jobInformation().employeeNumber }}</span>
       </div>
@@ -53,7 +50,7 @@
     </div>
 
     <div class="pf-card-tile">
-      <span class="pf-card-tile__label">Reports To</span>
+      <span class="pf-card-tile__label">Reports to</span>
       <div class="pf-card-tile__value">
         @if (jobInformation().reportingManagerName) {
           <span class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().reportingManagerName }}</span>
@@ -63,15 +60,21 @@
       </div>
     </div>
 
+  </div>
+</section>
+
+<section class="pf-section">
+  <h3 class="pf-section__title">Employment terms</h3>
+  <div class="pf-grid-container">
     <div class="pf-card-tile">
-      <span class="pf-card-tile__label">Employment Type</span>
+      <span class="pf-card-tile__label">Employment type</span>
       <div class="pf-card-tile__value">
         <span class="pf-type-pill">{{ jobInformation().employmentTypeLabel }}</span>
       </div>
     </div>
 
     <div class="pf-card-tile">
-      <span class="pf-card-tile__label">Employment Status</span>
+      <span class="pf-card-tile__label">Employment status</span>
       <div class="pf-card-tile__value">
         <span class="pf-status-pill pf-status-pill--active">
           <span class="pf-status-dot"></span>
@@ -81,7 +84,7 @@
     </div>
 
     <div class="pf-card-tile">
-      <span class="pf-card-tile__label">Start Date</span>
+      <span class="pf-card-tile__label">Start date</span>
       <div class="pf-card-tile__value font-medium text-[var(--color-text-primary)]">
         {{ jobInformation().hireDate }}
       </div>
@@ -89,7 +92,7 @@
 
     @if (jobInformation().probationEndDate) {
       <div class="pf-card-tile">
-        <span class="pf-card-tile__label">Probation End Date</span>
+        <span class="pf-card-tile__label">Probation end date</span>
         <div class="pf-card-tile__value font-medium text-[var(--color-text-primary)]">
           {{ jobInformation().probationEndDate }}
         </div>
@@ -97,7 +100,7 @@
     }
 
     <div class="pf-card-tile">
-      <span class="pf-card-tile__label">Work Mode</span>
+      <span class="pf-card-tile__label">Work mode</span>
       <div class="pf-card-tile__value">
         <span class="pf-workmode-pill">{{ jobInformation().workMode }}</span>
       </div>

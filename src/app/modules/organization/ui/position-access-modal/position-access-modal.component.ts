@@ -5,11 +5,13 @@ import { PositionAccessTemplateResponse, PositionListItemResponse, PositionTreeN
 import { RoleSummaryResponse } from '../../models/role.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-position-access-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent, SelectComponent],
+  imports: [StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, SelectComponent],
   templateUrl: './position-access-modal.component.html',
   styleUrl: './position-access-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -27,7 +29,7 @@ export class PositionAccessModalComponent implements OnChanges {
   @Input() canManage = false;
 
   @Output() saveAccess = new EventEmitter<SetPositionAccessRequest>();
-  @Output() close = new EventEmitter<void>();
+  @Output() closed = new EventEmitter<void>();
 
   readonly form = this.fb.group({
     roleId: [''],

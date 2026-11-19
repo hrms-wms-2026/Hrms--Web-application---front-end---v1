@@ -81,6 +81,25 @@ describe('AuthStore', () => {
     expect(store.loading()).toBe(false);
   });
 
+  it('says the server is unreachable, not that the password is wrong, when login never reaches the API', async () => {
+    const networkError = new HttpErrorResponse({ status: 0, statusText: 'Unknown Error' });
+    const store = setup({ login: () => throwError(() => networkError) } as Partial<AuthApiService>);
+
+    await expect(store.login({ email: 'a@b.com', password: 'secret' })).rejects.toBeTruthy();
+
+    expect(store.error()).toBe('We could not reach the server. Check your connection and try again.');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('never shows a technical server detail on login', async () => {
+    const serverError = new HttpErrorResponse({ status: 500, error: { detail: 'Npgsql.PostgresException: connection refused' } });
+    const store = setup({ login: () => throwError(() => serverError) } as Partial<AuthApiService>);
+
+    await expect(store.login({ email: 'a@b.com', password: 'secret' })).rejects.toBeTruthy();
+
+    expect(store.error()).toBe('Invalid email or password.');
+  });
+
   it('populates state after accepting legal documents', async () => {
     const store = setup({ acceptLegalDocuments: () => of(authenticatedDto) } as Partial<AuthApiService>);
 
@@ -132,7 +151,7 @@ describe('AuthStore', () => {
 
     await expect(store.exchangeSession('some-code')).rejects.toBeTruthy();
 
-    expect(store.error()).toBe('Could not reach the tenant workspace. Check your local HTTPS certificate and try again.');
+    expect(store.error()).toBe('We could not reach the server. Check your connection and try again.');
     expect(store.loading()).toBe(false);
   });
 

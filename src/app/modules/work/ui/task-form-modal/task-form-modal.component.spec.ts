@@ -1,5 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
+import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { TaskFormModalComponent } from './task-form-modal.component';
@@ -97,7 +101,7 @@ describe('TaskFormModalComponent - edit mode', () => {
   beforeEach(async () => {
     api = baseApi();
     milestones = signal<{ objectiveId: string; title: string; isOwner: boolean; isEffectiveOwner: boolean }[]>(
-      [{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]
+      [{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: true }]
     );
     members = [
       { employeeId: 'e1', name: 'Ann', avatarUrl: 'https://api.test/employees/e1/avatar' },
@@ -259,20 +263,20 @@ describe('TaskFormModalComponent - edit mode', () => {
   it('shows the module name as visible text next to the header module icon', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement;
-    expect(el.textContent?.trim()).toBe('Module 1');
+    expect(el.textContent?.trim()).toBe('Milestone 1');
   });
 
   it('updates the module name if milestones finishes loading after the modal already opened', () => {
     milestones.set([]);
     fixture.detectChanges();
     expect((fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement).textContent?.trim())
-      .toBe('Select module');
+      .toBe('Select milestone');
 
-    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]);
+    milestones.set([{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: true }]);
     fixture.detectChanges();
 
     expect((fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement).textContent?.trim())
-      .toBe('Module 1');
+      .toBe('Milestone 1');
   });
 
   it('shows the task creation date near the kebab menu', () => {
@@ -340,7 +344,7 @@ describe('TaskFormModalComponent - edit mode', () => {
 
   it('scopes the Duplicate dialog module list to modules the caller owns', () => {
     milestones.set([
-      { objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true },
+      { objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: true },
       { objectiveId: 'o2', title: 'Module 2 (member only)', isOwner: false, isEffectiveOwner: false }
     ]);
     fixture.detectChanges();
@@ -349,7 +353,7 @@ describe('TaskFormModalComponent - edit mode', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.duplicateDialogOpen()).toBe(true);
-    expect(fixture.componentInstance.duplicateModuleOptions()).toEqual([{ objectiveId: 'o1', title: 'Module 1' }]);
+    expect(fixture.componentInstance.duplicateModuleOptions()).toEqual([{ objectiveId: 'o1', title: 'Milestone 1' }]);
   });
 
   it('confirming duplicate calls duplicateTask with the chosen options and emits saved + closed', async () => {
@@ -487,7 +491,7 @@ describe('TaskFormModalComponent - edit mode', () => {
   });
 
   it('edit by non-owner calls editTask (not an edit request) and shows the "sent for approval" info toast on 202', async () => {
-    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: false, isEffectiveOwner: false }]);
+    milestones.set([{ objectiveId: 'o1', title: 'Milestone 1', isOwner: false, isEffectiveOwner: false }]);
     api['editTask'].mockReturnValue(of({ approvalRequestId: 'r1' }));
     const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
     fixture.detectChanges();
@@ -500,7 +504,7 @@ describe('TaskFormModalComponent - edit mode', () => {
   it('a member whose field edits go for approval still gets the reassignment applied', async () => {
     // Reassignment is its own, separately-permitted action: it applies even when the backend
     // answers the field edit with a 202 "sent for approval".
-    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: false }]);
+    milestones.set([{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: false }]);
     api['editTask'].mockReturnValue(of({ approvalRequestId: 'r1' }));
     fixture.detectChanges();
     fixture.componentInstance.title.set('Edited');
@@ -584,7 +588,7 @@ describe('TaskFormModalComponent - assignee display outside milestone scope', ()
           useValue: {
             // The viewer's reachable milestones only surface e1/e2 - e3 (the actual assignee) is
             // outside that scope, mirroring an admin-assigned task a lower-permission viewer opens.
-            milestones: signal([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]),
+            milestones: signal([{ objectiveId: 'o1', title: 'Milestone 1', isOwner: true, isEffectiveOwner: true }]),
             loadProjectMembers: vi.fn().mockResolvedValue(undefined),
             projectMembers: () => [
               { employeeId: 'e1', name: 'Ann', avatarUrl: null },
@@ -625,13 +629,17 @@ describe('TaskFormModalComponent - create mode', () => {
   let api: Record<string, ReturnType<typeof vi.fn>>;
   let createTask: ReturnType<typeof vi.fn>;
 
-  async function build(opts: { module?: string; sprint?: string; isOwner?: boolean; draftId?: string } = {}): Promise<void> {
+  async function build(opts: { module?: string; sprint?: string; isOwner?: boolean; draftId?: string; allowMeeting?: boolean;
+    categories?: unknown[]; prefill?: unknown } = {}): Promise<void> {
     api = baseApi();
+    if (opts.categories) api['getCategories'] = vi.fn().mockReturnValue(of(opts.categories));
     createTask = vi.fn().mockResolvedValue({ id: 't-new', objectiveId: 'o1' });
 
     await TestBed.configureTestingModule({
       imports: [TaskFormModalComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: TaskApiService, useValue: api },
         { provide: ProjectApiService, useValue: {
           getMyMilestones: vi.fn().mockReturnValue(of([{ objectiveId: 'o1', title: 'Mod 1', isOwner: opts.isOwner ?? true }]))
@@ -653,9 +661,84 @@ describe('TaskFormModalComponent - create mode', () => {
     if (opts.module) fixture.componentRef.setInput('prefillModuleId', opts.module);
     if (opts.sprint) fixture.componentRef.setInput('prefillSprintId', opts.sprint);
     if (opts.draftId) fixture.componentRef.setInput('draftId', opts.draftId);
+    if (opts.allowMeeting) fixture.componentRef.setInput('allowMeeting', true);
+    if (opts.prefill) fixture.componentRef.setInput('prefill', opts.prefill);
     fixture.componentRef.setInput('open', true);
     await flush(fixture);
   }
+
+  it('fills title, category, priority, estimate, due and assignee from prefill (Planner create popover)', async () => {
+    await build({
+      module: 'o1',
+      categories: [{ id: 'c1', name: 'task', displayOrder: 0 }, { id: 'c2', name: 'bug', displayOrder: 1 }],
+      prefill: { title: 'Fix login bug', categoryId: 'c2', priority: 'high', estimatedHours: 8, dueDate: '2026-11-20', assigneeEmployeeId: 'e1' },
+    });
+    const form = fixture.componentInstance;
+
+    expect([form.title(), form.categoryId(), form.priority(), form.estimatedHours(), form.dueDate(), form.assigneeEmployeeId()])
+      .toEqual(['Fix login bug', 'c2', 'high', 8, '2026-11-20', 'e1']);
+    expect(form.selectedObjectiveId()).toBe('o1');
+  });
+
+  describe('the "meeting" category', () => {
+    const categories = [
+      { id: 'c-meeting', name: 'meeting', displayOrder: 0, systemKey: 'meeting' },
+      { id: 'c-task', name: 'task', displayOrder: 1 },
+    ];
+    const el = (testId: string) => fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+
+    it('never opens on "meeting", even when it is the first category', async () => {
+      await build({ allowMeeting: true, categories });
+      expect(fixture.componentInstance.categoryId()).toBe('c-task');
+      expect(el('embedded-meeting-form')).toBeNull();
+    });
+
+    it('turns the form into the meeting form, keeping the title, and back again', async () => {
+      await build({ allowMeeting: true, categories, module: 'o1' });
+      fixture.componentInstance.title.set('Sprint review');
+      fixture.componentInstance.categoryId.set('c-meeting');
+      fixture.detectChanges();
+
+      const meeting = fixture.debugElement.query(By.css('app-meeting-form-modal'));
+      expect(meeting).not.toBeNull();
+      expect(meeting.componentInstance.embedded()).toBe(true);
+      expect(meeting.componentInstance.placement()).toEqual({ projectId: 'p1', objectiveId: 'o1' });
+      expect(meeting.componentInstance.form.controls.title.value).toBe('Sprint review');
+      // The meeting form brings its own Cancel and Create; the task footer steps aside.
+      expect((fixture.nativeElement.querySelector('.tfm__foot') as HTMLElement).style.display).toBe('none');
+      expect(el('add-subtask-button')).toBeNull();
+
+      fixture.componentInstance.categoryId.set('c-task');
+      fixture.detectChanges();
+      expect(fixture.debugElement.query(By.css('app-meeting-form-modal'))).toBeNull();
+      expect(el('add-subtask-button')).not.toBeNull();
+    });
+
+    it('is not offered where meetings are not allowed (other screens, edit), so no plain task becomes a "meeting"', async () => {
+      await build({ categories });
+      expect(fixture.componentInstance.pickableCategories().map((c) => c.id)).toEqual(['c-task']);
+    });
+
+    it('is not offered once the server says meetings are off', async () => {
+      await build({ allowMeeting: true, categories });
+      TestBed.inject(MeetingsAvailabilityService).noteError(new HttpErrorResponse({ status: 503, error: { code: 'meetings_disabled' } }));
+      expect(fixture.componentInstance.pickableCategories().map((c) => c.id)).toEqual(['c-task']);
+    });
+
+    it('hands a created meeting to the host and closes', async () => {
+      await build({ allowMeeting: true, categories });
+      const created = vi.fn();
+      const closed = vi.fn();
+      fixture.componentInstance.meetingCreated.subscribe(created);
+      fixture.componentInstance.closed.subscribe(closed);
+      const event = { outcome: 'created', seriesId: 's1', occurrenceTaskId: 'm1', originalStart: '2026-11-02T03:30:00Z' };
+
+      fixture.componentInstance.onMeetingCreated(event as never);
+
+      expect(created).toHaveBeenCalledWith(event);
+      expect(closed).toHaveBeenCalled();
+    });
+  });
 
   it('starts with an empty title and never loads a task', async () => {
     await build();
@@ -775,6 +858,27 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(taskDraftApiStub.update).not.toHaveBeenCalled();
     expect(taskDraftApiStub.remove).toHaveBeenCalledWith('d1');
     expect(draftsStoreStub.load).toHaveBeenCalled();
+  });
+
+  it('an action item create carries the meeting occurrence it was raised from', async () => {
+    taskDraftApiStub.get.mockReturnValue(of(savedDraft));
+    await build({ draftId: 'd1' });
+    fixture.componentRef.setInput('sourceMeetingOccurrenceId', 'occ-1');
+
+    await fixture.componentInstance.submitCreateWithAction('create_and_close');
+    await settle();
+
+    expect(createTask).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ sourceMeetingOccurrenceId: 'occ-1' }));
+  });
+
+  it('an ordinary create sends no source occurrence', async () => {
+    taskDraftApiStub.get.mockReturnValue(of(savedDraft));
+    await build({ draftId: 'd1' });
+
+    await fixture.componentInstance.submitCreateWithAction('create_and_close');
+    await settle();
+
+    expect(createTask.mock.calls[0][1].sourceMeetingOccurrenceId).toBeUndefined();
   });
 
   it('a create sent for approval detaches the draft attachments before deleting the draft', async () => {
@@ -961,15 +1065,22 @@ describe('TaskFormModalComponent - create mode', () => {
   });
 
   it('renders Due Date chip with consistent tfm-chip styling and label', async () => {
-    await build();
-    const chipBtn = fixture.nativeElement.querySelector('[data-testid="tfm-due-date-chip"]') as HTMLButtonElement | null;
-    expect(chipBtn).toBeTruthy();
-    expect(chipBtn?.classList.contains('tfm-chip')).toBe(true);
-    expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Due date');
+    // Pin the clock so the due date is not 'Today'/'Yesterday'/'Tomorrow'.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-01T09:00:00'));
+    try {
+      await build();
+      const chipBtn = fixture.nativeElement.querySelector('[data-testid="tfm-due-date-chip"]') as HTMLButtonElement | null;
+      expect(chipBtn).toBeTruthy();
+      expect(chipBtn?.classList.contains('tfm-chip')).toBe(true);
+      expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Due date');
 
-    fixture.componentInstance.dueDate.set('2026-10-15');
-    fixture.detectChanges();
-    expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Oct 15');
+      fixture.componentInstance.dueDate.set('2026-10-15');
+      fixture.detectChanges();
+      expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Oct 15');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('displays More fields section by default and allows toggling to hide or show', async () => {
@@ -1165,8 +1276,8 @@ describe('TaskFormModalComponent - subtasks section', () => {
 
   it('allows changing subtask module via module popover without showing module text in row', async () => {
     fixture.componentInstance.modules.set([
-      { objectiveId: 'o1', title: 'Module One', isOwner: true },
-      { objectiveId: 'o2', title: 'Module Two', isOwner: false }
+      { objectiveId: 'o1', title: 'Milestone One', isOwner: true },
+      { objectiveId: 'o2', title: 'Milestone Two', isOwner: false }
     ]);
     (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
     fixture.detectChanges();
@@ -1190,11 +1301,11 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
 
     // Save and verify o2 is passed
-    fixture.componentInstance.newSubtaskTitle.set('Changed module subtask');
+    fixture.componentInstance.newSubtaskTitle.set('Changed milestone subtask');
     await fixture.componentInstance.saveNewSubtask('t1');
 
     expect(boardStore.createSubtask).toHaveBeenCalledWith('t1', expect.objectContaining({
-      title: 'Changed module subtask',
+      title: 'Changed milestone subtask',
       objectiveId: 'o2',
       categoryId: 'c1'
     }));

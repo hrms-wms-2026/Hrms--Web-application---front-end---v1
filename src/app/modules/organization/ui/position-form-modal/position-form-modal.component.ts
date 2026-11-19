@@ -6,6 +6,7 @@ import { RoleSummaryResponse } from '../../models/role.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export interface PositionFormSubmitValue {
   departmentId: string;
@@ -44,8 +45,9 @@ function integerValidator(control: AbstractControl): ValidationErrors | null {
 
 @Component({
   selector: 'app-position-form-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
+  imports: [StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
   templateUrl: './position-form-modal.component.html',
   styleUrl: './position-form-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -66,7 +68,7 @@ export class PositionFormModalComponent implements OnInit {
   @Input() actionError: string | null = null;
 
   @Output() save = new EventEmitter<PositionFormSubmitValue>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 
   readonly form = this.fb.group({
     departmentId: ['', [Validators.required]],

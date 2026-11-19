@@ -1,0 +1,201 @@
+/* The person the row is about, with a small corner icon for the request type. */
+.inbox-person {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.inbox-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  display: inline-flex;
+  height: 16px;
+  width: 16px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-surface);
+}
+
+.inbox-badge svg {
+  height: 9px;
+  width: 9px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.inbox-badge--leave { background: var(--color-accent-subtle); color: var(--color-accent); }
+.inbox-badge--attendance { background: color-mix(in srgb, var(--color-widget-shade-2b) 14%, var(--color-surface)); color: var(--color-widget-shade-1); }
+.inbox-badge--location { background: color-mix(in srgb, var(--color-widget-shade-3b) 14%, var(--color-surface)); color: var(--color-widget-shade-1); }
+.inbox-badge--device { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
+.inbox-badge--alert { background: var(--color-widget-mild); color: var(--color-widget-shade-1); }
+.inbox-badge--alert svg { stroke-width: 3.4; }
+.inbox-badge--task { background: var(--color-widget-mild); color: var(--color-widget-shade-1); }
+.inbox-badge--objective { background: var(--color-widget-mild); color: var(--color-widget-shade-1); }
+.inbox-badge--overdue { background: var(--color-widget-maroon-soft); color: var(--color-widget-maroon); }
+
+/* Row actions: icon-only ghost buttons. Approve and Open stay neutral gray; Reject keeps its red
+   so the one destructive action is still easy to pick out at a glance. */
+.inbox-btn {
+  display: inline-flex;
+  height: 28px;
+  width: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.inbox-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.inbox-btn:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+}
+
+.inbox-btn--approve {
+  color: var(--color-text-secondary);
+}
+
+.inbox-btn--approve:hover:not(:disabled),
+.inbox-btn--approve.inbox-btn--active {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.inbox-btn--reject {
+  color: var(--color-widget-maroon);
+}
+
+.inbox-btn--reject:hover:not(:disabled),
+.inbox-btn--reject.inbox-btn--active {
+  background: var(--color-border);
+  color: var(--color-widget-maroon);
+}
+
+.inbox-btn--open {
+  color: var(--color-text-secondary);
+}
+
+.inbox-btn--open:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+  transform: translateX(2px);
+}
+
+.group\/row:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inbox-btn {
+    transition: none;
+  }
+
+  .inbox-btn--open:hover {
+    transform: none;
+  }
+}
+
+.inbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--color-widget-mild-line);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.inbox-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.inbox-chip--active {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-secondary);
+  color: var(--color-text-primary);
+}
+
+.inbox-chip:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+}
+
+.inbox-chip__count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.inbox-chip--active .inbox-chip__count {
+  background: var(--color-text-secondary);
+  color: var(--color-text-on-solid);
+}
+
+/* Dark mode: the selected chip is a blue tint rather than a lighter grey. */
+:host-context([data-mode='dark']) .inbox-chip--active,
+:host-context(html.dark) .inbox-chip--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+:host-context([data-mode='dark']) .inbox-chip--active .inbox-chip__count,
+:host-context(html.dark) .inbox-chip--active .inbox-chip__count {
+  background: var(--color-accent);
+}
+
+/* Collapsed on the dashboard grid the card fills its cell. When the widget is resized shorter, it
+   gets denser (tighter spacing, smaller avatars and type) instead of overflowing into a scrollbar,
+   so all four rows and "View all" stay visible. Off while popped out, where the height is auto. */
+.ac-fit {
+  container-type: size;
+}
+
+@container (max-height: 380px) {
+  .ac-fit .ac-head { margin-bottom: 0.5rem; }
+  .ac-fit .ac-chips { margin-bottom: 0.25rem; }
+  .ac-fit .ac-row { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  .ac-fit .ac-foot { padding-top: 0.5rem; }
+}
+
+@container (max-height: 330px) {
+  .ac-fit .ac-head { margin-bottom: 0.375rem; }
+  .ac-fit .ac-icon { height: 1.5rem; width: 1.5rem; }
+  .ac-fit .ac-title { font-size: 0.875rem; line-height: 1.25rem; }
+  .ac-fit .ac-sub { display: none; }
+  .ac-fit .ac-row { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+  .ac-fit .ac-row .inbox-person { transform: scale(0.85); }
+  .ac-fit .ac-row .text-xs { line-height: 1rem; }
+  .ac-fit .ac-row .text-\[11px\] { font-size: 10px; line-height: 0.875rem; }
+  .ac-fit .ac-row .inbox-btn { height: 24px; width: 24px; }
+  .ac-fit .ac-foot { padding-top: 0.375rem; }
+}

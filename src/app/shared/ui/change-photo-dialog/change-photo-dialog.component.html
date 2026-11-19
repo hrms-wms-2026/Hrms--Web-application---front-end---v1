@@ -1,0 +1,93 @@
+<div role="presentation" class="cpd-backdrop ui-fade-in" (click)="closed.emit()"></div>
+<aside class="cpd ui-pop-in" role="dialog" aria-modal="true" aria-labelledby="cpd-title" tabindex="-1">
+  <header class="cpd__header">
+    <h2 id="cpd-title" class="cpd__title">{{ title() }}</h2>
+    <button type="button" class="cpd__close" aria-label="Close" (click)="closed.emit()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+    </button>
+  </header>
+
+  <div class="cpd__body">
+    <div class="cpd__stage" [class.cpd__stage--square]="shape() === 'square'" [style.width.px]="viewSize" [style.height.px]="viewSize">
+      @if (image()) {
+        <canvas
+          #canvas
+          class="cpd__canvas"
+          [style.width.px]="viewSize"
+          [style.height.px]="viewSize"
+          tabindex="0"
+          role="img"
+          aria-label="Preview. Drag or use the arrow keys to move the image."
+          (pointerdown)="onPointerDown($event)"
+          (pointermove)="onPointerMove($event)"
+          (pointerup)="onPointerUp($event)"
+          (pointercancel)="onPointerUp($event)"
+          (wheel)="onWheel($event)"
+          (keydown)="onCanvasKeydown($event)"
+        ></canvas>
+      } @else {
+        <div class="cpd__placeholder" [class.cpd__placeholder--loading]="loading()">
+          @if (loading()) {
+            <span>Loading…</span>
+          } @else {
+            <label class="cpd__pick">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>
+              <span>Choose {{ shape() === 'square' ? 'an image' : 'a photo' }}</span>
+              <input type="file" [accept]="accept" (change)="onChangeFile($event)" />
+            </label>
+          }
+        </div>
+      }
+    </div>
+
+    <p class="cpd__hint">Move the crop area or rotate to frame your {{ shape() === 'square' ? 'logo' : 'photo' }}.</p>
+
+    @if (error()) {
+      <p class="cpd__error" role="alert">{{ error() }}</p>
+    }
+
+    <div class="cpd__zoom" [class.cpd__zoom--disabled]="!image()">
+      <span class="cpd__zoom-label" id="cpd-zoom-label">Zoom</span>
+      <button type="button" class="cpd__icon-btn" aria-label="Zoom out" [disabled]="!image() || zoom() <= minZoom()" (click)="zoomOut()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+      </button>
+      <input
+        type="range"
+        class="cpd__slider"
+        aria-labelledby="cpd-zoom-label"
+        [min]="minZoom()"
+        [max]="maxZoom"
+        step="0.01"
+        [value]="zoom()"
+        [disabled]="!image()"
+        (input)="onZoomInput($event)"
+      />
+      <button type="button" class="cpd__icon-btn" aria-label="Zoom in" [disabled]="!image() || zoom() >= maxZoom" (click)="zoomIn()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+    </div>
+
+    <div class="cpd__actions">
+      <button type="button" class="cpd__action" [disabled]="!image()" (click)="rotate()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+        Rotate
+      </button>
+      <label class="cpd__action">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V8M7 13l5-5 5 5M5 4h14" /></svg>
+        Change
+        <input type="file" [accept]="accept" aria-label="Choose a different image" (change)="onChangeFile($event)" />
+      </label>
+      @if (canRemove()) {
+        <button type="button" class="cpd__action" (click)="removed.emit()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+          Remove
+        </button>
+      }
+    </div>
+  </div>
+
+  <footer class="cpd__footer">
+    <app-button [disabled]="!dirty() || !image()" (pressed)="save()">Save</app-button>
+    <app-button variant="secondary" (pressed)="closed.emit()">Cancel</app-button>
+  </footer>
+</aside>

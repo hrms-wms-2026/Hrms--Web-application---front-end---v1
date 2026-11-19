@@ -34,7 +34,7 @@ describe('CalendarHourGridComponent', () => {
     const cells = fixture.nativeElement.querySelectorAll('[data-testid="calendar-hour-header-cell"]');
     expect(cells.length).toBe(2);
     // 2026-09-01 is a Tuesday
-    expect(cells[0].textContent).toContain('TUE');
+    expect(cells[0].textContent).toContain('Tue');
     expect(cells[0].textContent).toContain('1');
     expect(cells[1].textContent).toContain('2');
   });
@@ -146,6 +146,38 @@ describe('CalendarHourGridComponent', () => {
       await vi.advanceTimersByTimeAsync(60_000);
       f.detectChanges();
       expect(scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+      (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = original;
+      vi.useRealTimers();
+    }
+  });
+
+  it('centres the "now" line again when the time zone arrives after the first scroll', async () => {
+    vi.useFakeTimers();
+    const scrollIntoView = vi.fn();
+    const original = (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = scrollIntoView;
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' }).format(new Date());
+      const f = TestBed.createComponent(CalendarHourGridComponent);
+      f.componentRef.setInput('timezone', 'UTC');
+      f.componentRef.setInput('days', [today]);
+      f.componentRef.setInput('events', []);
+      f.detectChanges();
+      await vi.advanceTimersByTimeAsync(400);
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+
+      // A full page load: the grid has scrolled to the UTC line before the user's own zone has loaded.
+      f.componentRef.setInput('timezone', 'Etc/GMT-1');
+      f.componentRef.setInput('days', [new Intl.DateTimeFormat('en-CA', { timeZone: 'Etc/GMT-1' }).format(new Date())]);
+      f.detectChanges();
+      await vi.advanceTimersByTimeAsync(400);
+      f.detectChanges();
+      expect(scrollIntoView).toHaveBeenCalledTimes(2);
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      f.detectChanges();
+      expect(scrollIntoView).toHaveBeenCalledTimes(2);
     } finally {
       (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = original;
       vi.useRealTimers();

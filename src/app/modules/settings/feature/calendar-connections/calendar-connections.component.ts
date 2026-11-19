@@ -19,8 +19,8 @@ import { CalendarConnectionsStore } from '../../state/calendar-connections.store
 
 const SYNC_DIRECTION_OPTIONS: readonly SelectOption[] = [
   { value: 'two_way', label: 'Two-way sync' },
-  { value: 'pull_only', label: 'Pull only (external → ONEVO)' },
-  { value: 'push_only', label: 'Push only (ONEVO → external)' },
+  { value: 'pull_only', label: 'Pull only (external → CROWNUS)' },
+  { value: 'push_only', label: 'Push only (CROWNUS → external)' },
   { value: 'disabled', label: 'Paused' }
 ];
 
@@ -51,7 +51,7 @@ const PROVIDER_LABELS: Record<CalendarConnectionProvider, string> = {
   standalone: true,
   imports: [DatePipe, BreadcrumbHeaderComponent, ButtonComponent, CardComponent, ConfirmModalComponent, EmptyStateComponent, LoaderComponent, SelectComponent],
   template: `
-    <header class="mb-6">
+    <header class="app-page-header">
       <app-breadcrumb-header parentLabel="Settings" currentLabel="Calendar Sync" icon="settings" />
     </header>
 

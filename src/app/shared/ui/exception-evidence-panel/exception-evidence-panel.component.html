@@ -1,0 +1,64 @@
+<section class="evidence" aria-label="Alert evidence">
+  @if (safe(); as ev) {
+    <p class="evidence-day">{{ formatDate(ev.workDate) }}</p>
+
+    @if (ev.pattern; as pattern) {
+      <div class="evidence-block" data-testid="evidence-pattern">
+        <h3>Why this was flagged</h3>
+        <div class="evidence-measures">
+          @for (measure of pattern.measures; track measure.label) {
+            <div class="evidence-measure"><span>{{ measure.label }}</span><strong>{{ measureValue(measure) }}</strong></div>
+          }
+        </div>
+        @if (pattern.measuresRecalculated) {
+          <p class="evidence-note" data-testid="measures-recalculated">These figures were recalculated now and may differ from when the alert was raised.</p>
+        }
+        <app-data-table class="evidence-table" [columns]="patternColumns" [rows]="pattern.days" [trackBy]="trackByDate" [rowClass]="patternRowClass" [caption]="'Daily activity and attendance, ' + shortDate(pattern.from) + ' to ' + shortDate(pattern.to)">
+          <ng-template appDataTableCell="day" let-day>{{ shortDate(day.date) }}@if (day.inRule) { <span class="rule-mark" title="A day the rule checked">●</span> }</ng-template>
+          <ng-template appDataTableCell="score" let-day>{{ patternValue(day.activityScore, 'score') }}</ng-template>
+          <ng-template appDataTableCell="active" let-day>{{ patternValue(day.activeMinutes, 'minutes') }}</ng-template>
+          <ng-template appDataTableCell="worked" let-day>{{ patternValue(day.workedMinutes, 'minutes') }}</ng-template>
+          <ng-template appDataTableCell="attendance" let-day>{{ attendanceLabel(day.attendanceStatus) }}</ng-template>
+        </app-data-table>
+      </div>
+    }
+
+    <dl class="evidence-facts">
+      <div><dt>Clock in</dt><dd>{{ formatTime(ev.attendance?.clockInAt ?? null, ev.timezone) }}</dd></div>
+      <div><dt>Clock out</dt><dd>{{ formatTime(ev.attendance?.clockOutAt ?? null, ev.timezone) }}</dd></div>
+      @if (computerOn(ev); as on) {
+        <div><dt>Computer on</dt><dd data-testid="computer-on">{{ on }}</dd></div>
+      }
+      @if (attendanceIssue(ev); as issue) {
+        <div><dt>Attendance</dt><dd data-testid="attendance-status">{{ issue }}</dd></div>
+      }
+    </dl>
+
+    <div class="evidence-block" data-testid="evidence-device">
+      @if (ev.activityHidden) {
+        <p class="evidence-note" data-testid="activity-hidden">Computer activity needs monitoring access.</p>
+      } @else if (ev.deviceActivity; as activity) {
+        @if (activity.segments.length === 0) {
+          <p class="evidence-note">No computer activity reported.</p>
+        } @else {
+          <div
+            class="device-bar"
+            role="img"
+            [attr.aria-label]="'Computer working ' + duration(activity.activeMinutes) + ', idle ' + duration(activity.idleMinutes) + ', not reporting ' + duration(activity.offlineMinutes)">
+            @for (bar of timelineBars(activity, ev.timezone); track $index) {
+              <span class="device-bar__run" [attr.data-state]="bar.state" [style.left.%]="bar.left" [style.width.%]="bar.width" [attr.title]="bar.label"></span>
+            }
+          </div>
+          <div class="device-legend">
+            <span><i data-state="active"></i>Working {{ duration(activity.activeMinutes) }}</span>
+            <span><i data-state="idle"></i>Idle {{ duration(activity.idleMinutes) }}</span>
+            <span><i data-state="offline"></i>Off {{ duration(activity.offlineMinutes) }}</span>
+          </div>
+          @if (activity.deviceIds.length > 1) {
+            <p class="evidence-warning" role="note">{{ activity.deviceIds.length }} different devices used this day.</p>
+          }
+        }
+      }
+    </div>
+  }
+</section>

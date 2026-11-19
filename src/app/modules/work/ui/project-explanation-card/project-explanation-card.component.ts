@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ProjectApiService } from '../../data-access/project-api.service';
 import { Project } from '../../models/project.model';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { getDeadlineStatus } from '../../utils/deadline.util';
@@ -27,12 +28,22 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
 
       <!-- Project Logo & Title -->
       <div class="flex items-center gap-3 border-b border-[var(--color-border)] pb-2.5">
-        <div
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-white text-sm shadow-sm"
-          [style.background]="project().color || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
-        >
-          {{ projectLogoInitial() }}
-        </div>
+        @if (logoUrl(); as url) {
+          <img
+            data-testid="project-details-logo"
+            class="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm border border-[var(--color-border)]"
+            [src]="url"
+            alt=""
+            (error)="logoBroken.set(true)"
+          />
+        } @else {
+          <div
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-[var(--color-text-on-solid)] text-sm shadow-sm"
+            [style.background]="project().color || 'linear-gradient(135deg, #2563eb, #4f46e5)'"
+          >
+            {{ projectLogoInitial() }}
+          </div>
+        }
         <div class="min-w-0 flex-1">
           <h2 class="text-sm font-bold text-[var(--color-text-primary)] leading-tight truncate">
             {{ project().name }}
@@ -102,7 +113,7 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
           <span data-testid="view-button" class="w-full">
             <button
               type="button"
-              class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3.5 py-2 text-center text-xs font-semibold text-white shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3.5 py-2 text-center text-xs font-semibold text-[var(--color-text-on-solid)] shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
               (click)="viewed.emit()"
             >
               <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="m8 9 3 3-3 3M13 15h3" /></svg>
@@ -146,12 +157,27 @@ import { MemberButtonComponent } from '../member-button/member-button.component'
 })
 export class ProjectExplanationCardComponent {
   private readonly categoryStore = inject(ProjectCategoryStore);
+  private readonly projectApi = inject(ProjectApiService);
 
   project = input.required<Project>();
   viewed = output<void>();
   achieveRequested = output<void>();
   settingsRequested = output<void>();
   membersRequested = output<void>();
+
+  /** Set when the image fails to load; reset when a different project is shown. */
+  readonly logoBroken = signal(false);
+  readonly logoUrl = computed(() => {
+    const { id, logoFileId } = this.project();
+    return logoFileId && !this.logoBroken() ? this.projectApi.getLogoUrl(id, logoFileId) : null;
+  });
+
+  constructor() {
+    effect(() => {
+      this.project();
+      this.logoBroken.set(false);
+    });
+  }
 
   readonly projectLogoInitial = computed(() => {
     const name = this.project().name?.trim();

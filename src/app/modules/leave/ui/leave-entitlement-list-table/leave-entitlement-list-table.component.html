@@ -1,2 +1,20 @@
 <!-- Quiet Operations Desk: entitlement corrections are present but visually subordinate to the ledger. -->
-<div class="elt-wrap"><table class="elt-table"><caption class="sr-only">Leave entitlements</caption><thead><tr><th>Employee</th><th>Leave type</th><th>Source</th><th>Total hours</th><th>Carried forward hours</th><th>Used hours</th><th>Pending hours</th><th>Remaining hours</th>@if (canManage) { <th>Actions</th> }</tr></thead><tbody>@for (entitlement of entitlements; track entitlement.id) { <tr data-testid="entitlement-row"><td><strong>{{ entitlement.employeeName }}</strong><span class="elt-muted">{{ entitlement.employeeNumber }}</span></td><td>{{ entitlement.leaveTypeName }} <span class="elt-muted elt-inline">{{ entitlement.leaveTypeCode }}</span></td><td><span data-testid="entitlement-source" class="elt-badge" [class.elt-badge-manual]="entitlement.source === 'manual'">{{ entitlement.source === 'manual' ? 'Manual' : 'Auto' }}</span>@if (entitlement.isOverUtilized) { <span class="elt-badge elt-badge-warning">Over-utilized</span> }</td><td>{{ entitlement.totalHours.toFixed(2) }}</td><td>{{ entitlement.carriedForwardHours.toFixed(2) }}</td><td>{{ entitlement.usedHours.toFixed(2) }}</td><td>{{ entitlement.pendingHours.toFixed(2) }}</td><td [class.elt-negative]="entitlement.remainingHours < 0">{{ entitlement.remainingHours.toFixed(2) }}</td>@if (canManage) { <td class="elt-actions"><button type="button" data-testid="entitlement-adjust" (click)="onAdjust(entitlement)">Adjust</button><button type="button" data-testid="entitlement-recalculate" (click)="onRecalculate(entitlement)">Recalculate</button></td> }</tr> }</tbody></table></div>
+<app-data-table [columns]="columns" [rows]="entitlements" [trackBy]="trackById" [rowTestId]="rowTestId" caption="Leave entitlements">
+  <ng-template appDataTableCell="employee" let-entitlement><strong>{{ entitlement.employeeName }}</strong><span class="elt-muted">{{ entitlement.employeeNumber }}</span></ng-template>
+  <ng-template appDataTableCell="leaveType" let-entitlement>{{ entitlement.leaveTypeName }} <span class="elt-muted elt-inline">{{ entitlement.leaveTypeCode }}</span></ng-template>
+  <ng-template appDataTableCell="source" let-entitlement>
+    <span data-testid="entitlement-source" class="elt-badge" [class.elt-badge-manual]="entitlement.source === 'manual'">{{ entitlement.source === 'manual' ? 'Manual' : 'Auto' }}</span>
+    @if (entitlement.isOverUtilized) { <span class="elt-badge elt-badge-warning">Over-utilized</span> }
+  </ng-template>
+  <ng-template appDataTableCell="total" let-entitlement>{{ entitlement.totalHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="carried" let-entitlement>{{ entitlement.carriedForwardHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="used" let-entitlement>{{ entitlement.usedHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="pending" let-entitlement>{{ entitlement.pendingHours.toFixed(2) }}</ng-template>
+  <ng-template appDataTableCell="remaining" let-entitlement><span [class.elt-negative]="entitlement.remainingHours < 0">{{ entitlement.remainingHours.toFixed(2) }}</span></ng-template>
+  <ng-template appDataTableCell="actions" let-entitlement>
+    <span class="elt-actions">
+      <button type="button" data-testid="entitlement-adjust" (click)="onAdjust(entitlement)">Adjust</button>
+      <button type="button" data-testid="entitlement-recalculate" (click)="onRecalculate(entitlement)">Recalculate</button>
+    </span>
+  </ng-template>
+</app-data-table>

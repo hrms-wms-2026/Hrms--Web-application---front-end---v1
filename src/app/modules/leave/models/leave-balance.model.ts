@@ -19,6 +19,11 @@ export interface LeaveBalanceResponse {
   remainingHours: number;
   isNegative: boolean;
   carryForwardExpiresOn: string | null;
+  policyName?: string | null;
+  amountHours?: number | null;
+  amountPeriod?: 'month' | 'year' | null;
+  /** First day of the next leave year (ISO date), when this balance starts over. */
+  resetsOn?: string | null;
 }
 
 /** Matches ONEVO.Application.Features.Leave.Balance.DTOs.Responses.LeaveWorkWindowResponse. */

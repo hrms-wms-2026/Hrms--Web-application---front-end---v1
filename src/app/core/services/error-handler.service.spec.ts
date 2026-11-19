@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ErrorHandlerService, isMachineValue, toSafeErrorMessage } from './error-handler.service';
+import { ErrorHandlerService, toSafeErrorMessage } from './error-handler.service';
 import { NotificationService } from './notification.service';
 import { LoggerService } from './logger.service';
 
@@ -16,6 +16,22 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
     service.handle(makeError(500));
 
     expect(notify.notifications()[0].message).toBe('Something went wrong while saving your changes.');
+  });
+
+  it('never shows the raw "Http failure response for <url>" text when the server is unreachable', () => {
+    const err = new HttpErrorResponse({ status: 0, statusText: 'Unknown Error', url: 'https://dapi.onexso.com:7229/api/v1/work/projects/mine' });
+    const message = toSafeErrorMessage(err, 'Failed to load projects.');
+    expect(message).toBe('We could not reach the server. Check your connection and try again.');
+    expect(message).not.toContain('http');
+  });
+
+  it('prefers the caller fallback over the generic server-error line for a 5xx', () => {
+    expect(toSafeErrorMessage(makeError(500), 'Failed to load projects.')).toBe('Failed to load projects.');
+  });
+
+  it('keeps a plain sentence that happens to contain an SQL keyword', () => {
+    expect(toSafeErrorMessage(makeError(403, { detail: 'Only the author can delete.' }))).toBe('Only the author can delete.');
+    expect(toSafeErrorMessage(makeError(500, { detail: 'SELECT * FROM employees WHERE id = 1' }))).toBe('Something went wrong while saving your changes.');
   });
 
   it('maps storage_not_entitled to plan feature error', () => {
@@ -108,7 +124,7 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
     // title is "Validation Error", the generic sentence lives in detail, and the real
     // per-field message lives in errors - all three are present at once.
     const err = makeError(400, {
-      type: 'https://onevo.com/errors/validation-error',
+      type: 'urn:crownus:error:validation-error',
       title: 'Validation Error',
       status: 400,
       detail: 'One or more validation errors occurred.',

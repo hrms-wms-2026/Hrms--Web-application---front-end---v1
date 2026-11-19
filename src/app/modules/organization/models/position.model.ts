@@ -43,6 +43,8 @@ export interface PositionListItemResponse {
   readonly remainingAssignedCount?: number;
   /** When true, changing into this position requires an access-grant approval. */
   readonly requiresApproval?: boolean;
+  /** Seats held by pending onboarding invites (not occupants yet, but no longer free). */
+  readonly reservedCount?: number;
 }
 
 export interface PositionTreeNodeResponse {
@@ -145,6 +147,39 @@ export interface CoverageResolutionLevel {
   employeeName: string | null;
 }
 
+export type CoverageResolutionStatus = 'Resolved' | 'Unresolved';
+
+export interface CoverageVisualizationRule {
+  readonly coverageId: string;
+  readonly coveredTargetType: 'Position' | 'Department' | 'Company';
+  readonly coveredPositionId: string | null;
+  readonly coveredDepartmentId: string | null;
+  readonly ownerOrder: number;
+  readonly source: 'ReportingStructure' | 'Manual';
+  readonly isLocked: boolean;
+  readonly resolutionStatus: CoverageResolutionStatus;
+  readonly resolutionReason: string | null;
+  readonly resolvedEmployeeId: string | null;
+  readonly coveredPositionIds: readonly string[];
+  readonly coveredEmployeeIds: readonly string[];
+}
+
+export interface CoverageVisualizationResponse {
+  readonly ownerPositionId: string;
+  readonly coveredPositionCount: number;
+  readonly coveredEmployeeCount: number;
+  readonly unresolvedRuleCount: number;
+  readonly rules: readonly CoverageVisualizationRule[];
+}
+
+export type CoverageCardState = 'default' | 'selected' | 'resolved' | 'unresolved' | 'outside';
+
+export interface CoverageCardVisual {
+  readonly state: CoverageCardState;
+  readonly levels: readonly string[];
+  readonly accessibleLabel: string | null;
+}
+
 export interface CreatePositionRequest {
   departmentId: string;
   name: string;
@@ -217,7 +252,7 @@ export interface PositionTemplatePackPositionResponse {
  * drop targets can tell a template drag apart from an existing-position
  * reparent drag (which uses 'text/plain' for the dragged position id).
  */
-export const POSITION_TEMPLATE_DRAG_MIME_TYPE = 'application/x-onevo-position-template';
+export const POSITION_TEMPLATE_DRAG_MIME_TYPE = 'application/x-crownus-position-template';
 
 export type PositionTemplatePresetSource = 'template-click' | 'template-drop-root' | 'template-drop-under-position';
 
@@ -238,3 +273,56 @@ export interface PositionTemplatePreset {
   readonly departmentMessage?: string | null;
 }
 
+/**
+ * One card of the Positions "People" view (backend PositionPeopleChartNodeResponse): a person
+ * holding a position, or a vacant position. Ids are "e:{employeeId}" / "p:{positionId}".
+ */
+export interface PositionPeopleChartNode {
+  readonly id: string;
+  readonly parentId: string | null;
+  readonly kind: 'person' | 'vacant';
+  readonly positionId: string;
+  readonly positionName: string;
+  readonly departmentName: string | null;
+  readonly employeeId: string | null;
+  readonly firstName: string | null;
+  readonly lastName: string | null;
+  readonly avatarFileId: string | null;
+  /** "position" | "default" (several holders above, none picked) | "custom" (one-off manager) */
+  readonly reportingLine: 'position' | 'default' | 'custom' | null;
+  readonly maxOccupancy: number;
+  readonly holderCount: number;
+  /** Invited, hasn't accepted yet (planned seat) - shown, but never anyone's manager. */
+  readonly isPending?: boolean;
+  readonly workEmail?: string | null;
+}
+
+export interface PeopleChartTreeNode extends PositionPeopleChartNode {
+  readonly children: readonly PeopleChartTreeNode[];
+}
+
+export interface ReportingLineMoveRequest {
+  readonly selectedEmployeeIds: readonly string[];
+  readonly newManagerEmployeeId: string;
+  readonly reason?: string | null;
+}
+
+export interface ReportingLineMovePerson {
+  readonly employeeId: string;
+  readonly name: string;
+  readonly positionName: string;
+}
+
+export interface ReportingLineMoveChange {
+  readonly employee: ReportingLineMovePerson;
+  readonly currentManager: ReportingLineMovePerson | null;
+  readonly newManager: ReportingLineMovePerson;
+}
+
+export interface ReportingLineMoveImpact {
+  readonly selectedCount: number;
+  readonly directRelationshipsChanged: number;
+  readonly preservedRelationships: number;
+  readonly totalEmployeesAffected: number;
+  readonly changes: readonly ReportingLineMoveChange[];
+}

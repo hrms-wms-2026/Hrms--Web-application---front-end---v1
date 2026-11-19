@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
+import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { DepartmentStore } from '../../../organization/state/department.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PositionStore } from '../../../organization/state/position.store';
@@ -299,11 +299,11 @@ describe('MonitoringComponent', () => {
     expect(el.querySelector('[aria-label="Monitoring override scope"]')).not.toBeNull();
   });
 
-  it('renders custom-select for target selection and radio button groups for override features', async () => {
+  it('renders the target dropdown and radio button groups for override features', async () => {
     const { fixture, component } = await setup({ hasActiveCompanyContext: true });
     const el = fixture.nativeElement as HTMLElement;
 
-    const customSelect = el.querySelector('app-custom-select');
+    const customSelect = el.querySelector('.target-field app-select');
     expect(customSelect).not.toBeNull();
 
     const radioGroups = el.querySelectorAll('.radio-group');
@@ -350,7 +350,7 @@ describe('MonitoringComponent', () => {
     expect(el.textContent).not.toContain('Work Mod ');
     expect(el.textContent).not.toContain('Work Mod override');
 
-    const customSelect = fixture.debugElement.query(By.directive(CustomSelectComponent));
+    const customSelect = fixture.debugElement.query(By.directive(SelectComponent));
     expect(customSelect.componentInstance.label()).toBe('Work Mode');
     expect(customSelect.componentInstance.placeholder()).toBe('Select a work mode');
   });

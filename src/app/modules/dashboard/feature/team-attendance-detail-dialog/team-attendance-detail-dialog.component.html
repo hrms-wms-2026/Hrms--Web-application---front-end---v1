@@ -1,0 +1,180 @@
+<!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS (its
+     title still names the dialog for screen readers); the header below has the title on the left and the
+     period / department dropdowns and the close button on the right. -->
+<app-modal [open]="open()" title="My team attendance" size="2xl" panelClass="team-attendance-detail" (closed)="close()">
+  <div class="tad-head">
+    <div class="tad-head__row">
+      <div class="tad-head__title">
+        <h2>My team attendance</h2>
+        <p>Daily attendance and the team ranked by attendance rate</p>
+      </div>
+      <div class="tad-head__controls" data-testid="tad-controls">
+        @if (store.data(); as data) {
+          <app-select
+            class="tad-select tad-select--period"
+            ariaLabel="Period"
+            icon="calendar"
+            size="sm"
+            [searchable]="false"
+            [options]="[{ value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]"
+            [value]="data.mode"
+            (valueChange)="onModeSelect($event)"
+          />
+          @if (data.departments.length > 0) {
+            <app-select
+              class="tad-select"
+              ariaLabel="Department"
+              icon="building"
+              size="sm"
+              [searchable]="false"
+              [options]="departmentOptions()"
+              [value]="store.query().departmentId ?? ''"
+              (valueChange)="onDepartment($event)"
+            />
+          }
+        }
+        <button type="button" class="tad-close" aria-label="Close" data-testid="tad-close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (store.data(); as data) {
+    <div class="tad">
+      <div class="tad-range" data-testid="tad-range-row">
+        <button type="button" class="tad-nav" aria-label="Previous period" (click)="shift(-1)">‹</button>
+        <span class="tad-range-label" data-testid="tad-range">{{ rangeLabel() }}</span>
+        <button type="button" class="tad-nav" aria-label="Next period" [disabled]="data.isProvisional" (click)="shift(1)">›</button>
+        @if (data.isProvisional) {
+          <span class="tad-muted">Today in progress</span>
+        }
+      </div>
+
+      <!-- All five period tiles on one row. -->
+      <app-kpi-tiles palette="widget" data-section="summary" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Period attendance" />
+
+      <div class="tad-charts">
+        <section class="tad-panel" data-section="trend">
+          <app-attendance-day-chart
+            class="tad-chart"
+            heading="Daily attendance"
+            [rate]="percentText(data.periodRate)"
+            [chip]="deltaChip()"
+            [points]="data.trend"
+          />
+        </section>
+        <section class="tad-panel tad-departments" data-testid="tad-departments" data-section="departments">
+          <p class="tad-title">By department</p>
+          @if (departmentBars().length === 0) {
+            <p class="tad-muted">No attendance to compare.</p>
+          } @else {
+            <ul class="tad-dept-list" aria-label="Attendance rate by department">
+              @for (d of departmentBars(); track d.key) {
+                <li class="tad-dept" data-testid="tad-dept" [attr.title]="d.title">
+                  <span class="tad-dept-name">{{ d.name }}</span>
+                  <span class="tad-dept-track" aria-hidden="true">
+                    <span class="tad-dept-bar" [style.width.%]="d.width" [style.background]="d.color"></span>
+                    @if (data.periodRate !== null) {
+                      <span class="tad-dept-avg" [style.left.%]="data.periodRate"></span>
+                    }
+                  </span>
+                  <span class="tad-dept-rate" data-testid="tad-dept-rate">{{ percentText(d.rate) }}</span>
+                </li>
+              }
+            </ul>
+            @if (data.periodRate !== null) {
+              <p class="tad-dept-note"><span class="tad-dept-avg-key" aria-hidden="true"></span>Team {{ percentText(data.periodRate) }}</p>
+            }
+          }
+        </section>
+      </div>
+
+      <section class="tad-panel" data-section="ranking">
+        <div class="tad-table-head">
+          <p class="tad-title">Employee ranking <span class="tad-muted">· best attendance rate first</span></p>
+          <div class="tad-table-actions">
+            <app-input class="tad-search" placeholder="Search employee…" [value]="search()" (valueChange)="onSearch($event)" />
+            <button type="button" class="tad-button" data-testid="tad-export" [disabled]="exporting()" (click)="exportCsv()">
+              {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+            </button>
+          </div>
+        </div>
+
+        @if (exportError()) {
+          <p class="tad-error" role="alert" data-testid="tad-export-error">Couldn't export the list. Please try again.</p>
+        }
+        @if (rowsError()) {
+          <p class="tad-muted tad-pad">Couldn't load the employee list.</p>
+        } @else {
+          <div class="tad-scroll">
+            <table class="tad-table">
+              <thead>
+                <tr>
+                  <th class="tad-sticky tad-sticky--name" scope="col"><span class="tad-rank-head">#</span>Employee</th>
+                  @for (d of dates(); track d.date) {
+                    <th class="tad-date" scope="col" data-testid="tad-date-col" [attr.title]="d.date">
+                      <span>{{ d.day }}</span><span class="tad-weekday">{{ d.weekday }}</span>
+                    </th>
+                  }
+                  <th class="tad-rate-col" scope="col">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of rows()?.items ?? []; track r.employeeId) {
+                  <tr>
+                    <th class="tad-sticky tad-sticky--name" scope="row">
+                      <span class="tad-person">
+                        <span class="tad-rank" [class.tad-rank--top]="r.rank !== null && r.rank <= 3" data-testid="tad-rank">{{ r.rank ?? '—' }}</span>
+                        <app-avatar size="xs" [avatarUrl]="avatarUrl(r.avatarFileId)" [userName]="r.name" />
+                        <span class="tad-person-text">
+                          <span class="tad-name">{{ r.name }}</span>
+                          @if (r.department) {
+                            <span class="tad-dept">{{ r.department }}</span>
+                          }
+                        </span>
+                      </span>
+                    </th>
+                    @for (cell of r.days; track cell.date) {
+                      <td class="tad-cell-td">
+                        <span
+                          [class]="'tad-cell tad-cell--' + cell.bucket"
+                          data-testid="tad-cell"
+                          role="img"
+                          [attr.aria-label]="cellLabel(cell.bucket)"
+                          [attr.title]="cell.date + ': ' + cellLabel(cell.bucket)"
+                        ></span>
+                      </td>
+                    }
+                    <td class="tad-rate-col">
+                      <span class="tad-rate">{{ percentText(r.rate) }}</span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="tad-muted tad-pad" [attr.colspan]="dates().length + 2">No employees match.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if ((rows()?.totalPages ?? 1) > 1) {
+            <div class="tad-pager">
+              <button type="button" class="tad-button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Previous</button>
+              <span class="tad-muted">Page {{ page() }} of {{ rows()?.totalPages }}</span>
+              <button type="button" class="tad-button" [disabled]="page() >= (rows()?.totalPages ?? 1)" (click)="goToPage(page() + 1)">Next</button>
+            </div>
+          }
+        }
+        <p class="tad-legend-line">
+          <span class="tad-cell tad-cell--present"></span> Present
+          <span class="tad-cell tad-cell--late"></span> Late
+          <span class="tad-cell tad-cell--absent"></span> Absent
+          <span class="tad-cell tad-cell--leave"></span> On leave
+          <span class="tad-cell tad-cell--pending"></span> Not in yet
+          <span class="tad-cell tad-cell--off"></span> Off
+        </p>
+      </section>
+    </div>
+  }
+</app-modal>

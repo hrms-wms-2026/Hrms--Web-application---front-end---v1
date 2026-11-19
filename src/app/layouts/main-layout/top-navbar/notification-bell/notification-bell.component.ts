@@ -1,4 +1,5 @@
 import { Component, OnDestroy, effect, inject, signal, untracked } from '@angular/core';
+import { Observable, firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
@@ -7,7 +8,12 @@ import { tenantWorkspaceReady } from '../../../../core/tray-presence/utils/tenan
 import { NotificationItem } from '../../../../core/services/notification-api.service';
 import { NotificationNavigationService } from '../../../../core/services/notification-navigation.service';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
-import { NotificationDropdownComponent } from './notification-dropdown/notification-dropdown.component';
+import { WorkApprovalsApiService } from '../../../../modules/work/data-access/work-approvals-api.service';
+import {
+  NotificationDecisionState,
+  NotificationDropdownComponent,
+  isInvitationNotification
+} from './notification-dropdown/notification-dropdown.component';
 
 @Component({
   selector: 'app-notification-bell',
@@ -38,7 +44,11 @@ import { NotificationDropdownComponent } from './notification-dropdown/notificat
       <div popover-panel>
         <app-notification-dropdown
           [items]="store.items()"
+          [pendingIds]="pendingDecisionIds()"
+          [decisions]="decisions()"
           (itemClicked)="onItemClicked($event)"
+          (approveClicked)="onApprove($event)"
+          (rejectClicked)="onReject($event)"
           (markAllRead)="onMarkAllRead()"
         />
       </div>
@@ -85,8 +95,11 @@ export class NotificationBellComponent implements OnDestroy {
   private readonly permissionService = inject(PermissionService);
   private readonly trayPresence = inject(TrayPresenceStore);
   private readonly authStore = inject(AuthStore);
+  private readonly workApprovalsApi = inject(WorkApprovalsApiService);
 
   protected readonly isOpen = signal(false);
+  protected readonly pendingDecisionIds = signal<ReadonlySet<string>>(new Set());
+  protected readonly decisions = signal<ReadonlyMap<string, NotificationDecisionState>>(new Map());
   private pollId: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
@@ -119,7 +132,14 @@ export class NotificationBellComponent implements OnDestroy {
   toggle(): void {
     const next = !this.isOpen();
     this.isOpen.set(next);
-    if (next) void this.store.loadMine();
+    if (next) void this.openAndClear();
+  }
+
+  // Opening the panel is the "I've seen these" signal - clear the unread badge
+  // right away instead of waiting for a separate "Mark all read" click.
+  private async openAndClear(): Promise<void> {
+    await this.store.loadMine();
+    await this.store.markAllRead();
   }
 
   close(): void {
@@ -134,5 +154,43 @@ export class NotificationBellComponent implements OnDestroy {
 
   async onMarkAllRead(): Promise<void> {
     await this.store.markAllRead();
+  }
+
+  async onApprove(item: NotificationItem): Promise<void> {
+    const call = isInvitationNotification(item)
+      ? () => this.workApprovalsApi.acceptObjectiveInvitation(item.relatedEntityId!)
+      : () => this.workApprovalsApi.approveWorkApproval(item.relatedEntityId!);
+    await this.decide(item, call, 'approved');
+  }
+
+  async onReject(item: NotificationItem): Promise<void> {
+    const call = isInvitationNotification(item)
+      ? () => this.workApprovalsApi.rejectObjectiveInvitation(item.relatedEntityId!)
+      : () => this.workApprovalsApi.rejectWorkApproval(item.relatedEntityId!);
+    await this.decide(item, call, 'rejected');
+  }
+
+  private async decide(
+    item: NotificationItem,
+    call: () => Observable<unknown>,
+    successState: NotificationDecisionState
+  ): Promise<void> {
+    if (!item.relatedEntityId || this.pendingDecisionIds().has(item.id)) return;
+
+    this.pendingDecisionIds.update(ids => new Set(ids).add(item.id));
+    try {
+      await firstValueFrom(call());
+      this.decisions.update(map => new Map(map).set(item.id, successState));
+      if (!item.isRead) await this.store.markRead(item.id);
+    } catch {
+      // Already decided/cancelled by someone else, or no longer the approver - surface it inline.
+      this.decisions.update(map => new Map(map).set(item.id, 'error'));
+    } finally {
+      this.pendingDecisionIds.update(ids => {
+        const next = new Set(ids);
+        next.delete(item.id);
+        return next;
+      });
+    }
   }
 }

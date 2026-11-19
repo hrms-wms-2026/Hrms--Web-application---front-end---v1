@@ -16,7 +16,10 @@
           </span>
         </div>
 
-        @if (today.allowedClockInMethods.web) {
+        @if (layout() === 'session') {
+          <!-- The session layout keeps its clock buttons beside the session time (footer); the header holds the page's action. -->
+          <ng-content select="[status-card-header-action]" />
+        } @else if (today.allowedClockInMethods.web) {
           <div class="action-buttons">
             @if (today.canClockIn) {
               <app-button type="button" data-testid="status-card-clock-in" variant="primary" size="sm" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button>
@@ -88,7 +91,7 @@
         }
       </div>
 
-      @if (!showHeader() && today.allowedClockInMethods.web) {
+      @if ((!showHeader() || layout() === 'session') && today.allowedClockInMethods.web) {
         <div class="action-buttons">
           @if (today.canClockIn) {
             <app-button type="button" data-testid="status-card-clock-in" variant="primary" size="sm" [loading]="actionIsLoading('clockIn')" [disabled]="store.actionLoading()" (pressed)="store.clockIn()">Clock in</app-button>

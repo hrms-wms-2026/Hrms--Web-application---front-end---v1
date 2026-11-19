@@ -2,9 +2,12 @@
   @for (type of leaveTypes; track type.id) {
     <article class="ltt-card" [class.ltt-card--inactive]="!type.isActive">
       <header class="ltt-head">
-        <div>
-          <h2>{{ type.name }}</h2>
-          <p class="ltt-code">{{ type.code }}</p>
+        <div class="ltt-title">
+          <app-leave-type-icon class="ltt-icon" [name]="type.name" [code]="type.code" [color]="type.color" [icon]="type.icon" />
+          <div>
+            <h2>{{ type.name }}</h2>
+            <p class="ltt-code">{{ type.code }}</p>
+          </div>
         </div>
         <div class="ltt-head-actions">
           <span class="ltt-status" [class.ltt-status--inactive]="!type.isActive">
@@ -13,7 +16,7 @@
           @if (canManage) {
             <button type="button" class="ltt-menu-btn" (click)="toggleMenu(type.id, $event)" aria-label="Actions for {{ type.name }}">⋯</button>
             @if (openMenuId() === type.id) {
-              <div class="ltt-menu" (click)="$event.stopPropagation()">
+              <div class="ltt-menu" appStopClickPropagation>
                 <button type="button" (click)="onEdit(type, $event)">Edit</button>
                 @if (type.isActive) {
                   <button type="button" class="ltt-menu-danger" (click)="onDeactivate(type, $event)">Deactivate</button>
@@ -24,18 +27,26 @@
         </div>
       </header>
       <p class="ltt-days">
-        <span>{{ type.defaultDaysPerYear }}</span>
-        <small>days / year</small>
+        <span>{{ type.policyCount }}</span>
+        <small>{{ type.policyCount === 1 ? 'policy' : 'policies' }}</small>
       </p>
       @if (type.description) {
         <p class="ltt-desc">{{ type.description }}</p>
       }
-      <div class="ltt-chips">
-        <span>{{ type.category }}</span>
-        <span [class.ltt-chip--muted]="!type.isPaid">{{ type.isPaid ? 'Paid' : 'Unpaid' }}</span>
-        @if (type.requiresApproval) { <span>Approval</span> }
-        @if (type.requiresDocument) { <span>Document</span> }
-        @if (type.carryForwardAllowed) { <span>Carry-forward</span> }
+      <div class="ltt-tag-row">
+        <div class="ltt-chips">
+          <span [class.ltt-chip--muted]="!type.isPaid">{{ type.isPaid ? 'Paid' : 'Unpaid' }}</span>
+          @if (type.applicableGender !== 'all') { <span>{{ type.applicableGender === 'female' ? 'Women only' : 'Men only' }}</span> }
+          @if (type.requiresDocument) { <span>Document</span> }
+        </div>
+        @if (canManage) {
+          <div class="ltt-actions">
+            <app-button variant="secondary" size="sm" [disabled]="type.policyCount === 0" (pressed)="viewPolicies.emit(type)">View policies</app-button>
+            @if (type.isActive) {
+              <app-button size="sm" (pressed)="addPolicy.emit(type)">+ Add policy</app-button>
+            }
+          </div>
+        }
       </div>
     </article>
   }

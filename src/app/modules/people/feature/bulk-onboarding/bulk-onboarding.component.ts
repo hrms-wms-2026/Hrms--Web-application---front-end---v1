@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -25,15 +26,11 @@ import {
   BulkIssueResolverAction,
   BulkIssueResolverComponent
 } from '../../ui/bulk-issue-resolver/bulk-issue-resolver.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 
 export type BulkOnboardingStep = 'upload' | 'map-columns' | 'validate' | 'review' | 'finalize';
 
-const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'intern', label: 'Intern' }
-];
+const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = SELECTABLE_EMPLOYMENT_TYPE_OPTIONS;
 
 const REQUIRED_MAPPING_FIELDS = new Set<BulkOnboardingSystemField>(['workEmail', 'startDate']);
 
@@ -53,6 +50,8 @@ const BULK_ROW_STATUS_LABELS: Record<BulkOnboardingRowStatus, string> = {
   selector: 'app-bulk-onboarding',
   standalone: true,
   imports: [
+    DataTableComponent,
+    DataTableCellDirective,
     BreadcrumbHeaderComponent,
     ButtonComponent,
     EmptyStateComponent,
@@ -74,7 +73,28 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   readonly fieldIds = Object.keys(BULK_ONBOARDING_SYSTEM_FIELD_LABELS) as BulkOnboardingSystemField[];
   readonly employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS;
   readonly requiredMappingFields = REQUIRED_MAPPING_FIELDS;
-  readonly rowStatusLabels = BULK_ROW_STATUS_LABELS;
+
+  protected readonly issueColumns: readonly DataTableColumn[] = [
+    { key: 'row', label: 'Row' },
+    { key: 'status', label: 'Status' },
+    { key: 'issue', label: 'Issue', wrap: true }
+  ];
+  protected readonly draftColumns: readonly DataTableColumn[] = [
+    { key: 'row', label: 'Row' },
+    { key: 'status', label: 'Status' },
+    { key: 'detail', label: 'Detail', wrap: true }
+  ];
+  protected readonly outcomeColumns: readonly DataTableColumn[] = [
+    { key: 'row', label: 'Row' },
+    { key: 'outcome', label: 'Outcome' },
+    { key: 'detail', label: 'Detail', wrap: true }
+  ];
+  protected readonly invalidRows = computed(() => (this.store.validationResult()?.rows ?? []).filter((row) => row.status === 'invalid'));
+  protected readonly draftRows = computed(() => (this.store.detail()?.rows ?? []).filter((row) => !!row.onboardingDraftId));
+  protected readonly selectedDraftIdSet = computed<ReadonlySet<string>>(() => new Set(this.store.selectedDraftIds()));
+  protected readonly trackByRowNumber = (row: { rowNumber: number }): string => String(row.rowNumber);
+  protected readonly trackByDraftId = (row: { onboardingDraftId?: string | null }): string => row.onboardingDraftId ?? '';
+  protected readonly draftSelectAriaLabel = (row: { rowNumber: number }): string => 'Select row ' + row.rowNumber;
 
   readonly defaultWorkModeId = signal<string | null>(null);
   readonly defaultEmploymentType = signal<string | null>(null);
@@ -203,8 +223,15 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
     this.store.toggleRowSelection(onboardingDraftId);
   }
 
-  isRowSelected(onboardingDraftId: string): boolean {
-    return this.store.selectedDraftIds().includes(onboardingDraftId);
+  rowStatusLabel(status: BulkOnboardingRowStatus): string {
+    return BULK_ROW_STATUS_LABELS[status];
+  }
+
+  onSelectAllDrafts(selected: boolean): void {
+    for (const row of this.draftRows()) {
+      const id = row.onboardingDraftId!;
+      if (this.store.selectedDraftIds().includes(id) !== selected) this.store.toggleRowSelection(id);
+    }
   }
 
   async onValidate(): Promise<void> {
@@ -330,9 +357,5 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
 
   onIncreaseCapacity(issue: BulkOnboardingGroupedIssue): void {
     this.openResolver(issue, 'increase_capacity');
-  }
-
-  onResolveCapacity(issue: BulkOnboardingGroupedIssue): void {
-    this.openResolver(issue, 'map_existing');
   }
 }

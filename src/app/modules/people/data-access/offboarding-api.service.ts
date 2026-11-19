@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { EmployeeWorkTaskItem } from '../models/employee-overview.model';
 import {
   BypassRequestResponse,
   ChecklistTemplateMatchResponse,
@@ -34,12 +35,19 @@ export class OffboardingApiService {
     return this.http.get<readonly OffboardingOverviewItemResponse[]>(`${environment.apiUrl}/employees/offboarding-overview`);
   }
 
+  /** Open work tasks still assigned to the employee, whatever their due date (Track Exit Work step). */
+  getOpenWorkTasks(employeeId: string): Observable<readonly EmployeeWorkTaskItem[]> {
+    return this.http.get<readonly EmployeeWorkTaskItem[]>(
+      `${environment.apiUrl}/employees/${employeeId}/offboarding/open-work-tasks`);
+  }
+
   getChecklistMatches(employeeId: string): Observable<readonly ChecklistTemplateMatchResponse[]> {
     return this.http.get<readonly ChecklistTemplateMatchResponse[]>(
       `${environment.apiUrl}/employees/${employeeId}/offboarding/checklist-matches`);
   }
 
-  selectChecklist(employeeId: string, templateId: string): Observable<void> {
+  /** templateId null continues the offboarding with no checklist tasks. */
+  selectChecklist(employeeId: string, templateId: string | null): Observable<void> {
     return this.http.post<void>(
       `${environment.apiUrl}/employees/${employeeId}/offboarding/select-checklist`, { templateId }, { headers: this.idempotencyHeaders() });
   }

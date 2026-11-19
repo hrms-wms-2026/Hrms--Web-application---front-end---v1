@@ -8,7 +8,7 @@ import { ObjectiveMemberApiService } from '../data-access/objective-member-api.s
 import { SprintApiService } from '../data-access/sprint-api.service';
 import { TaskApiService } from '../data-access/task-api.service';
 import { ProjectDetailDto } from '../models/dto/project.dto';
-import { MyProjectMilestoneDto, ObjectiveDetailDto, CreateObjectiveRequestDto, AddObjectiveMemberOutcomeDto, RemoveObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
+import { MyProjectMilestoneDto, ObjectiveDetailDto, AddObjectiveMemberOutcomeDto, RemoveObjectiveMemberOutcomeDto, TransferObjectiveHeadOutcomeDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { ObjectiveTreeItemDto } from '../models/dto/objective-tree.dto';
 import { ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
 import { SprintDto } from '../models/dto/sprint.dto';
@@ -95,13 +95,13 @@ describe('ProjectDetailStore', () => {
   it('sets milestonesError on failure', async () => {
     const store = setup({ getMyMilestones: () => throwError(() => ({ error: { detail: 'Server error' } })) } as Partial<ProjectApiService>);
     await store.loadMyMilestones('p1');
-    expect(store.milestonesError()).toBe('Server error');
+    expect(store.milestonesError()).toBe('Failed to load milestones.');
   });
 
   it('falls back to "Failed to load modules." when the server gives no error detail', async () => {
     const store = setup({ getMyMilestones: () => throwError(() => ({})) } as Partial<ProjectApiService>);
     await store.loadMyMilestones('p1');
-    expect(store.milestonesError()).toBe('Failed to load modules.');
+    expect(store.milestonesError()).toBe('Failed to load milestones.');
   });
 
   it('loads and clears a project tree', async () => {
@@ -119,7 +119,7 @@ describe('ProjectDetailStore', () => {
 
     await store.loadProjectTree('p1');
 
-    expect(store.subtreeError()).toBe('Server error');
+    expect(store.subtreeError()).toBe('Failed to load milestone.');
   });
 
   it('getMilestoneDetail returns the mapped detail on success', async () => {
@@ -564,7 +564,7 @@ describe('ProjectDetailStore', () => {
 
     it('only nests tasks belonging to the leaf module under its sprint node', async () => {
       const otherModuleTask: WorkTaskDto = {
-        ...sprintTask, id: 't-other-module', objectiveId: 'o2', shortId: 'WEB-3', title: 'Other module task'
+        ...sprintTask, id: 't-other-module', objectiveId: 'o2', shortId: 'WEB-3', title: 'Other milestone task'
       };
       const getBySprintId = vi.fn().mockReturnValue(of([sprintTask, otherModuleTask]));
       const { store } = await loadLeafWithSprint(getBySprintId);
@@ -787,7 +787,7 @@ describe('ProjectDetailStore', () => {
       const twoModules: MyProjectMilestoneDto[] = [
         milestones[0],
         {
-          ...milestones[0], objectiveId: 'o2', isDefault: false, title: 'Child module', parentObjectiveId: 'o1'
+          ...milestones[0], objectiveId: 'o2', isDefault: false, title: 'Child milestone', parentObjectiveId: 'o1'
         }
       ];
       TestBed.configureTestingModule({
@@ -820,7 +820,7 @@ describe('ProjectDetailStore', () => {
     it('still returns other modules\' members when one module\'s member fetch fails', async () => {
       const twoModules: MyProjectMilestoneDto[] = [
         milestones[0],
-        { ...milestones[0], objectiveId: 'o2', isDefault: false, title: 'Child module', parentObjectiveId: 'o1' }
+        { ...milestones[0], objectiveId: 'o2', isDefault: false, title: 'Child milestone', parentObjectiveId: 'o1' }
       ];
       TestBed.configureTestingModule({
         providers: [

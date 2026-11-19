@@ -7,6 +7,9 @@ import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCardComponent } from '../task-card/task-card.component';
 import { TaskAssigneeDropdownComponent } from '../task-assignee-dropdown/task-assignee-dropdown.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { MeetingCardComponent } from '../../meetings/ui/meeting-card/meeting-card.component';
+import { MeetingListItem } from '../../meetings/models/meeting.models';
 
 export interface QuickTaskCreatedEvent {
   title: string;
@@ -24,7 +27,7 @@ export interface QuickTaskCreatedEvent {
 @Component({
   selector: 'app-task-board-column',
   standalone: true,
-  imports: [CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent, TaskAssigneeDropdownComponent, DatePickerComponent],
+  imports: [StopClickPropagationDirective, CdkDropList, CdkDrag, CdkDragPlaceholder, CdkDragPreview, TaskCardComponent, TaskAssigneeDropdownComponent, DatePickerComponent, MeetingCardComponent],
   host: {
     '[class.task-board-column-host--collapsed]': 'isCollapsed()'
   },
@@ -66,7 +69,7 @@ export interface QuickTaskCreatedEvent {
 
           <span class="task-board-column__collapsed-title">{{ status().name }}</span>
 
-          <span class="task-board-column__collapsed-count">{{ tasks().length }}</span>
+          <span class="task-board-column__collapsed-count">{{ itemCount() }}</span>
         </div>
       </div>
     } @else {
@@ -74,7 +77,7 @@ export interface QuickTaskCreatedEvent {
         <!-- Status Header with hover '<' collapse, '...' menu, and '+' add button -->
         <div class="task-board-column__header">
           @if (isRenaming()) {
-            <div class="task-board-column__rename-wrap" (click)="$event.stopPropagation()">
+            <div class="task-board-column__rename-wrap" appStopClickPropagation>
               <div class="task-board-column__rename-box">
                 <!-- Color Swatch Button -->
                 <button
@@ -88,7 +91,7 @@ export interface QuickTaskCreatedEvent {
 
                 <!-- Color Picker Popover -->
                 @if (isRenameColorPickerOpen()) {
-                  <div class="task-board-column__color-popover" role="dialog" (click)="$event.stopPropagation()">
+                  <div class="task-board-column__color-popover" role="dialog" appStopClickPropagation>
                     <span class="task-board-column__color-popover-title">Status color</span>
                     <div class="task-board-column__color-palette">
                       @for (preset of baseColorPresets; track preset.value) {
@@ -140,7 +143,7 @@ export interface QuickTaskCreatedEvent {
                   [class.task-board-column__status-dot--done]="status().category === 'done'" aria-hidden="true">@if(status().category === 'done'){<svg viewBox="0 0 12 12"><path d="m3 6 2 2 4-4" fill="none" stroke="white" stroke-width="2" /></svg>}</span>
                 <span class="task-board-column__title-text">{{ status().name }}</span>
               </span>
-              <span class="task-board-column__count">{{ tasks().length }}</span>
+              <span class="task-board-column__count">{{ itemCount() }}</span>
             </h3>
           }
 
@@ -176,7 +179,7 @@ export interface QuickTaskCreatedEvent {
                 </button>
 
                 @if (isMenuOpen()) {
-                  <div class="task-board-column__menu" role="menu" (click)="$event.stopPropagation()">
+                  <div class="task-board-column__menu" role="menu" appStopClickPropagation>
                     <div class="task-board-column__menu-heading">Group options</div>
                     <button
                       type="button"
@@ -234,7 +237,7 @@ export interface QuickTaskCreatedEvent {
 
       <!-- Quick Task Creation Card -->
       @if (isQuickCreateOpen()) {
-        <div class="quick-task-card" (click)="$event.stopPropagation()">
+        <div class="quick-task-card" appStopClickPropagation>
           <div class="quick-task-card__top">
             <input
               #quickTitleInput
@@ -276,7 +279,7 @@ export interface QuickTaskCreatedEvent {
               </button>
 
               @if (activePopover() === 'assignee') {
-                <div class="quick-popover-container" (click)="$event.stopPropagation()">
+                <div class="quick-popover-container" appStopClickPropagation>
                   <app-task-assignee-dropdown
                     [members]="assignableMembers()"
                     [selectedId]="quickAssigneeId()"
@@ -318,7 +321,7 @@ export interface QuickTaskCreatedEvent {
               </button>
 
               @if (activePopover() === 'priority') {
-                <div class="quick-popover" role="dialog" (click)="$event.stopPropagation()">
+                <div class="quick-popover" role="dialog" appStopClickPropagation>
                   <div class="quick-popover__list">
                     @for (opt of priorityOptions; track opt.value) {
                       <button
@@ -353,7 +356,7 @@ export interface QuickTaskCreatedEvent {
                   placeholder="Points"
                   data-testid="quick-task-story-points-input"
                   [value]="quickStoryPoints() ?? ''"
-                  (click)="$event.stopPropagation()"
+                  appStopClickPropagation
                   (input)="setStoryPoints($any($event.target).value)"
                 />
               </div>
@@ -367,7 +370,7 @@ export interface QuickTaskCreatedEvent {
                   class="quick-task-chip"
                   [attr.aria-expanded]="activePopover() === 'module'"
                   (click)="togglePopover('module', $event)"
-                  title="Module"
+                  title="Milestone"
                 >
                   <svg class="quick-task-chip__svg" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z" />
@@ -376,7 +379,7 @@ export interface QuickTaskCreatedEvent {
                 </button>
 
                 @if (activePopover() === 'module') {
-                  <div class="quick-popover" role="dialog" (click)="$event.stopPropagation()">
+                  <div class="quick-popover" role="dialog" appStopClickPropagation>
                     <div class="quick-popover__list">
                       @for (m of modules(); track m.objectiveId) {
                         <button
@@ -397,6 +400,15 @@ export interface QuickTaskCreatedEvent {
 
           @if (errorMessage()) {
             <p class="quick-task-card__error">{{ errorMessage() }}</p>
+          }
+        </div>
+      }
+
+      @if (meetings().length > 0) {
+        <!-- Meetings sit with the tasks of the status their time puts them in, outside the drop list: they move by the clock, never by drag (D10). -->
+        <div class="task-board-column__meetings">
+          @for (meeting of meetings(); track meeting.taskId) {
+            <app-meeting-card [item]="meeting" (open)="meetingOpened.emit($event)" />
           }
         </div>
       }
@@ -508,7 +520,7 @@ export interface QuickTaskCreatedEvent {
     .task-board-column__expand-btn:hover {
       background: var(--color-surface);
       border-color: var(--color-border);
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      box-shadow: var(--shadow-card);
     }
     .task-board-column__collapsed-dot {
       display: inline-flex;
@@ -593,7 +605,7 @@ export interface QuickTaskCreatedEvent {
       gap: 6px;
       padding: 3px 9px 3px 7px;
       border-radius: 6px;
-      color: #ffffff;
+      color: var(--color-text-on-solid);
       line-height: 1.2;
     }
     .task-board-column__status-dot {
@@ -603,14 +615,14 @@ export interface QuickTaskCreatedEvent {
       width: 11px;
       height: 11px;
       border-radius: 999px;
-      background: #ffffff;
-      border: 1.5px solid #ffffff;
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-surface);
       box-sizing: border-box;
       flex-shrink: 0;
     }
     .task-board-column__status-dot--not-started {
       background: transparent;
-      border: 1.5px solid #ffffff;
+      border: 1.5px solid var(--color-surface);
     }
     .task-board-column__status-dot--done {
       background: transparent;
@@ -623,7 +635,7 @@ export interface QuickTaskCreatedEvent {
     .task-board-column__title-text {
       font-size: 11px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--color-text-on-solid);
       text-transform: uppercase;
       letter-spacing: 0.4px;
       white-space: nowrap;
@@ -676,7 +688,7 @@ export interface QuickTaskCreatedEvent {
       background: var(--color-surface);
       border-color: var(--color-border);
       color: var(--color-text-primary);
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      box-shadow: var(--shadow-card);
     }
     .task-board-column__collapse-btn:focus-visible,
     .task-board-column__menu-btn:focus-visible,
@@ -717,7 +729,7 @@ export interface QuickTaskCreatedEvent {
       border: 1px solid var(--color-border);
       border-radius: 8px;
       background: var(--color-surface);
-      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+      box-shadow: var(--shadow-popover);
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -783,7 +795,7 @@ export interface QuickTaskCreatedEvent {
       border: 1px solid var(--color-border);
       border-radius: 6px;
       box-sizing: border-box;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+      box-shadow: var(--shadow-card);
       position: relative;
     }
     .task-board-column__rename-box:focus-within {
@@ -850,7 +862,7 @@ export interface QuickTaskCreatedEvent {
       border: 1px solid var(--color-border);
       border-radius: 8px;
       padding: 8px;
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+      box-shadow: var(--shadow-popover);
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -892,7 +904,7 @@ export interface QuickTaskCreatedEvent {
       border-radius: 10px;
       padding: 10px 12px;
       margin-bottom: 10px;
-      box-shadow: 0 2px 8px rgb(15 23 42 / 0.06);
+      box-shadow: var(--shadow-popover);
       transition: border-color 140ms ease, box-shadow 140ms ease;
     }
     .quick-task-card:focus-within {
@@ -940,7 +952,7 @@ export interface QuickTaskCreatedEvent {
     }
     .quick-task-card__save-btn:hover:not(:disabled) {
       background: var(--color-accent);
-      color: #fff;
+      color: var(--color-text-on-solid);
     }
     .quick-task-card__save-btn:disabled {
       opacity: 0.45;
@@ -1056,7 +1068,7 @@ export interface QuickTaskCreatedEvent {
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 6px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
     }
     .quick-popover__list {
       display: flex;
@@ -1118,6 +1130,7 @@ export interface QuickTaskCreatedEvent {
       min-height: 8px;
     }
     .task-board-column__drag-item { display: block; }
+    .task-board-column__meetings { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
     .task-board-column__drag-preview {
       display: flex;
       width: 260px;
@@ -1127,7 +1140,7 @@ export interface QuickTaskCreatedEvent {
       border-radius: 12px;
       padding: 12px 14px;
       background: var(--color-surface);
-      box-shadow: 0 14px 30px rgb(15 23 42 / 0.18);
+      box-shadow: var(--shadow-popover);
       transform: rotate(1deg) scale(1.02);
       cursor: grabbing;
     }
@@ -1190,6 +1203,8 @@ export interface QuickTaskCreatedEvent {
 export class TaskBoardColumnComponent {
   status = input.required<TaskStatusColumn>();
   tasks = input.required<WorkTask[]>();
+  /** The meetings whose current status falls in this column; shown with the tasks but never draggable. */
+  meetings = input<readonly MeetingListItem[]>([]);
   connectedListIds = input<string[]>([]);
   allStatuses = input<readonly TaskStatusColumn[]>([]);
   currentEmployeeId = input('');
@@ -1204,6 +1219,7 @@ export class TaskBoardColumnComponent {
   isProjectMember = input(false);
 
   taskDropped = output<{ taskId: string; newStatusId: string }>();
+  meetingOpened = output<{ seriesId: string; originalStart: string }>();
   taskViewed = output<WorkTask>();
   taskChanged = output<void>();
   quickTaskCreated = output<QuickTaskCreatedEvent>();
@@ -1211,6 +1227,7 @@ export class TaskBoardColumnComponent {
   statusUpdated = output<void>();
 
   private readonly taskApi = inject(TaskApiService);
+  protected readonly itemCount = computed(() => this.tasks().length + this.meetings().length);
 
   // 3-dot Menu & Rename state
   isMenuOpen = signal(false);
@@ -1308,7 +1325,7 @@ export class TaskBoardColumnComponent {
 
   selectedModuleTitle = computed(() => {
     const id = this.selectedModuleId();
-    return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Module';
+    return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Milestone';
   });
 
   toggleMenu(event: MouseEvent): void {
@@ -1467,7 +1484,7 @@ export class TaskBoardColumnComponent {
 
     const objId = this.selectedModuleId() || this.defaultObjectiveId() || this.modules()[0]?.objectiveId;
     if (!objId) {
-      this.errorMessage.set('Please select or create a milestone/module first.');
+      this.errorMessage.set('Please select or create a milestone first.');
       return;
     }
 

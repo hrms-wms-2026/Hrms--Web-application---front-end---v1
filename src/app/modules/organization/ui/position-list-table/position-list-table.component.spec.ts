@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { PositionListTableComponent } from './position-list-table.component';
 import { OccupantPreviewItem, PositionListItemResponse } from '../../models/position.model';
+import { vi } from 'vitest';
 
 describe('PositionListTableComponent', () => {
   function makePosition(overrides: Partial<PositionListItemResponse>): PositionListItemResponse {
@@ -50,6 +51,24 @@ describe('PositionListTableComponent', () => {
 
   // ── Seat-preview rendering ──────────────────────────────────
 
+  it('does not render the redundant position Type column', async () => {
+    const fixture = await createComponent([makePosition({ positionType: 'pooled', maxOccupancy: 3 })]);
+    const headers = fixture.debugElement.queryAll(By.css('th'))
+      .map((header) => header.nativeElement.textContent?.trim());
+
+    expect(headers).not.toContain('Type');
+    expect(fixture.nativeElement.querySelector('.plt-type-badge')).toBeNull();
+  });
+
+  it('does not render the redundant Status column', async () => {
+    const fixture = await createComponent([makePosition({ assignedCount: 1 })]);
+    const headers = fixture.debugElement.queryAll(By.css('th'))
+      .map((header) => header.nativeElement.textContent?.trim());
+
+    expect(headers).not.toContain('Status');
+    expect(fixture.nativeElement.querySelector('.plt-badge')).toBeNull();
+  });
+
   it('renders app-position-seat-preview in the capacity cell (not old text)', async () => {
     const fixture = await createComponent([makePosition({})]);
     expect(fixture.nativeElement.querySelector('app-position-seat-preview')).not.toBeNull();
@@ -94,19 +113,40 @@ describe('PositionListTableComponent', () => {
     expect(overflowEl.textContent).toContain('+7');
   });
 
-  // ── Status badge still present ──────────────────────────────
+  // ── Vacancy row highlighting ────────────────────────────────
 
-  it('still shows the Archived status badge for inactive positions', async () => {
-    const fixture = await createComponent([makePosition({ isActive: false })]);
-    const text = rowText(fixture);
-    expect(text).toContain('Archived');
-    expect(text).not.toContain('Unassigned');
+  it('highlights an active row and exposes the vacancy count on hover', async () => {
+    const fixture = await createComponent([
+      makePosition({ maxOccupancy: 4, assignedCount: 1, reservedCount: 1 })
+    ]);
+    const row = fixture.debugElement.query(By.css('tbody tr')).nativeElement as HTMLTableRowElement;
+
+    expect(row.classList).toContain('plt-row--vacant');
+    expect(row.title).toBe('2 vacancies available');
   });
 
-  it('still shows status badge for active positions (Unassigned when no occupant data)', async () => {
-    const fixture = await createComponent([makePosition({ isActive: true })]);
-    const text = rowText(fixture);
-    expect(text).toMatch(/Unassigned/i);
+  it('uses singular vacancy text and counts reserved onboarding seats as occupied', async () => {
+    const fixture = await createComponent([
+      makePosition({ maxOccupancy: 3, assignedCount: 1, reservedCount: 1 })
+    ]);
+    const row = fixture.debugElement.query(By.css('tbody tr')).nativeElement as HTMLTableRowElement;
+
+    expect(row.title).toBe('1 vacancy available');
+  });
+
+  it('does not highlight full, archived, or unknown-occupancy rows', async () => {
+    const fixture = await createComponent([
+      makePosition({ id: 'full', maxOccupancy: 2, assignedCount: 2 }),
+      makePosition({ id: 'archived', maxOccupancy: 2, assignedCount: 0, isActive: false }),
+      makePosition({ id: 'unknown', maxOccupancy: 2, currentOccupancy: null, currentOccupancyCheckSupported: false })
+    ]);
+    const rows = fixture.debugElement.queryAll(By.css('tbody tr'))
+      .map((row) => row.nativeElement as HTMLTableRowElement);
+
+    for (const row of rows) {
+      expect(row.classList).not.toContain('plt-row--vacant');
+      expect(row.title).toBe('');
+    }
   });
 
   it('does not render backend field names in the rendered row', async () => {
@@ -131,5 +171,19 @@ describe('PositionListTableComponent', () => {
     // Each row has its own seat-preview
     const previews = fixture.nativeElement.querySelectorAll('app-position-seat-preview');
     expect(previews.length).toBe(2);
+  });
+
+  it('opens the unified position panel directly from the three-dot button without showing an action menu', async () => {
+    const position = makePosition({});
+    const fixture = await createComponent([position]);
+    fixture.componentRef.setInput('canManage', true);
+    fixture.detectChanges();
+    const opened = vi.fn();
+    fixture.componentInstance.viewCoverage.subscribe(opened);
+
+    (fixture.nativeElement.querySelector('.plt-action-btn') as HTMLButtonElement).click();
+
+    expect(opened).toHaveBeenCalledWith(position);
+    expect(fixture.nativeElement.querySelector('.plt-menu')).toBeNull();
   });
 });

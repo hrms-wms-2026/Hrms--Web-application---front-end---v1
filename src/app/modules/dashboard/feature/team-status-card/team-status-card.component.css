@@ -1,0 +1,450 @@
+/* Working / Break / Leave (2026-11-02 design match): the Team Attendance card's visual tokens (slate text scale, tone
+   tiles, 168px donut). Heights here are the ones PRESENCE_SECTION_PX budgets with; change both together. */
+.wbl-mini {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.wbl-mini--inline {
+  justify-content: flex-start;
+}
+
+.wbl-hero,
+.wbl-xs-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.wbl-xs-head {
+  flex: none;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wbl-donut {
+  position: relative;
+  flex: none;
+}
+
+.wbl-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  line-height: 1;
+}
+
+.wbl-donut-value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-donut-of {
+  font-size: 0.625rem;
+  color: var(--color-text-secondary);
+}
+
+.wbl-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  border-radius: 9999px;
+  background: var(--tone, var(--color-text-muted));
+}
+
+.wbl-stack {
+  display: flex;
+  height: 0.75rem;
+  flex: none;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--color-surface-secondary);
+}
+
+.wbl-stack span {
+  height: 100%;
+}
+
+.wbl-pill {
+  display: flex;
+  height: 36px;
+  width: 100%;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.625rem;
+  background: var(--color-widget-mild);
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.wbl-pill:hover {
+  background: var(--color-widget-mild-line);
+}
+
+.wbl-pill-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-pill-chevron {
+  color: var(--color-text-secondary);
+}
+
+.wbl {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.wbl-tiles {
+  display: grid;
+  height: 72px;
+  flex: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.wbl-tile {
+  --tone: var(--color-widget-shade-2);
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+  /* The mild theme card (monochrome widgets); --tone colours only the icon badge. */
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-widget-tile);
+  border-radius: 0.75rem;
+  background: var(--color-widget-mild);
+  padding: 0 0.75rem;
+}
+
+.wbl-tile-icon {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tone) 16%, var(--color-surface));
+  color: var(--tone);
+}
+
+.wbl-tile-body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.wbl-tile-count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-widget-shade-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-tile-label {
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-tile-pct {
+  flex: none;
+  align-self: flex-end;
+  padding-bottom: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+@container (max-width: 420px) {
+  .wbl-tile-icon,
+  .wbl-tile-pct {
+    display: none;
+  }
+}
+
+.wbl-rows {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+}
+
+.wbl-row {
+  display: grid;
+  height: 56px;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 4.5rem 7.5rem 2.75rem;
+  gap: 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+@container (max-width: 460px) {
+  .wbl-row {
+    grid-template-columns: auto minmax(0, 1fr) 6rem 2.5rem;
+  }
+  .wbl-start {
+    display: none;
+  }
+}
+
+.wbl-row-main {
+  min-width: 0;
+}
+
+.wbl-name {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-state {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+}
+
+.wbl-start {
+  font-size: 0.75rem;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wbl-row-bar {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.wbl-left {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-bar {
+  display: block;
+  height: 0.375rem;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--color-border);
+}
+
+.wbl-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+}
+
+.wbl-pct {
+  font-size: 0.75rem;
+  color: var(--color-text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-late {
+  margin-left: 0.25rem;
+  border-radius: 0.25rem;
+  background: var(--color-widget-mild);
+  padding: 0 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--color-widget-shade-1);
+}
+
+.wbl-table {
+  width: 100%;
+  flex: none;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.wbl-table thead tr {
+  height: 32px;
+  background: var(--color-surface-secondary);
+}
+
+.wbl-table th {
+  overflow: hidden;
+  padding: 0 0.5rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wbl-table tbody tr {
+  height: 40px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wbl-table td {
+  overflow: hidden;
+  padding: 0 0.5rem;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.wbl-table .wbl-rank {
+  width: 32px;
+  padding-right: 0;
+  color: var(--color-text-secondary);
+}
+
+.wbl-table th:nth-child(2) {
+  width: 180px;
+}
+
+.wbl-table .wbl-progress-col {
+  width: 140px;
+}
+
+.wbl-person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wbl-chip {
+  --tone: var(--color-widget-shade-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 0.375rem;
+  box-shadow: inset 0 0 0 1px var(--color-widget-mild-line);
+  background: var(--color-widget-mild);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-widget-shade-1);
+}
+
+.wbl-chip--neutral {
+  --tone: var(--color-widget-shade-4);
+}
+
+.wbl-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wbl-progress .wbl-bar {
+  flex: 1 1 auto;
+}
+
+.wbl-progress .wbl-pct {
+  width: 2.75rem;
+  flex: none;
+}
+
+.wbl-link {
+  height: 28px;
+  flex: none;
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-widget-shade-1);
+}
+
+.wbl-link:hover {
+  text-decoration: underline;
+}
+
+.wbl-trend {
+  display: flex;
+  height: 150px;
+  flex: none;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--color-border); /* no card inside the card: a line above the section */
+  padding: 0.625rem 0 0;
+}
+
+.wbl-trend-chart {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.wbl-trend-note {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* xs: one 56px row per employee - worked, break and leave time on one bar (PRESENCE_SECTION_PX.row). */
+.wbl-hours-row {
+  display: grid;
+  height: 56px;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 4.25rem;
+  gap: 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wbl-hours-bar {
+  display: flex;
+  height: 0.5rem;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--color-surface-secondary);
+}
+
+.wbl-hours-bar span {
+  height: 100%;
+  flex: none;
+}
+
+/* The donut's key (shared donut key): full width under the donut on a narrow card. */
+.wbl-xs-head .wbl-counts {
+  width: 100%;
+}

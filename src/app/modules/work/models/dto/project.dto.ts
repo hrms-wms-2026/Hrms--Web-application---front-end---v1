@@ -31,6 +31,9 @@ export interface ProjectListItemDto {
   labels: LabelDto[];
   members: ProjectMemberAvatarDto[];
   memberCount: number;
+  systemPurpose?: string | null;
+  /** "lucide:{name}" or "emoji:{emoji}"; null shows the logo or initials. */
+  icon?: string | null;
 }
 
 export interface PagedResultDto<T> {
@@ -66,6 +69,9 @@ export interface ProjectDetailDto {
   labels: LabelDto[];
   members: ProjectMemberAvatarDto[];
   memberCount: number;
+  systemPurpose?: string | null;
+  /** "lucide:{name}" or "emoji:{emoji}"; null shows the logo or initials. */
+  icon?: string | null;
 }
 
 export interface CreateProjectResponseDto {
@@ -85,6 +91,7 @@ export interface CreateProjectRequestDto {
   defaultObjectiveAllocatedHours: number;
   logoFile: File | null;
   bannerFile: File | null;
+  icon?: string | null;
   memberEmployeeIds: readonly string[];
 }
 
@@ -97,4 +104,6 @@ export interface EditProjectRequestDto {
   color: string;
   actualHours: number;
   allocatedHours: number;
+  /** Omitted keeps the current icon; '' clears it. */
+  icon?: string | null;
 }

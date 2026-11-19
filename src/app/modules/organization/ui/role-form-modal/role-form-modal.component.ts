@@ -1,9 +1,23 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ModulePermissionGroup, RoleDetailResponse, RoleSummaryResponse } from '../../models/role.model';
+import {
+  ModulePermissionGroup,
+  PermissionCatalogItem,
+  RoleDetailResponse,
+  RolePermissionItem,
+  RoleSummaryResponse
+} from '../../models/role.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
+import {
+  DataTableCellDirective,
+  DataTableColumn,
+  DataTableComponent
+} from '../../../../shared/ui/data-table/data-table.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
+import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
 
 export interface RoleFormSubmitValue {
   name: string;
@@ -11,74 +25,121 @@ export interface RoleFormSubmitValue {
   selectedPermissionIds: string[];
 }
 
+/**
+ * The one role popup: create (no role), edit a custom role (details + permissions), or view a
+ * system role read-only. Permissions are one shared data table per module.
+ */
 @Component({
   selector: 'app-role-form-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [CharCounterComponent, StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './role-form-modal.component.html',
   styleUrl: './role-form-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class RoleFormModalComponent implements OnInit {
+export class RoleFormModalComponent implements OnChanges {
+  readonly limits = TEXT_LIMITS;
   private readonly fb = inject(FormBuilder);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  @Input() role: RoleSummaryResponse | RoleDetailResponse | null = null;
+  /** null = create a new role. */
+  @Input() role: RoleSummaryResponse | null = null;
+  /** The role's permissions; loads after the popup opens for an existing role. */
+  @Input() roleDetail: RoleDetailResponse | null = null;
   @Input({ required: true }) groupedCatalog: readonly ModulePermissionGroup[] = [];
+  /** The role's permissions are still loading. */
   @Input() loading = false;
+  @Input() saving = false;
 
   @Output() save = new EventEmitter<RoleFormSubmitValue>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 
   readonly selectedIds = signal<Set<string>>(new Set<string>());
+
+  /**
+   * Permissions the role grants that are not in the assignable catalog (platform baseline
+   * modules such as roles/settings, seeded onto system roles). Shown read-only so the
+   * ticked boxes add up to the count on the roles list.
+   */
+  readonly platformPermissions = signal<readonly RolePermissionItem[]>([]);
+  readonly platformIds = computed<ReadonlySet<string>>(() => new Set(this.platformPermissions().map((p) => p.id)));
 
   readonly form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
     description: ['' as string | null, [Validators.maxLength(500)]]
   });
 
+  /** One shared data table per module: the module name is the column header. */
+  private readonly columnsByModule = new Map<string, readonly DataTableColumn[]>();
+  readonly platformColumns: readonly DataTableColumn[] = [{ key: 'permission', label: 'Platform access', wrap: true }];
+
+  readonly permissionKey = (p: PermissionCatalogItem): string => p.id ?? p.code;
+  readonly platformKey = (p: RolePermissionItem): string => p.id;
+  readonly isPermissionAssignable = (p: PermissionCatalogItem): boolean => !!p.id;
+  readonly permissionAriaLabel = (p: { description: string; code: string }): string => `Grant: ${p.description || p.code}`;
+
   get isEdit(): boolean {
     return !!this.role;
   }
 
-  ngOnInit(): void {
-    if (this.role) {
-      this.form.patchValue({
-        name: this.role.name,
-        description: this.role.description
-      });
-
-      // If full detail passed with permissions array
-      if ('permissions' in this.role && this.role.permissions) {
-        const ids = new Set(this.role.permissions.map((p) => p.id));
-        this.selectedIds.set(ids);
-      }
-    }
+  get readOnly(): boolean {
+    return !!this.role?.isSystem;
   }
 
-  isPermissionSelected(id: string | null): boolean {
-    if (!id) return false;
-    return this.selectedIds().has(id);
+  columnsFor(group: ModulePermissionGroup): readonly DataTableColumn[] {
+    let columns = this.columnsByModule.get(group.module);
+    if (!columns) {
+      columns = [{ key: 'permission', label: group.moduleTitle, wrap: true }];
+      this.columnsByModule.set(group.module, columns);
+    }
+    return columns;
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['role']) {
+      this.form.reset({ name: this.role?.name ?? '', description: this.role?.description ?? '' });
+    }
+    if (!changes['roleDetail'] && !changes['groupedCatalog'] && !changes['role']) return;
+
+    // The detail loads after the popup opens, so seed the selection whenever it arrives,
+    // and only from the detail that belongs to this role.
+    const detail = this.roleDetail;
+    if (!this.role || !detail || detail.id !== this.role.id) {
+      if (changes['role']) {
+        this.selectedIds.set(new Set<string>());
+        this.platformPermissions.set([]);
+      }
+      return;
+    }
+    const catalogIds = new Set<string>();
+    for (const group of this.groupedCatalog) {
+      for (const p of group.permissions) {
+        if (p.id) catalogIds.add(p.id);
+      }
+    }
+    this.selectedIds.set(new Set(detail.permissions.filter((p) => catalogIds.has(p.id)).map((p) => p.id)));
+    this.platformPermissions.set(detail.permissions.filter((p) => !catalogIds.has(p.id)));
   }
 
   togglePermission(id: string | null): void {
     if (!id) return;
+    this.setPermission(id, !this.selectedIds().has(id));
+  }
+
+  setPermission(id: string | null, selected: boolean): void {
+    if (!id || this.readOnly) return;
     const current = new Set(this.selectedIds());
-    if (current.has(id)) {
-      current.delete(id);
-    } else {
+    if (selected) {
       current.add(id);
+    } else {
+      current.delete(id);
     }
     this.selectedIds.set(current);
   }
 
-  isModuleAllSelected(group: ModulePermissionGroup): boolean {
-    if (!group.permissions || group.permissions.length === 0) return false;
-    const current = this.selectedIds();
-    return group.permissions.every((p) => p.id && current.has(p.id));
-  }
-
-  toggleModuleGroup(group: ModulePermissionGroup, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
+  setModuleGroup(group: ModulePermissionGroup, checked: boolean): void {
+    if (this.readOnly) return;
     const current = new Set(this.selectedIds());
     for (const p of group.permissions) {
       if (p.id) {
@@ -93,8 +154,14 @@ export class RoleFormModalComponent implements OnInit {
   }
 
   onSubmit(): void {
+    if (this.readOnly || this.loading) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      // The name field sits above the permission tables; after scrolling down to pick
+      // permissions its error would be off-screen and the button would seem dead.
+      const nameInput = this.host.nativeElement.querySelector<HTMLInputElement>('app-input input');
+      nameInput?.scrollIntoView({ block: 'center' });
+      nameInput?.focus({ preventScroll: true });
       return;
     }
     const val = this.form.getRawValue();

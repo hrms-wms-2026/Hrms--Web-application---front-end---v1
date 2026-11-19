@@ -4,6 +4,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
 import { PositionListItemResponse } from '../../../organization/models/position.model';
 import { PeopleApiService } from '../../data-access/people-api.service';
@@ -14,25 +15,22 @@ import { ReportsToPickerComponent } from '../reports-to-picker/reports-to-picker
 @Component({
   selector: 'app-change-position-modal',
   standalone: true,
-  imports: [ModalComponent, ButtonComponent, DatePickerComponent, ReportsToPickerComponent],
+  imports: [ModalComponent, ButtonComponent, DatePickerComponent, ReportsToPickerComponent, SelectComponent],
   template: `
     <app-modal [open]="open()" [title]="modalTitle()" (closed)="onClose()">
       <div class="flex flex-col gap-4">
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="text-[var(--color-text-secondary)]">New position</span>
-          <select
-            class="rounded-md border border-[var(--color-border)] p-2"
-            (change)="onPositionSelected($any($event.target).value)"
-          >
-            <option value="">Select a position…</option>
-            @for (position of positions(); track position.id) {
-              <option [value]="position.id" [selected]="position.id === selectedPositionId()">{{ position.name }}</option>
-            }
-          </select>
+        <div class="flex flex-col gap-1 text-sm">
+          <app-select
+            label="New position"
+            placeholder="Select a position…"
+            [options]="positionOptions()"
+            [value]="selectedPositionId()"
+            (valueChange)="onPositionSelected($event)"
+          />
           @if (loadError(); as loadErrorMessage) {
             <p class="text-xs text-[var(--color-danger-text)]">{{ loadErrorMessage }}</p>
           }
-        </label>
+        </div>
         @if (selectedPositionRequiresApproval()) {
           <p class="rounded-md bg-[var(--color-warning-subtle)] p-2 text-xs text-[var(--color-warning-text)]">
             This position requires approval. Your request will be sent to an approver and won't take effect until approved.
@@ -98,6 +96,9 @@ export class ChangePositionModalComponent {
   });
   readonly positions = signal<readonly PositionListItemResponse[]>([]);
   readonly selectedPositionId = signal('');
+  readonly positionOptions = computed<readonly SelectOption[]>(() =>
+    this.positions().map((p) => ({ value: p.id, label: p.name }))
+  );
   readonly effectiveFrom = signal(new Date().toISOString().slice(0, 10));
   readonly submitting = signal(false);
   readonly loadError = signal<string | null>(null);

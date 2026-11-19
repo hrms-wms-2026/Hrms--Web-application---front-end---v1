@@ -1,6 +1,27 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 const TICK_MS = 30_000;
+
+/** The two classes a refresh alternates between to restart the dashboard's load animation (dashboard-motion.css). */
+const REPLAY = ['dash-replay-a', 'dash-replay-b'] as const;
+
+/**
+ * Replays the load animation of the popup or dashboard widget around `el`; a no-op outside the dashboard.
+ * A card refreshing while its popup is open replays the popup's charts instead: the widget's rise (opacity +
+ * transform) would otherwise fade and shift the fixed popup it holds, so it looks like it closes and reopens.
+ */
+export function replayDashboardMotion(el: HTMLElement): void {
+  const widget = el.closest<HTMLElement>('.dash-motion');
+  const openPopup = Array.from(widget?.querySelectorAll<HTMLElement>('app-modal') ?? []).find((m) =>
+    m.querySelector('[role="dialog"]'),
+  );
+  const target = el.closest<HTMLElement>('app-modal') ?? openPopup ?? widget;
+  if (!target?.closest('.dash-motion')) return;
+  const next = target.classList.contains(REPLAY[0]) ? REPLAY[1] : REPLAY[0];
+  target.classList.remove(...REPLAY);
+  target.classList.add(next);
+}
 
 /** 'just now' / '5 min ago' / '2 h ago' / 'Sep 30, 14:05' for when data last came from the backend. */
 export function formatRefreshedAgo(at: Date, now: Date): string {
@@ -21,22 +42,23 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
  */
 @Component({
   selector: 'app-popout-header-actions',
+  imports: [StopClickPropagationDirective],
   standalone: true,
   template: `
     <div
       class="flex items-center gap-1"
       [class.reveal]="revealOnHover()"
       data-testid="popout-header-actions"
-      (click)="$event.stopPropagation()"
+      appStopClickPropagation
     >
       @if (refreshedAt(); as at) {
-        <span class="mr-1 whitespace-nowrap text-xs text-slate-500" data-testid="refreshed-label" [title]="'Last loaded ' + at.toLocaleString()">
+        <span class="mr-1 whitespace-nowrap text-xs text-[var(--color-text-secondary)]" data-testid="refreshed-label" [title]="'Last loaded ' + at.toLocaleString()">
           Refreshed {{ ago() }}
         </span>
       }
       <button
         type="button"
-        class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 cursor-pointer disabled:cursor-default disabled:opacity-60"
+        class="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer disabled:cursor-default disabled:opacity-60"
         data-testid="popout-refresh"
         aria-label="Refresh"
         title="Refresh"
@@ -53,7 +75,7 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
       @if (expanded()) {
         <button
           type="button"
-          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
+          class="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer"
           data-testid="popout-close"
           aria-label="Close"
           title="Close"
@@ -67,7 +89,7 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
       } @else if (canExpand()) {
         <button
           type="button"
-          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
+          class="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer"
           data-testid="popout-expand"
           aria-label="Expand"
           title="Expand"
@@ -91,7 +113,7 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
     :host(.overlay) { position: relative; width: 0; height: 2rem; flex: none; align-self: center; }
     .reveal {
       position: absolute; right: 0; top: 0; height: 2rem; padding-left: 0.75rem;
-      background: var(--popout-actions-bg, #ffffff); border-radius: 0.5rem;
+      background: var(--popout-actions-bg, var(--color-surface)); border-radius: 0.5rem;
       opacity: 0; pointer-events: none; transition: opacity 150ms ease;
     }
     :host-context(.group:hover) .reveal, .reveal:focus-within { opacity: 1; pointer-events: auto; }
@@ -119,6 +141,15 @@ export class PopoutHeaderActionsComponent {
   });
 
   constructor() {
+    // A refresh that finished (refreshing true -> false) plays the card's load animation again with the new data.
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    let wasRefreshing = false;
+    effect(() => {
+      const refreshing = this.refreshing();
+      if (wasRefreshing && !refreshing) replayDashboardMotion(host);
+      wasRefreshing = refreshing;
+    });
+
     const timer = setInterval(() => this.now.set(new Date()), TICK_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }

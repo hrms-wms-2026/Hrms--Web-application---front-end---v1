@@ -1,2 +1,59 @@
-<!-- Quiet Operations Desk: detailed policy facts are grouped rather than hidden in a second tab row. -->
-@if (policy) { <aside class="lpdp-panel"><header><p>POLICY RECORD</p><h2>{{ policy.name }}</h2><span>{{ policy.country }} · Effective {{ policy.effectiveFrom }}</span></header><section><h3>Leave type rules</h3>@for (rule of policy.leaveTypes; track rule.id) { <div class="lpdp-rule"><strong>{{ rule.leaveTypeName }}</strong><span>{{ rule.annualEntitlementDays }} annual days</span><span>Carry-forward: {{ rule.carryForwardMaxDays ?? 'Not set' }}</span></div> }</section><section><h3>Request rules</h3><dl><div><dt>Minimum notice</dt><dd>{{ policy.minimumNoticeDays }} days</dd></div><div><dt>Maximum consecutive</dt><dd>{{ policy.maxConsecutiveDays ?? 'No limit' }}</dd></div><div><dt>Approval</dt><dd>{{ policy.approvalMode.replaceAll('_', ' ') }}</dd></div><div><dt>Minimum request</dt><dd>{{ policy.minDaysPerRequest }} days</dd></div></dl></section><section><h3>Legal entities</h3><ul>@for (entity of policy.legalEntities; track entity.id) { <li>{{ entity.legalEntityName }}</li> }</ul></section>@if (policy.blackoutPeriods.length) { <section><h3>Blackout periods</h3><ul>@for (period of policy.blackoutPeriods; track period.id) { <li>{{ period.startDate }} — {{ period.endDate }}@if (period.reason) { · {{ period.reason }} }</li> }</ul></section> }</aside> }
+@if (policy; as p) {
+  <article class="lpd">
+    <header class="lpd-head">
+      <div>
+        <p class="lpd-type"><i [style.background]="p.leaveTypeColor" aria-hidden="true"></i>{{ p.leaveTypeName }}</p>
+        <h2>{{ p.name }}</h2>
+        @if (p.description) { <p class="lpd-muted">{{ p.description }}</p> }
+      </div>
+      @if (canManage) {
+        <div class="lpd-actions">
+          @if (p.isActive) {
+            <button type="button" data-testid="edit-policy" class="lpd-btn lpd-btn--primary" (click)="edit.emit()">Edit</button>
+          }
+          <button type="button" class="lpd-btn" (click)="setActive.emit(!p.isActive)">{{ p.isActive ? 'Turn off' : 'Turn on' }}</button>
+        </div>
+      }
+    </header>
+
+    <section>
+      <h3>Rules in force · v{{ p.current.versionNumber }}</h3>
+      <dl class="lpd-facts">
+        @for (fact of facts(p.current); track $index) {
+          <dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd>
+        }
+      </dl>
+    </section>
+
+    <section>
+      <h3>Assigned to</h3>
+      @if (p.assignments.length) {
+        <ul class="lpd-list">
+          @for (a of p.assignments; track a.id) {
+            <li>{{ assignmentLabel(a.targetKind, a.targetName) }}</li>
+          }
+        </ul>
+      } @else {
+        <p class="lpd-muted">Not assigned to anyone yet.</p>
+      }
+    </section>
+
+    <section>
+      <h3>Versions</h3>
+      <ul class="lpd-versions">
+        @for (v of p.versions; track v.id) {
+          <li data-testid="policy-version">
+            <strong>v{{ v.versionNumber }}</strong>
+            <span>From {{ date(v.effectiveFrom) }}</span>
+            @if (v.isFuture) { <span class="lpd-chip">Scheduled</span> }
+            @if (v.isCurrent) { <span class="lpd-chip lpd-chip--on">In force</span> }
+            <span class="lpd-muted">{{ v.createdByName || 'System' }} · {{ date(v.createdAt) }}</span>
+            @if (canManage && v.isFuture) {
+              <button type="button" data-testid="cancel-version" class="lpd-link" (click)="deleteVersion.emit(v.id)">Cancel change</button>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  </article>
+}

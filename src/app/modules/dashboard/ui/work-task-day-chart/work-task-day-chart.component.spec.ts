@@ -1,0 +1,35 @@
+import { TestBed } from '@angular/core/testing';
+import { afterEach, describe, expect, it } from 'vitest';
+import { workTaskTrend } from '../../utils/team-work-task.testing';
+import { WorkTaskDayChartComponent } from './work-task-day-chart.component';
+
+describe('WorkTaskDayChartComponent', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  function render(highlight: string | null = null): HTMLElement {
+    const fixture = TestBed.createComponent(WorkTaskDayChartComponent);
+    fixture.componentRef.setInput('points', workTaskTrend());
+    fixture.componentRef.setInput('highlight', highlight);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('draws a worked bar beside a task bar per day on one hour axis', () => {
+    const el = render();
+    const bars = el.querySelectorAll('[data-testid=bar-chart-col]');
+    expect(bars.length).toBe(7);
+    // 40h worked is the tallest: a 0-20-40h axis.
+    expect((bars[0].querySelector('[data-testid=bar-chart-stack]') as HTMLElement).style.height).toBe('100%');
+    expect((bars[0].querySelector('[data-testid=bar-chart-pair]') as HTMLElement).style.height).toBe('50%');
+    expect(bars[0].querySelector('[data-segment=worked]')).not.toBeNull();
+    expect(bars[0].querySelector('[data-segment=task]')).not.toBeNull();
+    expect(bars[0].textContent).toContain('Mon');
+    expect(el.querySelector('[role=img]')?.getAttribute('aria-label')).toContain('40h worked, 20h task');
+  });
+
+  it('dims every day but the highlighted one', () => {
+    const el = render('2026-10-27');
+    const bars = [...el.querySelectorAll('[data-testid=bar-chart-col]')];
+    expect(bars.filter((b) => b.classList.contains('bc-col--dim')).length).toBe(6);
+  });
+});

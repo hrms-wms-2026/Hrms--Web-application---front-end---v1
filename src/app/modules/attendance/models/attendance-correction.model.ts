@@ -7,7 +7,7 @@ export interface AttendanceCorrectionBreakRequest {
   breakType: string;
 }
 
-export interface AttendanceCorrectionBreakResponse extends AttendanceCorrectionBreakRequest {}
+export type AttendanceCorrectionBreakResponse = AttendanceCorrectionBreakRequest;
 
 export interface AttendanceCorrectionPreviewRequest {
   workDate: string;
@@ -31,7 +31,7 @@ export interface AttendanceCorrectionPreviewResponse {
   approver: AttendanceCorrectionApprover | null;
 }
 
-export interface AttendanceCorrectionRequest extends AttendanceCorrectionPreviewRequest {}
+export type AttendanceCorrectionRequest = AttendanceCorrectionPreviewRequest;
 
 export interface AttendanceCorrectionResponse {
   id: string;
@@ -65,8 +65,6 @@ export interface ApproveAttendanceCorrectionRequest {
 export interface RejectAttendanceCorrectionRequest {
   reviewComment: string;
 }
-
-export type CancelAttendanceCorrectionResponse = AttendanceCorrectionResponse;
 
 export const CORRECTION_TYPE_OPTIONS: readonly { value: AttendanceCorrectionType; label: string }[] = [
   { value: 'clock_in', label: 'Clock-in time' },

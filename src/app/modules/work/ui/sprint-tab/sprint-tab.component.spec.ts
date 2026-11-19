@@ -113,6 +113,17 @@ describe('SprintTabComponent', () => {
     expect(fixture.nativeElement.querySelector('app-work-dropdown')).toBeNull();
   });
 
+  it('labels the progress ring with formatPercent so a small share is not shown as 0%', () => {
+    const tasks = [
+      { id: 't-1', estimatedHours: 400, completedHours: 2 },
+      { id: 't-2', estimatedHours: 600, completedHours: 0 }
+    ] as unknown as WorkTask[];
+    setup({ tasks });
+    const ring = fixture.nativeElement.querySelector('.sprint-tab__ring') as HTMLElement;
+    expect(ring.textContent?.trim()).toBe('0.2%');
+    expect(ring.getAttribute('aria-label')).toBe('0.2% complete');
+  });
+
   it('hides Start when canManage is false', () => {
     setup({ canManage: false, sprint: { ...baseSprint, status: 'draft', startDate: null, endDate: null } });
     expect(fixture.nativeElement.querySelector('[data-testid="start-sprint"]')).toBeNull();

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, effect, inject, input, output, signal } from '@angular/core';
+import { LEGACY_INTERN_EMPLOYMENT_TYPE, SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import { EmployeeDetailJobInformation, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
@@ -6,8 +7,7 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { WorkModeStore } from '../../../settings/state/work-mode.store';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
-import { SelectOption } from '../../../../shared/ui/select/select.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import {
   EMPLOYEE_NUMBER_INVALID_FORMAT_MESSAGE,
   EMPLOYEE_NUMBER_IN_USE_MESSAGE,
@@ -16,30 +16,34 @@ import {
   normalizeEmployeeNumber
 } from '../../utils/employee-number.utils';
 
-/** Same 4 values as add-employee-wizard.component.ts's EMPLOYMENT_TYPE_OPTIONS. */
-const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'intern', label: 'Intern' }
-];
+
 
 @Component({
   selector: 'app-employee-job-info',
   standalone: true,
-  imports: [ReactiveFormsModule, InputComponent, ButtonComponent, CustomSelectComponent],
+  imports: [ReactiveFormsModule, InputComponent, ButtonComponent, SelectComponent],
+  host: { class: 'block h-full' },
   template: `
-    <div>
-      <div class="flex items-center justify-between pb-3 mb-4 border-b border-[var(--color-border)]">
-        <h3 class="text-sm font-semibold text-[var(--color-text-primary)]">
-          Job & Organizational Details
-        </h3>
+    <section class="flex h-full flex-col rounded-xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-4 shadow-xs" data-testid="current-assignment-card">
+      <header class="mb-3 flex items-start justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent-subtle)] text-[var(--color-accent)]" aria-hidden="true">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+              <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"></path>
+            </svg>
+          </span>
+          <div>
+            <h2 class="text-sm font-bold text-[var(--color-text-primary)]">Current Assignment</h2>
+            <p class="text-[11px] text-[var(--color-text-secondary)]">Current role and organizational details</p>
+          </div>
+        </div>
         @if (canEdit() && !isEditing()) {
           <app-button data-testid="edit-job-details" variant="secondary" size="sm" (pressed)="startEdit()">
             Edit
           </app-button>
         }
-      </div>
+      </header>
 
       @if (isEditing()) {
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
@@ -52,15 +56,15 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
               [error]="employeeNumberFieldError()"
               [hint]="employeeNumberFieldHint()"
             />
-            <app-custom-select
+            <app-select [vacancyBadges]="true"
               label="Employment Type"
               placeholder="Select employment type"
-              [options]="employmentTypeOptions"
+              [options]="employmentTypeOptions()"
               [value]="form.controls.employmentTypeCode.value"
               [error]="submitAttempted() && form.controls.employmentTypeCode.invalid ? 'Employment type is required.' : ''"
               (valueChange)="form.controls.employmentTypeCode.setValue($event)"
             />
-            <app-custom-select
+            <app-select [vacancyBadges]="true"
               label="Work Mode"
               placeholder="Select a work mode"
               [options]="workModeOptions()"
@@ -78,79 +82,48 @@ const EMPLOYMENT_TYPE_OPTIONS: readonly SelectOption[] = [
           </div>
         </form>
       } @else {
-        <dl class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-sm">
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Employee Number</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)] font-mono text-xs bg-[var(--color-surface-secondary)] px-2.5 py-1 rounded-md inline-block">
-              {{ jobInformation().employeeNumber }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Position</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().positionName || 'Unassigned' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Department</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().departmentName || 'Unassigned' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Company</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().legalEntityName || '—' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Employment Type</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().employmentTypeLabel }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Status</dt>
-            <dd class="inline-flex items-center gap-1.5 font-semibold text-xs capitalize px-2.5 py-1 rounded-full"
-                [class.bg-green-100]="jobInformation().status.toLowerCase() === 'active'"
-                [class.text-green-800]="jobInformation().status.toLowerCase() === 'active'"
-                [class.bg-red-100]="jobInformation().status.toLowerCase() === 'inactive'"
-                [class.text-red-800]="jobInformation().status.toLowerCase() === 'inactive'">
-              <span class="w-1.5 h-1.5 rounded-full"
-                    [class.bg-green-600]="jobInformation().status.toLowerCase() === 'active'"
-                    [class.bg-red-600]="jobInformation().status.toLowerCase() === 'inactive'"></span>
-              {{ jobInformation().status }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Reporting Manager</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().reportingManagerName || 'Unassigned' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Work Mode</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().workModeLabel || '—' }}
-            </dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Hire Date</dt>
-            <dd class="font-semibold text-[var(--color-text-primary)]">
-              {{ jobInformation().hireDate }}
-            </dd>
-          </div>
-        </dl>
+        <div class="grid flex-1 grid-cols-1 gap-x-6 gap-y-2.5 text-[13px] md:grid-cols-2 md:divide-x md:divide-[var(--color-border)]">
+          <dl class="space-y-2.5">
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-[var(--color-text-secondary)]">Employee Number</dt>
+              <dd><span class="inline-block rounded-md bg-[var(--color-surface-secondary)] px-1.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--color-text-primary)]">{{ jobInformation().employeeNumber }}</span></dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-[var(--color-text-secondary)]">Position</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().positionName || 'Unassigned' }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-[var(--color-text-secondary)]">Department</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().departmentName || 'Unassigned' }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-[var(--color-text-secondary)]">Company</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().legalEntityName || '—' }}</dd>
+            </div>
+          </dl>
+          <dl class="space-y-2.5 md:pl-6">
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-[var(--color-text-secondary)]">Reporting Manager</dt>
+              <dd class="font-medium" [class.text-[var(--color-accent)]]="!!jobInformation().reportingManagerName" [class.text-[var(--color-text-primary)]]="!jobInformation().reportingManagerName">
+                {{ jobInformation().reportingManagerName || 'Unassigned' }}
+              </dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-[var(--color-text-secondary)]">Employment Type</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().employmentTypeLabel }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-[var(--color-text-secondary)]">Work Mode</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().workModeLabel || '—' }}</dd>
+            </div>
+            <div class="grid grid-cols-[8rem_1fr] items-baseline gap-2 leading-5">
+              <dt class="text-[var(--color-text-secondary)]">Hire Date</dt>
+              <dd class="font-medium text-[var(--color-text-primary)]">{{ jobInformation().hireDate }}</dd>
+            </div>
+          </dl>
+        </div>
       }
-    </div>
+    </section>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -164,7 +137,13 @@ export class EmployeeJobInfoComponent implements OnDestroy {
   private readonly peopleApi = inject(PeopleApiService);
   private readonly workModeStore = inject(WorkModeStore);
 
-  readonly employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS;
+  /** The selectable types, plus the retired "Intern" only for an employee who already has it -
+   *  so their value still shows instead of a blank field. */
+  readonly employmentTypeOptions = computed<readonly SelectOption[]>(() =>
+    this.jobInformation().employmentTypeCode === LEGACY_INTERN_EMPLOYMENT_TYPE.value
+      ? [...SELECTABLE_EMPLOYMENT_TYPE_OPTIONS, LEGACY_INTERN_EMPLOYMENT_TYPE]
+      : SELECTABLE_EMPLOYMENT_TYPE_OPTIONS
+  );
   readonly employeeNumberMaxLength = EMPLOYEE_NUMBER_MAX_LENGTH;
 
   readonly isEditing = signal(false);

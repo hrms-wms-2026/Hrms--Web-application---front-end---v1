@@ -1,6 +1,7 @@
 import * as isoCountries from 'i18n-iso-countries';
 import * as isoCountriesEnLocale from 'i18n-iso-countries/langs/en.json';
 import { SelectOption } from '../../../shared/ui/select/select.component';
+import { timezoneDisplayLabel } from '../../../shared/utils/timezone-label.util';
 
 /** i18n-iso-countries ships two entry points: the Node `main` build auto-registers
  * every locale, but Angular's build resolves the package's `browser` field instead,
@@ -43,14 +44,15 @@ export const CURRENCY_CODE_OPTIONS: readonly SelectOption[] = Intl.supportedValu
  * current with no static list to maintain. Backend only enforces NotEmpty +
  * MaximumLength(50) (Timezone in the same validator). */
 export const TIMEZONE_OPTIONS: readonly SelectOption[] = Intl.supportedValuesOf('timeZone')
-  .map((zone) => ({ value: zone, label: zone.replace(/_/g, ' ') }))
+  // "Asia/Colombo (GMT+05:30)" - the offset is today's, so a DST zone shows the one currently in effect.
+  .map((zone) => ({ value: zone, label: timezoneDisplayLabel(zone) }))
   .sort((a, b) => a.label.localeCompare(b.label));
 
 /** ISO-8601 weekday numbering (Monday=1 ... Sunday=7), matching the backend's
  * firstDayOfWeek/standardWorkingDays InclusiveBetween(1,7) range. The backend
  * does not itself document which integer maps to which day - this is the
  * ISO-8601 convention, called out in the Part 2C report as an assumption. */
-export const WEEKDAY_OPTIONS: ReadonlyArray<{ value: number; label: string; shortLabel: string }> = [
+export const WEEKDAY_OPTIONS: readonly { value: number; label: string; shortLabel: string }[] = [
   { value: 1, label: 'Monday', shortLabel: 'Mon' },
   { value: 2, label: 'Tuesday', shortLabel: 'Tue' },
   { value: 3, label: 'Wednesday', shortLabel: 'Wed' },

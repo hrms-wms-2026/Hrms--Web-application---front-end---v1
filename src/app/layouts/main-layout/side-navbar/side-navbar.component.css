@@ -67,7 +67,7 @@
 .nav-rail__expand-btn:hover {
   background: rgb(255 255 255 / 16%);
   border-color: rgb(255 255 255 / 25%);
-  color: #ffffff;
+  color: var(--color-sidebar-active-text);
   transform: scale(1.04);
 }
 
@@ -100,6 +100,7 @@
 }
 
 .nav-rail-item__icon-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,4 +171,21 @@
     width: 100%;
     overflow-x: auto;
   }
+}
+
+.nav-rail-item__badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: var(--color-text-on-solid);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--color-sidebar-bg, var(--color-surface));
 }

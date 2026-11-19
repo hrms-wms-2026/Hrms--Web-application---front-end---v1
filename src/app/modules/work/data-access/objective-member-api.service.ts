@@ -35,6 +35,10 @@ export class ObjectiveMemberApiService {
     return this.http.post<void>(`${this.base}/invitations/${invitationId}/reject`, {}, { observe: 'response' });
   }
 
+  cancelInvitation(invitationId: string): Observable<HttpResponse<void>> {
+    return this.http.post<void>(`${this.base}/invitations/${invitationId}/cancel`, {}, { observe: 'response' });
+  }
+
   transferHead(objectiveId: string, newHeadEmployeeId: string): Observable<HttpResponse<TransferObjectiveHeadOutcomeDto>> {
     return this.http.post<TransferObjectiveHeadOutcomeDto>(
       `${this.base}/${objectiveId}/transfer`, { newHeadEmployeeId }, { observe: 'response' });

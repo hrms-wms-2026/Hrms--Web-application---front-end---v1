@@ -1,0 +1,248 @@
+<app-widget-card
+  class="group block h-full"
+  data-testid="team-work-task-card"
+  title="My team work vs task hours"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load work vs task hours."
+  emptyMessage="No one in your team yet."
+  (retry)="retry()"
+>
+  <div widget-actions class="flex min-w-0 items-center gap-1">
+    <!-- The Day / Week / Month switch lives in the popup only (2026-11-05); the card follows the shared store. -->
+    <app-popout-header-actions
+      [refreshing]="refreshing()"
+      [expanded]="false"
+      [canExpand]="true"
+      [revealOnHover]="true"
+      (refresh)="retry()"
+      (expand)="openDetail()"
+    />
+  </div>
+
+  @if (store.data(); as data) {
+    <ng-template #rangeTpl>
+      <div class="wt-range">
+        <button
+          type="button"
+          class="wt-nav"
+          aria-label="Previous period"
+          data-testid="wt-prev"
+          (click)="shift(-1, $event)"
+        >
+          ‹
+        </button>
+        <span class="wt-range-label" data-testid="wt-range">{{ rangeLabel() }}</span>
+        <button
+          type="button"
+          class="wt-nav"
+          aria-label="Next period"
+          data-testid="wt-next"
+          [disabled]="data.isProvisional"
+          (click)="shift(1, $event)"
+        >
+          ›
+        </button>
+        @if (data.isProvisional) {
+          <span class="wt-provisional">In progress</span>
+        }
+      </div>
+    </ng-template>
+
+    <!-- One donut size (DASHBOARD_DONUT_PX) in every view: task hours, other work time and break. -->
+    <ng-template #donutTpl>
+      <app-dashboard-donut
+        class="wt-donut"
+        data-testid="wt-donut"
+        [size]="donutPx()"
+        [slices]="donutSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hovered"
+      >
+        <p class="wt-donut-center">
+          <span class="wt-donut-value wt-donut-value--rate" data-testid="wt-utilization">{{
+            util(data.totals.utilization)
+          }}</span>
+          <span class="wt-donut-of">on tasks</span>
+        </p>
+      </app-dashboard-donut>
+    </ng-template>
+
+    <ng-template #figureTpl>
+      <p class="wt-caption" data-testid="wt-figure">
+        {{ hours(data.totals.taskMinutes) }} task of {{ hours(data.totals.workedMinutes) }} worked
+      </p>
+      @if (delta(); as d) {
+        <p class="wt-delta" [class.wt-delta--down]="d.down" data-testid="wt-delta">{{ d.text }}</p>
+      }
+    </ng-template>
+
+    <ng-template #chartTpl>
+      @if (emptyTrend()) {
+        <p class="wt-no-days" data-testid="wt-no-days">No work or completed tasks in this period</p>
+      } @else {
+        <app-work-task-day-chart
+          class="wt-chart"
+          heading="Work vs task by day"
+          [points]="data.trend"
+          [highlight]="data.period === 'day' ? data.rangeStart : null"
+        />
+      }
+    </ng-template>
+
+    @switch (view()) {
+      @case ('mini') {
+        <!-- 2-row cards: the shared strip. The donut with the task share in it, then its key, then summary cards of
+        the popup's sections as the card widens. -->
+        <app-dashboard-summary-strip
+          class="wt-mini"
+          data-testid="wt-mini"
+          [slices]="donutSlices()"
+          [keySlices]="donutSlices()"
+          [cards]="summaryCards()"
+          [donutLabel]="donutLabel()"
+          [(active)]="hovered"
+          (cardOpened)="openSection($event)"
+        >
+          <p class="wt-donut-center">
+            <span class="wt-donut-value wt-donut-value--rate" data-testid="wt-utilization">{{ util(data.totals.utilization) }}</span>
+            <span class="wt-donut-of">on tasks</span>
+          </p>
+        </app-dashboard-summary-strip>
+      }
+      @default {
+        <div
+          class="wt-grow"
+          [class.wt-grow--xs]="view() === 'xs'"
+          data-testid="wt-layout"
+          [attr.data-view]="view()"
+        >
+          @if (view() === 'standard') {
+            <ng-container [ngTemplateOutlet]="rangeTpl" />
+          }
+          <div class="wt-hero" data-testid="wt-hero">
+            <ng-container [ngTemplateOutlet]="donutTpl" />
+            @if (view() === 'xs' && plan().legend) {
+              <app-donut-key
+                class="wt-xs-legend"
+                data-testid="wt-xs-legend"
+                ariaLabel="Time split"
+                rowTestId="wt-legend-row"
+                [showValue]="true"
+                [slices]="donutSlices()"
+                [(active)]="hovered"
+              />
+            }
+            @if (view() !== 'xs' || plan().figure) {
+              <div class="wt-hero-figure">
+                <p class="wt-rate" data-testid="wt-hero-rate">
+                  {{ util(data.totals.utilization) }}
+                </p>
+                <p class="wt-caption">{{ caption() }}</p>
+                <ng-container [ngTemplateOutlet]="figureTpl" />
+              </div>
+            }
+            @if (plan().heroTrend) {
+              <div class="wt-hero-trend" data-testid="wt-trend">
+                <ng-container [ngTemplateOutlet]="chartTpl" />
+              </div>
+            }
+            @if (view() === 'standard' && heroLegend()) {
+              <app-donut-key
+                class="wt-legend"
+                variant="chips"
+                ariaLabel="Time split"
+                rowTestId="wt-legend-row"
+                [showValue]="true"
+                [slices]="donutSlices()"
+                [(active)]="hovered"
+              />
+            }
+          </div>
+
+          @if (plan().tiles && rowCards().length > 0) {
+            <!-- Taller views: summary cards of what the card is not already showing, in the tiles' place. -->
+            <app-dashboard-summary-row data-testid="wt-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" />
+          } @else if (plan().tiles) {
+            <ul
+              class="wt-tiles"
+              [class.wt-tiles--4]="plan().tileColumns === 4"
+              aria-label="Totals"
+              data-testid="wt-tiles"
+            >
+              @for (tile of tiles(); track tile.key) {
+                <li
+                  class="wt-tile"
+                  [style.--tone]="tile.color"
+                  [attr.data-testid]="'wt-tile-' + tile.key"
+                  [title]="tile.label + ': ' + tile.title"
+                >
+                  <span class="wt-tile-count">{{ tile.value }}</span>
+                  <span class="wt-tile-label">{{ tile.label }}</span>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (plan().trend) {
+            <section class="wt-panel wt-trend-panel" data-testid="wt-trend">
+              <ng-container [ngTemplateOutlet]="chartTpl" />
+            </section>
+          }
+
+          @if (plan().rankingRows > 0) {
+            <section class="wt-panel wt-ranking" data-testid="wt-ranking">
+              <div class="wt-list-head">
+                <p class="wt-section-title">Task hours of work time</p>
+                <button
+                  type="button"
+                  class="wt-link"
+                  data-testid="wt-view-all"
+                  (click)="openDetail($event)"
+                >
+                  View all ›
+                </button>
+              </div>
+              <ol>
+                @for (row of rankingShown(); track row.employeeId) {
+                  <li
+                    class="wt-rank-row"
+                    data-testid="wt-rank-row"
+                    [title]="
+                      row.name +
+                      ': ' +
+                      hours(row.taskMinutes) +
+                      ' task of ' +
+                      hours(row.workedMinutes) +
+                      ' worked'
+                    "
+                  >
+                    <span
+                      class="wt-rank"
+                      [class.wt-rank--top]="row.rank !== null && row.rank <= 3"
+                      >{{ row.rank ?? '—' }}</span
+                    >
+                    <app-avatar
+                      size="sm"
+                      [avatarUrl]="avatarUrl(row.avatarFileId)"
+                      [userName]="row.name"
+                    />
+                    <span class="wt-row-name">{{ row.name }}</span>
+                    <span class="wt-rank-bar" aria-hidden="true"
+                      ><span [style.width.%]="barWidth(row.utilization)"></span
+                    ></span>
+                    <span class="wt-rank-rate">{{ util(row.utilization) }}</span>
+                  </li>
+                } @empty {
+                  <li class="wt-row-empty">No one worked in this period</li>
+                }
+              </ol>
+            </section>
+          }
+        </div>
+      }
+    }
+  }
+</app-widget-card>
+
+<app-team-work-task-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

@@ -1,113 +1,106 @@
-@if (employees().length === 0) {
-  <app-empty-state title="No employees found" description="Try adjusting your search or filters." />
-} @else {
-  <div class="edt__scroll">
-    <table class="edt">
-      <thead>
-        <tr>
-          <th class="edt__select-cell">
-            <input type="checkbox" data-testid="employee-select-all" aria-label="Select all employees on this page"
-              [checked]="allSelected()" [indeterminate]="someSelected()" (change)="onSelectAll($event)" />
-          </th>
-          @for (column of columns(); track column.key) {
-            <th [attr.aria-sort]="ariaSort(column)" [class]="'edt__col-' + column.key">
-              @if (column.sortKey) {
-                <button type="button" class="edt__sort" [attr.data-testid]="'employee-sort-' + column.key" [attr.aria-sort]="ariaSort(column)" (click)="onSort(column)">
-                  {{ column.label }}
-                  <svg class="edt__sort-icon" [class.edt__sort-icon--active]="ariaSort(column) !== 'none'" viewBox="0 0 24 24" aria-hidden="true">
-                    @if (ariaSort(column) === 'descending') { <path d="M8 10l4 4 4-4" /> }
-                    @else if (ariaSort(column) === 'ascending') { <path d="M8 14l4-4 4 4" /> }
-                    @else { <path d="M8 9l4-4 4 4M8 15l4 4 4-4" /> }
-                  </svg>
-                </button>
-              } @else {
-                {{ column.label }}
-              }
-            </th>
-          }
-          <th class="edt__menu-cell" aria-label="Actions"></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (employee of employees(); track employee.id; let i = $index) {
-          <tr class="edt__row" tabindex="0" [attr.data-testid]="'employee-row-' + employee.id"
-            [class.edt__row--selected]="selectedIds().has(employee.id)"
-            (click)="openEmployee(employee)" (keydown.enter)="$event.target === $event.currentTarget && openEmployee(employee)">
-            <td class="edt__select-cell" (click)="$event.stopPropagation()">
-              <input type="checkbox" [attr.data-testid]="'employee-select-' + employee.id" [attr.aria-label]="'Select ' + employee.fullName"
-                [checked]="selectedIds().has(employee.id)" (change)="onRowSelect(employee.id, $event)" />
-            </td>
-            @for (column of columns(); track column.key) {
-              <td [class]="'edt__col-' + column.key">
-                @switch (column.key) {
-                  @case ('employee') {
-                    <div class="emp-identity">
-                      <div class="emp-avatar-wrapper"
-                        [class.emp-avatar-wrapper--warning]="attendanceWarningLabel(employee) !== null"
-                        [attr.role]="attendanceWarningLabel(employee) !== null ? 'img' : null"
-                        [attr.tabindex]="attendanceWarningLabel(employee) !== null ? 0 : null"
-                        [attr.aria-label]="attendanceWarningLabel(employee)">
-                        <app-avatar
-                          class="emp-avatar"
-                          [avatarUrl]="directory.get(employee.id)?.avatarUrl ?? null"
-                          [userName]="employee.fullName"
-                          size="md"
-                          shape="circle"
-                        />
-                        @if (attendanceWarningLabel(employee); as warningLabel) {
-                          <span class="emp-attendance-warning-tooltip" role="tooltip">{{ warningLabel }}</span>
-                        }
-                        <span class="emp-status-dot-avatar"
-                          [class.emp-status-dot-avatar--active]="employee.status.toLowerCase() === 'active'"
-                          [class.emp-status-dot-avatar--inactive]="employee.status.toLowerCase() !== 'active'"
-                          [title]="'Status: ' + employee.status"></span>
-                      </div>
-                      <div class="emp-info">
-                        <span class="edt__name" [title]="employee.fullName">{{ employee.fullName }}</span>
-                        @if (attendanceAttentionLabel(employee); as attentionLabel) {
-                          <span class="emp-attention-indicator" [class]="attendanceSeverityClass(employee)" [attr.title]="attentionLabel">{{ attentionLabel }}</span>
-                        }
-                        @if (breakOverageLabel(employee); as breakLabel) {
-                          <span class="emp-break-overage-marker emp-attention--critical" [attr.title]="breakLabel">{{ breakLabel }}</span>
-                        }
-                      </div>
-                    </div>
-                  }
-                  @case ('reportingManager') {
-                    @if (employee.reportingManagerName) {
-                      <span class="edt__manager">
-                        <app-avatar
-                          [avatarUrl]="employee.reportingManagerId ? directory.get(employee.reportingManagerId)?.avatarUrl ?? null : null"
-                          [userName]="employee.reportingManagerName"
-                          size="xs"
-                          shape="circle"
-                        />
-                        {{ employee.reportingManagerName }}
-                      </span>
-                    } @else { — }
-                  }
-                  @default {
-                    {{ column.value(employee) || '—' }}
-                  }
-                }
-              </td>
-            }
-            <td class="edt__menu-cell" [attr.data-testid]="'employee-row-menu-' + employee.id" (click)="$event.stopPropagation()">
-              @if (menuItemsById().get(employee.id); as items) {
-                @if (items.length > 0) {
-                  <app-dropdown-menu [items]="items" ariaLabel="Employee actions"
-                    [direction]="i >= employees().length - 2 && employees().length > 4 ? 'up' : 'down'"
-                    (selected)="onMenuSelected(employee, $event)">
-                    <button menu-trigger type="button" class="edt__menu-btn" [attr.aria-label]="'Actions for ' + employee.fullName">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
-                    </button>
-                  </app-dropdown-menu>
-                }
-              }
-            </td>
-          </tr>
+<app-data-table
+  [columns]="tableColumns()"
+  [rows]="employees()"
+  [trackBy]="trackEmployee"
+  [rowTestId]="rowTestId"
+  caption="Employees"
+  emptyMessage="No employees found"
+  emptyDescription="Try adjusting your search or filters."
+  [rowClickable]="true"
+  [rowFocusable]="true"
+  [sortBy]="activeSortColumn()"
+  [sortDir]="sortDir()"
+  [sortTestId]="sortTestId"
+  [selectable]="true"
+  [selectedIds]="selectedIds()"
+  selectAllTestId="employee-select-all"
+  selectAllAriaLabel="Select all employees on this page"
+  [selectTestId]="selectTestId"
+  [selectAriaLabel]="selectAriaLabel"
+  (rowClicked)="openEmployee($event)"
+  (sortRequested)="onSort($event)"
+  (rowSelectionChanged)="selectionChanged.emit({ id: $event.row.id, selected: $event.selected })"
+  (selectAllChanged)="selectAllChanged.emit({ ids: visibleIds(), selected: $event })"
+>
+  <ng-template appDataTableCell="employee" let-employee>
+    @let issue = avatarIssue(employee);
+    <div class="emp-identity">
+      <div class="emp-avatar-wrapper"
+        [class.emp-avatar-wrapper--warning]="issue?.tone === 'critical'"
+        [class.emp-avatar-wrapper--caution]="issue?.tone === 'warning'"
+        [class.emp-avatar-wrapper--alerts]="!!issue?.alertCount"
+        [attr.role]="issue?.alertCount ? 'button' : issue ? 'img' : null"
+        [attr.tabindex]="issue ? 0 : null"
+        [attr.aria-label]="issue ? (issue.alertCount ? issue.label + ' - open in Inbox' : issue.label) : null"
+        [attr.data-testid]="issue?.alertCount ? 'employee-open-alerts' : null"
+        (click)="issue?.alertCount && openAlerts(employee, $event)"
+        (keydown.enter)="issue?.alertCount && openAlerts(employee, $event)">
+        <app-avatar
+          class="emp-avatar"
+          [avatarUrl]="directory.get(employee.id)?.avatarUrl ?? null"
+          [userName]="employee.fullName"
+          size="md"
+          shape="circle"
+        />
+        @if (issue) {
+          <span class="emp-attendance-warning-tooltip" role="tooltip">{{ issue.label }}</span>
         }
-      </tbody>
-    </table>
-  </div>
-}
+        @if (employee.isOnline) {
+          <span class="emp-status-dot-avatar" data-testid="employee-online-dot" title="Online"></span>
+        }
+      </div>
+      <div class="emp-info">
+        <span class="edt__name" [title]="employee.fullName">{{ employee.fullName }}</span>
+        @if (breakOverageLabel(employee); as breakLabel) {
+          <span class="emp-break-overage-marker emp-attention--critical" [attr.title]="breakLabel">{{ breakLabel }}</span>
+        }
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template appDataTableCell="position" let-employee>
+    @if (employee.positionName) {
+      {{ employee.positionName }}
+      @if (employee.positionPending) {
+        <span
+          class="ml-1 inline-flex rounded-full border border-[var(--color-warning)] bg-[var(--color-warning-subtle)] px-1.5 py-px text-[10px] font-semibold text-[var(--color-warning-text)]"
+          title="Seat reserved - becomes active once they accept the invitation."
+        >Invited</span>
+      }
+    } @else { — }
+  </ng-template>
+
+  <ng-template appDataTableCell="reportingManager" let-employee>
+    @if (employee.reportingManagerName) {
+      <span class="edt__manager">
+        <app-avatar
+          [avatarUrl]="employee.reportingManagerId ? directory.get(employee.reportingManagerId)?.avatarUrl ?? null : null"
+          [userName]="employee.reportingManagerName"
+          size="xs"
+          shape="circle"
+        />
+        {{ employee.reportingManagerName }}
+      </span>
+    } @else { — }
+  </ng-template>
+
+  @for (column of plainColumns(); track column.key) {
+    <ng-template [appDataTableCell]="column.key" let-employee>{{ column.value(employee) || '—' }}</ng-template>
+  }
+
+  <ng-template appDataTableCell="menu" let-employee let-i="index">
+    <span class="edt__menu" [attr.data-testid]="'employee-row-menu-' + employee.id">
+      @if (menuItemsById().get(employee.id); as items) {
+        @if (items.length > 0) {
+          <app-dropdown-menu [items]="items" ariaLabel="Employee actions"
+            [direction]="i >= employees().length - 2 && employees().length > 4 ? 'up' : 'down'"
+            (selected)="onMenuSelected(employee, $event)">
+            <button menu-trigger type="button" class="edt__menu-btn" [attr.aria-label]="'Actions for ' + employee.fullName">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+            </button>
+          </app-dropdown-menu>
+        }
+      }
+    </span>
+  </ng-template>
+</app-data-table>

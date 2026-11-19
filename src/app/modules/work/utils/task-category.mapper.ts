@@ -5,7 +5,11 @@ export function toTaskCategoryColumn(dto: TaskCategoryDto): TaskCategoryColumn {
   return {
     id: dto.id,
     name: dto.name,
-    displayOrder: dto.displayOrder
+    displayOrder: dto.displayOrder,
+    systemKey: dto.systemKey ?? null,
+    isSystem: dto.isSystem ?? false,
+    kind: dto.kind ?? 'task',
+    icon: dto.icon ?? null
   };
 }
 

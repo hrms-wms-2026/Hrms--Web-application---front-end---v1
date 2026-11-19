@@ -11,11 +11,12 @@ import { toEditTaskRequest } from '../../utils/task.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { DataTableCellDirective, DataTableColumn, DataTableComponent, DataTableRowAfterDirective } from '../../../../shared/ui/data-table/data-table.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
 
 const TASK_TABLE_COLUMNS: readonly DataTableColumn[] = [
-  { key: 'module', label: 'Module', width: '16%' },
+  { key: 'module', label: 'Milestone', width: '16%' },
   { key: 'title', label: 'Title', width: '28%', sortable: true },
   { key: 'assignee', label: 'Assignee', width: '8%' },
   { key: 'status', label: 'Status', width: '11%', sortable: true, interactive: true },
@@ -36,7 +37,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
 @Component({
   selector: 'app-task-table',
   standalone: true,
-  imports: [OverlayModule, TaskClockWidgetComponent, AvatarComponent, DatePickerComponent, DataTableComponent, DataTableCellDirective, DataTableRowAfterDirective],
+  imports: [StopClickPropagationDirective, OverlayModule, TaskClockWidgetComponent, AvatarComponent, DatePickerComponent, DataTableComponent, DataTableCellDirective, DataTableRowAfterDirective],
   template: `
     <app-data-table
       minWidth="986px"
@@ -49,7 +50,10 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       [isRowSelectable]="isRowSelectableFn"
       selectAllTestId="task-table-select-all"
       [selectTestId]="selectTestId"
+      [rowClickable]="true"
       (rowClicked)="viewed.emit($event)"
+      [sortBy]="sortBy()"
+      [sortDir]="sortDirection()"
       (sortRequested)="onSortRequested($event)"
       (rowSelectionChanged)="selectionChanged.emit({ taskId: $event.row.id, selected: $event.selected })"
       (selectAllChanged)="selectAllChanged.emit({ taskIds: selectableTaskIds(), selected: $event })"
@@ -108,7 +112,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
             (backdropClick)="closePopovers()"
             (detach)="closePopovers()"
           >
-            <div class="task-table__popover" role="dialog" aria-label="Change status" (click)="$event.stopPropagation()">
+            <div class="task-table__popover" role="dialog" aria-label="Change status" appStopClickPropagation>
               <div class="task-table__popover-title">Status</div>
               <div class="task-table__popover-list">
                 @for (opt of availableStatuses(task); track opt.id) {
@@ -159,7 +163,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
           (backdropClick)="closePopovers()"
           (detach)="closePopovers()"
         >
-          <div class="task-table__popover task-table__priority-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+          <div class="task-table__popover task-table__priority-popover" role="dialog" aria-label="Change priority" appStopClickPropagation>
             <div class="task-table__popover-title">Priority</div>
             <div class="task-table__popover-list">
               @for (opt of priorityOptions; track opt.value) {
@@ -284,7 +288,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
     .task-table__priority-btn:hover, .task-table__priority-btn[aria-expanded="true"],
     .task-table__due-date-btn:hover, .task-table__due-date-btn[aria-expanded="true"] {
       border-color: var(--color-accent);
-      box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+      box-shadow: var(--shadow-card);
     }
     .task-table__status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; }
     .task-table__priority-icon { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
@@ -303,7 +307,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 8px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       cursor: default;
       font-size: 12px;
       color: var(--color-text-primary);
@@ -527,8 +531,8 @@ export class TaskTableComponent {
     return openBy !== null && openBy !== this.currentEmployeeId();
   }
 
-  private readonly sortBy = signal<SortKey>('title');
-  private readonly sortDirection = signal<'asc' | 'desc'>('asc');
+  protected readonly sortBy = signal<SortKey>('title');
+  protected readonly sortDirection = signal<'asc' | 'desc'>('asc');
 
   readonly sortedTasks = computed(() => {
     const key = this.sortBy();

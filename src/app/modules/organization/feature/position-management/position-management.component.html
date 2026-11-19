@@ -9,32 +9,32 @@
         <!-- Expandable Search (Icon Click Toggle) -->
         <div class="pm-search-container">
           @if (searchExpanded()) {
-            <div class="pm-search-expandable">
-              <svg class="pm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="pm-search-expandable ui-field ui-field--sm">
+              <span class="ui-field__addon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
+              </svg></span>
               <input
                 type="text"
-                class="pm-search-input"
+                class="ui-field__control"
                 placeholder="Search positions…"
                 [value]="positionStore.searchQuery()"
                 (input)="onSearchChange($any($event.target).value)"
               />
-              <button
+              <span class="ui-field__trailing"><button
                 type="button"
-                class="pm-search-clear-btn"
+                class="ui-field__icon-btn"
                 (click)="toggleSearch()"
                 title="Close search"
                 aria-label="Close search"
               >
                 &times;
-              </button>
+              </button></span>
             </div>
           } @else {
             <button
               type="button"
-              class="pm-icon-btn"
-              [class.pm-icon-btn--active]="positionStore.searchQuery()"
+              class="ui-square-btn"
+              [class.ui-square-btn--active]="positionStore.searchQuery()"
               (click)="toggleSearch()"
               title="Search positions"
               aria-label="Search positions"
@@ -46,38 +46,17 @@
           }
         </div>
 
-        <!-- Department Select Filter -->
-        <div class="pm-dept-select-wrap">
-          <app-select
-            [options]="departmentOptions()"
-            [value]="positionStore.departmentFilterId() || ''"
-            (valueChange)="onDepartmentFilterChange($event)"
-          />
-        </div>
+        <app-view-mode-toggle
+          [modes]="viewModes"
+          [value]="positionStore.viewMode()"
+          (valueChange)="onViewModeToggle($event)"
+        />
 
-        <!-- View Switcher Toggle -->
-        <div class="pm-view-toggle">
-          <button
-            type="button"
-            class="pm-toggle-btn"
-            [class.pm-toggle-btn--active]="positionStore.viewMode() === 'tree'"
-            (click)="onViewModeToggle('tree')"
-            title="Tree view"
-            aria-label="Tree view"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          </button>
-          <button
-            type="button"
-            class="pm-toggle-btn"
-            [class.pm-toggle-btn--active]="positionStore.viewMode() === 'list'"
-            (click)="onViewModeToggle('list')"
-            title="List view"
-            aria-label="List view"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          </button>
-        </div>
+        <app-filter-bar
+          [fields]="filterFields()"
+          [values]="filterValues()"
+          (fieldChanged)="onFilterFieldChanged($event)"
+        />
 
         <!-- Templates Button -->
         <button
@@ -130,25 +109,77 @@
         <!-- TREE VIEW -->
         @if (positionStore.viewMode() === 'tree') {
 
-          <div
+          <app-pan-zoom-canvas
             class="pm-tree-container"
-            [class.pm-tree-container--panning]="isPanning()"
             [class.pm-tree-container--drop-active]="canvasDragOver()"
-            (pointerdown)="onCanvasPointerDown($event)"
-            (pointermove)="onCanvasPointerMove($event)"
-            (pointerup)="onCanvasPointerUp($event)"
-            (pointercancel)="onCanvasPointerCancel($event)"
-            (wheel)="onTreeWheel($event)"
+            [label]="chartMode() === 'people' ? 'People hierarchy' : 'Position hierarchy'"
             (dragover)="onCanvasDragOver($event)"
             (dragleave)="onCanvasDragLeave()"
             (drop)="onCanvasDrop($event)"
           >
-
+            <!-- Fixed layer: title, selection toolbar, drop hint and empty/error states. -->
+            <div canvasOverlay class="pm-canvas-chrome">
             <div class="pm-tree-header">
-
-              <span class="pm-tree-title">Position hierarchy</span>
+              <span class="pm-tree-title">{{ chartMode() === 'people' ? 'People hierarchy' : 'Position hierarchy' }}</span>
+              <div class="pm-chart-switch" role="tablist" aria-label="Chart view">
+                <button
+                  type="button"
+                  role="tab"
+                  class="pm-chart-switch__btn"
+                  [class.pm-chart-switch__btn--active]="chartMode() === 'positions'"
+                  [attr.aria-selected]="chartMode() === 'positions'"
+                  (click)="setChartMode('positions')"
+                >Positions</button>
+                <button
+                  type="button"
+                  role="tab"
+                  class="pm-chart-switch__btn"
+                  [class.pm-chart-switch__btn--active]="chartMode() === 'people'"
+                  [attr.aria-selected]="chartMode() === 'people'"
+                  (click)="setChartMode('people')"
+                >People</button>
+              </div>
             </div>
-
+            @if (chartMode() === 'people' && peopleSelectionActive()) {
+              <div class="pm-selection-toolbar" role="toolbar" aria-label="Selected people actions">
+                <div class="pm-selection-summary">
+                  <span class="pm-selection-count">{{ selectedPeopleIds().size }} selected</span>
+                  <span>{{ stayingPeopleIds().size }} staying behind</span>
+                  <span>{{ affectedPeopleIds().size }} people affected</span>
+                </div>
+                <div class="pm-selection-actions">
+                  @if (choosingReportingManager()) {
+                    <span class="pm-manager-prompt">Choose the new manager on the chart</span>
+                    <button type="button" class="pm-selection-btn pm-selection-btn--secondary" (click)="cancelManagerSelection()">Cancel</button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="pm-selection-btn"
+                      [disabled]="reportingMovePreviewLoading()"
+                      (click)="beginManagerSelection()"
+                    >
+                      @if (reportingMovePreviewLoading()) { Checking… } @else { Change reporting manager }
+                    </button>
+                    <button type="button" class="pm-selection-btn pm-selection-btn--secondary" (click)="clearPeopleSelection()">Clear</button>
+                  }
+                </div>
+              </div>
+            }
+            @if (coverageSelectionActive()) {
+              <div class="pm-coverage-legend" role="status" aria-live="polite">
+                @if (coverageVisualizationLoading()) {
+                  <span class="pm-coverage-legend__message">Loading coverage…</span>
+                } @else if (coverageVisualizationError()) {
+                  <span class="pm-coverage-legend__message pm-coverage-legend__message--error">{{ coverageVisualizationError() }}</span>
+                } @else {
+                  <span><i class="pm-coverage-dot pm-coverage-dot--selected"></i>Selected</span>
+                  <span><i class="pm-coverage-dot pm-coverage-dot--resolved"></i>Covered</span>
+                  <span><i class="pm-coverage-dot pm-coverage-dot--unresolved"></i>Needs attention</span>
+                  <span><i class="pm-coverage-dot pm-coverage-dot--outside"></i>Outside scope</span>
+                  <button type="button" class="pm-coverage-clear" (click)="clearCoverageSelection()">Clear</button>
+                }
+              </div>
+            }
             @if (canvasDragOver()) {
               <div class="pm-canvas-drop-overlay">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
@@ -156,68 +187,91 @@
               </div>
             }
 
-            @if (positionStore.treeData().length > 0) {
-              <div class="pm-tree-list-wrapper" [style.transform]="treeTransform()">
-                <div class="pm-tree-list">
-                  @for (node of positionStore.treeData(); track node.id) {
-                    <app-position-tree-node
-                      [node]="node"
-                      [level]="0"
-                      [isRoot]="true"
-                      [canManage]="hasManageAccess()"
-                      [canConfigureAccess]="canConfigureAccess()"
-                      [departmentNameMap]="departmentNameMap()"
-                      (addSubPosition)="openCreateModal($event)"
-                      (editPosition)="openEditModal($event)"
-                      (viewAccess)="openAccessModal($event)"
-                      (viewCoverage)="openCoverageModal($event)"
-                      (archivePosition)="openArchiveModal($event)"
-                      (reparentPosition)="onReparentPosition($event)"
-                      (templateDropped)="onTemplateDroppedOnPosition($event)"
-                    />
-                  }
-                </div>
-              </div>
-
-              <!-- Floating Zoom & Fit Controls (Bottom Right) -->
-              <div class="pm-zoom-controls" role="toolbar" aria-label="Zoom controls">
-                <button
-                  type="button"
-                  class="pm-zoom-btn"
-                  (click)="zoomOut()"
-                  [disabled]="treeZoom() <= 0.4"
-                  title="Zoom out (-)"
-                  aria-label="Zoom out"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <button
-                  type="button"
-                  class="pm-zoom-reset"
-                  (click)="resetZoom()"
-                  title="Reset zoom to 70%"
-                >
-                  {{ zoomPercentage() }}%
-                </button>
-                <button
-                  type="button"
-                  class="pm-zoom-btn"
-                  (click)="zoomIn()"
-                  [disabled]="treeZoom() >= 1.5"
-                  title="Zoom in (+)"
-                  aria-label="Zoom in"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-              </div>
-            } @else {
+            @if (chartMode() === 'people') {
+              @if (peopleLoading() && !peopleNodes()) {
+                <div class="pm-skeleton-block" aria-busy="true" aria-label="Loading people chart"></div>
+              } @else if (peopleError()) {
+                <app-error-state [message]="peopleError()!" [retryable]="true" (retry)="loadPeopleChart(selectedLegalEntity()!.id)" />
+              } @else if (peopleTree().length === 0) {
+                <app-empty-state title="No positions yet." description="Create positions and assign people to see who reports to whom." />
+              }
+            } @else if (positionStore.treeData().length === 0) {
               <app-empty-state
                 title="No positions found"
                 description="Create your first position to start building reporting lines."
               />
             }
+            </div>
 
-          </div>
+            <!-- Pannable content: the chart itself. -->
+            @if (chartMode() === 'people') {
+              @if (peopleChartReady()) {
+                  <div class="pm-tree-list">
+                    @for (root of peopleTree(); track root.id) {
+                      <app-tidy-tree
+                        label="People hierarchy"
+                        [root]="root"
+                        [childrenOf]="peopleChildren"
+                        [keyOf]="peopleKey"
+                        [nodeWidth]="peopleCardWidth"
+                        [nodeHeight]="peopleCardHeight"
+                        [dashedLink]="isCustomReportingLine"
+                      >
+                      <ng-template let-node let-parent="parent">
+                      <app-people-chart-node
+                        [node]="node"
+                        [managerName]="peopleManagerName(parent)"
+                        [canManage]="hasManageAccess()"
+                        [selectedEmployeeIds]="selectedPeopleIds()"
+                        [stayingEmployeeIds]="stayingPeopleIds()"
+                        [blockedTargetEmployeeIds]="selectedPeopleIds()"
+                        [selectionActive]="peopleSelectionActive()"
+                        [dragging]="draggingPeople()"
+                        [choosingManager]="choosingReportingManager()"
+                        [selectedCount]="selectedPeopleIds().size"
+                        [coverageVisual]="peopleCoverageVisual(node.id)"
+                        (personSelected)="onPeopleSelected($event)"
+                        (managerChosen)="onReportingManagerChosen($event)"
+                        (personDragStarted)="onPeopleDragStarted($event)"
+                        (personDropped)="onPeopleDropped($event)"
+                        (dragEnded)="onPeopleDragEnded()"
+                      />
+                      </ng-template>
+                      </app-tidy-tree>
+                    }
+                  </div>
+              }
+            } @else if (positionStore.treeData().length > 0) {
+                <div class="pm-tree-list">
+                  @for (root of positionStore.treeData(); track root.id) {
+                    <app-tidy-tree
+                      label="Position hierarchy"
+                      [root]="root"
+                      [childrenOf]="positionChildren"
+                      [keyOf]="positionKey"
+                      [nodeWidth]="positionCardWidth"
+                      [nodeHeight]="positionCardHeight"
+                    >
+                    <ng-template let-node let-depth="depth">
+                    <app-position-tree-node
+                      [node]="node"
+                      [level]="depth"
+                      [isRoot]="depth === 0"
+                      [canManage]="hasManageAccess()"
+                      [departmentNameMap]="departmentNameMap()"
+                      [coverageVisual]="positionCoverageVisual(node.id)"
+                      (selectPosition)="selectCoverage($event)"
+                      (addSubPosition)="openCreateModal($event)"
+                      (viewCoverage)="openCoverageModal($event)"
+                      (reparentPosition)="onReparentPosition($event)"
+                      (templateDropped)="onTemplateDroppedOnPosition($event)"
+                    />
+                    </ng-template>
+                    </app-tidy-tree>
+                  }
+                </div>
+            }
+          </app-pan-zoom-canvas>
 
 
         } @else {
@@ -226,14 +280,9 @@
           <app-position-list-table
             [positions]="positionStore.flatItems()"
             [canManage]="hasManageAccess()"
-            [canConfigureAccess]="canConfigureAccess()"
             [departmentNameMap]="departmentNameMap()"
             [positionNameMap]="positionNameMap()"
-            (editPosition)="openEditModal($event)"
-            (viewAccess)="openAccessModal($event)"
             (viewCoverage)="openCoverageModal($event)"
-            (archivePosition)="openArchiveModal($event)"
-            (restorePosition)="onRestorePosition($event)"
           />
 
         }
@@ -274,7 +323,7 @@
     [loading]="positionStore.saving()"
     [actionError]="positionStore.actionError()"
     (save)="onSavePosition($event)"
-    (cancel)="closeFormModal()"
+    (cancelled)="closeFormModal()"
   />
 }
 
@@ -285,7 +334,7 @@
     [checking]="positionStore.archiveChecking()"
     [saving]="positionStore.saving()"
     (confirmArchive)="onConfirmArchive()"
-    (cancel)="closeArchiveModal()"
+    (cancelled)="closeArchiveModal()"
   />
 }
 
@@ -301,26 +350,31 @@
     [canManage]="hasManageAccess()"
     [targetOccupancy]="positionStore.targetOccupancy()"
     [ownerHolders]="positionStore.coverageOwnerHolders()"
+    [visualization]="coverageVisualization()"
+    [availableRoles]="roleStore.roles()"
+    [accessTemplate]="positionStore.accessTemplate()"
+    [accessLoading]="positionStore.accessLoading()"
+    [detailsSaving]="positionStore.saving() || positionStore.accessSaving()"
+    [detailsError]="positionStore.actionError()"
+    [accessError]="positionStore.accessError()"
+    [canConfigureAccess]="canConfigureAccess()"
     (addCoverage)="onAddCoverage($event)"
     (updateCoverage)="onUpdateCoverage($event)"
     (removeCoverage)="onRemoveCoverage($event)"
     (targetOccupancyRequested)="onTargetOccupancyRequested($event)"
-    (close)="closeCoverageModal()"
+    (saveDetails)="onSavePanelDetails($event)"
+    (archivePosition)="openArchiveModal($event)"
+    (restorePosition)="onRestorePosition($event)"
+    (closed)="closeCoverageModal()"
   />
 }
 
-@if (accessModalOpen() && positionStore.selectedAccessPosition()) {
-  <app-position-access-modal
-    [position]="positionStore.selectedAccessPosition()!"
-    [accessTemplate]="positionStore.accessTemplate()"
-    [availableRoles]="roleStore.roles()"
-    [loading]="positionStore.accessLoading()"
-    [saving]="positionStore.accessSaving()"
-    [error]="positionStore.accessError()"
-    [hasRoleReadAccess]="hasRoleReadAccess()"
-    [canManage]="hasManageAccess()"
-    (saveAccess)="onSaveAccess($event)"
-    (close)="closeAccessModal()"
+@if (reportingMovePreview()) {
+  <app-reporting-line-review-modal
+    [impact]="reportingMovePreview()!"
+    [avatarFileIds]="peopleAvatarFileIds()"
+    [saving]="reportingMoveSaving()"
+    (confirmed)="confirmReportingMove($event)"
+    (cancelled)="closeReportingMoveReview()"
   />
 }
-

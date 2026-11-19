@@ -51,27 +51,27 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
           <div>
             <dl class="grid grid-cols-3 gap-2 text-center" data-testid="attendance-stats">
               <div>
-                <dd class="flex flex-col items-center text-xl font-bold text-slate-900"><span data-testid="stat-present">{{ d.present }}</span><app-delta-badge [delta]="presentDelta()" [against]="period.compareLabel()" /></dd>
-                <dt class="text-[11px] text-slate-500 mt-0.5">Present</dt>
+                <dd class="flex flex-col items-center text-xl font-bold text-[var(--color-text-primary)]"><span data-testid="stat-present">{{ d.present }}</span><app-delta-badge [delta]="presentDelta()" [against]="period.compareLabel()" /></dd>
+                <dt class="text-[11px] text-[var(--color-text-secondary)] mt-0.5">Present</dt>
               </div>
               <div>
-                <dd class="flex flex-col items-center text-xl font-bold text-amber-600"><span data-testid="stat-late">{{ d.late }}</span><app-delta-badge [delta]="lateDelta()" [against]="period.compareLabel()" /></dd>
-                <dt class="text-[11px] text-slate-500 mt-0.5">Late</dt>
+                <dd class="flex flex-col items-center text-xl font-bold text-[var(--color-warning)]"><span data-testid="stat-late">{{ d.late }}</span><app-delta-badge [delta]="lateDelta()" [against]="period.compareLabel()" /></dd>
+                <dt class="text-[11px] text-[var(--color-text-secondary)] mt-0.5">Late</dt>
               </div>
               <div>
-                <dd class="flex flex-col items-center text-xl font-bold text-slate-900"><span data-testid="stat-leave">{{ d.leaveDays }}</span><app-delta-badge [delta]="leaveDelta()" [against]="period.compareLabel()" /></dd>
-                <dt class="text-[11px] text-slate-500 mt-0.5">Leave</dt>
+                <dd class="flex flex-col items-center text-xl font-bold text-[var(--color-text-primary)]"><span data-testid="stat-leave">{{ d.leaveDays }}</span><app-delta-badge [delta]="leaveDelta()" [against]="period.compareLabel()" /></dd>
+                <dt class="text-[11px] text-[var(--color-text-secondary)] mt-0.5">Leave</dt>
               </div>
             </dl>
 
             @if (recentDays(d.days); as recent) {
               @if (recent.length > 0) {
                 <!-- The last few working days of the period up to today, newest on the right -->
-                <div class="mt-4 flex items-center justify-between px-1 py-1.5 rounded-lg bg-slate-50 text-[11px]" data-testid="recent-days">
+                <div class="mt-4 flex items-center justify-between px-1 py-1.5 rounded-lg bg-[var(--color-surface-secondary)] text-[11px]" data-testid="recent-days">
                   @for (item of recent; track item.date) {
                     <div data-testid="recent-day" class="flex flex-col items-center gap-1 flex-1" [title]="item.date + ' · ' + label(item.status)">
-                      <span class="text-slate-400">{{ item.weekday }}</span>
-                      <span class="font-bold text-slate-700">{{ item.dayNum }}</span>
+                      <span class="text-[var(--color-text-muted)]">{{ item.weekday }}</span>
+                      <span class="font-bold text-[var(--color-text-primary)]">{{ item.dayNum }}</span>
                       <span class="dot" [class]="'s--' + item.status"></span>
                     </div>
                   }
@@ -80,7 +80,7 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
             }
           </div>
 
-          <div class="mt-4 pt-3 border-t border-slate-100">
+          <div class="mt-4 pt-3 border-t border-[var(--color-border)]">
             <div class="flex h-2 items-end gap-[2px] rounded-full overflow-hidden" role="img" [attr.aria-label]="stripLabel(d.days)" data-testid="attendance-strip">
               @for (day of stripDays(d.days); track day.date) {
                 <span
@@ -93,27 +93,27 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
             </div>
             <!-- View each day shares the summary line, so the card has no extra footer row. -->
             <div class="mt-2.5 flex items-center justify-between gap-3">
-              <p class="text-xs text-slate-500">
+              <p class="text-xs text-[var(--color-text-secondary)]">
                 {{ d.present }} of {{ d.workingDays }} working days attended
               </p>
               @if (!showAll()) {
-                <button type="button" class="relative top-5 shrink-0 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer" data-testid="attendance-toggle" (click)="onToggleClick($event)">View each day</button>
+                <button type="button" class="relative top-5 shrink-0 text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer" data-testid="attendance-toggle" (click)="onToggleClick($event)">View each day</button>
               }
             </div>
           </div>
 
           @if (showAll()) {
-            <section class="mt-4 border-t border-slate-100 pt-4" data-testid="attendance-day-list" aria-label="Days">
+            <section class="mt-4 border-t border-[var(--color-border)] pt-4" data-testid="attendance-day-list" aria-label="Days">
               @switch (daysState()) {
                 @case ('loading') {
                   <div class="space-y-2" data-testid="attendance-days-loading" aria-hidden="true">
                     @for (i of [0, 1, 2, 3]; track i) {
-                      <div class="h-14 animate-pulse rounded-xl bg-slate-100"></div>
+                      <div class="h-14 animate-pulse rounded-xl bg-[var(--color-surface-secondary)]"></div>
                     }
                   </div>
                 }
                 @case ('error') {
-                  <p class="py-4 text-center text-sm text-rose-600" data-testid="attendance-days-error">
+                  <p class="py-4 text-center text-sm text-[var(--color-danger)]" data-testid="attendance-days-error">
                     Could not load the days.
                     <button type="button" class="font-semibold underline cursor-pointer" (click)="retryDays($event)">Retry</button>
                   </p>
@@ -124,13 +124,13 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
                       <li>
                         <button
                           type="button"
-                          class="grid w-full grid-cols-[6.5rem_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-slate-100 bg-white px-4 py-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40 cursor-pointer"
+                          class="grid w-full grid-cols-[6.5rem_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-left transition-colors hover:border-[var(--color-accent-subtle)] hover:bg-[var(--color-accent-subtle)]/40 cursor-pointer"
                           data-testid="attendance-day"
                           [attr.aria-label]="'Open ' + day.date"
                           (click)="openDay($event, day)"
                         >
                           <div>
-                            <p class="text-sm font-semibold text-slate-900">{{ dayLabel(day.date) }}</p>
+                            <p class="text-sm font-semibold text-[var(--color-text-primary)]">{{ dayLabel(day.date) }}</p>
                             <span class="mt-1 inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold" [class]="statusChip(day.status)" data-testid="attendance-day-status">
                               <span class="dot" [class]="'s--' + displayStatus(day.status)"></span>{{ statusText(day) }}
                             </span>
@@ -138,17 +138,17 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 
                           <div class="min-w-0 text-sm">
                             @if (day.clockInLocal) {
-                              <p class="font-medium text-slate-900" data-testid="attendance-day-times">
+                              <p class="font-medium text-[var(--color-text-primary)]" data-testid="attendance-day-times">
                                 {{ day.clockInLocal }} → {{ day.clockOutLocal ?? 'No clock-out' }}
                                 @if (day.scheduledStart) {
-                                  <span class="ml-1 text-xs font-normal text-slate-400">Scheduled {{ day.scheduledStart }}–{{ day.scheduledEnd }}</span>
+                                  <span class="ml-1 text-xs font-normal text-[var(--color-text-muted)]">Scheduled {{ day.scheduledStart }}–{{ day.scheduledEnd }}</span>
                                 }
                               </p>
-                              <p class="mt-0.5 text-xs text-slate-500" data-testid="attendance-day-hours">
+                              <p class="mt-0.5 text-xs text-[var(--color-text-secondary)]" data-testid="attendance-day-hours">
                                 Worked {{ minutes(day.workedMinutes) }}@if (day.requiredWorkMinutes) { of {{ minutes(day.requiredWorkMinutes) }} } · Break {{ minutes(day.breakMinutes) }}@if (day.workMode) { · {{ day.workMode }} }
                               </p>
                             } @else {
-                              <p class="text-slate-500">{{ noClockText(day) }}</p>
+                              <p class="text-[var(--color-text-secondary)]">{{ noClockText(day) }}</p>
                             }
                           </div>
 
@@ -158,18 +158,18 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
                             @if (day.shortHours) { <span class="flag flag--warn">Short hours</span> }
                             @if (day.overBreakMinutes > 0) { <span class="flag flag--warn">{{ day.overBreakMinutes }}m over break</span> }
                             @if (day.status === 'missing_clock_out') { <span class="flag flag--bad">Missing clock-out</span> }
-                            <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            <svg class="h-4 w-4 text-[var(--color-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
                           </div>
                         </button>
                       </li>
                     } @empty {
-                      <p class="py-4 text-center text-sm text-slate-500">No days to show yet.</p>
+                      <p class="py-4 text-center text-sm text-[var(--color-text-secondary)]">No days to show yet.</p>
                     }
                   </ul>
                 }
               }
               <div class="mt-4 flex justify-end">
-                <button type="button" class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer" data-testid="attendance-toggle" (click)="onToggleClick($event)">Show less</button>
+                <button type="button" class="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer" data-testid="attendance-toggle" (click)="onToggleClick($event)">Show less</button>
               </div>
             </section>
           }
@@ -182,15 +182,15 @@ import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
   styles: [`
     .day { min-width: 3px; border-radius: 2px; height: 100%; }
     .dot { width: 6px; height: 6px; border-radius: 9999px; }
-    .s--present { background: #16a34a; }
-    .s--late { background: #f59e0b; }
-    .s--leave { background: #3b82f6; }
-    .s--absent { background: #f43f5e; }
+    .s--present { background: var(--color-success); }
+    .s--late { background: var(--color-warning); }
+    .s--leave { background: var(--color-accent); }
+    .s--absent { background: var(--color-danger); }
     .s--off { background: var(--color-border); }
     .s--none { background: var(--color-border); }
     .flag { border-radius: 0.375rem; padding: 0.125rem 0.5rem; font-size: 0.6875rem; font-weight: 600; white-space: nowrap; }
-    .flag--warn { background: #fffbeb; color: #b45309; }
-    .flag--bad { background: #fff1f2; color: #be123c; }
+    .flag--warn { background: var(--color-warning-subtle); color: var(--color-warning-text); }
+    .flag--bad { background: var(--color-danger-subtle); color: var(--color-danger-text); }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -286,11 +286,11 @@ export class OverviewAttendanceWidgetComponent {
 
   statusChip(status: EmployeeAttendanceDay['status']): string {
     switch (this.displayStatus(status)) {
-      case 'present': return 'bg-emerald-50 text-emerald-700';
-      case 'late': return 'bg-amber-50 text-amber-700';
-      case 'leave': return 'bg-blue-50 text-blue-700';
-      case 'absent': return 'bg-rose-50 text-rose-700';
-      default: return 'bg-slate-100 text-slate-600';
+      case 'present': return 'bg-[var(--color-success-subtle)] text-[var(--color-success-text)]';
+      case 'late': return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
+      case 'leave': return 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]';
+      case 'absent': return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
+      default: return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
     }
   }
 

@@ -1,128 +1,374 @@
-<section
-  class="rounded-2xl border border-slate-100/90 bg-white p-5 shadow-xs flex flex-col justify-between h-full"
-  data-purpose="today-schedule"
->
-  <div>
-    <!-- Schedule Header -->
-    <div class="mb-3.5 flex items-center justify-between">
-      <h2 class="flex items-center gap-1.5 text-sm font-bold text-slate-800">
-        <span class="text-xs text-blue-600">◆</span>
-        Today's Schedule
-      </h2>
-      <a
-        routerLink="/calendar"
-        data-testid="todays-schedule-view-link"
-        class="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white/90 px-3 py-1 text-xs font-semibold text-blue-600 shadow-xs backdrop-blur-xs transition-all hover:bg-white hover:shadow-sm"
-      >
-        <span>View schedule</span>
-        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
-        </svg>
-      </a>
-    </div>
-
-    @if (loading()) {
-      <div class="flex flex-col gap-2.5 animate-pulse py-1">
-        <div class="h-20 w-full rounded-2xl bg-slate-100"></div>
-        <div class="h-8 w-full rounded-lg bg-slate-100"></div>
-        <div class="h-8 w-full rounded-lg bg-slate-100"></div>
-      </div>
-    } @else if (agendaItems().length === 0) {
-      <div class="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center" data-testid="todays-schedule-empty">
-        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-          <svg viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
-            <path
-              fill-rule="evenodd"
-              d="M5.75 2a.75.75 0 01.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zM3.5 8.5v6.75c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25V8.5h-13z"
-              clip-rule="evenodd"
-            />
+<section class="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-xs transition-all hover:shadow-sm" data-purpose="today-schedule">
+  <!-- Fixed Header & Summary Section -->
+  <div class="shrink-0 pb-1">
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-accent-subtle)] text-[var(--color-accent)] shadow-2xs border border-[var(--color-accent-subtle)]">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+            <rect height="16" rx="3" width="18" x="3" y="4.5"></rect>
+            <path d="M8 2.5v3.5M16 2.5v3.5M3 9.5h18" stroke-linecap="round"></path>
+            <path d="M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 17h.01M12 17h.01" stroke-linecap="round" stroke-width="2.5"></path>
           </svg>
         </span>
-        <p class="text-sm font-semibold text-slate-800">No events scheduled today</p>
-        <p class="text-xs text-slate-400">Your calendar is clear for the day.</p>
+        <div>
+          <h2 class="text-sm font-bold text-[var(--color-text-primary)] tracking-tight leading-tight">
+            Today's Schedule
+          </h2>
+          <p class="text-[11px] font-medium text-[var(--color-text-secondary)] mt-0.5">
+            {{ totalItemsCount() }} {{ totalItemsCount() === 1 ? 'item' : 'items' }} scheduled today
+          </p>
+        </div>
       </div>
-    } @else {
-      @if (nextUp(); as next) {
-        <!-- Highlighted Next Up Event -->
+
+      <div class="flex shrink-0 items-center gap-1">
         <a
           routerLink="/calendar"
-          data-testid="todays-schedule-next-up"
-          class="relative mb-3.5 block rounded-2xl border border-blue-100/90 bg-[#f0f6ff] p-3.5 transition-all hover:border-blue-200 hover:shadow-xs"
+          data-testid="todays-schedule-view-link"
+          class="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-accent)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-accent)] shadow-2xs transition-all hover:bg-[var(--color-accent-subtle)] hover:border-[var(--color-accent)]"
         >
-          <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="rounded-md bg-[#2563eb] px-2 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
-                  NEXT UP
-                </span>
-                <span class="text-xs font-semibold text-slate-700">{{ timeRangeLabel(next) }}</span>
-              </div>
-              <p class="mt-2 truncate text-sm font-bold text-slate-900">{{ next.title }}</p>
-              @if (next.location || next.meetingLink; as loc) {
-                <p class="mt-1 flex items-center gap-1.5 truncate text-xs text-slate-500">
-                  <svg class="h-3.5 w-3.5 shrink-0 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                  </svg>
-                  <span class="truncate">{{ loc }}</span>
-                </p>
-              }
-            </div>
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-white text-blue-500 shadow-2xs">
-              <svg class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <rect height="18" rx="2.5" width="18" x="3" y="4"></rect>
-                <line stroke-linecap="round" x1="16" x2="16" y1="2" y2="6"></line>
-                <line stroke-linecap="round" x1="8" x2="8" y1="2" y2="6"></line>
-                <line stroke-linecap="round" x1="3" x2="21" y1="10" y2="10"></line>
-              </svg>
-            </div>
-          </div>
+          Open planner
+          <svg class="h-3 w-3 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
+          </svg>
         </a>
-      }
+        <!-- Refresh in the top-right corner, shown only while the card is hovered (or the button has focus) -->
+        <div class="opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+          <app-popout-header-actions
+            [refreshing]="refreshing()"
+            [expanded]="false"
+            [canExpand]="false"
+            (refresh)="refresh()"
+          />
+        </div>
+      </div>
+    </div>
 
-      <!-- Subsequent Events List -->
-      <div class="space-y-3 px-0.5 my-2">
-        @for (item of remainingItems(); track item.event.id) {
-          <div data-testid="todays-schedule-item">
-            <a
-              routerLink="/calendar"
-              class="group flex items-start justify-between rounded-lg py-1 px-1 text-xs transition-colors hover:bg-slate-50/70"
-            >
-              <div class="flex min-w-0 flex-1 items-start gap-2.5 pr-2">
-                <span
-                  class="mt-1 h-2 w-2 shrink-0 rounded-full"
-                  [style.background-color]="item.event.color || ($index === 0 ? '#2563eb' : '#cbd5e1')"
-                ></span>
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-xs font-semibold text-slate-800 transition-colors group-hover:text-blue-600">
-                    {{ item.event.title }}
-                  </p>
-                  @if (item.event.location || item.event.meetingLink; as loc) {
-                    <p class="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-400">
-                      <svg class="h-3 w-3 shrink-0 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                      </svg>
-                      <span class="truncate">{{ loc }}</span>
-                    </p>
-                  }
-                </div>
-              </div>
-              <span class="shrink-0 text-xs font-medium text-slate-500">{{ timeLabel(item.event) }}</span>
-            </a>
+    <!-- Summary: total time, tasks, meetings, events -->
+    @if (!loading() && totalItemsCount() > 0) {
+      <div class="mt-3 mb-2.5 grid grid-cols-4 divide-x divide-[var(--color-border)] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] py-2.5 px-2">
+        <!-- Stat: Total time -->
+        <div class="flex items-center gap-2.5 px-2">
+          <span class="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full @md:flex bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"/>
+              <path stroke-linecap="round" d="M12 7v5l3 2"/>
+            </svg>
+          </span>
+          <div class="flex flex-col min-w-0">
+            <span class="text-sm font-bold text-[var(--color-text-primary)] leading-tight">{{ totalTimeLabel() }}</span>
+            <span class="text-[11px] font-medium text-[var(--color-text-secondary)] leading-tight">Total time</span>
           </div>
-        }
+        </div>
+
+        <!-- Stat: Tasks -->
+        <div class="flex items-center gap-2.5 px-3" data-testid="todays-schedule-tasks-stat">
+          <span class="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full @md:flex bg-[var(--color-widget-shade-3b)]/10 text-[var(--color-widget-shade-1)]">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <div class="flex flex-col min-w-0" data-testid="todays-schedule-tasks-count">
+            <span class="text-sm font-bold text-[var(--color-text-primary)] leading-tight">{{ tasksCount() }} </span>
+            <span class="text-[11px] font-medium text-[var(--color-text-secondary)] leading-tight">{{ tasksCount() === 1 ? 'Task' : 'Tasks' }}</span>
+          </div>
+        </div>
+
+        <!-- Stat: Meetings -->
+        <div class="flex items-center gap-2.5 px-3">
+          <span class="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full @md:flex bg-[var(--color-widget-mild)] text-[var(--color-widget-shade-1)]">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <rect height="15" rx="2.5" width="16" x="4" y="4.5"/>
+              <path d="M8 2v4M16 2v4M4 9.5h16" stroke-linecap="round"/>
+              <path d="M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 16.5h.01M12 16.5h.01" stroke-linecap="round" stroke-width="2.5"/>
+            </svg>
+          </span>
+          <div class="flex flex-col min-w-0">
+            <span class="text-sm font-bold text-[var(--color-text-primary)] leading-tight">{{ meetingsCount() }} </span>
+            <span class="text-[11px] font-medium text-[var(--color-text-secondary)] leading-tight">{{ meetingsCount() === 1 ? 'Meeting' : 'Meetings' }}</span>
+          </div>
+        </div>
+
+        <!-- Stat: Events -->
+        <div class="flex items-center gap-2.5 px-3">
+          <span class="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full @md:flex bg-[var(--color-widget-mild)] text-[var(--color-widget-shade-1)]">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <rect height="16" rx="3" width="16" x="4" y="4"/>
+              <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <div class="flex flex-col min-w-0">
+            <span class="text-sm font-bold text-[var(--color-text-primary)] leading-tight">{{ eventsCount() }} </span>
+            <span class="text-[11px] font-medium text-[var(--color-text-secondary)] leading-tight">{{ eventsCount() === 1 ? 'Event' : 'Events' }}</span>
+          </div>
+        </div>
       </div>
     }
   </div>
 
-  <!-- Add Quick Event Button -->
-  <a
-    routerLink="/calendar"
-    class="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 transition-all hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/20 cursor-pointer"
-  >
-    <span>+</span>
-    <span>Add Quick Event</span>
-  </a>
+  <!-- Scrollable Timeline Items Area: rows fade out at the top/bottom edge as they scroll (global .scroll-fade) -->
+  <div class="tsc-scroll flex-1 min-h-0 overflow-y-auto pr-1 pb-2 scroll-fade" data-testid="todays-schedule-scroll">
+    @if (loading()) {
+      <div class="flex flex-col gap-2.5 py-2 animate-pulse" data-testid="todays-schedule-skeleton">
+        <div class="h-3.5 w-28 rounded bg-[var(--color-surface-secondary)]"></div>
+        <div class="h-9 w-full rounded-xl bg-[var(--color-surface-secondary)]"></div>
+        @for (row of [1, 2, 3, 4]; track row) {
+          <div class="flex items-center gap-2.5">
+            <div class="h-7 w-7 rounded-full bg-[var(--color-surface-secondary)] shrink-0"></div>
+            <div class="h-12 flex-1 rounded-xl bg-[var(--color-surface-secondary)]"></div>
+          </div>
+        }
+      </div>
+    } @else if (totalItemsCount() === 0) {
+      <div class="flex flex-1 flex-col items-center justify-center gap-2.5 py-8 text-center" data-testid="todays-schedule-empty">
+        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-accent-subtle)] text-[var(--color-accent)]">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect height="18" rx="3" width="18" x="3" y="3" stroke-width="1.8"/>
+            <path d="M8 2v4M16 2v4M3 9h18" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M9 14l2 2 4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-[var(--color-text-primary)]">No events scheduled today</p>
+          <p class="mt-0.5 text-xs text-[var(--color-text-muted)]">Your calendar is clear for the day.</p>
+        </div>
+        <div class="mt-1 flex flex-wrap items-center justify-center gap-2">
+          <a
+            routerLink="/calendar"
+            class="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] dark:rounded-full dark:border-solid dark:border-[var(--color-accent)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+          >
+            + Add Quick Event
+          </a>
+        </div>
+      </div>
+    } @else {
+      <!-- The day in time order: meetings, calendar events and planned tasks on one numbered rail -->
+      <ol class="flex flex-col gap-2" data-testid="todays-schedule-timeline">
+        @for (row of timeline(); track row.key; let i = $index; let last = $last) {
+          @switch (row.kind) {
+            @case ('meeting') {
+              <li class="relative flex gap-2.5" data-testid="todays-meetings-item" [attr.data-status]="row.status">
+                <ng-container *ngTemplateOutlet="stepNode; context: { $implicit: row.status, step: i + 1, rail: !last }" />
+
+              <div
+                  (click)="openMeeting.set({ seriesId: row.meeting.seriesId, originalStart: row.meeting.originalStart })"
+                  role="button"
+                  tabindex="0"
+                  appKeyboardClick
+                  class="group min-w-0 flex-1 cursor-pointer rounded-2xl border py-2 px-3 transition-all duration-200 text-left"
+                  [class]="cardClass(row.status)"
+                >
+                  <!-- Top Row: Title, Time Range, Badge -->
+                  <div class="flex items-center justify-between gap-2">
+                    <span
+                      data-testid="meeting-card-title"
+                      class="truncate text-[13px] font-bold text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors"
+                    >
+                      {{ meetingTitle(row.meeting) }}
+                    </span>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="text-xs font-normal text-[var(--color-text-secondary)]">
+                        {{ meetingTimeRange(row.meeting) }}
+                      </span>
+
+                      <!-- Hovering the Meeting badge (or focusing the row) turns it into Join, which opens the Teams/Zoom app -->
+                      @if (meetingJoin(row.meeting); as join) {
+                        <span class="group/join inline-flex">
+                          <span
+                            data-testid="todays-meeting-badge"
+                            class="rounded-md border border-[var(--color-accent-subtle)] bg-[var(--color-accent-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-accent)] group-hover/join:hidden group-focus-within:hidden"
+                          >
+                            Meeting
+                          </span>
+                          <a
+                            [href]="join.url"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            appStopClickPropagation
+                            data-testid="todays-meeting-join-btn"
+                            [title]="join.label"
+                            [attr.aria-label]="join.label + ': ' + meetingTitle(row.meeting)"
+                            class="hidden items-center gap-1 rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-on-solid)] shadow-2xs transition-colors hover:bg-[var(--color-accent-hover)] group-hover/join:inline-flex group-focus-within:inline-flex"
+                          >
+                            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <path d="m22 8-6 4 6 4V8Z" /><rect x="2" y="6" width="14" height="12" rx="2" />
+                            </svg>
+                            Join
+                          </a>
+                        </span>
+                      } @else {
+                        <span
+                          data-testid="todays-meeting-badge"
+                          class="rounded-md border border-[var(--color-accent-subtle)] bg-[var(--color-accent-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-accent)]"
+                        >
+                          Meeting
+                        </span>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Bottom Row: Subtitle and Status -->
+                  <div class="mt-1 flex items-center justify-between gap-2">
+                    <p class="truncate text-xs font-medium text-[var(--color-text-muted)]">
+                      {{ row.meeting.shortId }}
+                    </p>
+
+                    <div class="flex items-center gap-1.5 text-xs font-semibold shrink-0">
+                      <ng-container *ngTemplateOutlet="statusMark; context: { $implicit: row.status }" />
+                    </div>
+                  </div>
+                </div>
+              </li>
+            }
+            @case ('event') {
+              @let eKind = itemKind(row.event);
+              <li class="relative flex gap-2.5" data-testid="todays-schedule-item" [attr.data-status]="row.status">
+                <ng-container *ngTemplateOutlet="stepNode; context: { $implicit: row.status, step: i + 1, rail: !last }" />
+
+              <div class="min-w-0 flex-1 rounded-2xl border py-2 px-3 transition-all duration-200" [class]="cardClass(row.status)">
+                  <!-- Top Row: Title, Time Range, and Type Badge -->
+                  <div class="flex items-center justify-between gap-2">
+                    <a
+                      routerLink="/calendar"
+                      class="truncate text-[13px] font-bold text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors"
+                    >
+                      {{ row.event.title }}
+                    </a>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="text-xs font-normal text-[var(--color-text-secondary)]">
+                        {{ timeRangeLabel(row.event) }}
+                      </span>
+
+                      <span
+                        class="rounded-md px-2 py-0.5 text-[11px] font-semibold border"
+                        [class.border-[var(--color-accent-subtle)]]="eKind === 'Meeting'"
+                        [class.bg-[var(--color-accent-subtle)]]="eKind === 'Meeting'"
+                        [class.text-[var(--color-accent)]]="eKind === 'Meeting'"
+                        [class.border-[var(--color-widget-mild-line)]]="eKind === 'Event'"
+                        [class.bg-[var(--color-widget-mild)]]="eKind === 'Event'"
+                        [class.text-[var(--color-widget-shade-1)]]="eKind === 'Event'"
+                      >
+                        {{ eKind }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Bottom Row: Subtitle/Project and Status -->
+                  <div class="mt-1 flex items-center justify-between gap-2">
+                    <p class="truncate text-xs font-medium text-[var(--color-text-muted)]">
+                      <span data-testid="todays-schedule-kind" class="sr-only">Calendar event</span>
+                      {{ subtitle(row.event) }}
+                    </p>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                      @if (getMeetingLink(row.event); as meetingUrl) {
+                        @if (row.status !== 'completed') {
+                          <a
+                            [href]="meetingUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            data-testid="todays-schedule-meeting-btn"
+                            [title]="(isOrganizer(row.event) ? 'Start ' : 'Join ') + getMeetingPlatformLabel(row.event) + ' Meeting'"
+                            class="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--color-accent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-on-solid)] shadow-2xs hover:bg-[var(--color-accent-hover)] transition-colors"
+                          >
+                            {{ isOrganizer(row.event) ? 'Start' : 'Join' }}
+                          </a>
+                        }
+                      }
+
+                      <!-- Status Indicator -->
+                      <div
+                        data-testid="todays-schedule-status"
+                        class="flex items-center gap-1.5 text-xs font-semibold"
+                      >
+                        <ng-container *ngTemplateOutlet="statusMark; context: { $implicit: row.status }" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            }
+            @case ('task') {
+              <li class="relative flex gap-2.5" data-testid="todays-schedule-task" [attr.data-status]="row.status">
+                <ng-container *ngTemplateOutlet="stepNode; context: { $implicit: row.status, step: i + 1, rail: !last }" />
+
+                <div
+                  (click)="openTask(row.block)"
+                  role="button"
+                  tabindex="0"
+                  appKeyboardClick
+                  data-testid="todays-schedule-task-link"
+                  class="min-w-0 flex-1 cursor-pointer rounded-2xl border py-2 px-3 transition-all duration-200 text-left"
+                  [class]="cardClass(row.status)"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="truncate text-[13px] font-bold text-[var(--color-text-primary)]">{{ row.block.taskTitle }}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="text-xs font-normal text-[var(--color-text-secondary)]">{{ taskTimeRange(row.block) }}</span>
+                      <span data-testid="todays-schedule-task-badge" class="rounded-md border border-transparent bg-[var(--color-widget-shade-3b)]/10 px-2 py-0.5 text-[11px] font-semibold text-[var(--color-widget-shade-1)]">Task</span>
+                    </div>
+                  </div>
+                  <div class="mt-1 flex items-center justify-between gap-2">
+                    <p class="truncate text-xs font-medium text-[var(--color-text-muted)]">{{ row.block.projectName ?? '' }}</p>
+                    <div class="flex items-center gap-1.5 text-xs font-semibold shrink-0">
+                      <ng-container *ngTemplateOutlet="statusMark; context: { $implicit: row.status }" />
+                    </div>
+                  </div>
+                </div>
+              </li>
+            }
+          }
+        }
+      </ol>
+    }
+  </div>
+
+  <!-- @defer: the drawer brings the task form and rich-text editor (~550 kB raw); load it only when a meeting is opened. -->
+  @if (openMeeting(); as key) {
+    @defer (on immediate) {
+      <app-meeting-occurrence-drawer [key]="key" (closed)="openMeeting.set(null)" />
+    }
+  }
+
+  @if (openedTask(); as task) {
+    <app-task-form-modal [open]="true" mode="edit" [projectId]="task.projectId" [taskId]="task.taskId"
+      (saved)="refresh()" (closed)="openedTask.set(null)" />
+  }
 </section>
 
+<!-- A timeline step: a tick once completed, else its number; the rail runs on to the next step. -->
+<ng-template #stepNode let-status let-step="step" let-rail="rail">
+  <div class="relative flex flex-col items-center">
+    <div
+      class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px]"
+      [class]="stepNodeClass(status)"
+      [attr.aria-label]="stepAriaLabel(status, step)"
+    >
+      @if (status === 'completed') {
+        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+      } @else {
+        {{ step }}
+      }
+    </div>
+    @if (rail) {
+      <div class="w-px flex-1 my-1" [class]="railClass(status)"></div>
+    }
+  </div>
+</ng-template>
+
+<ng-template #statusMark let-status>
+  @if (status === 'upcoming') {
+    <svg class="h-3.5 w-3.5 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke-width="1.8"/>
+      <path stroke-linecap="round" stroke-width="1.8" d="M12 7v5l3 2"/>
+    </svg>
+    <span class="font-normal text-[var(--color-text-secondary)]">{{ statusLabel(status) }}</span>
+  } @else {
+    <span class="h-2 w-2 rounded-full" [class]="status === 'completed' ? 'bg-[var(--color-widget-shade-1)]' : 'bg-[var(--color-widget-shade-2)]'"></span>
+    <span class="text-[var(--color-widget-shade-1)]">{{ statusLabel(status) }}</span>
+  }
+</ng-template>

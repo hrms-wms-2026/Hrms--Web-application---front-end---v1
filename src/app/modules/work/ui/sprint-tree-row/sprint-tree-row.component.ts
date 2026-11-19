@@ -2,13 +2,14 @@ import { Component, input, output } from '@angular/core';
 import { MilestoneTreeNode } from '../../models/milestone.model';
 import { MonitorAlertDto } from '../../models/dto/monitor.dto';
 import { TreeAlertMarkComponent } from '../tree-alert-mark/tree-alert-mark.component';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 @Component({
   selector: 'app-sprint-tree-row',
   standalone: true,
-  imports: [TreeAlertMarkComponent],
+  imports: [KeyboardClickDirective, TreeAlertMarkComponent],
   template: `
-    <div
+    <div role="button" tabindex="0" appKeyboardClick
       class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
       data-testid="tree-row"
       (click)="selectedRow.emit(node())"
@@ -17,7 +18,7 @@ import { TreeAlertMarkComponent } from '../tree-alert-mark/tree-alert-mark.compo
         @if (showChevron()) {
           <button
             type="button"
-            class="flex h-4 w-4 shrink-0 items-center justify-center transition-transform {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}"
+            class="flex h-4 w-4 shrink-0 items-center justify-center transition-transform {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-text-secondary)]' }}"
             [style.transform]="expanded() ? 'rotate(90deg)' : 'rotate(0deg)'"
             data-testid="chevron"
             [attr.aria-label]="expanded() ? 'Collapse' : 'Expand'"
@@ -30,35 +31,35 @@ import { TreeAlertMarkComponent } from '../tree-alert-mark/tree-alert-mark.compo
         } @else {
           <span class="h-4 w-4 shrink-0"></span>
         }
-        <svg data-testid="sprint-icon" class="h-4 w-4 shrink-0 {{ selected() ? 'text-white' : 'text-[var(--color-accent)]' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg data-testid="sprint-icon" class="h-4 w-4 shrink-0 {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-accent)]' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="3" y="5" width="18" height="16" rx="2" />
           <line x1="3" y1="10" x2="21" y2="10" />
           <path d="M8 14l2 2 4-4" />
         </svg>
-        <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-white' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
+        <span data-testid="title-text" class="min-w-0 truncate text-sm {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-text-primary)]' }}">{{ node().title }}</span>
         <app-tree-alert-mark [alerts]="alerts()" />
         @if (node().status; as status) {
-          <span data-testid="status-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-white/15 text-white' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">{{ status }}</span>
+          <span data-testid="status-badge" class="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium {{ selected() ? 'bg-[var(--color-text-on-solid)]/15 text-[var(--color-text-on-solid)]' : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]' }}">{{ status }}</span>
         }
         @if (node().sprintTaskLoadState === 'error') {
           <button
             type="button"
-            class="shrink-0 rounded-md px-1.5 py-0.5 text-xs {{ selected() ? 'text-white hover:bg-white/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]' }}"
+            class="shrink-0 rounded-md px-1.5 py-0.5 text-xs {{ selected() ? 'text-[var(--color-text-on-solid)] hover:bg-[var(--color-text-on-solid)]/20' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]' }}"
             data-testid="retry-sprint-task-load"
             (click)="onRetry($event)"
           >Retry</button>
         }
       </span>
 
-      <span class="flex items-center gap-2 text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="progress-cell">
-        <span data-testid="progress-track" class="h-1.5 w-16 overflow-hidden rounded-full {{ selected() ? 'bg-white/25' : 'bg-[var(--color-surface-secondary)]' }}">
-          <span data-testid="progress-fill" class="block h-full rounded-full {{ selected() ? 'bg-white' : 'bg-[var(--color-accent)]' }}" [style.width.%]="node().progress"></span>
+      <span class="flex items-center gap-2 text-xs {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-text-secondary)]' }}" data-testid="progress-cell">
+        <span data-testid="progress-track" class="h-1.5 w-16 overflow-hidden rounded-full {{ selected() ? 'bg-[var(--color-text-on-solid)]/25' : 'bg-[var(--color-surface-secondary)]' }}">
+          <span data-testid="progress-fill" class="block h-full rounded-full {{ selected() ? 'bg-[var(--color-text-on-solid)]' : 'bg-[var(--color-accent)]' }}" [style.width.%]="node().progress"></span>
         </span>
         {{ node().progress }}%
       </span>
 
       <span data-testid="owner-cell"></span>
-      <span class="text-xs {{ selected() ? 'text-white' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate || 'No dates set' }}</span>
+      <span class="text-xs {{ selected() ? 'text-[var(--color-text-on-solid)]' : 'text-[var(--color-text-secondary)]' }}" data-testid="due-date-cell">{{ node().endDate || 'No dates set' }}</span>
 
       <span class="flex items-center justify-end gap-px" data-testid="row-actions">
         @if (node().isOwner) {
@@ -119,7 +120,7 @@ export class SprintTreeRowComponent {
 
   iconClass(): string {
     return this.selected()
-      ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-white hover:bg-white/20'
+      ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-[var(--color-text-on-solid)] hover:bg-[var(--color-text-on-solid)]/20'
       : 'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]';
   }
 

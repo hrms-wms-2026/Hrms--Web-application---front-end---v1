@@ -4,35 +4,50 @@
 
     @if (hasReadAccess() && selectedLegalEntity()) {
       <div class="dm-controls">
+        <!-- Phones: search is always open and fills the row. -->
+        <div class="dm-mobile-search ui-field ui-field--sm">
+          <span class="ui-field__addon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg></span>
+          <input
+            type="search"
+            class="ui-field__control"
+            placeholder="Search departments…"
+            aria-label="Search departments"
+            [value]="departmentStore.searchQuery()"
+            (input)="onSearchChange($any($event.target).value)"
+          />
+        </div>
+
         <!-- Expandable Search (Icon Click Toggle) -->
         <div class="dm-search-container">
           @if (searchExpanded()) {
-            <div class="dm-search-expandable">
-              <svg class="dm-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="dm-search-expandable ui-field ui-field--sm">
+              <span class="ui-field__addon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
+              </svg></span>
               <input
                 type="text"
-                class="dm-search-input"
+                class="ui-field__control"
                 placeholder="Search departments…"
                 [value]="departmentStore.searchQuery()"
                 (input)="onSearchChange($any($event.target).value)"
               />
-              <button
+              <span class="ui-field__trailing"><button
                 type="button"
-                class="dm-search-clear-btn"
+                class="ui-field__icon-btn"
                 (click)="toggleSearch()"
                 title="Close search"
                 aria-label="Close search"
               >
                 &times;
-              </button>
+              </button></span>
             </div>
           } @else {
             <button
               type="button"
-              class="dm-icon-btn"
-              [class.dm-icon-btn--active]="departmentStore.searchQuery()"
+              class="ui-square-btn"
+              [class.ui-square-btn--active]="departmentStore.searchQuery()"
               (click)="toggleSearch()"
               title="Search departments"
               aria-label="Search departments"
@@ -46,64 +61,24 @@
 
         <!-- Right Controls Group -->
         <div class="dm-controls-right">
-          <!-- View Switcher Toggle (Icons only) -->
-          <div class="dm-view-toggle">
-            <button
-              type="button"
-              class="dm-toggle-btn"
-              [class.dm-toggle-btn--active]="departmentStore.viewMode() === 'tree'"
-              (click)="onViewModeToggle('tree')"
-              title="Tree view"
-              aria-label="Tree view"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            </button>
-            <button
-              type="button"
-              class="dm-toggle-btn"
-              [class.dm-toggle-btn--active]="departmentStore.viewMode() === 'list'"
-              (click)="onViewModeToggle('list')"
-              title="List view"
-              aria-label="List view"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            </button>
-          </div>
+          <app-view-mode-toggle
+            [modes]="viewModes"
+            [value]="departmentStore.viewMode()"
+            (valueChange)="onViewModeToggle($event)"
+          />
 
-          <!-- Filter Dropdown Button -->
-          <div class="dm-filter-dropdown-wrap">
-            <button
-              type="button"
-              class="dm-filter-btn"
-              [class.dm-filter-btn--active]="departmentStore.includeInactive()"
-              (click)="onFilterToggle()"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-              <span>Filter</span>
-              @if (departmentStore.includeInactive()) {
-                <span class="dm-filter-dot"></span>
-              }
-            </button>
-
-            @if (filterMenuOpen()) {
-              <div class="dm-filter-menu" (click)="$event.stopPropagation()">
-                <label class="dm-filter-menu-item">
-                  <input
-                    type="checkbox"
-                    [checked]="departmentStore.includeInactive()"
-                    (change)="onIncludeInactiveToggle($event)"
-                  />
-                  <span>Show archived departments</span>
-                </label>
-              </div>
-            }
-          </div>
+          <app-filter-bar
+            [fields]="filterFields"
+            [values]="filterValues()"
+            (fieldChanged)="onFilterFieldChanged($event)"
+          />
 
           <!-- Create Department Button -->
           @if (hasManageAccess()) {
             <app-button type="button" (click)="openCreateModal()">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Create department
+              <span class="dm-create-label">Create department</span>
+              <span class="dm-create-label--short">Create</span>
             </app-button>
           }
         </div>
@@ -149,6 +124,24 @@
           </div>
           <div class="dm-company-info">
             <span class="dm-company-name">{{ selectedLegalEntity()?.name }}</span>
+            <!-- Phones only: totals across the departments shown. -->
+            <dl class="dm-company-stats">
+              <div class="dm-company-stat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <dd>{{ companyTotals().employees }}</dd>
+                <dt>{{ companyTotals().employees === 1 ? 'Employee' : 'Employees' }}</dt>
+              </div>
+              <div class="dm-company-stat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                <dd>{{ companyTotals().positions }}</dd>
+                <dt>{{ companyTotals().positions === 1 ? 'Position' : 'Positions' }}</dt>
+              </div>
+              <div class="dm-company-stat">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <dd>{{ companyTotals().departments }}</dd>
+                <dt>{{ companyTotals().departments === 1 ? 'Department' : 'Departments' }}</dt>
+              </div>
+            </dl>
           </div>
         </div>
 
@@ -198,10 +191,11 @@
     [department]="editingDepartment()"
     [parentPreset]="parentPreset()"
     [availableParents]="departmentStore.allFlatList()"
+    [availableHeadPositions]="headPositionOptions()"
     [companyName]="selectedLegalEntity()?.name || ''"
     [loading]="departmentStore.saving()"
     (save)="onSaveDepartment($event)"
-    (cancel)="closeFormModal()"
+    (cancelled)="closeFormModal()"
   />
 }
 
@@ -212,6 +206,6 @@
     [checking]="departmentStore.archiveChecking()"
     [saving]="departmentStore.saving()"
     (confirmArchive)="onConfirmArchive()"
-    (cancel)="closeArchiveModal()"
+    (cancelled)="closeArchiveModal()"
   />
 }

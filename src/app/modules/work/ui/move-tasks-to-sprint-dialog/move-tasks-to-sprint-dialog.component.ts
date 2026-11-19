@@ -28,7 +28,7 @@ export interface SprintMoveTarget {
         } @else if (targets().length === 0) {
           <p class="move-tasks-dialog__empty">No Draft or Active sprints in this project yet. Create one first.</p>
         } @else {
-          <div class="move-tasks-dialog__list" role="radiogroup" aria-label="Select a sprint">
+          <div class="move-tasks-dialog__list scroll-fade" role="radiogroup" aria-label="Select a sprint">
             @for (target of targets(); track target.sprint.id) {
               <label
                 class="move-tasks-dialog__option"

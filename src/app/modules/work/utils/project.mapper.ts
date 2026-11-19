@@ -13,7 +13,9 @@ export function toProject(dto: ProjectListItemDto): Project {
     leadId: dto.leadId, startDate: dto.startDate, targetDate: dto.targetDate, color: dto.color,
     isActive: dto.isActive, allocatedHours: dto.allocatedHours, completedHours: dto.completedHours,
     isLead: dto.isLead, isAchieved: dto.isAchieved, achievedAt: dto.achievedAt, updatedAt: dto.updatedAt,
-    logoFileId: dto.logoFileId, labels: dto.labels, members: dto.members, memberCount: dto.memberCount
+    logoFileId: dto.logoFileId, labels: dto.labels, members: dto.members, memberCount: dto.memberCount,
+    systemPurpose: dto.systemPurpose ?? null,
+    icon: dto.icon ?? null
   };
 }
 
@@ -24,7 +26,9 @@ export function toProjectDetail(dto: ProjectDetailDto): ProjectDetail {
     isActive: dto.isActive, allocatedHours: dto.allocatedHours, completedHours: dto.completedHours,
     isLead: dto.isLead, isAchieved: dto.isAchieved, achievedAt: dto.achievedAt, logoFileId: dto.logoFileId,
     actualHours: dto.actualHours, createdAt: dto.createdAt, updatedAt: dto.updatedAt,
-    labels: dto.labels, members: dto.members, memberCount: dto.memberCount
+    labels: dto.labels, members: dto.members, memberCount: dto.memberCount,
+    systemPurpose: dto.systemPurpose ?? null,
+    icon: dto.icon ?? null
   };
 }
 
@@ -82,6 +86,14 @@ export function buildObjectiveForest(items: ObjectiveTreeItemDto[]): MilestoneTr
   const build = (item: ObjectiveTreeItemDto): MilestoneTreeNode =>
     toObjectiveForestNode(item, (childrenByParent.get(item.id) ?? []).map(build));
   return build(rootItem);
+}
+
+/**
+ * A key that changes only when the set of modules changes. The tree object itself is replaced on
+ * every lazy sprint/task load (Expand all, search, filters), which must not reload the network view.
+ */
+export function moduleStructureKey(tree: MilestoneTreeNode): string {
+  return collectObjectiveOptions(tree).map((o) => o.id).sort().join(',');
 }
 
 export function collectObjectiveOptions(node: MilestoneTreeNode): { id: string; title: string; isActive: boolean }[] {

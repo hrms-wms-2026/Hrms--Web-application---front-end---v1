@@ -1,0 +1,17 @@
+<div class="db">
+  <app-dashboard-donut class="db-donut" [slices]="slices()" [ariaLabel]="ariaLabel()" [(active)]="active">
+    <p class="db-center">
+      <span class="db-value" data-testid="db-center-value">{{ centerValue() }}</span>
+      <span class="db-label">{{ centerLabel() }}</span>
+    </p>
+  </app-dashboard-donut>
+  <app-donut-key
+    class="db-legend"
+    rowTestId="db-row"
+    [keyedTestIds]="true"
+    [showValue]="true"
+    [ariaLabel]="ariaLabel()"
+    [slices]="slices()"
+    [(active)]="active"
+  />
+</div>

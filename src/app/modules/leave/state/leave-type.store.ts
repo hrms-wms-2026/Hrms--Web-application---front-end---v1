@@ -7,28 +7,25 @@ import { CreateLeaveTypeRequest, LeaveTypeResponse, UpdateLeaveTypeRequest } fro
 
 export interface LeaveTypeState {
   readonly items: readonly LeaveTypeResponse[];
-  readonly includeInactive: boolean;
   readonly loading: boolean;
   readonly saving: boolean;
   readonly loadError: string | null;
   readonly actionError: string | null;
+  /** True once a load has succeeded, so "no leave types" can be told apart from "not loaded yet". */
+  readonly loaded: boolean;
 }
 
-const initialState: LeaveTypeState = { items: [], includeInactive: false, loading: false, saving: false, loadError: null, actionError: null };
+const initialState: LeaveTypeState = { items: [], loading: false, saving: false, loadError: null, actionError: null, loaded: false };
 
 export const LeaveTypeStore = signalStore(
   { providedIn: 'root' },
   withState<LeaveTypeState>(initialState),
   withMethods((store, api = inject(LeaveTypeApiService)) => ({
-    setIncludeInactive(includeInactive: boolean): void {
-      patchState(store, { includeInactive });
-      void this.load();
-    },
     async load(): Promise<void> {
       patchState(store, { loading: true, loadError: null });
       try {
-        const items = await firstValueFrom(api.list(store.includeInactive()));
-        patchState(store, { items, loading: false });
+        const items = await firstValueFrom(api.list(false));
+        patchState(store, { items, loading: false, loaded: true });
       } catch (err) {
         patchState(store, { loading: false, loadError: toSafeErrorMessage(err, 'Failed to load leave types.') });
       }

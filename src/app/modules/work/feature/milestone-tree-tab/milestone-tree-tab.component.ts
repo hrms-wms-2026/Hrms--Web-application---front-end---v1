@@ -1,4 +1,9 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { MeetingApiService } from '../../meetings/data-access/meeting-api.service';
+import { MeetingOccurrenceDrawerComponent } from '../../meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
+import { MeetingListItem } from '../../meetings/models/meeting.models';
+import { meetingListWindow } from '../../meetings/utils/meeting-time';
+import { visibleMeetings } from '../../meetings/utils/meeting-board';
+import { AfterViewInit, Component, OnDestroy, TemplateRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 
 import { ActivatedRoute } from '@angular/router';
@@ -7,11 +12,12 @@ import { firstValueFrom } from 'rxjs';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { MilestoneTreeNodeComponent, TreeExpandCommand } from '../../ui/milestone-tree-node/milestone-tree-node.component';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { HIGHLIGHT_SWATCHES, TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { HIGHLIGHT_SWATCHES, FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { collectNodes, computeTreeHighlight, hasActiveHighlight } from '../../utils/tree-highlight.utils';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
 import { TreeExplanationPanelComponent } from '../../ui/tree-explanation-panel/tree-explanation-panel.component';
+import { AllocationRequestModalComponent } from '../../ui/allocation-request-modal/allocation-request-modal.component';
 import { SubModuleFormComponent } from '../../ui/sub-module-form/sub-module-form.component';
 import { MemberManagementPopupComponent } from '../../ui/member-management-popup/member-management-popup.component';
 import { SprintFormComponent, SprintFormModuleOption } from '../../ui/sprint-form/sprint-form.component';
@@ -19,16 +25,21 @@ import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.se
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { SprintCompleteDialogComponent } from '../../ui/sprint-complete-dialog/sprint-complete-dialog.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
-import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { ProjectNetworkViewComponent } from '../project-network-view/project-network-view.component';
+import { WorkGraphNode } from '../../../people/models/work-graph.model';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { MilestoneTreeNode, ObjectiveDetail } from '../../models/milestone.model';
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto } from '../../models/dto/milestone.dto';
-import { findTreeNode, isLeafObjective, collectObjectiveOptions } from '../../utils/project.mapper';
+import { findTreeNode, isLeafObjective, collectObjectiveOptions, moduleStructureKey } from '../../utils/project.mapper';
 import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProjectMonitorStore } from '../../state/project-monitor.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 
 const ACTIVE_STATUS_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'active', label: 'Active' },
@@ -48,7 +59,7 @@ const DURATION_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'gt3m', label: 'Over 3 months' }
 ];
 const ITEM_TYPE_OPTIONS: readonly WorkDropdownOption[] = [
-  { value: 'objective', label: 'Module' },
+  { value: 'objective', label: 'Milestone' },
   { value: 'sprint', label: 'Sprint' },
   { value: 'task', label: 'Task' }
 ];
@@ -69,13 +80,14 @@ const PROGRESS_OPTIONS: readonly WorkDropdownOption[] = [
   selector: 'app-milestone-tree-tab',
   standalone: true,
   imports: [
-    MilestoneTreeNodeComponent, TaskFilterBarComponent, InputComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
+    MilestoneTreeNodeComponent, FilterBarComponent, TreeExplanationPanelComponent, SubModuleFormComponent,
     MemberManagementPopupComponent, SprintFormComponent, SprintCompleteDialogComponent, TaskFormModalComponent,
-    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent
+    LoaderComponent, ErrorStateComponent, EmptyStateComponent, ConfirmModalComponent, ButtonComponent, MeetingOccurrenceDrawerComponent,
+    TaskAssigneeAvatarFilterComponent, AllocationRequestModalComponent, ProjectNetworkViewComponent
   ],
   templateUrl: './milestone-tree-tab.component.html'
 })
-export class MilestoneTreeTabComponent {
+export class MilestoneTreeTabComponent implements AfterViewInit, OnDestroy {
   readonly store = inject(ProjectDetailStore);
     private readonly route = inject(ActivatedRoute);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
@@ -83,8 +95,13 @@ export class MilestoneTreeTabComponent {
   private readonly directory = inject(EmployeeDirectoryStore);
   private readonly taskApi = inject(TaskApiService);
   private readonly notificationService = inject(NotificationService);
+  private readonly fileApi = inject(FileApiService, { optional: true });
   protected readonly monitor = inject(ProjectMonitorStore);
+  private readonly toolbarStore = inject(WorkPageToolbarStore);
+  private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
+  /** The module "Request more hours" was opened for (null = closed). */
+  readonly allocationNode = signal<MilestoneTreeNode | null>(null);
   readonly taskModalOpen = signal(false);
   readonly taskModalMode = signal<'create' | 'edit'>('create');
   readonly taskModalTaskId = signal('');
@@ -94,13 +111,43 @@ export class MilestoneTreeTabComponent {
   private currentMilestoneId = '';
   private currentProjectId = '';
   protected readonly projectId = signal('');
+  private readonly meetingApi = inject(MeetingApiService);
+  /** The project's meetings in the board/tree window (past day to 7 days ahead), by module id. */
+  protected readonly meetingsByModule = signal<ReadonlyMap<string, readonly MeetingListItem[]>>(new Map());
+  protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
+
+  protected loadMeetings(): void {
+    const projectId = this.currentProjectId;
+    if (!projectId) return;
+    const { from, to } = meetingListWindow();
+    this.meetingApi.list(from, to, projectId).subscribe({
+      next: (items) => {
+        const byModule = new Map<string, MeetingListItem[]>();
+        // Cancelled meetings stay on the Calendar only; the rest take their status from the clock, in start order.
+        for (const item of visibleMeetings(items, new Date())) {
+          if (!item.objectiveId) continue;
+          byModule.set(item.objectiveId, [...(byModule.get(item.objectiveId) ?? []), item]);
+        }
+        this.meetingsByModule.set(byModule);
+      },
+      error: () => this.meetingsByModule.set(new Map()),
+    });
+  }
   protected readonly assignableMembers = signal<{ employeeId: string; name: string }[]>([]);
+  protected readonly projectRosterMembers = computed<TaskAssigneeAvatarMember[]>(() =>
+    (this.store.project()?.members ?? []).map((member) => ({
+      employeeId: member.userId,
+      name: member.displayName,
+      avatarUrl: member.avatarFileId ? this.fileApi?.getFileUrl(member.avatarFileId) ?? null : null
+    }))
+  );
   private loadedProjectId: string | null = null;
   private loadedMembersForProjectId: string | null = null;
 
   // Highlight mode: every member always sees the FULL tree - filters never prune, they only
   // tint the matching rows (and auto-expand the branches that contain them).
   readonly filterValues = signal<Record<string, string[]>>({});
+  readonly ownerFilter = computed(() => this.filterValues()['owner'] ?? []);
   readonly highlightColor = signal<string>(HIGHLIGHT_SWATCHES[0]);
   readonly allExpanded = signal(false);
   readonly expandCommand = signal<TreeExpandCommand | null>(null);
@@ -108,16 +155,27 @@ export class MilestoneTreeTabComponent {
   private readonly taskStatusOptions = signal<WorkDropdownOption[]>([]);
   private readonly categoryOptions = signal<WorkDropdownOption[]>([]);
 
-  renderedTree = computed(() => this.store.selectedSubtree());
+  /**
+   * Which view fills the tree area. The explanation card, the tabs and everything else on the page
+   * are untouched by this: only the list itself gives way to the network canvas.
+   */
+  readonly viewMode = signal<'tree' | 'network'>('tree');
 
-  readonly filterFields = computed<TaskFilterFieldConfig[]>(() => {
+  renderedTree = computed(() => this.store.selectedSubtree());
+  /** Reloads the network only when modules are added or removed - see moduleStructureKey. */
+  readonly networkReloadKey = computed(() => {
+    const tree = this.renderedTree();
+    return tree ? moduleStructureKey(tree) : '';
+  });
+
+  readonly filterFields = computed<FilterFieldConfig[]>(() => {
     const tree = this.store.selectedSubtree();
     const modules = tree ? collectObjectiveOptions(tree).map((o) => ({ value: o.id, label: o.title })) : [];
     const sprints = tree ? collectNodes(tree, (n) => n.kind === 'sprint').map((n) => ({ value: n.id, label: n.title })) : [];
     const sprintOptions = [...new Map(sprints.map((s) => [s.value, s])).values()];
     const people = this.assignableMembers().map((m) => ({ value: m.employeeId, label: m.name }));
     return [
-      { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: modules },
+      { key: 'module', label: 'Milestone', icon: 'module', kind: 'multi', options: modules },
       { key: 'owner', label: 'Owner', icon: 'people', kind: 'multi', options: people },
       { key: 'activeStatus', label: 'Active', icon: 'status', kind: 'multi', options: ACTIVE_STATUS_OPTIONS },
       { key: 'dueDate', label: 'Due date', icon: 'calendar', kind: 'multi', options: DUE_DATE_OPTIONS },
@@ -132,6 +190,7 @@ export class MilestoneTreeTabComponent {
   });
 
   readonly searchTerm = signal('');
+  readonly searchExpanded = signal(false);
   // Search is just one more highlight criterion (title contains), ANDed with the filter bar.
   private readonly highlightValues = computed(() => ({ ...this.filterValues(), search: [this.searchTerm()] }));
   readonly highlightActive = computed(() => hasActiveHighlight(this.highlightValues()));
@@ -141,6 +200,7 @@ export class MilestoneTreeTabComponent {
     return computeTreeHighlight(tree, this.highlightValues(), new Date());
   });
   readonly matchCount = computed(() => this.highlight().matchedKeys.size);
+  readonly canCreateModule = computed(() => this.renderedTree()?.isOwner ?? false);
 
   selectedNodeId = signal<string | null>(null);
   selectedNode = computed<MilestoneTreeNode | null>(() => {
@@ -161,10 +221,6 @@ export class MilestoneTreeTabComponent {
   // warn about partial asset-upload failures, so this renders inline in the tab itself
   // rather than inside any modal (which would already be closed by then).
   createAssetWarning = signal<string | null>(null);
-  // Every edit now always requires the Reporting Manager's approval (no more immediate-apply
-  // shortcut) - without this, the settings modal would just close with no visible change, which
-  // reads as "nothing happened" rather than "submitted for approval".
-  editPendingNotice = signal<string | null>(null);
 
   membersPopupOpen = signal(false);
 
@@ -193,6 +249,7 @@ export class MilestoneTreeTabComponent {
       void this.loadTree().then(() => {
         if (openMembersOnLoad) this.onMembersRequested();
       });
+      this.loadMeetings();
       void this.currentEmployee.ensureLoaded();
       if (this.currentProjectId && this.loadedMembersForProjectId !== this.currentProjectId) {
         this.loadedMembersForProjectId = this.currentProjectId;
@@ -210,6 +267,14 @@ export class MilestoneTreeTabComponent {
         this.expandCommand.set({ seq: ++this.expandSeq, mode: 'keys', keys: ancestorKeys });
       });
     });
+  }
+
+  ngAfterViewInit(): void {
+    this.toolbarStore.setTemplate(this.toolbarTpl());
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarStore.setTemplate(null);
   }
 
   private async loadAssignableMembers(projectId: string): Promise<void> {
@@ -236,6 +301,15 @@ export class MilestoneTreeTabComponent {
     // Sprints/tasks are lazy-loaded per leaf; task-level fields (status, priority, assignee...)
     // can only match what's loaded, so an active filter pulls the whole tree in once.
     if (this.highlightActive()) void this.loadWholeTree();
+  }
+
+  setOwnerFilter(employeeIds: string[]): void {
+    this.onFilterFieldChanged({ key: 'owner', values: employeeIds });
+  }
+
+  toggleSearch(): void {
+    this.searchExpanded.update((expanded) => !expanded);
+    if (!this.searchExpanded()) this.onSearchChanged('');
   }
 
   onSearchChanged(term: string): void {
@@ -281,6 +355,23 @@ export class MilestoneTreeTabComponent {
     this.selectedNodeId.set(node.id);
   }
 
+  /**
+   * A module, sprint or task clicked in the network: the explanation card beside it shows that
+   * node, the same card the tree list uses. Graph ids are "<kind>:<id>"; tree ids are the bare id.
+   * Sprints and tasks are lazy-loaded into the tree, so one that is not there yet pulls the whole
+   * tree in first (falling back to its module if it still cannot be found).
+   */
+  async onNetworkNodeSelected(node: WorkGraphNode): Promise<void> {
+    const id = node.id.slice(node.id.indexOf(':') + 1);
+    const inTree = () => {
+      const tree = this.store.selectedSubtree();
+      return tree ? findTreeNode(tree, id) !== null : false;
+    };
+    if (!inTree() && node.kind !== 'module') await this.loadWholeTree();
+    if (inTree()) this.selectedNodeId.set(id);
+    else if (node.objectiveId) this.selectedNodeId.set(node.objectiveId);
+  }
+
   async retryTree(): Promise<void> {
     await this.loadTree({ force: true });
   }
@@ -321,15 +412,17 @@ export class MilestoneTreeTabComponent {
     this.createAssetWarning.set(null);
   }
 
+  onCreateModuleRequested(): void {
+    const root = this.renderedTree();
+    if (!root?.isOwner) return;
+    this.onCreateSubRequested(root);
+  }
+
   dismissCreateAssetWarning(): void {
     this.createAssetWarning.set(null);
   }
 
-  dismissEditPendingNotice(): void {
-    this.editPendingNotice.set(null);
-  }
-
-  onExpandLeafRequested(node: MilestoneTreeNode): void {
+onExpandLeafRequested(node: MilestoneTreeNode): void {
     if (isLeafObjective(node)) {
       void this.store.loadSprintsAndTasksForLeaf(node.id);
     } else if (node.kind === 'sprint') {
@@ -500,7 +593,7 @@ export class MilestoneTreeTabComponent {
         // modal is closing right now — use the non-modal-scoped signal instead so the
         // warning is actually visible, and doesn't leak into a later, unrelated dialog.
         this.createAssetWarning.set(
-          `"${event.payload.title}" was created, but ${failedFileCount} file(s) failed to upload — open Module settings on it to retry.`
+          `"${event.payload.title}" was created, but ${failedFileCount} file(s) failed to upload — open Milestone settings on it to retry.`
         );
       }
       await this.loadTree({ force: true });
@@ -526,7 +619,7 @@ export class MilestoneTreeTabComponent {
       return;
     }
     if (editResult.pending) {
-      this.editPendingNotice.set(`Edit submitted for "${node.title}" — pending approval from the Reporting Manager.`);
+      this.notificationService.info('Request submitted.');
     }
 
     if (event.achievedChanged && event.achieved) {
@@ -600,6 +693,16 @@ export class MilestoneTreeTabComponent {
   onDeleteCancelled(): void {
     this.deleteConfirmOpen.set(false);
     this.pendingDeleteNode.set(null);
+  }
+
+  onAllocationRequested(node: MilestoneTreeNode): void {
+    this.allocationNode.set(node);
+  }
+
+  async onAllocationSubmitted(): Promise<void> {
+    this.allocationNode.set(null);
+    this.notificationService.success('Request sent');
+    await this.loadTree({ force: true });
   }
 
   onMembersRequested(node?: MilestoneTreeNode): void {

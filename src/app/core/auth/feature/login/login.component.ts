@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldIconComponent } from '../../../../shared/ui/field-icon/field-icon.component';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom, timeout } from 'rxjs';
 import { AuthStore } from '../../state/auth.store';
@@ -20,7 +21,7 @@ interface RememberedAccount {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, FieldIconComponent, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })

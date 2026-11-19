@@ -2,6 +2,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { AttendanceHistoryRow, AttendanceTodayResponse } from '../../../attendance/models/time-tracking.model';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { TimeTrackingStore } from '../../../attendance/state/time-tracking.store';
 import { LegalEntityGeneralSettings } from '../../../organization/models/legal-entity.model';
 import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
@@ -27,13 +28,13 @@ function row(workDate: string, totalWorkedMinutes: number): AttendanceHistoryRow
   };
 }
 
-type StoreMock = {
+interface StoreMock {
   history: ReturnType<typeof signal<readonly AttendanceHistoryRow[]>>;
   historyLoading: ReturnType<typeof signal<boolean>>;
   historyError: ReturnType<typeof signal<string | null>>;
   today: ReturnType<typeof signal<AttendanceTodayResponse | null>>;
   loadMyHistory: ReturnType<typeof vi.fn>;
-};
+}
 
 function currentMonday(reference = new Date()): string {
   const day = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
@@ -55,9 +56,11 @@ describe('AttendanceTrendCardComponent', () => {
     history?: readonly AttendanceHistoryRow[];
     today?: AttendanceTodayResponse | null;
     generalSettings?: Partial<LegalEntityGeneralSettings> | null;
+    canReadCompanySettings?: boolean;
   } = {}): Promise<{
     fixture: ComponentFixture<AttendanceTrendCardComponent>;
     store: StoreMock;
+    loadSettings: ReturnType<typeof vi.fn>;
   }> {
     const store: StoreMock = {
       history: signal(options.history ?? []),
@@ -67,13 +70,18 @@ describe('AttendanceTrendCardComponent', () => {
       loadMyHistory: vi.fn(() => Promise.resolve())
     };
 
-    const providers: any[] = [{ provide: TimeTrackingStore, useValue: store }];
+    const canRead = options.canReadCompanySettings ?? true;
+    const providers: any[] = [
+      { provide: TimeTrackingStore, useValue: store },
+      { provide: PermissionService, useValue: { hasAnyPermission: () => canRead } }
+    ];
 
+    const loadSettings = vi.fn(() => Promise.resolve());
     if (options.generalSettings !== undefined) {
       const gsMock = {
         settings: signal(options.generalSettings),
         legalEntityId: signal(options.generalSettings ? 'le-1' : null),
-        load: vi.fn(() => Promise.resolve())
+        load: loadSettings
       };
       providers.push({ provide: GeneralSettingsStore, useValue: gsMock });
     }
@@ -85,8 +93,21 @@ describe('AttendanceTrendCardComponent', () => {
 
     const fixture = TestBed.createComponent(AttendanceTrendCardComponent);
     fixture.detectChanges();
-    return { fixture, store };
+    return { fixture, store, loadSettings };
   }
+
+  const selfServiceToday = { workDate: currentMonday(), legalEntityId: 'le-2', totalWorkedMinutes: 0, requiredWorkMinutes: 540 } as any;
+
+  it('loads company General Settings for a user who may read them', async () => {
+    const { loadSettings } = await setup({ today: selfServiceToday, generalSettings: null });
+    expect(loadSettings).toHaveBeenCalledWith('le-2');
+  });
+
+  it('does not request admin-only General Settings for a self-service user, and uses today\'s scheduled minutes', async () => {
+    const { fixture, loadSettings } = await setup({ today: selfServiceToday, generalSettings: null, canReadCompanySettings: false });
+    expect(loadSettings).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent as string).toContain('Goal: 9h/day');
+  });
 
   it('loads the current week history on init', async () => {
     const { store } = await setup();

@@ -23,7 +23,7 @@ import {
                  (change)="onModuleToggled(module.objectiveId)" />
           <span class="truncate text-[var(--color-text-primary)]">{{ module.title }}</span>
           @if (module.isAchieved) { <span class="text-xs text-[var(--color-text-secondary)]">Achieved</span> }
-          @if (!isModuleAllowed(module.objectiveId)) { <span class="text-xs text-[var(--color-text-secondary)]">Not your module</span> }
+          @if (!isModuleAllowed(module.objectiveId)) { <span class="text-xs text-[var(--color-text-secondary)]">Not your milestone</span> }
         </div>
         @if (expanded().has(module.objectiveId)) {
           <div class="ml-8 border-l border-[var(--color-border)] pl-2">
@@ -35,7 +35,7 @@ import {
                        (change)="onTaskToggled(task.id)" />
                 <span class="truncate text-[var(--color-text-primary)]">{{ task.title }}</span>
                 @if (isTaskLocked(module.objectiveId)) {
-                  <span class="text-xs text-[var(--color-text-secondary)]">included (whole module)</span>
+                  <span class="text-xs text-[var(--color-text-secondary)]">included (whole milestone)</span>
                 } @else if (task.sprintId && task.sprintId !== currentSprintId()) {
                   <span class="text-xs text-[var(--color-text-secondary)]" data-testid="task-sprint-badge">
                     In {{ sprintNames()[task.sprintId] ?? 'another sprint' }}@if (frozenSprintIds().has(task.sprintId)) { · frozen }
@@ -43,13 +43,13 @@ import {
                 }
               </label>
             } @empty {
-              <p class="px-2 py-1 text-xs text-[var(--color-text-secondary)]">No tasks in this module.</p>
+              <p class="px-2 py-1 text-xs text-[var(--color-text-secondary)]">No tasks in this milestone.</p>
             }
           </div>
         }
       </div>
     } @empty {
-      <p class="text-sm text-[var(--color-text-secondary)]">No modules are visible.</p>
+      <p class="text-sm text-[var(--color-text-secondary)]">No milestones are visible.</p>
     }
   `
 })
@@ -59,7 +59,7 @@ export class ModuleTaskPickerComponent {
   readonly modules = input.required<readonly PickerModule[]>();
   readonly moduleMode = input<'live' | 'bulk'>('live');
   readonly allowedObjectiveIds = input<ReadonlySet<string> | null>(null);
-  readonly sprintNames = input<Record<string, string>>({});
+  readonly sprintNames = input<Record<string, string | undefined>>({});
   readonly frozenSprintIds = input<ReadonlySet<string>>(new Set());
   readonly currentSprintId = input<string | null>(null);
   readonly selectedTaskIds = input<ReadonlySet<string>>(new Set());
@@ -69,7 +69,7 @@ export class ModuleTaskPickerComponent {
   readonly selectedObjectiveIdsChange = output<Set<string>>();
 
   readonly expanded = signal<Set<string>>(new Set());
-  readonly moduleTasks = signal<Record<string, PickerTask[]>>({});
+  readonly moduleTasks = signal<Record<string, PickerTask[] | undefined>>({});
 
   isModuleAllowed = (objectiveId: string): boolean => {
     const allowed = this.allowedObjectiveIds();
@@ -124,7 +124,7 @@ export class ModuleTaskPickerComponent {
   private async ensureTasks(objectiveId: string): Promise<PickerTask[]> {
     const cached = this.moduleTasks()[objectiveId];
     if (cached) return cached;
-    let tasks: PickerTask[] = [];
+    let tasks: PickerTask[];
     try {
       const dtos = await firstValueFrom(this.taskApi.getTasks(objectiveId));
       tasks = dtos.map((d) => ({ id: d.id, title: d.title, objectiveId: d.objectiveId, sprintId: d.sprintId, shortId: d.shortId }));

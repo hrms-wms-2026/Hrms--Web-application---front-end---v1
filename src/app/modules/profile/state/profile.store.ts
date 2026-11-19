@@ -3,7 +3,9 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { ProfileApiService } from '../data-access/profile-api.service';
 import {
+  EmployeeDocument,
   MyProfile,
+  UploadEmployeeDocumentRequest,
   UpdateBankDetailsRequest,
   UpdatePersonalInformationRequest,
   UpsertDependentRequest,
@@ -18,6 +20,11 @@ export interface ProfileState {
   readonly saving: boolean;
   readonly error: string | null;
   readonly saveError: string | null;
+  readonly documents: EmployeeDocument[];
+  readonly documentsLoading: boolean;
+  readonly documentsError: string | null;
+  readonly uploadingDocument: boolean;
+  readonly documentError: string | null;
 }
 
 const initialState: ProfileState = {
@@ -25,7 +32,12 @@ const initialState: ProfileState = {
   loading: false,
   saving: false,
   error: null,
-  saveError: null
+  saveError: null,
+  documents: [],
+  documentsLoading: false,
+  documentsError: null,
+  uploadingDocument: false,
+  documentError: null
 };
 
 export const ProfileStore = signalStore(
@@ -65,6 +77,19 @@ export const ProfileStore = signalStore(
         return true;
       } catch (err) {
         patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to upload avatar.') });
+        return false;
+      }
+    },
+
+    async removeAvatar(): Promise<boolean> {
+      patchState(store, { saving: true, saveError: null });
+      try {
+        await firstValueFrom(api.removeAvatar());
+        await this.loadProfile();
+        patchState(store, { saving: false });
+        return true;
+      } catch (err) {
+        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to remove photo.') });
         return false;
       }
     },
@@ -195,6 +220,56 @@ export const ProfileStore = signalStore(
         patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Invalid verification code.') });
         return false;
       }
+    },
+
+    async loadDocuments(): Promise<void> {
+      patchState(store, { documentsLoading: true, documentsError: null });
+      try {
+        const documents = await firstValueFrom(api.listDocuments());
+        patchState(store, { documents, documentsLoading: false });
+      } catch (err) {
+        patchState(store, { documentsLoading: false, documentsError: toSafeErrorMessage(err, 'Failed to load documents.') });
+      }
+    },
+
+    /** Two steps like the avatar: upload the file, then link it to the caller's documents. */
+    async uploadDocument(request: UploadEmployeeDocumentRequest): Promise<boolean> {
+      patchState(store, { uploadingDocument: true, documentError: null });
+      try {
+        const uploaded = await firstValueFrom(fileApi.upload(request.file, 'employee_document'));
+        const document = await firstValueFrom(api.addDocument(uploaded.fileId, request.type, request.name));
+        patchState(store, { uploadingDocument: false, documents: [document, ...store.documents()] });
+        return true;
+      } catch (err) {
+        patchState(store, { uploadingDocument: false, documentError: toSafeErrorMessage(err, 'Failed to upload document.') });
+        return false;
+      }
+    },
+
+    async deleteDocument(id: string): Promise<boolean> {
+      patchState(store, { documentError: null });
+      try {
+        await firstValueFrom(api.deleteDocument(id));
+        patchState(store, { documents: store.documents().filter((d) => d.id !== id) });
+        return true;
+      } catch (err) {
+        patchState(store, { documentError: toSafeErrorMessage(err, 'Failed to delete document.') });
+        return false;
+      }
+    },
+
+    async downloadDocument(document: EmployeeDocument): Promise<Blob | null> {
+      patchState(store, { documentError: null });
+      try {
+        return await firstValueFrom(fileApi.download(document.fileId));
+      } catch (err) {
+        patchState(store, { documentError: toSafeErrorMessage(err, `Failed to open ${document.name}.`) });
+        return null;
+      }
+    },
+
+    clearDocumentError(): void {
+      patchState(store, { documentError: null });
     },
 
     async disableMfa(currentPassword: string): Promise<boolean> {

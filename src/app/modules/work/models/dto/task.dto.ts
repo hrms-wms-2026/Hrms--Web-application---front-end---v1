@@ -4,7 +4,10 @@ export interface TaskStatusDto {
   id: string;
   name: string;
   displayOrder: number;
+  /** Dead field, round-tripped for backward compatibility only - not consumed anywhere in this
+   * app (WM-01, HRMS-Backend-v1/docs/superpowers/plans/next/2026-10-12-pre-uat-audit-wm-sec-findings.md). */
   requiresApproval: boolean;
+  /** See requiresApproval - same dead-field status. */
   approverId: string | null;
   marksTaskComplete: boolean;
   visibility: 'public' | 'private';
@@ -53,8 +56,6 @@ export interface WorkTaskDto {
   openClockSessionEmployeeId: string | null;
   openClockSessionClockInAt: string | null;
   totalLoggedMinutes: number;
-  activeEventId?: string | null;
-  activeEventName?: string | null;
   attachments?: TaskAttachmentDto[];
   assignees?: TaskAssigneeIdentityDto[];
   parentTaskId?: string | null;
@@ -62,6 +63,8 @@ export interface WorkTaskDto {
   subtaskCompletedCount?: number;
   subtaskAssigneeEmployeeIds?: string[];
   createdAt: string;
+  taskKind?: 'standard' | 'employee_checklist';
+  visibilityScope?: 'module' | 'assignees';
   hasPendingApproval?: boolean;
 }
 
@@ -75,6 +78,13 @@ export interface CreateTaskRequestDto {
   storyPoints?: number;
   sprintId: string | null;
   attachmentFileIds?: string[];
+  /** An action item: the meeting occurrence (task id) it was raised from. Left out for every ordinary task. */
+  sourceMeetingOccurrenceId?: string;
+  /** Planner create popover: if the create goes for approval, it's assigned to the caller (only allowed value) and
+   *  planned at this slot once approved. Ignored when the task is created directly. */
+  assigneeEmployeeId?: string;
+  planStartAt?: string;
+  planEndAt?: string;
 }
 
 export interface CreateSubtaskRequestDto {
@@ -117,10 +127,6 @@ export interface ConvertTaskToSubtaskRequestDto {
 export interface PushTaskRequestDto {
   percent: number;
   reason?: string;
-}
-
-export interface AddReasonRequestDto {
-  reason: string;
 }
 
 /** Shape of a 409 INSUFFICIENT_OBJECTIVE_ALLOCATION error body (backend spec §3.2). */

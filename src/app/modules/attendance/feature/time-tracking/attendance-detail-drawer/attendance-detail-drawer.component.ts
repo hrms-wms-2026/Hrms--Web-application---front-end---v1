@@ -59,7 +59,8 @@ export class AttendanceDetailDrawerComponent {
   readonly activityChecks = computed(() =>
     (this.store.dayDetail()?.activityChecks ?? []).filter((check) => {
       const outcome = check.outcome.trim().toLowerCase();
-      return outcome === 'captured' || outcome === 'declined' || outcome === 'timed_out' || outcome === 'activity_resumed';
+      return outcome === 'captured' || outcome === 'declined' || outcome === 'timed_out' || outcome === 'activity_resumed'
+        || outcome === 'confirmed_working' || outcome === 'not_working';
     }));
   readonly selectedShot = computed(() => {
     const shots = this.shots();
@@ -173,6 +174,9 @@ export class AttendanceDetailDrawerComponent {
     const key = outcome.trim().toLowerCase();
     if (key === 'captured') return 'Allow';
     if (key === 'declined') return 'Skip';
+    // "Were you working?" answers from employees without screenshot capture.
+    if (key === 'confirmed_working') return 'Was working';
+    if (key === 'not_working') return 'Not working';
     return 'Nothing done';
   }
 
@@ -190,7 +194,8 @@ export class AttendanceDetailDrawerComponent {
       cmd: 'Command Prompt',
       searchhost: 'Windows Search',
       snippingtool: 'Snipping Tool',
-      'onevo.agent.trayapp': 'WorkPulse'
+      'onevo.agent.trayapp': 'WorkPulse',
+      'crownus.agent.trayapp': 'WorkPulse'
     };
     return known[key] ?? trimmed;
   }

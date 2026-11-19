@@ -1,4 +1,7 @@
-const LAST_TENANT_COOKIE = 'onevo_last_tenant';
+import { AUTH_COOKIE_NAMES } from '../auth-cookie-names';
+import { clearSingleHostTenant, getSingleHostTenant, isSingleHostMode } from './single-host-tenant';
+
+const LAST_TENANT_COOKIE = AUTH_COOKIE_NAMES.lastTenant;
 const TENANT_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 export function isValidTenantSlug(value: string): boolean {
@@ -26,6 +29,9 @@ export function readLastTenantSlug(cookieHeader: string): string | null {
 }
 
 export function getRootHostname(hostname: string): string {
+  if (isSingleHostMode()) {
+    return hostname;
+  }
   if (hostname.endsWith('.localhost')) {
     return 'localhost';
   }
@@ -41,19 +47,29 @@ export function getRootHostname(hostname: string): string {
 
 /**
  * Builds the URL for a tenant's own subdomain, reusing the current protocol/hostname/port so
- * this works unchanged across dev ({slug}.localhost:4200) and production ({slug}.onevo.com).
+ * this works unchanged across dev ({slug}.localhost:4200) and production ({slug}.<root domain>).
  * Login always happens on the root domain, but if called from a tenant host, getRootHostname
  * ensures the root domain is used.
  */
 export function buildTenantUrl(slug: string, path: string): string {
+  if (isSingleHostMode()) {
+    // Same host; the tenant travels as a query value that captureSingleHostTenantFromUrl stores.
+    return `${hostOrigin('')}${path}${path.includes('?') ? '&' : '?'}tenant=${slug}`;
+  }
+  return `${hostOrigin(`${slug}.`)}${path}`;
+}
+
+/** Current protocol + (optional subdomain prefix +) root hostname + port. */
+function hostOrigin(prefix: string): string {
   const { protocol, hostname, port } = window.location;
-  const rootHost = getRootHostname(hostname);
-  const portSuffix = port ? `:${port}` : '';
-  return `${protocol}//${slug}.${rootHost}${portSuffix}${path}`;
+  return `${protocol}//${prefix}${getRootHostname(hostname)}${port ? `:${port}` : ''}`;
 }
 
 /** True when hostname is a tenant subdomain rather than the root frontend host itself. */
 export function isTenantHostname(hostname: string): boolean {
+  if (isSingleHostMode()) {
+    return getSingleHostTenant() !== null;
+  }
   return getRootHostname(hostname) !== hostname;
 }
 
@@ -63,9 +79,11 @@ export function isTenantHostname(hostname: string): boolean {
  * gates (login, legal-consent) off a tenant host back onto the root host they must run on.
  */
 export function buildRootUrl(path: string): string {
-  const { protocol, hostname, port } = window.location;
-  const rootHost = getRootHostname(hostname);
-  const portSuffix = port ? `:${port}` : '';
-  return `${protocol}//${rootHost}${portSuffix}${path}`;
+  if (isSingleHostMode()) {
+    // Drop any ?tenant= from the target: the reloaded page would otherwise re-capture the slug and
+    // bounce again forever.
+    clearSingleHostTenant();
+    path = path.replace(/([?&])tenant=[^&]*&?/, '$1').replace(/[?&]$/, '');
+  }
+  return `${hostOrigin('')}${path}`;
 }
-

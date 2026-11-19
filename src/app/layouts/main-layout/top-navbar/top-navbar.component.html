@@ -11,6 +11,8 @@
 </div>
 
 <div class="top-navbar__right">
+  <!-- Bell first, then the page action (it opens leftward and pushes the bell along), then the profile. -->
   <app-notification-bell />
+  <app-page-toolbar />
   <app-profile-menu [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" />
 </div>

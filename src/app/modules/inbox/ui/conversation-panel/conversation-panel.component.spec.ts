@@ -1,0 +1,403 @@
+import { TestBed } from '@angular/core/testing';
+import { Subject, of, throwError } from 'rxjs';
+import { vi } from 'vitest';
+import { By } from '@angular/platform-browser';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
+import { MessageCreatedEvent } from '../../../../core/realtime/inbox-realtime.models';
+import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
+import { TaskApiService } from '../../../work/data-access/task-api.service';
+import { ConversationsApiService } from '../../data-access/conversations-api.service';
+import { InboxApiService } from '../../data-access/inbox-api.service';
+import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
+import { ConversationDto, ConversationMessageDto } from '../../models/inbox.dto';
+import { InboxKindsStore } from '../../state/inbox-kinds.store';
+import { ConversationPanelComponent, decorateMentions } from './conversation-panel.component';
+import { ConversationStore } from '../../state/conversation.store';
+import { InboxStore } from '../../state/inbox.store';
+
+const ME = 'e1';
+const REF = { source: 'work', kind: 'approval', id: 'a1' };
+
+function message(id: string, createdAt: string, extra: Partial<ConversationMessageDto> = {}): ConversationMessageDto {
+  return {
+    id, conversationId: 'c1', authorEmployeeId: 'e2', authorName: 'Anu', authorAvatarFileId: null, kind: 'text',
+    bodyHtml: `<p>${id}</p>`, systemEventJson: null, mentionEmployeeIds: [], createdAt, ...extra
+  };
+}
+
+function conversation(): ConversationDto {
+  return {
+    id: 'c1', source: 'work', kind: 'approval', subjectId: 'a1', title: 'Task edit: Audit', projectId: 'p1',
+    participants: [
+      { employeeId: ME, name: 'Bala', avatarFileId: null, joinReason: 'base', addedByEmployeeId: null, addedAt: null },
+      { employeeId: 'e2', name: 'Anu', avatarFileId: null, joinReason: 'base', addedByEmployeeId: null, addedAt: null },
+      { employeeId: 'e3', name: 'Priya', avatarFileId: null, joinReason: 'added', addedByEmployeeId: ME, addedAt: '2026-10-12T09:00:00Z' }
+    ],
+    messages: [
+      message('m1', '2026-10-12T09:00:00Z', { authorEmployeeId: ME, authorName: 'Bala' }),
+      message('m2', '2026-10-12T09:01:00Z', { authorEmployeeId: null, authorName: null, kind: 'system', bodyHtml: 'Bala added Priya' }),
+      message('m3', '2026-10-13T09:02:00Z', { bodyHtml: '<p>hey <span class="mention" data-employee-id="e1">@Bala</span></p>', mentionEmployeeIds: [ME] })
+    ],
+    hasMoreMessages: true, lastReadAt: '2026-10-13T09:00:00Z'
+  };
+}
+
+describe('ConversationPanelComponent', () => {
+  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let created: Subject<MessageCreatedEvent>;
+
+  beforeEach(() => {
+    api = {
+      open: vi.fn(() => of(conversation())),
+      messages: vi.fn(() => of({ items: [message('m0', '2026-10-11T09:00:00Z')], hasMore: false })),
+      post: vi.fn((_: string, html: string) => of(message('m9', '2026-10-13T10:00:00Z', { authorEmployeeId: ME, bodyHtml: html }))),
+      addParticipants: vi.fn((_: string, ids: string[]) => of(ids.map((id) => ({ employeeId: id, name: 'New', avatarFileId: null, joinReason: 'added', addedByEmployeeId: ME, addedAt: null })))),
+      markRead: vi.fn(() => of(undefined)),
+      searchPeople: vi.fn(() => of([{ employeeId: 'e7', name: 'Chen Li', avatarFileId: null }, { employeeId: 'e2', name: 'Anu', avatarFileId: null }]))
+    };
+    created = new Subject();
+    TestBed.configureTestingModule({
+      imports: [ConversationPanelComponent],
+      providers: [
+        ConversationStore,
+        { provide: ConversationsApiService, useValue: api },
+        { provide: InboxRealtimeService, useValue: { messageCreated$: created.asObservable(), inboxChanged$: new Subject(), participantAdded$: new Subject(), reconnected$: new Subject(), messageUpdated$: new Subject(), messageDeleted$: new Subject(), participantRemoved$: new Subject() } },
+        { provide: AuthStore, useValue: { employeeId: () => ME } },
+        { provide: InboxStore, useValue: { loadCounts: vi.fn(() => Promise.resolve()) } },
+        { provide: TaskApiService, useValue: { uploadPendingFile: vi.fn(), deletePendingFile: vi.fn(), getFileUrl: vi.fn() } },
+        { provide: InboxChatsApiService, useValue: { renameGroup: vi.fn(() => of(undefined)) } },
+        { provide: InboxApiService, useValue: { detail: vi.fn(() => throwError(() => new Error('not used'))) } },
+        { provide: InboxKindsStore, useValue: { descriptor: () => null } }
+      ]
+    });
+  });
+
+  async function render(ref: { source: string; kind: string; id: string } = REF) {
+    const fixture = TestBed.createComponent(ConversationPanelComponent);
+    fixture.componentRef.setInput('itemRef', ref);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('opens the chat under a header with its name and the details toggle', async () => {
+    const { fixture, el } = await render();
+    fixture.componentRef.setInput('chat', {
+      conversationId: 'c1', source: 'group', kind: 'group', subjectId: 'g1', type: 'group', title: 'Payroll review', otherEmployeeId: null,
+      avatarFileId: null, memberCount: 3, preview: null, lastMessageAt: null, unread: 0, pending: [], caseItem: null
+    });
+    fixture.detectChanges();
+
+    expect(api['open']).toHaveBeenCalledWith(REF);
+    expect(el.querySelector('[data-testid="conversation-title"]')!.textContent).toContain('Payroll review');
+    expect(el.querySelector('[data-testid="conversation-header"]')!.textContent).toContain('3 members');
+    const emitted = vi.fn();
+    fixture.componentInstance.toggleDetails.subscribe(emitted);
+    (el.querySelector('[data-testid="conversation-toggle-details"]') as HTMLButtonElement).click();
+    expect(emitted).toHaveBeenCalled();
+  });
+
+  it('a 1-on-1 chat has no "add people" at all', async () => {
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const composer = fixture.debugElement.query(By.directive(CommentComposerComponent)).componentInstance as CommentComposerComponent;
+
+    expect(el.querySelector('[data-testid="conversation-add"]')).toBeNull();
+    expect(el.querySelector('[data-testid="conversation-menu"]')).toBeNull();
+    expect(composer.extraSlashCommands()).toEqual([]);
+  });
+
+  it('a case card\'s menu replies to it, forwards it, or starts its group', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam"}' })]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const forwarded: unknown[] = [];
+    const grouped: unknown[] = [];
+    fixture.componentInstance.forwardCase.subscribe((r) => forwarded.push(r));
+    fixture.componentInstance.startCaseGroup.subscribe((r) => grouped.push(r));
+    const choose = (id: string) => {
+      (el.querySelector('[data-testid="case-menu-card"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el.querySelector(`[data-testid="menu-item-${id}"]`) as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    choose('reply');
+    expect(el.querySelector('[data-testid="conversation-replying"]')!.textContent).toContain('Replying to Case');
+    choose('forward');
+    expect(forwarded).toEqual([expect.objectContaining({ source: 'leave', kind: 'request', id: 'l1', title: 'Sick Leave - Sam' })]);
+    choose('group');
+    expect(grouped).toEqual([{ source: 'leave', kind: 'request', id: 'l1' }]);
+  });
+
+  it('a case card\'s quote button (before the ⋮) replies to it', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam"}' })]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+
+    (el.querySelector('[data-testid="case-reply-card"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="conversation-replying"]')!.textContent).toContain('Replying to Case');
+  });
+
+  it('labels a forwarded case card with who forwarded it', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('fwd', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: 'Sick Leave - Sam',
+        systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Sick Leave - Sam","forwarded":true}' })]
+    }));
+    const { el } = await render();
+
+    expect(el.querySelector('[data-testid="message-forwarded"]')!.textContent).toContain('Forwarded by Anu');
+  });
+
+  it('forwards a chat message with a one-line preview, and labels a forwarded copy', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('m1', '2026-10-12T08:00:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>can we   start?</p>' }),
+        message('m2', '2026-10-12T08:01:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>hello</p>', tag: 'forwarded' })
+      ]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const forwarded: unknown[] = [];
+    fixture.componentInstance.forwardMessage.subscribe((m) => forwarded.push(m));
+
+    (el.querySelector('[data-testid="message-more-m1"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="menu-item-forward"]') as HTMLButtonElement).click();
+
+    expect(forwarded).toEqual([{ messageId: 'm1', preview: 'can we start?' }]);
+    const labels = el.querySelectorAll('[data-testid="message-forwarded"]');
+    expect(labels.length).toBe(1);
+    expect(labels[0].closest('[data-message-id]')!.getAttribute('data-message-id')).toBe('m2');
+    expect(el.querySelector('[data-testid="message-tag"]')).toBeNull();
+  });
+
+  it('offers no Forward on messages in a case group', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [message('m1', '2026-10-12T08:00:00Z', { authorEmployeeId: 'e2', authorName: 'Anu', bodyHtml: '<p>evidence notes</p>' })]
+    }));
+    const { el } = await render();
+
+    expect(el.querySelector('[data-testid="message-reply-m1"]')).not.toBeNull();
+    (el.querySelector('[data-testid="message-more-m1"]') as HTMLButtonElement).click();
+    expect(el.querySelector('[data-testid="menu-item-forward"]')).toBeNull();
+  });
+
+  it('the decision card says what was decided and by whom, leaves the note out, and opens the item', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('done', '2026-10-11T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'x',
+          systemEventJson: '{"type":"case_resolved","source":"leave","kind":"request","id":"l1","title":"Annual Leave - Vithya","status":"rejected","category":"request","what":"Annual Leave","byName":"Mathusanth Kumaran","comment":"Team is short that week","summary":"Annual Leave · 15 Sep – 15 Sep · 8 h"}' }),
+        message('old', '2026-10-12T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'x',
+          systemEventJson: '{"type":"case_resolved","source":"attendance","kind":"alert","id":"a1","title":"Late clock-in - Vithya","status":"excused","category":"alert"}' })
+      ]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const opened: unknown[] = [];
+    fixture.componentInstance.openCase.subscribe((r) => opened.push(r));
+
+    const [decided, older] = Array.from(el.querySelectorAll('[data-testid="message-case-resolved"]'));
+    expect(decided.getAttribute('data-tone')).toBe('danger');
+    expect(decided.textContent).toContain('Annual Leave · 15 Sep – 15 Sep · 8 h');
+    expect(decided.querySelector('.conv__decision-heading')!.textContent).toBe('Annual Leave rejected');
+    expect(decided.textContent).toContain('Rejected by Mathusanth Kumaran on Oct 11, 2026');
+    expect(decided.textContent).not.toContain('Team is short that week');
+    expect(older.getAttribute('data-tone')).toBe('success');
+    expect(older.querySelector('.conv__decision-heading')!.textContent).toBe('Late clock-in cleared - no issue');
+    (decided.querySelector('[data-testid="message-case-resolved-open"]') as HTMLButtonElement).click();
+    expect(opened).toEqual([{ source: 'leave', kind: 'request', id: 'l1' }]);
+  });
+
+  it('shows a case card, its "resolved" line with the date, and a link to the group a case moved to', async () => {
+    api['open'] = vi.fn(() => of({
+      ...conversation(),
+      messages: [
+        message('card', '2026-10-12T08:00:00Z', { kind: 'case', authorEmployeeId: null, authorName: null, bodyHtml: 'Annual leave - Priya',
+          systemEventJson: '{"type":"case","source":"leave","kind":"request","id":"l1","title":"Annual leave - Priya"}' }),
+        message('done', '2026-10-12T10:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'Request approved',
+          systemEventJson: '{"type":"case_resolved","source":"leave","kind":"request","id":"l1","status":"approved","category":"request"}' }),
+        message('moved', '2026-10-13T08:00:00Z', { kind: 'system', authorEmployeeId: null, authorName: null, bodyHtml: 'Continued in a group: Face check',
+          systemEventJson: '{"type":"case_moved","conversationId":"g9","source":"monitoring","kind":"exception_case","id":"x1"}' })
+      ]
+    }));
+    const { fixture, el } = await render({ source: 'direct', kind: 'direct', id: 'pair1' });
+    const opened: unknown[] = [];
+    fixture.componentInstance.openChat.subscribe((r) => opened.push(r));
+
+    const card = el.querySelector('[data-testid="message-case"] app-case-card')!;
+    expect(card.textContent).toContain('Annual leave - Priya');
+    expect(card.textContent).toContain('Closed');
+    const resolved = el.querySelector('[data-testid="message-case-resolved"]')!;
+    expect(resolved.getAttribute('data-tone')).toBe('success');
+    expect(resolved.querySelector('.conv__decision-heading')!.textContent).toBe('Request approved');
+    expect(resolved.textContent).toContain('Approved on Oct 12, 2026');
+    (el.querySelector('[data-testid="message-case-moved"] button') as HTMLButtonElement).click();
+    expect(opened).toEqual([{ source: 'monitoring', kind: 'exception_case', id: 'x1' }]);
+  });
+
+  it('keeps an unsent draft per ticket and never carries it into another ticket', async () => {
+    const { fixture } = await render();
+    const panel = fixture.componentInstance as unknown as {
+      composer(): { editorHtml: { (): string; set(v: string): void } } | undefined; draftFor(key: string): string;
+    };
+    panel.composer()!.editorHtml.set('<p>half written</p>');
+
+    fixture.componentRef.setInput('itemRef', { ...REF, id: 'other' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(panel.draftFor('work:approval:other')).toBe('');
+    expect(panel.draftFor(`${REF.source}:${REF.kind}:${REF.id}`)).toBe('<p>half written</p>');
+    expect(panel.composer()!.editorHtml()).toBe('');
+
+    fixture.componentRef.setInput('itemRef', REF);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(panel.composer()!.editorHtml()).toBe('<p>half written</p>');
+  });
+
+  it('groups by day, right-aligns own messages, centres system messages and marks the unread divider', async () => {
+    const { el } = await render();
+
+    expect(Array.from(el.querySelectorAll('[data-testid="conversation-day"]')).length).toBe(2);
+    expect(el.querySelector('[data-message-id="m1"]')?.classList).toContain('msg--own');
+    expect(el.querySelector('[data-message-id="m2"]')?.classList).toContain('msg--system');
+    expect(el.querySelector('[data-message-id="m2"]')?.textContent).toContain('Bala added Priya');
+    const divider = el.querySelector('[data-testid="conversation-unread-divider"]');
+    expect(divider?.nextElementSibling?.getAttribute('data-message-id')).toBe('m3');
+  });
+
+  it('highlights the current user mention more strongly', async () => {
+    const { el } = await render();
+    expect(el.querySelector('[data-message-id="m3"] .mention')?.classList).toContain('mention--me');
+  });
+
+  it('sends from the composer with mentions', async () => {
+    const { fixture } = await render();
+    const composer = fixture.debugElement.query(By.directive(CommentComposerComponent)).componentInstance as CommentComposerComponent;
+
+    composer.submitted.emit({ content: '<p>hi</p>', attachmentFileIds: [], mentions: ['e2'] });
+    await fixture.whenStable();
+
+    expect(api['post']).toHaveBeenCalledWith('c1', '<p>hi</p>', ['e2'], [], null, null);
+  });
+
+  it('offers /add in the composer slash menu', async () => {
+    const { fixture } = await render();
+    const composer = fixture.debugElement.query(By.directive(CommentComposerComponent)).componentInstance as CommentComposerComponent;
+
+    expect(composer.extraSlashCommands().map((c) => c.id)).toEqual(['add']);
+    composer.slashCommand.emit('add');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="person-picker"]')).not.toBeNull();
+  });
+
+  it('add-and-tag adds the person first, then inserts the mention', async () => {
+    const { fixture } = await render();
+    const composer = fixture.debugElement.query(By.directive(CommentComposerComponent)).componentInstance as CommentComposerComponent;
+    const insert = vi.spyOn(composer, 'insertMention');
+
+    composer.addAndTag.emit({ id: 'e7', name: 'Chen Li' });
+    await fixture.whenStable();
+
+    expect(api['addParticipants']).toHaveBeenCalledWith('c1', ['e7']);
+    expect(insert).toHaveBeenCalledWith({ id: 'e7', name: 'Chen Li' });
+  });
+
+  function openAdd(fixture: { componentInstance: unknown; detectChanges(): void }): void {
+    (fixture.componentInstance as { onSlashCommand(id: string): void }).onSlashCommand('add');
+    fixture.detectChanges();
+  }
+
+  const pickerRows = (el: HTMLElement) => Array.from(el.querySelectorAll('[data-testid^="person-picker-row-"]')) as HTMLElement[];
+  const rowNames = (el: HTMLElement) => pickerRows(el).map((r) => r.querySelector('.ppd__name')!.textContent!.trim());
+
+  it('adds the people picked in the shared Add member picker (/add)', async () => {
+    const { fixture, el } = await render();
+    openAdd(fixture);
+    expect(el.querySelector('[data-testid="person-picker"]')).not.toBeNull();
+
+    (el.querySelector('[data-testid="person-picker-row-e7"] input') as HTMLInputElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="person-picker-confirm"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(api['addParticipants']).toHaveBeenCalledWith('c1', ['e7']);
+  });
+
+  it('the Add member picker lists everyone alphabetically, people already in the chat ticked and disabled, never the viewer', async () => {
+    const { fixture, el } = await render();
+    openAdd(fixture);
+
+    expect(api['searchPeople']).toHaveBeenCalledWith('');
+    expect(rowNames(el)).toEqual(['Anu', 'Chen Li', 'Priya']);
+    const anu = pickerRows(el)[0].querySelector('input') as HTMLInputElement;
+    expect(anu.checked && anu.disabled).toBe(true);
+    expect(pickerRows(el)[0].textContent).toContain('Already added to group');
+    const chen = pickerRows(el)[1].querySelector('input') as HTMLInputElement;
+    expect(chen.checked || chen.disabled).toBe(false);
+    expect(el.querySelector('[data-testid="person-picker-confirm"]')!.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('mentions search the conversation people lookup', async () => {
+    const { fixture } = await render();
+    const panel = fixture.componentInstance as unknown as {
+      mentionSearch(q: string): import('rxjs').Observable<readonly { id: string; name: string }[]>;
+    };
+
+    let found: readonly { id: string; name: string }[] = [];
+    panel.mentionSearch('ch').subscribe((r) => (found = r));
+    expect(api['searchPeople']).toHaveBeenCalledWith('ch');
+    expect(found.map((p) => p.id)).toEqual(['e7', 'e2']);
+  });
+
+  it('keeps the Add member picker usable when the people lookup fails (the members still show)', async () => {
+    api['searchPeople'].mockReturnValue(throwError(() => new Error('boom')));
+    const { fixture, el } = await render();
+    openAdd(fixture);
+    const panel = fixture.componentInstance as unknown as { mentionSearch(q: string): import('rxjs').Observable<readonly unknown[]> };
+
+    expect(rowNames(el)).toEqual(['Anu', 'Priya']);
+    let found: readonly unknown[] | null = null;
+    panel.mentionSearch('x').subscribe((r) => (found = r));
+    expect(found).toEqual([]);
+  });
+
+  it('loads older messages when scrolled to the top (no button)', async () => {
+    const { fixture, el } = await render();
+    expect(el.querySelector('[data-testid="conversation-load-older"]')).toBeNull();
+    el.querySelector('[data-testid="conversation-messages"]')!.dispatchEvent(new Event('scroll'));
+    await fixture.whenStable();
+    expect(api['messages']).toHaveBeenCalledWith('c1', '2026-10-12T09:00:00Z');
+  });
+
+  it('shows live messages', async () => {
+    const { fixture, el } = await render();
+    created.next({ conversationId: 'c1', message: message('m4', '2026-10-13T09:30:00Z', { bodyHtml: '<p>live</p>' }) });
+    fixture.detectChanges();
+    expect(el.querySelector('[data-message-id="m4"]')?.textContent).toContain('live');
+  });
+});
+
+describe('decorateMentions', () => {
+  it('marks only the current user mention chips', () => {
+    const html = '<p><span class="mention" data-employee-id="e1">@Bala</span> <span class="mention" data-employee-id="e2">@Anu</span></p>';
+    const out = decorateMentions(html, 'e1');
+    expect(out).toContain('class="mention mention--me" data-employee-id="e1"');
+    expect(out).toContain('class="mention" data-employee-id="e2"');
+    expect(decorateMentions('<p>plain</p>', 'e1')).toBe('<p>plain</p>');
+  });
+});

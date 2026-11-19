@@ -1,0 +1,350 @@
+<!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS. -->
+<app-modal
+  [open]="open()"
+  title="My team milestone overtime forecast"
+  size="2xl"
+  panelClass="team-module-forecast-detail"
+  (closed)="close()"
+>
+  <div class="mfd-head">
+    <div class="mfd-head__row">
+      <div class="mfd-head__title">
+        <h2>My team milestone overtime forecast</h2>
+        <p>{{ subtitle() }}</p>
+      </div>
+      <button
+        type="button"
+        class="mfd-close"
+        aria-label="Close"
+        data-testid="mfd-close"
+        (click)="close()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+      </button>
+    </div>
+  </div>
+
+  @if (store.data(); as data) {
+    <div class="mfd">
+      <app-kpi-tiles palette="widget"
+        data-section="summary"
+        [tiles]="tiles()"
+        [maxColumns]="5"
+        ariaLabel="Milestone forecast totals"
+      />
+      <ul class="mfd-counts" aria-label="Status counts" data-testid="mfd-counts">
+        @for (c of statusCounts(); track c.key) {
+          <li
+            class="mfd-count"
+            [class.mfd-count--overload]="c.key === 'overload'"
+            [style.--tone]="c.color"
+            [attr.data-testid]="'mfd-count-' + c.key"
+          >
+            @if (c.key === 'overload') {
+              <span aria-hidden="true">⚠</span>
+            } @else {
+              <span class="mfd-count-dot" aria-hidden="true"></span>
+            }
+            <b>{{ c.count }}</b> {{ c.label }}
+          </li>
+        }
+      </ul>
+
+      <div class="mfd-charts">
+        <section
+          class="mfd-panel mfd-distribution"
+          data-section="forecast"
+          data-testid="mfd-distribution"
+        >
+          <p class="mfd-title">Where the remaining hours go</p>
+          <div class="mfd-distribution-body">
+            <app-dashboard-donut
+              class="mfd-donut"
+              data-testid="mfd-donut"
+              ariaLabel="Remaining hours by what they need"
+              [size]="donutPx"
+              [slices]="donutSlices()"
+              [(active)]="hovered"
+            >
+              <p class="mfd-donut-center">
+                <strong>{{ rate(data.totals.teamRate) }}</strong>
+                <span>task rate · last 4 wk</span>
+              </p>
+            </app-dashboard-donut>
+            <app-donut-key
+              class="mfd-legend"
+              ariaLabel="Remaining hours by what they need"
+              rowTestId="mfd-legend-row"
+              [showValue]="true"
+              [slices]="donutSlices()"
+              [(active)]="hovered"
+            />
+          </div>
+          <p class="mfd-note" data-testid="mfd-explanation">{{ explanation() }}</p>
+        </section>
+        <section class="mfd-panel" data-section="projects">
+          <app-module-forecast-project-chart
+            [maxTaskRate]="data.totals.maxTaskRate"
+            class="mfd-chart"
+            heading="Won't fit by project"
+            variant="orders"
+            [compactHeadline]="false"
+            [limit]="12"
+            [projects]="data.projects"
+          />
+        </section>
+      </div>
+
+      <section class="mfd-panel" data-section="modules">
+        <div class="mfd-table-head">
+          <p class="mfd-title">
+            Modules <span class="mfd-muted">· most hours that won't fit first</span>
+          </p>
+          <div class="mfd-table-actions">
+            <app-input
+              class="mfd-search"
+              placeholder="Search milestone or project…"
+              [value]="search()"
+              (valueChange)="onSearch($event)"
+            />
+            <app-select
+              class="mfd-select"
+              ariaLabel="Status"
+              size="sm"
+              [searchable]="false"
+              [options]="statusOptions"
+              [value]="store.tableQuery().status ?? 'all'"
+              (valueChange)="onStatus($event)"
+            />
+            <button
+              type="button"
+              class="mfd-button"
+              data-testid="mfd-export"
+              [disabled]="exporting()"
+              (click)="exportCsv()"
+            >
+              {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+            </button>
+          </div>
+        </div>
+
+        @if (store.tableError(); as err) {
+          <p class="mfd-error" role="alert">{{ err }}</p>
+        }
+
+        <div class="mfd-scroll" [class.mfd-scroll--busy]="store.tableLoading()">
+          <table class="mfd-table">
+            <thead>
+              <tr>
+                <th
+                  class="mfd-sticky mfd-sticky--name"
+                  scope="col"
+                  [attr.aria-sort]="ariaSort('name')"
+                >
+                  <span class="mfd-rank-head">#</span>
+                  <button
+                    type="button"
+                    class="mfd-sort"
+                    data-testid="mfd-sort-name"
+                    (click)="sortBy('name')"
+                  >
+                    Module
+                  </button>
+                </th>
+                <th scope="col">Project</th>
+                <th scope="col" [attr.aria-sort]="ariaSort('endDate')">
+                  <button
+                    type="button"
+                    class="mfd-sort"
+                    data-testid="mfd-sort-endDate"
+                    (click)="sortBy('endDate')"
+                  >
+                    Deadline
+                  </button>
+                </th>
+                <th class="mfd-num" scope="col">Days left</th>
+                <th class="mfd-num" scope="col">Allocated</th>
+                <th class="mfd-num" scope="col">Remaining</th>
+                <th class="mfd-num" scope="col">Predicted</th>
+                <th
+                  class="mfd-num"
+                  scope="col"
+                  title="The milestone team's task rate over the last 4 weeks, and the rate the milestone needs"
+                  [attr.aria-sort]="ariaSort('requiredRate')"
+                >
+                  <button
+                    type="button"
+                    class="mfd-sort"
+                    data-testid="mfd-sort-requiredRate"
+                    (click)="sortBy('requiredRate')"
+                  >
+                    Task rate → required
+                  </button>
+                </th>
+                <th class="mfd-num" scope="col" [attr.aria-sort]="ariaSort('overtime')">
+                  <button
+                    type="button"
+                    class="mfd-sort"
+                    data-testid="mfd-sort-overtime"
+                    (click)="sortBy('overtime')"
+                  >
+                    Won't fit
+                  </button>
+                </th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of page()?.items ?? []; track m.moduleId; let i = $index) {
+                <tr data-testid="mfd-row">
+                  <th class="mfd-sticky mfd-sticky--name" scope="row">
+                    <span class="mfd-person">
+                      <span class="mfd-rank" [class.mfd-rank--top]="offset() + i < 3">{{
+                        offset() + i + 1
+                      }}</span>
+                      <button
+                        type="button"
+                        class="mfd-expand"
+                        data-testid="mfd-expand"
+                        [attr.aria-expanded]="expanded().has(m.moduleId)"
+                        [attr.aria-label]="
+                          (expanded().has(m.moduleId) ? 'Hide' : 'Show') + ' the team of ' + m.title
+                        "
+                        (click)="toggle(m.moduleId)"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+                      </button>
+                      <span class="mfd-person-text">
+                        <span class="mfd-name">{{ m.title }}</span>
+                        <span class="mfd-dept" [title]="m.path">{{ m.path }}</span>
+                      </span>
+                    </span>
+                  </th>
+                  <td class="mfd-left">{{ m.projectName }}</td>
+                  <td>{{ date(m.endDate) }}</td>
+                  <td class="mfd-num">{{ m.workingDaysLeft }}</td>
+                  <td class="mfd-num">{{ hours(m.allocatedHours) }}</td>
+                  <td class="mfd-num">{{ hours(m.remainingHours) }}</td>
+                  <td class="mfd-num">{{ hours(m.predictedHours) }}</td>
+                  <td class="mfd-num">
+                    <span class="mfd-util">
+                      <span class="mfd-util-bar" aria-hidden="true"
+                        ><span [style.width.%]="bar(m.conversionRate)"></span
+                        ><i [style.left.%]="bar(m.requiredRate)"></i
+                      ></span>
+                      <span data-testid="mfd-rate" [class.mfd-over]="m.status === 'overload'">{{
+                        rowRate(m, data.totals)
+                      }}</span>
+                    </span>
+                  </td>
+                  <td class="mfd-num" [class.mfd-over]="m.overtimeHours > 0">
+                    {{ m.overtimeHours > 0 ? '+' + hours(m.overtimeHours) : '—' }}
+                  </td>
+                  <td>
+                    @if (m.status === 'overload') {
+                      <span
+                        class="mfd-badge"
+                        [style.--tone]="statusMeta.overload.color"
+                        data-testid="mfd-status"
+                        ><span aria-hidden="true">⚠</span> Overload</span
+                      >
+                    } @else {
+                      <span
+                        class="mfd-chip"
+                        data-testid="mfd-status"
+                        >{{ statusMeta[m.status].label }}</span
+                      >
+                    }
+                  </td>
+                </tr>
+                @if (expanded().has(m.moduleId)) {
+                  <tr class="mfd-sub-row" data-testid="mfd-members">
+                    <td colspan="10">
+                      <p class="mfd-sub-title">
+                        Team of {{ m.title }} · {{ m.memberCount }}
+                        {{ m.memberCount === 1 ? 'person' : 'people' }}
+                      </p>
+                      <table class="mfd-sub">
+                        <thead>
+                          <tr>
+                            <th scope="col" class="mfd-left">Name</th>
+                            <th scope="col" class="mfd-num">Task rate (4 wk)</th>
+                            <th scope="col" class="mfd-num">Worked</th>
+                            <th scope="col" class="mfd-num">Task hours</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (p of m.members; track p.employeeId) {
+                            <tr data-testid="mfd-member">
+                              <th scope="row" class="mfd-left">
+                                <span class="mfd-person">
+                                  <app-avatar
+                                    size="xs"
+                                    [avatarUrl]="avatarUrl(p.avatarFileId)"
+                                    [userName]="p.name"
+                                  />
+                                  <span class="mfd-name">{{ p.name }}</span>
+                                </span>
+                              </th>
+                              <td class="mfd-num">{{ rate(p.conversionRate) }}</td>
+                              <td class="mfd-num">{{ memberHours(p.workedMinutes) }}</td>
+                              <td class="mfd-num">{{ memberHours(p.taskMinutes) }}</td>
+                            </tr>
+                          } @empty {
+                            <tr>
+                              <td class="mfd-muted mfd-pad" colspan="4">
+                                No one is assigned to this module.
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                }
+              } @empty {
+                <tr>
+                  <td class="mfd-muted mfd-pad" colspan="10">
+                    {{ store.tableLoading() ? 'Loading milestones…' : 'No milestones match.' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (page(); as p) {
+          <div class="mfd-pager" data-testid="mfd-pager">
+            <span class="mfd-muted">{{ p.total }} {{ p.total === 1 ? 'module' : 'modules' }}</span>
+            <button
+              type="button"
+              class="mfd-button"
+              data-testid="mfd-prev"
+              [disabled]="p.page <= 1"
+              (click)="goToPage(p.page - 1)"
+            >
+              ‹ Prev
+            </button>
+            <span class="mfd-muted">Page {{ p.page }} of {{ totalPages() }}</span>
+            <button
+              type="button"
+              class="mfd-button"
+              data-testid="mfd-next"
+              [disabled]="p.page >= totalPages()"
+              (click)="goToPage(p.page + 1)"
+            >
+              Next ›
+            </button>
+          </div>
+        }
+        <p class="mfd-note">
+          Task rate = completed task hours ÷ working time over the last 4 weeks, pooled over the
+          module's team (their work on other projects counts too). Predicted = working capacity to
+          the deadline × task rate. Required = remaining ÷ capacity; over 100% cannot fit in normal
+          hours. Won't fit = remaining − predicted: the task hours that won't be done by the
+          deadline at today's rate (a higher rate or overtime has to cover them).
+        </p>
+      </section>
+    </div>
+  }
+</app-modal>

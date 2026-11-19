@@ -1,34 +1,73 @@
 <section id="walkthrough" class="walkthrough">
   <div class="walkthrough__header">
-    <span class="walkthrough__tag">HOW IT WORKS</span>
-    <h2 class="walkthrough__title font-serif">Seamless Onboarding & Instant Intelligence</h2>
+    <span class="walkthrough__tag">DEPLOYMENT ARCHITECTURE // HOW IT WORKS</span>
+    <h2 class="walkthrough__title font-serif">Zero-Friction Enterprise Rollout</h2>
     <p class="walkthrough__subtitle">
-      Zero public signup friction. Enterprise onboarding handled through dedicated operator provisioning and silent MDM deployment.
+      From isolated tenant provisioning to silent workstation telemetry in three deterministic stages—no employee setup required.
     </p>
   </div>
 
   <div class="walkthrough__steps">
     <div class="walkthrough__step">
-      <div class="walkthrough__num">01</div>
+      <div class="walkthrough__step-top">
+        <span class="walkthrough__num">STAGE // 01</span>
+        <span class="walkthrough__status">Operator-Led</span>
+      </div>
+      <div class="walkthrough__artifact">
+        <div class="walkthrough__code-line">
+          <span class="walkthrough__code-k">TENANT</span>
+          <code>company.crownus.com</code>
+        </div>
+        <div class="walkthrough__code-line">
+          <span class="walkthrough__code-k">SCHEMA</span>
+          <span>197+ Tables • Isolated Context</span>
+        </div>
+      </div>
       <h3 class="walkthrough__step-title">Operator Provisioning</h3>
       <p class="walkthrough__step-text">
-        Consultation with ONEXSO experts followed by operator-driven creation of your dedicated <code>company.onexso.com</code> tenant subdomain & legal entities.
+        Consultation with CROWNUS architects followed by dedicated provisioning of your <code>company.crownus.com</code> workspace, multi-company legal entities, and initial RBAC roles.
       </p>
     </div>
 
     <div class="walkthrough__step">
-      <div class="walkthrough__num">02</div>
+      <div class="walkthrough__step-top">
+        <span class="walkthrough__num">STAGE // 02</span>
+        <span class="walkthrough__status">Intune &amp; GPO</span>
+      </div>
+      <div class="walkthrough__artifact">
+        <div class="walkthrough__code-line">
+          <span class="walkthrough__code-k">EXEC</span>
+          <code>WorkPulse.msix --silent</code>
+        </div>
+        <div class="walkthrough__code-line">
+          <span class="walkthrough__code-k">HASH</span>
+          <span>SHA-256 Window Title Stream</span>
+        </div>
+      </div>
       <h3 class="walkthrough__step-title">Silent MDM Agent Push</h3>
       <p class="walkthrough__step-text">
-        Deploy the lightweight WorkPulse Windows MSIX service silently across workstations via Intune/GPO with zero employee installation steps required.
+        Push the lightweight WorkPulse Windows MSIX service across corporate workstations via Microsoft Intune or Group Policy with zero employee installation prompts.
       </p>
     </div>
 
     <div class="walkthrough__step">
-      <div class="walkthrough__num">03</div>
+      <div class="walkthrough__step-top">
+        <span class="walkthrough__num">STAGE // 03</span>
+        <span class="walkthrough__status walkthrough__status--green">48h Auto-Purge</span>
+      </div>
+      <div class="walkthrough__artifact">
+        <div class="walkthrough__code-line">
+          <span class="walkthrough__code-k">BUFFER</span>
+          <code>TTL: 48h → Auto-Purged</code>
+        </div>
+        <div class="walkthrough__code-line">
+          <span class="walkthrough__code-k">SYNC</span>
+          <span>WorkSync ↔ GitHub Webhooks</span>
+        </div>
+      </div>
       <h3 class="walkthrough__step-title">Unbiased Intelligence</h3>
       <p class="walkthrough__step-text">
-        Manage employee lifecycles, time-off requests, task burndowns, and attendance with automated discrepancy detection and 48h buffer purges.
+        Run attendance, leave entitlements, sprint burndowns, and Actual vs. Reported work alignment with automated discrepancy alerts and strict 48-hour raw log purging.
       </p>
     </div>
   </div>

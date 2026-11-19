@@ -1,9 +1,9 @@
 import { RuntimeConfig } from '../app/core/config/runtime-config.model';
 import { buildApiUrl, buildWsUrl } from './environment-url.helper';
 
-// Same-origin strategy, chosen deliberately over a fixed API host (e.g. api.onevo.example):
+// Same-origin strategy, chosen deliberately over a fixed API host (e.g. api.example.com):
 // HostTenantResolutionMiddleware resolves tenant context purely from the incoming request's Host
-// header. A fixed API domain would never see "{tenantSlug}.onevo.com" in that header, so every
+// header. A fixed API domain would never see "{tenantSlug}.<root domain>" in that header, so every
 // tenant request would resolve to System context instead of the tenant's own context. Calling the
 // same hostname the Angular app is served from means the backend sees the real tenant host on
 // every request. This assumes the production reverse proxy/edge routes /api and /ws paths on that
@@ -18,5 +18,6 @@ export const environment = {
   apiUrl: buildApiUrl(protocol, hostname),
   wsUrl: buildWsUrl(protocol, hostname),
   enableDebugLogs: false,
-  appName: 'ONEVO HRMS',
+  appName: 'CROWNUS HRMS',
+  tenancyMode: 'subdomain',
 } as const satisfies RuntimeConfig;

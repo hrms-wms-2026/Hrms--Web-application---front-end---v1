@@ -6,13 +6,21 @@
 >
   @if (variant() === 'input') {
     @if (label()) {
-      <label [for]="inputId" class="dp-label">{{ label() }}</label>
+      <label [for]="inputId" class="dp-label ui-field-label">{{ label() }}@if (required()) {<span class="ui-field-required" aria-hidden="true">*</span>}</label>
     }
 
-    <div
-      class="dp-input-wrapper"
+    <div role="presentation"
+      class="dp-input-wrapper ui-field"
+      [class.ui-field--sm]="size() === 'sm'"
+      [class.ui-field--error]="!!error()"
+      [class.ui-field--disabled]="disabled()"
       (click)="togglePopover($event)"
     >
+      <span class="ui-field__addon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z M16 2v4M8 2v4M4 10h16" />
+        </svg>
+      </span>
       <input
         [id]="inputId"
         type="text"
@@ -21,37 +29,27 @@
         [readonly]="readonlyInput()"
         [value]="value()"
         (input)="onInputText($event)"
+        (keydown)="onInputKeydown($event)"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="isOpen()"
         [attr.name]="name() || null"
         [attr.maxlength]="10"
         [attr.aria-label]="ariaLabel() || label() || null"
         [attr.aria-invalid]="error() ? true : null"
         [attr.aria-describedby]="error() ? errorId() : hint() ? hintId() : null"
         [attr.data-testid]="inputTestId() || null"
-        class="dp-input"
+        class="dp-input ui-field__control"
       />
-      <button
-        type="button"
-        class="dp-icon-trigger"
-        (click)="$event.stopPropagation(); togglePopover($event)"
-        [attr.aria-expanded]="isOpen()"
-        title="Open calendar picker"
-        aria-label="Open calendar picker"
-        [disabled]="disabled()"
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-      </button>
     </div>
 
     @if (error()) {
-      <span [id]="errorId()" class="dp-error-text">{{ error() }}</span>
+      <span [id]="errorId()" class="dp-error-text ui-field-error">{{ error() }}</span>
     } @else if (hint()) {
-      <span [id]="hintId()" class="dp-hint-text">{{ hint() }}</span>
+      <span [id]="hintId()" class="dp-hint-text ui-field-hint">{{ hint() }}</span>
     }
+  } @else if (variant() === 'custom') {
+    <!-- The host's own trigger: a click on it (or Enter/Space, which click a button) opens the calendar. -->
+    <span class="dp-custom-trigger" role="presentation" (click)="togglePopover($event)"><ng-content /></span>
   } @else {
     <!-- Chip / Button mode for task card, subtask row, and task modal -->
     <button
@@ -88,15 +86,15 @@
     [cdkConnectedOverlayViewportMargin]="8"
     [cdkConnectedOverlayHasBackdrop]="true"
     cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
-    (backdropClick)="isOpen.set(false)"
-    (detach)="isOpen.set(false)"
+    (backdropClick)="closePopover()"
+    (detach)="closePopover()"
   >
     <div
       class="dp-popover task-card__popover task-card__due-date-popover task-table__popover task-table__due-date-popover"
       [class.dp-popover--up]="openUpward()"
       role="dialog"
-      aria-label="Change due date"
-      (click)="$event.stopPropagation()"
+      [attr.aria-label]="panelLabel()"
+      appStopClickPropagation
       (wheel)="onWheel($event)"
     >
       @if (showQuickPresets()) {

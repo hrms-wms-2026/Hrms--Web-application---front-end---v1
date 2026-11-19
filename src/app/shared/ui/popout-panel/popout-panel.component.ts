@@ -42,6 +42,7 @@ const EASING = 'cubic-bezier(0.16, 1, 0.3, 1)';
       [class.popout-panel--open]="popped()"
       [class.popout-panel--wide]="popped() && panelWidth() !== null"
       [style.width]="popped() ? panelWidth() : null"
+      [style.left.px]="popped() && leftShift() ? -leftShift() : null"
       [style.max-height]="popped() ? expandedMaxHeight() : null"
       [attr.role]="popped() ? 'dialog' : null"
       [attr.tabindex]="popped() ? -1 : null"
@@ -67,7 +68,7 @@ const EASING = 'cubic-bezier(0.16, 1, 0.3, 1)';
       position: absolute; top: 0; left: 0; right: 0; z-index: 61;
       max-height: min(70vh, 40rem); overflow-y: auto; overflow-x: hidden;
       border-radius: 1rem;
-      box-shadow: 0 24px 48px -12px rgb(15 23 42 / 0.28), 0 8px 16px -8px rgb(15 23 42 / 0.12);
+      box-shadow: var(--shadow-modal);
     }
   `,
   host: {
@@ -92,6 +93,14 @@ export class PopoutPanelComponent {
   readonly expandedWidth = input<string | null>(null);
   /** Optional max height when open (CSS length); defaults to min(70vh, 40rem). */
   readonly expandedMaxHeight = input<string | null>(null);
+  /**
+   * With `expandedWidth`, lets the panel also grow leftwards when there isn't room to the right
+   * (a card in the last grid column), instead of being clamped to the space on its right.
+   * Off by default, so existing cards keep the right-only growth.
+   */
+  readonly growLeft = input(false);
+  /** How far (px) the open panel is moved left so its full width fits; 0 when not shifted. */
+  readonly leftShift = signal(0);
   /** The resolved width while open, or null when the panel keeps the card's width. */
   readonly panelWidth = signal<string | null>(null);
   readonly closed = output<void>();
@@ -149,13 +158,22 @@ export class PopoutPanelComponent {
     const fromWidth = host.offsetWidth;
     const wide = this.expandedWidth();
     if (wide) {
-      const left = host.getBoundingClientRect().left;
-      this.panelWidth.set(`max(${fromWidth}px, min(${wide}, calc(100vw - ${Math.round(left)}px - 1.5rem)))`);
+      const rect = host.getBoundingClientRect();
+      const room = this.growLeft()
+        ? `calc(${Math.round(rect.right)}px - 1.5rem)`
+        : `calc(100vw - ${Math.round(rect.left)}px - 1.5rem)`;
+      this.panelWidth.set(`max(${fromWidth}px, min(${wide}, ${room}))`);
     }
     this.placeholderHeight.set(from);
     this.popped.set(true);
     afterNextRender(() => {
       const el = this.panel().nativeElement;
+      if (wide && this.growLeft()) {
+        // Shift left by whatever would spill past the viewport's right edge (1.5rem gutter).
+        const gutter = 24;
+        const overflow = el.getBoundingClientRect().right - (document.documentElement.clientWidth - gutter);
+        if (overflow > 0) this.leftShift.set(Math.round(overflow));
+      }
       const to = el.offsetHeight;
       const toWidth = el.offsetWidth;
       el.focus?.();
@@ -179,6 +197,7 @@ export class PopoutPanelComponent {
       this.popped.set(false);
       this.placeholderHeight.set(null);
       this.panelWidth.set(null);
+      this.leftShift.set(0);
     };
     this.running = this.animate(el, [
       { height: `${from}px`, ...widths[0], overflow: 'hidden' },

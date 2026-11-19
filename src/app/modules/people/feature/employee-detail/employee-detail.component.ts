@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { merge } from 'rxjs';
 import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
@@ -14,6 +17,7 @@ import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.s
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeDetailResponse, UpdateEmployeeJobDetailsRequest } from '../../models/employee.model';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
+import { StartOffboardingModalComponent } from '../../ui/start-offboarding-modal/start-offboarding-modal.component';
 import { PositionHistoryEntryResponse } from '../../models/position-history.model';
 import { EmployeePeriodStore } from '../../state/employee-period.store';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
@@ -29,14 +33,23 @@ import {
 import { EmployeeEmploymentTabComponent } from './employment-tab.component';
 import { EmployeePersonalTabComponent } from './personal-tab.component';
 import { EmployeeOverviewTabComponent } from './overview-tab.component';
+import { EmployeeWorkActivityTabComponent } from './work-activity-tab.component';
 
-type DetailTab = 'overview' | 'employment' | 'personal';
+type DetailTab = 'overview' | 'employment' | 'work-activity' | 'personal';
+
+const DETAIL_TABS: readonly DetailTab[] = ['overview', 'employment', 'work-activity', 'personal'];
+
+/** Reads the ?tab= query value; anything unknown falls back to Overview. */
+function toDetailTab(value: string | null): DetailTab {
+  return DETAIL_TABS.find((tab) => tab === value) ?? 'overview';
+}
 
 /**
- * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity,
- * Transfer/Promote/Offboarding actions, resend-invitation), today's attendance strip, and
- * three tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
- * Work Network, job journey; mounted on first visit) and Personal
+ * Employee detail page shell backed by GET /api/v1/employees/{id}/detail: header (identity, key
+ * facts, Transfer/Promote/Offboarding actions, resend/revoke invitation), today's attendance strip, and
+ * four tabs - Overview (per-widget attendance/discipline/time-off), Employment (job details,
+ * Work Network, job journey; mounted on first visit), Work & Activity (task summary,
+ * needs-attention, delivery, recorded activity, application usage, work pattern) and Personal
  * (personal info, emergency contacts, payroll when the server includes it).
  */
 @Component({
@@ -46,16 +59,19 @@ type DetailTab = 'overview' | 'employment' | 'personal';
     BreadcrumbHeaderComponent,
     AvatarComponent,
     ButtonComponent,
+    ConfirmModalComponent,
     ErrorStateComponent,
     LoaderComponent,
     ChangePositionModalComponent,
+    StartOffboardingModalComponent,
     PopoverComponent,
     EmployeeEmploymentTabComponent,
     EmployeePersonalTabComponent,
     EmployeeOverviewTabComponent,
+    EmployeeWorkActivityTabComponent,
     EmployeePeriodControlsComponent
   ],
-  // The Overview month lives here so its controls can sit in the profile header beside the tabs.
+  // The Overview / Work & Activity month lives here so its controls can sit in the profile header beside the tabs.
   providers: [EmployeePeriodStore],
   template: `
     @if (loading()) {
@@ -89,11 +105,13 @@ type DetailTab = 'overview' | 'employment' | 'personal';
                   size="xl"
                   shape="circle"
                 />
-                <span
-                  class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-white"
-                  [class.bg-green-500]="employee.jobInformation.status.toLowerCase() === 'active'"
-                  [class.bg-red-500]="employee.jobInformation.status.toLowerCase() !== 'active'"
-                ></span>
+                @if (employee.isOnline) {
+                  <span
+                    class="absolute bottom-0 right-0 h-5 w-5 rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-success)]"
+                    data-testid="employee-online-dot"
+                    title="Online"
+                  ></span>
+                }
               </div>
 
               <div class="min-w-0">
@@ -134,19 +152,30 @@ type DetailTab = 'overview' | 'employment' | 'personal';
                 </div>
 
                 <p
-                  class="mt-1 break-all text-sm text-[var(--color-text-secondary)]"
+                  class="-mt-0.5 break-all text-sm text-[var(--color-text-secondary)]"
                   data-testid="employee-email"
                 >
                   {{ employee.personalInformation.email }}
                 </p>
 
                 <div
-                  class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                  class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
                   data-testid="employee-role-context"
                 >
-                  <span class="font-semibold text-[var(--color-text-primary)]">
-                    {{ employee.jobInformation.positionName || 'Unassigned Position' }}
-                  </span>
+                  @if (!employee.jobInformation.positionName && employee.jobInformation.pendingPositionName) {
+                    <span class="font-semibold text-[var(--color-text-primary)]">
+                      {{ employee.jobInformation.pendingPositionName }}
+                    </span>
+                    <span
+                      class="rounded-full border border-[var(--color-warning)] bg-[var(--color-warning-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-warning-text)]"
+                      title="The seat is reserved. The position becomes active once they accept the invitation."
+                      data-testid="employee-pending-position"
+                    >Starts when invite is accepted</span>
+                  } @else {
+                    <span class="font-semibold text-[var(--color-text-primary)]">
+                      {{ employee.jobInformation.positionName || 'Unassigned Position' }}
+                    </span>
+                  }
                   <span class="h-1 w-1 rounded-full bg-[var(--color-text-secondary)] opacity-60" aria-hidden="true"></span>
                   <span class="text-[var(--color-text-secondary)]">
                     {{ employee.jobInformation.departmentName || 'No department' }}
@@ -175,24 +204,16 @@ type DetailTab = 'overview' | 'employment' | 'personal';
                   }
                 </div>
               </app-popover>
-
-              <!-- Overflow Menu Button (⋮) -->
-              <button
-                type="button"
-                class="p-2 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
-                title="More actions"
-                (click)="changePositionMenuOpen.set(!changePositionMenuOpen())"
-              >
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="1"></circle>
-                  <circle cx="12" cy="5" r="1"></circle>
-                  <circle cx="12" cy="19" r="1"></circle>
-                </svg>
-              </button>
             }
-            @if (employee.invitationStatus === 'expired') {
-              <app-button variant="secondary" [loading]="resending()" [disabled]="resending()" (pressed)="resendInvitation(employee.id)">
+            <!-- Only the person who added this employee, or users:manage, gets canManageInvitation. -->
+            @if (employee.canManageInvitation && employee.invitationStatus === 'expired') {
+              <app-button variant="secondary" [loading]="resending()" [disabled]="resending() || revoking()" (pressed)="resendInvitation(employee.id)">
                 Resend invitation
+              </app-button>
+            }
+            @if (employee.canManageInvitation && (employee.invitationStatus === 'pending' || employee.invitationStatus === 'expired')) {
+              <app-button variant="secondary" data-testid="revoke-invitation" [disabled]="resending() || revoking()" (pressed)="revokeConfirmOpen.set(true)">
+                Revoke invitation
               </app-button>
             }
           </div>
@@ -217,7 +238,7 @@ type DetailTab = 'overview' | 'employment' | 'personal';
             </button>
           }
         </nav>
-        @if (activeTab() === 'overview') {
+        @if (activeTab() === 'overview' || activeTab() === 'work-activity') {
           <app-employee-period-controls class="mb-1.5" />
         }
       </div>
@@ -236,9 +257,19 @@ type DetailTab = 'overview' | 'employment' | 'personal';
           [class.hidden]="activeTab() !== 'employment'"
           [employee]="employee"
           [jobJourney]="jobJourney()"
+          [jobJourneyLoadedAt]="jobJourneyLoadedAt()"
+          [jobJourneyRefreshing]="jobJourneyRefreshing()"
+          (refreshJobJourney)="refreshJobJourney()"
           [canEdit]="canChangePosition() && !isReadOnly()"
           [saving]="savingJobDetails()"
           (save)="onJobDetailsSave($event)"
+        />
+      }
+      @if (activeTab() === 'work-activity') {
+        <app-employee-work-activity-tab
+          [employeeId]="employee.id"
+          [hireDate]="employee.jobInformation.hireDate"
+          [terminationDate]="employee.jobInformation.terminationDate ?? null"
         />
       }
       @if (activeTab() === 'personal') {
@@ -257,6 +288,25 @@ type DetailTab = 'overview' | 'employment' | 'personal';
           (pendingApproval)="onPositionPendingApproval()"
         />
       }
+
+      <app-start-offboarding-modal
+        [open]="startOffboardingOpen()"
+        [employeeId]="employee.id"
+        [employeeName]="employee.personalInformation.firstName + ' ' + employee.personalInformation.lastName"
+        (started)="openOffboarding($event)"
+        (closed)="startOffboardingOpen.set(false)"
+      />
+
+      <app-confirm-modal
+        [open]="revokeConfirmOpen()"
+        title="Revoke invitation?"
+        [message]="'The invitation link sent to ' + employee.personalInformation.email + ' will stop working and the reserved position is released.'"
+        confirmLabel="Revoke"
+        cancelLabel="Cancel"
+        [loading]="revoking()"
+        (confirmed)="revokeInvitation(employee.id)"
+        (cancelled)="revokeConfirmOpen.set(false)"
+      />
     }
   `,
   styles: [`
@@ -322,18 +372,26 @@ export class EmployeeDetailComponent {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly resending = signal(false);
+  readonly revoking = signal(false);
+  readonly revokeConfirmOpen = signal(false);
   readonly savingJobDetails = signal(false);
   readonly changePositionMenuOpen = signal(false);
   readonly changePositionOpen = signal(false);
+  readonly startOffboardingOpen = signal(false);
   readonly changePositionReason = signal<'Promotion' | 'Transfer'>('Promotion');
+  // A person's plan and their meeting attendance are not profile tabs: the plan lives in Planner → My team (team
+  // planner, 2026-11-03) and a meeting's attendance in its own meeting drawer (2026-11-04).
   readonly tabs: readonly { readonly id: DetailTab; readonly label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'employment', label: 'Employment' },
+    { id: 'work-activity', label: 'Work & Activity' },
     { id: 'personal', label: 'Personal' }
   ];
   readonly activeTab = signal<DetailTab>('overview');
   readonly employmentVisited = signal(false);
   readonly jobJourney = signal<readonly PositionHistoryEntryResponse[]>([]);
+  readonly jobJourneyLoadedAt = signal<Date | null>(null);
+  readonly jobJourneyRefreshing = signal(false);
 
   readonly attendanceWarningLabel = attendanceWarningLabel;
   readonly attendanceAttentionLabel = attendanceAttentionLabel;
@@ -351,34 +409,76 @@ export class EmployeeDetailComponent {
     return employeeId ? this.employeeDirectory.get(employeeId)?.avatarUrl ?? null : null;
   });
 
+  /** The employee id the page is showing; a different id in the URL starts a fresh load. */
+  private currentId: string | null = null;
+
   constructor() {
-    this.load();
+    // The component is reused when the URL moves to another employee, so follow the route
+    // instead of reading it once. The snapshot is already updated whichever stream fires first.
+    merge(this.route.paramMap, this.route.queryParamMap)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.syncWithRoute());
   }
 
+  private syncWithRoute(): void {
+    const snapshot = this.route.snapshot;
+    const id = snapshot.paramMap.get('id');
+    const tab = toDetailTab(snapshot.queryParamMap.get('tab'));
+    if (id && id !== this.currentId) {
+      this.currentId = id;
+      this.employee.set(null);
+      this.jobJourney.set([]);
+      this.jobJourneyLoadedAt.set(null);
+      this.activeTab.set(tab);
+      this.employmentVisited.set(tab === 'employment');
+      this.load();
+    } else {
+      this.showTab(tab);
+    }
+  }
+
+  /** First load shows the loader; a reload of the same employee keeps the page (and its tabs) on screen. */
   load(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       return;
     }
 
-    this.loading.set(true);
+    const refreshing = this.employee()?.id === id;
+    if (!refreshing) this.loading.set(true);
     this.error.set(null);
     void this.employeeDirectory.ensureLoaded([id]);
     this.api.getEmployeeDetail(id).subscribe({
       next: (employee) => {
+        if (id !== this.currentId) return;
         this.employee.set(employee);
         this.loading.set(false);
       },
       error: (err) => {
+        if (id !== this.currentId) return;
         this.loading.set(false);
-        this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
+        if (refreshing) {
+          this.notifications.error(toSafeErrorMessage(err, 'Could not refresh the employee.'));
+        } else {
+          this.error.set(toSafeErrorMessage(err, 'The employee or selected organization record could not be found.'));
+        }
       }
     });
     if (this.employmentVisited()) this.loadJobJourney(id);
     void this.offboardingStore.loadOffboarding(id);
   }
 
+  /** Switches tab and records it as ?tab= so a refresh or shared link opens the same tab. */
   selectTab(tab: DetailTab): void {
+    this.showTab(tab);
+    void this.router.navigate([], {
+      queryParams: { tab: tab === 'overview' ? null : tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
+  private showTab(tab: DetailTab): void {
     this.activeTab.set(tab);
     if (tab === 'employment' && !this.employmentVisited()) {
       this.employmentVisited.set(true);
@@ -387,10 +487,25 @@ export class EmployeeDetailComponent {
     }
   }
 
-  private loadJobJourney(id: string): void {
+  refreshJobJourney(): void {
+    const id = this.employee()?.id;
+    if (id) this.loadJobJourney(id, true);
+  }
+
+  /** A quiet refresh keeps the current entries on screen if the reload fails. */
+  private loadJobJourney(id: string, quiet = false): void {
+    if (quiet) this.jobJourneyRefreshing.set(true);
     this.api.getJobJourney(id).subscribe({
-      next: (entries) => this.jobJourney.set(entries),
-      error: () => this.jobJourney.set([])
+      next: (entries) => {
+        if (id !== this.currentId) return;
+        this.jobJourney.set(entries);
+        this.jobJourneyLoadedAt.set(new Date());
+        this.jobJourneyRefreshing.set(false);
+      },
+      error: () => {
+        if (!quiet) this.jobJourney.set([]);
+        this.jobJourneyRefreshing.set(false);
+      }
     });
   }
 
@@ -426,6 +541,22 @@ export class EmployeeDetailComponent {
     });
   }
 
+  revokeInvitation(employeeId: string): void {
+    this.revoking.set(true);
+    this.api.revokeInvitation(employeeId).subscribe({
+      next: () => {
+        this.revoking.set(false);
+        this.revokeConfirmOpen.set(false);
+        this.notifications.success('Invitation revoked.');
+        this.load();
+      },
+      error: (err) => {
+        this.revoking.set(false);
+        this.notifications.error(toSafeErrorMessage(err, 'Could not revoke the invitation.'));
+      }
+    });
+  }
+
   onPositionChanged(): void {
     this.changePositionOpen.set(false);
     this.notifications.success('Position updated.');
@@ -438,9 +569,19 @@ export class EmployeeDetailComponent {
     this.changePositionOpen.set(true);
   }
 
+  /** An open (or finished) offboarding opens its page; otherwise the Start Offboarding popup asks for the exit details first. */
   navigateToOffboarding(employeeId: string): void {
     this.changePositionMenuOpen.set(false);
-    void this.router.navigate(['/people/employees', employeeId, 'offboarding']);
+    const status = this.offboardingStatus();
+    if (status && status !== 'cancelled') {
+      this.openOffboarding(employeeId);
+    } else {
+      this.startOffboardingOpen.set(true);
+    }
+  }
+
+  openOffboarding(employeeId: string): void {
+    void this.router.navigate(['/people/offboarding', employeeId]);
   }
 
   onPositionPendingApproval(): void {
@@ -451,8 +592,8 @@ export class EmployeeDetailComponent {
 
   severityBadgeClass(employee: EmployeeDetailResponse): string {
     const severity = attendanceSeverityClass(employee);
-    if (severity === 'emp-attention--critical') return 'bg-red-50 text-red-700';
-    if (severity === 'emp-attention--warning') return 'bg-amber-50 text-amber-700';
+    if (severity === 'emp-attention--critical') return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
+    if (severity === 'emp-attention--warning') return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]';
   }
 
@@ -460,22 +601,22 @@ export class EmployeeDetailComponent {
     const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
     const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
     if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
-      return 'bg-rose-50 text-rose-800';
+      return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
     }
     if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
-      return 'bg-emerald-50 text-emerald-800';
+      return 'bg-[var(--color-success-subtle)] text-[var(--color-success-text)]';
     }
     if (status === 'late' || label.includes('late')) {
-      return 'bg-amber-50 text-amber-800';
+      return 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]';
     }
     if (status === 'on_break' || label.includes('break')) {
       return 'bg-sky-50 text-sky-800';
     }
     if (status === 'on_leave' || label.includes('leave')) {
-      return 'bg-purple-50 text-purple-800';
+      return 'bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)]';
     }
     if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
-      return 'bg-rose-50 text-rose-800';
+      return 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]';
     }
     return 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]';
   }
@@ -484,22 +625,22 @@ export class EmployeeDetailComponent {
     const status = employee.attendanceSummary?.attendanceStatus?.toLowerCase() || '';
     const label = attendanceStatusLabel(employee)?.toLowerCase() || '';
     if (employee.attendanceSummary?.showNotClockedInWarning || status === 'not_clocked_in' || label.includes('not clocked in')) {
-      return 'bg-rose-500';
+      return 'bg-[var(--color-danger)]';
     }
     if (status === 'present' || status === 'working' || label.includes('present') || label.includes('clocked in') || label.includes('working')) {
-      return 'bg-emerald-500';
+      return 'bg-[var(--color-success)]';
     }
     if (status === 'late' || label.includes('late')) {
-      return 'bg-amber-500';
+      return 'bg-[var(--color-warning)]';
     }
     if (status === 'on_break' || label.includes('break')) {
       return 'bg-sky-500';
     }
     if (status === 'on_leave' || label.includes('leave')) {
-      return 'bg-purple-500';
+      return 'bg-[var(--color-cat-violet)]';
     }
     if (status === 'missing_clock_out' || status === 'absent' || label.includes('missing') || label.includes('absent')) {
-      return 'bg-rose-500';
+      return 'bg-[var(--color-danger)]';
     }
     return 'bg-[var(--color-text-secondary)]';
   }

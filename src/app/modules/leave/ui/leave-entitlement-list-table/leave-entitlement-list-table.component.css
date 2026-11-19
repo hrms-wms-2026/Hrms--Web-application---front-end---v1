@@ -1,31 +1,5 @@
-:host { display: block; }
-.elt-wrap { overflow: auto; }
-.elt-table {
-  width: 100%;
-  min-width: 990px;
-  border-collapse: collapse;
-  font-size: 0.79rem;
-}
-.elt-table th {
-  text-align: left;
-  padding: 0.68rem 0.75rem;
-  background: var(--color-surface-secondary);
-  color: var(--color-text-secondary);
-  font-weight: 750;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  border-bottom: 1px solid var(--color-border);
-}
-.elt-table td {
-  padding: 0.72rem 0.75rem;
-  color: var(--color-text-primary);
-  border-bottom: 1px solid var(--color-border);
-  white-space: nowrap;
-}
-.elt-table tbody tr:last-child td { border-bottom: 0; }
-.elt-table tbody tr:hover { background: var(--color-surface-secondary); }
-.elt-table strong { font-weight: 650; }
+/* Table shell comes from shared app-data-table; only cell content is styled here. */
+strong { font-weight: 650; }
 .elt-muted {
   display: block;
   margin-top: 0.15rem;
@@ -67,4 +41,3 @@
   background: var(--color-accent-subtle);
   color: var(--color-accent);
 }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

@@ -1,15 +1,7 @@
 .eam-body { display: flex; flex-direction: column; gap: 0.8rem; min-width: 320px; }
 .eam-subject { margin: 0; color: var(--color-text-secondary); font-size: 0.78rem; }
 .eam-field { display: flex; flex-direction: column; gap: 0.32rem; color: var(--color-text-secondary); font-size: 0.75rem; font-weight: 650; }
-.eam-field input, .eam-field textarea {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.5rem 0.6rem;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 0.8rem;
-}
+
 .eam-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
 .eam-primary, .eam-secondary, .eam-danger { border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
 .eam-primary { border: 0; background: var(--color-accent); color: var(--color-accent-contrast); }

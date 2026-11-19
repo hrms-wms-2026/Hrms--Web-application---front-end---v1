@@ -23,5 +23,6 @@ export const environment = {
   apiUrl: buildLocalApiUrl(hostname),
   wsUrl: buildLocalWsUrl(hostname),
   enableDebugLogs: true,
-  appName: 'ONEVO HRMS',
+  appName: 'CROWNUS HRMS',
+  tenancyMode: 'subdomain',
 } as const satisfies RuntimeConfig;

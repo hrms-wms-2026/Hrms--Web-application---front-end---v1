@@ -4,7 +4,6 @@ import { ProjectListStore, AchievedFilter } from '../../state/project-list.store
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { ProjectFilterBarComponent } from '../../ui/project-filter-bar/project-filter-bar.component';
 import { ProjectFormModalComponent } from '../../ui/project-form-modal/project-form-modal.component';
-import { ProjectSettingsModalComponent } from '../../ui/project-settings-modal/project-settings-modal.component';
 import { ProjectListRowComponent } from '../../ui/project-list-row/project-list-row.component';
 import { ProjectExplanationCardComponent } from '../../ui/project-explanation-card/project-explanation-card.component';
 import { ProjectTableViewComponent } from '../../ui/project-table-view/project-table-view.component';
@@ -16,7 +15,8 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
-import { CreateProjectPayload, EditProjectPayload, Project, ProjectDetail } from '../../models/project.model';
+import { ViewModeOption, ViewModeToggleComponent } from '../../../../shared/ui/view-mode-toggle/view-mode-toggle.component';
+import { CreateProjectPayload, Project } from '../../models/project.model';
 
 export type ProjectViewMode = 'table' | 'list' | 'card';
 
@@ -24,9 +24,9 @@ export type ProjectViewMode = 'table' | 'list' | 'card';
   selector: 'app-project-list',
   standalone: true,
   imports: [
-    ProjectFilterBarComponent, ProjectFormModalComponent, ProjectSettingsModalComponent, ConfirmModalComponent,
+    ProjectFilterBarComponent, ProjectFormModalComponent, ConfirmModalComponent,
     ProjectListRowComponent, ProjectExplanationCardComponent, ProjectTableViewComponent, ProjectCardComponent,
-    MemberManagementPopupComponent, BreadcrumbHeaderComponent, ButtonComponent,
+    MemberManagementPopupComponent, BreadcrumbHeaderComponent, ButtonComponent, ViewModeToggleComponent,
     LoaderComponent, ErrorStateComponent, EmptyStateComponent
   ],
   templateUrl: './project-list.component.html',
@@ -37,13 +37,16 @@ export class ProjectListComponent implements OnInit {
   readonly categoryStore = inject(ProjectCategoryStore);
   private readonly router = inject(Router);
 
+  readonly viewModes: readonly ViewModeOption[] = [
+    { value: 'list', label: 'List', icon: 'list' },
+    { value: 'card', label: 'Card', icon: 'card' },
+    { value: 'table', label: 'Table', icon: 'table' }
+  ];
   viewMode = signal<ProjectViewMode>(this.loadInitialViewMode());
   expandedCardIds = signal<Set<string>>(new Set());
 
   selectedProjectId = signal<string | null>(null);
   createModalOpen = signal(false);
-  settingsModalOpen = signal(false);
-  settingsModalInitialValue = signal<ProjectDetail | null>(null);
   membersModalOpen = signal(false);
   deleteConfirmOpen = signal(false);
   private targetProject = signal<Project | null>(null);
@@ -66,32 +69,9 @@ export class ProjectListComponent implements OnInit {
     }
   }
 
-  cycleViewMode(): void {
-    const current = this.viewMode();
-    let next: ProjectViewMode = 'list';
-    if (current === 'list') {
-      next = 'card';
-    } else if (current === 'card') {
-      next = 'table';
-    } else {
-      next = 'list';
-    }
-    this.setViewMode(next);
+  onViewModeChange(mode: string): void {
+    this.setViewMode(mode as ProjectViewMode);
   }
-
-  readonly viewModeTitle = computed(() => {
-    const mode = this.viewMode();
-    if (mode === 'list') return 'List view (click to switch to Card)';
-    if (mode === 'card') return 'Card view (click to switch to Table)';
-    return 'Table view (click to switch to List)';
-  });
-
-  readonly viewModeAriaLabel = computed(() => {
-    const mode = this.viewMode();
-    if (mode === 'list') return 'List view, switch to Card view';
-    if (mode === 'card') return 'Card view, switch to Table view';
-    return 'Table view, switch to List view';
-  });
 
   toggleCardExpand(id: string): void {
     this.expandedCardIds.update((set) => {
@@ -171,41 +151,7 @@ export class ProjectListComponent implements OnInit {
   }
 
   onProjectSettingsRequested(project: Project): void {
-    this.targetProject.set(project);
-    this.settingsModalOpen.set(true);
-    this.loadFullDetailForSettings(project.id);
-  }
-
-  private async loadFullDetailForSettings(id: string): Promise<void> {
-    const detail = await this.store.getProjectDetail(id);
-    if (detail && this.targetProject()?.id === id) {
-      this.settingsModalInitialValue.set(detail);
-    }
-  }
-
-  async onProjectSettingsSaved(event: { fields: EditProjectPayload; achievedChanged: boolean; achieved: boolean }): Promise<void> {
-    const project = this.targetProject();
-    if (!project) return;
-    this.actionSubmitting.set(true);
-
-    const editSuccess = await this.store.editProject(project.id, event.fields);
-    if (!editSuccess) {
-      this.actionSubmitting.set(false);
-      return;
-    }
-
-    if (event.achievedChanged) {
-      const achieveSuccess = event.achieved
-        ? await this.store.achieveProject(project.id)
-        : await this.store.unachieveProject(project.id);
-      if (!achieveSuccess) {
-        this.actionSubmitting.set(false);
-        return;
-      }
-    }
-
-    this.actionSubmitting.set(false);
-    this.settingsModalOpen.set(false);
+    this.router.navigate(['/work', project.id, 'settings']);
   }
 
   openDeleteConfirm(project: Project): void {

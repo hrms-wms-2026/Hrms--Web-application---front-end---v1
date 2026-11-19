@@ -2,8 +2,9 @@ import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { ProjectApiService } from '../data-access/project-api.service';
-import { toProject, toProjectDetail } from '../utils/project.mapper';
-import { Project, ProjectDetail, CreateProjectPayload, EditProjectPayload } from '../models/project.model';
+import { toProject } from '../utils/project.mapper';
+import { Project, CreateProjectPayload, EditProjectPayload } from '../models/project.model';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 export type AchievedFilter = 'active' | 'archived' | 'all';
 
@@ -23,8 +24,8 @@ const initialState: ProjectListState = {
   selectedCategoryIds: [], achievedFilter: 'all', loading: false, error: null
 };
 
-function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+function extractError(err: unknown, fallback: string): string {
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const ProjectListStore = signalStore(
@@ -112,6 +113,30 @@ export const ProjectListStore = signalStore(
       }
     },
 
+    async setProjectLogo(id: string, file: File): Promise<boolean> {
+      patchState(store, { error: null });
+      try {
+        await firstValueFrom(api.uploadLogo(id, file));
+        await this.loadProjects();
+        return true;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to upload the logo.') });
+        return false;
+      }
+    },
+
+    async removeProjectLogo(id: string): Promise<boolean> {
+      patchState(store, { error: null });
+      try {
+        await firstValueFrom(api.removeLogo(id));
+        await this.loadProjects();
+        return true;
+      } catch (err) {
+        patchState(store, { error: extractError(err, 'Failed to remove the logo.') });
+        return false;
+      }
+    },
+
     async deleteProject(id: string): Promise<boolean> {
       patchState(store, { error: null });
       try {
@@ -145,16 +170,6 @@ export const ProjectListStore = signalStore(
       } catch (err) {
         patchState(store, { error: extractError(err, 'Failed to unachieve project.') });
         return false;
-      }
-    },
-
-    async getProjectDetail(id: string): Promise<ProjectDetail | null> {
-      try {
-        const dto = await firstValueFrom(api.getById(id));
-        return toProjectDetail(dto);
-      } catch (err) {
-        patchState(store, { error: extractError(err, 'Failed to load project.') });
-        return null;
       }
     }
   }))

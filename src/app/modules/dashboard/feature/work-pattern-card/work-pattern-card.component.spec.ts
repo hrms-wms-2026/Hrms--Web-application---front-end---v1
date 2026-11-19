@@ -38,12 +38,12 @@ function historyRow(totalWorkedMinutes: number): AttendanceHistoryRow {
   };
 }
 
-type StoreMock = {
+interface StoreMock {
   history: ReturnType<typeof signal<readonly AttendanceHistoryRow[]>>;
   historyLoading: ReturnType<typeof signal<boolean>>;
   historyError: ReturnType<typeof signal<string | null>>;
   loadMyHistory: ReturnType<typeof vi.fn>;
-};
+}
 
 describe('WorkPatternCardComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -128,6 +128,8 @@ describe('WorkPatternCardComponent', () => {
     const segments = fixture.nativeElement.querySelectorAll('[data-testid="work-pattern-segment"]');
     expect(segments.length).toBe(1);
     expect(segments[0].getAttribute('data-segment-type')).toBe('focus');
+    // The label text is readable on its shade: solid text on the darkest shade.
+    expect((segments[0] as HTMLElement).style.color).toBe('var(--color-widget-on-solid)');
   });
 
   it('falls back to an empty bar when the request fails', async () => {

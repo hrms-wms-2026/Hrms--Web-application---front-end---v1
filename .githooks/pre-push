@@ -1,0 +1,8 @@
+#!/bin/sh
+# Blocks the push if the frontend build prints any warning or error.
+# Enabled by `npm install` (the "prepare" script sets core.hooksPath to .githooks).
+echo "pre-push: checking the build for warnings..."
+node scripts/check-no-warnings.mjs || {
+  echo "pre-push: push blocked. Fix the warnings above, then push again."
+  exit 1
+}

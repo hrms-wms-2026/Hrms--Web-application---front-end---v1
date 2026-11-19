@@ -13,18 +13,23 @@ interface Row { id: string; name: string; locked?: boolean; }
       [rows]="rows()"
       [trackBy]="trackBy"
       [rowTestId]="rowTestId"
+      [rowTitle]="rowTitle"
       [activeRowId]="activeId()"
       [selectable]="selectable()"
       [selectedIds]="selectedIds()"
+      [selectionDisabled]="selectionDisabled()"
       [isRowSelectable]="canSelect"
       [selectTestId]="selectTestId"
       [emptyMessage]="emptyMessage()"
+      [sortBy]="sortBy()"
+      [sortDir]="sortDir()"
+      [loading]="loading()"
       (rowClicked)="clicked = $event"
       (sortRequested)="sorted = $event"
       (rowSelectionChanged)="selection = $event"
       (selectAllChanged)="selectAll = $event"
     >
-      <ng-template appDataTableCell="name" let-row><span class="name">{{ row.name }}</span></ng-template>
+      <ng-template appDataTableCell="name" let-row let-i="index"><span class="name">{{ row.name }}</span><span class="idx">{{ i }}</span></ng-template>
       <ng-template appDataTableCell="action" let-row><button type="button" class="act">Go</button></ng-template>
       <ng-template appDataTableRowAfter let-row let-colspan="colspan">
         <tr class="after"><td [attr.colspan]="colspan">after {{ row.id }}</td></tr>
@@ -41,9 +46,14 @@ class HostComponent {
   activeId = signal<string | null>(null);
   selectable = signal(false);
   selectedIds = signal<ReadonlySet<string>>(new Set());
+  selectionDisabled = signal(false);
   emptyMessage = signal('');
+  sortBy = signal<string | null>(null);
+  sortDir = signal<'asc' | 'desc'>('asc');
+  loading = signal(false);
   trackBy = (r: Row) => r.id;
   rowTestId = (r: Row) => 'row-' + r.id;
+  rowTitle = (r: Row) => r.locked ? 'Locked row' : null;
   selectTestId = (r: Row) => 'select-' + r.id;
   canSelect = (r: Row) => !r.locked;
   clicked: Row | null = null;
@@ -68,7 +78,7 @@ describe('DataTableComponent', () => {
 
   it('renders a row per item with the caller cell templates and after-rows', () => {
     expect(el.querySelectorAll('.data-table__row').length).toBe(2);
-    expect(q('[data-testid="row-a"] .name')!.textContent).toBe('Alpha');
+    expect(q('[data-testid="row-a"] .name')!.textContent).toContain('Alpha');
     expect(el.querySelectorAll('tr.after').length).toBe(2);
     expect(q('tr.after td')!.getAttribute('colspan')).toBe('2');
   });
@@ -82,9 +92,8 @@ describe('DataTableComponent', () => {
 
   it('only sortable headers emit sortRequested; hidden labels stay for screen readers', () => {
     const ths = el.querySelectorAll<HTMLElement>('th');
-    ths[1].click();
-    expect(host.sorted).toBeNull();
-    ths[0].click();
+    expect(ths[1].querySelector('button')).toBeNull();
+    ths[0].querySelector('button')!.click();
     expect(host.sorted).toBe('name');
     expect(ths[1].querySelector('.data-table__sr')!.textContent).toBe('Action');
   });
@@ -94,6 +103,11 @@ describe('DataTableComponent', () => {
     fixture.detectChanges();
     expect(q('[data-testid="row-b"]')!.classList).toContain('data-table__row--active');
     expect(q('[data-testid="row-a"]')!.classList).not.toContain('data-table__row--active');
+  });
+
+  it('applies optional native hover text to individual rows', () => {
+    expect(q('[data-testid="row-a"]')!.getAttribute('title')).toBeNull();
+    expect(q('[data-testid="row-b"]')!.getAttribute('title')).toBe('Locked row');
   });
 
   it('selection column: per-row checkbox only for selectable rows, select-all state and events', () => {
@@ -112,6 +126,19 @@ describe('DataTableComponent', () => {
     expect(host.selectAll).toBe(false);
   });
 
+  it('selectionDisabled shows the selection read-only: checkboxes disabled, selected rows still highlighted', () => {
+    host.selectable.set(true);
+    host.selectedIds.set(new Set(['a']));
+    host.selectionDisabled.set(true);
+    fixture.detectChanges();
+
+    const rowBox = q('[data-testid="select-a"]') as HTMLInputElement;
+    expect(rowBox.checked).toBe(true);
+    expect(rowBox.disabled).toBe(true);
+    expect((q('[data-testid="data-table-select-all"]') as HTMLInputElement).disabled).toBe(true);
+    expect(rowBox.closest('tr')!.classList.contains('data-table__row--active')).toBe(true);
+  });
+
   it('shows the empty message instead of the table when there are no rows', () => {
     host.rows.set([]);
     fixture.detectChanges();
@@ -121,5 +148,23 @@ describe('DataTableComponent', () => {
     fixture.detectChanges();
     expect(q('table')).toBeNull();
     expect(q('[data-testid="data-table-empty"]')!.textContent).toContain('Nothing here');
+  });
+
+  it('marks the sorted column with aria-sort', () => {
+    host.sortBy.set('name');
+    host.sortDir.set('desc');
+    fixture.detectChanges();
+    expect(el.querySelectorAll('th')[0].getAttribute('aria-sort')).toBe('descending');
+  });
+
+  it('shows skeleton rows while loading', () => {
+    host.loading.set(true);
+    fixture.detectChanges();
+    expect(q('table')).toBeNull();
+    expect(q('[data-testid="data-table-loading"]')).not.toBeNull();
+  });
+
+  it('passes the row index to cell templates', () => {
+    expect(q('[data-testid="row-b"] .idx')!.textContent).toBe('1');
   });
 });

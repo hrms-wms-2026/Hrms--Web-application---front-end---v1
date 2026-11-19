@@ -1,0 +1,260 @@
+/*
+ * The one input style for every field in CROWNUS (text, select, date, time, textarea, search).
+ *
+ *   <label class="ui-field-label">Work email</label>
+ *   <div class="ui-field">                         frame: border, radius, focus/success/error/disabled
+ *     <span class="ui-field__addon">…svg…</span>  optional leading icon or prefix ("Rs"), divider on its right
+ *     <input class="ui-field__control" />          bare control that fills the frame
+ *     <span class="ui-field__trailing">…</span>    optional chevron / eye / check / alert
+ *   </div>
+ *   <p class="ui-field-error">Work email is required</p>
+ *
+ * A lone <input>, <textarea> or native <select> with no addon can take `.ui-input` instead of the
+ * frame + control pair. app-input, app-select, app-date-picker and app-time-picker render these classes.
+ *
+ * Colours come from the theme tokens, so the focus border follows the accent preset and dark mode.
+ * Kept in @layer components: a host's own scoped CSS or a Tailwind utility can still adjust a field.
+ */
+@layer components {
+  :root {
+    --field-height: 2.5rem;
+    --field-height-sm: 1.875rem; /* matches app-button md */
+    --field-radius: 8px;
+    --field-font-size: 0.875rem;
+    --field-border-hover: color-mix(in srgb, var(--color-border) 55%, var(--color-text-secondary));
+    --field-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent);
+    --field-error-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 14%, transparent);
+  }
+
+  .ui-field,
+  .ui-input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--field-radius);
+    background: var(--color-field-bg);
+    color: var(--color-text-primary);
+    font-size: var(--field-font-size);
+    line-height: 1.25rem;
+    transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+  }
+
+  .ui-field {
+    display: flex;
+    align-items: stretch;
+    height: var(--field-height);
+  }
+
+  .ui-input {
+    display: block;
+    height: var(--field-height);
+    padding: 0 0.875rem;
+    font-family: inherit;
+    outline: none;
+  }
+
+  textarea.ui-input,
+  .ui-field--multiline {
+    height: auto;
+    min-height: 5.5rem;
+  }
+
+  textarea.ui-input {
+    padding: 0.625rem 0.875rem;
+    resize: vertical;
+  }
+
+  select.ui-input {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 15px;
+    cursor: pointer;
+  }
+
+  .ui-field:hover,
+  .ui-input:hover {
+    border-color: var(--field-border-hover);
+  }
+
+  .ui-field:focus-within,
+  .ui-input:focus {
+    border-color: var(--color-accent);
+    box-shadow: var(--field-focus-shadow);
+  }
+
+  .ui-field--success,
+  .ui-field--success:hover,
+  .ui-input--success {
+    border-color: var(--color-success);
+  }
+
+  .ui-field--error,
+  .ui-field--error:hover,
+  .ui-input--error,
+  .ui-input--error:hover,
+  .ui-input[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+
+  .ui-field--error:focus-within,
+  .ui-input--error:focus,
+  .ui-input[aria-invalid='true']:focus {
+    border-color: var(--color-danger);
+    box-shadow: var(--field-error-shadow);
+  }
+
+  .ui-field--disabled,
+  .ui-field--disabled:hover,
+  .ui-field:has(> .ui-field__control:disabled),
+  .ui-input:disabled,
+  .ui-input:disabled:hover {
+    border-color: var(--color-border);
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .ui-input[readonly] {
+    background: var(--color-surface-secondary);
+    color: var(--color-text-secondary);
+  }
+
+  /* Dense toolbars and filter bars. */
+  .ui-field--sm,
+  .ui-input--sm {
+    height: var(--field-height-sm);
+    font-size: 0.8125rem;
+  }
+
+  .ui-field__addon {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    padding: 0 0.75rem;
+    border-right: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .ui-field--sm .ui-field__addon {
+    min-width: 2.25rem;
+    padding: 0 0.5rem;
+  }
+
+  .ui-field__addon svg,
+  .ui-field__trailing svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+
+  .ui-field__control {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    padding: 0 0.875rem;
+    border: 0;
+    border-radius: 0;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+  }
+
+  .ui-field--sm .ui-field__control {
+    padding: 0 0.625rem;
+  }
+
+  textarea.ui-field__control {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+    resize: vertical;
+  }
+
+  .ui-field__control:disabled {
+    cursor: not-allowed;
+  }
+
+  .ui-field__control::placeholder,
+  .ui-input::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.85;
+  }
+
+  .ui-field__control:focus-visible {
+    outline: none;
+  }
+
+  .ui-field__trailing {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding-right: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .ui-field__trailing--success {
+    color: var(--color-success);
+  }
+
+  .ui-field__trailing--error {
+    color: var(--color-danger);
+  }
+
+  /* Small icon buttons inside a field (show password, open calendar). */
+  .ui-field__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+
+  .ui-field__icon-btn:hover:not(:disabled) {
+    color: var(--color-text-primary);
+  }
+
+  .ui-field__icon-btn:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
+  }
+
+  .ui-field__icon-btn:disabled {
+    cursor: not-allowed;
+  }
+
+  .ui-field-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .ui-field-required {
+    margin-left: 0.2rem;
+    color: var(--color-danger);
+  }
+
+  .ui-field-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .ui-field-error {
+    font-size: 0.75rem;
+    color: var(--color-danger);
+  }
+}

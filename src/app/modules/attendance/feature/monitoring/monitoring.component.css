@@ -36,7 +36,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-content, 12px);
   background: var(--color-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-card);
   transition: border-color 150ms ease;
 }
 
@@ -62,8 +62,8 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, transparent);
-  color: var(--color-primary, #2563eb);
+  background: color-mix(in srgb, var(--color-cat-blue) 10%, transparent);
+  color: var(--color-cat-blue);
   flex-shrink: 0;
 }
 
@@ -91,8 +91,8 @@
   padding: 0.5rem 1.125rem;
   border-radius: 8px;
   border: none;
-  background: var(--color-primary, #2563eb);
-  color: #ffffff;
+  background: var(--color-cat-blue);
+  color: var(--color-text-on-solid);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -118,7 +118,7 @@
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ffffff;
+  border-top-color: var(--color-surface);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -149,14 +149,14 @@
 }
 
 .feature-card:hover:not(.feature-card--disabled) {
-  border-color: color-mix(in srgb, var(--color-primary, #2563eb) 40%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-cat-blue) 40%, var(--color-border));
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.06);
   transform: translateY(-1px);
 }
 
 .feature-card--active {
-  border-color: color-mix(in srgb, var(--color-primary, #2563eb) 35%, var(--color-border));
-  background: color-mix(in srgb, var(--color-surface) 97%, var(--color-primary, #2563eb));
+  border-color: color-mix(in srgb, var(--color-cat-blue) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-surface) 97%, var(--color-cat-blue));
 }
 
 .feature-card--disabled {
@@ -178,8 +178,8 @@
 }
 
 .feature-card--active .feature-card__icon-wrapper {
-  background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
-  color: var(--color-primary, #2563eb);
+  background: color-mix(in srgb, var(--color-cat-blue) 12%, transparent);
+  color: var(--color-cat-blue);
 }
 
 .feature-card__content {
@@ -252,14 +252,14 @@
   width: 18px;
   left: 3px;
   bottom: 3px;
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-card);
   transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .switch-input:checked + .switch-slider {
-  background-color: var(--color-primary, #2563eb);
+  background-color: var(--color-cat-blue);
 }
 
 .switch-input:checked + .switch-slider::before {
@@ -267,7 +267,7 @@
 }
 
 .switch-input:focus-visible + .switch-slider {
-  outline: 2px solid var(--color-primary, #2563eb);
+  outline: 2px solid var(--color-cat-blue);
   outline-offset: 2px;
 }
 
@@ -321,37 +321,36 @@
   color: var(--color-text-secondary);
 }
 
-.threshold-card__input-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
+/* Standard .ui-field frame with the unit inside the box. The filled field colour is the same grey as this
+   card, so here the field gets the surface fill and a visible border to read as an input. */
 .threshold-input {
-  width: 80px;
-  min-height: 36px;
-  padding: 0.375rem 0.625rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  flex-shrink: 0;
+  width: 9.5rem;
   background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-align: center;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  border-color: var(--color-border);
 }
 
-.threshold-input:focus {
-  outline: none;
-  border-color: var(--color-primary, #2563eb);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
+.threshold-input:hover {
+  border-color: var(--field-border-hover);
 }
 
-.threshold-card__unit {
+.threshold-input:focus-within {
+  border-color: var(--color-accent);
+}
+
+.threshold-input:has(> .ui-field__control:disabled) {
+  background: var(--color-field-bg-disabled);
+  border-color: var(--color-border);
+}
+
+.threshold-input .ui-field__control {
+  text-align: right;
+  padding-right: 0.5rem;
+}
+
+.threshold-input__unit {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
 }
 
 /* ── Scope Tabs (Segmented Control) ───────────────────────── */
@@ -401,9 +400,9 @@
 
 .tabs button.active {
   background: var(--color-surface);
-  color: var(--color-primary, #2563eb);
+  color: var(--color-cat-blue);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-card);
 }
 
 .tab-count-pill {
@@ -420,8 +419,8 @@
 }
 
 .tab-count-pill--has-items {
-  background: color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
-  color: var(--color-primary, #2563eb);
+  background: color-mix(in srgb, var(--color-cat-blue) 15%, transparent);
+  color: var(--color-cat-blue);
 }
 
 /* ── Override Editor (Border removed as requested) ────────── */
@@ -470,7 +469,7 @@
 }
 
 .form-label,
-.target-field ::ng-deep .custom-select__label {
+.target-field ::ng-deep .app-select__label {
   display: flex;
   align-items: center;
   height: 18px;
@@ -491,27 +490,11 @@
   margin-left: 0.35rem;
 }
 
-.target-field ::ng-deep .custom-select {
+.target-field ::ng-deep .app-select {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   width: 100%;
-}
-
-.target-field ::ng-deep .custom-select__trigger {
-  min-height: 36px;
-  height: 36px;
-  box-sizing: border-box;
-  border-radius: 7px;
-  padding: 0.45rem 0.75rem;
-  border: 1px solid var(--color-border);
-  font-size: 0.8125rem;
-  line-height: 1.25;
-}
-
-.target-field ::ng-deep .custom-select__display {
-  font-size: 0.8125rem;
-  line-height: 1.25;
 }
 
 .select-wrapper {
@@ -556,8 +539,8 @@ select {
 
 select:focus, input:focus, textarea:focus {
   outline: none;
-  border-color: var(--color-primary, #2563eb);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
+  border-color: var(--color-cat-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-cat-blue) 15%, transparent);
 }
 
 select:disabled, input:disabled, textarea:disabled {
@@ -565,25 +548,6 @@ select:disabled, input:disabled, textarea:disabled {
   color: var(--color-text-secondary);
   cursor: not-allowed;
   opacity: 0.7;
-}
-
-.input-with-unit {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-with-unit input {
-  padding-right: 2.5rem;
-}
-
-.input-unit {
-  position: absolute;
-  right: 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  pointer-events: none;
 }
 
 /* ── Radio Button Override Controls ───────────────────────── */
@@ -664,7 +628,7 @@ select:disabled, input:disabled, textarea:disabled {
 }
 
 .radio-option:has(input:focus-visible) {
-  outline: 2px solid var(--color-primary, #2563eb);
+  outline: 2px solid var(--color-cat-blue);
   outline-offset: 1px;
 }
 
@@ -674,7 +638,7 @@ select:disabled, input:disabled, textarea:disabled {
   border-color: var(--color-border);
   color: var(--color-text-primary);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-card);
 }
 
 .radio-option--active .radio-circle {
@@ -690,7 +654,7 @@ select:disabled, input:disabled, textarea:disabled {
 .radio-option--on.radio-option--active {
   background: color-mix(in srgb, var(--color-success, #10b981) 12%, var(--color-surface));
   border-color: color-mix(in srgb, var(--color-success, #10b981) 40%, transparent);
-  color: #047857;
+  color: var(--color-success-text);
   font-weight: 650;
   box-shadow: 0 1px 2px rgba(16, 185, 129, 0.12);
 }
@@ -708,7 +672,7 @@ select:disabled, input:disabled, textarea:disabled {
 .radio-option--off.radio-option--active {
   background: color-mix(in srgb, var(--color-danger, #ef4444) 10%, var(--color-surface));
   border-color: color-mix(in srgb, var(--color-danger, #ef4444) 35%, transparent);
-  color: #b91c1c;
+  color: var(--color-danger-text);
   font-weight: 650;
   box-shadow: 0 1px 2px rgba(239, 68, 68, 0.1);
 }
@@ -760,8 +724,8 @@ select:disabled, input:disabled, textarea:disabled {
 }
 
 .btn-action.primary {
-  background: var(--color-primary, #2563eb);
-  color: #ffffff;
+  background: var(--color-cat-blue);
+  color: var(--color-text-on-solid);
   border: none;
   box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25);
 }
@@ -834,14 +798,14 @@ select:disabled, input:disabled, textarea:disabled {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--shadow-card);
   transition: all 150ms ease;
   flex-wrap: wrap;
 }
 
 .override-item:hover {
   border-color: color-mix(in srgb, var(--color-border) 80%, black);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card);
 }
 
 .override-item__target {
@@ -858,8 +822,8 @@ select:disabled, input:disabled, textarea:disabled {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
-  color: var(--color-primary, #2563eb);
+  background: color-mix(in srgb, var(--color-cat-blue) 12%, transparent);
+  color: var(--color-cat-blue);
   font-weight: 700;
   font-size: 0.875rem;
   flex-shrink: 0;
@@ -995,8 +959,8 @@ select:disabled, input:disabled, textarea:disabled {
 }
 
 .notice--info {
-  background: color-mix(in srgb, var(--color-primary, #2563eb) 6%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-primary, #2563eb) 20%, transparent);
+  background: color-mix(in srgb, var(--color-cat-blue) 6%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-cat-blue) 20%, transparent);
   color: var(--color-text-secondary);
 }
 
@@ -1025,7 +989,7 @@ select:disabled, input:disabled, textarea:disabled {
   background: linear-gradient(
     90deg,
     var(--color-surface-secondary) 25%,
-    color-mix(in srgb, var(--color-surface-secondary) 60%, white) 50%,
+    color-mix(in srgb, var(--color-surface-secondary) 60%, var(--color-surface)) 50%,
     var(--color-surface-secondary) 75%
   );
   background-size: 200% 100%;
@@ -1059,7 +1023,7 @@ select:disabled, input:disabled, textarea:disabled {
     align-items: flex-start;
   }
 
-  .threshold-card__input-group {
+  .threshold-input {
     align-self: flex-start;
   }
 

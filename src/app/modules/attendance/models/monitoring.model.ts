@@ -49,7 +49,7 @@ export interface MonitoringPolicyConfiguration {
 }
 
 export type MonitoringFeatureTogglesRequest = Omit<MonitoringFeatureToggles, 'updatedAt'>;
-export type MonitoringPolicyOverrideRequest = {
+export interface MonitoringPolicyOverrideRequest {
   activityMonitoring: boolean | null;
   applicationTracking: boolean | null;
   documentTracking: boolean | null;
@@ -64,7 +64,7 @@ export type MonitoringPolicyOverrideRequest = {
   idleThresholdMinutes: number | null;
   allowedRadiusMeters: number | null;
   overrideReason: string | null;
-};
+}
 
 // Note: 'Work Modes' (plural), not the brief's verbatim 'Work Mode', deliberately —
 // scopeLabel consumers in MonitoringComponent derive a singular form via

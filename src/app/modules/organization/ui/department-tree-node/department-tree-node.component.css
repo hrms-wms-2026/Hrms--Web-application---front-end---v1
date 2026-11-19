@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  padding-left: calc(var(--dtn-level, 0) * 24px);
 }
 
 .dtn-node-row {
@@ -66,8 +67,8 @@
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 10%, transparent);
-  color: var(--color-sidebar-active-bg, #2563eb);
+  background: color-mix(in srgb, var(--color-accent-strong) 10%, transparent);
+  color: var(--color-accent-strong);
   flex-shrink: 0;
 }
 
@@ -173,7 +174,7 @@
   border-radius: 8px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-popover);
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -206,4 +207,96 @@
 
 .dtn-menu-item--danger:hover {
   background: color-mix(in srgb, var(--color-danger-text, #ef4444) 10%, transparent);
+}
+
+/* Phones: one card per department. Icon on the left, then name + code, head position and counts stacked,
+   actions on the right. Top-level departments sit flush; sub-departments indent a little per level. */
+@media (max-width: 768px) {
+  .dtn-node-wrapper {
+    padding-left: calc((var(--dtn-level, 1) - 1) * 14px);
+  }
+
+  .dtn-node-row {
+    display: grid;
+    grid-template-columns: auto 44px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'expand icon info action'
+      'expand icon meta action';
+    column-gap: 0;
+    row-gap: 0.3rem;
+    align-items: center;
+    padding: 0.875rem 0.625rem 0.875rem 0.875rem;
+    border-radius: 12px;
+    border-color: var(--color-border);
+    margin-bottom: 0.625rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  .dtn-expand-btn {
+    grid-area: expand;
+    margin-right: 0.25rem;
+  }
+
+  /* No children: the toggle takes no room at all, so childless cards line up with the left edge. */
+  .dtn-expand-btn--hidden {
+    display: none;
+  }
+
+  .dtn-icon-badge {
+    grid-area: icon;
+    align-self: start;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .dtn-icon-badge svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .dtn-info {
+    grid-area: info;
+    margin-left: 0.875rem;
+  }
+
+  .dtn-title-line {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+  }
+
+  .dtn-name {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .dtn-meta {
+    grid-area: meta;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    margin-left: 0.875rem;
+    min-width: 0;
+  }
+
+  .dtn-head-pos {
+    min-width: 0;
+  }
+
+  .dtn-meta-val {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dtn-action-container {
+    grid-area: action;
+    margin-left: 0.25rem;
+  }
+
+  .dtn-action-btn {
+    width: 36px;
+    height: 36px;
+  }
 }

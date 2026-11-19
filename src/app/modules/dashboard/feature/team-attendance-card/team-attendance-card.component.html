@@ -1,0 +1,230 @@
+<!-- The ‹ range ›: in the body above the donut, or in the header on a wide card (plan().heroTrend). -->
+  <ng-template #rangeTpl>
+    <div class="ta-range">
+      <button type="button" class="ta-nav" aria-label="Previous period" data-testid="ta-prev" (click)="shift(-1, $event)">‹</button>
+      <span class="ta-range-label" data-testid="ta-range">{{ rangeLabel() }}</span>
+      <button
+        type="button"
+        class="ta-nav"
+        aria-label="Next period"
+        data-testid="ta-next"
+        [disabled]="store.data()?.isProvisional ?? false"
+        (click)="shift(1, $event)"
+      >›</button>
+      @if (store.data()?.isProvisional) {
+        <span class="ta-provisional">Today in progress</span>
+      }
+    </div>
+  </ng-template>
+
+<app-widget-card
+  class="group block h-full"
+  data-testid="team-attendance-card"
+  title="My team attendance"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load team attendance."
+  emptyMessage="No one in your team yet."
+  (retry)="retry()"
+>
+  <div widget-actions class="flex min-w-0 items-center gap-1">
+    @if (store.data(); as data) {
+      <!-- Only the standard view has room for the switch next to the title; elsewhere the delta names the period. -->
+      @if (view() === 'standard' && plan().heroTrend) {
+        <div class="ta-range-head" data-testid="ta-range-head">
+          <ng-container [ngTemplateOutlet]="rangeTpl" />
+        </div>
+      }
+      @if (view() === 'standard') {
+      <select
+        class="ta-period"
+        data-testid="ta-mode"
+        aria-label="Period"
+        [value]="data.mode"
+        appStopClickPropagation
+        (change)="onModeSelect($event)"
+      >
+        <option value="week" [selected]="data.mode === 'week'">Week</option>
+        <option value="month" [selected]="data.mode === 'month'">Month</option>
+      </select>
+      }
+    }
+    <app-popout-header-actions
+      [refreshing]="refreshing()"
+      [expanded]="false"
+      [canExpand]="true"
+      [revealOnHover]="true"
+      (refresh)="retry()"
+      (expand)="openDetail()"
+    />
+  </div>
+
+  @if (store.data(); as data) {
+
+    <!-- One donut size (DASHBOARD_DONUT_PX) in every view; a view without room for it leaves it out. -->
+    <ng-template #donutTpl let-rateCenter="rateCenter">
+      <app-dashboard-donut
+        class="ta-donut"
+        data-testid="ta-donut"
+        [size]="donutPx()"
+        [slices]="donutSlices()"
+        [ariaLabel]="donutLabel()"
+        [(active)]="hovered"
+      >
+        @if (rateCenter) {
+          <p class="ta-donut-center">
+            <span class="ta-donut-value ta-donut-value--rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</span>
+            <span class="ta-donut-of">today</span>
+          </p>
+        } @else {
+          <p class="ta-donut-center ta-donut-center--row" data-testid="ta-ring-center">
+            <span class="ta-donut-value">{{ attendedToday() }}</span>
+            <span class="ta-donut-of">/ {{ data.eligibleToday }}</span>
+          </p>
+        }
+      </app-dashboard-donut>
+    </ng-template>
+
+    <ng-template #chartTpl let-compact="compact">
+      @if (noWorkingDays()) {
+        <p class="ta-no-days" data-testid="ta-no-days">No working days in this period</p>
+      } @else {
+        <!-- The shared bar chart: its headline reads the period's rate, or the hovered day. -->
+        <app-attendance-day-chart
+          class="ta-chart"
+          heading="Trend"
+          [rate]="percentText(data.periodRate)"
+          [points]="data.trend"
+          [compact]="compact"
+        />
+      }
+    </ng-template>
+
+    @switch (view()) {
+      @case ('mini') {
+        <!-- 2-row cards: the shared strip. The donut with today's rate in it, then its key, then summary cards of the
+        popup's sections as the card widens. -->
+        <app-dashboard-summary-strip
+          class="ta-mini"
+          data-testid="ta-mini"
+          [slices]="donutSlices()"
+          [keySlices]="keySlices()"
+          [cards]="summaryCards()"
+          [donutLabel]="donutLabel()"
+          [(active)]="hovered"
+          (cardOpened)="openSection($event)"
+          (cardRetried)="retryAttention()"
+          (shownCards)="shownCards.set($event)"
+        >
+          <p class="ta-donut-center">
+            <span class="ta-donut-value ta-donut-value--rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</span>
+            <span class="ta-donut-of">today</span>
+          </p>
+        </app-dashboard-summary-strip>
+      }
+      @default {
+        <!-- xs (narrow) and standard: the donut keeps its place at the top; a taller card adds today's
+        status tiles, then the period's trend chart, then the top of the employee ranking, below it. -->
+        <div class="ta-grow" [class.ta-grow--xs]="view() === 'xs'" data-testid="ta-layout" [attr.data-view]="view()">
+          @if (view() === 'standard' && !plan().heroTrend) {
+            <ng-container [ngTemplateOutlet]="rangeTpl" />
+          }
+          <div class="ta-hero" data-testid="ta-hero">
+            <ng-container [ngTemplateOutlet]="donutTpl" />
+            @if (view() === 'xs' && plan().legend) {
+              <!-- Narrow cards: the legend right under the donut, the same place every widget puts it. -->
+              <app-donut-key
+                class="ta-xs-legend"
+                data-testid="ta-xs-legend"
+                ariaLabel="Today"
+                rowTestId="ta-legend-row"
+                [showValue]="true"
+                [slices]="keySlices()"
+                [(active)]="hovered"
+              />
+            }
+            @if (view() !== 'xs' || plan().figure) {
+              <div class="ta-hero-figure">
+                <p class="ta-rate" data-testid="ta-today-rate">{{ percentText(data.todayRate) }}</p>
+                <p class="ta-caption">Attendance today</p>
+                @if (delta(); as d) {
+                  <p class="ta-delta" [class.ta-delta--down]="d.down" data-testid="ta-delta">{{ d.text }}</p>
+                }
+              </div>
+            }
+            @if (plan().heroTrend) {
+              <!-- Wide card: the trend fills the row between the rate and the legend. -->
+              <div class="ta-hero-trend" data-testid="ta-trend">
+                <ng-container [ngTemplateOutlet]="chartTpl" [ngTemplateOutletContext]="{ compact: true }" />
+              </div>
+            }
+            @if (view() === 'standard' && heroLegend()) {
+              <app-donut-key
+                class="ta-legend"
+                variant="chips"
+                ariaLabel="Today"
+                rowTestId="ta-legend-row"
+                [showValue]="true"
+                [slices]="keySlices()"
+                [(active)]="hovered"
+              />
+            }
+          </div>
+
+          @if (plan().tiles && rowCards().length > 0) {
+            <!-- Taller views: summary cards of what the card is not already showing, in the tiles' place. -->
+            <app-dashboard-summary-row data-testid="ta-summary-row" [cards]="rowCards()" (cardOpened)="openSection($event)" (cardRetried)="retryAttention()" />
+          } @else if (plan().tiles) {
+            <ul class="ta-tiles" [class.ta-tiles--4]="plan().tileColumns === 4" aria-label="Today" data-testid="ta-tiles">
+              @for (row of legend(); track row.key) {
+                <li class="ta-tile" [style.--tone]="row.color" [attr.data-testid]="'ta-tile-' + row.key">
+                  <span class="ta-tile-count">{{ row.count }}</span>
+                  <span class="ta-tile-label">{{ row.label }} · {{ row.percent }}%</span>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (plan().trend) {
+            <section class="ta-panel ta-trend-panel" data-testid="ta-trend">
+              <ng-container [ngTemplateOutlet]="chartTpl" [ngTemplateOutletContext]="{ compact: true }" />
+            </section>
+          }
+
+          @if (plan().rankingRows > 0) {
+            <section class="ta-panel ta-ranking" data-testid="ta-ranking">
+              <div class="ta-list-head">
+                <p class="ta-section-title">Employee ranking</p>
+                <button type="button" class="ta-link" data-testid="ta-view-all" (click)="openDetail($event)">View all ›</button>
+              </div>
+              @if (rankingError()) {
+                <p class="ta-row-empty">
+                  Couldn't load the ranking.
+                  <button type="button" class="ta-link" (click)="retryRanking($event)">Try again</button>
+                </p>
+              } @else if (ranking() === null) {
+                <p class="ta-row-empty" aria-busy="true">Loading…</p>
+              } @else {
+                <ol>
+                  @for (row of rankingShown(); track row.employeeId) {
+                    <li class="ta-rank-row" data-testid="ta-rank-row">
+                      <span class="ta-rank" [class.ta-rank--top]="row.rank !== null && row.rank <= 3">{{ row.rank ?? '—' }}</span>
+                      <app-avatar size="sm" [avatarUrl]="avatarUrl(row.avatarFileId)" [userName]="row.name" />
+                      <span class="ta-row-name">{{ row.name }}</span>
+                      <span class="ta-rank-bar" aria-hidden="true"><span [style.width.%]="row.rate ?? 0"></span></span>
+                      <span class="ta-rank-rate">{{ percentText(row.rate) }}</span>
+                    </li>
+                  } @empty {
+                    <li class="ta-row-empty">No one to rank in this period</li>
+                  }
+                </ol>
+              }
+            </section>
+          }
+        </div>
+      }
+    }
+  }
+</app-widget-card>
+
+<app-team-attendance-detail-dialog [open]="detailOpen()" [focusSection]="detailSection()" (closed)="closeDetail()" />

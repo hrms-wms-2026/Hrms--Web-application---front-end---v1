@@ -2,11 +2,13 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
 import { CommonModule } from '@angular/common';
 import { RoleSummaryResponse } from '../../models/role.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-role-archive-modal',
+  host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CommonModule, ButtonComponent],
+  imports: [StopClickPropagationDirective, CommonModule, ButtonComponent],
   templateUrl: './role-archive-modal.component.html',
   styleUrl: './role-archive-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -16,5 +18,5 @@ export class RoleArchiveModalComponent {
   @Input() saving = false;
 
   @Output() confirmArchive = new EventEmitter<void>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 }

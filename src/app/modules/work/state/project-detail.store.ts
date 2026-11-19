@@ -12,7 +12,8 @@ import { Milestone, MilestoneTreeNode, ObjectiveDetail } from '../models/milesto
 import { EditObjectiveRequestDto, CreateObjectiveRequestDto, ObjectiveAssetDto } from '../models/dto/milestone.dto';
 import { CompleteSprintRequestDto } from '../models/dto/sprint.dto';
 import { isPendingApproval } from '../models/dto/work-approval.dto';
-import { ObjectiveMemberItemDto, ObjectiveInvitationDto } from '../models/dto/objective-invitation.dto';
+import { ObjectiveMemberItemDto } from '../models/dto/objective-invitation.dto';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface ProjectDetailState {
   readonly project: ProjectDetail | null;
@@ -46,8 +47,8 @@ const initialState: ProjectDetailState = {
   projectMembers: [], projectMembersLoading: false
 };
 
-function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+function extractError(err: unknown, fallback: string): string {
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const ProjectDetailStore = signalStore(
@@ -83,7 +84,7 @@ export const ProjectDetailStore = signalStore(
         const dtos = await firstValueFrom(api.getMyMilestones(projectId));
         patchState(store, { milestones: dtos.map(toMilestone), milestonesLoading: false });
       } catch (err) {
-        patchState(store, { milestonesError: extractError(err, 'Failed to load modules.'), milestonesLoading: false });
+        patchState(store, { milestonesError: extractError(err, 'Failed to load milestones.'), milestonesLoading: false });
       }
     },
 
@@ -188,7 +189,7 @@ export const ProjectDetailStore = signalStore(
         patchState(store, { milestoneActionError: null });
         return { success: true, objectiveId: created.id };
       } catch (err) {
-        patchState(store, { milestoneActionError: extractError(err, 'Failed to create sub-module.') });
+        patchState(store, { milestoneActionError: extractError(err, 'Failed to create sub-milestone.') });
         return { success: false };
       }
     },

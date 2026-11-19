@@ -1,15 +1,26 @@
-<div class="rfm-backdrop" (click)="cancel.emit()">
-  <div class="rfm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
-    
+<div role="presentation" class="rfm-backdrop" (click)="cancelled.emit()">
+  <div class="rfm-modal ui-scroll-open" appStopClickPropagation role="dialog" aria-modal="true">
+
     <!-- Header -->
-    <div class="rfm-header">
+    <div class="rfm-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="shield" aria-hidden="true"></span>
       <div>
-        <h2 class="rfm-title">{{ isEdit ? 'Edit role details' : 'Create new role' }}</h2>
-        <p class="rfm-subtitle">
-          {{ isEdit ? 'Update details and permissions for this role.' : 'Define custom role permissions and access scopes.' }}
-        </p>
+        @if (role; as r) {
+          <div class="rfm-title-row">
+            <h2 class="rfm-title">{{ r.isSystem ? 'Role permissions' : 'Edit role' }} — ‘{{ r.name }}’</h2>
+            <span class="rfm-badge" [class.rfm-badge--system]="r.isSystem">{{ r.isSystem ? 'System Role' : 'Custom Role' }}</span>
+          </div>
+          <p class="rfm-subtitle">
+            {{ r.isSystem
+              ? 'System role permissions are read-only and managed automatically by the platform.'
+              : 'Update the details and permissions for this role.' }}
+          </p>
+        } @else {
+          <h2 class="rfm-title">Create new role</h2>
+          <p class="rfm-subtitle">Define custom role permissions and access scopes.</p>
+        }
       </div>
-      <button type="button" class="rfm-close-btn" (click)="cancel.emit()" aria-label="Close">
+      <button type="button" class="rfm-close-btn" (click)="cancelled.emit()" aria-label="Close">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
@@ -19,83 +30,111 @@
 
     <!-- Body Form -->
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="rfm-form">
-      <div class="rfm-body-scroll">
-        
-        <!-- Basic Info Section -->
-        <div class="rfm-section">
-          <app-input
-            label="Role name *"
-            [value]="form.controls.name.value || ''"
-            (valueChange)="form.controls.name.setValue($event)"
-            (blurred)="form.controls.name.markAsTouched()"
-            [error]="form.controls.name.touched && form.controls.name.invalid ? 'Role name is required (max 100 chars).' : ''"
-          />
+      <div class="rfm-body-scroll scroll-fade">
 
-          <div class="rfm-field">
-            <label class="rfm-label">Description — optional</label>
-            <textarea
-              class="rfm-textarea"
-              rows="2"
-              placeholder="Describe the responsibilities and scope of this role…"
-              [value]="form.controls.description.value || ''"
-              (input)="form.controls.description.setValue($any($event.target).value)"
-            ></textarea>
+        @if (readOnly) {
+          @if (role?.description; as description) {
+            <p class="rfm-role-description">{{ description }}</p>
+          }
+        } @else {
+          <!-- Basic Info Section -->
+          <div class="rfm-section">
+            <app-input
+              label="Role name *"
+              [value]="form.controls.name.value || ''"
+              (valueChange)="form.controls.name.setValue($event)"
+              (blurred)="form.controls.name.markAsTouched()"
+              [error]="form.controls.name.touched && form.controls.name.invalid ? 'Role name is required (max 100 chars).' : ''"
+            />
+
+            <div class="rfm-field">
+              <label class="rfm-label" for="rfm-description">Description — optional</label>
+              <textarea
+                id="rfm-description"
+                class="ui-input"
+                rows="2"
+                placeholder="Describe the responsibilities and scope of this role…"
+                [attr.maxlength]="limits.roleDescription"
+                [value]="form.controls.description.value || ''"
+                (input)="form.controls.description.setValue($any($event.target).value)"
+              ></textarea>
+              <app-char-counter [length]="(form.controls.description.value || '').length" [max]="limits.roleDescription" />
+            </div>
           </div>
-        </div>
+        }
 
-        <!-- Permissions Matrix Section -->
+        <!-- Permissions Section -->
         <div class="rfm-section">
           <div class="rfm-perm-header">
             <h3 class="rfm-section-title">Module permissions</h3>
-            <span class="rfm-selected-pill">{{ selectedIds().size }} selected</span>
+            <span class="rfm-selected-pill">{{ selectedIds().size + platformPermissions().length }} selected</span>
           </div>
 
-          <div class="rfm-modules-list">
-            @for (group of groupedCatalog; track group.module) {
-              <div class="rfm-module-card">
-                
-                <div class="rfm-module-header">
-                  <span class="rfm-module-title">{{ group.moduleTitle }}</span>
-                  <label class="rfm-select-all-label">
-                    <input
-                      type="checkbox"
-                      [checked]="isModuleAllSelected(group)"
-                      (change)="toggleModuleGroup(group, $event)"
-                    />
-                    <span>Select all</span>
-                  </label>
-                </div>
+          @if (loading) {
+            <div class="rfm-loading">
+              <span class="rfm-spinner"></span>
+              <span>Loading role permissions…</span>
+            </div>
+          } @else {
+            <div class="rfm-modules-list">
+              @for (group of groupedCatalog; track group.module) {
+                <app-data-table
+                  [columns]="columnsFor(group)"
+                  [rows]="group.permissions"
+                  [trackBy]="permissionKey"
+                  [caption]="group.moduleTitle + ' permissions'"
+                  [selectable]="true"
+                  [selectedIds]="selectedIds()"
+                  [selectionDisabled]="readOnly"
+                  [isRowSelectable]="isPermissionAssignable"
+                  [selectAllAriaLabel]="'Select all ' + group.moduleTitle + ' permissions'"
+                  [selectAriaLabel]="permissionAriaLabel"
+                  [rowClickable]="!readOnly"
+                  (rowClicked)="togglePermission($event.id)"
+                  (rowSelectionChanged)="setPermission($event.row.id, $event.selected)"
+                  (selectAllChanged)="setModuleGroup(group, $event)"
+                >
+                  <ng-template appDataTableCell="permission" let-perm>
+                    <span class="rfm-perm-desc">{{ perm.description || perm.code }}</span>
+                  </ng-template>
+                </app-data-table>
+              } @empty {
+                <p class="rfm-empty-text">No permission catalog items available.</p>
+              }
 
-                <div class="rfm-perm-grid">
-                  @for (perm of group.permissions; track perm.code) {
-                    <label class="rfm-perm-item" [class.rfm-perm-item--selected]="isPermissionSelected(perm.id)">
-                      <input
-                        type="checkbox"
-                        [checked]="isPermissionSelected(perm.id)"
-                        (change)="togglePermission(perm.id)"
-                      />
-                      <div class="rfm-perm-info">
-                        <span class="rfm-perm-desc">{{ perm.description || perm.code }}</span>
-                      </div>
-                    </label>
-                  }
-                </div>
-
-              </div>
-            } @empty {
-              <p class="rfm-empty-text">No permission catalog items available.</p>
-            }
-          </div>
+              @if (platformPermissions().length > 0) {
+                <app-data-table
+                  [columns]="platformColumns"
+                  [rows]="platformPermissions()"
+                  [trackBy]="platformKey"
+                  caption="Platform access permissions"
+                  [selectable]="true"
+                  [selectedIds]="platformIds()"
+                  [selectionDisabled]="true"
+                  selectAllAriaLabel="All platform access permissions"
+                  [selectAriaLabel]="permissionAriaLabel"
+                >
+                  <ng-template appDataTableCell="permission" let-perm>
+                    <span class="rfm-perm-desc">{{ perm.description || perm.code }}</span>
+                  </ng-template>
+                </app-data-table>
+              }
+            </div>
+          }
         </div>
 
       </div>
 
       <!-- Footer Buttons -->
       <div class="rfm-footer">
-        <app-button type="button" variant="secondary" (click)="cancel.emit()" [disabled]="loading">Cancel</app-button>
-        <app-button type="submit" [loading]="loading" [disabled]="loading">
-          {{ isEdit ? 'Save changes' : 'Create role' }}
+        <app-button type="button" variant="secondary" (click)="cancelled.emit()" [disabled]="saving">
+          {{ readOnly ? 'Close' : 'Cancel' }}
         </app-button>
+        @if (!readOnly) {
+          <app-button type="submit" [loading]="saving" [disabled]="saving || loading">
+            {{ isEdit ? 'Save changes' : 'Create role' }}
+          </app-button>
+        }
       </div>
     </form>
 

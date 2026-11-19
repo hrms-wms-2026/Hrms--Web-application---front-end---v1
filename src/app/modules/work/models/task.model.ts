@@ -4,7 +4,10 @@ export interface TaskStatusColumn {
   id: string;
   name: string;
   displayOrder: number;
+  /** Dead field, round-tripped for backward compatibility only - not consumed anywhere in this
+   * app (WM-01, HRMS-Backend-v1/docs/superpowers/plans/next/2026-10-12-pre-uat-audit-wm-sec-findings.md). */
   requiresApproval: boolean;
+  /** See requiresApproval - same dead-field status. */
   approverId?: string | null;
   marksTaskComplete: boolean;
   visibility: 'public' | 'private';
@@ -43,8 +46,6 @@ export interface WorkTask {
   openClockSessionEmployeeId: string | null;
   openClockSessionClockInAt: Date | null;
   totalLoggedMinutes: number;
-  activeEventId?: string | null;
-  activeEventName?: string | null;
   attachments: TaskAttachment[];
   assignees: TaskAssigneeIdentity[];
   parentTaskId: string | null;
@@ -52,6 +53,8 @@ export interface WorkTask {
   subtaskCompletedCount: number;
   subtaskAssigneeEmployeeIds: string[];
   createdAt: Date;
+  taskKind?: 'standard' | 'employee_checklist';
+  visibilityScope?: 'module' | 'assignees';
   hasPendingApproval: boolean;
 }
 import { BulkResultSummary } from '../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';

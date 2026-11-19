@@ -8,7 +8,7 @@ describe('CalendarEventAttendanceComponent', () => {
   let fixture: ReturnType<typeof TestBed.createComponent<CalendarEventAttendanceComponent>>;
   let api: { getMeetingAttendance: ReturnType<typeof vi.fn> };
 
-  function setup(response: { available: boolean; attendees: unknown[] }) {
+  function setup(response: { available: boolean; attendees: unknown[]; syncStatus?: string; incidents?: unknown[] }) {
     api = { getMeetingAttendance: vi.fn().mockReturnValue(of(response)) };
     TestBed.configureTestingModule({
       imports: [CalendarEventAttendanceComponent],
@@ -46,9 +46,58 @@ describe('CalendarEventAttendanceComponent', () => {
     expect(row.textContent).toContain('guest@example.com');
   });
 
+  it('shows when each attendee joined and left', () => {
+    setup({
+      available: true,
+      attendees: [{ name: 'Ada', email: null, joinedAt: '2026-09-23T10:00:00Z', leftAt: '2026-09-23T10:30:00Z', durationSeconds: 1800 }]
+    });
+    const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-attendance-row"]').textContent)
+      .toContain(`${time('2026-09-23T10:00:00Z')} – ${time('2026-09-23T10:30:00Z')}`);
+  });
+
+  it('lists the incidents the meeting raised, marking the estimated ones, even without an attendance report', () => {
+    setup({
+      available: false, attendees: [],
+      incidents: [
+        { employeeName: 'Pat Doe', rule: 'Missed meetings', occurrenceStart: '2026-09-23T10:00:00Z', estimated: true },
+        { employeeName: 'Sam Lee', rule: 'Late decline', occurrenceStart: '2026-09-23T10:00:00Z', estimated: false }
+      ]
+    });
+    const rows = fixture.nativeElement.querySelectorAll('[data-testid="calendar-incident-row"]');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toContain('Pat Doe');
+    expect(rows[0].textContent).toContain('Missed meetings');
+    expect(rows[0].querySelector('[data-testid="calendar-incident-estimated"]')).not.toBeNull();
+    expect(rows[1].querySelector('[data-testid="calendar-incident-estimated"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-attendance-unavailable"]')).toBeTruthy();
+  });
+
   it('shows an unavailable state when attendance has not synced yet', () => {
-    setup({ available: false, attendees: [] });
+    setup({ available: false, attendees: [], syncStatus: 'pending' });
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-attendance-unavailable"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-attendance-row"]')).toBeNull();
+  });
+
+  it('explains that attendance arrives after the meeting while it is pending', () => {
+    setup({ available: false, attendees: [], syncStatus: 'pending' });
+    expect(fixture.nativeElement.textContent).toContain('Attendance appears after the meeting ends');
+  });
+
+  it('never says nobody attended when no data was received', () => {
+    setup({ available: false, attendees: [], syncStatus: 'attendance_unavailable' });
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain("didn't send attendance data");
+    expect(text).not.toContain('Nobody joined');
+  });
+
+  it('says the fetch failed when it did', () => {
+    setup({ available: false, attendees: [], syncStatus: 'sync_failed' });
+    expect(fixture.nativeElement.textContent).toContain("couldn't fetch attendance");
+  });
+
+  it('says nobody joined only for a final, empty report', () => {
+    setup({ available: true, attendees: [], syncStatus: 'synced' });
+    expect(fixture.nativeElement.textContent).toContain('Nobody joined this meeting');
   });
 });

@@ -1,9 +1,10 @@
+import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { redirectIfAuthenticatedGuard } from './core/guards/redirect-if-authenticated.guard';
-import { PermissionService } from './core/auth/state/permission.service';
+import { MANAGES_PEOPLE, PermissionService } from './core/auth/state/permission.service';
 import { canAccessNavItem } from './layouts/main-layout/nav/nav-access';
 import { NAV_ITEMS } from './layouts/main-layout/nav/nav-items.config';
 
@@ -11,6 +12,9 @@ import { NAV_ITEMS } from './layouts/main-layout/nav/nav-items.config';
 const loadPlaceholder = () =>
   import('./shared/feature/placeholder-page/placeholder-page.component').then((module) => module.PlaceholderPageComponent);
 
+
+/** One loader for /calendar and /planner, so both are the same lazy chunk. */
+const loadCalendarRoutes = () => import('./modules/calendar/calendar.routes').then((module) => module.CALENDAR_ROUTES);
 
 export const routes: Routes = [
   {
@@ -61,6 +65,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'dashboard/my-team',
+        loadComponent: () =>
+          import('./modules/dashboard/feature/my-team-page/my-team-page.component').then(
+            (module) => module.MyTeamPageComponent
+          )
+      },
+      {
         path: 'dashboard/activity-timeline',
         loadComponent: () =>
           import('./modules/dashboard/feature/activity-timeline-page/activity-timeline-page.component').then(
@@ -74,16 +85,28 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/work/work.routes').then((module) => module.WORK_ROUTES)
       },
       {
+        path: 'inbox',
+        canActivate: [permissionGuard],
+        loadChildren: () => import('./modules/inbox/inbox.routes').then((module) => module.INBOX_ROUTES)
+      },
+      {
         path: 'people',
         canActivate: [permissionGuard],
-        data: { permissions: ['employees:read', 'employees:write'], modules: ['core_hr'] },
+        data: { permissions: [MANAGES_PEOPLE, 'employees:write', 'employees:offboard', 'checklists:manage'], modules: ['core_hr'] },
         loadChildren: () => import('./modules/people/people.routes').then((module) => module.PEOPLE_ROUTES)
       },
       {
         path: 'calendar',
         canActivate: [permissionGuard],
         data: { permissions: ['calendar:read'], modules: ['calendar'] },
-        loadChildren: () => import('./modules/calendar/calendar.routes').then((module) => module.CALENDAR_ROUTES)
+        loadChildren: loadCalendarRoutes
+      },
+      {
+        // Planner = Calendar (2026-10-27 design): the calendar page is the planner; the nav calls it Planner when it is on.
+        path: 'planner',
+        canActivate: [permissionGuard],
+        data: { permissions: ['calendar:read'], modules: ['calendar'] },
+        loadChildren: loadCalendarRoutes
       },
       {
         path: 'time-off',
@@ -104,7 +127,7 @@ export const routes: Routes = [
       {
         path: 'time-attendance',
         pathMatch: 'full',
-        redirectTo: 'attendance/time-tracking'
+        redirectTo: 'attendance'
       },
       {
         path: 'organization',
@@ -123,7 +146,7 @@ export const routes: Routes = [
                 (module) => module.GeneralSettingsComponent
               ),
             canActivate: [permissionGuard],
-            data: { title: 'General Settings', permissions: ['legal_entity:update'] }
+            data: { title: 'General Settings', permissions: ['legal_entity:read', 'legal_entity:update'] }
           },
           {
             path: 'roles',
@@ -135,10 +158,29 @@ export const routes: Routes = [
             data: { title: 'Roles & Permissions', permissions: ['roles:read'] }
           },
           {
-            path: 'notifications',
-            loadComponent: loadPlaceholder,
+            path: 'users',
+            loadComponent: () =>
+              import('./modules/settings/feature/users/users.component').then((m) => m.UsersComponent),
             canActivate: [permissionGuard],
+            data: { title: 'Users', permissions: ['users:read', 'users:manage'] }
+          },
+          {
+            path: 'notifications',
+            loadComponent: () =>
+              import('./modules/settings/feature/notification-settings/notification-settings.component').then(
+                (m) => m.NotificationSettingsComponent
+              ),
+            canActivate: [permissionGuard],
+            canDeactivate: [unsavedChangesGuard],
             data: { title: 'Notification Settings', permissions: ['notifications:manage'] }
+          },
+          {
+            // The leave admin screens (types, policies, entitlements, holidays, all requests) - not part of the Time Off hub.
+            path: 'time-off',
+            canActivate: [permissionGuard],
+            data: { permissions: ['leave:read', 'leave:manage'], modules: ['leave'] },
+            loadChildren: () =>
+              import('./modules/leave/time-off-settings.routes').then((module) => module.TIME_OFF_SETTINGS_ROUTES)
           },
           {
             path: 'bulk-onboarding',
@@ -171,6 +213,14 @@ export const routes: Routes = [
             ]
           },
           {
+            // Moved here from the Attendance sub-sidebar (2026-11-04): Attendance is a single page now.
+            path: 'monitoring',
+            loadComponent: () =>
+              import('./modules/attendance/feature/monitoring/monitoring.component').then((m) => m.MonitoringComponent),
+            canActivate: [permissionGuard],
+            data: { title: 'Monitoring', permissions: ['monitoring:read'], modules: ['time_attendance'] }
+          },
+          {
             path: 'calendar-connections',
             loadComponent: () =>
               import('./modules/settings/feature/calendar-connections/calendar-connections.component').then(
@@ -178,6 +228,28 @@ export const routes: Routes = [
               ),
             canActivate: [permissionGuard],
             data: { title: 'Calendar Sync', permissions: ['calendar:read'], modules: ['calendar'] }
+          },
+          {
+            path: 'support',
+            canActivate: [permissionGuard],
+            data: { title: 'Support', permissions: ['support:manage'] },
+            children: [
+              {
+                path: '',
+                loadComponent: () =>
+                  import('./modules/settings/feature/support-tickets/support-tickets.component').then(
+                    (m) => m.SupportTicketsComponent
+                  )
+              },
+              {
+                path: ':id',
+                loadComponent: () =>
+                  import('./modules/settings/feature/support-ticket-detail/support-ticket-detail.component').then(
+                    (m) => m.SupportTicketDetailComponent
+                  ),
+                data: { title: 'Support ticket' }
+              }
+            ]
           },
           {
             // /settings has no permission of its own - it's reachable if ANY child page is

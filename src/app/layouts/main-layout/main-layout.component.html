@@ -1,15 +1,26 @@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
 <div class="main-layout" [class.main-layout--has-sub-sidebar]="navState.hasVisibleSubSidebar()">
+  <!-- Above the navbar and outside the tray gate: announcements carry no tenant data. -->
+  <app-announcement-banner class="main-layout__banner" />
   <app-side-navbar class="main-layout__rail" />
   <app-top-navbar class="main-layout__topbar" [email]="email()" [avatarUrl]="avatarUrl()" [userName]="userName()" />
 
   @if (navState.hasVisibleSubSidebar()) {
-    <app-sub-sidebar
-      class="main-layout__sub-sidebar"
-      [sectionLabel]="navState.activeItem()!.label"
-      [items]="navState.activeChildren()"
-    />
+    @if (navState.customSubSidebar() === 'inbox') {
+      <!-- Loaded only when the inbox is open. -->
+      @defer (on immediate) {
+        <app-inbox-chat-sidebar class="main-layout__sub-sidebar" />
+      }
+    } @else {
+      <app-sub-sidebar
+        class="main-layout__sub-sidebar"
+        [sectionLabel]="navState.activeItem()!.label"
+        [items]="navState.activeChildren()"
+        [content]="navState.pageSubSidebar()"
+        [actions]="navState.pageSubSidebarActions()"
+      />
+    }
   }
 
   <main
@@ -18,6 +29,7 @@
     [class.main-content--gated]="monitoringEnabled && !trayPresence.canRenderProtectedContent()"
     tabindex="-1"
   >
+    <app-mobile-section-nav />
     <div class="main-content__viewport">
       @if (!monitoringEnabled || trayPresence.canRenderProtectedContent()) {
         <router-outlet />

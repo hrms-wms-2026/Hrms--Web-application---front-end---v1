@@ -1,3 +1,4 @@
+import { MANAGES_PEOPLE } from '../../../core/auth/state/permission.service';
 import { canAccessNavItem, NavAccessChecker } from './nav-access';
 import { NavItem } from './nav-item.model';
 import { NAV_ITEMS } from './nav-items.config';
@@ -10,6 +11,12 @@ function checker(permissions: string[], modules: string[]): NavAccessChecker {
 }
 
 describe('canAccessNavItem', () => {
+  it('shows the Inbox to every employee, with no module or permission gate', () => {
+    const inbox = NAV_ITEMS.find((i) => i.id === 'inbox')!;
+    expect(inbox.requiredModules).toBeUndefined();
+    expect(canAccessNavItem(inbox, checker([], []))).toBe(true);
+  });
+
   it('is always visible for a leaf item with no gates (Home)', () => {
     const item: NavItem = { id: 'home', label: 'Home', path: '/dashboard' };
     expect(canAccessNavItem(item, checker([], []))).toBe(true);
@@ -79,16 +86,19 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(work, checker([], ['core_hr']))).toBe(false);
     });
 
-    it('grants Time Off on the "leave" module key, not "time_off", once a child is reachable', () => {
+    it('grants Time Off on the "leave" module key, not "time_off", to anyone with a leave permission', () => {
       const timeOff = NAV_ITEMS.find((item) => item.id === 'time-off')!;
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['leave']))).toBe(true);
       expect(canAccessNavItem(timeOff, checker(['leave:read-team'], ['leave']))).toBe(true);
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['time_off']))).toBe(false);
       expect(canAccessNavItem(timeOff, checker([], ['leave']))).toBe(false);
-      const balances = timeOff.children!.find((item) => item.id === 'time-off-balances')!;
-      expect(balances.label).toBe('Balances');
-      expect(timeOff.children!.some((item) => item.id === 'time-off-my-balances' || item.id === 'time-off-team-balances')).toBe(false);
-      expect(timeOff.children!.some((item) => item.id === 'time-off-calendar')).toBe(false);
+      // One hub page, no sub-sidebar; the admin screens are under Settings → Time Off.
+      expect(timeOff.children).toBeUndefined();
+      const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
+      const timeOffSettings = settings.children!.find((item) => item.id === 'settings-time-off')!;
+      expect(timeOffSettings.path).toBe('/settings/time-off');
+      expect(canAccessNavItem(timeOffSettings, checker(['leave:read'], ['leave']))).toBe(true);
+      expect(canAccessNavItem(timeOffSettings, checker(['leave:read-own'], ['leave']))).toBe(false);
     });
 
     it('grants Organization on the "org_structure" module key, not "org"', () => {
@@ -106,10 +116,11 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(general, checker(['org:read'], ['org_structure']))).toBe(false);
     });
 
-    it('gates Attendance on time_attendance and any of self-service, read, or approve — and keeps Time Tracking reachable for an approve-only user', () => {
+    it('gates Attendance (one page, no sub-sidebar) on time_attendance and any of self-service, read, or approve', () => {
       const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
 
-      expect(attendance.path).toBe('/attendance/overview');
+      expect(attendance.path).toBe('/attendance');
+      expect(attendance.children).toBeUndefined();
       expect(canAccessNavItem(attendance, checker(['attendance:read-own'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker(['attendance:write-own'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
@@ -117,66 +128,46 @@ describe('canAccessNavItem', () => {
       expect(canAccessNavItem(attendance, checker([], ['time_attendance']))).toBe(false);
       expect(canAccessNavItem(attendance, checker(['attendance:read-own'], []))).toBe(false);
 
-      const children = attendance.children ?? [];
-      expect(children.map((child) => child.id)).toEqual([
-        'time-attendance-overview',
-        'time-attendance-tracking',
-        'time-attendance-requests',
-        'time-attendance-alerts',
-        'time-attendance-monitoring'
-      ]);
-      const alerts = children.find((child) => child.id === 'time-attendance-alerts')!;
-      expect(alerts.path).toBe('/attendance/alerts');
-      // Reporting managers and HR both work the alerts queue; a plain employee does not.
-      expect(canAccessNavItem(alerts, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(alerts, checker(['employees:write'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(alerts, checker(['attendance:read-own'], ['time_attendance']))).toBe(false);
-      const monitoring = children.find((child) => child.id === 'time-attendance-monitoring')!;
+    });
+
+    it('lists Monitoring under Settings, gated on monitoring:read and time_attendance', () => {
+      const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
+      const monitoring = settings.children!.find((child) => child.id === 'settings-monitoring')!;
+
       expect(monitoring.label).toBe('Monitoring');
-      expect(monitoring.path).toBe('/attendance/monitoring');
+      expect(monitoring.path).toBe('/settings/monitoring');
       expect(canAccessNavItem(monitoring, checker(['monitoring:read'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
       expect(canAccessNavItem(monitoring, checker(['monitoring:read'], []))).toBe(false);
-      const tracking = children.find((child) => child.id === 'time-attendance-tracking')!;
-      expect(canAccessNavItem(tracking, checker(['attendance:approve'], ['time_attendance']))).toBe(true);
-
-      const requests = children.find((child) => child.id === 'time-attendance-requests')!;
-      expect(requests.path).toBe('/attendance/time-tracking/requests');
-      expect(requests.path).not.toBe(tracking.path);
-      expect(canAccessNavItem(requests, checker(['attendance:read-own'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(requests, checker(['attendance:read'], ['time_attendance']))).toBe(false);
     });
 
-    it('does not leak the parent Attendance item to a monitoring:read-only user (no attendance permission)', () => {
+    it('hides Attendance from a monitoring:read-only user, who still reaches Settings > Monitoring', () => {
       const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
-      const monitoring = attendance.children!.find((item) => item.id === 'time-attendance-monitoring')!;
+      const monitoring = NAV_ITEMS.find((item) => item.id === 'settings')!.children!.find((item) => item.id === 'settings-monitoring')!;
 
-      // monitoring:read alone must not unlock the parent - its link target (/attendance/time-tracking)
-      // is a page this user cannot open, since Time Tracking is separately gated on attendance:*.
       expect(canAccessNavItem(attendance, checker(['monitoring:read'], ['time_attendance']))).toBe(false);
-      // but the child Monitoring item itself is reachable for this user.
       expect(canAccessNavItem(monitoring, checker(['monitoring:read'], ['time_attendance']))).toBe(true);
     });
 
-    it('shows Attendance to an attendance-permission user without monitoring:read, but hides the Monitoring child', () => {
-      const attendance = NAV_ITEMS.find((item) => item.id === 'time-attendance')!;
-      const monitoring = attendance.children!.find((item) => item.id === 'time-attendance-monitoring')!;
-
-      expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
-      expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
-    });
-
-    it('does not leak the parent People item to a bare Employee (core_hr module, no employees permission)', () => {
-      const people = NAV_ITEMS.find((item) => item.id === 'people')!;
+    it('does not leak Org to a bare Employee through its People section (core_hr module, no employees permission)', () => {
+      const people = NAV_ITEMS.find((item) => item.id === 'organization')!;
 
       // Regression: the "Employees" child used to declare no requiredPermissions at all, so
-      // any user with core_hr enabled saw "People" even without employees:read/write - matching
+      // any user with core_hr enabled saw "People" even without managing anyone or employees:write - matching
       // the /people route guard's actual gate (app.routes.ts) closes that gap.
       expect(canAccessNavItem(people, checker([], ['core_hr']))).toBe(false);
-      expect(canAccessNavItem(people, checker(['employees:read'], ['core_hr']))).toBe(true);
+      // Managing people is a relationship, surfaced as the MANAGES_PEOPLE capability token.
+      expect(canAccessNavItem(people, checker([MANAGES_PEOPLE], ['core_hr']))).toBe(true);
       expect(canAccessNavItem(people, checker(['employees:write'], ['core_hr']))).toBe(true);
-      // A user who only has roles:manage still sees People, via the Approvals child.
-      expect(canAccessNavItem(people, checker(['roles:manage'], ['core_hr']))).toBe(true);
+      // roles:manage alone no longer shows People: position approvals moved to the Inbox with the Approvals child.
+      expect(canAccessNavItem(people, checker(['roles:manage'], ['core_hr']))).toBe(false);
+    });
+
+    it('lists the Organization section before the People section under Org', () => {
+      const org = NAV_ITEMS.find((item) => item.id === 'organization')!;
+      expect(org.children!.map((child) => `${child.section}:${child.label}`)).toEqual([
+        'Organization:Departments', 'Organization:Positions', 'People:Employees', 'People:Checklists', 'People:Offboarding'
+      ]);
     });
   });
 
@@ -201,6 +192,16 @@ describe('canAccessNavItem', () => {
     expect(canAccessNavItem(clockIn, checker(['attendance:read'], []))).toBe(false);
     expect(canAccessNavItem(clockIn, checker([], ['time_attendance']))).toBe(false);
     expect(canAccessNavItem(clockIn, checker(['org:manage'], ['time_attendance']))).toBe(false);
+  });
+
+  it('settings-users needs users:read or users:manage - adding employees alone does not reveal it', () => {
+    const settings = NAV_ITEMS.find((item) => item.id === 'settings')!;
+    const users = settings.children!.find((item) => item.id === 'settings-users')!;
+
+    expect(users.path).toBe('/settings/users');
+    expect(canAccessNavItem(users, checker(['users:read'], []))).toBe(true);
+    expect(canAccessNavItem(users, checker(['users:manage'], []))).toBe(true);
+    expect(canAccessNavItem(users, checker(['employees:write'], ['core_hr']))).toBe(false);
   });
 
 });

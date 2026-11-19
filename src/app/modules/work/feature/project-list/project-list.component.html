@@ -4,39 +4,12 @@
       <app-breadcrumb-header parentLabel="Work" currentLabel="Projects" icon="work" />
       <div class="work-controls">
         <!-- Single View Mode Toggle Button: List -> Card -> Table (Base: List) -->
-        <button
-          type="button"
-          class="work-view-cycle-btn"
-          (click)="cycleViewMode()"
-          [attr.aria-label]="viewModeAriaLabel()"
-          [title]="viewModeTitle()"
-          data-testid="work-view-cycle-btn"
-        >
-          @if (viewMode() === 'list') {
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="8" y1="6" x2="21" y2="6" />
-              <line x1="8" y1="12" x2="21" y2="12" />
-              <line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" />
-              <line x1="3" y1="12" x2="3.01" y2="12" />
-              <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-          } @else if (viewMode() === 'card') {
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-            </svg>
-          } @else if (viewMode() === 'table') {
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M3 9h18" />
-              <path d="M3 15h18" />
-              <path d="M9 3v18" />
-            </svg>
-          }
-        </button>
+        <app-view-mode-toggle
+          [modes]="viewModes"
+          [value]="viewMode()"
+          testId="work-view-cycle-btn"
+          (valueChange)="onViewModeChange($event)"
+        />
 
         <app-project-filter-bar
           (categoriesChanged)="onCategoryFilterChanged($event)"
@@ -59,7 +32,7 @@
     } @else {
       <!-- TABLE VIEW -->
       @if (viewMode() === 'table') {
-        <div class="h-full overflow-y-auto pb-4">
+        <div class="h-full overflow-y-auto pb-4 scroll-fade">
           <app-project-table-view
             [projects]="store.filteredProjects()"
             [categories]="categoryStore.categories()"
@@ -101,7 +74,7 @@
 
       <!-- CARD VIEW (Grid) -->
       @else if (viewMode() === 'card') {
-        <div class="h-full overflow-y-auto pb-4">
+        <div class="h-full overflow-y-auto pb-4 scroll-fade">
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="project-grid">
             @for (project of store.filteredProjects(); track project.id) {
               <app-project-card
@@ -134,15 +107,6 @@
   [errorMessage]="store.error() ?? ''"
   (createSubmitted)="onCreateSubmit($event)"
   (closed)="createModalOpen.set(false)"
-/>
-
-<app-project-settings-modal
-  [open]="settingsModalOpen()"
-  [initialValue]="settingsModalInitialValue()"
-  [submitting]="actionSubmitting()"
-  [errorMessage]="store.error() ?? ''"
-  (saved)="onProjectSettingsSaved($event)"
-  (closed)="settingsModalOpen.set(false)"
 />
 
 <app-confirm-modal

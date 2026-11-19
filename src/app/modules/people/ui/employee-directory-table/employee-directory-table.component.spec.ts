@@ -66,7 +66,7 @@ describe('EmployeeDirectoryTableComponent', () => {
   it('renders only the given columns, in order, plus select and menu columns', async () => {
     const { el } = await setup();
     const headers = Array.from(el.querySelectorAll('thead th')).map((th) => th.textContent!.trim()).filter(Boolean);
-    expect(headers).toEqual(['Employee', 'Department', 'Reporting Manager', 'Email']);
+    expect(headers).toEqual(['Employee', 'Department', 'Reporting Manager', 'Email', 'Actions']);
   });
 
   it('shows an em dash for empty values', async () => {
@@ -76,7 +76,7 @@ describe('EmployeeDirectoryTableComponent', () => {
 
   it('marks the active sort column and emits toggled direction on the same column, asc on a new one', async () => {
     const { q, host } = await setup();
-    expect(q('employee-sort-department')!.getAttribute('aria-sort')).toBe('ascending');
+    expect(q('employee-sort-department')!.closest('th')!.getAttribute('aria-sort')).toBe('ascending');
     q('employee-sort-department')!.click();
     q('employee-sort-employee')!.click();
     expect(host.sorts).toEqual([{ sortBy: 'department', sortDir: 'desc' }, { sortBy: 'name', sortDir: 'asc' }]);
@@ -118,7 +118,7 @@ describe('EmployeeDirectoryTableComponent', () => {
     expect(all.indeterminate).toBe(true);
     all.click();
     expect(host.selectAlls).toEqual([{ ids: ['a', 'b'], selected: true }]);
-    expect(q('employee-row-a')!.classList).toContain('edt__row--selected');
+    expect(q('employee-row-a')!.classList).toContain('data-table__row--active');
   });
 
   it('renders a row menu only when the row has items, and emits the chosen action', async () => {
@@ -135,6 +135,15 @@ describe('EmployeeDirectoryTableComponent', () => {
     host.employees.set([]);
     fixture.detectChanges();
     expect(el.textContent).toContain('No employees found');
+  });
+
+  it('shows the green dot only for employees who are online, not for every active account', async () => {
+    const { fixture, q, host } = await setup();
+    host.employees.set([emp('on', { status: 'active', isOnline: true }), emp('off', { status: 'active', isOnline: false })]);
+    fixture.detectChanges();
+
+    expect(q('employee-row-on')!.querySelector('[data-testid="employee-online-dot"]')).toBeTruthy();
+    expect(q('employee-row-off')!.querySelector('[data-testid="employee-online-dot"]')).toBeNull();
   });
 
   it('renders a red warning ring and friendly tooltip for an employee who has not clocked in', async () => {
@@ -160,6 +169,64 @@ describe('EmployeeDirectoryTableComponent', () => {
     expect(warningAvatar.getAttribute('role')).toBe('img');
     expect(warningAvatar.getAttribute('tabindex')).toBe('0');
     expect(el.querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('Still has not clocked in');
+  });
+
+  it('rings the avatar for open alerts, shows the count on hover, and opens them in the Inbox without opening the profile', async () => {
+    const { fixture, el, host } = await setup();
+    const router = TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> };
+    host.employees.set([
+      emp('al', {
+        attendanceSummary: {
+          showNotClockedInWarning: false, shouldHaveClockedIn: true, hasClockedInToday: true, workDate: '2026-09-28',
+          timezone: 'Asia/Colombo', scheduledStartTime: '09:00', warningLabel: null, openAlertCount: 21
+        }
+      }),
+      emp('none', {
+        attendanceSummary: {
+          showNotClockedInWarning: false, shouldHaveClockedIn: true, hasClockedInToday: true, workDate: '2026-09-28',
+          timezone: 'Asia/Colombo', scheduledStartTime: '09:00', warningLabel: null, openAlertCount: 0
+        }
+      })
+    ]);
+    fixture.detectChanges();
+
+    const chips = el.querySelectorAll('[data-testid="employee-open-alerts"]');
+    expect(chips).toHaveLength(1);
+    expect(chips[0].classList).toContain('emp-avatar-wrapper--caution');
+    expect(chips[0].querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('21 open alerts');
+    expect(chips[0].getAttribute('aria-label')).toContain('21 open alerts');
+    expect(el.querySelector('.emp-open-alerts')).toBeNull();
+    (chips[0] as HTMLElement).click();
+
+    expect(router.navigate).toHaveBeenCalledTimes(1);
+    expect(router.navigate).toHaveBeenCalledWith(['/inbox'], { queryParams: { tab: 'alerts', employee: 'al' } });
+  });
+
+  it('shows a warning-severity attention label as a yellow avatar tooltip instead of an inline pill', async () => {
+    const { fixture, el, host } = await setup();
+    host.employees.set([
+      emp('caution', {
+        attendanceSummary: {
+          showNotClockedInWarning: false,
+          shouldHaveClockedIn: true,
+          hasClockedInToday: true,
+          workDate: '2026-09-28',
+          timezone: 'Asia/Colombo',
+          scheduledStartTime: '09:00',
+          warningLabel: null,
+          attentionLabel: 'Clocked in without completing the checklist',
+          attentionSeverity: 'warning'
+        }
+      })
+    ]);
+    fixture.detectChanges();
+
+    const avatar = el.querySelector('.emp-avatar-wrapper--caution') as HTMLElement;
+    expect(avatar).not.toBeNull();
+    expect(el.querySelector('.emp-avatar-wrapper--warning')).toBeNull();
+    expect(avatar.getAttribute('aria-label')).toBe('Clocked in without completing the checklist');
+    expect(el.querySelector('.emp-attendance-warning-tooltip')?.textContent).toContain('Clocked in without completing the checklist');
+    expect(el.querySelector('.emp-attention-indicator')).toBeNull();
   });
 
   it('does not render warning ring or tooltip when employee is not in warning state', async () => {

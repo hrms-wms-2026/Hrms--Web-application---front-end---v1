@@ -20,7 +20,7 @@ import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { TaskHistoryFeedComponent } from '../task-history-feed/task-history-feed.component';
 import { TaskClockWidgetComponent } from '../task-clock-widget/task-clock-widget.component';
 import { TaskAttachmentListComponent, AttachmentPill } from '../task-attachment-list/task-attachment-list.component';
-import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+import { RichTextEditorComponent } from '../../../../shared/ui/rich-text-editor/rich-text-editor.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { TaskHistoryEntryDto } from '../../models/dto/task-history.dto';
@@ -40,31 +40,47 @@ import { DirtyFormHandle, UnsavedChangesService } from '../../../../shared/servi
 import { DraftsStore } from '../../../../shared/state/drafts.store';
 import { TaskDraftApiService } from '../../data-access/task-draft-api.service';
 import { TaskDraft, TaskDraftPayload } from '../../models/task-draft.model';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { MeetingFormModalComponent } from '../../meetings/ui/meeting-form-modal/meeting-form-modal.component';
+import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
+import { MeetingCreatedEvent } from '../../meetings/utils/meeting-created-drawer.util';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 export type TaskFormMode = 'create' | 'edit';
 
+/** Create-mode values handed over by the Planner create popover's Work item tab ("More options"). */
+export interface TaskFormPrefill {
+  title: string; description?: string | null; categoryId: string | null; priority: WorkTask['priority'] | null; estimatedHours: number | null;
+  dueDate: string | null; assigneeEmployeeId: string | null;
+}
+/** The system key of a project's "Meeting" category (TaskCategorySystemKeys.Meeting on the backend). */
+const TASK_CATEGORY_MEETING = 'meeting';
+
 @Component({
   selector: 'app-task-form-modal',
+  host: { '[animate.leave]': "open() ? 'ui-popup-leave' : ''" },
   standalone: true,
-  imports: [NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
+  imports: [MeetingFormModalComponent, StopClickPropagationDirective, NgTemplateOutlet, ButtonComponent, DatePickerComponent, TaskHistoryFeedComponent, TaskClockWidgetComponent, TaskAttachmentListComponent, RichTextEditorComponent, AvatarComponent, TaskCommentsComponent, ConfirmModalComponent, TaskDuplicateDialogComponent, TaskConvertToSubtaskDialogComponent, TaskAssigneeDropdownComponent, MonitorWarningCalloutComponent],
   template: `
     @if (open()) {
-      <div class="tfm-scrim" (click)="onBackdrop()">
+      <div role="presentation" class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop()">
         <div
           #tfm
-          class="tfm"
+          class="tfm ui-scroll-open"
           [class.tfm--create]="currentEffectiveMode() === 'create'"
           role="dialog"
           aria-modal="true"
           tabindex="-1"
           [attr.aria-label]="currentEffectiveMode() === 'create' ? 'Create work item' : task()?.title"
-          (click)="$event.stopPropagation()"
+          appStopClickPropagation
           (keydown.escape)="onEscape()"
         >
 
-          <header class="tfm__head" [class.tfm__head--doc]="currentEffectiveMode() === 'edit'">
+          <header class="tfm__head" [class.ui-popup-header]="currentEffectiveMode() === 'create'" [class.tfm__head--doc]="currentEffectiveMode() === 'edit'">
             @if (currentEffectiveMode() === 'create') {
-              <div class="tfm__title">
+              <div class="tfm__title tfm__title--with-icon">
+                <span class="ui-popup-icon" data-icon="layers" aria-hidden="true"></span>
                 <h2>Create work item</h2>
               </div>
             } @else if (task(); as t) {
@@ -77,7 +93,7 @@ export type TaskFormMode = 'create' | 'edit';
                     class="tfm-header-module-btn"
                     data-testid="header-module-button"
                     (click)="togglePopover('headerModule', $event)"
-                    [title]="'Module: ' + selectedModuleTitle()"
+                    [title]="'Milestone: ' + selectedModuleTitle()"
                   >
                     <svg class="tfm-subtask-module-cube-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -87,13 +103,13 @@ export type TaskFormMode = 'create' | 'edit';
                     <span data-testid="header-module-name">{{ selectedModuleTitle() }}</span>
                   </button>
                   @if (activePopover() === 'headerModule') {
-                    <div class="tfm-popover" role="dialog" aria-label="Select module" (click)="$event.stopPropagation()">
+                    <div class="tfm-popover" role="dialog" aria-label="Select milestone" appStopClickPropagation>
                       @if (modules().length > 4) {
                         <div class="tfm-popover__search-box">
                           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                           <input
                             type="text"
-                            placeholder="Search modules..."
+                            placeholder="Search milestones..."
                             [value]="moduleSearchQuery()"
                             (input)="moduleSearchQuery.set($any($event.target).value)"
                           />
@@ -164,9 +180,9 @@ export type TaskFormMode = 'create' | 'edit';
                       <span>{{ categoryName() || 'Task' }}</span>
                     </button>
                     @if (activePopover() === 'headerCategory') {
-                      <div class="tfm-popover" role="dialog" aria-label="Select work item type" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover" role="dialog" aria-label="Select work item type" appStopClickPropagation>
                         <div class="tfm-popover__list">
-                          @for (c of categories(); track c.id) {
+                          @for (c of pickableCategories(); track c.id) {
                             <button
                               type="button"
                               class="tfm-popover__item"
@@ -196,6 +212,7 @@ export type TaskFormMode = 'create' | 'edit';
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                   <span>Share</span>
                 </button>
+                @if (headerTask.taskKind !== 'employee_checklist') {
                 <div class="tfm-chip-anchor">
                   <button
                     type="button"
@@ -209,7 +226,7 @@ export type TaskFormMode = 'create' | 'edit';
                     </svg>
                   </button>
                   @if (activePopover() === 'headerMore') {
-                    <div class="tfm-popover tfm-popover--right" role="menu" aria-label="Task actions" (click)="$event.stopPropagation()">
+                    <div class="tfm-popover tfm-popover--right" role="menu" aria-label="Task actions" appStopClickPropagation>
                       <div class="tfm-popover__list">
                         <button type="button" class="tfm-popover__item" data-testid="task-duplicate-action" (click)="openDuplicateDialog()">
                           <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg>
@@ -229,6 +246,7 @@ export type TaskFormMode = 'create' | 'edit';
                     </div>
                   }
                 </div>
+                }
                 <button type="button" class="tfm__x" aria-label="Close" (click)="onCancel()">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
                 </button>
@@ -241,16 +259,53 @@ export type TaskFormMode = 'create' | 'edit';
             }
           </header>
 
-          <div class="tfm__body" (click)="closePopover()">
+          <div role="presentation" class="tfm__body scroll-fade" (click)="closePopover()">
             <ng-template #descriptionEditorTpl>
               <app-rich-text-editor
                 #descRte
                 [initialHtml]="description()"
                 [cssStyles]="false"
+                [maxLength]="limits.richTextDescription"
                 (htmlChange)="description.set($event)"
                 (filesAttached)="onAttachmentFilesSelected($event)"
                 (uploadFailed)="errorMessage.set($event)"
               />
+            </ng-template>
+            <!-- The create form's category chip; picking "meeting" turns the form into the meeting form, and back again. -->
+            <ng-template #createCategoryChipTpl let-up="up">
+              <div class="tfm-chip-anchor">
+                <button
+                  type="button"
+                  class="tfm-chip"
+                  data-testid="create-category-chip"
+                  [class.tfm-chip--error]="errors()['categoryId']"
+                  [class.tfm-chip--active]="categoryId()"
+                  [attr.aria-expanded]="activePopover() === 'category'"
+                  (click)="togglePopover('category', $event)"
+                  [title]="errors()['categoryId'] || selectedCategoryTitle()"
+                >
+                  <svg class="tfm-chip-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
+                  <span class="tfm-chip-label">{{ selectedCategoryTitle() }}</span>
+                </button>
+                @if (activePopover() === 'category') {
+                  <div class="tfm-popover" [class.tfm-popover--up]="up" role="dialog" appStopClickPropagation>
+                    <div class="tfm-popover__list">
+                      @for (c of pickableCategories(); track c.id) {
+                        <button
+                          type="button"
+                          class="tfm-popover__item"
+                          [attr.data-testid]="'create-category-option-' + c.name"
+                          [class.tfm-popover__item--selected]="categoryId() === c.id"
+                          (click)="categoryId.set(c.id); clearError('categoryId'); activePopover.set(null)"
+                        >
+                          <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
+                          <span class="tfm-popover__name">{{ c.name }}</span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
             </ng-template>
             @if (loading()) {
               <div class="tfm-loading">
@@ -259,6 +314,20 @@ export type TaskFormMode = 'create' | 'edit';
               </div>
             } @else if (loadError()) {
               <p class="tfm__error" role="alert">{{ loadError() }}</p>
+            } @else if (meetingMode()) {
+              <!-- Category "meeting": the same dialog becomes the meeting form, keeping what was typed. -->
+              <div class="tfm-chips-row" data-testid="meeting-mode-type-row">
+                <ng-container [ngTemplateOutlet]="createCategoryChipTpl" [ngTemplateOutletContext]="{ up: false }" />
+              </div>
+              <app-meeting-form-modal
+                data-testid="embedded-meeting-form"
+                [embedded]="true"
+                mode="create"
+                [placement]="{ projectId: projectId(), objectiveId: selectedObjectiveId() || null }"
+                [carryOver]="{ title: title(), description: description() || null }"
+                (saved)="onMeetingCreated($any($event))"
+                (closed)="onMeetingCancelled()"
+              />
             } @else if (currentEffectiveMode() === 'create') {
               @if (successToastMessage()) {
                 <div class="tfm-success-toast" role="status">
@@ -342,10 +411,11 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ selectedAssigneeName() }}</span>
                     </button>
                     @if (activePopover() === 'assignee') {
-                      <div class="tfm-popover-container" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover-container" appStopClickPropagation>
                         <app-task-assignee-dropdown
                           [members]="assignableMembers()"
                           [selectedId]="assigneeEmployeeId()"
+                          [allowUnassigned]="task()?.taskKind !== 'employee_checklist'"
                           (selected)="assigneeEmployeeId.set($event ?? ''); activePopover.set(null)"
                           (closed)="activePopover.set(null)"
                         />
@@ -368,7 +438,7 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ priorityDetails().label }}</span>
                     </button>
                     @if (activePopover() === 'priority') {
-                      <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover" role="dialog" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           @for (opt of priorityOptionsList; track opt.value) {
                             <button
@@ -414,13 +484,13 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ selectedModuleTitle() }}</span>
                     </button>
                     @if (activePopover() === 'module') {
-                      <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover" role="dialog" appStopClickPropagation>
                         @if (modules().length > 4) {
                           <div class="tfm-popover__search-box">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                             <input
                               type="text"
-                              placeholder="Search modules..."
+                              placeholder="Search milestones..."
                               [value]="moduleSearchQuery()"
                               (input)="moduleSearchQuery.set($any($event.target).value)"
                             />
@@ -456,7 +526,7 @@ export type TaskFormMode = 'create' | 'edit';
                       <span class="tfm-chip-label">{{ selectedSprintTitle() }}</span>
                     </button>
                     @if (activePopover() === 'sprint') {
-                      <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover" role="dialog" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           <button
                             type="button"
@@ -487,37 +557,7 @@ export type TaskFormMode = 'create' | 'edit';
                   </div>
 
                   <!-- Category Chip -->
-                  <div class="tfm-chip-anchor">
-                    <button
-                      type="button"
-                      class="tfm-chip"
-                      [class.tfm-chip--error]="errors()['categoryId']"
-                      [class.tfm-chip--active]="categoryId()"
-                      [attr.aria-expanded]="activePopover() === 'category'"
-                      (click)="togglePopover('category', $event)"
-                      [title]="errors()['categoryId'] || selectedCategoryTitle()"
-                    >
-                      <svg class="tfm-chip-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
-                      <span class="tfm-chip-label">{{ selectedCategoryTitle() }}</span>
-                    </button>
-                    @if (activePopover() === 'category') {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" (click)="$event.stopPropagation()">
-                        <div class="tfm-popover__list">
-                          @for (c of categories(); track c.id) {
-                            <button
-                              type="button"
-                              class="tfm-popover__item"
-                              [class.tfm-popover__item--selected]="categoryId() === c.id"
-                              (click)="categoryId.set(c.id); clearError('categoryId'); activePopover.set(null)"
-                            >
-                              <svg class="tfm-chip-svg tfm-popover-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
-                              <span class="tfm-popover__name">{{ c.name }}</span>
-                            </button>
-                          }
-                        </div>
-                      </div>
-                    }
-                  </div>
+                  <ng-container [ngTemplateOutlet]="createCategoryChipTpl" [ngTemplateOutletContext]="{ up: true }" />
                 </div>
 
                 @if (errors()['objectiveId']) {
@@ -658,7 +698,7 @@ export type TaskFormMode = 'create' | 'edit';
                           <span class="tfm-status-pill__text">{{ currentStatusName() }}</span>
                         </button>
                         @if (activePopover() === 'status') {
-                          <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                          <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
                               @for (s of availableStatuses(); track s.id) {
                                 <button
@@ -714,7 +754,7 @@ export type TaskFormMode = 'create' | 'edit';
                           <span class="tfm-chip-label">{{ sprintId() ? selectedSprintTitle() : 'Empty' }}</span>
                         </button>
                         @if (activePopover() === 'sprint') {
-                          <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                          <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
                               <button
                                 type="button"
@@ -755,7 +795,7 @@ export type TaskFormMode = 'create' | 'edit';
                         <span>Time estimate</span>
                       </span>
                       <div class="tfm-prop-value">
-                        <div class="tfm-inline-prop-box" (click)="timeEstimateInput.focus()">
+                        <div role="presentation" class="tfm-inline-prop-box" (click)="timeEstimateInput.focus()">
                           <input
                             #timeEstimateInput
                             type="number"
@@ -763,6 +803,7 @@ export type TaskFormMode = 'create' | 'edit';
                             step="0.5"
                             class="tfm-inline-prop-input"
                             placeholder="Empty"
+                            [style.width.ch]="inlineInputWidthCh(estimatedHoursDisplay(), 'Empty')"
                             [value]="estimatedHoursDisplay()"
                             (input)="onEstimatedHoursChange($any($event.target).value)"
                           />
@@ -828,10 +869,11 @@ export type TaskFormMode = 'create' | 'edit';
                             }
                           </button>
                           @if (activePopover() === 'assignee') {
-                            <div class="tfm-popover-container" (click)="$event.stopPropagation()">
+                            <div class="tfm-popover-container" appStopClickPropagation>
                               <app-task-assignee-dropdown
                                 [members]="assignableMembers()"
                                 [selectedId]="assigneeEmployeeId()"
+                                [allowUnassigned]="task()?.taskKind !== 'employee_checklist'"
                                 (selected)="assigneeEmployeeId.set($event ?? ''); activePopover.set(null)"
                                 (closed)="activePopover.set(null)"
                               />
@@ -867,7 +909,7 @@ export type TaskFormMode = 'create' | 'edit';
                           <span class="tfm-chip-label">{{ priorityDetails().label }}</span>
                         </button>
                         @if (activePopover() === 'priority') {
-                          <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                          <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
                               @for (opt of priorityOptionsList; track opt.value) {
                                 <button
@@ -896,7 +938,7 @@ export type TaskFormMode = 'create' | 'edit';
                         <span>Story points</span>
                       </span>
                       <div class="tfm-prop-value">
-                        <div class="tfm-inline-prop-box" (click)="storyPointsInput.focus()">
+                        <div role="presentation" class="tfm-inline-prop-box" (click)="storyPointsInput.focus()">
                           <input
                             #storyPointsInput
                             type="number"
@@ -904,6 +946,7 @@ export type TaskFormMode = 'create' | 'edit';
                             step="1"
                             class="tfm-inline-prop-input"
                             placeholder="Empty"
+                            [style.width.ch]="inlineInputWidthCh(storyPointsDisplay(), 'Empty')"
                             [value]="storyPointsDisplay()"
                             (input)="onStoryPointsChange($any($event.target).value)"
                           />
@@ -930,9 +973,9 @@ export type TaskFormMode = 'create' | 'edit';
                           <span class="tfm-chip-label">{{ categoryName() || 'Empty' }}</span>
                         </button>
                         @if (activePopover() === 'category') {
-                          <div class="tfm-popover" role="dialog" (click)="$event.stopPropagation()">
+                          <div class="tfm-popover" role="dialog" appStopClickPropagation>
                             <div class="tfm-popover__list">
-                              @for (c of categories(); track c.id) {
+                              @for (c of pickableCategories(); track c.id) {
                                 <button
                                   type="button"
                                   class="tfm-popover__item"
@@ -956,7 +999,7 @@ export type TaskFormMode = 'create' | 'edit';
                         <span>Progress</span>
                       </span>
                       <div class="tfm-prop-value">
-                        <div class="tfm-inline-prop-box" (click)="progressPercentInput.focus()">
+                        <div role="presentation" class="tfm-inline-prop-box" (click)="progressPercentInput.focus()">
                           <input
                             #progressPercentInput
                             type="number"
@@ -964,6 +1007,7 @@ export type TaskFormMode = 'create' | 'edit';
                             max="100"
                             class="tfm-inline-prop-input tfm-inline-prop-input--progress"
                             placeholder="0"
+                            [style.width.ch]="inlineInputWidthCh(progressPercentDisplay(), '0')"
                             [value]="progressPercentDisplay()"
                             (input)="onProgressPercentChange($any($event.target).value)"
                           />
@@ -987,6 +1031,7 @@ export type TaskFormMode = 'create' | 'edit';
                     [initialHtml]="description()"
                     [cssStyles]="false"
                     placeholder="Add description"
+                    [maxLength]="limits.richTextDescription"
                     (htmlChange)="description.set($event)"
                     (filesAttached)="onAttachmentFilesSelected($event)"
                     (uploadFailed)="errorMessage.set($event)"
@@ -1018,7 +1063,7 @@ export type TaskFormMode = 'create' | 'edit';
 
                 <!-- Quick Actions List (Add subtask when 0 subtasks, Attach File when empty) -->
                 <div class="tfm-actions-list">
-                  @if (currentEffectiveMode() === 'edit' && task() && !task()?.parentTaskId && displayedSubtasks().length === 0 && !addingSubtask()) {
+                  @if (currentEffectiveMode() === 'edit' && task() && task()?.taskKind !== 'employee_checklist' && !task()?.parentTaskId && displayedSubtasks().length === 0 && !addingSubtask()) {
                     <button
                       type="button"
                       class="tfm-action-row"
@@ -1135,12 +1180,26 @@ export type TaskFormMode = 'create' | 'edit';
 
                     <!-- Comments component: always mounted for test compatibility and state retention, visible on Comments & All tabs -->
                     <div [hidden]="activityTab() !== 'comments' && activityTab() !== 'all'">
-                      <app-task-comments [taskId]="tid" [projectId]="projectId()" [sortOrder]="activitySortOrder()" />
+                      <app-task-comments [taskId]="tid" [projectId]="projectId()" [sortOrder]="activitySortOrder()" (countChange)="commentCount.set($event)" />
                     </div>
 
-                    @if (activityTab() === 'history' || activityTab() === 'all') {
+                    @if (activityEmptyState(); as empty) {
+                      <div class="tfm-activity-empty" data-testid="activity-empty-state">
+                        <svg class="tfm-activity-empty__icon" viewBox="0 0 40 32" width="40" height="32" fill="none" aria-hidden="true">
+                          <path d="M4 4.5A3.5 3.5 0 0 1 7.5 1h17A3.5 3.5 0 0 1 28 4.5v10a3.5 3.5 0 0 1-3.5 3.5H13l-5.5 4.5V18H7.5A3.5 3.5 0 0 1 4 14.5z" fill="var(--color-surface)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                          <circle cx="11" cy="9.5" r="1.3" fill="currentColor" />
+                          <circle cx="16" cy="9.5" r="1.3" fill="currentColor" />
+                          <circle cx="21" cy="9.5" r="1.3" fill="currentColor" />
+                          <path d="M31 9h1.5A3.5 3.5 0 0 1 36 12.5v8a3.5 3.5 0 0 1-3.5 3.5H32v4l-4.5-4H20a3.5 3.5 0 0 1-3.5-3.5V21" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" opacity="0.55" />
+                        </svg>
+                        <p class="tfm-activity-empty__title">{{ empty.title }}</p>
+                        <p class="tfm-activity-empty__text">{{ empty.text }}</p>
+                      </div>
+                    }
+
+                    @if ((activityTab() === 'history' || activityTab() === 'all') && sortedHistoryEntries().length > 0) {
                       <div class="tfm-activity-feed-wrap">
-                        @if (activityTab() === 'all') {
+                        @if (activityTab() === 'all' && (commentCount() ?? 0) > 0) {
                           <div class="tfm-activity-feed-divider">
                             <span>History & Changes</span>
                           </div>
@@ -1149,13 +1208,9 @@ export type TaskFormMode = 'create' | 'edit';
                       </div>
                     }
 
-                    @if (activityTab() === 'work_log') {
+                    @if (activityTab() === 'work_log' && workLogEntries().length > 0) {
                       <div class="tfm-activity-feed-wrap">
-                        @if (workLogEntries().length === 0) {
-                          <p class="tfm-activity-empty">No work logged yet</p>
-                        } @else {
-                          <app-task-history-feed [entries]="workLogEntries()" (reasonSaved)="reloadHistory()" />
-                        }
+                        <app-task-history-feed [entries]="workLogEntries()" (reasonSaved)="reloadHistory()" />
                       </div>
                     }
                   </div>
@@ -1170,11 +1225,12 @@ export type TaskFormMode = 'create' | 'edit';
             }
           </div>
 
-          <footer class="tfm__foot">
+          <!-- The embedded meeting form brings its own Cancel and Create. Hidden, not removed: the footer holds templates the body uses. -->
+          <footer class="tfm__foot" [style.display]="meetingMode() ? 'none' : null">
             <app-button variant="secondary" (pressed)="onCancel()">Cancel</app-button>
 
             @if (currentEffectiveMode() === 'create') {
-              <div class="tfm-split-action" (click)="$event.stopPropagation()">
+              <div class="tfm-split-action" appStopClickPropagation>
                 <div class="tfm-split-btn">
                   <button
                     type="button"
@@ -1332,7 +1388,7 @@ export type TaskFormMode = 'create' | 'edit';
                             }
                           </button>
                           @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'assignee') {
-                            <div class="tfm-popover-container" (click)="$event.stopPropagation()">
+                            <div class="tfm-popover-container" appStopClickPropagation>
                               <app-task-assignee-dropdown
                                 [members]="assignableMembers()"
                                 [selectedId]="subtask.assigneeEmployeeIds[0]"
@@ -1368,7 +1424,7 @@ export type TaskFormMode = 'create' | 'edit';
                             }
                           </button>
                           @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'priority') {
-                            <div class="tfm-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+                            <div class="tfm-popover" role="dialog" aria-label="Change priority" appStopClickPropagation>
                               <div class="tfm-popover__list">
                                 @for (opt of priorityOptionsList; track opt.value) {
                                   <button
@@ -1404,7 +1460,7 @@ export type TaskFormMode = 'create' | 'edit';
                             </svg>
                           </button>
                           @if (activeSubtaskPopover()?.id === subtask.id && activeSubtaskPopover()?.type === 'status') {
-                            <div class="tfm-popover tfm-popover--right" role="dialog" aria-label="Change status" (click)="$event.stopPropagation()">
+                            <div class="tfm-popover tfm-popover--right" role="dialog" aria-label="Change status" appStopClickPropagation>
                               <div class="tfm-popover__list">
                                 @for (s of availableStatuses(); track s.id) {
                                   <button
@@ -1469,7 +1525,7 @@ export type TaskFormMode = 'create' | 'edit';
 
             <!-- ClickUp Inline Subtask Creation Row (Single row) -->
             <ng-template #subtaskCreateRowTpl let-parentTaskId="parentTaskId">
-              <div class="tfm-subtask-inline-create" (click)="$event.stopPropagation()">
+              <div class="tfm-subtask-inline-create" appStopClickPropagation>
                 <div class="tfm-subtask-create-left">
                   <span class="tfm-subtask-create-status-icon" aria-hidden="true">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2" class="tfm-subtask-dashed-circle">
@@ -1496,7 +1552,7 @@ export type TaskFormMode = 'create' | 'edit';
                       class="tfm-subtask-icon-btn"
                       data-testid="subtask-add-module-button"
                       (click)="toggleSubtaskPopover('new', 'module', $event)"
-                      [title]="newSubtaskModuleId() ? ('Module: ' + getSubtaskModuleName(newSubtaskModuleId())) : 'Module'"
+                      [title]="newSubtaskModuleId() ? ('Milestone: ' + getSubtaskModuleName(newSubtaskModuleId())) : 'Milestone'"
                       [class.tfm-subtask-icon-btn--active]="newSubtaskModuleId()"
                     >
                       <svg class="tfm-subtask-module-cube-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1506,13 +1562,13 @@ export type TaskFormMode = 'create' | 'edit';
                       </svg>
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'module') {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Choose module" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Choose milestone" appStopClickPropagation>
                         @if (modules().length > 4) {
                           <div class="tfm-popover__search-box">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                             <input
                               type="text"
-                              placeholder="Search modules..."
+                              placeholder="Search milestones..."
                               [value]="moduleSearchQuery()"
                               (input)="moduleSearchQuery.set($any($event.target).value)"
                             />
@@ -1537,7 +1593,7 @@ export type TaskFormMode = 'create' | 'edit';
                               }
                             </button>
                           } @empty {
-                            <p style="margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12px; text-align: center;">No matching modules</p>
+                            <p style="margin: 6px 0 2px; color: var(--color-text-secondary); font-size: 12px; text-align: center;">No matching milestones</p>
                           }
                         </div>
                       </div>
@@ -1560,9 +1616,9 @@ export type TaskFormMode = 'create' | 'edit';
                       </svg>
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && (activeSubtaskPopover()?.type === 'tag' || activeSubtaskPopover()?.type === 'category')) {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Select work item type" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Select work item type" appStopClickPropagation>
                         <div class="tfm-popover__list">
-                          @for (c of categories(); track c.id) {
+                          @for (c of taskCategories(); track c.id) {
                             <button
                               type="button"
                               class="tfm-popover__item"
@@ -1603,7 +1659,7 @@ export type TaskFormMode = 'create' | 'edit';
                       }
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'assignee') {
-                      <div class="tfm-popover-container tfm-popover-container--up" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover-container tfm-popover-container--up" appStopClickPropagation>
                         <app-task-assignee-dropdown
                           [members]="assignableMembers()"
                           [selectedId]="newSubtaskAssigneeId()"
@@ -1637,7 +1693,7 @@ export type TaskFormMode = 'create' | 'edit';
                       </svg>
                     </button>
                     @if (activeSubtaskPopover()?.id === 'new' && activeSubtaskPopover()?.type === 'priority') {
-                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+                      <div class="tfm-popover tfm-popover--up" role="dialog" aria-label="Change priority" appStopClickPropagation>
                         <div class="tfm-popover__list">
                           @for (opt of priorityOptionsList; track opt.value) {
                             <button
@@ -1726,13 +1782,15 @@ export type TaskFormMode = 'create' | 'edit';
   `,
   styles: [`
     .tfm-scrim { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: flex-start; justify-content: center; padding: 40px 24px; background: rgba(0,0,0,.5); overflow-y: auto; }
-    .tfm { display: flex; flex-direction: column; width: 100%; max-width: 1180px; max-height: calc(100vh - 80px); border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08); overflow: hidden; }
+    .tfm { display: flex; flex-direction: column; width: 100%; max-width: 1180px; max-height: calc(100vh - 80px); border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); box-shadow: var(--shadow-modal); overflow: hidden; }
     .tfm--create { max-width: 820px; max-height: none; overflow: visible; }
-    .tfm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 30px 16px; border-bottom: 1px solid var(--color-border); }
-    .tfm__head--doc { align-items: center; padding: 14px 30px; }
-    .tfm--create .tfm__head { border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .tfm__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 30px 16px; }
+    .tfm__head--doc { align-items: center; padding: 14px 30px; border-bottom: 1px solid var(--color-border); }
+    .tfm--create .tfm__head { align-items: center; border-top-left-radius: 8px; border-top-right-radius: 8px; }
     .tfm__title { display: flex; flex-direction: column; gap: 3px; }
     .tfm__title h2 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.02em; color: var(--color-text-primary); }
+    .tfm__title--with-icon { flex-direction: row; align-items: center; gap: 0; }
+    .tfm__title--with-icon h2 { font-size: 22px; }
     .tfm__title p { margin: 0; font-size: 13px; color: var(--color-text-secondary); }
     .tfm-breadcrumbs { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-secondary); font-weight: 500; }
     .tfm-breadcrumb-proj { color: var(--color-text-secondary); }
@@ -1750,7 +1808,7 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-doc-layout { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
     .tfm-type-pill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border-radius: 4px; background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)); color: var(--color-accent); font-size: 11.5px; font-weight: 600; }
     .tfm-type-pill svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
-    .tfm-type-pill--subtask { background: color-mix(in srgb, #8b5cf6 15%, var(--color-surface)) !important; color: #8b5cf6 !important; }
+    .tfm-type-pill--subtask { background: color-mix(in srgb, var(--color-cat-violet) 15%, var(--color-surface)) !important; color: var(--color-cat-violet) !important; }
     .tfm-type-pill--interactive { border: none; cursor: pointer; font-family: inherit; transition: filter 120ms ease, background-color 120ms ease; }
     .tfm-type-pill--interactive:hover { filter: brightness(0.95); }
     .tfm-created-at { flex: 0 0 auto; color: var(--color-text-secondary); font-size: 12px; white-space: nowrap; }
@@ -1805,12 +1863,12 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-prop-grid .tfm-chip-label { max-width: none !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; text-align: left !important; }
 
     /* 4. Inline inputs (Time estimate, Story points, Progress) */
-    .tfm-inline-prop-box { display: flex; align-items: center; justify-content: flex-start; gap: 4px; width: 100%; height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: text; box-sizing: border-box; transition: all 140ms ease; }
+    .tfm-inline-prop-box { display: flex; align-items: center; justify-content: flex-start; gap: 2px; width: 100%; height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: text; box-sizing: border-box; transition: all 140ms ease; }
     .tfm-inline-prop-box:hover, .tfm-inline-prop-box:focus-within { background: var(--color-surface-secondary); border-color: transparent; box-shadow: none; outline: none; }
-    .tfm-inline-prop-input { min-width: 44px; width: auto; max-width: 70px; border: 0; outline: none; background: transparent; font: inherit; font-size: 13px; font-weight: 500; color: var(--color-text-primary); -moz-appearance: textfield; padding: 0; }
+    .tfm-inline-prop-input { min-width: 1ch; max-width: 70px; border: 0; outline: none; background: transparent; font: inherit; font-size: 13px; font-weight: 500; color: var(--color-text-primary); -moz-appearance: textfield; padding: 0; }
     .tfm-inline-prop-input::-webkit-inner-spin-button, .tfm-inline-prop-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .tfm-inline-prop-input::placeholder { color: var(--color-text-secondary); font-weight: 500; opacity: 1; }
-    .tfm-inline-prop-input--progress { min-width: 36px; max-width: 48px; }
+    .tfm-inline-prop-input--progress { max-width: 48px; }
     .tfm-inline-prop-unit { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
 
     /* 5. Track time (Clock widget & Readonly timer) */
@@ -1842,24 +1900,24 @@ export type TaskFormMode = 'create' | 'edit';
 
     /* Unified Activity Hub */
     .tfm-activity-section { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--color-border); }
-    .tfm-activity-header { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+    .tfm-activity-header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
     .tfm-activity-title { margin: 0; font-size: 17px; font-weight: 700; color: var(--color-text-primary); letter-spacing: -0.01em; }
-    .tfm-activity-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .tfm-activity-tabs { display: inline-flex; align-items: center; border: 1px solid var(--color-border); border-radius: 6px; padding: 2px; background: var(--color-surface); gap: 2px; }
-    .tfm-activity-tab { border: 1px solid transparent; background: transparent; padding: 5px 12px; font-size: 13px; font-weight: 500; color: var(--color-text-secondary); border-radius: 4px; cursor: pointer; transition: all 120ms ease; line-height: 1.3; font-family: inherit; }
-    .tfm-activity-tab:hover { color: var(--color-text-primary); background: var(--color-surface-secondary); }
-    .tfm-activity-tab--active {
-      border-color: var(--color-accent);
-      color: var(--color-accent);
-      background: var(--color-accent-subtle, color-mix(in srgb, var(--color-accent) 14%, var(--color-surface)));
-      font-weight: 600;
-    }
-    .tfm-activity-sort-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); border-radius: 6px; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
+    .tfm-activity-controls { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--color-border); }
+    .tfm-activity-tabs { display: inline-flex; align-items: flex-end; gap: 4px; }
+    .tfm-activity-tab { position: relative; border: 0; background: transparent; padding: 8px 14px 9px; font-size: 13.5px; font-weight: 500; color: var(--color-text-secondary); cursor: pointer; transition: color 120ms ease; line-height: 1.3; font-family: inherit; }
+    .tfm-activity-tab::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px 2px 0 0; background: transparent; transition: background 120ms ease; }
+    .tfm-activity-tab:hover { color: var(--color-text-primary); }
+    .tfm-activity-tab--active { color: var(--color-accent); font-weight: 600; }
+    .tfm-activity-tab--active::after { background: var(--color-accent); }
+    .tfm-activity-sort-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin-bottom: 4px; border: 1px solid transparent; background: transparent; color: var(--color-text-secondary); border-radius: 6px; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
     .tfm-activity-sort-btn:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
     .tfm-activity-feed-wrap { margin-top: 12px; }
     .tfm-activity-feed-divider { display: flex; align-items: center; margin: 20px 0 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
     .tfm-activity-feed-divider::after { content: ''; flex: 1; height: 1px; background: var(--color-border); margin-left: 10px; }
-    .tfm-activity-empty { margin: 0; padding: 16px; border: 1px dashed var(--color-border); border-radius: 8px; font-size: 13px; color: var(--color-text-secondary); text-align: center; }
+    .tfm-activity-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 16px 20px; text-align: center; }
+    .tfm-activity-empty__icon { color: var(--color-accent); margin-bottom: 6px; }
+    .tfm-activity-empty__title { margin: 0; font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+    .tfm-activity-empty__text { margin: 0; max-width: 280px; font-size: 13px; line-height: 1.5; color: var(--color-text-secondary); }
     .tfm-actions-list { display: flex; flex-direction: column; gap: 2px; }
     .tfm-action-row {
       display: flex;
@@ -1916,8 +1974,8 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-subtask-header-meta { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; }
     .tfm-subtask-status-pill { color: var(--color-text-secondary); font-size: 11.5px; font-weight: 500; }
     .tfm-subtask-progress { display: inline-flex; align-items: center; }
-    .tfm-subtask-progress-bar { width: 50px; height: 4px; background: color-mix(in srgb, var(--color-border) 70%, transparent); border-radius: 999px; overflow: hidden; }
-    .tfm-subtask-progress-fill { height: 100%; background: #22c55e; border-radius: 999px; transition: width 160ms ease; }
+    .tfm-subtask-progress-bar { width: 50px; height: 4px; background: var(--color-widget-track); border-radius: 999px; overflow: hidden; }
+    .tfm-subtask-progress-fill { height: 100%; background: var(--color-widget-shade-1); border-radius: 999px; transition: width 160ms ease; }
     .tfm-subtask-for-me-pill { background: var(--color-surface-secondary); color: var(--color-text-secondary); padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; }
 
     /* Table Header */
@@ -1940,7 +1998,7 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-subtask-status-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: none; background: transparent; padding: 0; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: transform 120ms ease; }
     .tfm-subtask-status-btn:hover { transform: scale(1.1); }
     .tfm-subtask-dashed-circle { width: 15px; height: 15px; color: var(--color-text-secondary); opacity: 0.65; stroke: currentColor; }
-    .tfm-subtask-check-circle { width: 15px; height: 15px; color: #22c55e; fill: currentColor; }
+    .tfm-subtask-check-circle { width: 15px; height: 15px; color: var(--color-success); fill: currentColor; }
     .tfm-subtask-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 450; color: var(--color-text-primary); }
     .tfm-subtask-title--completed { text-decoration: line-through; color: var(--color-text-secondary); opacity: 0.7; }
     .tfm-subtask-cell-assignee { display: flex; align-items: center; min-width: 0; }
@@ -1952,16 +2010,16 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-subtask-assignee-btn { padding: 2px; }
     .tfm-subtask-priority-btn { padding: 2px 4px; }
     .tfm-subtask-priority-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; }
-    .tfm-subtask-priority-tag[data-priority="critical"] { color: #ef4444; }
-    .tfm-subtask-priority-tag[data-priority="high"] { color: #f59e0b; }
-    .tfm-subtask-priority-tag[data-priority="medium"] { color: #3b82f6; }
-    .tfm-subtask-priority-tag[data-priority="low"] { color: #94a3b8; }
+    .tfm-subtask-priority-tag[data-priority="critical"] { color: var(--color-danger); }
+    .tfm-subtask-priority-tag[data-priority="high"] { color: var(--color-warning); }
+    .tfm-subtask-priority-tag[data-priority="medium"] { color: var(--color-accent); }
+    .tfm-subtask-priority-tag[data-priority="low"] { color: var(--color-text-muted); }
     .tfm-subtask-priority-tag--none { color: var(--color-text-secondary); opacity: 0.5; }
     .tfm-subtask-flag-icon { width: 12px; height: 12px; flex-shrink: 0; }
-    .tfm-subtask-flag-icon[data-priority="critical"] { color: #ef4444; }
-    .tfm-subtask-flag-icon[data-priority="high"] { color: #f59e0b; }
-    .tfm-subtask-flag-icon[data-priority="medium"] { color: #3b82f6; }
-    .tfm-subtask-flag-icon[data-priority="low"] { color: #94a3b8; }
+    .tfm-subtask-flag-icon[data-priority="critical"] { color: var(--color-danger); }
+    .tfm-subtask-flag-icon[data-priority="high"] { color: var(--color-warning); }
+    .tfm-subtask-flag-icon[data-priority="medium"] { color: var(--color-accent); }
+    .tfm-subtask-flag-icon[data-priority="low"] { color: var(--color-text-muted); }
     .tfm-subtask-status-pill-btn { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent); border-radius: 4px; background: var(--color-surface); cursor: pointer; transition: all 120ms ease; max-width: 110px; }
     .tfm-subtask-status-pill-btn:hover { background: var(--color-surface-secondary); border-color: var(--color-border); }
     .tfm-subtask-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -1970,7 +2028,7 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-subtask-cell-actions { display: flex; align-items: center; justify-content: flex-end; }
     .tfm-subtask-remove-draft-btn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: none; background: transparent; color: var(--color-text-secondary); opacity: 0; cursor: pointer; border-radius: 4px; transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease; }
     .tfm-subtask-row:hover .tfm-subtask-remove-draft-btn { opacity: 0.7; }
-    .tfm-subtask-remove-draft-btn:hover { opacity: 1 !important; color: #ef4444; background: var(--color-surface-secondary); }
+    .tfm-subtask-remove-draft-btn:hover { opacity: 1 !important; color: var(--color-danger); background: var(--color-surface-secondary); }
     .tfm-subtask-remove-draft-btn svg { width: 14px; height: 14px; }
     .tfm-subtask-chevron { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; color: var(--color-text-secondary); opacity: 0; transition: opacity 120ms ease, transform 120ms ease; }
     .tfm-subtask-chevron svg { width: 14px; height: 14px; }
@@ -1982,7 +2040,7 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-subtask-add-trigger svg { width: 13px; height: 13px; flex-shrink: 0; }
 
     /* Inline Subtask Creation Row (ClickUp Style single row) */
-    .tfm-subtask-inline-create { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; padding: 4px 10px; background: var(--color-surface, #ffffff); border: 1px solid var(--color-border, #e2e8f0); border-radius: 6px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); margin: 4px 0 6px; box-sizing: border-box; }
+    .tfm-subtask-inline-create { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; padding: 4px 10px; background: var(--color-surface, #ffffff); border: 1px solid var(--color-border, #e2e8f0); border-radius: 6px; box-shadow: var(--shadow-card); margin: 4px 0 6px; box-sizing: border-box; }
     .tfm-subtask-create-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
     .tfm-subtask-create-status-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--color-text-secondary); opacity: 0.65; flex-shrink: 0; }
     .tfm-subtask-inline-title { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: inherit; font-size: 13px; color: var(--color-text-primary); padding: 2px 0; }
@@ -1997,7 +2055,7 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-subtask-date-label { display: inline-flex; align-items: center; height: 26px; padding: 0 6px; font-size: 12px; font-weight: 500; white-space: nowrap; }
     .tfm-subtask-btn-cancel { height: 26px; padding: 0 8px; border: none; background: transparent; color: var(--color-text-secondary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 4px; transition: background-color 120ms ease, color 120ms ease; }
     .tfm-subtask-btn-cancel:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
-    .tfm-subtask-btn-save { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border: none; border-radius: 6px; background: #1e293b; color: #ffffff; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: opacity 120ms ease, background-color 120ms ease; }
+    .tfm-subtask-btn-save { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border: none; border-radius: 6px; background: #1e293b; color: var(--color-text-on-solid); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: opacity 120ms ease, background-color 120ms ease; }
     .tfm-subtask-btn-save:hover:not(:disabled) { background: #0f172a; }
     .tfm-subtask-btn-save:disabled { opacity: 0.45; cursor: not-allowed; }
     .tfm-subtask-enter-symbol { font-size: 11px; opacity: 0.8; }
@@ -2029,7 +2087,7 @@ export type TaskFormMode = 'create' | 'edit';
     .tfm-chips-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
     .tfm-chip-anchor { position: relative; display: inline-flex; }
     .tfm-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 9999px; border: 1px solid var(--color-border); background: var(--color-surface-secondary); color: var(--color-text-primary); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 140ms ease; white-space: nowrap; user-select: none; }
-    .tfm-chip:hover { background: var(--color-surface); border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); box-shadow: 0 1px 3px rgb(15 23 42 / .06); }
+    .tfm-chip:hover { background: var(--color-surface); border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); box-shadow: var(--shadow-card); }
     .tfm-chip--active { border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border)); background: var(--color-surface); }
     .tfm-chip--error { border-color: var(--color-danger); background: var(--color-danger-subtle); color: var(--color-danger-text); }
     .tfm-chip-svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
@@ -2040,8 +2098,8 @@ export type TaskFormMode = 'create' | 'edit';
     /* Popovers */
     .tfm-popover-container { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; animation: tfm-popover-in 120ms ease-out; }
     .tfm-popover-container--up { top: auto; bottom: calc(100% + 6px); animation: tfm-popover-in-up 120ms ease-out; }
-    .tfm-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; min-width: 220px; max-width: 320px; max-height: 280px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: 0 14px 34px rgb(15 23 42 / .18); animation: tfm-popover-in 120ms ease-out; }
-    .tfm-popover--up { top: auto; bottom: calc(100% + 6px); box-shadow: 0 -10px 30px rgb(15 23 42 / .16); animation: tfm-popover-in-up 120ms ease-out; }
+    .tfm-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; min-width: 220px; max-width: 320px; max-height: 280px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: var(--shadow-modal); animation: tfm-popover-in 120ms ease-out; }
+    .tfm-popover--up { top: auto; bottom: calc(100% + 6px); box-shadow: var(--shadow-popover); animation: tfm-popover-in-up 120ms ease-out; }
     .tfm-popover--right { left: auto; right: 0; }
     .tfm-popover__list { display: flex; flex-direction: column; gap: 2px; }
     .tfm-popover__item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; cursor: pointer; text-align: left; transition: background-color 120ms ease; white-space: nowrap; }
@@ -2089,14 +2147,14 @@ export type TaskFormMode = 'create' | 'edit';
 
     /* Split Button */
     .tfm-split-action { position: relative; display: inline-flex; }
-    .tfm-split-btn { display: inline-flex; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgb(15 23 42 / .06); }
+    .tfm-split-btn { display: inline-flex; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-card); }
     .tfm-split-btn__main { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; background: var(--color-accent); color: var(--color-accent-contrast); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 140ms ease; }
     .tfm-split-btn__main:hover { filter: brightness(0.95); }
     .tfm-split-btn__main:disabled { opacity: .6; cursor: not-allowed; }
     .tfm-split-btn__arrow { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 30px; border: 0; border-left: 1px solid color-mix(in srgb, var(--color-accent-contrast) 25%, transparent); background: var(--color-accent); color: var(--color-accent-contrast); cursor: pointer; transition: opacity 140ms ease; }
     .tfm-split-btn__arrow:hover { filter: brightness(0.95); }
     .tfm-split-btn__arrow svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
-    .tfm-split-dropdown { position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 110; width: 250px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: 0 14px 34px rgb(15 23 42 / .2); animation: tfm-popover-in 120ms ease-out; }
+    .tfm-split-dropdown { position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 110; width: 250px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); padding: 6px; box-shadow: var(--shadow-modal); animation: tfm-popover-in 120ms ease-out; }
     .tfm-split-dropdown__item { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-primary); font: inherit; cursor: pointer; text-align: left; transition: background-color 120ms ease; }
     .tfm-split-dropdown__item:hover { background: var(--color-surface-secondary); }
     .tfm-split-dropdown__item svg { width: 16px; height: 16px; stroke: var(--color-accent); fill: none; stroke-width: 2; flex-shrink: 0; margin-top: 2px; }
@@ -2113,6 +2171,7 @@ export type TaskFormMode = 'create' | 'edit';
   `]
 })
 export class TaskFormModalComponent {
+  readonly limits = TEXT_LIMITS;
   private readonly taskApi = inject(TaskApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly sprintApi = inject(SprintApiService);
@@ -2131,11 +2190,22 @@ export class TaskFormModalComponent {
   readonly taskId = input<string>('');
   readonly prefillModuleId = input<string>('');
   readonly prefillSprintId = input<string>('');
+  /** Set when the task is an action item raised from a meeting occurrence (meetings-as-tasks spec 5.4); null otherwise. */
+  readonly sourceMeetingOccurrenceId = input<string | null>(null);
   /** Create mode only: resume this saved draft instead of starting from a blank form. */
   readonly draftId = input<string>('');
+  /**
+   * Create mode only: offer the "meeting" category, which turns this form into the meeting form. The Work screens
+   * (Tree, Board, Backlog) set it; everywhere else the category is not offered, so no plain task is made a "meeting".
+   */
+  readonly allowMeeting = input(false);
+  /** Create mode only: what the Planner create popover's Work item tab held ("More options"). */
+  readonly prefill = input<TaskFormPrefill | null>(null);
 
   readonly closed = output<void>();
   readonly created = output<string>();
+  /** A meeting was created from the embedded meeting form (category "meeting"). The modal closes after it. */
+  readonly meetingCreated = output<MeetingCreatedEvent>();
   readonly saved = output<void>();
   /**
    * An in-place change made while the modal stays open (subtask edits, clock-in). Hosts should
@@ -2287,6 +2357,15 @@ export class TaskFormModalComponent {
   // of the viewer's milestone scope, unlike assignableMembers() which is scoped for the picker.
   private taskAssigneeIdentities = signal<readonly TaskAssigneeIdentity[]>([]);
   categoryId = signal('');
+  private readonly meetingsAvailability = inject(MeetingsAvailabilityService);
+  /** The categories a task can carry: the system "meeting" category belongs to real meetings only. */
+  readonly taskCategories = computed(() => this.categories().filter((c) => c.systemKey !== TASK_CATEGORY_MEETING));
+  /** Creating on a Work screen while meetings can be written: "meeting" is offered and switches to the meeting form. */
+  private readonly canSwitchToMeeting = computed(() =>
+    this.currentEffectiveMode() === 'create' && this.allowMeeting() && this.meetingsAvailability.canCreate());
+  readonly pickableCategories = computed(() => (this.canSwitchToMeeting() ? this.categories() : this.taskCategories()));
+  readonly meetingMode = computed(() => this.canSwitchToMeeting()
+    && this.categories().some((c) => c.id === this.categoryId() && c.systemKey === TASK_CATEGORY_MEETING));
   allocationHint = signal<InsufficientAllocationErrorDto | null>(null);
 
   submitting = signal(false);
@@ -2340,6 +2419,25 @@ export class TaskFormModalComponent {
   showComments = signal(true);
   activityTab = signal<'all' | 'comments' | 'history' | 'work_log'>('comments');
   activitySortOrder = signal<'desc' | 'asc'>('desc');
+  /** Reported by app-task-comments; null until its first load so the empty state doesn't flash. */
+  commentCount = signal<number | null>(null);
+
+  activityEmptyState = computed<{ title: string; text: string } | null>(() => {
+    const comments = this.commentCount();
+    const history = this.sortedHistoryEntries().length;
+    switch (this.activityTab()) {
+      case 'all':
+        return comments === 0 && history === 0
+          ? { title: 'No activity yet', text: 'Comments, status changes and work logs will appear here.' }
+          : null;
+      case 'comments':
+        return comments === 0 ? { title: 'No comments yet', text: 'Start the conversation — comments on this task will appear here.' } : null;
+      case 'history':
+        return history === 0 ? { title: 'No history yet', text: 'Status changes and edits to this task will appear here.' } : null;
+      case 'work_log':
+        return this.workLogEntries().length === 0 ? { title: 'No work logged yet', text: 'Time clocked against this task will appear here.' } : null;
+    }
+  });
 
   setActivityTab(tab: 'all' | 'comments' | 'history' | 'work_log'): void {
     this.activityTab.set(tab);
@@ -2491,8 +2589,8 @@ export class TaskFormModalComponent {
 
   selectedModuleTitle = computed(() => {
     const id = this.selectedObjectiveId();
-    if (!id) return 'Select module';
-    return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Select module';
+    if (!id) return 'Select milestone';
+    return this.modules().find((m) => m.objectiveId === id)?.title ?? 'Select milestone';
   });
 
   selectedSprintTitle = computed(() => {
@@ -2761,7 +2859,8 @@ export class TaskFormModalComponent {
       this.modules.set(Array.from(knownModules.values()));
       this.sprints.set(sprintDtos.map(toSprint));
       this.categories.set(categoryDtos.map(toTaskCategoryColumn));
-      this.categoryId.set(this.categories()[0]?.id ?? '');
+      // Never open on "meeting": that category turns the form into the meeting form.
+      this.categoryId.set(this.taskCategories()[0]?.id ?? '');
 
       // Smart Module Inheritance:
       if (this.prefillModuleId() && this.modules().some((m) => m.objectiveId === this.prefillModuleId())) {
@@ -2781,6 +2880,17 @@ export class TaskFormModalComponent {
       }
 
       await this.loadMembers();
+
+      const prefill = this.prefill();
+      if (prefill && this.currentEffectiveMode() === 'create') {
+        this.title.set(prefill.title);
+        if (prefill.description) this.description.set(prefill.description);
+        if (prefill.categoryId && this.taskCategories().some((c) => c.id === prefill.categoryId)) this.categoryId.set(prefill.categoryId);
+        if (prefill.priority) this.priority.set(prefill.priority);
+        this.estimatedHours.set(prefill.estimatedHours);
+        this.dueDate.set(prefill.dueDate ?? '');
+        if (prefill.assigneeEmployeeId) this.assigneeEmployeeId.set(prefill.assigneeEmployeeId);
+      }
 
       const draftId = this.draftId();
       if (draftId) {
@@ -2885,6 +2995,19 @@ export class TaskFormModalComponent {
     }
   }
 
+  /** The embedded meeting form created a meeting: hand it to the host and close, with no task draft to keep. */
+  onMeetingCreated(event: MeetingCreatedEvent): void {
+    this.meetingCreated.emit(event);
+    this.cleanupUnsavedAttachments();
+    this.closed.emit();
+  }
+
+  /** Cancel on the meeting form closes outright: a task draft is no place to keep an unsaved meeting. */
+  onMeetingCancelled(): void {
+    this.cleanupUnsavedAttachments();
+    this.closed.emit();
+  }
+
   private async attemptClose(): Promise<void> {
     const dirty = this.guardHandle.isDirty();
     if (!(await this.unsaved.requestClose(this.guardHandle))) return;
@@ -2975,6 +3098,8 @@ export class TaskFormModalComponent {
   estimatedHoursDisplay(): string { return this.estimatedHours() == null ? '' : String(this.estimatedHours()); }
   storyPointsDisplay(): string { return this.storyPoints() == null ? '' : String(this.storyPoints()); }
   progressPercentDisplay(): string { return this.progressPercent() == null ? '' : String(this.progressPercent()); }
+  /** Width in ch so the unit (h, pts, %) sits right after the value instead of after a fixed-width box. */
+  inlineInputWidthCh(value: string, placeholder: string): number { return (value || placeholder).length + 0.5; }
   onEstimatedHoursChange(v: string): void { this.estimatedHours.set(v === '' ? null : Number(v)); }
   onStoryPointsChange(v: string): void { this.storyPoints.set(v === '' ? null : Number(v)); }
   onProgressPercentChange(v: string): void { this.progressPercent.set(v === '' ? null : Number(v)); }
@@ -3038,7 +3163,7 @@ export class TaskFormModalComponent {
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       const msg = detail || 'Failed to delete the task.';
       this.deleteLoading.set(false);
       this.deleteError.set(msg);
@@ -3069,7 +3194,7 @@ export class TaskFormModalComponent {
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       const msg = detail || 'Failed to duplicate the task.';
       this.duplicateLoading.set(false);
       this.duplicateError.set(msg);
@@ -3100,7 +3225,7 @@ export class TaskFormModalComponent {
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       const msg = detail || 'Failed to convert the task into a subtask.';
       this.convertToSubtaskLoading.set(false);
       this.convertToSubtaskError.set(msg);
@@ -3511,7 +3636,7 @@ export class TaskFormModalComponent {
       this.saved.emit();
       this.closed.emit();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       const msg = detail || 'Failed to save.';
       this.errorMessage.set(msg);
       this.notificationService.error(msg);
@@ -3525,6 +3650,10 @@ export class TaskFormModalComponent {
     const previous = this.originalAssigneeId();
     if (next === previous) return;
     const taskId = this.currentTaskId();
+    if (this.task()?.taskKind === 'employee_checklist') {
+      if (next) await firstValueFrom(this.taskApi.assignTask(taskId, next));
+      return;
+    }
     if (previous) await firstValueFrom(this.taskApi.unassignTask(taskId, previous));
     if (next) await firstValueFrom(this.taskApi.assignTask(taskId, next));
   }
@@ -3532,7 +3661,7 @@ export class TaskFormModalComponent {
   async submitCreateWithAction(action: 'create_and_close' | 'create_and_add_another' | 'create_and_open' = 'create_and_close'): Promise<void> {
     const errs: Record<string, string> = {};
     if (!this.title().trim()) errs['title'] = 'Title is required.';
-    if (!this.selectedObjectiveId()) errs['objectiveId'] = 'Module is required.';
+    if (!this.selectedObjectiveId()) errs['objectiveId'] = 'Milestone is required.';
     if (!this.categoryId()) errs['categoryId'] = 'Category is required.';
     if (!this.priority()) errs['priority'] = 'Priority is required.';
     this.errors.set(errs);
@@ -3550,7 +3679,8 @@ export class TaskFormModalComponent {
       estimatedHours: this.estimatedHours() ?? undefined,
       storyPoints: this.storyPoints() ?? undefined,
       sprintId: this.sprintId() || null,
-      attachmentFileIds: this.attachedFiles().map((f) => f.fileId)
+      attachmentFileIds: this.attachedFiles().map((f) => f.fileId),
+      ...(this.sourceMeetingOccurrenceId() ? { sourceMeetingOccurrenceId: this.sourceMeetingOccurrenceId()! } : {})
     };
 
     this.submitting.set(true);

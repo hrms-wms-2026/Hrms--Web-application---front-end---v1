@@ -6,7 +6,6 @@ import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { CalendarEventApiService } from '../../data-access/calendar-event-api.service';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
-import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarEventFormModalComponent } from './calendar-event-form-modal.component';
 
 describe('CalendarEventFormModalComponent', () => {
@@ -21,7 +20,7 @@ describe('CalendarEventFormModalComponent', () => {
         { provide: AuthStore, useValue: { employeeId: () => currentEmployeeId, email: () => 'nadesh@dapi.test' } },
         // Only the nested CalendarEventAttendanceComponent (rendered when the Attendance section
         // shows) actually calls this - stubbed here so those tests don't need real HTTP infra.
-        { provide: CalendarEventApiService, useValue: { getMeetingAttendance: vi.fn().mockReturnValue(of({ available: false, attendees: [] })) } },
+        { provide: CalendarEventApiService, useValue: { getMeetingAttendance: vi.fn().mockReturnValue(of({ available: false, attendees: [] })), getMeeting: vi.fn().mockReturnValue(of({ status: 'none', provider: null, joinUrl: null, failureReason: null })) } },
         { provide: PeopleApiService, useValue: { listEmployees: vi.fn().mockReturnValue(of({ items: [], totalCount: 0, page: 1, pageSize: 20 })) } },
         provideRouter([])
       ]
@@ -30,6 +29,12 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentRef.setInput('open', true);
     fixture.detectChanges();
   });
+
+  /** Who's already added (and their remove buttons) shows in the dropdown opened from the avatar stack. */
+  function openParticipants(): void {
+    (fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-stack"]') as HTMLElement).click();
+    fixture.detectChanges();
+  }
 
   it('marks the form invalid until title and dates are filled', () => {
     expect(fixture.componentInstance.form.invalid).toBe(true);
@@ -85,24 +90,18 @@ describe('CalendarEventFormModalComponent', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('hides the recurrence-until control until "until" end mode is chosen', () => {
-    expect(fixture.componentInstance.form.controls.recurrenceEndMode.value).toBe('never');
-    const untilField = fixture.nativeElement.querySelector('[data-testid="calendar-form-recurrence-until"]');
-    expect(untilField).toBeNull();
-  });
+  it('hides the time pickers while "Full day event" is on, since the times are ignored on save', () => {
+    const query = () => document.querySelector('[data-testid="calendar-form-time-range"]');
+    const toggle = () => (document.querySelector('[data-testid="calendar-form-full-day"]') as HTMLButtonElement).click();
+    expect(query()).not.toBeNull();
 
-  it('emits a create payload with a built recurrenceRule when the form is valid and weekly is chosen', () => {
-    const spy = vi.fn();
-    fixture.componentInstance.save.subscribe(spy);
-    fixture.componentInstance.form.patchValue({
-      title: 'Standup', startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '09:30',
-      recurrenceFrequency: 'weekly', recurrenceEndMode: 'never'
-    });
-    fixture.componentInstance.onSubmit(null);
-    expect(spy).toHaveBeenCalledTimes(1);
-    const submission = spy.mock.calls[0][0] as { create: { recurrence: string; recurrenceRule: string | null } };
-    expect('create' in submission).toBe(true);
-    expect(submission.create.recurrenceRule).toBe('FREQ=WEEKLY');
+    toggle();
+    fixture.detectChanges();
+    expect(query()).toBeNull();
+
+    toggle();
+    fixture.detectChanges();
+    expect(query()).not.toBeNull();
   });
 
   it('spans the full day when "All day" is on, regardless of whatever time is in the time pickers', () => {
@@ -121,10 +120,10 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentInstance.onSubmit(null);
 
     expect(spy).toHaveBeenCalledTimes(1);
-    const submission = spy.mock.calls[0][0] as { create: { startDate: string; endDate: string; isAllDay: boolean } };
-    expect(submission.create.isAllDay).toBe(true);
-    expect(submission.create.startDate).toBe('2026-09-15T00:00:00.000Z');
-    expect(submission.create.endDate).toBe('2026-09-16T00:00:00.000Z');
+    const submission = spy.mock.calls[0][0] as { update: { startDate: string; endDate: string; isAllDay: boolean } };
+    expect(submission.update.isAllDay).toBe(true);
+    expect(submission.update.startDate).toBe('2026-09-15T00:00:00.000Z');
+    expect(submission.update.endDate).toBe('2026-09-16T00:00:00.000Z');
   });
 
   it('spans through the day after the last picked day for a multi-day all-day event', () => {
@@ -136,9 +135,9 @@ describe('CalendarEventFormModalComponent', () => {
     });
     fixture.componentInstance.onSubmit(null);
 
-    const submission = spy.mock.calls[0][0] as { create: { startDate: string; endDate: string } };
-    expect(submission.create.startDate).toBe('2026-09-15T00:00:00.000Z');
-    expect(submission.create.endDate).toBe('2026-09-18T00:00:00.000Z');
+    const submission = spy.mock.calls[0][0] as { update: { startDate: string; endDate: string } };
+    expect(submission.update.startDate).toBe('2026-09-15T00:00:00.000Z');
+    expect(submission.update.endDate).toBe('2026-09-18T00:00:00.000Z');
   });
 
   it('rolls the exclusive end back over a month boundary', () => {
@@ -150,8 +149,8 @@ describe('CalendarEventFormModalComponent', () => {
     });
     fixture.componentInstance.onSubmit(null);
 
-    const submission = spy.mock.calls[0][0] as { create: { endDate: string } };
-    expect(submission.create.endDate).toBe('2026-10-01T00:00:00.000Z');
+    const submission = spy.mock.calls[0][0] as { update: { endDate: string } };
+    expect(submission.update.endDate).toBe('2026-10-01T00:00:00.000Z');
   });
 
   it('shows an existing all-day event\'s last real day in the End Date field, not the exclusive stored day after', () => {
@@ -240,6 +239,7 @@ describe('CalendarEventFormModalComponent', () => {
       participants: [{ employeeId: 'emp-1', employeeName: 'Ada Lovelace', responseStatus: 'pending' }]
     });
     fixture.detectChanges();
+    openParticipants();
 
     expect(fixture.nativeElement.textContent).toContain('Ada Lovelace');
     expect(fixture.nativeElement.textContent).toContain('pending');
@@ -347,62 +347,13 @@ describe('CalendarEventFormModalComponent', () => {
     expect(spy).toHaveBeenCalledWith({ status: 'ResolutionRequested', reason: 'Need to check with my team', nomineeEmployeeId: null });
   });
 
-  it('emits checkConflicts (debounced) once participants and both dates are set, but not while editing', () => {
-    vi.useFakeTimers();
-    const spy = vi.fn();
-    fixture.componentInstance.checkConflicts.subscribe(spy);
-
-    fixture.componentInstance.form.patchValue({ startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '10:00' });
-    fixture.componentInstance.onParticipantIdsChange(['emp-1']);
-    expect(spy).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(400);
-    expect(spy).toHaveBeenCalledWith({
-      participantEmployeeIds: ['emp-1'], startDate: '2026-09-01T09:00:00.000Z', endDate: '2026-09-01T10:00:00.000Z'
-    });
-    vi.useRealTimers();
-  });
-
-  it('does not emit checkConflicts while editing an existing event', () => {
-    vi.useFakeTimers();
-    fixture.componentRef.setInput('event', {
-      id: 'e1', title: 'Existing', description: null, startDate: '2026-09-01T09:00:00Z', endDate: '2026-09-01T09:30:00Z',
-      sourceType: 'manual', color: null, recurrence: 'none', isAllDay: false, timezone: 'UTC', eventStatus: null,
-      isPrivate: false, location: null, meetingLink: null, externalSource: null, createdById: 'u1',
-      isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
-    });
-    fixture.detectChanges();
-    const spy = vi.fn();
-    fixture.componentInstance.checkConflicts.subscribe(spy);
-
-    fixture.componentInstance.onParticipantIdsChange(['emp-1']);
-    vi.advanceTimersByTime(400);
-    expect(spy).not.toHaveBeenCalled();
-    vi.useRealTimers();
-  });
-
-  it('renders a non-blocking warning line per conflict', () => {
-    fixture.componentRef.setInput('conflicts', [
-      {
-        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup',
-        overlapStart: '2026-09-01T09:00:00Z', overlapEnd: '2026-09-01T09:30:00Z'
-      }
-    ]);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Ada Lovelace is busy from 9:00 AM to 9:30 AM (Standup)');
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-save-plain"] button').disabled).toBe(false);
-  });
-
-  it('shows the overlap time range in the conflict warning', () => {
-    fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
-    fixture.componentRef.setInput('conflicts', [
-      {
-        employeeId: 'emp-1', employeeName: 'Ada Lovelace', conflictingEventId: 'e9', conflictingEventTitle: 'Standup',
-        overlapStart: '2026-04-10T09:00:00+05:30', overlapEnd: '2026-04-10T09:30:00+05:30'
-      }
-    ]);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('9:00 AM to 9:30 AM');
+  it('gives the start and end time fields room for a full 12-hour time ("12:00 PM")', () => {
+    // Each field holds the clock addon, the text and the dropdown button; 8.5rem left the text cut to "12:0".
+    for (const id of ['calendar-form-start-time', 'calendar-form-end-time']) {
+      const field = fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement;
+      expect(field, id).not.toBeNull();
+      expect(field.classList.contains('w-[11rem]'), id).toBe(true);
+    }
   });
 
   it('pre-fills the form using the viewer timezone, not raw UTC digits', () => {
@@ -429,8 +380,8 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentInstance.save.subscribe(spy);
     fixture.componentInstance.onSubmit(null);
 
-    const submission = spy.mock.calls[0][0] as { create: { startDate: string; endDate: string } };
-    expect(new Date(submission.create.startDate).toISOString()).toBe('2026-09-01T09:00:00.000Z');
+    const submission = spy.mock.calls[0][0] as { update: { startDate: string; endDate: string } };
+    expect(new Date(submission.update.startDate).toISOString()).toBe('2026-09-01T09:00:00.000Z');
   });
 
   it('shows a hint naming the timezone times are displayed in', () => {
@@ -443,7 +394,7 @@ describe('CalendarEventFormModalComponent', () => {
 
   it('emits cancel immediately when the form is not dirty', async () => {
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
     fixture.componentInstance.attemptClose();
     await flush();
     expect(spy).toHaveBeenCalledTimes(1);
@@ -452,7 +403,7 @@ describe('CalendarEventFormModalComponent', () => {
   it('asks through the shared dialog instead of emitting cancel when the form is dirty', async () => {
     fixture.componentInstance.setTitle('Something typed');
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
 
     fixture.componentInstance.attemptClose();
     await flush();
@@ -468,7 +419,7 @@ describe('CalendarEventFormModalComponent', () => {
   it('emits cancel after the discard is chosen', async () => {
     fixture.componentInstance.setTitle('Something typed');
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
 
     fixture.componentInstance.attemptClose();
     TestBed.inject(UnsavedChangesService).choose('discard');
@@ -481,7 +432,7 @@ describe('CalendarEventFormModalComponent', () => {
   it('treats a non-empty participant selection as dirty even with an untouched form', async () => {
     fixture.componentInstance.onParticipantIdsChange(['emp-1']);
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
 
     fixture.componentInstance.attemptClose();
     await flush();
@@ -504,7 +455,7 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
 
     const spy = vi.fn();
-    fixture.componentInstance.cancel.subscribe(spy);
+    fixture.componentInstance.cancelled.subscribe(spy);
     fixture.componentInstance.attemptClose();
     await flush();
 
@@ -512,85 +463,12 @@ describe('CalendarEventFormModalComponent', () => {
     expect(TestBed.inject(UnsavedChangesService).prompt()).toBeNull();
   });
 
-  it('opens a new event with an empty form after a previous event was edited', () => {
-    const previous = {
-      id: 'evt-9', title: 'zoom test 5', description: 'old notes', startDate: '2026-10-02T06:15:00Z',
-      endDate: '2026-10-02T09:15:00Z', isAllDay: false, location: 'via zoom',
-      meetingLink: 'https://us05web.zoom.us/j/85908732617', color: '#16A34A', participants: []
-    } as unknown as CalendarEventResponse;
-    fixture.componentRef.setInput('open', false);
-    fixture.detectChanges();
-    fixture.componentRef.setInput('event', previous);
-    fixture.componentRef.setInput('open', true);
-    fixture.detectChanges();
-    expect(fixture.componentInstance.form.controls.title.value).toBe('zoom test 5');
-
-    fixture.componentRef.setInput('open', false);
-    fixture.componentRef.setInput('event', null);
-    fixture.detectChanges();
-    fixture.componentRef.setInput('open', true);
-    fixture.detectChanges();
-
-    const form = fixture.componentInstance.form;
-    expect(form.controls.title.value).toBe('');
-    expect(form.controls.description.value).toBe('');
-    expect(form.controls.location.value).toBe('');
-    expect(form.controls.meetingLink.value).toBe('');
-    expect(form.controls.color.value).toBe('#2563EB');
-    expect(form.controls.isAllDay.value).toBe(false);
-    expect(form.pristine).toBe(true);
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-teams-meeting-attached"]')).toBeNull();
-  });
-
-  it('opens a new event with an empty form after a previous create was typed into and closed', () => {
-    fixture.componentInstance.setTitle('Half typed');
-    fixture.componentInstance.setLocation('Room 4');
-    fixture.componentInstance.setRecurrenceFrequency('weekly');
-
-    fixture.componentRef.setInput('open', false);
-    fixture.detectChanges();
-    fixture.componentRef.setInput('open', true);
-    fixture.detectChanges();
-
-    const form = fixture.componentInstance.form;
-    expect(form.controls.title.value).toBe('');
-    expect(form.controls.location.value).toBe('');
-    expect(form.controls.recurrenceFrequency.value).toBe('none');
-    expect(form.controls.startTime.value).toBe('09:00');
-    expect(form.controls.endTime.value).toBe('09:30');
-  });
-
-  it('applies the prefilled slot on top of the reset form', () => {
-    fixture.componentInstance.setTitle('Old title');
-    fixture.componentRef.setInput('open', false);
-    fixture.detectChanges();
-    fixture.componentRef.setInput('prefillStart', '2026-09-20T10:15');
-    fixture.componentRef.setInput('open', true);
-    fixture.detectChanges();
-
-    const form = fixture.componentInstance.form;
-    expect(form.controls.title.value).toBe('');
-    expect(form.controls.startDate.value).toBe('2026-09-20');
-    expect(form.controls.startTime.value).toBe('10:15');
-    expect(form.controls.endTime.value).toBe('10:45');
-  });
-
-  it('defaults a new event to a 30-minute slot', () => {
-    expect(fixture.componentInstance.form.controls.startTime.value).toBe('09:00');
-    expect(fixture.componentInstance.form.controls.endTime.value).toBe('09:30');
-  });
-
-  it('follows the start time with a +30m end until the end is set by hand', () => {
-    fixture.componentInstance.setStartTime('11:00');
-    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:30');
-
-    fixture.componentInstance.setEndTime('12:15');
-    fixture.componentInstance.setStartTime('13:00');
-    expect(fixture.componentInstance.form.controls.endTime.value).toBe('12:15');
-  });
-
   it('reads the typed times in the picked timezone, not the tenant one, on save', () => {
     fixture.componentRef.setInput('myTimezone', 'Asia/Colombo');
+    fixture.detectChanges();
+    const link = fixture.nativeElement.querySelector('[data-testid="calendar-form-timezone-link"]') as HTMLButtonElement;
+    expect(link.textContent).toContain('Asia/Colombo (GMT+05:30)');
+    link.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-timezone"]')).not.toBeNull();
 
@@ -603,65 +481,17 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentInstance.onSubmit(null);
 
     // 2026-06-10 09:00 America/New_York (EDT, UTC-4) == 13:00Z
-    const { create } = spy.mock.calls[0][0] as { create: { startDate: string } };
-    expect(new Date(create.startDate).toISOString()).toBe('2026-06-10T13:00:00.000Z');
-  });
-
-  it('lists every picked participant as a row with a name and an always-visible remove button', () => {
-    const people = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, name: `Person ${i}` }));
-    fixture.componentInstance.onParticipantIdsChange(people.map((p) => p.id));
-    fixture.componentInstance.onParticipantPeopleChange(people);
-    fixture.detectChanges();
-
-    const rows = fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-participant-row"]');
-    expect(rows.length).toBe(8);
-    expect(rows[0].textContent).toContain('Person 0');
-    const removes = fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-participant-remove"]');
-    expect(removes.length).toBe(8);
-    for (const remove of Array.from(removes) as HTMLElement[]) {
-      expect(remove.className).not.toMatch(/(^|\s)hidden(\s|$)/);
-    }
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-avatars"]')).toBeNull();
-
-    (removes[0] as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(fixture.componentInstance.participants().length).toBe(7);
-    expect(fixture.componentInstance.participantIds().length).toBe(7);
-    expect(fixture.componentInstance.participantIds()).not.toContain('e0');
-  });
-
-  it('shows the organizer as "You" first in the Who list when creating an event, with no remove button', () => {
-    fixture.componentInstance.onParticipantPeopleChange([{ id: 'e1', name: 'Person 1' }]);
-    fixture.detectChanges();
-
-    const organizer = fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]');
-    expect(organizer.textContent).toContain('You');
-    expect(organizer.textContent).toContain('Organizer');
-    expect(organizer.querySelector('button')).toBeNull();
-    const rows = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-organizer"], [data-testid="calendar-form-participant-row"]')) as HTMLElement[];
-    expect(rows[0]).toBe(organizer);
-  });
-
-  it('uses prefillEnd for the end fields when a dragged range provides one', () => {
-    fixture.componentRef.setInput('prefillStart', '2026-09-20T10:15');
-    fixture.componentRef.setInput('prefillEnd', '2026-09-20T11:45');
-    fixture.componentRef.setInput('open', false);
-    fixture.detectChanges();
-    fixture.componentRef.setInput('open', true);
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.form.controls.startTime.value).toBe('10:15');
-    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:45');
-
-    // a later start-time nudge must not clobber the explicitly dragged end
-    fixture.componentInstance.setStartTime('09:00');
-    expect(fixture.componentInstance.form.controls.endTime.value).toBe('11:45');
+    const { update } = spy.mock.calls[0][0] as { update: { startDate: string } };
+    expect(new Date(update.startDate).toISOString()).toBe('2026-06-10T13:00:00.000Z');
   });
 
   it('uses the calendar-module styled dropdown for Repeat, not a native select', () => {
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-repeat"]')).toBeNull();
+    (fixture.nativeElement.querySelector('[data-testid="calendar-form-repeat-link"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
     const repeat = fixture.nativeElement.querySelector('[data-testid="calendar-form-repeat"]');
     expect(repeat).not.toBeNull();
-    expect(repeat.tagName.toLowerCase()).toBe('app-calendar-select');
+    expect(repeat.tagName.toLowerCase()).toBe('app-select');
     expect(repeat.querySelector('select')).toBeNull();
   });
 
@@ -672,10 +502,17 @@ describe('CalendarEventFormModalComponent', () => {
     isRecurringOccurrence: false, recurrenceMasterId: null, originalStart: null, participants: null
   };
 
+  /** Teams/Zoom/connect options live in the "Add Microsoft Teams or Zoom meeting" dropdown - open it first. */
+  const openMeetingMenu = () => {
+    (fixture.nativeElement.querySelector('[data-testid="calendar-form-meeting-trigger"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+  };
+
   it('shows "Add Teams meeting" when editing and a meeting-capable connection exists', () => {
     fixture.componentRef.setInput('event', editingEvent);
     fixture.componentRef.setInput('hasTeamsCapableConnection', true);
     fixture.detectChanges();
+    openMeetingMenu();
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-connect-microsoft-prompt"]')).toBeNull();
@@ -685,23 +522,17 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentRef.setInput('event', editingEvent);
     fixture.componentRef.setInput('hasTeamsCapableConnection', false);
     fixture.detectChanges();
+    openMeetingMenu();
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-connect-microsoft-prompt"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]')).toBeNull();
-  });
-
-  it('shows the Add-meeting control in create mode too, as a pending selection rather than an immediate action', () => {
-    fixture.componentRef.setInput('hasTeamsCapableConnection', true);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-connect-microsoft-prompt"]')).toBeNull();
   });
 
   it('clicking "Add Teams meeting" emits addMeeting with "microsoft_teams"', () => {
     fixture.componentRef.setInput('event', editingEvent);
     fixture.componentRef.setInput('hasTeamsCapableConnection', true);
     fixture.detectChanges();
+    openMeetingMenu();
     const spy = vi.fn();
     fixture.componentInstance.addMeeting.subscribe(spy);
 
@@ -715,6 +546,7 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentRef.setInput('event', editingEvent);
     fixture.componentRef.setInput('hasZoomCapableConnection', true);
     fixture.detectChanges();
+    openMeetingMenu();
 
     const button = fixture.nativeElement.querySelector('[data-testid="calendar-form-add-zoom-meeting"]');
     expect(button).toBeTruthy();
@@ -726,6 +558,7 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentRef.setInput('event', editingEvent);
     fixture.componentRef.setInput('hasZoomCapableConnection', true);
     fixture.detectChanges();
+    openMeetingMenu();
     const emitted: string[] = [];
     fixture.componentInstance.addMeeting.subscribe((p: string) => emitted.push(p));
 
@@ -739,76 +572,11 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.componentRef.setInput('hasTeamsCapableConnection', true);
     fixture.componentRef.setInput('hasZoomCapableConnection', true);
     fixture.detectChanges();
+    openMeetingMenu();
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-teams-meeting"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-zoom-meeting"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-connect-microsoft-prompt"]')).toBeNull();
-  });
-
-  it('shows an "Add Zoom meeting" button in create mode when hasZoomCapableConnection is true', () => {
-    fixture.componentRef.setInput('hasZoomCapableConnection', true);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-zoom-meeting"]')).toBeTruthy();
-  });
-
-  it('clicking "Add Zoom meeting" in create mode shows a pending-meeting badge instead of emitting addMeeting', () => {
-    fixture.componentRef.setInput('hasZoomCapableConnection', true);
-    fixture.detectChanges();
-    const addMeetingSpy = vi.fn();
-    fixture.componentInstance.addMeeting.subscribe(addMeetingSpy);
-
-    (fixture.nativeElement.querySelector('[data-testid="calendar-form-add-zoom-meeting"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(addMeetingSpy).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.pendingMeetingProvider()).toBe('zoom');
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-pending-meeting"]')?.textContent).toContain('Zoom');
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-zoom-meeting"]')).toBeNull();
-  });
-
-  it('"Remove" on the pending-meeting badge clears the selection', () => {
-    fixture.componentRef.setInput('hasZoomCapableConnection', true);
-    fixture.detectChanges();
-    fixture.componentInstance.selectPendingMeeting('zoom');
-    fixture.detectChanges();
-
-    (fixture.nativeElement.querySelector('[data-testid="calendar-form-remove-pending-meeting"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.pendingMeetingProvider()).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-zoom-meeting"]')).toBeTruthy();
-  });
-
-  it('includes the selected meetingProvider in the emitted create payload', () => {
-    const spy = vi.fn();
-    fixture.componentInstance.save.subscribe(spy);
-    fixture.componentInstance.form.patchValue({
-      title: 'Standup', startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '09:30'
-    });
-    fixture.componentInstance.selectPendingMeeting('zoom');
-
-    fixture.componentInstance.onSubmit(null);
-
-    expect(spy).toHaveBeenCalledTimes(1);
-    const submission = spy.mock.calls[0][0] as { meetingProvider: string | null; create: { pendingMeetingProvider: string | null } };
-    expect(submission.meetingProvider).toBe('zoom');
-    // Also carried in the create request body itself, so the backend can defer the participant/
-    // guest invite email until the follow-up createMeeting call succeeds and the link exists.
-    expect(submission.create.pendingMeetingProvider).toBe('zoom');
-  });
-
-  it('emits a null meetingProvider when no Teams/Zoom meeting was selected', () => {
-    const spy = vi.fn();
-    fixture.componentInstance.save.subscribe(spy);
-    fixture.componentInstance.form.patchValue({
-      title: 'Standup', startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '09:30'
-    });
-
-    fixture.componentInstance.onSubmit(null);
-
-    const submission = spy.mock.calls[0][0] as { meetingProvider: string | null };
-    expect(submission.meetingProvider).toBeNull();
   });
 
   it('isAutoGeneratedMeetingLink recognizes a Zoom join URL', () => {
@@ -821,7 +589,7 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-teams-meeting-attached"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('app-input[placeholder="Meeting link"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[placeholder="Paste a meeting link"]')).toBeNull();
   });
 
   it('clicking Remove on an auto-generated meeting emits removeMeeting', () => {
@@ -874,12 +642,12 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-teams-meeting-attached"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-input[placeholder="Meeting link"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('input[placeholder="Paste a meeting link"]')).not.toBeNull();
   });
 
   it('shows the Attendance section for a past event with an auto-generated Teams meeting', () => {
     fixture.componentRef.setInput('event', {
-      ...editingEvent, endDate: '2020-01-01T10:00:00Z', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc'
+      ...editingEvent, isOrganizer: true, endDate: '2020-01-01T10:00:00Z', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc'
     });
     fixture.detectChanges();
 
@@ -895,19 +663,25 @@ describe('CalendarEventFormModalComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).toBeNull();
   });
 
-  it('hides the Attendance section for a past event with no meeting attached', () => {
-    fixture.componentRef.setInput('event', { ...editingEvent, endDate: '2020-01-01T10:00:00Z' });
+  it('shows the Attendance section for a past event with no meeting attached too - it may still have raised incidents', () => {
+    fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true, endDate: '2020-01-01T10:00:00Z' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).not.toBeNull();
+  });
+
+  it('hides the Attendance section from a participant who is not the organizer - the backend refuses them', () => {
+    fixture.componentRef.setInput('event', {
+      ...editingEvent, isOrganizer: false, endDate: '2020-01-01T10:00:00Z', meetingLink: 'https://teams.microsoft.com/l/meetup-join/abc'
+    });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-attendance-section"]')).toBeNull();
   });
 
   it('clears a stale picker selection from a previous session when the modal reopens for a different event', () => {
-    // Simulate leftover picker state from an earlier create-mode session in the same component
-    // instance (the bug: this used to survive into the next open because ngOnChanges only reset
-    // it on the create-mode branch, which edit mode's early `return` never reached).
+    // Leftover picker state from an earlier session in the same component instance.
     fixture.componentInstance.participantIds.set(['stale-emp-1', 'stale-emp-2']);
-    fixture.componentInstance.participants.set([{ id: 'stale-emp-1', name: 'Stale Person' }]);
 
     fixture.componentRef.setInput('open', false);
     fixture.detectChanges();
@@ -916,7 +690,6 @@ describe('CalendarEventFormModalComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.participantIds()).toEqual([]);
-    expect(fixture.componentInstance.participants()).toEqual([]);
   });
 
   it('shows an "Add participants" control in edit mode', () => {
@@ -958,6 +731,7 @@ describe('CalendarEventFormModalComponent', () => {
       participants: [{ employeeId: 'emp-1', employeeName: 'Kiru B', responseStatus: 'pending' }]
     });
     fixture.detectChanges();
+    openParticipants();
     const spy = vi.fn();
     fixture.componentInstance.removeExistingParticipant.subscribe(spy);
 
@@ -969,6 +743,7 @@ describe('CalendarEventFormModalComponent', () => {
   it('shows the viewer as "You · Organizer" when editing their own event', () => {
     fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true, organizerName: 'Nadesh C' });
     fixture.detectChanges();
+    openParticipants();
 
     const organizer = fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]');
     expect(organizer.textContent).toContain('You');
@@ -983,6 +758,7 @@ describe('CalendarEventFormModalComponent', () => {
       participants: [{ employeeId: 'emp-viewer', employeeName: 'Viewer V', responseStatus: 'pending' }]
     });
     fixture.detectChanges();
+    openParticipants();
 
     const organizer = fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]');
     expect(organizer.textContent).toContain('Nadesh C');
@@ -997,6 +773,7 @@ describe('CalendarEventFormModalComponent', () => {
       participants: [{ employeeId: 'emp-1', employeeName: 'Kiru B', responseStatus: 'pending' }]
     });
     fixture.detectChanges();
+    openParticipants();
 
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants-edit"]')).toBeTruthy();
@@ -1004,47 +781,10 @@ describe('CalendarEventFormModalComponent', () => {
   });
 
   describe('guests invited by email', () => {
-    const guestRows = () => Array.from(fixture.nativeElement.querySelectorAll('[data-testid="calendar-form-guest-row"]')) as HTMLElement[];
-
-    it('lists picked guests with a Guest badge in create mode and no "No participants yet" text', () => {
-      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
-      fixture.detectChanges();
-
-      expect(guestRows().length).toBe(1);
-      expect(guestRows()[0].textContent).toContain('vendor@example.com');
-      expect(guestRows()[0].textContent).toContain('Guest');
-      expect(fixture.nativeElement.textContent).not.toContain('No participants yet');
-    });
-
-    it('removes a picked guest with its remove button', () => {
-      fixture.componentInstance.onGuestEmailsChange(['a@x.co', 'b@x.co']);
-      fixture.detectChanges();
-
-      (guestRows()[0].querySelector('[data-testid="calendar-form-guest-remove"]') as HTMLButtonElement).click();
-      fixture.detectChanges();
-
-      expect(fixture.componentInstance.guestEmails()).toEqual(['b@x.co']);
-      expect(guestRows().length).toBe(1);
-    });
-
-    it('sends the picked guests in the create payload', () => {
-      fixture.componentInstance.form.patchValue({
-        title: 'Vendor sync', startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', endTime: '09:30'
-      });
-      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
-      const spy = vi.fn();
-      fixture.componentInstance.save.subscribe(spy);
-
-      fixture.componentInstance.onSubmit(null);
-
-      const { create } = spy.mock.calls[0][0] as { create: { guestEmails: string[] } };
-      expect(create.guestEmails).toEqual(['vendor@example.com']);
-    });
-
     it('counts picked guests as unsaved changes', () => {
       fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
       const spy = vi.fn();
-      fixture.componentInstance.cancel.subscribe(spy);
+      fixture.componentInstance.cancelled.subscribe(spy);
 
       fixture.componentInstance.attemptClose();
 
@@ -1066,6 +806,7 @@ describe('CalendarEventFormModalComponent', () => {
     it('shows the event\'s existing guests when editing and emits removeExistingGuest from the remove button', () => {
       fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: true, guests: [{ email: 'vendor@example.com' }] });
       fixture.detectChanges();
+      openParticipants();
       const spy = vi.fn();
       fixture.componentInstance.removeExistingGuest.subscribe(spy);
 
@@ -1078,6 +819,7 @@ describe('CalendarEventFormModalComponent', () => {
     it('hides the remove button on existing guests from someone who is not the organizer', () => {
       fixture.componentRef.setInput('event', { ...editingEvent, isOrganizer: false, organizerName: 'Nadesh C', guests: [{ email: 'vendor@example.com' }] });
       fixture.detectChanges();
+      openParticipants();
 
       expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-guest"]')).not.toBeNull();
       expect(fixture.nativeElement.querySelector('[data-testid="calendar-form-existing-guest-remove"]')).toBeNull();
@@ -1115,23 +857,13 @@ describe('CalendarEventFormModalComponent', () => {
       expect(guestsSpy).toHaveBeenCalledWith(['vendor@example.com']);
     });
 
-    it('closing the picker while creating keeps the picked guests for the create payload', () => {
-      const guestsSpy = vi.fn();
-      fixture.componentInstance.addGuestsToEvent.subscribe(guestsSpy);
-
-      fixture.componentInstance.onGuestEmailsChange(['vendor@example.com']);
-      fixture.componentInstance.onParticipantPickerClosed();
-
-      expect(guestsSpy).not.toHaveBeenCalled();
-      expect(fixture.componentInstance.guestEmails()).toEqual(['vendor@example.com']);
-    });
   });
 
   describe('add participants dropdown', () => {
-    const trigger = () => fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants"]') as HTMLElement;
+    const trigger = () => fixture.nativeElement.querySelector('[data-testid="calendar-form-add-participants-edit"]') as HTMLElement;
     const panel = () => fixture.nativeElement.querySelector('[data-testid="calendar-participant-dropdown"]') as HTMLElement | null;
 
-    it('opens an inline panel under the button, inside the event form, instead of a second modal or an overlay', () => {
+    it('opens a dropdown under the participants search bar, inside the event form, instead of a second modal', () => {
       expect(panel()).toBeNull();
 
       trigger().click();
@@ -1139,30 +871,54 @@ describe('CalendarEventFormModalComponent', () => {
 
       expect(fixture.componentInstance.participantPickerOpen()).toBe(true);
       expect(panel()).not.toBeNull();
-      expect(panel()!.querySelector('[data-testid="people-picker-search"]')).not.toBeNull();
+      // the search box is the participants field itself, so the dropdown carries no second one
+      expect(panel()!.querySelector('[data-testid="people-picker-search"]')).toBeNull();
       expect(document.querySelectorAll('[role="dialog"]').length).toBe(1);
       expect(panel()!.closest('[role="dialog"]')).not.toBeNull();
-      expect(getComputedStyle(panel()!).position).not.toBe('absolute');
     });
 
-    it('toggles closed when the button is clicked again', () => {
-      trigger().click();
+    it('also opens when the participants box itself is clicked, not only the + button', () => {
+      (fixture.nativeElement.querySelector('[data-testid="calendar-form-participant-box"]') as HTMLElement).click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.participantPickerOpen()).toBe(true);
+      expect(panel()).not.toBeNull();
+    });
+
+    it('shows only the search results from the search bar, and only the added people from the avatar stack', () => {
+      fixture.componentRef.setInput('event', { ...editingEvent, participants: [{ employeeId: 'e1', employeeName: 'Person 1', responseStatus: 'pending' }] });
       fixture.detectChanges();
 
       trigger().click();
       fixture.detectChanges();
+      expect(panel()!.querySelector('app-calendar-participant-picker')).not.toBeNull();
+      expect(panel()!.querySelector('[data-testid="calendar-form-existing-participant"]')).toBeNull();
 
-      expect(fixture.componentInstance.participantPickerOpen()).toBe(false);
-      expect(panel()).toBeNull();
+      openParticipants();
+      expect(panel()!.querySelector('app-calendar-participant-picker')).toBeNull();
+      expect(panel()!.querySelectorAll('[data-testid="calendar-form-existing-participant"]').length).toBe(1);
+    });
+
+    it('stays open while typing in the search bar and keeps the typed text', () => {
+      trigger().click();
+      fixture.detectChanges();
+
+      const input = trigger() as HTMLInputElement;
+      input.value = 'ada';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.participantPickerOpen()).toBe(true);
+      expect(fixture.componentInstance.participantSearch()).toBe('ada');
     });
 
     it('closes when the user clicks elsewhere in the form, keeping the event form open', () => {
       trigger().click();
       fixture.detectChanges();
       const cancelSpy = vi.fn();
-      fixture.componentInstance.cancel.subscribe(cancelSpy);
+      fixture.componentInstance.cancelled.subscribe(cancelSpy);
 
-      (fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]') as HTMLElement).click();
+      (fixture.nativeElement.querySelector('input[placeholder="Add location"]') as HTMLElement).click();
       fixture.detectChanges();
 
       expect(fixture.componentInstance.participantPickerOpen()).toBe(false);
@@ -1173,10 +929,8 @@ describe('CalendarEventFormModalComponent', () => {
       trigger().click();
       fixture.detectChanges();
       const cancelSpy = vi.fn();
-      fixture.componentInstance.cancel.subscribe(cancelSpy);
-      const search = panel()!.querySelector('[data-testid="people-picker-search"]') as HTMLInputElement;
-
-      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.componentInstance.cancelled.subscribe(cancelSpy);
+      trigger().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       fixture.detectChanges();
 
       expect(fixture.componentInstance.participantPickerOpen()).toBe(false);
@@ -1204,7 +958,7 @@ describe('CalendarEventFormModalComponent', () => {
       fixture.detectChanges();
 
       fixture.componentInstance.onParticipantIdsChange(['emp-1']);
-      (fixture.nativeElement.querySelector('[data-testid="calendar-form-organizer"]') as HTMLElement).click();
+      (fixture.nativeElement.querySelector('input[placeholder="Add location"]') as HTMLElement).click();
       fixture.detectChanges();
 
       expect(spy).toHaveBeenCalledWith(['emp-1']);

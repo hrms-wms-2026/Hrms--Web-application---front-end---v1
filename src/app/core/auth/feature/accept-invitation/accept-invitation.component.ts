@@ -1,14 +1,14 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldIconComponent } from '../../../../shared/ui/field-icon/field-icon.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../state/auth.store';
 import { AuthApiService } from '../../data-access/auth-api.service';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { InvitationPreviewDto } from '../../models/dto/invitation-preview.dto';
 import { PublishedLegalDocumentDto } from '../../models/dto/published-legal-document.dto';
+import { safeServerDetail } from '../../../services/error-handler.service';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not load this invitation. Refresh and try again.';
 
@@ -21,7 +21,7 @@ const STATUS_MESSAGES: Record<string, string> = {
 @Component({
   selector: 'app-accept-invitation',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, FieldIconComponent],
   templateUrl: './accept-invitation.component.html',
   styleUrl: './accept-invitation.component.css'
 })
@@ -111,8 +111,9 @@ export class AcceptInvitationComponent implements OnInit {
       if (err.status === 410) {
         return 'This invitation link has expired.';
       }
-      if (err.error && typeof err.error.detail === 'string') {
-        return err.error.detail;
+      const detail = safeServerDetail(err);
+      if (detail) {
+        return detail;
       }
     }
     return NETWORK_FAILURE_MESSAGE;

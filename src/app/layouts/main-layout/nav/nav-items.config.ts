@@ -1,101 +1,49 @@
+import { MANAGES_PEOPLE } from '../../../core/auth/state/permission.service';
 import { NavItem } from './nav-item.model';
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', path: '/dashboard' },
-  { id: 'work', label: 'Work', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
-  {
-    id: 'people', label: 'People', icon: 'people', path: '/people', requiredModules: ['core_hr'],
-    children: [
-      { id: 'people-employees', label: 'Employees', path: '/people/employees', requiredModules: ['core_hr'], requiredPermissions: ['employees:read', 'employees:write'] },
-      { id: 'people-checklists', label: 'Checklists', path: '/people/checklists', requiredModules: ['core_hr'], requiredPermissions: ['employees:read'] },
-      { id: 'people-offboarding', label: 'Offboarding', path: '/people/offboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:read'] },
-      { id: 'people-approvals', label: 'Approvals', path: '/people/approvals', requiredModules: ['core_hr'], requiredPermissions: ['roles:manage'] }
-    ]
-  },
-  { id: 'calendar', label: 'Calendar', icon: 'calendar', path: '/calendar', requiredModules: ['calendar'] },
-  {
-    id: 'time-off', label: 'Time Off', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
-    children: [
-      { id: 'time-off-balances', label: 'Balances', path: '/time-off', exact: true, requiredModules: ['leave'], requiredPermissions: ['leave:read-own', 'leave:read-team'] },
-      { id: 'time-off-entitlements', label: 'Entitlements', path: '/time-off/entitlements', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
-      { id: 'time-off-types', label: 'Leave Types', path: '/time-off/types', requiredModules: ['leave'], requiredPermissions: ['leave:read'] },
-      { id: 'time-off-policies', label: 'Leave Policies', path: '/time-off/policies', requiredModules: ['leave'], requiredPermissions: ['leave:manage'] },
-      { id: 'time-off-team-approvals', label: 'Pending Approvals', path: '/time-off/team-approvals', requiredModules: ['leave'], requiredPermissions: ['leave:approve'] },
-      { id: 'time-off-all-requests', label: 'All Requests', path: '/time-off/all', requiredModules: ['leave'], requiredPermissions: ['leave:read'] }
-    ]
-  },
-  {
-    id: 'time-attendance',
-    label: 'Attendance',
-    icon: 'time-attendance',
-    path: '/attendance/overview',
+  { id: 'work', label: 'Work', description: 'Projects, tasks and boards.', icon: 'work', path: '/work', requiredModules: ['worksync_foundation', 'projects', 'objectives_milestones', 'tasks', 'boards', 'planning_sprints'] },
+  // Requests, alerts and investigations from every module (Work, Leave, Attendance, Monitoring, Calendar):
+  // shown to every employee - each source decides what the caller sees.
+  // Its sub-sidebar is the chat list (people, groups), not child links.
+  { id: 'inbox', label: 'Inbox', description: 'Requests, alerts and chats.', icon: 'inbox', path: '/inbox', customSubSidebar: 'inbox' },
+  { id: 'calendar', label: 'Calendar', description: 'View and manage your calendar.', icon: 'calendar', path: '/calendar', requiredModules: ['calendar'] },
+  // Time Off is one hub page that links to its own screens (2026-10-29 redesign), so it has no sub-sidebar.
+  // Its admin screens live under Settings → Time Off.
+  { id: 'time-off', label: 'Time Off', description: 'Leaves, holidays and time off.', icon: 'time-off', path: '/time-off', requiredModules: ['leave'],
+    requiredPermissions: ['leave:read-own', 'leave:read-team', 'leave:read', 'leave:manage', 'leave:approve', 'calendar:read'] },
+  // Attendance is one page (2026-11-04 redesign), so it has no sub-sidebar. Monitoring lives under Settings → Monitoring.
+  { id: 'time-attendance', label: 'Attendance', description: 'Attendance and work hours.', icon: 'time-attendance', path: '/attendance',
     requiredModules: ['time_attendance'],
-    requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'],
+    requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve'] },
+  // Org holds the organization structure and the people in it, as two sections of one sub-sidebar. The parent needs
+  // either module and shows when any child is reachable (a team manager sees only People, an org admin only
+  // Organization), and the rail opens the first reachable child (NavigationStateService.entryPath).
+  {
+    id: 'organization', label: 'Org', menuTitle: 'Organization & People', description: 'Departments, positions and people.', icon: 'organization', path: '/organization', alsoMatches: ['/people'],
+    requiredModules: ['org_structure', 'core_hr'],
     children: [
-      {
-        id: 'time-attendance-overview',
-        label: 'Overview',
-        path: '/attendance/overview',
-        exact: true,
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
-      },
-      {
-        id: 'time-attendance-tracking',
-        label: 'Time Tracking',
-        path: '/attendance/time-tracking',
-        exact: true,
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own', 'attendance:read', 'attendance:approve']
-      },
-      {
-        // Requests has no standalone page yet - the correction/work-area draft-form state it
-        // needs still lives on TimeTrackingComponent itself (see
-        // docs/superpowers/plans/2026-09-08-attendance-overview-redesign.md, "Deferred"). It
-        // renders that same component via a second route (attendance.routes.ts,
-        // 'time-tracking/requests') so this has its own URL, distinct from "Time Tracking" -
-        // reusing the identical path made both sidebar links highlight together, since
-        // routerLinkActive compares each link's own target against the current URL and can't
-        // tell two identical targets apart.
-        id: 'time-attendance-requests',
-        label: 'Requests',
-        path: '/attendance/time-tracking/requests',
-        exact: true,
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:read-own', 'attendance:write-own']
-      },
-      {
-        id: 'time-attendance-alerts',
-        label: 'Alerts',
-        path: '/attendance/alerts',
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['attendance:approve', 'employees:write', 'exceptions:view']
-      },
-      {
-        id: 'time-attendance-monitoring',
-        label: 'Monitoring',
-        path: '/attendance/monitoring',
-        requiredModules: ['time_attendance'],
-        requiredPermissions: ['monitoring:read']
-      }
+      { id: 'organization-departments', label: 'Departments', description: 'Departments and who heads them.', path: '/organization/departments', section: 'Organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
+      { id: 'organization-positions', label: 'Positions', description: 'Roles, codes and reporting lines.', path: '/organization/positions', section: 'Organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
+      { id: 'people-employees', label: 'Employees', description: 'Everyone in your organization.', path: '/people/employees', section: 'People', requiredModules: ['core_hr'], requiredPermissions: [MANAGES_PEOPLE, 'employees:write'] },
+      { id: 'people-checklists', label: 'Checklists', description: 'Onboarding and offboarding task lists.', path: '/people/checklists', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['checklists:manage'] },
+      { id: 'people-offboarding', label: 'Offboarding', description: 'Employees on their way out.', path: '/people/offboarding', section: 'People', requiredModules: ['core_hr'], requiredPermissions: ['employees:offboard', 'employees:write'] }
     ]
   },
   {
-    id: 'organization', label: 'Org', icon: 'organization', path: '/organization', requiredModules: ['org_structure'], requiredPermissions: ['org:read'],
+    id: 'settings', label: 'Settings', description: 'Company, roles and preferences.', icon: 'settings', path: '/settings',
     children: [
-      { id: 'organization-departments', label: 'Departments', path: '/organization/departments', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] },
-      { id: 'organization-positions', label: 'Positions', path: '/organization/positions', requiredModules: ['org_structure'], requiredPermissions: ['org:read'] }
-    ]
-  },
-  {
-    id: 'settings', label: 'Settings', icon: 'settings', path: '/settings',
-    children: [
-      { id: 'settings-general', label: 'General Settings', path: '/settings/general', requiredPermissions: ['legal_entity:update'] },
-      { id: 'settings-roles', label: 'Roles & Permissions', path: '/settings/roles', requiredPermissions: ['roles:read', 'roles:manage'] },
-      { id: 'settings-notifications', label: 'Notification Settings', path: '/settings/notifications', requiredPermissions: ['notifications:manage'] },
-      { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
-      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
-      { id: 'settings-calendar-connections', label: 'Calendar Sync', path: '/settings/calendar-connections', requiredModules: ['calendar'], requiredPermissions: ['calendar:read'] }
+      { id: 'settings-general', label: 'General Settings', description: 'Company identity, registration and system configuration.', path: '/settings/general', requiredPermissions: ['legal_entity:read', 'legal_entity:update'] },
+      { id: 'settings-roles', label: 'Roles & Permissions', description: 'Manage roles, permissions and access control.', path: '/settings/roles', requiredPermissions: ['roles:read', 'roles:manage'] },
+      { id: 'settings-users', label: 'Users', description: 'Manage team members and their access.', path: '/settings/users', requiredPermissions: ['users:read', 'users:manage'] },
+      { id: 'settings-notifications', label: 'Notification Settings', description: 'Configure email and in-app notifications.', path: '/settings/notifications', requiredPermissions: ['notifications:manage'] },
+      { id: 'settings-bulk-onboarding', label: 'Bulk Onboarding', description: 'Add and invite multiple users at once.', path: '/settings/bulk-onboarding', requiredModules: ['core_hr'], requiredPermissions: ['employees:write'] },
+      { id: 'settings-time-off', label: 'Time Off', description: 'Leave types, policies, entitlements and holidays.', path: '/settings/time-off', requiredModules: ['leave'], requiredPermissions: ['leave:read', 'leave:manage'] },
+      { id: 'settings-clock-in-policy', label: 'Clock-in Policy', description: 'When and where people can clock in.', path: '/settings/clock-in-policy', requiredModules: ['time_attendance'], requiredPermissions: ['attendance:read'] },
+      { id: 'settings-monitoring', label: 'Monitoring', description: 'Activity and presence monitoring.', path: '/settings/monitoring', requiredModules: ['time_attendance'], requiredPermissions: ['monitoring:read'] },
+      { id: 'settings-calendar-connections', label: 'Calendar Sync', description: 'Connect Outlook and Google calendars.', path: '/settings/calendar-connections', requiredModules: ['calendar'], requiredPermissions: ['calendar:read'] },
+      { id: 'settings-support', label: 'Support', description: 'Raise and follow up tickets with CROWNUS support.', path: '/settings/support', requiredPermissions: ['support:manage'] }
       // Audit log is intentionally not listed yet.
     ]
   }

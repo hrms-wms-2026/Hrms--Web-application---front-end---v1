@@ -11,6 +11,7 @@ import {
   viewChild
 } from '@angular/core';
 import * as L from 'leaflet';
+import { LeafletStylesComponent } from './leaflet-styles.component';
 
 export interface OfficeLocationChange {
   address: string;
@@ -39,6 +40,7 @@ const SEARCH_DEBOUNCE_MS = 500;
 @Component({
   selector: 'app-office-location-picker',
   standalone: true,
+  imports: [LeafletStylesComponent],
   templateUrl: './office-location-picker.component.html',
   styleUrl: './office-location-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

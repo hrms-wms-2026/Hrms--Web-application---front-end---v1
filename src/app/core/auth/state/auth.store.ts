@@ -7,14 +7,17 @@ import { LoginRequestDto } from '../models/dto/login-request.dto';
 import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-request.dto';
 import { LegalDocumentDto } from '../models/dto/legal-document.dto';
 import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
+import { clearSingleHostTenant } from '../utils/single-host-tenant';
 import { toCurrentUserViewModel } from '../utils/auth.mapper';
+import { safeServerDetail } from '../../services/error-handler.service';
 
-type AuthState = {
+interface AuthState {
   authenticated: boolean;
   email: string | null;
   employeeId: string | null;
   permissions: string[];
   activeModules: string[];
+  managesPeople: boolean;
   legalAcceptanceRequired: boolean;
   pendingLegalDocuments: LegalDocumentDto[];
   workspaceSlug: string | null;
@@ -22,7 +25,7 @@ type AuthState = {
   continueUrl: string | null;
   loading: boolean;
   error: string | null;
-};
+}
 
 const initialState: AuthState = {
   authenticated: false,
@@ -30,6 +33,7 @@ const initialState: AuthState = {
   employeeId: null,
   permissions: [],
   activeModules: [],
+  managesPeople: false,
   legalAcceptanceRequired: false,
   pendingLegalDocuments: [],
   workspaceSlug: null,
@@ -39,21 +43,10 @@ const initialState: AuthState = {
   error: null
 };
 
+const UNREACHABLE_MESSAGE = 'We could not reach the server. Check your connection and try again.';
+
 function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'error' in err) {
-    const body = (err as { error?: { detail?: string; title?: string; message?: string; errors?: Record<string, string[] | string> } }).error;
-    if (body?.detail) return body.detail;
-    if (body?.message) return body.message;
-    if (body?.title && body.title !== 'One or more validation errors occurred.') return body.title;
-    if (body?.errors) {
-      const firstKey = Object.keys(body.errors)[0];
-      if (firstKey && body.errors[firstKey]) {
-        const val = body.errors[firstKey];
-        return Array.isArray(val) ? val[0] : val;
-      }
-    }
-  }
-  return fallback;
+  return safeServerDetail(err) ?? fallback;
 }
 
 export const AuthStore = signalStore(
@@ -71,6 +64,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -79,7 +73,15 @@ export const AuthStore = signalStore(
           loading: false
         });
       } catch (err) {
-        patchState(store, { loading: false, error: extractErrorMessage(err, 'Invalid email or password.') });
+        // status 0 = the request never reached the API (network/TLS/CORS), so the credentials
+        // were never checked - same convention as exchange() below.
+        const isUnreachable = err instanceof HttpErrorResponse && err.status === 0;
+        patchState(store, {
+          loading: false,
+          error: isUnreachable
+            ? UNREACHABLE_MESSAGE
+            : extractErrorMessage(err, 'Invalid email or password.')
+        });
         throw err;
       }
     },
@@ -95,6 +97,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -128,6 +131,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -155,6 +159,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -171,7 +176,7 @@ export const AuthStore = signalStore(
 
     /**
      * Tenant-host-only: consumes the one-time code from continue_url and, on success, is the call
-     * that actually establishes onevo_session/onevo_csrf - login()/acceptLegalDocuments() never do
+     * that actually establishes crownus_session/crownus_csrf - login()/acceptLegalDocuments() never do
      * this themselves anymore once redirectRequired is true.
      */
     async exchangeSession(code: string): Promise<void> {
@@ -185,6 +190,7 @@ export const AuthStore = signalStore(
           employeeId: view.employeeId,
           permissions: view.permissions,
           activeModules: view.activeModules,
+          managesPeople: view.managesPeople,
           legalAcceptanceRequired: view.legalAcceptanceRequired,
           pendingLegalDocuments: view.pendingLegalDocuments,
           workspaceSlug: view.workspaceSlug,
@@ -201,7 +207,7 @@ export const AuthStore = signalStore(
         patchState(store, {
           loading: false,
           error: isUnreachable
-            ? 'Could not reach the tenant workspace. Check your local HTTPS certificate and try again.'
+            ? UNREACHABLE_MESSAGE
             : extractErrorMessage(err, 'This sign-in link is invalid or has expired. Please sign in again.')
         });
         throw err;
@@ -216,6 +222,7 @@ export const AuthStore = signalStore(
         // Session is treated as gone client-side regardless of logout call outcome.
         return false;
       } finally {
+        clearSingleHostTenant();
         patchState(store, initialState);
       }
     },

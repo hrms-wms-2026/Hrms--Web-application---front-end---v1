@@ -1,0 +1,485 @@
+<!-- app-modal's own header (icon tile + title) is hidden by this component's CSS; its title still names
+     the dialog for screen readers. The header below follows the reference design: title on the left,
+     period / project / module dropdowns and the close button on the right. -->
+<app-modal
+  [open]="open()"
+  title="My team progress"
+  size="2xl"
+  panelClass="team-progress-detail"
+  (closed)="close()"
+>
+  <div class="tp-head">
+    <div class="tp-head__row">
+      <div class="tp-head__title">
+        <h2>My team progress</h2>
+        <p>Detailed view of task weightage distribution</p>
+      </div>
+      <div class="tp-head__controls" data-testid="tp-filters">
+        @if (summary()) {
+          <app-select
+            class="tp-compact-select tp-compact-select--period"
+            data-testid="tp-period-filter"
+            ariaLabel="Period"
+            icon="status"
+            size="sm"
+            [searchable]="false"
+            [options]="periodOptions"
+            [value]="period()"
+            (valueChange)="setPeriod($event)"
+          />
+          <app-select
+            class="tp-compact-select"
+            data-testid="tp-project-filter"
+            ariaLabel="Project"
+            icon="filter"
+            size="sm"
+            [options]="projectOptions()"
+            [value]="projectFilter()"
+            (valueChange)="setProject($event)"
+          />
+          <app-select
+            class="tp-compact-select tp-compact-select--wide"
+            data-testid="tp-module-filter"
+            ariaLabel="Milestone"
+            icon="module"
+            size="sm"
+            [options]="moduleOptions()"
+            [value]="moduleFilter()"
+            (valueChange)="setModule($event)"
+          />
+          @if (hasFilters()) {
+            <button type="button" class="tp-link-button" data-testid="tp-clear-filters" (click)="clearFilters()">Clear</button>
+          }
+        }
+        <button type="button" class="tp-close" aria-label="Close" data-testid="tp-close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (summary(); as data) {
+    <div class="tp-body" data-testid="team-progress-detail">
+      <div class="tp-overview">
+        <!-- Stat tiles + total -->
+        @if (overview(); as ov) {
+          <div class="tp-stats" [class.tp-stats--period]="isPeriod()" data-testid="tp-overview-tiles">
+            @for (tile of ov.tiles; track tile.meta.key) {
+              <div class="tp-stat" [class]="'tp-stat--' + tile.meta.key" [attr.data-testid]="'tp-tile-' + tile.meta.key">
+                <div class="min-w-0">
+                  <div class="tp-stat__value">{{ formatHours(tile.hours) }} <small>h</small></div>
+                  <div class="tp-stat__label">
+                    {{ tile.meta.label }}
+                    <span class="tp-stat__pct">{{ tile.percent }}</span>
+                    @if (tile.taskCount !== null) {
+                      <span class="tp-stat__count" [attr.data-testid]="'tp-tile-count-' + tile.meta.key">· {{ tile.taskCount }} {{ tile.taskCount === 1 ? 'task' : 'tasks' }}</span>
+                    }
+                  </div>
+                </div>
+                <span class="tp-stat__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    @switch (tile.meta.key) {
+                      @case ('completed') { <path d="m7 12.5 3.2 3.2L17 9" /> }
+                      @case ('inProgress') { <path d="M12 7v5l3 2" /> }
+                      @case ('notStarted') { <path d="M10 8v8M14 8v8" /> }
+                      @default { <path d="M8 6h8M8 18h8M9 6c0 4 6 4 6 6s-6 2-6 6M15 6c0 4-6 4-6 6" /> }
+                    }
+                  </svg>
+                </span>
+              </div>
+            }
+            <!-- Overdue is as of today whatever the period, and follows the project / module filter. -->
+            @if (overdueHoursView(); as od) {
+              <div class="tp-stat tp-stat--overdue" data-testid="tp-tile-overdue">
+                <div class="min-w-0">
+                  <div class="tp-stat__value">{{ formatHours(od.total) }} <small>h</small></div>
+                  <div class="tp-stat__label">
+                    Overdue
+                    <span class="tp-stat__count" data-testid="tp-tile-count-overdue">· {{ od.taskCount }} {{ od.taskCount === 1 ? 'task' : 'tasks' }}</span>
+                  </div>
+                </div>
+                <span class="tp-stat__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 7v6M12 16.5v.5" /></svg>
+                </span>
+              </div>
+            }
+            <div class="tp-total" data-testid="tp-tile-total">
+              <div class="tp-total__value" data-testid="tp-tile-allocated">{{ formatHours(ov.totalHours) }} <small>h</small></div>
+              <div class="tp-total__label" data-testid="tp-total-label">{{ ov.totalLabel }}</div>
+              <div class="tp-total__meta">
+                <span data-testid="tp-completion">{{ ov.completion }}</span> completed · {{ ov.taskCount }} {{ ov.taskCount === 1 ? 'task' : 'tasks' }}
+              </div>
+            </div>
+          </div>
+        } @else if (periodSummary().status === 'error') {
+          <app-error-state message="Couldn't load this period's progress." [retryable]="true" retryLabel="Retry" (retry)="retryPeriod()" />
+        } @else {
+          <div class="tp-stats tp-stats--period" aria-busy="true" data-testid="tp-period-loading">
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <div class="tp-stat tp-stat--skeleton"></div>
+            }
+          </div>
+        }
+
+        <!-- Panels: Status Distribution | Weekly completion (wide), then projects and Team members (full width) -->
+        <div class="tp-panels">
+          <section class="tp-panel" aria-labelledby="tp-dist-heading" data-testid="tp-distribution">
+            <h3 id="tp-dist-heading" class="tp-panel__title">Status Distribution</h3>
+            @if (overview(); as ov) {
+              <div class="tp-dist">
+                <app-dashboard-donut
+                  class="tp-donut"
+                  data-testid="tp-donut"
+                  [size]="statusDonutPx"
+                  [strokeWidth]="5"
+                  [slices]="donutSlices()"
+                  [ariaLabel]="donutLabel()"
+                  [(active)]="hoveredPart"
+                >
+                  <div class="tp-donut__center" aria-hidden="true">
+                    <strong>{{ formatHours(ov.totalHours) }} h</strong>
+                    <span>{{ isPeriod() ? periodCaption() : 'Total' }}</span>
+                  </div>
+                </app-dashboard-donut>
+                <app-donut-key
+                  class="tp-legend"
+                  rowTestId="tp-legend-row"
+                  ariaLabel="Status distribution"
+                  [showValue]="true"
+                  [slices]="donutSlices()"
+                  [(active)]="hoveredPart"
+                />
+              </div>
+              <ul class="tp-notes" data-testid="tp-overview-notes">
+                @if (donutHasOverdue()) {
+                  <li data-testid="tp-legend-note">In progress and Not started show the hours without the overdue tasks.</li>
+                }
+                @if (ov.overTaskedHours > 0) {
+                  <li data-testid="tp-note-overtasked">Task estimates exceed the allocation by {{ formatHours(ov.overTaskedHours) }} h (over-tasked).</li>
+                }
+                @if (ov.unestimatedTaskCount > 0) {
+                  <li data-testid="tp-note-unestimated">{{ ov.unestimatedTaskCount }} {{ ov.unestimatedTaskCount === 1 ? 'task has' : 'tasks have' }} no estimate and add no hours.</li>
+                }
+                <li data-testid="tp-note-risk">
+                  <span class="font-semibold" [class.text-[var(--color-widget-maroon)]]="modulesAtRisk() > 0">{{ modulesAtRisk() }}</span>
+                  {{ modulesAtRisk() === 1 ? 'module' : 'modules' }} at risk (overdue work in the subtree).
+                </li>
+              </ul>
+            } @else {
+              <div class="tp-skeleton tp-skeleton--donut" aria-hidden="true"></div>
+            }
+          </section>
+
+          <section class="tp-panel tp-panel--weekly" aria-labelledby="tp-weekly-heading" data-testid="tp-weekly" data-section="weekly">
+            <div class="tp-panel__head">
+              <h3 id="tp-weekly-heading" class="tp-panel__title">Weekly completion</h3>
+              <span class="tp-tag" data-testid="tp-weekly-range">{{ weeklyRange() }}</span>
+            </div>
+            @if (weekly().status === 'error') {
+              <div class="tp-inline-error" role="alert" data-testid="tp-weekly-error">
+                Couldn't load the weekly completion.
+                <button type="button" class="tp-text-button" data-testid="tp-weekly-retry" (click)="retryWeekly()">Retry</button>
+              </div>
+            } @else if (weekly().status === 'ready' && weekly().data; as wc) {
+              <app-weekly-completion-chart
+                class="tp-weekly__chart"
+                data-testid="tp-weekly-chart"
+                [weeks]="wc.weeks"
+                [allocatedHours]="wc.allocatedHours"
+                [granularity]="wc.granularity ?? 'week'"
+                [rangeLabel]="weeklyRange()"
+              />
+              @if (wc.undatedCompletedHours > 0) {
+                <p class="tp-footnote" data-testid="tp-weekly-undated">
+                  Plus {{ formatHours(wc.undatedCompletedHours) }} h ({{ wc.undatedCompletedTaskCount }}
+                  {{ wc.undatedCompletedTaskCount === 1 ? 'task' : 'tasks' }}) completed without a completion date, not shown in any {{ wc.granularity === 'day' ? 'day' : 'week' }}.
+                </p>
+              }
+            } @else {
+              <div class="tp-skeleton tp-weekly__chart" aria-busy="true" data-testid="tp-weekly-loading"></div>
+            }
+          </section>
+
+
+          @if (!isPeriod() && chartProjects().length > 0) {
+            <!-- Projects as stacked hour bars, the same chart as the card (2026-11-06): hovering a colour reads that
+                 project's hours in that state; an at-risk project has a red border and says why. -->
+            <section class="tp-panel tp-panel--projects" aria-labelledby="tp-projects-heading" data-testid="tp-projects" data-section="projects">
+              <h3 id="tp-projects-heading" class="tp-panel__title">Projects</h3>
+              <app-project-hours-chart
+                class="tp-project-chart"
+                heading="Allocated across these projects"
+                [projects]="chartProjects()"
+                [overdueByProject]="summary()?.overdueByProject ?? []"
+              />
+            </section>
+          }
+
+          <section class="tp-panel tp-panel--employees" aria-labelledby="tp-ov-emp-heading" data-testid="tp-ov-employees" data-section="members">
+            <div class="tp-panel__head">
+              <h3 id="tp-ov-emp-heading" class="tp-panel__title">Team members</h3>
+              <span class="tp-members-tools">
+              <span class="tp-view-switch" role="group" aria-label="Team members view" data-testid="tp-members-view">
+                <button type="button" [class.tp-view-switch--on]="membersView() === 'chart'" [attr.aria-pressed]="membersView() === 'chart'" data-testid="tp-members-view-chart" (click)="setMembersView('chart')">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M4 12h16M4 18h7" /></svg>
+                  Chart
+                </button>
+                <button type="button" [class.tp-view-switch--on]="membersView() === 'table'" [attr.aria-pressed]="membersView() === 'table'" data-testid="tp-members-view-table" (click)="setMembersView('table')">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14" /></svg>
+                  Table
+                </button>
+              </span>
+              <label class="tp-search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input
+                  type="search"
+                  placeholder="Search employee..."
+                  aria-label="Search employees"
+                  data-testid="tp-ov-employee-search"
+                  [value]="overviewEmployeeSearchText()"
+                  (input)="onOverviewEmployeeSearch($any($event.target).value)"
+                />
+              </label>
+              @if (time().data) {
+                <button type="button" class="tp-text-button" data-testid="tp-members-export" (click)="exportMembers()">Export CSV</button>
+              }
+              </span>
+            </div>
+            <p class="tp-muted tp-members-note">
+              Estimated task hours by status, then planned and worked time ({{ timePeriodLabel().toLowerCase() }}). More workload is not better performance.
+            </p>
+            @if (overviewEmployees().status === 'error') {
+              <div class="tp-inline-error" role="alert">
+                Couldn't load employees.
+                <button type="button" class="tp-text-button" (click)="retryOverviewEmployees()">Retry</button>
+              </div>
+            } @else if (membersView() === 'chart') {
+              <div class="tp-barlist" data-testid="tp-members-chart" [style.--tp-barlist-color]="memberTabColor()" [attr.aria-busy]="overviewEmployees().status === 'loading'">
+                <div class="tp-barlist__head">
+                  <div class="tp-barlist__tabs" role="group" aria-label="Rank team members by" data-testid="tp-members-tabs">
+                    @for (tab of memberTabs; track tab.key) {
+                      <button
+                        type="button"
+                        class="tp-barlist__tab"
+                        [class.tp-barlist__tab--on]="membersTab() === tab.key"
+                        [attr.aria-pressed]="membersTab() === tab.key"
+                        [attr.data-testid]="'tp-members-tab-' + tab.key"
+                        (click)="setMembersTab(tab.key)"
+                      >
+                        {{ tab.label }}
+                      </button>
+                    }
+                  </div>
+                  <span class="tp-barlist__metric" aria-hidden="true">Hours</span>
+                </div>
+                @if (overviewEmployees().data) {
+                  <ul class="tp-barlist__rows">
+                    @for (bar of memberBars(); track bar.row.employeeId) {
+                      <li
+                        class="tp-barlist__row"
+                        [attr.data-testid]="'tp-member-bar-' + bar.row.employeeId"
+                        [attr.aria-label]="bar.row.displayName + ': ' + formatHours(bar.row.completedHours) + ' h completed, ' + formatHours(bar.row.inProgressHours) + ' h in progress, ' + formatHours(bar.row.notStartedHours) + ' h not started, ' + formatHours(bar.row.totalHours) + ' h total'"
+                      >
+                        <span class="tp-barlist__bar" aria-hidden="true" [style.width.%]="bar.width"></span>
+                        <span class="tp-person tp-barlist__who">
+                          <span class="tp-avatar" aria-hidden="true">{{ initials(bar.row.displayName) }}</span>
+                          <span class="truncate" [title]="bar.row.displayName">{{ bar.row.displayName }}</span>
+                        </span>
+                        <span class="tp-barlist__worked" [title]="timePeriodLabel() + ': worked time'">
+                          @if (memberTime().get(bar.row.employeeId); as w) {
+                            {{ timeHours(w.clockedMinutes) }} worked
+                          }
+                        </span>
+                        <span class="tp-barlist__value">{{ formatHours(bar.hours) }} h</span>
+                      </li>
+                    } @empty {
+                      <li class="tp-mini-table__empty">No employees match.</li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="tp-mini-table__empty">Loading employees...</p>
+                }
+              </div>
+            } @else {
+              <div class="tp-mini-table-wrap" [attr.aria-busy]="overviewEmployees().status === 'loading'">
+                <table class="tp-mini-table">
+                  <caption class="sr-only">Team members: estimated task hours and planned / worked time</caption>
+                  <thead>
+                    <tr class="tp-members-groups">
+                      <td></td>
+                      <th scope="colgroup" colspan="4">Estimated task hours</th>
+                      <th scope="colgroup" colspan="4" class="tp-members-time">{{ timePeriodLabel() }}</th>
+                    </tr>
+                    <tr>
+                      <th scope="col">Person</th>
+                      <th scope="col">Completed</th>
+                      <th scope="col">In progress</th>
+                      <th scope="col">Not started</th>
+                      <th scope="col">Total</th>
+                      <th scope="col" class="tp-members-time">Planned</th>
+                      <th scope="col">Worked</th>
+                      <th scope="col">Unscheduled</th>
+                      <th scope="col">Capacity used</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @if (overviewEmployees().data; as page) {
+                      @for (row of page.items; track row.employeeId) {
+                        <tr [attr.data-testid]="'tp-ov-employee-' + row.employeeId">
+                          <td>
+                            <span class="tp-person">
+                              <span class="tp-avatar" aria-hidden="true">{{ initials(row.displayName) }}</span>
+                              <span class="truncate" [title]="row.displayName">{{ row.displayName }}</span>
+                            </span>
+                          </td>
+                          <td>{{ formatHours(row.completedHours) }} h</td>
+                          <td>{{ formatHours(row.inProgressHours) }} h</td>
+                          <td>{{ formatHours(row.notStartedHours) }} h</td>
+                          <td class="font-semibold">{{ formatHours(row.totalHours) }} h</td>
+                          @if (memberTime().get(row.employeeId); as w) {
+                            <td class="tp-members-time">{{ plannerEnabled() ? timeHours(w.plannedMinutes) : '—' }}</td>
+                            <td>{{ timeHours(w.clockedMinutes) }}</td>
+                            <td>{{ plannerEnabled() ? timeHours(w.unscheduledMinutes) : '—' }}</td>
+                            <td
+                              [class.tp-over]="w.utilizationPercent !== null && w.utilizationPercent > 100"
+                              [attr.title]="w.expectedMinutes === null ? 'No working hours set for their legal entity' : 'Planned of ' + timeHours(w.expectedMinutes) + ' expected'"
+                            >
+                              {{ w.utilizationPercent === null ? '—' : w.utilizationPercent + '%' }}
+                            </td>
+                          } @else {
+                            <td class="tp-members-time" [attr.title]="time().status === 'ready' ? 'No planned or worked time in this period' : null">—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                          }
+                        </tr>
+                      } @empty {
+                        <tr><td colspan="9" class="tp-mini-table__empty">No employees match.</td></tr>
+                      }
+                    } @else {
+                      <tr><td colspan="9" class="tp-mini-table__empty">Loading employees...</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+            @if (overviewEmployees().status !== 'error' && overviewEmployees().data; as page) {
+              <div class="tp-panel__foot">
+                <span class="tp-muted" title="A task assigned to several people counts its full estimate for each of them, so employee totals can add up to more than the team total." data-testid="tp-ov-shared-note">
+                  Shared tasks count for each assignee
+                </span>
+                <nav class="tp-mini-pager" aria-label="Team members pages" data-testid="tp-ov-employee-pager">
+                  <span data-testid="tp-ov-employee-range">{{ rangeLabel(page) }}</span>
+                  <button type="button" aria-label="Previous employees" data-testid="tp-ov-employee-prev" [disabled]="!page.hasPrevious || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber - 1)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
+                  </button>
+                  <button type="button" aria-label="Next employees" data-testid="tp-ov-employee-next" [disabled]="!page.hasNext || overviewEmployees().status === 'loading'" (click)="goToOverviewEmployeePage(page.pageNumber + 1)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+                  </button>
+                </nav>
+              </div>
+            }
+          </section>
+        </div>
+
+        <!-- Overdue (always as of today, whatever the period); hidden when nothing is overdue. -->
+        @if (overdueTasks().length > 0) {
+          <section class="tp-panel tp-panel--overdue" aria-labelledby="tp-overdue-heading" data-testid="tp-overdue" data-section="overdue">
+            <div class="tp-panel__head">
+              <h3 id="tp-overdue-heading" class="tp-panel__title">Overdue tasks</h3>
+              <span class="tp-tag" data-testid="tp-overdue-count">
+                @if (hasFilters()) {
+                  {{ overdueTasks().length }} of the {{ data.overdueTasks.length }} listed match the filter
+                } @else {
+                  {{ overdueTasks().length }} of {{ overdueTotal() }}
+                }
+              </span>
+            </div>
+            @if (overdueHoursView(); as ov) {
+              <p class="tp-overdue-total" data-testid="tp-overdue-hours">
+                <strong>{{ formatHours(ov.total) }} h</strong> overdue{{ ov.listedOnly ? ' (listed tasks)' : '' }}
+                @if (ov.unestimated > 0) {
+                  <span class="tp-muted">· {{ ov.unestimated }} {{ ov.unestimated === 1 ? 'task' : 'tasks' }} without an estimate</span>
+                }
+              </p>
+              <div class="tp-overdue-body">
+                <div class="tp-overdue-chart">
+                  <p class="tp-overdue-chart__title">By project</p>
+                  <app-dashboard-donut
+                    class="tp-overdue-pie"
+                    data-testid="tp-overdue-pie"
+                    ariaLabel="Overdue hours by project"
+                    [size]="overduePiePx"
+                    [slices]="overdueSlices(ov.slices)"
+                    [(active)]="hoveredOverdue"
+                  >
+                    <p class="tp-overdue-pie__center"><strong>{{ formatHours(ov.total) }} h</strong><span>overdue</span></p>
+                  </app-dashboard-donut>
+                  <app-donut-key
+                    class="tp-overdue-legend"
+                    rowTestId="tp-overdue-slice"
+                    ariaLabel="Overdue hours by project"
+                    [showValue]="true"
+                    [slices]="overdueSlices(ov.slices)"
+                    [(active)]="hoveredOverdue"
+                  />
+                </div>
+                <div class="tp-overdue-table-wrap">
+                  <table class="tp-mini-table tp-overdue-table" data-testid="tp-overdue-list">
+                    <caption class="sr-only">Overdue tasks with their allocated hours</caption>
+                    <colgroup>
+                      <col class="tp-ot-col--n" />
+                      <col />
+                      <col class="tp-ot-col--who" />
+                      <col class="tp-ot-col--hours" />
+                      <col class="tp-ot-col--due" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Task</th>
+                        <th scope="col">Assignee</th>
+                        <th scope="col" class="tp-ot-num">Allocated</th>
+                        <th scope="col" class="tp-ot-num">Overdue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (task of overdueTasks(); track task.taskId; let i = $index) {
+                        <tr>
+                          <td class="tp-ot-index">{{ i + 1 }}</td>
+                          <td>
+                            <button type="button" class="tp-overdue-task" [attr.data-testid]="'tp-overdue-' + task.taskId" [title]="task.shortId + ' ' + task.title" (click)="openTask(task)">
+                              <span class="tp-short-id">{{ task.shortId }}</span>
+                              <span class="truncate">{{ task.title }}</span>
+                            </button>
+                          </td>
+                          <td>
+                            <span class="tp-ot-who" [title]="assigneeNames(task.assignees) || 'Unassigned'">
+                              @if (task.assignees.length) {
+                                <span class="tp-avatar" aria-hidden="true">{{ initials(task.assignees[0].displayName) }}</span>
+                              }
+                              <span class="truncate" [class.tp-muted]="!task.assignees.length">{{ assigneeNames(task.assignees) || 'Unassigned' }}</span>
+                            </span>
+                          </td>
+                          <td class="tp-ot-num" data-testid="tp-overdue-task-hours">{{ overdueTaskHours(task) }}</td>
+                          <td class="tp-ot-num">
+                            <span class="tp-ot-due">
+                              <span class="tp-overdue__days">{{ task.daysOverdue }}d late</span>
+                              <span class="tp-ot-date">{{ task.dueDate | date: 'd MMM y' }}</span>
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </section>
+        }
+      </div>
+    </div>
+  } @else {
+    <app-empty-state title="No team progress yet" description="The Team Progress data hasn't loaded, or you don't lead any milestones." />
+  }
+</app-modal>

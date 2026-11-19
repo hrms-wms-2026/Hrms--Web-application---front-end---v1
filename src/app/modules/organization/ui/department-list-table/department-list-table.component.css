@@ -1,54 +1,4 @@
-.dlt-table-container {
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
-  background: var(--color-surface);
-  overflow: visible;
-  position: relative;
-}
-
-@media (max-width: 768px) {
-  .dlt-table-container {
-    overflow-x: auto;
-  }
-}
-
-.dlt-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.8125rem;
-}
-
-.dlt-table th {
-  padding: 0.75rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-secondary);
-  background: var(--color-surface-secondary);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.dlt-table td {
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
-  color: var(--color-text-primary);
-}
-
-.dlt-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.dlt-table tbody tr:hover {
-  background: color-mix(in srgb, var(--color-surface-secondary) 40%, transparent);
-}
-
-.dlt-tr--inactive {
-  opacity: 0.65;
-}
-
+/* Table shell comes from shared app-data-table; only cell content is styled here. */
 .dlt-name {
   font-weight: 600;
 }
@@ -77,19 +27,13 @@
 }
 
 .dlt-badge--active {
-  background: color-mix(in srgb, #10b981 12%, transparent);
-  color: #059669;
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
 }
 
 .dlt-badge--inactive {
   background: color-mix(in srgb, var(--color-text-secondary) 15%, transparent);
   color: var(--color-text-secondary);
-}
-
-.dlt-th-actions,
-.dlt-td-actions {
-  text-align: right;
-  width: 60px;
 }
 
 .dlt-action-wrapper {
@@ -126,7 +70,7 @@
   border-radius: 8px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-popover);
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -160,10 +104,4 @@
 
 .dlt-menu-item--danger:hover {
   background: color-mix(in srgb, var(--color-danger-text, #ef4444) 10%, transparent);
-}
-
-.dlt-empty-td {
-  text-align: center;
-  padding: 2.5rem 1rem;
-  color: var(--color-text-secondary);
 }

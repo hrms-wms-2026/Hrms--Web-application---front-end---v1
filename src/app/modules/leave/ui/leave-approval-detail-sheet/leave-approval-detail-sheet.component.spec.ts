@@ -12,10 +12,10 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     approvers: [
       { approverEmployeeId: 'mgr-1', approverName: 'Priya Nair', sequenceOrder: 1, status: 'pending', comment: null, delegatedFromApproverId: null, decidedAt: null }
     ],
-    infoMessages: [],
     submissionConflictSnapshotJson: JSON.stringify({ warnings: [], calendarConflicts: [], teamAbsencePercent: null }),
     currentWarnings: [{ code: 'blackout_period', message: 'Overlaps a configured blackout period.' }],
-    remainingHours: 17
+    remainingHours: 17,
+    canDecide: true, canChangeDecision: false
   };
 
   beforeEach(async () => {
@@ -93,19 +93,46 @@ describe('LeaveApprovalDetailSheetComponent', () => {
     expect(emitted).toEqual([]);
   });
 
-  it('emits decisionRequested with a request-info action once a question is entered', () => {
-    fixture.detectChanges();
-    const emitted: unknown[] = [];
-    fixture.componentInstance.decisionRequested.subscribe((e: unknown) => emitted.push(e));
-    fixture.componentInstance.openAction('request-info');
-    fixture.componentInstance.infoQuestion.set('Can you share your travel dates?');
-    fixture.componentInstance.onSubmitRequestInfo();
-    expect(emitted).toEqual([{ kind: 'request-info', question: 'Can you share your travel dates?' }]);
-  });
-
   it('hides action buttons when canApprove is false', () => {
     fixture.componentRef.setInput('canApprove', false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="action-approve"]')).toBeNull();
+  });
+
+  it('lets the deciding approver change an approval to a rejection with a reason', () => {
+    fixture.componentRef.setInput('canApprove', false);
+    fixture.componentRef.setInput('detail', { ...detail, status: 'approved', canChangeDecision: true });
+    fixture.detectChanges();
+    const change = fixture.nativeElement.querySelector('[data-testid="action-change"]') as HTMLButtonElement;
+    expect(change.textContent).toContain('Change to Rejected');
+    change.click();
+    fixture.detectChanges();
+    const confirm = fixture.nativeElement.querySelector('[data-testid="confirm-change"]') as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    fixture.componentInstance.changeComment.set('Team is short that week');
+    fixture.detectChanges();
+    const emitted: unknown[] = [];
+    fixture.componentInstance.decisionRequested.subscribe((e: unknown) => emitted.push(e));
+    confirm.click();
+    expect(emitted).toEqual([{ kind: 'change-to-reject', reason: 'Team is short that week' }]);
+  });
+
+  it('offers Change to Approved on a rejected request and hides the section when it can no longer change', () => {
+    fixture.componentRef.setInput('canApprove', false);
+    fixture.componentRef.setInput('detail', { ...detail, status: 'rejected', canChangeDecision: true });
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('[data-testid="action-change"]') as HTMLElement).textContent).toContain('Change to Approved');
+
+    fixture.componentRef.setInput('detail', { ...detail, status: 'rejected', canChangeDecision: false });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="change-decision"]')).toBeNull();
+  });
+
+  it('names the waiting approver even when the detail arrives after the sheet first renders', () => {
+    fixture.componentRef.setInput('detail', null);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('detail', detail);
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('[data-testid="approver-state"]') as HTMLElement).textContent).toContain('Waiting for Priya Nair');
   });
 });

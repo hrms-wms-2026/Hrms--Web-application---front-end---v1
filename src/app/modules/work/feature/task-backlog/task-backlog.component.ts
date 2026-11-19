@@ -21,7 +21,7 @@ import { Sprint, SprintStatus } from '../../models/sprint.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownComponent, WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { TaskFormModalComponent } from '../../ui/task-form-modal/task-form-modal.component';
@@ -34,6 +34,7 @@ import { BulkActionResultModalComponent, BulkResultSummary } from '../../../../s
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { TaskAssigneeDropdownComponent } from '../../ui/task-assignee-dropdown/task-assignee-dropdown.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { safeServerDetail } from '../../../../core/services/error-handler.service';
 
 const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -7 },
@@ -43,21 +44,42 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
 @Component({
   selector: 'app-task-backlog',
   standalone: true,
-  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent, ConfirmModalComponent, BulkActionResultModalComponent, WorkDropdownComponent, TaskAssigneeDropdownComponent, DatePickerComponent, OverlayModule],
+  imports: [SprintTabComponent, SprintFormComponent, TaskTableComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, SprintStartDialogComponent, SprintCompleteDialogComponent, MoveTasksToSprintDialogComponent, BulkActionBarComponent, ConfirmModalComponent, BulkActionResultModalComponent, WorkDropdownComponent, TaskAssigneeDropdownComponent, DatePickerComponent, OverlayModule],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-backlog__toolbar">
+        @if (searchExpanded()) {
+          <div class="ui-field ui-field--sm w-80" data-testid="backlog-search">
+            <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg></span>
+            <input type="search" placeholder="Search work items…" [value]="searchTerm()"
+              (input)="onSearchChanged($any($event.target).value)"
+              class="ui-field__control" />
+            <span class="ui-field__trailing"><button type="button" data-testid="backlog-search-close" aria-label="Close search" title="Close search"
+              class="ui-field__icon-btn h-5 w-5 text-base leading-none"
+              (click)="toggleSearch()">&times;</button></span>
+          </div>
+        } @else {
+          <button type="button" data-testid="backlog-search-toggle" aria-label="Search backlog" title="Search backlog"
+            class="inline-flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+            (click)="toggleSearch()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+          </button>
+        }
         <app-task-assignee-avatar-filter
           [members]="projectRosterMembers()"
           [currentEmployeeId]="currentEmployee.id()"
           [selected]="assigneeFilter()"
           (selectionChanged)="setAssigneeFilter($event)"
         />
-        <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
-        @if (modules().length > 0) {
+        <app-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
+        @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="secondary" (pressed)="openCreateTask()">Create work item</app-button>
         }
-        @if (modules().length > 0) {
+        @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="createSprintOpen.set(true)">Create Sprint</app-button>
         }
       </div>
@@ -314,6 +336,7 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       [taskId]="taskModalTaskId()"
       [prefillModuleId]="modalPrefillModuleId()"
       [prefillSprintId]="modalPrefillSprintId()"
+      [allowMeeting]="true"
       [draftId]="taskModalDraftId()"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
@@ -350,7 +373,7 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   `]
 })
 export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
-  private static readonly OWNER_ONLY_REASON = 'You can only do this for tasks in modules you own.';
+  private static readonly OWNER_ONLY_REASON = 'You can only do this for tasks in milestones you own.';
   protected readonly ownerOnlyReason = TaskBacklogComponent.OWNER_ONLY_REASON;
   protected readonly store = inject(TaskBoardStore);
   protected readonly sprintStore = inject(SprintListStore);
@@ -383,6 +406,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly bulkResult = signal<{ title: string; summary: BulkResultSummary } | null>(null);
   protected readonly deleteConfirmOpen = signal(false);
   protected readonly projectId = signal('');
+  protected readonly isOfficeProject = computed(() => this.projectStore.project()?.systemPurpose === 'office');
   protected readonly expandedSprintId = signal<string | null>(null);
   protected readonly assignableMembers = signal<{ employeeId: string; name: string; avatarUrl: string | null }[]>([]);
   // Everyone on the project, unscoped by which milestones the viewer can reach - the roster
@@ -401,6 +425,8 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly assigneeFilter = signal<string[]>([]);
   protected readonly statusFilter = signal<string[]>([]);
   protected readonly priorityFilter = signal<string[]>([]);
+  protected readonly searchTerm = signal('');
+  protected readonly searchExpanded = signal(false);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly sprintStatusOptions: readonly WorkDropdownOption[] = [
     { value: 'all', label: 'All sprint statuses' },
@@ -472,8 +498,8 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     { value: 'high', label: 'High' },
     { value: 'critical', label: 'Critical' }
   ];
-  protected readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
-    { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
+  protected readonly filterFields = computed<FilterFieldConfig[]>(() => [
+    { key: 'module', label: 'Milestone', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
     { key: 'assignee', label: 'Assignee', icon: 'people', kind: 'multi', options: this.assigneeFilterOptions() },
     { key: 'sprintStatus', label: 'Sprint status', icon: 'sprint', kind: 'single', options: this.sprintStatusOptions, defaultValues: ['all'] },
@@ -562,7 +588,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   // whose module the user owns (backend SprintTaskAssignment/EditTask enforce the same rule).
   protected readonly moveBlockedReason = computed(() =>
     this.selectedTasks().some((task) => !this.ownedObjectiveIds().has(task.objectiveId))
-      ? 'You can only move tasks from modules you own.' : null);
+      ? 'You can only move tasks from milestones you own.' : null);
   protected readonly moveTargets = computed<SprintMoveTarget[]>(() => {
     if (this.selectedTasks().length === 0) return [];
     const order: Record<string, number> = { active: 0, draft: 1 };
@@ -600,12 +626,14 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     const categories = this.categoryFilter();
     const statuses = this.statusFilter();
     const priorities = this.priorityFilter();
+    const search = this.searchTerm().trim().toLowerCase();
     return this.store.tasks().filter((task) =>
       (objectives.length === 0 || objectives.includes(task.objectiveId)) &&
       (categories.length === 0 || categories.includes(task.categoryId)) &&
       (assignees.length === 0 || task.assigneeEmployeeIds.some((id) => assignees.includes(id))) &&
       (statuses.length === 0 || statuses.includes(task.statusId)) &&
-      (priorities.length === 0 || priorities.includes(task.priority))
+      (priorities.length === 0 || priorities.includes(task.priority)) &&
+      (!search || task.title.toLowerCase().includes(search) || task.shortId.toLowerCase().includes(search))
     );
   }
 
@@ -685,7 +713,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       this.clearSelection();
       await this.reloadTasks();
     } catch (error: unknown) {
-      const detail = (error as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(error);
       this.bulkError.set(detail || 'The bulk action failed. Nothing was changed.');
     } finally {
       this.bulkSubmitting.set(false);
@@ -728,7 +756,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       this.clearSelection();
       await this.reloadTasks();
     } catch (err: unknown) {
-      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(err);
       this.moveError.set(detail || 'Failed to move the selected tasks.');
     } finally {
       this.movingTasks.set(false);
@@ -750,7 +778,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
       this.clearSelection();
       await this.reloadTasks();
     } catch (error: unknown) {
-      const detail = (error as { error?: { detail?: string } })?.error?.detail;
+      const detail = safeServerDetail(error);
       this.bulkError.set(detail || 'Failed to move the selected tasks to the backlog.');
     }
   }
@@ -787,6 +815,16 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
   protected setAssigneeFilter(ids: string[]): void { this.clearSelection(); this.assigneeFilter.set(ids); }
   protected setSprintStatusFilter(value: string): void { this.sprintStatusFilter.set(value as 'all' | SprintStatus); }
+
+  protected onSearchChanged(term: string): void {
+    this.clearSelection();
+    this.searchTerm.set(term);
+  }
+
+  protected toggleSearch(): void {
+    this.searchExpanded.update((expanded) => !expanded);
+    if (!this.searchExpanded()) this.onSearchChanged('');
+  }
 
   protected onFilterFieldChanged(event: { key: string; values: string[] }): void {
     this.clearSelection();

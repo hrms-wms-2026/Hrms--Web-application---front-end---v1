@@ -1,56 +1,77 @@
-<app-modal [open]="open" size="xl" title="Leave Request Detail" (closed)="onClose()">
-  @if (detail) {
-    <div class="lad-body">
-      <header class="lad-header">
-        <h3>{{ detail.employeeName }}</h3>
-        <p>{{ detail.leaveTypeName }} &middot; {{ detail.startAt | date:'yyyy-MM-dd HH:mm' }} - {{ detail.endAt | date:'yyyy-MM-dd HH:mm' }} &middot; {{ detail.totalHours }} hours</p>
-        <p class="lad-muted">{{ currentApproverState() }}</p>
+<app-modal [open]="open" size="lg" title="Leave request" (closed)="onClose()">
+  @if (loadError) {
+    <p class="lad-error" data-testid="detail-load-error">{{ loadError }}</p>
+  } @else if (loading && !detail) {
+    <p class="lad-muted">Loading...</p>
+  } @else if (detail) {
+    <div class="lad-body scroll-fade">
+      <header class="lad-hero">
+        <span class="lad-avatar" aria-hidden="true">{{ initials(detail.employeeName) }}</span>
+        <div class="lad-hero__text">
+          <h3>{{ detail.employeeName }}</h3>
+          <p>{{ detail.leaveTypeName }}</p>
+        </div>
+        <span class="lad-pill" [class]="'lad-pill lad-pill--' + detail.status" data-testid="detail-status">{{ statusLabel(detail.status) }}</span>
       </header>
+      <p class="lad-state" data-testid="approver-state">{{ currentApproverState() }}</p>
 
-      <section class="lad-section">
-        <h4>Balance</h4>
-        <p>Remaining after this request: <strong>{{ detail.remainingHours }}</strong> hours ({{ detail.paidHours }} paid, {{ detail.unpaidHours }} unpaid)</p>
-        @if (teamCoverageLabel(); as coverage) {
-          <p class="lad-muted" data-testid="team-coverage">{{ coverage }}</p>
-        }
+      <section class="lad-facts" aria-label="Request summary">
+        <div class="lad-fact lad-fact--wide">
+          <span>When</span>
+          @if (isSameDay()) {
+            <strong>{{ dayLabel(detail.startAt) }}</strong>
+            <small>{{ detail.startAt | date:'HH:mm' }} – {{ detail.endAt | date:'HH:mm' }}</small>
+          } @else {
+            <strong>{{ dayLabel(detail.startAt) }} → {{ dayLabel(detail.endAt) }}</strong>
+            <small>{{ detail.startAt | date:'HH:mm' }} – {{ detail.endAt | date:'HH:mm' }}</small>
+          }
+        </div>
+        <div class="lad-fact">
+          <span>Hours</span>
+          <strong>{{ detail.totalHours }}</strong>
+          <small>{{ detail.paidHours }} paid · {{ detail.unpaidHours }} unpaid</small>
+        </div>
+        <div class="lad-fact">
+          <span>Balance after</span>
+          <strong>{{ detail.remainingHours }}</strong>
+          <small>hours left</small>
+        </div>
       </section>
+      @if (teamCoverageLabel(); as coverage) {
+        <p class="lad-muted" data-testid="team-coverage">{{ coverage }}</p>
+      }
 
       @if (detail.reason) {
         <section class="lad-section">
           <h4>Reason</h4>
-          <p>{{ detail.reason }}</p>
+          <blockquote class="lad-reason">{{ detail.reason }}</blockquote>
         </section>
       }
 
       <section class="lad-section">
-        <h4>Approvers</h4>
-        <ul class="lad-approvers">
-          @for (approver of detail.approvers; track approver.approverEmployeeId) {
-            <li>
-              {{ approver.approverName || ('Approver ' + approver.sequenceOrder) }} &middot; {{ approver.status }}
-              @if (approver.comment) { &mdash; "{{ approver.comment }}" }
-              @if (approver.delegatedFromApproverId) { (delegated from {{ approver.delegatedFromApproverId }}) }
+        <h4>Approval trail</h4>
+        <ol class="lad-trail">
+          @for (approver of detail.approvers; track $index) {
+            <li class="lad-trail__item" [class]="'lad-trail__item lad-trail__item--' + approver.status">
+              <span class="lad-trail__dot" aria-hidden="true"></span>
+              <div class="lad-trail__body">
+                <div class="lad-trail__head">
+                  <strong>{{ approver.approverName || ('Approver ' + approver.sequenceOrder) }}</strong>
+                  <span class="lad-tag" [class]="'lad-tag lad-tag--' + approver.status">{{ approverStatusLabel(approver.status) }}</span>
+                  @if (approver.decidedAt) { <time class="lad-time">{{ approver.decidedAt | date:'yyyy-MM-dd HH:mm' }}</time> }
+                </div>
+                @if (approver.comment) { <p class="lad-trail__comment">{{ approver.comment }}</p> }
+                @if (approver.delegatedFromApproverId) { <p class="lad-muted">Covering for another approver</p> }
+              </div>
             </li>
           }
-        </ul>
+        </ol>
       </section>
 
-      @if (submissionSnapshot(); as snapshot) {
-        <section class="lad-section">
-          <h4>Conflicts at submission</h4>
-          @if (snapshot.warnings.length === 0 && snapshot.calendarConflicts.length === 0) {
-            <p class="lad-muted">No conflicts recorded at submission.</p>
-          } @else {
-            @for (warning of snapshot.warnings; track warning.code) { <p class="lad-warning">{{ warning.message }}</p> }
-            @for (conflict of snapshot.calendarConflicts; track conflict.title) { <p class="lad-muted">{{ conflict.title }} ({{ conflict.source }})</p> }
-          }
-        </section>
-      }
-
       <section class="lad-section">
-        <h4>Current</h4>
-        @if (detail.currentWarnings.length === 0) {
-          <p class="lad-muted">No current warnings.</p>
+        <h4>Checks</h4>
+        @if (hasNoChecks()) {
+          <p class="lad-ok">No conflicts or policy warnings.</p>
         } @else {
           @for (warning of detail.currentWarnings; track warning.code) {
             <p class="lad-warning">
@@ -58,59 +79,80 @@
               {{ warning.message }}
             </p>
           }
+          @if (submissionSnapshot(); as snapshot) {
+            @for (warning of snapshot.warnings; track warning.code) { <p class="lad-warning lad-warning--past">At submission: {{ warning.message }}</p> }
+            @for (conflict of snapshot.calendarConflicts; track conflict.title) { <p class="lad-muted">Calendar: {{ conflict.title }} ({{ conflict.source }})</p> }
+          }
         }
       </section>
-
-      @if (detail.infoMessages.length > 0) {
-        <section class="lad-section">
-          <h4>Information requests</h4>
-          @for (message of detail.infoMessages; track message.createdAt) {
-            <p class="lad-info-message">{{ message.message }}</p>
-          }
-        </section>
-      }
-
-      @if (decideError) { <p class="lad-error">{{ decideError }}</p> }
-
-      @if (canApprove) {
-        <div class="lad-actions">
-          @if (activeAction() === null) {
-            <button type="button" data-testid="action-approve" class="lad-primary" (click)="openAction('approve')">Approve</button>
-            <button type="button" class="lad-secondary" (click)="openAction('reject')">Reject</button>
-            <button type="button" class="lad-secondary" (click)="openAction('request-info')">Request more information</button>
-          }
-
-          @if (activeAction() === 'approve') {
-            <div class="lad-action-panel">
-              <label>Comment (optional)<textarea rows="2" [value]="approveComment()" (input)="approveComment.set($any($event.target).value)"></textarea></label>
-              <div class="lad-action-buttons">
-                <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
-                <button type="button" class="lad-primary" [disabled]="deciding" (click)="onSubmitApprove()">{{ deciding ? 'Approving...' : 'Confirm approve' }}</button>
-              </div>
-            </div>
-          }
-
-          @if (activeAction() === 'reject') {
-            <div class="lad-action-panel">
-              <label>Reason (required)<textarea rows="2" [value]="rejectReason()" (input)="rejectReason.set($any($event.target).value)"></textarea></label>
-              <div class="lad-action-buttons">
-                <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
-                <button type="button" class="lad-primary" [disabled]="deciding || !rejectReason().trim()" (click)="onSubmitReject()">{{ deciding ? 'Rejecting...' : 'Confirm reject' }}</button>
-              </div>
-            </div>
-          }
-
-          @if (activeAction() === 'request-info') {
-            <div class="lad-action-panel">
-              <label>Question for the employee (required)<textarea rows="2" [value]="infoQuestion()" (input)="infoQuestion.set($any($event.target).value)"></textarea></label>
-              <div class="lad-action-buttons">
-                <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
-                <button type="button" class="lad-primary" [disabled]="deciding || !infoQuestion().trim()" (click)="onSubmitRequestInfo()">{{ deciding ? 'Sending...' : 'Send question' }}</button>
-              </div>
-            </div>
-          }
-        </div>
-      }
     </div>
+
+    @if (decideError || detail.canChangeDecision || canApprove) {
+      <footer class="lad-footer">
+        @if (decideError) { <p class="lad-error">{{ decideError }}</p> }
+
+        @if (detail.canChangeDecision) {
+          <div class="lad-actions" data-testid="change-decision">
+            @if (activeAction() !== 'change') {
+              <p class="lad-muted">You {{ detail.status }} this request. You can change your decision until the leave starts.</p>
+              <div class="lad-buttons">
+                <button type="button" data-testid="action-change" class="lad-secondary" (click)="openAction('change')">
+                  {{ detail.status === 'approved' ? 'Change to Rejected' : 'Change to Approved' }}
+                </button>
+              </div>
+            } @else {
+              <div class="lad-action-panel">
+                @if (detail.status === 'approved') {
+                  <p class="lad-muted">The {{ detail.paidHours }} paid hours go back to {{ detail.employeeName }}'s balance and they are told it was rejected.</p>
+                  <label>Reason (required)<textarea class="ui-input" rows="2" maxlength="1900" [value]="changeComment()" (input)="changeComment.set($any($event.target).value)"></textarea></label>
+                } @else {
+                  <p class="lad-muted">The {{ detail.paidHours }} paid hours are taken from {{ detail.employeeName }}'s balance again.</p>
+                  <label>Comment (optional)<textarea class="ui-input" rows="2" maxlength="1900" [value]="changeComment()" (input)="changeComment.set($any($event.target).value)"></textarea></label>
+                }
+                <div class="lad-action-buttons">
+                  <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
+                  <button type="button" class="lad-primary" data-testid="confirm-change"
+                    [disabled]="deciding || (detail.status === 'approved' && !changeComment().trim())" (click)="onSubmitChange()">
+                    {{ deciding ? 'Saving...' : (detail.status === 'approved' ? 'Confirm reject' : 'Confirm approve') }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (canApprove) {
+          <div class="lad-actions">
+            @if (activeAction() === null) {
+              <div class="lad-buttons">
+                <button type="button" data-testid="action-approve" class="lad-primary" (click)="openAction('approve')">Approve</button>
+                <button type="button" class="lad-danger" (click)="openAction('reject')">Reject</button>
+              </div>
+            }
+
+            @if (activeAction() === 'approve') {
+              <div class="lad-action-panel">
+                <label>Comment (optional)<textarea class="ui-input" rows="2" [value]="approveComment()" (input)="approveComment.set($any($event.target).value)"></textarea></label>
+                <div class="lad-action-buttons">
+                  <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
+                  <button type="button" class="lad-primary" [disabled]="deciding" (click)="onSubmitApprove()">{{ deciding ? 'Approving...' : 'Confirm approve' }}</button>
+                </div>
+              </div>
+            }
+
+            @if (activeAction() === 'reject') {
+              <div class="lad-action-panel">
+                <label>Reason (required)<textarea class="ui-input" rows="2" [value]="rejectReason()" (input)="rejectReason.set($any($event.target).value)"></textarea></label>
+                <div class="lad-action-buttons">
+                  <button type="button" class="lad-secondary" (click)="closeAction()">Cancel</button>
+                  <button type="button" class="lad-danger" [disabled]="deciding || !rejectReason().trim()" (click)="onSubmitReject()">{{ deciding ? 'Rejecting...' : 'Confirm reject' }}</button>
+                </div>
+              </div>
+            }
+
+          </div>
+        }
+      </footer>
+    }
   }
 </app-modal>

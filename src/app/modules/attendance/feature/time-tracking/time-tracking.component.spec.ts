@@ -87,7 +87,7 @@ const coveredRow: AttendanceHistoryRow = {
   isOverBreakAllowance: false
 };
 
-type StoreMock = {
+interface StoreMock {
   today: ReturnType<typeof signal<AttendanceTodayResponse | null>>;
   todayLoading: ReturnType<typeof signal<boolean>>;
   todayError: ReturnType<typeof signal<string | null>>;
@@ -116,6 +116,10 @@ type StoreMock = {
   todayTimelineLoading: ReturnType<typeof signal<boolean>>;
   todayTimelineError: ReturnType<typeof signal<string | null>>;
   loadTodayTimeline: ReturnType<typeof vi.fn>;
+  monthlySummary: ReturnType<typeof signal<unknown>>;
+  monthlySummaryLoading: ReturnType<typeof signal<boolean>>;
+  monthlySummaryError: ReturnType<typeof signal<string | null>>;
+  loadMonthlySummary: ReturnType<typeof vi.fn>;
   loadToday: ReturnType<typeof vi.fn>;
   loadMyHistory: ReturnType<typeof vi.fn>;
   loadCoveredHistory: ReturnType<typeof vi.fn>;
@@ -170,7 +174,7 @@ type StoreMock = {
   clearWorkAreaPreview: ReturnType<typeof vi.fn>;
   previewWorkAreaChange: ReturnType<typeof vi.fn>;
   submitWorkAreaChangeRequest: ReturnType<typeof vi.fn>;
-};
+}
 
 describe('TimeTrackingComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -213,6 +217,10 @@ describe('TimeTrackingComponent', () => {
       todayTimelineLoading: signal(false),
       todayTimelineError: signal(null),
       loadTodayTimeline: vi.fn(() => Promise.resolve()),
+      monthlySummary: signal(null),
+      monthlySummaryLoading: signal(false),
+      monthlySummaryError: signal(null),
+      loadMonthlySummary: vi.fn(() => Promise.resolve()),
       loadToday: vi.fn(() => Promise.resolve()),
       loadMyHistory: vi.fn(() => Promise.resolve()),
       loadCoveredHistory: vi.fn(() => Promise.resolve()),
@@ -427,51 +435,14 @@ describe('TimeTrackingComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Approvals');
   });
 
-  it('never renders a Team sub-nav toggle - Team attendance and Approvals show together, stacked, with no switcher between them', async () => {
+  it('an approver in Team view finds attendance requests in the Inbox - no embedded approval queue', async () => {
     const { fixture } = await setup({ canViewCoveredEmployees: true }, true, [], [], [], {}, ['attendance:read', 'attendance:approve']);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[aria-label="Team workspace"]')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Team attendance');
-    expect(fixture.nativeElement.textContent).toContain('Approvals');
-  });
-
-  it('shows a count badge only when the corrections queue is non-empty', async () => {
-    const { fixture, store } = await setup({ canViewCoveredEmployees: true }, false, [], [], [], {}, ['attendance:approve']);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).not.toMatch(/Attendance corrections \(0\)/);
-    expect(fixture.nativeElement.textContent).not.toMatch(/Attendance corrections \(\d+\)/);
-
-    store.approvalInbox.set([{ id: 'c1', status: 'pending' } as unknown as AttendanceCorrectionResponse]);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toMatch(/Attendance corrections \(1\)/);
-  });
-
-  it('embeds only the active approval type, not both, on initial entry', async () => {
-    const { fixture } = await setup({ canViewCoveredEmployees: true }, false, [], [], [], {}, ['attendance:approve']);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('app-correction-approvals').length).toBe(1);
-    expect(fixture.nativeElement.querySelectorAll('app-work-area-approvals').length).toBe(0);
-  });
-
-  it('embeds the work-area panel instead when that approval type is selected', async () => {
-    const { fixture } = await setup({ canViewCoveredEmployees: true }, false, [], [], [], {}, ['attendance:approve']);
-    fixture.componentInstance.selectApprovalType('work-area');
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('app-correction-approvals').length).toBe(0);
-    expect(fixture.nativeElement.querySelectorAll('app-work-area-approvals').length).toBe(1);
-  });
-
-  it('shows the device-change tab alongside corrections, work-area, and location', async () => {
-    const { fixture } = await setup({ canViewCoveredEmployees: true }, false, [], [], [], {}, ['attendance:approve']);
-    const component = fixture.componentInstance;
-    expect(component.approvalType()).toBeDefined();
-    component.selectApprovalType('device-change');
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(component.approvalType()).toBe('device-change');
-    expect(fixture.nativeElement.querySelectorAll('app-device-change-approvals').length).toBe(1);
-    expect(fixture.nativeElement.querySelectorAll('app-correction-approvals').length).toBe(0);
+    expect(fixture.nativeElement.querySelector('app-correction-approvals')).toBeNull();
+    const link = fixture.nativeElement.querySelector('[data-testid="attendance-inbox-link"]') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/inbox?source=attendance&tab=requests');
   });
 
   it('formats Today clock-in and clock-out using the backend timezone', async () => {

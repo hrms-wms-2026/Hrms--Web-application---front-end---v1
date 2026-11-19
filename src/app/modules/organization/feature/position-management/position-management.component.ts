@@ -5,30 +5,57 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
-import { SelectComponent } from '../../../../shared/ui/select/select.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
+import { ViewModeOption, ViewModeToggleComponent } from '../../../../shared/ui/view-mode-toggle/view-mode-toggle.component';
 import { LegalEntityStore } from '../../state/legal-entity.store';
 import { PositionStore } from '../../state/position.store';
 import { DepartmentStore } from '../../state/department.store';
 import { RoleStore } from '../../state/role.store';
 import {
   AddCoverageRecordRequest,
+  CoverageCardVisual,
+  CoverageVisualizationResponse,
+  CoverageVisualizationRule,
   CreatePositionRequest,
   POSITION_TEMPLATE_DRAG_MIME_TYPE,
   PositionListItemResponse,
   PositionTemplatePackPositionResponse,
   PositionTemplatePreset,
   PositionTreeNodeResponse,
+  ReportingLineMoveImpact,
+  ReportingLineMoveRequest,
   SetPositionAccessRequest
 } from '../../models/position.model';
-import { PositionTreeNodeComponent, ReparentPositionEvent, TemplateDropOnPositionEvent } from '../../ui/position-tree-node/position-tree-node.component';
+import {
+  POSITION_CARD_HEIGHT,
+  POSITION_CARD_WIDTH,
+  PositionTreeNodeComponent,
+  ReparentPositionEvent,
+  TemplateDropOnPositionEvent,
+  positionChildren,
+  positionKey
+} from '../../ui/position-tree-node/position-tree-node.component';
+import {
+  PEOPLE_CARD_HEIGHT,
+  PEOPLE_CARD_WIDTH,
+  PeopleCardDragEvent,
+  PeopleCardSelectionEvent,
+  PeopleChartNodeComponent
+} from '../../ui/people-chart-node/people-chart-node.component';
+import { TidyTreeComponent } from '../../../../shared/ui/tidy-tree/tidy-tree.component';
+import { ReportingLineReviewModalComponent } from '../../ui/reporting-line-review-modal/reporting-line-review-modal.component';
+import { PositionApiService } from '../../data-access/position-api.service';
+import { PeopleChartTreeNode, PositionPeopleChartNode } from '../../models/position.model';
+import { firstValueFrom } from 'rxjs';
+import { toSafeErrorMessage } from '../../../../core/services/error-handler.service';
 import { PositionListTableComponent } from '../../ui/position-list-table/position-list-table.component';
 import { PositionFormModalComponent, PositionFormSubmitValue } from '../../ui/position-form-modal/position-form-modal.component';
 import { PositionArchiveModalComponent } from '../../ui/position-archive-modal/position-archive-modal.component';
-import { PositionCoverageModalComponent, TargetOccupancyRequest, UpdateCoverageEvent } from '../../ui/position-coverage-modal/position-coverage-modal.component';
-import { PositionAccessModalComponent } from '../../ui/position-access-modal/position-access-modal.component';
+import { PositionCoverageModalComponent, PositionDetailsSaveEvent, TargetOccupancyRequest, UpdateCoverageEvent } from '../../ui/position-coverage-modal/position-coverage-modal.component';
 import { PositionTemplateDrawerComponent, TemplatePositionSelectedEvent } from '../../ui/position-template-drawer/position-template-drawer.component';
 
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { PanZoomCanvasComponent } from '../../../../shared/ui/pan-zoom-canvas/pan-zoom-canvas.component';
 
 @Component({
   selector: 'app-position-management',
@@ -37,16 +64,20 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
     CommonModule,
     BreadcrumbHeaderComponent,
     ButtonComponent,
-    SelectComponent,
+    FilterBarComponent,
+    ViewModeToggleComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     PositionTreeNodeComponent,
+    PeopleChartNodeComponent,
     PositionListTableComponent,
     PositionFormModalComponent,
     PositionArchiveModalComponent,
     PositionCoverageModalComponent,
-    PositionAccessModalComponent,
-    PositionTemplateDrawerComponent
+    PositionTemplateDrawerComponent,
+    ReportingLineReviewModalComponent,
+    PanZoomCanvasComponent,
+    TidyTreeComponent
   ],
   templateUrl: './position-management.component.html',
   styleUrl: './position-management.component.css',
@@ -58,6 +89,170 @@ export class PositionManagementComponent {
 
   readonly legalEntityStore = inject(LegalEntityStore);
   readonly positionStore = inject(PositionStore);
+  private readonly positionApi = inject(PositionApiService);
+
+  /** Tree view sub-mode: the position structure editor, or one card per person holding it. */
+  readonly chartMode = signal<'positions' | 'people'>('positions');
+  readonly peopleNodes = signal<readonly PositionPeopleChartNode[] | null>(null);
+  readonly peopleLoading = signal(false);
+  readonly peopleError = signal<string | null>(null);
+  readonly selectedPeopleIds = signal<ReadonlySet<string>>(new Set<string>());
+  readonly draggingPeople = signal(false);
+  readonly choosingReportingManager = signal(false);
+  readonly reportingMovePreview = signal<ReportingLineMoveImpact | null>(null);
+  readonly reportingMoveRequest = signal<ReportingLineMoveRequest | null>(null);
+  readonly reportingMovePreviewLoading = signal(false);
+  readonly reportingMoveSaving = signal(false);
+  private peopleRequestKey: string | null = null;
+  private selectionAnchorEmployeeId: string | null = null;
+  private coverageRequestSequence = 0;
+
+  /** Coverage focus is independent from whether the management drawer is open. */
+  readonly coverageSelectedPosition = signal<PositionListItemResponse | PositionTreeNodeResponse | null>(null);
+  readonly selectedCoverageEmployeeId = signal<string | null>(null);
+  readonly coverageVisualization = signal<CoverageVisualizationResponse | null>(null);
+  readonly coverageVisualizationLoading = signal(false);
+  readonly coverageVisualizationError = signal<string | null>(null);
+  readonly coverageSelectionActive = computed(() => this.coverageSelectedPosition() !== null);
+
+  readonly positionCoverageVisuals = computed<ReadonlyMap<string, CoverageCardVisual>>(() => {
+    const selected = this.coverageSelectedPosition();
+    if (!selected) return new Map<string, CoverageCardVisual>();
+    return this.buildCoverageVisuals(
+      this.positionStore.allPositionsList().map((position) => position.id),
+      selected.id,
+      (rule, id) => rule.coveredPositionIds.includes(id)
+    );
+  });
+
+  readonly peopleCoverageVisuals = computed<ReadonlyMap<string, CoverageCardVisual>>(() => {
+    const selected = this.coverageSelectedPosition();
+    const selectedEmployeeId = this.selectedCoverageEmployeeId();
+    if (!selected) return new Map<string, CoverageCardVisual>();
+    const rules = this.rulesForCurrentCoverageFocus();
+    return this.buildCoverageVisuals(
+      (this.peopleNodes() ?? []).map((node) => node.id),
+      selectedEmployeeId ? `e:${selectedEmployeeId}` : '',
+      (rule, nodeId) => {
+        const node = (this.peopleNodes() ?? []).find((candidate) => candidate.id === nodeId);
+        if (!node) return false;
+        return node.employeeId
+          ? rule.coveredEmployeeIds.includes(node.employeeId)
+          : rule.coveredPositionIds.includes(node.positionId);
+      },
+      rules
+    );
+  });
+
+  /** Flat nodes (parentId links) -> forest; people first by position then name, vacant last. */
+  readonly peopleTree = computed<readonly PeopleChartTreeNode[]>(() => {
+    const nodes = this.peopleNodes() ?? [];
+    const childrenOf = new Map<string | null, PositionPeopleChartNode[]>();
+    for (const node of nodes) {
+      const key = node.parentId && nodes.some((n) => n.id === node.parentId) ? node.parentId : null;
+      const list = childrenOf.get(key) ?? [];
+      list.push(node);
+      childrenOf.set(key, list);
+    }
+    const order = (a: PositionPeopleChartNode, b: PositionPeopleChartNode): number =>
+      (a.kind === b.kind ? 0 : a.kind === 'vacant' ? 1 : -1) ||
+      a.positionName.localeCompare(b.positionName) ||
+      `${a.firstName ?? ''} ${a.lastName ?? ''}`.localeCompare(`${b.firstName ?? ''} ${b.lastName ?? ''}`);
+    const build = (parentId: string | null): PeopleChartTreeNode[] =>
+      (childrenOf.get(parentId) ?? [])
+        .slice()
+        .sort(order)
+        .map((node) => ({ ...node, children: build(node.id) }));
+    return build(null);
+  });
+
+  readonly peopleFlatOrder = computed<readonly PeopleChartTreeNode[]>(() => {
+    const result: PeopleChartTreeNode[] = [];
+    const visit = (nodes: readonly PeopleChartTreeNode[]): void => {
+      for (const node of nodes) {
+        if (node.kind === 'person' && !node.isPending && node.employeeId) result.push(node);
+        visit(node.children);
+      }
+    };
+    visit(this.peopleTree());
+    return result;
+  });
+
+  readonly selectedBranchRootIds = computed<ReadonlySet<string>>(() => {
+    const selected = this.selectedPeopleIds();
+    const nodesById = new Map(this.peopleFlatOrder().map((node) => [node.employeeId!, node]));
+    const roots = new Set<string>();
+    for (const node of this.peopleFlatOrder()) {
+      if (!node.employeeId || !selected.has(node.employeeId)) continue;
+      const seen = new Set<string>();
+      let parentEmployeeId = node.parentId?.startsWith('e:') ? node.parentId.slice(2) : null;
+      let hasSelectedAncestor = false;
+      while (parentEmployeeId && !seen.has(parentEmployeeId)) {
+        if (selected.has(parentEmployeeId)) {
+          hasSelectedAncestor = true;
+          break;
+        }
+        seen.add(parentEmployeeId);
+        const parent = nodesById.get(parentEmployeeId);
+        parentEmployeeId = parent?.parentId?.startsWith('e:') ? parent.parentId.slice(2) : null;
+      }
+      if (!hasSelectedAncestor) roots.add(node.employeeId);
+    }
+    return roots;
+  });
+
+  /**
+   * Direct reports by manager, following person-to-person lines only ("e:" parents) - the same
+   * structure the move endpoint works on. A vacant seat breaks the line, so people under it are
+   * never pulled into a selection.
+   */
+  private readonly directReportIds = computed<ReadonlyMap<string, readonly string[]>>(() => {
+    const map = new Map<string, string[]>();
+    for (const node of this.peopleFlatOrder()) {
+      const managerId = node.parentId?.startsWith('e:') ? node.parentId.slice(2) : null;
+      if (!managerId) continue;
+      map.set(managerId, [...(map.get(managerId) ?? []), node.employeeId!]);
+    }
+    return map;
+  });
+
+  /** The person plus everyone who reports to them, directly or further down. */
+  private withReports(employeeIds: Iterable<string>): Set<string> {
+    const result = new Set<string>();
+    const pending = [...employeeIds];
+    while (pending.length > 0) {
+      const id = pending.pop()!;
+      if (result.has(id)) continue;
+      result.add(id);
+      pending.push(...(this.directReportIds().get(id) ?? []));
+    }
+    return result;
+  }
+
+  /** Unchecked people reporting to someone who is checked: they stay, with the nearest manager not moving. */
+  readonly stayingPeopleIds = computed<ReadonlySet<string>>(() => {
+    const selected = this.selectedPeopleIds();
+    const staying = new Set<string>();
+    for (const [managerId, reports] of this.directReportIds()) {
+      if (!selected.has(managerId)) continue;
+      for (const id of reports) if (!selected.has(id)) staying.add(id);
+    }
+    return staying;
+  });
+
+  /** Everyone whose manager changes or who moves with their team: the checked people plus those staying behind. */
+  readonly affectedPeopleIds = computed<ReadonlySet<string>>(
+    () => new Set([...this.selectedPeopleIds(), ...this.stayingPeopleIds()])
+  );
+
+  readonly peopleSelectionActive = computed(() => this.selectedPeopleIds().size > 0);
+  readonly peopleAvatarFileIds = computed<ReadonlyMap<string, string | null>>(() =>
+    new Map(
+      (this.peopleNodes() ?? [])
+        .filter((node): node is PositionPeopleChartNode & { employeeId: string } => !!node.employeeId)
+        .map((node) => [node.employeeId, node.avatarFileId] as const)
+    )
+  );
   readonly departmentStore = inject(DepartmentStore);
   readonly roleStore = inject(RoleStore);
 
@@ -91,15 +286,24 @@ export class PositionManagementComponent {
     this.searchExpanded.update((v) => !v);
   }
 
-  readonly departmentOptions = computed(() => {
-    const list = this.departmentStore.allFlatList();
-    const opts: { value: string; label: string }[] = [
-      { value: '', label: 'All departments' }
-    ];
-    for (const d of list) {
-      opts.push({ value: d.id, label: d.name });
+  readonly viewModes: readonly ViewModeOption[] = [
+    { value: 'tree', label: 'Tree', icon: 'tree' },
+    { value: 'list', label: 'List', icon: 'list' }
+  ];
+
+  readonly filterFields = computed<FilterFieldConfig[]>(() => [
+    {
+      key: 'department',
+      label: 'Department',
+      icon: 'department',
+      kind: 'single',
+      options: this.departmentStore.allFlatList().map((d) => ({ value: d.id, label: d.name }))
     }
-    return opts;
+  ]);
+
+  readonly filterValues = computed<Record<string, string[]>>(() => {
+    const deptId = this.positionStore.departmentFilterId();
+    return { department: deptId ? [deptId] : [] };
   });
 
   readonly departmentNameMap = computed<Record<string, string>>(() => {
@@ -118,118 +322,28 @@ export class PositionManagementComponent {
     return map;
   });
 
-  readonly treeZoom = signal(0.7);
-  readonly treePanX = signal(0);
-  readonly treePanY = signal(0);
-  readonly isPanning = signal(false);
+  // ── Chart layout (app-tidy-tree) ─────────────────────────────────────────
+  readonly positionCardWidth = POSITION_CARD_WIDTH;
+  readonly positionCardHeight = POSITION_CARD_HEIGHT;
+  readonly positionChildren = positionChildren;
+  readonly positionKey = positionKey;
+  readonly peopleCardWidth = PEOPLE_CARD_WIDTH;
+  readonly peopleCardHeight = PEOPLE_CARD_HEIGHT;
+  readonly peopleChildren = (node: PeopleChartTreeNode): readonly PeopleChartTreeNode[] => node.children;
+  readonly peopleKey = (node: PeopleChartTreeNode): string => node.id;
+  /** A one-off manager draws the line into the card dashed amber. */
+  readonly isCustomReportingLine = (node: PeopleChartTreeNode): boolean => node.reportingLine === 'custom';
 
-  private startPointerX = 0;
-  private startPointerY = 0;
-  private initialPanX = 0;
-  private initialPanY = 0;
-  private activePointerId: number | null = null;
+  /** The hover card's "Reports to" line: the person above, or null under a vacant seat / at the top. */
+  peopleManagerName(parent: PeopleChartTreeNode | null): string | null {
+    if (!parent || parent.kind !== 'person') return null;
+    return `${parent.firstName ?? ''} ${parent.lastName ?? ''}`.trim();
+  }
 
-  readonly zoomPercentage = computed(() => Math.round(this.treeZoom() * 100));
-  readonly treeTransform = computed(
-    () => `translate(${this.treePanX()}px, ${this.treePanY()}px) scale(${this.treeZoom()})`
+  /** The People chart has data to draw (not loading, failed or empty). */
+  readonly peopleChartReady = computed(
+    () => !(this.peopleLoading() && !this.peopleNodes()) && !this.peopleError() && this.peopleTree().length > 0
   );
-
-  zoomIn(): void {
-    this.treeZoom.update((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10));
-  }
-
-  zoomOut(): void {
-    this.treeZoom.update((z) => Math.max(0.4, Math.round((z - 0.1) * 10) / 10));
-  }
-
-  resetZoom(): void {
-    this.treeZoom.set(0.7);
-    this.treePanX.set(0);
-    this.treePanY.set(0);
-  }
-
-  // Smaller than the +/- button step (0.1) so a single wheel fling doesn't blow through the whole zoom range at once.
-  private static readonly WHEEL_ZOOM_STEP = 0.02;
-
-  onTreeWheel(event: WheelEvent): void {
-    event.preventDefault();
-    if (event.deltaY < 0) {
-      this.treeZoom.update((z) => Math.min(1.5, Math.round((z + PositionManagementComponent.WHEEL_ZOOM_STEP) * 100) / 100));
-    } else if (event.deltaY > 0) {
-      this.treeZoom.update((z) => Math.max(0.4, Math.round((z - PositionManagementComponent.WHEEL_ZOOM_STEP) * 100) / 100));
-    }
-  }
-
-  onCanvasPointerDown(event: PointerEvent): void {
-    if (event.button !== 0) return;
-
-    const target = event.target as HTMLElement | null;
-    if (
-      !target ||
-      target.closest('.ptn-node-card') ||
-      target.closest('.ptn-drop-target-box') ||
-      target.closest('.pm-zoom-controls') ||
-      target.closest('button') ||
-      target.closest('input') ||
-      target.closest('select')
-    ) {
-      return;
-    }
-
-    this.isPanning.set(true);
-    this.startPointerX = event.clientX;
-    this.startPointerY = event.clientY;
-    this.initialPanX = this.treePanX();
-    this.initialPanY = this.treePanY();
-    this.activePointerId = event.pointerId;
-
-    const container = event.currentTarget as HTMLElement;
-    if (container && typeof container.setPointerCapture === 'function') {
-      try {
-        container.setPointerCapture(event.pointerId);
-      } catch {
-        // Safe catch for synthetic test events
-      }
-    }
-  }
-
-  onCanvasPointerMove(event: PointerEvent): void {
-    if (!this.isPanning() || (this.activePointerId !== null && this.activePointerId !== event.pointerId)) {
-      return;
-    }
-
-    const dx = event.clientX - this.startPointerX;
-    const dy = event.clientY - this.startPointerY;
-    this.treePanX.set(this.initialPanX + dx);
-    this.treePanY.set(this.initialPanY + dy);
-  }
-
-  onCanvasPointerUp(event: PointerEvent): void {
-    this.endPanning(event);
-  }
-
-  onCanvasPointerCancel(event: PointerEvent): void {
-    this.endPanning(event);
-  }
-
-  private endPanning(event: PointerEvent): void {
-    if (!this.isPanning()) return;
-
-    this.isPanning.set(false);
-
-    const container = event.currentTarget as HTMLElement;
-    if (container && typeof container.releasePointerCapture === 'function') {
-      try {
-        if (this.activePointerId !== null && container.hasPointerCapture?.(this.activePointerId)) {
-          container.releasePointerCapture(this.activePointerId);
-        }
-      } catch {
-        // Safe catch for synthetic test events
-      }
-    }
-    this.activePointerId = null;
-  }
-
 
   constructor() {
     effect(() => {
@@ -239,18 +353,323 @@ export class PositionManagementComponent {
         this.departmentStore.load(le.id);
       }
     });
+
+    // People data follows the company and every reload of the position structure while the
+    // People chart is active. The Positions chart does not need person-level reporting data.
+    effect(() => {
+      const le = this.selectedLegalEntity();
+      this.positionStore.treeData();
+      if (le && this.hasReadAccess() && this.positionStore.viewMode() === 'tree' && this.chartMode() === 'people') {
+        void this.loadPeopleChart(le.id);
+      }
+    });
   }
 
-  onDepartmentFilterChange(deptId: string): void {
-    this.positionStore.setDepartmentFilter(deptId ? deptId : null);
+  setChartMode(mode: 'positions' | 'people'): void {
+    this.chartMode.set(mode);
+    if (mode !== 'people') this.clearPeopleSelection();
+  }
+
+  async loadPeopleChart(legalEntityId: string): Promise<void> {
+    this.peopleRequestKey = legalEntityId;
+    this.peopleLoading.set(true);
+    this.peopleError.set(null);
+    try {
+      const nodes = await firstValueFrom(this.positionApi.getPeopleChart(legalEntityId));
+      if (this.peopleRequestKey === legalEntityId) {
+        this.peopleNodes.set(nodes);
+      }
+    } catch (err: unknown) {
+      if (this.peopleRequestKey === legalEntityId) {
+        this.peopleError.set(toSafeErrorMessage(err, 'Could not load the people chart.'));
+      }
+    } finally {
+      if (this.peopleRequestKey === legalEntityId) {
+        this.peopleLoading.set(false);
+      }
+    }
+  }
+
+  onPeopleSelected(event: PeopleCardSelectionEvent): void {
+    if (!event.node.employeeId || event.node.isPending) return;
+
+    const employeeId = event.node.employeeId;
+    const current = this.selectedPeopleIds();
+    const additive = event.ctrlKey || event.metaKey;
+
+    // A normal card click is the read-only coverage interaction. The explicit checkbox and
+    // modifier/shift clicks retain the existing reporting-line multi-select behavior.
+    if (!event.fromCheckbox && !additive && !event.shiftKey && !this.choosingReportingManager()) {
+      const position = this.positionStore.allPositionsList().find((candidate) => candidate.id === event.node.positionId);
+      if (position) void this.selectCoverage(position, employeeId);
+      return;
+    }
+
+    if (!this.hasManageAccess()) return;
+
+    // Checking someone checks everyone below them; unchecking does the same in reverse. Untick
+    // individual reports afterwards to leave them where they are - only checked people move.
+    if (event.shiftKey && this.selectionAnchorEmployeeId) {
+      const order = this.peopleFlatOrder().map((node) => node.employeeId!);
+      const anchorIndex = order.indexOf(this.selectionAnchorEmployeeId);
+      const currentIndex = order.indexOf(employeeId);
+      if (anchorIndex >= 0 && currentIndex >= 0) {
+        const range = this.withReports(order.slice(Math.min(anchorIndex, currentIndex), Math.max(anchorIndex, currentIndex) + 1));
+        this.selectedPeopleIds.set(new Set(additive ? [...current, ...range] : range));
+        return;
+      }
+    }
+
+    // The checkbox always toggles; a plain click on the card starts a new selection.
+    if (additive || event.fromCheckbox) {
+      const next = new Set(current);
+      const branch = this.withReports([employeeId]);
+      if (next.has(employeeId)) for (const id of branch) next.delete(id);
+      else for (const id of branch) next.add(id);
+      this.selectedPeopleIds.set(next);
+    } else {
+      this.selectedPeopleIds.set(this.withReports([employeeId]));
+    }
+    this.selectionAnchorEmployeeId = employeeId;
+  }
+
+  clearPeopleSelection(): void {
+    this.selectedPeopleIds.set(new Set<string>());
+    this.selectionAnchorEmployeeId = null;
+    this.draggingPeople.set(false);
+    this.choosingReportingManager.set(false);
+  }
+
+  private rulesForCurrentCoverageFocus(): readonly CoverageVisualizationRule[] {
+    const visualization = this.coverageVisualization();
+    if (!visualization) return [];
+    const employeeId = this.selectedCoverageEmployeeId();
+    if (!employeeId) return visualization.rules;
+    // Unresolved rules remain visible in amber because nobody can honestly claim them yet.
+    return visualization.rules.filter(
+      (rule) => rule.resolutionStatus === 'Unresolved' || rule.resolvedEmployeeId === employeeId
+    );
+  }
+
+  private buildCoverageVisuals(
+    nodeIds: readonly string[],
+    selectedNodeId: string,
+    isCovered: (rule: CoverageVisualizationRule, nodeId: string) => boolean,
+    rules: readonly CoverageVisualizationRule[] = this.rulesForCurrentCoverageFocus()
+  ): ReadonlyMap<string, CoverageCardVisual> {
+    const map = new Map<string, CoverageCardVisual>();
+    const hasAuthoritativeResult = this.coverageVisualization() !== null && !this.coverageVisualizationLoading();
+    for (const id of nodeIds) {
+      map.set(id, {
+        state: id === selectedNodeId ? 'selected' : hasAuthoritativeResult ? 'outside' : 'default',
+        levels: [],
+        accessibleLabel: null
+      });
+    }
+
+    if (!hasAuthoritativeResult) return map;
+    for (const id of nodeIds) {
+      if (id === selectedNodeId) continue;
+      const applicable = rules.filter((rule) => isCovered(rule, id));
+      if (applicable.length === 0) continue;
+      const unresolved = applicable.some((rule) => rule.resolutionStatus === 'Unresolved');
+      const levels = [...new Set(applicable.map((rule) => this.coverageLevelLabel(rule.ownerOrder)))];
+      map.set(id, {
+        state: unresolved ? 'unresolved' : 'resolved',
+        levels,
+        accessibleLabel: `${unresolved ? 'Coverage needs attention' : 'Covered'}, ${levels.join(', ')}`
+      });
+    }
+    return map;
+  }
+
+  coverageLevelLabel(ownerOrder: number): string {
+    return ownerOrder === 1 ? 'Primary' : String(ownerOrder - 1);
+  }
+
+  positionCoverageVisual(positionId: string): CoverageCardVisual {
+    return this.positionCoverageVisuals().get(positionId)
+      ?? { state: 'default', levels: [], accessibleLabel: null };
+  }
+
+  peopleCoverageVisual(nodeId: string): CoverageCardVisual {
+    return this.peopleCoverageVisuals().get(nodeId)
+      ?? { state: 'default', levels: [], accessibleLabel: null };
+  }
+
+  async selectCoverage(
+    position: PositionListItemResponse | PositionTreeNodeResponse,
+    employeeId: string | null = null,
+    openDrawer = this.coverageModalOpen()
+  ): Promise<void> {
+    const legalEntity = this.selectedLegalEntity();
+    if (!legalEntity) return;
+
+    const requestSequence = ++this.coverageRequestSequence;
+    this.coverageSelectedPosition.set(position);
+    this.selectedCoverageEmployeeId.set(employeeId);
+    this.coverageVisualization.set(null);
+    this.coverageVisualizationError.set(null);
+    this.coverageVisualizationLoading.set(true);
+    if (openDrawer) {
+      this.coverageModalOpen.set(true);
+      if (this.hasRoleReadAccess()) void this.roleStore.loadRolesOnly();
+      void Promise.all([
+        this.positionStore.loadCoverage(legalEntity.id, position),
+        this.positionStore.loadCoverageOwnerHolders(legalEntity.id, position.id),
+        this.hasRoleReadAccess() ? this.positionStore.loadAccess(legalEntity.id, position) : Promise.resolve(null)
+      ]);
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.positionApi.getCoverageVisualization(legalEntity.id, position.id)
+      );
+      if (requestSequence === this.coverageRequestSequence) this.coverageVisualization.set(response);
+    } catch (error: unknown) {
+      if (requestSequence === this.coverageRequestSequence) {
+        this.coverageVisualizationError.set(
+          toSafeErrorMessage(error, 'Could not load management coverage for this chart.')
+        );
+      }
+    } finally {
+      if (requestSequence === this.coverageRequestSequence) this.coverageVisualizationLoading.set(false);
+    }
+  }
+
+  clearCoverageSelection(): void {
+    this.coverageRequestSequence++;
+    this.coverageSelectedPosition.set(null);
+    this.selectedCoverageEmployeeId.set(null);
+    this.coverageVisualization.set(null);
+    this.coverageVisualizationError.set(null);
+    this.coverageVisualizationLoading.set(false);
+    this.positionStore.clearCoverage();
+  }
+
+  beginManagerSelection(): void {
+    if (!this.hasManageAccess() || !this.peopleSelectionActive()) return;
+    this.choosingReportingManager.set(true);
+  }
+
+  cancelManagerSelection(): void {
+    this.choosingReportingManager.set(false);
+  }
+
+  onPeopleDragStarted({ node, event }: PeopleCardDragEvent): void {
+    if (!this.hasManageAccess() || !node.employeeId) {
+      event.preventDefault();
+      return;
+    }
+    if (!this.selectedPeopleIds().has(node.employeeId)) {
+      // Dragging an unchecked manager takes their whole team, like checking them would.
+      this.selectedPeopleIds.set(this.withReports([node.employeeId]));
+      this.selectionAnchorEmployeeId = node.employeeId;
+    }
+    this.draggingPeople.set(true);
+    this.choosingReportingManager.set(false);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData(
+        'application/x-crownus-reporting-branches',
+        JSON.stringify([...this.selectedPeopleIds()])
+      );
+    }
+  }
+
+  onPeopleDragEnded(): void {
+    this.draggingPeople.set(false);
+  }
+
+  onPeopleDropped({ node }: PeopleCardDragEvent): void {
+    this.draggingPeople.set(false);
+    if (node.employeeId) void this.previewReportingMove(node.employeeId);
+  }
+
+  onReportingManagerChosen(node: PeopleChartTreeNode): void {
+    if (!node.employeeId) return;
+    void this.previewReportingMove(node.employeeId);
+  }
+
+  private async previewReportingMove(newManagerEmployeeId: string): Promise<void> {
+    const legalEntity = this.selectedLegalEntity();
+    if (!legalEntity || !this.hasManageAccess() || this.selectedPeopleIds().size === 0) return;
+    if (this.selectedPeopleIds().has(newManagerEmployeeId)) {
+      this.notificationService.error('Choose a manager who is not one of the people being moved.');
+      return;
+    }
+
+    const request: ReportingLineMoveRequest = {
+      selectedEmployeeIds: [...this.selectedPeopleIds()],
+      newManagerEmployeeId
+    };
+    this.choosingReportingManager.set(false);
+    this.reportingMovePreviewLoading.set(true);
+    try {
+      const impact = await firstValueFrom(this.positionApi.previewReportingLineMove(legalEntity.id, request));
+      this.reportingMoveRequest.set(request);
+      this.reportingMovePreview.set(impact);
+    } catch (err: unknown) {
+      this.notificationService.error(toSafeErrorMessage(err, 'Could not validate this reporting change.'));
+    } finally {
+      this.reportingMovePreviewLoading.set(false);
+    }
+  }
+
+  closeReportingMoveReview(): void {
+    if (this.reportingMoveSaving()) return;
+    this.reportingMovePreview.set(null);
+    this.reportingMoveRequest.set(null);
+  }
+
+  async confirmReportingMove(reason: string | null): Promise<void> {
+    const legalEntity = this.selectedLegalEntity();
+    const request = this.reportingMoveRequest();
+    if (!legalEntity || !request || this.reportingMoveSaving()) return;
+
+    this.reportingMoveSaving.set(true);
+    try {
+      const impact = await firstValueFrom(this.positionApi.moveReportingLines(
+        legalEntity.id,
+        { ...request, reason }
+      ));
+      this.notificationService.success(
+        `${impact.directRelationshipsChanged} reporting ${impact.directRelationshipsChanged === 1 ? 'line' : 'lines'} updated. Internal team relationships were preserved.`
+      );
+      this.reportingMovePreview.set(null);
+      this.reportingMoveRequest.set(null);
+      this.clearPeopleSelection();
+      await this.loadPeopleChart(legalEntity.id);
+    } catch (err: unknown) {
+      this.notificationService.error(toSafeErrorMessage(err, 'Could not update the reporting lines.'));
+    } finally {
+      this.reportingMoveSaving.set(false);
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.reportingMovePreview() && !this.reportingMoveSaving()) {
+      this.closeReportingMoveReview();
+    } else if (this.choosingReportingManager()) {
+      this.cancelManagerSelection();
+    } else if (this.peopleSelectionActive()) {
+      this.clearPeopleSelection();
+    }
+  }
+
+  onFilterFieldChanged(event: { key: string; values: string[] }): void {
+    if (event.key === 'department') {
+      this.positionStore.setDepartmentFilter(event.values[0] ?? null);
+    }
   }
 
   onSearchChange(query: string): void {
     this.positionStore.setSearch(query);
   }
 
-  onViewModeToggle(mode: 'tree' | 'list'): void {
-    this.positionStore.setViewMode(mode);
+  onViewModeToggle(mode: string): void {
+    this.positionStore.setViewMode(mode === 'list' ? 'list' : 'tree');
   }
 
   onFilterToggle(event?: Event): void {
@@ -592,12 +1011,14 @@ export class PositionManagementComponent {
     if (success) {
       this.notificationService.success(`Position '${pos.name}' archived successfully.`);
       this.closeArchiveModal();
+      this.closeCoverageModal();
+      this.clearCoverageSelection();
     } else {
       this.notificationService.error(this.positionStore.actionError() ?? 'Failed to archive position.');
     }
   }
 
-  async onRestorePosition(pos: PositionListItemResponse): Promise<void> {
+  async onRestorePosition(pos: PositionListItemResponse | PositionTreeNodeResponse): Promise<void> {
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to restore positions.");
       return;
@@ -608,25 +1029,48 @@ export class PositionManagementComponent {
     const success = await this.positionStore.restorePosition(le.id, pos.id);
     if (success) {
       this.notificationService.success(`Position '${pos.name}' restored successfully.`);
+      await this.selectCoverage({ ...pos, isActive: true }, this.selectedCoverageEmployeeId(), true);
     } else {
       this.notificationService.error(this.positionStore.actionError() ?? 'Failed to restore position.');
     }
   }
 
   async openCoverageModal(pos: PositionListItemResponse | PositionTreeNodeResponse): Promise<void> {
-    const le = this.selectedLegalEntity();
-    if (!le) return;
-
-    this.coverageModalOpen.set(true);
-    await Promise.all([
-      this.positionStore.loadCoverage(le.id, pos),
-      this.positionStore.loadCoverageOwnerHolders(le.id, pos.id)
-    ]);
+    await this.selectCoverage(pos, null, true);
   }
 
   closeCoverageModal(): void {
     this.coverageModalOpen.set(false);
-    this.positionStore.clearCoverage();
+    this.positionStore.clearAccess();
+    // Closing management returns to graph-only coverage focus. The selection is cleared from
+    // the legend's Clear action or replaced by selecting another card.
+  }
+
+  async onSavePanelDetails(event: PositionDetailsSaveEvent): Promise<void> {
+    if (!this.hasManageAccess()) {
+      this.notificationService.error("You don't have permission to edit positions.");
+      return;
+    }
+    const legalEntity = this.selectedLegalEntity();
+    const position = this.positionStore.selectedCoveragePosition();
+    if (!legalEntity || !position) return;
+
+    const positionSaved = await this.positionStore.updatePosition(legalEntity.id, position.id, event.details);
+    if (!positionSaved) {
+      this.notificationService.error(this.positionStore.actionError() ?? 'Failed to update position.');
+      return;
+    }
+
+    const refreshedPosition = { ...position, ...event.details };
+    const accessSaved = !event.access
+      || await this.positionStore.setPositionAccess(legalEntity.id, position.id, event.access);
+    await this.selectCoverage(refreshedPosition, this.selectedCoverageEmployeeId(), true);
+    if (!accessSaved) {
+      this.notificationService.warning('Position details were saved, but its system access settings could not be updated.');
+      return;
+    }
+
+    this.notificationService.success(`Position '${event.details.name}' updated successfully.`);
   }
 
   async onAddCoverage(req: AddCoverageRecordRequest): Promise<void> {
@@ -637,6 +1081,7 @@ export class PositionManagementComponent {
     const success = await this.positionStore.addCoverage(le.id, pos.id, req);
     if (success) {
       this.notificationService.success('Management coverage rule added successfully.');
+      await this.refreshCoverageVisualization();
     } else {
       this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to add management coverage rule.');
     }
@@ -650,6 +1095,7 @@ export class PositionManagementComponent {
     const success = await this.positionStore.updateCoverage(le.id, pos.id, event.coverageId, event.payload);
     if (success) {
       this.notificationService.success('Management coverage level updated successfully.');
+      await this.refreshCoverageVisualization();
     } else {
       this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to update management coverage level.');
     }
@@ -663,6 +1109,7 @@ export class PositionManagementComponent {
     const success = await this.positionStore.removeCoverage(le.id, pos.id, coverageId);
     if (success) {
       this.notificationService.success('Management coverage rule removed successfully.');
+      await this.refreshCoverageVisualization();
     } else {
       this.notificationService.error(this.positionStore.coverageError() ?? 'Failed to remove management coverage rule.');
     }
@@ -679,5 +1126,11 @@ export class PositionManagementComponent {
       req.coveredDepartmentId,
       req.excludingRecordId
     );
+  }
+
+  private async refreshCoverageVisualization(): Promise<void> {
+    const position = this.coverageSelectedPosition();
+    if (!position) return;
+    await this.selectCoverage(position, this.selectedCoverageEmployeeId(), this.coverageModalOpen());
   }
 }

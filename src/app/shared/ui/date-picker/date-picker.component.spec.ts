@@ -32,18 +32,18 @@ describe('DatePickerComponent', () => {
     fixture.detectChanges();
   });
 
-  it('renders input with formatted value and calendar icon trigger', () => {
+  it('renders input with formatted value, a leading calendar icon and no calendar button', () => {
     const inputEl = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     expect(inputEl).toBeTruthy();
     expect(inputEl.value).toBe('2026-08-25');
 
-    const trigger = fixture.nativeElement.querySelector('.dp-icon-trigger');
-    expect(trigger).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.ui-field__addon svg')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.ui-field__trailing')).toBeNull();
   });
 
-  it('opens calendar popover when trigger button is clicked', () => {
-    const trigger = fixture.nativeElement.querySelector('.dp-icon-trigger') as HTMLButtonElement;
-    trigger.click();
+  it('opens calendar popover when the field is clicked', () => {
+    const field = fixture.nativeElement.querySelector('.dp-input-wrapper') as HTMLElement;
+    field.click();
     fixture.detectChanges();
 
     const popover = document.body.querySelector('.dp-popover');
@@ -51,8 +51,16 @@ describe('DatePickerComponent', () => {
     expect(popover!.textContent).toContain('August 2026');
   });
 
+  it('opens from the keyboard with Enter on the field', () => {
+    const inputEl = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    fixture.detectChanges();
+    expect(inputEl.getAttribute('aria-expanded')).toBe('true');
+    expect(document.body.querySelector('.dp-popover')).toBeTruthy();
+  });
+
   it('navigates months with previous and next buttons', () => {
-    const trigger = fixture.nativeElement.querySelector('.dp-icon-trigger') as HTMLButtonElement;
+    const trigger = fixture.nativeElement.querySelector('.dp-input-wrapper') as HTMLElement;
     trigger.click();
     fixture.detectChanges();
 
@@ -71,7 +79,7 @@ describe('DatePickerComponent', () => {
   });
 
   it('changes month when scrolling mouse wheel on popover', () => {
-    const trigger = fixture.nativeElement.querySelector('.dp-icon-trigger') as HTMLButtonElement;
+    const trigger = fixture.nativeElement.querySelector('.dp-input-wrapper') as HTMLElement;
     trigger.click();
     fixture.detectChanges();
 
@@ -118,7 +126,7 @@ describe('DatePickerComponent', () => {
       toJSON: () => {}
     } as DOMRect);
 
-    const trigger = fixture.nativeElement.querySelector('.dp-icon-trigger') as HTMLButtonElement;
+    const trigger = fixture.nativeElement.querySelector('.dp-input-wrapper') as HTMLElement;
     trigger.click();
     fixture.detectChanges();
 
@@ -132,7 +140,7 @@ describe('DatePickerComponent', () => {
   });
 
   it('selects a date when a day cell is clicked', () => {
-    const trigger = fixture.nativeElement.querySelector('.dp-icon-trigger') as HTMLButtonElement;
+    const trigger = fixture.nativeElement.querySelector('.dp-input-wrapper') as HTMLElement;
     trigger.click();
     fixture.detectChanges();
 
@@ -159,7 +167,7 @@ describe('DatePickerComponent', () => {
   });
 
   it('clears date when clear link is clicked', () => {
-    const trigger = fixture.nativeElement.querySelector('.dp-icon-trigger') as HTMLButtonElement;
+    const trigger = fixture.nativeElement.querySelector('.dp-input-wrapper') as HTMLElement;
     trigger.click();
     fixture.detectChanges();
 

@@ -26,54 +26,54 @@ const KIND_LABELS: Record<EmployeeUpcomingKind, string> = {
           </span>
 
           <dl class="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-3">
-            <dt class="text-slate-500">Date</dt>
-            <dd class="font-medium text-slate-900" data-testid="upcoming-detail-date">{{ dateLine() }}</dd>
+            <dt class="text-[var(--color-text-secondary)]">Date</dt>
+            <dd class="font-medium text-[var(--color-text-primary)]" data-testid="upcoming-detail-date">{{ dateLine() }}</dd>
 
-            <dt class="text-slate-500">Time</dt>
-            <dd class="font-medium text-slate-900" data-testid="upcoming-detail-time">{{ timeLine() }}</dd>
+            <dt class="text-[var(--color-text-secondary)]">Time</dt>
+            <dd class="font-medium text-[var(--color-text-primary)]" data-testid="upcoming-detail-time">{{ timeLine() }}</dd>
 
             @if (it.kind === 'calendar') {
               @if (it.detail) {
-                <dt class="text-slate-500">Location</dt>
-                <dd class="text-slate-900">{{ it.detail }}</dd>
+                <dt class="text-[var(--color-text-secondary)]">Location</dt>
+                <dd class="text-[var(--color-text-primary)]">{{ it.detail }}</dd>
               }
               @if (safeMeetingLink(); as link) {
-                <dt class="text-slate-500">Meeting link</dt>
-                <dd><a class="break-all font-semibold text-blue-600 hover:underline" [href]="link" target="_blank" rel="noopener noreferrer" data-testid="upcoming-detail-link">Join meeting</a></dd>
+                <dt class="text-[var(--color-text-secondary)]">Meeting link</dt>
+                <dd><a class="break-all font-semibold text-[var(--color-accent)] hover:underline" [href]="link" target="_blank" rel="noopener noreferrer" data-testid="upcoming-detail-link">Join meeting</a></dd>
               }
               @if (it.organizerName) {
-                <dt class="text-slate-500">Organizer</dt>
-                <dd class="text-slate-900">{{ it.organizerName }}</dd>
+                <dt class="text-[var(--color-text-secondary)]">Organizer</dt>
+                <dd class="text-[var(--color-text-primary)]">{{ it.organizerName }}</dd>
               }
               @if (it.participants?.length) {
-                <dt class="text-slate-500">Participants</dt>
+                <dt class="text-[var(--color-text-secondary)]">Participants</dt>
                 <dd>
                   <ul class="flex flex-wrap gap-1.5" data-testid="upcoming-detail-participants">
                     @for (name of it.participants; track $index) {
-                      <li class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">{{ name }}</li>
+                      <li class="rounded-full bg-[var(--color-surface-secondary)] px-2.5 py-0.5 text-xs font-medium text-[var(--color-text-primary)]">{{ name }}</li>
                     }
                   </ul>
                 </dd>
               }
             }
             @if (it.kind === 'leave') {
-              <dt class="text-slate-500">Status</dt>
-              <dd class="font-medium text-emerald-700">Approved</dd>
+              <dt class="text-[var(--color-text-secondary)]">Status</dt>
+              <dd class="font-medium text-[var(--color-success-text)]">Approved</dd>
               @if (it.hours !== null && it.hours !== undefined) {
-                <dt class="text-slate-500">Duration</dt>
-                <dd class="text-slate-900" data-testid="upcoming-detail-hours">{{ hours(it.hours) }}</dd>
+                <dt class="text-[var(--color-text-secondary)]">Duration</dt>
+                <dd class="text-[var(--color-text-primary)]" data-testid="upcoming-detail-hours">{{ hours(it.hours) }}</dd>
               }
             }
             @if (it.kind === 'release' && it.detail) {
-              <dt class="text-slate-500">Project</dt>
-              <dd class="text-slate-900">{{ it.detail }}</dd>
+              <dt class="text-[var(--color-text-secondary)]">Project</dt>
+              <dd class="text-[var(--color-text-primary)]">{{ it.detail }}</dd>
             }
           </dl>
 
           @if (it.kind === 'calendar' && it.description) {
-            <div class="border-t border-slate-100 pt-3">
-              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Description</p>
-              <p class="whitespace-pre-line text-slate-700" data-testid="upcoming-detail-description">{{ it.description }}</p>
+            <div class="border-t border-[var(--color-border)] pt-3">
+              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">Description</p>
+              <p class="whitespace-pre-line text-[var(--color-text-primary)]" data-testid="upcoming-detail-description">{{ it.description }}</p>
             </div>
           }
         </div>
@@ -119,7 +119,7 @@ export class UpcomingItemDetailComponent {
   }
 
   kindClass(kind: EmployeeUpcomingKind): string {
-    return kind === 'leave' ? 'bg-emerald-50 text-emerald-700' : kind === 'release' ? 'bg-violet-50 text-violet-700' : 'bg-blue-50 text-blue-700';
+    return kind === 'leave' ? 'bg-[var(--color-success-subtle)] text-[var(--color-success-text)]' : kind === 'release' ? 'bg-[var(--color-cat-violet-subtle)] text-[var(--color-cat-violet)]' : 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]';
   }
 }
 

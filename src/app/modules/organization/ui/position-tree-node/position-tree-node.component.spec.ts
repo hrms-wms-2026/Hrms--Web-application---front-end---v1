@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import { By } from '@angular/platform-browser';
 import { PositionTreeNodeComponent } from './position-tree-node.component';
 import { PositionListTableComponent } from '../position-list-table/position-list-table.component';
 import { POSITION_TEMPLATE_DRAG_MIME_TYPE, OccupantPreviewItem, PositionListItemResponse, PositionTreeNodeResponse } from '../../models/position.model';
@@ -94,7 +93,20 @@ describe('PositionTreeNodeComponent', () => {
     const text = cardText(fixture);
 
     expect(text).not.toContain('Unassigned');
-    expect(text).toContain('Occupied');
+    expect(text).not.toContain('Occupied');
+    expect(fixture.nativeElement.querySelector('.ptn-status-pill')).toBeNull();
+  });
+
+  it('shows only a yellow vacancy pill when seats are open', async () => {
+    const fixture = await createComponent(makeNode({ positionType: 'pooled', maxOccupancy: 4, assignedCount: 1 } as Partial<PositionTreeNodeResponse>));
+    const pill = fixture.nativeElement.querySelector('.ptn-status-pill--vacant') as HTMLElement | null;
+    expect(pill?.textContent?.trim()).toBe('3 vacancies');
+  });
+
+  it('hides the pill when a pooled position is full', async () => {
+    const fixture = await createComponent(makeNode({ positionType: 'pooled', maxOccupancy: 2, assignedCount: 2 } as Partial<PositionTreeNodeResponse>));
+    expect(fixture.nativeElement.querySelector('.ptn-status-pill')).toBeNull();
+    expect(cardText(fixture)).not.toContain('Full');
   });
 
   it('gives Archived precedence and the status pill shows Archived, not Unassigned', async () => {
@@ -112,6 +124,38 @@ describe('PositionTreeNodeComponent', () => {
     const text = cardText(fixture);
     expect(text).not.toContain('Capacity tracking unavailable');
     expect(fixture.nativeElement.querySelector('.ptn-status-pill')).toBeNull();
+  });
+
+  it('opens the unified position panel directly from the three-dot button without selecting the card', async () => {
+    const node = makeNode({});
+    const fixture = await createComponent(node);
+    fixture.componentRef.setInput('canManage', true);
+    fixture.detectChanges();
+    const selected = vi.fn();
+    const opened = vi.fn();
+    fixture.componentInstance.selectPosition.subscribe(selected);
+    fixture.componentInstance.viewCoverage.subscribe(opened);
+
+    (fixture.nativeElement.querySelector('.ptn-node-card') as HTMLElement).click();
+    expect(selected).toHaveBeenCalledWith(node);
+
+    (fixture.nativeElement.querySelector('.ptn-action-btn') as HTMLButtonElement).click();
+    expect(selected).toHaveBeenCalledTimes(1);
+    expect(opened).toHaveBeenCalledWith(node);
+    expect(fixture.nativeElement.querySelector('.ptn-menu')).toBeNull();
+  });
+
+  it('renders green/amber coverage state and compact Primary/backup level labels', async () => {
+    const fixture = await createComponent(makeNode({}));
+    fixture.componentRef.setInput('coverageVisual', {
+      state: 'unresolved', levels: ['Primary', '2'], accessibleLabel: 'Coverage needs attention'
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ptn-node-card--coverage-unresolved')).not.toBeNull();
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.ptn-coverage-level')).map((x: any) => x.textContent.trim()))
+      .toEqual(['Primary', '2']);
+    expect(fixture.nativeElement.querySelector('.ptn-coverage-warning')).not.toBeNull();
   });
 
   it('renders seat preview component in list-table as well (shared component regression)', async () => {

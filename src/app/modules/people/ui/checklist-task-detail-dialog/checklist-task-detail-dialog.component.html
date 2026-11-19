@@ -1,0 +1,233 @@
+<ng-template #panel>
+  <div role="presentation" class="ctd-scrim" (click)="cancel()">
+    <div
+      class="ctd ui-scroll-open"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ctd-heading"
+      tabindex="-1"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation(); closePopover()"
+      (keydown.escape)="cancel()"
+    >
+      <header class="ctd__head ui-popup-header">
+        <span class="ui-popup-icon" data-icon="layers" aria-hidden="true"></span>
+        <div class="ctd__head-copy">
+          <h2 id="ctd-heading" class="ctd__heading">Task details</h2>
+          <p class="ctd__subheading">Task {{ taskNumber() }} · copied onto the work item when the checklist starts</p>
+        </div>
+        <button type="button" class="ctd__x" aria-label="Close" (click)="cancel()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </header>
+
+      <div class="ctd__body scroll-fade">
+        <div class="ctd-title-block">
+          <input
+            type="text"
+            class="ctd-title-input"
+            [class.ctd-title-input--error]="titleError()"
+            [value]="title()"
+            (input)="onTitleInput($any($event.target).value)"
+            placeholder="Task title"
+            aria-label="Task title"
+            maxlength="200"
+          />
+          @if (titleError()) {
+            <span class="ctd__error" role="alert">Add a task title.</span>
+          }
+        </div>
+
+        <div class="ctd-prop-grid">
+          <div class="ctd-prop-col">
+            <div class="ctd-prop-row">
+              <span class="ctd-prop-label">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                <span>Assigned to</span>
+              </span>
+              <div class="ctd-prop-value">
+                <span class="ctd-chip ctd-chip--static" [class.ctd-chip--empty]="!assigneeLabel()">
+                  {{ assigneeLabel() || 'Not assigned yet' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="ctd-prop-row">
+              <span class="ctd-prop-label">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7" /></svg>
+                <span>Priority</span>
+              </span>
+              <div class="ctd-prop-value ctd-chip-anchor">
+                <button
+                  type="button"
+                  class="ctd-chip"
+                  aria-haspopup="listbox"
+                  [attr.aria-expanded]="activePopover() === 'priority'"
+                  (click)="togglePopover('priority', $event)"
+                >
+                  <span class="ctd-dot" [class]="priorityDetails().dotClass"></span>
+                  <span class="ctd-chip-label">{{ priorityDetails().label }}</span>
+                </button>
+                @if (activePopover() === 'priority') {
+                  <div class="ctd-popover" role="listbox" aria-label="Priority" appStopClickPropagation>
+                    @for (opt of priorityOptions; track opt.value) {
+                      <button
+                        type="button"
+                        role="option"
+                        class="ctd-popover__item"
+                        [class.ctd-popover__item--selected]="priority() === opt.value"
+                        [attr.aria-selected]="priority() === opt.value"
+                        (click)="setPriority(opt.value)"
+                      >
+                        <span class="ctd-dot" [class]="opt.dotClass"></span>
+                        <span class="ctd-popover__name">{{ opt.label }}</span>
+                        @if (priority() === opt.value) {
+                          <svg class="ctd-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+                        }
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="ctd-prop-col">
+            <div class="ctd-prop-row">
+              <span class="ctd-prop-label">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+                <span>Required</span>
+              </span>
+              <div class="ctd-prop-value">
+                <button
+                  type="button"
+                  role="switch"
+                  class="ctd-switch"
+                  [class.ctd-switch--on]="isRequired()"
+                  [attr.aria-checked]="isRequired()"
+                  aria-label="Required task"
+                  (click)="isRequired.set(!isRequired())"
+                >
+                  <span class="ctd-switch__thumb"></span>
+                </button>
+                <span class="ctd-switch-caption">{{ isRequired() ? 'Must be done' : 'Optional' }}</span>
+              </div>
+            </div>
+
+            @if (offboarding()) {
+              <div class="ctd-prop-row">
+                <span class="ctd-prop-label">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
+                  <span>Category</span>
+                </span>
+                <div class="ctd-prop-value ctd-chip-anchor">
+                  <button
+                    type="button"
+                    class="ctd-chip"
+                    [class.ctd-chip--empty]="!category()"
+                    aria-haspopup="listbox"
+                    [attr.aria-expanded]="activePopover() === 'category'"
+                    (click)="togglePopover('category', $event)"
+                  >
+                    <span class="ctd-chip-label">{{ categoryLabel() || 'Empty' }}</span>
+                  </button>
+                  @if (activePopover() === 'category') {
+                    <div class="ctd-popover" role="listbox" aria-label="Category" appStopClickPropagation>
+                      @for (opt of categoryOptions(); track opt.value) {
+                        <button
+                          type="button"
+                          role="option"
+                          class="ctd-popover__item"
+                          [class.ctd-popover__item--selected]="category() === opt.value"
+                          [attr.aria-selected]="category() === opt.value"
+                          (click)="setCategory(opt.value)"
+                        >
+                          <span class="ctd-popover__name">{{ opt.label }}</span>
+                          @if (category() === opt.value) {
+                            <svg class="ctd-popover__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 7" /></svg>
+                          }
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <div class="ctd-prop-row">
+                <span class="ctd-prop-label">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                  <span>Can bypass</span>
+                </span>
+                <div class="ctd-prop-value">
+                  <button
+                    type="button"
+                    role="switch"
+                    class="ctd-switch"
+                    [class.ctd-switch--on]="isBypassable()"
+                    [attr.aria-checked]="isBypassable()"
+                    aria-label="Task can be bypassed"
+                    (click)="isBypassable.set(!isBypassable())"
+                  >
+                    <span class="ctd-switch__thumb"></span>
+                  </button>
+                  <span class="ctd-switch-caption">{{ isBypassable() ? 'With approval' : 'No' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (offboarding() && isBypassable()) {
+          <label class="ctd-section">
+            <span class="ctd-section__label">Bypass penalty</span>
+            <textarea
+              class="ui-input"
+              rows="2"
+              [attr.maxlength]="limits.bypassPenaltyDescription"
+              placeholder="What happens if this task is bypassed (e.g. deducted from final settlement)"
+              [value]="bypassPenaltyDescription()"
+              (input)="bypassPenaltyDescription.set($any($event.target).value)"
+            ></textarea>
+            <app-char-counter [length]="bypassPenaltyDescription().length" [max]="limits.bypassPenaltyDescription" />
+          </label>
+        }
+
+        <div class="ctd-section">
+          <span class="ctd-section__label">Description</span>
+          <div class="ctd-description">
+            <app-rich-text-editor
+              [initialHtml]="description()"
+              [cssStyles]="false"
+              [allowImages]="false"
+              placeholder="Add description or press '/' for commands"
+              [maxLength]="limits.richTextDescription"
+              (htmlChange)="description.set($event)"
+              (filesAttached)="onFilesSelected($event)"
+              (uploadFailed)="errorMessage.set($event)"
+            />
+          </div>
+        </div>
+
+        <div class="ctd-section">
+          <span class="ctd-section__label">Attachments</span>
+          <app-task-attachment-list
+            [files]="attachments()"
+            (fileSelected)="onFilesSelected($event)"
+            (removed)="removeAttachment($event)"
+            (downloadRequested)="downloadAttachment($event)"
+          />
+        </div>
+
+        @if (errorMessage()) {
+          <p class="ctd__error ctd__error--banner" role="alert">{{ errorMessage() }}</p>
+        }
+      </div>
+
+      <footer class="ctd__footer">
+        <app-button variant="secondary" (pressed)="cancel()">Cancel</app-button>
+        <app-button [disabled]="uploading()" (pressed)="save()">Save</app-button>
+      </footer>
+    </div>
+  </div>
+</ng-template>

@@ -21,7 +21,7 @@ describe('DraftsStore', () => {
       providers: [
         { provide: TaskDraftApiService, useValue: taskApi },
         { provide: PeopleApiService, useValue: peopleApi },
-        { provide: PermissionService, useValue: { hasPermission: (p: string) => p !== 'employees:read' || hasEmployeesRead } }
+        { provide: PermissionService, useValue: { hasPermission: (p: string) => p !== 'employees:write' || hasEmployeesRead } }
       ]
     });
     store = TestBed.inject(DraftsStore);
@@ -57,7 +57,7 @@ describe('DraftsStore', () => {
     expect(store.chips()[0].badge).toBe('Awaiting approval');
   });
 
-  it('still shows task drafts when the onboarding list fails, and skips it without employees:read', async () => {
+  it('still shows task drafts when the onboarding list fails, and skips it without employees:write', async () => {
     taskApi.list.mockReturnValue(of([{ id: 't1', projectId: 'p1', title: 'A', updatedAt: '' }]));
     peopleApi.listDrafts.mockReturnValue(throwError(() => new Error('403')));
 

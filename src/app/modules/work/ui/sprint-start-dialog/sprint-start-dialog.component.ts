@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -24,7 +25,7 @@ import { GeneralSettingsStore } from '../../../organization/state/general-settin
         </p>
 
         <div class="sprint-start-dialog__date-range" data-testid="sprint-date-range">
-          <label class="sprint-start-dialog__label">Sprint dates *</label>
+          <span class="sprint-start-dialog__label">Sprint dates *</span>
           <app-date-range-picker
             [from]="startDate()"
             [to]="endDate()"
@@ -95,6 +96,9 @@ export class SprintStartDialogComponent {
   protected readonly store = inject(SprintListStore);
   protected readonly legalEntityStore = inject(LegalEntityStore);
   protected readonly generalSettingsStore = inject(GeneralSettingsStore);
+  // Company General Settings is an admin endpoint (legal_entity:read/update) - anyone else
+  // would get a 403, so they get calculateUpcomingSprintDates' Monday-start default instead.
+  private readonly canReadCompanySettings = inject(PermissionService).hasAnyPermission(['legal_entity:read', 'legal_entity:update']);
 
   open = input(false);
   sprint = input<Sprint | null>(null);
@@ -139,7 +143,7 @@ export class SprintStartDialogComponent {
       const legalEntityId =
         this.legalEntityStore.selectedLegalEntityId() ||
         (typeof localStorage !== 'undefined' ? localStorage.getItem(SELECTED_LEGAL_ENTITY_STORAGE_KEY) : null);
-      if (legalEntityId && !this.generalSettingsStore.settings() && !this.generalSettingsStore.loading()) {
+      if (this.canReadCompanySettings && legalEntityId && !this.generalSettingsStore.settings() && !this.generalSettingsStore.loading()) {
         void this.generalSettingsStore.load(legalEntityId);
       }
 

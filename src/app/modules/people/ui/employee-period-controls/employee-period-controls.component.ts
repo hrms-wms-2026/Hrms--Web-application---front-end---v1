@@ -12,10 +12,10 @@ import { EmployeeComparePickerComponent } from '../employee-compare-picker/emplo
   imports: [EmployeeComparePickerComponent],
   template: `
     <div class="flex flex-wrap items-center gap-3" data-testid="period-controls">
-      <div class="inline-flex items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+      <div class="inline-flex items-center overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs">
         <button
           type="button"
-          class="px-2.5 py-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          class="px-2.5 py-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-secondary)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
           (click)="store.previousMonth()"
           [disabled]="!store.canGoPrevious()"
           title="Previous month"
@@ -24,8 +24,8 @@ import { EmployeeComparePickerComponent } from '../employee-compare-picker/emplo
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <div class="flex items-center gap-2 border-x border-slate-100 px-3.5 py-1.5 text-sm font-semibold text-slate-800" data-testid="period-label">
-          <svg class="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <div class="flex items-center gap-2 border-x border-[var(--color-border)] px-3.5 py-1.5 text-sm font-semibold text-[var(--color-text-primary)]" data-testid="period-label">
+          <svg class="h-4 w-4 text-[var(--color-text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="16" y1="2" x2="16" y2="6"></line>
             <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -35,7 +35,7 @@ import { EmployeeComparePickerComponent } from '../employee-compare-picker/emplo
         </div>
         <button
           type="button"
-          class="px-2.5 py-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          class="px-2.5 py-1.5 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-secondary)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
           (click)="store.nextMonth()"
           [disabled]="!store.canGoNext()"
           title="Next month"
@@ -49,17 +49,17 @@ import { EmployeeComparePickerComponent } from '../employee-compare-picker/emplo
       <button
         type="button"
         class="inline-flex items-center gap-2 rounded-xl border px-3.5 py-1.5 text-sm font-semibold shadow-xs transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-        [class.border-blue-300]="store.isComparing()"
-        [class.bg-blue-50]="store.isComparing()"
-        [class.text-blue-600]="store.isComparing()"
-        [class.border-slate-200]="!store.isComparing()"
-        [class.bg-white]="!store.isComparing()"
-        [class.text-slate-800]="!store.isComparing()"
+        [class.border-[var(--color-accent)]]="store.isComparing()"
+        [class.bg-[var(--color-accent-subtle)]]="store.isComparing()"
+        [class.text-[var(--color-accent)]]="store.isComparing()"
+        [class.border-[var(--color-border)]]="!store.isComparing()"
+        [class.bg-[var(--color-surface)]]="!store.isComparing()"
+        [class.text-[var(--color-text-primary)]]="!store.isComparing()"
         [attr.aria-pressed]="store.isComparing()"
         (click)="store.toggleCompare()"
         [disabled]="store.compareOptions().length === 0"
       >
-        <svg class="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg class="h-4 w-4 text-[var(--color-accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
           <polyline points="17 6 23 6 23 12"></polyline>
         </svg>

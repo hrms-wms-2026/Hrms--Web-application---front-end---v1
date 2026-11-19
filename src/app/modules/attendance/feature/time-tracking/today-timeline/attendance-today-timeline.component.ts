@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { TimeTrackingStore } from '../../../state/time-tracking.store';
 import {
   formatDate,
@@ -8,6 +8,7 @@ import {
   statusLabel,
   timelineEventLabel
 } from '../../../utils/attendance-formatters';
+import { StopClickPropagationDirective } from '../../../../../shared/directives/stop-click-propagation.directive';
 
 const LIVE_STATUSES = new Set(['working', 'clocked_in', 'on_break']);
 const CIRCLE_RADIUS = 60;
@@ -47,13 +48,15 @@ export interface EnrichedTimelineItem {
 @Component({
   selector: 'app-attendance-today-timeline',
   standalone: true,
-  imports: [],
+  imports: [StopClickPropagationDirective],
   templateUrl: './attendance-today-timeline.component.html',
   styleUrl: './attendance-today-timeline.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AttendanceTodayTimelineComponent {
   readonly store = inject(TimeTrackingStore);
+  /** 'card' shows today's events inline; 'trigger' shows just a "View activity" button that opens the popup. */
+  readonly mode = input<'card' | 'trigger'>('card');
   readonly formatDateTime = formatDateTime;
   readonly timelineEventLabel = timelineEventLabel;
 

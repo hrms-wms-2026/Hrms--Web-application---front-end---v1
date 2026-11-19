@@ -1,17 +1,27 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
+import { ConfirmModalComponent } from '../../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { OffboardingReason, RehireEligibility } from '../../../models/offboarding.model';
+import { formatDateWithYear } from '../../../utils/employee-overview.utils';
 import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store';
+
+const REASON_LABELS: Record<OffboardingReason, string> = {
+  resignation: 'Resignation', termination: 'Termination', retirement: 'Retirement', contract_end: 'Contract End'
+};
+const REHIRE_LABELS: Record<RehireEligibility, string> = {
+  eligible: 'Eligible', not_eligible: 'Not Eligible', conditional: 'Conditional'
+};
 
 @Component({
   selector: 'app-offboarding-complete-exit-step',
   standalone: true,
-  imports: [ButtonComponent],
+  imports: [ButtonComponent, ConfirmModalComponent],
   template: `
     <div class="obs-step-container">
       <div class="obs-step-header">
         <h3 class="obs-step-title">Finalize Employee Exit</h3>
-        <p class="obs-step-subtitle">Ensure all required offboarding tasks are completed or bypassed to finalize this employee's exit.</p>
+        <p class="obs-step-subtitle">Check the exit details, then complete the exit. This ends their employment.</p>
       </div>
 
       @if (store.record()?.status === 'completed') {
@@ -22,23 +32,45 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
           <app-button variant="secondary" (pressed)="backToProfile()">Back to Employee Profile</app-button>
         </div>
       } @else {
-        <div class="obs-summary-box" [class.obs-summary-box--ready]="allRequiredResolved()">
-          <div class="obs-summary-box__header">
-            <span class="obs-summary-box__title">Task Readiness Status</span>
-            <span class="obs-readiness-chip" [class.obs-readiness-chip--ready]="allRequiredResolved()">
-              {{ allRequiredResolved() ? 'Ready to Complete' : 'Tasks Pending' }}
-            </span>
+        @if (store.record(); as record) {
+          <dl class="obs-exit-summary" data-testid="exit-summary">
+            <div><dt>Exit reason</dt><dd>{{ reasonLabel(record.reason) }}</dd></div>
+            <div><dt>Last working day</dt><dd>{{ formatDate(record.lastWorkingDate) }}</dd></div>
+            <div><dt>Knowledge risk</dt><dd class="capitalize">{{ record.knowledgeRiskLevel }}</dd></div>
+            <div><dt>Rehire eligibility</dt><dd>{{ rehireLabel(record.rehireEligibility) }}</dd></div>
+          </dl>
+        }
+
+        @if (store.tasks().length > 0) {
+          <div class="obs-summary-box" data-testid="task-readiness" [class.obs-summary-box--ready]="allRequiredResolved()">
+            <div class="obs-summary-box__header">
+              <span class="obs-summary-box__title">Exit checklist</span>
+              <span class="obs-readiness-chip" [class.obs-readiness-chip--ready]="allRequiredResolved()">
+                {{ allRequiredResolved() ? 'Ready to Complete' : 'Tasks Pending' }}
+              </span>
+            </div>
+            <p class="obs-summary-box__copy">
+              {{ allRequiredResolved() ? 'All required exit tasks have been completed or bypassed.' : 'Some required exit tasks are still open. Resolve them before completing exit.' }}
+            </p>
           </div>
-          <p class="obs-summary-box__copy">
-            {{ allRequiredResolved() ? 'All required exit tasks have been completed or bypassed.' : 'Some required exit tasks are still open. Resolve them before completing exit.' }}
-          </p>
-        </div>
+        }
 
         <div class="obs-actions">
-          <app-button variant="primary" [loading]="store.saving()" [disabled]="!allRequiredResolved()" (pressed)="complete()">
+          <app-button variant="danger" data-testid="complete-exit" [disabled]="!allRequiredResolved()" (pressed)="confirmOpen.set(true)">
             Complete Employee Exit
           </app-button>
         </div>
+
+        <app-confirm-modal
+          [open]="confirmOpen()"
+          title="Complete employee exit?"
+          [message]="confirmMessage()"
+          confirmLabel="Complete exit"
+          cancelLabel="Cancel"
+          [loading]="store.saving()"
+          (confirmed)="complete()"
+          (cancelled)="confirmOpen.set(false)"
+        />
       }
     </div>
   `,
@@ -66,8 +98,8 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
       align-items: center;
       text-align: center;
       padding: 2.5rem 1.5rem;
-      background: color-mix(in srgb, #16a34a 4%, var(--color-surface));
-      border: 1px solid color-mix(in srgb, #16a34a 30%, var(--color-border));
+      background: color-mix(in srgb, var(--color-success) 4%, var(--color-surface));
+      border: 1px solid color-mix(in srgb, var(--color-success) 30%, var(--color-border));
       border-radius: 14px;
     }
     .obs-completed-box__icon {
@@ -77,8 +109,8 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
       width: 3rem;
       height: 3rem;
       border-radius: 50%;
-      background: color-mix(in srgb, #16a34a 15%, var(--color-surface));
-      color: #16a34a;
+      background: color-mix(in srgb, var(--color-success) 15%, var(--color-surface));
+      color: var(--color-success);
       font-size: 1.25rem;
       font-weight: 800;
       margin-bottom: 1rem;
@@ -94,6 +126,27 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
       font-size: 0.85rem;
       color: var(--color-text-secondary);
     }
+    .obs-exit-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem 1.5rem;
+      margin: 0 0 1.25rem;
+      padding: 1.25rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-content);
+      background: var(--color-surface);
+    }
+    .obs-exit-summary dt {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+    }
+    .obs-exit-summary dd {
+      margin: 0.125rem 0 0;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
     .obs-summary-box {
       padding: 1.25rem;
       margin-bottom: 1.5rem;
@@ -102,8 +155,8 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
       border-radius: 12px;
     }
     .obs-summary-box--ready {
-      background: color-mix(in srgb, #16a34a 4%, var(--color-surface));
-      border-color: color-mix(in srgb, #16a34a 30%, var(--color-border));
+      background: color-mix(in srgb, var(--color-success) 4%, var(--color-surface));
+      border-color: color-mix(in srgb, var(--color-success) 30%, var(--color-border));
     }
     .obs-summary-box__header {
       display: flex;
@@ -125,8 +178,8 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
       font-weight: 650;
     }
     .obs-readiness-chip--ready {
-      background: color-mix(in srgb, #16a34a 12%, var(--color-surface));
-      color: #16a34a;
+      background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+      color: var(--color-success);
     }
     .obs-summary-box__copy {
       margin: 0;
@@ -148,9 +201,27 @@ export class OffboardingCompleteExitStepComponent {
   readonly allRequiredResolved = computed(() =>
     this.store.tasks().filter((t) => t.isRequired).every((t) => t.status === 'completed' || t.status === 'bypassed'));
 
+  readonly confirmOpen = signal(false);
+  readonly confirmMessage = computed(() => {
+    const record = this.store.record();
+    const lastDay = record ? ` Their last working day is ${formatDateWithYear(record.lastWorkingDate)}.` : '';
+    return `This finalizes the offboarding and ends their employment.${lastDay} It can't be undone.`;
+  });
+
+  formatDate = formatDateWithYear;
+
+  reasonLabel(reason: OffboardingReason): string {
+    return REASON_LABELS[reason];
+  }
+
+  rehireLabel(value: RehireEligibility | null): string {
+    return value ? REHIRE_LABELS[value] : 'Not set';
+  }
+
   async complete(): Promise<void> {
     if (!this.allRequiredResolved()) return;
     await this.store.completeOffboarding(this.employeeId());
+    this.confirmOpen.set(false);
   }
 
   backToProfile(): void {

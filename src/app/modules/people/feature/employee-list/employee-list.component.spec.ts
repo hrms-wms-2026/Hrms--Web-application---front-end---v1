@@ -196,6 +196,25 @@ describe('EmployeeListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Add Employee');
   });
 
+  it('does not re-fetch the employee list when only the Add Employee / draft query params change', async () => {
+    // no employees:write, so the wizard itself stays closed - this is only about the list's reload trigger
+    await setup(false);
+    flushEmployeesAndDrafts();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const listRequests = () => httpMock.match((r) => r.method === 'GET' && /\/employees$/.test(r.url));
+
+    queryParams.next(convertToParamMap({ addEmployee: 'true' }));
+    await fixture.whenStable();
+    queryParams.next(convertToParamMap({}));
+    await fixture.whenStable();
+    expect(listRequests().length).toBe(0);
+
+    queryParams.next(convertToParamMap({ search: 'ada' }));
+    await fixture.whenStable();
+    expect(listRequests().length).toBe(1);
+  });
+
   it('synchronizes the search query param to the URL after debounce', async () => {
     vi.useFakeTimers();
     try {
@@ -339,7 +358,11 @@ describe('EmployeeListComponent', () => {
     fixture.detectChanges();
     expect(q('[data-testid="menu-item-promote"]')).not.toBeNull();
     q('[data-testid="menu-item-offboard"]')!.click();
-    expect(router.navigate).toHaveBeenCalledWith(['/people/employees', 'other', 'offboarding']);
+    fixture.detectChanges();
+    // Offboard opens the Start Offboarding popup on this page rather than navigating away.
+    expect(router.navigate).not.toHaveBeenCalledWith(['/people/offboarding', 'other']);
+    expect(fixture.componentInstance.rowOffboard()?.id).toBe('other');
+    expect(q('app-start-offboarding-modal [role="dialog"]')).not.toBeNull();
   });
 
   it('bulk result shows the summary, reloads and clears the selection', async () => {

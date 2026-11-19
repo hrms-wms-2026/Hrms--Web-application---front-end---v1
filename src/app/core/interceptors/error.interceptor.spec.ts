@@ -1,8 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
-import { errorInterceptor } from './error.interceptor';
+import { environment } from '@environments/environment';
+import { SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
 import { AuthStore } from '../auth/state/auth.store';
 import { NotificationService } from '../services/notification.service';
 
@@ -131,7 +132,7 @@ describe('errorInterceptor', () => {
     const req = httpMock.expectOne('/api/v1/work/projects/p1');
     req.flush(
       {
-        type: 'https://onevo.com/errors/csrf',
+        type: 'urn:crownus:error:csrf',
         title: 'Forbidden',
         status: 403,
         detail: 'A valid CSRF token is required for this request.'
@@ -159,6 +160,18 @@ describe('errorInterceptor', () => {
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 
+  it('does not banner an error for a request marked SILENT_HTTP_ERRORS - the caller handles it', () => {
+    const notify = TestBed.inject(NotificationService);
+    let failed = false;
+
+    http.get('/api/v1/inbox/people/e1/cases', { context: new HttpContext().set(SILENT_HTTP_ERRORS, true) })
+      .subscribe({ error: () => (failed = true) });
+    httpMock.expectOne('/api/v1/inbox/people/e1/cases').flush({}, { status: 403, statusText: 'Forbidden' });
+
+    expect(failed).toBe(true);
+    expect(notify.notifications()).toHaveLength(0);
+  });
+
   it('does not banner a 429 from tray activation generate — the presence store owns that message', () => {
     const notify = TestBed.inject(NotificationService);
 
@@ -170,5 +183,68 @@ describe('errorInterceptor', () => {
     );
 
     expect(notify.notifications()).toHaveLength(0);
+  });
+
+  describe('single-host tenant mismatch 403', () => {
+    const mutableEnv = environment as unknown as { tenancyMode: string };
+    const MISMATCH = { status: 403, detail: 'Token tenant does not match request host tenant.' };
+    let originalMode: string;
+
+    beforeEach(() => {
+      originalMode = mutableEnv.tenancyMode;
+      sessionStorage.setItem('crownus.singleHostTenant', 'acme');
+    });
+
+    afterEach(() => {
+      mutableEnv.tenancyMode = originalMode;
+      sessionStorage.clear();
+    });
+
+    function fail403(body: Record<string, unknown>): void {
+      http.get('/api/v1/employees').subscribe({ error: () => undefined });
+      httpMock.expectOne('/api/v1/employees').flush(body, { status: 403, statusText: 'Forbidden' });
+    }
+
+    it('clears the slug and the session and redirects to /auth/login', () => {
+      mutableEnv.tenancyMode = 'single-host';
+      const clearSpy = vi.spyOn(authStore, 'clearSession');
+      const navigateSpy = vi.spyOn(router, 'navigate');
+      const notify = TestBed.inject(NotificationService);
+
+      fail403(MISMATCH);
+
+      expect(sessionStorage.getItem('crownus.singleHostTenant')).toBeNull();
+      expect(clearSpy).toHaveBeenCalled();
+      expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
+      expect(notify.notifications()).toHaveLength(0);
+    });
+
+    it('does not loop: with the slug cleared a repeat 403 is only an ordinary error', () => {
+      mutableEnv.tenancyMode = 'single-host';
+      fail403(MISMATCH);
+      const navigateSpy = vi.spyOn(router, 'navigate');
+      fail403({ status: 403, detail: 'Caller is not the project lead.' });
+      expect(navigateSpy).not.toHaveBeenCalled();
+    });
+
+    it('subdomain mode keeps the old behaviour for the same 403', () => {
+      mutableEnv.tenancyMode = 'subdomain';
+      const navigateSpy = vi.spyOn(router, 'navigate');
+
+      fail403(MISMATCH);
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem('crownus.singleHostTenant')).toBe('acme');
+    });
+
+    it('an ordinary 403 in single-host mode keeps the old behaviour', () => {
+      mutableEnv.tenancyMode = 'single-host';
+      const navigateSpy = vi.spyOn(router, 'navigate');
+
+      fail403({ status: 403, detail: 'Caller is not the project lead.' });
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem('crownus.singleHostTenant')).toBe('acme');
+    });
   });
 });

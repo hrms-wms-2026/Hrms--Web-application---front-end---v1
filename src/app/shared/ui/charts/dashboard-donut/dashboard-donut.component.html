@@ -1,0 +1,52 @@
+<svg
+  viewBox="0 0 42 42"
+  class="dd-svg"
+  [class.dd-svg--hover]="activeSlice() !== null"
+  role="img"
+  [attr.aria-label]="ariaLabel()"
+  (animationstart)="onReplay($event)"
+>
+  @if (drawn().length === 0) {
+    <!-- No data: the empty ring. -->
+    <circle
+      cx="21"
+      cy="21"
+      r="15.9155"
+      fill="none"
+      class="dd-track"
+      [attr.stroke-width]="strokeWidth()"
+    />
+  }
+  @for (slice of drawn(); track slice.key) {
+    <path
+      class="dd-arc"
+      [class.dd-arc--on]="activeSlice()?.key === slice.key"
+      [class.dd-arc--rest]="slice.color === 'transparent'"
+      data-testid="donut-segment"
+      [attr.data-key]="slice.key"
+      [attr.d]="slice.path"
+      [style.fill]="slice.color === 'transparent' ? null : slice.color"
+      [style.stroke]="slice.color === 'transparent' ? null : slice.color"
+      [attr.stroke-width]="slice.stroke"
+      [attr.fill-opacity]="slice.opacity"
+      [attr.stroke-opacity]="slice.opacity"
+      fill-rule="evenodd"
+      stroke-linejoin="round"
+      (mouseenter)="active.set(slice.key)"
+    />
+  }
+</svg>
+@if (activeSlice(); as s) {
+  <!-- A lit slice takes the centre: its value, name and share. -->
+  <p class="dd-center" data-testid="donut-hover">
+    <span class="dd-value" [style.font-size.px]="valueFontPx(valueText(s))">{{
+      valueText(s)
+    }}</span>
+    <span class="dd-caption">{{ s.label }} · {{ share(s) }}</span>
+  </p>
+} @else {
+  <!-- The widget's own centre, over the ring; it never takes the pointer, so the slices stay hoverable. -->
+  <div class="dd-slot">
+    <ng-content />
+  </div>
+}

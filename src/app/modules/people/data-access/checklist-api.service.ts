@@ -4,12 +4,11 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   ChecklistTemplateDetailResponse,
-  ChecklistTemplateListItemResponse,
   ChecklistTemplateListPageResponse,
   ChecklistTemplateListParams,
   CreateChecklistTemplateRequest,
   OnboardingChecklistTemplateMatchResponse,
-  UpdateChecklistTemplateRequest
+  UpdateChecklistTemplateRequest,
 } from '../models/checklist-template.model';
 
 @Injectable({ providedIn: 'root' })
@@ -24,6 +23,13 @@ export class ChecklistApiService {
 
   getChecklistTemplate(id: string): Observable<ChecklistTemplateDetailResponse> {
     return this.http.get<ChecklistTemplateDetailResponse>(`${environment.apiUrl}/people/checklist-templates/${id}`);
+  }
+
+  /** An attachment already saved on one of the template's tasks. */
+  downloadTemplateFile(templateId: string, fileId: string): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/people/checklist-templates/${templateId}/files/${fileId}`, {
+      responseType: 'blob'
+    });
   }
 
   createChecklistTemplate(payload: CreateChecklistTemplateRequest): Observable<ChecklistTemplateDetailResponse> {

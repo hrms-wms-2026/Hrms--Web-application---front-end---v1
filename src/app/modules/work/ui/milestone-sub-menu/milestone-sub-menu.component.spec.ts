@@ -16,11 +16,11 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
   });
 
-    it('renders all five base tabs in order for non-owners', () => {
+    it('renders all three base tabs in order for non-owners', () => {
 
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Approvals', 'Calendar']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog']);
 
   });
 
@@ -29,13 +29,13 @@ describe('MilestoneSubMenuComponent', () => {
     fixture.detectChanges();
     const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
       .map((el) => (el as HTMLElement).textContent?.trim() ?? '');
-        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Approvals', 'Calendar', 'Settings']);
+        expect(labels).toEqual(['Tree', 'Board', 'Backlog', 'Settings']);
 
   });
 
   it('renders an icon inside every tab link', () => {
     const icons = fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"] svg');
-        expect(icons.length).toBe(5);
+        expect(icons.length).toBe(3);
 
   });
 
@@ -45,9 +45,7 @@ describe('MilestoneSubMenuComponent', () => {
     expect(hrefs).toEqual([
       '/milestones/o1/tree',
       '/board',
-      '/backlog',
-      '/approvals',
-      '/calendar'
+      '/backlog'
     ]);
   });
 
@@ -59,16 +57,8 @@ describe('MilestoneSubMenuComponent', () => {
     expect(settingsHref).toBe('/settings');
   });
 
-  it('shows a red indicator on Approvals only when received approvals are pending', () => {
-    expect(fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]')).toBeNull();
-
-    fixture.componentRef.setInput('pendingApprovalCount', 2);
-    fixture.detectChanges();
-
-    const indicator = fixture.nativeElement.querySelector('[data-testid="approvals-pending-indicator"]');
-    const approvalsLink = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]'))
-      .find((element: any) => element.textContent.includes('Approvals')) as HTMLAnchorElement;
-    expect(indicator).not.toBeNull();
-    expect(approvalsLink.getAttribute('aria-label')).toBe('Approvals, 2 pending');
+  it('no longer has an Approvals tab (requests live in the Inbox)', () => {
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="sub-menu-tab"]')).map((el: any) => el.textContent.trim());
+    expect(labels).not.toContain('Approvals');
   });
 });

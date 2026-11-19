@@ -1,0 +1,100 @@
+<section class="to-page">
+  <header class="to-header">
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Time Off" parentUrl="/time-off" currentLabel="Leave Requests" icon="time-off" />
+  </header>
+
+  <div class="mlr-head">
+    <div>
+      <h1>Leave Requests</h1>
+      <p>View and track the leave requests you have sent.</p>
+    </div>
+    @if (canRequest) {
+      <app-button data-testid="new-request-button" (pressed)="wizardOpen.set(true)">+ New Request</app-button>
+    }
+  </div>
+
+  <div class="mlr-card">
+    <div class="mlr-toolbar">
+      <div class="to-tabs mlr-tabs" role="tablist" aria-label="Request status">
+        @for (tab of tabs; track tab.value) {
+          <button type="button" role="tab" class="to-tab" [class.to-tab--active]="filter().status === tab.value" [attr.aria-selected]="filter().status === tab.value" (click)="patchFilter({ status: tab.value })">{{ tab.label }}</button>
+        }
+      </div>
+      <div class="mlr-filters">
+        <app-select [options]="leaveTypeOptions()" [value]="filter().leaveTypeId" (valueChange)="patchFilter({ leaveTypeId: $event })" />
+        <app-date-picker placeholder="From" [value]="filter().fromDate" (valueChange)="patchFilter({ fromDate: $event })" />
+        <app-date-picker placeholder="To" [value]="filter().toDate" (valueChange)="patchFilter({ toDate: $event })" />
+      </div>
+    </div>
+    <label class="mlr-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>
+      <span class="to-sr-only">Search requests</span>
+      <input type="search" placeholder="Search leave type or approver..." [value]="filter().search" (input)="onSearchInput($event)" />
+    </label>
+
+    @if (store.myRequestsLoading() && store.myRequests().length === 0) {
+      <div class="to-loading"><app-loader /></div>
+    } @else if (store.myRequestsError()) {
+      <app-error-state [message]="store.myRequestsError()!" [retryable]="true" (retry)="store.loadMine()" />
+    } @else if (filtered().length === 0) {
+      <div class="to-empty">
+        @if (store.myRequests().length === 0) {
+          <app-empty-state title="No leave requests yet" description="Requests you send will appear here." />
+        } @else {
+          <app-empty-state title="No matching requests" description="No requests match the current filters." />
+        }
+      </div>
+    } @else {
+      <app-data-table [columns]="columns" [rows]="pageRows()" [trackBy]="trackById" [rowTestId]="rowTestId" caption="My leave requests">
+        <ng-template appDataTableCell="type" let-request>
+          <span class="mlr-type">
+            <app-leave-type-icon class="mlr-type__icon" [name]="request.leaveTypeName" [code]="request.leaveTypeCode" [color]="color(request)" [icon]="icon(request)" />
+            {{ request.leaveTypeName }}
+          </span>
+        </ng-template>
+        <ng-template appDataTableCell="dates" let-request>{{ dateRange(request) }}</ng-template>
+        <ng-template appDataTableCell="duration" let-request>
+          <span class="mlr-stack"><span>{{ duration(request) }}</span><small>{{ request.totalHours.toFixed(2) }} h</small></span>
+        </ng-template>
+        <ng-template appDataTableCell="applied" let-request>{{ request.createdAt | date: 'MMM dd, yyyy' }}</ng-template>
+        <ng-template appDataTableCell="approvedBy" let-request>{{ request.approvedByName || '—' }}</ng-template>
+        <ng-template appDataTableCell="status" let-request>
+          <span data-testid="request-status" class="mlr-status mlr-status--{{ request.status }}">{{ request.status }}</span>
+          @if (approvalProgress(request); as progress) {
+            <small class="mlr-progress" data-testid="approval-progress">{{ progress }}</small>
+          }
+        </ng-template>
+        <ng-template appDataTableCell="actions" let-request>
+          @if (canCancel(request)) {
+            <app-button variant="secondary" size="sm" data-testid="cancel-request" (pressed)="cancelTarget.set(request)">Cancel</app-button>
+          }
+        </ng-template>
+      </app-data-table>
+
+      <nav class="mlr-pager" aria-label="Pages">
+        <span class="mlr-pager__range">{{ rangeLabel() }}</span>
+        <button type="button" [disabled]="page() <= 1" (click)="goToPage(page() - 1)" aria-label="Previous page">‹</button>
+        <span class="mlr-pager__page">Page {{ page() }} of {{ pageCount() }}</span>
+        <button type="button" [disabled]="page() >= pageCount()" (click)="goToPage(page() + 1)" aria-label="Next page">›</button>
+      </nav>
+    }
+  </div>
+</section>
+
+<app-leave-cancel-confirm-dialog
+  [open]="cancelTarget() !== null"
+  [leaveTypeName]="cancelTarget()?.leaveTypeName ?? ''"
+  [startAt]="cancelTarget()?.startAt ?? ''"
+  [endAt]="cancelTarget()?.endAt ?? ''"
+  [totalHours]="cancelTarget()?.totalHours ?? 0"
+  [status]="cancelTarget()?.status ?? ''"
+  [requireReason]="false"
+  [cancelling]="store.cancelling()"
+  [cancelError]="store.cancelError()"
+  (confirmed)="onConfirmCancel($event)"
+  (closed)="cancelTarget.set(null)"
+/>
+
+@if (wizardOpen()) {
+  <app-new-leave-request-host (closed)="wizardOpen.set(false)" />
+}

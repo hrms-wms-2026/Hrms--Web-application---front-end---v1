@@ -34,8 +34,7 @@ describe('ProjectListComponent', () => {
       editProject: vi.fn().mockResolvedValue(true),
       deleteProject: vi.fn().mockResolvedValue(true),
       achieveProject: vi.fn().mockResolvedValue(true),
-      unachieveProject: vi.fn().mockResolvedValue(true),
-      getProjectDetail: vi.fn().mockResolvedValue(null)
+      unachieveProject: vi.fn().mockResolvedValue(true)
     };
 
     await TestBed.configureTestingModule({
@@ -173,7 +172,9 @@ describe('ProjectListComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    (fixture.nativeElement.querySelector('[data-testid="employee-picker-row"]') as HTMLButtonElement).click();
+    (fixture.nativeElement.querySelector('[data-testid="person-picker-row-e2"] input') as HTMLInputElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="person-picker-confirm"]') as HTMLButtonElement).click();
     await fixture.whenStable();
 
     expect(storeStub.addProjectMember).toHaveBeenCalledWith('p1', 'e2');
@@ -195,77 +196,12 @@ describe('ProjectListComponent', () => {
     expect(fixture.componentInstance.createModalOpen()).toBe(false);
   });
 
-  it('opens the settings modal and patches in the full detail once fetched', async () => {
-    const detail = { ...project, description: 'Rebuild the marketing site.', actualHours: 0, createdAt: '2026-08-01T00:00:00Z', updatedAt: null };
-    storeStub.getProjectDetail = vi.fn().mockResolvedValue(detail);
+  it('navigates to the project settings page when Settings is requested', () => {
     fixture.detectChanges();
 
     fixture.componentInstance.onProjectSettingsRequested(project);
 
-    expect(fixture.componentInstance.settingsModalOpen()).toBe(true);
-    expect(storeStub.getProjectDetail).toHaveBeenCalledWith('p1');
-
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect((fixture.componentInstance.settingsModalInitialValue() as any)?.description).toBe('Rebuild the marketing site.');
-  });
-
-  it('saves fields only when the Achieved toggle is untouched', async () => {
-    fixture.detectChanges();
-    fixture.componentInstance.onProjectSettingsRequested(project);
-
-    await fixture.componentInstance.onProjectSettingsSaved({
-      fields: { name: 'Website Revamp v2', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40 },
-      achievedChanged: false, achieved: false
-    });
-
-    expect(storeStub.editProject).toHaveBeenCalledWith('p1', {
-      name: 'Website Revamp v2', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40
-    });
-    expect(storeStub.achieveProject).not.toHaveBeenCalled();
-    expect(storeStub.unachieveProject).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.settingsModalOpen()).toBe(false);
-  });
-
-  it('edits then achieves when the toggle is turned on', async () => {
-    fixture.detectChanges();
-    fixture.componentInstance.onProjectSettingsRequested(project);
-
-    await fixture.componentInstance.onProjectSettingsSaved({
-      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40 },
-      achievedChanged: true, achieved: true
-    });
-
-    expect(storeStub.editProject).toHaveBeenCalled();
-    expect(storeStub.achieveProject).toHaveBeenCalledWith('p1');
-    expect(storeStub.unachieveProject).not.toHaveBeenCalled();
-  });
-
-  it('edits then unachieves when the toggle is turned off', async () => {
-    fixture.detectChanges();
-    fixture.componentInstance.onProjectSettingsRequested({ ...project, isAchieved: true });
-
-    await fixture.componentInstance.onProjectSettingsSaved({
-      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40 },
-      achievedChanged: true, achieved: false
-    });
-
-    expect(storeStub.unachieveProject).toHaveBeenCalledWith('p1');
-  });
-
-  it('stops and keeps the modal open if editProject fails', async () => {
-    storeStub.editProject = vi.fn().mockResolvedValue(false);
-    fixture.detectChanges();
-    fixture.componentInstance.onProjectSettingsRequested(project);
-
-    await fixture.componentInstance.onProjectSettingsSaved({
-      fields: { name: 'Website Revamp', description: '', categoryId: 'cat1', startDate: '2026-08-01', targetDate: '2026-12-01', color: '', actualHours: 0, allocatedHours: 40 },
-      achievedChanged: true, achieved: true
-    });
-
-    expect(storeStub.achieveProject).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.settingsModalOpen()).toBe(true);
+    expect(router.navigate).toHaveBeenCalledWith(['/work', 'p1', 'settings']);
   });
 
   it('opens the delete confirm modal and calls deleteProject on confirm', async () => {

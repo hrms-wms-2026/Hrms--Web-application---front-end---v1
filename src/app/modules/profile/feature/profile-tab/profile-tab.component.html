@@ -14,30 +14,59 @@
         [saveError]="store.saveError()"
         (save)="onSavePersonalInformation($event)"
         (avatarSelected)="onAvatarSelected($event)"
+        (avatarRemoved)="store.removeAvatar()"
+        (cancelled)="cancelled.emit()"
       />
     }
     @if (activeSubTab() === 'emergency') {
-      <section class="pf-section">
-        <h3 class="pf-section__title">Emergency contacts</h3>
+      <section class="pt-section">
+        <h3 class="pt-section__title">Emergency contacts</h3>
         <app-emergency-contacts-panel
+          #contactsPanel
           [contacts]="profile.emergencyContacts"
           [saving]="store.saving()"
           (add)="onAddEmergencyContact($event)"
           (remove)="onRemoveEmergencyContact($event)"
         />
       </section>
-      <section class="pf-section">
-        <h3 class="pf-section__title">Dependents</h3>
+      <section class="pt-section">
+        <h3 class="pt-section__title">Dependents</h3>
         <app-dependents-panel
+          #dependentsPanel
           [dependents]="profile.dependents"
           [saving]="store.saving()"
           (add)="onAddDependent($event)"
           (remove)="onRemoveDependent($event)"
         />
       </section>
+      <div class="preferences-footer">
+        <app-button variant="secondary" (pressed)="cancelled.emit()">Cancel</app-button>
+        <app-button [disabled]="store.saving()" (pressed)="onSaveEmergency()">Save changes</app-button>
+      </div>
     }
     @if (activeSubTab() === 'job') {
       <app-job-info-panel [jobInformation]="profile.jobInformation" />
+    }
+    @if (activeSubTab() === 'documents') {
+      <app-documents-panel
+        [documents]="store.documents()"
+        [loading]="store.documentsLoading()"
+        [loadError]="store.documentsError()"
+        [actionError]="uploadType() ? null : store.documentError()"
+        (uploadRequested)="openUpload($event)"
+        (rowAction)="onDocumentAction($event.action, $event.document)"
+        (deleteRequested)="store.deleteDocument($event)"
+        (retry)="store.loadDocuments()"
+      />
+      @if (uploadType(); as type) {
+        <app-document-upload-panel
+          [initialType]="type"
+          [uploading]="store.uploadingDocument()"
+          [error]="store.documentError()"
+          (submitted)="onUploadDocument($event)"
+          (closed)="closeUpload()"
+        />
+      }
     }
     @if (activeSubTab() === 'payroll') {
       <app-payroll-panel [payroll]="profile.payroll" [saving]="store.saving()" (save)="onSavePayroll($event)" />

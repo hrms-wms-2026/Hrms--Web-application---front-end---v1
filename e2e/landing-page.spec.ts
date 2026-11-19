@@ -20,15 +20,18 @@ test('visiting "/" displays the landing page', async ({ page }) => {
   await mockGuest(page);
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Everything your people need');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Turning Workforce');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Visibility Into Performance');
   await expect(page).toHaveURL('/');
 });
 
-test('sign-in button navigates to the login route', async ({ page }) => {
+test('sign-in button navigates to the login route and hero primary CTA navigates to book-a-demo', async ({ page }) => {
   await mockGuest(page);
   await page.goto('/');
 
-  await page.locator('.hero__btn--primary').click();
+  await expect(page.locator('.hero__btn--primary')).toHaveAttribute('href', /\/book-a-demo$/);
+
+  await page.locator('.landing-header__signin').click();
 
   await expect(page).toHaveURL(/\/auth\/login$/);
 });
@@ -58,13 +61,13 @@ test('skip link is the first keyboard stop and jumps to main content', async ({ 
   await expect(page.locator('.landing-skip-link')).toBeFocused();
 });
 
-test('renders ONEXSO branding and no legacy OneVo Workspace branding or system status', async ({ page }) => {
+test('renders CROWNUS branding and no legacy OneVo Workspace branding or system status', async ({ page }) => {
   await mockGuest(page);
   await page.goto('/');
 
   const logo = page.locator('.landing-header__mark');
   await expect(logo).toBeVisible();
-  await expect(logo).toHaveAttribute('alt', 'ONEXSO');
+  await expect(logo).toHaveAttribute('alt', 'CROWNUS');
 
   await expect(page.locator('body')).not.toContainText('OneVo');
   await expect(page.locator('body')).not.toContainText('All systems operational');

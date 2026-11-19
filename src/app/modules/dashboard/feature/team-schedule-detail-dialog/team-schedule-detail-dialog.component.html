@@ -1,0 +1,717 @@
+<!-- Same shell as the Team Progress popup: app-modal's own header is hidden by this component's CSS. -->
+<app-modal
+  [open]="open()"
+  title="My team schedule today"
+  size="2xl"
+  panelClass="team-schedule-detail"
+  (closed)="close()"
+>
+  <div class="tsd-head">
+    <div class="tsd-head__row">
+      <div class="tsd-head__title">
+        <h2>My team schedule today</h2>
+        <p>What your team planned, what they worked and what happened off-plan</p>
+      </div>
+      <button
+        type="button"
+        class="tsd-close"
+        aria-label="Close"
+        data-testid="tsd-close"
+        (click)="close()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div class="tsd-toolbar">
+      <div class="tsd-toolbar__group">
+        <div class="tsd-range" data-testid="tsd-range">
+          <button
+            type="button"
+            class="tsd-nav"
+            [attr.aria-label]="mode() === 'day' ? 'Previous day' : 'Previous week'"
+            data-testid="tsd-prev"
+            (click)="shift(-1)"
+          >
+            ‹
+          </button>
+          <span class="tsd-range-label" data-testid="tsd-date">{{ dateLabel() }}</span>
+          <button
+            type="button"
+            class="tsd-nav"
+            [attr.aria-label]="mode() === 'day' ? 'Next day' : 'Next week'"
+            data-testid="tsd-next"
+            [disabled]="atLatest()"
+            (click)="shift(1)"
+          >
+            ›
+          </button>
+        </div>
+        <div class="tsd-switch" role="group" aria-label="Range">
+          <button
+            type="button"
+            data-testid="tsd-mode-day"
+            [class.tsd-switch--on]="mode() === 'day'"
+            [attr.aria-pressed]="mode() === 'day'"
+            (click)="setMode('day')"
+          >
+            Day
+          </button>
+          <button
+            type="button"
+            data-testid="tsd-mode-week"
+            [class.tsd-switch--on]="mode() === 'week'"
+            [attr.aria-pressed]="mode() === 'week'"
+            (click)="setMode('week')"
+          >
+            Week
+          </button>
+        </div>
+      </div>
+      <div class="tsd-toolbar__group">
+        <select
+          class="tsd-select"
+          aria-label="Status"
+          data-testid="tsd-status"
+          (change)="onStatusSelect($event)"
+        >
+          @for (f of filters; track f.value) {
+            <option [value]="f.value" [selected]="status() === f.value">{{ f.label }}</option>
+          }
+        </select>
+        <input
+          class="tsd-search"
+          type="search"
+          placeholder="Search employee…"
+          aria-label="Search employee"
+          data-testid="tsd-search"
+          [value]="search()"
+          (input)="onSearchInput($event)"
+        />
+        <a
+          class="tsd-open"
+          data-testid="tsd-open-planner"
+          routerLink="/planner"
+          [queryParams]="{ scope: 'team', teamView: 'day' }"
+          (click)="close()"
+          >Open team planner ›</a
+        >
+      </div>
+    </div>
+  </div>
+
+  @if (mode() === 'day') {
+    @if (store.data(); as data) {
+      <div class="tsd">
+        <app-kpi-tiles palette="widget" data-section="status" [tiles]="tiles()" [maxColumns]="5" ariaLabel="Today" />
+
+        @if (!data.plannerEnabled) {
+          <p class="tsd-note" data-testid="tsd-planner-off">
+            Planner is off · no plans, schedule coverage or ranking. Meetings and clocked time still
+            show.
+          </p>
+        }
+
+        <div class="tsd-main">
+          <section class="tsd-panel">
+            <div class="tsd-table-head">
+              <p class="tsd-title">Team schedule</p>
+              <!-- Colour guide for the timeline blocks (same colours as the card's timeline legend). -->
+              <span class="tsd-legend tsd-schedule-legend" data-testid="tsd-schedule-legend" aria-hidden="true">
+                <span><i [style.background]="colors.completed"></i>Completed</span>
+                <span><i [style.background]="colors.inProgress"></i>In progress</span>
+                <span><i [style.background]="colors.pending"></i>Pending</span>
+                <span><i [style.background]="colors.meeting"></i>Meeting</span>
+                <span><i [style.background]="colors.break"></i>Break</span>
+                <span><i class="tsd-key-unscheduled"></i>Unscheduled</span>
+                <span><i class="tsd-key-leave"></i>On leave</span>
+                <span><i class="tsd-key-cancelled" [style.background]="colors.meeting"></i>Cancelled</span>
+                @if (nowLeft() !== null) {
+                  <span><i class="tsd-key-now"></i>Now</span>
+                }
+              </span>
+              <button
+                type="button"
+                class="tsd-button"
+                data-testid="tsd-export"
+                (click)="exportCsv()"
+              >
+                Export CSV
+              </button>
+            </div>
+            <div class="tsd-scroll">
+              <table class="tsd-table">
+                <thead>
+                  <tr>
+                    <th scope="col" class="tsd-num tsd-hash">#</th>
+                    <th class="tsd-sticky" scope="col">Employee</th>
+                    <th scope="col" class="tsd-workload-col">Load / capacity</th>
+                    <th scope="col" class="tsd-track-col">
+                      <div class="tsd-axis">
+                        @for (t of ticks(); track t.left) {
+                          <span
+                            class="tsd-tick"
+                            [class.tsd-tick--first]="t.left === 0"
+                            [class.tsd-tick--last]="t.left === 100"
+                            [style.left.%]="t.left"
+                            >{{ t.label }}</span
+                          >
+                        }
+                        @if (nowLeft(); as left) {
+                          <span class="tsd-now-badge" data-testid="tsd-now" [style.left.%]="left">{{
+                            nowText()
+                          }}</span>
+                        }
+                      </div>
+                    </th>
+                    <th scope="col" class="tsd-num">Planned</th>
+                    <th scope="col" class="tsd-num">Actual</th>
+                    <th scope="col" class="tsd-num">Done</th>
+                    <th scope="col" class="tsd-num tsd-plan-col">Plan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (m of tablePage().items; track m.employeeId; let i = $index) {
+                    <tr data-testid="tsd-row">
+                      <td class="tsd-num tsd-hash">{{ tablePage().offset + i + 1 }}</td>
+                      <th class="tsd-sticky" scope="row">
+                        <span class="tsd-person">
+                          <app-avatar
+                            size="xs"
+                            [avatarUrl]="avatarUrl(m)"
+                            [userName]="m.displayName"
+                          />
+                          <span class="min-w-0">
+                            <span class="tsd-name">{{ m.displayName }}</span>
+                            @if (presenceLabel(m); as p) {
+                              <span class="tsd-presence" [style.--tone]="presenceColor(m)"
+                                ><span class="tsd-dot"></span>{{ p }}</span
+                              >
+                            }
+                          </span>
+                        </span>
+                      </th>
+                      <td class="tsd-workload-col">
+                        <span class="tsd-load-cell">
+                          @if (onLeave(m)) {
+                            <span class="tsd-badge tsd-badge--leave" data-testid="tsd-badge-leave"
+                              >On leave</span
+                            >
+                          } @else if (data.plannerEnabled && notPlanned(m)) {
+                            <span class="tsd-badge" data-testid="tsd-badge-not-planned"
+                              >Not planned</span
+                            >
+                          }
+                          <span
+                            class="tsd-load"
+                            [class.tsd-load--over]="over(m)"
+                            data-testid="tsd-load"
+                            >{{ load(m) }}</span
+                          >
+                          @if (!onLeave(m) && !(data.plannerEnabled && notPlanned(m))) {
+                            <span class="tsd-load-track" aria-hidden="true">
+                              @if (loadFill(m); as fill) {
+                                <span
+                                  [style.width.%]="fill"
+                                  [style.background]="loadColor(m)"
+                                ></span>
+                              }
+                            </span>
+                          }
+                        </span>
+                      </td>
+                      <td class="tsd-track-col">
+                        <div class="tsd-track">
+                          @if (onLeave(m)) {
+                            <span class="tsd-leave" aria-hidden="true"></span>
+                          }
+                          @for (t of ticks(); track t.left) {
+                            <span
+                              class="tsd-gridline"
+                              aria-hidden="true"
+                              [style.left.%]="t.left"
+                            ></span>
+                          }
+                          @for (item of m.items; track item.taskId + item.start) {
+                            @if (position(item.start, item.end); as pos) {
+                              <span
+                                class="tsd-block"
+                                data-testid="tsd-block"
+                                [class.tsd-block--cancelled]="item.status === 'cancelled'"
+                                [style.left.%]="pos.left"
+                                [style.width.%]="pos.width"
+                                [style.background]="itemColor(item)"
+                                [attr.title]="itemTitle(item)"
+                                [attr.aria-label]="itemTitle(item)"
+                                role="img"
+                              ></span>
+                            }
+                          }
+                          @for (b of breaks(m); track b.start) {
+                            @if (position(b.start, b.end); as pos) {
+                              <span
+                                class="tsd-block"
+                                [style.left.%]="pos.left"
+                                [style.width.%]="pos.width"
+                                [style.background]="colors.break"
+                                title="Break"
+                              ></span>
+                            }
+                          }
+                          @for (seg of m.unscheduled; track seg.start) {
+                            @if (position(seg.start, seg.end); as pos) {
+                              <span
+                                class="tsd-unscheduled"
+                                [style.left.%]="pos.left"
+                                [style.width.%]="pos.width"
+                                [attr.title]="seg.title + ' · unscheduled'"
+                              ></span>
+                            }
+                          }
+                          @if (nowLeft(); as left) {
+                            <span class="tsd-now" data-testid="tsd-now-line" aria-hidden="true" [style.left.%]="left"></span>
+                          }
+                        </div>
+                      </td>
+                      <td class="tsd-num">
+                        {{ !data.plannerEnabled || onLeave(m) ? '—' : minutes(planned(m)) }}
+                      </td>
+                      <td class="tsd-num" data-testid="tsd-actual">
+                        {{ onLeave(m) ? '—' : minutes(actual(m)) }}
+                      </td>
+                      <td class="tsd-num tsd-done" data-testid="tsd-completion">
+                        {{ completion(m) }}
+                      </td>
+                      <td class="tsd-num tsd-plan-col">
+                        <a
+                          class="tsd-link"
+                          data-testid="tsd-open-plan"
+                          routerLink="/planner"
+                          [queryParams]="planParams(m)"
+                          (click)="close()"
+                          >Open plan ›</a
+                        >
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td class="tsd-muted" colspan="8">No one matches.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <ng-container
+              *ngTemplateOutlet="pagerTpl; context: { list: 'table', page: tablePage() }"
+            />
+          </section>
+
+          <!-- Execution ranking and planned vs actual in one table (2026-11-05): rank, score, planned, actual and the difference. -->
+          <section class="tsd-panel" data-testid="tsd-ranking-panel" data-section="ranking">
+            <div class="tsd-table-head">
+              <p class="tsd-title">Execution ranking · planned vs actual (today)</p>
+              <span class="tsd-legend" aria-hidden="true">
+                <span><i [style.background]="paColors.planned"></i>Planned</span>
+                <span><i [style.background]="paColors.scheduled"></i>In plan</span>
+                <span><i [style.background]="paColors.outside"></i>Outside slot</span>
+                <span><i [style.background]="paColors.noPlan"></i>No plan</span>
+              </span>
+            </div>
+            <p class="tsd-muted">
+              Score = 60% items done of those due so far + 40% planned time covered so far.
+            </p>
+            <div class="tsd-scroll">
+              <table class="tsd-table tsd-rank-table" data-testid="tsd-ranking">
+                <thead>
+                  <tr>
+                    <th scope="col" class="tsd-hash">Rank</th>
+                    <th scope="col" class="tsd-rank-name">Employee</th>
+                    <th scope="col" class="tsd-score-col">Score</th>
+                    <th scope="col" class="tsd-pa-col">Planned vs actual</th>
+                    <th scope="col" class="tsd-num">Planned</th>
+                    <th scope="col" class="tsd-num">Actual</th>
+                    <th scope="col" class="tsd-num tsd-diff-col">Difference</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (m of rankingPage().items; track m.employeeId) {
+                    <tr data-testid="tsd-rank-row">
+                      <td class="tsd-hash">
+                        <span
+                          class="tsd-rank"
+                          [class.tsd-rank--top]="m.rank !== null && m.rank <= 3"
+                          >{{ m.rank ?? '—' }}</span
+                        >
+                      </td>
+                      <th scope="row" class="tsd-rank-name">
+                        <span class="tsd-person">
+                          <app-avatar
+                            size="xs"
+                            [avatarUrl]="avatarUrl(m)"
+                            [userName]="m.displayName"
+                          />
+                          <span class="tsd-name">{{ m.displayName }}</span>
+                        </span>
+                      </th>
+                      <td>
+                        <span class="tsd-score-cell">
+                          @if (m.score !== null) {
+                            <span
+                              class="tsd-score"
+                              data-testid="tsd-score"
+                              [attr.title]="
+                                'Items ' +
+                                percent(m.itemCompletionPercent) +
+                                ' · Time ' +
+                                percent(m.timeCoveragePercent)
+                              "
+                              >{{ m.score }}%</span
+                            >
+                          } @else {
+                            <span class="tsd-parts">
+                              @if (
+                                m.itemCompletionPercent !== null || m.timeCoveragePercent !== null
+                              ) {
+                                Items {{ percent(m.itemCompletionPercent) }} · Time
+                                {{ percent(m.timeCoveragePercent) }} ·
+                              }
+                              {{
+                                hasPlan(m) ||
+                                m.notRankedReason === 'on_leave' ||
+                                m.notRankedReason === 'planner_off'
+                                  ? ''
+                                  : 'No plan · '
+                              }}
+                              <span class="tsd-not-ranked" data-testid="tsd-not-ranked"
+                                >Not ranked · {{ reason(m) }}</span
+                              >
+                            </span>
+                          }
+                          @if (data.plannerEnabled && unscheduled(m) > 0) {
+                            <span class="tsd-badge">Unscheduled {{ minutes(unscheduled(m)) }}</span>
+                          }
+                        </span>
+                      </td>
+                      <td class="tsd-pa-col">
+                        @if (!onLeave(m) && rankBars()[m.employeeId]; as b) {
+                          <span
+                            class="tsd-pa"
+                            data-testid="tsd-pa"
+                            [attr.title]="b.tooltip"
+                            [attr.aria-label]="b.tooltip"
+                            role="img"
+                          >
+                            @if (data.plannerEnabled) {
+                              <span
+                                class="tsd-pa-planned"
+                                data-testid="tsd-pa-planned"
+                                [style.width.%]="b.planned"
+                                [style.background]="paColors.planned"
+                              ></span>
+                            }
+                            <span class="tsd-pa-actual" data-testid="tsd-pa-actual">
+                              <span
+                                [style.width.%]="b.scheduled"
+                                [style.background]="paColors.scheduled"
+                              ></span>
+                              <span
+                                [style.width.%]="b.outside"
+                                [style.background]="paColors.outside"
+                              ></span>
+                              <span
+                                [style.width.%]="b.noPlan"
+                                [style.background]="paColors.noPlan"
+                              ></span>
+                            </span>
+                          </span>
+                        }
+                      </td>
+                      <td class="tsd-num">
+                        {{ !data.plannerEnabled || onLeave(m) ? '—' : minutes(planned(m)) }}
+                      </td>
+                      <td class="tsd-num">{{ onLeave(m) ? '—' : minutes(actual(m)) }}</td>
+                      <td class="tsd-num tsd-diff-col" data-testid="tsd-diff">
+                        @if (difference(m, data.plannerEnabled); as d) {
+                          <span
+                            class="tsd-diff"
+                            [class.tsd-diff--behind]="d.behind"
+                            [class.tsd-diff--ahead]="d.ahead"
+                            >{{ d.text }}</span
+                          >
+                        } @else {
+                          —
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td class="tsd-muted" colspan="7">No one matches.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <ng-container
+              *ngTemplateOutlet="pagerTpl; context: { list: 'ranking', page: rankingPage() }"
+            />
+          </section>
+          <div class="tsd-stack">
+            <section class="tsd-panel">
+              <p class="tsd-title">Schedule summary</p>
+              <dl class="tsd-summary" data-testid="tsd-summary">
+                @for (r of summaryRows(); track r.label) {
+                  <div class="tsd-summary-row">
+                    <dt>{{ r.label }}</dt>
+                    <dd [class.tsd-summary--alert]="r.alert">{{ r.value }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+            <section class="tsd-panel" data-testid="tsd-unscheduled-panel">
+              <p class="tsd-title">Unscheduled work</p>
+              @if (!data.plannerEnabled) {
+                <p class="tsd-muted">Planner is off.</p>
+              } @else {
+                <ul class="tsd-list">
+                  @for (u of unscheduledRows(); track u.member.employeeId + u.row.start) {
+                    <li class="tsd-side-item">
+                      <span class="tsd-name">{{ u.member.displayName }}</span>
+                      <span class="tsd-muted"
+                        >{{ u.row.title }} · {{ range(u.row.start, u.row.end) }} ·
+                        {{ minutes(u.row.minutes) }}</span
+                      >
+                    </li>
+                  } @empty {
+                    <li class="tsd-muted">Nothing worked off-plan.</li>
+                  }
+                </ul>
+              }
+            </section>
+            <section class="tsd-panel" data-testid="tsd-conflicts-panel">
+              <p class="tsd-title">Conflicts</p>
+              <ul class="tsd-list">
+                @for (c of conflictRows(); track c.member.employeeId + c.row.start + c.row.kind) {
+                  <li
+                    class="tsd-side-item"
+                    [attr.title]="
+                      c.row.kind === 'block_meeting'
+                        ? 'Planned task during a meeting'
+                        : 'Clocked on two tasks at once'
+                    "
+                  >
+                    <span class="tsd-name">{{ c.member.displayName }}</span>
+                    <span class="tsd-alert">{{ c.row.firstTitle }} · {{ c.row.secondTitle }}</span>
+                    <span class="tsd-muted">{{ range(c.row.start, c.row.end) }}</span>
+                  </li>
+                } @empty {
+                  <li class="tsd-muted">No conflicts.</li>
+                }
+              </ul>
+            </section>
+            <section class="tsd-panel" data-testid="tsd-top-workload">
+              <p class="tsd-title">Top workload (today)</p>
+              <ol class="tsd-list">
+                @for (w of topWorkload(); track w.member.employeeId) {
+                  <li class="tsd-top-row">
+                    <span class="tsd-top-line">
+                      <span class="tsd-name">{{ w.member.displayName }}</span>
+                      <span class="tsd-pct" [class.tsd-load--over]="w.over">{{ w.text }}</span>
+                    </span>
+                    <span class="tsd-load-track tsd-load-track--wide"
+                      ><span [style.width.%]="w.share" [style.background]="w.color"></span
+                    ></span>
+                  </li>
+                } @empty {
+                  <li class="tsd-muted">Nothing planned.</li>
+                }
+              </ol>
+            </section>
+          </div>
+        </div>
+      </div>
+    }
+  } @else {
+    <div class="tsd">
+      @if (weekStore.data(); as week) {
+        @if (week.plannerEnabled) {
+          <app-kpi-tiles palette="widget" data-section="coverage" [tiles]="weekTiles()" [maxColumns]="4" ariaLabel="This week" />
+          <section class="tsd-panel tsd-week-panel" data-testid="tsd-week-chart" data-section="planned-actual">
+            @if (weekDays(); as days) {
+              <app-planned-actual-week-chart
+                heading="Planned vs actual by day"
+                [compactHeadline]="false"
+                class="tsd-week-chart"
+                [days]="days"
+                [today]="store.today()"
+              />
+            }
+          </section>
+        } @else {
+          <p class="tsd-note" data-testid="tsd-week-planner-off">
+            Planner is off · no plan or coverage this week. Clocked time:
+            <strong data-testid="tsd-week-clocked">{{ minutes(weekClocked()) }}</strong>
+          </p>
+        }
+
+        <!-- Week: the same ranking table as the day (2026-11-05), ranked by coverage. -->
+        <section class="tsd-panel" data-testid="tsd-week-ranking">
+          <div class="tsd-table-head">
+            <p class="tsd-title">Coverage ranking · planned vs actual (this week)</p>
+            <span class="tsd-legend" aria-hidden="true">
+              <span><i [style.background]="paColors.planned"></i>Planned</span>
+              <span><i [style.background]="paColors.scheduled"></i>In plan</span>
+              <span><i [style.background]="paColors.outside"></i>Unscheduled</span>
+            </span>
+          </div>
+          <div class="tsd-table-head">
+            <p class="tsd-muted">
+              Ranked by coverage = planned task time covered so far this week.
+            </p>
+            <button
+              type="button"
+              class="tsd-button"
+              data-testid="tsd-export-week"
+              (click)="exportCsv()"
+            >
+              Export CSV
+            </button>
+          </div>
+          <div class="tsd-scroll">
+            <table class="tsd-table tsd-rank-table tsd-week-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="tsd-hash">Rank</th>
+                  <th scope="col" class="tsd-rank-name">Employee</th>
+                  <th scope="col" class="tsd-score-col">Coverage</th>
+                  <th scope="col" class="tsd-pa-col">Planned vs actual</th>
+                  <th scope="col" class="tsd-num">Planned</th>
+                  <th scope="col" class="tsd-num">Actual</th>
+                  <th scope="col" class="tsd-num tsd-diff-col">Difference</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (w of weekPage().items; track w.employeeId) {
+                  <tr data-testid="tsd-week-row">
+                    <td class="tsd-hash">
+                      @if (weekRank(w); as rank) {
+                        <span class="tsd-rank" [class.tsd-rank--top]="rank <= 3">{{ rank }}</span>
+                      } @else {
+                        <span class="tsd-rank">—</span>
+                      }
+                    </td>
+                    <th scope="row" class="tsd-rank-name">
+                      <span class="tsd-person">
+                        <app-avatar
+                          size="xs"
+                          [avatarUrl]="avatarUrl(w)"
+                          [userName]="w.displayName"
+                        />
+                        <span class="tsd-name">{{ w.displayName }}</span>
+                      </span>
+                    </th>
+                    <td>
+                      <span class="tsd-score-cell">
+                        @if (w.coveragePercent !== null) {
+                          <span class="tsd-score" data-testid="tsd-week-coverage">{{
+                            percent(w.coveragePercent)
+                          }}</span>
+                        } @else {
+                          <span class="tsd-not-ranked">Not ranked · no plan yet</span>
+                        }
+                        @if (week.plannerEnabled && w.unscheduledMinutes > 0) {
+                          <span class="tsd-badge"
+                            >Unscheduled {{ minutes(w.unscheduledMinutes) }}</span
+                          >
+                        }
+                      </span>
+                    </td>
+                    <td class="tsd-pa-col">
+                      @if (weekBars()[w.employeeId]; as b) {
+                        <span
+                          class="tsd-pa"
+                          data-testid="tsd-week-pa"
+                          [attr.title]="b.tooltip"
+                          [attr.aria-label]="b.tooltip"
+                          role="img"
+                        >
+                          @if (week.plannerEnabled) {
+                            <span
+                              class="tsd-pa-planned"
+                              [style.width.%]="b.planned"
+                              [style.background]="paColors.planned"
+                            ></span>
+                          }
+                          <span class="tsd-pa-actual">
+                            <span
+                              [style.width.%]="b.scheduled"
+                              [style.background]="paColors.scheduled"
+                            ></span>
+                            <span
+                              [style.width.%]="b.outside"
+                              [style.background]="paColors.outside"
+                            ></span>
+                          </span>
+                        </span>
+                      }
+                    </td>
+                    <td class="tsd-num">
+                      {{ week.plannerEnabled ? minutes(w.plannedMinutes) : '—' }}
+                    </td>
+                    <td class="tsd-num">{{ minutes(w.clockedMinutes) }}</td>
+                    <td class="tsd-num tsd-diff-col" data-testid="tsd-week-diff">
+                      @if (weekDifference(w, week.plannerEnabled); as d) {
+                        <span
+                          class="tsd-diff"
+                          [class.tsd-diff--behind]="d.behind"
+                          [class.tsd-diff--ahead]="d.ahead"
+                          >{{ d.text }}</span
+                        >
+                      } @else {
+                        —
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="tsd-muted" colspan="7">No one matches.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <ng-container *ngTemplateOutlet="pagerTpl; context: { list: 'week', page: weekPage() }" />
+        </section>
+      } @else if (weekStore.error(); as error) {
+        <p class="tsd-note">
+          {{ error }}
+          <button type="button" class="tsd-button" (click)="weekStore.retry()">Try again</button>
+        </p>
+      } @else {
+        <p class="tsd-muted" aria-busy="true">Loading the week…</p>
+      }
+    </div>
+  }
+</app-modal>
+
+<ng-template #pagerTpl let-list="list" let-p="page">
+  @if (p.totalPages > 1) {
+    <div class="tsd-pager" data-testid="tsd-pager" [attr.data-list]="list">
+      <button
+        type="button"
+        class="tsd-button"
+        [disabled]="p.page <= 1"
+        (click)="goToPage(list, p.page - 1)"
+      >
+        Previous
+      </button>
+      <span class="tsd-muted">Page {{ p.page }} of {{ p.totalPages }}</span>
+      <button
+        type="button"
+        class="tsd-button"
+        [disabled]="p.page >= p.totalPages"
+        (click)="goToPage(list, p.page + 1)"
+      >
+        Next
+      </button>
+    </div>
+  }
+</ng-template>

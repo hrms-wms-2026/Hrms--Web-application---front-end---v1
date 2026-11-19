@@ -11,7 +11,6 @@ import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
-import { WorkApprovalsStore } from '../../state/work-approvals.store';
 
 @Component({
   selector: 'app-project-detail',
@@ -27,7 +26,6 @@ export class ProjectDetailComponent {
   readonly store = inject(ProjectDetailStore);
   protected readonly toolbarStore = inject(WorkPageToolbarStore);
   protected readonly projectListStore = inject(ProjectListStore);
-  protected readonly approvalsStore = inject(WorkApprovalsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private projectId = '';
@@ -40,7 +38,7 @@ export class ProjectDetailComponent {
   isProjectSettings = signal(false);
 
   // Board/Backlog/Settings are project-level routes with no milestoneId of their own, but the
-  // sub-menu bar (and its Tree/Approvals/Calendar links, which are still
+  // sub-menu bar (and its Tree link, which is still
   // milestone-scoped) must stay visible on every tab - falls back to the first module so those
   // links have somewhere valid to point when the user isn't currently inside a specific module.
   subMenuMilestoneId = computed(() => this.activeMilestoneId() ?? this.store.milestones()[0]?.objectiveId ?? '');
@@ -53,8 +51,6 @@ export class ProjectDetailComponent {
     if (!id) return false;
     return this.store.milestones().find((m) => m.objectiveId === id)?.isOwner ?? false;
   });
-  // The feed is already scoped to this project and to the caller.
-  protected readonly pendingApprovalCount = computed(() => this.approvalsStore.pendingCount());
 
   constructor() {
     this.syncChildRouteState();
@@ -80,7 +76,6 @@ export class ProjectDetailComponent {
       .subscribe((id) => {
         this.projectId = id;
         void this.loadProject(id);
-        void this.approvalsStore.loadAll(id);
       });
 
     void this.projectListStore.loadProjects();

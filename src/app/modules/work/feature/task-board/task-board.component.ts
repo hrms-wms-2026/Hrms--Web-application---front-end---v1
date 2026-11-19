@@ -1,3 +1,9 @@
+import { MeetingApiService } from '../../meetings/data-access/meeting-api.service';
+import { MeetingCreatedEvent, drawerKeyForCreated } from '../../meetings/utils/meeting-created-drawer.util';
+import { MeetingOccurrenceDrawerComponent } from '../../meetings/feature/meeting-occurrence-drawer/meeting-occurrence-drawer.component';
+import { MeetingListItem } from '../../meetings/models/meeting.models';
+import { meetingListWindow } from '../../meetings/utils/meeting-time';
+import { meetingsByStatusColumn, visibleMeetings } from '../../meetings/utils/meeting-board';
 import { AfterViewChecked, AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute } from '@angular/router';
@@ -18,7 +24,7 @@ import { WorkTask } from '../../models/task.model';
 import { TaskCategoryColumn } from '../../models/task-category.model';
 import { toTaskCategoryColumn } from '../../utils/task-category.mapper';
 import { WorkDropdownOption } from '../../ui/work-dropdown/work-dropdown.component';
-import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../ui/task-filter-bar/task-filter-bar.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { TaskAssigneeAvatarFilterComponent, TaskAssigneeAvatarMember } from '../../ui/task-assignee-avatar-filter/task-assignee-avatar-filter.component';
 import { ProfileStore } from '../../../profile/state/profile.store';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
@@ -31,18 +37,39 @@ import { NotificationService } from '../../../../core/services/notification.serv
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, TaskFilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent],
+  imports: [TaskBoardColumnComponent, ButtonComponent, ErrorStateComponent, FilterBarComponent, TaskAssigneeAvatarFilterComponent, TaskFormModalComponent, BoardStructureEditorComponent, MeetingOccurrenceDrawerComponent],
   template: `
     <ng-template #toolbarTpl>
       <div class="task-board__toolbar">
+        @if (searchExpanded()) {
+          <div class="ui-field ui-field--sm w-80" data-testid="board-search">
+            <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg></span>
+            <input type="search" placeholder="Search work items…" [value]="searchTerm()"
+              (input)="onSearchChanged($any($event.target).value)"
+              class="ui-field__control" />
+            <span class="ui-field__trailing"><button type="button" data-testid="board-search-close" aria-label="Close search" title="Close search"
+              class="ui-field__icon-btn h-5 w-5 text-base leading-none"
+              (click)="toggleSearch()">&times;</button></span>
+          </div>
+        } @else {
+          <button type="button" data-testid="board-search-toggle" aria-label="Search board" title="Search board"
+            class="inline-flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+            (click)="toggleSearch()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+          </button>
+        }
         <app-task-assignee-avatar-filter
           [members]="projectRosterMembers()"
           [currentEmployeeId]="currentEmployee.id()"
           [selected]="assigneeFilter()"
           (selectionChanged)="setAssigneeFilter($event)"
         />
-        <app-task-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
-        @if (modules().length > 0) {
+        <app-filter-bar [fields]="filterFields()" [values]="filterValues()" (fieldChanged)="onFilterFieldChanged($event)" />
+        @if (modules().length > 0 && !isOfficeProject()) {
           <app-button variant="primary" (pressed)="goToCreate()">Create work item</app-button>
         }
       </div>
@@ -58,6 +85,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
           <app-task-board-column
             [status]="column.status"
             [tasks]="column.tasks"
+            [meetings]="meetingsByColumn().get(column.status.id) ?? []"
             [connectedListIds]="columnIds()"
             [allStatuses]="store.statuses()"
             [currentEmployeeId]="currentEmployee.id()"
@@ -67,8 +95,9 @@ import { NotificationService } from '../../../../core/services/notification.serv
             [defaultObjectiveId]="modalPrefillModuleId()"
             [defaultSprintId]="modalPrefillSprintId()"
             [projectId]="projectId()"
-            [isProjectMember]="isProjectMember()"
+            [isProjectMember]="isProjectMember() && !isOfficeProject()"
             (taskDropped)="onTaskDropped($event)"
+            (meetingOpened)="openMeeting.set($event)"
             (taskViewed)="onTaskViewed($event)"
             (taskChanged)="reload()"
             (statusUpdated)="reload()"
@@ -79,6 +108,10 @@ import { NotificationService } from '../../../../core/services/notification.serv
       </div>
     }
 
+    @if (openMeeting(); as key) {
+      <app-meeting-occurrence-drawer [key]="key" (closed)="onMeetingDrawerClosed()" />
+    }
+
     <app-task-form-modal
       [open]="taskModalOpen()"
       [mode]="taskModalMode()"
@@ -86,7 +119,9 @@ import { NotificationService } from '../../../../core/services/notification.serv
       [taskId]="taskModalTaskId()"
       [prefillModuleId]="modalPrefillModuleId()"
       [prefillSprintId]="modalPrefillSprintId()"
+      [allowMeeting]="true"
       (taskSelected)="taskModalTaskId.set($event)"
+      (meetingCreated)="onMeetingSaved($event)"
       (created)="onTaskModalDone()"
       (saved)="onTaskModalDone()"
       (changed)="reload()"
@@ -115,6 +150,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   private readonly route = inject(ActivatedRoute);
   private readonly sprintApi = inject(SprintApiService);
   private readonly taskApi = inject(TaskApiService);
+  private readonly meetingApi = inject(MeetingApiService);
   protected readonly currentEmployee = inject(CurrentEmployeeStore);
   private readonly profileStore = inject(ProfileStore, { optional: true });
   private readonly fileApi = inject(FileApiService, { optional: true });
@@ -123,6 +159,12 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   private readonly toolbarTpl = viewChild.required<TemplateRef<unknown>>('toolbarTpl');
 
   protected readonly projectId = signal('');
+  protected readonly meetings = signal<readonly MeetingListItem[]>([]);
+  /** Ticks every minute so a meeting moves from To Do to In Process to Done as its time passes. */
+  private readonly now = signal(new Date());
+  private readonly clockTimer = setInterval(() => this.now.set(new Date()), 60_000);
+  protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
+  protected readonly isOfficeProject = computed(() => this.projectStore.project()?.systemPurpose === 'office');
   protected readonly sprints = signal<Sprint[]>([]);
   protected readonly categories = signal<TaskCategoryColumn[]>([]);
   protected readonly rawAssignableMembers = signal<TaskAssigneeAvatarMember[]>([]);
@@ -176,6 +218,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   protected readonly assigneeFilter = signal<string[]>([]);
   protected readonly statusFilter = signal<string[]>([]);
   protected readonly priorityFilter = signal<string[]>([]);
+  protected readonly searchTerm = signal('');
+  protected readonly searchExpanded = signal(false);
   protected readonly boardStructureEditorOpen = signal(false);
   private highlightTaskId: string | null = null;
   private didScrollToHighlight = false;
@@ -240,8 +284,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     { value: 'high', label: 'High' },
     { value: 'critical', label: 'Critical' }
   ];
-  protected readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
-    { key: 'module', label: 'Module', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
+  protected readonly filterFields = computed<FilterFieldConfig[]>(() => [
+    { key: 'module', label: 'Milestone', icon: 'module', kind: 'multi', options: this.objectiveOptions() },
     { key: 'sprint', label: 'Sprint', icon: 'sprint', kind: 'single', options: this.sprintOptions(), defaultValues: ['all'] },
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
     { key: 'assignee', label: 'Assignee', icon: 'people', kind: 'multi', options: this.assigneeFilterOptions() },
@@ -262,6 +306,15 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
       tasks: column.tasks.filter((task) => this.matchesFilters(task))
     }))
   );
+  /** Each meeting in the status column its time puts it in (D10), cancelled ones left out, under the board's filters. */
+  protected readonly meetingsByColumn = computed(() => {
+    const placed = meetingsByStatusColumn(
+      visibleMeetings(this.meetings(), this.now()).filter((meeting) => this.meetingMatchesFilters(meeting)),
+      this.columnsWithTasks().map((column) => column.status));
+    const statuses = this.statusFilter();
+    if (statuses.length > 0) for (const id of [...placed.keys()]) if (!statuses.includes(id)) placed.delete(id);
+    return placed;
+  });
   protected readonly assigneeFilterOptions = computed<WorkDropdownOption[]>(() =>
     this.assignableMembers().map((member) => ({ value: member.employeeId, label: member.name }))
   );
@@ -270,6 +323,13 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   protected setSprintFilter(value: string): void { this.sprintFilter.set(value); }
   protected setCategoryFilter(ids: string[]): void { this.categoryFilter.set(ids); }
   protected setAssigneeFilter(ids: string[]): void { this.assigneeFilter.set(ids); }
+
+  protected onSearchChanged(term: string): void { this.searchTerm.set(term); }
+
+  protected toggleSearch(): void {
+    this.searchExpanded.update((expanded) => !expanded);
+    if (!this.searchExpanded()) this.searchTerm.set('');
+  }
 
   protected onFilterFieldChanged(event: { key: string; values: string[] }): void {
     switch (event.key) {
@@ -305,6 +365,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     void this.store.loadBoard(projectId);
     void this.loadSprints(projectId);
     void this.loadCategories(projectId);
+    this.loadMeetings();
   }
 
   ngAfterViewInit(): void {
@@ -312,6 +373,7 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   }
 
   ngOnDestroy(): void {
+    clearInterval(this.clockTimer);
     this.toolbarStore.setTemplate(null);
   }
 
@@ -354,7 +416,27 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     const statusMatches = statuses.length === 0 || statuses.includes(task.statusId);
     const priorities = this.priorityFilter();
     const priorityMatches = priorities.length === 0 || priorities.includes(task.priority);
-    return objectiveMatches && sprintMatches && categoryMatches && assigneeMatches && statusMatches && priorityMatches;
+    const search = this.searchTerm().trim().toLowerCase();
+    const searchMatches = !search
+      || task.title.toLowerCase().includes(search)
+      || task.shortId.toLowerCase().includes(search);
+    return objectiveMatches && sprintMatches && categoryMatches && assigneeMatches && statusMatches && priorityMatches && searchMatches;
+  }
+
+  /**
+   * A meeting has a module, a title and a ShortId but no sprint, category, priority or assignee. Under a filter on one of
+   * those it is hidden, except "Individual" (no sprint) and an assignee filter that includes the viewer, who attends every
+   * meeting listed here.
+   */
+  private meetingMatchesFilters(meeting: MeetingListItem): boolean {
+    const modules = this.objectiveFilter();
+    if (modules.length > 0 && !modules.includes(meeting.objectiveId ?? '')) return false;
+    if (this.sprintFilter() !== 'all' && this.sprintFilter() !== 'individual') return false;
+    if (this.categoryFilter().length > 0 || this.priorityFilter().length > 0) return false;
+    const assignees = this.assigneeFilter();
+    if (assignees.length > 0 && !assignees.includes(this.currentEmployee.id())) return false;
+    const search = this.searchTerm().trim().toLowerCase();
+    return !search || meeting.title.toLowerCase().includes(search) || meeting.shortId.toLowerCase().includes(search);
   }
 
   private async loadSprints(projectId: string): Promise<void> {
@@ -411,6 +493,31 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
     }
     return '';
   });
+
+  /** A meeting was created (or sent for approval) from the work item form (category "meeting"): refresh the board and
+   *  open the new meeting's drawer. */
+  protected onMeetingSaved(event: MeetingCreatedEvent): void {
+    void this.store.loadBoard(this.projectId());
+    this.loadMeetings();
+    const key = drawerKeyForCreated(event);
+    if (key) this.openMeeting.set(key);
+  }
+
+  protected onMeetingDrawerClosed(): void {
+    this.openMeeting.set(null);
+    this.loadMeetings();
+  }
+
+  /** Past, current and the next 7 days of this project's meetings the caller organizes or attends. */
+  private loadMeetings(): void {
+    const projectId = this.projectId();
+    if (!projectId) return;
+    const { from, to } = meetingListWindow();
+    this.meetingApi.list(from, to, projectId).subscribe({
+      next: (items) => this.meetings.set(items),
+      error: () => this.meetings.set([]),
+    });
+  }
 
   onTaskViewed(task: WorkTask): void {
     this.taskModalMode.set('edit');

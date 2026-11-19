@@ -9,6 +9,7 @@ import {
   BulkStartOffboardingPayload,
   ChangePositionPayload,
   ChangePositionResponse,
+  EmployeeBankDetailsRevealResponse,
   EmployeeDetailResponse,
   EmployeeIdentityResponse,
   EmployeeListItemResponse,
@@ -17,10 +18,18 @@ import {
   ResendInvitationResponse,
   UpdateEmployeeJobDetailsRequest
 } from '../models/employee.model';
-import { PendingAccessGrantRequestResponse } from '../models/access-grant-request.model';
+import { OnboardingApprovalPreview } from '../models/access-grant-request.model';
 import { ChecklistAssignee } from '../models/checklist-template.model';
 import { PositionHistoryEntryResponse } from '../models/position-history.model';
 import { EmployeeWorkGraphResponse } from '../models/work-graph.model';
+import {
+  EmployeeActivityByHourResponse,
+  EmployeeAppUsageResponse,
+  EmployeeDeliveryTrendResponse,
+  EmployeeNeedsAttentionResponse,
+  EmployeeRecentTasksResponse,
+  EmployeeWorkPatternSummaryResponse
+} from '../models/employee-work-activity.model';
 import {
   EmployeeActivityOverviewResponse,
   EmployeeApprovalActivityResponse,
@@ -39,7 +48,6 @@ import {
   EmployeeWorkTasksResponse
 } from '../models/employee-overview.model';
 import {
-  ApproveAccessGrantRequestResponse,
   DraftListPageResponse,
   DraftListParams,
   EmployeeNumberAvailabilityResponse,
@@ -47,18 +55,18 @@ import {
   FinalizeOnboardingDraftResponse,
   ActiveHolder,
   OnboardingDraftResponse,
-  RejectAccessGrantRequestRequest,
-  RejectAccessGrantRequestResponse,
+  ClockInDefaults,
+  ManagerCandidate,
+  ReportingChainNode,
   SaveOnboardingDraftPayload,
   WorkModeOption
 } from '../models/onboarding-draft.model';
 
 /**
  * Targets HRMS-Backend-v1 EmployeesController (GET /api/v1/employees, GET /api/v1/employees/{id},
- * POST /api/v1/employees/{id}/resend-invitation),
+ * POST /api/v1/employees/{id}/resend-invitation, POST /api/v1/employees/{id}/revoke-invitation),
  * OnboardingDraftsController (GET/POST/PUT /api/v1/onboarding/drafts, POST /api/v1/onboarding/drafts/{id}/finalize),
- * WorkModesController (GET /api/v1/work-modes?legalEntityId={id}), and AccessGrantRequestsController
- * (POST /api/v1/onboarding/access-grant-requests/{id}/approve-and-send-invite, POST /api/v1/onboarding/access-grant-requests/{id}/reject).
+ * and WorkModesController (GET /api/v1/work-modes?legalEntityId={id}). Position access requests are decided in the Inbox.
  */
 @Injectable({ providedIn: 'root' })
 export class PeopleApiService {
@@ -89,12 +97,23 @@ export class PeopleApiService {
     return this.http.post<ResendInvitationResponse>(`${environment.apiUrl}/employees/${id}/resend-invitation`, {});
   }
 
+  revokeInvitation(id: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/employees/${id}/revoke-invitation`, {});
+  }
+
   setTrayAppAccess(id: string, enabled: boolean): Observable<void> {
     return this.http.post<void>(`${environment.apiUrl}/employees/${id}/tray-app-access`, { enabled });
   }
 
   getEmployeeDetail(id: string): Observable<EmployeeDetailResponse> {
     return this.http.get<EmployeeDetailResponse>(`${environment.apiUrl}/employees/${id}/detail`);
+  }
+
+  revealEmployeeBankDetails(id: string): Observable<EmployeeBankDetailsRevealResponse> {
+    return this.http.post<EmployeeBankDetailsRevealResponse>(
+      `${environment.apiUrl}/employees/${id}/bank-details/reveal`,
+      {}
+    );
   }
 
   changePosition(id: string, payload: ChangePositionPayload): Observable<ChangePositionResponse> {
@@ -158,27 +177,10 @@ export class PeopleApiService {
     );
   }
 
-  approveAccessGrantRequest(id: string): Observable<ApproveAccessGrantRequestResponse> {
-    return this.http.post<ApproveAccessGrantRequestResponse>(
-      `${environment.apiUrl}/onboarding/access-grant-requests/${id}/approve-and-send-invite`,
-      {}
-    );
-  }
-
-  rejectAccessGrantRequest(
-    id: string,
-    payload?: RejectAccessGrantRequestRequest
-  ): Observable<RejectAccessGrantRequestResponse> {
-    return this.http.post<RejectAccessGrantRequestResponse>(
-      `${environment.apiUrl}/onboarding/access-grant-requests/${id}/reject`,
-      payload ?? {}
-    );
-  }
-
-  listPendingApprovals(): Observable<PendingAccessGrantRequestResponse[]> {
-    return this.http.get<PendingAccessGrantRequestResponse[]>(
-      `${environment.apiUrl}/onboarding/access-grant-requests/pending-for-me`
-    );
+  /** Who will have to approve adding someone to this position (position access and/or a seat increase). */
+  getOnboardingApprovalPreview(positionId: string | null): Observable<OnboardingApprovalPreview> {
+    const params = positionId ? new HttpParams().set('positionId', positionId) : new HttpParams();
+    return this.http.get<OnboardingApprovalPreview>(`${environment.apiUrl}/onboarding/drafts/approval-preview`, { params });
   }
 
   getJobJourney(employeeId: string): Observable<PositionHistoryEntryResponse[]> {
@@ -266,6 +268,46 @@ export class PeopleApiService {
     );
   }
 
+  getWorkActivityNeedsAttention(employeeId: string): Observable<EmployeeNeedsAttentionResponse> {
+    return this.http.get<EmployeeNeedsAttentionResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/needs-attention`
+    );
+  }
+
+  getWorkActivityRecentTasks(employeeId: string): Observable<EmployeeRecentTasksResponse> {
+    return this.http.get<EmployeeRecentTasksResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/recent-tasks`
+    );
+  }
+
+  getWorkActivityDeliveryTrend(employeeId: string, to: string): Observable<EmployeeDeliveryTrendResponse> {
+    return this.http.get<EmployeeDeliveryTrendResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/delivery-trend`,
+      { params: new HttpParams().set('to', to) }
+    );
+  }
+
+  getWorkActivityByHour(employeeId: string, from: string, to: string): Observable<EmployeeActivityByHourResponse> {
+    return this.http.get<EmployeeActivityByHourResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/activity-by-hour`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getWorkActivityAppUsage(employeeId: string, from: string, to: string): Observable<EmployeeAppUsageResponse> {
+    return this.http.get<EmployeeAppUsageResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/app-usage`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
+  getWorkActivityWorkPattern(employeeId: string, from: string, to: string): Observable<EmployeeWorkPatternSummaryResponse> {
+    return this.http.get<EmployeeWorkPatternSummaryResponse>(
+      `${environment.apiUrl}/employees/${employeeId}/work-activity/work-pattern`,
+      { params: this.periodParams(from, to, false) }
+    );
+  }
+
   getOverviewSignals(employeeId: string, from: string, to: string): Observable<EmployeeOverviewSignalsResponse> {
     return this.http.get<EmployeeOverviewSignalsResponse>(
       `${environment.apiUrl}/employees/${employeeId}/overview/signals`,
@@ -335,6 +377,31 @@ export class PeopleApiService {
     return this.http.get<readonly ActiveHolder[]>(
       `${environment.apiUrl}/org/legal-entities/${legalEntityId}/positions/${positionId}/active-holders`
     );
+  }
+
+  /** The chosen manager's reporting chain, organisation root first and the manager last. */
+  getReportingChain(managerEmployeeId: string): Observable<readonly ReportingChainNode[]> {
+    return this.http.get<readonly ReportingChainNode[]>(`${environment.apiUrl}/onboarding/drafts/reporting-chain`, {
+      params: new HttpParams().set('managerEmployeeId', managerEmployeeId)
+    });
+  }
+
+  /** Company-wide search (name, position, department) for a one-off reporting manager. */
+  searchManagerCandidates(legalEntityId: string, search: string): Observable<readonly ManagerCandidate[]> {
+    return this.http.get<readonly ManagerCandidate[]>(`${environment.apiUrl}/onboarding/drafts/manager-candidates`, {
+      params: new HttpParams().set('legalEntityId', legalEntityId).set('search', search)
+    });
+  }
+
+  getClockInDefaults(params: {
+    legalEntityId: string;
+    workModeId: string;
+    positionId?: string | null;
+    departmentId?: string | null;
+  }): Observable<ClockInDefaults> {
+    return this.http.get<ClockInDefaults>(`${environment.apiUrl}/onboarding/drafts/clock-in-defaults`, {
+      params: this.toHttpParams(params)
+    });
   }
 
   getChecklistAssigneePositions(legalEntityId: string): Observable<readonly { id: string; name: string }[]> {

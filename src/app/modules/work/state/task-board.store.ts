@@ -6,6 +6,7 @@ import { toTaskStatusColumn, toWorkTask } from '../utils/task.mapper';
 import { TaskStatusColumn, WorkTask } from '../models/task.model';
 import { CreateSubtaskRequestDto, CreateTaskRequestDto, EditTaskRequestDto, InsufficientAllocationErrorDto } from '../models/dto/task.dto';
 import { PendingApprovalDto, isPendingApproval } from '../models/dto/work-approval.dto';
+import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
 
 interface TaskBoardState {
   readonly statuses: readonly TaskStatusColumn[];
@@ -17,12 +18,18 @@ interface TaskBoardState {
 
 const initialState: TaskBoardState = { statuses: [], tasks: [], subtasksByParentId: {}, loading: false, error: null };
 
-function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+function extractError(err: unknown, fallback: string): string {
+  return toSafeErrorMessage(err, fallback);
 }
 
-function tryParseInsufficientAllocation(err: any): InsufficientAllocationErrorDto | null {
-  const body = err?.error;
+interface AllocationErrorBody {
+  suggestedAction?: unknown;
+  availableSlackHours?: unknown;
+  detail?: unknown;
+}
+
+function tryParseInsufficientAllocation(err: unknown): InsufficientAllocationErrorDto | null {
+  const body = (err as { error?: AllocationErrorBody | null } | null)?.error;
   if (body && typeof body === 'object' && body.suggestedAction === 'extend_allocation' && typeof body.availableSlackHours === 'number') {
     return { availableSlackHours: body.availableSlackHours, suggestedAction: 'extend_allocation' };
   }

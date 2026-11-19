@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { PermissionService } from '../../../../../core/auth/state/permission.service';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { LoaderComponent } from '../../../../../shared/ui/loader/loader.component';
 import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store';
@@ -33,12 +34,16 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
                 <input
                   type="checkbox"
                   [checked]="task.isRequired"
+                  [disabled]="!canChangeRequired()"
+                  [attr.title]="canChangeRequired() ? null : 'Only people who can edit employees can change this.'"
                   (change)="toggleRequired(task.id, task.isRequired, $any($event.target).checked)"
                   class="obs-checkbox"
                 />
                 <span class="obs-toggle-text">Required</span>
               </label>
             </div>
+          } @empty {
+            <p class="obs-step-subtitle">This checklist has no tasks to review.</p>
           }
         </div>
         <div class="obs-actions">
@@ -138,6 +143,9 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
 export class OffboardingReviewTasksStepComponent {
   readonly employeeId = input.required<string>();
   readonly store = inject(OffboardingWizardStore);
+  private readonly permissionService = inject(PermissionService);
+  /** Reassigning is open to the employee's manager; turning a task required/optional is not (the server enforces it too). */
+  readonly canChangeRequired = computed(() => this.permissionService.hasPermission('employees:write'));
 
   constructor() {
     effect(() => {
@@ -147,7 +155,7 @@ export class OffboardingReviewTasksStepComponent {
   }
 
   async toggleRequired(taskId: string, currentIsRequired: boolean, checked: boolean): Promise<void> {
-    if (currentIsRequired === checked) return;
+    if (currentIsRequired === checked || !this.canChangeRequired()) return;
     const task = this.store.tasks().find((t) => t.id === taskId);
     if (!task) return;
     await this.store.updateTask(this.employeeId(), taskId, { assignedToId: task.assignedToId, dueDate: task.dueDate, isRequired: checked });

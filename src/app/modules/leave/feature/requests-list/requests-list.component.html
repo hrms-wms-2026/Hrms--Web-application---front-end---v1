@@ -1,16 +1,14 @@
 <section class="to-page">
   <header class="to-header">
-    <div>
-      <p class="to-kicker">TIME OFF</p>
-      <h1 class="to-title">All Requests</h1>
-      <p class="to-subtitle">Every leave request across the organization.</p>
-    </div>
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Settings" middleLabel="Time Off" currentLabel="All Requests" icon="settings" />
+    <h1 class="to-sr-only">All Requests</h1>
   </header>
+  <app-time-off-settings-tabs />
   <div class="to-tabs" role="tablist" aria-label="Request status">
-    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === ''" (click)="setStatusFilter(undefined)">All</button>
-    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'pending'" (click)="setStatusFilter('pending')">Pending</button>
-    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'approved'" (click)="setStatusFilter('approved')">Approved</button>
-    <button type="button" class="to-tab" [class.to-tab--active]="statusFilter() === 'rejected'" (click)="setStatusFilter('rejected')">Rejected</button>
+    <button type="button" role="tab" class="to-tab" [class.to-tab--active]="statusFilter() === ''" [attr.aria-selected]="statusFilter() === ''" (click)="setStatusFilter(undefined)">All</button>
+    <button type="button" role="tab" class="to-tab" [class.to-tab--active]="statusFilter() === 'pending'" [attr.aria-selected]="statusFilter() === 'pending'" (click)="setStatusFilter('pending')">Pending</button>
+    <button type="button" role="tab" class="to-tab" [class.to-tab--active]="statusFilter() === 'approved'" [attr.aria-selected]="statusFilter() === 'approved'" (click)="setStatusFilter('approved')">Approved</button>
+    <button type="button" role="tab" class="to-tab" [class.to-tab--active]="statusFilter() === 'rejected'" [attr.aria-selected]="statusFilter() === 'rejected'" (click)="setStatusFilter('rejected')">Rejected</button>
   </div>
   <div class="to-toolbar">
     <app-select [options]="leaveTypeOptions()" [value]="store.allFilter().leaveTypeId ?? ''" (valueChange)="onLeaveTypeFilterChange($event)" />
@@ -18,7 +16,7 @@
     <app-date-picker placeholder="To" [value]="store.allFilter().toDate ?? ''" (valueChange)="onToDateChange($event)" />
   </div>
   @if (store.allLoading()) {
-    <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    <div class="to-loading"><app-loader /></div>
   } @else if (store.allError()) {
     <app-error-state [message]="store.allError()!" [retryable]="true" (retry)="store.loadAll()" />
   } @else if (store.all().length === 0) {
@@ -35,9 +33,12 @@
 <app-leave-approval-detail-sheet
   [open]="detailOpen()"
   [detail]="store.detail()"
-  [canApprove]="canApprove()"
+  [canApprove]="canDecide()"
   [deciding]="store.deciding()"
   [decideError]="store.decideError()"
+  [loading]="store.detailLoading()"
+  [loadError]="store.detailError()"
+  (decisionRequested)="onDecision($event)"
   (closed)="closeDetail()"
 />
 

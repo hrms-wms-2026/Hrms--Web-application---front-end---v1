@@ -82,7 +82,7 @@ export interface UpdatePersonalInformationRequest {
   gender: string | null;
   nationalityId: string | null;
   displayTimezone: string | null;
-  addresses: Array<{ addressType: 'permanent' | 'current'; addressJson: string; isPrimary: boolean }>;
+  addresses: { addressType: 'permanent' | 'current'; addressJson: string; isPrimary: boolean }[];
   version: string;
 }
 
@@ -109,4 +109,23 @@ export interface UpdateBankDetailsRequest {
   accountNumber: string;
   accountType: string;
   routingNumber: string | null;
+}
+
+export type EmployeeDocumentType = 'cv' | 'identity' | 'certificate' | 'other';
+
+export interface EmployeeDocument {
+  id: string;
+  fileId: string;
+  name: string;
+  documentType: EmployeeDocumentType;
+  fileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  uploadedAt: string;
+}
+
+export interface UploadEmployeeDocumentRequest {
+  file: File;
+  type: EmployeeDocumentType;
+  name: string;
 }

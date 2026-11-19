@@ -1,15 +1,16 @@
 @if (open()) {
-  <div class="tfm-scrim" (click)="onBackdrop($event)">
+  <div role="presentation" class="tfm-scrim" animate.leave="ui-popup-leave" (click)="onBackdrop($event)">
     <div
-      class="tfm tfm--create"
+      class="tfm tfm--create ui-scroll-open"
       role="dialog"
       aria-modal="true"
       tabindex="-1"
       [attr.aria-label]="isEdit() ? 'Edit checklist' : 'Create checklist'"
-      (click)="$event.stopPropagation()"
+      appStopClickPropagation
       (keydown.escape)="onEscape()"
     >
-      <header class="tfm__head">
+      <header class="tfm__head ui-popup-header">
+        <span class="ui-popup-icon" data-icon="checklist" aria-hidden="true"></span>
         <div class="tfm__title">
           <h2>{{ isEdit() ? 'Edit checklist' : 'Create checklist' }}</h2>
           <p>Create reusable tasks for employee onboarding or offboarding.</p>
@@ -19,7 +20,7 @@
         </button>
       </header>
 
-      <div class="tfm__body">
+      <div class="tfm__body scroll-fade">
         @if (initialLoading()) {
           <div class="p-6 flex justify-center items-center">
             <app-loader label="Loading checklist template..." />
@@ -50,7 +51,7 @@
 
           <!-- Checklist Type Segmented Control -->
           <div class="flex flex-col gap-1">
-            <label class="text-xs font-semibold text-[var(--color-text-secondary)]">Checklist type *</label>
+            <span class="text-xs font-semibold text-[var(--color-text-secondary)]">Checklist type *</span>
             <div class="cb-segmented" role="radiogroup" aria-label="Checklist type">
               <button
                 type="button"
@@ -93,9 +94,9 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             <!-- Scope Selector (Left Column) -->
             <div class="flex flex-col gap-1">
-              <label class="text-xs font-semibold text-[var(--color-text-secondary)]">
+              <span class="text-xs font-semibold text-[var(--color-text-secondary)]">
                 Use this checklist for
-              </label>
+              </span>
               <div class="cb-segmented" role="radiogroup" aria-label="Use this checklist for">
                 <button
                   type="button"
@@ -293,7 +294,7 @@
 
               <div class="cb-task-list__col-assigned">
                 <span class="cb-task-row__mobile-label">Assigned to</span>
-                <div class="cb-assignment">
+                <div class="cb-assignment" cdkOverlayOrigin #assignOrigin="cdkOverlayOrigin">
                   @if (isUnassigned(taskGroup)) {
                     <button
                       type="button"
@@ -320,7 +321,7 @@
                     </button>
                   } @else {
                     <div class="cb-assignment__pills">
-                      <button
+                      <button (keydown.delete)="clearTaskAssignment(idx)" (keydown.backspace)="clearTaskAssignment(idx)"
                         type="button"
                         class="cb-pill cb-pill--position"
                         [attr.aria-label]="'Selected position for task ' + (idx + 1)"
@@ -333,10 +334,10 @@
                           </svg>
                         </span>
                         <span>{{ assignmentPositionLabel(taskGroup) }}</span>
-                        <span class="cb-pill__remove" (click)="$event.stopPropagation(); clearTaskAssignment(idx)">×</span>
+                        <span aria-hidden="true" class="cb-pill__remove" (click)="$event.stopPropagation(); clearTaskAssignment(idx)">×</span>
                       </button>
                       @if (taskGroup.value.selectedAssigneeUserId || taskGroup.value.originalAssignedToId) {
-                        <button
+                        <button (keydown.delete)="removeSelectedEmployee(idx)" (keydown.backspace)="removeSelectedEmployee(idx)"
                           type="button"
                           class="cb-pill cb-pill--employee"
                           [attr.aria-label]="'Selected employee for task ' + (idx + 1)"
@@ -349,7 +350,7 @@
                             </svg>
                           </span>
                           <span>{{ assignmentEmployeeLabel(taskGroup) }}</span>
-                          <span class="cb-pill__remove" (click)="$event.stopPropagation(); removeSelectedEmployee(idx)">×</span>
+                          <span aria-hidden="true" class="cb-pill__remove" (click)="$event.stopPropagation(); removeSelectedEmployee(idx)">×</span>
                         </button>
                       } @else {
                         <button
@@ -364,6 +365,18 @@
                     </div>
                   }
 
+                  <ng-template
+                    cdkConnectedOverlay
+                    [cdkConnectedOverlayOrigin]="assignOrigin"
+                    [cdkConnectedOverlayOpen]="isTaskPickerOpen(idx)"
+                    [cdkConnectedOverlayPositions]="pickerPositions"
+                    [cdkConnectedOverlayPush]="true"
+                    [cdkConnectedOverlayViewportMargin]="8"
+                    [cdkConnectedOverlayHasBackdrop]="true"
+                    cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+                    (backdropClick)="closeTaskPickers()"
+                    (overlayKeydown)="$event.key === 'Escape' && closeTaskPickers()"
+                  >
                   @if (openAssignmentPickerIndex() === idx) {
                     <div class="cb-picker">
                       <div class="cb-picker__title">Assign task to</div>
@@ -410,7 +423,7 @@
                       @if (loadingAssigneePositions()) {
                         <span class="cb-assigned-field__loading">Loading positions…</span>
                       } @else {
-                        <div class="cb-picker__list">
+                        <div class="cb-picker__list scroll-fade">
                           @for (pos of filteredAssigneePositions(); track pos.value) {
                             <button type="button" class="cb-picker__option cb-picker__option--list" (click)="selectTaskPosition(idx, pos.value)">
                               <span class="cb-picker__emoji" aria-hidden="true">
@@ -447,7 +460,7 @@
                       @if (isLoadingAssignees(taskGroup.value.assigneePositionId)) {
                         <span class="cb-assigned-field__loading">Loading employees…</span>
                       } @else {
-                        <div class="cb-picker__list">
+                        <div class="cb-picker__list scroll-fade">
                           @for (person of filteredEmployeeOptions(); track person.userId) {
                             <button type="button" class="cb-picker__option cb-picker__option--list" (click)="selectTaskEmployee(idx, person.userId)">
                               <span class="cb-picker__emoji" aria-hidden="true">
@@ -469,6 +482,7 @@
                       }
                     </div>
                   }
+                  </ng-template>
 
                   @if (submitAttempted() && taskGroup.get('assigneePositionId')?.invalid) {
                     <span class="cb-task-row__error">Choose who this task is for.</span>
@@ -484,7 +498,7 @@
                       type="number"
                       min="0"
                       step="1"
-                      class="cb-due-field__input"
+                      class="ui-input ui-input--sm cb-due-field__input"
                       [attr.aria-label]="'Due for task ' + (idx + 1)"
                       [value]="taskGroup.get('dueOffsetDays')?.value ?? 0"
                       (input)="taskGroup.get('dueOffsetDays')?.setValue($any($event.target).value)"
@@ -523,23 +537,18 @@
                 <div class="cb-task-row__actions">
                   <button
                     type="button"
-                    class="cb-icon-btn"
-                    [disabled]="idx === 0"
-                    (click)="moveTaskUp(idx)"
-                    title="Move up"
-                    aria-label="Move task up"
+                    class="cb-icon-btn cb-icon-btn--details"
+                    [class.cb-icon-btn--has-details]="taskHasDetails(taskGroup)"
+                    [attr.data-testid]="'task-' + idx + '-details'"
+                    (click)="openTaskDetail(idx)"
+                    title="Task details"
+                    [attr.aria-label]="'Open details for task ' + (idx + 1)"
                   >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    class="cb-icon-btn"
-                    [disabled]="idx === tasksArray.length - 1"
-                    (click)="moveTaskDown(idx)"
-                    title="Move down"
-                    aria-label="Move task down"
-                  >
-                    ↓
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                      <path d="M15 3v18"></path>
+                      <path d="M7 8h4M7 12h4M7 16h2"></path>
+                    </svg>
                   </button>
                   <button
                     type="button"
@@ -561,25 +570,18 @@
                 <div class="flex-1 w-full">
                   <app-input
                     placeholder="Penalty if bypassed (optional e.g. $50 equipment fee)"
+                    [maxlength]="limits.bypassPenaltyDescription"
                     [value]="taskGroup.value.bypassPenaltyDescription || ''"
                     (valueChange)="taskGroup.get('bypassPenaltyDescription')?.setValue($event)"
                   />
                 </div>
                 <div class="w-full sm:w-56">
-                  <select
-                    class="cb-assigned-field__select"
-                    [attr.aria-label]="'Category for task ' + (idx + 1)"
+                  <app-select
+                    [ariaLabel]="'Category for task ' + (idx + 1)"
+                    [options]="taskCategoryOptions"
                     [value]="taskGroup.value.category || ''"
-                    (change)="taskGroup.get('category')?.setValue($any($event.target).value)"
-                  >
-                    <option value="">No category</option>
-                    <option value="asset_return">Asset Return</option>
-                    <option value="access_removal">Access Removal</option>
-                    <option value="document_handover">Document Handover</option>
-                    <option value="final_settlement">Final Settlement</option>
-                    <option value="knowledge_handover">Knowledge Handover</option>
-                    <option value="other">Other</option>
-                  </select>
+                    (valueChange)="taskGroup.get('category')?.setValue($event)"
+                  />
                 </div>
               </div>
             }
@@ -600,4 +602,17 @@
       </footer>
     </div>
   </div>
+
+  @let detailIndex = openTaskDetailIndex();
+  @if (detailIndex !== null && tasksArray.at(detailIndex); as detailGroup) {
+    <app-checklist-task-detail-dialog
+      [taskGroup]="detailGroup"
+      [taskNumber]="detailIndex + 1"
+      [assigneeLabel]="assigneeSummary(detailGroup)"
+      [templateId]="templateId()"
+      [offboarding]="isOffboardingTemplate()"
+      [categoryOptions]="taskCategoryOptions"
+      (closed)="closeTaskDetail()"
+    />
+  }
 }

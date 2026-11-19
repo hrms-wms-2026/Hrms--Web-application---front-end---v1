@@ -176,18 +176,24 @@ describe('LegalEntityApiService', () => {
     req.flush(mockGeneralSettings);
   });
 
-  it('uploads a logo as multipart form data', () => {
+  it('uploads the logo as a company_logo file, then links the file id to the company', () => {
     const file = new File(['fake image bytes'], 'logo.png', { type: 'image/png' });
+    let result: unknown;
 
-    service.uploadLogo('company-1', file).subscribe((result) => {
-      expect(result).toEqual({ legalEntityId: 'company-1', logoFileId: 'file-1' });
-    });
+    service.uploadLogo('company-1', file).subscribe((r) => (result = r));
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-1/logo`);
-    expect(req.request.method).toBe('PUT');
-    expect(req.request.body instanceof FormData).toBe(true);
-    expect((req.request.body as FormData).get('logo')).toBe(file);
-    req.flush({ legalEntityId: 'company-1', logoFileId: 'file-1' });
+    const upload = httpMock.expectOne(`${environment.apiUrl}/files`);
+    expect(upload.request.method).toBe('POST');
+    expect((upload.request.body as FormData).get('purpose')).toBe('company_logo');
+    expect((upload.request.body as FormData).get('file')).toBe(file);
+    upload.flush({ fileId: 'file-1', originalFileName: 'logo.png', fileSizeBytes: 16, contentType: 'image/png' });
+
+    const link = httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/company-1/logo`);
+    expect(link.request.method).toBe('PUT');
+    expect(link.request.body).toEqual({ fileId: 'file-1' });
+    link.flush({ legalEntityId: 'company-1', logoFileId: 'file-1' });
+
+    expect(result).toEqual({ legalEntityId: 'company-1', logoFileId: 'file-1' });
   });
 
   it('removes a logo with a DELETE', () => {
@@ -207,9 +213,9 @@ describe('LegalEntityApiService', () => {
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
 
-  it('builds the logo display URL with a cache-busting query param', () => {
+  it('builds the logo display URL from the shared file route', () => {
     const url = service.getLogoUrl('company-1', 'file-1');
 
-    expect(url).toBe(`${environment.apiUrl}/org/legal-entities/company-1/logo?v=file-1`);
+    expect(url).toBe(`${environment.apiUrl}/files/file-1`);
   });
 });

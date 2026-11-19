@@ -1,14 +1,18 @@
 <div class="flex flex-col">
-  <h1 class="text-[17px] font-bold text-slate-800 tracking-tight leading-snug">
-    {{ timeOfDayGreeting() }}{{ displayName() ? ', ' + displayName() : '' }}!
+  <h1 class="text-xl font-bold leading-tight tracking-tight text-[var(--color-text-primary)] @lg:text-3xl @xl:text-4xl @2xl:text-5xl">
+    @if (displayName(); as name) {
+      {{ timeOfDayGreeting() }},
+      <span class="block text-[var(--color-accent)]">{{ name }}!</span>
+    } @else {
+      {{ timeOfDayGreeting() }}!
+    }
   </h1>
-  <p class="text-xs text-slate-500 mt-1 font-medium">Here's what's happening with your work today.</p>
-  <div class="flex items-center gap-1.5 mt-2 text-slate-400 text-xs font-normal">
-    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <p class="mt-1.5 text-xs font-medium text-[var(--color-text-secondary)] @lg:text-sm @xl:text-base @2xl:text-lg">Here's what's happening with your work today.</p>
+  <div class="mt-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-secondary)] @lg:text-sm @2xl:text-lg">
+    <svg class="h-3.5 w-3.5 shrink-0 text-[var(--color-text-secondary)] @lg:h-4 @lg:w-4 @2xl:h-5 @2xl:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <rect height="18" rx="2" stroke-width="2" width="18" x="3" y="4"></rect>
       <path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round" stroke-width="2"></path>
     </svg>
     <span data-testid="dashboard-greeting-date">{{ dateLabel }}</span>
   </div>
 </div>
-

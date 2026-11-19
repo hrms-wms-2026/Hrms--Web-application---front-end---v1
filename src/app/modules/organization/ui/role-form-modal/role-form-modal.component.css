@@ -2,7 +2,6 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -17,7 +16,7 @@
   background: var(--color-surface);
   border-radius: 12px;
   border: 1px solid var(--color-border);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-modal);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -28,7 +27,6 @@
   align-items: flex-start;
   justify-content: space-between;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
@@ -37,6 +35,55 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-text-primary);
+}
+
+.rfm-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rfm-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-secondary) 15%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.rfm-badge--system {
+  background: color-mix(in srgb, var(--color-accent-strong) 12%, transparent);
+  color: var(--color-accent-strong);
+}
+
+.rfm-role-description {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.rfm-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  padding: 2rem 0;
+}
+
+.rfm-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent-strong);
+  border-radius: 50%;
+  animation: rfm-spin 0.8s linear infinite;
+}
+
+@keyframes rfm-spin {
+  to { transform: rotate(360deg); }
 }
 
 .rfm-subtitle {
@@ -96,24 +143,6 @@
   color: var(--color-text-primary);
 }
 
-.rfm-textarea {
-  width: 100%;
-  padding: 0.625rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  resize: vertical;
-  outline: none;
-  transition: border-color 150ms ease;
-}
-
-.rfm-textarea:focus {
-  border-color: var(--color-sidebar-active-bg, #2563eb);
-}
-
 .rfm-perm-header {
   display: flex;
   align-items: center;
@@ -130,8 +159,8 @@
 .rfm-selected-pill {
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-sidebar-active-bg, #2563eb);
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 12%, transparent);
+  color: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent-strong) 12%, transparent);
   padding: 0.1875rem 0.5rem;
   border-radius: 999px;
 }
@@ -142,94 +171,7 @@
   gap: 1rem;
 }
 
-.rfm-module-card {
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
-  background: var(--color-surface);
-  overflow: hidden;
-}
-
-.rfm-module-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: var(--color-surface-secondary);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
-}
-
-.rfm-module-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.rfm-select-all-label {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.rfm-select-all-label input[type='checkbox'] {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--color-sidebar-active-bg, #2563eb);
-  cursor: pointer;
-}
-
-.rfm-perm-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.625rem;
-  padding: 0.875rem;
-  align-items: stretch;
-}
-
-@media (max-width: 640px) {
-  .rfm-perm-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.rfm-perm-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
-  background: var(--color-surface);
-  cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.rfm-perm-item:hover {
-  background: var(--color-surface-secondary);
-  border-color: var(--color-border);
-}
-
-.rfm-perm-item--selected {
-  background: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 6%, transparent);
-  border-color: color-mix(in srgb, var(--color-sidebar-active-bg, #2563eb) 40%, transparent);
-}
-
-.rfm-perm-item input[type='checkbox'] {
-  margin-top: 0.1875rem;
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-  accent-color: var(--color-sidebar-active-bg, #2563eb);
-  cursor: pointer;
-}
-
 .rfm-perm-desc {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text-primary);
   line-height: 1.4;
 }
 

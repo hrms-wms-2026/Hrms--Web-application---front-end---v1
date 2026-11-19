@@ -1,6 +1,10 @@
 /** Quiet Operations Desk: an HR administration canvas centred on policy clarity. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
+import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -12,10 +16,11 @@ import { LeaveTypeResponse, UpdateLeaveTypeRequest } from '../../models/leave-ty
 import { LeaveTypeListTableComponent } from '../../ui/leave-type-list-table/leave-type-list-table.component';
 import { LeaveTypeFormModalComponent, LeaveTypeFormValue } from '../../ui/leave-type-form-modal/leave-type-form-modal.component';
 
+import { TimeOffSettingsTabsComponent } from '../../ui/time-off-settings-tabs/time-off-settings-tabs.component';
 @Component({
   selector: 'app-leave-types-management',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, EmptyStateComponent, ErrorStateComponent, ModalComponent, LeaveTypeListTableComponent, LeaveTypeFormModalComponent],
+  imports: [CommonModule, TimeOffSettingsTabsComponent, BreadcrumbHeaderComponent, LoaderComponent, KpiTilesComponent, ButtonComponent, EmptyStateComponent, ErrorStateComponent, ModalComponent, LeaveTypeListTableComponent, LeaveTypeFormModalComponent],
   templateUrl: './leave-types-management.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './leave-types-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -23,6 +28,8 @@ import { LeaveTypeFormModalComponent, LeaveTypeFormValue } from '../../ui/leave-
 export class LeaveTypesManagementComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly permissionService = inject(PermissionService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   readonly store = inject(LeaveTypeStore);
   readonly hasManageAccess = computed(() => this.permissionService.hasPermission('leave:manage'));
   readonly typeSummary = computed(() => {
@@ -33,11 +40,26 @@ export class LeaveTypesManagementComponent {
       paid: items.filter((item) => item.isPaid).length
     };
   });
+  readonly typeKpiTiles = computed<readonly KpiTile[]>(() => {
+    const s = this.typeSummary();
+    return [
+      { label: 'Types', value: s.total, icon: 'layers' },
+      { label: 'Active', value: s.active, icon: 'check-circle', tone: 'success' },
+      { label: 'Paid', value: s.paid, icon: 'clipboard-list' }
+    ];
+  });
   readonly formModalOpen = signal(false);
   readonly editingType = signal<LeaveTypeResponse | null>(null);
   readonly pendingDeactivateType = signal<LeaveTypeResponse | null>(null);
 
-  constructor() { void this.store.load(); }
+  constructor() {
+    void this.store.load();
+    // ?new=1 (the hub's "Create Leave Type" shortcut) opens the create form; drop it so Back or reload don't reopen it.
+    if (this.route.snapshot.queryParamMap.has('new') && this.hasManageAccess()) {
+      this.openCreateModal();
+      void this.router.navigate([], { relativeTo: this.route, queryParams: { new: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
+  }
 
   openCreateModal(): void {
     if (!this.hasManageAccess()) { this.notificationService.error("You don't have permission to create leave types."); return; }
@@ -87,4 +109,9 @@ export class LeaveTypesManagementComponent {
     const { code: _code, ...update } = value;
     return update;
   }
+
+  /** Leave Policies, filtered to this type. */
+  viewPolicies(type: LeaveTypeResponse): void { void this.router.navigate(['/settings/time-off/policies'], { queryParams: { type: type.id } }); }
+  /** Leave Policies, filtered to this type, with the policy wizard open and the type picked. */
+  addPolicy(type: LeaveTypeResponse): void { void this.router.navigate(['/settings/time-off/policies'], { queryParams: { type: type.id, new: 1 } }); }
 }

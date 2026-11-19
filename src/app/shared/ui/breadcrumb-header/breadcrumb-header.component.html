@@ -1,23 +1,32 @@
 <header class="bh-header-bar">
   <nav class="bh-breadcrumb" aria-label="Breadcrumb">
-    @if (parentUrl()) {
-      <a [routerLink]="parentUrl()" class="bh-breadcrumb__item bh-breadcrumb__item--parent bh-breadcrumb__link">
-        @if (icon()) {
-          <app-nav-icon [name]="icon()!" class="bh-breadcrumb__icon" />
-        }
-        <span>{{ parentLabel() }}</span>
-      </a>
-    } @else {
-      <span class="bh-breadcrumb__item bh-breadcrumb__item--parent">
-        @if (icon()) {
-          <app-nav-icon [name]="icon()!" class="bh-breadcrumb__icon" />
-        }
-        <span>{{ parentLabel() }}</span>
-      </span>
+    <!-- A top-level page (no parent) shows just its icon and name. -->
+    @if (parentLabel()) {
+      @if (parentUrl()) {
+        <a [routerLink]="parentUrl()" class="bh-breadcrumb__item bh-breadcrumb__item--parent bh-breadcrumb__link">
+          @if (icon()) {
+            <app-nav-icon [name]="icon()!" class="bh-breadcrumb__icon" />
+          }
+          <span>{{ parentLabel() }}</span>
+        </a>
+      } @else {
+        <span class="bh-breadcrumb__item bh-breadcrumb__item--parent">
+          @if (icon()) {
+            <app-nav-icon [name]="icon()!" class="bh-breadcrumb__icon" />
+          }
+          <span>{{ parentLabel() }}</span>
+        </span>
+      }
+      <svg class="bh-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
     }
-    <svg class="bh-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-      <polyline points="9 18 15 12 9 6"/>
-    </svg>
+    @if (middleLabel()) {
+      <span class="bh-breadcrumb__item bh-breadcrumb__item--parent">{{ middleLabel() }}</span>
+      <svg class="bh-breadcrumb__sep" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    }
     @if (switcherItems().length > 0) {
       <div class="bh-switcher">
         <button
@@ -34,7 +43,7 @@
           </svg>
         </button>
         @if (open()) {
-          <div class="bh-switcher__panel" role="listbox" (click)="$event.stopPropagation()">
+          <div class="bh-switcher__panel" role="listbox" appStopClickPropagation>
             @if (switcherGroupLabel()) {
               <div class="bh-switcher__group-label">{{ switcherGroupLabel() }}</div>
             }
@@ -42,7 +51,7 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
               <input type="text" placeholder="Search…" [value]="search()" (input)="search.set($any($event.target).value)" />
             </div>
-            <div class="bh-switcher__list">
+            <div class="bh-switcher__list scroll-fade">
               @for (item of filteredSwitcherItems(); track item.id) {
                 <button
                   type="button"
@@ -62,7 +71,17 @@
         }
       </div>
     } @else {
-      <span class="bh-breadcrumb__item bh-breadcrumb__item--current" aria-current="page">{{ currentLabel() }}</span>
+      @if (currentClickable()) {
+        <button type="button" class="bh-breadcrumb__item bh-breadcrumb__item--current bh-breadcrumb__current-btn" aria-current="page"
+          data-testid="breadcrumb-current" [attr.title]="currentTitle() || null" (click)="currentClicked.emit()">{{ currentLabel() }}</button>
+      } @else {
+        <span class="bh-breadcrumb__item bh-breadcrumb__item--current" aria-current="page">
+          @if (!parentLabel() && icon()) {
+            <app-nav-icon [name]="icon()!" class="bh-breadcrumb__icon" />
+          }
+          {{ currentLabel() }}
+        </span>
+      }
     }
   </nav>
 </header>

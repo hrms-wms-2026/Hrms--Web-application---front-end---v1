@@ -42,8 +42,8 @@
 }
 
 .cipf-actions app-button ::ng-deep button:disabled {
-  background-color: #bfdbfe !important;
-  color: #ffffff !important;
+  background-color: var(--color-accent-subtle) !important;
+  color: var(--color-text-on-solid) !important;
   cursor: not-allowed !important;
   opacity: 0.95 !important;
   border-color: transparent !important;
@@ -52,8 +52,8 @@
 
 :host-context([data-theme='dark']) .cipf-actions app-button ::ng-deep button:disabled,
 :host-context(.dark) .cipf-actions app-button ::ng-deep button:disabled {
-  background-color: #1e3a8a !important;
-  color: #93c5fd !important;
+  background-color: var(--color-accent-hover) !important;
+  color: var(--color-focus-ring) !important;
   opacity: 0.7 !important;
 }
 

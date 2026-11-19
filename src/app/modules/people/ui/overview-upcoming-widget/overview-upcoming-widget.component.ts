@@ -8,6 +8,7 @@ import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeUpcomingItem, EmployeeUpcomingKind } from '../../models/employee-overview.model';
 import { UpcomingDateBlock, upcomingDateBlock } from '../../utils/employee-overview.utils';
 import { UpcomingItemDetailComponent } from '../upcoming-item-detail/upcoming-item-detail.component';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 const UPCOMING_DAYS = 14;
 /** Rows on the compact card; the page load asks the API for only these (plus the window's total). */
@@ -32,20 +33,20 @@ type FullListState = 'idle' | 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-overview-upcoming-widget',
   standalone: true,
-  imports: [ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent, UpcomingItemDetailComponent],
+  imports: [KeyboardClickDirective, ErrorStateComponent, PopoutPanelComponent, PopoutHeaderActionsComponent, UpcomingItemDetailComponent],
   template: `
     <app-popout-panel class="block h-full" [open]="showAll()" label="Upcoming" (closed)="showAll.set(false)">
-      <section
+      <section role="button" tabindex="0" appKeyboardClick
         data-testid="upcoming-card"
-        class="group flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs"
+        class="group flex h-full flex-col rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-5 shadow-xs"
         [class.cursor-pointer]="canExpand() && !showAll()"
         [attr.aria-busy]="loader.state() === 'loading'"
         (click)="expand()"
       >
         <header class="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <h2 class="text-base font-bold text-slate-900">Upcoming</h2>
+          <h2 class="text-base font-bold text-[var(--color-text-primary)]">Upcoming</h2>
           <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
-            <span class="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">Next 14 days</span>
+            <span class="shrink-0 rounded-full bg-[var(--color-accent-subtle)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)]">Next 14 days</span>
             <app-popout-header-actions
               [refreshedAt]="refreshedAt()"
               [refreshing]="refreshing()"
@@ -64,10 +65,10 @@ type FullListState = 'idle' | 'loading' | 'ready' | 'error';
             <div data-testid="widget-loading" class="flex-1 animate-pulse space-y-4" aria-hidden="true">
               @for (i of [0, 1, 2]; track i) {
                 <div class="flex items-center gap-3">
-                  <div class="h-10 w-10 rounded-xl bg-slate-100"></div>
+                  <div class="h-10 w-10 rounded-xl bg-[var(--color-surface-secondary)]"></div>
                   <div class="flex-1 space-y-2">
-                    <div class="h-3 w-2/3 rounded bg-slate-100"></div>
-                    <div class="h-3 w-1/2 rounded bg-slate-100"></div>
+                    <div class="h-3 w-2/3 rounded bg-[var(--color-surface-secondary)]"></div>
+                    <div class="h-3 w-1/2 rounded bg-[var(--color-surface-secondary)]"></div>
                   </div>
                 </div>
               }
@@ -77,28 +78,28 @@ type FullListState = 'idle' | 'loading' | 'ready' | 'error';
             <app-error-state message="Could not load upcoming items." [retryable]="true" (retry)="loader.reload()" />
           }
           @case ('forbidden') {
-            <p data-testid="widget-forbidden" class="text-sm text-slate-500">You do not have access to this section.</p>
+            <p data-testid="widget-forbidden" class="text-sm text-[var(--color-text-secondary)]">You do not have access to this section.</p>
           }
           @case ('empty') {
             <div class="flex flex-1 flex-col items-center justify-center py-6 text-center" data-testid="widget-empty">
-              <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-slate-400">
+              <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-text-muted)]">
                 <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
                   <rect x="3" y="5" width="18" height="16" rx="2"></rect>
                   <path d="M16 3v4M8 3v4M3 10h18"></path>
                   <path d="M8 15h3M8 18h6"></path>
                 </svg>
               </div>
-              <p class="max-w-52 text-xs leading-5 text-slate-500">Nothing coming up in the next 14 days.</p>
+              <p class="max-w-52 text-xs leading-5 text-[var(--color-text-secondary)]">Nothing coming up in the next 14 days.</p>
             </div>
           }
           @default {
-            <ul class="divide-y divide-slate-100">
+            <ul class="divide-y divide-[var(--color-border)]">
               @for (item of displayedItems(); track $index) {
                 @let when = block(item);
                 <li>
                   <button
                     type="button"
-                    class="flex w-full items-center gap-3 rounded-lg py-1.5 text-left text-sm transition-colors hover:bg-slate-50 cursor-pointer"
+                    class="flex w-full items-center gap-3 rounded-lg py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-surface-secondary)] cursor-pointer"
                     data-testid="upcoming-item"
                     [title]="kindLabel(item.kind)"
                     [attr.aria-label]="'Open details for ' + item.title"
@@ -114,12 +115,12 @@ type FullListState = 'idle' | 'loading' | 'ready' | 'error';
                       <span class="mt-0.5 text-sm font-bold leading-none">{{ when.day }}</span>
                     </div>
                     <div class="min-w-0 flex-1">
-                      <p class="truncate font-semibold text-slate-900">{{ item.title }}</p>
-                      <p class="truncate text-xs text-slate-500" data-testid="upcoming-time">
+                      <p class="truncate font-semibold text-[var(--color-text-primary)]">{{ item.title }}</p>
+                      <p class="truncate text-xs text-[var(--color-text-secondary)]" data-testid="upcoming-time">
                         {{ when.time }}@if (item.detail && item.kind !== 'leave') { · {{ item.detail }} }
                       </p>
                     </div>
-                    <svg class="h-4 w-4 shrink-0 text-slate-400" data-testid="upcoming-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <svg class="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" data-testid="upcoming-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
                   </button>
@@ -128,20 +129,20 @@ type FullListState = 'idle' | 'loading' | 'ready' | 'error';
             </ul>
 
             @if (showAll() && fullState() === 'loading') {
-              <p class="py-2 text-center text-xs text-slate-500" data-testid="upcoming-full-loading">Loading the rest…</p>
+              <p class="py-2 text-center text-xs text-[var(--color-text-secondary)]" data-testid="upcoming-full-loading">Loading the rest…</p>
             }
             @if (showAll() && fullState() === 'error') {
-              <p class="py-2 text-center text-xs text-rose-600" data-testid="upcoming-full-error">
+              <p class="py-2 text-center text-xs text-[var(--color-danger)]" data-testid="upcoming-full-error">
                 Could not load the rest.
                 <button type="button" class="font-semibold underline cursor-pointer" (click)="retryFull($event)">Retry</button>
               </p>
             }
 
             @if (canExpand()) {
-              <div class="mt-auto flex justify-end border-t border-slate-100 pt-2">
+              <div class="mt-auto flex justify-end border-t border-[var(--color-border)] pt-2">
                 <button
                   type="button"
-                  class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  class="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer"
                   data-testid="upcoming-toggle"
                   [attr.aria-expanded]="showAll()"
                   (click)="onToggleClick($event)"
@@ -160,13 +161,13 @@ type FullListState = 'idle' | 'loading' | 'ready' | 'error';
   styles: [`
     .date-tile {
       display: flex; flex-shrink: 0; flex-direction: column; align-items: center; justify-content: center;
-      width: 2.25rem; height: 2.25rem; border-radius: 0.625rem; background: #f8fafc; color: #0f172a;
+      width: 2.25rem; height: 2.25rem; border-radius: 0.625rem; background: var(--color-surface-secondary); color: var(--color-text-primary);
     }
-    .date-tile > span:first-child { color: #64748b; }
-    .date-tile--leave { background: #f0fdf4; }
-    .date-tile--leave > span:first-child { color: #15803d; }
-    .date-tile--release { background: #f5f3ff; }
-    .date-tile--release > span:first-child { color: #6d28d9; }
+    .date-tile > span:first-child { color: var(--color-text-secondary); }
+    .date-tile--leave { background: var(--color-success-subtle); }
+    .date-tile--leave > span:first-child { color: var(--color-success-text); }
+    .date-tile--release { background: var(--color-cat-violet-subtle); }
+    .date-tile--release > span:first-child { color: var(--color-cat-violet); }
   `],
   host: { class: 'block h-full' },
   changeDetection: ChangeDetectionStrategy.OnPush

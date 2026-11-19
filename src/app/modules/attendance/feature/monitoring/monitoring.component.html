@@ -1,7 +1,7 @@
 <main class="monitoring-page">
   <header class="monitoring-page-header">
     <div class="monitoring-header-row">
-      <app-breadcrumb-header parentLabel="Attendance" currentLabel="Monitoring" icon="time-attendance" />
+      <app-breadcrumb-header parentLabel="Settings" currentLabel="Monitoring" icon="settings" />
     </div>
   </header>
 
@@ -182,19 +182,20 @@
           </div>
           <div class="threshold-card__info">
             <span class="threshold-card__title">Activity check threshold</span>
-            <small class="threshold-card__desc">Minutes of continuous inactivity before the existing check flow.</small>
+            <small class="threshold-card__desc">Minutes of no keyboard/mouse activity before the activity check — a screenshot request if screenshot capture is on, otherwise “Were you working?”.</small>
           </div>
-          <div class="threshold-card__input-group">
+          <div class="ui-field threshold-input">
             <input
               type="number"
-              class="threshold-input"
+              class="ui-field__control"
+              aria-label="Activity check threshold in minutes"
               min="1"
               max="1440"
               [value]="company.idleThresholdMinutes"
               [disabled]="!hasWriteAccess()"
               (change)="setCompanyThreshold($any($event.target).value)"
             />
-            <span class="threshold-card__unit">minutes</span>
+            <span class="ui-field__trailing threshold-input__unit">minutes</span>
           </div>
         </div>
 
@@ -210,17 +211,18 @@
             <span class="threshold-card__title">Allowed range</span>
             <small class="threshold-card__desc">Maximum distance from the verified location permitted for location tracking checks.</small>
           </div>
-          <div class="threshold-card__input-group">
+          <div class="ui-field threshold-input">
             <input
               type="number"
-              class="threshold-input"
+              class="ui-field__control"
+              aria-label="Allowed range in meters"
               min="0"
               [value]="company.allowedRadiusMeters ?? ''"
               [disabled]="!hasWriteAccess()"
               (change)="setCompanyAllowedRadius($any($event.target).value)"
               placeholder="No limit"
             />
-            <span class="threshold-card__unit">meters</span>
+            <span class="ui-field__trailing threshold-input__unit">meters</span>
           </div>
         </div>
       </div>
@@ -277,7 +279,7 @@
 
           <div class="editor-fields">
             <div class="form-group target-field">
-              <app-custom-select
+              <app-select [vacancyBadges]="true"
                 [label]="scopeLabels[selectedScope()].slice(0, -1)"
                 [placeholder]="targetPlaceholder()"
                 [options]="targetSelectOptions()"
@@ -289,8 +291,8 @@
 
             <div class="form-group threshold-input-field">
               <span class="form-label">Activity check threshold</span>
-              <div class="input-with-unit">
-                <input
+              <div class="ui-field">
+                <input class="ui-field__control"
                   type="number"
                   min="1"
                   max="1440"
@@ -299,14 +301,14 @@
                   (change)="setOverrideThreshold($any($event.target).value)"
                   placeholder="Inherited"
                 />
-                <span class="input-unit">min</span>
+                <span class="ui-field__trailing">min</span>
               </div>
             </div>
 
             <div class="form-group threshold-input-field">
               <span class="form-label">Allowed range</span>
-              <div class="input-with-unit">
-                <input
+              <div class="ui-field">
+                <input class="ui-field__control"
                   type="number"
                   min="0"
                   [value]="overrideForm().allowedRadiusMeters ?? ''"
@@ -314,7 +316,7 @@
                   (change)="setOverrideAllowedRadius($any($event.target).value)"
                   placeholder="Inherited"
                 />
-                <span class="input-unit">m</span>
+                <span class="ui-field__trailing">m</span>
               </div>
             </div>
 
@@ -369,7 +371,7 @@
 
             <label class="reason-field form-group">
               <span class="form-label">Reason <small>Optional note for administrators.</small></span>
-              <textarea
+              <textarea class="ui-input"
                 rows="2"
                 maxlength="500"
                 placeholder="e.g. Specific team policy requirements"

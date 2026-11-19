@@ -1,13 +1,20 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { POSITION_TEMPLATE_DRAG_MIME_TYPE, PositionTemplatePackPositionResponse, PositionTreeNodeResponse } from '../../models/position.model';
+import { CoverageCardVisual, POSITION_TEMPLATE_DRAG_MIME_TYPE, PositionTemplatePackPositionResponse, PositionTreeNodeResponse } from '../../models/position.model';
 import { PositionOccupancyDisplay, resolvePositionOccupancy } from '../../utils/position-occupancy';
 import { PositionSeatPreviewComponent } from '../position-seat-preview/position-seat-preview.component';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 export interface ReparentPositionEvent {
   position: PositionTreeNodeResponse;
   newReportsToPositionId: string | null;
 }
+
+/** Card size and tree accessors for laying positions out with app-tidy-tree. */
+export const POSITION_CARD_WIDTH = 270;
+export const POSITION_CARD_HEIGHT = 98;
+export const positionChildren = (node: PositionTreeNodeResponse): readonly PositionTreeNodeResponse[] => node.children ?? [];
+export const positionKey = (node: PositionTreeNodeResponse): string => node.id;
 
 export interface TemplateDropOnPositionEvent {
   templatePosition: PositionTemplatePackPositionResponse;
@@ -18,7 +25,7 @@ export interface TemplateDropOnPositionEvent {
 @Component({
   selector: 'app-position-tree-node',
   standalone: true,
-  imports: [CommonModule, PositionSeatPreviewComponent],
+  imports: [KeyboardClickDirective, CommonModule, PositionSeatPreviewComponent],
   templateUrl: './position-tree-node.component.html',
   styleUrl: './position-tree-node.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -27,26 +34,19 @@ export class PositionTreeNodeComponent {
   @Input({ required: true }) node!: PositionTreeNodeResponse;
   @Input() level = 0;
   @Input() canManage = false;
-  @Input() canConfigureAccess = false;
   @Input() departmentNameMap: Record<string, string> = {};
   @Input() isRoot = false;
-
+  /** Read-only views (e.g. an employee's reporting structure) mark one position as "this one". */
+  @Input() highlightPositionId: string | null = null;
+  @Input() coverageVisual: CoverageCardVisual = { state: 'default', levels: [], accessibleLabel: null };
+  @Output() selectPosition = new EventEmitter<PositionTreeNodeResponse>();
   @Output() addSubPosition = new EventEmitter<PositionTreeNodeResponse>();
-  @Output() editPosition = new EventEmitter<PositionTreeNodeResponse>();
-  @Output() viewAccess = new EventEmitter<PositionTreeNodeResponse>();
   @Output() viewCoverage = new EventEmitter<PositionTreeNodeResponse>();
-  @Output() archivePosition = new EventEmitter<PositionTreeNodeResponse>();
   @Output() reparentPosition = new EventEmitter<ReparentPositionEvent>();
   @Output() templateDropped = new EventEmitter<TemplateDropOnPositionEvent>();
 
-  readonly menuOpen = signal(false);
   readonly isDragOver = signal(false);
   readonly isTemplateDragOver = signal(false);
-
-  @HostListener('document:click')
-  onDocumentClick(): void {
-    this.closeMenu();
-  }
 
   get resolvedDepartmentName(): string {
     if (this.node.departmentName) return this.node.departmentName;
@@ -71,7 +71,16 @@ export class PositionTreeNodeComponent {
     });
   }
 
-  get iconCategory(): 'ceo' | 'finance' | 'hr' | 'ops' | 'general' {
+  /** Only open seats get a pill (same rule as the list view's yellow vacant rows). */
+  get vacancyLabel(): string | null {
+    const occupancy = this.occupancy;
+    if (!this.node.isActive || !occupancy.occupancyKnown) return null;
+    const assigned = this.node.assignedCount ?? this.node.currentOccupancy ?? 0;
+    const count = Math.max(0, this.node.maxOccupancy - Math.max(0, assigned));
+    return count > 0 ? `${count} ${count === 1 ? 'vacancy' : 'vacancies'}` : null;
+  }
+
+  get iconCategory():'ceo' | 'finance' | 'hr' | 'ops' | 'general' {
     const name = (this.node.name || '').toLowerCase();
     const code = (this.node.code || '').toLowerCase();
     const dept = (this.resolvedDepartmentName || '').toLowerCase();
@@ -83,43 +92,20 @@ export class PositionTreeNodeComponent {
     return 'general';
   }
 
-  toggleMenu(event: Event): void {
+  openPositionPanel(event: Event): void {
     event.stopPropagation();
-    this.menuOpen.update((v) => !v);
-  }
-
-  closeMenu(): void {
-    this.menuOpen.set(false);
+    this.viewCoverage.emit(this.node);
   }
 
   onAddSub(event: Event): void {
     event.stopPropagation();
-    this.closeMenu();
     this.addSubPosition.emit(this.node);
   }
 
-  onEdit(event: Event): void {
+  onCardClick(event: MouseEvent): void {
+    if ((event.target as Element | null)?.closest('button, .ptn-drag-handle, .ptn-menu')) return;
     event.stopPropagation();
-    this.closeMenu();
-    this.editPosition.emit(this.node);
-  }
-
-  onAccess(event: Event): void {
-    event.stopPropagation();
-    this.closeMenu();
-    this.viewAccess.emit(this.node);
-  }
-
-  onCoverage(event: Event): void {
-    event.stopPropagation();
-    this.closeMenu();
-    this.viewCoverage.emit(this.node);
-  }
-
-  onArchive(event: Event): void {
-    event.stopPropagation();
-    this.closeMenu();
-    this.archivePosition.emit(this.node);
+    this.selectPosition.emit(this.node);
   }
 
   // ── Native Drag & Drop Handlers ───────────────────────────

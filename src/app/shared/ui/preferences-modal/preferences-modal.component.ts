@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { ModalComponent, ModalSize } from '../modal/modal.component';
+import { ModalComponent, ModalSize, PopupIcon } from '../modal/modal.component';
 import { TabsComponent, TabOption } from '../tabs/tabs.component';
 import { PreferenceSubTab } from './preference-subtab.model';
 
 export interface PreferenceTab {
   id: string;
   label: string;
-  icon?: 'palette' | 'bell' | 'user' | 'cog' | 'user-check' | 'briefcase' | 'credit-card' | 'shield';
+  icon?: 'palette' | 'bell' | 'user' | 'cog' | 'user-check' | 'briefcase' | 'credit-card' | 'shield' | 'folder';
 }
 
 const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
@@ -17,7 +17,8 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
   'user-check': 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M17 11l2 2 4-4',
   briefcase: 'M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16 M2 7h20v13a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7Z',
   'credit-card': 'M2 10h20 M2 5h20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z',
-  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z'
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z',
+  folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z'
 };
 
 @Component({
@@ -25,10 +26,10 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
   standalone: true,
   imports: [ModalComponent, TabsComponent],
   template: `
-    <app-modal [open]="open()" [title]="title()" [size]="size()" (closed)="closed.emit()">
+    <app-modal [open]="open()" [title]="title()" [icon]="icon()" [subtitle]="subtitle()" [size]="size()" (closed)="closed.emit()">
       <div class="preferences-container" [class.preferences-container--no-sidebar]="tabs().length === 0">
         @if (tabs().length > 0) {
-          <nav class="preferences-sidebar" aria-label="Preferences categories">
+          <nav class="preferences-sidebar scroll-fade" aria-label="Preferences categories">
             @for (tab of tabs(); track tab.id) {
               <button
                 type="button"
@@ -78,7 +79,7 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
           </nav>
         }
 
-        <div class="preferences-content">
+        <div class="preferences-content scroll-fade">
           <ng-content />
         </div>
       </div>
@@ -90,6 +91,8 @@ const TAB_ICON_PATHS: Record<NonNullable<PreferenceTab['icon']>, string> = {
 export class PreferencesModalComponent {
   readonly open = input(false);
   readonly title = input<string>('Preferences');
+  readonly icon = input<PopupIcon | ''>('');
+  readonly subtitle = input<string>('');
   readonly tabs = input<readonly PreferenceTab[]>([]);
   readonly activeTabId = input<string>('');
   readonly subTabs = input<readonly PreferenceSubTab[]>([]);

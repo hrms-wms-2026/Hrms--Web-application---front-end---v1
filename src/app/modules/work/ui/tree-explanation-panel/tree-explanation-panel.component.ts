@@ -1,4 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { MilestoneTreeNode } from '../../models/milestone.model';
@@ -8,7 +9,7 @@ import { MonitorAlertDto } from '../../models/dto/monitor.dto';
 @Component({
   selector: 'app-tree-explanation-panel',
   standalone: true,
-  imports: [CardComponent, EmployeeAvatarComponent],
+  imports: [CardComponent, EmployeeAvatarComponent, RouterLink],
   template: `
     <app-card>
 <div data-testid="tree-explanation-panel" class="flex flex-col gap-5 p-4">
@@ -41,11 +42,15 @@ import { MonitorAlertDto } from '../../models/dto/monitor.dto';
               {{ alerts().length === 1 ? 'Alert' : alerts().length + ' alerts' }}
             </div>
             @if (alertsMuted()) {
-              <p data-testid="panel-alerts-muted" class="text-[11px] text-[var(--color-text-secondary)]">Achieved module - for information only, no action needed.</p>
+              <p data-testid="panel-alerts-muted" class="text-[11px] text-[var(--color-text-secondary)]">Achieved milestone - for information only, no action needed.</p>
             }
             <ul class="flex flex-col gap-1.5">
               @for (alert of alerts(); track alert.id) {
-                <li data-testid="panel-alert-message" class="text-xs leading-relaxed text-[var(--color-text-primary)]">{{ alert.message }}</li>
+                <li data-testid="panel-alert-message" class="text-xs leading-relaxed text-[var(--color-text-primary)]">
+                  {{ alert.message }}
+                  <a data-testid="panel-alert-inbox-link" class="ml-1 font-semibold text-[var(--color-accent)] hover:underline"
+                    [routerLink]="['/inbox', 'work', 'monitor_alert', alert.id]">Open in Inbox</a>
+                </li>
               }
             </ul>
           </div>
@@ -108,8 +113,8 @@ import { MonitorAlertDto } from '../../models/dto/monitor.dto';
         }
 
         @if (kind() === 'sprint') {
-          <span data-testid="panel-progress-track" class="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-secondary)]">
-            <span class="block h-full rounded-full bg-[var(--color-accent)]" [style.width.%]="node().progress"></span>
+          <span data-testid="panel-progress-track" class="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-widget-track)]">
+            <span class="block h-full rounded-full bg-[var(--color-widget-shade-1)]" [style.width.%]="node().progress"></span>
           </span>
         }
 
@@ -117,14 +122,17 @@ import { MonitorAlertDto } from '../../models/dto/monitor.dto';
           <div class="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">Quick actions</div>
           <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
           @if (kind() === 'objective' && node().isOwner) {
-            <button type="button" class="{{ secondaryBtn }}" data-testid="panel-create-sub" (click)="createRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg><span>Sub module</span></button>
-            <button type="button" class="{{ secondaryBtn }}" data-testid="panel-edit" (click)="editRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg><span>Edit module</span></button>
+            <button type="button" class="{{ secondaryBtn }}" data-testid="panel-create-sub" (click)="createRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg><span>Sub milestone</span></button>
+            <button type="button" class="{{ secondaryBtn }}" data-testid="panel-edit" (click)="editRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg><span>Edit milestone</span></button>
             <button type="button" class="{{ secondaryBtn }}" data-testid="panel-members" (click)="membersRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg><span>Members</span></button>
             <button type="button" class="{{ secondaryBtn }}" data-testid="panel-create-task" (click)="createTaskRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M12 8v8M8 12h8" /></svg><span>Add work item</span></button>
             @if (isLeaf()) {
               <button type="button" class="{{ secondaryBtn }}" data-testid="panel-create-sprint" (click)="createSprintRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg><span>Add sprint</span></button>
             }
-<button type="button" class="{{ primaryBtn }} col-span-2" data-testid="panel-achieve" (click)="achieveRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM17 4h3v3a3 3 0 0 1-3 3M7 4H4v3a3 3 0 0 0 3 3" /></svg><span>{{ node().isAchieved ? 'Unachieve module' : 'Achieve module' }}</span></button>
+<button type="button" class="{{ primaryBtn }} col-span-2" data-testid="panel-achieve" (click)="achieveRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM17 4h3v3a3 3 0 0 1-3 3M7 4H4v3a3 3 0 0 0 3 3" /></svg><span>{{ node().isAchieved ? 'Unachieve milestone' : 'Achieve milestone' }}</span></button>
+          }
+          @if (kind() === 'objective' && !node().isAchieved) {
+            <button type="button" class="{{ secondaryBtn }}" data-testid="panel-request-hours" (click)="allocationRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>Request more hours</span></button>
           }
           @if (kind() === 'sprint' && node().isOwner) {
             <button type="button" class="{{ secondaryBtn }}" data-testid="panel-create-task" (click)="createTaskRequested.emit(node())"><svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M12 8v8M8 12h8" /></svg><span>Create work item</span></button>
@@ -164,8 +172,10 @@ export class TreeExplanationPanelComponent {
   /** Only offered for a complete or achieved sprint. */
   deleteSprintRequested = output<MilestoneTreeNode>();
   deleteRequested = output<MilestoneTreeNode>();
+  /** Ask for more allocated hours on this module (sent for approval when needed). */
+  allocationRequested = output<MilestoneTreeNode>();
 
-readonly primaryBtn = 'inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3 py-2.5 text-center text-sm font-medium text-white shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
+readonly primaryBtn = 'inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-accent)] px-3 py-2.5 text-center text-sm font-medium text-[var(--color-text-on-solid)] shadow-sm transition-[filter,transform] hover:brightness-95 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
   readonly secondaryBtn = 'inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-center text-sm font-medium text-[var(--color-text-secondary)] shadow-sm transition-colors hover:bg-[var(--color-surface-secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
 
   readonly kind = computed(() => this.node().kind ?? 'objective');
@@ -173,7 +183,7 @@ readonly primaryBtn = 'inline-flex w-full items-center justify-center gap-2 roun
     const kind = this.kind();
     if (kind === 'sprint') return 'Sprint';
     if (kind === 'task') return 'Task';
-    return 'Module';
+    return 'Milestone';
   });
   readonly hoursProgress = computed(() => {
     const allocated = this.node().allocatedHours;

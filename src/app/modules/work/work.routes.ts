@@ -26,9 +26,10 @@ export const WORK_ROUTES: Routes = [
         ]
       },
       {
+        // Approvals moved to the user's Inbox. Old links (dashboard deep links, bookmarks) still land
+        // on the request: ?request=<id> opens that item.
         path: 'approvals',
-        loadComponent: () =>
-          import('./feature/work-approvals/work-approvals.component').then((m) => m.WorkApprovalsComponent)
+        redirectTo: ({ queryParams }) => (queryParams['request'] ? `/inbox/work/approval/${queryParams['request']}` : '/inbox')
       },
       {
         path: 'board',
@@ -41,11 +42,6 @@ export const WORK_ROUTES: Routes = [
         canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./feature/task-backlog/task-backlog.component').then((m) => m.TaskBacklogComponent)
-      },
-      {
-        path: 'calendar',
-        loadComponent: () =>
-          import('./feature/project-calendar/project-calendar.component').then((m) => m.ProjectCalendarComponent)
       },
       {
         path: 'settings',

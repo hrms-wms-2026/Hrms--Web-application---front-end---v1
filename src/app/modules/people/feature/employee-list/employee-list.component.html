@@ -6,26 +6,26 @@
       <!-- Expandable Search (Icon Click Toggle) -->
       <div class="emp-search-container">
         @if (searchExpanded()) {
-          <div class="emp-search-expandable">
-            <svg class="emp-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <div class="emp-search-expandable ui-field ui-field--sm">
+            <span class="ui-field__addon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
+            </svg></span>
             <input
               type="text"
-              class="emp-search-input"
+              class="ui-field__control"
               placeholder="Search by name, email, or employee number..."
               [value]="searchTerm()"
               (input)="onSearchInput($any($event.target).value)"
             />
-            <button
+            <span class="ui-field__trailing"><button
               type="button"
-              class="emp-search-clear-btn"
+              class="ui-field__icon-btn"
               (click)="toggleSearch()"
               title="Close search"
               aria-label="Close search"
             >
               &times;
-            </button>
+            </button></span>
           </div>
         } @else {
           <button
@@ -50,7 +50,8 @@
     <!-- Right: Add Button -->
     <div class="emp-header-actions">
       @if (canAddEmployee()) {
-        <a routerLink="/people/employees/new" class="no-underline" (click)="$event.preventDefault(); openAddEmployeeModal()">
+        <!-- plain href, not routerLink: routerLink navigates even after preventDefault(), which re-fetched the list -->
+        <a href="/people/employees/new" class="no-underline" (click)="onAddEmployeeClick($event)">
           <app-button variant="primary">+ Add Employee</app-button>
         </a>
       }
@@ -109,6 +110,10 @@
   (completed)="onBulkCompleted('Change employment type', $event)" (closed)="bulkEmploymentTypeOpen.set(false)" />
 <app-bulk-start-offboarding-modal [open]="bulkOffboardOpen()" [employeeIds]="selectedIdList()"
   (completed)="onBulkCompleted('Start offboarding', $event)" (closed)="bulkOffboardOpen.set(false)" />
+@if (rowOffboard(); as offboardee) {
+  <app-start-offboarding-modal [open]="true" [employeeId]="offboardee.id" [employeeName]="offboardee.fullName"
+    (started)="openOffboarding($event)" (closed)="rowOffboard.set(null)" />
+}
 <app-bulk-action-result-modal [result]="bulkResult() ? toEmployeeBulkSummary(bulkResult()!.result) : null" [title]="bulkResult()?.title ?? ''" [names]="resultNames()" noun="employee" (closed)="bulkResult.set(null)" />
 
 @if (isAddEmployeeModalOpen()) {

@@ -1,6 +1,6 @@
 import { MilestoneTreeNode, MilestoneTreeNodeKind } from '../models/milestone.model';
 
-/** Filter-bar values keyed by field key (see TREE_HIGHLIGHT_FIELD_KEYS). Empty array = field not filtering. */
+/** Filter-bar values keyed by field key. Empty array = field not filtering. */
 export type TreeHighlightValues = Readonly<Record<string, readonly string[]>>;
 
 /**
@@ -19,11 +19,6 @@ export interface TreeHighlightResult {
 export function treeNodeKey(parentKey: string, id: string): string {
   return parentKey ? `${parentKey}/${id}` : id;
 }
-
-export const TREE_HIGHLIGHT_FIELD_KEYS = [
-  'search', 'module', 'owner', 'activeStatus', 'dueDate', 'duration', 'itemType',
-  'sprint', 'taskStatus', 'priority', 'category', 'progress'
-] as const;
 
 const DAY_MS = 86_400_000;
 

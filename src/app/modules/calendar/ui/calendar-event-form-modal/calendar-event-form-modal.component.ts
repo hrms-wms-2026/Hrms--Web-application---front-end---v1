@@ -3,23 +3,28 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { InputComponent } from '../../../../shared/ui/input/input.component';
-import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
-import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
+import { TimePickerComponent } from '../../../../shared/ui/time-picker/time-picker.component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { AvatarStackComponent, AvatarStackMember } from '../../../../shared/ui/avatar-stack/avatar-stack.component';
 import { DirtyFormHandle, UnsavedChangesService } from '../../../../shared/services/unsaved-changes.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { localPartsToUtcIso, utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
+import { utcIsoToLocalParts } from '../../../../shared/utils/timezone.util';
 import {
-  CalendarConflict, CalendarEventParticipant, CalendarEventResponse, CreateCalendarEventRequest,
+  CalendarEventParticipant, CalendarEventResponse,
   EligibleNominee, MeetingProvider, RecurrenceEditScope, RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../../models/calendar-event.model';
-import { RecurrenceEndMode, RecurrenceFrequency, buildRecurrenceRule } from '../../utils/recurrence-rule.util';
+import { RecurrenceFrequency } from '../../utils/recurrence-rule.util';
+import { eventInstants } from '../../utils/event-draft';
 import { CalendarEventAttendanceComponent } from '../calendar-event-attendance/calendar-event-attendance.component';
+import { CalendarEventMeetingStatusComponent } from '../calendar-event-meeting-status/calendar-event-meeting-status.component';
 import { CalendarParticipantPickerComponent } from '../calendar-participant-picker/calendar-participant-picker.component';
-import { CalendarSelectComponent } from '../calendar-select/calendar-select.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { timezoneDisplayLabel } from '../../../../shared/utils/timezone-label.util';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
+import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
 
 /** Curated set of IANA zones for the "times entered in" picker. The organizer's own
  * tenant zone is always merged in on top of this so it can never be missing. */
@@ -35,13 +40,6 @@ const CURATED_TIMEZONES = [
   'America/Sao_Paulo', 'America/New_York', 'America/Chicago', 'America/Denver',
   'America/Los_Angeles', 'America/Mexico_City', 'America/Bogota',
 ];
-
-function addMinutes(hhmm: string, minutes: number): string {
-  const [h, m] = hhmm.split(':').map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
-  const total = ((h * 60 + m + minutes) % 1440 + 1440) % 1440;
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-}
 
 /** Adds whole days to a 'YYYY-MM-DD' string via UTC calendar-date arithmetic, so it never shifts
  * across a local-timezone DST boundary the way constructing a plain `new Date(dateStr)` would. */
@@ -76,14 +74,13 @@ const EMPTY_FORM_VALUES = {
   location: '',
   meetingLink: '',
   color: '#2563EB',
-  recurrenceFrequency: 'none' as RecurrenceFrequency,
-  recurrenceEndMode: 'never' as RecurrenceEndMode,
-  recurrenceUntilDate: ''
+  recurrenceFrequency: 'none' as RecurrenceFrequency
 };
 
-export type CalendarEventFormSubmission =
-  | { create: CreateCalendarEventRequest; meetingProvider: MeetingProvider | null }
-  | { update: UpdateCalendarEventRequest; scope: RecurrenceEditScope | null };
+export interface CalendarEventFormSubmission {
+  update: UpdateCalendarEventRequest;
+  scope: RecurrenceEditScope | null;
+}
 
 export interface RespondToCalendarEventPayload {
   status: RespondToCalendarEventStatus;
@@ -91,30 +88,84 @@ export interface RespondToCalendarEventPayload {
   nomineeEmployeeId: string | null;
 }
 
+/** One row of the participants dropdown's "Added" section / one avatar in the stack. */
+interface AddedPerson {
+  readonly key: string;
+  readonly name: string;
+  readonly kind: 'organizer' | 'existing' | 'existing-guest';
+  readonly status?: string;
+}
+
 @Component({
   selector: 'app-calendar-event-form-modal',
   standalone: true,
-  imports: [
-    CommonModule, ReactiveFormsModule, RouterLink, ButtonComponent, InputComponent, SelectComponent,
-    ModalComponent, DatePickerComponent, AvatarComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
-    CalendarSelectComponent, CalendarEventAttendanceComponent
+  imports: [CharCounterComponent, 
+    CommonModule, ReactiveFormsModule, RouterLink, ButtonComponent,
+    ModalComponent, DateRangePickerComponent, TimePickerComponent, AvatarComponent, AvatarStackComponent, ConfirmModalComponent, CalendarParticipantPickerComponent,
+    SelectComponent, CalendarEventAttendanceComponent, CalendarEventMeetingStatusComponent
   ],
   templateUrl: './calendar-event-form-modal.component.html',
+  styles: [`
+    /* Stretch the shared range picker to a full-width form field, matching the project form. */
+    :host ::ng-deep .event-date-range app-date-range-picker { display: block; width: 100%; }
+    :host ::ng-deep .event-date-range .drp-container { display: flex; width: 100%; }
+    :host ::ng-deep .event-date-range .drp-trigger { width: 100%; min-height: 2.25rem; justify-content: flex-start; gap: 0.5rem; font-size: 0.875rem; font-weight: 500; }
+    /* Title/description: rounded bordered boxes. Resting = light border (the description in the mockup);
+       clicked/typing = the "Add title" look - a stronger border, no hover gray. */
+    .event-text-field {
+      width: 100%; border: 1px solid var(--color-border); border-radius: 10px; padding: 9px 16px; background: var(--color-surface);
+      color: var(--color-text-primary); outline: none; transition: background-color 140ms ease, border-color 150ms ease;
+    }
+    .event-text-field::placeholder { color: var(--color-text-secondary); font-weight: 400; }
+    .event-text-field:hover:not(:focus) { background: var(--color-surface-secondary); }
+    .event-text-field:focus { border-color: color-mix(in srgb, var(--color-text-secondary) 55%, var(--color-border)); background: var(--color-surface); }
+    /* Participants / meeting / location rows: borderless, the whole row (icon included) turns gray on hover
+       and shows a thin border while you're working in it - same feel as the title above. */
+    .event-hover-row {
+      margin: 0 -8px; padding: 0 8px; border: 1px solid transparent; border-radius: 10px;
+      transition: background-color 140ms ease, border-color 150ms ease;
+    }
+    .event-hover-row:hover:not(:focus-within):not(.event-hover-row--active) { background: var(--color-surface-secondary); }
+    /* active = the same look as a clicked title field */
+    .event-hover-row:focus-within, .event-hover-row--active { border-color: color-mix(in srgb, var(--color-text-secondary) 55%, var(--color-border)); }
+
+    .event-inline-link { border-radius: 0.25rem; padding: 0.125rem 0.25rem; color: var(--color-text-secondary); }
+    .event-inline-link:hover { background: var(--color-surface-secondary); color: var(--color-text-primary); }
+    .event-row-icon { display: inline-flex; width: 1.25rem; flex-shrink: 0; justify-content: center; color: var(--color-text-secondary); }
+    .event-chip__remove { font-size: 1rem; line-height: 1; color: var(--color-text-secondary); }
+    .event-chip__remove:hover { color: var(--color-danger); }
+    .event-select-trigger {
+      display: flex; width: 100%; height: 2.5rem; align-items: center; justify-content: space-between; gap: 0.5rem;
+      border: 0; background: transparent; padding: 0; text-align: left; font-size: 0.875rem;
+    }
+    .event-menu-item {
+      width: 100%; border-radius: 0.25rem; padding: 0.375rem 0.625rem; text-align: left; font-size: 0.875rem;
+      color: var(--color-text-primary);
+    }
+    .event-menu-item:hover:not(:disabled) { background: var(--color-surface-secondary); }
+    .event-menu-item:disabled { opacity: 0.5; }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
+  readonly limits = TEXT_LIMITS;
   private readonly fb = inject(FormBuilder);
   private readonly unsaved = inject(UnsavedChangesService);
 
   @Input() open = false;
   @Input() event: CalendarEventResponse | null = null;
-  @Input() prefillStart: string | null = null;
-  @Input() prefillEnd: string | null = null;
   @Input() saving = false;
-  @Input() conflicts: readonly CalendarConflict[] = [];
-  @Input() checkingConflicts = false;
   @Input() myTimezone = 'UTC';
-  @Input() eligibleNominees: readonly EligibleNominee[] = [];
+  @Input() set eligibleNominees(value: readonly EligibleNominee[]) {
+    this._eligibleNominees = value;
+    this.nomineeOptions = value.map((n) => ({ value: n.employeeId, label: n.employeeName }));
+  }
+  get eligibleNominees(): readonly EligibleNominee[] {
+    return this._eligibleNominees;
+  }
+  private _eligibleNominees: readonly EligibleNominee[] = [];
+  /** Options for the nominee dropdown, rebuilt only when the input changes. */
+  nomineeOptions: readonly SelectOption[] = [];
   /** Whether the organizer has an active Microsoft connection that can host a Teams meeting. */
   @Input() hasTeamsCapableConnection = false;
   /** Whether the organizer has an active Zoom connection that can host a Zoom meeting. */
@@ -123,18 +174,17 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   @Output() save = new EventEmitter<CalendarEventFormSubmission>();
   @Output() delete = new EventEmitter<RecurrenceEditScope | null>();
   @Output() respond = new EventEmitter<RespondToCalendarEventPayload>();
-  @Output() checkConflicts = new EventEmitter<{ participantEmployeeIds: readonly string[]; startDate: string; endDate: string }>();
   @Output() loadEligibleNominees = new EventEmitter<void>();
   @Output() addMeeting = new EventEmitter<MeetingProvider>();
   @Output() removeMeeting = new EventEmitter<void>();
+  @Output() meetingStatusChanged = new EventEmitter<void>();
   @Output() addParticipantsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingParticipant = new EventEmitter<string>();
   @Output() addGuestsToEvent = new EventEmitter<readonly string[]>();
   @Output() removeExistingGuest = new EventEmitter<string>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 
   private readonly authStore = inject(AuthStore);
-  private conflictCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly recurrenceOptions = [
     { value: 'none', label: 'Does not repeat' },
@@ -144,24 +194,30 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
   ];
 
   readonly participantPickerOpen = signal(false);
-  @ViewChild('pickerWrap') private pickerWrap?: ElementRef<HTMLElement>;
+  /** Text typed in the participants search bar - drives the picker's directory search and guest invite. */
+  readonly participantSearch = signal('');
+  /** What the participants dropdown shows: 'added' (clicked the avatar stack - who's already on the event)
+   * or 'search' (clicked/typed in the search bar - the directory to pick from). Never both at once. */
+  readonly participantPanelMode = signal<'search' | 'added'>('search');
+  @ViewChild('pickerPanel') private pickerPanel?: ElementRef<HTMLElement>;
+  @ViewChild('meetingMenu') private meetingMenu?: ElementRef<HTMLElement>;
+  readonly meetingMenuOpen = signal(false);
+  /** Timezone and Repeat read as plain text ("Asia/Colombo (GMT+05:30) · Does not repeat") until clicked,
+   * which swaps that one in for its dropdown, already open. */
+  readonly inlineEditor = signal<'timezone' | 'repeat' | null>(null);
+  @ViewChild('timezoneSelect') private timezoneSelect?: SelectComponent;
+  @ViewChild('repeatSelect') private repeatSelect?: SelectComponent;
+  /** The user chose "Paste a meeting link" - shows the free-text link field even while it's still empty. */
+  readonly manualMeetingLink = signal(false);
   readonly participantIds = signal<readonly string[]>([]);
-  readonly participants = signal<readonly { id: string; name: string }[]>([]);
   readonly maxParticipantAvatars = 6;
   /** Guest emails picked in the participant picker, not yet saved to the event. */
   readonly guestEmails = signal<readonly string[]>([]);
   readonly discardConfirmOpen = signal(false);
-  /** Teams/Zoom provider picked while creating a new event - the meeting can't actually be
-   * created until the event itself has a real id, so this is just intent, resolved into a
-   * `createMeeting` call by the parent once `save` returns the new event's id. */
-  readonly pendingMeetingProvider = signal<MeetingProvider | null>(null);
-
-  /** Zone the typed start/end times are read in. Falls back to the organizer's tenant
-   * zone (`myTimezone`) until the user explicitly picks one; changing it re-converts
-   * (edit) or re-interprets (create) the times. */
+  /** Zone the event's times are shown in. Falls back to the organizer's tenant
+   * zone (`myTimezone`) until the user explicitly picks one; changing it re-converts the times. */
   readonly pickedTimezone = signal('');
   readonly timezoneOptions = signal<readonly { value: string; label: string }[]>([]);
-  private endTimeTouched = false;
   private timezoneTouched = false;
 
   /** The zone actually used for every local<->UTC conversion in this form. */
@@ -186,16 +242,8 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     location: [''],
     meetingLink: ['', meetingLinkValidator],
     color: ['#2563EB'],
-    recurrenceFrequency: ['none' as RecurrenceFrequency],
-    recurrenceEndMode: ['never' as RecurrenceEndMode],
-    recurrenceUntilDate: ['']
+    recurrenceFrequency: ['none' as RecurrenceFrequency]
   });
-
-  private readonly formChangeSubscription = this.form.valueChanges.subscribe(() => this.scheduleConflictCheck());
-
-  get isEdit(): boolean {
-    return !!this.event;
-  }
 
   viewerParticipant(): CalendarEventParticipant | null {
     const employeeId = this.authStore.employeeId();
@@ -203,10 +251,9 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     return this.event.participants.find((p) => p.employeeId === employeeId) ?? null;
   }
 
-  /** The "Organizer" row at the top of Who: the viewer while creating; when editing, "You" if the
-   * server says the viewer owns the event, else the organizer by name (absent when the API sent none). */
+  /** The organizer chip: "You" if the server says the viewer owns it, else the organizer by name (absent when the API sent none). */
   organizerRow(): { name: string; isYou: boolean } | null {
-    if (!this.event) return { name: (this.authStore.email() ?? '').split('@')[0] || 'You', isYou: true };
+    if (!this.event) return null;
     if (this.event.isOrganizer) return { name: this.event.organizerName ?? 'You', isYou: true };
     return this.event.organizerName ? { name: this.event.organizerName, isYou: false } : null;
   }
@@ -284,31 +331,29 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
       }
     }
 
-    // Only reset dirty/participant state when the modal is *freshly opened* for a new session -
-    // this same input also toggles on every debounced conflict-check update while a create form
-    // is mid-use, and resetting on every ngOnChanges call would wipe out in-progress typing.
+    // Only reset dirty/participant state when the modal is *freshly opened*: other inputs change while it's
+    // in use, and resetting on every ngOnChanges call would wipe out in-progress typing.
     const justOpened = !!changes['open'] && this.open;
 
     if (justOpened) {
-      // The modal instance is reused across sessions, so without this a new event opened with the previous event's values.
+      // The modal instance is reused across sessions, so without this one event opened with the previous event's values.
       this.form.reset(EMPTY_FORM_VALUES);
-      this.endTimeTouched = false;
       this.timezoneTouched = false;
       this.pickedTimezone.set(this.myTimezone);
-      this.pendingMeetingProvider.set(null);
-      // Cleared for both edit and create: this is the participant *picker's* staging state
-      // (who's checked in the "Add participants" modal before it's submitted), not the event's
-      // actual saved participants - carrying over a previous session's picks (e.g. from create
-      // mode) made the picker show unrelated people as pre-selected the next time it opened.
+      this.meetingMenuOpen.set(false);
+      this.manualMeetingLink.set(false);
+      this.inlineEditor.set(null);
+      // This is the participant *picker's* staging state (who's checked before it's submitted), not the event's
+      // saved participants: carrying over a previous session's picks showed unrelated people as pre-selected.
       this.participantIds.set([]);
-      this.participants.set([]);
       this.guestEmails.set([]);
+      this.participantSearch.set('');
     }
     if (justOpened || changes['myTimezone']) {
       this.timezoneOptions.set(
         [...new Set([...CURATED_TIMEZONES, this.myTimezone])]
           .sort()
-          .map((z) => ({ value: z, label: z.replace(/_/g, ' ') }))
+          .map((z) => ({ value: z, label: timezoneDisplayLabel(z) }))
       );
     }
 
@@ -331,36 +376,15 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
         color: this.event.color ?? '#2563EB'
       });
       if (justOpened) this.form.markAsPristine();
-      return;
-    }
-
-    if (this.prefillStart) {
-      const [date, time] = this.prefillStart.split('T');
-      const start = time ?? '09:00';
-      const [endDate, endTime] = this.prefillEnd?.split('T') ?? [];
-      this.form.patchValue({
-        startDate: date,
-        startTime: start,
-        endDate: endDate || date,
-        endTime: endTime || addMinutes(start, 30)
-      });
-      // a dragged range set the end explicitly - don't let a later start-time nudge override it
-      this.endTimeTouched = !!this.prefillEnd;
-    }
-
-    if (justOpened) {
-      this.form.markAsPristine();
     }
   }
 
   setStartTime(value: string): void {
     this.form.controls.startTime.setValue(value);
-    if (!this.endTimeTouched) this.form.controls.endTime.setValue(addMinutes(value, 30));
     this.form.markAsDirty();
   }
 
   setEndTime(value: string): void {
-    this.endTimeTouched = true;
     this.form.controls.endTime.setValue(value);
     this.form.markAsDirty();
   }
@@ -369,25 +393,13 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     this.timezoneTouched = true;
     this.pickedTimezone.set(value);
     if (this.event) {
-      // Edit mode: the stored instant is fixed - re-show it in the newly chosen zone.
+      // The stored instant is fixed - re-show it in the newly chosen zone.
       const start = utcIsoToLocalParts(this.event.startDate, value);
       const end = utcIsoToLocalParts(this.event.endDate, value);
       const endDateDisplay = this.event.isAllDay ? addDays(end.date, -1) : end.date;
       this.form.patchValue({ startDate: start.date, startTime: start.time, endDate: endDateDisplay, endTime: end.time });
     }
     this.form.markAsDirty();
-    this.scheduleConflictCheck();
-  }
-
-  removeParticipant(id: string): void {
-    this.participantIds.set(this.participantIds().filter((x) => x !== id));
-    this.participants.set(this.participants().filter((p) => p.id !== id));
-    this.form.markAsDirty();
-    this.scheduleConflictCheck();
-  }
-
-  onParticipantPeopleChange(people: readonly { id: string; name: string }[]): void {
-    this.participants.set(people);
   }
 
   setTitle(value: string): void {
@@ -400,13 +412,8 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     this.form.markAsDirty();
   }
 
-  setStartDate(value: string): void {
-    this.form.controls.startDate.setValue(value);
-    this.form.markAsDirty();
-  }
-
-  setEndDate(value: string): void {
-    this.form.controls.endDate.setValue(value);
+  setDateRange(range: { from: string; to: string }): void {
+    this.form.patchValue({ startDate: range.from, endDate: range.to });
     this.form.markAsDirty();
   }
 
@@ -430,17 +437,58 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     return /^https:\/\/teams\.microsoft\.com\//i.test(value) || /^https:\/\/([a-z0-9-]+\.)?zoom\.us\//i.test(value);
   }
 
+  timezoneLabel(): string {
+    return timezoneDisplayLabel(this.currentTimezone());
+  }
+
+  repeatLabel(): string {
+    const value = this.form.controls.recurrenceFrequency.value ?? 'none';
+    return this.recurrenceOptions.find((o) => o.value === value)?.label ?? 'Does not repeat';
+  }
+
+  /** Deferred a tick so the dropdown exists, and so this same click doesn't reach its outside-click close. */
+  openInlineEditor(editor: 'timezone' | 'repeat'): void {
+    this.inlineEditor.set(editor);
+    setTimeout(() => (editor === 'timezone' ? this.timezoneSelect : this.repeatSelect)?.openPanel());
+  }
+
+  closeInlineEditor(): void {
+    this.inlineEditor.set(null);
+  }
+
+  /** A typed (not Teams/Zoom-generated) link already on the event, or the user picked "Paste a meeting link". */
+  showMeetingLinkInput(): boolean {
+    return this.manualMeetingLink() || !!(this.form.controls.meetingLink.value ?? '').trim();
+  }
+
+  toggleMeetingMenu(): void {
+    this.meetingMenuOpen.update((open) => !open);
+  }
+
+  /** Escape closes just the menu; without stopping it the modal's own Escape handler would also close the form. */
+  onMeetingMenuEscape(event: Event): void {
+    if (!this.meetingMenuOpen()) return;
+    event.stopPropagation();
+    this.meetingMenuOpen.set(false);
+  }
+
+  chooseMeetingProvider(provider: MeetingProvider): void {
+    this.meetingMenuOpen.set(false);
+    this.onAddMeeting(provider);
+  }
+
+  startManualMeetingLink(): void {
+    this.meetingMenuOpen.set(false);
+    this.manualMeetingLink.set(true);
+  }
+
+  clearMeetingLink(): void {
+    this.setMeetingLink('');
+    this.manualMeetingLink.set(false);
+  }
+
   onAddMeeting(provider: MeetingProvider): void {
     this.addMeeting.emit(provider);
-  }
-
-  selectPendingMeeting(provider: MeetingProvider): void {
-    this.pendingMeetingProvider.set(provider);
-    this.form.markAsDirty();
-  }
-
-  clearPendingMeeting(): void {
-    this.pendingMeetingProvider.set(null);
   }
 
   onRemoveMeeting(): void {
@@ -473,23 +521,83 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     this.form.markAsDirty();
   }
 
-  setRecurrenceUntilDate(value: string): void {
-    this.form.controls.recurrenceUntilDate.setValue(value);
-    this.form.markAsDirty();
-  }
-
-  /** Clicking anywhere outside the picker section closes it (submitting picks in edit mode). composedPath is
-   * used because the clicked row may already be re-rendered away by the time this document listener runs. */
+  /** Clicking anywhere outside the picker panel and its "+"/"Add participants" triggers closes it (submitting
+   * its picks); the same goes for the meeting menu. composedPath is used because the clicked row may
+   * already be re-rendered away by the time this document listener runs. */
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    const wrap = this.pickerWrap?.nativeElement;
-    if (!this.participantPickerOpen() || !wrap || event.composedPath().includes(wrap)) return;
+    const path = event.composedPath();
+    if (this.meetingMenuOpen() && !(this.meetingMenu && path.includes(this.meetingMenu.nativeElement))) {
+      this.meetingMenuOpen.set(false);
+    }
+    if (!this.participantPickerOpen()) return;
+    const insidePanel = !!this.pickerPanel && path.includes(this.pickerPanel.nativeElement);
+    const onTrigger = path.some((node) => node instanceof HTMLElement && node.hasAttribute('data-picker-trigger'));
+    if (insidePanel || onTrigger) return;
     this.onParticipantPickerClosed();
   }
 
-  toggleParticipantPicker(): void {
-    if (this.participantPickerOpen()) this.onParticipantPickerClosed();
-    else this.openParticipantPicker();
+
+  /** Short length of the event shown beside the times, e.g. "30m", "1h 15m", "2d 3h"; empty when the range is invalid. */
+  durationLabel(): string {
+    const raw = this.form.getRawValue();
+    if (!raw.startDate || !raw.endDate || !raw.startTime || !raw.endTime) return '';
+    const start = Date.parse(`${raw.startDate}T${raw.startTime}:00Z`);
+    const end = Date.parse(`${raw.endDate}T${raw.endTime}:00Z`);
+    const minutes = Math.round((end - start) / 60000);
+    if (!Number.isFinite(minutes) || minutes <= 0) return '';
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    const mins = minutes % 60;
+    return [days && `${days}d`, hours && `${hours}h`, mins && `${mins}m`].filter(Boolean).join(' ');
+  }
+
+  /** Clicking anywhere in the participants box (not on one of its buttons) opens the picker. */
+  onParticipantBoxClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (target.closest('button')) return;
+    const onStack = !!target.closest('[data-testid="calendar-form-participant-stack"]');
+    this.participantPanelMode.set(onStack || !this.canManageParticipants() ? 'added' : 'search');
+    this.openParticipantPickerIfClosed();
+  }
+
+  onParticipantSearchFocus(): void {
+    this.participantPanelMode.set('search');
+    this.openParticipantPickerIfClosed();
+  }
+
+  setParticipantSearch(value: string): void {
+    this.participantSearch.set(value);
+    this.participantPanelMode.set('search');
+    if (!this.participantPickerOpen()) this.openParticipantPicker();
+  }
+
+  /** Everyone on the event, as one list: the avatar stack shows the first few, the dropdown's
+   * "Added" section lists them all: the organizer, the saved participants (with their response) and guests. */
+  addedPeople(): readonly AddedPerson[] {
+    const organizer = this.organizerRow();
+    return [
+      ...(organizer ? [{ key: 'organizer', name: organizer.isYou ? 'You' : organizer.name, kind: 'organizer' } as AddedPerson] : []),
+      ...(this.event?.participants ?? []).map((p): AddedPerson => ({ key: p.employeeId, name: p.employeeName, kind: 'existing', status: p.responseStatus })),
+      ...(this.event?.guests ?? []).map((g): AddedPerson => ({ key: g.email, name: g.email, kind: 'existing-guest' }))
+    ];
+  }
+
+  addedRowTestId(person: AddedPerson): string {
+    const ids: Record<AddedPerson['kind'], string> = {
+      organizer: 'calendar-form-organizer',
+      existing: 'calendar-form-existing-participant',
+      'existing-guest': 'calendar-form-existing-guest'
+    };
+    return ids[person.kind];
+  }
+
+  openParticipantPickerIfClosed(): void {
+    if (!this.participantPickerOpen()) this.openParticipantPicker();
+  }
+
+  stackMembers(): AvatarStackMember[] {
+    return this.addedPeople().map((p) => ({ userId: p.key, displayName: p.name }));
   }
 
   /** Escape closes just the dropdown; without stopping it the modal's own Escape handler would also close (and discard) the event form. */
@@ -501,31 +609,28 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
 
   openParticipantPicker(): void {
     this.participantPickerOpen.set(true);
-    setTimeout(() => this.pickerWrap?.nativeElement.scrollIntoView?.({ block: 'nearest' }));
+    setTimeout(() => this.pickerPanel?.nativeElement.scrollIntoView?.({ block: 'nearest' }));
   }
 
-  /** In edit mode the picker adds straight to the saved event (there's no pending "create"
-   * payload to attach the selection to) - closing it with a selection present submits that
+  /** The picker adds straight to the saved event: closing it with a selection present submits that
    * selection immediately and clears the picker's local staging state. */
   onParticipantPickerClosed(): void {
     this.participantPickerOpen.set(false);
-    if (this.isEdit && this.participantIds().length > 0) {
+    this.participantSearch.set('');
+    if (this.participantIds().length > 0) {
       this.addParticipantsToEvent.emit(this.participantIds());
       this.participantIds.set([]);
-      this.participants.set([]);
     }
-    if (this.isEdit && this.guestEmails().length > 0) {
+    if (this.guestEmails().length > 0) {
       this.addGuestsToEvent.emit(this.guestEmails());
       this.guestEmails.set([]);
     }
   }
 
   onGuestEmailsChange(emails: readonly string[]): void {
+    // a guest is invited straight from the typed email - clear it so the box is ready for the next one
+    if (emails.length > this.guestEmails().length) this.participantSearch.set('');
     this.guestEmails.set(emails);
-  }
-
-  removeGuest(email: string): void {
-    this.guestEmails.set(this.guestEmails().filter((g) => g !== email));
   }
 
   onRemoveExistingGuest(email: string): void {
@@ -554,13 +659,13 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
       this.discardConfirmOpen.set(true);
     }
     void this.unsaved.requestClose(this.guardHandle).then((ok) => {
-      if (ok) this.cancel.emit();
+      if (ok) this.cancelled.emit();
     });
   }
 
   confirmDiscard(): void {
     this.discardConfirmOpen.set(false);
-    this.cancel.emit();
+    this.cancelled.emit();
   }
 
   cancelDiscard(): void {
@@ -574,22 +679,6 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
 
   onParticipantIdsChange(ids: readonly string[]): void {
     this.participantIds.set(ids);
-    this.scheduleConflictCheck();
-  }
-
-  private scheduleConflictCheck(): void {
-    if (this.isEdit) return; // participants are read-only once an event exists - nothing to re-check
-    if (this.conflictCheckTimer) clearTimeout(this.conflictCheckTimer);
-    this.conflictCheckTimer = setTimeout(() => {
-      const ids = this.participantIds();
-      const raw = this.form.getRawValue();
-      if (ids.length === 0 || !raw.startDate || !raw.endDate) return;
-      this.checkConflicts.emit({
-        participantEmployeeIds: ids,
-        startDate: localPartsToUtcIso(raw.startDate, raw.startTime!, this.currentTimezone()),
-        endDate: localPartsToUtcIso(raw.endDate, raw.endTime!, this.currentTimezone())
-      });
-    }, 400);
   }
 
   onSubmit(scope: RecurrenceEditScope | null = null): void {
@@ -605,48 +694,20 @@ export class CalendarEventFormModalComponent implements OnChanges, OnDestroy {
     // that day for availability/conflict checks.
     //
     // The stored end is the day AFTER the last day the user picked, at 00:00 (exclusive) - the
-    // same convention Google/Outlook all-day events already use when pulled in, so a manually
-    // created all-day event lines up with a synced one instead of ending 1 minute before midnight.
-    const startTime = raw.isAllDay ? '00:00' : raw.startTime!;
-    const endTime = raw.isAllDay ? '00:00' : raw.endTime!;
-    const endDateOnly = raw.isAllDay ? addDays(raw.endDate!, 1) : raw.endDate!;
-    const startDate = localPartsToUtcIso(raw.startDate!, startTime, this.currentTimezone());
-    const endDate = localPartsToUtcIso(endDateOnly, endTime, this.currentTimezone());
-    const recurrence = raw.recurrenceFrequency ?? 'none';
-    const recurrenceRule = buildRecurrenceRule(recurrence as RecurrenceFrequency, raw.recurrenceEndMode as RecurrenceEndMode, raw.recurrenceUntilDate || null);
-
-    if (this.isEdit) {
-      this.save.emit({
-        update: {
-          title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
-          isAllDay: !!raw.isAllDay, location: raw.location || null,
-          meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence
-        },
-        scope
-      });
-      return;
-    }
-
+    // same convention Google/Outlook all-day events already use when pulled in.
+    const { startDate, endDate } = eventInstants(`${raw.startDate}T${raw.startTime}`, `${raw.endDate}T${raw.endTime}`,
+      !!raw.isAllDay, this.currentTimezone());
     this.save.emit({
-      create: {
+      update: {
         title: raw.title!.trim(), description: raw.description || null, startDate, endDate,
         isAllDay: !!raw.isAllDay, location: raw.location || null,
-        meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence,
-        participantEmployeeIds: this.participantIds(), recurrenceRule, guestEmails: this.guestEmails(),
-        pendingMeetingProvider: this.pendingMeetingProvider()
+        meetingLink: raw.meetingLink || null, color: raw.color || null, recurrence: raw.recurrenceFrequency ?? 'none'
       },
-      meetingProvider: this.pendingMeetingProvider()
+      scope
     });
   }
 
   onDelete(scope: RecurrenceEditScope | null = null): void {
     this.delete.emit(scope);
-  }
-
-  formatOverlap(start: string, end: string): string {
-    const formatter = new Intl.DateTimeFormat(undefined, {
-      timeZone: this.currentTimezone(), hour: 'numeric', minute: '2-digit', hour12: true
-    });
-    return `from ${formatter.format(new Date(start))} to ${formatter.format(new Date(end))}`;
   }
 }

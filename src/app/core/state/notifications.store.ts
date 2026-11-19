@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { NotificationApiService, NotificationItem, toNotificationItem } from '../services/notification-api.service';
+import { toSafeErrorMessage } from '../services/error-handler.service';
 
 interface NotificationsState {
   readonly items: readonly NotificationItem[];
@@ -17,8 +18,8 @@ const initialState: NotificationsState = {
   error: null
 };
 
-function extractError(err: any, fallback: string): string {
-  return err?.error?.detail || err?.error?.message || err?.message || fallback;
+function extractError(err: unknown, fallback: string): string {
+  return toSafeErrorMessage(err, fallback);
 }
 
 export const NotificationsStore = signalStore(

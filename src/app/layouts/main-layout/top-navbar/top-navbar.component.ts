@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { PageToolbarComponent } from '../../../shared/ui/page-toolbar/page-toolbar.component';
 import { CompanySelectorComponent } from './company-selector/company-selector.component';
 import { ProfileMenuComponent } from './profile-menu/profile-menu.component';
 import { NotificationBellComponent } from './notification-bell/notification-bell.component';
@@ -6,7 +7,7 @@ import { NotificationBellComponent } from './notification-bell/notification-bell
 @Component({
   selector: 'app-top-navbar',
   standalone: true,
-  imports: [CompanySelectorComponent, ProfileMenuComponent, NotificationBellComponent],
+  imports: [CompanySelectorComponent, ProfileMenuComponent, NotificationBellComponent, PageToolbarComponent],
   templateUrl: './top-navbar.component.html',
   styleUrl: './top-navbar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

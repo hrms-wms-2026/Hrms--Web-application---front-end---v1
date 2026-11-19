@@ -6,23 +6,27 @@ import { LockedWorkspacePreviewComponent } from '../../core/tray-presence/ui/loc
 
 import { AuthStore } from '../../core/auth/state/auth.store';
 import { PermissionService } from '../../core/auth/state/permission.service';
+import { PlannerAvailabilityService } from '../../modules/work/planner/state/planner-availability.service';
 import { NavigationStateService } from './nav/navigation-state.service';
 import { SideNavbarComponent } from './side-navbar/side-navbar.component';
 import { SubSidebarComponent } from './sub-sidebar/sub-sidebar.component';
+import { InboxChatSidebarComponent } from '@modules/inbox/ui/chat-sidebar/inbox-chat-sidebar.component';
 import { TopNavbarComponent } from './top-navbar/top-navbar.component';
 import { ProfileStore } from '@modules/profile/state/profile.store';
 import { FileApiService } from '../../shared/data-access/file-api.service';
 
 import { ToastHostComponent } from '../../shared/ui/toast/toast-host.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav/mobile-bottom-nav.component';
+import { MobileSectionNavComponent } from './mobile-section-nav/mobile-section-nav.component';
 import { UnsavedChangesDialogComponent } from '../../shared/ui/unsaved-changes-dialog/unsaved-changes-dialog.component';
 import { DraftsBarComponent } from './drafts-bar/drafts-bar.component';
 import { DraftModalHostComponent } from './draft-modal-host/draft-modal-host.component';
+import { AnnouncementBannerComponent } from './announcement-banner/announcement-banner.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, ToastHostComponent, MobileBottomNavComponent, DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent],
+  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, InboxChatSidebarComponent, ToastHostComponent, MobileBottomNavComponent, MobileSectionNavComponent,DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent, AnnouncementBannerComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -35,6 +39,7 @@ export class MainLayoutComponent {
   readonly trayPresence = inject(TrayPresenceStore);
 
   readonly navState = inject(NavigationStateService);
+  private readonly plannerAvailability = inject(PlannerAvailabilityService);
 
   readonly email = this.authStore.email;
   readonly announcementMessage = signal('');
@@ -55,6 +60,7 @@ export class MainLayoutComponent {
 
   constructor() {
     this.profileStore.loadProfile();
+    void this.plannerAvailability.probe();   // decides whether the Planner nav item shows
     if (this.monitoringEnabled) {
       this.trayPresence.start();
     }

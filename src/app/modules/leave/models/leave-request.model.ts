@@ -42,6 +42,7 @@ export interface LeaveRequestResponse {
   totalHours: number;
   paidHours: number;
   unpaidHours: number;
+  exceedsBalanceByHours?: number;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   noticePeriodMissed: boolean;
   submittedOnBehalfOfBy: string | null;
@@ -62,12 +63,15 @@ export interface LeaveRequestListItemResponse {
   totalHours: number;
   paidHours: number;
   unpaidHours: number;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'information_requested';
+  exceedsBalanceByHours?: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   noticePeriodMissed: boolean;
   approvedByName: string | null;
-  infoQuestion: string | null;
   createdAt: string;
   updatedAt: string | null;
+  /** Multi-step approval progress ("1 of 2 approved"); skipped and cancelled approvers are not counted. */
+  approvedApproverCount?: number;
+  approverCount?: number;
 }
 
 /** Matches ONEVO.Application.Features.Storage.File.DTOs.Responses.FileRecordDto (camelCase). */

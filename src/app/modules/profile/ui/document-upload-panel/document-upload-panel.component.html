@@ -1,0 +1,95 @@
+<div role="presentation" class="dup-backdrop ui-fade-in" (click)="onEscape()"></div>
+<aside class="dup ui-pop-in" role="dialog" aria-modal="true" aria-labelledby="dup-title">
+  <header class="ui-popup-header dup__header">
+    <span class="ui-popup-icon dup__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M12 11v6M9 14h6" /></svg>
+    </span>
+    <div class="dup__heading">
+      <h2 id="dup-title" class="dup__title">Upload document</h2>
+      <p class="dup__subtitle">Add a new document to your profile.</p>
+    </div>
+    <button type="button" class="dup__close" aria-label="Close" [disabled]="uploading()" (click)="closed.emit()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+    </button>
+  </header>
+
+  <div class="dup__body scroll-fade">
+    <fieldset class="dup__field">
+      <legend class="dup__label">Document type</legend>
+      <div class="dup__radios">
+        @for (category of categories; track category.type) {
+          <label class="dup__radio">
+            <input
+              type="radio"
+              name="dup-type"
+              [value]="category.type"
+              [checked]="type() === category.type"
+              [disabled]="uploading()"
+              (change)="type.set(category.type)"
+            />
+            <span>{{ category.label }}</span>
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <div class="dup__field">
+      <app-input
+        label="Document name"
+        placeholder="e.g. My Resume"
+        hint="Give a meaningful name to your document."
+        [maxlength]="150"
+        [value]="name()"
+        [disabled]="uploading()"
+        (valueChange)="name.set($event)"
+      />
+    </div>
+
+    <div class="dup__field">
+      <span class="dup__label">Select file</span>
+      @if (file(); as selected) {
+        <div class="dup__picked">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
+          <div class="dup__picked-text">
+            <span class="dup__picked-name">{{ selected.name }}</span>
+            <span class="dup__picked-size">{{ fileSize(selected.size) }}</span>
+          </div>
+          <button type="button" class="dup__picked-remove" aria-label="Remove file" [disabled]="uploading()" (click)="clearFile()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+      } @else {
+        <label
+          class="dup__drop"
+          [class.dup__drop--over]="dragOver()"
+          [class.dup__drop--error]="fileError()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="dragOver.set(false)"
+          (drop)="onDrop($event)"
+        >
+          <input type="file" class="dup__file-input" [accept]="accept" (change)="onFileInput($event)" data-testid="doc-file-input" />
+          <svg class="dup__cloud" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 9.5" />
+            <path d="M12 12v8M8.5 15.5 12 12l3.5 3.5" />
+          </svg>
+          <span class="dup__drop-main">Drag and drop your file here</span>
+          <span class="dup__drop-main">or <span class="dup__browse">click to browse</span></span>
+          <span class="dup__drop-hint">Supported formats: PDF, JPG, PNG, DOC, DOCX</span>
+          <span class="dup__drop-hint">Maximum file size: 10 MB</span>
+        </label>
+      }
+      @if (fileError()) {
+        <p class="dup__error" role="alert">{{ fileError() }}</p>
+      }
+    </div>
+
+    @if (error()) {
+      <p class="dup__error" role="alert">{{ error() }}</p>
+    }
+  </div>
+
+  <footer class="dup__footer">
+    <app-button variant="secondary" [disabled]="uploading()" (pressed)="closed.emit()">Cancel</app-button>
+    <app-button [loading]="uploading()" (pressed)="submit()">Upload document</app-button>
+  </footer>
+</aside>

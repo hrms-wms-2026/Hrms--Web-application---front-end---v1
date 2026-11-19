@@ -1,0 +1,163 @@
+<header class="ns-page-header flex flex-wrap items-center justify-between gap-3">
+  <app-breadcrumb-header parentLabel="Settings" currentLabel="Notification Settings" icon="settings" />
+
+  @if (store.settings().length > 0) {
+    <!-- Same collapsible search as the Work board toolbar -->
+    <div class="flex items-center gap-2">
+      @if (searchExpanded()) {
+        <div class="ui-field ui-field--sm w-80 max-w-full" role="search" data-testid="ns-search">
+          <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          </svg></span>
+          <input type="search" placeholder="Search notifications…" aria-label="Search notifications" [value]="search()"
+            (input)="search.set($any($event.target).value)"
+            class="ui-field__control" />
+          <span class="ui-field__trailing"><button type="button" data-testid="ns-search-close" aria-label="Close search" title="Close search"
+            class="ui-field__icon-btn h-5 w-5 text-base leading-none"
+            (click)="toggleSearch()">&times;</button></span>
+        </div>
+      } @else {
+        <button type="button" data-testid="ns-search-toggle" aria-label="Search notifications" title="Search notifications"
+          class="inline-flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+          (click)="toggleSearch()">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          </svg>
+        </button>
+      }
+      <app-button
+        data-testid="ns-save"
+        size="sm"
+        [loading]="saving()"
+        [disabled]="!isDirty() || saving()"
+        (pressed)="saveAll()"
+      >
+        {{ dirtyCount() > 1 ? 'Save ' + dirtyCount() + ' changes' : 'Save' }}
+      </app-button>
+    </div>
+  }
+</header>
+
+@if (store.loading()) {
+  <div class="h-64 rounded-xl bg-[var(--color-surface-secondary)]" aria-busy="true" aria-label="Loading notification settings"></div>
+} @else if (store.error(); as message) {
+  <app-error-state [message]="message" [retryable]="true" (retry)="reload()" />
+} @else if (store.settings().length === 0) {
+  <app-empty-state title="No notifications to configure yet." />
+} @else {
+  <div>
+    @if (groups().length === 0) {
+      <app-empty-state title="No notifications match your search." />
+    }
+
+    @for (group of groups(); track group.module) {
+      <section class="border-t border-[var(--color-border)] pt-4 pb-2 first-of-type:border-t-0 first-of-type:pt-0">
+        <h2 class="mb-3 text-base font-semibold text-[var(--color-text-primary)]">{{ group.label }}</h2>
+        <div class="flex flex-col divide-y divide-[var(--color-border)]">
+          @for (s of group.settings; track s.eventKey) {
+            <div class="flex flex-col gap-3 py-3 first:pt-0 last:pb-0" [class.ns-row--dirty]="isRowDirty(s)">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <span class="break-words text-sm font-medium text-[var(--color-text-primary)]">{{ s.displayName }}</span>
+                  @if (!s.configurable) {
+                    <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs italic text-[var(--color-text-secondary)]">Uses built-in delivery for now</span>
+                  } @else if (s.isOverridden) {
+                    <span class="rounded-full bg-[var(--color-accent-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--color-accent)]">Customized</span>
+                  } @else {
+                    <span class="rounded-full bg-[var(--color-surface-secondary)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)]">Default</span>
+                  }
+                  @if (isRowDirty(s)) {
+                    <span class="rounded-full bg-[var(--color-warning-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--color-warning-text)]">Unsaved</span>
+                  }
+                </div>
+
+                <div class="ml-auto flex flex-wrap items-center gap-2">
+                @if (s.configurable && isRowDirty(s)) {
+                  <app-button variant="secondary" size="sm" (pressed)="discard(s)">Discard</app-button>
+                }
+                @if (s.configurable && s.isOverridden) {
+                  <app-button
+                    [attr.data-testid]="'reset-' + s.eventKey"
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="saving() || store.savingKey() === s.eventKey"
+                    (pressed)="reset(s)"
+                  >
+                    Reset to default
+                  </app-button>
+                }
+                <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="s.displayName + ' channels'">
+                  @for (channel of channels; track channel) {
+                    <!-- Same toggle switch as Settings > Clock-in Policy > Work Modes -->
+                    <label
+                      class="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-all select-none"
+                      [class.cursor-pointer]="!isLocked(s, channel)"
+                      [class.cursor-not-allowed]="isLocked(s, channel)"
+                      [class.opacity-60]="isLocked(s, channel) && !isEnabled(s, channel)"
+                      [class.border-[var(--color-accent)]]="isEnabled(s, channel)"
+                      [class.bg-[var(--color-accent-subtle)]/50]="isEnabled(s, channel)"
+                      [class.border-[var(--color-border)]]="!isEnabled(s, channel)"
+                      [class.bg-[var(--color-surface)]]="!isEnabled(s, channel)"
+                      [attr.title]="toggleTitle(s, channel)"
+                    >
+                      <span
+                        [class.font-semibold]="isEnabled(s, channel)"
+                        [class.text-[var(--color-text-primary)]]="isEnabled(s, channel)"
+                        [class.text-[var(--color-text-secondary)]]="!isEnabled(s, channel)"
+                      >{{ channelLabels[channel] }}</span>
+                      @if (isRequired(s, channel)) {
+                        <span class="text-[0.7rem] uppercase tracking-wide text-[var(--color-text-secondary)]">Required</span>
+                      }
+                      <span class="relative inline-flex shrink-0 items-center">
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          class="sr-only peer"
+                          [attr.data-testid]="'toggle-' + s.eventKey + '-' + channel"
+                          [checked]="isEnabled(s, channel)"
+                          [disabled]="isLocked(s, channel)"
+                          (change)="toggle(s, channel)"
+                        />
+                        <span class="h-4 w-7 rounded-full bg-[var(--color-border)] transition-colors after:absolute after:start-[2px] after:top-[2px] after:h-3 after:w-3 after:rounded-full after:border after:border-[var(--color-border-strong)] after:bg-[var(--color-surface)] after:transition-all after:content-[''] peer-checked:bg-[var(--color-accent)] peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-focus-ring)]"></span>
+                      </span>
+                    </label>
+                  }
+                </div>
+                </div>
+              </div>
+
+              @if (s.configurable && s.recipientRules.length > 1) {
+                <div class="flex flex-wrap gap-3">
+                  <div class="w-56 max-w-full">
+                    <app-select
+                      label="Recipients"
+                      [options]="recipientOptions(s)"
+                      [value]="row(s).recipientRule"
+                      (valueChange)="setRecipientRule(s, $event)"
+                    />
+                  </div>
+
+                </div>
+              }
+
+              @if (store.conflicts()[s.eventKey]; as conflict) {
+                <div class="rounded-lg bg-[var(--color-warning-subtle)] px-3 py-2 text-sm text-[var(--color-warning-text)]" role="alert">
+                  {{ conflict }}
+                  <button type="button" class="ml-2 font-semibold underline" (click)="reload()">Reload</button>
+                </div>
+              }
+              @if (store.rowErrors()[s.eventKey]; as rowError) {
+                <div class="rounded-lg bg-[var(--color-danger-subtle)] px-3 py-2 text-sm text-[var(--color-danger-text)]" role="alert">{{ rowError }}</div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+
+  <p class="mt-4 max-w-4xl text-sm text-[var(--color-text-secondary)]">
+    Email goes to each recipient's account email address. Tray notifications need the CROWNUS tray app signed in on
+    their computer; tray alerts that are not collected within 24 hours expire.
+  </p>
+}

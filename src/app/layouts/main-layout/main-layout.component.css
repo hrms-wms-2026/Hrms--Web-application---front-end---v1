@@ -32,27 +32,37 @@
   --nav-rail-width: 5.25rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  /* Row 1: CROWNUS announcement strip across the whole window (empty when there is none). */
+  grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-areas:
+    "banner banner"
     "rail navbar"
     "rail main";
   height: 100vh;
   max-height: 100vh;
   overflow: hidden;
-  background: var(--color-app-bg);
+  background: var(--color-shell-bg, var(--color-app-bg));
 }
 
 .main-layout--has-sub-sidebar {
   grid-template-columns: auto auto minmax(0, 1fr);
   grid-template-areas:
+    "banner banner banner"
     "rail navbar navbar"
     "rail sub-sidebar main";
 }
 
+.main-layout__banner {
+  grid-area: banner;
+  min-width: 0;
+}
+
 .main-layout__rail {
   grid-area: rail;
-  height: 100vh;
-  max-height: 100vh;
+  /* The grid row, not the viewport: the announcement strip may take the top of the window. */
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -77,11 +87,11 @@
   display: flex;
   flex-direction: column;
   outline: none;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-content-bg);
+  border: 1px solid var(--color-shell-border);
   border-radius: 0 0 16px 16px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-card);
 }
 
 .main-content__viewport {
@@ -108,6 +118,34 @@
 
 .main-content:has(app-position-management) .main-content__viewport {
   overflow: hidden;
+}
+
+/* The hierarchy canvas owns its pan/zoom viewport, but the position list must use the page scroller. */
+.main-content:has(app-position-management app-position-list-table) .main-content__viewport {
+  overflow-y: auto;
+}
+
+/* The dashboard's cards bring their own spacing (the grid gap), so a slim gutter keeps the default
+   two-row layout on one screen without page scroll. Desktop only; mobile keeps its bottom-nav padding. */
+@media (min-width: 769px) {
+  .main-content:has(app-dashboard-home) .main-content__viewport {
+    padding: 0.75rem;
+  }
+
+  /* The Planner's hour grid wants every row it can get; its header line takes the top band instead of padding. */
+  .main-content:has(app-calendar-page) .main-content__viewport {
+    padding: 0.75rem 1rem;
+  }
+
+  /* Next to the Task list sub-sidebar the Planner's hour grid joins the list with no gap: it drops its left border and corners
+     (the list's border is the divider) and its time labels sit right-aligned, so no text touches the edge. The toolbar keeps a
+     small inset. The calendar components read these variables. */
+  .main-layout--has-sub-sidebar .main-content:has(app-calendar-page) .main-content__viewport {
+    padding-left: 0;
+    --planner-edge-border: 0px;
+    --planner-edge-radius: 0px;
+    --planner-toolbar-inset: 0.5rem;
+  }
 }
 
 .main-content:has(app-tray-activation-gate) .main-content__viewport,
@@ -201,6 +239,7 @@
   }
 
   .main-content {
+    position: relative; /* anchors the mobile page list over the content */
     flex: 1;
     margin: 0;
     border-radius: 0;

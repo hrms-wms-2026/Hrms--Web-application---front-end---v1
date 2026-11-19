@@ -5,7 +5,7 @@ import { environment } from '../../../../environments/environment';
 import {
   CalendarConflictsResponse, CalendarEventGuestsResponse, CalendarEventParticipantsResponse, CalendarEventResponse, CalendarEventsResponse,
   CheckCalendarConflictsRequest, CreateCalendarEventRequest, CreateEventMeetingResponse,
-  EditRecurringOccurrenceRequest, GetEligibleNomineesResponse, MeetingAttendanceResponse, MeetingProvider,
+  EditRecurringOccurrenceRequest, EventMeetingStatusResponse, GetEligibleNomineesResponse, MeetingAttendanceResponse, MeetingProvider,
   RespondToCalendarEventStatus, UpdateCalendarEventRequest
 } from '../models/calendar-event.model';
 
@@ -57,12 +57,26 @@ export class CalendarEventApiService {
     return this.http.get<{ timezone: string }>(`${this.baseUrl}/my-timezone`);
   }
 
-  createMeeting(eventId: string, provider: MeetingProvider): Observable<CreateEventMeetingResponse> {
-    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting`, { provider });
+  /** `invitesHeldBack`: the event was just created with this meeting pending - its invites wait for the link, and go out
+   *  without it if the link cannot be created. */
+  createMeeting(eventId: string, provider: MeetingProvider, invitesHeldBack = false): Observable<CreateEventMeetingResponse> {
+    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting`, invitesHeldBack ? { provider, invitesHeldBack } : { provider });
   }
 
   removeMeeting(eventId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${eventId}/meeting`);
+  }
+
+  getMeeting(eventId: string): Observable<EventMeetingStatusResponse> {
+    return this.http.get<EventMeetingStatusResponse>(`${this.baseUrl}/${eventId}/meeting`);
+  }
+
+  retryMeeting(eventId: string): Observable<CreateEventMeetingResponse> {
+    return this.http.post<CreateEventMeetingResponse>(`${this.baseUrl}/${eventId}/meeting/retry`, {});
+  }
+
+  confirmMeetingCleanup(eventId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${eventId}/meeting/confirm-cleanup`, {});
   }
 
   getMeetingAttendance(eventId: string): Observable<MeetingAttendanceResponse> {

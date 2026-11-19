@@ -1,18 +1,35 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 import { DepartmentListItemResponse } from '../../models/department.model';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-department-list-table',
   standalone: true,
-  imports: [CommonModule],
+  imports: [StopClickPropagationDirective, DataTableComponent, DataTableCellDirective],
   templateUrl: './department-list-table.component.html',
   styleUrl: './department-list-table.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DepartmentListTableComponent {
   @Input({ required: true }) departments: readonly DepartmentListItemResponse[] = [];
-  @Input() canManage = false;
+  @Input() set canManage(value: boolean) {
+    this.columns = value ? [...DepartmentListTableComponent.baseColumns, DepartmentListTableComponent.actionsColumn] : DepartmentListTableComponent.baseColumns;
+  }
+
+  private static readonly baseColumns: readonly DataTableColumn[] = [
+    { key: 'name', label: 'Department name' },
+    { key: 'code', label: 'Code' },
+    { key: 'head', label: 'Head position' },
+    { key: 'positions', label: 'Positions' },
+    { key: 'employees', label: 'Employees' },
+    { key: 'status', label: 'Status' }
+  ];
+  private static readonly actionsColumn: DataTableColumn = { key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' };
+
+  protected columns: readonly DataTableColumn[] = DepartmentListTableComponent.baseColumns;
+  protected readonly trackById = (dept: DepartmentListItemResponse): string => dept.id;
+  protected readonly isArchived = (dept: DepartmentListItemResponse): boolean => !dept.isActive;
 
   @Output() editDepartment = new EventEmitter<DepartmentListItemResponse>();
   @Output() archiveDepartment = new EventEmitter<DepartmentListItemResponse>();

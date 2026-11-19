@@ -113,7 +113,7 @@ describe('MilestoneTreeNodeComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const selectedTitle = rows[0].querySelector('[data-testid="title-text"]') as HTMLElement;
     const unselectedTitle = rows[1].querySelector('[data-testid="title-text"]') as HTMLElement;
-    expect(selectedTitle.className).toContain('text-white');
+    expect(selectedTitle.className).toContain('text-[var(--color-text-on-solid)]');
     expect(unselectedTitle.className).toContain('text-[var(--color-text-primary)]');
   });
 
@@ -122,7 +122,7 @@ describe('MilestoneTreeNodeComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const selectedIcon = rows[0].querySelector('[data-testid="folder-icon"]') as HTMLElement;
     const unselectedIcon = rows[1].querySelector('[data-testid="folder-icon"]') as HTMLElement;
-    expect(selectedIcon.getAttribute('class')).toContain('text-white');
+    expect(selectedIcon.getAttribute('class')).toContain('text-[var(--color-text-on-solid)]');
     expect(unselectedIcon.getAttribute('class')).toContain('text-[var(--color-accent)]');
   });
 
@@ -131,7 +131,7 @@ describe('MilestoneTreeNodeComponent', () => {
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const selectedFill = rows[0].querySelector('[data-testid="progress-fill"]') as HTMLElement;
     const unselectedFill = rows[1].querySelector('[data-testid="progress-fill"]') as HTMLElement;
-    expect(selectedFill.className).toContain('bg-white');
+    expect(selectedFill.className).toContain('bg-[var(--color-text-on-solid)]');
     expect(unselectedFill.className).toContain('bg-[var(--color-accent)]');
   });
 
@@ -139,7 +139,7 @@ describe('MilestoneTreeNodeComponent', () => {
     setup(root, 'o1', true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const selectedDate = rows[0].querySelector('[data-testid="due-date-cell"]') as HTMLElement;
-    expect(selectedDate.className).toContain('text-white');
+    expect(selectedDate.className).toContain('text-[var(--color-text-on-solid)]');
   });
 
   it('renders owner avatar with theme background, white text, and white border outline', () => {
@@ -156,8 +156,8 @@ describe('MilestoneTreeNodeComponent', () => {
     setup(achievedRoot, 'o1', true);
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     const badge = rows[0].querySelector('[data-testid="achieved-badge"]') as HTMLElement;
-    expect(badge.className).toContain('text-white');
-    expect(badge.className).toContain('bg-white/15');
+    expect(badge.className).toContain('text-[var(--color-text-on-solid)]');
+    expect(badge.className).toContain('bg-[var(--color-text-on-solid)]/15');
   });
 
   it('shows a create-sub-module button only when the node is owned by the caller', () => {
@@ -358,5 +358,84 @@ describe('MilestoneTreeNodeComponent', () => {
       const badge = fixture.nativeElement.querySelector('[data-testid="status-badge"]') as HTMLElement;
       expect(badge.textContent).toContain('active');
     });
+  });
+});
+
+describe('MilestoneTreeNodeComponent - meetings', () => {
+  const meeting = {
+    taskId: 'm1', shortId: 'P-M1', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
+    endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Standup', status: 'scheduled' as const, isPrivate: false,
+    projectId: 'p1', objectiveId: 'o2', myRole: 'attendee' as const, myResponse: 'accepted' as const
+  };
+  const child: MilestoneTreeNode = {
+    id: 'o2', title: 'Child', description: null, startDate: null, endDate: null, progress: 0, allocatedHours: 0, completedHours: 0,
+    isActive: true, isAchieved: false, ownerName: null, isOwner: false, children: []
+  };
+  const parent: MilestoneTreeNode = { ...child, id: 'o1', title: 'Root', isOwner: true, children: [child] };
+
+  it('lists a module\'s meetings under it with the M badge, at any depth, and opens them by key', () => {
+    TestBed.configureTestingModule({
+      imports: [MilestoneTreeNodeComponent],
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'A', avatarFileId: null })) } }]
+    });
+    const fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
+    fixture.componentRef.setInput('node', parent);
+    fixture.componentRef.setInput('expandedByDefault', true);
+    fixture.componentRef.setInput('meetingsByModule', new Map([['o2', [meeting]]]));
+    fixture.detectChanges();
+    // The child module starts collapsed; expand it.
+    const childNode = fixture.debugElement.queryAll((d) => d.componentInstance instanceof MilestoneTreeNodeComponent)
+      .map((d) => d.componentInstance as MilestoneTreeNodeComponent).find((c) => c.node().id === 'o2')!;
+    childNode.expanded.set(true);
+    fixture.detectChanges();
+
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="tree-meeting-row"]'));
+    expect(rows.length).toBe(1);
+    expect(rows[0].querySelector('[data-testid="meeting-card-badge"]')?.textContent?.trim()).toBe('M');
+    // A row one level below its module, laid out like the task rows there (the module "Child" is at depth 1).
+    expect((rows[0].querySelector('[data-testid="meeting-card-name-cell"]') as HTMLElement).style.paddingLeft).toBe('40px');
+
+    let opened: unknown;
+    fixture.componentInstance.meetingOpened.subscribe((key) => (opened = key));
+    (rows[0].querySelector('[data-testid="meeting-card"]') as HTMLElement).click();
+    expect(opened).toEqual({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+  });
+
+  it('puts a module\'s meetings with its own tasks: after them, before its sprints and sub-modules', () => {
+    const task = (id: string): MilestoneTreeNode => ({ ...child, id, title: `Task ${id}`, kind: 'task' });
+    const sprint: MilestoneTreeNode = { ...child, id: 'sp1', title: 'Sprint 1', kind: 'sprint' };
+    const sub: MilestoneTreeNode = { ...child, id: 'o3', title: 'Sub milestone' };
+    const module: MilestoneTreeNode = { ...child, id: 'o2', children: [task('t1'), task('t2'), sprint, sub] };
+    TestBed.configureTestingModule({
+      imports: [MilestoneTreeNodeComponent],
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'A', avatarFileId: null })) } }]
+    });
+    const fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
+    fixture.componentRef.setInput('node', module);
+    fixture.componentRef.setInput('meetingsByModule', new Map([['o2', [meeting]]]));
+    fixture.detectChanges();
+
+    const order = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="title-text"], [data-testid="meeting-card-title"]'))
+      .map((el) => (el as HTMLElement).textContent?.trim());
+    expect(order.indexOf('Standup')).toBe(order.indexOf('Task t2') + 1);
+    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sprint 1'));
+    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sub milestone'));
+  });
+
+  it('lists the meetings of a module with no tasks before its sub-modules', () => {
+    const sub: MilestoneTreeNode = { ...child, id: 'o3', title: 'Sub milestone' };
+    const module: MilestoneTreeNode = { ...child, id: 'o2', children: [sub] };
+    TestBed.configureTestingModule({
+      imports: [MilestoneTreeNodeComponent],
+      providers: [{ provide: PeopleApiService, useValue: { getEmployeeIdentity: vi.fn().mockReturnValue(of({ id: 'e1', name: 'A', avatarFileId: null })) } }]
+    });
+    const fixture = TestBed.createComponent(MilestoneTreeNodeComponent);
+    fixture.componentRef.setInput('node', module);
+    fixture.componentRef.setInput('meetingsByModule', new Map([['o2', [meeting]]]));
+    fixture.detectChanges();
+
+    const order = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="title-text"], [data-testid="meeting-card-title"]'))
+      .map((el) => (el as HTMLElement).textContent?.trim());
+    expect(order.indexOf('Standup')).toBeLessThan(order.indexOf('Sub milestone'));
   });
 });

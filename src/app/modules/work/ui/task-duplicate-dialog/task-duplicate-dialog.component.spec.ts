@@ -1,3 +1,4 @@
+import { pickSelectOption, selectDisplayText } from '../../../../shared/ui/select/select.testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { TaskDuplicateDialogComponent, TaskDuplicateModuleOption, TaskDuplicatePayload } from './task-duplicate-dialog.component';
@@ -36,9 +37,9 @@ describe('TaskDuplicateDialogComponent', () => {
   it('prefills the title as "<original> (copy)" and preselects the current module', () => {
     setup();
     const titleInput = fixture.nativeElement.querySelector('[data-testid="duplicate-title-input"]') as HTMLInputElement;
-    const moduleSelect = fixture.nativeElement.querySelector('[data-testid="duplicate-module-select"]') as HTMLSelectElement;
+    const moduleSelect = fixture.nativeElement.querySelector('[data-testid="duplicate-module-select"]') as HTMLElement;
     expect(titleInput.value).toBe('Fix the bug (copy)');
-    expect(moduleSelect.value).toBe('obj-1');
+    expect(selectDisplayText(moduleSelect)).toBe(modules[0].title);
   });
 
   it('defaults Attachments, Assignees and Due date on, and Comments off', () => {
@@ -67,8 +68,8 @@ describe('TaskDuplicateDialogComponent', () => {
 
     setInputValue('duplicate-title-input', 'Renamed copy');
     fixture.detectChanges();
-    (fixture.nativeElement.querySelector('[data-testid="duplicate-module-select"]') as HTMLSelectElement).value = 'obj-2';
-    (fixture.nativeElement.querySelector('[data-testid="duplicate-module-select"]') as HTMLSelectElement).dispatchEvent(new Event('change'));
+    const moduleHost = fixture.nativeElement.querySelector('[data-testid="duplicate-module-select"]') as HTMLElement;
+    pickSelectOption(moduleHost, modules[1].title, () => fixture.detectChanges());
     setCheckbox('duplicate-copy-comments', true);
     setCheckbox('duplicate-copy-attachments', false);
 
@@ -81,8 +82,8 @@ describe('TaskDuplicateDialogComponent', () => {
   });
 
   it('shows the error message when set', () => {
-    setup({ error: 'This module is in an active event; a due date is required.' });
-    expect(fixture.nativeElement.textContent).toContain('This module is in an active event');
+    setup({ error: 'This milestone is in an active event; a due date is required.' });
+    expect(fixture.nativeElement.textContent).toContain('This milestone is in an active event');
   });
 
   it('resets the fields each time the dialog re-opens', () => {

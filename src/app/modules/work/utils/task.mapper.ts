@@ -36,8 +36,6 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     openClockSessionEmployeeId: dto.openClockSessionEmployeeId,
     openClockSessionClockInAt: dto.openClockSessionClockInAt ? new Date(dto.openClockSessionClockInAt) : null,
     totalLoggedMinutes: dto.totalLoggedMinutes,
-    activeEventId: dto.activeEventId ?? null,
-    activeEventName: dto.activeEventName ?? null,
     attachments: (dto.attachments ?? []).map((a) => ({ fileId: a.fileId, name: a.fileName, sizeBytes: a.fileSizeBytes })),
     assignees: (dto.assignees ?? []).map((a) => ({
       employeeId: a.employeeId,
@@ -49,6 +47,8 @@ export function toWorkTask(dto: WorkTaskDto): WorkTask {
     subtaskCompletedCount: dto.subtaskCompletedCount ?? 0,
     subtaskAssigneeEmployeeIds: dto.subtaskAssigneeEmployeeIds ?? [],
     createdAt: new Date(dto.createdAt),
+    taskKind: dto.taskKind ?? 'standard',
+    visibilityScope: dto.visibilityScope ?? 'module',
     hasPendingApproval: dto.hasPendingApproval ?? false
   };
 }

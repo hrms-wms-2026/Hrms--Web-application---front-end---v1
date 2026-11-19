@@ -1,5 +1,7 @@
 /** Quiet Operations Desk: Screen 6's HR-wide filterable ledger, counts + status filter chips. */
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -11,14 +13,15 @@ import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
 import { LeaveRequestAllListItemResponse } from '../../models/leave-approval.model';
-import { LeaveCancelConfirmDialogComponent } from '../../ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
+import { LeaveCancelConfirmDialogComponent } from '../../../../shared/ui/leave-cancel-confirm-dialog/leave-cancel-confirm-dialog.component';
 import { LeaveRequestAllTableComponent } from '../../ui/leave-request-all-table/leave-request-all-table.component';
-import { LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
+import { decisionMessage, LeaveApprovalDecisionRequest, LeaveApprovalDetailSheetComponent } from '../../ui/leave-approval-detail-sheet/leave-approval-detail-sheet.component';
 
+import { TimeOffSettingsTabsComponent } from '../../ui/time-off-settings-tabs/time-off-settings-tabs.component';
 @Component({
   selector: 'app-requests-list',
   standalone: true,
-  imports: [CommonModule, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
+  imports: [CommonModule, TimeOffSettingsTabsComponent, BreadcrumbHeaderComponent, LoaderComponent, DatePickerComponent, EmptyStateComponent, ErrorStateComponent, SelectComponent, LeaveCancelConfirmDialogComponent, LeaveRequestAllTableComponent, LeaveApprovalDetailSheetComponent],
   templateUrl: './requests-list.component.html',
   styleUrls: ['../../ui/time-off-chrome.css', './requests-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -28,7 +31,9 @@ export class RequestsListComponent {
   private readonly notificationService = inject(NotificationService);
   readonly store = inject(LeaveApprovalStore);
   readonly leaveTypeStore = inject(LeaveTypeStore);
-  readonly canApprove = () => this.permissionService.hasPermission('leave:approve');
+  /** The ledger is org-wide, so the viewer is often not this request's approver: only offer
+   *  Approve/Reject when the backend says it is the viewer's turn. */
+  readonly canDecide = computed(() => this.store.detail()?.canDecide === true && this.permissionService.hasPermission('leave:approve'));
   readonly detailOpen = signal(false);
   readonly cancelTarget = signal<LeaveRequestAllListItemResponse | null>(null);
   readonly statusFilter = computed(() => this.store.allFilter().status ?? '');
@@ -60,12 +65,30 @@ export class RequestsListComponent {
 
   onRowClicked(requestId: string): void {
     this.detailOpen.set(true);
-    void this.store.loadDetail(requestId);
+    void this.store.loadDetail(requestId, 'ledger');
   }
 
   closeDetail(): void {
     this.detailOpen.set(false);
     this.store.clearDetail();
+  }
+
+  async onDecision(event: LeaveApprovalDecisionRequest): Promise<void> {
+    const requestId = this.store.detail()?.requestId;
+    if (!requestId) return;
+
+    let result;
+    if (event.kind === 'approve') result = await this.store.approve(requestId, { comment: event.comment });
+    else if (event.kind === 'reject') result = await this.store.reject(requestId, { reason: event.reason });
+    else if (event.kind === 'change-to-reject') result = await this.store.changeDecision(requestId, { decision: 'reject', comment: event.reason });
+    else result = await this.store.changeDecision(requestId, { decision: 'approve', comment: event.comment });
+
+    if (result) {
+      this.notificationService.success(decisionMessage(event));
+      this.closeDetail();
+    } else {
+      this.notificationService.error(this.store.decideError() ?? 'Failed to record your decision.');
+    }
   }
 
   onCancelRequested(row: LeaveRequestAllListItemResponse): void {

@@ -1,5 +1,12 @@
 @if (dependents().length === 0) {
-  <p class="pf-empty">No dependents added yet.</p>
+  <p class="pf-empty">
+    <span class="pf-empty__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    </span>
+    No dependents added yet.
+  </p>
 } @else {
   <ul class="pf-list">
     @for (dependent of dependents(); track dependent.id) {
@@ -27,10 +34,11 @@
   </ul>
 }
 
-<form [formGroup]="addForm" (ngSubmit)="onSubmitAdd()" class="pf-form" style="margin-top: 1.25rem;">
+<form [formGroup]="addForm" (ngSubmit)="onSubmitAdd()" class="pf-form pf-add-form">
   <div class="pf-field-grid pf-field-grid--2">
     <app-input
       label="Full name"
+      placeholder="e.g. Jane Doe"
       [value]="addForm.controls.name.value"
       (valueChange)="addForm.controls.name.setValue($event)"
       (blurred)="addForm.controls.name.markAsTouched()"
@@ -53,6 +61,7 @@
     <app-input
       label="Phone (optional)"
       type="tel"
+      placeholder="e.g. +94 77 123 4567"
       [value]="addForm.controls.phone.value"
       (valueChange)="addForm.controls.phone.setValue($event)"
     />

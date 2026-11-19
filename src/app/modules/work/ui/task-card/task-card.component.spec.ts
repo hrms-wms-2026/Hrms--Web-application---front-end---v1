@@ -108,6 +108,20 @@ describe('TaskCardComponent', () => {
     expect(text).not.toContain('emp-1');
   });
 
+  it('ellipsizes a long unbroken task title inside the card', () => {
+    const longTitle = 'w'.repeat(200);
+    setup({ task: { ...task, title: longTitle } });
+
+    const title: HTMLElement = fixture.nativeElement.querySelector('.task-card__title-text');
+    const styles = getComputedStyle(title);
+
+    expect(title.textContent).toBe(longTitle);
+    expect(title.getAttribute('title')).toBe(longTitle);
+    expect(styles.overflow).toBe('hidden');
+    expect(styles.textOverflow).toBe('ellipsis');
+    expect(styles.whiteSpace).toBe('nowrap');
+  });
+
   it('prefers the coverage-free project-member name over the management-coverage-scoped directory lookup, so it shows real initials instead of "Unknown employee"', () => {
     setup(); // both emp-1 and emp-2 are known assignable project members
     const avatars = fixture.debugElement.queryAll(By.directive(AvatarComponent));
@@ -529,18 +543,18 @@ describe('TaskCardComponent', () => {
   });
 
   it('shows weekday name when date is in the current week', () => {
-    // Pick Saturday of the current week
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const saturday = new Date(now);
-    saturday.setDate(now.getDate() + diffToMonday + 5);
+    // Fixed clock: Wednesday 16 Sep 2026, so Saturday 19 Sep is in the same week and is
+    // neither today nor tomorrow. Only Date is faked so the component's timers still run.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 16, 12, 0, 0));
+    try {
+      setup({ task: { ...task, dueDate: new Date(2026, 8, 19, 12, 0, 0) } });
+      const dateBtn = fixture.nativeElement.querySelector('[data-testid="task-card-due-date-btn"]') as HTMLButtonElement;
 
-    setup({ task: { ...task, dueDate: saturday } });
-    const dateBtn = fixture.nativeElement.querySelector('[data-testid="task-card-due-date-btn"]') as HTMLButtonElement;
-
-    // In current week, it shows 'Sat' (or 'Today'/'Tomorrow' if Saturday happens to be today/tomorrow)
-    expect(dateBtn.querySelector('span')?.textContent?.trim()).toMatch(/^(Sat|Today|Tomorrow)$/);
+      expect(dateBtn.querySelector('span')?.textContent?.trim()).toBe('Sat');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('applies overdue class when date is in the past and task is not completed', () => {

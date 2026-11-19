@@ -16,8 +16,11 @@ import {
 } from '../models/checklist-template.model';
 import {
   ActiveHolder,
+  ClockInDefaults,
   FinalizeOnboardingDraftResponse,
+  ManagerCandidate,
   OnboardingDraftResponse,
+  ReportingChainNode,
   SaveOnboardingDraftPayload,
   WizardStep,
   WorkModeOption
@@ -56,10 +59,26 @@ export interface AddEmployeeWizardState {
   readonly activeHolders: readonly ActiveHolder[];
   readonly selectedReportsToEmployeeId: string | null;
   readonly loadingActiveHolders: boolean;
+  /** The effective manager's chain up to the organisation root, for the Reporting step preview. */
+  readonly reportingChain: readonly ReportingChainNode[];
+  readonly loadingReportingChain: boolean;
+  /** "Choose someone else": search results, and the picked person's details when they are not
+   *  a holder of the position above (a one-off manager for this employee only). */
+  readonly managerCandidates: readonly ManagerCandidate[];
+  readonly searchingManagers: boolean;
+  readonly customManager: ManagerCandidate | null;
 
   readonly workModes: readonly WorkModeOption[];
   readonly loadingWorkModes: boolean;
   readonly workModesError: string | null;
+  /** What the selected work mode + org policy would give this employee if nothing is changed. */
+  readonly clockInDefaults: ClockInDefaults | null;
+  readonly loadingClockInDefaults: boolean;
+  /** Per-employee overrides of clockInDefaults. Null = inherit (never written as an override). */
+  readonly photoRequiredOverride: boolean | null;
+  readonly locationCaptureOverride: boolean | null;
+  /** Profile photo picked on Identity: an uploaded employee_avatar file, linked on finalize. */
+  readonly avatarFileId: string | null;
 
   readonly checklistTemplates: readonly SelectOption[];
   readonly checklistTemplatesUnavailable: boolean;
@@ -130,10 +149,20 @@ const initialState: AddEmployeeWizardState = {
   activeHolders: [],
   selectedReportsToEmployeeId: null,
   loadingActiveHolders: false,
+  reportingChain: [],
+  loadingReportingChain: false,
+  managerCandidates: [],
+  searchingManagers: false,
+  customManager: null,
 
   workModes: [],
   loadingWorkModes: false,
   workModesError: null,
+  clockInDefaults: null,
+  loadingClockInDefaults: false,
+  photoRequiredOverride: null,
+  locationCaptureOverride: null,
+  avatarFileId: null,
 
   checklistTemplates: [],
   checklistTemplatesUnavailable: true,
@@ -182,7 +211,9 @@ const POSITION_NO_VACANCY_MESSAGE = 'The selected position no longer has a vacan
 const POSITION_NO_LONGER_AVAILABLE_MESSAGE = 'The selected position is no longer available. Choose another position.';
 
 function getAvailableSeats(position: PositionListItemResponse): number {
-  return position.maxOccupancy - position.assignedCount!;
+  // Invited-but-not-yet-joined employees hold a reserved seat; the backend's capacity check
+  // counts them, so the picker must too.
+  return position.maxOccupancy - position.assignedCount! - (position.reservedCount ?? 0);
 }
 
 function isPositionFull(position: PositionListItemResponse): boolean {
@@ -201,8 +232,13 @@ function toPositionOption(position: PositionListItemResponse): SelectOption {
 export const AddEmployeeWizardStore = signalStore(
   { providedIn: 'root' },
   withState<AddEmployeeWizardState>(initialState),
-  withComputed(({ activeHolders }) => ({
-    needsReportsToPick: () => activeHolders().length > 1
+  withComputed(({ activeHolders, selectedReportsToEmployeeId, clockInDefaults, photoRequiredOverride, locationCaptureOverride }) => ({
+    needsReportsToPick: () => activeHolders().length > 1,
+    /** Who the employee will actually report to: the explicit pick, or the only holder. */
+    effectiveManagerId: () =>
+      selectedReportsToEmployeeId() ?? (activeHolders().length === 1 ? activeHolders()[0].employeeId : null),
+    effectivePhotoRequired: () => photoRequiredOverride() ?? clockInDefaults()?.photoRequired ?? false,
+    effectiveLocationCapture: () => locationCaptureOverride() ?? clockInDefaults()?.locationCapture ?? false
   })),
   withMethods(
     (
@@ -284,6 +320,8 @@ export const AddEmployeeWizardStore = signalStore(
           activeHolders: [],
           selectedReportsToEmployeeId: null,
           loadingActiveHolders: false,
+          reportingChain: [],
+          customManager: null,
           selectedTemplateId: null,
           selectedTemplateDetail: null,
           selectedTemplateDetailError: null,
@@ -371,13 +409,55 @@ export const AddEmployeeWizardStore = signalStore(
           if (store.positionId() !== forPositionId) {
             return;
           }
-          patchState(store, { activeHolders: holders, loadingActiveHolders: false });
+          // Several people hold the manager position: pre-select the first (the backend returns
+          // them in a stable order) unless a valid pick is already there (a resumed draft).
+          // An existing pick (a resumed draft - holder or one-off manager from another line) is
+          // kept as is; position changes clear it before this runs.
+          const current = store.selectedReportsToEmployeeId();
+          patchState(store, {
+            activeHolders: holders,
+            loadingActiveHolders: false,
+            selectedReportsToEmployeeId: current ?? (holders.length > 1 ? holders[0].employeeId : null)
+          });
+          await loadReportingChain();
         } catch {
           if (store.positionId() !== forPositionId) {
             return;
           }
           patchState(store, { activeHolders: [], loadingActiveHolders: false });
         }
+      }
+
+      let reportingChainRequestKey: string | null = null;
+      async function loadReportingChain(): Promise<void> {
+        const managerId = store.effectiveManagerId();
+        reportingChainRequestKey = managerId;
+        if (!managerId) {
+          patchState(store, { reportingChain: [], loadingReportingChain: false });
+          return;
+        }
+        patchState(store, { loadingReportingChain: true });
+        try {
+          const chain = await firstValueFrom(peopleApi.getReportingChain(managerId));
+          if (reportingChainRequestKey === managerId) {
+            patchState(store, { reportingChain: chain, loadingReportingChain: false });
+          }
+        } catch {
+          if (reportingChainRequestKey === managerId) {
+            patchState(store, { reportingChain: [], loadingReportingChain: false });
+          }
+        }
+      }
+
+      let clockInDefaultsRequestKey: string | null = null;
+      let managerSearchKey: string | null = null;
+
+      /** Picking the only holder of the position above is the same as picking nobody - store
+       *  null so the line keeps following the position (a later replacement becomes the manager)
+       *  instead of being pinned to this person. */
+      function soleHolderAsNull(employeeId: string | null): string | null {
+        const holders = store.activeHolders();
+        return holders.length === 1 && holders[0].employeeId === employeeId ? null : employeeId;
       }
 
       return {
@@ -396,6 +476,8 @@ export const AddEmployeeWizardStore = signalStore(
           activeHolders: [],
           selectedReportsToEmployeeId: null,
           loadingActiveHolders: false,
+          reportingChain: [],
+          customManager: null,
           selectedTemplateId: null,
           selectedTemplateDetail: null,
           selectedTemplateDetailError: null,
@@ -453,6 +535,8 @@ export const AddEmployeeWizardStore = signalStore(
           activeHolders: [],
           selectedReportsToEmployeeId: null,
           loadingActiveHolders: false,
+          reportingChain: [],
+          customManager: null,
           selectedTemplateId: null,
           selectedTemplateDetail: null,
           selectedTemplateDetailError: null,
@@ -521,6 +605,8 @@ export const AddEmployeeWizardStore = signalStore(
           activeHolders: [],
           selectedReportsToEmployeeId: null,
           loadingActiveHolders: false,
+          reportingChain: [],
+          customManager: null,
           selectedTemplateId: null,
           selectedTemplateDetail: null,
           selectedTemplateDetailError: null,
@@ -558,7 +644,97 @@ export const AddEmployeeWizardStore = signalStore(
       },
 
       setReportsToEmployeeId(employeeId: string | null): void {
-        patchState(store, { selectedReportsToEmployeeId: employeeId });
+        patchState(store, { selectedReportsToEmployeeId: soleHolderAsNull(employeeId), customManager: null });
+        void loadReportingChain();
+      },
+
+      /** One-off manager from any reporting line - affects only this employee's line. */
+      pickCustomManager(candidate: ManagerCandidate): void {
+        const isHolder = store.activeHolders().some((h) => h.employeeId === candidate.employeeId);
+        patchState(store, {
+          selectedReportsToEmployeeId: soleHolderAsNull(candidate.employeeId),
+          customManager: isHolder ? null : candidate
+        });
+        void loadReportingChain();
+      },
+
+      async searchManagers(term: string): Promise<void> {
+        const companyId = store.companyId();
+        const query = term.trim();
+        managerSearchKey = query;
+        if (!companyId || query.length < 2) {
+          patchState(store, { managerCandidates: [], searchingManagers: false });
+          return;
+        }
+        patchState(store, { searchingManagers: true });
+        try {
+          const results = await firstValueFrom(peopleApi.searchManagerCandidates(companyId, query));
+          if (managerSearchKey === query) {
+            patchState(store, { managerCandidates: results, searchingManagers: false });
+          }
+        } catch {
+          if (managerSearchKey === query) {
+            patchState(store, { managerCandidates: [], searchingManagers: false });
+          }
+        }
+      },
+
+      /** Loads what the given work mode (plus the chosen position/department policy) gives a new
+       *  employee by default. Overrides are kept - the caller clears them on a mode change. */
+      async loadClockInDefaults(workModeId: string | null): Promise<void> {
+        const companyId = store.companyId();
+        if (!companyId || !workModeId) {
+          clockInDefaultsRequestKey = null;
+          patchState(store, { clockInDefaults: null, loadingClockInDefaults: false });
+          return;
+        }
+        const key = [companyId, workModeId, store.positionId() ?? '', store.departmentId() ?? ''].join('|');
+        if (key === clockInDefaultsRequestKey && (store.clockInDefaults() || store.loadingClockInDefaults())) {
+          return;
+        }
+        clockInDefaultsRequestKey = key;
+        patchState(store, { loadingClockInDefaults: true });
+        try {
+          const defaults = await firstValueFrom(
+            peopleApi.getClockInDefaults({
+              legalEntityId: companyId,
+              workModeId,
+              positionId: store.positionId(),
+              departmentId: store.departmentId()
+            })
+          );
+          if (clockInDefaultsRequestKey === key) {
+            patchState(store, { clockInDefaults: defaults, loadingClockInDefaults: false });
+          }
+        } catch {
+          if (clockInDefaultsRequestKey === key) {
+            // Fall back to the work mode's own photo flag; location then shows as off.
+            const mode = store.workModes().find((m) => m.id === workModeId);
+            patchState(store, {
+              clockInDefaults: { photoRequired: !!mode?.photoRequired, locationCapture: false },
+              loadingClockInDefaults: false
+            });
+          }
+        }
+      },
+
+      /** Sets a per-employee override; choosing the inherited value clears it back to null. */
+      setPhotoRequiredOverride(value: boolean): void {
+        const inherited = store.clockInDefaults()?.photoRequired ?? false;
+        patchState(store, { photoRequiredOverride: value === inherited ? null : value });
+      },
+
+      setLocationCaptureOverride(value: boolean): void {
+        const inherited = store.clockInDefaults()?.locationCapture ?? false;
+        patchState(store, { locationCaptureOverride: value === inherited ? null : value });
+      },
+
+      setAvatarFileId(fileId: string | null): void {
+        patchState(store, { avatarFileId: fileId });
+      },
+
+      clearClockInOverrides(): void {
+        patchState(store, { photoRequiredOverride: null, locationCaptureOverride: null });
       },
 
       selectChecklistTemplate(templateId: string): void {
@@ -843,7 +1019,10 @@ export const AddEmployeeWizardStore = signalStore(
           selectedTemplateId,
           editedTasksJson,
           lastSavedStep,
-          reportsToEmployeeId: store.selectedReportsToEmployeeId()
+          reportsToEmployeeId: store.selectedReportsToEmployeeId(),
+          photoRequiredOverride: store.photoRequiredOverride(),
+          locationCaptureOverride: store.locationCaptureOverride(),
+          avatarFileId: store.avatarFileId()
         };
 
         patchState(store, { saving: true, saveError: null });
@@ -892,6 +1071,9 @@ export const AddEmployeeWizardStore = signalStore(
             departmentId: draft.departmentId,
             positionId: draft.positionId,
             selectedReportsToEmployeeId: draft.reportsToEmployeeId,
+            photoRequiredOverride: draft.photoRequiredOverride ?? null,
+            locationCaptureOverride: draft.locationCaptureOverride ?? null,
+            avatarFileId: draft.avatarFileId ?? null,
             savedDepartmentName: draft.departmentName ?? null,
             savedPositionName: draft.positionName ?? null,
             savedWorkModeLabel: draft.workModeLabel ?? null,

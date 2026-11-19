@@ -3,7 +3,8 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "analytics": false
+    "analytics": false,
+    "schematicCollections": ["angular-eslint"]
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -23,24 +24,22 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "data.json",
+                "input": "node_modules/emoji-picker-element-data/en/emojibase",
+                "output": "emoji"
               }
             ],
-            "styles": [
-              "src/styles.css",
-              "@angular/cdk/overlay-prebuilt.css"
-            ],
-            "allowedCommonJsDependencies": [
-              "qrcode",
-              "leaflet",
-              "i18n-iso-countries"
-            ]
+            "styles": ["src/styles.css", "@angular/cdk/overlay-prebuilt.css"],
+            "allowedCommonJsDependencies": ["qrcode", "leaflet", "i18n-iso-countries"]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "505kB",
                   "maximumError": "1MB"
                 },
                 {
@@ -54,6 +53,27 @@
                 {
                   "replace": "src/environments/environment.ts",
                   "with": "src/environments/environment.prod.ts"
+                }
+              ]
+            },
+            "singlehost": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "505kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "45kB",
+                  "maximumError": "55kB"
+                }
+              ],
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.singlehost.ts"
                 }
               ]
             },
@@ -81,11 +101,11 @@
           "builder": "@angular/build:dev-server",
           "options": {
             "ssl": true,
-            "sslCert": ".certs/onexso-cert.pem",
-            "sslKey": ".certs/onexso-key.pem",
+            "sslCert": ".certs/crownus-cert.pem",
+            "sslKey": ".certs/crownus-key.pem",
             "host": "0.0.0.0",
             "port": 4200,
-            "allowedHosts": ["onexso.com", ".onexso.com"]
+            "allowedHosts": ["crownus.test", ".crownus.test"]
           },
           "configurations": {
             "production": {
@@ -102,6 +122,12 @@
         },
         "test": {
           "builder": "@angular/build:unit-test"
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+          }
         }
       }
     }

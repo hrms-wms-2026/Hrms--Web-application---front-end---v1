@@ -1,5 +1,6 @@
 import { ActivityTimelineSegment } from '../models/activity-timeline.model';
 import { BreakInterval } from '../../attendance/models/time-tracking.model';
+import { WIDGET } from '../../../shared/utils/widget-palette';
 
 export interface TimelineSegment {
   readonly type: 'working' | 'break' | 'focus' | 'idle';
@@ -16,10 +17,10 @@ export const SEGMENT_LABELS: Record<TimelineSegment['type'], string> = {
 /** Single source of truth for timeline segment colors, shared by the compact Today at a
  * Glance strip and the full Activity Timeline page so the two never visually disagree. */
 export const SEGMENT_COLORS: Record<TimelineSegment['type'], string> = {
-  working: 'var(--color-accent)',
-  break: 'var(--color-warning)',
-  focus: '#6366f1',
-  idle: 'var(--color-border)'
+  working: WIDGET.shade1,
+  break: WIDGET.shade3,
+  focus: WIDGET.shade2,
+  idle: WIDGET.shade4
 };
 
 export const SEGMENT_OPACITY: Record<TimelineSegment['type'], number> = {
@@ -47,6 +48,18 @@ export function buildTimelineSegments(
     return [];
   }
 
+  return applyMinimumVisibleWidth(
+    rawTimelineSegments(start, end, breaks, activity).map((s) => ({ type: s.type, widthPercent: ((s.end - s.start) / totalMs) * 100 }))
+  );
+}
+
+
+function rawTimelineSegments(
+  start: number,
+  end: number,
+  breaks: BreakInterval[],
+  activity: ActivityTimelineSegment[]
+): { type: TimelineSegment['type']; start: number; end: number }[] {
   const breakIntervals = clip(
     breaks.map((b) => ({
       start: new Date(b.startedAt).getTime(),
@@ -77,10 +90,7 @@ export function buildTimelineSegments(
   if (cursor < end) {
     segments.push(...subdivideWorking(cursor, end, activityIntervals));
   }
-
-  return applyMinimumVisibleWidth(
-    segments.map((s) => ({ type: s.type, widthPercent: ((s.end - s.start) / totalMs) * 100 }))
-  );
+  return segments;
 }
 
 /** Below this width a segment renders as a sliver too thin to see (or to pick a color out of) in

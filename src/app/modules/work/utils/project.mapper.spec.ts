@@ -1,4 +1,4 @@
-import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, removeTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest, collectObjectiveOptions } from './project.mapper';
+import { toProject, toProjectDetail, toMilestone, toMilestoneTreeNode, findTreeNode, isLeafObjective, updateTreeNode, removeTreeNode, toSprintTreeNode, toTaskTreeNode, buildObjectiveForest, collectObjectiveOptions, moduleStructureKey } from './project.mapper';
 import { ProjectListItemDto, ProjectDetailDto } from '../models/dto/project.dto';
 import { MyProjectMilestoneDto } from '../models/dto/milestone.dto';
 import { ObjectiveSubtreeNodeDto } from '../models/dto/milestone.dto';
@@ -13,13 +13,13 @@ describe('project.mapper', () => {
       id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
       allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
-      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0
+      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0, systemPurpose: null
     };
     expect(toProject(dto)).toEqual({
       id: 'p1', name: 'Website Revamp', identifier: 'WEB', categoryId: 'cat1', description: null, leadId: 'u1',
       startDate: '2026-08-01', targetDate: '2026-12-01', color: '#2563EB', isActive: true,
       allocatedHours: 40, completedHours: 0, isLead: true, isAchieved: false, achievedAt: null,
-      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0
+      updatedAt: null, logoFileId: null, labels: [], members: [], memberCount: 0, systemPurpose: null, icon: null
     });
   });
 
@@ -363,4 +363,24 @@ describe('project.mapper', () => {
     });
   });
 
+  describe('moduleStructureKey', () => {
+    const module = (id: string, children: MilestoneTreeNode[] = []): MilestoneTreeNode => ({
+      id, title: id, description: null, startDate: '2026-01-01', endDate: '2026-12-01', progress: 0,
+      allocatedHours: 0, completedHours: 0, isActive: true, isAchieved: false, ownerName: null,
+      isOwner: false, children
+    });
+    const sprint = (id: string): MilestoneTreeNode => ({ ...module(id), kind: 'sprint' });
+
+    it('is the same for a new tree object that only gained sprints or tasks', () => {
+      const before = module('root', [module('a')]);
+      const after = module('root', [module('a', [sprint('s1')])]);
+
+      expect(moduleStructureKey(after)).toBe(moduleStructureKey(before));
+    });
+
+    it('changes when a module is added', () => {
+      expect(moduleStructureKey(module('root', [module('a'), module('b')])))
+        .not.toBe(moduleStructureKey(module('root', [module('a')])));
+    });
+  });
 });

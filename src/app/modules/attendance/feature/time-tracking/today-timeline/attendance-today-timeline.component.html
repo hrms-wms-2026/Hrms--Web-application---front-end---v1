@@ -1,59 +1,69 @@
-<section class="today-timeline" aria-labelledby="today-timeline-heading">
-  <div class="today-timeline-header">
-    <h3 id="today-timeline-heading">Today's activity</h3>
-    @if (totalCount() > 0) {
-      <span class="today-timeline-count-badge">{{ totalCount() }} {{ totalCount() === 1 ? 'event' : 'events' }}</span>
-    }
-  </div>
-
-  @if (store.todayTimelineLoading()) {
-    <p aria-busy="true">Loading today's activity…</p>
-  } @else if (store.todayTimelineError()) {
-    <p role="alert">{{ store.todayTimelineError() }}</p>
-  } @else if (totalCount() === 0) {
-    <p class="today-timeline-empty">No activity recorded yet today.</p>
-  } @else {
-    <ol class="today-timeline-list">
-      @for (item of visibleItems(); track item.id) {
-        <li class="today-timeline-item" [class.today-timeline-item--now]="item.isNow">
-          <span class="today-timeline-item__label">{{ item.label }}</span>
-          <span class="today-timeline-item__time">{{ item.time }}</span>
-        </li>
+@if (mode() === 'trigger') {
+  <!-- Attendance page: only a button; the full timeline and chart open in the popup. -->
+  <button type="button" class="today-timeline-trigger" data-testid="view-activity" aria-haspopup="dialog" (click)="openModal()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 3v18h18"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16v-6"/>
+    </svg>
+    View activity
+  </button>
+} @else {
+  <section class="today-timeline" aria-labelledby="today-timeline-heading">
+    <div class="today-timeline-header">
+      <h3 id="today-timeline-heading">Today's activity</h3>
+      @if (totalCount() > 0) {
+        <span class="today-timeline-count-badge">{{ totalCount() }} {{ totalCount() === 1 ? 'event' : 'events' }}</span>
       }
-    </ol>
+    </div>
 
-    @if (hasMore()) {
-      <div class="today-timeline-footer">
-        <button
-          type="button"
-          class="today-timeline-more-btn"
-          (click)="openModal()"
-          aria-haspopup="dialog"
-        >
-          <span>+{{ moreCount() }} more {{ moreCount() === 1 ? 'action' : 'actions' }}</span>
-          <span class="more-link-action">View full timeline & chart &rarr;</span>
-        </button>
-      </div>
+    @if (store.todayTimelineLoading()) {
+      <p aria-busy="true">Loading today's activity…</p>
+    } @else if (store.todayTimelineError()) {
+      <p role="alert">{{ store.todayTimelineError() }}</p>
+    } @else if (totalCount() === 0) {
+      <p class="today-timeline-empty">No activity recorded yet today.</p>
     } @else {
-      <div class="today-timeline-footer">
-        <button
-          type="button"
-          class="today-timeline-more-btn today-timeline-more-btn--subtle"
-          (click)="openModal()"
-          aria-haspopup="dialog"
-        >
-          <span class="more-link-action">View breakdown & chart &rarr;</span>
-        </button>
-      </div>
+      <ol class="today-timeline-list">
+        @for (item of visibleItems(); track item.id) {
+          <li class="today-timeline-item" [class.today-timeline-item--now]="item.isNow">
+            <span class="today-timeline-item__label">{{ item.label }}</span>
+            <span class="today-timeline-item__time">{{ item.time }}</span>
+          </li>
+        }
+      </ol>
+
+      @if (hasMore()) {
+        <div class="today-timeline-footer">
+          <button
+            type="button"
+            class="today-timeline-more-btn"
+            (click)="openModal()"
+            aria-haspopup="dialog"
+          >
+            <span>+{{ moreCount() }} more {{ moreCount() === 1 ? 'action' : 'actions' }}</span>
+            <span class="more-link-action">View full timeline & chart &rarr;</span>
+          </button>
+        </div>
+      } @else {
+        <div class="today-timeline-footer">
+          <button
+            type="button"
+            class="today-timeline-more-btn today-timeline-more-btn--subtle"
+            (click)="openModal()"
+            aria-haspopup="dialog"
+          >
+            <span class="more-link-action">View breakdown & chart &rarr;</span>
+          </button>
+        </div>
+      }
     }
-  }
-</section>
+  </section>
+}
 
 @if (isModalOpen()) {
-  <div class="today-modal-backdrop" (click)="closeModal()">
+  <div role="presentation" class="today-modal-backdrop" animate.leave="ui-popup-leave" (click)="closeModal()">
     <div
-      class="today-modal"
-      (click)="$event.stopPropagation()"
+      class="today-modal ui-scroll-open"
+      appStopClickPropagation
       role="dialog"
       aria-modal="true"
       aria-labelledby="today-modal-title"
@@ -61,7 +71,8 @@
       tabindex="-1"
     >
       <!-- Modal Header matching Add Employee wizard -->
-      <div class="today-modal-header">
+      <div class="today-modal-header ui-popup-header">
+        <span class="ui-popup-icon" data-icon="clock" aria-hidden="true"></span>
         <div class="today-modal-header-left">
           <h2 id="today-modal-title" class="today-modal-title">Today's Activity & Time Distribution</h2>
           <p class="today-modal-subtitle">
@@ -112,7 +123,7 @@
                   cy="80"
                   [attr.r]="CIRCLE_RADIUS"
                   fill="none"
-                  stroke="#f1f5f9"
+                  style="stroke: var(--color-border)"
                   stroke-width="12"
                 />
 
@@ -124,7 +135,7 @@
                     cy="80"
                     [attr.r]="CIRCLE_RADIUS"
                     fill="none"
-                    stroke="#e2e8f0"
+                    style="stroke: var(--color-border)"
                     stroke-width="12"
                     [attr.stroke-dasharray]="chartMetrics().remainingDasharray"
                     [attr.stroke-dashoffset]="chartMetrics().remainingOffset"
@@ -236,7 +247,7 @@
             <span class="modal-timeline-count">{{ totalCount() }} {{ totalCount() === 1 ? 'entry' : 'entries' }}</span>
           </div>
 
-          <div class="modal-stepper">
+          <div class="modal-stepper scroll-fade">
             @for (item of allTimelineItems(); track item.id; let isLast = $last) {
               <div
                 class="modal-stepper-item"

@@ -39,10 +39,17 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
             </label>
           }
         </div>
+      }
+      @if (!store.loading()) {
         <div class="obs-actions">
-          <app-button variant="primary" [loading]="store.saving()" [disabled]="!selectedId()" (pressed)="confirm()">
-            Use This Checklist
+          <app-button variant="secondary" data-testid="skip-checklist" [disabled]="store.saving()" (pressed)="skip()">
+            Continue without a checklist
           </app-button>
+          @if (store.checklistMatches().length > 0) {
+            <app-button variant="primary" [loading]="store.saving()" [disabled]="!selectedId()" (pressed)="confirm()">
+              Use This Checklist
+            </app-button>
+          }
         </div>
       }
     </div>
@@ -119,6 +126,7 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
       text-transform: capitalize;
     }
     .obs-empty-state {
+      margin-bottom: 1.5rem;
       padding: 2rem 1.25rem;
       text-align: center;
       border: 1px dashed var(--color-border);
@@ -132,6 +140,7 @@ import { OffboardingWizardStore } from '../../../state/offboarding-wizard.store'
     .obs-actions {
       display: flex;
       justify-content: flex-end;
+      gap: 0.75rem;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -152,5 +161,10 @@ export class OffboardingChooseChecklistStepComponent {
     const templateId = this.selectedId();
     if (!templateId) return;
     await this.store.selectChecklist(this.employeeId(), templateId);
+  }
+
+  /** Moves the offboarding on with no checklist tasks, e.g. when no template matches the employee. */
+  async skip(): Promise<void> {
+    await this.store.selectChecklist(this.employeeId(), null);
   }
 }

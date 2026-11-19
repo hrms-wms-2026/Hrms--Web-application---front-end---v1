@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 export interface TaskAssigneeOption {
   employeeId: string;
@@ -11,13 +12,13 @@ export interface TaskAssigneeOption {
 @Component({
   selector: 'app-task-assignee-dropdown',
   standalone: true,
-  imports: [AvatarComponent],
+  imports: [StopClickPropagationDirective, AvatarComponent],
   template: `
     <div
       class="task-assignee-dropdown task-card__assignee-popover tfm-popover"
       role="dialog"
       aria-label="Change assignee"
-      (click)="$event.stopPropagation()"
+      appStopClickPropagation
     >
       <div class="task-assignee-dropdown__search">
         <svg viewBox="0 0 24 24" aria-hidden="true" class="task-assignee-dropdown__search-icon">
@@ -34,7 +35,7 @@ export interface TaskAssigneeOption {
         />
       </div>
 
-      <div class="task-assignee-dropdown__list task-card__assignee-list">
+      <div class="task-assignee-dropdown__list task-card__assignee-list scroll-fade">
         @if (allowUnassigned()) {
           <button
             type="button"
@@ -90,7 +91,7 @@ export interface TaskAssigneeOption {
       border: 1px solid var(--color-border, #e2e8f0);
       background: var(--color-surface, #ffffff);
       padding: 6px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       box-sizing: border-box;
       user-select: none;
     }

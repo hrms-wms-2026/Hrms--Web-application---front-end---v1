@@ -1,0 +1,171 @@
+<!-- Same shell as the Team Progress / Team Attendance popups: app-modal's own header is hidden by this component's CSS
+     (its title still names the dialog for screen readers); the header below has the title and week on the left and
+     the week switch and close button on the right. -->
+<app-modal [open]="open()" title="My weekly progress" size="2xl" panelClass="weekly-work-progress-detail" (closed)="close()">
+  <div class="wwp-head">
+    <div class="wwp-head__row">
+      <div class="wwp-head__title">
+        <h2>My weekly progress</h2>
+        <p data-testid="wwp-range">{{ rangeLabel() }}</p>
+      </div>
+      <div class="wwp-head__controls">
+        <app-select
+          class="wwp-select"
+          ariaLabel="Week"
+          icon="calendar"
+          size="sm"
+          [searchable]="false"
+          [options]="weekOptions"
+          [value]="selectedWeek()"
+          (valueChange)="onWeekSelect($event)"
+        />
+        <button type="button" class="wwp-close" aria-label="Close" data-testid="wwp-close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @let d = data();
+  <div class="wwp">
+    @if (loadFailed()) {
+      <p class="wwp-muted" role="alert">Couldn't load last week. Showing this week.</p>
+    }
+
+    <div class="wwp-top">
+      <div class="wwp-hero">
+        <app-dashboard-donut
+          class="wwp-donut"
+          data-testid="wwp-progress-donut"
+          ariaLabel="This week's progress"
+          [size]="donutPx"
+          [strokeWidth]="5"
+          [slices]="ringSlices()"
+          [(active)]="hoveredRing"
+        >
+          <p class="wwp-donut-center">
+            <span class="wwp-big">{{ percentText(d.thisWeek.progressPercent) }}</span>
+            <span class="wwp-status">{{ statusLabels[d.thisWeek.status] }}</span>
+          </p>
+        </app-dashboard-donut>
+        @if (delta(); as dl) {
+          <p class="wwp-delta">
+            <strong [class.wwp-down]="!dl.up">{{ dl.arrow }} {{ dl.text }}</strong>
+            <span>vs last week ({{ percentText(d.lastWeek.progressPercent) }})</span>
+          </p>
+        }
+      </div>
+      <app-kpi-tiles palette="widget" class="wwp-kpis" data-testid="wwp-kpis" [tiles]="tiles()" [maxColumns]="4" ariaLabel="This week" />
+    </div>
+
+    <div class="wwp-grid">
+      <section class="wwp-panel wwp-panel--wide">
+        <app-daily-work-chart
+          class="wwp-chart"
+          [heading]="'Daily Work vs ' + (d.plannerEnabled ? 'Schedule' : 'Expected')"
+          [compactHeadline]="false"
+          [days]="d.thisWeek.days"
+          [showScheduled]="d.plannerEnabled"
+        />
+      </section>
+
+      @if (d.plannerEnabled) {
+        <section class="wwp-panel" data-testid="wwp-adherence">
+          <p class="wwp-title">Schedule Adherence</p>
+          <div class="wwp-split">
+            <app-dashboard-donut
+              class="wwp-donut"
+              data-testid="wwp-adherence-donut"
+              ariaLabel="Schedule adherence"
+              [size]="donutPx"
+              [strokeWidth]="5"
+              [slices]="adherenceSlices()"
+              [(active)]="hoveredAdherence"
+            >
+              <p class="wwp-donut-center">
+                <span class="wwp-mid">{{ adherence().coverage }}%</span>
+                <span class="wwp-status">Schedule Coverage</span>
+              </p>
+            </app-dashboard-donut>
+            <div class="wwp-legend">
+              <p class="wwp-legend-total">Scheduled <b>{{ formatMinutes(adherence().scheduled) }}</b></p>
+              <app-donut-key
+                ariaLabel="Of the scheduled time"
+                rowTestId="wwp-adherence-row"
+                [showValue]="true"
+                [slices]="adherenceSlices()"
+                [(active)]="hoveredAdherence"
+              />
+            </div>
+          </div>
+        </section>
+      }
+
+      <section class="wwp-panel" data-testid="wwp-last-week">
+        <p class="wwp-title">Last Week Comparison</p>
+        <div class="wwp-compare">
+          <div class="wwp-stat">
+            <span class="wwp-stat-label">Worked Hours</span>
+            <span class="wwp-stat-value">{{ formatMinutes(d.thisWeek.workedMinutes) }}</span>
+            @if (workedChange(); as c) {
+              <strong [class.wwp-down]="!c.up">{{ c.arrow }} {{ c.text }}</strong>
+            }
+            <span class="wwp-muted">vs last week ({{ formatMinutes(d.lastWeek.workedMinutes) }})</span>
+          </div>
+          <div class="wwp-stat">
+            <span class="wwp-stat-label">Completion Rate</span>
+            <span class="wwp-stat-value">{{ percentText(d.thisWeek.progressPercent) }}</span>
+            @if (delta(); as dl) {
+              <strong [class.wwp-down]="!dl.up">{{ dl.arrow }} {{ dl.text }}</strong>
+            }
+            <span class="wwp-muted">vs last week ({{ percentText(d.lastWeek.progressPercent) }})</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="wwp-panel" data-testid="wwp-tasks">
+        <p class="wwp-title">Task Status (Weightage)</p>
+        <div class="wwp-split">
+          <app-dashboard-donut
+            class="wwp-donut"
+            data-testid="wwp-task-donut"
+            ariaLabel="Task status by estimated hours"
+            [size]="donutPx"
+            [strokeWidth]="5"
+            [slices]="taskSlices()"
+            [(active)]="hoveredTask"
+          >
+            <p class="wwp-donut-center">
+              <span class="wwp-mid">{{ taskTotal() }}h</span>&ngsp;<span class="wwp-status">Total</span>
+            </p>
+          </app-dashboard-donut>
+          <div class="wwp-legend">
+            <app-donut-key
+              ariaLabel="Task status"
+              rowTestId="wwp-task-row"
+              [showValue]="true"
+              [slices]="taskSlices()"
+              [(active)]="hoveredTask"
+            />
+            @if (d.tasks.unestimatedCount > 0) {
+              <p class="wwp-muted">{{ d.tasks.unestimatedCount }} without an estimate</p>
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="wwp-panel" data-testid="wwp-insights">
+        <p class="wwp-title">Key Insights</p>
+        @if (insights().length === 0) {
+          <p class="wwp-muted">Nothing to point out yet this week.</p>
+        } @else {
+          <ul class="wwp-insights">
+            @for (item of insights(); track item.text) {
+              <li [class]="'wwp-insight wwp-insight--' + item.tone">{{ item.text }}</li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+  </div>
+</app-modal>

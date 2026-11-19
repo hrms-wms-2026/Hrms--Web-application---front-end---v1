@@ -2,6 +2,22 @@ import { DatePipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { NotificationItem } from '../../../../../core/services/notification-api.service';
 
+/** WM approval-request notifications can be decided right from the bell; every other
+ * type (including the already-decided/commented approval notifications, which share
+ * the same relatedEntityType) stays click-to-navigate only. */
+const ACTIONABLE_TEMPLATE_CODE = 'work_approval_requested';
+
+/** Project/module invitation notifications ("you've been invited") can be accepted or
+ * declined right from the bell too - work_project_member_accepted (sent after someone
+ * else already accepted) is deliberately excluded, there's nothing left to decide. */
+const INVITATION_TEMPLATE_CODES = new Set(['work_project_member_invited', 'work_objective_invitation_created']);
+
+export type NotificationDecisionState = 'approved' | 'rejected' | 'error';
+
+export function isInvitationNotification(item: NotificationItem): boolean {
+  return INVITATION_TEMPLATE_CODES.has(item.templateCode);
+}
+
 @Component({
   selector: 'app-notification-dropdown',
   standalone: true,
@@ -20,16 +36,50 @@ import { NotificationItem } from '../../../../../core/services/notification-api.
         <ul class="notification-dropdown__list">
           @for (item of items(); track item.id) {
             <li>
-              <button
-                type="button"
-                class="notification-dropdown__item"
-                [class.notification-dropdown__item--unread]="!item.isRead"
-                (click)="itemClicked.emit(item)"
-              >
-                <span class="notification-dropdown__title">{{ item.title }}</span>
-                <span class="notification-dropdown__body">{{ item.body }}</span>
-                <span class="notification-dropdown__time">{{ item.createdAt | date: 'MMM d, h:mm a' }}</span>
-              </button>
+              <div class="notification-dropdown__row">
+                <button
+                  type="button"
+                  class="notification-dropdown__item"
+                  [class.notification-dropdown__item--unread]="!item.isRead"
+                  (click)="itemClicked.emit(item)"
+                >
+                  <span class="notification-dropdown__title">{{ item.title }}</span>
+                  <span class="notification-dropdown__body">{{ item.body }}</span>
+                  <span class="notification-dropdown__time">{{ item.createdAt | date: 'MMM d, h:mm a' }}</span>
+                </button>
+                @if (isActionable(item)) {
+                  @if (decisionState(item.id); as decision) {
+                    <span
+                      class="notification-dropdown__decision"
+                      [class.notification-dropdown__decision--error]="decision === 'error'"
+                      data-testid="notification-decision"
+                    >
+                      {{ decisionLabel(item, decision) }}
+                    </span>
+                  } @else {
+                    <div class="notification-dropdown__actions">
+                      <button
+                        type="button"
+                        class="notification-dropdown__action notification-dropdown__action--approve"
+                        data-testid="notification-approve"
+                        [disabled]="isPending(item.id)"
+                        (click)="approveClicked.emit(item)"
+                      >
+                        {{ isInvitation(item) ? 'Accept' : 'Approve' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="notification-dropdown__action notification-dropdown__action--reject"
+                        data-testid="notification-reject"
+                        [disabled]="isPending(item.id)"
+                        (click)="rejectClicked.emit(item)"
+                      >
+                        {{ isInvitation(item) ? 'Decline' : 'Reject' }}
+                      </button>
+                    </div>
+                  }
+                }
+              </div>
             </li>
           }
         </ul>
@@ -74,18 +124,24 @@ import { NotificationItem } from '../../../../../core/services/notification-api.
       margin: 0;
       padding: 0;
     }
+    .notification-dropdown__row {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      border-bottom: 1px solid var(--color-border);
+    }
     .notification-dropdown__item {
       display: flex;
       flex-direction: column;
       gap: 2px;
       width: 100%;
       text-align: left;
-      padding: 10px 12px;
+      padding: 10px 12px 4px;
       border: none;
-      border-bottom: 1px solid var(--color-border);
       background: transparent;
       cursor: pointer;
       color: var(--color-text-primary);
+      font: inherit;
     }
     .notification-dropdown__item--unread {
       background: var(--color-surface-secondary);
@@ -99,10 +155,72 @@ import { NotificationItem } from '../../../../../core/services/notification-api.
       font-size: 12px;
       color: var(--color-text-secondary);
     }
+    .notification-dropdown__actions {
+      display: flex;
+      gap: 8px;
+      padding: 0 12px 10px;
+    }
+    .notification-dropdown__action {
+      flex: 1;
+      padding: 5px 0;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .notification-dropdown__action--approve {
+      color: var(--color-success, #1a7f37);
+      border-color: var(--color-success, #1a7f37);
+    }
+    .notification-dropdown__action--reject {
+      color: var(--color-danger);
+      border-color: var(--color-danger);
+    }
+    .notification-dropdown__action:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .notification-dropdown__decision {
+      padding: 0 12px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+    }
+    .notification-dropdown__decision--error {
+      color: var(--color-danger);
+    }
   `]
 })
 export class NotificationDropdownComponent {
   items = input.required<readonly NotificationItem[]>();
+  pendingIds = input<ReadonlySet<string>>(new Set());
+  decisions = input<ReadonlyMap<string, NotificationDecisionState>>(new Map());
   itemClicked = output<NotificationItem>();
+  approveClicked = output<NotificationItem>();
+  rejectClicked = output<NotificationItem>();
   markAllRead = output<void>();
+
+  isActionable(item: NotificationItem): boolean {
+    return item.templateCode === ACTIONABLE_TEMPLATE_CODE || isInvitationNotification(item);
+  }
+
+  isInvitation(item: NotificationItem): boolean {
+    return isInvitationNotification(item);
+  }
+
+  isPending(id: string): boolean {
+    return this.pendingIds().has(id);
+  }
+
+  decisionState(id: string): NotificationDecisionState | undefined {
+    return this.decisions().get(id);
+  }
+
+  decisionLabel(item: NotificationItem, decision: NotificationDecisionState): string {
+    if (decision === 'error') return 'Already handled';
+    if (isInvitationNotification(item)) return decision === 'approved' ? 'Accepted' : 'Declined';
+    return decision === 'approved' ? 'Approved' : 'Rejected';
+  }
 }

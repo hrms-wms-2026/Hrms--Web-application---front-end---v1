@@ -1,10 +1,7 @@
 <section class="to-page">
   <header class="to-header">
-    <div>
-      <p class="to-kicker">TIME OFF</p>
-      <h1 class="to-title">Entitlements</h1>
-      <p class="to-subtitle">Assign leave hours from policy days × work-day hours, then adjust exceptions.</p>
-    </div>
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Settings" middleLabel="Time Off" currentLabel="Entitlements" icon="settings" />
+    <h1 class="to-sr-only">Entitlements</h1>
     <div class="to-header-actions">
       <app-select [options]="yearOptions" [value]="selectedYear()" (valueChange)="onYearChange($event)" />
       @if (canManage() && activeTab() === 'entitlements') {
@@ -20,6 +17,7 @@
       }
     </div>
   </header>
+  <app-time-off-settings-tabs />
 
   <div class="to-tabs" role="tablist" aria-label="Entitlement views">
     <button type="button" role="tab" data-testid="tab-entitlements" class="to-tab" [class.to-tab--active]="activeTab() === 'entitlements'" [attr.aria-selected]="activeTab() === 'entitlements'" (click)="selectTab('entitlements')">Entitlements</button>
@@ -31,7 +29,7 @@
 
   @if (activeTab() === 'entitlements') {
     @if (entitlementStore.loading()) {
-      <div class="to-loading" aria-busy="true" aria-label="Loading entitlements"><span></span><span></span><span></span></div>
+      <div class="to-loading"><app-loader /></div>
     } @else if (entitlementStore.loadError()) {
       <app-error-state [message]="entitlementStore.loadError()!" [retryable]="true" (retry)="entitlementStore.load()" />
     } @else if (entitlementStore.items().length === 0) {
@@ -44,24 +42,7 @@
         </app-empty-state>
       </div>
     } @else {
-      <section class="to-metrics" aria-label="Entitlement totals">
-        <article class="to-metric">
-          <p class="to-metric__label">Employees</p>
-          <p class="to-metric__value">{{ entitlementSummary().employees }}</p>
-        </article>
-        <article class="to-metric">
-          <p class="to-metric__label">Lines</p>
-          <p class="to-metric__value">{{ entitlementSummary().lines }}</p>
-        </article>
-        <article class="to-metric">
-          <p class="to-metric__label">Remaining</p>
-          <p class="to-metric__value">{{ formatHours(entitlementSummary().remaining) }}</p>
-        </article>
-        <article class="to-metric" [class.to-metric--warn]="entitlementSummary().overUtilized > 0">
-          <p class="to-metric__label">Over-utilized</p>
-          <p class="to-metric__value">{{ entitlementSummary().overUtilized }}</p>
-        </article>
-      </section>
+      <app-kpi-tiles ariaLabel="Entitlement totals" [tiles]="entitlementKpiTiles()" />
       <div class="to-toolbar">
         <app-input
           type="search"
@@ -76,7 +57,7 @@
     }
   } @else if (activeTab() === 'all-balances') {
     @if (balanceStore.allLoading()) {
-      <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+      <div class="to-loading"><app-loader /></div>
     } @else if (balanceStore.allError()) {
       <app-error-state [message]="balanceStore.allError()!" [retryable]="true" (retry)="balanceStore.loadAll(entitlementStore.year())" />
     } @else if (balanceStore.all().length === 0) {
@@ -88,11 +69,11 @@
     }
   } @else if (activeTab() === 'audit') {
     @if (auditStore.loading() && auditStore.rows().length === 0) {
-      <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+      <div class="to-loading"><app-loader /></div>
     } @else if (auditStore.error()) {
       <app-error-state [message]="auditStore.error()!" [retryable]="true" (retry)="auditStore.load()" />
     } @else if (auditStore.rows().length === 0) {
-      <app-empty-state title="No balance changes recorded yet" description="Accruals, deductions, and adjustments will appear here as they happen." />
+      <app-empty-state title="No balance changes recorded yet" description="Credits, deductions, and adjustments will appear here as they happen." />
     } @else {
       <div class="to-table-card">
         <app-leave-balance-audit-table [rows]="auditStore.rows()" [hasMore]="auditStore.hasMore()" [loading]="auditStore.loading()" (loadMoreRequested)="auditStore.loadMore()" />
@@ -119,6 +100,7 @@
     [workStartTime]="balanceStore.workWindow()?.workStartTime ?? null"
     [workEndTime]="balanceStore.workWindow()?.workEndTime ?? null"
     [timezone]="balanceStore.workWindow()?.timezone ?? 'UTC'"
+    [breakMinutes]="balanceStore.workWindow()?.breakDurationMinutes ?? null"
     [previewing]="requestStore.previewing()"
     [previewResult]="requestStore.previewResult()"
     [previewError]="requestStore.previewError()"

@@ -4,6 +4,7 @@ import { TaskTableComponent } from '../task-table/task-table.component';
 import { SprintHistoryComponent } from '../sprint-history/sprint-history.component';
 import { Sprint } from '../../models/sprint.model';
 import { TaskStatusColumn, WorkTask } from '../../models/task.model';
+import { formatPercent } from '../../../../shared/utils/format-percent.util';
 
 /** Shared across every sprint row so only one action capsule is open at a time. */
 const openSprintMenuId = signal<string | null>(null);
@@ -15,8 +16,8 @@ const openSprintMenuId = signal<string | null>(null);
   template: `
     <div class="sprint-tab" [attr.data-status]="sprint().status">
       <div class="sprint-tab__header">
-        <div class="sprint-tab__ring" [style.--progress]="progressPercent()" role="img" [attr.aria-label]="progressPercent() + '% complete'">
-          <span class="sprint-tab__ring-label">{{ progressPercent() }}%</span>
+        <div class="sprint-tab__ring" [style.--progress]="progressPercent()" role="img" [attr.aria-label]="progressText() + ' complete'">
+          <span class="sprint-tab__ring-label">{{ progressText() }}</span>
         </div>
 
         <button type="button" class="sprint-tab__expand" (click)="toggled.emit()" [attr.aria-expanded]="expanded()">
@@ -124,7 +125,7 @@ const openSprintMenuId = signal<string | null>(null);
     .sprint-tab { border: 1px solid var(--color-border); border-radius: 12px; margin-bottom: 10px; background: var(--color-surface); }
     .sprint-tab[data-status="complete"] { opacity: 0.75; }
     .sprint-tab__header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 52px; padding: 10px 14px; border-radius: 11px 11px 0 0; background: var(--color-surface); }
-    .sprint-tab__ring { position: relative; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: conic-gradient(var(--color-accent) calc(var(--progress) * 1%), var(--color-border) 0); }
+    .sprint-tab__ring { position: relative; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: conic-gradient(var(--color-widget-shade-1) calc(var(--progress) * 1%), var(--color-widget-track) 0); }
     .sprint-tab__ring::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--color-surface); }
     .sprint-tab__ring-label { position: relative; font-size: 9px; font-weight: 700; color: var(--color-text-primary); }
     .sprint-tab__expand { display: inline-flex; min-width: 0; flex: 1; align-items: center; gap: 7px; text-align: left; background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
@@ -141,7 +142,7 @@ const openSprintMenuId = signal<string | null>(null);
     .sprint-tab__circle { width: 32px; height: 32px; border: 1px solid transparent; }
     .sprint-tab__circle svg, .sprint-tab__icon-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .sprint-tab__circle:active, .sprint-tab__icon-btn:active { transform: scale(0.94); }
-    .sprint-tab__primary { background: var(--color-accent); color: #fff; }
+    .sprint-tab__primary { background: var(--color-accent); color: var(--color-text-on-solid); }
     .sprint-tab__primary:hover { background: color-mix(in srgb, var(--color-accent) 86%, #000); }
     .sprint-tab__play { fill: currentColor; stroke: none; }
     .sprint-tab__more { background: var(--color-surface-secondary); border-color: var(--color-border); color: var(--color-text-secondary); }
@@ -150,17 +151,17 @@ const openSprintMenuId = signal<string | null>(null);
     /* Grows in the header flow (not floating), so the sprint name and info shift left to make room. */
     .sprint-tab__capsule { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; height: 36px; max-width: 0; margin-right: -6px; padding: 0; overflow: hidden; border: 1px solid transparent; border-radius: 999px; background: var(--color-surface); opacity: 0; transition: max-width 150ms ease-in, padding 150ms ease-in, margin 150ms ease-in, opacity 120ms ease-in, border-color 150ms ease-in, box-shadow 150ms ease-in; }
     .sprint-tab__capsule > .sprint-tab__icon-btn { opacity: 0; transition: opacity 100ms ease-in; }
-    .sprint-tab__actions.is-open .sprint-tab__capsule { max-width: 140px; margin-right: 0; padding: 0 3px; overflow: visible; opacity: 1; border-color: var(--color-border); box-shadow: 0 3px 10px rgb(15 23 42 / 0.07); transition: max-width 180ms ease-out, padding 180ms ease-out, margin 180ms ease-out, opacity 120ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out; }
+    .sprint-tab__actions.is-open .sprint-tab__capsule { max-width: 140px; margin-right: 0; padding: 0 3px; overflow: visible; opacity: 1; border-color: var(--color-border); box-shadow: var(--shadow-popover); transition: max-width 180ms ease-out, padding 180ms ease-out, margin 180ms ease-out, opacity 120ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out; }
     .sprint-tab__actions.is-open .sprint-tab__capsule > .sprint-tab__icon-btn { opacity: 1; transition: opacity 120ms ease-out 80ms; }
     .sprint-tab__icon-btn { width: 30px; height: 30px; border: none; background: transparent; color: var(--color-text-secondary); }
     .sprint-tab__icon-btn:hover { background: var(--color-surface-secondary); color: var(--color-accent); }
     .sprint-tab__close-sprint:hover { color: var(--color-success); }
-    [data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 10; padding: 4px 8px; border-radius: 6px; background: #1f2937; color: #fff; font-size: 11px; font-weight: 500; line-height: 1.3; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 3px); transition: opacity 120ms ease, transform 120ms ease; }
+    [data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: calc(100% + 8px); left: 50%; z-index: 10; padding: 4px 8px; border-radius: 6px; background: #1f2937; color: var(--color-text-on-solid); font-size: 11px; font-weight: 500; line-height: 1.3; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 3px); transition: opacity 120ms ease, transform 120ms ease; }
     [data-tooltip]:hover::after, [data-tooltip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
     .sprint-tab__circle:focus-visible, .sprint-tab__icon-btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
-    .sprint-tab__progress-bar { height: 3px; background: var(--color-border); }
+    .sprint-tab__progress-bar { height: 3px; background: var(--color-widget-track); }
     .sprint-tab__progress-bar:last-child { border-radius: 0 0 11px 11px; }
-    .sprint-tab__progress-fill { height: 100%; background: var(--color-accent); transition: width 200ms ease; }
+    .sprint-tab__progress-fill { height: 100%; background: var(--color-widget-shade-1); transition: width 200ms ease; }
     .sprint-tab__body { border-top: 1px solid var(--color-border); padding: 12px 14px; }
     /* Mirrors the board column's always-visible '+ Add Task'. */
     .sprint-tab__footer-add { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 8px; padding: 7px 10px; border: none; border-radius: 8px; background: transparent; color: var(--color-accent); font: inherit; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background-color 140ms ease; }
@@ -241,6 +242,12 @@ export class SprintTabComponent {
     const total = this.totalEstimatedHours();
     if (total <= 0) return 0;
     return Math.min(100, Math.round((this.totalCompletedHours() / total) * 100));
+  });
+
+  /** The ring's label: formatPercent, so a small share reads 0.5%, not 0%. */
+  protected readonly progressText = computed(() => {
+    const total = this.totalEstimatedHours();
+    return formatPercent(Math.min(this.totalCompletedHours(), total), total);
   });
 
   protected readonly statusLabel = computed(() => {

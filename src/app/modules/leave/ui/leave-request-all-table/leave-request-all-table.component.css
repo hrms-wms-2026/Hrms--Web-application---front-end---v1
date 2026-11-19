@@ -1,24 +1,4 @@
-.lra-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.lra-table th {
-  text-align: left;
-  padding: 0.68rem 0.75rem;
-  background: var(--color-surface-secondary);
-  color: var(--color-text-secondary);
-  font-weight: 750;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  border-bottom: 1px solid var(--color-border);
-}
-.lra-table td {
-  padding: 0.78rem 0.75rem;
-  color: var(--color-text-primary);
-  border-bottom: 1px solid var(--color-border);
-  vertical-align: middle;
-}
-.lra-table tbody tr { cursor: pointer; }
-.lra-table tbody tr:hover { background: var(--color-surface-secondary); }
-.lra-table tbody tr:last-child td { border-bottom: 0; }
+/* Table shell comes from shared app-data-table; only cell content is styled here. */
 .lra-person { display: flex; align-items: center; gap: 0.6rem; }
 .lra-avatar {
   display: grid;
@@ -33,7 +13,6 @@
 }
 .lra-status { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 650; }
 .lra-status-pending { background: var(--color-warning-subtle); color: var(--color-warning-text); }
-.lra-status-information_requested { background: var(--color-accent-subtle); color: var(--color-accent); }
 .lra-status-approved { background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface)); color: var(--color-success); }
 .lra-status-rejected { background: var(--color-danger-subtle); color: var(--color-danger-text); }
 .lra-status-cancelled { background: var(--color-surface-secondary); color: var(--color-text-secondary); }
@@ -49,4 +28,3 @@
   cursor: pointer;
 }
 .lra-cancel:hover { border-color: var(--color-danger); background: var(--color-danger-subtle); }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

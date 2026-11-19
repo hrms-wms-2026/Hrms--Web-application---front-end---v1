@@ -1,18 +1,14 @@
-<section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex-1 flex flex-col justify-between h-full" data-purpose="wellbeing-card">
+<section class="rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] p-5 shadow-xs flex-1 flex flex-col justify-between h-full" data-purpose="wellbeing-card">
   @if (activeCard(); as card) {
     <div class="flex flex-col justify-between h-full" data-testid="wellbeing-card" [attr.data-card-kind]="card.kind">
       <div>
-        <!-- Header with navigation arrows -->
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="flex items-center gap-1.5 text-sm font-bold text-slate-800">
-            <span class="text-xs text-rose-500">❤️</span>
-            Wellbeing
-          </h2>
+        <!-- Navigation arrows -->
+        <div class="mb-3 flex items-center justify-end">
           <div class="flex items-center gap-1">
             <button
               type="button"
               aria-label="Previous tip"
-              class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-slate-300 hover:text-slate-600 cursor-pointer"
+              class="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-secondary)] cursor-pointer"
               (click)="previous()"
             >
               <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,7 +18,7 @@
             <button
               type="button"
               aria-label="Next tip"
-              class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-slate-300 hover:text-slate-600 cursor-pointer"
+              class="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-secondary)] cursor-pointer"
               (click)="next()"
             >
               <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,46 +28,39 @@
           </div>
         </div>
 
-        <!-- Wellbeing Content Card -->
-        <div class="my-2 flex items-center gap-3.5 rounded-2xl border border-blue-100 bg-[#f4f9ff] p-4">
+        <!-- Wellbeing Content -->
+        <div class="my-2">
           <div
-            class="flex flex-1 items-center gap-3.5 transition-opacity duration-300 ease-out"
+            class="flex items-center gap-3.5 transition-opacity duration-300 ease-out"
             [class.opacity-0]="!contentVisible()"
             [class.opacity-100]="contentVisible()"
             data-testid="wellbeing-content"
           >
             @if (illustrationFor(card.kind); as illustrationSrc) {
-              <!-- Water Glass Graphic Container / Illustration -->
-              <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-blue-200/60 bg-blue-100/70 p-1 shadow-inner flex items-center justify-center">
-                <img
-                  [src]="illustrationSrc"
-                  alt=""
-                  class="h-full w-full rounded-lg object-cover"
-                  [style.object-position]="illustrationPosition(card.kind)"
-                  [style.transform]="'scale(' + illustrationScale(card.kind) + ')'"
-                  data-testid="wellbeing-illustration"
-                />
+              <!-- Illustration: object-contain so the whole character always shows, never cropped -->
+              <div class="h-24 w-24 shrink-0 overflow-hidden rounded-xl">
+                <img [src]="illustrationSrc" alt="" class="h-full w-full object-contain" data-testid="wellbeing-illustration" />
               </div>
 
               <!-- Recommendation Text -->
               <div class="min-w-0 flex-1">
                 @if (card.kind === 'reminder') {
-                  <div class="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600">
+                  <div class="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-widget-shade-1)]">
                     <span>Wellbeing Reminder</span>
                   </div>
                 }
-                <h3 class="flex items-center gap-1 text-xs font-bold text-slate-800">
+                <h3 class="flex items-center gap-1 text-xs font-bold text-[var(--color-text-primary)]">
                   <span data-testid="wellbeing-card-title">{{ card.title }}</span>
                   <span class="text-[11px]">{{ card.kind === 'hydration' ? '💧' : card.kind === 'eye-rest' ? '👀' : card.kind === 'posture' ? '🧘' : '✨' }}</span>
                 </h3>
-                <p class="mt-1 text-[11px] leading-relaxed text-slate-500 line-clamp-2" data-testid="wellbeing-card-description">
+                <p class="mt-1 text-[11px] leading-relaxed text-[var(--color-text-secondary)] line-clamp-2" data-testid="wellbeing-card-description">
                   {{ card.description }}
                 </p>
                 @if (card.kind === 'reminder') {
                   <button
                     type="button"
                     data-testid="wellbeing-start-break"
-                    class="mt-2 inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                    class="mt-2 inline-flex items-center justify-center rounded-lg bg-[var(--color-accent)] px-3 py-1 text-xs font-semibold text-[var(--color-text-on-solid)] transition hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                     [disabled]="actionLoading()"
                     (click)="startBreak()"
                   >
@@ -81,8 +70,8 @@
               </div>
             } @else {
               <div class="min-w-0 flex-1">
-                <h3 class="text-xs font-bold text-slate-800" data-testid="wellbeing-card-title">{{ card.title }}</h3>
-                <p class="mt-1 text-[11px] text-slate-500" data-testid="wellbeing-card-description">{{ card.description }}</p>
+                <h3 class="text-xs font-bold text-[var(--color-text-primary)]" data-testid="wellbeing-card-title">{{ card.title }}</h3>
+                <p class="mt-1 text-[11px] text-[var(--color-text-secondary)]" data-testid="wellbeing-card-description">{{ card.description }}</p>
               </div>
             }
           </div>

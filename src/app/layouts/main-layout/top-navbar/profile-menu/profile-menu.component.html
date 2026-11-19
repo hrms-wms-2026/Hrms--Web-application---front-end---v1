@@ -10,7 +10,9 @@
   >
     <div class="profile-avatar-wrapper">
       <app-avatar [avatarUrl]="avatarUrl()" [userName]="userName()" [email]="email()" size="sm" />
-      <span class="profile-online-badge" title="Online"></span>
+      @if (isOnline()) {
+        <span class="profile-online-badge" data-testid="profile-online-badge" title="Online"></span>
+      }
     </div>
 
     <svg
@@ -77,6 +79,8 @@
 <app-preferences-modal
   [open]="isPreferencesOpen()"
   [title]="preferencesTitle()"
+  [icon]="preferencesIcon()"
+  [subtitle]="preferencesSubtitle()"
   [tabs]="activePreferenceTabs()"
   [activeTabId]="currentActiveSidebarTabId()"
   (activeTabIdChange)="onSidebarTabIdChange($event)"
@@ -88,7 +92,7 @@
   }
   @if (activeMode() === 'profile') {
     @defer (when isPreferencesOpen() && activeMode() === 'profile') {
-      <app-profile-tab [activeSubTab]="activeProfileSubTab()" />
+      <app-profile-tab [activeSubTab]="activeProfileSubTab()" (cancelled)="closePreferences()" />
     } @placeholder {
       <div class="skeleton-rows" aria-busy="true" aria-label="Loading profile"></div>
     }

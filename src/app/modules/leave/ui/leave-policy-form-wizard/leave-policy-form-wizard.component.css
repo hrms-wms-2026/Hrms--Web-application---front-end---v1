@@ -1,33 +1,48 @@
-.lpw-backdrop{position:fixed;z-index:75;inset:0;display:grid;place-items:center;padding:1.5rem;background:rgba(0,0,0,.4);backdrop-filter:blur(2px)}
-.lpw-modal{display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:minmax(0,1fr);width:min(960px,100%);height:min(82vh,720px);max-height:82vh;overflow:hidden;border:1px solid var(--color-border);border-radius:12px;background:var(--color-surface);box-shadow:0 12px 32px var(--color-card-shadow)}
-.lpw-steps{display:flex;flex-direction:column;min-height:0;overflow:auto;padding:1.25rem .85rem;background:var(--color-surface-secondary);border-right:1px solid var(--color-border)}
-.lpw-brand{padding:0 .4rem 1rem}.lpw-brand p{margin:0 0 .35rem;color:var(--color-accent);font-size:.65rem;font-weight:750;letter-spacing:.08em}.lpw-brand h2{margin:0;color:var(--color-text-primary);font-size:1.05rem;font-weight:650}
-.lpw-steps ol{display:grid;gap:.15rem;margin:0;padding:0;list-style:none}
-.lpw-steps button{display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .5rem;border:0;border-left:2px solid transparent;background:transparent;color:var(--color-text-secondary);text-align:left;font:inherit;font-size:.8rem;cursor:pointer}
-.lpw-steps button span{display:grid;place-items:center;width:1.45rem;height:1.45rem;border-radius:50%;background:var(--color-surface);color:var(--color-text-secondary);font-size:.65rem;font-weight:700}
-.lpw-steps button b{font-weight:600}
-.lpw-steps .is-active button{border-left-color:var(--color-accent);background:var(--color-surface);color:var(--color-accent)}
-.lpw-steps .is-active button span{background:var(--color-accent);color:var(--color-accent-contrast)}
-.lpw-steps .is-complete button span{background:color-mix(in srgb,var(--color-success) 18%,var(--color-surface));color:var(--color-success)}
-.lpw-rail-note{margin-top:auto;padding:.9rem .4rem 0;color:var(--color-text-secondary);font-size:.68rem}
-.lpw-panel{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;overflow:hidden}
+/* Same frame as the Add employee wizard: curved accent header with title + horizontal stepper,
+   scrolling body, pinned footer. */
+.lpw-backdrop{position:fixed;z-index:75;inset:0;display:flex;align-items:center;justify-content:center;padding:1.5rem;background: rgba(0,0,0,.4)}
+.lpw-modal{display:flex;flex-direction:column;width:min(760px,100%);height:min(86vh,760px);overflow:hidden;border:1px solid var(--color-border);border-radius:16px;background:var(--color-surface);box-shadow: var(--shadow-modal)}
+.lpw-header{flex:0 0 auto;display:flex;flex-direction:column;gap:1rem;padding:1.25rem 1.75rem 1.375rem}
+.lpw-header-top{display:flex;align-items:flex-start;gap:.875rem}
+.lpw-title{flex:1;min-width:0}
+.lpw-kicker{margin:0 0 .3rem;color:var(--color-accent);font-size:.65rem;font-weight:750;letter-spacing:.1em}
+.lpw-title h2{margin:0;color:var(--color-text-primary);font-size:1.125rem;font-weight:600}
+.lpw-title p:not(.lpw-kicker){margin:.25rem 0 0;color:var(--color-text-secondary);font-size:.8125rem;line-height:1.45}
+.lpw-close{display:flex;flex-shrink:0;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--color-text-secondary);cursor:pointer}
+.lpw-close:hover,.lpw-close:focus-visible{background:var(--color-surface-secondary);color:var(--color-text-primary);outline:none}
+
+.lpw-stepper{display:flex;align-items:flex-start;margin:0;padding:0;list-style:none}
+.lpw-stepper__item{position:relative;flex:1 1 0;display:flex;justify-content:center;min-width:0}
+.lpw-stepper__btn{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.375rem;padding:0 .25rem;border:0;background:transparent;color:var(--color-text-secondary);font:inherit;font-size:.75rem;font-weight:500;cursor:pointer}
+.lpw-stepper__btn:focus-visible{outline:none}
+.lpw-stepper__btn:focus-visible .lpw-stepper__dot{box-shadow:0 0 0 3px var(--color-focus-ring)}
+.lpw-stepper__dot{display:flex;align-items:center;justify-content:center;width:1.875rem;height:1.875rem;border:1.5px solid var(--color-border);border-radius:999px;background:var(--color-surface);color:var(--color-text-secondary);font-size:.75rem;font-weight:600;transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease}
+.lpw-stepper__label{white-space:nowrap}
+/* Connector runs from this dot's centre to the next one's, behind both dots. */
+.lpw-stepper__line{position:absolute;top:calc(.9375rem - 1px);left:calc(50% + 1.25rem);right:calc(-50% + 1.25rem);height:2px;border-radius:2px;background:var(--color-border);transition:background-color 150ms ease}
+.lpw-stepper__line.is-complete{background:var(--color-accent)}
+.lpw-stepper__item.is-active .lpw-stepper__btn{color:var(--color-accent);font-weight:600}
+.lpw-stepper__item.is-active .lpw-stepper__dot{border-color:var(--color-accent);background:var(--color-accent);color: var(--color-accent-contrast,#fff);box-shadow:0 0 0 4px color-mix(in srgb,var(--color-accent) 16%,transparent)}
+.lpw-stepper__item.is-complete .lpw-stepper__btn{color:var(--color-text-primary)}
+.lpw-stepper__item.is-complete .lpw-stepper__dot{border-color:var(--color-accent);background:var(--color-accent);color: var(--color-accent-contrast,#fff)}
+
 .lpw-content{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
-.lpw-content header{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1.2rem 1.5rem 1rem;border-bottom:1px solid var(--color-border)}
-.lpw-content h1{margin:0;color:var(--color-text-primary);font-size:1.2rem;font-weight:650}
-.lpw-close{width:2rem;height:2rem;border:0;border-radius:6px;background:transparent;color:var(--color-text-secondary);font-size:1.4rem;cursor:pointer}
-.lpw-close:hover{background:var(--color-surface-secondary);color:var(--color-text-primary)}
-.lpw-content main{flex:1 1 auto;min-height:0;overflow:auto;padding:1.25rem 1.5rem 1.25rem}
+.lpw-content main{flex:1 1 auto;min-height:0;overflow:auto;padding:1.5rem 1.75rem}
+.lpw-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.875rem 1.75rem;border-top:1px solid var(--color-border);background:var(--color-surface)}
+.lpw-footer-step{color:var(--color-text-secondary);font-size:.75rem}
+.lpw-footer-actions{display:flex;gap:.75rem}
+.lpw-errors app-button{display:inline-block;margin-top:.5rem}
 .lpw-hint,.lpw-subhead{margin:0 0 .85rem;color:var(--color-text-secondary);font-size:.8rem;line-height:1.45}
 .lpw-subhead{margin:1.35rem 0 .7rem;color:var(--color-text-primary);font-size:.85rem;font-weight:650}
 .lpw-subhead em{font-style:normal;color:var(--color-danger)}
 .lpw-subhead span{margin-left:.35rem;color:var(--color-text-secondary);font-weight:500;font-size:.72rem}
-.lpw-fields{display:grid;gap:.85rem;max-width:640px;margin-bottom:1rem}
-.lpw-fields label,.lpw-rule label,.lpw-blackout label{display:grid;gap:.3rem;color:var(--color-text-secondary);font-size:.73rem;font-weight:650}
+.lpw-fields{display:grid;gap:1rem;margin-bottom:1rem}
+.lpw-fields label>.ui-input,.lpw-blackout label>.ui-input,.lpw-rule label>.ui-input{flex:1 0 100%}
+/* Label text, "*" and "Optional" share one line; the control wraps below at full width. */
+.lpw-fields label,.lpw-rule label,.lpw-blackout label{display:flex;flex-wrap:wrap;align-items:baseline;gap:.3rem .3rem;color:var(--color-text-secondary);font-size:.73rem;font-weight:650}
 .lpw-fields label em{font-style:normal;color:var(--color-danger)}
 .lpw-fields label>span,.lpw-blackout label>span,.lpw-rule label>span{color:var(--color-text-secondary);font-size:.64rem;font-weight:500}
-.lpw-fields input,.lpw-fields textarea,.lpw-fields select,.lpw-rule input,.lpw-rule select,.lpw-blackout input{width:100%;box-sizing:border-box;border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface);padding:.58rem .7rem;color:var(--color-text-primary);font:inherit;font-size:.84rem;outline:none}
-.lpw-fields input:focus,.lpw-fields textarea:focus,.lpw-fields select:focus,.lpw-rule input:focus,.lpw-rule select:focus,.lpw-blackout input:focus{border-color:var(--color-accent);box-shadow:0 0 0 3px var(--color-focus-ring)}
-.lpw-fields textarea{min-height:72px;resize:vertical}
+
 .lpw-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
 .lpw-rule-list,.lpw-blackout-list{display:grid;gap:.7rem}
 .lpw-rule{padding:.9rem;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
@@ -51,11 +66,25 @@
 .lpw-review strong{color:var(--color-text-primary);text-align:right}
 .lpw-errors{max-width:620px;margin-top:.9rem;padding:.75rem;border:1px solid var(--color-danger);border-radius:8px;background:var(--color-danger-subtle);color:var(--color-danger-text);font-size:.74rem}
 .lpw-errors ul{margin:.35rem 0 0;padding-left:1rem}
-.lpw-footer,.lpw-content footer{flex:0 0 auto;display:flex;align-items:center;gap:.65rem;padding:.9rem 1.5rem;border-top:1px solid var(--color-border);background:var(--color-surface)}
-.lpw-footer-spacer{flex:1}
-.lpw-secondary,.lpw-primary{border-radius:7px;padding:.55rem .9rem;font:650 .8rem inherit;cursor:pointer}
-.lpw-secondary{border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-primary)}
-.lpw-primary{border:1px solid var(--color-accent);background:var(--color-accent);color:var(--color-accent-contrast)}
-.lpw-primary:disabled{opacity:.55;cursor:not-allowed}
-@media(max-width:850px){.lpw-backdrop{align-items:end;padding:.5rem}.lpw-modal{grid-template-columns:1fr;height:min(94vh,860px);border-radius:12px 12px 8px 8px}.lpw-steps{padding:.75rem 1rem;border-right:0;border-bottom:1px solid var(--color-border)}.lpw-brand{display:none}.lpw-steps ol{display:flex}.lpw-steps button{padding:.35rem .5rem;border-left:0;border-bottom:2px solid transparent}.lpw-steps button b{display:none}.lpw-steps .is-active button{border-bottom-color:var(--color-accent);border-left:0}.lpw-rail-note{display:none}.lpw-content header,.lpw-content main,.lpw-content footer{padding-right:1rem;padding-left:1rem}.lpw-blackout{grid-template-columns:1fr 1fr}.lpw-blackout label:last-of-type{grid-column:1/-1}.lpw-entity-list{grid-template-columns:1fr}}
-@media(max-width:520px){.lpw-two,.lpw-blackout{grid-template-columns:1fr}.lpw-content footer{flex-wrap:wrap}.lpw-footer-spacer{display:none}.lpw-secondary{margin-left:auto}}
+
+/* "Gives [8] hours every [month]" */
+.lpw-sentence { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+.lpw-fields .lpw-sentence .lpw-sentence-num { width: 96px; flex: 0 0 96px; }
+.lpw-fields .lpw-sentence > span { display: inline; width: auto; margin: 0; }
+.lpw-fields .lpw-sentence app-select { flex: 0 0 150px; }
+.lpw-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.lpw-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--color-border); border-radius: 999px; font-size: 12px; font-weight: 600; }
+.lpw-chip button { width: 18px; height: 18px; border: 0; border-radius: 999px; background: transparent; color: var(--color-text-secondary); cursor: pointer; line-height: 1; }
+.lpw-chip button:hover { background: var(--color-border); }
+.lpw-apply { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--color-border); }
+
+@media(max-width:640px){
+  .lpw-backdrop{align-items:flex-end;padding:.5rem}
+  .lpw-modal{height:min(94vh,860px);border-radius:12px 12px 8px 8px}
+  .lpw-header,.lpw-content main,.lpw-footer{padding-right:1rem;padding-left:1rem}
+  .lpw-stepper__label{display:none}
+  .lpw-stepper__item.is-active .lpw-stepper__label{display:inline}
+  .lpw-two,.lpw-blackout,.lpw-entity-list{grid-template-columns:1fr}
+  .lpw-footer-step{display:none}
+  .lpw-footer-actions{flex:1;justify-content:flex-end}
+}

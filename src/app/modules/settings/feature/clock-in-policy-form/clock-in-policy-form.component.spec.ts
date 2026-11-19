@@ -1,3 +1,4 @@
+import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -5,6 +6,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
+import { of } from 'rxjs';
+import { LeaveTypeApiService } from '../../../leave/data-access/leave-type-api.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { environment } from '../../../../../environments/environment';
@@ -23,7 +26,6 @@ import { ClockInPolicyFormComponent } from './clock-in-policy-form.component';
 import {
   LATE_DEDUCTION_RULES_DISABLED_MESSAGE,
   LATE_DEDUCTION_RULES_EDITABLE,
-  validateClockInPolicyForm
 } from '../../utils/clock-in-policy-form.utils';
 
 describe('ClockInPolicyFormComponent', () => {
@@ -87,6 +89,7 @@ describe('ClockInPolicyFormComponent', () => {
     modules?: string[];
     company?: { id: string; name: string } | null;
     lateRulesEditable?: boolean;
+    leaveTypes?: { id: string; name: string; isActive: boolean }[];
     timeOffTypes?: { value: string; label: string }[];
   }): Promise<ComponentFixture<ClockInPolicyFormComponent>> {
     const permissions = options?.permissions ?? ['attendance:write', 'attendance:read'];
@@ -127,6 +130,7 @@ describe('ClockInPolicyFormComponent', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: WorkModeStore, useValue: workModeStoreStub },
+        { provide: LeaveTypeApiService, useValue: { list: vi.fn(() => of(options?.leaveTypes ?? [])) } },
         {
           provide: LegalEntityStore,
           useValue: { selectedLegalEntity: selectedCompany }
@@ -220,7 +224,7 @@ describe('ClockInPolicyFormComponent', () => {
     expect(el.querySelector('table')).toBeNull();
     expect(text).toContain('Clock-in Policy');
     expect(text).toContain('Save changes');
-    expect(text).toContain('Late deduction rules');
+    expect(text).toContain('Late arrival & early leave deductions');
     expect(text).toContain('Work modes');
     expect(el.querySelector('app-work-mode-list')).toBeTruthy();
 
@@ -253,7 +257,7 @@ describe('ClockInPolicyFormComponent', () => {
     await flushEmptyCompanyWide(fixture);
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('[data-testid="late-deduction-rules-section"]')).toBeTruthy();
-    expect(pageText(fixture)).toContain('Late deduction rules');
+    expect(pageText(fixture)).toContain('Late arrival & early leave deductions');
   });
 
   it('does not render the old late-deduction placeholder text', async () => {
@@ -388,7 +392,7 @@ describe('ClockInPolicyFormComponent', () => {
     fixture.detectChanges();
     expect(component.form().lateDeductionRules.length).toBe(1);
     expect(el.querySelector('[data-testid="late-rule-row-0"]')).toBeTruthy();
-    expect(pageText(fixture)).toContain('If late by');
+    expect(pageText(fixture)).toContain('If late or leaving early by');
     expect(pageText(fixture)).toContain('minutes');
     expect(pageText(fixture)).toContain('deduct');
     expect(pageText(fixture)).toContain('time off type');
@@ -482,8 +486,9 @@ describe('ClockInPolicyFormComponent', () => {
     const component = fixture.componentInstance;
     component.addLateRule();
     fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-    const options = Array.from(el.querySelectorAll('select option')).map((o) => o.textContent?.trim());
+    const options = fixture.debugElement
+      .queryAll(By.directive(SelectComponent))
+      .flatMap((select) => (select.componentInstance as SelectComponent).options().map((o) => o.label));
     expect(options).toContain('Annual Leave');
     expect(options).toContain('Sick Leave');
     expect(options).not.toContain('Casual Leave');
@@ -549,5 +554,32 @@ describe('ClockInPolicyFormComponent', () => {
     expect(createUrl.startsWith(environment.apiUrl)).toBe(true);
     expect(detailUrl.startsWith(environment.apiUrl)).toBe(true);
     httpMock.expectOne(listUrl).flush([]);
+  });
+
+  it('loads active time off types into the picker and turns the rules editor on', async () => {
+    const fixture = await setup({
+      leaveTypes: [
+        { id: 'al', name: 'Annual Leave', isActive: true },
+        { id: 'old', name: 'Retired Leave', isActive: false }
+      ]
+    });
+    await flushEmptyCompanyWide(fixture);
+    const component = fixture.componentInstance;
+
+    expect(component.lateRulesEditable()).toBe(true);
+    expect(component.timeOffTypeOptions()).toEqual([{ value: 'al', label: 'Annual Leave' }]);
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="late-deduction-rules-editor"]')).toBeTruthy();
+  });
+
+  it('describes the rules as late arrival and early leave deductions', async () => {
+    const fixture = await setup({ lateRulesEditable: true });
+    await flushEmptyCompanyWide(fixture);
+    fixture.componentInstance.addLateRule();
+    fixture.detectChanges();
+    const text = pageText(fixture);
+
+    expect(text).toContain('Late arrival & early leave deductions');
+    expect(text).toContain('If late or leaving early by');
+    expect(text).toContain('× those minutes from');
   });
 });

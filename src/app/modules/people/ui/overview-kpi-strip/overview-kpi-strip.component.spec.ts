@@ -31,14 +31,14 @@ describe('OverviewKpiStripComponent card selection', () => {
 
   it('tints the icon tile with the signal severity', () => {
     const fixture = setup([card('absent_days', 'critical')]);
-    expect((fixture.nativeElement.querySelector('[data-testid="kpi-icon"]') as HTMLElement).className).toContain('bg-red-50');
+    expect((fixture.nativeElement.querySelector('[data-testid="kpi-icon"]') as HTMLElement).className).toContain('bg-[var(--color-danger-subtle)]');
   });
 
   it('gives baseline cards their own colour and falls back to the tone for unknown keys', () => {
     const fixture = setup([card('on_time_delivery', 'baseline'), card('some_new_signal', 'warning')]);
     const icons = fixture.nativeElement.querySelectorAll('[data-testid="kpi-icon"]') as NodeListOf<HTMLElement>;
-    expect(icons[0].className).toContain('bg-violet-50');
-    expect(icons[1].className).toContain('bg-amber-50');
+    expect(icons[0].className).toContain('bg-[var(--color-cat-violet-subtle)]');
+    expect(icons[1].className).toContain('bg-[var(--color-warning-subtle)]');
     expect(icons[1].querySelector('svg')!.children.length).toBeGreaterThan(0);
   });
 });

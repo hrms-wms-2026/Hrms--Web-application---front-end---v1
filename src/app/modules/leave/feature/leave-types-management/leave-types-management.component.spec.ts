@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { patchState } from '@ngrx/signals';
@@ -13,7 +14,7 @@ describe('LeaveTypesManagementComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [LeaveTypesManagementComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]
     }).compileComponents();
     httpMock = TestBed.inject(HttpTestingController);
     patchState(TestBed.inject(AuthStore) as Parameters<typeof patchState>[0], { permissions: ['leave:manage'] });

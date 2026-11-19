@@ -1,31 +1,45 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
 import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
+import { ProjectApiService } from '../../data-access/project-api.service';
 import { Project } from '../../models/project.model';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
+import { EntityIconComponent } from '../../../../shared/ui/entity-icon/entity-icon.component';
 
 @Component({
   selector: 'app-project-list-row',
   standalone: true,
-  imports: [EmployeeAvatarComponent, ProgressBarComponent],
+  imports: [KeyboardClickDirective, EmployeeAvatarComponent, ProgressBarComponent, EntityIconComponent],
   template: `
-    <div
+    <div role="button" tabindex="0" appKeyboardClick
       data-testid="project-list-row"
-      class="group flex w-full items-center gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-150 cursor-pointer min-h-[4.25rem]"
+      class="group flex w-full items-center gap-4 rounded-xl border bg-[var(--color-card-bg)] [box-shadow:var(--shadow-card)] px-4 py-3.5 text-left transition-all duration-150 cursor-pointer min-h-[4.25rem]"
       [class]="selected()
-        ? 'border-[var(--color-accent)] bg-color-mix(in srgb,var(--color-accent-subtle) 40%,var(--color-surface)) shadow-sm'
-        : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface-secondary)]/50'"
+        ? 'border-[var(--color-selected-outline)]'
+        : 'border-[var(--color-border)] hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface-secondary)]/50'"
       (click)="selectedChange.emit()"
     >
       <!-- Logo Box -->
-      <div
-        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-base transition-all"
-        [class]="selected()
-          ? 'bg-[var(--color-accent)] text-white shadow-sm'
-          : 'border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-[var(--color-accent)]'"
-        [style.background]="selected() && project().color ? project().color : null"
-      >
-        {{ projectLogoInitial() }}
-      </div>
+      @if (logoUrl(); as url) {
+        <img
+          data-testid="project-row-logo"
+          class="h-11 w-11 shrink-0 rounded-xl object-cover border border-[var(--color-border)]"
+          [class.ring-2]="selected()"
+          [class.ring-[var(--color-accent)]]="selected()"
+          [src]="url"
+          alt=""
+          (error)="logoBroken.set(true)"
+        />
+      } @else if (project().icon; as projectIcon) {
+        <app-entity-icon data-testid="project-row-icon" class="[--entity-icon-size:2.75rem]" [icon]="projectIcon" [color]="project().color" [name]="project().name" />
+      } @else {
+        <div
+          data-testid="project-row-placeholder"
+          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-secondary)] text-base font-bold text-[var(--color-text-primary)]"
+        >
+          {{ projectLogoInitial() }}
+        </div>
+      }
 
       <!-- Title & Key -->
       <div class="min-w-0 flex-1">
@@ -58,7 +72,17 @@ import { Project } from '../../models/project.model';
   `
 })
 export class ProjectListRowComponent {
+  private readonly projectApi = inject(ProjectApiService);
+
   project = input.required<Project>();
+  /** Set when the image fails to load (no access, file gone): the initial shows instead. */
+  readonly logoBroken = signal(false);
+
+  /** Same URL as the project grid card, so a logo loaded there comes from the browser cache. */
+  readonly logoUrl = computed(() => {
+    const { id, logoFileId } = this.project();
+    return logoFileId && !this.logoBroken() ? this.projectApi.getLogoUrl(id, logoFileId) : null;
+  });
   selected = input(false);
   selectedChange = output<void>();
 

@@ -1,3 +1,4 @@
+import { PlannerAvailabilityService } from '../../modules/work/planner/state/planner-availability.service';
 import { Component, input, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
@@ -11,6 +12,9 @@ import { MainLayoutComponent } from './main-layout.component';
 import { ProfileStore } from '@modules/profile/state/profile.store';
 import { FileApiService } from '../../shared/data-access/file-api.service';
 import { MyProfile } from '@modules/profile/models/profile.model';
+
+/** The planner probe is a real HTTP call in the layout; these specs are not about it. */
+const plannerAvailabilityStub = { probe: () => Promise.resolve(), state: () => 'off' as const, markAvailable: () => undefined };
 
 @Component({ selector: 'app-side-navbar', standalone: true, template: '' })
 class SideNavbarStubComponent {}
@@ -37,6 +41,9 @@ class ToastHostStubComponent {}
 @Component({ selector: 'app-mobile-bottom-nav', standalone: true, template: '' })
 class MobileBottomNavStubComponent {}
 
+@Component({ selector: 'app-mobile-section-nav', standalone: true, template: '' })
+class MobileSectionNavStubComponent {}
+
 @Component({ selector: 'app-drafts-bar', standalone: true, template: '' })
 class DraftsBarStubComponent {}
 
@@ -49,6 +56,10 @@ class UnsavedChangesDialogStubComponent {}
 @Component({ selector: 'app-locked-workspace-preview', standalone: true, template: '' })
 class LockedWorkspacePreviewStubComponent {}
 
+@Component({ selector: 'app-announcement-banner', standalone: true, template: '' })
+class AnnouncementBannerStubComponent {}
+
+// eslint-disable-next-line @angular-eslint/component-selector -- the stub must match the real <router-outlet> selector
 @Component({ selector: 'router-outlet', standalone: true, template: '' })
 class RouterOutletStubComponent {}
 
@@ -89,6 +100,7 @@ describe('MainLayoutComponent tray activation gate', () => {
       imports: [MainLayoutComponent],
       providers: [
         { provide: TrayPresenceStore, useValue: trayPresence },
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         { provide: TrayPresenceApiService, useValue: trayApi },
         {
           provide: AuthStore,
@@ -100,7 +112,7 @@ describe('MainLayoutComponent tray activation gate', () => {
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+          useValue: { pageSubSidebar: signal(null), pageSubSidebarActions: signal(null), activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
         { provide: FileApiService, useValue: fileApiStub }
@@ -115,11 +127,13 @@ describe('MainLayoutComponent tray activation gate', () => {
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          MobileSectionNavStubComponent,
           DraftsBarStubComponent,
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
-          LockedWorkspacePreviewStubComponent
+          LockedWorkspacePreviewStubComponent,
+          AnnouncementBannerStubComponent
         ]
       }
     });
@@ -138,7 +152,7 @@ describe('MainLayoutComponent tray activation gate', () => {
     isBlocking.set(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('#gate-title')?.textContent).toContain(
-      'Connect the ONEVO tray app'
+      'Connect the CROWNUS tray app'
     );
     expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).toBeNull();
@@ -149,6 +163,15 @@ describe('MainLayoutComponent tray activation gate', () => {
     expect(fixture.nativeElement.querySelector('app-tray-activation-gate')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
+  });
+
+  it('puts the announcement strip at the top of the layout, above the navbar, even while the workspace is locked', () => {
+    isBlocking.set(true);
+    fixture.detectChanges();
+
+    const layout: HTMLElement = fixture.nativeElement.querySelector('.main-layout');
+    expect(layout.firstElementChild?.tagName.toLowerCase()).toBe('app-announcement-banner');
+    expect(fixture.nativeElement.querySelector('main app-announcement-banner')).toBeNull();
   });
 });
 
@@ -176,6 +199,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
       imports: [MainLayoutComponent],
       providers: [
         { provide: TrayPresenceStore, useValue: trayPresence },
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         {
           provide: TrayPresenceApiService,
           useValue: { getStatus: vi.fn(), generateActivationCode: vi.fn() }
@@ -186,7 +210,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
         },
         {
           provide: NavigationStateService,
-          useValue: { activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+          useValue: { pageSubSidebar: signal(null), pageSubSidebarActions: signal(null), activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
         { provide: FileApiService, useValue: fileApiStub }
@@ -201,11 +225,13 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           SubSidebarStubComponent,
           ToastHostStubComponent,
           MobileBottomNavStubComponent,
+          MobileSectionNavStubComponent,
           DraftsBarStubComponent,
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
-          LockedWorkspacePreviewStubComponent
+          LockedWorkspacePreviewStubComponent,
+          AnnouncementBannerStubComponent
         ]
       }
     });

@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { MyTasksApiService } from '../../data-access/my-tasks-api.service';
 import { MyTaskItem, MyTasksResponse } from '../../models/my-tasks.model';
+import { fakeWidgetData } from '../../widgets/widget-data.testing';
 import { MyTasksCardComponent } from './my-tasks-card.component';
 
 function makeTask(overrides: Partial<MyTaskItem> = {}): MyTaskItem {
@@ -65,11 +66,11 @@ describe('MyTasksCardComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-empty"]')).toBeNull();
   });
 
-  it('links each task row to that task highlighted on its project board', async () => {
+  it('links each task row to its detail modal on the project board', async () => {
     const { fixture } = await setup({ tasks: [makeTask()] });
 
     const row: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-testid="my-tasks-row"]');
-    expect(row.getAttribute('href')).toBe('/work/project-1/board?highlightTaskId=task-1');
+    expect(row.getAttribute('href')).toBe('/work/project-1/board?taskId=task-1');
   });
 
   it('falls back to the empty state when the request fails', async () => {
@@ -117,5 +118,43 @@ describe('MyTasksCardComponent', () => {
   it('does not show a "+N more" count when all tasks fit within the visible cap', async () => {
     const { fixture } = await setup({ tasks: [makeTask()] });
     expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-hidden-count"]')).toBeNull();
+  });
+  describe('inside a dashboard frame', () => {
+    async function setupInFrame(widget: ReturnType<typeof fakeWidgetData>, response: MyTasksResponse | 'error' = { tasks: [] }) {
+      const getMyTasks = vi.fn(() => (response === 'error' ? throwError(() => new Error('network error')) : of(response)));
+      await TestBed.configureTestingModule({
+        imports: [MyTasksCardComponent],
+        providers: [provideRouter([]), { provide: MyTasksApiService, useValue: { getMyTasks } }, widget.provider]
+      }).compileComponents();
+      const fixture = TestBed.createComponent(MyTasksCardComponent);
+      fixture.detectChanges();
+      return { fixture, getMyTasks };
+    }
+
+    it('uses_bootstrap_payload_without_calling_its_api', async () => {
+      const widget = fakeWidgetData('success', { tasks: [makeTask({ title: 'From bootstrap', isOverdue: true })] });
+      const { fixture, getMyTasks } = await setupInFrame(widget);
+
+      expect(getMyTasks).not.toHaveBeenCalled();
+      expect(widget.refresh).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-overdue-list"]')?.textContent).toContain('From bootstrap');
+    });
+
+    it('falls_back_to_own_api_outside_dashboard', async () => {
+      const { fixture, getMyTasks } = await setup({ tasks: [makeTask({ title: 'From api' })] });
+      expect(getMyTasks).toHaveBeenCalledOnce();
+      expect(fixture.nativeElement.textContent).toContain('From api');
+    });
+
+    it('falls back to its own api when the bootstrap state is an error', async () => {
+      const { fixture, getMyTasks } = await setupInFrame(fakeWidgetData('error'), 'error');
+      expect(getMyTasks).toHaveBeenCalledOnce();
+      expect(fixture.nativeElement.querySelector('[data-testid="my-tasks-empty"]')).not.toBeNull();
+    });
+
+    it('falls back to its own api when the widget is client-sourced or not loaded', async () => {
+      const { getMyTasks } = await setupInFrame(fakeWidgetData('not_loaded'), { tasks: [] });
+      expect(getMyTasks).toHaveBeenCalledOnce();
+    });
   });
 });

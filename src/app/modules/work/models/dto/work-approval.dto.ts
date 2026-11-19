@@ -18,6 +18,9 @@ export interface WorkApprovalRequestDto {
   decidedAt: string | null;
   /** The target module's allocated hours right now; only set for module.allocation_extend. */
   currentAllocatedHours?: number | null;
+  /** True only for the viewer who decided this request, only while approved/rejected, only within revertableUntil. */
+  canRevert: boolean;
+  revertableUntil: string | null;
 }
 
 /** Body of a 202 from create/edit/delete: the change was sent for approval instead of applied. */

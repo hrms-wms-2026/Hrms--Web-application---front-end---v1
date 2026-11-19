@@ -1,7 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { FileApiService, buildFileUrl } from '../../../shared/data-access/file-api.service';
 import {
   CreateLegalEntityRequest,
   LegalEntityGeneralSettings,
@@ -16,6 +17,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class LegalEntityApiService {
   private readonly http = inject(HttpClient);
+  private readonly fileApi = inject(FileApiService);
 
   getLegalEntities(includeInactive = false): Observable<readonly LegalEntityListItem[]> {
     const params = new HttpParams().set('includeInactive', includeInactive);
@@ -46,12 +48,15 @@ export class LegalEntityApiService {
     );
   }
 
+  /** Two steps, like the avatar: upload a pending company_logo file, then link it to the company. */
   uploadLogo(legalEntityId: string, file: File): Observable<{ legalEntityId: string; logoFileId: string | null }> {
-    const formData = new FormData();
-    formData.append('logo', file);
-    return this.http.put<{ legalEntityId: string; logoFileId: string | null }>(
-      `${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo`,
-      formData
+    return this.fileApi.upload(file, 'company_logo').pipe(
+      switchMap((uploaded) =>
+        this.http.put<{ legalEntityId: string; logoFileId: string | null }>(
+          `${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo`,
+          { fileId: uploaded.fileId }
+        )
+      )
     );
   }
 
@@ -63,8 +68,9 @@ export class LegalEntityApiService {
     return this.http.post<void>(`${environment.apiUrl}/session/active-company`, { legalEntityId });
   }
 
-  /** Pure helper - no request. `?v=` busts the browser's image cache after a re-upload. */
-  getLogoUrl(legalEntityId: string, logoFileId: string): string {
-    return `${environment.apiUrl}/org/legal-entities/${legalEntityId}/logo?v=${logoFileId}`;
+  /** Pure helper - no request. The logo is served by the shared file route; a re-upload gets a new
+   * file id, so the URL changes with it. */
+  getLogoUrl(_legalEntityId: string, logoFileId: string): string {
+    return buildFileUrl(logoFileId);
   }
 }

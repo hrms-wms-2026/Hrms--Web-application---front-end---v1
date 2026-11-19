@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
-import { CustomSelectComponent } from '../../../../shared/ui/custom-select/custom-select.component';
-import { SelectOption } from '../../../../shared/ui/select/select.component';
+import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { DepartmentStore } from '../../../organization/state/department.store';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { PositionStore } from '../../../organization/state/position.store';
@@ -40,7 +39,7 @@ const emptyOverride = (): MonitoringPolicyOverrideRequest => ({
 @Component({
   selector: 'app-monitoring',
   standalone: true,
-  imports: [CommonModule, FormsModule, BreadcrumbHeaderComponent, CustomSelectComponent],
+  imports: [CommonModule, FormsModule, BreadcrumbHeaderComponent, SelectComponent],
   templateUrl: './monitoring.component.html',
   styleUrl: './monitoring.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

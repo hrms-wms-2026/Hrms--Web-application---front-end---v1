@@ -1,7 +1,9 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
+import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { PositionManagementComponent } from './position-management.component';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
@@ -11,8 +13,9 @@ import { PositionStore } from '../../state/position.store';
 import { DepartmentStore } from '../../state/department.store';
 import { RoleStore } from '../../state/role.store';
 import { PositionFormSubmitValue } from '../../ui/position-form-modal/position-form-modal.component';
-import { PositionTreeNodeResponse } from '../../models/position.model';
+import { PeopleChartTreeNode, PositionTreeNodeResponse } from '../../models/position.model';
 import { environment } from '../../../../../environments/environment';
+import { PanZoomCanvasComponent } from '../../../../shared/ui/pan-zoom-canvas/pan-zoom-canvas.component';
 
 describe('PositionManagementComponent - System Access Flow', () => {
   let httpMock: HttpTestingController;
@@ -63,7 +66,8 @@ describe('PositionManagementComponent - System Access Flow', () => {
         DepartmentStore,
         RoleStore,
         provideHttpClient(),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        provideRouter([])
       ]
     }).compileComponents();
 
@@ -84,6 +88,188 @@ describe('PositionManagementComponent - System Access Flow', () => {
 
     return fixture;
   }
+
+  it('People view shows one card per holder under who they report to without redundant exception labels', async () => {
+    const fixture = await setup(['org:read']);
+    const comp = fixture.componentInstance;
+
+    comp.setChartMode('people');
+    fixture.detectChanges();
+    const chartNodes = [
+      { id: 'e:head', parentId: null, kind: 'person', positionId: 'p-head', positionName: 'Head', departmentName: 'Ops', employeeId: 'head', firstName: 'Hana', lastName: 'Head', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:amira', parentId: 'e:head', kind: 'person', positionId: 'p-lead', positionName: 'Team Lead', departmentName: 'Eng', employeeId: 'amira', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: 'position', maxOccupancy: 3, holderCount: 2 },
+      { id: 'e:ben', parentId: 'e:head', kind: 'person', positionId: 'p-lead', positionName: 'Team Lead', departmentName: 'Eng', employeeId: 'ben', firstName: 'Ben', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 3, holderCount: 2 },
+      { id: 'e:ola', parentId: 'e:ben', kind: 'person', positionId: 'p-eng', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'ola', firstName: 'Ola', lastName: 'OneOff', avatarFileId: null, reportingLine: 'custom', maxOccupancy: 5, holderCount: 1 },
+      { id: 'p:designer', parentId: 'e:amira', kind: 'vacant', positionId: 'p-designer', positionName: 'Designer', departmentName: 'Eng', employeeId: null, firstName: null, lastName: null, avatarFileId: null, reportingLine: 'default', maxOccupancy: 1, holderCount: 0 }
+    ];
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/le-123/positions/people-chart`).flush(chartNodes);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cards = Array.from(fixture.nativeElement.querySelectorAll('.pcn-card') as NodeListOf<HTMLElement>);
+    // Team Lead's two holders are two separate cards, not one position card.
+    expect(cards.map((c) => c.textContent?.trim())).toEqual(expect.arrayContaining([
+      expect.stringContaining('Amira Khan'), expect.stringContaining('Ben Lee')
+    ]));
+    expect(comp.peopleTree()[0].children.map((c) => c.id)).toEqual(['e:amira', 'e:ben']);
+    expect(comp.peopleTree()[0].children[1].children[0].id).toBe('e:ola');
+    expect(fixture.nativeElement.querySelector('.pcn-card--custom')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.pcn-card--custom')?.textContent).not.toContain('One-off');
+    expect(fixture.nativeElement.querySelector('.pcn-card--vacant')?.textContent).toContain('Vacant');
+    // No "N in role" noise on the cards any more.
+    expect(fixture.nativeElement.textContent).not.toContain('in role');
+  });
+
+  it('checking a lead checks their whole team; unticking one report leaves them staying behind', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    const nodes = [
+      { id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Team Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:nina', parentId: 'e:lead', kind: 'person', positionId: 'p-eng', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'nina', firstName: 'Nina', lastName: 'Shah', avatarFileId: null, reportingLine: 'position', maxOccupancy: 3, holderCount: 2 },
+      { id: 'e:owen', parentId: 'e:lead', kind: 'person', positionId: 'p-eng', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'owen', firstName: 'Owen', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 3, holderCount: 2 },
+      // A vacant seat breaks the person-to-person line: Vic is not part of Amira's team.
+      { id: 'p:vacant', parentId: 'e:lead', kind: 'vacant', positionId: 'p-x', positionName: 'Designer', departmentName: 'Eng', employeeId: null, firstName: null, lastName: null, avatarFileId: null, reportingLine: 'default', maxOccupancy: 1, holderCount: 0 },
+      { id: 'e:vic', parentId: 'p:vacant', kind: 'person', positionId: 'p-y', positionName: 'Intern', departmentName: 'Eng', employeeId: 'vic', firstName: 'Vic', lastName: 'Lo', avatarFileId: null, reportingLine: 'default', maxOccupancy: 1, holderCount: 1 }
+    ] as const;
+    comp.peopleNodes.set(nodes);
+
+    const lead = comp.peopleTree()[0];
+    const owen = lead.children.find((c) => c.employeeId === 'owen')!;
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'nina', 'owen']);
+    expect(comp.stayingPeopleIds().size).toBe(0);
+
+    // Untick Owen: only the checked people move, Owen stays.
+    comp.onPeopleSelected({ node: owen, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'nina']);
+    expect([...comp.stayingPeopleIds()]).toEqual(['owen']);
+    expect([...comp.affectedPeopleIds()].sort()).toEqual(['lead', 'nina', 'owen']);
+
+    // Unticking the lead unticks everyone under them too.
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+    expect(comp.selectedPeopleIds().size).toBe(0);
+  });
+
+  it('a plain person-card click focuses coverage while dragging an unchecked lead still takes the team', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    comp.peopleNodes.set([
+      { id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:member', parentId: 'e:lead', kind: 'person', positionId: 'p-member', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'member', firstName: 'Owen', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:solo', parentId: null, kind: 'person', positionId: 'p-solo', positionName: 'Director', departmentName: 'Eng', employeeId: 'solo', firstName: 'David', lastName: 'Stone', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 }
+    ]);
+    const lead = comp.peopleTree().find((n) => n.employeeId === 'lead')!;
+    const solo = comp.peopleTree().find((n) => n.employeeId === 'solo')!;
+
+    const coverageSpy = vi.spyOn(comp, 'selectCoverage').mockResolvedValue();
+    comp.onPeopleSelected({ node: solo, ctrlKey: false, metaKey: false, shiftKey: false });
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false });
+    expect(comp.selectedPeopleIds().size).toBe(0);
+    // The test store has no positions loaded, so there is no unsafe guessed owner to request.
+    expect(coverageSpy).not.toHaveBeenCalled();
+
+    comp.clearPeopleSelection();
+    comp.onPeopleDragStarted({ node: lead, event: { preventDefault: () => {}, dataTransfer: null } as unknown as DragEvent });
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'member']);
+  });
+
+  it('a plain People click loads that person position coverage and labels covered cards by level', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    const ownerPosition: PositionTreeNodeResponse = {
+      id: 'p-lead', legalEntityId: 'le-123', departmentId: 'dept-1', name: 'Lead', code: 'LEAD',
+      positionType: 'unique', maxOccupancy: 1, reportsToPositionId: null, isActive: true,
+      childCount: 0, children: []
+    };
+    const loading = positionStore.load('le-123');
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/le-123/positions/tree?includeInactive=false`).flush([ownerPosition]);
+    await loading;
+
+    comp.peopleNodes.set([
+      { id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:member', parentId: 'e:lead', kind: 'person', positionId: 'p-member', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'member', firstName: 'Owen', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 1, holderCount: 1 }
+    ]);
+    const lead = comp.peopleTree()[0];
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false });
+
+    httpMock.expectOne(`${environment.apiUrl}/org/legal-entities/le-123/positions/p-lead/coverage-visualization`).flush({
+      ownerPositionId: 'p-lead', coveredPositionCount: 1, coveredEmployeeCount: 1, unresolvedRuleCount: 0,
+      rules: [{
+        coverageId: 'c1', coveredTargetType: 'Position', coveredPositionId: 'p-member', coveredDepartmentId: null,
+        ownerOrder: 2, source: 'Manual', isLocked: false, resolutionStatus: 'Resolved', resolutionReason: null,
+        resolvedEmployeeId: 'lead', coveredPositionIds: ['p-member'], coveredEmployeeIds: ['member']
+      }]
+    });
+    await fixture.whenStable();
+
+    expect(comp.selectedCoverageEmployeeId()).toBe('lead');
+    expect(comp.peopleCoverageVisual('e:lead').state).toBe('selected');
+    expect(comp.peopleCoverageVisual('e:member')).toMatchObject({ state: 'resolved', levels: ['1'] });
+    expect(comp.selectedPeopleIds().size).toBe(0);
+  });
+
+  it('previews a multi-selection before allowing the reporting move', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    const lead = {
+      id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Team Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: 'lead-avatar', reportingLine: null, maxOccupancy: 1, holderCount: 1, children: []
+    } as PeopleChartTreeNode;
+    const manager = {
+      id: 'e:manager', parentId: null, kind: 'person', positionId: 'p-manager', positionName: 'Director', departmentName: 'Eng', employeeId: 'manager', firstName: 'David', lastName: 'Stone', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1, children: []
+    } as PeopleChartTreeNode;
+    comp.peopleNodes.set([lead, manager]);
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+
+    comp.onReportingManagerChosen(manager);
+    const preview = httpMock.expectOne(
+      `${environment.apiUrl}/org/legal-entities/le-123/positions/people-chart/reporting-line/preview`
+    );
+    expect(preview.request.method).toBe('POST');
+    expect(preview.request.body).toEqual({ selectedEmployeeIds: ['lead'], newManagerEmployeeId: 'manager' });
+    preview.flush({
+      selectedCount: 1,
+      directRelationshipsChanged: 1,
+      preservedRelationships: 2,
+      totalEmployeesAffected: 3,
+      changes: [{
+        employee: { employeeId: 'lead', name: 'Amira Khan', positionName: 'Team Lead' },
+        currentManager: null,
+        newManager: { employeeId: 'manager', name: 'David Stone', positionName: 'Director' }
+      }]
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(comp.reportingMovePreview()?.directRelationshipsChanged).toBe(1);
+    expect(comp.reportingMoveRequest()?.newManagerEmployeeId).toBe('manager');
+    const avatar = fixture.nativeElement.querySelector('.rlm-avatar img') as HTMLImageElement | null;
+    expect(avatar?.src).toContain(`${environment.apiUrl}/files/lead-avatar`);
+    expect(fixture.nativeElement.querySelectorAll('.rlm-summary > span:not(.rlm-summary__divider)').length).toBe(3);
+  });
+
+  it('unticking a middle manager leaves them staying while their checked report still moves', async () => {
+    const fixture = await setup(['org:read', 'org:manage']);
+    const comp = fixture.componentInstance;
+    comp.peopleNodes.set([
+      { id: 'e:lead', parentId: null, kind: 'person', positionId: 'p-lead', positionName: 'Lead', departmentName: 'Eng', employeeId: 'lead', firstName: 'Amira', lastName: 'Khan', avatarFileId: null, reportingLine: null, maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:supervisor', parentId: 'e:lead', kind: 'person', positionId: 'p-supervisor', positionName: 'Supervisor', departmentName: 'Eng', employeeId: 'supervisor', firstName: 'Nina', lastName: 'Shah', avatarFileId: null, reportingLine: 'position', maxOccupancy: 1, holderCount: 1 },
+      { id: 'e:member', parentId: 'e:supervisor', kind: 'person', positionId: 'p-member', positionName: 'Engineer', departmentName: 'Eng', employeeId: 'member', firstName: 'Owen', lastName: 'Lee', avatarFileId: null, reportingLine: 'position', maxOccupancy: 1, holderCount: 1 }
+    ]);
+    const lead = comp.peopleTree()[0];
+    const member = lead.children[0].children[0];
+
+    const supervisor = lead.children[0];
+
+    comp.onPeopleSelected({ node: lead, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+    // Unticking the supervisor unticks the member too; ticking the member back re-adds just them.
+    comp.onPeopleSelected({ node: supervisor, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+    comp.onPeopleSelected({ node: member, ctrlKey: false, metaKey: false, shiftKey: false, fromCheckbox: true });
+
+    expect([...comp.selectedPeopleIds()].sort()).toEqual(['lead', 'member']);
+    expect([...comp.stayingPeopleIds()]).toEqual(['supervisor']);
+    expect([...comp.affectedPeopleIds()].sort()).toEqual(['lead', 'member', 'supervisor']);
+  });
 
   it('checks permissions: org:manage + roles:read enables system access role loading and controls', async () => {
     const fixture = await setup(['org:read', 'org:manage', 'roles:read']);
@@ -571,9 +757,9 @@ describe('PositionManagementComponent - System Access Flow', () => {
       return {
         preventDefault: vi.fn(),
         dataTransfer: {
-          types: ['application/x-onevo-position-template'],
+          types: ['application/x-crownus-position-template'],
           dropEffect: '',
-          getData: (type: string) => (type === 'application/x-onevo-position-template' ? JSON.stringify(payload) : '')
+          getData: (type: string) => (type === 'application/x-crownus-position-template' ? JSON.stringify(payload) : '')
         }
       } as unknown as DragEvent;
     }
@@ -792,7 +978,8 @@ describe('PositionManagementComponent - System Access Flow', () => {
     });
   });
 
-  describe('Position Hierarchy Zoom', () => {
+  describe('Position Hierarchy canvas (app-pan-zoom-canvas)', () => {
+    // Pan, zoom, wheel, minimap and fit behaviour is covered by pan-zoom-canvas.component.spec.ts.
     const mockTreeNode = {
       id: 'pos-root-1',
       legalEntityId: 'le-123',
@@ -807,203 +994,54 @@ describe('PositionManagementComponent - System Access Flow', () => {
       children: []
     };
 
-    it('onTreeWheel zooms in on wheel-up (negative deltaY) and out on wheel-down (positive deltaY), in small steps', async () => {
+    it('draws the hierarchy inside the shared pan/zoom canvas, with the title in the fixed overlay', async () => {
       const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      expect(comp.treeZoom()).toBe(0.7);
-
-      comp.onTreeWheel({ deltaY: -100, preventDefault: () => {} } as WheelEvent);
-      expect(comp.treeZoom()).toBeCloseTo(0.72);
-
-      comp.onTreeWheel({ deltaY: 100, preventDefault: () => {} } as WheelEvent);
-      expect(comp.treeZoom()).toBeCloseTo(0.7);
-    });
-
-    it('a single wheel tick is smaller than a +/- button click, so a quick scroll does not jump straight to the min/max', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-
-      comp.onTreeWheel({ deltaY: -100, preventDefault: () => {} } as WheelEvent);
-      const wheelStep = comp.treeZoom() - 0.7;
-
-      comp.resetZoom();
-      comp.zoomIn();
-      const buttonStep = comp.treeZoom() - 0.7;
-
-      expect(wheelStep).toBeGreaterThan(0);
-      expect(wheelStep).toBeLessThan(buttonStep);
-    });
-
-    it('onTreeWheel calls preventDefault so the wheel event does not scroll the page', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      const preventDefault = vi.fn();
-
-      comp.onTreeWheel({ deltaY: -100, preventDefault } as unknown as WheelEvent);
-
-      expect(preventDefault).toHaveBeenCalled();
-    });
-
-    it('wheel zoom clamps at the same min/max range as the plus/minus controls', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-
-      for (let i = 0; i < 60; i++) {
-        comp.onTreeWheel({ deltaY: -100, preventDefault: () => {} } as WheelEvent);
-      }
-      expect(comp.treeZoom()).toBe(1.5);
-
-      for (let i = 0; i < 80; i++) {
-        comp.onTreeWheel({ deltaY: 100, preventDefault: () => {} } as WheelEvent);
-      }
-      expect(comp.treeZoom()).toBe(0.4);
-    });
-
-    it('plus/minus zoom methods still work and clamp at the documented min/max', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-
-      comp.zoomIn();
-      expect(comp.treeZoom()).toBe(0.8);
-      comp.zoomOut();
-      expect(comp.treeZoom()).toBe(0.7);
-
-      for (let i = 0; i < 20; i++) comp.zoomIn();
-      expect(comp.treeZoom()).toBe(1.5);
-
-      for (let i = 0; i < 30; i++) comp.zoomOut();
-      expect(comp.treeZoom()).toBe(0.4);
-
-      comp.resetZoom();
-      expect(comp.treeZoom()).toBe(0.7);
-    });
-
-    it('binds the wheel handler on the tree canvas and the +/- buttons update the displayed zoom', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
       vi.spyOn(positionStore, 'treeData').mockReturnValue([mockTreeNode]);
       fixture.detectChanges();
 
-      const canvas = fixture.nativeElement.querySelector('.pm-tree-container');
+      const canvas: HTMLElement = fixture.nativeElement.querySelector('app-pan-zoom-canvas.pm-tree-container');
       expect(canvas).not.toBeNull();
-
-      const wheelSpy = vi.spyOn(comp, 'onTreeWheel');
-      canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, cancelable: true }));
-      expect(wheelSpy).toHaveBeenCalled();
-      expect(comp.treeZoom()).toBeCloseTo(0.72);
-
-      comp.resetZoom();
-      fixture.detectChanges();
-
-      const zoomInBtn: HTMLButtonElement = fixture.nativeElement.querySelectorAll('.pm-zoom-btn')[1];
-      zoomInBtn.click();
-      fixture.detectChanges();
-      expect(comp.treeZoom()).toBe(0.8);
-
-      const zoomOutBtn: HTMLButtonElement = fixture.nativeElement.querySelectorAll('.pm-zoom-btn')[0];
-      zoomOutBtn.click();
-      fixture.detectChanges();
-      expect(comp.treeZoom()).toBe(0.7);
-
-      const resetBtn: HTMLButtonElement = fixture.nativeElement.querySelector('.pm-zoom-reset');
-      expect(resetBtn.textContent?.trim()).toBe('70%');
+      expect(canvas.querySelector('[canvasOverlay] .pm-tree-title')?.textContent).toContain('Position hierarchy');
+      expect(canvas.querySelector('.pzc-world app-tidy-tree')).not.toBeNull();
+      expect(canvas.querySelector('app-canvas-grid')).not.toBeNull();
     });
-  });
 
-  describe('Position Hierarchy Canvas Panning', () => {
-    function createPointerEvent(type: string, target: HTMLElement, clientX = 0, clientY = 0, button = 0): PointerEvent {
-      return {
-        type,
+    it('shows the empty state in the fixed overlay, not inside the zoomed chart', async () => {
+      const fixture = await setup(['org:read', 'org:manage']);
+      fixture.detectChanges();
+
+      const canvas: HTMLElement = fixture.nativeElement.querySelector('app-pan-zoom-canvas');
+      expect(canvas.querySelector('[canvasOverlay] app-empty-state')).not.toBeNull();
+      expect(canvas.querySelector('.pzc-world app-empty-state')).toBeNull();
+    });
+
+    it('keeps employee and coverage selections while a background press starts panning', async () => {
+      const fixture = await setup(['org:read', 'org:manage']);
+      const comp = fixture.componentInstance;
+      comp.setChartMode('people');
+      comp.selectedPeopleIds.set(new Set(['a']));
+      comp.coverageSelectedPosition.set(mockTreeNode);
+      fixture.detectChanges();
+
+      const canvasDebugElement = fixture.debugElement.query(By.directive(PanZoomCanvasComponent));
+      const canvas = canvasDebugElement.componentInstance as PanZoomCanvasComponent;
+      canvas.onPointerDown({
+        button: 0,
         pointerId: 1,
-        clientX,
-        clientY,
-        button,
-        target,
-        currentTarget: target,
-        bubbles: true,
-        cancelable: true,
-        preventDefault: () => {}
-      } as unknown as PointerEvent;
-    }
+        clientX: 100,
+        clientY: 100,
+        target: canvasDebugElement.nativeElement
+      } as PointerEvent);
 
-    it('pointerdown on empty hierarchy canvas starts panning and pointermove updates pan offset', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      const canvas = document.createElement('div');
-      canvas.className = 'pm-tree-container';
-
-      expect(comp.isPanning()).toBe(false);
-      expect(comp.treePanX()).toBe(0);
-      expect(comp.treePanY()).toBe(0);
-
-      comp.onCanvasPointerDown(createPointerEvent('pointerdown', canvas, 100, 200));
-
-      expect(comp.isPanning()).toBe(true);
-
-      comp.onCanvasPointerMove(createPointerEvent('pointermove', canvas, 150, 230));
-
-      expect(comp.treePanX()).toBe(50);
-      expect(comp.treePanY()).toBe(30);
-      expect(comp.treeTransform()).toContain('translate(50px, 30px)');
-
-      comp.onCanvasPointerUp(createPointerEvent('pointerup', canvas, 150, 230));
-
-      expect(comp.isPanning()).toBe(false);
-    });
-
-    it('pointercancel ends panning', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      const canvas = document.createElement('div');
-
-      comp.onCanvasPointerDown(createPointerEvent('pointerdown', canvas, 100, 100));
-      expect(comp.isPanning()).toBe(true);
-
-      comp.onCanvasPointerCancel(createPointerEvent('pointercancel', canvas, 120, 120));
-      expect(comp.isPanning()).toBe(false);
-    });
-
-    it('pointerdown on a position card does not start panning', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-
-      const card = document.createElement('div');
-      card.className = 'ptn-node-card';
-
-      comp.onCanvasPointerDown(createPointerEvent('pointerdown', card, 100, 100));
-
-      expect(comp.isPanning()).toBe(false);
-      expect(comp.treePanX()).toBe(0);
-      expect(comp.treePanY()).toBe(0);
-    });
-
-    it('resetZoom resets both zoom factor to 0.7 and pan offsets to 0', async () => {
-      const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
-      const canvas = document.createElement('div');
-
-      comp.zoomIn();
-      comp.onCanvasPointerDown(createPointerEvent('pointerdown', canvas, 100, 100));
-      comp.onCanvasPointerMove(createPointerEvent('pointermove', canvas, 200, 250));
-      comp.onCanvasPointerUp(createPointerEvent('pointerup', canvas, 200, 250));
-
-      expect(comp.treeZoom()).toBe(0.8);
-      expect(comp.treePanX()).toBe(100);
-      expect(comp.treePanY()).toBe(150);
-
-      comp.resetZoom();
-
-      expect(comp.treeZoom()).toBe(0.7);
-      expect(comp.treePanX()).toBe(0);
-      expect(comp.treePanY()).toBe(0);
-      expect(comp.treeTransform()).toContain('translate(0px, 0px) scale(0.7)');
+      expect(canvas.isPanning()).toBe(true);
+      expect(comp.selectedPeopleIds()).toEqual(new Set(['a']));
+      expect(comp.coverageSelectedPosition()).toBe(mockTreeNode);
     });
   });
 
   describe('Toolbar Controls', () => {
     it('renders breadcrumb and controls on the same horizontal header line (pm-header-row) with expandable search icon', async () => {
       const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
       fixture.detectChanges();
 
       const pageHeader = fixture.nativeElement.querySelector('.pm-page-header');
@@ -1014,9 +1052,9 @@ describe('PositionManagementComponent - System Access Flow', () => {
 
       const breadcrumb = headerRow.querySelector('app-breadcrumb-header');
       const controls = headerRow.querySelector('.pm-controls');
-      const searchBtn: HTMLButtonElement = headerRow.querySelector('.pm-icon-btn');
-      const deptSelect = headerRow.querySelector('.pm-dept-select-wrap');
-      const viewToggle = headerRow.querySelector('.pm-view-toggle');
+      const searchBtn: HTMLButtonElement = headerRow.querySelector('.pm-search-container .ui-square-btn');
+      const deptSelect = headerRow.querySelector('app-filter-bar [data-testid="filter-trigger"]');
+      const viewToggle = headerRow.querySelector('app-view-mode-toggle');
       const templatesBtn = headerRow.querySelector('.pm-templates-btn');
       const createBtn = headerRow.querySelector('.pm-controls app-button');
 
@@ -1029,11 +1067,11 @@ describe('PositionManagementComponent - System Access Flow', () => {
       expect(createBtn).not.toBeNull();
 
       // Search input is collapsed by default and expands on click
-      expect(headerRow.querySelector('.pm-search-input')).toBeNull();
+      expect(headerRow.querySelector('.pm-search-expandable input')).toBeNull();
       searchBtn.click();
       fixture.detectChanges();
 
-      const searchInput: HTMLInputElement = headerRow.querySelector('.pm-search-input');
+      const searchInput: HTMLInputElement = headerRow.querySelector('.pm-search-expandable input');
       expect(searchInput).not.toBeNull();
     });
 
@@ -1048,43 +1086,45 @@ describe('PositionManagementComponent - System Access Flow', () => {
       expect(positionStore.includeInactive()).toBe(false);
     });
 
-    it('renders icon-only Tree and List view toggle buttons with title and aria-label', async () => {
+    it('renders a single icon-only view toggle labelled with the current and next view', async () => {
       const fixture = await setup(['org:read', 'org:manage']);
       fixture.detectChanges();
 
-      const toggleBtns = fixture.nativeElement.querySelectorAll('.pm-toggle-btn');
-      expect(toggleBtns.length).toBe(2);
-
-      const treeBtn: HTMLButtonElement = toggleBtns[0];
-      const listBtn: HTMLButtonElement = toggleBtns[1];
-
-      expect(treeBtn.getAttribute('aria-label')).toBe('Tree view');
-      expect(treeBtn.getAttribute('title')).toBe('Tree view');
-      expect(treeBtn.textContent?.trim()).toBe('');
-
-      expect(listBtn.getAttribute('aria-label')).toBe('List view');
-      expect(listBtn.getAttribute('title')).toBe('List view');
-      expect(listBtn.textContent?.trim()).toBe('');
+      const toggleBtn: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="view-mode-toggle"]');
+      expect(toggleBtn).not.toBeNull();
+      expect(toggleBtn.getAttribute('aria-label')).toBe('Tree view, switch to List view');
+      expect(toggleBtn.textContent?.trim()).toBe('');
     });
 
-    it('clicking icon-only toggle buttons switches between tree and list view mode', async () => {
+    it('clicking the view toggle cycles between tree and list view mode', async () => {
       const fixture = await setup(['org:read', 'org:manage']);
-      const comp = fixture.componentInstance;
       fixture.detectChanges();
 
       expect(positionStore.viewMode()).toBe('tree');
 
-      const listBtn: HTMLButtonElement = fixture.nativeElement.querySelectorAll('.pm-toggle-btn')[1];
-      listBtn.click();
+      const toggleBtn: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="view-mode-toggle"]');
+      toggleBtn.click();
       fixture.detectChanges();
 
       expect(positionStore.viewMode()).toBe('list');
 
-      const treeBtn: HTMLButtonElement = fixture.nativeElement.querySelectorAll('.pm-toggle-btn')[0];
-      treeBtn.click();
+      toggleBtn.click();
       fixture.detectChanges();
 
       expect(positionStore.viewMode()).toBe('tree');
+    });
+
+    it('filters positions by department through the shared filter bar', async () => {
+      const fixture = await setup(['org:read', 'org:manage']);
+      const comp = fixture.componentInstance;
+      fixture.detectChanges();
+
+      comp.onFilterFieldChanged({ key: 'department', values: ['dept-1'] });
+      expect(positionStore.departmentFilterId()).toBe('dept-1');
+      expect(comp.filterValues()).toEqual({ department: ['dept-1'] });
+
+      comp.onFilterFieldChanged({ key: 'department', values: [] });
+      expect(positionStore.departmentFilterId()).toBeNull();
     });
 
     it('templates drawer open in list view maintains two-column layout and does not corrupt table alignment', async () => {

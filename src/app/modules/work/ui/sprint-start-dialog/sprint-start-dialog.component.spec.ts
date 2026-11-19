@@ -1,5 +1,9 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
+import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { GeneralSettingsStore } from '../../../organization/state/general-settings.store';
+import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { SprintStartDialogComponent } from './sprint-start-dialog.component';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { Sprint } from '../../models/sprint.model';
@@ -44,11 +48,19 @@ describe('SprintStartDialogComponent', () => {
     buildTask({ id: 't2', estimatedHours: null, assigneeEmployeeIds: [] })
   ];
 
-  function setup(overrides: Record<string, unknown> = {}): void {
+  let loadSettings: ReturnType<typeof vi.fn>;
+
+  function setup(overrides: Record<string, unknown> = {}, canReadCompanySettings = true): void {
     storeStub = { start: vi.fn().mockResolvedValue(true), error: vi.fn().mockReturnValue(null) };
+    loadSettings = vi.fn(() => Promise.resolve());
     TestBed.configureTestingModule({
       imports: [SprintStartDialogComponent],
-      providers: [{ provide: SprintListStore, useValue: storeStub }]
+      providers: [
+        { provide: SprintListStore, useValue: storeStub },
+        { provide: PermissionService, useValue: { hasAnyPermission: () => canReadCompanySettings } },
+        { provide: LegalEntityStore, useValue: { selectedLegalEntityId: signal('le-1') } },
+        { provide: GeneralSettingsStore, useValue: { settings: signal(null), loading: signal(false), load: loadSettings } }
+      ]
     });
     fixture = TestBed.createComponent(SprintStartDialogComponent);
     fixture.componentRef.setInput('open', true);
@@ -58,6 +70,19 @@ describe('SprintStartDialogComponent', () => {
     for (const [key, value] of Object.entries(overrides)) fixture.componentRef.setInput(key, value);
     fixture.detectChanges();
   }
+
+  it('loads company General Settings for a user who may read them', () => {
+    setup();
+    expect(loadSettings).toHaveBeenCalledWith('le-1');
+  });
+
+  it('does not request admin-only General Settings for anyone else, and still pre-fills default dates', () => {
+    setup({}, false);
+    const component = fixture.componentInstance as any;
+    expect(loadSettings).not.toHaveBeenCalled();
+    expect(component.startDate()).not.toBe('');
+    expect(component.endDate()).not.toBe('');
+  });
 
   it('pre-fills the goal from the sprint and summarizes tasks/hours/assignees', () => {
     setup();

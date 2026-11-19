@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, ou
 import { Router } from '@angular/router';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
-import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
 import { EmployeeColumnDef } from '../../models/employee-columns';
 import { EmployeeListItemResponse, EmployeeSortKey, SortDirection } from '../../models/employee.model';
 import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
@@ -17,7 +17,7 @@ import {
 @Component({
   selector: 'app-employee-directory-table',
   standalone: true,
-  imports: [AvatarComponent, DropdownMenuComponent, EmptyStateComponent],
+  imports: [AvatarComponent, DropdownMenuComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './employee-directory-table.component.html',
   styleUrl: './employee-directory-table.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -44,18 +44,52 @@ export class EmployeeDirectoryTableComponent {
   readonly attendanceStatusLabel = attendanceStatusLabel;
   readonly breakOverageLabel = breakOverageLabel;
 
+  /** The attendance issue shown as the avatar hover popup: red for errors, yellow for warnings. */
+  /** Ring + hover tooltip on the avatar: today's attendance problem and/or open alerts awaiting review. */
+  protected avatarIssue(
+    employee: EmployeeListItemResponse
+  ): { label: string; tone: 'critical' | 'warning'; alertCount: number } | null {
+    const alertCount = employee.attendanceSummary?.openAlertCount ?? 0;
+    const alertsLabel = alertCount > 0 ? `${alertCount} open ${alertCount === 1 ? 'alert' : 'alerts'}` : null;
+    const warning = attendanceWarningLabel(employee);
+    const attention = warning ? null : attendanceAttentionLabel(employee);
+    const issueLabel = warning ?? attention;
+    if (!issueLabel && !alertsLabel) return null;
+    const tone = warning || (attention && attendanceSeverityClass(employee) === 'emp-attention--critical') ? 'critical' : 'warning';
+    const label = [issueLabel, alertsLabel].filter((part): part is string => !!part).join(' · ');
+    return { label, tone, alertCount };
+  }
+
+  /** Columns with a dedicated cell template; every other column renders its plain value(). */
+  private static readonly customCells = new Set<string>(['employee', 'position', 'reportingManager']);
+
+  protected readonly tableColumns = computed<DataTableColumn[]>(() => [
+    ...this.columns().map((column) => ({
+      key: column.key,
+      label: column.label,
+      sortable: !!column.sortKey,
+      overflowVisible: column.key === 'employee'
+    })),
+    { key: 'menu', label: 'Actions', hideLabel: true, interactive: true, shrink: true, align: 'end' as const }
+  ]);
+  protected readonly plainColumns = computed(() =>
+    this.columns().filter((column) => !EmployeeDirectoryTableComponent.customCells.has(column.key)));
+  /** The shared table tracks sort by column key; the API sorts by sortKey. */
+  protected readonly activeSortColumn = computed(() =>
+    this.columns().find((column) => column.sortKey && column.sortKey === this.sortBy())?.key ?? null);
+
+  protected readonly trackEmployee = (employee: EmployeeListItemResponse): string => employee.id;
+  protected readonly rowTestId = (employee: EmployeeListItemResponse): string => 'employee-row-' + employee.id;
+  protected readonly selectTestId = (employee: EmployeeListItemResponse): string => 'employee-select-' + employee.id;
+  protected readonly selectAriaLabel = (employee: EmployeeListItemResponse): string => 'Select ' + employee.fullName;
+  protected readonly sortTestId = (key: string): string => 'employee-sort-' + key;
+
   protected readonly menuItemsById = computed(() => {
     const itemsFor = this.rowMenuItems();
     return new Map(this.employees().map((e) => [e.id, itemsFor(e)] as const));
   });
 
   protected readonly visibleIds = computed(() => this.employees().map((e) => e.id));
-  protected readonly allSelected = computed(() => {
-    const ids = this.visibleIds();
-    return ids.length > 0 && ids.every((id) => this.selectedIds().has(id));
-  });
-  protected readonly someSelected = computed(() =>
-    !this.allSelected() && this.visibleIds().some((id) => this.selectedIds().has(id)));
 
   constructor() {
     effect(() => {
@@ -75,27 +109,22 @@ export class EmployeeDirectoryTableComponent {
     });
   }
 
-  protected ariaSort(column: EmployeeColumnDef): 'ascending' | 'descending' | 'none' {
-    if (!column.sortKey || column.sortKey !== this.sortBy()) return 'none';
-    return this.sortDir() === 'asc' ? 'ascending' : 'descending';
-  }
-
-  protected onSort(column: EmployeeColumnDef): void {
-    if (!column.sortKey) return;
-    const sortDir: SortDirection = column.sortKey === this.sortBy() && this.sortDir() === 'asc' ? 'desc' : 'asc';
-    this.sortChanged.emit({ sortBy: column.sortKey, sortDir });
+  protected onSort(columnKey: string): void {
+    const sortKey = this.columns().find((column) => column.key === columnKey)?.sortKey;
+    if (!sortKey) return;
+    const sortDir: SortDirection = sortKey === this.sortBy() && this.sortDir() === 'asc' ? 'desc' : 'asc';
+    this.sortChanged.emit({ sortBy: sortKey, sortDir });
   }
 
   protected openEmployee(employee: EmployeeListItemResponse): void {
     void this.router.navigate(['/people/employees', employee.id]);
   }
 
-  protected onRowSelect(id: string, event: Event): void {
-    this.selectionChanged.emit({ id, selected: (event.target as HTMLInputElement).checked });
-  }
-
-  protected onSelectAll(event: Event): void {
-    this.selectAllChanged.emit({ ids: this.visibleIds(), selected: (event.target as HTMLInputElement).checked });
+  /** The employee's open attendance alerts, reviewed in the Inbox. */
+  protected openAlerts(employee: EmployeeListItemResponse, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+    void this.router.navigate(['/inbox'], { queryParams: { tab: 'alerts', employee: employee.id } });
   }
 
   protected onMenuSelected(employee: EmployeeListItemResponse, actionId: string): void {

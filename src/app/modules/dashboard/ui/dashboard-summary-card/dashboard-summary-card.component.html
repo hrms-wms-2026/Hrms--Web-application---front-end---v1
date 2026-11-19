@@ -1,0 +1,190 @@
+<ng-template #headTpl>
+  <span class="sc-head">
+    <span class="sc-icon" [style.background]="widget.mildLine" [style.color]="ink(card().tone)"><app-icon [name]="card().icon" /></span>
+    <span class="sc-title" data-testid="summary-title">{{ card().title }}</span>
+    @if (headCount(); as hc) {
+      <span class="sc-head-count" data-testid="summary-count"><b>{{ hc.count }}</b><span class="sc-head-count-label"> {{ hc.label }}</span></span>
+    }
+    <span class="sc-go" aria-hidden="true"><app-icon name="arrow-up-right" /></span>
+  </span>
+</ng-template>
+
+@if (card().state === 'error') {
+  <!-- A failed card is not a button: its Try again is the one control, so nothing interactive nests. -->
+  <div
+    class="sc sc--on sc--static"
+    role="group"
+    data-testid="summary-card"
+    [attr.aria-label]="card().title"
+    [style.background]="widget.mild"
+    [style.--sc-border]="'transparent'"
+  >
+    <ng-container [ngTemplateOutlet]="headTpl" />
+    <span class="sc-error">
+      Couldn't load
+      <button type="button" class="sc-retry" data-testid="summary-retry" (click)="retry($event)">Try again</button>
+    </span>
+  </div>
+} @else {
+<button
+  type="button"
+  class="sc"
+  data-testid="summary-card"
+  [class.sc--on]="revealed()"
+  [style.--sc-tone]="card().tone"
+  [style.background]="widget.mild"
+  [style.--sc-border]="'transparent'"
+  [attr.aria-label]="ariaLabel()"
+  (click)="open($event)"
+  (animationstart)="onReplay($event)"
+>
+  <ng-container [ngTemplateOutlet]="headTpl" />
+
+  @switch (card().state) {
+    @case ('loading') {
+      <span class="sc-skeleton" data-testid="summary-skeleton" aria-busy="true">
+        <span class="sc-skel sc-skel--figure"></span>
+        <span class="sc-skel sc-skel--line"></span>
+        <span class="sc-skel sc-skel--chart"></span>
+      </span>
+    }
+    @default {
+      @if (figureText(); as figure) {
+        <span class="sc-figure" [class.sc-figure--sm]="!!pair()" data-testid="summary-figure">{{ figure }}</span>
+      }
+      @if (delta(); as d) {
+        <span class="sc-delta" data-testid="summary-delta">
+          <span class="sc-delta-change" [class.sc-delta-change--bad]="!d.good">
+            <app-icon [name]="d.text.startsWith('−') ? 'trending-down' : 'trending-up'" />
+            {{ d.text }}
+          </span>
+          @if (d.suffix) {
+            {{ d.suffix }}
+          }
+        </span>
+      }
+
+      @if (spark(); as s) {
+        <span class="sc-viz">
+          <svg viewBox="0 0 100 38" preserveAspectRatio="none" class="sc-spark" aria-hidden="true">
+            @if (sparkPath(); as p) {
+              <path [attr.d]="p.area" [style.fill]="tint(22)" class="sc-spark-area" />
+              <path
+                data-testid="summary-spark-line"
+                class="sc-spark-line"
+                [attr.d]="p.line"
+                fill="none"
+                [style.stroke]="card().tone"
+                stroke-width="2"
+                vector-effect="non-scaling-stroke"
+                pathLength="1"
+              />
+            }
+          </svg>
+        </span>
+      }
+
+      @if (bars()) {
+        <span class="sc-viz sc-bars" aria-hidden="true">
+          @for (h of barHeights(); track $index; let last = $last) {
+            <span
+              class="sc-bar"
+              data-testid="summary-bar"
+              [style.height.%]="revealed() ? h : 0"
+              [style.background]="last ? card().tone : tint(40)"
+              [style.transition-delay.ms]="$index * 45"
+            ></span>
+          }
+        </span>
+      }
+
+      @if (pair(); as p) {
+        <span class="sc-viz sc-pairs" aria-hidden="true">
+          @for (hs of pairHeights(); track $index) {
+            <span class="sc-pair" data-testid="summary-pair">
+              <span class="sc-bar" [style.height.%]="revealed() ? hs[0] : 0" [style.background]="tint(35)" [style.transition-delay.ms]="$index * 50"></span>
+              <span class="sc-bar" [style.height.%]="revealed() ? hs[1] : 0" [style.background]="card().tone" [style.transition-delay.ms]="$index * 50 + 25"></span>
+            </span>
+          }
+        </span>
+        <span class="sc-legend" aria-hidden="true">
+          <span><i [style.background]="tint(35)"></i>{{ p.legend[0] }}</span>
+          <span><i [style.background]="card().tone"></i>{{ p.legend[1] }}</span>
+        </span>
+      }
+
+      @if (meter(); as m) {
+        <span class="sc-viz sc-meter-wrap">
+          <span class="sc-track sc-track--lg" [style.background]="tint(18)">
+            <span class="sc-fill" data-testid="summary-meter" [style.width.%]="revealed() ? pct(m.percent) : 0" [style.background]="card().tone"></span>
+          </span>
+          <span class="sc-caption">{{ m.caption }}</span>
+        </span>
+      }
+
+      @if (hbars(); as hb) {
+        <span class="sc-headline">{{ hb.headline }}</span>
+        <span class="sc-rows">
+          @for (row of hb.rows; track row.label) {
+            <span class="sc-hbar" data-testid="summary-hbar">
+              <span class="sc-hbar-label">{{ row.label }}</span>
+              <span class="sc-track" [style.background]="tint(15)">
+                <span class="sc-fill" [style.width.%]="revealed() ? pct(row.percent) : 0" [style.background]="row.tone" [style.transition-delay.ms]="$index * 80"></span>
+              </span>
+              <span class="sc-hbar-value">{{ percentText(row.percent) }}</span>
+            </span>
+          }
+        </span>
+      }
+
+      @if (rank(); as r) {
+        <span class="sc-rows">
+          @for (row of r.rows; track row.id; let i = $index) {
+            <span class="sc-rank" data-testid="summary-rank-row">
+              <span class="sc-pill" [class.sc-pill--top]="i === 0" [style.background]="i === 0 ? widget.mildLine : null" [style.color]="i === 0 ? widget.shade1 : null">{{ i + 1 }}</span>
+              <app-avatar size="xs" [avatarUrl]="avatarUrl(row.avatarFileId)" [userName]="row.name" />
+              <span class="sc-name">{{ row.name }}</span>
+              <span class="sc-chips">
+                @for (chip of row.chips; track chip.text) {
+                  <span class="sc-chip" [class.sc-chip--bad]="chip.tone === widget.maroon" [style.background]="chipBg(chip.tone)" [style.color]="chipInk(chip.tone)">{{ chip.text }}</span>
+                }
+              </span>
+            </span>
+          } @empty {
+            <span class="sc-empty">{{ r.empty }}</span>
+          }
+        </span>
+      }
+
+      @if (people(); as pp) {
+        <span class="sc-rows">
+          @for (row of pp.rows; track row.id) {
+            <span class="sc-rank sc-rank--person" data-testid="summary-person">
+              <app-avatar size="xs" [avatarUrl]="avatarUrl(row.avatarFileId)" [userName]="row.name" />
+              <span class="sc-name">{{ row.name }}</span>
+              <span class="sc-chip" [class.sc-chip--bad]="card().tone === widget.maroon" [style.background]="chipBg(card().tone)" [style.color]="chipInk(card().tone)">{{ row.chip }}</span>
+            </span>
+          } @empty {
+            <span class="sc-empty">{{ pp.empty }}</span>
+          }
+        </span>
+      }
+
+      @if (chips(); as c) {
+        <span class="sc-segments" aria-hidden="true">
+          @for (item of c.items; track item.label) {
+            @if (item.value > 0) {
+              <span class="sc-segment" [style.width.%]="revealed() && chipTotal() > 0 ? (100 * item.value) / chipTotal() : 0" [style.background]="item.tone"></span>
+            }
+          }
+        </span>
+        <span class="sc-chip-list">
+          @for (item of c.items; track item.label) {
+            <span class="sc-chip sc-chip--lg" data-testid="summary-chip" [class.sc-chip--bad]="item.tone === widget.maroon" [style.background]="chipBg(item.tone)" [style.color]="chipInk(item.tone)"><b>{{ item.value }}</b> {{ item.label }}</span>
+          }
+        </span>
+      }
+    }
+  }
+</button>
+}

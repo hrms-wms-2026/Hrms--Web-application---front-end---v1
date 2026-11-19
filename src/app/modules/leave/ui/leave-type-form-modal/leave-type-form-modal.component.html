@@ -1,12 +1,13 @@
-<div class="ltfm-backdrop" (click)="cancel.emit()">
-  <section class="ltfm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="isEdit ? 'Edit leave type' : 'Create leave type'">
-    <header class="ltfm-header">
+<div role="presentation" class="ltfm-backdrop" (click)="cancelled.emit()">
+  <section class="ltfm-modal ui-scroll-open" appStopClickPropagation role="dialog" aria-modal="true" [attr.aria-label]="isEdit ? 'Edit leave type' : 'Create leave type'">
+    <header class="ltfm-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="sun" aria-hidden="true"></span>
       <div>
         <p class="ltfm-kicker">TIME OFF</p>
         <h2>{{ isEdit ? 'Edit leave type' : 'Create leave type' }}</h2>
-        <p>{{ isEdit ? 'Update this category and its default rules. The code cannot be changed.' : 'Name the category and set the default rules employees will follow.' }}</p>
+        <p>{{ isEdit ? 'The code cannot be changed. Hours and rules are set on its policies.' : 'Name the kind of leave. Hours and rules are set on its policies.' }}</p>
       </div>
-      <button type="button" class="ltfm-close" (click)="cancel.emit()" aria-label="Close dialog">
+      <button type="button" class="ltfm-close" (click)="cancelled.emit()" aria-label="Close dialog">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
@@ -15,109 +16,156 @@
     </header>
 
     <form class="ltfm-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="ltfm-body">
       <div class="ltfm-grid">
         <app-input
-          label="Name *"
+          label="Name"
+          [required]="true"
+          placeholder="e.g. Annual Leave"
+          [maxlength]="100"
           [value]="form.controls.name.value || ''"
           (valueChange)="form.controls.name.setValue($event)"
           (blurred)="form.controls.name.markAsTouched()"
           [error]="form.controls.name.touched && form.controls.name.invalid ? 'Enter a name (up to 100 characters).' : ''"
         />
-        <app-input
-          label="Code *"
-          hint="Locked after creation."
-          [value]="form.controls.code.value || ''"
-          [disabled]="isEdit"
-          (valueChange)="form.controls.code.setValue($event)"
-          (blurred)="form.controls.code.markAsTouched()"
-          [error]="form.controls.code.touched && form.controls.code.invalid ? 'Enter a code (up to 20 characters).' : ''"
-        />
-        <div class="ltfm-wide">
+        <div class="ltfm-counted">
+          <app-input
+            label="Code"
+            [required]="true"
+            placeholder="e.g. AL"
+            [maxlength]="20"
+            [value]="form.controls.code.value || ''"
+            [disabled]="isEdit"
+            (valueChange)="form.controls.code.setValue($event)"
+            (blurred)="form.controls.code.markAsTouched()"
+            [error]="form.controls.code.touched && form.controls.code.invalid ? 'Enter a code (up to 20 characters).' : ''"
+          />
+          <small class="ltfm-lock-note">Locked after creation</small>
+        </div>
+        <div class="ltfm-wide ltfm-counted">
           <app-input
             label="Description"
+            [multiline]="true"
+            [rows]="2"
+            [maxlength]="descriptionMaxLength"
+            placeholder="e.g. Annual paid time off for regular employees"
             [value]="form.controls.description.value || ''"
             (valueChange)="form.controls.description.setValue($event)"
           />
         </div>
-        <app-select label="Category *" [options]="categoryOptions" [value]="form.controls.category.value || 'custom'" (valueChange)="form.controls.category.setValue($event)" />
-        <app-select label="Applicable to *" [options]="genderOptions" [value]="form.controls.applicableGender.value || 'all'" (valueChange)="form.controls.applicableGender.setValue($event)" />
-        <app-input
-          label="Days per year *"
-          type="number"
-          [value]="(form.controls.defaultDaysPerYear.value ?? 0).toString()"
-          (valueChange)="form.controls.defaultDaysPerYear.setValue(+$event)"
-          [error]="form.controls.defaultDaysPerYear.touched && form.controls.defaultDaysPerYear.invalid ? 'Enter at least 0.5 day.' : ''"
-        />
-        <app-input
-          label="Minimum notice (days)"
-          type="number"
-          [value]="(form.controls.minimumNoticeDays.value ?? 0).toString()"
-          (valueChange)="form.controls.minimumNoticeDays.setValue($event ? +$event : 0)"
-        />
         <div class="ltfm-wide">
-          <app-input
-            label="Maximum consecutive days"
-            hint="Leave blank for no limit."
-            type="number"
-            [value]="(form.controls.maxConsecutiveDays.value ?? '').toString()"
-            (valueChange)="form.controls.maxConsecutiveDays.setValue($event ? +$event : null)"
-          />
+          <span class="ui-field-label ltfm-label" id="ltfm-colour-label">Icon and colour</span>
+          <div class="ltfm-swatches">
+            <app-icon-picker
+              class="ltfm-icon-picker"
+              ariaLabel="Change leave type icon"
+              [icon]="form.controls.icon.value"
+              [defaultIcon]="defaultIcon"
+              [color]="form.controls.color.value"
+              [name]="form.controls.name.value || ''"
+              [showColors]="false"
+              (iconChange)="form.controls.icon.setValue($event)"
+            />
+            <div class="ltfm-swatch-list" role="radiogroup" aria-labelledby="ltfm-colour-label">
+              @for (color of colors; track color) {
+                <button
+                  type="button"
+                  role="radio"
+                  class="ltfm-swatch"
+                  [class.ltfm-swatch--on]="form.controls.color.value?.toUpperCase() === color"
+                  [attr.aria-checked]="form.controls.color.value?.toUpperCase() === color"
+                  [attr.aria-label]="color"
+                  [style.--swatch]="color"
+                  (click)="pickColor(color)"
+                ></button>
+              }
+              <!-- Custom: opens a small picker (colour area + hue); shows the chosen colour once picked. -->
+              <div class="ltfm-custom">
+                <button
+                  type="button"
+                  class="ltfm-swatch ltfm-swatch--custom"
+                  [class.ltfm-swatch--on]="isCustomColor"
+                  [style.--swatch]="isCustomColor ? form.controls.color.value : null"
+                  aria-label="Custom colour"
+                  title="Custom colour"
+                  [attr.aria-expanded]="pickerOpen()"
+                  (click)="togglePicker()"
+                >
+                  @if (!isCustomColor) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  }
+                </button>
+                @if (pickerOpen()) {
+                  <div class="ltfm-picker" role="dialog" aria-label="Pick a custom colour" (keydown.escape)="pickerOpen.set(false); $event.stopPropagation()">
+                    <div
+                      class="ltfm-picker__area"
+                      [style.--hue]="hue()"
+                      (pointerdown)="onAreaPointer($event, true)"
+                      (pointermove)="onAreaPointer($event, false)"
+                    >
+                      <span class="ltfm-picker__thumb" [style.left.%]="sat() * 100" [style.top.%]="(1 - val()) * 100" [style.background]="form.controls.color.value"></span>
+                    </div>
+                    <input
+                      type="range"
+                      class="ltfm-picker__hue"
+                      min="0"
+                      max="360"
+                      aria-label="Hue"
+                      [value]="hue()"
+                      (input)="setHue(+$any($event.target).value)"
+                    />
+                    <div class="ltfm-picker__footer">
+                      <span class="ltfm-picker__preview" [style.background]="form.controls.color.value"></span>
+                      <app-button type="button" size="sm" (click)="pickerOpen.set(false)">Done</app-button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+          @if (form.controls.color.invalid) {
+            <p class="ui-field-error ltfm-error">Use a colour like #2563EB.</p>
+          }
         </div>
       </div>
 
-      <section class="ltfm-rules" aria-labelledby="rules-title">
-        <h3 id="rules-title">Request rules</h3>
+      <div class="ltfm-side">
+      <app-select label="Who can take it" [required]="true" [searchable]="false" [options]="genderOptions" [value]="form.controls.applicableGender.value || 'all'" (valueChange)="form.controls.applicableGender.setValue($event)" />
+
+      <section class="ltfm-rules" aria-labelledby="kind-title">
+        <h3 id="kind-title">About this leave</h3>
         <label class="ltfm-check">
           <input type="checkbox" [formControl]="form.controls.isPaid" />
-          <span><strong>Paid leave</strong><small>Deducts from paid entitlement.</small></span>
-        </label>
-        <label class="ltfm-check">
-          <input type="checkbox" [formControl]="form.controls.requiresApproval" />
-          <span><strong>Manager approval</strong><small>A manager must approve the request.</small></span>
+          <span class="ltfm-check__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.75" /><path d="M4.5 5.5v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-6" /><path d="M4.5 11.5v6c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-6" /></svg>
+          </span>
+          <span><strong>Paid leave</strong><small>Deducts from employee's leave balance</small></span>
         </label>
         <label class="ltfm-check">
           <input type="checkbox" [formControl]="form.controls.requiresDocument" />
-          <span><strong>Supporting document</strong><small>Ask for evidence after a number of days.</small></span>
+          <span class="ltfm-check__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" /></svg>
+          </span>
+          <span><strong>Supporting document</strong><small>Ask for evidence, always or for longer requests.</small></span>
         </label>
         @if (form.controls.requiresDocument.value) {
           <div class="ltfm-reveal">
             <app-input
-              label="Required after (days)"
-              hint="Minimum 1 day."
+              label="Only for requests longer than (hours)"
+              hint="Leave blank to always ask."
               type="number"
-              [value]="(form.controls.documentRequiredAfterDays.value ?? '').toString()"
-              (valueChange)="form.controls.documentRequiredAfterDays.setValue($event ? +$event : null)"
+              placeholder="e.g. 24"
+              [value]="(form.controls.documentRequiredAfterHours.value ?? '').toString()"
+              (valueChange)="form.controls.documentRequiredAfterHours.setValue($event ? +$event : null)"
             />
           </div>
         }
-        <label class="ltfm-check">
-          <input type="checkbox" [formControl]="form.controls.carryForwardAllowed" />
-          <span><strong>Carry-forward</strong><small>Keep unused days into the next year.</small></span>
-        </label>
-        @if (form.controls.carryForwardAllowed.value) {
-          <div class="ltfm-reveal ltfm-reveal--two">
-            <app-input
-              label="Maximum days"
-              type="number"
-              [value]="(form.controls.maxCarryForwardDays.value ?? '').toString()"
-              (valueChange)="form.controls.maxCarryForwardDays.setValue($event ? +$event : null)"
-            />
-            <app-input
-              label="Expiry (months)"
-              type="number"
-              [value]="(form.controls.carryForwardExpiryMonths.value ?? '').toString()"
-              (valueChange)="form.controls.carryForwardExpiryMonths.setValue($event ? +$event : null)"
-            />
-          </div>
-        }
-        <label class="ltfm-check">
-          <input type="checkbox" [formControl]="form.controls.proRataForNewJoiners" />
-          <span><strong>Pro-rate for new joiners</strong><small>First-year entitlement is proportional to start date.</small></span>
-        </label>
       </section>
+      </div>
+      </div>
 
       <footer class="ltfm-footer">
-        <app-button type="button" variant="secondary" [disabled]="loading" (click)="cancel.emit()">Cancel</app-button>
+        <app-button type="button" variant="secondary" [disabled]="loading" (click)="cancelled.emit()">Cancel</app-button>
         <app-button type="submit" [loading]="loading" [disabled]="loading">{{ isEdit ? 'Save changes' : 'Create leave type' }}</app-button>
       </footer>
     </form>

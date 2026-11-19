@@ -3,70 +3,98 @@
     <div class="pf-error-banner" role="alert">{{ saveError() }}</div>
   }
 
-  <section class="pf-section">
-    <h3 class="pf-section__title">Profile photo</h3>
-    <div class="pf-avatar-row">
-      <app-avatar
-        [avatarUrl]="avatarUrl()"
-        [userName]="displayName()"
-        [email]="personalInformation().email"
-        size="lg"
-      />
-      <label class="pf-upload-btn">
-        Change photo
-        <input type="file" accept="image/*" (change)="onAvatarFileSelected($event)" />
-      </label>
-    </div>
-  </section>
+  <div class="pif-columns">
+    <section class="pf-section pif-photo-section">
+      <h3 class="pf-section__title">Profile photo</h3>
+      <div class="pf-avatar-row">
+        <!-- The whole circle is the trigger: no photo yet opens the file picker, an existing photo
+             opens the Change photo popup. The pencil badge is decoration inside the same button. -->
+        <button
+          type="button"
+          class="pif-avatar-wrap"
+          [attr.aria-label]="avatarUrl() ? 'Change photo' : 'Add photo'"
+          [title]="avatarUrl() ? 'Change photo' : 'Add photo'"
+          (click)="onAvatarClick(photoInput)"
+        >
+          <app-avatar
+            class="pif-avatar"
+            [avatarUrl]="avatarUrl()"
+            [userName]="displayName()"
+            [email]="personalInformation().email"
+            size="xl"
+          />
+          <span class="pif-avatar-edit" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+            </svg>
+          </span>
+        </button>
+        <input #photoInput type="file" class="pif-photo-input" [accept]="photoAccept" tabindex="-1" aria-hidden="true" (change)="onAvatarFileSelected($event)" />
+      </div>
+    </section>
 
-  <section class="pf-section">
-    <h3 class="pf-section__title">Basic details</h3>
-    <div class="pf-field-grid pf-field-grid--2">
-      <app-input
-        label="First name"
-        [value]="form.controls.firstName.value"
-        (valueChange)="form.controls.firstName.setValue($event)"
-        (blurred)="form.controls.firstName.markAsTouched()"
-        [error]="form.controls.firstName.touched && form.controls.firstName.invalid ? 'First name is required.' : ''"
+    @if (photoDialogOpen()) {
+      <app-change-photo-dialog
+        [initialFile]="pickedPhoto()"
+        [existingUrl]="avatarUrl()"
+        fileName="avatar"
+        (saved)="onPhotoSaved($event)"
+        (removed)="onPhotoRemoved()"
+        (closed)="closePhotoDialog()"
       />
-      <app-input
-        label="Last name"
-        [value]="form.controls.lastName.value"
-        (valueChange)="form.controls.lastName.setValue($event)"
-        (blurred)="form.controls.lastName.markAsTouched()"
-        [error]="form.controls.lastName.touched && form.controls.lastName.invalid ? 'Last name is required.' : ''"
-      />
-      <app-input
-        label="Mobile number"
-        type="tel"
-        [value]="form.controls.phone.value"
-        (valueChange)="form.controls.phone.setValue($event)"
-        [error]="!isPhoneValid() ? 'Please enter a valid phone number.' : ''"
-      />
-      <app-date-picker
-        label="Date of birth"
-        placeholder="YYYY-MM-DD"
-        [value]="form.controls.dateOfBirth.value || ''"
-        (valueChange)="form.controls.dateOfBirth.setValue($event)"
-      />
-      <app-select
-        label="Gender"
-        placeholder="Prefer not to say"
-        [options]="genderOptions"
-        [value]="form.controls.gender.value"
-        (valueChange)="form.controls.gender.setValue($event)"
-      />
-      <app-select
-        label="Display timezone"
-        placeholder="Select a timezone"
-        [options]="timezoneOptions"
-        [value]="form.controls.displayTimezone.value"
-        (valueChange)="form.controls.displayTimezone.setValue($event)"
-      />
-    </div>
-  </section>
+    }
 
-  <div class="pf-actions">
+    <section class="pf-section">
+      <h3 class="pf-section__title">Basic details</h3>
+      <div class="pf-field-grid pf-field-grid--2">
+        <app-input
+          label="First name"
+          [value]="form.controls.firstName.value"
+          (valueChange)="form.controls.firstName.setValue($event)"
+          (blurred)="form.controls.firstName.markAsTouched()"
+          [error]="form.controls.firstName.touched && form.controls.firstName.invalid ? 'First name is required.' : ''"
+        />
+        <app-input
+          label="Last name"
+          [value]="form.controls.lastName.value"
+          (valueChange)="form.controls.lastName.setValue($event)"
+          (blurred)="form.controls.lastName.markAsTouched()"
+          [error]="form.controls.lastName.touched && form.controls.lastName.invalid ? 'Last name is required.' : ''"
+        />
+        <app-input
+          label="Mobile number"
+          type="tel"
+          [value]="form.controls.phone.value"
+          (valueChange)="form.controls.phone.setValue($event)"
+          [error]="!isPhoneValid() ? 'Please enter a valid phone number.' : ''"
+        />
+        <app-date-picker
+          label="Date of birth"
+          placeholder="YYYY-MM-DD"
+          [value]="form.controls.dateOfBirth.value || ''"
+          (valueChange)="form.controls.dateOfBirth.setValue($event)"
+        />
+        <app-select
+          label="Gender"
+          placeholder="Prefer not to say"
+          [options]="genderOptions"
+          [value]="form.controls.gender.value"
+          (valueChange)="form.controls.gender.setValue($event)"
+        />
+        <app-select
+          label="Display timezone"
+          placeholder="Select a timezone"
+          [options]="timezoneOptions"
+          [value]="form.controls.displayTimezone.value"
+          (valueChange)="form.controls.displayTimezone.setValue($event)"
+        />
+      </div>
+    </section>
+  </div>
+
+  <div class="preferences-footer">
+    <app-button variant="secondary" (pressed)="cancelled.emit()">Cancel</app-button>
     <app-button type="submit" [loading]="saving()" [disabled]="saving()">
       {{ saving() ? 'Saving…' : 'Save changes' }}
     </app-button>

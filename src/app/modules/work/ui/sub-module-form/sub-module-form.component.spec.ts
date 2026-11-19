@@ -62,7 +62,7 @@ describe('SubModuleFormComponent', () => {
       component.startDate.set('2026-10-05');
       component.endDate.set('2026-10-16');
       component.allocatedHours.set(500);
-      component.onMemberPicked('emp-1');
+      component.onMembersPicked(['emp-1']);
       fixture.detectChanges();
 
       expect(monitorApi.checkModule).not.toHaveBeenCalled();
@@ -99,13 +99,13 @@ describe('SubModuleFormComponent', () => {
     fixture.componentRef.setInput('parentObjectiveId', 'parent-1');
     fixture.detectChanges();
     const component = fixture.componentInstance as any;
-    component.title.set('New Module');
+    component.title.set('New Milestone');
     component.description.set('Details');
     component.startDate.set('2026-04-01');
     component.endDate.set('2026-05-01');
     component.allocatedHours.set(12);
-    component.onMemberPicked('emp-1');
-    component.onMemberPicked('emp-2');
+    component.onMembersPicked(['emp-1']);
+    component.onMembersPicked(['emp-2']);
     component.onSetOwner('emp-2');
     const created = vi.fn();
     component.created.subscribe(created);
@@ -114,7 +114,7 @@ describe('SubModuleFormComponent', () => {
 
     expect(created).toHaveBeenCalledWith({
       payload: {
-        parentObjectiveId: 'parent-1', title: 'New Module', description: 'Details',
+        parentObjectiveId: 'parent-1', title: 'New Milestone', description: 'Details',
         startDate: '2026-04-01', endDate: '2026-05-01', allocatedHours: 12,
         headEmployeeId: 'emp-2', memberInvitations: [{ employeeId: 'emp-1', type: 'member' }]
       },
@@ -135,7 +135,7 @@ describe('SubModuleFormComponent', () => {
     fixture.componentRef.setInput('parentObjectiveId', 'parent-1');
     fixture.detectChanges();
     const component = fixture.componentInstance as any;
-    component.title.set('New Module');
+    component.title.set('New Milestone');
     component.startDate.set('2026-04-01');
     component.endDate.set('2026-05-01');
     const file = new File(['content'], 'plan.pdf', { type: 'application/pdf' });
@@ -269,7 +269,7 @@ describe('SubModuleFormComponent', () => {
     fixture.componentRef.setInput('initialValue', detail);
     fixture.detectChanges();
     const component = fixture.componentInstance as any;
-    component.title.set('Updated Module');
+    component.title.set('Updated Milestone');
     const saved = vi.fn();
     component.saved.subscribe(saved);
 
@@ -278,7 +278,7 @@ describe('SubModuleFormComponent', () => {
     expect(component.description()).toBe('Scope design');
     expect(saved).toHaveBeenCalledWith({
       fields: {
-        title: 'Updated Module', description: 'Scope design',
+        title: 'Updated Milestone', description: 'Scope design',
         startDate: '2026-01-01', endDate: '2026-03-01', allocatedHours: 20
       },
       achievedChanged: false,
@@ -293,7 +293,7 @@ describe('SubModuleFormComponent', () => {
     const achieved = fixture.nativeElement.querySelector('[data-testid="achieved-field"] input') as HTMLInputElement;
 
     expect(achieved.disabled).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Default Module follows');
+    expect(fixture.nativeElement.textContent).toContain('Default Milestone follows');
   });
 
   it('blocks invalid create values and shows field errors', () => {

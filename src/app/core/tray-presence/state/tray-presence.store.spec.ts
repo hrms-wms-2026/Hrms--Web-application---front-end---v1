@@ -53,7 +53,7 @@ describe('TrayPresenceStore', () => {
     return TestBed.inject(TrayPresenceStore);
   }
 
-  function setup(statuses: Array<TrayPresenceResponse | Error> = []) {
+  function setup(statuses: (TrayPresenceResponse | Error)[] = []) {
     const getStatus = vi.fn();
     for (const status of statuses) {
       getStatus.mockReturnValueOnce(
@@ -242,5 +242,23 @@ describe('TrayPresenceStore', () => {
     store.retry();
     await vi.waitFor(() => expect(generateActivationCode).toHaveBeenCalledTimes(2));
     await vi.waitFor(() => expect(store.code()).toBe('BCDF2345'));
+  });
+
+  it('replaces a still-valid code with a new one when regenerate is requested', async () => {
+    const generateActivationCode = vi.fn()
+      .mockReturnValueOnce(of({ code: 'BCDF2345', expires_in_seconds: 600 }))
+      .mockReturnValueOnce(of({ code: 'GHJK6789', expires_in_seconds: 600 }));
+    const store = createStore(vi.fn().mockReturnValue(of(disconnected)), generateActivationCode);
+
+    store.start();
+    await vi.waitFor(() => expect(store.phase()).toBe('needs-code'));
+    await store.generateCode();
+    expect(store.code()).toBe('BCDF2345');
+
+    await store.regenerateCode();
+
+    expect(generateActivationCode).toHaveBeenCalledTimes(2);
+    expect(store.code()).toBe('GHJK6789');
+    expect(store.phase()).toBe('waiting');
   });
 });

@@ -5,6 +5,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CompanyLogoTileComponent } from '../../../../shared/ui/company-logo-tile/company-logo-tile.component';
+import { ChangePhotoDialogComponent, PHOTO_ACCEPT } from '../../../../shared/ui/change-photo-dialog/change-photo-dialog.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
@@ -23,7 +24,6 @@ import {
   FINANCIAL_YEAR_MONTH_OPTIONS,
   FIRST_DAY_OF_WEEK_OPTIONS,
   normalizeCountryCode,
-  STATUS_OPTIONS,
   TIME_FORMAT_OPTIONS,
   TIMEZONE_OPTIONS,
   WEEKDAY_OPTIONS
@@ -39,8 +39,9 @@ import { computeWorkDayHours, isOvernightWorkWindow } from '../../utils/work-day
 
 /**
  * Settings -> General Settings page for the currently selected Legal Entity.
- * GET/PUT api/v1/org/legal-entities/{id}/general-settings, both legal_entity:update
- * (LegalEntitiesController.cs:39-48/72-107). Route-level permissionGuard
+ * GET api/v1/org/legal-entities/{id}/general-settings needs legal_entity:read or
+ * legal_entity:update; PUT and logo changes need legal_entity:update
+ * (LegalEntitiesController.cs). Route-level permissionGuard
  * already blocks unauthorized navigation (app.routes.ts); the hasAccess()
  * check here is defense for direct/embedded use of this component.
  */
@@ -52,6 +53,7 @@ import { computeWorkDayHours, isOvernightWorkWindow } from '../../utils/work-day
     BreadcrumbHeaderComponent,
     ButtonComponent,
     CompanyLogoTileComponent,
+    ChangePhotoDialogComponent,
     EmptyStateComponent,
     ErrorStateComponent,
     InputComponent,
@@ -76,21 +78,26 @@ export class GeneralSettingsComponent {
   readonly FIRST_DAY_OF_WEEK_OPTIONS = FIRST_DAY_OF_WEEK_OPTIONS;
   readonly FINANCIAL_YEAR_MONTH_OPTIONS = FINANCIAL_YEAR_MONTH_OPTIONS;
   readonly TIME_FORMAT_OPTIONS = TIME_FORMAT_OPTIONS;
-  readonly STATUS_OPTIONS = STATUS_OPTIONS;
   readonly DATE_FORMAT_OPTIONS = DATE_FORMAT_OPTIONS;
   readonly DEFAULT_LANGUAGE_OPTIONS = DEFAULT_LANGUAGE_OPTIONS;
   readonly COUNTRY_CODE_OPTIONS = COUNTRY_CODE_OPTIONS;
   readonly CURRENCY_CODE_OPTIONS = CURRENCY_CODE_OPTIONS;
   readonly TIMEZONE_OPTIONS = TIMEZONE_OPTIONS;
 
-  readonly hasAccess = computed(() => this.permissionService.hasPermission('legal_entity:update'));
+  readonly hasAccess = computed(() =>
+    this.permissionService.hasAnyPermission(['legal_entity:read', 'legal_entity:update'])
+  );
+  /** legal_entity:read alone opens the page read-only; saving and logo changes need update. */
+  readonly canEdit = computed(() => this.permissionService.hasPermission('legal_entity:update'));
   readonly selectedLegalEntity = this.legalEntityStore.selectedLegalEntity;
   readonly submitting = signal(false);
   readonly uploadingLogo = this.settingsStore.uploadingLogo;
   readonly removingLogo = this.settingsStore.removingLogo;
+  readonly logoBusy = computed(() => this.uploadingLogo() || this.removingLogo());
 
-  private static readonly ALLOWED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-  private static readonly MAX_LOGO_BYTES = 5 * 1024 * 1024;
+  readonly logoAccept = PHOTO_ACCEPT;
+  readonly logoDialogOpen = signal(false);
+  readonly pickedLogo = signal<File | null>(null);
 
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(200)]],
@@ -197,8 +204,16 @@ export class GeneralSettingsComponent {
     return isOvernightWorkWindow(start, end);
   }
 
+  /** The Status pill flips between Active and Inactive; saved with the rest of the form. */
+  toggleStatus(): void {
+    const control = this.form.controls.status;
+    control.setValue(control.value === 'active' ? 'inactive' : 'active');
+    control.markAsDirty();
+  }
+
   async onSubmit(): Promise<void> {
     const company = this.selectedLegalEntity();
+    if (!this.canEdit()) return;
     if (!company || this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
       return;
@@ -233,25 +248,40 @@ export class GeneralSettingsComponent {
     return this.legalEntityApi.getLogoUrl(company.id, logoFileId);
   }
 
-  async onLogoFileSelected(event: Event): Promise<void> {
+  /** No logo yet opens the file picker; an existing logo opens the Change logo popup. */
+  onLogoClick(logoInput: HTMLInputElement): void {
+    if (!this.canEdit() || this.logoBusy()) {
+      return;
+    }
+    if (this.logoUrl()) {
+      this.pickedLogo.set(null);
+      this.logoDialogOpen.set(true);
+    } else {
+      logoInput.click();
+    }
+  }
+
+  /** A freshly picked image opens the Change logo popup so it can be framed before saving. */
+  onLogoFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (!file) {
+    if (!file || !this.canEdit()) {
       return;
     }
+    this.pickedLogo.set(file);
+    this.logoDialogOpen.set(true);
+  }
 
-    if (!GeneralSettingsComponent.ALLOWED_LOGO_TYPES.includes(file.type)) {
-      this.notificationService.error('Logo must be a PNG, JPG, or WebP image.');
-      return;
-    }
-    if (file.size > GeneralSettingsComponent.MAX_LOGO_BYTES) {
-      this.notificationService.error('Logo must be 5 MB or smaller.');
-      return;
-    }
+  closeLogoDialog(): void {
+    this.logoDialogOpen.set(false);
+    this.pickedLogo.set(null);
+  }
 
+  async onLogoSaved(file: File): Promise<void> {
+    this.closeLogoDialog();
     const company = this.selectedLegalEntity();
-    if (!company) {
+    if (!company || !this.canEdit()) {
       return;
     }
 
@@ -263,9 +293,14 @@ export class GeneralSettingsComponent {
     }
   }
 
+  async onLogoRemoved(): Promise<void> {
+    this.closeLogoDialog();
+    await this.onRemoveLogo();
+  }
+
   async onRemoveLogo(): Promise<void> {
     const company = this.selectedLegalEntity();
-    if (!company) {
+    if (!company || !this.canEdit()) {
       return;
     }
 

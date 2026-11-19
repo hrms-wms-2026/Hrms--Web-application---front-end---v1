@@ -1,75 +1,82 @@
-.nlw-body { display: flex; flex-direction: column; gap: 0.85rem; min-width: 340px; }
-.nlw-step {
-  margin: 0;
-  color: var(--color-accent);
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.nlw-field { display: flex; flex-direction: column; gap: 0.3rem; color: var(--color-text-secondary); font-size: 0.8rem; }
-.nlw-field select, .nlw-field textarea {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.5rem 0.65rem;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font: inherit;
-}
-.nlw-field select:focus, .nlw-field textarea:focus { outline: 2px solid var(--color-focus-ring); border-color: var(--color-accent); }
-.nlw-zero-balance { color: var(--color-text-secondary); }
+.nlw-body { display: flex; flex-direction: column; gap: 0.875rem; min-width: 340px; }
+.nlw-field { position: relative; display: flex; flex-direction: column; gap: 0.375rem; }
+/* Short reason box; it still grows with the resize handle. */
+.nlw-field ::ng-deep .ui-field--multiline { min-height: 4rem; }
+.nlw-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.875rem 1rem; }
+
 .nlw-picker-trigger {
+  height: var(--field-height);
   text-align: left;
   border: 1px dashed var(--color-border);
-  border-radius: 8px;
-  padding: 0.55rem 0.7rem;
+  border-radius: var(--field-radius);
+  padding: 0 0.875rem;
   background: var(--color-surface-secondary);
   color: var(--color-text-primary);
-  font-size: 0.82rem;
+  font-size: var(--field-font-size);
   cursor: pointer;
 }
-.nlw-muted { color: var(--color-text-secondary); font-size: 0.8rem; }
-.nlw-total { color: var(--color-text-primary); font-size: 0.9rem; }
+.nlw-muted { margin: 0; color: var(--color-text-secondary); font-size: 0.8rem; }
+/* Counter sits on the label row, so it costs no extra height. */
+.nlw-counter { position: absolute; top: 0; right: 0; color: var(--color-text-secondary); font-size: 0.75rem; }
+
 .nlw-warning {
-  margin: 0;
-  border-radius: 8px;
-  padding: 0.5rem 0.65rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
   background: var(--color-warning-subtle);
   color: var(--color-warning-text);
-  font-size: 0.8rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
-.nlw-error { color: var(--color-danger); font-size: 0.8rem; }
+.nlw-warning svg { flex: none; width: 20px; height: 20px; color: var(--color-warning); }
+.nlw-warning p { margin: 0; }
+
+.nlw-error { margin: 0; color: var(--color-danger); font-size: 0.8rem; }
 .nlw-file { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0; color: var(--color-text-primary); font-size: 0.8rem; }
+.nlw-optional { margin-left: 0.25rem; color: var(--color-text-secondary); font-weight: 400; }
+.nlw-upload { display: flex; align-items: center; gap: 0.5rem; height: var(--field-height); padding: 0 0.875rem; border: 1px dashed var(--color-border); border-radius: var(--field-radius); background: var(--color-surface-secondary); color: var(--color-text-primary); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.nlw-upload:disabled { opacity: 0.6; cursor: default; }
+.nlw-upload:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.nlw-upload svg { flex: none; width: 1rem; height: 1rem; color: var(--color-text-secondary); }
+.nlw-upload small { margin-left: auto; color: var(--color-text-secondary); font-size: 0.72rem; font-weight: 400; }
 .nlw-conflicts { color: var(--color-text-secondary); font-size: 0.8rem; }
-.nlw-review {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.35rem 0.8rem;
-  padding: 0.8rem;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface-secondary);
-  font-size: 0.84rem;
+
+.nlw-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--color-border);
 }
-.nlw-review span { color: var(--color-text-secondary); }
-.nlw-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.4rem; }
-.nlw-primary {
-  border: 0;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  background: var(--color-accent);
-  color: var(--color-accent-contrast);
-  font-size: 0.82rem;
-  font-weight: 650;
-  cursor: pointer;
+
+@media (max-width: 480px) {
+  .nlw-body { min-width: 0; }
+  .nlw-row { grid-template-columns: 1fr; }
 }
-.nlw-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.nlw-secondary {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  background: transparent;
-  color: var(--color-text-primary);
-  font-size: 0.82rem;
-  cursor: pointer;
+
+/* Type chips, duration segments and the hours summary (2026-10-29 redesign). */
+.nlw-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.nlw-chip { display: inline-flex; align-items: center; gap: 0.45rem; height: 2.5rem; padding: 0 0.85rem 0 0.4rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+.nlw-chip__icon { --lti-size: 1.75rem; }
+.nlw-chip--active { border-color: var(--color-accent); background: var(--color-accent-subtle, color-mix(in srgb, var(--color-accent) 10%, transparent)); color: var(--color-accent); }
+.nlw-more-types { min-width: 9rem; flex: 1; }
+.nlw-segments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.nlw-segments--sub { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nlw-segment { height: 2.4rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.nlw-segments--sub .nlw-segment { height: 2.1rem; font-size: 0.75rem; }
+.nlw-segment--active { border-color: var(--color-accent); background: var(--color-accent-subtle, color-mix(in srgb, var(--color-accent) 10%, transparent)); color: var(--color-accent); }
+.nlw-chip:focus-visible, .nlw-segment:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.nlw-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.nlw-summary > div { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.7rem 0.9rem; border-radius: 10px; background: var(--color-surface-secondary); }
+.nlw-summary span { color: var(--color-text-secondary); font-size: 0.75rem; }
+.nlw-summary strong { color: var(--color-text-primary); font-size: 1.05rem; font-weight: 700; }
+.nlw-summary small { color: var(--color-text-secondary); font-size: 0.72rem; }
+.nlw-negative { color: var(--color-danger) !important; }
+.nlw-info { display: flex; align-items: center; gap: 0.6rem; margin: 0; padding: 0.65rem 0.9rem; border-radius: 10px; background: color-mix(in srgb, var(--color-accent) 8%, transparent); color: var(--color-accent); font-size: 0.78rem; }
+.nlw-info svg { flex: none; width: 1.1rem; height: 1.1rem; }
+
+@media (max-width: 480px) {
+  .nlw-segments, .nlw-segments--sub, .nlw-summary { grid-template-columns: 1fr; }
 }

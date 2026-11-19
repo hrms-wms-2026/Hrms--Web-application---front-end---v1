@@ -18,6 +18,8 @@ export interface EmployeeListAttendanceSummaryResponse {
   readonly attentionSeverity?: string | null;
   readonly attentionLabel?: string | null;
   readonly breakUsedMinutes?: number;
+  /** Open attendance alerts awaiting review (Inbox), for the "N open alerts" chip. */
+  readonly openAlertCount?: number;
   readonly breakAllowanceMinutes?: number | null;
   readonly breakOverageMinutes?: number;
   readonly isOverBreakAllowance?: boolean;
@@ -44,6 +46,10 @@ export interface EmployeeListItemResponse {
   readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
   readonly workModeLabel?: string | null;
   readonly avatarFileId?: string | null;
+  /** Position/manager come from a reserved (planned) seat of a still-pending invite. */
+  readonly positionPending?: boolean;
+  /** Their tray app is connected right now. */
+  readonly isOnline?: boolean;
 }
 
 /**
@@ -146,6 +152,10 @@ export interface EmployeeDetailResponse {
   readonly invitationExpiresAt: string | null;
   readonly trayAppAccessEnabled: boolean;
   readonly attendanceSummary?: EmployeeListAttendanceSummaryResponse | null;
+  /** Their tray app is connected right now. */
+  readonly isOnline?: boolean;
+  /** You added this employee, or hold users:manage, and their invitation is still open. */
+  readonly canManageInvitation?: boolean;
 }
 
 export interface EmployeeDetailJobInformation {
@@ -164,6 +174,10 @@ export interface EmployeeDetailJobInformation {
   readonly workModeLabel: string | null;
   readonly employmentTypeCode: string;
   readonly workModeId: string | null;
+  /** Absent on an API built before the field was added. */
+  readonly reportingManagerId?: string | null;
+  /** Position reserved by a still-pending onboarding invite; becomes positionName once accepted. */
+  readonly pendingPositionName?: string | null;
 }
 
 export interface EmployeeDetailPersonalInformation {
@@ -198,6 +212,15 @@ export interface EmployeeDetailPayroll {
   readonly bankName: string | null;
   readonly maskedAccountNumber: string | null;
   readonly accountType: string | null;
+}
+
+export interface EmployeeBankDetailsRevealResponse {
+  readonly bankName: string;
+  readonly branchName: string;
+  readonly accountHolderName: string;
+  readonly accountNumber: string;
+  readonly accountType: string;
+  readonly routingNumber: string | null;
 }
 
 export interface ChangePositionPayload {

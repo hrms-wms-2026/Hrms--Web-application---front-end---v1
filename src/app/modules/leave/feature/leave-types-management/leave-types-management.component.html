@@ -1,46 +1,36 @@
 <section class="to-page">
   <header class="to-header">
-    <div>
-      <p class="to-kicker">TIME OFF</p>
-      <h1 class="to-title">Leave Types</h1>
-      <p class="to-subtitle">Categories employees can request, with default rules.</p>
-    </div>
+    <app-breadcrumb-header class="to-breadcrumb" parentLabel="Settings" middleLabel="Time Off" currentLabel="Leave Types" icon="settings" />
+    <h1 class="to-sr-only">Leave Types</h1>
     <div class="to-header-actions">
       @if (hasManageAccess()) {
         <app-button (click)="openCreateModal()">+ New leave type</app-button>
       }
     </div>
   </header>
-  <div class="to-toolbar">
-    <label class="to-filter">
-      <input type="checkbox" [checked]="store.includeInactive()" (change)="store.setIncludeInactive($any($event.target).checked)" />
-      Show inactive
-    </label>
-  </div>
+  <app-time-off-settings-tabs />
+  @if (!store.loading() && !store.loadError() && store.items().length > 0) {
+    <app-kpi-tiles ariaLabel="Leave type totals" [tiles]="typeKpiTiles()" />
+  }
   @if (store.loading()) {
-    <div class="to-loading" aria-busy="true"><span></span><span></span><span></span></div>
+    <div class="to-loading"><app-loader /></div>
   } @else if (store.loadError()) {
     <app-error-state [message]="store.loadError()!" [retryable]="true" (retry)="store.load()" />
   } @else if (store.items().length === 0) {
     <div class="to-empty">
-      <app-empty-state title="No leave types yet" description="Create the first category so employees can request time off.">
+      <app-empty-state title="No leave types yet" description="Create the first kind of leave, then give it a policy so employees can request it.">
         @if (hasManageAccess()) {
           <app-button (click)="openCreateModal()">+ New leave type</app-button>
         }
       </app-empty-state>
     </div>
   } @else {
-    <section class="to-metrics" aria-label="Leave type totals">
-      <article class="to-metric"><p class="to-metric__label">Types</p><p class="to-metric__value">{{ typeSummary().total }}</p></article>
-      <article class="to-metric"><p class="to-metric__label">Active</p><p class="to-metric__value">{{ typeSummary().active }}</p></article>
-      <article class="to-metric"><p class="to-metric__label">Paid</p><p class="to-metric__value">{{ typeSummary().paid }}</p></article>
-    </section>
     <div class="to-table-card">
-      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" />
+      <app-leave-type-list-table [leaveTypes]="store.items()" [canManage]="hasManageAccess()" (editLeaveType)="openEditModal($event)" (deactivateLeaveType)="onDeactivateRequest($event)" (viewPolicies)="viewPolicies($event)" (addPolicy)="addPolicy($event)" />
     </div>
   }
 </section>
-@if (formModalOpen()) { <app-leave-type-form-modal [leaveType]="editingType()" [loading]="store.saving()" (save)="onSave($event)" (cancel)="closeFormModal()" /> }
+@if (formModalOpen()) { <app-leave-type-form-modal [leaveType]="editingType()" [loading]="store.saving()" (save)="onSave($event)" (cancelled)="closeFormModal()" /> }
 <app-modal [open]="pendingDeactivateType() !== null" [title]="'Deactivate ' + (pendingDeactivateType()?.name ?? '') + '?'" (closed)="cancelDeactivate()">
   <p>Pending requests that use this type will be cancelled.</p>
   <div class="to-modal-actions">

@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, output, signal } from '@angular/co
 import { WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
 import { AchievedFilter } from '../../state/project-list.store';
-import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../task-filter-bar/task-filter-bar.component';
+import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 
 const STATUS_OPTIONS: readonly WorkDropdownOption[] = [
   { value: 'all', label: 'All statuses' },
@@ -13,9 +13,9 @@ const STATUS_OPTIONS: readonly WorkDropdownOption[] = [
 @Component({
   selector: 'app-project-filter-bar',
   standalone: true,
-  imports: [TaskFilterBarComponent],
+  imports: [FilterBarComponent],
   template: `
-    <app-task-filter-bar
+    <app-filter-bar
       [fields]="filterFields()"
       [values]="filterValues()"
       (fieldChanged)="onFieldChanged($event)"
@@ -30,7 +30,7 @@ export class ProjectFilterBarComponent implements OnInit {
     this.categoryStore.categories().map((category) => ({ value: category.id, label: category.name }))
   );
 
-  readonly filterFields = computed<TaskFilterFieldConfig[]>(() => [
+  readonly filterFields = computed<FilterFieldConfig[]>(() => [
     { key: 'category', label: 'Category', icon: 'category', kind: 'multi', options: this.categoryOptions() },
     { key: 'status', label: 'Status', icon: 'status', kind: 'single', options: this.statusOptions, defaultValues: ['all'] }
   ]);

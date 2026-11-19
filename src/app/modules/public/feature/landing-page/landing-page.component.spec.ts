@@ -45,10 +45,10 @@ describe('LandingPageComponent', () => {
     expect(cards.length).toBe(5);
   });
 
-  it('renders ONEXSO branding and no legacy OneVo branding', async () => {
+  it('renders CROWNUS branding and no legacy OneVo branding', async () => {
     const fixture = await createComponent();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text).toContain('ONEXSO');
+    expect(text).toContain('CROWNUS');
     expect(text).not.toContain('OneVo');
     expect(text).not.toContain('OneVo Workspace');
   });

@@ -1,3 +1,6 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { By } from '@angular/platform-browser';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -11,6 +14,8 @@ import { TaskBoardStore } from '../../state/task-board.store';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { WorkApprovalsApiService } from '../../data-access/work-approvals-api.service';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
+import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
+import { FileApiService } from '../../../../shared/data-access/file-api.service';
 
 describe('MilestoneTreeTabComponent', () => {
   let fixture: ComponentFixture<MilestoneTreeTabComponent>;
@@ -33,7 +38,7 @@ describe('MilestoneTreeTabComponent', () => {
   };
 
   const inactiveSibling: MilestoneTreeNode = {
-    id: 'o4', title: 'Retired Module', description: null, startDate: '2026-02-01', endDate: '2026-03-01',
+    id: 'o4', title: 'Retired Milestone', description: null, startDate: '2026-02-01', endDate: '2026-03-01',
     progress: 100, allocatedHours: 6, completedHours: 6, isActive: false, isAchieved: false,
     ownerName: 'Sam', isOwner: true, children: []
   };
@@ -77,16 +82,35 @@ describe('MilestoneTreeTabComponent', () => {
         { provide: TaskApiService, useValue: { getStatuses: vi.fn().mockReturnValue(of([])), getCategories: vi.fn().mockReturnValue(of([])) } },
         { provide: WorkApprovalsApiService, useValue: approvalsApiStub },
         { provide: EmployeeDirectoryStore, useValue: directoryStub },
-        { provide: Router, useValue: routerStub }
+        { provide: FileApiService, useValue: { getFileUrl: (fileId: string) => `/cached/${fileId}` } },
+        { provide: Router, useValue: routerStub },
+        provideHttpClient(),
+        provideHttpClientTesting()
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(MilestoneTreeTabComponent);
   }
 
+  function renderToolbar() {
+    const template = TestBed.inject(WorkPageToolbarStore).template();
+    expect(template).not.toBeNull();
+    const view = template!.createEmbeddedView(null);
+    view.detectChanges();
+    const host = document.createElement('div');
+    view.rootNodes.forEach((node) => host.appendChild(node));
+    return { host, view };
+  }
+
   beforeEach(() => {
     storeStub = {
-      project: () => ({ id: 'p1' }),
+      project: () => ({
+        id: 'p1',
+        members: [
+          { userId: 'e1', displayName: 'Arun Kumar', avatarFileId: 'avatar-1' },
+          { userId: 'e2', displayName: 'Diya', avatarFileId: null }
+        ]
+      }),
       selectedSubtree: () => tree,
       subtreeLoading: () => false,
       subtreeError: () => null,
@@ -133,6 +157,100 @@ describe('MilestoneTreeTabComponent', () => {
     expect(directoryStub.ensureLoaded).toHaveBeenCalledWith(['e1', 'e2']);
   });
 
+  it('registers collapsed search before the cached-avatar member filter and the remaining Tree actions', async () => {
+    setup('o1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="tree-search"]')).toBeNull();
+    const toolbar = renderToolbar();
+    const searchToggle = toolbar.host.querySelector('[data-testid="tree-search-toggle"]') as HTMLButtonElement;
+    const memberFilter = toolbar.host.querySelector('app-task-assignee-avatar-filter') as HTMLElement;
+    expect(searchToggle).not.toBeNull();
+    expect(toolbar.host.querySelector('[data-testid="tree-search"]')).toBeNull();
+    expect(memberFilter).not.toBeNull();
+    expect(searchToggle.compareDocumentPosition(memberFilter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(memberFilter.querySelector('img')?.getAttribute('src')).toBe('/cached/avatar-1');
+    expect(toolbar.host.querySelector('app-filter-bar')).not.toBeNull();
+    expect(toolbar.host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
+
+    (memberFilter.querySelector('.taaf__avatar') as HTMLButtonElement).click();
+    expect(fixture.componentInstance.ownerFilter()).toEqual(['e1']);
+
+    searchToggle.click();
+    toolbar.view.detectChanges();
+    expect(toolbar.host.querySelector('[data-testid="tree-search"] input')).not.toBeNull();
+
+    const createButton = Array.from(toolbar.host.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === 'Create milestone') as HTMLButtonElement;
+    expect(createButton).toBeTruthy();
+    createButton.click();
+    expect(fixture.componentInstance.createModalOpen()).toBe(true);
+    expect(fixture.componentInstance.createModalParentId()).toBe('o1');
+    toolbar.view.destroy();
+  });
+
+  it("loads this project's meetings for the board/tree window and hands them to the tree by module", () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    const req = http.expectOne((r) => r.url.endsWith('/meetings') && r.params.get('projectId') === 'p1');
+    req.flush([{
+      taskId: 'm1', shortId: 'P-M1', seriesId: 's1', originalStart: '2026-11-02T03:30:00Z', startAt: '2026-11-02T03:30:00Z',
+      endAt: '2026-11-02T04:00:00Z', isAllDay: false, title: 'Standup', status: 'scheduled', isPrivate: false,
+      projectId: 'p1', objectiveId: 'o1', myRole: 'attendee', myResponse: 'accepted'
+    }]);
+    fixture.detectChanges();
+
+    const root = fixture.debugElement.query(By.css('app-milestone-tree-node'));
+    expect(root.componentInstance.meetingsByModule().get('o1')?.map((m: { taskId: string }) => m.taskId)).toEqual(['m1']);
+  });
+
+  it('leaves cancelled meetings out of the tree and takes the status from the clock', () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    const base = {
+      shortId: 'P-M1', seriesId: 's1', originalStart: '2000-01-01T09:00:00Z', startAt: '2000-01-01T09:00:00Z',
+      endAt: '2000-01-01T10:00:00Z', isAllDay: false, title: 'Standup', isPrivate: false,
+      projectId: 'p1', objectiveId: 'o1', myRole: 'attendee', myResponse: 'accepted'
+    };
+    http.expectOne((r) => r.url.endsWith('/meetings')).flush([
+      { ...base, taskId: 'past', status: 'scheduled' },
+      { ...base, taskId: 'gone', status: 'cancelled' }
+    ]);
+    fixture.detectChanges();
+
+    const root = fixture.debugElement.query(By.css('app-milestone-tree-node'));
+    expect(root.componentInstance.meetingsByModule().get('o1')?.map((m: { taskId: string; status: string }) => [m.taskId, m.status]))
+      .toEqual([['past', 'completed']]);
+  });
+
+  it('has no New meeting in the toolbar: a meeting is made from the work item form, category "meeting"', () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    const toolbar = renderToolbar();
+    const button = Array.from(toolbar.host.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'New meeting');
+    expect(button).toBeUndefined();
+    expect(fixture.debugElement.query(By.css('app-task-form-modal')).componentInstance.allowMeeting()).toBe(true);
+    toolbar.view.destroy();
+  });
+
+  it('does not show Create module in the toolbar when the root module is not owned', () => {
+    storeStub.selectedSubtree = () => ({ ...tree, isOwner: false });
+    setup('o1');
+    fixture.detectChanges();
+
+    const toolbar = renderToolbar();
+    const createButton = Array.from(toolbar.host.querySelectorAll('button'))
+      .find((button) => button.textContent?.trim() === 'Create milestone');
+    expect(createButton).toBeUndefined();
+    toolbar.view.destroy();
+  });
+
   it('keeps sibling branches visible and highlights the routed node when a member lands on their own non-root module', async () => {
     setup('o2');
     fixture.detectChanges();
@@ -166,10 +284,12 @@ describe('MilestoneTreeTabComponent', () => {
     it('replaces the old prune dropdowns with the highlight filter bar and an expand-all toggle', () => {
       setup('o1');
       fixture.detectChanges();
+      const toolbar = renderToolbar();
       expect(fixture.nativeElement.querySelector('[data-testid="module-filter-dropdown"]')).toBeNull();
       expect(fixture.nativeElement.querySelector('[data-testid="module-activity-filter-dropdown"]')).toBeNull();
-      expect(fixture.nativeElement.querySelector('app-task-filter-bar')).not.toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
+      expect(toolbar.host.querySelector('app-filter-bar')).not.toBeNull();
+      expect(toolbar.host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
+      toolbar.view.destroy();
     });
 
     it('offers every approved highlight field', () => {
@@ -187,8 +307,8 @@ describe('MilestoneTreeTabComponent', () => {
       fixture.componentInstance.onFilterFieldChanged({ key: 'activeStatus', values: ['inactive'] });
       fixture.detectChanges();
 
-      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Retired Module']));
-      expect(highlightedTitles()).toEqual(['Retired Module']);
+      expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Retired Milestone']));
+      expect(highlightedTitles()).toEqual(['Retired Milestone']);
       expect(fixture.nativeElement.querySelector('[data-testid="highlight-match-count"]').textContent.trim()).toBe('1 match');
     });
 
@@ -216,7 +336,10 @@ describe('MilestoneTreeTabComponent', () => {
       storeStub.selectedSubtree = () => deepTree;
       setup('o1');
       fixture.detectChanges();
-      const input = fixture.nativeElement.querySelector('[data-testid="tree-search"] input') as HTMLInputElement;
+      const toolbar = renderToolbar();
+      (toolbar.host.querySelector('[data-testid="tree-search-toggle"]') as HTMLButtonElement).click();
+      toolbar.view.detectChanges();
+      const input = toolbar.host.querySelector('[data-testid="tree-search"] input') as HTMLInputElement;
       expect(input.type).toBe('search');
 
       storeStub.loadSprintsAndTasksForLeaf.mockClear();
@@ -227,6 +350,7 @@ describe('MilestoneTreeTabComponent', () => {
       expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child', 'Other', 'Grandchild']));
       expect(highlightedTitles()).toEqual(['Grandchild']);
       expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalled();
+      toolbar.view.destroy();
     });
 
     it('uses a border glow on hover instead of the gray background, tinted with the highlight color on matches', () => {
@@ -245,7 +369,7 @@ describe('MilestoneTreeTabComponent', () => {
     it('labels the first column "Module"', () => {
       setup('o1');
       fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).toContain('Module');
+      expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).toContain('Milestone');
       expect(fixture.nativeElement.querySelector('[data-testid="tree-column-header"]').textContent).not.toContain('Work item');
     });
 
@@ -300,30 +424,34 @@ describe('MilestoneTreeTabComponent', () => {
       setup('o1');
       fixture.detectChanges();
       storeStub.loadSprintsAndTasksForLeaf.mockClear();
-      const toggle = () => fixture.nativeElement.querySelector('[data-testid="expand-all-toggle"]') as HTMLButtonElement;
+      const toolbar = renderToolbar();
+      const toggle = () => toolbar.host.querySelector('[data-testid="expand-all-toggle"]') as HTMLButtonElement;
       expect(toggle().textContent).toContain('Expand all');
 
       toggle().click();
       fixture.detectChanges();
+      toolbar.view.detectChanges();
       expect(titles()).toContain('Grandchild');
       expect(storeStub.loadSprintsAndTasksForLeaf).toHaveBeenCalled();
       expect(toggle().textContent).toContain('Collapse all');
 
       toggle().click();
       fixture.detectChanges();
+      toolbar.view.detectChanges();
       // The root stays open so the first level remains visible.
       expect(titles()).not.toContain('Grandchild');
       expect(titles()).toEqual(expect.arrayContaining(['Root', 'Child']));
+      toolbar.view.destroy();
     });
   });
 
   it('always shows achieved modules in the tree', () => {
-    const achieved: MilestoneTreeNode = { ...sibling, id: 'o5', title: 'Shipped Module', isAchieved: true };
+    const achieved: MilestoneTreeNode = { ...sibling, id: 'o5', title: 'Shipped Milestone', isAchieved: true };
     storeStub.selectedSubtree = () => ({ ...tree, children: [child, achieved] });
     setup('o1');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Shipped Module');
+    expect(fixture.nativeElement.textContent).toContain('Shipped Milestone');
   });
 
   it('renders the root tree node', () => {
@@ -374,6 +502,24 @@ describe('MilestoneTreeTabComponent', () => {
 
     expect(fixture.componentInstance.createModalOpen()).toBe(true);
     expect(fixture.componentInstance.createModalParentId()).toBe('o1');
+  });
+
+  it('"Request more hours" in the panel opens the allocation request for that module; sending it reloads the tree', async () => {
+    setup('o1');
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="panel-request-hours"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.allocationNode()?.id).toBe('o1');
+    expect(fixture.nativeElement.querySelector('[data-testid="allocation-request-modal"]')).not.toBeNull();
+
+    const loadsBefore = storeStub.loadProjectTree.mock.calls.length;
+    await fixture.componentInstance.onAllocationSubmitted();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.allocationNode()).toBeNull();
+    expect(storeStub.loadProjectTree.mock.calls.length).toBe(loadsBefore + 1);
   });
 
   it('reloads the tree and closes the modal after a successful create', async () => {
@@ -430,7 +576,7 @@ describe('MilestoneTreeTabComponent', () => {
     const banner = fixture.nativeElement.querySelector('[data-testid="create-asset-warning"]') as HTMLElement;
     expect(banner).toBeTruthy();
     expect(banner.textContent).toContain(
-      '"Design Phase" was created, but 1 file(s) failed to upload — open Module settings on it to retry.'
+      '"Design Phase" was created, but 1 file(s) failed to upload — open Milestone settings on it to retry.'
     );
   });
 
@@ -487,12 +633,13 @@ describe('MilestoneTreeTabComponent', () => {
     expect((fixture.componentInstance.settingsInitialValue() as any)?.description).toBe('Full scope');
   });
 
-  it('shows a pending-approval notice when an edit is submitted for approval', async () => {
+  it('shows a "Request submitted." toast when an edit is submitted for approval', async () => {
     setup('o1');
     fixture.detectChanges();
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     (rows[0] as HTMLElement).click();
     fixture.detectChanges();
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
 
     await fixture.componentInstance.onSettingsSaved({
       fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
@@ -501,17 +648,17 @@ describe('MilestoneTreeTabComponent', () => {
     });
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.editPendingNotice()).toContain('pending approval');
-    expect(fixture.nativeElement.querySelector('[data-testid="edit-pending-notice"]')).not.toBeNull();
+    expect(info).toHaveBeenCalledWith('Request submitted.');
   });
 
-  it('does not show a pending-approval notice when the edit applied immediately', async () => {
+  it('does not show a toast when the edit applied immediately', async () => {
     storeStub.editMilestone = vi.fn().mockResolvedValue({ success: true, pending: false });
     setup('o1');
     fixture.detectChanges();
     const rows = fixture.nativeElement.querySelectorAll('[data-testid="tree-row"]');
     (rows[0] as HTMLElement).click();
     fixture.detectChanges();
+    const info = vi.spyOn(TestBed.inject(NotificationService), 'info');
 
     await fixture.componentInstance.onSettingsSaved({
       fields: { title: 'Root', description: '', startDate: '2026-01-01', endDate: '2026-12-01', allocatedHours: 40 },
@@ -520,7 +667,7 @@ describe('MilestoneTreeTabComponent', () => {
     });
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.editPendingNotice()).toBeNull();
+    expect(info).not.toHaveBeenCalled();
   });
 
   it('opens the members popup when a row requests it', () => {
@@ -977,5 +1124,100 @@ describe('MilestoneTreeTabComponent', () => {
     expect(fixture.componentInstance.taskModalMode()).toBe('create');
     expect(fixture.componentInstance.taskModalPrefillModule()).toBe('o1');
     expect(fixture.componentInstance.taskModalPrefillSprint()).toBe('');
+  });
+
+  describe('view switch', () => {
+    const el = () => fixture.nativeElement as HTMLElement;
+    // The switch lives in the toolbar template, which the page shell renders, not this component.
+    const toolbar = () => renderToolbar().host;
+    const switchTo = (mode: 'tree' | 'network') => {
+      toolbar().querySelector<HTMLButtonElement>(`[data-testid="tree-view-switch-${mode}"]`)!.click();
+      fixture.detectChanges();
+    };
+
+    it('renders the tree list and not the network view by default', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      expect(el().querySelector('app-milestone-tree-node')).not.toBeNull();
+      expect(el().querySelector('app-project-network-view')).toBeNull();
+    });
+
+    it('renders the network view and not the tree list after the switch is clicked', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      expect(fixture.componentInstance.viewMode()).toBe('network');
+      expect(el().querySelector('app-project-network-view')).not.toBeNull();
+      expect(el().querySelector('app-milestone-tree-node')).toBeNull();
+    });
+
+    it('keeps tree search, the owner filter, the highlight filter bar and Expand all visible in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+
+      // The header must not change when the view does (spec Revision 1).
+      expect(host.querySelector('[data-testid="tree-search-toggle"]')).not.toBeNull();
+      expect(host.querySelector('app-task-assignee-avatar-filter')).not.toBeNull();
+      expect(host.querySelector('app-filter-bar')).not.toBeNull();
+      expect(host.querySelector('[data-testid="expand-all-toggle"]')).not.toBeNull();
+    });
+
+    it('keeps Create module and the switch itself visible in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+
+      expect(host.querySelector('[data-testid="tree-view-switch-tree"]')).not.toBeNull();
+      expect(host.textContent).toContain('Create milestone');
+    });
+
+    it('paints the selected mode with the accent background and the other with the secondary text colour', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+      const host = toolbar();
+      const network = host.querySelector('[data-testid="tree-view-switch-network"]')!;
+      const tree = host.querySelector('[data-testid="tree-view-switch-tree"]')!;
+
+      // The exact Tailwind class names - a backslash-escaped binding adds a class no rule matches.
+      expect(network.classList.contains('bg-[var(--color-accent)]')).toBe(true);
+      expect(network.classList.contains('text-[var(--color-text-on-solid)]')).toBe(true);
+      expect(tree.classList.contains('text-[var(--color-text-secondary)]')).toBe(true);
+      expect(tree.classList.contains('bg-[var(--color-accent)]')).toBe(false);
+    });
+
+    it('keeps the explanation card column mounted in tree mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+
+      expect(el().querySelector('app-tree-explanation-panel, app-empty-state')).not.toBeNull();
+    });
+
+    it('keeps the same explanation card beside the network in network mode', () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      expect(el().querySelector('app-tree-explanation-panel')).not.toBeNull();
+      expect(el().querySelector('[data-testid="tree-explanation-panel"]')?.textContent).toContain('Root');
+    });
+
+    it('shows a module clicked in the network in the explanation card, staying in network mode', async () => {
+      setup('o1');
+      fixture.detectChanges();
+      switchTo('network');
+
+      await fixture.componentInstance.onNetworkNodeSelected({ id: 'module:o3', kind: 'module', label: 'Other', objectiveId: 'o3' });
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.viewMode()).toBe('network');
+      expect(fixture.componentInstance.selectedNodeId()).toBe('o3');
+      expect(el().querySelector('[data-testid="tree-explanation-panel"]')?.textContent).toContain('Other');
+    });
   });
 });

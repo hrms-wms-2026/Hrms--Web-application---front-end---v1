@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink, ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
-import { NotificationService } from '../../../../core/services/notification.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { BulkAction, BulkActionBarComponent } from '../../../../shared/ui/bulk-action-bar/bulk-action-bar.component';
@@ -18,13 +17,13 @@ import { PeopleStore } from '../../state/people.store';
 import { BulkActionResultModalComponent } from '../../../../shared/ui/bulk-action-result-modal/bulk-action-result-modal.component';
 import { BulkEmploymentTypeModalComponent } from '../../ui/bulk-employee-actions/bulk-employment-type-modal.component';
 import { BulkStartOffboardingModalComponent } from '../../ui/bulk-employee-actions/bulk-start-offboarding-modal.component';
+import { StartOffboardingModalComponent } from '../../ui/start-offboarding-modal/start-offboarding-modal.component';
 import { ChangePositionModalComponent } from '../../ui/change-position-modal/change-position-modal.component';
 import { EmployeeColumnPickerComponent } from '../../ui/employee-column-picker/employee-column-picker.component';
 import { EmployeeDirectoryTableComponent } from '../../ui/employee-directory-table/employee-directory-table.component';
 import { EmployeeFilterPopoverComponent } from '../../ui/employee-filter-popover/employee-filter-popover.component';
 import { downloadCsv, toEmployeeCsv } from '../../utils/employee-csv';
 import {
-  EMPLOYEE_PAGE_SIZES,
   EmployeeListFilters,
   EmployeeListUrlState,
   filtersToQueryParams,
@@ -42,7 +41,6 @@ const TERMINAL_STATUSES = ['resigned', 'terminated'];
   selector: 'app-employee-list',
   standalone: true,
   imports: [
-    RouterLink,
     BreadcrumbHeaderComponent,
     ButtonComponent,
     ErrorStateComponent,
@@ -53,6 +51,7 @@ const TERMINAL_STATUSES = ['resigned', 'terminated'];
     ChangePositionModalComponent,
     BulkEmploymentTypeModalComponent,
     BulkStartOffboardingModalComponent,
+    StartOffboardingModalComponent,
     BulkActionResultModalComponent,
     BulkActionBarComponent,
     AddEmployeeWizardComponent
@@ -66,7 +65,6 @@ export class EmployeeListComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly permissionService = inject(PermissionService);
-  private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly legalEntityStore = inject(LegalEntityStore);
   private readonly authStore = inject(AuthStore);
@@ -81,7 +79,6 @@ export class EmployeeListComponent {
   readonly searchExpanded = signal(false);
 
   readonly listState = signal<EmployeeListUrlState>(parseEmployeeListState(this.route.snapshot.queryParamMap));
-  readonly pageSizes = EMPLOYEE_PAGE_SIZES;
   readonly visibleColumnKeys = signal<EmployeeColumnKey[]>(loadEmployeeColumns());
   readonly visibleColumns = computed(() => EMPLOYEE_COLUMNS.filter((c) => this.visibleColumnKeys().includes(c.key)));
 
@@ -131,6 +128,7 @@ export class EmployeeListComponent {
   readonly bulkPositionReason = signal<'Promotion' | 'Transfer' | null>(null);
   readonly bulkEmploymentTypeOpen = signal(false);
   readonly bulkOffboardOpen = signal(false);
+  readonly rowOffboard = signal<EmployeeListItemResponse | null>(null);
   readonly bulkResult = signal<{ title: string; result: BulkEmployeeActionResponse } | null>(null);
   readonly resultNames = computed(() => new Map([...this.rowCache().values()].map((r) => [r.id, r.fullName] as const)));
   readonly rowPositionChange = signal<{ employee: EmployeeListItemResponse; reason: 'Promotion' | 'Transfer' } | null>(null);
@@ -155,11 +153,11 @@ export class EmployeeListComponent {
       this.onSearchInput('');
     }
   }
-  readonly activeTab = signal<'employees' | 'drafts'>('employees');
 
   private searchDebounceHandle: ReturnType<typeof setTimeout> | null = null;
 
   readonly isAddEmployeeModalOpen = signal(false);
+  private lastLoadedListKey: string | null = null;
   readonly activeDraftId = signal<string | null>(null);
 
   constructor() {
@@ -174,7 +172,14 @@ export class EmployeeListComponent {
         this.lastSelectionScope = scope;
       }
       this.listState.set(state);
-      this.store.loadEmployees(toEmployeeListParams(state));
+      // Opening/closing Add Employee only toggles ?addEmployee / ?draftId - that must not re-fetch the
+      // list; re-load only when the filters, search, sort or page actually change.
+      const listParams = toEmployeeListParams(state);
+      const listKey = JSON.stringify(listParams);
+      if (listKey !== this.lastLoadedListKey) {
+        this.lastLoadedListKey = listKey;
+        this.store.loadEmployees(listParams);
+      }
       if ((params.get('addEmployee') === 'true' || params.has('draftId')) && this.canAddEmployee()) {
         this.activeDraftId.set(params.get('draftId'));
         this.isAddEmployeeModalOpen.set(true);
@@ -189,6 +194,13 @@ export class EmployeeListComponent {
         return next;
       }));
     });
+  }
+
+  /** Plain click opens the modal in place; Ctrl/Cmd/Shift/middle-click keeps the link's open-in-new-tab behaviour. */
+  onAddEmployeeClick(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    this.openAddEmployeeModal();
   }
 
   openAddEmployeeModal(draftId?: string): void {
@@ -254,10 +266,6 @@ export class EmployeeListComponent {
     saveEmployeeColumns(keys);
   }
 
-  onPageSizeChange(value: string): void {
-    this.navigate({ pageSize: Number(value), page: 1 });
-  }
-
   onBulkAction(actionId: string): void {
     switch (actionId) {
       case 'promote': this.bulkPositionReason.set('Promotion'); break;
@@ -276,10 +284,14 @@ export class EmployeeListComponent {
 
   onRowAction(event: { employee: EmployeeListItemResponse; actionId: string }): void {
     if (event.actionId === 'offboard') {
-      void this.router.navigate(['/people/employees', event.employee.id, 'offboarding']);
+      this.rowOffboard.set(event.employee);
       return;
     }
     this.rowPositionChange.set({ employee: event.employee, reason: event.actionId === 'promote' ? 'Promotion' : 'Transfer' });
+  }
+
+  openOffboarding(employeeId: string): void {
+    void this.router.navigate(['/people/offboarding', employeeId]);
   }
 
   private exportSelected(): void {

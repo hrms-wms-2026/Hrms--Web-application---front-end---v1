@@ -1,6 +1,6 @@
 /**
  * Matches backend Contracts (HRMS-Backend-v1 src/ONEVO.Api/Contracts/CoreHr/BulkOnboarding/*).
- * See docs/superpowers/specs/2026-08-18-bulk-employee-onboarding-frontend-design.md.
+ * See docs/superpowers/specs/finished/2026-08-18/2026-08-18-bulk-employee-onboarding-frontend-design.md.
  */
 
 export type BulkOnboardingBatchStatus =

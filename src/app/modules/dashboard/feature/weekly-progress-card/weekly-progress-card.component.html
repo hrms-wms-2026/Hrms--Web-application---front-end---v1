@@ -1,0 +1,207 @@
+<app-widget-card
+  class="group block h-full"
+  data-testid="weekly-progress-card"
+  title="My weekly progress"
+  [nowrapTitle]="true"
+  [state]="widgetState()"
+  errorMessage="Couldn't load this week's progress."
+  (retry)="retry()"
+>
+  <div widget-actions class="flex min-w-0 items-center gap-1">
+    @if (weekSelectShown()) {
+      <select
+        class="wp-week"
+        data-testid="wp-week-select"
+        aria-label="Week"
+        appStopClickPropagation
+        (change)="onWeekSelect($event)"
+      >
+        <option value="this" [selected]="selectedWeek() === 'this'">This week</option>
+        <option value="last" [selected]="selectedWeek() === 'last'">Last week</option>
+      </select>
+    }
+    <app-popout-header-actions
+      [refreshing]="refreshing()"
+      [expanded]="false"
+      [canExpand]="true"
+      [revealOnHover]="true"
+      (refresh)="retry()"
+      (expand)="openDetail()"
+    />
+  </div>
+
+  @if (shown(); as data) {
+    @if (data.thisWeek.status === 'no_target') {
+      <p class="wp-no-target" data-testid="wp-no-target">
+        No working hours set for your legal entity, so there is no weekly target.
+      </p>
+    } @else {
+      <div
+        [class]="'wp-body wp-' + view()"
+        role="button"
+        tabindex="0"
+        appKeyboardClick
+        aria-label="Open my weekly progress details"
+        (click)="openDetail()"
+      >
+        <!-- One donut size (DASHBOARD_DONUT_PX) in every view; a view without room for it leaves it out. -->
+        <ng-template #donut>
+          <app-dashboard-donut
+            class="wp-donut"
+            data-testid="wp-donut"
+            [size]="donutPx()"
+            [strokeWidth]="5"
+            [slices]="ringSlices()"
+            [ariaLabel]="ringLabel()"
+            [(active)]="hovered"
+          >
+            <p class="wp-donut-center">
+              <span class="wp-percent" data-testid="wp-percent">{{ percentText(data.thisWeek) }}</span>
+              <span class="wp-status" [class]="'wp-status wp-status--' + data.thisWeek.status" data-testid="wp-status">
+                {{ statusLabels[data.thisWeek.status] }}
+              </span>
+            </p>
+          </app-dashboard-donut>
+        </ng-template>
+
+        <ng-template #deltaLine>
+          @if (delta(); as d) {
+            <p class="wp-delta" data-testid="wp-delta">
+              <span class="wp-delta-value" [class.wp-delta-value--down]="!d.up">{{ d.arrow }} {{ d.text }}</span>
+              <span class="wp-delta-caption">vs last week ({{ percentText(data.lastWeek) }})</span>
+            </p>
+          }
+        </ng-template>
+
+        @switch (view()) {
+          @case ('mini') {
+            <div class="wp-center">
+              <ng-container [ngTemplateOutlet]="donut" />
+            </div>
+          }
+          @case ('mini-wide') {
+            <div class="wp-row">
+              <div class="wp-figure">
+                <span class="wp-percent wp-percent--big" data-testid="wp-percent">{{ percentText(data.thisWeek) }}</span>
+                <span class="wp-status" [class]="'wp-status wp-status--' + data.thisWeek.status" data-testid="wp-status">
+                  {{ statusLabels[data.thisWeek.status] }}
+                </span>
+                <ng-container [ngTemplateOutlet]="deltaLine" />
+              </div>
+              <div class="wp-week-bars" data-testid="wp-week-bars">
+                <div class="wp-week-bar">
+                  <span class="wp-week-name">This week</span>
+                  <span class="wp-week-track"><span class="wp-week-fill" [style.width.%]="barWidth(data.thisWeek)"></span></span>
+                  <span class="wp-week-hours">{{ formatMinutes(data.thisWeek.workedMinutes) }} / {{ formatMinutes(data.thisWeek.expectedMinutes) }}</span>
+                </div>
+                <div class="wp-week-bar">
+                  <span class="wp-week-name">Last week</span>
+                  <span class="wp-week-track">
+                    <span class="wp-week-fill wp-week-fill--last" [style.width.%]="barWidth(data.lastWeek)"></span>
+                  </span>
+                  <span class="wp-week-hours">{{ formatMinutes(data.lastWeek.workedMinutes) }} / {{ formatMinutes(data.lastWeek.expectedMinutes) }}</span>
+                </div>
+              </div>
+              @if (sections().miniTiles) {
+                <app-kpi-tiles palette="widget" class="wp-mini-tiles" data-testid="wp-mini-tiles" [tiles]="miniTiles()" [maxColumns]="3" ariaLabel="This week" />
+              }
+            </div>
+          }
+          @case ('xs') {
+            <div class="wp-stack">
+              <ng-container [ngTemplateOutlet]="donut" />
+              <ng-container [ngTemplateOutlet]="deltaLine" />
+              @for (tile of stackedTiles(); track tile.key) {
+                <div class="wp-stacked-tile" [class]="'wp-stacked-tile wp-tone--' + tile.tone" data-testid="wp-stacked-tile">
+                  <span class="wp-stacked-label">{{ tile.label }}</span>
+                  <span class="wp-stacked-value">{{ tile.value }} @if (tile.hint) {<small>{{ tile.hint }}</small>}</span>
+                </div>
+              }
+            </div>
+          }
+          @default {
+            <div class="wp-standard">
+              <!-- This summary never changes height; more sections appear only on taller cards. -->
+              <div class="wp-summary" data-testid="wp-summary">
+                <span class="wp-summary-icon" aria-hidden="true"><app-icon name="calendar" /></span>
+                <div class="wp-summary-hours">
+                  <p class="wp-hours" data-testid="wp-hours">
+                    {{ formatMinutes(data.thisWeek.workedMinutes) }}
+                    <span class="wp-hours-target">/ {{ formatMinutes(data.thisWeek.expectedMinutes) }}</span>
+                  </p>
+                  <p class="wp-summary-label">Worked / Expected</p>
+                </div>
+                <div class="wp-summary-progress">
+                  <span class="wp-percent wp-percent--big" data-testid="wp-percent">{{ percentText(data.thisWeek) }}</span>
+                  <span class="wp-summary-label">Progress</span>
+                </div>
+              </div>
+              <span class="wp-week-track wp-week-track--summary" data-testid="wp-progress-bar">
+                <span class="wp-week-fill" [style.width.%]="barWidth(data.thisWeek)"></span>
+              </span>
+              <ul class="wp-tiles" data-testid="wp-tiles" aria-label="This week">
+                @for (tile of summaryTiles(); track tile.key) {
+                  <li class="wp-tile" data-testid="wp-tile">
+                    @if (tile.icon; as icon) {
+                      <span class="wp-tile-icon" aria-hidden="true"><app-icon [name]="icon" /></span>
+                    }
+                    <span class="wp-tile-text">
+                      <span class="wp-stacked-label">{{ tile.label }}</span>
+                      <span class="wp-tile-value">{{ tile.value }} @if (tile.hint) {<small>{{ tile.hint }}</small>}</span>
+                    </span>
+                  </li>
+                }
+              </ul>
+              @if (delta()) {
+                <div class="wp-footer">
+                  <ng-container [ngTemplateOutlet]="deltaLine" />
+                </div>
+              }
+              @if (sections().chart) {
+                <section class="wp-section">
+                  <app-daily-work-chart
+                    class="wp-chart"
+                    [heading]="'Daily Work vs ' + (data.plannerEnabled ? 'Schedule' : 'Expected')"
+                    [days]="data.thisWeek.days"
+                    [showScheduled]="data.plannerEnabled"
+                  />
+                </section>
+              }
+              @if (sections().comparison) {
+                <section class="wp-section" data-testid="wp-comparison">
+                  <h3 class="wp-section-title">Weekly Comparison</h3>
+                  <div class="wp-compare">
+                    @if (data.plannerEnabled) {
+                      <div class="wp-compare-item">
+                        <span class="wp-compare-label">Scheduled Hours</span>
+                        <span class="wp-compare-value">{{ formatMinutes(data.thisWeek.scheduledMinutes) }}
+                          @if (scheduledChange(); as c) { <small [class.wp-down]="!c.up">{{ c.arrow }} {{ c.text }}</small> }
+                        </span>
+                        <span class="wp-compare-caption">vs last week ({{ formatMinutes(data.lastWeek.scheduledMinutes) }})</span>
+                      </div>
+                    }
+                    <div class="wp-compare-item">
+                      <span class="wp-compare-label">Worked Hours</span>
+                      <span class="wp-compare-value">{{ formatMinutes(data.thisWeek.workedMinutes) }}
+                        @if (workedChange(); as c) { <small [class.wp-down]="!c.up">{{ c.arrow }} {{ c.text }}</small> }
+                      </span>
+                      <span class="wp-compare-caption">vs last week ({{ formatMinutes(data.lastWeek.workedMinutes) }})</span>
+                    </div>
+                    <div class="wp-compare-item">
+                      <span class="wp-compare-label">Completion Rate</span>
+                      <span class="wp-compare-value">{{ percentText(data.thisWeek) }}
+                        @if (delta(); as d) { <small [class.wp-down]="!d.up">{{ d.arrow }} {{ d.text }}</small> }
+                      </span>
+                      <span class="wp-compare-caption">vs last week ({{ percentText(data.lastWeek) }})</span>
+                    </div>
+                  </div>
+                </section>
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+    <app-weekly-work-progress-detail-dialog [open]="detailOpen()" [initial]="current() ?? data" (closed)="detailOpen.set(false)" />
+  }
+</app-widget-card>

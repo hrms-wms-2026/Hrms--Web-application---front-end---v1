@@ -290,27 +290,11 @@
       }
 
       <h3 class="bo-subsection-title">Row details</h3>
-      <table class="bo-table">
-        <caption class="sr-only">Rows with remaining issues</caption>
-        <thead>
-          <tr>
-            <th>Row</th>
-            <th>Status</th>
-            <th>Issue</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of store.validationResult()?.rows; track row.rowNumber) {
-            @if (row.status === 'invalid') {
-              <tr>
-                <td>Row {{ row.rowNumber }}</td>
-                <td>Needs fix</td>
-                <td>{{ friendlyRowMessage(row) }}</td>
-              </tr>
-            }
-          }
-        </tbody>
-      </table>
+      <app-data-table [columns]="issueColumns" [rows]="invalidRows()" [trackBy]="trackByRowNumber" caption="Rows with remaining issues">
+        <ng-template appDataTableCell="row" let-row>Row {{ row.rowNumber }}</ng-template>
+        <ng-template appDataTableCell="status" let-row>Needs fix</ng-template>
+        <ng-template appDataTableCell="issue" let-row>{{ friendlyRowMessage(row) }}</ng-template>
+      </app-data-table>
 
       <div class="bo-actions">
         <app-button
@@ -348,37 +332,22 @@
       @if (store.polling()) {
         <p class="bo-progress" aria-busy="true">Creating drafts…</p>
       } @else {
-        <table class="bo-table">
-          <thead>
-            <tr>
-              <th>
-                <span class="sr-only">Select</span>
-              </th>
-              <th>Row</th>
-              <th>Status</th>
-              <th>Detail</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of store.detail()?.rows; track row.rowNumber) {
-              @if (row.onboardingDraftId) {
-                <tr>
-                  <td>
-                    <input
-                      type="checkbox"
-                      [checked]="isRowSelected(row.onboardingDraftId)"
-                      (change)="onToggleRow(row.onboardingDraftId)"
-                      [attr.aria-label]="'Select row ' + row.rowNumber"
-                    />
-                  </td>
-                  <td>Row {{ row.rowNumber }}</td>
-                  <td><span class="bo-status-badge" [class.bo-status-badge--valid]="row.status === 'valid' || row.status === 'draft_created'">{{ rowStatusLabels[row.status] }}</span></td>
-                  <td>{{ row.errorMessage ?? '—' }}</td>
-                </tr>
-              }
-            }
-          </tbody>
-        </table>
+        <app-data-table
+          [columns]="draftColumns"
+          [rows]="draftRows()"
+          [trackBy]="trackByDraftId"
+          caption="Created drafts"
+          [selectable]="true"
+          [selectedIds]="selectedDraftIdSet()"
+          selectAllAriaLabel="Select all drafts"
+          [selectAriaLabel]="draftSelectAriaLabel"
+          (rowSelectionChanged)="onToggleRow($event.row.onboardingDraftId!)"
+          (selectAllChanged)="onSelectAllDrafts($event)"
+        >
+          <ng-template appDataTableCell="row" let-row>Row {{ row.rowNumber }}</ng-template>
+          <ng-template appDataTableCell="status" let-row><span class="bo-status-badge" [class.bo-status-badge--valid]="row.status === 'valid' || row.status === 'draft_created'">{{ rowStatusLabel(row.status) }}</span></ng-template>
+          <ng-template appDataTableCell="detail" let-row>{{ row.errorMessage ?? '—' }}</ng-template>
+        </app-data-table>
         <div class="bo-actions">
           <app-button type="button" [disabled]="store.loading() || store.selectedDraftIds().length === 0" (pressed)="onFinalizeSelected()">
             Finalize {{ store.selectedDraftIds().length }} selected
@@ -396,24 +365,11 @@
       @if (store.polling()) {
         <p class="bo-progress" aria-busy="true">Finalizing…</p>
       } @else {
-        <table class="bo-table">
-          <thead>
-            <tr>
-              <th>Row</th>
-              <th>Outcome</th>
-              <th>Detail</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of store.detail()?.rows; track row.rowNumber) {
-              <tr>
-                <td>Row {{ row.rowNumber }}</td>
-                <td><span class="bo-status-badge" [class.bo-status-badge--valid]="row.status === 'finalized'">{{ rowStatusLabels[row.status] }}</span></td>
-                <td>{{ row.errorMessage ?? '—' }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
+        <app-data-table [columns]="outcomeColumns" [rows]="store.detail()?.rows ?? []" [trackBy]="trackByRowNumber" caption="Finalize outcomes">
+          <ng-template appDataTableCell="row" let-row>Row {{ row.rowNumber }}</ng-template>
+          <ng-template appDataTableCell="outcome" let-row><span class="bo-status-badge" [class.bo-status-badge--valid]="row.status === 'finalized'">{{ rowStatusLabel(row.status) }}</span></ng-template>
+          <ng-template appDataTableCell="detail" let-row>{{ row.errorMessage ?? '—' }}</ng-template>
+        </app-data-table>
       }
     </section>
   }

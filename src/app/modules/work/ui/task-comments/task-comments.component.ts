@@ -1,4 +1,4 @@
-import { Component, HostListener, computed, inject, input, signal, OnInit } from '@angular/core';
+import { Component, HostListener, computed, inject, input, output, signal, OnInit } from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { firstValueFrom } from 'rxjs';
@@ -7,14 +7,15 @@ import { TaskCommentApiService } from '../../data-access/task-comment-api.servic
 import { TaskApiService } from '../../data-access/task-api.service';
 import { TaskCommentDto, TaskCommentReactionDto, TaskCommentReactorDto } from '../../models/dto/task-comment.dto';
 import { EmployeeAvatarComponent } from '../employee-avatar/employee-avatar.component';
-import { CommentComposerComponent } from '../comment-composer/comment-composer.component';
+import { CommentComposerComponent } from '../../../../shared/ui/comment-composer/comment-composer.component';
 import { EmojiPickerComponent } from '../emoji-picker/emoji-picker.component';
 import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-link.util';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 @Component({
   selector: 'app-task-comments',
   standalone: true,
-  imports: [EmployeeAvatarComponent, NgTemplateOutlet, DatePipe, CommentComposerComponent, EmojiPickerComponent, OverlayModule],
+  imports: [StopClickPropagationDirective, EmployeeAvatarComponent, NgTemplateOutlet, DatePipe, CommentComposerComponent, EmojiPickerComponent, OverlayModule],
   template: `
     <div class="tc-composer-row">
       <div class="tc-current-user-avatar">
@@ -25,16 +26,14 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
           placeholder="Add a comment..."
           submitLabel="Save"
           [showCancel]="true"
-          [showQuickChips]="true"
+          [collapsible]="true"
           [showProTip]="true"
           (submitted)="submitComment($event)"
         />
       </div>
     </div>
 
-    @if (comments().length === 0) {
-      <p class="tc-empty">No comments yet</p>
-    } @else {
+    @if (comments().length > 0) {
       <ul class="tc-list">
         @for (comment of sortedComments(); track comment.id) {
           <li class="tc-item">
@@ -177,9 +176,9 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
                   (backdropClick)="closeReactors()"
                   (detach)="closeReactors()"
                 >
-                  <div class="tc-popover" role="dialog" [attr.aria-label]="'People who reacted with ' + r.emoji" data-testid="reactors-popover" (click)="$event.stopPropagation()">
+                  <div class="tc-popover" role="dialog" [attr.aria-label]="'People who reacted with ' + r.emoji" data-testid="reactors-popover" appStopClickPropagation>
                     <div class="tc-popover-title">{{ r.emoji }} Reactions · {{ r.count }}</div>
-                    <div class="tc-popover-list">
+                    <div class="tc-popover-list scroll-fade">
                       @for (person of reactorsFor(comment, r.emoji); track person.employeeId) {
                         <div class="tc-popover-option" [class.tc-popover-option--selected]="person.employeeId === currentEmployeeId()" data-testid="reactor-row">
                           <app-employee-avatar [employeeId]="person.employeeId" />
@@ -268,7 +267,7 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
                 </button>
 
                 @if (moreMenuOpenFor() === comment.id) {
-                  <div class="tc-more-menu" (click)="$event.stopPropagation()">
+                  <div class="tc-more-menu" appStopClickPropagation>
                     <button type="button" class="tc-more-item" (click)="copyCommentLink(comment.id); closeMoreMenu()">
                       <span>Copy link</span>
                     </button>
@@ -287,10 +286,9 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
     </ng-template>
   `,
   styles: [`
-    .tc-composer-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; }
+    .tc-composer-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
     .tc-current-user-avatar { flex-shrink: 0; margin-top: 2px; }
     .tc-composer-wrap { flex: 1; min-width: 0; }
-    .tc-empty { color: var(--color-text-secondary); font-size: 13.5px; text-align: center; padding: 24px 16px; border: 1px dashed var(--color-border); border-radius: 8px; }
     .tc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
     .tc-item { display: flex; flex-direction: column; gap: 8px; }
 
@@ -359,7 +357,7 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
     .tc-text ::ng-deep a { color: var(--color-accent); text-decoration: underline; }
     .tc-text ::ng-deep .tfm-check-item { position: relative; display: block; padding-left: 24px; min-height: 22px; margin: 2px 0; }
     .tc-text ::ng-deep .tfm-check-item::before { content: ''; position: absolute; left: 2px; top: 4px; width: 13px; height: 13px; border: 1.5px solid var(--color-border); border-radius: 3px; background: var(--color-surface); }
-    .tc-text ::ng-deep .tfm-check-item.is-checked::before { content: '✓'; border-color: var(--color-accent); background: var(--color-accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 13px; text-align: center; }
+    .tc-text ::ng-deep .tfm-check-item.is-checked::before { content: '✓'; border-color: var(--color-accent); background: var(--color-accent); color: var(--color-text-on-solid); font-size: 10px; font-weight: 700; line-height: 13px; text-align: center; }
     .tc-text ::ng-deep .tfm-check-item.is-checked > .tfm-check-text { text-decoration: line-through; opacity: 0.6; }
     /* Action Bar */
     .tc-actions-bar {
@@ -398,7 +396,7 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
       border: 1px solid var(--color-border);
       border-radius: 8px;
       padding: 4px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      box-shadow: var(--shadow-popover);
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -458,7 +456,7 @@ import { buildTaskDeepLink, copyTextToClipboard } from '../../utils/task-deep-li
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 8px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       cursor: default;
       font-size: 12px;
       color: var(--color-text-primary);
@@ -550,6 +548,8 @@ export class TaskCommentsComponent implements OnInit {
   taskId = input.required<string>();
   projectId = input<string>('');
   sortOrder = input<'desc' | 'asc'>('desc');
+  /** Emits the top-level comment count after every load so the host can render its own empty state. */
+  countChange = output<number>();
   protected readonly linkedCommentId = signal<string | null>(null);
 
   comments = signal<TaskCommentDto[]>([]);
@@ -588,6 +588,7 @@ export class TaskCommentsComponent implements OnInit {
 
   private async reload(): Promise<void> {
     this.comments.set(await firstValueFrom(this.commentApi.getComments(this.taskId())));
+    this.countChange.emit(this.comments().length);
   }
 
   canModify(comment: TaskCommentDto): boolean {
@@ -596,6 +597,7 @@ export class TaskCommentsComponent implements OnInit {
 
   async submitComment(payload: { content: string; attachmentFileIds: string[] }): Promise<void> {
     await firstValueFrom(this.commentApi.postComment(this.taskId(), payload));
+    this.notificationService.success('Comment posted.');
     await this.reload();
   }
 
@@ -628,6 +630,7 @@ export class TaskCommentsComponent implements OnInit {
 
   async submitReply(parentCommentId: string, payload: { content: string; attachmentFileIds: string[] }): Promise<void> {
     await firstValueFrom(this.commentApi.postReply(parentCommentId, payload));
+    this.notificationService.success('Comment posted.');
     this.replyingToId.set(null);
     await this.reload();
   }

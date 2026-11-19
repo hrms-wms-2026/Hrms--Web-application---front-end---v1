@@ -1,4 +1,4 @@
-export type ProfileSubTabId = 'personal' | 'emergency' | 'job' | 'payroll' | 'security';
+export type ProfileSubTabId = 'personal' | 'emergency' | 'job' | 'documents' | 'payroll' | 'security';
 
 export interface ProfileSubTab {
   readonly id: ProfileSubTabId;
@@ -9,6 +9,7 @@ export const PROFILE_SUB_TABS: readonly ProfileSubTab[] = [
   { id: 'personal', label: 'Personal Information' },
   { id: 'emergency', label: 'Emergency Contact & Dependents' },
   { id: 'job', label: 'Job Information' },
+  { id: 'documents', label: 'My Documents' },
   { id: 'payroll', label: 'Payroll & Statutory' },
   { id: 'security', label: 'Security Settings' }
 ];

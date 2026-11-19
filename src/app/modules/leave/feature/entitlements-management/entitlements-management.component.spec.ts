@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -11,7 +12,7 @@ describe('EntitlementsManagementComponent', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [EntitlementsManagementComponent], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [EntitlementsManagementComponent], providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] }).compileComponents();
     httpMock = TestBed.inject(HttpTestingController);
     // Seed wildcard permission so canManage() returns true in tests
     patchState(TestBed.inject(AuthStore) as Parameters<typeof patchState>[0], { permissions: ['*'] });

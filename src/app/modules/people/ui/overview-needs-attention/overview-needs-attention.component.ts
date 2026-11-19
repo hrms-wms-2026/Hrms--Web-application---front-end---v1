@@ -12,28 +12,33 @@ import { PopoutPanelComponent } from '../../../../shared/ui/popout-panel/popout-
 import { PopoutHeaderActionsComponent } from '../../../../shared/ui/popout-header-actions/popout-header-actions.component';
 import { DeltaBadgeComponent } from '../delta-badge/delta-badge.component';
 import { SignalItemsListComponent } from '../signal-items-list/signal-items-list.component';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 @Component({
   selector: 'app-overview-needs-attention',
   standalone: true,
-  imports: [DeltaBadgeComponent, SignalItemsListComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
+  imports: [KeyboardClickDirective, StopClickPropagationDirective, DeltaBadgeComponent, SignalItemsListComponent, PopoutPanelComponent, PopoutHeaderActionsComponent],
   template: `
     @if (signals().length > 0) {
       <app-popout-panel [open]="popped()" label="Needs Attention" (closed)="collapse()">
       <div
+        role="button"
+        tabindex="0"
+        appKeyboardClick
         data-testid="needs-attention"
-        class="group rounded-2xl border border-[#fef08a] bg-[#fefce8] p-5"
+        class="group rounded-2xl border border-[var(--color-attention-line)] bg-[var(--color-warning-subtle)] p-5 dark:bg-[var(--color-card-bg)]"
         [class.cursor-pointer]="!popped() && signals().length > collapsedLimit"
         (click)="openAll()"
       >
         <div class="mb-2 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-700" aria-hidden="true">!</span>
-            <h3 class="text-sm font-bold text-slate-900">Needs Attention</h3>
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)] dark:bg-transparent dark:text-[var(--color-warning)]" aria-hidden="true">!</span>
+            <h3 class="text-sm font-bold text-[var(--color-text-primary)]">Needs Attention</h3>
           </div>
           <div class="flex items-center gap-2">
             <app-popout-header-actions
-              style="--popout-actions-bg: #fefce8"
+              style="--popout-actions-bg: var(--color-attention-actions-bg)"
               [refreshedAt]="refreshedAt()"
               [refreshing]="refreshing()"
               [expanded]="popped()"
@@ -46,7 +51,7 @@ import { SignalItemsListComponent } from '../signal-items-list/signal-items-list
           </div>
         </div>
 
-        <div class="divide-y divide-amber-200/70" id="needs-attention-list">
+        <div class="divide-y divide-[var(--color-attention-line)]/70" id="needs-attention-list">
           @for (signal of displayedSignals(); track signal.key; let i = $index) {
             <button
               type="button"
@@ -58,13 +63,13 @@ import { SignalItemsListComponent } from '../signal-items-list/signal-items-list
             >
               <div class="flex min-w-0 items-center gap-3">
                 <span
-                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-[var(--color-text-on-solid)]"
                   [class]="dotClass[signal.severity]"
                   aria-hidden="true"
                 >{{ icon[signal.category] }}</span>
                 <div class="min-w-0">
-                  <p class="text-xs font-bold text-slate-900">{{ signal.label }}</p>
-                  <p class="mt-0.5 text-[11px] text-slate-500">{{ signal.detail }}</p>
+                  <p class="text-xs font-bold text-[var(--color-text-primary)]">{{ signal.label }}</p>
+                  <p class="mt-0.5 text-[11px] text-[var(--color-text-secondary)]">{{ signal.detail }}</p>
                 </div>
               </div>
               <div class="flex shrink-0 items-center gap-2">
@@ -73,12 +78,12 @@ import { SignalItemsListComponent } from '../signal-items-list/signal-items-list
                   class="rounded px-2 py-0.5 text-[11px] font-semibold"
                   [class]="chipClass[signal.severity]"
                 >{{ chipText[signal.severity] }}</span>
-                <span class="text-slate-400" aria-hidden="true">{{ drilldown.openKey() === signal.key ? '▾' : '▸' }}</span>
+                <span class="text-[var(--color-text-muted)]" aria-hidden="true">{{ drilldown.openKey() === signal.key ? '▾' : '▸' }}</span>
               </div>
             </button>
             @if (drilldown.openKey() === signal.key) {
               <app-signal-items-list
-                (click)="$event.stopPropagation()"
+                appStopClickPropagation
                 [response]="drilldown.openResponse()"
                 [loading]="drilldown.loadingKey() === signal.key"
                 [error]="drilldown.errorKey() === signal.key"
@@ -91,10 +96,10 @@ import { SignalItemsListComponent } from '../signal-items-list/signal-items-list
         </div>
 
         @if (signals().length > collapsedLimit) {
-          <div class="flex justify-end border-t border-amber-200/70 pt-3">
+          <div class="flex justify-end border-t border-[var(--color-attention-line)]/70 pt-3">
             <button
               type="button"
-              class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              class="text-xs font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent)] hover:underline cursor-pointer"
               data-testid="attention-toggle"
               aria-controls="needs-attention-list"
               [attr.aria-expanded]="popped()"
@@ -161,15 +166,15 @@ export class OverviewNeedsAttentionComponent {
   }
 
   readonly dotClass: Record<EmployeeSignalSeverity, string> = {
-    critical: 'bg-red-500',
-    warning: 'bg-amber-500',
-    info: 'bg-blue-500'
+    critical: 'bg-[var(--color-danger)]',
+    warning: 'bg-[var(--color-warning)]',
+    info: 'bg-[var(--color-accent)]'
   };
 
   readonly chipClass: Record<EmployeeSignalSeverity, string> = {
-    critical: 'bg-red-100 text-red-700',
-    warning: 'bg-amber-100 text-amber-700',
-    info: 'bg-blue-100 text-blue-700'
+    critical: 'bg-[var(--color-danger-subtle)] text-[var(--color-danger-text)]',
+    warning: 'bg-[var(--color-warning-subtle)] text-[var(--color-warning-text)]',
+    info: 'bg-[var(--color-accent-subtle)] text-[var(--color-accent)]'
   };
 
   readonly chipText: Record<EmployeeSignalSeverity, string> = {

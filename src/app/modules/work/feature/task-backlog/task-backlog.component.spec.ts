@@ -8,6 +8,7 @@ import { TaskBacklogComponent } from './task-backlog.component';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { ProjectApiService } from '../../data-access/project-api.service';
 import { SprintApiService } from '../../data-access/sprint-api.service';
 import { SprintListStore } from '../../state/sprint-list.store';
 import { SprintTabComponent } from '../../ui/sprint-tab/sprint-tab.component';
@@ -121,6 +122,7 @@ describe('TaskBacklogComponent', () => {
           provide: ProjectDetailStore,
           useValue: {
             milestones: () => options.milestones ?? [{ objectiveId: 'milestone-1', title: 'Milestone One', isOwner, isEffectiveOwner }],
+            project: () => ({ members: [], systemPurpose: null }),
             getMilestoneDetail: vi.fn().mockResolvedValue(null),
             loadProjectMembers,
             projectMembers: () => []
@@ -140,7 +142,8 @@ describe('TaskBacklogComponent', () => {
             , bulkDelete: vi.fn(() => of({ items: [], succeeded: 1, failed: 0 }))
           }
         },
-        { provide: SprintApiService, useValue: { setTasks: vi.fn(() => of({})) } },
+        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
+        { provide: SprintApiService, useValue: { setTasks: vi.fn(() => of({})), getByProject: vi.fn().mockReturnValue(of([])) } },
         {
           provide: EmployeeDirectoryStore,
           useValue: { get: vi.fn().mockReturnValue(undefined), ensureLoaded: vi.fn().mockResolvedValue(undefined) }
@@ -199,6 +202,33 @@ describe('TaskBacklogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.debugElement.queryAll(By.directive(SprintTabComponent)).length).toBe(2);
+  });
+
+  it('filters backlog work items by title or short ID and clears the query when search closes', async () => {
+    const alpha = { ...makeTask('alpha', null), title: 'Alpha release', shortId: 'PRJ-10' };
+    const beta = { ...makeTask('beta', null), title: 'Beta handoff', shortId: 'PRJ-20' };
+    const { fixture } = setup({ tasks: [alpha, beta] });
+    await fixture.whenStable();
+
+    const instance = fixture.componentInstance as unknown as {
+      onSearchChanged: (term: string) => void;
+      toggleSearch: () => void;
+      searchTerm: () => string;
+      searchExpanded: () => boolean;
+      unsortedTasks: () => WorkTask[];
+    };
+
+    instance.onSearchChanged('alpha');
+    expect(instance.unsortedTasks().map((task) => task.id)).toEqual(['alpha']);
+
+    instance.onSearchChanged('prj-20');
+    expect(instance.unsortedTasks().map((task) => task.id)).toEqual(['beta']);
+
+    instance.toggleSearch();
+    expect(instance.searchExpanded()).toBe(true);
+    instance.toggleSearch();
+    expect(instance.searchExpanded()).toBe(false);
+    expect(instance.searchTerm()).toBe('');
   });
 
   it("expanding a sprint shows only that sprint's tasks", async () => {
@@ -586,7 +616,7 @@ describe('TaskBacklogComponent', () => {
 
   it('renders tasks with sprintId: null in an "Unsorted" section, clickable via the same onTaskViewed path', async () => {
     const tasks = [makeTask('t-1', 'sp-1'), makeTask('t-unsorted', null)];
-    const { fixture, navigate } = setup({ tasks });
+    const { fixture } = setup({ tasks });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -798,7 +828,7 @@ describe('TaskBacklogComponent', () => {
       fixture.detectChanges();
 
       const inst = fixture.componentInstance as unknown as {
-        selectedTaskIds: { (): ReadonlySet<string> };
+        selectedTaskIds: () => ReadonlySet<string>;
         onTasksMoved: (sprintId: string) => Promise<void>;
         undoMove: () => Promise<void>;
       };
@@ -851,7 +881,7 @@ describe('TaskBacklogComponent', () => {
       const inst = fixture.componentInstance as unknown as { bulkActions(): { id: string; disabled?: boolean; disabledReason?: string }[] };
       const moveToSprint = inst.bulkActions().find((action) => action.id === 'move-to-sprint')!;
       expect(moveToSprint.disabled).toBe(true);
-      expect(moveToSprint.disabledReason).toBe('You can only do this for tasks in modules you own.');
+      expect(moveToSprint.disabledReason).toBe('You can only do this for tasks in milestones you own.');
     });
 
     it('status picker hides private statuses unless every selected module is owned', async () => {

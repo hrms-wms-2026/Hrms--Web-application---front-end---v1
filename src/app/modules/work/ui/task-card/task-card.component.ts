@@ -14,6 +14,8 @@ import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { toEditTaskRequest } from '../../utils/task.mapper';
 import { getTaskDueDateInfo } from '../../utils/task-date.util';
+import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
 const ASSIGNEE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
@@ -29,9 +31,9 @@ export interface TaskCardAssignableMember {
 @Component({
   selector: 'app-task-card',
   standalone: true,
-  imports: [TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule, DatePickerComponent, TaskAssigneeDropdownComponent],
+  imports: [KeyboardClickDirective, StopClickPropagationDirective, TaskClockWidgetComponent, EmployeeAvatarComponent, AvatarComponent, OverlayModule, DatePickerComponent, TaskAssigneeDropdownComponent],
   template: `
-      <div class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
+      <div role="button" tabindex="0" appKeyboardClick class="task-card" [attr.data-testid]="'task-card-' + task().id" (click)="viewed.emit(task())">
         <div class="task-card__header">
           <span class="task-card__short-id">{{ task().shortId }}</span>
           @if (task().hasPendingApproval) {
@@ -42,7 +44,7 @@ export interface TaskCardAssignableMember {
           }
         </div>
         <p class="task-card__title">
-          <span>{{ task().title }}</span>
+          <span class="task-card__title-text" [title]="task().title">{{ task().title }}</span>
         </p>
 
         <div class="task-card__meta">
@@ -86,6 +88,7 @@ export interface TaskCardAssignableMember {
               <app-task-assignee-dropdown
                 [members]="assignableMembers()"
                 [selectedId]="task().assigneeEmployeeIds[0]"
+                [allowUnassigned]="task().taskKind !== 'employee_checklist'"
                 (selected)="selectAssignee($event)"
                 (closed)="assigneePopoverOpen.set(false)"
               />
@@ -120,7 +123,7 @@ export interface TaskCardAssignableMember {
             (backdropClick)="priorityPopoverOpen.set(false)"
             (detach)="priorityPopoverOpen.set(false)"
           >
-            <div class="task-card__popover task-card__priority-popover" role="dialog" aria-label="Change priority" (click)="$event.stopPropagation()">
+            <div class="task-card__popover task-card__priority-popover" role="dialog" aria-label="Change priority" appStopClickPropagation>
               <div class="task-card__popover-title">Priority</div>
               <div class="task-card__popover-list">
                 @for (opt of priorityOptions; track opt.value) {
@@ -151,11 +154,8 @@ export interface TaskCardAssignableMember {
             (valueChange)="onDateChange($event)"
           />
 
-          @if (task().activeEventName) {
-            <span class="task-card__event" data-testid="task-event-chip" [title]="'In milestone: ' + task().activeEventName">{{ task().activeEventName }}</span>
-          }
           @if (isAssignee()) {
-            <div class="task-card__clock" (click)="$event.stopPropagation()">
+            <div class="task-card__clock" appStopClickPropagation>
               <app-task-clock-widget
                 [task]="task()"
                 [isAssignee]="isAssignee()"
@@ -170,7 +170,7 @@ export interface TaskCardAssignableMember {
         </div>
 
         @if (task().subtaskTotalCount > 0) {
-          <div
+          <div role="button" tabindex="0" appKeyboardClick
             class="task-card__subtask-bar"
             data-testid="task-card-subtask-bar"
             (click)="toggleSubtasks($event)"
@@ -197,7 +197,7 @@ export interface TaskCardAssignableMember {
       @if (subtasksExpanded()) {
         <div class="task-card__subtask-cards" data-testid="task-card-subtasks">
           @for (subtask of subtasks(); track subtask.id) {
-            <div
+            <div role="button" tabindex="0" appKeyboardClick
               class="task-card task-card--subtask"
               [attr.data-testid]="'task-card-subtask-' + subtask.id"
               (click)="onSubtaskRowClick($event, subtask)"
@@ -208,7 +208,7 @@ export interface TaskCardAssignableMember {
                 </div>
               }
               <p class="task-card__title">
-                <span>{{ subtask.title }}</span>
+                <span class="task-card__title-text" [title]="subtask.title">{{ subtask.title }}</span>
               </p>
               <div class="task-card__meta">
                 @if (subtask.assigneeEmployeeIds.length > 0) {
@@ -246,7 +246,7 @@ export interface TaskCardAssignableMember {
                   </span>
                 }
                 @if (isSubtaskAssignee(subtask)) {
-                  <div class="task-card__clock" (click)="$event.stopPropagation()">
+                  <div class="task-card__clock" appStopClickPropagation>
                     <app-task-clock-widget
                       [task]="subtask"
                       [isAssignee]="true"
@@ -269,19 +269,22 @@ export interface TaskCardAssignableMember {
   styles: [`
     :host {
       display: block;
+      min-width: 0;
     }
     .task-card {
+      min-width: 0;
+      max-width: 100%;
       background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: 12px;
       padding: 12px 14px;
       cursor: pointer;
-      box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+      box-shadow: var(--shadow-card);
       transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
     }
     .task-card:hover {
       border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border));
-      box-shadow: 0 5px 14px rgb(15 23 42 / 0.08);
+      box-shadow: var(--shadow-popover);
       transform: translateY(-1px);
     }
     .task-card__header {
@@ -300,7 +303,8 @@ export interface TaskCardAssignableMember {
       white-space: nowrap;
     }
     .task-card__pending-badge svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .task-card__title { margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
+    .task-card__title { min-width: 0; margin: 5px 0 7px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); line-height: 1.4; }
+    .task-card__title-text { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .task-card__meta { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--color-text-secondary); }
     .task-card__meta-btn {
       display: inline-flex;
@@ -317,14 +321,14 @@ export interface TaskCardAssignableMember {
       cursor: pointer;
       line-height: 1.3;
       transition: all 120ms ease;
-      box-shadow: 0 0.5px 1.5px rgb(15 23 42 / 0.04);
+      box-shadow: var(--shadow-card);
     }
     .task-card__meta-btn:hover,
     .task-card__meta-btn[aria-expanded="true"] {
       background: var(--color-surface-secondary);
       border-color: var(--color-accent);
       color: var(--color-text-primary);
-      box-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+      box-shadow: var(--shadow-card);
     }
     .task-card__meta-btn--icon-only {
       width: 26px;
@@ -370,14 +374,13 @@ export interface TaskCardAssignableMember {
     .task-card__priority { display: inline-flex; align-items: center; gap: 4px; text-transform: capitalize; color: var(--color-text-primary); }
     .task-card__priority-icon { width: 12px; height: 12px; fill: currentColor; stroke: currentColor; stroke-width: 1.2; flex-shrink: 0; }
     .task-card__priority[data-priority="critical"] .task-card__priority-icon,
-    .task-card__priority-icon[data-priority="critical"] { color: #ef4444; fill: #ef4444; }
+    .task-card__priority-icon[data-priority="critical"] { color: var(--color-danger); fill: var(--color-danger); }
     .task-card__priority[data-priority="high"] .task-card__priority-icon,
-    .task-card__priority-icon[data-priority="high"] { color: #f59e0b; fill: #f59e0b; }
+    .task-card__priority-icon[data-priority="high"] { color: var(--color-warning); fill: var(--color-warning); }
     .task-card__priority[data-priority="medium"] .task-card__priority-icon,
-    .task-card__priority-icon[data-priority="medium"] { color: #3b82f6; fill: #3b82f6; }
+    .task-card__priority-icon[data-priority="medium"] { color: var(--color-accent); fill: var(--color-accent); }
     .task-card__priority[data-priority="low"] .task-card__priority-icon,
-    .task-card__priority-icon[data-priority="low"] { color: #94a3b8; fill: #94a3b8; }
-    .task-card__event { overflow: hidden; max-width: 120px; border-radius: 999px; background: var(--color-surface-secondary); padding: 1px 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .task-card__priority-icon[data-priority="low"] { color: var(--color-text-muted); fill: var(--color-text-muted); }
     .task-card__clock { min-width: 0; margin-left: auto; flex-shrink: 0; }
 
     .task-card__popover {
@@ -386,7 +389,7 @@ export interface TaskCardAssignableMember {
       border: 1px solid var(--color-border);
       background: var(--color-surface);
       padding: 8px;
-      box-shadow: 0 10px 25px rgb(15 23 42 / 0.16);
+      box-shadow: var(--shadow-popover);
       cursor: default;
       font-size: 12px;
       color: var(--color-text-primary);
@@ -512,7 +515,7 @@ export interface TaskCardAssignableMember {
     .task-card__popover-save-btn {
       border: 0;
       background: var(--color-accent);
-      color: #fff;
+      color: var(--color-text-on-solid);
       padding: 3px 10px;
       font: inherit;
       font-size: 11px;
@@ -839,6 +842,11 @@ export class TaskCardComponent {
       return;
     }
     try {
+      if (this.task().taskKind === 'employee_checklist') {
+        if (employeeId) await firstValueFrom(this.taskApi.assignTask(taskId, employeeId));
+        this.taskChanged.emit();
+        return;
+      }
       for (const previousId of current) {
         await firstValueFrom(this.taskApi.unassignTask(taskId, previousId));
       }

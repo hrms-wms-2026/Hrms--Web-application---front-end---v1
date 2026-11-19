@@ -92,6 +92,14 @@ describe('AttendanceDetailDrawerComponent', () => {
     return { fixture, store };
   }
 
+  it('shows the tray label for both onevo.agent.trayapp and crownus.agent.trayapp', async () => {
+    // Activity recorded before the rename keeps the old process name.
+    const { fixture } = await setup();
+    const component = fixture.componentInstance;
+    expect(component.appLabel('onevo.agent.trayapp.exe')).toBe('WorkPulse');
+    expect(component.appLabel('crownus.agent.trayapp.exe')).toBe('WorkPulse');
+  });
+
   it('requests the detail for the given selection on open', async () => {
     const { store } = await setup();
     expect(store.loadDayDetail).toHaveBeenCalledWith('employee-1', '2026-08-27');
@@ -148,7 +156,7 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(text).toContain('Clocked out');
     expect(text).toContain('VS Code');
     expect(text).toContain('Apps used');
-    expect(text).toContain('No idle-time screenshots for this day.');
+    expect(text).toContain('No activity checks for this day.');
     expect(text).toContain('1h');
     expect(text).not.toContain('Active time');
     expect(text).toContain('Activity score');
@@ -179,9 +187,26 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(root.querySelector('img')?.getAttribute('src')).toBe('https://files.example/shot.jpg');
   });
 
+  it('shows "Were you working?" answers for employees without screenshot capture', async () => {
+    const { fixture } = await setup({
+      data: {
+        ...detail,
+        activityChecks: [
+          { id: 'yes', promptedAt: '2026-08-27T04:15:00Z', outcome: 'confirmed_working', url: null },
+          { id: 'no', promptedAt: '2026-08-27T05:15:00Z', outcome: 'not_working', url: null }
+        ]
+      }
+    });
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(text).toContain('Was working');
+    expect(text).toContain('Not working');
+    expect(text).not.toContain('No activity checks for this day.');
+  });
+
   it('renders a friendly empty state when daily activity is null', async () => {
     const { fixture } = await setup({ data: { ...detail, dailyActivity: null } });
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No idle-time screenshots for this day.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No activity checks for this day.');
   });
 
   it('renders a friendly empty state when there are no check-ins', async () => {

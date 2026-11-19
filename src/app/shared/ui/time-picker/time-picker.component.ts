@@ -9,23 +9,9 @@ import {
   output,
   signal
 } from '@angular/core';
+import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { nextUniqueId } from '../../utils/unique-id';
-
-export interface TimePreset {
-  label: string;
-  value: string; // HH:mm format (24-hour)
-}
-
-const DEFAULT_PRESETS: TimePreset[] = [
-  { label: '08:00 AM', value: '08:00' },
-  { label: '08:30 AM', value: '08:30' },
-  { label: '09:00 AM', value: '09:00' },
-  { label: '09:30 AM', value: '09:30' },
-  { label: '01:00 PM', value: '13:00' },
-  { label: '05:00 PM', value: '17:00' },
-  { label: '05:30 PM', value: '17:30' },
-  { label: '06:00 PM', value: '18:00' }
-];
+import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
 
 export function parseHHMM(str: string): { hour: number; minute: number } | null {
   if (!str || !/^([01]\d|2[0-3]):[0-5]\d$/.test(str.trim())) {
@@ -74,15 +60,34 @@ export function formatDisplayTime(hour24: number, minute: number, is12Hour: bool
   return `${String(hour24).padStart(2, '0')}:${m}`;
 }
 
+const POSITIONS_DOWN: ConnectionPositionPair[] = [
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 4 },
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -4 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -4 }
+];
+
+const POSITIONS_UP: ConnectionPositionPair[] = [
+  { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -4 },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -4 },
+  { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 4 }
+];
+
 @Component({
   selector: 'app-time-picker',
   standalone: true,
+  imports: [StopClickPropagationDirective, OverlayModule],
   templateUrl: './time-picker.component.html',
   styleUrl: './time-picker.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TimePickerComponent {
   label = input<string>('');
+  /** Shows a red asterisk after the label. */
+  required = input(false);
+  /** 'sm' is the compact field for dense panels and toolbars. */
+  size = input<'md' | 'sm'>('md');
   placeholder = input<string>('--:-- --');
   disabled = input(false);
   value = input<string>(''); // 24h format HH:mm e.g. "09:00"
@@ -101,8 +106,8 @@ export class TimePickerComponent {
 
   readonly isOpen = signal(false);
   readonly openUpward = signal(false);
+  readonly popoverPositions = computed(() => (this.openUpward() ? POSITIONS_UP : POSITIONS_DOWN));
 
-  readonly presets = DEFAULT_PRESETS;
 
   readonly activeHour12 = signal<number>(9);
   readonly activeMinute = signal<number>(0);
@@ -157,15 +162,6 @@ export class TimePickerComponent {
       this.isOpen.set(false);
       this.blurred.emit();
     }
-  }
-
-  selectPreset(preset: TimePreset): void {
-    this.valueChange.emit(preset.value);
-    const parsed = parseHHMM(preset.value);
-    if (parsed) {
-      this.updateInternalState(parsed.hour, parsed.minute);
-    }
-    this.closePopover();
   }
 
   selectHour(hour: number): void {
@@ -246,21 +242,11 @@ export class TimePickerComponent {
   private checkDirection(): void {
     const rect = this.elementRef.nativeElement.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    this.openUpward.set(spaceBelow < 280);
+    this.openUpward.set(spaceBelow < 260);
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
     this.closePopover();
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen()) {
-      return;
-    }
-    if (!this.elementRef.nativeElement.contains(event.target as Node)) {
-      this.closePopover();
-    }
   }
 }

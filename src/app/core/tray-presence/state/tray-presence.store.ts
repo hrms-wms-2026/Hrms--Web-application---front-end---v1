@@ -187,13 +187,13 @@ export const TrayPresenceStore = signalStore(
         wasConnected = connected;
 
         schedulePoll(connected ? 15_000 : 5_000);
-      } catch (error) {
+      } catch {
         if (!started || requestGeneration !== statusRequestGeneration) return;
         const transitionedToLocked = wasConnected;
         patchState(store, {
           phase: 'offline',
           checkedOnce: true,
-          generationError: 'The ONEVO service is temporarily unavailable. Retrying status…'
+          generationError: 'The CROWNUS service is temporarily unavailable. Retrying status…'
         });
         wasConnected = false;
         if (transitionedToLocked) reload.reloadCurrentUrl();
@@ -245,6 +245,16 @@ export const TrayPresenceStore = signalStore(
       void poll();
     };
 
+    // Explicit "Regenerate" click: discard the current code (valid or not) and request a fresh one.
+    // Unlike retry(), it does not fall back to a status poll when the current code is still usable.
+    const regenerateCode = async (): Promise<void> => {
+      if (codeTimer) clearTimeout(codeTimer);
+      codeTimer = null;
+      generationStarted = false;
+      patchState(store, { code: null, codeSecondsRemaining: null, generationError: null });
+      await generateCode({ force: true });
+    };
+
     const stop = (): void => {
       started = false;
       statusRequestGeneration += 1;
@@ -260,6 +270,6 @@ export const TrayPresenceStore = signalStore(
       stop();
     });
 
-    return { start, stop, refresh: poll, generateCode, retry, copyCode, lockImmediately };
+    return { start, stop, refresh: poll, generateCode, regenerateCode, retry, copyCode, lockImmediately };
   })
 );

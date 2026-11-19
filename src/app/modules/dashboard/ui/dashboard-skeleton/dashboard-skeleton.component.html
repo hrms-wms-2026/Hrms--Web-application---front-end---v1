@@ -1,0 +1,48 @@
+<div class="dsk" role="status" aria-live="polite" data-testid="dashboard-skeleton">
+  <span class="sr-only">Loading your dashboard</span>
+  @for (card of cards; track $index) {
+    <div class="dsk-card" [style.--dsk-w]="card.w" [style.--dsk-h]="card.h" aria-hidden="true" data-testid="dashboard-skeleton-card">
+      <div class="dsk-head">
+        <span class="dsk-block dsk-title"></span>
+        <span class="dsk-block dsk-action"></span>
+      </div>
+      @switch (card.body) {
+        @case ('donut') {
+          <div class="dsk-donut-row">
+            <span class="dsk-donut"></span>
+            <div class="dsk-lines">
+              <span class="dsk-block dsk-line"></span>
+              <span class="dsk-block dsk-line dsk-line--short"></span>
+              <span class="dsk-block dsk-line"></span>
+            </div>
+          </div>
+        }
+        @case ('bars') {
+          <div class="dsk-bars">
+            @for (b of bars; track $index) {
+              <span class="dsk-block dsk-bar" [style.height.%]="b"></span>
+            }
+          </div>
+        }
+        @case ('tiles') {
+          <div class="dsk-tiles">
+            @for (t of [0, 1, 2, 3]; track t) {
+              <span class="dsk-block dsk-tile"></span>
+            }
+          </div>
+        }
+        @case ('list') {
+          <div class="dsk-list">
+            @for (r of rows; track r) {
+              <div class="dsk-row">
+                <span class="dsk-block dsk-avatar"></span>
+                <span class="dsk-block dsk-line"></span>
+                <span class="dsk-block dsk-value"></span>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+</div>

@@ -1,13 +1,14 @@
-<div class="pam-backdrop" (click)="close.emit()">
-  <div class="pam-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+<div role="presentation" class="pam-backdrop" (click)="closed.emit()">
+  <div class="pam-modal ui-scroll-open" appStopClickPropagation role="dialog" aria-modal="true">
 
     <!-- Header -->
-    <div class="pam-header">
+    <div class="pam-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="shield" aria-hidden="true"></span>
       <div>
         <h2 class="pam-title">Position access template</h2>
         <p class="pam-subtitle">Manage system role template and access approval rules for '{{ position.name }}'.</p>
       </div>
-      <button type="button" class="pam-close-btn" (click)="close.emit()" aria-label="Close">
+      <button type="button" class="pam-close-btn" (click)="closed.emit()" aria-label="Close">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
@@ -16,7 +17,7 @@
     </div>
 
     <!-- Body -->
-    <div class="pam-body">
+    <div class="pam-body scroll-fade">
       @if (loading) {
         <div class="pam-skeleton" aria-busy="true" aria-label="Loading access template"></div>
       } @else {
@@ -71,7 +72,7 @@
               </label>
 
               <div class="pam-footer">
-                <app-button type="button" variant="secondary" (click)="close.emit()" [disabled]="saving">Cancel</app-button>
+                <app-button type="button" variant="secondary" (click)="closed.emit()" [disabled]="saving">Cancel</app-button>
                 <app-button type="submit" [loading]="saving" [disabled]="saving">Save access template</app-button>
               </div>
             </form>
@@ -81,12 +82,12 @@
               <span>You need role access to configure system access.</span>
             </div>
             <div class="pam-footer">
-              <app-button type="button" variant="secondary" (click)="close.emit()">Close</app-button>
+              <app-button type="button" variant="secondary" (click)="closed.emit()">Close</app-button>
             </div>
           }
         } @else {
           <div class="pam-footer">
-            <app-button type="button" variant="secondary" (click)="close.emit()">Close</app-button>
+            <app-button type="button" variant="secondary" (click)="closed.emit()">Close</app-button>
           </div>
         }
       }

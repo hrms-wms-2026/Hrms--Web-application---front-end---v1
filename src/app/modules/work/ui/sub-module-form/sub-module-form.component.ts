@@ -1,10 +1,10 @@
-import { Component, DestroyRef, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DateRangePickerComponent } from '../../../../shared/ui/date-range-picker/date-range-picker.component';
-import { EmployeePickerComponent } from '../employee-picker/employee-picker.component';
+import { PersonPickerDialogComponent, PersonPickerOption } from '../../../../shared/ui/person-picker-dialog/person-picker-dialog.component';
 import { AssetUploadListComponent, AssetRowView } from '../asset-upload-list/asset-upload-list.component';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { EmployeeDirectoryStore } from '../../state/employee-directory.store';
@@ -13,6 +13,7 @@ import { CreateObjectiveRequestDto, EditObjectiveRequestDto } from '../../models
 import { MonitorWarningDto } from '../../models/dto/monitor.dto';
 import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
 import { MonitorWarningCalloutComponent } from '../monitor-warning-callout/monitor-warning-callout.component';
+import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 
 /** How long the form waits after the last change before asking the monitor for warnings. */
 export const MONITOR_CHECK_DEBOUNCE_MS = 400;
@@ -25,15 +26,15 @@ interface SelectedMember {
 @Component({
   selector: 'app-sub-module-form',
   standalone: true,
-  imports: [ModalComponent, InputComponent, ButtonComponent, DateRangePickerComponent, EmployeePickerComponent, AssetUploadListComponent, MonitorWarningCalloutComponent],
+  imports: [ModalComponent, InputComponent, ButtonComponent, DateRangePickerComponent, PersonPickerDialogComponent, AssetUploadListComponent, MonitorWarningCalloutComponent],
   template: `
-    <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Module settings' : 'Create sub Module'" size="lg" (closed)="closed.emit()">
+    <app-modal [open]="open()" [title]="mode() === 'edit' ? 'Milestone settings' : 'Create sub Milestone'" size="lg" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
         <span data-testid="title-field">
           <app-input label="Title" [value]="title()" [error]="errors()['title']" (valueChange)="title.set($event)" />
         </span>
         <span data-testid="description-field">
-          <app-input label="Description" [value]="description()" (valueChange)="description.set($event)" />
+          <app-input label="Description" [maxlength]="limits.subModuleDescription" [value]="description()" (valueChange)="description.set($event)" />
         </span>
         <span data-testid="date-range-field">
           <app-date-range-picker [from]="startDate()" [to]="endDate()" (rangeChange)="onRangeChange($event)" />
@@ -50,7 +51,7 @@ interface SelectedMember {
             <input type="checkbox" id="sub-module-achieved-toggle" [checked]="achieved()" [disabled]="isDefault()" (change)="onAchievedChange($event)" />
             <label for="sub-module-achieved-toggle" class="text-sm text-[var(--color-text-primary)]">Achieved</label>
             @if (isDefault()) {
-              <span class="text-xs text-[var(--color-text-secondary)]">(Achieve the project instead — the Default Module follows the project's own achieved state)</span>
+              <span class="text-xs text-[var(--color-text-secondary)]">(Achieve the project instead — the Default Milestone follows the project's own achieved state)</span>
             }
           </span>
         }
@@ -68,18 +69,19 @@ interface SelectedMember {
                   @if (member.isOwner) {
                     <span data-testid="owner-badge" class="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-accent)]">Owner invite pending</span>
                   } @else {
-                    <span data-testid="make-owner-button" (click)="onSetOwner(member.employeeId)">
+                    <span role="presentation" data-testid="make-owner-button" (click)="onSetOwner(member.employeeId)">
                       <app-button variant="secondary" size="sm">Invite as owner</app-button>
                     </span>
                   }
-                  <span data-testid="remove-member-button" (click)="onMemberRemove(member.employeeId)">
+                  <span role="presentation" data-testid="remove-member-button" (click)="onMemberRemove(member.employeeId)">
                     <app-button variant="secondary" size="sm">Remove</app-button>
                   </span>
                 </div>
               </div>
             }
           </div>
-          <app-employee-picker [open]="memberPickerOpen()" (selected)="onMemberPicked($event)" (closed)="memberPickerOpen.set(false)" />
+          <app-person-picker-dialog [open]="memberPickerOpen()" title="Add members" [disabledPeople]="pickedMembers()"
+            (confirmed)="onMembersPicked($event)" (closed)="memberPickerOpen.set(false)" />
         }
 
         <div data-testid="assets-section" class="flex flex-col gap-2">
@@ -124,6 +126,7 @@ interface SelectedMember {
   `]
 })
 export class SubModuleFormComponent {
+  readonly limits = TEXT_LIMITS;
   private readonly store = inject(ProjectDetailStore);
   private readonly monitorApi = inject(ProjectMonitorApiService);
   protected readonly directory = inject(EmployeeDirectoryStore);
@@ -255,11 +258,16 @@ export class SubModuleFormComponent {
     this.endDate.set(range.to);
   }
 
-  onMemberPicked(employeeId: string): void {
+  /** Members already picked: listed as added in the picker. */
+  protected readonly pickedMembers = computed<PersonPickerOption[]>(() =>
+    this.members().map((m) => ({ id: m.employeeId, name: this.directory.get(m.employeeId)?.name ?? 'Employee' })));
+
+  onMembersPicked(employeeIds: string[]): void {
     this.memberPickerOpen.set(false);
-    if (this.members().some((m) => m.employeeId === employeeId)) return;
-    this.members.update((list) => [...list, { employeeId, isOwner: false }]);
-    void this.directory.ensureLoaded([employeeId]);
+    const fresh = employeeIds.filter((id) => !this.members().some((m) => m.employeeId === id));
+    if (fresh.length === 0) return;
+    this.members.update((list) => [...list, ...fresh.map((employeeId) => ({ employeeId, isOwner: false }))]);
+    void this.directory.ensureLoaded(fresh);
   }
 
   onMemberRemove(employeeId: string): void {
