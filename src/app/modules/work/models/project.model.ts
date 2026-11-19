@@ -1,3 +1,5 @@
+import { CreateProjectRequestDto, EditProjectRequestDto } from './dto/project.dto';
+
 export interface ProjectLabel {
   id: string;
   name: string;
@@ -41,32 +43,8 @@ export interface ProjectDetail extends Project {
   createdAt: string;
 }
 
-export interface CreateProjectPayload {
-  categoryId: string;
-  name: string;
-  identifier: string;
-  description: string;
-  startDate: string;
-  targetDate: string;
-  releaseDate: string | null;
-  color: string;
-  actualHours: number;
-  defaultObjectiveAllocatedHours: number;
-  logoFile: File | null;
-  bannerFile: File | null;
-  icon?: string | null;
-  memberEmployeeIds: readonly string[];
-}
+/** The create-project form payload, sent to the backend unchanged (`CreateProjectRequestDto`). */
+export type CreateProjectPayload = CreateProjectRequestDto;
 
-export interface EditProjectPayload {
-  name: string;
-  description: string;
-  categoryId: string;
-  startDate: string;
-  targetDate: string;
-  color: string;
-  actualHours: number;
-  allocatedHours: number;
-  /** Omitted keeps the current icon; '' clears it. */
-  icon?: string | null;
-}
+/** The edit-project form payload, sent to the backend unchanged (`EditProjectRequestDto`). */
+export type EditProjectPayload = EditProjectRequestDto;

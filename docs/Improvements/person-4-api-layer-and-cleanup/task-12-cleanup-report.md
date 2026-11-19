@@ -20,6 +20,7 @@ These failures exist before any cleanup change. They are not caused by this task
 | Base | 283 | 3,713 | |
 | After Task 2 | 283 | 3,713 | 0% (deleted files held no clones) |
 | After Task 3 | 278 | 3,622 | -2.5% |
+| After Task 4 | 277 | 3,604 | -2.9% |
 | Target | | ≤ 2,784 | -25% |
 
 Duplicated lines by module at base (counted by the first file of each clone):
@@ -99,3 +100,6 @@ Unused exported types (4)
 
 ## Batch decisions
 - Task 3, auth store: merged. All 5 session `patchState` blocks (`login`, `acceptLegalDocuments`, `acceptEmployeeInvitation`, `checkSession`, `exchangeSession`) carried the same 11 fields plus `loading`, so they now use one `sessionState(view)` helper typed with `CurrentUserViewModel`. A new session field is added in one place. Error paths unchanged. `auth.store.spec.ts`: 18 tests before and after.
+- Task 4, work models: `CreateProjectPayload` and `EditProjectPayload` merged into aliases of `CreateProjectRequestDto` and `EditProjectRequestDto`. Field lists are identical (names, types, optionality), and no mapper sits between them: the form emits the payload and `ProjectListStore` passes it straight to `ProjectApiService`.
+- Task 4, `Milestone` vs `MyProjectMilestoneDto`: kept. Fields are identical, but `toMilestone` in `project.mapper.ts` converts one to the other, and the store maps every response through it. Merging would mean removing that mapper step, which is outside this batch.
+- Task 4, `Project` / `ProjectDetail` vs `ProjectListItemDto` / `ProjectDetailDto`: kept. `toProject` and `toProjectDetail` map them, and normalise `icon` and `systemPurpose` (`?? null`). The model also names its own `ProjectLabel` and `ProjectMemberAvatar` types.
