@@ -135,7 +135,7 @@ const RESPONSE_LABELS: Record<string, string> = { accepted: 'Accepted', rejected
             <section class="flex flex-col gap-1">
               <span class="font-medium">Action items</span>
               <app-meeting-action-items [occurrenceTaskId]="occ.taskId" [projectId]="occ.placement.projectId"
-                [objectiveId]="occ.placement.objectiveId" [isOrganizer]="isOrganizer()" />
+                [projectName]="occ.placement.projectName ?? ''" [objectiveId]="occ.placement.objectiveId" [isOrganizer]="isOrganizer()" />
             </section>
           }
         </div>

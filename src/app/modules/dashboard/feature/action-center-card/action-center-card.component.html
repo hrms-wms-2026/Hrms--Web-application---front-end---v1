@@ -1,7 +1,7 @@
 <app-popout-panel
   class="block h-full"
   [open]="showAll()"
-  label="Action Center"
+  label="My Action Center"
   expandedWidth="64rem"
   [growLeft]="true"
   expandedMaxHeight="min(85vh, 56rem)"
@@ -18,7 +18,7 @@
       <div class="flex min-w-0 items-center gap-2">
         <span class="ac-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-warning-subtle)] font-bold text-[var(--color-warning-text)] dark:bg-transparent dark:text-[var(--color-warning)]" aria-hidden="true">!</span>
         <div class="min-w-0">
-          <h2 class="ac-title text-base font-semibold text-[var(--color-text-primary)]">Action Center</h2>
+          <h2 class="ac-title text-base font-semibold text-[var(--color-text-primary)]">My Action Center</h2>
           @if (subtitle(); as sub) {
             <p class="ac-sub text-xs text-[var(--color-text-secondary)]">{{ sub }}</p>
           }

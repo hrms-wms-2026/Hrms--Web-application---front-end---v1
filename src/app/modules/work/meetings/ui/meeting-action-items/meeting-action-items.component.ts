@@ -37,8 +37,8 @@ import { meetingErrorMessage } from '../../utils/meeting-error-messages';
       <button type="button" data-testid="action-item-add" class="self-start rounded-md border px-2 py-1" (click)="formOpen.set(true)">Add action item</button>
     </div>
     @if (formOpen()) {
-      <app-task-form-modal [open]="true" mode="create" [projectId]="projectId()" [prefillModuleId]="objectiveId()"
-        [sourceMeetingOccurrenceId]="occurrenceTaskId()" (created)="onCreated()" (closed)="formOpen.set(false)" />
+      <app-task-form-modal [open]="true" mode="create" [projectId]="projectId()" [projectName]="projectName()" [allowProjectChange]="true"
+        [prefillModuleId]="objectiveId()" [sourceMeetingOccurrenceId]="occurrenceTaskId()" (created)="onCreated()" (closed)="formOpen.set(false)" />
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,8 +49,9 @@ export class MeetingActionItemsComponent implements OnInit {
   private readonly directory = inject(EmployeeDirectoryStore);
 
   readonly occurrenceTaskId = input.required<string>();
+  /** The meeting's project and module: the default destination for a new action item, which the user may change. */
   readonly projectId = input.required<string>();
-  /** The meeting's module: the default destination for a new action item. */
+  readonly projectName = input('');
   readonly objectiveId = input.required<string>();
   readonly isOrganizer = input(false);
 

@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthStore } from '../../../../../core/auth/state/auth.store';
@@ -102,6 +103,16 @@ describe('MeetingOccurrenceDrawerComponent', () => {
     await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
 
     expect(fixture.nativeElement.querySelector('app-meeting-action-items')).toBeNull();
+  });
+
+  it('hands the meeting\'s project and module to its action items', async () => {
+    api.getOccurrenceAt.mockReturnValue(of(occurrence()));
+    await open({ seriesId: 's1', originalStart: '2026-11-02T03:30:00Z' });
+
+    const items = fixture.debugElement.query(By.css('app-meeting-action-items'));
+    expect(items.properties['projectId']).toBe('p1');
+    expect(items.properties['projectName']).toBe('Acme Portal');
+    expect(items.properties['objectiveId']).toBe('o1');
   });
 
   it('after the end only notes are editable', async () => {

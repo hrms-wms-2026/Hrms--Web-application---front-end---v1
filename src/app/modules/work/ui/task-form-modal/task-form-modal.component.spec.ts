@@ -4,7 +4,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
 import { MeetingsAvailabilityService } from '../../meetings/state/meetings-availability.service';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { TaskFormModalComponent } from './task-form-modal.component';
 import { ProjectMonitorApiService } from '../../data-access/project-monitor-api.service';
@@ -1649,6 +1649,224 @@ describe('TaskFormModalComponent - subtasks section', () => {
     const dateLabel = dateBtn.querySelector('span');
     expect(dateLabel).not.toBeNull();
     expect(dateLabel!.textContent?.trim()).toBe('Sep 17');
+  });
+});
+
+describe('TaskFormModalComponent - an action item defaults to the meeting\'s project and module', () => {
+  let fixture: ComponentFixture<TaskFormModalComponent>;
+  let form: TaskFormModalComponent;
+  let projectApi: Record<string, ReturnType<typeof vi.fn>>;
+  let api: Record<string, ReturnType<typeof vi.fn>>;
+  let sprintApi: { getByProject: ReturnType<typeof vi.fn> };
+  let projectStore: { milestones: ReturnType<typeof signal<unknown[]>>; loadProjectMembers: ReturnType<typeof vi.fn>; projectMembers: () => unknown[]; project: () => null };
+  let createTask: ReturnType<typeof vi.fn>;
+
+  const module = (objectiveId: string, projectId: string, title: string) => ({ objectiveId, projectId, title, isOwner: true });
+  const myModules: Record<string, unknown[]> = {
+    p1: [module('o1', 'p1', 'Delivery'), module('o9', 'p1', 'Support')],
+    p2: [module('o2', 'p2', 'Build'), module('o3', 'p2', 'Launch')],
+  };
+  const myProjects = [
+    { id: 'p1', name: 'Acme Portal' },
+    { id: 'p2', name: 'Mobile App' },
+    { id: 'office', name: 'Office', systemPurpose: 'office' },
+  ];
+
+  async function build(opts: { allowProjectChange?: boolean; storeMilestones?: unknown[]; projects?: unknown[]; modules?: Record<string, unknown[]> } = {}): Promise<void> {
+    const modules = opts.modules ?? myModules;
+    projectApi = {
+      getMyMilestones: vi.fn((projectId: string) => of(modules[projectId] ?? [])),
+      listMine: vi.fn().mockReturnValue(of({ items: opts.projects ?? myProjects })),
+    };
+    api = { ...baseApi(), getCategories: vi.fn((projectId: string) => of([{ id: `cat-${projectId}`, name: `Task ${projectId}`, displayOrder: 0 }])) };
+    sprintApi = { getByProject: vi.fn((projectId: string) => of([
+      { id: `sp-${projectId}`, projectId, name: `Sprint ${projectId}`, startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null, canManage: true },
+    ])) };
+    createTask = vi.fn().mockResolvedValue({ id: 't-new', objectiveId: 'o2' });
+    projectStore = {
+      milestones: signal(opts.storeMilestones ?? []),
+      loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+      projectMembers: () => [],
+      project: () => null,
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [TaskFormModalComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TaskApiService, useValue: api },
+        { provide: ProjectApiService, useValue: projectApi },
+        { provide: SprintApiService, useValue: sprintApi },
+        { provide: TaskBoardStore, useValue: { createTask, createSubtask: vi.fn().mockResolvedValue({}), error: () => null } },
+        { provide: ProjectDetailStore, useValue: projectStore },
+        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } },
+        { provide: TaskDraftApiService, useValue: taskDraftApiStub },
+        { provide: DraftsStore, useValue: draftsStoreStub },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(TaskFormModalComponent);
+    form = fixture.componentInstance;
+    fixture.componentRef.setInput('projectId', 'p1');
+    fixture.componentRef.setInput('mode', 'create');
+    fixture.componentRef.setInput('prefillModuleId', 'o1');
+    fixture.componentRef.setInput('sourceMeetingOccurrenceId', 'occ-1');
+    fixture.componentRef.setInput('projectName', 'Acme Portal');
+    fixture.componentRef.setInput('allowProjectChange', opts.allowProjectChange ?? true);
+    fixture.componentRef.setInput('open', true);
+    await flush(fixture);
+  }
+
+  const testId = (id: string) => fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+  const projectOptions = () => [...fixture.nativeElement.querySelectorAll('[data-testid="task-form-project-option"]')] as HTMLButtonElement[];
+  const moduleTitles = () => form.modules().map((m) => m.title);
+
+  async function chooseProject(name: string): Promise<void> {
+    testId('task-form-project-chip')!.click();
+    fixture.detectChanges();
+    projectOptions().find((o) => o.textContent?.includes(name))!.click();
+    await flush(fixture);
+  }
+
+  it('opens with the meeting\'s project shown and its module selected', async () => {
+    await build();
+
+    expect(testId('task-form-project-chip')?.textContent).toContain('Acme Portal');
+    expect(form.selectedObjectiveId()).toBe('o1');
+    expect(form.selectedModuleTitle()).toBe('Delivery');
+  });
+
+  it('a form that does not allow changing the project has no project chip', async () => {
+    await build({ allowProjectChange: false });
+
+    expect(testId('task-form-project-chip')).toBeNull();
+    expect(projectApi['listMine']).not.toHaveBeenCalled();
+  });
+
+  it('the module stays editable: another module of the project can be chosen', async () => {
+    await build();
+
+    const chip = [...fixture.nativeElement.querySelectorAll('.tfm-chip')].find((c) => (c as HTMLElement).textContent?.includes('Delivery')) as HTMLElement;
+    chip.click();
+    fixture.detectChanges();
+    const support = [...fixture.nativeElement.querySelectorAll('.tfm-popover__item')].find((i) => (i as HTMLElement).textContent?.includes('Support')) as HTMLElement;
+    support.click();
+    fixture.detectChanges();
+
+    expect(form.selectedObjectiveId()).toBe('o9');
+  });
+
+  it('offers my projects without Office', async () => {
+    await build();
+
+    testId('task-form-project-chip')!.click();
+    fixture.detectChanges();
+
+    expect(projectOptions().map((o) => o.textContent?.trim())).toEqual(['Acme Portal', 'Mobile App']);
+  });
+
+  it('still offers the meeting\'s project when it is not one of my projects', async () => {
+    await build({ projects: [{ id: 'p2', name: 'Mobile App' }] });
+
+    testId('task-form-project-chip')!.click();
+    fixture.detectChanges();
+
+    expect(projectOptions().map((o) => o.textContent?.trim())).toEqual(['Acme Portal', 'Mobile App']);
+  });
+
+  it('changing the project loads that project\'s modules, sprints, categories and members, and keeps what was typed', async () => {
+    await build();
+    form.title.set('Send the minutes');
+
+    await chooseProject('Mobile App');
+
+    expect(testId('task-form-project-chip')?.textContent).toContain('Mobile App');
+    expect(form.title()).toBe('Send the minutes');
+    expect(moduleTitles()).toEqual(['Build', 'Launch']);
+    expect(form.selectedObjectiveId()).toBe('');
+    expect(form.categoryId()).toBe('cat-p2');
+    expect(form.sprintId()).toBe('sp-p2');
+    expect(projectStore.loadProjectMembers).toHaveBeenLastCalledWith('p2');
+  });
+
+  it('changing the project clears choices that belong to the old project', async () => {
+    await build();
+    form.assigneeEmployeeId.set('e7');
+    form.draftSubtasks.set([{ id: 'd1', title: 'Sub', objectiveId: 'o1', categoryId: 'cat-p1', assigneeEmployeeId: 'e7' }]);
+
+    await chooseProject('Mobile App');
+
+    expect(form.assigneeEmployeeId()).toBe('');
+    expect(form.draftSubtasks()).toEqual([{ id: 'd1', title: 'Sub' }]);
+  });
+
+  it('creates the action item in the chosen project, still linked to the meeting', async () => {
+    await build();
+    form.title.set('Send the minutes');
+    await chooseProject('Mobile App');
+    form.selectedObjectiveId.set('o2');
+    form.priority.set('medium');
+
+    await form.submitCreateWithAction('create_and_close');
+
+    expect(createTask).toHaveBeenCalledWith('o2', expect.objectContaining({
+      categoryId: 'cat-p2', sprintId: 'sp-p2', sourceMeetingOccurrenceId: 'occ-1',
+    }));
+  });
+
+  it('going back to the meeting\'s project selects the meeting\'s module again', async () => {
+    await build();
+
+    await chooseProject('Mobile App');
+    await chooseProject('Acme Portal');
+
+    expect(form.selectedObjectiveId()).toBe('o1');
+    expect(moduleTitles()).toEqual(['Delivery', 'Support']);
+  });
+
+  it('a late answer for an earlier choice does not overwrite the current project', async () => {
+    await build();
+    const slow = new Subject<unknown[]>();
+    projectApi['getMyMilestones'].mockImplementation((projectId: string) => (projectId === 'p2' ? slow : of([module('o4', 'p3', 'Later')])));
+
+    const first = form.selectProject('p2');
+    await form.selectProject('p3');
+    slow.next(myModules['p2']);
+    slow.complete();
+    await first;
+    await flush(fixture);
+
+    expect(moduleTitles()).toEqual(['Later']);
+    expect(form.activeProjectId()).toBe('p3');
+  });
+
+  it('says so when the project cannot be loaded', async () => {
+    await build();
+    projectApi['getMyMilestones'].mockReturnValue(throwError(() => new Error('boom')));
+
+    await chooseProject('Mobile App');
+
+    expect(fixture.nativeElement.textContent).toContain('Could not load that project');
+  });
+
+  it('when I am not a member of the meeting\'s module it selects nothing, even with one other module, and says why', async () => {
+    await build({ modules: { p1: [module('o9', 'p1', 'Support')] } });
+
+    expect(form.selectedObjectiveId()).toBe('');
+    expect(testId('task-form-meeting-module-hint')?.textContent).toContain('member');
+  });
+
+  it('shows no such note once a module is selected', async () => {
+    await build();
+
+    expect(testId('task-form-meeting-module-hint')).toBeNull();
+  });
+
+  it('does not offer modules another project left in the app-wide store', async () => {
+    await build({ storeMilestones: [module('o-stale', 'p-other', 'Stale module'), module('o-extra', 'p1', 'Owned elsewhere')] });
+
+    expect(moduleTitles()).toEqual(['Delivery', 'Support', 'Owned elsewhere']);
   });
 });
 
