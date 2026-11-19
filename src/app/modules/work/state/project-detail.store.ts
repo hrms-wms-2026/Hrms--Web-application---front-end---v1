@@ -93,8 +93,10 @@ export const ProjectDetailStore = signalStore(
 
       patchState(store, { projectMembersLoading: true });
       try {
-        const milestones = store.milestones().length > 0
-          ? store.milestones()
+        // This store is app-wide: what it holds may be another project's (the Planner asks without opening the project).
+        const known = store.milestones().filter((m) => m.projectId === projectId);
+        const milestones = known.length > 0
+          ? known
           : (await firstValueFrom(api.getMyMilestones(projectId))).map(toMilestone);
         if (store.milestones().length === 0) patchState(store, { milestones });
 

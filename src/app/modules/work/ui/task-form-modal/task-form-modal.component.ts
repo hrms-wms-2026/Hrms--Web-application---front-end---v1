@@ -321,7 +321,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
                 data-testid="embedded-meeting-form"
                 [embedded]="true"
                 mode="create"
-                [placement]="{ projectId: projectId(), objectiveId: selectedObjectiveId() || null }"
+                [placement]="{ projectId: activeProjectId(), objectiveId: selectedObjectiveId() || null }"
                 [carryOver]="{ title: title(), description: description() || null }"
                 (saved)="onMeetingCreated($any($event))"
                 (closed)="onMeetingCancelled()"
@@ -466,6 +466,52 @@ const TASK_CATEGORY_MEETING = 'meeting';
                     [value]="dueDate()"
                     (valueChange)="dueDate.set($event)"
                   />
+
+                  <!-- Project Chip -->
+                  @if (allowProjectChange()) {
+                    <div class="tfm-chip-anchor">
+                      <button
+                        type="button"
+                        class="tfm-chip tfm-chip--active"
+                        data-testid="task-form-project-chip"
+                        [attr.aria-expanded]="activePopover() === 'project'"
+                        (click)="togglePopover('project', $event)"
+                        [title]="'Project: ' + selectedProjectName()"
+                      >
+                        <svg class="tfm-chip-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                        <span class="tfm-chip-label">{{ selectedProjectName() }}</span>
+                      </button>
+                      @if (activePopover() === 'project') {
+                        <div class="tfm-popover" role="dialog" appStopClickPropagation>
+                          @if (filteredProjects().length > 4 || projectSearchQuery()) {
+                            <div class="tfm-popover__search-box">
+                              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                              <input
+                                type="text"
+                                placeholder="Search projects..."
+                                aria-label="Search projects"
+                                [value]="projectSearchQuery()"
+                                (input)="projectSearchQuery.set($any($event.target).value)"
+                              />
+                            </div>
+                          }
+                          <div class="tfm-popover__list">
+                            @for (p of filteredProjects(); track p.id) {
+                              <button
+                                type="button"
+                                class="tfm-popover__item"
+                                data-testid="task-form-project-option"
+                                [class.tfm-popover__item--selected]="activeProjectId() === p.id"
+                                (click)="selectProject(p.id)"
+                              >
+                                <span class="tfm-popover__name">{{ p.name }}</span>
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
 
                   <!-- Module Chip -->
                   <div class="tfm-chip-anchor">
@@ -649,6 +695,12 @@ const TASK_CATEGORY_MEETING = 'meeting';
               </div>
 
               <app-monitor-warning-callout [warnings]="loadWarnings()" />
+
+              @if (meetingModuleUnavailable()) {
+                <p class="tfm__error tfm-banner-error" role="status" data-testid="task-form-meeting-module-hint">
+                  You aren't a member of this meeting's module. Choose a module you belong to, or another project.
+                </p>
+              }
 
               @if (allocationHint()) {
                 <p class="tfm__error tfm-banner-error" role="alert" data-testid="allocation-hint">
@@ -1177,7 +1229,7 @@ const TASK_CATEGORY_MEETING = 'meeting';
 
                     <!-- Comments component: always mounted for test compatibility and state retention, visible on Comments & All tabs -->
                     <div [hidden]="activityTab() !== 'comments' && activityTab() !== 'all'">
-                      <app-task-comments [taskId]="tid" [projectId]="projectId()" [sortOrder]="activitySortOrder()" (countChange)="commentCount.set($event)" />
+                      <app-task-comments [taskId]="tid" [projectId]="activeProjectId()" [sortOrder]="activitySortOrder()" (countChange)="commentCount.set($event)" />
                     </div>
 
                     @if (activityEmptyState(); as empty) {
@@ -2188,6 +2240,10 @@ export class TaskFormModalComponent {
   readonly prefillSprintId = input<string>('');
   /** Set when the task is an action item raised from a meeting occurrence (meetings-as-tasks spec 5.4); null otherwise. */
   readonly sourceMeetingOccurrenceId = input<string | null>(null);
+  /** Create mode only: let the user send the new item to another of their projects (a meeting's action item). */
+  readonly allowProjectChange = input(false);
+  /** The name of projectId, for a project that may not be among the caller's own (an attendee's, the Office project). */
+  readonly projectName = input('');
   /** Create mode only: resume this saved draft instead of starting from a blank form. */
   readonly draftId = input<string>('');
   /**
@@ -2212,6 +2268,29 @@ export class TaskFormModalComponent {
 
   internalMode = signal<TaskFormMode | null>(null);
   currentEffectiveMode = computed(() => this.internalMode() ?? this.mode());
+
+  /** The project chosen on the form (allowProjectChange); null while it is still the one the host passed. */
+  private readonly chosenProjectId = signal<string | null>(null);
+  readonly activeProjectId = computed(() => this.chosenProjectId() ?? this.projectId());
+  private readonly myProjects = signal<readonly { id: string; name: string }[]>([]);
+  /** The host's project is always offered: an attendee's meeting may sit in a project that is not one of theirs. */
+  private readonly projectChoices = computed(() => {
+    const mine = this.myProjects();
+    return mine.some((p) => p.id === this.projectId()) ? mine : [{ id: this.projectId(), name: this.projectName() || 'Project' }, ...mine];
+  });
+  readonly projectSearchQuery = signal('');
+  readonly filteredProjects = computed(() => {
+    const q = this.projectSearchQuery().toLowerCase().trim();
+    return q ? this.projectChoices().filter((p) => p.name.toLowerCase().includes(q)) : this.projectChoices();
+  });
+  readonly selectedProjectName = computed(() => this.projectChoices().find((p) => p.id === this.activeProjectId())?.name ?? 'Project');
+  readonly switchingProject = signal(false);
+  /** Bumped by every project load, so an answer for an earlier choice is dropped. */
+  private projectLoadVersion = 0;
+  /** The meeting's module is not one the caller can add work to: the server would refuse it, so nothing is selected. */
+  readonly meetingModuleUnavailable = computed(() => !!this.sourceMeetingOccurrenceId() && !!this.prefillModuleId()
+    && !this.chosenProjectId() && !this.loading() && !this.switchingProject() && !this.selectedObjectiveId()
+    && !this.modules().some((m) => m.objectiveId === this.prefillModuleId()));
 
   activeTaskId = signal<string>('');
   currentTaskId = computed(() => this.activeTaskId() || this.taskId());
@@ -2374,7 +2453,7 @@ export class TaskFormModalComponent {
   private loadCheckTimer: ReturnType<typeof setTimeout> | null = null;
   private loadCheckVersion = 0;
   private readonly loadCheckEffect = effect(() => {
-    const projectId = this.open() ? this.projectId() : '';
+    const projectId = this.open() ? this.activeProjectId() : '';
     const request = {
       taskId: this.mode() === 'create' ? null : this.activeTaskId() || null,
       assigneeEmployeeIds: this.assigneeEmployeeId() ? [this.assigneeEmployeeId()] : [],
@@ -2410,7 +2489,7 @@ export class TaskFormModalComponent {
   }
   errorMessage = signal<string | null>(null);
 
-  activePopover = signal<'assignee' | 'priority' | 'dueDate' | 'module' | 'sprint' | 'category' | 'splitMenu' | 'status' | 'headerCategory' | 'headerModule' | 'headerMore' | null>(null);
+  activePopover = signal<'assignee' | 'priority' | 'dueDate' | 'project' | 'module' | 'sprint' | 'category' | 'splitMenu' | 'status' | 'headerCategory' | 'headerModule' | 'headerMore' | null>(null);
   showActivityLog = signal(true);
   showComments = signal(true);
   activityTab = signal<'all' | 'comments' | 'history' | 'work_log'>('comments');
@@ -2762,6 +2841,9 @@ export class TaskFormModalComponent {
     this.successToastMessage.set(null);
     this.attachedFiles.set([]);
     this.moduleSearchQuery.set('');
+    this.chosenProjectId.set(null);
+    this.projectSearchQuery.set('');
+    this.switchingProject.set(false);
     this.showMoreFields.set(true);
     this.draftSubtasks.set([]);
     this.cancelAddSubtask();
@@ -2781,9 +2863,9 @@ export class TaskFormModalComponent {
     try {
       const [taskDto, statusDtos, categoryDtos, sprintDtos, historyEntries] = await Promise.all([
         firstValueFrom(this.taskApi.getTaskById(taskId)),
-        firstValueFrom(this.taskApi.getStatuses(this.projectId())),
-        firstValueFrom(this.taskApi.getCategories(this.projectId())),
-        firstValueFrom(this.sprintApi.getByProject(this.projectId())),
+        firstValueFrom(this.taskApi.getStatuses(this.activeProjectId())),
+        firstValueFrom(this.taskApi.getCategories(this.activeProjectId())),
+        firstValueFrom(this.sprintApi.getByProject(this.activeProjectId())),
         firstValueFrom(this.taskApi.getTaskHistory(taskId))
       ]);
       const t = toWorkTask(taskDto);
@@ -2823,7 +2905,7 @@ export class TaskFormModalComponent {
 
   async shareTask(): Promise<void> {
     const taskId = this.currentTaskId();
-    const projectId = this.projectId();
+    const projectId = this.activeProjectId();
     if (!taskId || !projectId) {
       this.notificationService.error('Unable to create a task link.');
       return;
@@ -2837,45 +2919,9 @@ export class TaskFormModalComponent {
   private async loadCreateContext(): Promise<void> {
     this.loading.set(true);
     this.loadError.set(null);
+    if (this.allowProjectChange()) void this.loadMyProjects();
     try {
-      const [milestones, sprintDtos, categoryDtos] = await Promise.all([
-        firstValueFrom(this.projectApi.getMyMilestones(this.projectId())),
-        firstValueFrom(this.sprintApi.getByProject(this.projectId())),
-        firstValueFrom(this.taskApi.getCategories(this.projectId()))
-      ]);
-      const knownModules = new Map<string, { objectiveId: string; title: string; isOwner: boolean }>();
-      for (const m of milestones) {
-        knownModules.set(m.objectiveId, { objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner });
-      }
-      for (const m of this.projectStore.milestones()) {
-        if (!knownModules.has(m.objectiveId)) {
-          knownModules.set(m.objectiveId, { objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner });
-        }
-      }
-      this.modules.set(Array.from(knownModules.values()));
-      this.sprints.set(sprintDtos.map(toSprint));
-      this.categories.set(categoryDtos.map(toTaskCategoryColumn));
-      // Never open on "meeting": that category turns the form into the meeting form.
-      this.categoryId.set(this.taskCategories()[0]?.id ?? '');
-
-      // Smart Module Inheritance:
-      if (this.prefillModuleId() && this.modules().some((m) => m.objectiveId === this.prefillModuleId())) {
-        this.selectedObjectiveId.set(this.prefillModuleId());
-      } else if (this.modules().length === 1) {
-        this.selectedObjectiveId.set(this.modules()[0].objectiveId);
-      }
-
-      // Smart Sprint Inheritance:
-      if (this.prefillSprintId()) {
-        this.sprintId.set(this.prefillSprintId());
-      } else {
-        const activeSprints = this.sprints().filter((s) => s.status === 'active');
-        if (activeSprints.length === 1) {
-          this.sprintId.set(activeSprints[0].id);
-        }
-      }
-
-      await this.loadMembers();
+      await this.loadProjectContext();
 
       const prefill = this.prefill();
       if (prefill && this.currentEffectiveMode() === 'create') {
@@ -2900,6 +2946,100 @@ export class TaskFormModalComponent {
     } finally {
       this.loading.set(false);
       this.markClean();
+    }
+  }
+
+  /** The active project's modules, sprints, categories and members, and the defaults among them. */
+  private async loadProjectContext(): Promise<void> {
+    const version = ++this.projectLoadVersion;
+    const projectId = this.activeProjectId();
+    const [milestones, sprintDtos, categoryDtos] = await Promise.all([
+      firstValueFrom(this.projectApi.getMyMilestones(projectId)),
+      firstValueFrom(this.sprintApi.getByProject(projectId)),
+      firstValueFrom(this.taskApi.getCategories(projectId))
+    ]);
+    if (version !== this.projectLoadVersion) return;
+
+    const knownModules = new Map<string, { objectiveId: string; title: string; isOwner: boolean }>();
+    for (const m of milestones) {
+      knownModules.set(m.objectiveId, { objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner });
+    }
+    // The store is app-wide, so it can still hold the modules of a project opened earlier.
+    for (const m of this.projectStore.milestones()) {
+      if (m.projectId === projectId && !knownModules.has(m.objectiveId)) {
+        knownModules.set(m.objectiveId, { objectiveId: m.objectiveId, title: m.title, isOwner: m.isOwner });
+      }
+    }
+    this.modules.set(Array.from(knownModules.values()));
+    this.sprints.set(sprintDtos.map(toSprint));
+    this.categories.set(categoryDtos.map(toTaskCategoryColumn));
+    // Never open on "meeting": that category turns the form into the meeting form.
+    this.categoryId.set(this.taskCategories()[0]?.id ?? '');
+
+    // The host's defaults belong to the host's project, not to one chosen on the form.
+    const prefillModule = this.chosenProjectId() ? '' : this.prefillModuleId();
+    const prefillSprint = this.chosenProjectId() ? '' : this.prefillSprintId();
+
+    // Smart Module Inheritance: an action item never lands in another module just because it is the caller's only one.
+    if (prefillModule && this.modules().some((m) => m.objectiveId === prefillModule)) {
+      this.selectedObjectiveId.set(prefillModule);
+    } else if (this.modules().length === 1 && !(prefillModule && this.sourceMeetingOccurrenceId())) {
+      this.selectedObjectiveId.set(this.modules()[0].objectiveId);
+    }
+
+    // Smart Sprint Inheritance:
+    if (prefillSprint) {
+      this.sprintId.set(prefillSprint);
+    } else {
+      const activeSprints = this.sprints().filter((s) => s.status === 'active');
+      if (activeSprints.length === 1) {
+        this.sprintId.set(activeSprints[0].id);
+      }
+    }
+
+    await this.loadMembers();
+  }
+
+  private async loadMyProjects(): Promise<void> {
+    try {
+      const page = await firstValueFrom(this.projectApi.listMine(1, 100));
+      // Office project categories are system-managed; work items go to real projects.
+      this.myProjects.set(page.items.filter((p) => p.systemPurpose !== 'office').map((p) => ({ id: p.id, name: p.name })));
+    } catch {
+      this.myProjects.set([]);
+    }
+  }
+
+  /** Sends the new item to another project. What was typed stays; whatever belongs to the old project goes. */
+  async selectProject(projectId: string): Promise<void> {
+    this.activePopover.set(null);
+    this.projectSearchQuery.set('');
+    if (projectId === this.activeProjectId()) return;
+
+    this.chosenProjectId.set(projectId === this.projectId() ? null : projectId);
+    this.modules.set([]);
+    this.selectedObjectiveId.set('');
+    this.sprints.set([]);
+    this.sprintId.set('');
+    this.categories.set([]);
+    this.categoryId.set('');
+    this.assignableMembers.set([]);
+    this.assigneeEmployeeId.set('');
+    this.draftSubtasks.update((subtasks) => subtasks.map(({ id, title, priority, dueDate }) => ({
+      id, title, ...(priority ? { priority } : {}), ...(dueDate ? { dueDate } : {})
+    })));
+    this.cancelAddSubtask();
+    this.clearError('objectiveId');
+    this.allocationHint.set(null);
+    this.errorMessage.set(null);
+
+    this.switchingProject.set(true);
+    try {
+      await this.loadProjectContext();
+    } catch {
+      if (this.activeProjectId() === projectId) this.errorMessage.set('Could not load that project. Choose it again or pick another.');
+    } finally {
+      if (this.activeProjectId() === projectId) this.switchingProject.set(false);
     }
   }
 
@@ -2978,8 +3118,8 @@ export class TaskFormModalComponent {
     try {
       const id = this.activeDraftId();
       const saved = await firstValueFrom(id
-        ? this.taskDraftApi.update(id, this.projectId(), title, payload)
-        : this.taskDraftApi.create(this.projectId(), title, payload));
+        ? this.taskDraftApi.update(id, this.activeProjectId(), title, payload)
+        : this.taskDraftApi.create(this.activeProjectId(), title, payload));
       this.activeDraftId.set(saved.id);
       this.savedDraftAttachmentIds = new Set(payload.attachmentFileIds);
       this.markClean();
@@ -3021,7 +3161,7 @@ export class TaskFormModalComponent {
     try {
       // A creation *request* has no task yet, so its files are still plain pending uploads; deleting the
       // draft would delete them. Detach them from the draft first.
-      if (detachFiles) await firstValueFrom(this.taskDraftApi.update(id, this.projectId(), title, detached));
+      if (detachFiles) await firstValueFrom(this.taskDraftApi.update(id, this.activeProjectId(), title, detached));
       await firstValueFrom(this.taskDraftApi.remove(id));
     } catch {
       /* the draft lingers in the bar; the user can delete it there */
@@ -3030,7 +3170,9 @@ export class TaskFormModalComponent {
   }
 
   private async loadMembers(): Promise<void> {
-    await this.projectStore.loadProjectMembers(this.projectId());
+    const version = this.projectLoadVersion;
+    await this.projectStore.loadProjectMembers(this.activeProjectId());
+    if (version !== this.projectLoadVersion) return;
     this.assignableMembers.set(
       this.projectStore.projectMembers().map((m) => ({
         employeeId: m.employeeId,
@@ -3118,7 +3260,7 @@ export class TaskFormModalComponent {
     }
   }
 
-  togglePopover(name: 'assignee' | 'priority' | 'dueDate' | 'module' | 'sprint' | 'category' | 'splitMenu' | 'status' | 'headerCategory' | 'headerModule' | 'headerMore', event: MouseEvent): void {
+  togglePopover(name: 'assignee' | 'priority' | 'dueDate' | 'project' | 'module' | 'sprint' | 'category' | 'splitMenu' | 'status' | 'headerCategory' | 'headerModule' | 'headerMore', event: MouseEvent): void {
     event.stopPropagation();
     this.activeSubtaskPopover.set(null);
     this.activePopover.update((curr) => (curr === name ? null : name));

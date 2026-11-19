@@ -862,5 +862,25 @@ describe('ProjectDetailStore', () => {
 
       expect(getMembers).toHaveBeenCalledTimes(2);
     });
+
+    it('uses the requested project\'s modules, not the ones another project left in the store', async () => {
+      // The store is app-wide: the Planner can ask for one project's members after a Work screen loaded another's.
+      const other: MyProjectMilestoneDto = { ...milestones[0], objectiveId: 'o2', projectId: 'p2' };
+      const getMembers = vi.fn().mockReturnValue(of({ items: [] }));
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn((id: string) => of(id === 'p2' ? [other] : milestones)) } },
+          { provide: ObjectiveMemberApiService, useValue: { getMembers } },
+          { provide: SprintApiService, useValue: {} },
+          { provide: TaskApiService, useValue: {} }
+        ]
+      });
+      const store = TestBed.inject(ProjectDetailStore);
+      await store.loadMyMilestones('p1');
+
+      await store.loadProjectMembers('p2');
+
+      expect(getMembers.mock.calls.map(([id]) => id)).toEqual(['o2']);
+    });
   });
 });

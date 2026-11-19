@@ -65,6 +65,17 @@ describe('MeetingActionItemsComponent', () => {
     expect(form.properties['projectId']).toBe('p1');
   });
 
+  it('opens the form on the meeting\'s project by name and lets the user change it', async () => {
+    await build([], false);
+    fixture.componentRef.setInput('projectName', 'Acme Portal');
+    (fixture.nativeElement.querySelector('[data-testid="action-item-add"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const form = fixture.debugElement.query(By.css('app-task-form-modal'));
+    expect(form.properties['projectName']).toBe('Acme Portal');
+    expect(form.properties['allowProjectChange']).toBe(true);
+  });
+
   it('unlink is offered to the link creator and the organizer only', async () => {
     await build([item({ linkedByEmployeeId: 'e9' }), item({ taskId: 'a2', linkedByEmployeeId: 'someone-else' })], false);
     expect(testIds('action-item-unlink').length).toBe(1);
