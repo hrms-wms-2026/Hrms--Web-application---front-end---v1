@@ -21,6 +21,7 @@ These failures exist before any cleanup change. They are not caused by this task
 | After Task 2 | 283 | 3,713 | 0% (deleted files held no clones) |
 | After Task 3 | 278 | 3,622 | -2.5% |
 | After Task 4 | 277 | 3,604 | -2.9% |
+| After Task 5a | 259 | 3,401 | -8.4% |
 | Target | | ≤ 2,784 | -25% |
 
 Duplicated lines by module at base (counted by the first file of each clone):
@@ -103,3 +104,4 @@ Unused exported types (4)
 - Task 4, work models: `CreateProjectPayload` and `EditProjectPayload` merged into aliases of `CreateProjectRequestDto` and `EditProjectRequestDto`. Field lists are identical (names, types, optionality), and no mapper sits between them: the form emits the payload and `ProjectListStore` passes it straight to `ProjectApiService`.
 - Task 4, `Milestone` vs `MyProjectMilestoneDto`: kept. Fields are identical, but `toMilestone` in `project.mapper.ts` converts one to the other, and the store maps every response through it. Merging would mean removing that mapper step, which is outside this batch.
 - Task 4, `Project` / `ProjectDetail` vs `ProjectListItemDto` / `ProjectDetailDto`: kept. `toProject` and `toProjectDetail` map them, and normalise `icon` and `systemPurpose` (`?? null`). The model also names its own `ProjectLabel` and `ProjectMemberAvatar` types.
+- Task 5a, organization archive modals: merged. Department, position and role archive modals had the same shell (backdrop, header, impact grid, alerts, footer) with only texts and counts changed, so they now wrap one `ui/archive-confirm-modal` (inputs: entity type and name, subtitle, impacts, blocker messages, clear and warning messages; outputs `confirmed`/`cancelled`). Wrappers keep their selectors, inputs and outputs, so the management pages are unchanged. Differences kept as inputs: 3 vs 2 impact cards (grid now one column per card, same layout), backend blocker messages (department) vs fixed ones (position), position body `scroll-fade`, role has no dependency check and shows a warning alert. One intended addition: Escape now cancels (not while saving), as CLAUDE.md asks for modal backdrops. Organization specs: 23 files / 283 tests before, 24 / 292 after (9 new). `position-access-modal`: kept, similar CSS only (different header, form body, `closed`/`saveAccess` outputs).
