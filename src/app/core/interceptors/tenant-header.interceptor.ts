@@ -9,7 +9,7 @@ import { getSingleHostTenant } from '../auth/utils/single-host-tenant';
  */
 export const tenantHeaderInterceptor: HttpInterceptorFn = (req, next) => {
   const slug = getSingleHostTenant();
-  if (!slug) return next(req);
+  if (!slug || req.headers.has('X-Crownus-Tenant')) return next(req);
 
   const base = window.location.origin;
   try {

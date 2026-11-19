@@ -89,4 +89,12 @@ describe('tenantHeaderInterceptor', () => {
     expect(req.request.headers.has('X-Crownus-Tenant')).toBe(false);
     req.flush({});
   });
+
+  it('keeps a header the caller already set (meForTenant names its own tenant)', () => {
+    sessionStorage.setItem('crownus.singleHostTenant', 'stored');
+    http.get('https://app.azurewebsites.net/api/v1/me', { headers: { 'X-Crownus-Tenant': 'explicit' } }).subscribe();
+    const req = httpMock.expectOne('https://app.azurewebsites.net/api/v1/me');
+    expect(req.request.headers.get('X-Crownus-Tenant')).toBe('explicit');
+    req.flush({});
+  });
 });

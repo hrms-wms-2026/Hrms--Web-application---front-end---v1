@@ -111,7 +111,7 @@ describe('InboxRealtimeService', () => {
       expect(hub.url).toMatch(/\/hubs\/inbox\?tenant=acme$/);
     });
 
-    it('adds nothing without a stored slug or outside single-host mode', async () => {
+    it('adds nothing without a stored slug', async () => {
       mutableEnv.tenancyMode = 'single-host';
       await connect();
       expect(hub.url).toMatch(/\/hubs\/inbox$/);

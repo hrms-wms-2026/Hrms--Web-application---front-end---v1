@@ -3,6 +3,7 @@ import { HttpContextToken, HttpInterceptorFn, HttpErrorResponse } from '@angular
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, retry, throwError, timer } from 'rxjs';
+import { clearSingleHostTenant, isSingleHostMode } from '../auth/utils/single-host-tenant';
 import { AuthStore } from '../auth/state/auth.store';
 import { ErrorHandlerService } from '../services/error-handler.service';
 import { TrayPresenceRequiredEvents } from '../tray-presence/state/tray-presence-required.events';
@@ -34,6 +35,17 @@ function isActiveTrayRequired(error: HttpErrorResponse): boolean {
 function isCsrfError(error: HttpErrorResponse): boolean {
 
   return error.status === 403 && error.error?.type === CSRF_ERROR_TYPE;
+}
+
+/**
+ * Single-host test mode: TenantEnforcementMiddleware answers "slug for tenant A, cookie for tenant B" with a
+ * 403 whose detail is this text (and clears the session cookies). Like a stale CSRF 403, it means the session
+ * is unusable and the user needs to sign in again.
+ */
+const TENANT_MISMATCH_DETAIL = 'Token tenant does not match request host tenant.';
+
+function isTenantMismatchError(error: HttpErrorResponse): boolean {
+  return isSingleHostMode() && error.status === 403 && error.error?.detail === TENANT_MISMATCH_DETAIL;
 }
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
@@ -75,7 +87,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
-      if (isCsrfError(error)) {
+      if (isCsrfError(error) || isTenantMismatchError(error)) {
+        // No stored slug means no tenant header on the login page, so this cannot re-trigger.
+        clearSingleHostTenant();
         authStore.clearSession();
         router.navigate(['/auth/login']);
         return throwError(() => error);

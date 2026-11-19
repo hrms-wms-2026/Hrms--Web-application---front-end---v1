@@ -112,7 +112,9 @@ export class AuthApiService {
    */
   meForTenant(tenantSlug: string): Observable<AuthResponseDto> {
     const baseUrl = getTenantApiUrl(environment.apiUrl, tenantSlug);
-    return this.http.get<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.auth.me}`);
+    // Single-host: no slug is stored on the login page yet, so name the tenant on this request itself.
+    const headers = isSingleHostMode() ? { 'X-Crownus-Tenant': tenantSlug } : undefined;
+    return this.http.get<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.auth.me}`, { headers });
   }
 
   /**
