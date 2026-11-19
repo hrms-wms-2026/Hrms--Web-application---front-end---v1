@@ -14,6 +14,7 @@ import { ForgotPasswordRequestDto } from '../models/dto/forgot-password-request.
 import { ResetPasswordRequestDto } from '../models/dto/reset-password-request.dto';
 import { MessageResponseDto } from '../models/dto/message-response.dto';
 
+import { isSingleHostMode } from '../utils/single-host-tenant';
 import { getRootHostname, isValidTenantSlug } from '../utils/tenant-redirect';
 
 export function getSystemApiUrl(apiUrl: string): string {
@@ -29,6 +30,10 @@ export function getSystemApiUrl(apiUrl: string): string {
 export function getTenantApiUrl(apiUrl: string, tenantSlug: string): string {
   if (!isValidTenantSlug(tenantSlug)) {
     throw new Error('Invalid tenant slug.');
+  }
+
+  if (isSingleHostMode()) {
+    return apiUrl;
   }
 
   const url = new URL(apiUrl);

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { DOCUMENT } from '@angular/common';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
+import { environment } from '@environments/environment';
 import { AuthStore } from '../auth/state/auth.store';
 import { PermissionService } from '../auth/state/permission.service';
 import { TrayPresenceStore } from '../tray-presence/state/tray-presence.store';
@@ -87,6 +88,41 @@ describe('InboxRealtimeService', () => {
     expect(hub.options).toMatchObject({ withCredentials: true, headers: { 'X-CSRF-Token': 'tok+1' } });
     expect(hub.connection!.start).toHaveBeenCalled();
     expect(service.connected()).toBe(true);
+  });
+
+  describe('single-host tenant query', () => {
+    const mutableEnv = environment as unknown as { tenancyMode: string };
+    let originalMode: string;
+
+    beforeEach(() => {
+      originalMode = mutableEnv.tenancyMode;
+      sessionStorage.clear();
+    });
+
+    afterEach(() => {
+      mutableEnv.tenancyMode = originalMode;
+      sessionStorage.clear();
+    });
+
+    it('appends ?tenant=<slug> in single-host mode when a slug is stored', async () => {
+      mutableEnv.tenancyMode = 'single-host';
+      sessionStorage.setItem('crownus.singleHostTenant', 'acme');
+      await connect();
+      expect(hub.url).toMatch(/\/hubs\/inbox\?tenant=acme$/);
+    });
+
+    it('adds nothing without a stored slug or outside single-host mode', async () => {
+      mutableEnv.tenancyMode = 'single-host';
+      await connect();
+      expect(hub.url).toMatch(/\/hubs\/inbox$/);
+    });
+
+    it('adds nothing in subdomain mode even with a stored slug', async () => {
+      mutableEnv.tenancyMode = 'subdomain';
+      sessionStorage.setItem('crownus.singleHostTenant', 'acme');
+      await connect();
+      expect(hub.url).toMatch(/\/hubs\/inbox$/);
+    });
   });
 
   it('re-emits hub events on the matching streams', async () => {
