@@ -14,7 +14,7 @@ import { ForgotPasswordRequestDto } from '../models/dto/forgot-password-request.
 import { ResetPasswordRequestDto } from '../models/dto/reset-password-request.dto';
 import { MessageResponseDto } from '../models/dto/message-response.dto';
 
-import { isSingleHostMode } from '../utils/single-host-tenant';
+import { isSingleHostMode, TENANT_HEADER } from '../utils/single-host-tenant';
 import { getRootHostname, isValidTenantSlug } from '../utils/tenant-redirect';
 
 export function getSystemApiUrl(apiUrl: string): string {
@@ -113,7 +113,7 @@ export class AuthApiService {
   meForTenant(tenantSlug: string): Observable<AuthResponseDto> {
     const baseUrl = getTenantApiUrl(environment.apiUrl, tenantSlug);
     // Single-host: no slug is stored on the login page yet, so name the tenant on this request itself.
-    const headers = isSingleHostMode() ? { 'X-Crownus-Tenant': tenantSlug } : undefined;
+    const headers = isSingleHostMode() ? { [TENANT_HEADER]: tenantSlug } : undefined;
     return this.http.get<AuthResponseDto>(`${baseUrl}${API_ENDPOINTS.auth.me}`, { headers });
   }
 

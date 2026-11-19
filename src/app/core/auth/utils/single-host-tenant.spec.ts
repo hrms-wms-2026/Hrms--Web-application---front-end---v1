@@ -4,6 +4,7 @@ import {
   clearSingleHostTenant,
   getSingleHostTenant,
   isSingleHostMode,
+  TENANT_HEADER,
   setSingleHostTenant
 } from './single-host-tenant';
 
@@ -25,6 +26,10 @@ describe('single-host tenant store', () => {
     sessionStorage.clear();
   });
 
+  it('exposes the tenant header name', () => {
+    expect(TENANT_HEADER).toBe('X-Crownus-Tenant');
+  });
+
   it('reports single-host mode from the environment', () => {
     expect(isSingleHostMode()).toBe(true);
     mutableEnv.tenancyMode = 'subdomain';
@@ -41,6 +46,22 @@ describe('single-host tenant store', () => {
     setSingleHostTenant('keep');
     captureSingleHostTenantFromUrl(`?tenant=${bad}`);
     expect(getSingleHostTenant()).toBe('keep');
+  });
+
+  it.each(['a', 'ab'])('ignores %j (backend slugs need at least 3 chars) and keeps a stored slug', (short) => {
+    setSingleHostTenant('keep');
+    captureSingleHostTenantFromUrl(`?tenant=${short}`);
+    expect(getSingleHostTenant()).toBe('keep');
+  });
+
+  it('accepts the 3-char minimum and the 63-char maximum', () => {
+    captureSingleHostTenantFromUrl('?tenant=abc');
+    expect(getSingleHostTenant()).toBe('abc');
+    const max = 'a'.repeat(63);
+    captureSingleHostTenantFromUrl(`?tenant=${max}`);
+    expect(getSingleHostTenant()).toBe(max);
+    captureSingleHostTenantFromUrl(`?tenant=${'b'.repeat(64)}`);
+    expect(getSingleHostTenant()).toBe(max);
   });
 
   it('ignores a missing tenant param', () => {

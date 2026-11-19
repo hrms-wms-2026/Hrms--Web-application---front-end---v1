@@ -3,6 +3,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { environment } from '@environments/environment';
 import { tenantHeaderInterceptor } from './tenant-header.interceptor';
+import { TENANT_HEADER } from '../auth/utils/single-host-tenant';
 
 const mutableEnv = environment as unknown as { tenancyMode: string; apiUrl: string };
 
@@ -36,7 +37,7 @@ describe('tenantHeaderInterceptor', () => {
     sessionStorage.setItem('crownus.singleHostTenant', 'acme');
     http.get('https://app.azurewebsites.net/api/v1/me').subscribe();
     const req = httpMock.expectOne('https://app.azurewebsites.net/api/v1/me');
-    expect(req.request.headers.get('X-Crownus-Tenant')).toBe('acme');
+    expect(req.request.headers.get(TENANT_HEADER)).toBe('acme');
     req.flush({});
   });
 
@@ -45,7 +46,7 @@ describe('tenantHeaderInterceptor', () => {
     sessionStorage.setItem('crownus.singleHostTenant', 'acme');
     http.get('/api/v1/me').subscribe();
     const req = httpMock.expectOne('/api/v1/me');
-    expect(req.request.headers.get('X-Crownus-Tenant')).toBe('acme');
+    expect(req.request.headers.get(TENANT_HEADER)).toBe('acme');
     req.flush({});
   });
 
@@ -58,9 +59,9 @@ describe('tenantHeaderInterceptor', () => {
     const a = httpMock.expectOne('/api/v1/me');
     const b = httpMock.expectOne(`${window.location.origin}/api/v1/x`);
     const c = httpMock.expectOne('https://other.example.com/api/v1/x');
-    expect(a.request.headers.get('X-Crownus-Tenant')).toBe('acme');
-    expect(b.request.headers.get('X-Crownus-Tenant')).toBe('acme');
-    expect(c.request.headers.has('X-Crownus-Tenant')).toBe(false);
+    expect(a.request.headers.get(TENANT_HEADER)).toBe('acme');
+    expect(b.request.headers.get(TENANT_HEADER)).toBe('acme');
+    expect(c.request.headers.has(TENANT_HEADER)).toBe(false);
     a.flush({});
     b.flush({});
     c.flush({});
@@ -69,7 +70,7 @@ describe('tenantHeaderInterceptor', () => {
   it('no header without slug', () => {
     http.get('https://app.azurewebsites.net/api/v1/me').subscribe();
     const req = httpMock.expectOne('https://app.azurewebsites.net/api/v1/me');
-    expect(req.request.headers.has('X-Crownus-Tenant')).toBe(false);
+    expect(req.request.headers.has(TENANT_HEADER)).toBe(false);
     req.flush({});
   });
 
@@ -77,7 +78,7 @@ describe('tenantHeaderInterceptor', () => {
     sessionStorage.setItem('crownus.singleHostTenant', 'acme');
     http.get('https://evil.example.com/api/v1/me').subscribe();
     const req = httpMock.expectOne('https://evil.example.com/api/v1/me');
-    expect(req.request.headers.has('X-Crownus-Tenant')).toBe(false);
+    expect(req.request.headers.has(TENANT_HEADER)).toBe(false);
     req.flush({});
   });
 
@@ -86,15 +87,15 @@ describe('tenantHeaderInterceptor', () => {
     sessionStorage.setItem('crownus.singleHostTenant', 'acme');
     http.get('https://app.azurewebsites.net/api/v1/me').subscribe();
     const req = httpMock.expectOne('https://app.azurewebsites.net/api/v1/me');
-    expect(req.request.headers.has('X-Crownus-Tenant')).toBe(false);
+    expect(req.request.headers.has(TENANT_HEADER)).toBe(false);
     req.flush({});
   });
 
   it('keeps a header the caller already set (meForTenant names its own tenant)', () => {
     sessionStorage.setItem('crownus.singleHostTenant', 'stored');
-    http.get('https://app.azurewebsites.net/api/v1/me', { headers: { 'X-Crownus-Tenant': 'explicit' } }).subscribe();
+    http.get('https://app.azurewebsites.net/api/v1/me', { headers: { [TENANT_HEADER]: 'explicit' } }).subscribe();
     const req = httpMock.expectOne('https://app.azurewebsites.net/api/v1/me');
-    expect(req.request.headers.get('X-Crownus-Tenant')).toBe('explicit');
+    expect(req.request.headers.get(TENANT_HEADER)).toBe('explicit');
     req.flush({});
   });
 });

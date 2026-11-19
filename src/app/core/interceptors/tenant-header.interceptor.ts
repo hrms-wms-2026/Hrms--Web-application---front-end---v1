@@ -1,6 +1,6 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { environment } from '@environments/environment';
-import { getSingleHostTenant } from '../auth/utils/single-host-tenant';
+import { getSingleHostTenant, TENANT_HEADER } from '../auth/utils/single-host-tenant';
 
 /**
  * Single-host test mode only: tells the backend which tenant to use, for same-origin API calls.
@@ -9,7 +9,7 @@ import { getSingleHostTenant } from '../auth/utils/single-host-tenant';
  */
 export const tenantHeaderInterceptor: HttpInterceptorFn = (req, next) => {
   const slug = getSingleHostTenant();
-  if (!slug || req.headers.has('X-Crownus-Tenant')) return next(req);
+  if (!slug || req.headers.has(TENANT_HEADER)) return next(req);
 
   const base = window.location.origin;
   try {
@@ -17,5 +17,5 @@ export const tenantHeaderInterceptor: HttpInterceptorFn = (req, next) => {
   } catch {
     return next(req);
   }
-  return next(req.clone({ setHeaders: { 'X-Crownus-Tenant': slug } }));
+  return next(req.clone({ setHeaders: { [TENANT_HEADER]: slug } }));
 };

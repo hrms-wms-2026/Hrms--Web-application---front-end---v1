@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { environment } from '@environments/environment';
 import { AuthApiService, getTenantApiUrl } from './auth-api.service';
+import { TENANT_HEADER } from '../utils/single-host-tenant';
 
 describe('getTenantApiUrl on a single host', () => {
   const mutableEnv = environment as unknown as { tenancyMode: string };
@@ -32,7 +33,7 @@ describe('getTenantApiUrl on a single host', () => {
     TestBed.inject(AuthApiService).meForTenant('acme').subscribe();
 
     const req = httpMock.expectOne((r) => r.url.endsWith('/auth/me'));
-    expect(req.request.headers.get('X-Crownus-Tenant')).toBe('acme');
+    expect(req.request.headers.get(TENANT_HEADER)).toBe('acme');
     req.flush({});
     httpMock.verify();
   });
@@ -45,7 +46,7 @@ describe('getTenantApiUrl on a single host', () => {
     TestBed.inject(AuthApiService).meForTenant('acme').subscribe();
 
     const req = httpMock.expectOne((r) => r.url.endsWith('/auth/me'));
-    expect(req.request.headers.has('X-Crownus-Tenant')).toBe(false);
+    expect(req.request.headers.has(TENANT_HEADER)).toBe(false);
     req.flush({});
     httpMock.verify();
   });
