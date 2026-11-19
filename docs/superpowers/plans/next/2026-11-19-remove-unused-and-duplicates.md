@@ -73,7 +73,7 @@ The non-dashboard ceiling is 1,238 lines, so the target of 928 removed lines is 
 
 ## Rules for every batch (from the cleanup guide)
 
-- **One theme per commit.** Stage with `git add <file> ...`, never `git add -A`. End every commit message with a blank line and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- **One theme per commit.** Stage with `git add <file> ...`, never `git add -A`. No attribution or `Co-Authored-By` trailers in commit messages.
 - **No push or PR** inside this plan.
 - **Never** suppress a lint rule, test or warning, and never raise a budget.
 - **Merge only copies that must change together:** the same UI shown for two entities, or the same state logic. Similar CSS in unrelated components stays.
