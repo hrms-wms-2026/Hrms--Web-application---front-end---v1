@@ -10,14 +10,18 @@ export function validDisplayTimezone(timezone: string | null | undefined): strin
   }
 }
 
-export function fullDateLabel(value: string): string {
+function formatUtcDateOnly(value: string, options: Intl.DateTimeFormatOptions): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Date unavailable';
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day, 12));
   if (Number.isNaN(date.getTime()) || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
     return 'Date unavailable';
   }
-  return new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(date);
+  return new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' }).format(date);
+}
+
+export function fullDateLabel(value: string): string {
+  return formatUtcDateOnly(value, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 /** Greeting is based on the company's local wall-clock hour (via `timezone`), not the
@@ -36,16 +40,14 @@ export function greetingForTime(now: Date, timezone: string | null | undefined):
 }
 
 export function formatDate(value: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Date unavailable';
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day, 12));
-  if (Number.isNaN(date.getTime()) || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-    return 'Date unavailable';
-  }
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(date);
+  return formatUtcDateOnly(value, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function formatDateTime(value: string | null, timezone?: string | null): string {
+function formatTimeInZone(
+  value: string | null,
+  timezone: string | null | undefined,
+  options: Intl.DateTimeFormatOptions
+): string {
   if (!value) {
     return '—';
   }
@@ -61,43 +63,20 @@ export function formatDateTime(value: string | null, timezone?: string | null): 
   }
 
   try {
-    return new Intl.DateTimeFormat(undefined, {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: displayTimezone
-    }).format(date);
+    return new Intl.DateTimeFormat(undefined, { ...options, timeZone: displayTimezone }).format(date);
   } catch {
     // Invalid runtime timezone data must not surface a technical error to users.
     return '—';
   }
 }
 
+export function formatDateTime(value: string | null, timezone?: string | null): string {
+  return formatTimeInZone(value, timezone, { hour: 'numeric', minute: '2-digit' });
+}
+
 /** Clock time with AM/PM, used on the attendance detail drawer. */
 export function formatClockTime(value: string | null, timezone?: string | null): string {
-  if (!value) {
-    return '—';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '—';
-  }
-
-  const displayTimezone = validDisplayTimezone(timezone);
-  if (!displayTimezone) {
-    return '—';
-  }
-
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: displayTimezone
-    }).format(date);
-  } catch {
-    return '—';
-  }
+  return formatTimeInZone(value, timezone, { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 export function formatMinutes(value: number | null): string {
