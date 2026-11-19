@@ -5,8 +5,6 @@ import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { redirectIfAuthenticatedGuard } from './core/guards/redirect-if-authenticated.guard';
 import { MANAGES_PEOPLE, PermissionService } from './core/auth/state/permission.service';
-import { canAccessNavItem } from './layouts/main-layout/nav/nav-access';
-import { NAV_ITEMS } from './layouts/main-layout/nav/nav-items.config';
 
 
 const loadPlaceholder = () =>
@@ -262,8 +260,13 @@ export const routes: Routes = [
             // uses, instead of hardcoding one page.
             path: '',
             pathMatch: 'full',
-            redirectTo: () => {
+            // The sidebar config loads lazily (async redirect) so it stays out of the initial bundle.
+            redirectTo: async () => {
               const permissionService = inject(PermissionService);
+              const [{ NAV_ITEMS }, { canAccessNavItem }] = await Promise.all([
+                import('./layouts/main-layout/nav/nav-items.config'),
+                import('./layouts/main-layout/nav/nav-access')
+              ]);
               const settings = NAV_ITEMS.find((item) => item.id === 'settings');
               const firstReachable = settings?.children?.find((child) => canAccessNavItem(child, permissionService));
               return firstReachable?.path ?? '/dashboard';
