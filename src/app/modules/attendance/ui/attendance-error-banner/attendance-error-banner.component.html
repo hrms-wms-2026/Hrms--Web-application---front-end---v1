@@ -1,0 +1,6 @@
+<div class="time-tracking-message time-tracking-message--error" role="alert">
+  <p>{{ message() }}</p>
+  @if (canRetry()) {
+    <app-button type="button" variant="secondary" size="sm" (pressed)="retryRequested.emit()">Try again</app-button>
+  }
+</div>
