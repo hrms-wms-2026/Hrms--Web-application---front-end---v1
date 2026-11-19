@@ -1,3 +1,4 @@
+import type { ApiSchema } from '../../../shared/api-types/api-schema';
 /** Matches ONEVO.Application.Features.Leave.Request.DTOs.Responses.* verbatim. */
 export interface LeaveRequestBalanceImpactResponse {
   currentRemainingHours: number;
@@ -80,19 +81,13 @@ export interface LeaveUploadedDocument {
   originalFileName: string;
 }
 
-/** Matches ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestRequest verbatim. Shared by preview and submit. */
-export interface SubmitLeaveRequestRequest {
-  leaveTypeId: string;
-  startAt: string;
-  endAt: string;
-  reason: string | null;
-  fileRecordIds: string[] | null;
-}
+/** Generated from the backend contract (`npm run api:types`). Shared by preview and submit. */
+export type SubmitLeaveRequestRequest =
+  ApiSchema<'ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestRequest'>;
 
-/** Matches ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestOnBehalfRequest verbatim. */
-export interface SubmitLeaveRequestOnBehalfRequest extends SubmitLeaveRequestRequest {
-  employeeId: string;
-}
+/** Generated from the backend contract (`npm run api:types`). */
+export type SubmitLeaveRequestOnBehalfRequest =
+  ApiSchema<'ONEVO.Api.Contracts.Leave.Requests.SubmitLeaveRequestOnBehalfRequest'>;
 
 export interface LeaveRequestListFilter {
   status?: string;
@@ -101,12 +96,9 @@ export interface LeaveRequestListFilter {
   leaveTypeId?: string;
 }
 
-/** Matches ONEVO.Api.Contracts.Leave.Requests.CancelLeaveRequestRequest verbatim. */
-export interface CancelLeaveRequestRequest {
-  reason: string | null;
-  effectiveDate: string | null;
-  expectedVersion: string | null;
-}
+/** Generated from the backend contract (`npm run api:types`). */
+export type CancelLeaveRequestRequest =
+  ApiSchema<'ONEVO.Api.Contracts.Leave.Requests.CancelLeaveRequestRequest'>;
 
 /** Matches ONEVO.Application.Features.Leave.Cancellation.DTOs.Responses.CancelLeaveRequestResponse verbatim. */
 export interface CancelLeaveRequestResponse {
