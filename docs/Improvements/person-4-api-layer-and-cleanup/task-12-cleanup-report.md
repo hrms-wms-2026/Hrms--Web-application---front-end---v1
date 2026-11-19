@@ -19,6 +19,7 @@ These failures exist before any cleanup change. They are not caused by this task
 |---|---|---|---|
 | Base | 283 | 3,713 | |
 | After Task 2 | 283 | 3,713 | 0% (deleted files held no clones) |
+| After Task 3 | 278 | 3,622 | -2.5% |
 | Target | | ≤ 2,784 | -25% |
 
 Duplicated lines by module at base (counted by the first file of each clone):
@@ -95,3 +96,6 @@ Unused exported types (4)
 - `RespondToCalendarEventRequest` and `UpdateCalendarConnectionRequest` (calendar/settings owner): backend request shapes with no caller. Wire the endpoints or delete the types?
 - `shared/models/problem-details.model.ts` (task 20 owner): unused today. Adopt it as the shared error model or delete?
 - `appendReturnPath` (auth owner): still needed? It adds a `return_path` query parameter to a continue URL, but only after `parseSafeReturnPath` accepts it (same origin, `/device/activate` with one `request_id` and one `user_code`). It came in with the tray device-activation gate (`2179d23e`) and nothing calls it yet.
+
+## Batch decisions
+- Task 3, auth store: merged. All 5 session `patchState` blocks (`login`, `acceptLegalDocuments`, `acceptEmployeeInvitation`, `checkSession`, `exchangeSession`) carried the same 11 fields plus `loading`, so they now use one `sessionState(view)` helper typed with `CurrentUserViewModel`. A new session field is added in one place. Error paths unchanged. `auth.store.spec.ts`: 18 tests before and after.
