@@ -31,6 +31,7 @@ describe('InboxStore', () => {
   let messageCreated: Subject<unknown>;
   let store: InstanceType<typeof InboxStore>;
   const authenticated = signal(false);
+  const modules = signal<string[]>([]);
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -49,11 +50,12 @@ describe('InboxStore', () => {
         { provide: InboxApiService, useValue: api },
         { provide: InboxRealtimeService, useValue: { inboxChanged$: inboxChanged.asObservable(), reconnected$: reconnected.asObservable(), messageCreated$: messageCreated.asObservable() } },
         { provide: AuthStore, useValue: { authenticated } },
-        { provide: PermissionService, useValue: { hasModule: () => false } },
+        { provide: PermissionService, useValue: { hasModule: (code: string) => modules().includes(code) } },
         { provide: TrayPresenceStore, useValue: { canRenderProtectedContent: () => true } }
       ]
     });
     authenticated.set(false);
+    modules.set([]);
     store = TestBed.inject(InboxStore);
   });
 
@@ -70,6 +72,45 @@ describe('InboxStore', () => {
   });
 
   afterEach(() => vi.useRealTimers());
+
+  it('does not ask for the rail counts again when readiness re-runs but stays ready (modules arriving after sign-in)', async () => {
+    authenticated.set(true);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+
+    modules.set(['activity_monitoring']);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(api['counts']).toHaveBeenCalledTimes(1);
+  });
+
+  it('joins the counts request a screen already started when the workspace becomes ready', async () => {
+    const reply = new Subject<{ pendingReceived: number; unreadMessages: number; openAlerts: number }>();
+    api['counts'].mockReturnValueOnce(reply.asObservable());
+    const opened = store.ensureCounts();
+
+    authenticated.set(true);
+    TestBed.tick();
+    reply.next({ pendingReceived: 1, unreadMessages: 0, openAlerts: 0 });
+    reply.complete();
+    await opened;
+
+    expect(api['counts']).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the rail counts again after signing out and back in', async () => {
+    authenticated.set(true);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+    authenticated.set(false);
+    TestBed.tick();
+    authenticated.set(true);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(api['counts']).toHaveBeenCalledTimes(2);
+  });
 
   it('ensureCounts joins a counts request already in flight instead of sending a second one', async () => {
     const reply = new Subject<{ pendingReceived: number; unreadMessages: number; openAlerts: number }>();
