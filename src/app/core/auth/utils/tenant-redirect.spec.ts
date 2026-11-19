@@ -1,3 +1,5 @@
+import { environment } from '@environments/environment';
+import { getSingleHostTenant } from './single-host-tenant';
 import {
   buildRootUrl,
   buildTenantUrl,
@@ -88,5 +90,78 @@ describe('buildRootUrl', () => {
     const portSuffix = port ? `:${port}` : '';
 
     expect(buildRootUrl('/auth/login')).toBe(`${protocol}//${hostname}${portSuffix}/auth/login`);
+  });
+});
+
+describe('single-host redirect helpers', () => {
+  const mutableEnv = environment as unknown as { tenancyMode: string };
+  let originalMode: string;
+  let originalLocation: Location;
+
+  function stubLocation(protocol: string, hostname: string, port = '') {
+    // @ts-expect-error -- replacing window.location with a controllable stand-in for this test
+    delete window.location;
+    window.location = { protocol, hostname, port, search: '', href: '' } as unknown as string & Location;
+  }
+
+  beforeEach(() => {
+    originalMode = mutableEnv.tenancyMode;
+    originalLocation = window.location;
+    mutableEnv.tenancyMode = 'single-host';
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    window.location = originalLocation as unknown as string & Location;
+    mutableEnv.tenancyMode = originalMode;
+    sessionStorage.clear();
+  });
+
+  it('single-host buildTenantUrl keeps host and adds tenant query', () => {
+    stubLocation('https:', 'app.azurewebsites.net');
+    expect(buildTenantUrl('acme', '/dashboard')).toBe('https://app.azurewebsites.net/dashboard?tenant=acme');
+  });
+
+  it('single-host buildTenantUrl appends to an existing query', () => {
+    stubLocation('https:', 'app.azurewebsites.net');
+    expect(buildTenantUrl('acme', '/x?a=1')).toBe('https://app.azurewebsites.net/x?a=1&tenant=acme');
+  });
+
+  it('single-host getRootHostname keeps uksouth-01 host intact', () => {
+    const host = 'onexso-api-x.uksouth-01.azurewebsites.net';
+    expect(getRootHostname(host)).toBe(host);
+  });
+
+  it('single-host buildRootUrl clears slug', () => {
+    stubLocation('https:', 'app.azurewebsites.net');
+    sessionStorage.setItem('crownus.singleHostTenant', 'acme');
+    expect(buildRootUrl('/auth/login')).toBe('https://app.azurewebsites.net/auth/login');
+    expect(getSingleHostTenant()).toBeNull();
+  });
+
+  it('single-host buildRootUrl strips the tenant param so the redirect cannot re-capture a slug', () => {
+    stubLocation('https:', 'app.azurewebsites.net');
+    expect(buildRootUrl('/auth/login?tenant=acme&returnUrl=%2Fx')).toBe(
+      'https://app.azurewebsites.net/auth/login?returnUrl=%2Fx'
+    );
+    expect(buildRootUrl('/auth/login?tenant=acme')).toBe('https://app.azurewebsites.net/auth/login');
+  });
+
+  it('single-host isTenantHostname reflects the stored slug', () => {
+    expect(isTenantHostname('app.azurewebsites.net')).toBe(false);
+    sessionStorage.setItem('crownus.singleHostTenant', 'acme');
+    expect(isTenantHostname('app.azurewebsites.net')).toBe(true);
+  });
+
+  it('subdomain behaviour unchanged', () => {
+    mutableEnv.tenancyMode = 'subdomain';
+    sessionStorage.setItem('crownus.singleHostTenant', 'acme');
+    stubLocation('https:', 'acme.crownus.test');
+    expect(getRootHostname('acme.crownus.test')).toBe('crownus.test');
+    expect(isTenantHostname('acme.crownus.test')).toBe(true);
+    expect(isTenantHostname('crownus.test')).toBe(false);
+    expect(buildTenantUrl('beta', '/dashboard')).toBe('https://beta.crownus.test/dashboard');
+    expect(buildRootUrl('/auth/login')).toBe('https://crownus.test/auth/login');
+    expect(sessionStorage.getItem('crownus.singleHostTenant')).toBe('acme');
   });
 });

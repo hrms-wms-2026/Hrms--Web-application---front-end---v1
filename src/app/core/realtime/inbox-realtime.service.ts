@@ -5,6 +5,7 @@ import { HubConnection, HubConnectionBuilder, IHttpConnectionOptions, LogLevel }
 import { Observable, Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthStore } from '../auth/state/auth.store';
+import { getSingleHostTenant } from '../auth/utils/single-host-tenant';
 import { PermissionService } from '../auth/state/permission.service';
 import { TrayPresenceStore } from '../tray-presence/state/tray-presence.store';
 import { tenantWorkspaceReady } from '../tray-presence/utils/tenant-workspace-ready';
@@ -150,7 +151,10 @@ export class InboxRealtimeService {
 
   /** The hub is mapped at the API host root, not under /api/v1. */
   private hubUrl(): string {
-    return `${environment.apiUrl.replace(/\/api\/v1\/?$/, '')}/hubs/inbox`;
+    const base = `${environment.apiUrl.replace(/\/api\/v1\/?$/, '')}/hubs/inbox`;
+    // Single-host test mode: the websocket handshake can't carry the tenant header, so use the query value.
+    const slug = getSingleHostTenant();
+    return slug ? `${base}?tenant=${slug}` : base;
   }
 
   private csrfHeaders(): Record<string, string> {
