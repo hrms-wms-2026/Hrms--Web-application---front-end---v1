@@ -10,6 +10,7 @@ import { ProjectDetailStore } from '../../state/project-detail.store';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { TaskCommentApiService } from '../../data-access/task-comment-api.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 function baseCommentApi(): Record<string, ReturnType<typeof vi.fn>> {
   return {
@@ -28,7 +29,8 @@ const taskDto = {
   categoryId: 'c1', statusId: 's1', priority: 'high' as const, storyPoints: 2, dueDate: '2026-09-01',
   estimatedHours: 4, completedHours: 0, progressPercent: 0, sprintId: null, assigneeEmployeeIds: ['e1'],
   openClockSessionEmployeeId: null, openClockSessionClockInAt: null, totalLoggedMinutes: 0,
-  attachments: [{ fileId: 'f1', fileName: 'spec.pdf', fileSizeBytes: 2048, contentType: 'application/pdf' }]
+  attachments: [{ fileId: 'f1', fileName: 'spec.pdf', fileSizeBytes: 2048, contentType: 'application/pdf' }],
+  createdAt: '2026-01-22T09:00:00Z'
 };
 
 function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
@@ -36,11 +38,15 @@ function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
     getTaskById: vi.fn().mockReturnValue(of(taskDto)),
     getStatuses: vi.fn().mockReturnValue(of([
       { id: 's1', name: 'To Do', displayOrder: 0, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' },
-      { id: 's2', name: 'Doing', displayOrder: 1, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' }
+      { id: 's2', name: 'Doing', displayOrder: 1, requiresApproval: false, approverId: null, marksTaskComplete: false, visibility: 'public' },
+      { id: 's3', name: 'Done', displayOrder: 2, requiresApproval: false, approverId: null, marksTaskComplete: true, visibility: 'public' }
     ])),
     getCategories: vi.fn().mockReturnValue(of([{ id: 'c1', name: 'Feature', displayOrder: 0 }])),
     getTaskHistory: vi.fn().mockReturnValue(of([])),
     editTask: vi.fn().mockReturnValue(of(taskDto)),
+    deleteTask: vi.fn().mockReturnValue(of(undefined)),
+    duplicateTask: vi.fn().mockReturnValue(of(taskDto)),
+    convertToSubtask: vi.fn().mockReturnValue(of(taskDto)),
     createTaskEditRequest: vi.fn().mockReturnValue(of({})),
     createTaskCreationRequest: vi.fn().mockReturnValue(of({})),
     assignTask: vi.fn().mockReturnValue(of(undefined)),
@@ -48,6 +54,7 @@ function baseApi(): Record<string, ReturnType<typeof vi.fn>> {
     moveTaskStatus: vi.fn().mockReturnValue(of(undefined)),
     uploadPendingFile: vi.fn().mockReturnValue(of({ fileId: 'f1', originalFileName: 'a.png', fileSizeBytes: 100, contentType: 'image/png' })),
     deletePendingFile: vi.fn().mockReturnValue(of(undefined)),
+    downloadFile: vi.fn().mockReturnValue(of(new Blob(['file'], { type: 'application/pdf' }))),
     getFileUrl: vi.fn((fileId: string) => `http://test/api/v1/work/tasks/files/${fileId}`),
     getCurrentEmployee: vi.fn().mockReturnValue(of({ employeeId: 'e1' }))
   };
@@ -63,13 +70,13 @@ async function flush(fixture: ComponentFixture<unknown>): Promise<void> {
 describe('TaskFormModalComponent - edit mode', () => {
   let fixture: ComponentFixture<TaskFormModalComponent>;
   let api: Record<string, ReturnType<typeof vi.fn>>;
-  let milestones: ReturnType<typeof signal<{ objectiveId: string; isOwner: boolean; isEffectiveOwner: boolean }[]>>;
+  let milestones: ReturnType<typeof signal<{ objectiveId: string; title: string; isOwner: boolean; isEffectiveOwner: boolean }[]>>;
   let members: { employeeId: string; name: string; avatarUrl: string | null }[];
 
   beforeEach(async () => {
     api = baseApi();
-    milestones = signal<{ objectiveId: string; isOwner: boolean; isEffectiveOwner: boolean }[]>(
-      [{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: true }]
+    milestones = signal<{ objectiveId: string; title: string; isOwner: boolean; isEffectiveOwner: boolean }[]>(
+      [{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]
     );
     members = [
       { employeeId: 'e1', name: 'Ann', avatarUrl: 'https://api.test/employees/e1/avatar' },
@@ -83,8 +90,19 @@ describe('TaskFormModalComponent - edit mode', () => {
         { provide: TaskCommentApiService, useValue: baseCommentApi() },
         { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskBoardStore, useValue: { createTask: vi.fn(), error: () => null } },
-        { provide: ProjectDetailStore, useValue: { milestones, loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => members } },
+        {
+          provide: TaskBoardStore,
+          useValue: {
+            createTask: vi.fn(),
+            error: () => null,
+            tasks: () => [
+              { id: 't1', shortId: 'P-1', title: 'First', statusId: 's1' },
+              { id: 't2', shortId: 'P-2', title: 'Second', statusId: 's2' },
+              { id: 't3', shortId: 'P-3', title: 'Third (done)', statusId: 's3' }
+            ]
+          }
+        },
+        { provide: ProjectDetailStore, useValue: { milestones, loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => members, project: () => null } },
         { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
       ]
     }).compileComponents();
@@ -104,11 +122,258 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(fixture.componentInstance.assigneeEmployeeId()).toBe('e1');
   });
 
+  it('shares a deep link that identifies the open task', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const notificationService = TestBed.inject(NotificationService);
+    const success = vi.spyOn(notificationService, 'success');
+
+    (fixture.nativeElement.querySelector('.tfm-header-share-btn') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/work/p1/board?taskId=t1'));
+    expect(success).toHaveBeenCalledWith('Task link copied to clipboard.');
+  });
+
+  it('shows a plain description until the description section is clicked', async () => {
+    expect(fixture.componentInstance.descRte()?.contentEditor()?.nativeElement.textContent).toContain('desc');
+    expect(fixture.componentInstance.descRte()?.isReadOnlyMode()).toBe(true);
+    const toolbar = fixture.nativeElement.querySelector('[data-testid="task-description-section"] .tfm-editor__toolbar') as HTMLElement;
+    expect(getComputedStyle(toolbar).display).toBe('none');
+
+    fixture.componentInstance.descRte()!.contentEditor()!.nativeElement.click();
+    await flush(fixture);
+
+    expect(fixture.componentInstance.descRte()?.editorActive()).toBe(true);
+    expect(fixture.componentInstance.descRte()?.isReadOnlyMode()).toBe(false);
+    expect(getComputedStyle(toolbar).display).not.toBe('none');
+    expect(fixture.nativeElement.querySelector('app-rich-text-editor')?.classList).toContain('rte--borderless');
+  });
+
+  it('keeps the rich-text editor mounted after focus moves so editing is not interrupted', async () => {
+    fixture.componentInstance.descRte()!.focus();
+    await flush(fixture);
+
+    const outsideButton = document.createElement('button');
+    document.body.appendChild(outsideButton);
+    outsideButton.focus();
+    await flush(fixture);
+    outsideButton.remove();
+
+    expect(fixture.componentInstance.descRte()?.editorActive()).toBe(true);
+    expect(fixture.componentInstance.descRte()).toBeTruthy();
+  });
+
+  it('preserves inline rich-text formatting while the toolbar is hidden', () => {
+    fixture.componentInstance.descRte()!.setHtml(
+      '<div><span style="color: red; font-style: italic; background-color: pink;">Formatted</span></div>'
+    );
+    fixture.detectChanges();
+
+    const formatted = fixture.componentInstance.descRte()!.contentEditor()!.nativeElement.querySelector('span') as HTMLElement;
+
+    expect(getComputedStyle(formatted).color).toBe('rgb(255, 0, 0)');
+    expect(getComputedStyle(formatted).fontStyle).toBe('italic');
+    expect(getComputedStyle(formatted).backgroundColor).toBe('rgb(255, 192, 203)');
+  });
+
   it('mounts app-task-comments with the current task id in edit mode', () => {
     fixture.detectChanges();
 
     const commentsEl: HTMLElement | null = fixture.nativeElement.querySelector('app-task-comments');
     expect(commentsEl).not.toBeNull();
+  });
+
+  it('renders the Activity section with All, Comments, History, and Work log tabs in edit mode', () => {
+    fixture.detectChanges();
+
+    const activitySection = fixture.nativeElement.querySelector('[data-testid="task-activity-section"]');
+    expect(activitySection).not.toBeNull();
+    expect(activitySection.textContent).toContain('Activity');
+    expect(fixture.nativeElement.querySelector('[data-testid="tab-all"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="tab-comments"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="tab-history"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="tab-work-log"]')).not.toBeNull();
+  });
+
+  it('switches active activity tab and toggles sort order', () => {
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activityTab()).toBe('comments');
+    const historyTab = fixture.nativeElement.querySelector('[data-testid="tab-history"]') as HTMLButtonElement;
+    historyTab.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activityTab()).toBe('history');
+
+    expect(fixture.componentInstance.activitySortOrder()).toBe('desc');
+    const sortBtn = fixture.nativeElement.querySelector('[data-testid="sort-activity-btn"]') as HTMLButtonElement;
+    sortBtn.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activitySortOrder()).toBe('asc');
+  });
+
+  it('shows the module name as visible text next to the header module icon', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement;
+    expect(el.textContent?.trim()).toBe('Module 1');
+  });
+
+  it('updates the module name if milestones finishes loading after the modal already opened', () => {
+    milestones.set([]);
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement).textContent?.trim())
+      .toBe('Select module');
+
+    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement.querySelector('[data-testid="header-module-name"]') as HTMLElement).textContent?.trim())
+      .toBe('Module 1');
+  });
+
+  it('shows the task creation date near the kebab menu', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement.querySelector('[data-testid="task-created-at"]') as HTMLElement;
+    expect(el.textContent?.trim()).toBe('Created Jan 22');
+  });
+
+  it('shows the more-actions kebab menu with Duplicate and Delete', () => {
+    fixture.detectChanges();
+    const moreBtn = fixture.nativeElement.querySelector('[data-testid="task-more-actions-button"]') as HTMLButtonElement;
+    expect(moreBtn).not.toBeNull();
+
+    moreBtn.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="task-duplicate-action"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="task-delete-action"]')).not.toBeNull();
+  });
+
+  it('Delete action opens a confirm dialog; confirming calls deleteTask and emits saved + closed', async () => {
+    fixture.detectChanges();
+    const savedSpy = vi.fn();
+    const closedSpy = vi.fn();
+    fixture.componentInstance.saved.subscribe(savedSpy);
+    fixture.componentInstance.closed.subscribe(closedSpy);
+
+    fixture.componentInstance.openDeleteConfirm();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(true);
+
+    await fixture.componentInstance.onDeleteConfirmed();
+
+    expect(api['deleteTask']).toHaveBeenCalledWith('t1');
+    expect(savedSpy).toHaveBeenCalled();
+    expect(closedSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(false);
+  });
+
+  it('Delete failure keeps the confirm dialog open and shows the error', async () => {
+    api['deleteTask'].mockReturnValue(throwError(() => ({ error: { detail: 'Only the owner can delete.' } })));
+    fixture.detectChanges();
+
+    fixture.componentInstance.openDeleteConfirm();
+    await fixture.componentInstance.onDeleteConfirmed();
+
+    expect(fixture.componentInstance.deleteConfirmOpen()).toBe(true);
+    expect(fixture.componentInstance.deleteError()).toBe('Only the owner can delete.');
+  });
+
+  it('scopes the Duplicate dialog module list to modules the caller owns', () => {
+    milestones.set([
+      { objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true },
+      { objectiveId: 'o2', title: 'Module 2 (member only)', isOwner: false, isEffectiveOwner: false }
+    ]);
+    fixture.detectChanges();
+
+    fixture.componentInstance.openDuplicateDialog();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.duplicateDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.duplicateModuleOptions()).toEqual([{ objectiveId: 'o1', title: 'Module 1' }]);
+  });
+
+  it('confirming duplicate calls duplicateTask with the chosen options and emits saved + closed', async () => {
+    fixture.detectChanges();
+    const savedSpy = vi.fn();
+    fixture.componentInstance.saved.subscribe(savedSpy);
+
+    await fixture.componentInstance.onDuplicateConfirmed({
+      title: 'First (copy)', destinationObjectiveId: 'o1',
+      copyAttachments: true, copyAssignees: true, copyComments: false, copyDueDate: true
+    });
+
+    expect(api['duplicateTask']).toHaveBeenCalledWith('t1', {
+      title: 'First (copy)', destinationObjectiveId: 'o1',
+      copyAttachments: true, copyAssignees: true, copyComments: false, copyDueDate: true
+    });
+    expect(savedSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.duplicateDialogOpen()).toBe(false);
+  });
+
+  it('Duplicate failure keeps the dialog open and shows the error', async () => {
+    api['duplicateTask'].mockReturnValue(throwError(() => ({ error: { detail: 'Not enough allocation left.' } })));
+    fixture.detectChanges();
+    fixture.componentInstance.openDuplicateDialog();
+
+    await fixture.componentInstance.onDuplicateConfirmed({
+      title: 'Copy', destinationObjectiveId: 'o1',
+      copyAttachments: false, copyAssignees: false, copyComments: false, copyDueDate: false
+    });
+
+    expect(fixture.componentInstance.duplicateDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.duplicateError()).toBe('Not enough allocation left.');
+  });
+
+  it('shows Convert to subtask for a top-level task but not for a subtask', () => {
+    fixture.detectChanges();
+    const moreBtn = fixture.nativeElement.querySelector('[data-testid="task-more-actions-button"]') as HTMLButtonElement;
+    moreBtn.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="task-convert-to-subtask-action"]')).not.toBeNull();
+
+    fixture.componentInstance.task.update((t) => (t ? { ...t, parentTaskId: 'parent-1' } : t));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="task-convert-to-subtask-action"]')).toBeNull();
+  });
+
+  it('Convert to subtask candidates exclude the task itself and completed tasks', () => {
+    fixture.detectChanges();
+    fixture.componentInstance.openConvertToSubtaskDialog();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.convertToSubtaskDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.convertToSubtaskCandidates()).toEqual([{ id: 't2', shortId: 'P-2', title: 'Second' }]);
+  });
+
+  it('confirming convert-to-subtask calls convertToSubtask and emits saved + closed', async () => {
+    fixture.detectChanges();
+    const savedSpy = vi.fn();
+    const closedSpy = vi.fn();
+    fixture.componentInstance.saved.subscribe(savedSpy);
+    fixture.componentInstance.closed.subscribe(closedSpy);
+
+    await fixture.componentInstance.onConvertToSubtaskConfirmed({ newParentTaskId: 't2' });
+
+    expect(api['convertToSubtask']).toHaveBeenCalledWith('t1', { newParentTaskId: 't2' });
+    expect(savedSpy).toHaveBeenCalled();
+    expect(closedSpy).toHaveBeenCalled();
+    expect(fixture.componentInstance.convertToSubtaskDialogOpen()).toBe(false);
+  });
+
+  it('Convert-to-subtask failure keeps the dialog open and shows the error', async () => {
+    api['convertToSubtask'].mockReturnValue(throwError(() => ({ error: { detail: "A subtask cannot itself have subtasks." } })));
+    fixture.detectChanges();
+    fixture.componentInstance.openConvertToSubtaskDialog();
+
+    await fixture.componentInstance.onConvertToSubtaskConfirmed({ newParentTaskId: 't2' });
+
+    expect(fixture.componentInstance.convertToSubtaskDialogOpen()).toBe(true);
+    expect(fixture.componentInstance.convertToSubtaskError()).toBe('A subtask cannot itself have subtasks.');
   });
 
   it('on Save Changes: moves status if changed, then edits the task (owner path)', async () => {
@@ -165,7 +430,7 @@ describe('TaskFormModalComponent - edit mode', () => {
   });
 
   it('non-owner Save routes through createTaskEditRequest and does not call editTask', async () => {
-    milestones.set([{ objectiveId: 'o1', isOwner: false, isEffectiveOwner: false }]);
+    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: false, isEffectiveOwner: false }]);
     fixture.detectChanges();
     fixture.componentInstance.title.set('Edited');
     await fixture.componentInstance.submit();
@@ -180,7 +445,7 @@ describe('TaskFormModalComponent - edit mode', () => {
     // milestone's actual owner (isEffectiveOwner false) must still get routed through the edit
     // request flow for field changes - but reassignment (its own, separately-permitted action) is
     // unaffected and still applies.
-    milestones.set([{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: false }]);
+    milestones.set([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: false }]);
     fixture.detectChanges();
     fixture.componentInstance.title.set('Edited');
     fixture.componentInstance.assigneeEmployeeId.set('e2');
@@ -204,6 +469,25 @@ describe('TaskFormModalComponent - edit mode', () => {
     expect(pill.textContent).toContain('spec.pdf');
   });
 
+  it('downloads an attachment when its file name is clicked', async () => {
+    const objectUrl = 'blob:task-attachment';
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue(objectUrl);
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    (fixture.nativeElement.querySelector('.tal-pill-download') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(api['downloadFile']).toHaveBeenCalledWith('f1');
+    expect(createObjectUrl).toHaveBeenCalled();
+    expect(anchorClick).toHaveBeenCalled();
+    expect(revokeObjectUrl).toHaveBeenCalledWith(objectUrl);
+
+    createObjectUrl.mockRestore();
+    revokeObjectUrl.mockRestore();
+    anchorClick.mockRestore();
+  });
+
   it('on Save Changes: includes the current attachedFiles ids in the edit payload', async () => {
     fixture.componentInstance.title.set('Edited');
     await fixture.componentInstance.submit();
@@ -220,6 +504,62 @@ describe('TaskFormModalComponent - edit mode', () => {
 
     await fixture.componentInstance.submit();
     expect(api['editTask']).toHaveBeenCalledWith('t1', expect.objectContaining({ sprintId: 'spr-123' }));
+  });
+});
+
+describe('TaskFormModalComponent - assignee display outside milestone scope', () => {
+  it('resolves the assignee name/avatar from the task\'s own identity when the assignee is missing from assignableMembers', async () => {
+    const scopedOutTaskDto = {
+      ...taskDto,
+      assigneeEmployeeIds: ['e3'],
+      assignees: [{ employeeId: 'e3', name: 'Chandra Silva', avatarFileId: null, avatarUrl: null }]
+    };
+    const api = { ...baseApi(), getTaskById: vi.fn().mockReturnValue(of(scopedOutTaskDto)) };
+
+    await TestBed.configureTestingModule({
+      imports: [TaskFormModalComponent],
+      providers: [
+        { provide: TaskApiService, useValue: api },
+        { provide: TaskCommentApiService, useValue: baseCommentApi() },
+        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
+        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
+        { provide: TaskBoardStore, useValue: { createTask: vi.fn(), error: () => null, tasks: () => [] } },
+        {
+          provide: ProjectDetailStore,
+          useValue: {
+            // The viewer's reachable milestones only surface e1/e2 - e3 (the actual assignee) is
+            // outside that scope, mirroring an admin-assigned task a lower-permission viewer opens.
+            milestones: signal([{ objectiveId: 'o1', title: 'Module 1', isOwner: true, isEffectiveOwner: true }]),
+            loadProjectMembers: vi.fn().mockResolvedValue(undefined),
+            projectMembers: () => [
+              { employeeId: 'e1', name: 'Ann', avatarUrl: null },
+              { employeeId: 'e2', name: 'Bob', avatarUrl: null }
+            ],
+            project: () => ({
+              members: [
+                { userId: 'e1', displayName: 'Ann', avatarFileId: null },
+                { userId: 'e2', displayName: 'Bob', avatarFileId: null },
+                { userId: 'e3', displayName: 'Chandra Silva (roster)', avatarFileId: null }
+              ],
+              memberCount: 3
+            })
+          }
+        },
+        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(TaskFormModalComponent);
+    fixture.componentRef.setInput('projectId', 'p1');
+    fixture.componentRef.setInput('mode', 'edit');
+    fixture.componentRef.setInput('taskId', 't1');
+    fixture.componentRef.setInput('open', true);
+    await flush(fixture);
+
+    expect(fixture.componentInstance.assigneeEmployeeId()).toBe('e3');
+    // Resolved from the task's own server-side identity, not the raw GUID and not the roster's
+    // (deliberately different) name, proving assignableMembers isn't the only source consulted.
+    expect(fixture.componentInstance.assigneeName()).toBe('Chandra Silva');
   });
 });
 
@@ -240,10 +580,10 @@ describe('TaskFormModalComponent - create mode', () => {
           getMyMilestones: vi.fn().mockReturnValue(of([{ objectiveId: 'o1', title: 'Mod 1', isOwner: opts.isOwner ?? true }]))
         } },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([
-          { id: 'sp1', objectiveId: 'o1', name: 'Sprint 1', startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null }
+          { id: 'sp1', projectId: 'p1', name: 'Sprint 1', startDate: '2026-09-01', endDate: '2026-09-14', status: 'active', completedAt: null, achievedAt: null, canManage: true }
         ])) } },
         { provide: TaskBoardStore, useValue: { createTask, error: () => null } },
-        { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [] } },
+        { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [], project: () => null } },
         { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
       ]
     }).compileComponents();
@@ -263,6 +603,38 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(api['getTaskById']).not.toHaveBeenCalled();
   });
 
+  it('uses the shared click-to-edit, borderless description in create mode', async () => {
+    await build();
+    const editor = fixture.componentInstance.descRte()!;
+    const toolbar = fixture.nativeElement.querySelector('.tfm-editor__toolbar') as HTMLElement;
+
+    expect(editor.isReadOnlyMode()).toBe(true);
+    expect(getComputedStyle(toolbar).display).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-rich-text-editor')?.classList).toContain('rte--borderless');
+
+    editor.contentEditor()!.nativeElement.click();
+    fixture.detectChanges();
+
+    expect(editor.editorActive()).toBe(true);
+    expect(getComputedStyle(toolbar).display).not.toBe('none');
+    expect(editor.contentEmpty()).toBe(true);
+    expect(editor.contentEditor()!.nativeElement.classList).toContain('tfm-editor__content--empty');
+  });
+
+  it('aligns title and description text and uses a neutral focus line without glow', async () => {
+    await build();
+    const title = fixture.nativeElement.querySelector('.tfm-title-input') as HTMLInputElement;
+    const description = fixture.componentInstance.descRte()!.contentEditor()!.nativeElement;
+
+    expect(getComputedStyle(title).paddingLeft).toBe('8px');
+    expect(getComputedStyle(description).paddingLeft).toBe('8px');
+
+    title.focus();
+    fixture.detectChanges();
+
+    expect(['', 'none']).toContain(getComputedStyle(title).boxShadow);
+  });
+
   it('prefills the module from the prefillModuleId input', async () => {
     await build({ module: 'o1' });
     expect(fixture.componentInstance.selectedObjectiveId()).toBe('o1');
@@ -275,13 +647,12 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(fixture.componentInstance.errors()['objectiveId']).toBeFalsy();
   });
 
-  it('inherits the module when a sprint is selected via selectSprint', async () => {
+  it('selectSprint sets the sprint without touching the module (sprints are project-scoped)', async () => {
     await build();
     fixture.componentInstance.selectedObjectiveId.set('');
     fixture.componentInstance.selectSprint('sp1');
     expect(fixture.componentInstance.sprintId()).toBe('sp1');
-    expect(fixture.componentInstance.selectedObjectiveId()).toBe('o1');
-    expect(fixture.componentInstance.errors()['objectiveId']).toBeFalsy();
+    expect(fixture.componentInstance.selectedObjectiveId()).toBe('');
   });
 
   it('creates with no sprint selected — sprint is optional', async () => {
@@ -404,6 +775,18 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(fixture.componentInstance.activePopover()).toBeNull();
   });
 
+  it('renders Due Date chip with consistent tfm-chip styling and label', async () => {
+    await build();
+    const chipBtn = fixture.nativeElement.querySelector('[data-testid="tfm-due-date-chip"]') as HTMLButtonElement | null;
+    expect(chipBtn).toBeTruthy();
+    expect(chipBtn?.classList.contains('tfm-chip')).toBe(true);
+    expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Due date');
+
+    fixture.componentInstance.dueDate.set('2026-10-15');
+    fixture.detectChanges();
+    expect(chipBtn?.querySelector('.tfm-chip-label')?.textContent?.trim()).toBe('Oct 15');
+  });
+
   it('displays More fields section by default and allows toggling to hide or show', async () => {
     await build();
     expect(fixture.componentInstance.showMoreFields()).toBe(true);
@@ -463,558 +846,26 @@ describe('TaskFormModalComponent - create mode', () => {
     expect(api['deletePendingFile']).toHaveBeenCalledWith('f1');
   });
 
-  it('applyTextColor runs execCommand foreColor and syncs description', async () => {
+  it('uses the shared rich-text editor for the description and syncs its HTML', async () => {
     await build();
-    // jsdom does not implement document.execCommand, so vi.spyOn (which requires the property to
-    // already exist) cannot be used here - stub it directly instead.
-    const execSpy = vi.fn().mockReturnValue(true);
-    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
-    fixture.componentInstance.applyTextColor('#e03131');
-    expect(execSpy).toHaveBeenCalledWith('foreColor', false, '#e03131');
-    expect(fixture.componentInstance.showTextColorPopover()).toBe(false);
+    const rte = fixture.componentInstance.descRte();
+    expect(rte).toBeTruthy();
+
+    rte!.htmlChange.emit('<div>From editor</div>');
+    expect(fixture.componentInstance.description()).toBe('<div>From editor</div>');
+
+    rte!.uploadFailed.emit('Failed to insert shot.png.');
+    expect(fixture.componentInstance.errorMessage()).toBe('Failed to insert shot.png.');
   });
 
-  it('applyHighlight runs execCommand hiliteColor', async () => {
+  it('files picked via the editor "/attach" command are uploaded as task attachments', async () => {
     await build();
-    const execSpy = vi.fn().mockReturnValue(true);
-    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
-    fixture.componentInstance.applyHighlight('#fff3bf');
-    expect(execSpy).toHaveBeenCalledWith('hiliteColor', false, '#fff3bf');
-  });
+    const file = new File(['x'], 'spec.pdf', { type: 'application/pdf' });
 
-  it('insertImage uploads the file and inserts an <img> at the saved selection', async () => {
-    await build();
-    const execSpy = vi.fn().mockReturnValue(true);
-    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
-    const file = new File(['x'], 'shot.png', { type: 'image/png' });
-    const input = document.createElement('input');
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-
-    await fixture.componentInstance.onImageFileSelected({ target: input } as unknown as Event);
-
-    expect(api['uploadPendingFile']).toHaveBeenCalledWith(file, 'task_description_image');
-    expect(execSpy).toHaveBeenCalledWith('insertImage', false, expect.stringContaining('/tasks/files/f1'));
-  });
-
-  it('a failed image upload does not touch the editor and surfaces an error', async () => {
-    await build();
-    api['uploadPendingFile'] = vi.fn().mockReturnValue(throwError(() => new Error('boom')));
-    const execSpy = vi.fn().mockReturnValue(true);
-    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
-    const file = new File(['x'], 'shot.png', { type: 'image/png' });
-    const input = document.createElement('input');
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-
-    await fixture.componentInstance.onImageFileSelected({ target: input } as unknown as Event);
-
-    expect(execSpy).not.toHaveBeenCalledWith('insertImage', expect.anything(), expect.anything());
-    expect(fixture.componentInstance.errorMessage()).toBeTruthy();
-  });
-});
-
-describe('TaskFormModalComponent - slash command palette', () => {
-  let fixture: ComponentFixture<TaskFormModalComponent>;
-  let api: Record<string, ReturnType<typeof vi.fn>>;
-
-  beforeEach(async () => {
-    api = baseApi();
-    await TestBed.configureTestingModule({
-      imports: [TaskFormModalComponent],
-      providers: [
-        { provide: TaskApiService, useValue: api },
-        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
-        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskBoardStore, useValue: { createTask: vi.fn(), error: () => null } },
-        { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [] } },
-        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
-      ]
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(TaskFormModalComponent);
-    fixture.componentRef.setInput('projectId', 'p1');
-    fixture.componentRef.setInput('mode', 'create');
-    fixture.componentRef.setInput('open', true);
+    fixture.componentInstance.descRte()!.filesAttached.emit([file]);
     await flush(fixture);
-  });
 
-  it('filteredSlashCommands filters by keyword, label, and description', () => {
-    const comp = fixture.componentInstance;
-    expect(comp.allSlashCommands.length).toBe(15);
-
-    comp.slashQuery.set('');
-    expect(comp.filteredSlashCommands().length).toBe(15);
-
-    comp.slashQuery.set('bold');
-    expect(comp.filteredSlashCommands().some((c) => c.id === 'bold')).toBe(true);
-
-    comp.slashQuery.set('h1');
-    expect(comp.filteredSlashCommands().some((c) => c.id === 'h1')).toBe(true);
-
-    comp.slashQuery.set('todo');
-    expect(comp.filteredSlashCommands().some((c) => c.id === 'checklist')).toBe(true);
-
-    comp.slashQuery.set('xyznotfound123');
-    expect(comp.filteredSlashCommands().length).toBe(0);
-  });
-
-  it('ArrowDown and ArrowUp navigate the filtered commands with wrap-around', () => {
-    const comp = fixture.componentInstance;
-    comp.showSlashMenu.set(true);
-    comp.slashQuery.set('');
-    comp.slashSelectedIndex.set(0);
-
-    const total = comp.filteredSlashCommands().length;
-
-    comp.onEditorKeydown(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-    expect(comp.slashSelectedIndex()).toBe(1);
-
-    comp.onEditorKeydown(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
-    expect(comp.slashSelectedIndex()).toBe(0);
-
-    comp.onEditorKeydown(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
-    expect(comp.slashSelectedIndex()).toBe(total - 1);
-  });
-
-  it('Escape closes the slash menu without closing the modal', () => {
-    const comp = fixture.componentInstance;
-    comp.showSlashMenu.set(true);
-    const closedSpy = vi.fn();
-    comp.closed.subscribe(closedSpy);
-
-    comp.onEscape();
-    expect(comp.showSlashMenu()).toBe(false);
-    expect(closedSpy).not.toHaveBeenCalled();
-  });
-
-  it('Enter executes the selected slash command and closes menu', () => {
-    const comp = fixture.componentInstance;
-    const execSpy = vi.fn().mockReturnValue(true);
-    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
-
-    comp.showSlashMenu.set(true);
-    comp.slashQuery.set('bold');
-    comp.slashSelectedIndex.set(0);
-
-    comp.onEditorKeydown(new KeyboardEvent('keydown', { key: 'Enter' }));
-
-    expect(comp.showSlashMenu()).toBe(false);
-    expect(execSpy).toHaveBeenCalledWith('bold', false, undefined);
-  });
-
-  it('executeSlashCommand for link opens the link popover', () => {
-    const comp = fixture.componentInstance;
-    comp.showSlashMenu.set(true);
-
-    comp.executeSlashCommand('link');
-
-    expect(comp.showSlashMenu()).toBe(false);
-    expect(comp.showLinkPopover()).toBe(true);
-  });
-
-  it('executeSlashCommand for highlight applies highlight color', () => {
-    const comp = fixture.componentInstance;
-    const execSpy = vi.fn().mockReturnValue(true);
-    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
-
-    comp.executeSlashCommand('highlight');
-
-    expect(execSpy).toHaveBeenCalledWith('hiliteColor', false, '#fff3bf');
-  });
-
-  it('executeSlashCommand for divider inserts horizontal rule', () => {
-    const comp = fixture.componentInstance;
-    const execSpy = vi.fn().mockReturnValue(true);
-    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
-
-    comp.executeSlashCommand('divider');
-
-    expect(execSpy).toHaveBeenCalledWith('insertHorizontalRule', false, undefined);
-  });
-});
-
-describe('TaskFormModalComponent - description editor enter key & checklist handling', () => {
-  let fixture: ComponentFixture<TaskFormModalComponent>;
-  let api: Record<string, ReturnType<typeof vi.fn>>;
-
-  beforeEach(async () => {
-    api = baseApi();
-    await TestBed.configureTestingModule({
-      imports: [TaskFormModalComponent],
-      providers: [
-        { provide: TaskApiService, useValue: api },
-        { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
-        { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
-        { provide: TaskBoardStore, useValue: { createTask: vi.fn(), error: () => null } },
-        { provide: ProjectDetailStore, useValue: { milestones: signal([]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [] } },
-        { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
-      ]
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(TaskFormModalComponent);
-    fixture.componentRef.setInput('projectId', 'p1');
-    fixture.componentRef.setInput('mode', 'create');
-    fixture.componentRef.setInput('open', true);
-    await flush(fixture);
-  });
-
-  it('onEditorFocus calls execCommand defaultParagraphSeparator div', () => {
-    const execSpy = vi.fn().mockReturnValue(true);
-    (document as unknown as { execCommand: typeof execSpy }).execCommand = execSpy;
-
-    fixture.componentInstance.onEditorFocus();
-    expect(execSpy).toHaveBeenCalledWith('defaultParagraphSeparator', false, 'div');
-  });
-
-  it('Enter inside a checklist item with text creates a new checklist item below', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    expect(editor).toBeTruthy();
-    if (!editor) return;
-
-    const item = comp.createChecklistItem('Buy groceries');
-    editor.appendChild(item);
-
-    const textSpan = item.querySelector('.tfm-check-text')!;
-    const range = document.createRange();
-    range.setStart(textSpan.firstChild ?? textSpan, 13);
-    range.collapse(true);
-
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    const event = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
-    comp.onEditorKeydown(event);
-
-    expect(event.defaultPrevented).toBe(true);
-    const checkItems = editor.querySelectorAll('.tfm-check-item');
-    expect(checkItems.length).toBe(2);
-  });
-
-  it('Enter inside an empty checklist item exits checklist to a normal div line', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    const item = comp.createChecklistItem('');
-    editor.appendChild(item);
-
-    const textSpan = item.querySelector('.tfm-check-text')!;
-    const range = document.createRange();
-    range.setStart(textSpan, 0);
-    range.collapse(true);
-
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    const event = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
-    comp.onEditorKeydown(event);
-
-    expect(event.defaultPrevented).toBe(true);
-    expect(editor.querySelector('.tfm-check-item')).toBeNull();
-    const div = editor.querySelector('div');
-    expect(div).toBeTruthy();
-    expect(div?.querySelector('br')).toBeTruthy();
-  });
-
-  it('Backspace at the start of a checklist item converts it to a normal line', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    const item = comp.createChecklistItem('Some item');
-    editor.appendChild(item);
-
-    const textSpan = item.querySelector('.tfm-check-text')!;
-    const range = document.createRange();
-    range.setStart(textSpan.firstChild ?? textSpan, 0);
-    range.collapse(true);
-
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    const event = new KeyboardEvent('keydown', { key: 'Backspace', cancelable: true });
-    comp.onEditorKeydown(event);
-
-    expect(event.defaultPrevented).toBe(true);
-    expect(editor.querySelector('.tfm-check-item')).toBeNull();
-    expect(editor.textContent).toContain('Some item');
-  });
-
-  it('Enter inside a heading exits to a normal div line below it', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    const h2 = document.createElement('h2');
-    h2.textContent = 'Section Title';
-    editor.appendChild(h2);
-
-    const range = document.createRange();
-    range.setStart(h2.firstChild!, 13);
-    range.collapse(true);
-
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    const event = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
-    comp.onEditorKeydown(event);
-
-    expect(event.defaultPrevented).toBe(true);
-    expect(editor.children.length).toBe(2);
-    expect(editor.children[0].tagName).toBe('H2');
-    expect(editor.children[1].tagName).toBe('DIV');
-  });
-
-  it('toggling checkbox marks item with is-checked and updates description', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    const item = comp.createChecklistItem('Do homework');
-    editor.appendChild(item);
-
-    const checkbox = item.querySelector('input[type="checkbox"]') as HTMLInputElement;
-    checkbox.checked = true;
-
-    comp.onEditorChange({ target: checkbox } as unknown as Event);
-
-    expect(item.classList.contains('is-checked')).toBe(true);
-    expect(checkbox.hasAttribute('checked')).toBe(true);
-    expect(comp.description()).toContain('is-checked');
-  });
-
-  it('toggleHeading(h1) turns H1 on, and clicking it again turns it OFF back to a normal div', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    const div = document.createElement('div');
-    div.textContent = 'My Title';
-    editor.appendChild(div);
-
-    const range = document.createRange();
-    range.setStart(div.firstChild!, 2);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    comp.toggleHeading('h1');
-    const h1 = editor.querySelector('h1');
-    expect(h1).toBeTruthy();
-    expect(h1?.textContent).toContain('My Title');
-
-    const h1Range = document.createRange();
-    h1Range.setStart(h1!.firstChild!, 2);
-    h1Range.collapse(true);
-    sel?.removeAllRanges();
-    sel?.addRange(h1Range);
-
-    comp.toggleHeading('h1');
-    expect(editor.querySelector('h1')).toBeNull();
-    const turnedOffDiv = editor.querySelector('div');
-    expect(turnedOffDiv).toBeTruthy();
-    expect(turnedOffDiv?.textContent).toContain('My Title');
-  });
-
-  it('toggleChecklist turns checklist OFF when currently on a checklist item', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    const item = comp.createChecklistItem('Checklist task');
-    editor.appendChild(item);
-
-    const textSpan = item.querySelector('.tfm-check-text')!;
-    const range = document.createRange();
-    range.setStart(textSpan.firstChild ?? textSpan, 4);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    expect(editor.querySelector('.tfm-check-item')).toBeTruthy();
-
-    comp.toggleChecklist();
-
-    expect(editor.querySelector('.tfm-check-item')).toBeNull();
-    expect(editor.textContent).toContain('Checklist task');
-  });
-
-  it('toggleCode turns code OFF when selection is inside a code tag', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    const code = document.createElement('code');
-    code.textContent = 'const x = 1;';
-    editor.appendChild(code);
-
-    const range = document.createRange();
-    range.setStart(code.firstChild!, 3);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    expect(editor.querySelector('code')).toBeTruthy();
-
-    comp.toggleCode();
-
-    expect(editor.querySelector('code')).toBeNull();
-    expect(editor.textContent).toContain('const x = 1;');
-  });
-
-  it('updateActiveFormats accurately detects active formats at cursor position', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    const h1 = document.createElement('h1');
-    const bold = document.createElement('b');
-    bold.textContent = 'Bold Title';
-    h1.appendChild(bold);
-    editor.appendChild(h1);
-
-    const range = document.createRange();
-    range.setStart(bold.firstChild!, 2);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    comp.updateActiveFormats();
-
-    expect(comp.activeFormats().h1).toBe(true);
-    expect(comp.activeFormats().bold).toBe(true);
-    expect(comp.activeFormats().italic).toBe(false);
-  });
-
-  it('toggleHeading on one line leaves sibling lines untouched', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    editor.innerHTML = '<div>Line 1</div><div>Line 2</div><div>Line 3</div>';
-    comp.normalizeBlockLines(editor);
-
-    const line2 = editor.children[1] as HTMLElement;
-    const range = document.createRange();
-    range.setStart(line2.firstChild!, 2);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    comp.toggleHeading('h1');
-
-    expect(editor.children.length).toBe(3);
-    expect(editor.children[0].tagName.toLowerCase()).toBe('div');
-    expect(editor.children[0].textContent).toContain('Line 1');
-    expect(editor.children[1].tagName.toLowerCase()).toBe('h1');
-    expect(editor.children[1].textContent).toContain('Line 2');
-    expect(editor.children[2].tagName.toLowerCase()).toBe('div');
-    expect(editor.children[2].textContent).toContain('Line 3');
-  });
-
-  it('formatNormalText converts only targeted heading leaving other headings untouched', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    editor.innerHTML = '<h1>Heading 1</h1><h1>Heading 2</h1>';
-    comp.normalizeBlockLines(editor);
-
-    const firstH1 = editor.children[0] as HTMLElement;
-    const range = document.createRange();
-    range.setStart(firstH1.firstChild!, 2);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    comp.formatNormalText();
-
-    expect(editor.children[0].tagName.toLowerCase()).toBe('div');
-    expect(editor.children[0].textContent).toContain('Heading 1');
-    expect(editor.children[1].tagName.toLowerCase()).toBe('h1');
-    expect(editor.children[1].textContent).toContain('Heading 2');
-  });
-
-  it('isSlashCommandActive indicates current active formatting correctly', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    editor.innerHTML = '<h2>Subtitle</h2>';
-    comp.normalizeBlockLines(editor);
-
-    const h2 = editor.children[0] as HTMLElement;
-    const range = document.createRange();
-    range.setStart(h2.firstChild!, 2);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    comp.updateActiveFormats();
-
-    expect(comp.isSlashCommandActive('h2')).toBe(true);
-    expect(comp.isSlashCommandActive('h1')).toBe(false);
-    expect(comp.isSlashCommandActive('p')).toBe(false);
-  });
-
-  it('detects link format and does not falsely mark underline on a link', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    editor.innerHTML = '<div><a href="https://angular.io" class="tfm-preview-link">Angular</a></div>';
-    comp.normalizeBlockLines(editor);
-
-    const a = editor.querySelector('a') as HTMLAnchorElement;
-    expect(a).toBeTruthy();
-
-    const range = document.createRange();
-    range.setStart(a.firstChild!, 2);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    comp.updateActiveFormats();
-
-    expect(comp.activeFormats().link).toBe(true);
-    expect(comp.activeFormats().underline).toBe(false);
-    expect(comp.isSlashCommandActive('link')).toBe(true);
-    expect(comp.isSlashCommandActive('underline')).toBe(false);
-  });
-
-  it('removeLink unwraps an existing anchor tag back to plain text', () => {
-    const comp = fixture.componentInstance;
-    const editor = comp.descEditor()?.nativeElement;
-    if (!editor) return;
-
-    editor.innerHTML = '<div><a href="https://angular.io" class="tfm-preview-link">Angular</a></div>';
-    comp.normalizeBlockLines(editor);
-
-    const a = editor.querySelector('a') as HTMLAnchorElement;
-    const range = document.createRange();
-    range.setStart(a.firstChild!, 2);
-    range.collapse(true);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    comp.removeLink();
-
-    expect(editor.querySelector('a')).toBeNull();
-    expect(editor.textContent).toContain('Angular');
-    expect(comp.activeFormats().link).toBe(false);
+    expect(api['uploadPendingFile']).toHaveBeenCalledWith(file, 'task_attachment');
   });
 });
 
@@ -1062,7 +913,7 @@ describe('TaskFormModalComponent - subtasks section', () => {
         { provide: ProjectApiService, useValue: { getMyMilestones: vi.fn().mockReturnValue(of([])) } },
         { provide: SprintApiService, useValue: { getByProject: vi.fn().mockReturnValue(of([])) } },
         { provide: TaskBoardStore, useValue: boardStore },
-        { provide: ProjectDetailStore, useValue: { milestones: signal([{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: true }]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [{ employeeId: 'e1', name: 'Ann', avatarUrl: null }] } },
+        { provide: ProjectDetailStore, useValue: { milestones: signal([{ objectiveId: 'o1', isOwner: true, isEffectiveOwner: true }]), loadProjectMembers: vi.fn().mockResolvedValue(undefined), projectMembers: () => [{ employeeId: 'e1', name: 'Ann', avatarUrl: null }], project: () => null } },
         { provide: CurrentEmployeeStore, useValue: { id: signal('e1'), ensureLoaded: vi.fn() } }
       ]
     }).compileComponents();
@@ -1099,9 +950,11 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="subtask-add-title"]')).toBeNull();
   });
 
-  it('creates a new subtask via boardStore.createSubtask', async () => {
+  it('creates a new subtask via boardStore.createSubtask and inherits parent module', async () => {
     (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
     fixture.detectChanges();
+
+    expect(fixture.componentInstance.newSubtaskModuleId()).toBe('o1');
 
     fixture.componentInstance.newSubtaskTitle.set('Fresh subtask');
     fixture.componentInstance.newSubtaskDueDate.set('2026-10-01');
@@ -1110,12 +963,65 @@ describe('TaskFormModalComponent - subtasks section', () => {
 
     await fixture.componentInstance.saveNewSubtask('t1');
 
-    expect(boardStore.createSubtask).toHaveBeenCalledWith('t1', {
+    expect(boardStore.createSubtask).toHaveBeenCalledWith('t1', expect.objectContaining({
       title: 'Fresh subtask',
       dueDate: '2026-10-01',
-      assigneeEmployeeId: 'e1'
-    });
+      assigneeEmployeeId: 'e1',
+      objectiveId: 'o1',
+      categoryId: 'c1'
+    }));
     expect(fixture.componentInstance.addingSubtask()).toBe(false);
+  });
+
+  it('allows changing subtask module via module popover without showing module text in row', async () => {
+    fixture.componentInstance.modules.set([
+      { objectiveId: 'o1', title: 'Module One', isOwner: true },
+      { objectiveId: 'o2', title: 'Module Two', isOwner: false }
+    ]);
+    (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    // Verify module button exists and displays icon only (no module name text in row)
+    const moduleBtn = fixture.nativeElement.querySelector('[data-testid="subtask-add-module-button"]') as HTMLButtonElement;
+    expect(moduleBtn).not.toBeNull();
+    expect(moduleBtn.textContent?.trim()).toBe('');
+
+    // Open module popover
+    moduleBtn.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeSubtaskPopover()).toEqual({ id: 'new', type: 'module' });
+
+    // Select module o2
+    fixture.componentInstance.selectSubtaskModule('o2');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.newSubtaskModuleId()).toBe('o2');
+    expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
+
+    // Save and verify o2 is passed
+    fixture.componentInstance.newSubtaskTitle.set('Changed module subtask');
+    await fixture.componentInstance.saveNewSubtask('t1');
+
+    expect(boardStore.createSubtask).toHaveBeenCalledWith('t1', expect.objectContaining({
+      title: 'Changed module subtask',
+      objectiveId: 'o2',
+      categoryId: 'c1'
+    }));
+  });
+
+  it('does not render subtasks table when 0 subtasks exist and not adding', async () => {
+    subtasksSignal.set({});
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.subtasks().length).toBe(0);
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).toBeNull();
+
+    // The Add subtask button is in the actions list
+    const addBtn = fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]');
+    expect(addBtn).not.toBeNull();
+    expect(addBtn.textContent).toContain('Add subtask');
   });
 
   it('navigates to subtask detail when clicking a subtask row and provides return breadcrumb', async () => {
@@ -1186,13 +1092,13 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(api['editTask']).toHaveBeenCalledWith('sub-1', expect.objectContaining({ title: 'Subtask 1 Edited' }));
   });
 
-  it('renders the unified subtask table and allows adding subtasks even when no subtasks exist', () => {
+  it('does not render table head when no subtasks exist, but allows adding subtasks', () => {
     subtasksSignal.set({ t1: [] });
     fixture.detectChanges();
 
     expect(fixture.componentInstance.subtasks().length).toBe(0);
-    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).toBeNull();
 
     const addSubtaskBtn = fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement;
     expect(addSubtaskBtn).not.toBeNull();
@@ -1226,12 +1132,15 @@ describe('TaskFormModalComponent - subtasks section', () => {
     fixture.componentInstance.title.set('New Parent Task');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).not.toBeNull();
+    // When 0 subtasks, no table is rendered
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).toBeNull();
     expect(fixture.componentInstance.displayedSubtasks().length).toBe(0);
 
     // Open add subtask
     (fixture.nativeElement.querySelector('[data-testid="add-subtask-button"]') as HTMLButtonElement).click();
     fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-inline-create')).not.toBeNull();
 
     // Add subtask title only (no assignee, date, priority required)
     fixture.componentInstance.newSubtaskTitle.set('Draft Subtask A');
@@ -1241,6 +1150,9 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(fixture.componentInstance.draftSubtasks().length).toBe(1);
     expect(fixture.componentInstance.displayedSubtasks().length).toBe(1);
     expect(fixture.componentInstance.displayedSubtasks()[0].title).toBe('Draft Subtask A');
+    // Now that a subtask exists, the table is rendered
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.tfm-subtask-table-head')).not.toBeNull();
 
     // Remove draft subtask
     fixture.componentInstance.removeDraftSubtask(fixture.componentInstance.draftSubtasks()[0].id);
@@ -1248,6 +1160,7 @@ describe('TaskFormModalComponent - subtasks section', () => {
 
     expect(fixture.componentInstance.draftSubtasks().length).toBe(0);
     expect(fixture.componentInstance.displayedSubtasks().length).toBe(0);
+    expect(fixture.nativeElement.querySelector('.tfm-subtasks-section')).toBeNull();
   });
 
   it('renders Status column header and subtask status pill', () => {
@@ -1313,6 +1226,128 @@ describe('TaskFormModalComponent - subtasks section', () => {
     expect(api['moveTaskStatus']).toHaveBeenCalledWith('sub-1', 's2');
     expect(boardStore.loadSubtasks).toHaveBeenCalledWith('t1');
     expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
+  });
+
+  it('subtask edits emit changed (host refreshes, modal stays open) - never saved/closed', async () => {
+    const comp = fixture.componentInstance;
+    const subtask = comp.subtasks()[0];
+    const saved = vi.fn();
+    const closed = vi.fn();
+    const changed = vi.fn();
+    comp.saved.subscribe(saved);
+    comp.closed.subscribe(closed);
+    comp.changed.subscribe(changed);
+
+    await comp.changeSubtaskPriority(subtask, 'critical');
+    await comp.changeSubtaskStatus(subtask, 's2');
+    await comp.changeSubtaskAssignee(subtask, 'someone-else');
+
+    expect(changed).toHaveBeenCalledTimes(3);
+    expect(saved).not.toHaveBeenCalled();
+    expect(closed).not.toHaveBeenCalled();
+  });
+
+  it('renders header work item type button and allows changing category via popover', () => {
+    fixture.componentInstance.categories.set([
+      { id: 'c1', name: 'Feature', displayOrder: 0 },
+      { id: 'c2', name: 'Bug', displayOrder: 1 }
+    ]);
+    fixture.detectChanges();
+
+    const workItemBtn = fixture.nativeElement.querySelector('[data-testid="header-work-item-type-button"]') as HTMLButtonElement;
+    expect(workItemBtn).not.toBeNull();
+    expect(workItemBtn.textContent).toContain('Feature');
+
+    // Clicking it opens headerCategory popover
+    workItemBtn.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activePopover()).toBe('headerCategory');
+
+    // Selecting category 'c2' updates categoryId and categoryName
+    fixture.componentInstance.selectCategory('c2');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.categoryId()).toBe('c2');
+    expect(fixture.componentInstance.categoryName()).toBe('Bug');
+    expect(workItemBtn.textContent).toContain('Bug');
+  });
+
+  it('renders header module button and allows changing module via popover', () => {
+    const moduleBtn = fixture.nativeElement.querySelector('[data-testid="header-module-button"]') as HTMLButtonElement;
+    expect(moduleBtn).not.toBeNull();
+
+    // Clicking it opens headerModule popover
+    moduleBtn.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activePopover()).toBe('headerModule');
+
+    // Selecting a module
+    fixture.componentInstance.selectedObjectiveId.set('obj-2');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selectedObjectiveId()).toBe('obj-2');
+  });
+
+  it('renders shared app-button for subtask actions and modal footer cancel', () => {
+    const footerCancel = fixture.nativeElement.querySelector('.tfm__foot app-button');
+    expect(footerCancel).not.toBeNull();
+    expect(footerCancel.textContent).toContain('Cancel');
+
+    // Open add subtask
+    fixture.componentInstance.startAddSubtask();
+    fixture.detectChanges();
+
+    const subtaskCancel = fixture.nativeElement.querySelector('[data-testid="subtask-add-cancel"]');
+    const subtaskSave = fixture.nativeElement.querySelector('[data-testid="subtask-add-save"]');
+    expect(subtaskCancel?.tagName.toLowerCase()).toBe('app-button');
+    expect(subtaskSave?.tagName.toLowerCase()).toBe('app-button');
+  });
+
+  it('renders tag button in subtask creation row and allows selecting category via popover', () => {
+    fixture.componentInstance.categories.set([
+      { id: 'c1', name: 'Task', displayOrder: 0 },
+      { id: 'c2', name: 'Bug', displayOrder: 1 }
+    ]);
+    fixture.componentInstance.startAddSubtask();
+    fixture.detectChanges();
+
+    const tagBtn = fixture.nativeElement.querySelector('[data-testid="subtask-add-tag-button"]') as HTMLButtonElement;
+    expect(tagBtn).not.toBeNull();
+
+    // Click to open category popover
+    tagBtn.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.activeSubtaskPopover()).toEqual({ id: 'new', type: 'tag' });
+
+    // Select category 'c2'
+    fixture.componentInstance.selectSubtaskCategory('c2');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.newSubtaskCategoryId()).toBe('c2');
+    expect(fixture.componentInstance.activeSubtaskPopover()).toBeNull();
+  });
+
+  it('renders date button in subtask creation row and shows date text when selected', () => {
+    fixture.componentInstance.startAddSubtask();
+    fixture.detectChanges();
+
+    const dateBtn = fixture.nativeElement.querySelector('[data-testid="subtask-add-date-button"]') as HTMLButtonElement;
+    expect(dateBtn).not.toBeNull();
+    // Initially has icon and no label text
+    expect(dateBtn.querySelector('span')).toBeNull();
+
+    // Click date button to open popover
+    dateBtn.click();
+    fixture.detectChanges();
+
+    const popover = document.body.querySelector('.dp-popover');
+    expect(popover).not.toBeNull();
+
+    // Select date
+    fixture.componentInstance.newSubtaskDueDate.set('2026-09-17');
+    fixture.detectChanges();
+
+    // Button now shows formatted date text instead of just an icon
+    const dateLabel = dateBtn.querySelector('span');
+    expect(dateLabel).not.toBeNull();
+    expect(dateLabel!.textContent?.trim()).toBe('Sep 17');
   });
 });
 

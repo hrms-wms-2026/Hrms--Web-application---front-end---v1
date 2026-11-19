@@ -22,7 +22,9 @@ export interface TaskAttachmentDto {
 export interface TaskAssigneeIdentityDto {
   employeeId: string;
   name: string;
-  avatarUrl: string | null;
+  avatarFileId?: string | null;
+  /** Temporary compatibility fallback for older API deployments. */
+  avatarUrl?: string | null;
 }
 
 export interface PendingUploadDto {
@@ -59,6 +61,7 @@ export interface WorkTaskDto {
   subtaskTotalCount?: number;
   subtaskCompletedCount?: number;
   subtaskAssigneeEmployeeIds?: string[];
+  createdAt: string;
 }
 
 export interface CreateTaskRequestDto {
@@ -79,6 +82,7 @@ export interface CreateSubtaskRequestDto {
   dueDate?: string;
   assigneeEmployeeId?: string;
   objectiveId?: string;
+  categoryId?: string;
 }
 
 export interface EditTaskRequestDto {
@@ -92,6 +96,21 @@ export interface EditTaskRequestDto {
   reason?: string;
   sprintId?: string | null;
   attachmentFileIds?: string[];
+  categoryId?: string;
+  objectiveId?: string;
+}
+
+export interface DuplicateTaskRequestDto {
+  destinationObjectiveId: string;
+  title: string;
+  copyAttachments: boolean;
+  copyAssignees: boolean;
+  copyComments: boolean;
+  copyDueDate: boolean;
+}
+
+export interface ConvertTaskToSubtaskRequestDto {
+  newParentTaskId: string;
 }
 
 export interface PushTaskRequestDto {

@@ -1,6 +1,7 @@
 import { Component, OnInit, effect, inject, input, output, signal } from '@angular/core';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { WorkDropdownComponent, WorkDropdownOption } from '../work-dropdown/work-dropdown.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { ProjectCategoryStore } from '../../state/project-category.store';
@@ -10,7 +11,7 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
 @Component({
   selector: 'app-project-settings-modal',
   standalone: true,
-  imports: [ModalComponent, InputComponent, WorkDropdownComponent, ButtonComponent],
+  imports: [ModalComponent, InputComponent, DatePickerComponent, WorkDropdownComponent, ButtonComponent],
   template: `
     <app-modal [open]="open()" title="Project settings" (closed)="closed.emit()">
       <div class="flex flex-col gap-3">
@@ -27,11 +28,11 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
         </span>
 
         <span data-testid="start-date-field">
-          <app-input label="Start date" type="date" [value]="startDate()" [error]="errors()['startDate']" (valueChange)="startDate.set($event)" />
+          <app-date-picker label="Start date" [value]="startDate()" [error]="errors()['startDate']" (valueChange)="startDate.set($event)" />
         </span>
 
         <span data-testid="target-date-field">
-          <app-input label="Target date" type="date" [value]="targetDate()" [error]="errors()['targetDate']" (valueChange)="targetDate.set($event)" />
+          <app-date-picker label="Target date" [value]="targetDate()" [error]="errors()['targetDate']" (valueChange)="targetDate.set($event)" />
         </span>
 
         <span data-testid="allocated-hours-field">
@@ -51,7 +52,7 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
           <p class="text-sm text-[var(--color-danger-text)]" role="alert">{{ errorMessage() }}</p>
         }
 
-        <div class="mt-2 flex justify-end gap-2">
+        <div class="project-settings-modal__actions mt-2 flex justify-end gap-2">
           <span data-testid="cancel-button">
             <app-button variant="secondary" [disabled]="submitting()" (pressed)="closed.emit()">Cancel</app-button>
           </span>
@@ -61,7 +62,17 @@ import { EditProjectPayload, ProjectDetail } from '../../models/project.model';
         </div>
       </div>
     </app-modal>
-  `
+  `,
+  styles: [`
+    .project-settings-modal__actions ::ng-deep app-button > button {
+      width: auto;
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+  `]
 })
 export class ProjectSettingsModalComponent implements OnInit {
   private readonly categoryStore = inject(ProjectCategoryStore);

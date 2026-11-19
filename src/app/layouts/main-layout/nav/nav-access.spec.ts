@@ -72,19 +72,23 @@ describe('canAccessNavItem', () => {
   });
 
   describe('NAV_ITEMS (real config)', () => {
-    it('grants exactly the documented modules for Work, and requires projects:access', () => {
+    it('grants Work from module entitlement without a module-entry permission', () => {
       const work = NAV_ITEMS.find((item) => item.id === 'work')!;
-      expect(canAccessNavItem(work, checker(['projects:access'], ['tasks']))).toBe(true);
-      expect(canAccessNavItem(work, checker(['projects:access'], ['objectives_milestones']))).toBe(true);
-      expect(canAccessNavItem(work, checker(['projects:access'], ['core_hr']))).toBe(false);
-      expect(canAccessNavItem(work, checker([], ['tasks']))).toBe(false);
+      expect(canAccessNavItem(work, checker([], ['tasks']))).toBe(true);
+      expect(canAccessNavItem(work, checker([], ['objectives_milestones']))).toBe(true);
+      expect(canAccessNavItem(work, checker([], ['core_hr']))).toBe(false);
     });
 
     it('grants Time Off on the "leave" module key, not "time_off", once a child is reachable', () => {
       const timeOff = NAV_ITEMS.find((item) => item.id === 'time-off')!;
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['leave']))).toBe(true);
+      expect(canAccessNavItem(timeOff, checker(['leave:read-team'], ['leave']))).toBe(true);
       expect(canAccessNavItem(timeOff, checker(['leave:read-own'], ['time_off']))).toBe(false);
       expect(canAccessNavItem(timeOff, checker([], ['leave']))).toBe(false);
+      const balances = timeOff.children!.find((item) => item.id === 'time-off-balances')!;
+      expect(balances.label).toBe('Balances');
+      expect(timeOff.children!.some((item) => item.id === 'time-off-my-balances' || item.id === 'time-off-team-balances')).toBe(false);
+      expect(timeOff.children!.some((item) => item.id === 'time-off-calendar')).toBe(false);
     });
 
     it('grants Organization on the "org_structure" module key, not "org"', () => {
@@ -153,6 +157,19 @@ describe('canAccessNavItem', () => {
 
       expect(canAccessNavItem(attendance, checker(['attendance:read'], ['time_attendance']))).toBe(true);
       expect(canAccessNavItem(monitoring, checker(['attendance:read'], ['time_attendance']))).toBe(false);
+    });
+
+    it('does not leak the parent People item to a bare Employee (core_hr module, no employees permission)', () => {
+      const people = NAV_ITEMS.find((item) => item.id === 'people')!;
+
+      // Regression: the "Employees" child used to declare no requiredPermissions at all, so
+      // any user with core_hr enabled saw "People" even without employees:read/write - matching
+      // the /people route guard's actual gate (app.routes.ts) closes that gap.
+      expect(canAccessNavItem(people, checker([], ['core_hr']))).toBe(false);
+      expect(canAccessNavItem(people, checker(['employees:read'], ['core_hr']))).toBe(true);
+      expect(canAccessNavItem(people, checker(['employees:write'], ['core_hr']))).toBe(true);
+      // A user who only has roles:manage still sees People, via the Approvals child.
+      expect(canAccessNavItem(people, checker(['roles:manage'], ['core_hr']))).toBe(true);
     });
   });
 

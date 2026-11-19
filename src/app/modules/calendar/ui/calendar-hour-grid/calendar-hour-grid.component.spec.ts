@@ -211,13 +211,15 @@ describe('CalendarHourGridComponent', () => {
 
     afterEach(() => vi.useRealTimers());
 
-    it('shows the current time in a pill in the hour gutter, on the same row as the now line', () => {
+    it('shows the current time right next to the dot, on the now line itself, not in the hour gutter', () => {
       vi.useFakeTimers();
       const f = todayGrid('2026-09-01T09:36:00Z');
 
       expect(label(f)?.textContent?.trim()).toBe('9:36 AM');
-      const lineTop = (f.nativeElement.querySelector('[data-testid="calendar-now-line"]') as HTMLElement).style.top;
-      expect(label(f)!.style.top).toBe(lineTop);
+      // Lives inside today's day column's now-line, alongside the dot - not the left-hand gutter.
+      expect(f.nativeElement.querySelector('[data-testid="calendar-now-line"] [data-testid="calendar-now-label"]')).toBe(label(f));
+      const gutter = f.nativeElement.querySelector('.relative.h-\\[72rem\\].w-14') as HTMLElement;
+      expect(gutter?.querySelector('[data-testid="calendar-now-label"]')).toBeNull();
     });
 
     it('formats afternoon, noon and midnight on a 12-hour clock', () => {

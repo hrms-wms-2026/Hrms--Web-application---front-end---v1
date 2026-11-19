@@ -21,7 +21,11 @@ function allocationItem(requestedAdditionalHours = 20): ApprovalItem {
     objectiveId: raw.objectiveId,
     title: `+${requestedAdditionalHours}h requested`,
     description: raw.payload.reason,
-    requestedByName: null,
+    requestedByName: 'Nimal Perera',
+    targetTitle: 'Hardware integration',
+    targetType: 'module',
+    targetId: raw.objectiveId,
+    currentAllocatedHours: 24,
     createdAt: raw.createdAt,
     raw
   };
@@ -72,6 +76,9 @@ function taskEditItem(): ApprovalItem {
     title: `Edit: ${raw.payload.title}`,
     description: `Requested by ${raw.requestedByName}`,
     requestedByName: raw.requestedByName,
+    targetTitle: raw.payload.title,
+    targetType: 'task',
+    targetId: raw.taskId,
     createdAt: raw.createdAt,
     raw
   };
@@ -92,6 +99,13 @@ describe('ApprovalRequestRowComponent', () => {
 
     expect(input).not.toBeNull();
     expect(input.value).toBe('20');
+  });
+
+  it('shows the requester, affected module, and allocation impact', () => {
+    expect(fixture.nativeElement.textContent).toContain('Nimal Perera');
+    expect(fixture.nativeElement.textContent).toContain('Hardware integration');
+    expect(fixture.nativeElement.textContent).toContain('24h');
+    expect(fixture.nativeElement.textContent).not.toContain('44h');
   });
 
   it('emits the edited allocation amount when approving', () => {
@@ -183,6 +197,15 @@ describe('ApprovalRequestRowComponent', () => {
       (fixture.nativeElement.querySelector('app-button[variant="primary"] button') as HTMLButtonElement).click();
 
       expect(approved).toHaveBeenCalledWith(undefined);
+    });
+
+    it('offers the task details action and emits the selected request', () => {
+      const viewRequested = vi.fn();
+      fixture.componentInstance.viewRequested.subscribe(viewRequested);
+
+      (fixture.nativeElement.querySelector('[data-testid="view-approval-target"]') as HTMLButtonElement).click();
+
+      expect(viewRequested).toHaveBeenCalledWith(expect.objectContaining({ targetId: 'task-1' }));
     });
 
     it('requires a comment before emitting rejected, matching RejectTaskEditRequestCommandValidator', () => {

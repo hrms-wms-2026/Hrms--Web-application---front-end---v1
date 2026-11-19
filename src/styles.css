@@ -206,3 +206,14 @@ html.dark .greeting-card-bg {
     padding-right: 1rem !important;
   }
 }
+
+/* Work > Tree tab rows: a border glow on hover instead of a gray fill. The glow follows the
+   row's highlight color (set as --tree-row-glow by the tree node) and falls back to the accent. */
+.tree-row {
+  transition: box-shadow 140ms ease;
+}
+.tree-row:hover {
+  box-shadow:
+    0 0 0 1px var(--tree-row-glow, var(--color-accent)),
+    0 0 10px color-mix(in srgb, var(--tree-row-glow, var(--color-accent)) 35%, transparent);
+}

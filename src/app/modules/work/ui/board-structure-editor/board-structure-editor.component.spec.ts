@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { BoardStructureEditorComponent } from './board-structure-editor.component';
 import { TaskApiService } from '../../data-access/task-api.service';
+import { TaskStatusChangeRequestApiService } from '../../data-access/task-status-change-request-api.service';
 import { TaskStatusCategory, TaskStatusColumn } from '../../models/task.model';
 
 describe('BoardStructureEditorComponent', () => {
@@ -49,7 +50,19 @@ describe('BoardStructureEditorComponent', () => {
       color: '#2563EB',
     },
   ];
-  function setup() {
+  type Access = { canEditDirectly: boolean; canRequest: boolean };
+  const direct: Access = { canEditDirectly: true, canRequest: false };
+  function changeRequestApiMock(access: Access) {
+    return {
+      getForProject: vi.fn().mockReturnValue(of({ ...access, requests: [] })),
+      create: vi.fn().mockImplementation((_projectId: string, changes: unknown, note: string | null) =>
+        of({ id: 'req-1', status: 'pending', changes, note, canCancel: true, canDecide: false }),
+      ),
+      cancel: vi.fn().mockReturnValue(of(undefined)),
+    };
+  }
+  function setup(access: Access = direct) {
+    const changeRequestApi = changeRequestApiMock(access);
     const api = {
       reorderTaskStatuses: vi.fn().mockReturnValue(of([])),
       editStatus: vi.fn().mockReturnValue(of(undefined)),
@@ -58,14 +71,17 @@ describe('BoardStructureEditorComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [BoardStructureEditorComponent],
-      providers: [{ provide: TaskApiService, useValue: api }],
+      providers: [
+        { provide: TaskApiService, useValue: api },
+        { provide: TaskStatusChangeRequestApiService, useValue: changeRequestApi },
+      ],
     });
     const fixture = TestBed.createComponent(BoardStructureEditorComponent);
     fixture.componentRef.setInput('projectId', 'project-1');
     fixture.componentRef.setInput('open', true);
     fixture.componentRef.setInput('statuses', statuses);
     fixture.detectChanges();
-    return { fixture, component: fixture.componentInstance, api };
+    return { fixture, component: fixture.componentInstance, api, changeRequestApi };
   }
   function drop(
     component: BoardStructureEditorComponent,
@@ -222,7 +238,10 @@ describe('BoardStructureEditorComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [BoardStructureEditorComponent],
-      providers: [{ provide: TaskApiService, useValue: api }],
+      providers: [
+        { provide: TaskApiService, useValue: api },
+        { provide: TaskStatusChangeRequestApiService, useValue: changeRequestApiMock(direct) },
+      ],
     });
     const fixture = TestBed.createComponent(BoardStructureEditorComponent);
     fixture.componentRef.setInput('projectId', 'project-1');
@@ -239,5 +258,72 @@ describe('BoardStructureEditorComponent', () => {
       'project-1',
       expect.objectContaining({ category: 'done', name: 'Finished' }),
     );
+  });
+  describe('as a member of a non-top module (request mode)', () => {
+    const requester: Access = { canEditDirectly: false, canRequest: true };
+
+    it('holds adds, deletes and edits locally and sends them as one change request', async () => {
+      const { component, fixture, api, changeRequestApi } = setup(requester);
+      component.rename('s1', 'Backlog');
+      component.startAdd('active');
+      component['newStatusName'].set('Blocked');
+      await component.confirmAdd();
+      await component.deleteRow('s3');
+      component['requestNote'].set('please');
+      await component.save();
+
+      expect(api.createStatus).not.toHaveBeenCalled();
+      expect(api.deleteStatus).not.toHaveBeenCalled();
+      expect(api.editStatus).not.toHaveBeenCalled();
+      expect(api.reorderTaskStatuses).not.toHaveBeenCalled();
+      const [projectId, changes, note] = changeRequestApi.create.mock.calls[0];
+      expect(projectId).toBe('project-1');
+      expect(note).toBe('please');
+      expect(changes.adds).toEqual([
+        expect.objectContaining({ tempKey: 'new-1', name: 'Blocked', category: 'active' }),
+      ]);
+      expect(changes.updates).toEqual([
+        expect.objectContaining({
+          statusId: 's1',
+          from: expect.objectContaining({ name: 'To Do' }),
+          to: expect.objectContaining({ name: 'Backlog' }),
+        }),
+      ]);
+      expect(changes.deletes).toEqual([{ statusId: 's3', name: 'Review' }]);
+      expect(changes.baseOrder).toEqual(['s1', 's2', 's3', 's4']);
+      expect(changes.order).toEqual(['s1', 's2', 'new-1', 's4']);
+
+      // The live statuses are shown again until the request is approved.
+      fixture.detectChanges();
+      expect(component.rowsFor('not_started')()[0].name).toBe('To Do');
+      expect(fixture.nativeElement.querySelector('[data-testid="status-request-sent"]')).not.toBeNull();
+    });
+
+    it('labels the primary action and refuses to send an empty request', async () => {
+      const { component, fixture, changeRequestApi } = setup(requester);
+      expect(fixture.nativeElement.textContent).toContain('Send for approval');
+      expect(fixture.nativeElement.querySelector('[data-testid="status-request-notice"]')).not.toBeNull();
+      await component.save();
+      expect(changeRequestApi.create).not.toHaveBeenCalled();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+        'no changes',
+      );
+    });
+  });
+
+  it('is read-only for someone with no module role in the project', async () => {
+    const { component, fixture, api, changeRequestApi } = setup({
+      canEditDirectly: false,
+      canRequest: false,
+    });
+    component.rename('s1', 'Nope');
+    await component.save();
+    fixture.detectChanges();
+    expect(component.rowsFor('not_started')()[0].name).toBe('To Do');
+    expect(api.reorderTaskStatuses).not.toHaveBeenCalled();
+    expect(changeRequestApi.create).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('[data-testid="status-readonly-notice"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Update');
   });
 });

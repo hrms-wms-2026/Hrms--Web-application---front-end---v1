@@ -141,9 +141,6 @@ export class CalendarHourGridComponent {
     });
   });
 
-  /** Today's column, if shown: drives the time pill in the hour gutter. */
-  readonly nowMarker = computed(() => this.columns().find((c) => c.nowFraction !== null) ?? null);
-
   onSlotPointerDown(date: string, event: PointerEvent, columnEl: HTMLElement): void {
     if (event.button !== 0) return;
     event.preventDefault();

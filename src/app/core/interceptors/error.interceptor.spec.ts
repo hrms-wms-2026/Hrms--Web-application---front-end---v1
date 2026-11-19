@@ -158,4 +158,17 @@ describe('errorInterceptor', () => {
     expect(clearSpy).not.toHaveBeenCalled();
     expect(navigateSpy).not.toHaveBeenCalled();
   });
+
+  it('does not banner a 429 from tray activation generate — the presence store owns that message', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.post('/api/v1/monitoring/activation/generate', null).subscribe({ error: () => {} });
+    const req = httpMock.expectOne('/api/v1/monitoring/activation/generate');
+    req.flush(
+      { detail: 'Too many activation codes requested. Please wait a few minutes before trying again.' },
+      { status: 429, statusText: 'Too Many Requests' }
+    );
+
+    expect(notify.notifications()).toHaveLength(0);
+  });
 });

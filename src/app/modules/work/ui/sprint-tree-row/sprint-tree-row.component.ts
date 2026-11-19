@@ -6,7 +6,7 @@ import { MilestoneTreeNode } from '../../models/milestone.model';
   standalone: true,
   template: `
     <div
-      class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer {{ selected() ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-surface-secondary)]' }}"
+      class="grid grid-cols-[1fr_112px_40px_88px_140px] items-center gap-3 rounded-md px-2 py-1.5 cursor-pointer tree-row {{ selected() ? 'bg-[var(--color-accent)]' : '' }}"
       data-testid="tree-row"
       (click)="selectedRow.emit(node())"
     >

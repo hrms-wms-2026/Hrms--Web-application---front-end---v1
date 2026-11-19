@@ -35,6 +35,7 @@ import {
   oneOfValidator,
   workTimePairValidator
 } from '../../utils/general-settings-validators';
+import { computeWorkDayHours, isOvernightWorkWindow } from '../../utils/work-day-hours';
 
 /**
  * Settings -> General Settings page for the currently selected Legal Entity.
@@ -180,34 +181,20 @@ export class GeneralSettingsComponent {
   }
 
   getWorkingHoursSummary(): string | null {
+    const hours = computeWorkDayHours(
+      this.form.controls.workStartTime.value,
+      this.form.controls.workEndTime.value,
+      this.form.controls.breakDurationMinutes.value
+    );
+    if (hours === null || hours <= 0) return null;
+    return `${hours.toFixed(1)} working hours / day · this is 1 leave day`;
+  }
+
+  isOvernightWindow(): boolean {
     const start = this.form.controls.workStartTime.value;
     const end = this.form.controls.workEndTime.value;
-    if (!start || !end) {
-      return null;
-    }
-    const startParts = start.split(':').map(Number);
-    const endParts = end.split(':').map(Number);
-    if (startParts.length !== 2 || endParts.length !== 2 || isNaN(startParts[0]) || isNaN(endParts[0])) {
-      return null;
-    }
-    const startMins = startParts[0] * 60 + startParts[1];
-    const endMins = endParts[0] * 60 + endParts[1];
-    if (startMins >= endMins) {
-      return null;
-    }
-    const shiftMins = endMins - startMins;
-    const breakMins = Math.max(0, Number(this.form.controls.breakDurationMinutes.value) || 0);
-    const netMins = Math.max(0, shiftMins - breakMins);
-
-    const shiftH = Math.floor(shiftMins / 60);
-    const shiftM = shiftMins % 60;
-    const shiftStr = `${shiftH}h${shiftM > 0 ? ` ${shiftM}m` : ''}`;
-
-    const netH = Math.floor(netMins / 60);
-    const netM = netMins % 60;
-    const netStr = netM > 0 ? `${netH}h ${netM}m` : `${netH}h`;
-
-    return `${netStr} / day`;
+    if (!start || !end) return false;
+    return isOvernightWorkWindow(start, end);
   }
 
   async onSubmit(): Promise<void> {

@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +7,7 @@ import { TaskBoardStore } from '../../state/task-board.store';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { toEditTaskRequest } from '../../utils/task.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
+import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
 
@@ -19,7 +19,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
 @Component({
   selector: 'app-task-table',
   standalone: true,
-  imports: [DatePipe, OverlayModule, TaskClockWidgetComponent, AvatarComponent],
+  imports: [OverlayModule, TaskClockWidgetComponent, AvatarComponent, DatePickerComponent],
   template: `
     <div class="task-table__scroll">
     <table class="task-table">
@@ -194,51 +194,15 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
               </ng-template>
             </td>
             <td (click)="$event.stopPropagation()">
-              <button
-                type="button"
-                class="task-table__due-date-btn"
-                [attr.data-testid]="'task-due-date-btn-' + task.id"
-                cdkOverlayOrigin
-                #dueDateOrigin="cdkOverlayOrigin"
-                [attr.aria-expanded]="isDueDatePopoverOpen(task.id)"
-                title="Change due date"
-                (click)="toggleDueDatePopover(task, $event)"
-              >
-                {{ task.dueDate ? (task.dueDate | date: 'MMM d, y') : '—' }}
-              </button>
-
-              <ng-template
-                cdkConnectedOverlay
-                [cdkConnectedOverlayOrigin]="dueDateOrigin"
-                [cdkConnectedOverlayOpen]="isDueDatePopoverOpen(task.id)"
-                [cdkConnectedOverlayPositions]="popoverPositions"
-                [cdkConnectedOverlayHasBackdrop]="true"
-                cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
-                (backdropClick)="closePopovers()"
-                (detach)="closePopovers()"
-              >
-                <div class="task-table__popover task-table__due-date-popover" role="dialog" aria-label="Change due date" (click)="$event.stopPropagation()">
-                  <div class="task-table__popover-title">Due Date</div>
-                  <div class="task-table__quick-row">
-                    <button type="button" class="task-table__quick-btn" (click)="setQuickDueDate(task, 'today')">Today</button>
-                    <button type="button" class="task-table__quick-btn" (click)="setQuickDueDate(task, 'tomorrow')">Tomorrow</button>
-                    <button type="button" class="task-table__quick-btn" (click)="setQuickDueDate(task, 'nextWeek')">Next wk</button>
-                  </div>
-                  <div class="task-table__date-picker-row">
-                    <input
-                      type="date"
-                      class="task-table__date-input"
-                      [value]="dueDateIso(task)"
-                      (change)="onDateChange(task, $any($event.target).value)"
-                    />
-                  </div>
-                  @if (task.dueDate) {
-                    <div class="task-table__popover-footer">
-                      <button type="button" class="task-table__popover-clear-btn" (click)="clearDueDate(task)">Remove date</button>
-                    </div>
-                  }
-                </div>
-              </ng-template>
+              <app-date-picker
+                variant="chip"
+                [btnTestId]="'task-due-date-btn-' + task.id"
+                chipClass="task-table__due-date-btn"
+                emptyLabel="—"
+                [value]="dueDateIso(task)"
+                [isCompleted]="isTaskCompleted(task)"
+                (valueChange)="onDateChange(task, $event)"
+              />
             </td>
             <td>{{ task.estimatedHours ?? '—' }}</td>
             <td class="task-table__tracked-cell" (click)="$event.stopPropagation()">
@@ -438,38 +402,6 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       margin-left: auto;
       flex-shrink: 0;
     }
-    .task-table__quick-row { display: flex; gap: 4px; margin-bottom: 6px; }
-    .task-table__quick-btn {
-      flex: 1;
-      padding: 3px 4px;
-      font-size: 10px;
-      font-weight: 500;
-      border: 1px solid var(--color-border);
-      border-radius: 4px;
-      background: var(--color-surface-secondary);
-      color: var(--color-text-primary);
-      cursor: pointer;
-      text-align: center;
-      transition: all 120ms ease;
-    }
-    .task-table__quick-btn:hover { border-color: var(--color-accent); background: var(--color-surface); color: var(--color-accent); }
-    .task-table__date-picker-row { margin-top: 4px; }
-    .task-table__date-input {
-      width: 100%;
-      padding: 4px 6px;
-      border: 1px solid var(--color-border);
-      border-radius: 4px;
-      background: var(--color-surface);
-      font: inherit;
-      font-size: 11.5px;
-      color: var(--color-text-primary);
-      outline: none;
-      box-sizing: border-box;
-    }
-    .task-table__date-input:focus { border-color: var(--color-accent); }
-    .task-table__popover-footer { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--color-border); }
-    .task-table__popover-clear-btn { border: 0; background: transparent; padding: 3px 6px; font: inherit; font-size: 11px; color: var(--color-danger); cursor: pointer; border-radius: 4px; margin-right: auto; }
-    .task-table__popover-clear-btn:hover { background: color-mix(in srgb, var(--color-danger) 10%, transparent); }
     .task-table__select-cell { width: 1%; white-space: nowrap; }
     .task-table__select-cell input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--color-accent); }
   `]
@@ -505,16 +437,11 @@ export class TaskTableComponent {
   protected readonly expandedTaskIds = signal<ReadonlySet<string>>(new Set());
   private readonly loadedTaskIds = new Set<string>();
 
-  protected readonly openPopover = signal<{ taskId: string; kind: 'priority' | 'dueDate' | 'status' } | null>(null);
+  protected readonly openPopover = signal<{ taskId: string; kind: 'priority' | 'status' } | null>(null);
 
   protected isPriorityPopoverOpen(taskId: string): boolean {
     const p = this.openPopover();
     return !!p && p.taskId === taskId && p.kind === 'priority';
-  }
-
-  protected isDueDatePopoverOpen(taskId: string): boolean {
-    const p = this.openPopover();
-    return !!p && p.taskId === taskId && p.kind === 'dueDate';
   }
 
   protected isStatusPopoverOpen(taskId: string): boolean {
@@ -526,7 +453,7 @@ export class TaskTableComponent {
     this.openPopover.set(null);
   }
 
-  private toggleOpenPopover(taskId: string, kind: 'priority' | 'dueDate' | 'status', event: MouseEvent): void {
+  private toggleOpenPopover(taskId: string, kind: 'priority' | 'status', event: MouseEvent): void {
     event.stopPropagation();
     const curr = this.openPopover();
     const isOpen = curr?.taskId === taskId && curr?.kind === kind;
@@ -535,10 +462,6 @@ export class TaskTableComponent {
 
   protected togglePriorityPopover(task: WorkTask, event: MouseEvent): void {
     this.toggleOpenPopover(task.id, 'priority', event);
-  }
-
-  protected toggleDueDatePopover(task: WorkTask, event: MouseEvent): void {
-    this.toggleOpenPopover(task.id, 'dueDate', event);
   }
 
   protected toggleStatusPopover(task: WorkTask, event: MouseEvent): void {
@@ -551,6 +474,11 @@ export class TaskTableComponent {
 
   protected statusBgTint(statusId: string): string {
     return `color-mix(in srgb, ${this.statusColor(statusId)} 14%, var(--color-surface))`;
+  }
+
+  protected isTaskCompleted(task: WorkTask): boolean {
+    const status = this.statuses().find((s) => s.id === task.statusId);
+    return Boolean(status && (status.marksTaskComplete || status.category === 'done'));
   }
 
   protected dueDateIso(task: WorkTask): string {
@@ -570,25 +498,8 @@ export class TaskTableComponent {
     this.onStatusPicked(task, statusId);
   }
 
-  protected setQuickDueDate(task: WorkTask, preset: 'today' | 'tomorrow' | 'nextWeek'): void {
-    const d = new Date();
-    if (preset === 'tomorrow') d.setDate(d.getDate() + 1);
-    if (preset === 'nextWeek') d.setDate(d.getDate() + 7);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    this.closePopovers();
-    void this.applyTaskEdit(task, { dueDate: `${yyyy}-${mm}-${dd}` });
-  }
-
   protected onDateChange(task: WorkTask, value: string): void {
-    this.closePopovers();
     void this.applyTaskEdit(task, { dueDate: value || undefined });
-  }
-
-  protected clearDueDate(task: WorkTask): void {
-    this.closePopovers();
-    void this.applyTaskEdit(task, { dueDate: undefined });
   }
 
   private async applyTaskEdit(task: WorkTask, overrides: Partial<{ priority: WorkTask['priority']; dueDate: string | undefined }>): Promise<void> {

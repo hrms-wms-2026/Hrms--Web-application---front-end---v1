@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { PositionSeatPreviewComponent } from './position-seat-preview.component';
 import { OccupantPreviewItem } from '../../models/position.model';
+import { environment } from '../../../../../environments/environment';
 
 function makeEmployee(overrides: Partial<OccupantPreviewItem> = {}): OccupantPreviewItem {
   return {
@@ -94,7 +95,7 @@ describe('PositionSeatPreviewComponent', () => {
     expect(circle.nativeElement.querySelector('.psp-initials')).toBeNull();
   });
 
-  it('does NOT use avatarFileId as an img src when avatarUrl is null', async () => {
+  it('resolves avatarFileId through the canonical authenticated file endpoint', async () => {
     const emp = makeEmployee({ avatarFileId: 'file-uuid-abc', avatarUrl: null });
     const fixture = await createComponent({
       maxOccupancy: 1,
@@ -102,10 +103,8 @@ describe('PositionSeatPreviewComponent', () => {
       occupantPreview: [emp]
     });
     const img = fixture.nativeElement.querySelector('img') as HTMLImageElement | null;
-    // No <img> should be rendered at all when avatarUrl is null
-    expect(img).toBeNull();
-    // The raw UUID must not appear anywhere in the DOM
-    expect(fixture.nativeElement.textContent).not.toContain('file-uuid-abc');
+    expect(img).not.toBeNull();
+    expect(img!.src).toContain(`${environment.apiUrl}/files/file-uuid-abc`);
   });
 
   it('capacity 3 assigned 0 renders three empty circles', async () => {

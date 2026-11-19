@@ -1,6 +1,6 @@
 export interface SprintDto {
   id: string;
-  objectiveId: string;
+  projectId: string;
   name: string;
   goal: string | null;
   startDate: string | null;
@@ -8,11 +8,13 @@ export interface SprintDto {
   status: 'draft' | 'active' | 'complete' | 'achieved';
   completedAt: string | null;
   achievedAt: string | null;
+  canManage: boolean;
 }
 
 export interface CreateSprintRequestDto {
   name: string;
   goal?: string;
+  taskIds?: string[];
 }
 
 export interface StartSprintRequestDto {
@@ -31,4 +33,19 @@ export interface EditSprintRequestDto {
 export interface CompleteSprintRequestDto {
   disposition: 'backlog' | 'sprint';
   targetSprintId?: string;
+}
+
+export interface SetSprintTasksRequestDto {
+  addTaskIds: string[];
+  removeTaskIds: string[];
+}
+
+export interface SprintActivityDto {
+  id: string;
+  employeeId: string;
+  action: 'created' | 'edited' | 'started' | 'completed' | 'achieved' | 'tasks_added' | 'tasks_removed';
+  fromStatus: string | null;
+  toStatus: string | null;
+  detailsJson: string | null;
+  occurredAt: string;
 }
