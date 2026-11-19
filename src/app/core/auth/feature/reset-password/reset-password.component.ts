@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FieldIconComponent } from '../../../../shared/ui/field-icon/field-icon.component';
+import { NewPasswordFieldsComponent } from '../../ui/new-password-fields/new-password-fields.component';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -13,7 +13,7 @@ const INVALID_TOKEN_MESSAGE = 'This password reset link is invalid or has expire
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [ReactiveFormsModule, FieldIconComponent, RouterLink],
+  imports: [ReactiveFormsModule, NewPasswordFieldsComponent, RouterLink],
   templateUrl: './reset-password.component.html',
   styleUrl: './reset-password.component.css'
 })
@@ -25,8 +25,6 @@ export class ResetPasswordComponent implements OnInit {
 
   token = '';
 
-  readonly showPassword = signal(false);
-  readonly showConfirmPassword = signal(false);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly submitted = signal(false);
@@ -41,14 +39,6 @@ export class ResetPasswordComponent implements OnInit {
     if (!this.token) {
       this.error.set(INVALID_TOKEN_MESSAGE);
     }
-  }
-
-  toggleShowPassword(): void {
-    this.showPassword.update((v) => !v);
-  }
-
-  toggleShowConfirmPassword(): void {
-    this.showConfirmPassword.update((v) => !v);
   }
 
   async submit(): Promise<void> {
