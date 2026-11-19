@@ -1,11 +1,42 @@
-<header class="ns-page-header">
+<header class="ns-page-header flex flex-wrap items-center justify-between gap-3">
   <app-breadcrumb-header parentLabel="Settings" currentLabel="Notification Settings" icon="settings" />
-</header>
 
-<p class="mb-4 max-w-4xl text-sm text-[var(--color-text-secondary)]">
-  Choose how each notification reaches people. Wording is managed by CROWNUS; you decide the channels, template and
-  recipients. Changes apply to notifications sent after you save.
-</p>
+  @if (store.settings().length > 0) {
+    <!-- Same collapsible search as the Work board toolbar -->
+    <div class="flex items-center gap-2">
+      @if (searchExpanded()) {
+        <div class="ui-field ui-field--sm w-80 max-w-full" role="search" data-testid="ns-search">
+          <span class="ui-field__addon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          </svg></span>
+          <input type="search" placeholder="Search notifications…" aria-label="Search notifications" [value]="search()"
+            (input)="search.set($any($event.target).value)"
+            class="ui-field__control" />
+          <span class="ui-field__trailing"><button type="button" data-testid="ns-search-close" aria-label="Close search" title="Close search"
+            class="ui-field__icon-btn h-5 w-5 text-base leading-none"
+            (click)="toggleSearch()">&times;</button></span>
+        </div>
+      } @else {
+        <button type="button" data-testid="ns-search-toggle" aria-label="Search notifications" title="Search notifications"
+          class="inline-flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+          (click)="toggleSearch()">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+          </svg>
+        </button>
+      }
+      <app-button
+        data-testid="ns-save"
+        size="sm"
+        [loading]="saving()"
+        [disabled]="!isDirty() || saving()"
+        (pressed)="saveAll()"
+      >
+        {{ dirtyCount() > 1 ? 'Save ' + dirtyCount() + ' changes' : 'Save' }}
+      </app-button>
+    </div>
+  }
+</header>
 
 @if (store.loading()) {
   <div class="h-64 rounded-xl bg-[var(--color-surface-secondary)]" aria-busy="true" aria-label="Loading notification settings"></div>
@@ -14,23 +45,14 @@
 } @else if (store.settings().length === 0) {
   <app-empty-state title="No notifications to configure yet." />
 } @else {
-  <div class="mb-4 max-w-sm">
-    <app-input
-      type="search"
-      label="Search"
-      placeholder="Search notifications"
-      [value]="search()"
-      (valueChange)="search.set($event)"
-    />
-  </div>
+  <div>
+    @if (groups().length === 0) {
+      <app-empty-state title="No notifications match your search." />
+    }
 
-  @if (groups().length === 0) {
-    <app-empty-state title="No notifications match your search." />
-  }
-
-  <div class="flex flex-col gap-4">
     @for (group of groups(); track group.module) {
-      <app-card [title]="group.label">
+      <section class="border-t border-[var(--color-border)] pt-4 pb-2 first-of-type:border-t-0 first-of-type:pt-0">
+        <h2 class="mb-3 text-base font-semibold text-[var(--color-text-primary)]">{{ group.label }}</h2>
         <div class="flex flex-col divide-y divide-[var(--color-border)]">
           @for (s of group.settings; track s.eventKey) {
             <div class="flex flex-col gap-3 py-3 first:pt-0 last:pb-0" [class.ns-row--dirty]="isRowDirty(s)">
@@ -49,6 +71,21 @@
                   }
                 </div>
 
+                <div class="ml-auto flex flex-wrap items-center gap-2">
+                @if (s.configurable && isRowDirty(s)) {
+                  <app-button variant="secondary" size="sm" (pressed)="discard(s)">Discard</app-button>
+                }
+                @if (s.configurable && s.isOverridden) {
+                  <app-button
+                    [attr.data-testid]="'reset-' + s.eventKey"
+                    variant="secondary"
+                    size="sm"
+                    [disabled]="saving() || store.savingKey() === s.eventKey"
+                    (pressed)="reset(s)"
+                  >
+                    Reset to default
+                  </app-button>
+                }
                 <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="s.displayName + ' channels'">
                   @for (channel of channels; track channel) {
                     <!-- Same toggle switch as Settings > Clock-in Policy > Work Modes -->
@@ -86,59 +123,20 @@
                     </label>
                   }
                 </div>
+                </div>
               </div>
 
-              @if (s.configurable) {
-                <div class="flex flex-wrap items-end justify-between gap-3">
-                  <div class="flex flex-wrap gap-3">
-                    @if (s.templates.length > 0) {
-                      <div class="w-64 max-w-full">
-                        <app-select
-                          [attr.data-testid]="'template-' + s.eventKey"
-                          label="Template"
-                          [options]="templateOptions(s)"
-                          [value]="selectedTemplate(s)"
-                          (valueChange)="setTemplate(s, $event)"
-                        />
-                      </div>
-                    }
-                    @if (s.recipientRules.length > 1) {
-                      <div class="w-56 max-w-full">
-                        <app-select
-                          label="Recipients"
-                          [options]="recipientOptions(s)"
-                          [value]="row(s).recipientRule"
-                          (valueChange)="setRecipientRule(s, $event)"
-                        />
-                      </div>
-                    }
+              @if (s.configurable && s.recipientRules.length > 1) {
+                <div class="flex flex-wrap gap-3">
+                  <div class="w-56 max-w-full">
+                    <app-select
+                      label="Recipients"
+                      [options]="recipientOptions(s)"
+                      [value]="row(s).recipientRule"
+                      (valueChange)="setRecipientRule(s, $event)"
+                    />
                   </div>
 
-                  <div class="ml-auto flex gap-2">
-                    @if (isRowDirty(s)) {
-                      <app-button variant="secondary" size="sm" (pressed)="discard(s)">Discard</app-button>
-                    }
-                    @if (s.isOverridden) {
-                      <app-button
-                        [attr.data-testid]="'reset-' + s.eventKey"
-                        variant="secondary"
-                        size="sm"
-                        [disabled]="store.savingKey() === s.eventKey"
-                        (pressed)="reset(s)"
-                      >
-                        Reset to default
-                      </app-button>
-                    }
-                    <app-button
-                      [attr.data-testid]="'save-' + s.eventKey"
-                      size="sm"
-                      [loading]="store.savingKey() === s.eventKey"
-                      [disabled]="!isRowDirty(s) || store.savingKey() === s.eventKey"
-                      (pressed)="save(s)"
-                    >
-                      Save
-                    </app-button>
-                  </div>
                 </div>
               }
 
@@ -154,7 +152,7 @@
             </div>
           }
         </div>
-      </app-card>
+      </section>
     }
   </div>
 

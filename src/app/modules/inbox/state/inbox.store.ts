@@ -93,6 +93,7 @@ export const InboxStore = signalStore(
   })),
   withMethods((store, api = inject(InboxApiService)) => {
     let detailRequest = 0;
+    let countsInFlight: Promise<void> | null = null;
 
     async function load(): Promise<void> {
       patchState(store, { loading: true, error: null, listLoaded: true });
@@ -104,12 +105,17 @@ export const InboxStore = signalStore(
       }
     }
 
-    async function loadCounts(): Promise<void> {
-      try {
-        patchState(store, { counts: await firstValueFrom(api.counts()) });
-      } catch {
-        // The badge keeps its last value; the next change event retries.
-      }
+    function loadCounts(): Promise<void> {
+      const request = (async () => {
+        try {
+          patchState(store, { counts: await firstValueFrom(api.counts()) });
+        } catch {
+          // The badge keeps its last value; the next change event retries.
+        }
+      })();
+      countsInFlight = request;
+      void request.finally(() => { if (countsInFlight === request) countsInFlight = null; });
+      return request;
     }
 
     async function loadDetail(ref: InboxItemRef, quiet = false): Promise<void> {
@@ -145,6 +151,10 @@ export const InboxStore = signalStore(
     return {
       load,
       loadCounts,
+      /** Counts for a screen that opens: joins a request already in flight (the shell's), else asks as loadCounts does. */
+      ensureCounts(): Promise<void> {
+        return countsInFlight ?? loadCounts();
+      },
       refresh,
       async loadFilters(): Promise<void> {
         try {

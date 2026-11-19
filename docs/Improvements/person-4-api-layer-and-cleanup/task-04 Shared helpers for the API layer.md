@@ -31,3 +31,32 @@ Small differences here cause real bugs: a date sent in local time in one screen 
 - The helper has unit tests for dates, arrays and empty values.
 - One module uses it everywhere.
 - The remaining modules are listed with the count of call sites each.
+
+## Status (2026-11-18)
+
+- Helpers: `src/app/shared/data-access/api-params.ts` (`toHttpParams`, `dateOnly`) and `src/app/shared/data-access/api-client.ts` (`ApiClient`), with unit tests.
+- Reference module: Leave. All 8 API services use `ApiClient`; no `HttpClient` or `HttpParams` left.
+- Guard: `scripts/check-http-params.mjs` runs in `npm run lint`; baseline `scripts/http-params-baseline.json` (31 files, 67 call sites) may only shrink.
+- Rules: `docs/core/ARCHITECTURE.md` §5.1.
+- Before the next module: `ApiClient` has no `patch`, `headers`, `context` (`HttpContext`) or `observe` option yet. People, Inbox and Work need them; see the gap list in `docs/core/ARCHITECTURE.md` §5.1.
+- The HttpParams guard runs first in `npm run lint` (before ESLint), so it still runs while the pre-existing ESLint a11y errors and colour-guard failures on Development are open.
+- Not done here: the two module-local `PagedResultDto` types (attendance, work) still need to move to `shared/models/paged-result.model.ts`.
+
+### Remaining modules
+
+Generated with `node scripts/check-http-params.mjs --report`. Highest call count first. The `shared` row includes `ApiClient` itself (7 calls), which stays on `HttpClient` by design.
+
+| Module | Files calling HttpClient | Raw HttpClient calls | `new HttpParams(` sites |
+|---|---|---|---|
+| work | 12 | 142 | 9 |
+| people | 5 | 83 | 17 |
+| organization | 4 | 45 | 7 |
+| inbox | 4 | 42 | 7 |
+| attendance | 4 | 32 | 8 |
+| dashboard | 19 | 31 | 17 |
+| settings | 5 | 23 | 1 |
+| calendar | 1 | 20 | 0 |
+| profile | 1 | 19 | 0 |
+| core | 4 | 18 | 1 |
+| shared | 3 | 11 | 0 |
+| device-activation | 1 | 2 | 0 |

@@ -4,6 +4,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
 import { APP_RUNTIME_CONFIG, appRuntimeConfig } from './core/config/app.config';
+import { tenantHeaderInterceptor } from './core/interceptors/tenant-header.interceptor';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { correlationInterceptor } from './core/interceptors/correlation.interceptor';
 import { csrfInterceptor } from './core/interceptors/csrf.interceptor';
@@ -18,7 +19,7 @@ export const appConfig: ApplicationConfig = {
       withRouterConfig({ paramsInheritanceStrategy: 'always' })
     ),
     provideHttpClient(
-      withInterceptors([authInterceptor, correlationInterceptor, csrfInterceptor, errorInterceptor])
+      withInterceptors([tenantHeaderInterceptor, authInterceptor, correlationInterceptor, csrfInterceptor, errorInterceptor])
     ),
     {
       provide: APP_RUNTIME_CONFIG,

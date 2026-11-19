@@ -56,6 +56,9 @@ class UnsavedChangesDialogStubComponent {}
 @Component({ selector: 'app-locked-workspace-preview', standalone: true, template: '' })
 class LockedWorkspacePreviewStubComponent {}
 
+@Component({ selector: 'app-announcement-banner', standalone: true, template: '' })
+class AnnouncementBannerStubComponent {}
+
 // eslint-disable-next-line @angular-eslint/component-selector -- the stub must match the real <router-outlet> selector
 @Component({ selector: 'router-outlet', standalone: true, template: '' })
 class RouterOutletStubComponent {}
@@ -129,7 +132,8 @@ describe('MainLayoutComponent tray activation gate', () => {
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
-          LockedWorkspacePreviewStubComponent
+          LockedWorkspacePreviewStubComponent,
+          AnnouncementBannerStubComponent
         ]
       }
     });
@@ -159,6 +163,15 @@ describe('MainLayoutComponent tray activation gate', () => {
     expect(fixture.nativeElement.querySelector('app-tray-activation-gate')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).not.toBeNull();
+  });
+
+  it('puts the announcement strip at the top of the layout, above the navbar, even while the workspace is locked', () => {
+    isBlocking.set(true);
+    fixture.detectChanges();
+
+    const layout: HTMLElement = fixture.nativeElement.querySelector('.main-layout');
+    expect(layout.firstElementChild?.tagName.toLowerCase()).toBe('app-announcement-banner');
+    expect(fixture.nativeElement.querySelector('main app-announcement-banner')).toBeNull();
   });
 });
 
@@ -217,7 +230,8 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           DraftModalHostStubComponent,
           UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
-          LockedWorkspacePreviewStubComponent
+          LockedWorkspacePreviewStubComponent,
+          AnnouncementBannerStubComponent
         ]
       }
     });

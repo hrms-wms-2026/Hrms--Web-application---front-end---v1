@@ -14,4 +14,5 @@ export const environment = {
   wsUrl: buildWsUrl(protocol, hostname),
   enableDebugLogs: false,
   appName: 'CROWNUS HRMS',
+  tenancyMode: 'subdomain',
 } as const satisfies RuntimeConfig;

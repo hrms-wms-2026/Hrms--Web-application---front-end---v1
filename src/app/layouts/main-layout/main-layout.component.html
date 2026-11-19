@@ -1,6 +1,8 @@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
 <div class="main-layout" [class.main-layout--has-sub-sidebar]="navState.hasVisibleSubSidebar()">
+  <!-- Above the navbar and outside the tray gate: announcements carry no tenant data. -->
+  <app-announcement-banner class="main-layout__banner" />
   <app-side-navbar class="main-layout__rail" />
   <app-top-navbar class="main-layout__topbar" [email]="email()" [avatarUrl]="avatarUrl()" [userName]="userName()" />
 

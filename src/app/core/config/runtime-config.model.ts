@@ -7,4 +7,6 @@ export interface RuntimeConfig {
   readonly wsUrl: string;
   readonly enableDebugLogs: boolean;
   readonly appName: string;
+  /** 'single-host' resolves the tenant from X-Crownus-Tenant / ?tenant= instead of a subdomain (test builds). */
+  readonly tenancyMode: 'subdomain' | 'single-host';
 }

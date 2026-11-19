@@ -13,6 +13,7 @@ import {
   WorkspaceSelectionRequiredDto,
   isWorkspaceSelectionRequired,
 } from '../models/dto/workspace-selection.dto';
+import { clearSingleHostTenant } from '../utils/single-host-tenant';
 import { toCurrentUserViewModel } from '../utils/auth.mapper';
 import { safeServerDetail } from '../../services/error-handler.service';
 
@@ -333,6 +334,7 @@ export const AuthStore = signalStore(
           // Session is treated as gone client-side regardless of logout call outcome.
           return false;
         } finally {
+          clearSingleHostTenant();
           patchState(store, initialState);
         }
       },

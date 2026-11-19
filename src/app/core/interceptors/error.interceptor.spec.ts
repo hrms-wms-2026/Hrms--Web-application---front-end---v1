@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
+import { environment } from '@environments/environment';
 import { SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
 import { AuthStore } from '../auth/state/auth.store';
 import { NotificationService } from '../services/notification.service';
@@ -182,5 +183,68 @@ describe('errorInterceptor', () => {
     );
 
     expect(notify.notifications()).toHaveLength(0);
+  });
+
+  describe('single-host tenant mismatch 403', () => {
+    const mutableEnv = environment as unknown as { tenancyMode: string };
+    const MISMATCH = { status: 403, detail: 'Token tenant does not match request host tenant.' };
+    let originalMode: string;
+
+    beforeEach(() => {
+      originalMode = mutableEnv.tenancyMode;
+      sessionStorage.setItem('crownus.singleHostTenant', 'acme');
+    });
+
+    afterEach(() => {
+      mutableEnv.tenancyMode = originalMode;
+      sessionStorage.clear();
+    });
+
+    function fail403(body: Record<string, unknown>): void {
+      http.get('/api/v1/employees').subscribe({ error: () => undefined });
+      httpMock.expectOne('/api/v1/employees').flush(body, { status: 403, statusText: 'Forbidden' });
+    }
+
+    it('clears the slug and the session and redirects to /auth/login', () => {
+      mutableEnv.tenancyMode = 'single-host';
+      const clearSpy = vi.spyOn(authStore, 'clearSession');
+      const navigateSpy = vi.spyOn(router, 'navigate');
+      const notify = TestBed.inject(NotificationService);
+
+      fail403(MISMATCH);
+
+      expect(sessionStorage.getItem('crownus.singleHostTenant')).toBeNull();
+      expect(clearSpy).toHaveBeenCalled();
+      expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
+      expect(notify.notifications()).toHaveLength(0);
+    });
+
+    it('does not loop: with the slug cleared a repeat 403 is only an ordinary error', () => {
+      mutableEnv.tenancyMode = 'single-host';
+      fail403(MISMATCH);
+      const navigateSpy = vi.spyOn(router, 'navigate');
+      fail403({ status: 403, detail: 'Caller is not the project lead.' });
+      expect(navigateSpy).not.toHaveBeenCalled();
+    });
+
+    it('subdomain mode keeps the old behaviour for the same 403', () => {
+      mutableEnv.tenancyMode = 'subdomain';
+      const navigateSpy = vi.spyOn(router, 'navigate');
+
+      fail403(MISMATCH);
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem('crownus.singleHostTenant')).toBe('acme');
+    });
+
+    it('an ordinary 403 in single-host mode keeps the old behaviour', () => {
+      mutableEnv.tenancyMode = 'single-host';
+      const navigateSpy = vi.spyOn(router, 'navigate');
+
+      fail403({ status: 403, detail: 'Caller is not the project lead.' });
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem('crownus.singleHostTenant')).toBe('acme');
+    });
   });
 });

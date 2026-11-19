@@ -56,12 +56,21 @@
   background: linear-gradient(100deg, color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)) 0%, color-mix(in srgb, var(--color-accent) 6%, var(--color-surface)) 55%, color-mix(in srgb, var(--color-warning) 18%, var(--color-surface)) 100%);
 }
 .hub-hero--greeting { border-color: var(--color-greeting-card-border); }
-/* The time-of-day scene sits on the right and fades into the text, like the dashboard's wide greeting card. */
+/* The time-of-day scene fills the whole card; a frosted veil over the left keeps the greeting readable while
+   letting the scene's own colours show through, so the text area and the picture read as one surface
+   (any time of day, light or dark). */
 .hub-hero__scene {
-  position: absolute; top: 0; right: 0; width: 55%; height: 100%; object-fit: cover; object-position: 70% 40%;
+  position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 45%;
   pointer-events: none; user-select: none;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 45%);
-  mask-image: linear-gradient(to right, transparent 0%, #000 45%);
+}
+.hub-hero--greeting::before {
+  /* Above the scene (z 0); the text and quote (z 1) come later in the DOM, so they paint above the veil. */
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--color-surface) 80%, transparent) 0%,
+    color-mix(in srgb, var(--color-surface) 62%, transparent) 32%,
+    color-mix(in srgb, var(--color-surface) 20%, transparent) 55%,
+    transparent 70%);
 }
 .hub-hero__text { position: relative; z-index: 1; flex: 1; min-width: 0; }
 .hub-hero__text h2, .hub-hero__text h1 { margin: 0; font-size: 1.45rem; font-weight: 700; line-height: 1.25; color: var(--color-text-primary); }

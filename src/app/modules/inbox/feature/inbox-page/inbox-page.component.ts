@@ -465,8 +465,8 @@ export class InboxPageComponent implements OnInit {
 
   ngOnInit(): void {
     void this.kinds.ensureLoaded();
-    void this.store.loadCounts();
-    if (!this.chats.loaded()) void this.chats.load();
+    void this.store.ensureCounts();
+    void this.chats.ensureLoaded();
     const onMedia = (event: MediaQueryListEvent) => this.narrow.set(event.matches);
     this.media?.addEventListener?.('change', onMedia);
     this.destroyRef.onDestroy(() => this.media?.removeEventListener?.('change', onMedia));

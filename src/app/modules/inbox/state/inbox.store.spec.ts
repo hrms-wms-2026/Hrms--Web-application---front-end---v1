@@ -71,6 +71,27 @@ describe('InboxStore', () => {
 
   afterEach(() => vi.useRealTimers());
 
+  it('ensureCounts joins a counts request already in flight instead of sending a second one', async () => {
+    const reply = new Subject<{ pendingReceived: number; unreadMessages: number; openAlerts: number }>();
+    api['counts'].mockReturnValueOnce(reply.asObservable());
+
+    const first = store.loadCounts();
+    const second = store.ensureCounts();
+    reply.next({ pendingReceived: 2, unreadMessages: 1, openAlerts: 0 });
+    reply.complete();
+    await Promise.all([first, second]);
+
+    expect(api['counts']).toHaveBeenCalledTimes(1);
+    expect(store.badgeCount()).toBe(3);
+  });
+
+  it('ensureCounts asks again once nothing is in flight, so the numbers are never older than today', async () => {
+    await store.loadCounts();
+    await store.ensureCounts();
+
+    expect(api['counts']).toHaveBeenCalledTimes(2);
+  });
+
   it('loads the first page with the default query', async () => {
     await store.load();
 
