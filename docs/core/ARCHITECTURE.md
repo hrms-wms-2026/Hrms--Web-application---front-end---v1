@@ -81,8 +81,6 @@ src/
 │   ├── config/
 │   │   ├── app.config.ts                   ← runtime config (the Angular ApplicationConfig is src/app/app.config.ts)
 │   │   ├── api-endpoints.ts
-│   │   ├── build-info.ts
-│   │   ├── feature-flags.ts
 │   │   └── runtime-config.model.ts
 │   ├── guards/
 │   │   ├── auth.guard.ts

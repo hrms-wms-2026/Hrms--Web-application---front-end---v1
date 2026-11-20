@@ -4,6 +4,7 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 
 | Plan / Report | Status | Location | Date |
 |---|---|---|---|
+| Remove Unused and Duplicate Code (Improvements task 12) | pending | `next/2026-11-19-remove-unused-and-duplicates.md` | 2026-11-19 |
 | API Layer Shared Helpers (Improvements task 04) | pending | `next/2026-11-18-api-layer-shared-helpers.md` | 2026-11-18 |
 | Time Off remaining gaps | pending | `next/2026-09-10-time-off-remaining-gaps.md` | 2026-09-10 |
 | Core Auth: Login + Legal Consent Gate | finished | `finished/2026-07-28/2026-07-28-core-auth-login-legal-consent.md` | 2026-07-28 |

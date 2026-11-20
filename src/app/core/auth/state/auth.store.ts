@@ -9,6 +9,7 @@ import { LegalDocumentDto } from '../models/dto/legal-document.dto';
 import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
 import { clearSingleHostTenant } from '../utils/single-host-tenant';
 import { toCurrentUserViewModel } from '../utils/auth.mapper';
+import { CurrentUserViewModel } from '../models/view/current-user.view-model';
 import { safeServerDetail } from '../../services/error-handler.service';
 
 interface AuthState {
@@ -49,6 +50,23 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return safeServerDetail(err) ?? fallback;
 }
 
+/** The session fields every successful auth call copies from the current-user response. */
+function sessionState(view: CurrentUserViewModel) {
+  return {
+    authenticated: view.authenticated,
+    email: view.email,
+    employeeId: view.employeeId,
+    permissions: view.permissions,
+    activeModules: view.activeModules,
+    managesPeople: view.managesPeople,
+    legalAcceptanceRequired: view.legalAcceptanceRequired,
+    pendingLegalDocuments: view.pendingLegalDocuments,
+    workspaceSlug: view.workspaceSlug,
+    redirectRequired: view.redirectRequired,
+    continueUrl: view.continueUrl,
+  };
+}
+
 export const AuthStore = signalStore(
   { providedIn: 'root' },
   withState<AuthState>(initialState),
@@ -58,20 +76,7 @@ export const AuthStore = signalStore(
       try {
         const dto = await firstValueFrom(api.login(payload));
         const view = toCurrentUserViewModel(dto);
-        patchState(store, {
-          authenticated: view.authenticated,
-          email: view.email,
-          employeeId: view.employeeId,
-          permissions: view.permissions,
-          activeModules: view.activeModules,
-          managesPeople: view.managesPeople,
-          legalAcceptanceRequired: view.legalAcceptanceRequired,
-          pendingLegalDocuments: view.pendingLegalDocuments,
-          workspaceSlug: view.workspaceSlug,
-          redirectRequired: view.redirectRequired,
-          continueUrl: view.continueUrl,
-          loading: false
-        });
+        patchState(store, { ...sessionState(view), loading: false });
       } catch (err) {
         // status 0 = the request never reached the API (network/TLS/CORS), so the credentials
         // were never checked - same convention as exchange() below.
@@ -91,20 +96,7 @@ export const AuthStore = signalStore(
       try {
         const dto = await firstValueFrom(api.acceptLegalDocuments(payload));
         const view = toCurrentUserViewModel(dto);
-        patchState(store, {
-          authenticated: view.authenticated,
-          email: view.email,
-          employeeId: view.employeeId,
-          permissions: view.permissions,
-          activeModules: view.activeModules,
-          managesPeople: view.managesPeople,
-          legalAcceptanceRequired: view.legalAcceptanceRequired,
-          pendingLegalDocuments: view.pendingLegalDocuments,
-          workspaceSlug: view.workspaceSlug,
-          redirectRequired: view.redirectRequired,
-          continueUrl: view.continueUrl,
-          loading: false
-        });
+        patchState(store, { ...sessionState(view), loading: false });
       } catch (err) {
         patchState(store, {
           loading: false,
@@ -125,20 +117,7 @@ export const AuthStore = signalStore(
       try {
         const dto = await firstValueFrom(api.acceptEmployeeInvitation(token, payload));
         const view = toCurrentUserViewModel(dto);
-        patchState(store, {
-          authenticated: view.authenticated,
-          email: view.email,
-          employeeId: view.employeeId,
-          permissions: view.permissions,
-          activeModules: view.activeModules,
-          managesPeople: view.managesPeople,
-          legalAcceptanceRequired: view.legalAcceptanceRequired,
-          pendingLegalDocuments: view.pendingLegalDocuments,
-          workspaceSlug: view.workspaceSlug,
-          redirectRequired: view.redirectRequired,
-          continueUrl: view.continueUrl,
-          loading: false
-        });
+        patchState(store, { ...sessionState(view), loading: false });
       } catch (err) {
         patchState(store, {
           loading: false,
@@ -153,20 +132,7 @@ export const AuthStore = signalStore(
       try {
         const dto = await firstValueFrom(api.me());
         const view = toCurrentUserViewModel(dto);
-        patchState(store, {
-          authenticated: view.authenticated,
-          email: view.email,
-          employeeId: view.employeeId,
-          permissions: view.permissions,
-          activeModules: view.activeModules,
-          managesPeople: view.managesPeople,
-          legalAcceptanceRequired: view.legalAcceptanceRequired,
-          pendingLegalDocuments: view.pendingLegalDocuments,
-          workspaceSlug: view.workspaceSlug,
-          redirectRequired: view.redirectRequired,
-          continueUrl: view.continueUrl,
-          loading: false
-        });
+        patchState(store, { ...sessionState(view), loading: false });
         return view.authenticated;
       } catch {
         patchState(store, { ...initialState, loading: false });
@@ -184,20 +150,7 @@ export const AuthStore = signalStore(
       try {
         const dto = await firstValueFrom(api.sessionExchange(code));
         const view = toCurrentUserViewModel(dto);
-        patchState(store, {
-          authenticated: view.authenticated,
-          email: view.email,
-          employeeId: view.employeeId,
-          permissions: view.permissions,
-          activeModules: view.activeModules,
-          managesPeople: view.managesPeople,
-          legalAcceptanceRequired: view.legalAcceptanceRequired,
-          pendingLegalDocuments: view.pendingLegalDocuments,
-          workspaceSlug: view.workspaceSlug,
-          redirectRequired: view.redirectRequired,
-          continueUrl: view.continueUrl,
-          loading: false
-        });
+        patchState(store, { ...sessionState(view), loading: false });
       } catch (err) {
         // status 0 means the request never reached the server (network/TLS/CORS failure on the
         // tenant host), which is a distinct problem from a rejected/expired exchange code and

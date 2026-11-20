@@ -1,4 +1,4 @@
-.dam-backdrop {
+.acm-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
@@ -9,7 +9,7 @@
   padding: 1rem;
 }
 
-.dam-modal {
+.acm-modal {
   width: 100%;
   max-width: 520px;
   background: var(--color-surface);
@@ -21,20 +21,20 @@
   overflow: hidden;
 }
 
-.dam-header {
+.acm-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   padding: 1.25rem 1.5rem;
 }
 
-.dam-title-row {
+.acm-title-row {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
 }
 
-.dam-icon-wrap {
+.acm-icon-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -46,20 +46,20 @@
   flex-shrink: 0;
 }
 
-.dam-title {
+.acm-title {
   margin: 0;
   font-size: 1.0625rem;
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
-.dam-subtitle {
+.acm-subtitle {
   margin: 0.25rem 0 0;
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
 }
 
-.dam-close-btn {
+.acm-close-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,19 +72,19 @@
   cursor: pointer;
 }
 
-.dam-close-btn:hover {
+.acm-close-btn:hover {
   background: var(--color-surface-secondary);
   color: var(--color-text-primary);
 }
 
-.dam-body {
+.acm-body {
   padding: 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.dam-loading-state {
+.acm-loading-state {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -93,7 +93,7 @@
   padding: 1.5rem 0;
 }
 
-.dam-spinner {
+.acm-spinner {
   width: 18px;
   height: 18px;
   border: 2px solid var(--color-border);
@@ -106,13 +106,15 @@
   to { transform: rotate(360deg); }
 }
 
-.dam-deps-grid {
+.acm-deps-grid {
+  /* One equal-width column per impact card (department shows 3, position 2). */
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 0.75rem;
 }
 
-.dam-dep-card {
+.acm-dep-card {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -123,29 +125,29 @@
   border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
 }
 
-.dam-dep-card--blocked {
+.acm-dep-card--blocked {
   border-color: color-mix(in srgb, var(--color-danger-text, #ef4444) 40%, transparent);
   background: color-mix(in srgb, var(--color-danger-text, #ef4444) 6%, transparent);
 }
 
-.dam-dep-count {
+.acm-dep-count {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--color-text-primary);
 }
 
-.dam-dep-card--blocked .dam-dep-count {
+.acm-dep-card--blocked .acm-dep-count {
   color: var(--color-danger-text, #ef4444);
 }
 
-.dam-dep-label {
+.acm-dep-label {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--color-text-secondary);
   text-align: center;
 }
 
-.dam-alert {
+.acm-alert {
   display: flex;
   align-items: flex-start;
   gap: 0.625rem;
@@ -155,25 +157,31 @@
   line-height: 1.4;
 }
 
-.dam-alert--error {
+.acm-alert--error {
   background: color-mix(in srgb, var(--color-danger-text, #ef4444) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-danger-text, #ef4444) 30%, transparent);
   color: var(--color-danger-text, #ef4444);
 }
 
-.dam-alert--info {
+.acm-alert--info {
   background: color-mix(in srgb, var(--color-success) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
   color: var(--color-success-text);
 }
 
-.dam-blocker-list {
+.acm-alert--warning {
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
+  color: var(--color-warning-text);
+}
+
+.acm-blocker-list {
   margin: 0.375rem 0 0;
   padding-left: 1.25rem;
   font-weight: 400;
 }
 
-.dam-footer {
+.acm-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;

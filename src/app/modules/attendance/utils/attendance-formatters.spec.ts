@@ -89,4 +89,25 @@ describe('attendance-formatters', () => {
     // 02:00 UTC is 07:30 in Asia/Colombo (UTC+5:30) - still morning there, not the UTC hour.
     expect(greetingForTime(new Date('2026-09-08T02:00:00Z'), 'Asia/Colombo')).toBe('Good morning');
   });
+
+  it('date-only formatters reject impossible calendar dates and format a second valid date', () => {
+    for (const bad of ['2026-02-30', '2026-13-01', '2026-8-27', '']) {
+      expect(formatDate(bad)).toBe('Date unavailable');
+      expect(fullDateLabel(bad)).toBe('Date unavailable');
+    }
+    expect(formatDate('2024-02-29')).toBe(new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 1, 29, 12))));
+    expect(fullDateLabel('2024-02-29')).toBe(new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 1, 29, 12))));
+  });
+
+  it('time formatters return an em dash for bad input and honour the timezone', () => {
+    for (const fn of [formatDateTime, formatClockTime]) {
+      expect(fn('', 'UTC')).toBe('—');
+      expect(fn('garbage', 'UTC')).toBe('—');
+      expect(fn('2026-08-27T10:00:00Z', 'Not/AZone')).toBe('—');
+    }
+    const at = new Date('2026-08-27T23:30:00Z');
+    expect(formatDateTime('2026-08-27T23:30:00Z', 'Asia/Tokyo')).toBe(new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Tokyo' }).format(at));
+    expect(formatClockTime('2026-08-27T23:30:00Z', 'Asia/Tokyo')).toBe(new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Tokyo' }).format(at));
+    expect(formatDateTime('2026-08-27T23:30:00Z')).toBe(formatDateTime('2026-08-27T23:30:00Z', 'UTC'));
+  });
 });

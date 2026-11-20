@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FieldIconComponent } from '../../../../shared/ui/field-icon/field-icon.component';
+import { NewPasswordFieldsComponent } from '../../ui/new-password-fields/new-password-fields.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -21,7 +21,7 @@ const STATUS_MESSAGES: Record<string, string> = {
 @Component({
   selector: 'app-accept-invitation',
   standalone: true,
-  imports: [ReactiveFormsModule, FieldIconComponent],
+  imports: [ReactiveFormsModule, NewPasswordFieldsComponent],
   templateUrl: './accept-invitation.component.html',
   styleUrl: './accept-invitation.component.css'
 })
@@ -40,22 +40,11 @@ export class AcceptInvitationComponent implements OnInit {
   legalDocuments = signal<PublishedLegalDocumentDto[]>([]);
   activeDoc = signal<PublishedLegalDocumentDto | null>(null);
 
-  readonly showPassword = signal(false);
-  readonly showConfirmPassword = signal(false);
-
   form = this.fb.nonNullable.group({
     password: ['', [Validators.required, Validators.minLength(8)]],
     confirmPassword: ['', [Validators.required]],
     legalAccepted: [false]
   });
-
-  toggleShowPassword(): void {
-    this.showPassword.update((v) => !v);
-  }
-
-  toggleShowConfirmPassword(): void {
-    this.showConfirmPassword.update((v) => !v);
-  }
 
   openDocument(doc: PublishedLegalDocumentDto, event: Event): void {
     event.preventDefault();

@@ -1,0 +1,86 @@
+<div role="presentation" class="acm-backdrop" (click)="cancelled.emit()">
+  <div class="acm-modal ui-scroll-open" appStopClickPropagation role="dialog" aria-modal="true">
+
+    <!-- Header -->
+    <div class="acm-header ui-popup-header">
+      <span class="ui-popup-icon" data-icon="archive" aria-hidden="true"></span>
+      <div class="acm-title-row">
+        <div class="acm-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="acm-title">Archive ‘{{ entityName() }}’?</h2>
+          <p class="acm-subtitle">{{ subtitle() }}</p>
+        </div>
+      </div>
+      <button type="button" class="acm-close-btn" (click)="cancelled.emit()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="acm-body" [class.scroll-fade]="bodyScrollFade()">
+      @if (checking()) {
+        <div class="acm-loading-state">
+          <span class="acm-spinner"></span>
+          <span>Checking {{ entityType() }} dependencies…</span>
+        </div>
+      } @else if (impacts(); as items) {
+
+        <div class="acm-deps-grid">
+          @for (item of items; track item.label) {
+            <div class="acm-dep-card" [class.acm-dep-card--blocked]="item.count > 0">
+              <span class="acm-dep-count">{{ item.count }}</span>
+              <span class="acm-dep-label">{{ item.label }}</span>
+            </div>
+          }
+        </div>
+
+        @if (!canArchive()) {
+          <div class="acm-alert acm-alert--error">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div>
+              <strong>This {{ entityType() }} cannot be archived yet.</strong>
+              <ul class="acm-blocker-list">
+                @for (msg of blockerMessages(); track msg) {
+                  <li>{{ msg }}</li>
+                }
+              </ul>
+            </div>
+          </div>
+        } @else {
+          <div class="acm-alert acm-alert--info">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>{{ clearMessage() }}</span>
+          </div>
+        }
+
+      }
+      @if (warningMessage()) {
+        <div class="acm-alert acm-alert--warning">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>{{ warningMessage() }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div class="acm-footer">
+      <app-button type="button" variant="secondary" (click)="cancelled.emit()" [disabled]="saving()">Cancel</app-button>
+      <app-button
+        type="button"
+        variant="danger"
+        (click)="confirmed.emit()"
+        [disabled]="checking() || saving() || !canArchive()"
+        [loading]="saving()"
+      >
+        Archive {{ entityType() }}
+      </app-button>
+    </div>
+
+  </div>
+</div>

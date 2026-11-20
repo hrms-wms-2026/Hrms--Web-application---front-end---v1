@@ -456,6 +456,8 @@ describe('TeamProgressCardComponent', () => {
       observer.trigger(1300, 852);
       expect(setMode).not.toHaveBeenCalled();
       flushFrames();
+      // The host size is a signal: the effect feeding it to the layout runs on the next change detection.
+      fixture.detectChanges();
       expect(setMode).toHaveBeenCalledOnce();
       expect(setMode).toHaveBeenCalledWith('maximum');
       fixture.detectChanges();

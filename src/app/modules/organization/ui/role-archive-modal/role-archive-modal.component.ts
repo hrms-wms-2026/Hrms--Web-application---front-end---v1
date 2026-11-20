@@ -1,22 +1,19 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RoleSummaryResponse } from '../../models/role.model';
-import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { ArchiveConfirmModalComponent } from '../archive-confirm-modal/archive-confirm-modal.component';
 
 @Component({
   selector: 'app-role-archive-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [StopClickPropagationDirective, CommonModule, ButtonComponent],
+  imports: [ArchiveConfirmModalComponent],
   templateUrl: './role-archive-modal.component.html',
-  styleUrl: './role-archive-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RoleArchiveModalComponent {
-  @Input({ required: true }) role!: RoleSummaryResponse;
-  @Input() saving = false;
+  readonly role = input.required<RoleSummaryResponse>();
+  readonly saving = input(false);
 
-  @Output() confirmArchive = new EventEmitter<void>();
-  @Output() cancelled = new EventEmitter<void>();
+  readonly confirmArchive = output<void>();
+  readonly cancelled = output<void>();
 }

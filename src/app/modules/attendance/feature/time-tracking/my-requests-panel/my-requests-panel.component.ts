@@ -3,6 +3,9 @@ import { ButtonComponent } from '../../../../../shared/ui/button/button.componen
 import { ModalComponent } from '../../../../../shared/ui/modal/modal.component';
 import { NotificationService } from '../../../../../core/services/notification.service';
 import { AttendanceCorrectionResponse, correctionStatusLabel, correctionTypeLabel } from '../../../models/attendance-correction.model';
+import { AttendanceEmptyStateComponent } from '../../../ui/attendance-empty-state/attendance-empty-state.component';
+import { AttendanceErrorBannerComponent } from '../../../ui/attendance-error-banner/attendance-error-banner.component';
+import { AttendanceListPagerComponent } from '../../../ui/attendance-list-pager/attendance-list-pager.component';
 import { workAreaChangeStatusLabel, workAreaLabel } from '../../../models/work-area-change-request.model';
 import { TimeTrackingStore } from '../../../state/time-tracking.store';
 import { formatDate, formatDateTime, formatWorkAreaDate } from '../../../utils/attendance-formatters';
@@ -13,7 +16,7 @@ type PersonalRequestTab = 'corrections' | 'work-area';
 @Component({
   selector: 'app-my-requests-panel',
   standalone: true,
-  imports: [DataTableComponent, DataTableCellDirective, ButtonComponent, ModalComponent],
+  imports: [DataTableComponent, DataTableCellDirective, ButtonComponent, ModalComponent, AttendanceEmptyStateComponent, AttendanceErrorBannerComponent, AttendanceListPagerComponent],
   templateUrl: './my-requests-panel.component.html',
   styleUrl: './my-requests-panel.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -42,7 +45,11 @@ export class MyRequestsPanelComponent implements OnInit {
   readonly store = inject(TimeTrackingStore);
   private readonly notifications = inject(NotificationService);
 
-  readonly Math = Math;
+  readonly correctionsEmptyIconPaths = ['M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'];
+  readonly workAreaEmptyIconPaths = [
+    'M15 10.5a3 3 0 11-6 0 3 3 0 016 0z',
+    'M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z'
+  ];
   readonly formatDate = formatDate;
   readonly formatDateTime = formatDateTime;
   readonly formatWorkAreaDate = formatWorkAreaDate;
