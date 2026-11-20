@@ -31,3 +31,11 @@ The dev-env cleanup scan of 2026-11-13 reports:
 - The scan shows no confirmed unused file or dependency.
 - Duplicate lines are down by at least 25 percent.
 - Build and full test suite pass.
+
+## Status (2026-11-20)
+
+- Report: `task-12-cleanup-report.md` (every Knip finding labelled, duplicate lines before/after per batch).
+- Duplicate lines: 3,713 → 3,073 (-17.2%) on the base `f6e30e95` scan with generated files ignored. Target ≤ 2,784 not met: gap 289 lines, see report.
+- Removed: `core/config/build-info.ts`, `core/config/feature-flags.ts`, `landing-dashboard-preview`, `metric-stat`, the home-page capsule CSS and `.html`, and six unused exports and types. Kept on purpose: `prettier`, `emoji-picker-element-data` (used), and the 4 SUSPECTED items listed in the report, which need an answer from their owners.
+- Dashboard cards: 6 of 8 moved to `injectHostSize()` with the user's go-ahead; quick-actions and today-at-a-glance kept.
+- Full test suite: only the pre-existing en-GB date failures (plus one flaky main-layout timeout that passes alone).

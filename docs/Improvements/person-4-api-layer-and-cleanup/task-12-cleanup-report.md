@@ -27,7 +27,10 @@ These failures exist before any cleanup change. They are not caused by this task
 | After Task 6b | 253 | 3,223 | -13.2% |
 | After Task 7 | 252 | 3,173 | -14.5% |
 | After Task 9 | 250 | 3,073 | -17.2% |
+| **Final** | **250** | **3,073** | **-17.2%** |
 | Target | | ≤ 2,784 | -25% |
+
+The target of 2,784 lines (-25%) is not met. The gap is 289 lines (3,073 - 2,784). The remainder is mostly dashboard widget CSS, which is copied between widgets on purpose (`docs/design/WIDGET_CREATION_RULES.md`), and pairs that share similar CSS only, which the merge rule for this task excludes. Dashboard alone was 1,558 of the 3,713 base lines.
 
 Duplicated lines by module at base (counted by the first file of each clone):
 
@@ -133,3 +136,43 @@ Unused exported types (4)
   | `today-at-a-glance` | none | `fitCanvas` | n/a | 0 | kept: measures the host synchronously after first render (`clientWidth`), the helper would add a frame of 0x0 |
 
   Each converted card feeds the signal into its `applySize(size)` from a constructor `effect` that skips 0x0 and runs `applySize` in `untracked`. Spec change: `team-progress-card.component.spec.ts` "coalesces several size reports" now calls `fixture.detectChanges()` after `flushFrames()`, because the size reaches the layout through an effect; no assertion removed. `docs/design/WIDGET_CREATION_RULES.md` now points authors at `injectHostSize()` instead of the copied observer. Dashboard specs: 116 files / 1,167 tests pass; `check:warnings` clean; ESLint clean on the changed files.
+
+- Task 2, unused files, exports and types: removed the CONFIRMED items listed in the Knip table (two config files, the landing preview component, `metric-stat`, the capsule CSS and its orphaned `.html`, six unused exports and types). Four SUSPECTED items were kept (see below).
+- Task 8: checkpoint only (3,173 lines); the full suite failed only on the 4 base en-GB date tests.
+- Task 9, notes: `team-progress-card.component.spec.ts` gained one `fixture.detectChanges()` after `flushFrames()` (no assertion removed), because the size now reaches `applySize` at the next change detection instead of inside the rAF callback. `team-plan-today` used to set `compact` inside an un-debounced observer callback; it now goes through the util's rAF, so the change lands one frame later. Its spec sets `compact` directly, so the new effect path has no direct test. `quick-actions` (observes a child element) and `today-at-a-glance` (measures the padding box after first render) were kept on their own observers on purpose.
+
+## Final knip scan
+
+Only the 4 SUSPECTED items remain: `shared/models/problem-details.model.ts`, `appendReturnPath`, `RespondToCalendarEventRequest`, `UpdateCalendarConnectionRequest`. Knip also prints one configuration hint (the generated api-types ignore pattern matches nothing yet), as at base. The attendance stores named in the task file (`attendance` store files) were already gone from Development, so there was nothing to remove there.
+
+## Questions for owners (SUSPECTED, kept)
+
+- `shared/models/problem-details.model.ts`: will task 20 adopt it as the shared error model? If not, delete it.
+- `appendReturnPath` (auth): is it still needed? Nothing calls it since the device-activation gate came in.
+- `RespondToCalendarEventRequest` and `UpdateCalendarConnectionRequest`: wire the endpoints or delete the types?
+
+## Final verification (2026-11-20)
+
+| Gate | Base | Final |
+|---|---|---|
+| `npm run check:warnings` | clean | clean |
+| `check-http-params.mjs` | 1 finding (`support-tickets-api.service.ts`) | same |
+| `ng lint` | 7 errors (`calendar-page.component.html`, `planner-create-popover.component.ts`) | same 7 |
+| `check-hardcoded-colors.mjs` | 2 meeting files, 6 each | same |
+| `ng test` | 4 en-GB date failures | 640 of 644 files pass, 6,010 of 6,015 tests pass; 5 failures, listed below |
+
+Failing tests, all outside this branch's spec changes (no failing spec file is in `git diff origin/Development`):
+
+- `date-range-picker.component.spec.ts`: renders the calendar icon trigger with the applied range as text (en-GB date, base)
+- `time-tracking.component.spec.ts`: opens the correction form with the selected work date and clock-in fields (en-GB date, base)
+- `time-tracking.component.spec.ts`: shows a one-click fix button for a missing-clock-out attention, naming the stale day (en-GB date, base)
+- `leave-request-summary.component.spec.ts` (inbox): lets the approver edit the dates and reports the edits (en-GB date, base)
+- `main-layout.component.spec.ts`: renders the top and side navbar shell without legacy branding or placeholder text (5.5 s timeout; passes alone, 9 of 9, so flaky under full-suite load)
+
+Note: `time-tracking.component.css` is in the diff (dead status-pill rules removed in Task 6b), but its spec file is not.
+
+## Follow-ups noted by earlier batches
+
+- `position-list-table.component.css`: dead `.plt-menu*` rules (the template no longer renders them).
+- Status pill hex colours (`#10b981`, `#f59e0b`) block a shared pill in `status-card` and `attendance-detail-drawer`; they need theme tokens first.
+- The expandable search block is repeated in 5 places (department, position, roles management, position template drawer, people employee list); a candidate for `shared/ui`.
