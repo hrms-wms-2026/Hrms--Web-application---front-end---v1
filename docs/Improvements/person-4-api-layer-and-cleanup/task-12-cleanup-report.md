@@ -26,6 +26,7 @@ These failures exist before any cleanup change. They are not caused by this task
 | After Task 6a | 257 | 3,375 | -9.1% |
 | After Task 6b | 253 | 3,223 | -13.2% |
 | After Task 7 | 252 | 3,173 | -14.5% |
+| After Task 9 | 250 | 3,073 | -17.2% |
 | Target | | ≤ 2,784 | -25% |
 
 Duplicated lines by module at base (counted by the first file of each clone):
@@ -118,3 +119,17 @@ Unused exported types (4)
 - Task 6b, `status-card` vs `time-tracking.component.css`: the status-pill rules in `time-tracking.component.css` were dead (no `status-pill` element in its template or class), so they were deleted.
 - Task 7, `accept-invitation` vs `reset-password` HTML (new password + confirm block): merged into `core/auth/ui/new-password-fields` (OnPush, `ControlContainer` from the parent `FormGroupDirective`, inputs `passwordPlaceholder` and `confirmPlaceholder`). The two blocks were identical apart from the placeholders ("Password" / "Confirm password" vs "New password" / "Confirm new password") and the page-prefixed wrapper and error classes. Parents keep the form, the validators (`required`, `minLength(8)`, mismatch check in `submit()`), the submit logic and the API calls; they only lost the two show/hide signals and toggle methods, which moved into the new component (no spec used them). Ids (`password`, `confirmPassword`), error texts, aria-labels and the `ui-field` classes are unchanged. The new component re-checks on the parent group `events` because `markAllAsTouched()` and `setErrors()` run in the parent and would not refresh an OnPush child. The wrapper and error classes became `new-password-field` and `new-password-error` (no spec queried the old names). `core/auth` specs: 17 files / 158 tests before, 18 / 163 after (5 new).
 - Task 7, auth page shell CSS (`accept-invitation` vs `login`, `reset-password`, `forgot-password`): kept. Each page styles its own markup with page-prefixed classes (`invite-`, `reset-`, `login-`, `forgot-`), and with emulated encapsulation `layouts/auth-layout` cannot style a child page's elements, so there is no owner to move the rules to. A shared stylesheet would break the rule against loose shared CSS, and a shared card/heading component would rename classes the pages style and change spacing details per page. What remains are the page title/subtitle, state-box and button rules, which are similar CSS only.
+- Task 9, dashboard cards: 6 of the 8 now use `injectHostSize()` and lost their own `observeSize()` / `stopObservingSize()` / `resizeObserver` / `frameId` / `pendingSize`. Difference table:
+
+  | Card | View resolver | `applySize` also sets | `applySize` public | Spec calls `applySize` | Result |
+  |---|---|---|---|---|---|
+  | `team-employee-forecast` | `resolveEmployeeForecastView` | `size`, `heroLegend` | yes | 1 | converted |
+  | `team-module-forecast` | `resolveModuleForecastView` | `size`, `heroLegend` | yes | 1 | converted |
+  | `team-work-task` | `resolveTeamWorkTaskView` | `size`, `heroLegend` | yes | 1 | converted |
+  | `team-attendance` | `resolveTeamAttendanceView` | `size`, `heroLegend` | no | 0 | converted |
+  | `team-progress` | `resolveTeamProgressMode` | `size`, `mode` | no | 0 (drives a fake ResizeObserver) | converted |
+  | `team-plan-today` | none (height < 300px = compact) | `compact` | n/a | 0 (sets `compact`) | converted |
+  | `quick-actions` | none | measures inner `content` / `list` elements | n/a | 0 | kept: observes a child element and reads the DOM, not the host size |
+  | `today-at-a-glance` | none | `fitCanvas` | n/a | 0 | kept: measures the host synchronously after first render (`clientWidth`), the helper would add a frame of 0x0 |
+
+  Each converted card feeds the signal into its `applySize(size)` from a constructor `effect` that skips 0x0 and runs `applySize` in `untracked`. Spec change: `team-progress-card.component.spec.ts` "coalesces several size reports" now calls `fixture.detectChanges()` after `flushFrames()`, because the size reaches the layout through an effect; no assertion removed. `docs/design/WIDGET_CREATION_RULES.md` now points authors at `injectHostSize()` instead of the copied observer. Dashboard specs: 116 files / 1,167 tests pass; `check:warnings` clean; ESLint clean on the changed files.

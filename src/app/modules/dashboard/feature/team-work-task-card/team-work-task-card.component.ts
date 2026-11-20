@@ -2,11 +2,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
-  ElementRef,
   OnInit,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
@@ -49,6 +50,7 @@ import {
 } from '../../utils/team-work-task-layout.util';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamWorkTaskDetailDialogComponent } from '../team-work-task-detail-dialog/team-work-task-detail-dialog.component';
+import { injectHostSize } from '../../utils/host-size.util';
 
 interface KpiTileRow {
   readonly key: string;
@@ -116,12 +118,9 @@ export class TeamWorkTaskCardComponent implements OnInit {
     refreshing: () => this.store.markLoading(),
   });
   private readonly destroyRef = inject(DestroyRef);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly hostSize = injectHostSize();
 
   private readonly visibilityHandler = (): void => this.onVisibilityChange();
-  private resizeObserver: ResizeObserver | null = null;
-  private frameId: number | null = null;
-  private pendingSize: { width: number; height: number } | null = null;
   private measured = false;
 
   readonly view = signal<TeamWorkTaskView>('standard');
@@ -262,13 +261,20 @@ export class TeamWorkTaskCardComponent implements OnInit {
     (this.store.data()?.trend ?? []).every((p) => p.workedMinutes === 0 && p.taskMinutes === 0),
   );
 
+  constructor() {
+    // The host size feeds the layout. 0x0 = not measured yet (never measured under tests, where specs call applySize).
+    effect(() => {
+      const size = this.hostSize();
+      if (size.width === 0 && size.height === 0) return;
+      untracked(() => this.applySize(size));
+    });
+  }
+
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    this.observeSize();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopObservingSize();
     });
   }
 
@@ -309,29 +315,8 @@ export class TeamWorkTaskCardComponent implements OnInit {
     this.detailSection.set(null);
   }
 
-  private observeSize(): void {
-    if (typeof ResizeObserver === 'undefined') return;
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const rect = entries[entries.length - 1]?.contentRect;
-      if (!rect) return;
-      this.pendingSize = { width: rect.width, height: rect.height };
-      if (typeof requestAnimationFrame !== 'function') {
-        this.applySize();
-        return;
-      }
-      if (this.frameId !== null) return;
-      this.frameId = requestAnimationFrame(() => {
-        this.frameId = null;
-        this.applySize();
-      });
-    });
-    this.resizeObserver.observe(this.host.nativeElement);
-  }
-
   /** Public so a spec can drive a size without a ResizeObserver. */
-  applySize(size: { width: number; height: number } | null = this.pendingSize): void {
-    if (!size) return;
-    this.pendingSize = null;
+  applySize(size: { width: number; height: number }): void {
     const view = resolveTeamWorkTaskView(
       size.width,
       size.height,
@@ -343,14 +328,6 @@ export class TeamWorkTaskCardComponent implements OnInit {
     this.heroLegend.set(
       size.width - TEAM_WORK_TASK_CARD_CHROME.width >= TEAM_WORK_TASK_HERO_LEGEND_WIDTH_PX,
     );
-  }
-
-  private stopObservingSize(): void {
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = null;
-    if (this.frameId !== null && typeof cancelAnimationFrame === 'function')
-      cancelAnimationFrame(this.frameId);
-    this.frameId = null;
   }
 
   private onVisibilityChange(): void {
