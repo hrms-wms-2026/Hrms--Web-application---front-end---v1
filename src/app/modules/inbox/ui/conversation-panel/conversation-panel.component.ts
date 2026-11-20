@@ -6,6 +6,7 @@ import {
 import { Observable, catchError, firstValueFrom, map, of } from 'rxjs';
 import { InboxChatsApiService } from '../../data-access/inbox-chats-api.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { injectNow } from '../../../../core/clock/clock.service';
 import { FileApiService, buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { CommentComposerComponent, ComposerUploader } from '../../../../shared/ui/comment-composer/comment-composer.component';
@@ -28,7 +29,6 @@ const CONVERSATION_ATTACHMENT = 'conversation_attachment';
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const EDIT_WINDOW_MS = 30 * 60 * 1000;
-const CLOCK_TICK_MS = 30 * 1000;
 /** The author may edit or delete a message for this long after sending it (the server enforces it too). */
 /** What the server takes for conversation_attachment (UploadPurposeCatalog). */
 const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.zip,.mp4,.webm,.mov,.mp3,.wav,.m4a,.ogg';
@@ -619,7 +619,7 @@ export class ConversationPanelComponent implements AfterViewChecked {
   /** The message whose emoji picker is open. */
   protected readonly reactPickerFor = signal<string | null>(null);
   /** Keeps the 15-minute Edit action current while the chat remains open. */
-  private readonly now = signal(Date.now());
+  private readonly now = injectNow('minute');
   protected readonly editingId = signal<string | null>(null);
   /** The last message that failed to send, kept so it can be retried as it was. */
   protected readonly failed = signal<FailedSend | null>(null);
@@ -731,8 +731,6 @@ export class ConversationPanelComponent implements AfterViewChecked {
       catchError(() => of([])));
 
   constructor() {
-    const tick = setInterval(() => this.now.set(Date.now()), CLOCK_TICK_MS);
-    inject(DestroyRef).onDestroy(() => clearInterval(tick));
     effect(() => {
       const ref = this.itemRef();
       const key = this.refKey();
