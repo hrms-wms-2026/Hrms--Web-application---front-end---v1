@@ -63,6 +63,8 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    // A test sets visibilityState to 'hidden'; drop the override so later spec files see the real value.
+    Reflect.deleteProperty(document, 'visibilityState');
   });
 
   async function setup(
