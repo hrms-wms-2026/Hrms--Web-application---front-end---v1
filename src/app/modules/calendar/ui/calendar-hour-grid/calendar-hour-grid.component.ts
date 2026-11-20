@@ -310,7 +310,7 @@ export class CalendarHourGridComponent {
         }),
         editable: editable.has(date),
         offHours: minutes ? [band(0, minutes.start), band(minutes.end, 1440)].filter((b) => b.heightPct > 0) : [],
-        restDay: window !== null && !window.isWorkingDay,
+        restDay: window != null && !window.isWorkingDay,
         ...this.kindLoad(dayBlocks, load?.workingMinutes ?? 0),
         load: load ? {
           label: `${duration(load.plannedMinutes)} / ${duration(load.workingMinutes)}${load.over ? ' · Over' : ''}`,

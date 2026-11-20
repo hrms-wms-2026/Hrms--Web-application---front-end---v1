@@ -281,7 +281,7 @@ export class TaskClockWidgetComponent {
   async submitPush(): Promise<void> {
     const percent = this.pushPercent();
     const current = this.task().progressPercent;
-    if (percent === null || percent <= current) {
+    if (percent == null || percent <= current) {
       this.pushError.set(`Percent must be greater than the current progress (${current}%).`);
       return;
     }

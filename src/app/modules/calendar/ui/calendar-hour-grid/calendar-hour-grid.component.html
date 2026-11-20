@@ -134,7 +134,7 @@
           }
         }
 
-        @if (column.nowFraction !== null) {
+        @if (column.nowFraction != null) {
           <div data-testid="calendar-now-line" class="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-[var(--color-danger)]" [style.top.%]="column.nowFraction * 100">
             <span data-testid="calendar-now-dot" class="absolute -left-1.5 -top-[6px] h-2.5 w-2.5 rounded-full bg-[var(--color-danger)]"></span>
           </div>

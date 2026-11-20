@@ -477,7 +477,7 @@ export class TeamProgressDetailDialogComponent {
       const byProject = new Map<string, number>();
       for (const t of tasks) byProject.set(t.projectId, (byProject.get(t.projectId) ?? 0) + (t.estimatedHours ?? 0));
       rows = [...byProject].map(([projectId, hours]) => ({ projectId, name: names.get(projectId) ?? 'Unknown project', hours }));
-      unestimated = tasks.filter((t) => t.estimatedHours === null).length;
+      unestimated = tasks.filter((t) => t.estimatedHours == null).length;
       taskCount = tasks.length;
       listedOnly = true;
     } else {
@@ -498,7 +498,7 @@ export class TeamProgressDetailDialogComponent {
   });
 
   protected overdueTaskHours(task: LedOverdueTask): string {
-    return task.estimatedHours === null ? '—' : `${formatHourValue(task.estimatedHours)} h`;
+    return task.estimatedHours == null ? '—' : `${formatHourValue(task.estimatedHours)} h`;
   }
 
   // ---- Server queries ----

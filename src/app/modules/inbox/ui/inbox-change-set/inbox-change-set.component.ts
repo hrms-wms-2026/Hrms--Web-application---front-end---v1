@@ -154,7 +154,7 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
                 }
               } @else {
                 <div class="ics__value ics__requested">{{ display(c, c.applied ?? c.after) }}</div>
-                @if (c.applied !== null && c.applied !== c.after) {
+                @if (c.applied != null && c.applied !== c.after) {
                   <div class="ics__was" data-testid="inbox-change-applied">Requested {{ display(c, c.after) }}, changed by the approver</div>
                 }
               }
@@ -249,7 +249,7 @@ export class InboxChangeSetComponent {
 
 /** A change row's value as people read it ("8h", "Oct 12, 2026", an option's label, ...); "—" when empty. */
 export function displayChangeValue(change: InboxChangeDto, value: string | null): string {
-  if (value === null || value === '') return '—';
+  if (value == null || value === '') return '—';
   switch (change.kind) {
     case 'hours': return `${value}h`;
     case 'priority': return value.charAt(0).toUpperCase() + value.slice(1);

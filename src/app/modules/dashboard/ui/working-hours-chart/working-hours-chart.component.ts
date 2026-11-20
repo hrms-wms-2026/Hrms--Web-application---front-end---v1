@@ -99,7 +99,7 @@ export class WorkingHoursChartComponent {
     return {
       label: this.heading(),
       value: `${barHours(worked)} worked`,
-      chip: average === null ? null : { text: `${minutesText(average)} avg per person`, tone: 'neutral' }
+      chip: average == null ? null : { text: `${minutesText(average)} avg per person`, tone: 'neutral' }
     };
   });
 
@@ -109,6 +109,6 @@ export class WorkingHoursChartComponent {
       .join('; ');
     if (!this.teamAverage()) return `Team working hours by day. ${byDay}`;
     const average = this.weekAverage();
-    return `Team working hours by day, ${average === null ? 'no average yet' : `${minutesText(average)} average per person`}. ${byDay}`;
+    return `Team working hours by day, ${average == null ? 'no average yet' : `${minutesText(average)} average per person`}. ${byDay}`;
   });
 }

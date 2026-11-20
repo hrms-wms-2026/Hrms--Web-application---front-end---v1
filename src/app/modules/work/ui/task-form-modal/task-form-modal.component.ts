@@ -2615,7 +2615,7 @@ export class TaskFormModalComponent {
   availableSprints = computed(() => this.sprints().filter((s) => s.status === 'draft' || s.status === 'active'));
 
   private readonly openSessionEntry = computed(() =>
-    this.history().find((e) => e.type === 'clock_session' && e.clockSession?.clockOutAt === null) ?? null
+    this.history().find((e) => e.type === 'clock_session' && e.clockSession?.clockOutAt == null) ?? null
   );
   hasOpenSessionMine = computed(() => this.openSessionEntry()?.employeeId === this.currentEmployeeId());
   hasOpenSessionOtherEmployee = computed(() => {

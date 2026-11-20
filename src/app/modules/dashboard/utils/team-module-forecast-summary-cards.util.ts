@@ -35,7 +35,7 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
       chips: [forecastRankChip(m.conversionRate, m.requiredRate, m.status)],
     }));
   const gap =
-    t.teamRate === null || t.requiredRate === null ? null : (t.teamRate - t.requiredRate) * 100;
+    t.teamRate == null || t.requiredRate == null ? null : (t.teamRate - t.requiredRate) * 100;
 
   return [
     {
@@ -49,11 +49,11 @@ export function teamModuleForecastSummaryCards(data: ModuleForecastResponse): Su
         kind: 'spark',
         figure: rateText(t.teamRate),
         delta:
-          gap === null
+          gap == null
             ? null
             : summaryDelta(gap, 'pp', true, `vs ${rateText(t.requiredRate)} needed`),
         points: data.rateTrend.map((p) =>
-          p.rate === null ? null : Math.round(p.rate * 1000) / 10,
+          p.rate == null ? null : Math.round(p.rate * 1000) / 10,
         ),
       },
     },

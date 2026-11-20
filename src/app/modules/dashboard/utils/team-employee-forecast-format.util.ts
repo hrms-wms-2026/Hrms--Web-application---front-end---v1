@@ -62,7 +62,7 @@ export function employeeForecastExplanation(t: EmployeeForecastTotals): string {
   if (t.people === 0) return 'No one in your team yet.';
   if (t.remainingHours <= 0)
     return 'Nobody has open estimated tasks due from today, so no one needs overtime.';
-  if (t.teamRate === null)
+  if (t.teamRate == null)
     return `Nobody clocked working time in the last 4 weeks, so the forecast assumes every working hour becomes task hours. ${forecastHoursText(t.remainingHours)} of open tasks remain.`;
   const [covered, raise, overload] = forecastSlices(t, t.maxTaskRate).map((s) => s.value);
   const parts = [

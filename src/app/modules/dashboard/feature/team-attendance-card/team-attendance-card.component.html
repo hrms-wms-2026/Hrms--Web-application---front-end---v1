@@ -202,13 +202,13 @@
                   Couldn't load the ranking.
                   <button type="button" class="ta-link" (click)="retryRanking($event)">Try again</button>
                 </p>
-              } @else if (ranking() === null) {
+              } @else if (ranking() == null) {
                 <p class="ta-row-empty" aria-busy="true">Loading…</p>
               } @else {
                 <ol>
                   @for (row of rankingShown(); track row.employeeId) {
                     <li class="ta-rank-row" data-testid="ta-rank-row">
-                      <span class="ta-rank" [class.ta-rank--top]="row.rank !== null && row.rank <= 3">{{ row.rank ?? '—' }}</span>
+                      <span class="ta-rank" [class.ta-rank--top]="row.rank != null && row.rank <= 3">{{ row.rank ?? '—' }}</span>
                       <app-avatar size="sm" [avatarUrl]="avatarUrl(row.avatarFileId)" [userName]="row.name" />
                       <span class="ta-row-name">{{ row.name }}</span>
                       <span class="ta-rank-bar" aria-hidden="true"><span [style.width.%]="row.rate ?? 0"></span></span>

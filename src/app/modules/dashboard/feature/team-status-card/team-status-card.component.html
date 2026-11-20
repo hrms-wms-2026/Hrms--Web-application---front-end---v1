@@ -62,7 +62,7 @@
     <ng-template #barTpl let-m>
       @let p = progress(m);
       <span class="wbl-bar" aria-hidden="true">
-        @if (p !== null) {
+        @if (p != null) {
           <span [style.width.%]="p" [style.background]="stateColor(m) ?? 'var(--color-widget-shade-4)'"></span>
         }
       </span>

@@ -138,7 +138,7 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
         .slice(TYPE_CHIP_LIMIT)
         .map((type) => {
           const remaining = this.remainingHoursFor(type.id);
-          return { value: type.id, label: remaining === null ? type.name : `${type.name} - ${remaining} hours remaining` };
+          return { value: type.id, label: remaining == null ? type.name : `${type.name} - ${remaining} hours remaining` };
         })
     ];
   }
@@ -217,7 +217,7 @@ export class NewLeaveRequestWizardComponent implements OnChanges, OnInit {
     const type = this.selectedLeaveType();
     if (!type?.requiresDocument) return false;
     const after = type.documentRequiredAfterHours;
-    return after === null || !this.previewResult || this.previewResult.totalHours > after;
+    return after == null || !this.previewResult || this.previewResult.totalHours > after;
   }
 
   onLeaveTypeChange(leaveTypeId: string): void {

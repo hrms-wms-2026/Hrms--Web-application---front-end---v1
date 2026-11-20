@@ -7,7 +7,7 @@ function minutes(hhmm: string): number | null {
 export function isOvernightWorkWindow(start: string, end: string): boolean {
   const a = minutes(start);
   const b = minutes(end);
-  if (a === null || b === null) return false;
+  if (a == null || b == null) return false;
   return b <= a;
 }
 
@@ -19,7 +19,7 @@ export function computeWorkDayHours(
   if (!start || !end) return null;
   const a = minutes(start);
   const b = minutes(end);
-  if (a === null || b === null) return null;
+  if (a == null || b == null) return null;
   let delta = b - a;
   if (delta <= 0) delta += 24 * 60;
   const brk = Math.max(0, Number(breakMinutes) || 0);

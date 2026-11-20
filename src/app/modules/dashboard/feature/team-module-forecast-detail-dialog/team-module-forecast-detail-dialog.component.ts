@@ -56,7 +56,7 @@ import {
 } from '../../utils/team-module-forecast-format.util';
 
 const csvHours = (h: number): string => h.toFixed(1);
-const csvRate = (r: number | null): string => (r === null ? '' : (r * 100).toFixed(1));
+const csvRate = (r: number | null): string => (r == null ? '' : (r * 100).toFixed(1));
 
 /** The module table as CSV rows (header first), hours in one decimal, rates as percents. */
 export function moduleForecastCsv(items: readonly ModuleForecastItem[]): string[][] {
@@ -166,7 +166,7 @@ export class TeamModuleForecastDetailDialogComponent {
   protected readonly tiles = computed<KpiTile[]>(() => {
     const t = this.store.data()?.totals;
     if (!t) return [];
-    const short = t.teamRate !== null && t.requiredRate !== null && t.teamRate < t.requiredRate;
+    const short = t.teamRate != null && t.requiredRate != null && t.teamRate < t.requiredRate;
     return [
       {
         label: 'Allocated',

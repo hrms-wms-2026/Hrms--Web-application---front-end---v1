@@ -164,7 +164,7 @@ export class TeamStatusDetailDialogComponent {
       { label: 'On leave', value: g.onLeave, hint: ofTeam(g.onLeave), icon: 'layers', tone: 'accent', testId: 'wbld-tile-leave' },
       {
         label: 'Avg working time',
-        value: average === null ? '—' : minutesText(average),
+        value: average == null ? '—' : minutesText(average),
         hint: this.averageChange() ?? 'per person with a record this week',
         icon: 'clock',
         tone: 'neutral',
@@ -175,8 +175,8 @@ export class TeamStatusDetailDialogComponent {
     if (rate !== 'error') {
       tiles.push({
         label: 'Attendance rate',
-        value: rate === null || rate.periodRate === null ? '—' : formatPercent(rate.periodRate, 100),
-        hint: rate === null ? 'Loading…' : rate.deltaPp === null ? 'this week' : `${arrow(rate.deltaPp)} ${Math.abs(Math.round(rate.deltaPp * 10) / 10)} pts vs last week`,
+        value: rate == null || rate.periodRate == null ? '—' : formatPercent(rate.periodRate, 100),
+        hint: rate == null ? 'Loading…' : rate.deltaPp == null ? 'this week' : `${arrow(rate.deltaPp)} ${Math.abs(Math.round(rate.deltaPp * 10) / 10)} pts vs last week`,
         icon: 'check-circle',
         tone: 'success',
         testId: 'wbld-tile-rate',
@@ -191,7 +191,7 @@ export class TeamStatusDetailDialogComponent {
   protected readonly averageChange = computed(() => {
     const now = this.average();
     const before = averageWorked(this.lastWeek());
-    if (now === null || before === null || before <= 0) return null;
+    if (now == null || before == null || before <= 0) return null;
     const change = Math.round(((now - before) * 1000) / before) / 10;
     return `${arrow(change)} ${Math.abs(change)}% vs last week`;
   });

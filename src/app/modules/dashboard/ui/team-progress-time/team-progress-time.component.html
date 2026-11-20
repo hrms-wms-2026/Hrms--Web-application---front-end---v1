@@ -102,9 +102,9 @@
               </span>
               <span
                 class="tpt-util"
-                [class.tpt-util--over]="w.utilizationPercent !== null && w.utilizationPercent > 100"
+                [class.tpt-util--over]="w.utilizationPercent != null && w.utilizationPercent > 100"
                 [attr.title]="
-                  w.expectedMinutes === null
+                  w.expectedMinutes == null
                     ? 'No working hours set for their legal entity'
                     : 'Planned of ' + minutes(w.expectedMinutes) + ' expected'
                 "

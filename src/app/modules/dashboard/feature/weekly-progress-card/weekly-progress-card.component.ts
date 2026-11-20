@@ -124,7 +124,7 @@ export class WeeklyProgressCardComponent implements OnInit {
   protected readonly delta = computed<WeeklyDelta | null>(() => {
     const data = this.shown();
     const points = data ? progressDeltaPoints(data) : null;
-    if (points === null) return null;
+    if (points == null) return null;
     return deltaOf(Math.round(points));
   });
 

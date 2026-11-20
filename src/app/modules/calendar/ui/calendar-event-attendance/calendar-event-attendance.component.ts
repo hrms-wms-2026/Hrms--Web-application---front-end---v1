@@ -86,7 +86,7 @@ export class CalendarEventAttendanceComponent implements OnInit {
   }
 
   protected formatDuration(seconds: number | null): string {
-    if (seconds === null) return '';
+    if (seconds == null) return '';
     const minutes = Math.round(seconds / 60);
     return `${minutes}m`;
   }

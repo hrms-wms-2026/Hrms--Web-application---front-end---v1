@@ -34,7 +34,7 @@ function whenOf(change: InboxChangeDto): string {
  *  "3" (extra seats) or "Low → High" (a priority edit) read wrongly without their label, so they stay detail lines. */
 function namesTheCase(c: InboxChangeDto): boolean {
   const value = (c.after ?? '').trim();
-  const isChange = c.before !== null && c.before !== '' && c.before !== c.after;
+  const isChange = c.before != null && c.before !== '' && c.before !== c.after;
   return !isChange && (c.kind === 'text' || c.kind === 'select') && value !== '' && !/^\d+(\.\d+)?$/.test(value);
 }
 
@@ -51,7 +51,7 @@ export function summarize(changes: readonly InboxChangeDto[]): CaseSummary | nul
   const headRow = first && namesTheCase(first) ? first : null;
   const line = (c: InboxChangeDto): CaseSummaryLine => ({
     label: c.label,
-    before: c.before !== null && c.before !== '' && c.before !== c.after ? displayChangeValue(c, c.before) : null,
+    before: c.before != null && c.before !== '' && c.before !== c.after ? displayChangeValue(c, c.before) : null,
     after: displayChangeValue(c, c.after)
   });
   return {

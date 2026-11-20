@@ -96,7 +96,7 @@ export class PositionSeatPreviewComponent {
   }
 
   hasAvatarUrl(item: OccupantPreviewItem): boolean {
-    return this.avatarUrl(item) !== null;
+    return this.avatarUrl(item) != null;
   }
 
   /** Safe initials to display (falls back to '?' which backend also sends as its defensive default). */

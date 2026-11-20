@@ -54,7 +54,7 @@ export function overlapSegments(block: MinuteRange, busy: readonly BusyInterval[
  * end of work when those come later, in 15-minute steps and never under 15. */
 export function dropLength(remainingMinutes: number | null, startMinute: number, nextItemStart: number | null,
   workEnd: number | null): number {
-  const limits = [nextItemStart, workEnd, DAY_MINUTES].filter((m): m is number => m !== null && m > startMinute);
+  const limits = [nextItemStart, workEnd, DAY_MINUTES].filter((m): m is number => m != null && m > startMinute);
   const room = Math.min(...limits) - startMinute;
   const wanted = Math.min(remainingMinutes ?? DEFAULT_DROP_MINUTES, room);
   return Math.max(SNAP_MINUTES, Math.floor(wanted / SNAP_MINUTES) * SNAP_MINUTES);
@@ -102,7 +102,7 @@ export function windowMinutes(w: PlannerWorkWindow): { start: number; end: numbe
   const breakStart = w.breakStart && w.breakMinutes > 0 ? clockMinutes(w.breakStart) : null;
   return {
     start: clockMinutes(w.workStart), end: clockMinutes(w.workEnd),
-    breakStart, breakEnd: breakStart === null ? null : breakStart + w.breakMinutes,
+    breakStart, breakEnd: breakStart == null ? null : breakStart + w.breakMinutes,
   };
 }
 

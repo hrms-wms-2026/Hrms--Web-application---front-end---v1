@@ -92,7 +92,7 @@ export function plannedActualTiles(
   previous?: PlannedActualSummary | null,
 ): KpiTile[] {
   let inPlanHint: string | undefined;
-  if (previous && s.inPlanPercent !== null && previous.inPlanPercent !== null) {
+  if (previous && s.inPlanPercent != null && previous.inPlanPercent != null) {
     const change = round1(s.inPlanPercent - previous.inPlanPercent);
     inPlanHint =
       change === 0
@@ -118,7 +118,7 @@ export function plannedActualTiles(
     },
     {
       label: 'In plan',
-      value: s.inPlanPercent === null ? '—' : `${s.inPlanPercent}%`,
+      value: s.inPlanPercent == null ? '—' : `${s.inPlanPercent}%`,
       hint: inPlanHint,
       icon: 'check-circle',
       tone: 'success',

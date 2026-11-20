@@ -279,7 +279,7 @@ export class TeamAttendanceCardComponent implements OnInit {
   }
 
   protected percentText(rate: number | null): string {
-    return rate === null ? '—' : `${rate}%`;
+    return rate == null ? '—' : `${rate}%`;
   }
 
   protected avatarUrl(fileId: string | null): string | null {

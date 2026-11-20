@@ -103,7 +103,7 @@ export class EmployeeDirectoryTableComponent {
 
         const managerIds = employees
           .map((employee) => employee.reportingManagerId)
-          .filter((id): id is string => id !== null);
+          .filter((id): id is string => id != null);
         void this.directory.ensureLoaded(managerIds);
       });
     });

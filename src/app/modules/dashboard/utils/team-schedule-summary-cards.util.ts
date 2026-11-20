@@ -73,8 +73,8 @@ export function teamScheduleSummaryCards(dayData: TeamScheduleResponse, week: Te
       body: week
         ? {
             kind: 'meter',
-            figure: coverage === null ? '—' : `${Math.round(coverage)}%`,
-            delta: coverage === null || previousCoverage === null ? null : summaryDelta(coverage - previousCoverage, 'pp', true, 'vs last week'),
+            figure: coverage == null ? '—' : `${Math.round(coverage)}%`,
+            delta: coverage == null || previousCoverage == null ? null : summaryDelta(coverage - previousCoverage, 'pp', true, 'vs last week'),
             percent: coverage,
             caption: plannerOn ? `${hours(week.totals.scheduledMinutes)} / ${hours(week.totals.plannedMinutes)} h planned` : 'Planner is off'
           }

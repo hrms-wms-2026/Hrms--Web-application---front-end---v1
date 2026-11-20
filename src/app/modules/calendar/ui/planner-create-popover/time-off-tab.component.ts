@@ -67,7 +67,7 @@ export class TimeOffTabComponent implements OnInit {
   readonly needsDocument = computed(() => {
     const type = this.activeTypes().find((t) => t.id === this.leaveTypeId());
     if (!type?.requiresDocument) return false;
-    return type.documentRequiredAfterHours === null || this.hours() > type.documentRequiredAfterHours;
+    return type.documentRequiredAfterHours == null || this.hours() > type.documentRequiredAfterHours;
   });
   readonly overBalance = computed(() => (this.requests.previewResult()?.exceedsBalanceByHours ?? 0) > 0);
   /** The policy preview: hours, the balance left (or how far over it), and the approvers in their order. */

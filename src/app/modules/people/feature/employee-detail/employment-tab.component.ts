@@ -252,7 +252,7 @@ export class EmployeeEmploymentTabComponent {
     const job = this.employee().jobInformation;
     const joined = formatJourneyDate(job.hireDate);
     const probationEnd = parseIsoDate(job.probationEndDate);
-    const onProbation = probationEnd !== null && probationEnd >= new Date();
+    const onProbation = probationEnd != null && probationEnd >= new Date();
     return [
       { id: 'tenure', label: 'Tenure', value: formatCompactTenure(job.hireDate), hint: joined ? `Since ${joined}` : '', tone: 'blue' },
       {

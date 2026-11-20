@@ -125,7 +125,7 @@
                 <span><i class="tsd-key-unscheduled"></i>Unscheduled</span>
                 <span><i class="tsd-key-leave"></i>On leave</span>
                 <span><i class="tsd-key-cancelled" [style.background]="colors.meeting"></i>Cancelled</span>
-                @if (nowLeft() !== null) {
+                @if (nowLeft() != null) {
                   <span><i class="tsd-key-now"></i>Now</span>
                 }
               </span>
@@ -338,7 +338,7 @@
                       <td class="tsd-hash">
                         <span
                           class="tsd-rank"
-                          [class.tsd-rank--top]="m.rank !== null && m.rank <= 3"
+                          [class.tsd-rank--top]="m.rank != null && m.rank <= 3"
                           >{{ m.rank ?? '—' }}</span
                         >
                       </td>
@@ -354,7 +354,7 @@
                       </th>
                       <td>
                         <span class="tsd-score-cell">
-                          @if (m.score !== null) {
+                          @if (m.score != null) {
                             <span
                               class="tsd-score"
                               data-testid="tsd-score"
@@ -369,7 +369,7 @@
                           } @else {
                             <span class="tsd-parts">
                               @if (
-                                m.itemCompletionPercent !== null || m.timeCoveragePercent !== null
+                                m.itemCompletionPercent != null || m.timeCoveragePercent != null
                               ) {
                                 Items {{ percent(m.itemCompletionPercent) }} · Time
                                 {{ percent(m.timeCoveragePercent) }} ·
@@ -610,7 +610,7 @@
                     </th>
                     <td>
                       <span class="tsd-score-cell">
-                        @if (w.coveragePercent !== null) {
+                        @if (w.coveragePercent != null) {
                           <span class="tsd-score" data-testid="tsd-week-coverage">{{
                             percent(w.coveragePercent)
                           }}</span>

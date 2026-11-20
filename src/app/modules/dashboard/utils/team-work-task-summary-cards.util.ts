@@ -50,8 +50,8 @@ export function teamWorkTaskSummaryCards(data: TeamWorkTaskHoursResponse): Summa
       state: 'ready',
       body: {
         kind: 'spark',
-        figure: share === null ? '—' : `${Math.round(share)}%`,
-        delta: share === null || p.utilization === null ? null : summaryDelta(share - p.utilization, 'pp', true, versus),
+        figure: share == null ? '—' : `${Math.round(share)}%`,
+        delta: share == null || p.utilization == null ? null : summaryDelta(share - p.utilization, 'pp', true, versus),
         points: data.trend.map((d) => d.utilization)
       }
     },

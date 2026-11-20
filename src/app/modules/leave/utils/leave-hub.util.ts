@@ -35,13 +35,13 @@ function localDayNumber(iso: string): number {
  */
 export function leaveDurationLabel(startAt: string, endAt: string, totalHours: number, workdayHours: number | null): string {
   const days = Math.max(1, localDayNumber(endAt) - localDayNumber(startAt) + 1);
-  if (days === 1 && workdayHours !== null && workdayHours > 0 && totalHours < workdayHours) return `${totalHours.toFixed(2)} h`;
+  if (days === 1 && workdayHours != null && workdayHours > 0 && totalHours < workdayHours) return `${totalHours.toFixed(2)} h`;
   return days === 1 ? '1 day' : `${days} days`;
 }
 
 /** "1 day", "½ day", "2.5 days": hours over the work day (rounded to halves), else the calendar days covered. */
 export function leaveDayCountLabel(startAt: string, endAt: string, totalHours: number, workdayHours: number | null): string {
-  const days = workdayHours !== null && workdayHours > 0
+  const days = workdayHours != null && workdayHours > 0
     ? Math.max(0.5, Math.round((totalHours / workdayHours) * 2) / 2)
     : Math.max(1, localDayNumber(endAt) - localDayNumber(startAt) + 1);
   if (days === 0.5) return '½ day';

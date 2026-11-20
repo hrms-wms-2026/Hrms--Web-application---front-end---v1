@@ -6,13 +6,13 @@ import { MeetingAttendanceOutcome, MeetingAttendanceSyncStatus } from '../models
  */
 export function attendanceOutcomeLabel(outcome: MeetingAttendanceOutcome | null, status: MeetingAttendanceSyncStatus): string {
   if (outcome === 'joined') return 'Joined';
-  if (status === 'synced' && (outcome === 'no_join_recorded' || outcome === null)) return 'No join recorded';
+  if (status === 'synced' && (outcome === 'no_join_recorded' || outcome == null)) return 'No join recorded';
   return 'Unknown';
 }
 
 /** Seconds attended as "1h 5m" / "25m"; nothing for an unknown time. */
 export function formatAttended(seconds: number | null): string {
-  if (seconds === null) return '—';
+  if (seconds == null) return '—';
   const minutes = Math.round(seconds / 60);
   const hours = Math.floor(minutes / 60);
   return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;

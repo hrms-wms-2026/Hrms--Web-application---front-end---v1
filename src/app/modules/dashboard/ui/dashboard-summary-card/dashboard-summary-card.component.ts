@@ -23,13 +23,13 @@ interface Spark {
 
 /** Line and area paths for a sparkline in a 100 x 38 box; a missing point breaks the line. */
 function sparkPaths(points: readonly (number | null)[]): Spark {
-  const values = points.filter((p): p is number => p !== null && Number.isFinite(p));
+  const values = points.filter((p): p is number => p != null && Number.isFinite(p));
   if (values.length === 0) return { line: '', area: '' };
   const min = Math.min(...values);
   const range = Math.max(...values) - min || 1;
   const last = Math.max(points.length - 1, 1);
   const xy = points.map((p, i) =>
-    p === null || !Number.isFinite(p) ? null : { x: (i * 100) / last, y: SPARK_H - 4 - ((p - min) / range) * (SPARK_H - 4 - SPARK_TOP) }
+    p == null || !Number.isFinite(p) ? null : { x: (i * 100) / last, y: SPARK_H - 4 - ((p - min) / range) * (SPARK_H - 4 - SPARK_TOP) }
   );
   const segments: { x: number; y: number }[][] = [];
   let run: { x: number; y: number }[] = [];
@@ -185,11 +185,11 @@ export class DashboardSummaryCardComponent {
   }
 
   protected pct(value: number | null): number {
-    return value === null || !Number.isFinite(value) ? 0 : Math.min(Math.max(value, 0), 100);
+    return value == null || !Number.isFinite(value) ? 0 : Math.min(Math.max(value, 0), 100);
   }
 
   protected percentText(value: number | null): string {
-    return value === null || !Number.isFinite(value) ? '—' : `${Math.round(value)}%`;
+    return value == null || !Number.isFinite(value) ? '—' : `${Math.round(value)}%`;
   }
 
   /** A card's refresh replay (dashboard-motion.css) restarts a no-op animation on the card; play again. */

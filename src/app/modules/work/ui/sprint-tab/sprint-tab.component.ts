@@ -33,7 +33,7 @@ const openSprintMenuId = signal<string | null>(null);
           <span class="sprint-tab__dates">{{ sprint().startDate | date: 'MMM d, y' }} – {{ sprint().endDate | date: 'MMM d, y' }}</span>
           @if (isOverdue()) {
             <span class="sprint-tab__overdue">{{ daysOverdue() }} day{{ daysOverdue() === 1 ? '' : 's' }} overdue</span>
-          } @else if (sprint().status === 'active' && daysRemaining() !== null) {
+          } @else if (sprint().status === 'active' && daysRemaining() != null) {
             <span class="sprint-tab__remaining">{{ daysRemaining() }} day{{ daysRemaining() === 1 ? '' : 's' }} remaining</span>
           }
         }

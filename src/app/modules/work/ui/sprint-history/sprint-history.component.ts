@@ -121,6 +121,6 @@ export class SprintHistoryComponent {
       count = null;
     }
 
-    return count === null ? template.replace('{n} ', '') : template.replace('{n}', String(count));
+    return count == null ? template.replace('{n} ', '') : template.replace('{n}', String(count));
   }
 }

@@ -14,7 +14,7 @@ export const TEAM_ATTENDANCE_CARD_COLORS = { ...TONE, ...CHIP } as const;
 /** A department under this rate gets the shade-3 (old amber) tone. */
 const DEPARTMENT_WARN_RATE = 90;
 
-const pct = (rate: number | null): string => (rate === null ? '—' : `${rate}%`);
+const pct = (rate: number | null): string => (rate == null ? '—' : `${rate}%`);
 
 /** The attention ranking as fetched with sort 'attention' (null while loading). */
 export interface AttentionRows {
@@ -69,7 +69,7 @@ export function teamAttendanceSummaryCards(data: TeamAttendanceSummaryResponse, 
         rows: departmentsWorstFirst(data.departmentRates).slice(0, SUMMARY_CARD_ROWS).map((d) => ({
           label: d.name,
           percent: d.rate,
-          tone: d.rate !== null && d.rate < DEPARTMENT_WARN_RATE ? CHIP.late : TONE.departments
+          tone: d.rate != null && d.rate < DEPARTMENT_WARN_RATE ? CHIP.late : TONE.departments
         }))
       }
     },

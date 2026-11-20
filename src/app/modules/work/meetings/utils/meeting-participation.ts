@@ -36,7 +36,7 @@ export function participationOf(
   const row = rowFor(attendee, attendance.rows);
   if (row?.outcome === 'joined') {
     const meetingSeconds = (Date.parse(endUtc) - Date.parse(startUtc)) / 1000;
-    if (row.attendedSeconds !== null && meetingSeconds > 0 && row.attendedSeconds < meetingSeconds * LEFT_EARLY_SHARE) return 'left_early';
+    if (row.attendedSeconds != null && meetingSeconds > 0 && row.attendedSeconds < meetingSeconds * LEFT_EARLY_SHARE) return 'left_early';
     return 'attended';
   }
   if (attendance.status === 'synced' && (!row || row.outcome === 'no_join_recorded')) return 'absent';

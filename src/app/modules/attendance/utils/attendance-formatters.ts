@@ -101,7 +101,7 @@ export function formatClockTime(value: string | null, timezone?: string | null):
 }
 
 export function formatMinutes(value: number | null): string {
-  if (value === null || value < 0) {
+  if (value == null || value < 0) {
     return '—';
   }
   const hours = Math.floor(value / 60);
@@ -179,11 +179,11 @@ export function checkInLocationLabel(
   if (trimmedAddress) {
     return trimmedAddress;
   }
-  if (latitude === null || longitude === null) {
+  if (latitude == null || longitude == null) {
     return 'Location unavailable';
   }
   const coords = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-  return accuracy !== null ? `${coords} (±${Math.round(accuracy)} m)` : coords;
+  return accuracy != null ? `${coords} (±${Math.round(accuracy)} m)` : coords;
 }
 
 export function formatWorkAreaDate(value: string, timezone: string | null | undefined): string {

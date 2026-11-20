@@ -19,7 +19,7 @@
             data-testid="leave-type-chip"
             [class.nlw-chip--active]="draft().leaveTypeId === type.id"
             [attr.aria-pressed]="draft().leaveTypeId === type.id"
-            [title]="remainingHoursFor(type.id) === null ? type.name : type.name + ' - ' + remainingHoursFor(type.id) + ' hours remaining'"
+            [title]="remainingHoursFor(type.id) == null ? type.name : type.name + ' - ' + remainingHoursFor(type.id) + ' hours remaining'"
             (click)="onLeaveTypeChange(type.id)"
           >
             <app-leave-type-icon class="nlw-chip__icon" [name]="type.name" [code]="type.code" [color]="type.color" [icon]="type.icon" />

@@ -123,7 +123,7 @@ export class TeamAttendanceDetailDialogComponent {
       rate: d.rate,
       width: d.rate ?? 0,
       color:
-        d.rate === null
+        d.rate == null
           ? TEAM_ATTENDANCE_COLORS.leave
           : d.rate >= 90
             ? TEAM_ATTENDANCE_COLORS.present
@@ -196,7 +196,7 @@ export class TeamAttendanceDetailDialogComponent {
   }
 
   protected percentText(rate: number | null): string {
-    return rate === null ? '—' : `${rate}%`;
+    return rate == null ? '—' : `${rate}%`;
   }
 
   protected cellLabel(bucket: TeamAttendanceBucket): string {
@@ -226,13 +226,13 @@ export class TeamAttendanceDetailDialogComponent {
       }
       const header = ['Rank', 'Name', 'Department', ...data.trend.map((p) => p.date), 'Attended', 'Eligible days', 'Rate %'];
       const lines = items.map((r) => [
-        r.rank === null ? '' : String(r.rank),
+        r.rank == null ? '' : String(r.rank),
         r.name,
         r.department ?? '',
         ...r.days.map((d) => this.labels[d.bucket]),
         String(r.attended),
         String(r.eligibleDays),
-        r.rate === null ? '' : String(r.rate)
+        r.rate == null ? '' : String(r.rate)
       ]);
       this.downloadFile(`team-attendance-${data.rangeStart}_${data.rangeEnd}.csv`, toCsv([header, ...lines]));
     } catch {

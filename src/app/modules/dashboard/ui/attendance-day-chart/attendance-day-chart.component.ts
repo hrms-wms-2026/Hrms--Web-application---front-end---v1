@@ -63,7 +63,7 @@ export class AttendanceDayChartComponent {
         key: p.date,
         label,
         title: `${weekday} ${day} ${month}`,
-        valueText: p.rate === null ? '—' : `${p.rate}%`,
+        valueText: p.rate == null ? '—' : `${p.rate}%`,
         chip: expected > 0 ? `${p.present + p.late} of ${expected} in` : undefined,
         segments: [
           { key: 'present', value: p.present, color: TEAM_ATTENDANCE_COLORS.present },
@@ -73,7 +73,7 @@ export class AttendanceDayChartComponent {
         ],
         tooltip:
           `${weekday} ${day} ${month}: ${p.present} present, ${p.late} late, ${p.absent} absent, ${p.onLeave} on leave` +
-          (p.rate === null ? '' : ` (${p.rate}%)`)
+          (p.rate == null ? '' : ` (${p.rate}%)`)
       };
     });
   });
@@ -87,7 +87,7 @@ export class AttendanceDayChartComponent {
     this.points()
       .map((p) => {
         const { weekday, day, month } = parts(p.date);
-        return `${weekday} ${day} ${month}: ${p.rate === null ? 'no data' : `${p.rate}%`}`;
+        return `${weekday} ${day} ${month}: ${p.rate == null ? 'no data' : `${p.rate}%`}`;
       })
       .join('; ')
   );

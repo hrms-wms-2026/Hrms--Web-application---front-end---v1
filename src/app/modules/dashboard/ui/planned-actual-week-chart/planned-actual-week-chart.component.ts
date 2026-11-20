@@ -61,7 +61,7 @@ export class PlannedActualWeekChartComponent {
 
   private isFuture(d: PlannedActualDay): boolean {
     const today = this.today();
-    return today !== null && d.date > today;
+    return today != null && d.date > today;
   }
 
   protected readonly bars = computed<DashboardBar[]>(() => {
@@ -71,7 +71,7 @@ export class PlannedActualWeekChartComponent {
       const future = this.isFuture(d);
       const label = this.label(d, i);
       const actual = actualOf(d);
-      const coverageText = coverage && d.coveragePercent !== null ? ` · coverage ${d.coveragePercent}%` : '';
+      const coverageText = coverage && d.coveragePercent != null ? ` · coverage ${d.coveragePercent}%` : '';
       return {
         key: d.date,
         label,
@@ -91,7 +91,7 @@ export class PlannedActualWeekChartComponent {
           ? `${label}: planned ${minutesText(d.planned)}`
           : `${label}: planned ${minutesText(d.planned)}, actual ${minutesText(actual)} ` +
             `(${minutesText(d.scheduled)} in plan, ${minutesText(d.outside)} outside slot, ${minutesText(d.noPlan)} no plan)` +
-            (coverage && d.coveragePercent !== null ? `, coverage ${d.coveragePercent}%` : '')
+            (coverage && d.coveragePercent != null ? `, coverage ${d.coveragePercent}%` : '')
       };
     });
   });
@@ -115,7 +115,7 @@ export class PlannedActualWeekChartComponent {
         .map((d, i) => {
           const label = this.label(d, i);
           if (this.isFuture(d)) return `${label}: planned ${minutesText(d.planned)}`;
-          const coverage = d.coveragePercent === null ? '' : `, coverage ${d.coveragePercent}%`;
+          const coverage = d.coveragePercent == null ? '' : `, coverage ${d.coveragePercent}%`;
           return `${label}: planned ${minutesText(d.planned)}, actual ${minutesText(actualOf(d))}${coverage}`;
         })
         .join('; ')
