@@ -94,7 +94,9 @@ export class ClockService {
     if (this.visible()) {
       this.refresh();
       this.sync();
-      for (const poll of [...this.polls]) this.run(poll);
+      for (const poll of [...this.polls]) {
+        if (this.polls.has(poll)) this.run(poll);
+      }
     } else {
       this.sync();
     }

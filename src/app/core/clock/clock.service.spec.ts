@@ -204,6 +204,20 @@ describe('ClockService', () => {
       setVisibility('visible');
       expect(late).not.toHaveBeenCalled();
     });
+
+    it('a poll stopped during the catch-up is not called', () => {
+      const clock = TestBed.inject(ClockService);
+      const second = vi.fn();
+      let stopSecond = (): void => undefined;
+      clock.poll(() => {
+        stopSecond();
+      }, 15_000);
+      stopSecond = clock.poll(second, 15_000);
+
+      setVisibility('hidden');
+      setVisibility('visible');
+      expect(second).not.toHaveBeenCalled();
+    });
   });
 
   it('leaves no timer and no listener when the root injector is destroyed', () => {
