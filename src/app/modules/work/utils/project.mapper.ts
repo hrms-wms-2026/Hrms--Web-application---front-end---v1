@@ -69,11 +69,12 @@ function toObjectiveForestNode(item: ObjectiveTreeItemDto, children: MilestoneTr
 export function buildObjectiveForest(items: ObjectiveTreeItemDto[]): MilestoneTreeNode | null {
   if (items.length === 0) return null;
 
+  // The API leaves out a null parentObjectiveId (DEC-070); key roots as null either way.
   const childrenByParent = new Map<string | null, ObjectiveTreeItemDto[]>();
   for (const item of items) {
-    const siblings = childrenByParent.get(item.parentObjectiveId) ?? [];
+    const siblings = childrenByParent.get(item.parentObjectiveId ?? null) ?? [];
     siblings.push(item);
-    childrenByParent.set(item.parentObjectiveId, siblings);
+    childrenByParent.set(item.parentObjectiveId ?? null, siblings);
   }
 
   const roots = childrenByParent.get(null) ?? [];

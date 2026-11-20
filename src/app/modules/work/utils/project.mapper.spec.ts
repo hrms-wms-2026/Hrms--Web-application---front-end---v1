@@ -311,6 +311,15 @@ describe('project.mapper', () => {
       isActive: true, isAchieved: false, progress: 0, ownerName: null, isOwner: false, ...overrides
     });
 
+    it('treats a root whose parentObjectiveId is left out of the JSON as the root', () => {
+      const root = item({ id: 'root', title: 'Default', isDefault: true });
+      delete (root as Partial<ObjectiveTreeItemDto>).parentObjectiveId;
+      const tree = buildObjectiveForest([root, item({ id: 'child', title: 'Child', parentObjectiveId: 'root' })]);
+
+      expect(tree?.id).toBe('root');
+      expect(tree?.children.map((c) => c.id)).toEqual(['child']);
+    });
+
     it('nests a flat list under the default root', () => {
       const tree = buildObjectiveForest([
         item({ id: 'root', title: 'Default', isDefault: true, isOwner: true, progress: 20, ownerName: 'Ada' }),
