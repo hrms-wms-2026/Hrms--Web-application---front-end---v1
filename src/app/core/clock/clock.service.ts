@@ -1,6 +1,6 @@
 // src/app/core/clock/clock.service.ts
 import { DOCUMENT } from '@angular/common';
-import { DestroyRef, Injectable, Signal, WritableSignal, inject, signal } from '@angular/core';
+import { DestroyRef, ErrorHandler, Injectable, Signal, WritableSignal, inject, signal } from '@angular/core';
 
 /** How often a clock signal changes. Show seconds only where the UI counts seconds. */
 export type ClockRate = 'second' | 'minute';
@@ -22,6 +22,7 @@ interface Poll {
 @Injectable({ providedIn: 'root' })
 export class ClockService {
   private readonly document = inject(DOCUMENT);
+  private readonly errorHandler = inject(ErrorHandler);
   private readonly values: Record<ClockRate, WritableSignal<number>> = {
     second: signal(Date.now()),
     minute: signal(Date.now()),
@@ -30,6 +31,7 @@ export class ClockService {
   private readonly timers: Record<ClockRate, ReturnType<typeof setInterval> | null> = { second: null, minute: null };
   private readonly polls = new Set<Poll>();
   private listening = false;
+  private destroyed = false;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
@@ -38,6 +40,7 @@ export class ClockService {
       for (const poll of this.polls) this.stopPoll(poll);
       this.polls.clear();
       this.sync();
+      this.destroyed = true;
     });
   }
 
@@ -48,14 +51,15 @@ export class ClockService {
 
   /** Counts one reader of `rate` and returns the function that releases it (safe to call twice). */
   acquire(rate: ClockRate): () => void {
+    if (this.destroyed) return () => undefined;
     this.readers[rate]++;
-    this.values[rate].set(Date.now());
+    if (this.timers[rate] === null) this.values[rate].set(Date.now());
     this.sync();
     let released = false;
     return () => {
       if (released) return;
       released = true;
-      this.readers[rate]--;
+      this.readers[rate] = Math.max(0, this.readers[rate] - 1);
       this.sync();
     };
   }
@@ -71,6 +75,7 @@ export class ClockService {
    * not call at start: the caller does its first load itself. Returns the stop function (safe to call twice).
    */
   poll(callback: () => void, periodMs: number): () => void {
+    if (this.destroyed) return () => undefined;
     const poll: Poll = { callback, periodMs, timer: null };
     this.polls.add(poll);
     this.sync();
@@ -88,13 +93,25 @@ export class ClockService {
   private readonly onVisibilityChange = (): void => {
     if (this.visible()) {
       this.refresh();
-      for (const poll of this.polls) poll.callback();
+      this.sync();
+      for (const poll of [...this.polls]) this.run(poll);
+    } else {
+      this.sync();
     }
-    this.sync();
   };
+
+  /** Runs one poll; a failing callback goes to Angular's ErrorHandler and never stops the clock or other polls. */
+  private run(poll: Poll): void {
+    try {
+      poll.callback();
+    } catch (error) {
+      this.errorHandler.handleError(error);
+    }
+  }
 
   /** Starts or stops each timer and the visibility listener to match the readers, the polls and the tab state. */
   private sync(): void {
+    if (this.destroyed) return;
     const visible = this.visible();
     for (const rate of RATES) {
       const timer = this.timers[rate];
@@ -109,7 +126,7 @@ export class ClockService {
     for (const poll of this.polls) {
       if (visible && poll.timer === null) {
         poll.timer = setInterval(() => {
-          if (this.visible()) poll.callback();
+          if (this.visible()) this.run(poll);
         }, poll.periodMs);
       } else if (!visible) {
         this.stopPoll(poll);
@@ -134,6 +151,7 @@ export class ClockService {
 /**
  * The current time (epoch ms) at `rate`, for a component or directive. Call it in an injection context (a field
  * initializer or the constructor); the clock stops counting this reader when the caller is destroyed.
+ * Do not call it from a root service: that reader is never destroyed, so the clock would never be released.
  */
 export function injectNow(rate: ClockRate = 'minute'): Signal<number> {
   const clock = inject(ClockService);

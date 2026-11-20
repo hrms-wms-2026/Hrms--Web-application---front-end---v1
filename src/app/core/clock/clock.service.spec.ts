@@ -1,5 +1,5 @@
 // src/app/core/clock/clock.service.spec.ts
-import { Component } from '@angular/core';
+import { Component, ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type MockInstance, vi } from 'vitest';
 import { ClockService, injectNow } from './clock.service';
@@ -24,7 +24,9 @@ let setSpy: MockInstance<typeof setInterval>;
 let clearSpy: MockInstance<typeof clearInterval>;
 
 function activeIntervals(): number {
-  return setSpy.mock.calls.length - clearSpy.mock.calls.length;
+  const live = new Set(setSpy.mock.results.map((r) => r.value as unknown));
+  for (const call of clearSpy.mock.calls) live.delete(call[0]);
+  return live.size;
 }
 
 describe('ClockService', () => {
@@ -141,13 +143,84 @@ describe('ClockService', () => {
     });
   });
 
-  it('leaves no timer and no listener when the root injector is destroyed', () => {
-    const remove = vi.spyOn(document, 'removeEventListener');
-    TestBed.inject(ClockService).poll(vi.fn(), 15_000);
+  it('one second reader and one minute reader run two intervals', () => {
+    TestBed.createComponent(SecondReaderComponent);
     TestBed.createComponent(MinuteReaderComponent);
+    expect(activeIntervals()).toBe(2);
+  });
+
+  it('a second reader of a running rate does not change the value the first reader sees', () => {
+    const a = TestBed.createComponent(MinuteReaderComponent);
+    const start = a.componentInstance.now();
+    vi.advanceTimersByTime(10_000);
+    TestBed.createComponent(MinuteReaderComponent);
+    expect(a.componentInstance.now()).toBe(start);
+  });
+
+  it('starts nothing after the root injector is destroyed', () => {
+    const clock = TestBed.inject(ClockService);
     TestBed.resetTestingModule();
+    const release = clock.acquire('minute');
+    const stop = clock.poll(vi.fn(), 15_000);
     expect(activeIntervals()).toBe(0);
-    expect(remove).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
-    remove.mockRestore();
+    expect(() => {
+      release();
+      stop();
+    }).not.toThrow();
+  });
+
+  describe('a failing poll', () => {
+    it('does not stop the other polls or the clocks when the tab becomes visible', () => {
+      const handleError = vi.fn();
+      TestBed.configureTestingModule({ providers: [{ provide: ErrorHandler, useValue: { handleError } }] });
+      const reader = TestBed.createComponent(MinuteReaderComponent);
+      const start = reader.componentInstance.now();
+      const clock = TestBed.inject(ClockService);
+      const failure = new Error('poll failed');
+      clock.poll(() => {
+        throw failure;
+      }, 15_000);
+      const healthy = vi.fn();
+      clock.poll(healthy, 15_000);
+
+      setVisibility('hidden');
+      setVisibility('visible');
+      expect(healthy).toHaveBeenCalledTimes(1);
+      expect(handleError).toHaveBeenCalledWith(failure);
+      expect(activeIntervals()).toBe(3);
+
+      vi.advanceTimersByTime(60_000);
+      expect(reader.componentInstance.now()).toBe(start + 60_000);
+    });
+
+    it('a poll registered during the catch-up does not fire in the same loop', () => {
+      const clock = TestBed.inject(ClockService);
+      const late = vi.fn();
+      clock.poll(() => {
+        clock.poll(late, 15_000);
+      }, 15_000);
+
+      setVisibility('hidden');
+      setVisibility('visible');
+      expect(late).not.toHaveBeenCalled();
+    });
+  });
+
+  it('leaves no timer and no listener when the root injector is destroyed', () => {
+    const add = vi.spyOn(document, 'addEventListener');
+    const remove = vi.spyOn(document, 'removeEventListener');
+    try {
+      TestBed.inject(ClockService).poll(vi.fn(), 15_000);
+      TestBed.createComponent(MinuteReaderComponent);
+      TestBed.resetTestingModule();
+      expect(activeIntervals()).toBe(0);
+      const added = add.mock.calls.find((call) => call[0] === 'visibilitychange')?.[1];
+      const removed = remove.mock.calls.find((call) => call[0] === 'visibilitychange')?.[1];
+      expect(added).toBeDefined();
+      expect(removed).toBe(added);
+    } finally {
+      add.mockRestore();
+      remove.mockRestore();
+    }
   });
 });
