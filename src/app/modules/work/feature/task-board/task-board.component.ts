@@ -10,6 +10,7 @@ import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { injectNow } from '../../../../core/clock/clock.service';
 import { TaskBoardStore } from '../../state/task-board.store';
 import { ProjectDetailStore } from '../../state/project-detail.store';
 import { WorkPageToolbarStore } from '../../state/work-page-toolbar.store';
@@ -161,8 +162,8 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   protected readonly projectId = signal('');
   protected readonly meetings = signal<readonly MeetingListItem[]>([]);
   /** Ticks every minute so a meeting moves from To Do to In Process to Done as its time passes. */
-  private readonly now = signal(new Date());
-  private readonly clockTimer = setInterval(() => this.now.set(new Date()), 60_000);
+  private readonly minute = injectNow('minute');
+  private readonly now = computed(() => new Date(this.minute()));
   protected readonly openMeeting = signal<{ seriesId: string; originalStart: string } | null>(null);
   protected readonly isOfficeProject = computed(() => this.projectStore.project()?.systemPurpose === 'office');
   protected readonly sprints = signal<Sprint[]>([]);
@@ -373,7 +374,6 @@ export class TaskBoardComponent implements OnInit, AfterViewChecked, AfterViewIn
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.clockTimer);
     this.toolbarStore.setTemplate(null);
   }
 
