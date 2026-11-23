@@ -5,7 +5,7 @@
  * each spec file. So everything here is installed once per worker, and the `afterEach` below undoes the global
  * changes a spec can leave behind, whatever order the files run in.
  */
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 
 interface TestGlobals {
   __testSetupInstalled?: boolean;
@@ -60,20 +60,31 @@ if (!testGlobals.__testSetupInstalled) {
   pinDefaultLocale();
 }
 
+/** Put back the frame functions and the tab state a spec may have stubbed, so every test starts from the same globals. */
+function restoreSharedGlobals(): void {
+  // Always the real ones, not only when missing: `unstubAllGlobals` can put back a stale fake-timer
+  // requestAnimationFrame when a spec stubbed it while fake timers were on, and that one never fires again.
+  if (testGlobals.__nativeRequestAnimationFrame) globalThis.requestAnimationFrame = testGlobals.__nativeRequestAnimationFrame;
+  if (testGlobals.__nativeCancelAnimationFrame) globalThis.cancelAnimationFrame = testGlobals.__nativeCancelAnimationFrame;
+  // Specs fake the tab state with an own property on document; removing it brings back the real getter.
+  Reflect.deleteProperty(document, 'visibilityState');
+  Reflect.deleteProperty(document, 'hidden');
+  // jsdom has no matchMedia, so an own property on window is always a spec's stub (often "reduce motion").
+  if (Object.prototype.hasOwnProperty.call(window, 'matchMedia')) Reflect.deleteProperty(window, 'matchMedia');
+}
+
 /**
- * Undo what a spec can leave behind for the next file in the same worker. It runs after the spec's own `afterEach`.
- * Real timers come back first, so that restoring the globals afterwards is not undone by the fake-timer cleanup.
+ * Before each test: start from clean globals even if something outlived the previous test. `useFakeTimers` cannot
+ * fake requestAnimationFrame while it is missing, so a missing one would silently turn animations into jumps.
+ */
+beforeEach(() => restoreSharedGlobals());
+
+/**
+ * After each test, after the spec's own `afterEach`: real timers come back first, so that restoring the globals
+ * afterwards is not undone by the fake-timer cleanup.
  */
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
-  if (typeof globalThis.requestAnimationFrame !== 'function' && testGlobals.__nativeRequestAnimationFrame) {
-    globalThis.requestAnimationFrame = testGlobals.__nativeRequestAnimationFrame;
-  }
-  if (typeof globalThis.cancelAnimationFrame !== 'function' && testGlobals.__nativeCancelAnimationFrame) {
-    globalThis.cancelAnimationFrame = testGlobals.__nativeCancelAnimationFrame;
-  }
-  // Specs fake the tab state with an own property on document; removing it brings back the real getter.
-  Reflect.deleteProperty(document, 'visibilityState');
-  Reflect.deleteProperty(document, 'hidden');
+  restoreSharedGlobals();
 });
