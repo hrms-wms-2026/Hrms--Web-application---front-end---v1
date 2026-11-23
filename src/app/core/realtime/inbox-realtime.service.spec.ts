@@ -125,6 +125,16 @@ describe('InboxRealtimeService', () => {
     });
   });
 
+  it('re-emits notificationsChanged so the bell can refresh its count', async () => {
+    await connect();
+    const changed = vi.fn();
+    service.notificationsChanged$.subscribe(changed);
+
+    hub.handlers.get('notificationsChanged')!({});
+
+    expect(changed).toHaveBeenCalledWith({});
+  });
+
   it('re-emits hub events on the matching streams', async () => {
     await connect();
     const created = vi.fn();
