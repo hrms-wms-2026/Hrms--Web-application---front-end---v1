@@ -21,7 +21,6 @@
   "src/app/modules/leave/feature/time-off-hub/time-off-hub.component.css": 1,
   "src/app/modules/leave/models/leave-type.model.ts": 8,
   "src/app/modules/leave/ui/leave-type-form-modal/leave-type-form-modal.component.css": 16,
-  "src/app/modules/leave/ui/leave-type-form-modal/leave-type-form-modal.component.html": 1,
   "src/app/modules/organization/feature/general-settings/office-location-picker/office-location-picker.component.ts": 2,
   "src/app/modules/organization/feature/position-management/position-management.component.css": 3,
   "src/app/modules/organization/ui/people-chart-node/people-chart-node.component.ts": 22,
