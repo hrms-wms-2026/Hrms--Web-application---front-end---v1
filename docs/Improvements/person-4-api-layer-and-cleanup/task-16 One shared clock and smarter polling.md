@@ -28,3 +28,14 @@ Polling: the notification bell asks for the unread count every 60 seconds (`noti
 - A search for `setInterval(` in `src/app` finds only the clock service and real animations.
 - With the tab hidden for 5 minutes the network tab shows no polling.
 - The notification count updates within a second of a new notification.
+
+## Status (2026-11-23)
+
+In progress: frontend done, waiting for the backend event. Branch `chore/shared-clock`, plan `docs/superpowers/plans/next/2026-11-20-shared-clock-and-polling.md`.
+
+- Plan Tasks 1–10 done: one `ClockService` (`core/clock`) with a second and a minute clock, one timer per rate only while something reads it, nothing while the tab is hidden. The minute clock turns over on the wall-clock minute.
+- Every "now" reader moved to `injectNow()`: task clock, task history, revert banner, greeting, today at a glance, calendar grid, conversation panel, popout header, time-off hub, task board, and the dashboard team cards.
+- Polls moved to `ClockService.poll()`, so they stop while the tab is hidden and refresh once when it is back: planner leave layer, attendance detail drawer, notification bell.
+- `setInterval(` search in `src/app` (not specs): only `core/clock/clock.service.ts` and the two real animations (`wellbeing-carousel-card`, `landing-feature-tabs`).
+- Notification push: the frontend listens for `notificationsChanged` on `InboxHub` and refreshes the bell straight away (also after a reconnect). Waiting for the backend to send that event. Plan Task 11 then slows the bell's poll to a fallback.
+- Not done yet: the manual browser check (plan Task 10 step 5).

@@ -951,6 +951,11 @@ export class EmployeeService {
 }
 ```
 
+### 4.6 Time and Polling (decided 2026-11-20, Improvements task 16)
+
+- **Time and polling.** Read the current time through `injectNow('second' | 'minute')` from `core/clock/clock.service.ts`. Do not start your own `setInterval` for a "now" signal. Repeating server reads go through `ClockService.poll(callback, ms)`, which pauses while the tab is hidden and calls once when it is visible again. A `setInterval` outside `core/clock` is only for a real animation (a carousel, an auto-advancing tab), and it must be cleared on destroy.
+- The minute clock changes on the wall-clock minute, so HH:MM labels turn over on time.
+
 ---
 
 ## 5. API & Data Fetching

@@ -83,3 +83,4 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Inbox Case History Implementation Plan | `finished/2026-10-19/2026-10-19-inbox-case-history.md` | finished |  |
 | WM Project Network View Implementation Plan | `finished/2026-10-19/2026-10-19-wm-project-network-view.md` | finished |  |
 | Attendance Late/Early Deductions Implementation Plan | `finished/2026-10-20/2026-10-20-attendance-late-early-deductions.md` | finished |  |
+| One Shared Clock and Smarter Polling (Improvements task 16) | `next/2026-11-20-shared-clock-and-polling.md` | in progress | backend `notificationsChanged` event pending (plan Task 11) |
