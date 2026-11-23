@@ -284,7 +284,7 @@ describe('validationMessage', () => {
     );
     expect(validationMessage({ email: true }, 'Email')).toBe('Enter a valid email address.');
     expect(validationMessage({ phone: true }, 'Phone')).toBe('Enter a valid phone number.');
-    expect(validationMessage({ hexColor: true }, 'Colour')).toBe('Use a colour like #2563EB.');
+    expect(validationMessage({ hexColor: true }, 'Colour')).toBe('Choose a colour from the list, or enter one as #RRGGBB.');
     expect(validationMessage({ positive: true }, 'Hours')).toBe('Hours must be more than 0.');
     expect(validationMessage({ min: { min: 0.5, actual: 0 } }, 'Hours')).toBe('Hours must be at least 0.5.');
     expect(validationMessage({ dateOrder: true }, 'Dates')).toBe('The end date must be on or after the start date.');
@@ -333,7 +333,7 @@ const MESSAGES: Record<string, MessageFn | undefined> = {
   code: (label) => `${label} may only contain letters, numbers, hyphens and underscores.`,
   email: () => 'Enter a valid email address.',
   phone: () => 'Enter a valid phone number.',
-  hexColor: () => 'Use a colour like #2563EB.',
+  hexColor: () => 'Choose a colour from the list, or enter one as #RRGGBB.',
   positive: (label) => `${label} must be more than 0.`,
   min: (label, d) => `${label} must be at least ${String(d['min'])}.`,
   max: (label, d) => `${label} must be at most ${String(d['max'])}.`,
@@ -569,7 +569,7 @@ In the template, replace the two hand-written `[error]` bindings:
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Name is required.');
     expect(text).toContain('Code must be 20 characters or fewer.');
-    expect(text).toContain('Use a colour like #2563EB.');
+    expect(text).toContain('Choose a colour from the list, or enter one as #RRGGBB.');
   });
 ```
 

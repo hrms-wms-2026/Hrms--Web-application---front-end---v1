@@ -8,10 +8,10 @@ describe('FieldErrorComponent', () => {
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).querySelector('.ui-field-error')).toBeNull();
 
-    fixture.componentRef.setInput('message', 'Use a colour like #2563EB.');
+    fixture.componentRef.setInput('message', 'Code is required.');
     fixture.detectChanges();
     const el = (fixture.nativeElement as HTMLElement).querySelector('.ui-field-error');
-    expect(el?.textContent?.trim()).toBe('Use a colour like #2563EB.');
+    expect(el?.textContent?.trim()).toBe('Code is required.');
     expect(el?.getAttribute('role')).toBe('alert');
   });
 });
