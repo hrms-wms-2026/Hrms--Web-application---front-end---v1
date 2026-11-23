@@ -2,7 +2,7 @@ import { ValidationErrors } from '@angular/forms';
 
 /**
  * Pure form rules (Improvements task 24). They mirror the backend's shared FluentValidation rules
- * (`ONEVO.Application/Common/Validation/ValidationRuleExtensions.cs`): the frontend helps the user, the backend protects
+ * (backend `Application/Common/Validation/ValidationRuleExtensions.cs`): the frontend helps the user, the backend protects
  * the data, so both keep their rules. Every rule except `requiredText` passes an empty value; combine it with
  * `requiredText` when the field is required. Error keys use Angular's names where Angular has one.
  */
