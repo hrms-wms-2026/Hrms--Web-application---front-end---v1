@@ -8,6 +8,12 @@ export type ClockRate = 'second' | 'minute';
 const PERIOD_MS: Record<ClockRate, number> = { second: 1_000, minute: 60_000 };
 const RATES: readonly ClockRate[] = ['second', 'minute'];
 
+/** A live clock timer: the minute clock first waits with a timeout for the wall-clock minute, then repeats. */
+interface ClockTimer {
+  readonly kind: 'timeout' | 'interval';
+  readonly handle: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>;
+}
+
 interface Poll {
   readonly callback: () => void;
   readonly periodMs: number;
@@ -17,7 +23,8 @@ interface Poll {
 /**
  * The app's one source of "now" and of repeating polls (Improvements task 16). One timer per rate runs only while
  * something reads that rate, and nothing runs while the tab is hidden; when the tab is visible again every clock
- * jumps to the current time and every poll calls back once. Read it through `injectNow()`; poll with `poll()`.
+ * jumps to the current time and every poll calls back once. The minute clock changes on the wall-clock minute, so
+ * HH:MM labels turn over on time whatever moment the first reader mounted. Read it through `injectNow()`; poll with `poll()`.
  */
 @Injectable({ providedIn: 'root' })
 export class ClockService {
@@ -28,7 +35,7 @@ export class ClockService {
     minute: signal(Date.now()),
   };
   private readonly readers: Record<ClockRate, number> = { second: 0, minute: 0 };
-  private readonly timers: Record<ClockRate, ReturnType<typeof setInterval> | null> = { second: null, minute: null };
+  private readonly timers: Record<ClockRate, ClockTimer | null> = { second: null, minute: null };
   private readonly polls = new Set<Poll>();
   private listening = false;
   private destroyed = false;
@@ -119,9 +126,9 @@ export class ClockService {
       const timer = this.timers[rate];
       const wanted = visible && this.readers[rate] > 0;
       if (wanted && timer === null) {
-        this.timers[rate] = setInterval(() => this.values[rate].set(Date.now()), PERIOD_MS[rate]);
+        this.startTimer(rate);
       } else if (!wanted && timer !== null) {
-        clearInterval(timer);
+        this.clearTimer(timer);
         this.timers[rate] = null;
       }
     }
@@ -142,6 +149,28 @@ export class ClockService {
       this.document.removeEventListener('visibilitychange', this.onVisibilityChange);
       this.listening = false;
     }
+  }
+
+  private startTimer(rate: ClockRate): void {
+    const tick = (): void => this.values[rate].set(Date.now());
+    if (rate === 'second') {
+      this.timers[rate] = { kind: 'interval', handle: setInterval(tick, PERIOD_MS[rate]) };
+      return;
+    }
+    const period = PERIOD_MS[rate];
+    const untilBoundary = period - (Date.now() % period);
+    this.timers[rate] = {
+      kind: 'timeout',
+      handle: setTimeout(() => {
+        tick();
+        this.timers[rate] = { kind: 'interval', handle: setInterval(tick, period) };
+      }, untilBoundary),
+    };
+  }
+
+  private clearTimer(timer: ClockTimer): void {
+    if (timer.kind === 'timeout') clearTimeout(timer.handle as ReturnType<typeof setTimeout>);
+    else clearInterval(timer.handle as ReturnType<typeof setInterval>);
   }
 
   private stopPoll(poll: Poll): void {
