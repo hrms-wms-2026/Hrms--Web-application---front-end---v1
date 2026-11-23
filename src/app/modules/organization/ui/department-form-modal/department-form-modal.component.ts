@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { DepartmentListItemResponse, DepartmentTreeNodeResponse } from '../../models/department.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { AppValidators, fieldError } from '../../../../shared/utils/validators';
+import { DEPARTMENT_LIMITS } from '../../utils/organization-limits';
 
 export interface DepartmentFormValue {
   name: string;
@@ -42,9 +44,18 @@ export class DepartmentFormModalComponent implements OnInit {
   @Output() save = new EventEmitter<DepartmentFormValue>();
   @Output() cancelled = new EventEmitter<void>();
 
+  protected readonly fieldError = fieldError;
+
   readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(200)]],
-    code: ['', [Validators.required, Validators.maxLength(20)]],
+    name: ['', AppValidators.name(DEPARTMENT_LIMITS.nameMax)],
+    code: [
+      '',
+      [
+        AppValidators.requiredText(),
+        AppValidators.maxLength(DEPARTMENT_LIMITS.codeMax),
+        AppValidators.pattern(DEPARTMENT_LIMITS.codePattern, 'code')
+      ]
+    ],
     parentDepartmentId: ['' as string | null],
     headPositionId: ['' as string | null]
   });
