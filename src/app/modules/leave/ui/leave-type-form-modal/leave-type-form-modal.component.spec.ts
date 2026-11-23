@@ -2,6 +2,21 @@ import { TestBed } from '@angular/core/testing';
 import { LeaveTypeFormModalComponent } from './leave-type-form-modal.component';
 
 describe('LeaveTypeFormModalComponent', () => {
+  it('uses the shared messages for name, code and colour', () => {
+    const fixture = TestBed.createComponent(LeaveTypeFormModalComponent);
+    fixture.detectChanges();
+    const form = fixture.componentInstance.form;
+    form.controls.name.setValue('   ');
+    form.controls.code.setValue('a'.repeat(21));
+    form.controls.color.setValue('blue');
+    form.markAllAsTouched();
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Name is required.');
+    expect(text).toContain('Code must be 20 characters or fewer.');
+    expect(text).toContain('Choose a colour from the list, or enter one as #RRGGBB.');
+  });
+
   it('asks only for the kind of leave, with no amounts', () => {
     const fixture = TestBed.createComponent(LeaveTypeFormModalComponent);
     fixture.detectChanges();
