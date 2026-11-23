@@ -29,3 +29,54 @@
 - The shared validators have unit tests.
 - Three forms use them and show the same messages for the same rules.
 - The remaining forms are listed.
+
+## Status (2026-11-23)
+
+Done on branch `chore/shared-form-validation`. Plan: `docs/superpowers/plans/next/2026-11-23-shared-form-validation.md`.
+
+- `shared/utils/validators/`: pure rules (`validation-rules.ts`: required text, max length, email, phone, pattern, positive number, rich text length, date range), `AppValidators` for reactive forms (`form-validators.ts`, including `name()` and a `dateRange()` group validator), one message map with `validationMessage()` and `fieldError()` (`validation-messages.ts`). All have unit tests.
+- `<app-field-error>` (`shared/ui/field-error`) shows a message for fields that are not `app-input`.
+- Limits: `modules/organization/utils/organization-limits.ts` and `modules/leave/utils/leave-limits.ts`, each constant naming the backend validator it mirrors. Description limits stay in `shared/constants/text-limits.ts`. The OpenAPI document and the task 08 types do not carry FluentValidation limits, so they are hand-written.
+- Three forms moved: department form modal (small), leave type form modal (medium), new leave request wizard.
+- Rule: a frontend limit may be stricter than the backend's, never looser. Required text trims, like the backend's `ValidName`. Rich text length counts the stored HTML, like `ValidRichText`.
+- Server field errors (the 400 body's `errors` map, PascalCase keys) are left to task 20, which is blocked on backend task 24.
+
+### Drift found
+
+| Field | Frontend before | Backend | Result |
+|---|---|---|---|
+| Department name | max 200 | max 100 (`DepartmentInputValidator`) | **Fixed to 100.** 101–200 characters used to fail on the server |
+| Department code | no pattern | `^[A-Za-z0-9_-]{1,20}$` | **Pattern added.** `R&D` used to fail on the server |
+| Department code | required | optional | Kept required (stricter) |
+| Leave type description | max 500 | no rule, `nvarchar(max)` | Kept 500 (stricter) |
+| Leave request reason | max 500 | max 2000 (`SubmitLeaveRequestCommandValidator`) | Kept 500 (stricter, product decision) |
+| Company name / code | 200 / 20 | 200 / 20 (`CreateLegalEntityCommandValidator`) | Same, no change |
+
+### Remaining forms
+
+Forms still on hand-written rules. Owner is Person 4 unless noted; the lead can reassign.
+
+| Form | Owner | Note |
+|---|---|---|
+| `core/auth/feature/login` | Person 4 | email |
+| `core/auth/feature/forgot-password` | Person 4 | email |
+| `core/auth/feature/reset-password` | Person 4 | password rules |
+| `core/auth/feature/accept-invitation` | Person 4 | password rules |
+| `modules/calendar/ui/calendar-event-form-modal` | Person 4 | date range, description |
+| `modules/organization/feature/general-settings` (+ `utils/general-settings-validators.ts`) | Person 4 | company name/code messages |
+| `modules/organization/ui/create-company-modal` | Person 4 | company name/code messages |
+| `modules/organization/ui/position-coverage-modal` | Person 4 | |
+| `modules/organization/ui/position-form-modal` | Person 4 | |
+| `modules/organization/ui/role-form-modal` | Person 4 | |
+| `modules/people/feature/checklist-builder` | Person 4 | |
+| `modules/people/ui/employee-job-info` | Person 4 | |
+| `modules/people/ui/start-offboarding-modal` | Person 4 | |
+| `modules/profile/ui/dependents-panel` | Person 4 | |
+| `modules/profile/ui/emergency-contacts-panel` | Person 4 | phone (`profile-validators.ts`) |
+| `modules/profile/ui/payroll-panel` | Person 4 | |
+| `modules/profile/ui/personal-info-form` | Person 4 | email, phone |
+| `modules/profile/ui/security-panel` | Person 4 | password rules |
+| `modules/work/meetings/ui/meeting-form-modal` | Person 4 | date range |
+| `modules/people/feature/add-employee-wizard` | People module owner | Large (1,347 lines + store); move during its refactor |
+| `modules/organization/feature/position-management` | Organization module owner | Large; move during its refactor |
+| `modules/work/ui/task-form-modal` | Work module owner | Large (3,770 lines); move during its split |

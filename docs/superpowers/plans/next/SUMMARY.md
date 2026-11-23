@@ -57,3 +57,7 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat â€
 ## Added 2026-11-06
 
 - `2026-11-06-boardui-angular-conversion/` â€” status: pending. Rebuild the BoardUI look (React design system) in Angular from scratch, mostly on the dashboard. README.md holds the method, Phase 0 foundations and the per-screen change log; `boardui-reference/` holds the BoardUI theming/motion/patterns/catalog notes.
+
+## Added 2026-11-23
+
+- `2026-11-23-shared-form-validation.md` - status: done, in review. Improvements task 24 (Person 4): shared validators, one message map, `<app-field-error>`, per-domain limits that mirror the backend validators, and three forms moved (department, leave type, leave request).

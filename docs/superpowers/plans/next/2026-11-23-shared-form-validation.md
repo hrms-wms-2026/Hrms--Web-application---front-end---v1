@@ -30,7 +30,7 @@
 | Department code | no pattern | `^[A-Za-z0-9_-]{1,20}$` on the trimmed value | **Add the pattern** |
 | Department code | required | optional | Keep required (stricter); record it |
 | Leave type name / code | 100 / 20 | 100 / 20 (`LeaveTypeInputValidator`, `CreateLeaveTypeCommandValidator`) | Same; move to constants |
-| Leave type description | max 500 | no rule, column is `nvarchar(max)` | Keep 500 (stricter); record it |
+| Leave type description | max 500 | no rule, column is `nvarchar(max)` | Keep 500 (stricter); record it. Read it from the existing `TEXT_LIMITS.leaveTypeDescription` |
 | Leave request reason | max 500 | max 2000 (`SubmitLeaveRequestCommandValidator`) | Keep 500 (stricter, product decision); record it |
 
 ## File structure
@@ -637,7 +637,7 @@ and in `dateRangeHint()` replace `if (d.endDate < d.startDate) return 'The end d
 
 - [ ] **Step 2: Remaining forms list.** In the task file, add `## Status (2026-11-23)` with what was done, the drift table above, and a table of every form still on hand-written rules. Get the list with:
   `git grep -l -E "Validators\.|\[error\]=\"form\.controls" -- "src/app/**/*.ts" "src/app/**/*.html" | grep -v spec`
-  Give each form an owner. Default to Person 4 as the task-24 follow-up. The big three (`add-employee-wizard`, `position-management`, `task-form-modal`) go to their module owners because they are mid-refactor. Mark known drift (company name 200 in `create-company-modal` and `general-settings`) to check against the backend's legal entity validator.
+  Give each form an owner. Default to Person 4 as the task-24 follow-up. The big three (`add-employee-wizard`, `position-management`, `task-form-modal`) go to their module owners because they are mid-refactor. Company name/code (200/20) was checked against `CreateLegalEntityCommandValidator`: it matches.
 - [ ] **Step 3: Gate.**
   `npm run check:warnings`, `npx ng lint`, `node scripts/check-hardcoded-colors.mjs`, `npx ng test --watch=false`.
   Expected: no new warnings, no lint error in a file this branch changes, and no new test failures (the pre-existing en-GB date tests and load timeouts are known).

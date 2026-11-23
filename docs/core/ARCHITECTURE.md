@@ -1243,6 +1243,8 @@ export const Validators = {
 };
 ```
 
+**Form validation (decided 2026-11-23, Improvements task 24).** Use `AppValidators` from `shared/utils/validators` (or the pure rules in `validation-rules.ts` for signal forms). Show errors with `fieldError(control, label)` on `app-input` and `<app-field-error>` elsewhere. Add any new message to `validation-messages.ts`, never as text in a template. Limits come from the module's `utils/<module>-limits.ts` (description limits from `shared/constants/text-limits.ts`), each naming the backend validator it mirrors. A frontend limit may be stricter than the backend's, never looser. The backend keeps its own rules; never remove one because the frontend has it. Server field errors (400 `errors`) are mapped by Improvements task 20.
+
 ### 6.5 Route Guards
 
 ```typescript
