@@ -1,7 +1,10 @@
 import { Component, OnDestroy, effect, inject, signal, untracked } from '@angular/core';
-import { Observable, firstValueFrom } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, firstValueFrom, merge } from 'rxjs';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { ClockService } from '../../../../core/clock/clock.service';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
 import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-presence.store';
 import { tenantWorkspaceReady } from '../../../../core/tray-presence/utils/tenant-workspace-ready';
@@ -100,7 +103,9 @@ export class NotificationBellComponent implements OnDestroy {
   protected readonly isOpen = signal(false);
   protected readonly pendingDecisionIds = signal<ReadonlySet<string>>(new Set());
   protected readonly decisions = signal<ReadonlyMap<string, NotificationDecisionState>>(new Map());
-  private pollId: ReturnType<typeof setInterval> | null = null;
+  private readonly clock = inject(ClockService);
+  private readonly realtime = inject(InboxRealtimeService);
+  private stopPoll: (() => void) | null = null;
 
   constructor() {
     effect(() => {
@@ -110,6 +115,12 @@ export class NotificationBellComponent implements OnDestroy {
         else this.stopPolling();
       });
     });
+    // A pushed change or a reconnect (events may have been missed) refreshes the badge at once.
+    merge(this.realtime.notificationsChanged$, this.realtime.reconnected$)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this.stopPoll) void this.store.refreshUnreadCount();
+      });
   }
 
   ngOnDestroy(): void {
@@ -117,16 +128,16 @@ export class NotificationBellComponent implements OnDestroy {
   }
 
   private startPolling(): void {
-    if (this.pollId) return;
+    if (this.stopPoll) return;
     void this.store.refreshUnreadCount();
-    this.pollId = setInterval(() => void this.store.refreshUnreadCount(), 60_000);
+    // Every minute while the tab is visible, and once when it is visible again. Task 11 slows this down to a
+    // fallback once the backend pushes notificationsChanged.
+    this.stopPoll = this.clock.poll(() => void this.store.refreshUnreadCount(), 60_000);
   }
 
   private stopPolling(): void {
-    if (this.pollId) {
-      clearInterval(this.pollId);
-      this.pollId = null;
-    }
+    this.stopPoll?.();
+    this.stopPoll = null;
   }
 
   toggle(): void {
