@@ -2,15 +2,32 @@
  * Global unit-test setup (angular.json → test.options.setupFiles).
  *
  * Vitest runs every spec file of a worker in one shared context (`isolate: false`), and this file runs again before
- * each spec file. So everything here is installed once per worker, and the `afterEach` below undoes the global
- * changes a spec can leave behind, whatever order the files run in.
+ * each spec file. So everything here is installed once per worker, and the hooks below undo the global changes a
+ * spec can leave behind, whatever order the files run in.
+ *
+ * Rule for specs: fake timers, `vi.stubGlobal`, the timer globals, matchMedia and document.visibilityState are
+ * reset around every test. Set them in `beforeEach` or in the test, never in `beforeAll` or a describe body.
+ *
+ * The timezone is not pinned on purpose: specs that format times pass an explicit `timeZone`.
  */
 import { afterEach, beforeEach, vi } from 'vitest';
 
+/** The timer globals fake timers replace. Their real versions are kept so a stale fake can never outlive its test. */
+const TIMER_GLOBALS = [
+  'setTimeout',
+  'clearTimeout',
+  'setInterval',
+  'clearInterval',
+  'Date',
+  'performance',
+  'requestAnimationFrame',
+  'cancelAnimationFrame',
+] as const;
+type TimerGlobal = (typeof TIMER_GLOBALS)[number];
+
 interface TestGlobals {
   __testSetupInstalled?: boolean;
-  __nativeRequestAnimationFrame?: typeof requestAnimationFrame;
-  __nativeCancelAnimationFrame?: typeof cancelAnimationFrame;
+  __nativeTimers?: Partial<Record<TimerGlobal, unknown>>;
 }
 const testGlobals = globalThis as typeof globalThis & TestGlobals;
 
@@ -19,18 +36,21 @@ const testGlobals = globalThis as typeof globalThis & TestGlobals;
  * (`Intl.DateTimeFormat(undefined, ...)`, `date.toLocaleDateString()`, ...). The app formats in the user's browser
  * locale on purpose, but specs assert on text, so they must not depend on the locale of the machine that runs them:
  * on an en-GB machine "Aug 17" renders as "17 Aug" and the specs fail although the code is right. An explicit locale
- * passed by the code is kept.
+ * passed by the code is kept. Covers DateTimeFormat, NumberFormat and the Date/Number toLocale* methods, which are the
+ * formatters the app uses; Collator, PluralRules, ListFormat and RelativeTimeFormat are not pinned.
  */
 function pinDefaultLocale(): void {
   const TEST_LOCALE = 'en-US';
   type Locales = string | readonly string[] | undefined;
-  const pick = (locales: unknown): string | string[] => (locales ?? TEST_LOCALE) as string | string[];
+  // undefined, null and [] all mean "the default locale".
+  const pick = (locales: unknown): string | string[] =>
+    (locales === undefined || locales === null || (Array.isArray(locales) && locales.length === 0) ? TEST_LOCALE : locales) as string | string[];
 
   // The same formatter class with a default locale: `new`, plain calls, statics and `instanceof` keep working.
   function withDefaultLocale<T extends abstract new (...args: never[]) => unknown>(native: T): T {
     return new Proxy(native, {
-      construct: (target, [locales, options]: unknown[]) =>
-        Reflect.construct(target as unknown as new (l: unknown, o: unknown) => object, [pick(locales), options]),
+      construct: (target, [locales, options]: unknown[], newTarget: new (...args: unknown[]) => object) =>
+        Reflect.construct(target as unknown as new (l: unknown, o: unknown) => object, [pick(locales), options], newTarget),
       apply: (target, thisArg, [locales, options]: unknown[]) =>
         Reflect.apply(target as unknown as (l: unknown, o: unknown) => unknown, thisArg, [pick(locales), options]),
     });
@@ -54,18 +74,22 @@ function pinDefaultLocale(): void {
 
 if (!testGlobals.__testSetupInstalled) {
   testGlobals.__testSetupInstalled = true;
-  // Keep the real frame functions before any spec can stub them away.
-  testGlobals.__nativeRequestAnimationFrame = globalThis.requestAnimationFrame;
-  testGlobals.__nativeCancelAnimationFrame = globalThis.cancelAnimationFrame;
+  // Keep the real timer functions (zone.js-patched, as the specs expect) before any spec can fake or stub them.
+  const natives: Partial<Record<TimerGlobal, unknown>> = {};
+  for (const name of TIMER_GLOBALS) natives[name] = (globalThis as Record<string, unknown>)[name];
+  testGlobals.__nativeTimers = natives;
   pinDefaultLocale();
 }
 
-/** Put back the frame functions and the tab state a spec may have stubbed, so every test starts from the same globals. */
+/** Put back the timers and the tab state a spec may have faked or stubbed, so every test starts from the same globals. */
 function restoreSharedGlobals(): void {
-  // Always the real ones, not only when missing: `unstubAllGlobals` can put back a stale fake-timer
-  // requestAnimationFrame when a spec stubbed it while fake timers were on, and that one never fires again.
-  if (testGlobals.__nativeRequestAnimationFrame) globalThis.requestAnimationFrame = testGlobals.__nativeRequestAnimationFrame;
-  if (testGlobals.__nativeCancelAnimationFrame) globalThis.cancelAnimationFrame = testGlobals.__nativeCancelAnimationFrame;
+  // Always the real ones, not only when missing. A spy or stub made while fake timers were on remembers the fake as
+  // its "original", so `restoreAllMocks` or `unstubAllGlobals` later puts back a stale fake that never fires: then
+  // `await new Promise(r => setTimeout(r))` and `whenStable()` hang in an unrelated spec, and animations jump.
+  for (const name of TIMER_GLOBALS) {
+    const native = testGlobals.__nativeTimers?.[name];
+    if (native !== undefined) (globalThis as Record<string, unknown>)[name] = native;
+  }
   // Specs fake the tab state with an own property on document; removing it brings back the real getter.
   Reflect.deleteProperty(document, 'visibilityState');
   Reflect.deleteProperty(document, 'hidden');
