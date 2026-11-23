@@ -13,13 +13,14 @@ const DAY_MS = 86_400_000;
 
 type Text = string | null | undefined;
 
+/** These are text rules: a value that is not a string (a number bound by mistake) counts as empty, never throws. */
 function present(value: Text): value is string {
-  return value !== null && value !== undefined && value !== '';
+  return typeof value === 'string' && value !== '';
 }
 
 /** Something other than whitespace, like the backend's `ValidName(required: true)`. */
 export function requiredText(value: Text): ValidationErrors | null {
-  return value === null || value === undefined || value.trim() === '' ? { required: true } : null;
+  return typeof value !== 'string' || value.trim() === '' ? { required: true } : null;
 }
 
 export function maxLength(value: Text, max: number): ValidationErrors | null {
@@ -50,10 +51,17 @@ export function richTextLength(html: Text, max: number): ValidationErrors | null
   return { richTextLength: { requiredLength: max, actualLength: html.length } };
 }
 
-/** Two `yyyy-MM-dd` dates: the end not before the start, and at most `maxDays` apart when given. */
+/**
+ * Two `yyyy-MM-dd` dates: the end not before the start, and at most `maxDays` apart when given. The span counts the
+ * days between the dates (01-01 to 01-31 is 30), like the backend's `to.DayNumber - from.DayNumber > maxDays`. A date
+ * that does not parse is left to that field's own rule, so the range check skips it.
+ */
 export function dateRange(start: Text, end: Text, maxDays?: number): ValidationErrors | null {
   if (!present(start) || !present(end)) return null;
-  if (end < start) return { dateOrder: true };
-  if (maxDays !== undefined && (Date.parse(end) - Date.parse(start)) / DAY_MS > maxDays) return { dateSpan: { maxDays } };
+  const from = Date.parse(start);
+  const to = Date.parse(end);
+  if (Number.isNaN(from) || Number.isNaN(to)) return null;
+  if (to < from) return { dateOrder: true };
+  if (maxDays !== undefined && (to - from) / DAY_MS > maxDays) return { dateSpan: { maxDays } };
   return null;
 }

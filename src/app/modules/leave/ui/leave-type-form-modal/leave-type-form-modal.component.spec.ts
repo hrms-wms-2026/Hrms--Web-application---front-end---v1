@@ -14,7 +14,7 @@ describe('LeaveTypeFormModalComponent', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Name is required.');
     expect(text).toContain('Code must be 20 characters or fewer.');
-    expect(text).toContain('Choose a colour from the list, or enter one as #RRGGBB.');
+    expect(text).toContain('Choose a colour from the list or the custom picker.');
   });
 
   it('asks only for the kind of leave, with no amounts', () => {

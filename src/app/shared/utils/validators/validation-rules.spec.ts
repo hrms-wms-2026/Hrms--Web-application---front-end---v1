@@ -49,4 +49,14 @@ describe('validation rules', () => {
     expect(dateRange('2026-01-01', '2026-02-01', 30)).toEqual({ dateSpan: { maxDays: 30 } });
     expect(dateRange('', '2026-01-01')).toBeNull();
   });
+
+  it('dateRange ignores a malformed date instead of passing it as in range', () => {
+    expect(dateRange('2026-01-01', 'not-a-date', 30)).toBeNull();
+    expect(dateRange('2026-13-45', '2026-12-31', 30)).toBeNull();
+  });
+
+  it('text rules treat a non-string value as empty instead of throwing', () => {
+    expect(requiredText(42 as unknown as string)).toEqual({ required: true });
+    expect(maxLength(12345 as unknown as string, 3)).toBeNull();
+  });
 });

@@ -10,7 +10,7 @@ const MESSAGES: Record<string, MessageFn | undefined> = {
   code: (label) => `${label} may only contain letters, numbers, hyphens and underscores.`,
   email: () => 'Enter a valid email address.',
   phone: () => 'Enter a valid phone number.',
-  hexColor: () => 'Choose a colour from the list, or enter one as #RRGGBB.',
+  hexColor: () => 'Choose a colour from the list or the custom picker.',
   positive: (label) => `${label} must be more than 0.`,
   min: (label, d) => `${label} must be at least ${String(d['min'])}.`,
   max: (label, d) => `${label} must be at most ${String(d['max'])}.`,
@@ -24,6 +24,7 @@ export function validationMessage(errors: ValidationErrors | null | undefined, l
   if (!errors) return '';
   const keys = Object.keys(errors);
   if (keys.length === 0) return '';
+  // Otherwise the first key, which is the first validator that failed in the order the control lists them.
   const key = 'required' in errors ? 'required' : keys[0];
   const detail = errors[key] as unknown;
   const message = MESSAGES[key];

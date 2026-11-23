@@ -13,7 +13,7 @@ describe('validationMessage', () => {
     );
     expect(validationMessage({ email: true }, 'Email')).toBe('Enter a valid email address.');
     expect(validationMessage({ phone: true }, 'Phone')).toBe('Enter a valid phone number.');
-    expect(validationMessage({ hexColor: true }, 'Colour')).toBe('Choose a colour from the list, or enter one as #RRGGBB.');
+    expect(validationMessage({ hexColor: true }, 'Colour')).toBe('Choose a colour from the list or the custom picker.');
     expect(validationMessage({ positive: true }, 'Hours')).toBe('Hours must be more than 0.');
     expect(validationMessage({ min: { min: 0.5, actual: 0 } }, 'Hours')).toBe('Hours must be at least 0.5.');
     expect(validationMessage({ dateOrder: true }, 'Dates')).toBe('The end date must be on or after the start date.');
