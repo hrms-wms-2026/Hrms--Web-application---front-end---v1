@@ -18,7 +18,9 @@ describe('errorInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        provideRouter([])
+        // The interceptor really navigates to the login page on a 401; give it a route so that navigation
+        // resolves instead of rejecting after the test ends.
+        provideRouter([{ path: 'auth/login', children: [] }])
       ]
     });
     http = TestBed.inject(HttpClient);
