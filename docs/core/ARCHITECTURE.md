@@ -1394,6 +1394,8 @@ export class EmployeeListPageComponent {
 
 **Field errors from the server (task 20).** When a save fails with a 400, keep the `ApiError` in the store (`saveApiError`) and call `applyServerFieldErrors(form, apiError)`. Each message lands on its control as a `server` error, which `fieldError()` shows as it is; a message with no matching (or a disabled) control is returned for a form-level toast. The `server` error stays until the user edits that control, so a cross-field problem keeps submit blocked until one of its fields changes. See `modules/organization/feature/general-settings` for the reference use.
 
+For a form in a modal (task 20 follow-up), the store keeps `actionApiError` next to `actionError`, the page passes it as `[serverError]` and toasts `failedSaveToast(apiError, fallback)` (null when the form shows the errors or the error handler already toasted), and the modal applies it with `applyServerFieldErrors` and shows any message without a field through `<app-field-error>` above its footer. A `server` message wins over `required` in `validationMessage`. Used by the department, role, leave type and create-company modals.
+
 ### 7.5 Circuit Breaker
 
 > Added in v2.1. Retry with backoff (§7.2) handles transient single-request failures, but does not prevent the frontend from hammering a backend that is fully down (e.g. mid-restart or deployment). The circuit breaker sits above retry and stops outbound calls to a failing endpoint group entirely once a failure threshold is crossed.
