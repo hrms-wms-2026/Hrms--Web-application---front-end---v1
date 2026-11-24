@@ -31,6 +31,7 @@ function setup(
   const status = opts.status ?? fresh;
   const auth = {
     authenticated: signal(true),
+    email: signal<string | null>('ada@acme.test'),
     employeeId: signal<string | null>(opts.employeeId ?? null),
     workspaceSlug: signal<string | null>('unicom'),
   };
@@ -184,5 +185,44 @@ describe('OwnerSetupGuideService', () => {
     service.dismissFinished();
 
     expect(service.visible()).toBe(false);
+  });
+
+  it('forgets the previous account after sign-out and sign-in as someone else', async () => {
+    const { service, auth } = setup();
+    await service.refresh();
+    service.markFinished();
+
+    auth.authenticated.set(false);
+    auth.email.set(null);
+
+    expect(service.status()).toBeNull();
+    expect(service.finished()).toBe(false);
+    expect(service.visible()).toBe(false);
+
+    auth.authenticated.set(true);
+    auth.email.set('bob@acme.test');
+
+    expect(service.status()).toBeNull();
+    expect(service.visible()).toBe(false);
+  });
+
+  it('forgets the status when switching to another company', async () => {
+    const { service, auth } = setup();
+    await service.refresh();
+
+    auth.workspaceSlug.set('other-co');
+
+    expect(service.status()).toBeNull();
+  });
+
+  it('clears what it knew when the account is no longer one the guide is for', async () => {
+    const { service, auth } = setup();
+    await service.refresh();
+
+    auth.employeeId.set('e1');
+    await service.refresh();
+    auth.employeeId.set(null);
+
+    expect(service.status()).toBeNull();
   });
 });

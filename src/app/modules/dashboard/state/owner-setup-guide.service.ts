@@ -35,11 +35,26 @@ export class OwnerSetupGuideService {
   private readonly auth = inject(AuthStore);
   private readonly permissions = inject(PermissionService);
 
-  readonly status = signal<SelfSetupStatusDto | null>(null);
-  /** Set after the owner adds themselves: the guide shows "You're all set" until it is closed. */
-  readonly finished = signal(false);
+  /** Who is signed in, to which company. Everything below belongs to one account: after sign-out, a different
+   *  sign-in or a company switch it is ignored, so nobody sees another person's name, progress or "all set". */
+  private readonly account = computed(() =>
+    this.auth.authenticated()
+      ? `${this.auth.email() ?? ''}|${this.auth.workspaceSlug() ?? ''}`
+      : null,
+  );
+  private readonly loaded = signal<{ account: string; status: SelfSetupStatusDto } | null>(null);
+  private readonly finishedFor = signal<string | null>(null);
   /** This page load's Skip/Resume choice; storage only carries it to the next visit. */
-  private readonly skipChoice = signal<boolean | null>(null);
+  private readonly skipChoice = signal<{ account: string | null; skipped: boolean } | null>(null);
+
+  readonly status = computed(() => {
+    const loaded = this.loaded();
+    return loaded !== null && loaded.account === this.account() ? loaded.status : null;
+  });
+  /** Set after the owner adds themselves: the guide shows "You're all set" until it is closed. */
+  readonly finished = computed(
+    () => this.finishedFor() !== null && this.finishedFor() === this.account(),
+  );
 
   readonly eligible = computed(
     () =>
@@ -48,7 +63,12 @@ export class OwnerSetupGuideService {
       this.permissions.hasPermission('employees:write'),
   );
 
-  readonly skipped = computed(() => this.skipChoice() ?? readFlag(this.skipKey()));
+  readonly skipped = computed(() => {
+    const choice = this.skipChoice();
+    return choice !== null && choice.account === this.account()
+      ? choice.skipped
+      : readFlag(this.skipKey());
+  });
 
   readonly steps = computed<readonly SetupStep[]>(() => {
     const status = this.status();
@@ -89,31 +109,36 @@ export class OwnerSetupGuideService {
 
   /** Re-reads the setup status. Does nothing for accounts the guide is not for. */
   async refresh(): Promise<void> {
-    if (!this.eligible()) return;
+    const account = this.account();
+    if (!this.eligible() || account === null) {
+      this.loaded.set(null);
+      return;
+    }
     try {
-      this.status.set(await firstValueFrom(this.api.getStatus()));
+      // Tagged with the account that asked, so a reply that lands after a sign-out or switch is ignored.
+      this.loaded.set({ account, status: await firstValueFrom(this.api.getStatus()) });
     } catch {
-      this.status.set(null);
+      this.loaded.set(null);
     }
   }
 
   skip(): void {
     writeFlag(this.skipKey(), true);
-    this.skipChoice.set(true);
+    this.skipChoice.set({ account: this.account(), skipped: true });
   }
 
   resume(): void {
     writeFlag(this.skipKey(), false);
-    this.skipChoice.set(false);
+    this.skipChoice.set({ account: this.account(), skipped: false });
   }
 
   markFinished(): void {
-    this.finished.set(true);
+    this.finishedFor.set(this.account());
   }
 
   dismissFinished(): void {
-    this.finished.set(false);
-    this.status.set(null);
+    this.finishedFor.set(null);
+    this.loaded.set(null);
   }
 
   private skipKey(): string {

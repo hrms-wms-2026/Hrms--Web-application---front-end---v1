@@ -37,6 +37,7 @@ async function setup(status: SelfSetupStatusDto | 'error') {
     checkSession: vi.fn().mockResolvedValue(true),
     authenticated: signal(true),
     employeeId: signal<string | null>(null),
+    email: signal<string | null>('ada@acme.test'),
     workspaceSlug: signal<string | null>('unicom'),
   };
   TestBed.configureTestingModule({
