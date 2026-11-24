@@ -36,7 +36,7 @@ import {
   workTimePairValidator
 } from '../../utils/general-settings-validators';
 import { computeWorkDayHours, isOvernightWorkWindow } from '../../utils/work-day-hours';
-import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { AppValidators, applyServerFieldErrors, fieldError, validationMessage } from '../../../../shared/utils/validators';
 import { COMPANY_LIMITS } from '../../utils/organization-limits';
 
 /**
@@ -237,7 +237,11 @@ export class GeneralSettingsComponent {
         });
         this.notificationService.success('General Settings saved.');
       } else {
-        this.notificationService.error(this.settingsStore.saveError() ?? 'Failed to save General Settings.');
+        // Field errors from a 400 go next to their fields; anything left over is the toast.
+        const apiError = this.settingsStore.saveApiError();
+        const formLevel = apiError ? applyServerFieldErrors(this.form, apiError) : null;
+        const hasFieldErrors = !!apiError && Object.keys(apiError.fieldErrors).length > 0;
+        this.notificationService.error(formLevel ?? (hasFieldErrors ? 'Please check the highlighted fields.' : this.settingsStore.saveError() ?? 'Failed to save General Settings.'));
         // Failed values stay in the form - no reset here.
       }
     } finally {
