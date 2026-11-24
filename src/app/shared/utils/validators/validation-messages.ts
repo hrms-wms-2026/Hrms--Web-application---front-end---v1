@@ -23,6 +23,8 @@ const MESSAGES: Record<string, MessageFn | undefined> = {
   oneOf: (label) => `Choose a ${label} from the list.`,
   mfaCode: () => 'Enter the 6-digit code.',
   mismatch: () => 'Passwords must match.',
+  /** A backend field message placed by `applyServerFieldErrors` (already filtered for technical text). */
+  server: (_label, d) => String(d['message']),
 };
 
 /** The message for the first error, or '' when there is none. `required` wins, so an empty field shows no length message. */
