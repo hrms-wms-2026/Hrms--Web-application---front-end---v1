@@ -89,73 +89,6 @@ export const AuthStore = signalStore(
         loading: false,
       });
     };
-    /**
-     * Tenant-host-only, like exchangeSession(): the invite link opens on the employee's own
-     * tenant subdomain and the backend command requires that host to resolve to the invitation's
-     * tenant, so this deliberately does not retarget to the root/system host the way login() and
-     * acceptLegalDocuments() do.
-     */
-    async acceptEmployeeInvitation(
-      token: string,
-      payload: AcceptEmployeeInvitationRequestDto,
-      purpose: string = EMPLOYEE_ONBOARDING_PURPOSE
-    ): Promise<void> {
-      patchState(store, { loading: true, error: null });
-      try {
-        const request =
-          purpose === EMPLOYEE_ONBOARDING_PURPOSE
-            ? api.acceptEmployeeInvitation(token, payload)
-            : api.acceptInvitationPassword(token, payload);
-        const dto = await firstValueFrom(request);
-        const view = toCurrentUserViewModel(dto);
-        patchState(store, {
-          authenticated: view.authenticated,
-          email: view.email,
-          employeeId: view.employeeId,
-          permissions: view.permissions,
-          activeModules: view.activeModules,
-          managesPeople: view.managesPeople,
-          legalAcceptanceRequired: view.legalAcceptanceRequired,
-          pendingLegalDocuments: view.pendingLegalDocuments,
-          workspaceSlug: view.workspaceSlug,
-          redirectRequired: view.redirectRequired,
-          continueUrl: view.continueUrl,
-          loading: false
-        });
-      } catch (err) {
-        patchState(store, {
-          loading: false,
-          error: extractErrorMessage(err, 'Could not complete your invitation. Please try again.')
-        });
-        throw err;
-      }
-    },
-
-    async checkSession(): Promise<boolean> {
-      patchState(store, { loading: true });
-      try {
-        const dto = await firstValueFrom(api.me());
-        const view = toCurrentUserViewModel(dto);
-        patchState(store, {
-          authenticated: view.authenticated,
-          email: view.email,
-          employeeId: view.employeeId,
-          permissions: view.permissions,
-          activeModules: view.activeModules,
-          managesPeople: view.managesPeople,
-          legalAcceptanceRequired: view.legalAcceptanceRequired,
-          pendingLegalDocuments: view.pendingLegalDocuments,
-          workspaceSlug: view.workspaceSlug,
-          redirectRequired: view.redirectRequired,
-          continueUrl: view.continueUrl,
-          loading: false
-        });
-        return view.authenticated;
-      } catch {
-        patchState(store, { ...initialState, loading: false });
-        return false;
-      }
-    },
 
     /**
      * Shared by password login, Google login and workspace selection: a 202 parks the server's
@@ -294,10 +227,16 @@ export const AuthStore = signalStore(
       async acceptEmployeeInvitation(
         token: string,
         payload: AcceptEmployeeInvitationRequestDto,
+        purpose: string = EMPLOYEE_ONBOARDING_PURPOSE,
       ): Promise<void> {
         patchState(store, { loading: true, error: null });
         try {
-          const dto = await firstValueFrom(api.acceptEmployeeInvitation(token, payload));
+          // Tenant owner (non-employee) invitations are accepted through accept-password.
+          const request =
+            purpose === EMPLOYEE_ONBOARDING_PURPOSE
+              ? api.acceptEmployeeInvitation(token, payload)
+              : api.acceptInvitationPassword(token, payload);
+          const dto = await firstValueFrom(request);
           const view = toCurrentUserViewModel(dto);
           patchState(store, {
             authenticated: view.authenticated,
