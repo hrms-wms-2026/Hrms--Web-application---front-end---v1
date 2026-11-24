@@ -45,7 +45,7 @@
               placeholder="e.g. Engineering Onboarding Checklist"
               [value]="form.controls.name.value || ''"
               (valueChange)="form.controls.name.setValue($event)"
-              [error]="submitAttempted() && form.controls.name.invalid ? 'Checklist name is required (max 150 characters).' : ''"
+              [error]="submitAttempted() ? validationMessage(form.controls.name.errors, 'Checklist name') : ''"
             />
           </div>
 
@@ -288,7 +288,7 @@
                   [value]="taskGroup.value.title || ''"
                   (valueChange)="taskGroup.get('title')?.setValue($event)"
                   (keydown.enter)="onTaskTitleEnter(idx, $event)"
-                  [error]="submitAttempted() && taskGroup.get('title')?.invalid ? 'Task title is required.' : ''"
+                  [error]="submitAttempted() ? validationMessage(taskGroup.get('title')?.errors, 'Task title') : ''"
                 />
               </div>
 

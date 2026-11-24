@@ -532,4 +532,13 @@ describe('MeetingFormModalComponent', () => {
     build({ mode: 'create', embedded: true, carryOver: { title: '', description: '<p></p>' } });
     expect(form.form.controls.description.value).toBeNull();
   });
+
+  it('will not save a title longer than the backend allows (500)', () => {
+    build({ mode: 'create' });
+    fillOffice();
+    expect(form.canSave()).toBe(true);
+    form.form.controls.title.setValue('a'.repeat(501));
+    expect(form.form.controls.title.errors).toEqual({ maxlength: { requiredLength: 500, actualLength: 501 } });
+    expect(form.canSave()).toBe(false);
+  });
 });

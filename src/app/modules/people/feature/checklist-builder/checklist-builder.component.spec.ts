@@ -918,4 +918,11 @@ describe('ChecklistBuilderComponent (Edit Mode)', () => {
       })
     );
   });
+
+  it('limits the checklist name to the backend 100 characters', () => {
+    component.form.controls.name.setValue('a'.repeat(101));
+    expect(component.form.controls.name.errors).toEqual({ maxlength: { requiredLength: 100, actualLength: 101 } });
+    component.form.controls.name.setValue('a'.repeat(100));
+    expect(component.form.controls.name.errors).toBeNull();
+  });
 });

@@ -31,6 +31,8 @@ import { RECURRENCE_PRESET_LABELS, RecurrencePreset, recurrencePresets } from '.
 import { MeetingScopeDialogComponent } from '../meeting-scope-dialog/meeting-scope-dialog.component';
 import { MeetingBulkInvitePanelComponent } from './meeting-bulk-invite-panel.component';
 import { TEXT_LIMITS } from '../../../../../shared/constants/text-limits';
+import { AppValidators } from '../../../../../shared/utils/validators';
+import { MEETING_LIMITS } from '../../utils/meeting-limits';
 
 export interface MeetingPlacementInput { projectId: string | null; objectiveId: string | null; }
 /**
@@ -426,7 +428,7 @@ export class MeetingFormModalComponent implements OnInit {
 
   readonly presets: readonly RecurrencePreset[] = ['none', 'daily', 'weekly', 'biweekly', 'monthly', 'custom'];
   readonly form = this.fb.group({
-    title: ['', Validators.required],
+    title: ['', AppValidators.name(MEETING_LIMITS.titleMax)],
     description: this.fb.control<string | null>(null),
     location: '',
     isPrivate: false,
@@ -540,7 +542,7 @@ export class MeetingFormModalComponent implements OnInit {
     .map((p) => ({ value: p, label: RECURRENCE_PRESET_LABELS[p] })));
 
   canSave(): boolean {
-    if (this.form.controls.title.value.trim() === '' || !this.form.controls.date.value) return false;
+    if (this.form.controls.title.invalid || !this.form.controls.date.value) return false;
     if (!this.form.controls.isAllDay.value && this.form.controls.durationMinutes.invalid) return false;
     if (this.mode() === 'create' && this.startInPast()) return false;
     return this.mode() === 'edit' || this.projectId() === null || this.objectiveId() !== null;

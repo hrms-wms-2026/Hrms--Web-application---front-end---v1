@@ -6,6 +6,8 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { OffboardingWizardStore } from '../../state/offboarding-wizard.store';
+import { AppValidators, validationMessage } from '../../../../shared/utils/validators';
+import { OFFBOARDING_LIMITS } from '../../utils/people-limits';
 
 const EXIT_REASONS = [
   { value: 'resignation', label: 'Resignation' }, { value: 'termination', label: 'Termination' },
@@ -66,6 +68,7 @@ const REHIRE = [
           label="Notes"
           [value]="form.controls.notes.value || ''"
           (valueChange)="form.controls.notes.setValue($event || null)"
+          [error]="validationMessage(form.controls.notes.errors, 'Notes')"
         />
         <div class="flex justify-end gap-2">
           <app-button variant="secondary" type="button" (pressed)="close()">Cancel</app-button>
@@ -80,6 +83,8 @@ const REHIRE = [
 export class StartOffboardingModalComponent {
   private readonly wizardStore = inject(OffboardingWizardStore);
   private readonly fb = inject(FormBuilder);
+
+  protected readonly validationMessage = validationMessage;
 
   readonly open = input.required<boolean>();
   /** Fixed employee; hides the picker. */
@@ -107,7 +112,7 @@ export class StartOffboardingModalComponent {
     lastWorkingDate: ['', Validators.required],
     knowledgeRiskLevel: ['medium' as const, Validators.required],
     rehireEligibility: [null as 'eligible' | 'not_eligible' | 'conditional' | null],
-    notes: [null as string | null]
+    notes: [null as string | null, AppValidators.maxLength(OFFBOARDING_LIMITS.notesMax)]
   });
 
   constructor() {
