@@ -2,6 +2,9 @@
   @if (saveError()) {
     <div class="pf-error-banner" role="alert">{{ saveError() }}</div>
   }
+  @if (serverFormError(); as message) {
+    <div class="pf-error-banner" role="alert">{{ message }}</div>
+  }
 
   <div class="pif-columns">
     <section class="pf-section pif-photo-section">

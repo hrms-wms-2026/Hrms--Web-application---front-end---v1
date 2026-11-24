@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnChanges, computed, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnChanges, SimpleChanges, computed, inject, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { PersonalInformation, UpdatePersonalInformationRequest } from '../../models/profile.model';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
@@ -9,8 +9,9 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { TIMEZONE_OPTIONS } from '../../../organization/utils/general-settings-options';
 import { ChangePhotoDialogComponent, PHOTO_ACCEPT } from '../../../../shared/ui/change-photo-dialog/change-photo-dialog.component';
-import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { AppValidators, applyServerFieldErrors, fieldError, validationMessage } from '../../../../shared/utils/validators';
 import { PERSONAL_INFO_LIMITS } from '../../utils/profile-limits';
+import { ApiError } from '../../../../core/errors/api-error';
 
 @Component({
   selector: 'app-personal-info-form',
@@ -24,6 +25,10 @@ export class PersonalInfoFormComponent implements OnChanges {
   readonly personalInformation = input.required<PersonalInformation>();
   readonly saving = input(false);
   readonly saveError = input<string | null>(null);
+  /** This form's own failed save, from the profile tab (task 20). */
+  readonly serverError = input<ApiError | null>(null);
+  /** A message from that save with no field on this form. */
+  protected readonly serverFormError = signal<string | null>(null);
   readonly save = output<UpdatePersonalInformationRequest>();
   readonly avatarSelected = output<File>();
   readonly avatarRemoved = output<void>();
@@ -55,8 +60,13 @@ export class PersonalInfoFormComponent implements OnChanges {
 
   form = this.buildForm(null);
 
-  ngOnChanges(): void {
-    this.form = this.buildForm(this.personalInformation());
+  ngOnChanges(changes: SimpleChanges): void {
+    // Rebuild only for new data: rebuilding on any input change (saving, saveError) would wipe server errors.
+    if (changes['personalInformation']) this.form = this.buildForm(this.personalInformation());
+    if (changes['personalInformation'] || changes['serverError']) {
+      const error = this.serverError();
+      this.serverFormError.set(error ? applyServerFieldErrors(this.form, error, ['firstName', 'lastName', 'phone']) : null);
+    }
   }
 
   displayName(): string {
