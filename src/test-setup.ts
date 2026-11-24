@@ -10,7 +10,7 @@
  *
  * The timezone is not pinned on purpose: specs that format times pass an explicit `timeZone`.
  */
-import { afterEach, beforeEach, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, vi } from 'vitest';
 
 /** The timer globals fake timers replace. Their real versions are kept so a stale fake can never outlive its test. */
 const TIMER_GLOBALS = [
@@ -112,3 +112,19 @@ afterEach(() => {
   vi.unstubAllGlobals();
   restoreSharedGlobals();
 });
+
+/**
+ * After the last test of each spec file: wait until every dynamic `import()` the file started has loaded, including
+ * the chunks those modules import in turn.
+ *
+ * Code under test starts lazy imports nobody awaits (each dashboard widget frame loads its card chunk, the icon picker
+ * loads emoji-picker-element). When a spec file ends, the worker closes its connection to the main process and fails
+ * every module request still in flight with "EnvironmentTeardownError: Cannot load '/chunk-….js' … after the
+ * environment was torn down". With `isolate: false` the worker keeps its module cache for the next spec files, and a
+ * module whose load failed keeps that failure. So the next spec file in the same worker that imports the chunk fails
+ * as a whole, with no test run, and its error names the spec that started the import, not itself.
+ *
+ * This hook is registered last, so it runs after the spec's own afterAll and after TestBed has destroyed the
+ * fixtures: no new lazy import can start after it.
+ */
+afterAll(() => vi.dynamicImportSettled());
