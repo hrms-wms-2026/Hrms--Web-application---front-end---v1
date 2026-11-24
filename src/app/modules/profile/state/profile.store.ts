@@ -12,7 +12,11 @@ import {
   UpsertEmergencyContactRequest
 } from '../models/profile.model';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { ApiError, toApiError } from '../../../core/errors/api-error';
 import { FileApiService } from '../../../shared/data-access/file-api.service';
+
+/** Which profile panel the last failed save came from, so only that panel shows its server error (task 20). */
+export type ProfileSaveTarget = 'personal' | 'emergencyContact' | 'dependent' | 'payroll';
 
 export interface ProfileState {
   readonly profile: MyProfile | null;
@@ -20,6 +24,8 @@ export interface ProfileState {
   readonly saving: boolean;
   readonly error: string | null;
   readonly saveError: string | null;
+  readonly saveApiError: ApiError | null;
+  readonly saveTarget: ProfileSaveTarget | null;
   readonly documents: EmployeeDocument[];
   readonly documentsLoading: boolean;
   readonly documentsError: string | null;
@@ -33,6 +39,8 @@ const initialState: ProfileState = {
   saving: false,
   error: null,
   saveError: null,
+  saveApiError: null,
+  saveTarget: null,
   documents: [],
   documentsLoading: false,
   documentsError: null,
@@ -44,6 +52,11 @@ export const ProfileStore = signalStore(
   { providedIn: 'root' },
   withState<ProfileState>(initialState),
   withMethods((store, api = inject(ProfileApiService), fileApi = inject(FileApiService)) => ({
+    /** Drops the last failed save so a panel shown again starts clean. */
+    clearSaveError(): void {
+      patchState(store, { saveError: null, saveApiError: null, saveTarget: null });
+    },
+
     async loadProfile(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
@@ -55,20 +68,21 @@ export const ProfileStore = signalStore(
     },
 
     async savePersonalInformation(payload: UpdatePersonalInformationRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.updatePersonalInformation(payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to save personal information.') });
+        const apiError = toApiError(err, 'Failed to save personal information.');
+        patchState(store, { saving: false, saveError: apiError.message, saveApiError: apiError, saveTarget: 'personal' });
         return false;
       }
     },
 
     async uploadAvatar(file: File): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         const uploaded = await firstValueFrom(fileApi.upload(file, 'employee_avatar'));
         await firstValueFrom(api.linkAvatar(uploaded.fileId));
@@ -82,7 +96,7 @@ export const ProfileStore = signalStore(
     },
 
     async removeAvatar(): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.removeAvatar());
         await this.loadProfile();
@@ -95,33 +109,35 @@ export const ProfileStore = signalStore(
     },
 
     async addEmergencyContact(payload: UpsertEmergencyContactRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.addEmergencyContact(payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to add emergency contact.') });
+        const apiError = toApiError(err, 'Failed to add emergency contact.');
+        patchState(store, { saving: false, saveError: apiError.message, saveApiError: apiError, saveTarget: 'emergencyContact' });
         return false;
       }
     },
 
     async updateEmergencyContact(id: string, payload: UpsertEmergencyContactRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.updateEmergencyContact(id, payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to update emergency contact.') });
+        const apiError = toApiError(err, 'Failed to update emergency contact.');
+        patchState(store, { saving: false, saveError: apiError.message, saveApiError: apiError, saveTarget: 'emergencyContact' });
         return false;
       }
     },
 
     async removeEmergencyContact(id: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.deleteEmergencyContact(id));
         await this.loadProfile();
@@ -134,33 +150,35 @@ export const ProfileStore = signalStore(
     },
 
     async addDependent(payload: UpsertDependentRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.addDependent(payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to add dependent.') });
+        const apiError = toApiError(err, 'Failed to add dependent.');
+        patchState(store, { saving: false, saveError: apiError.message, saveApiError: apiError, saveTarget: 'dependent' });
         return false;
       }
     },
 
     async updateDependent(id: string, payload: UpsertDependentRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.updateDependent(id, payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to update dependent.') });
+        const apiError = toApiError(err, 'Failed to update dependent.');
+        patchState(store, { saving: false, saveError: apiError.message, saveApiError: apiError, saveTarget: 'dependent' });
         return false;
       }
     },
 
     async removeDependent(id: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.deleteDependent(id));
         await this.loadProfile();
@@ -173,20 +191,21 @@ export const ProfileStore = signalStore(
     },
 
     async savePayroll(payload: UpdateBankDetailsRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.updatePayroll(payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to save payroll details.') });
+        const apiError = toApiError(err, 'Failed to save payroll details.');
+        patchState(store, { saving: false, saveError: apiError.message, saveApiError: apiError, saveTarget: 'payroll' });
         return false;
       }
     },
 
     async changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.changePassword(currentPassword, newPassword));
         patchState(store, { saving: false });
@@ -198,7 +217,7 @@ export const ProfileStore = signalStore(
     },
 
     async enableMfa(): Promise<{ secret: string; qrCodeUri: string } | null> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         const result = await firstValueFrom(api.enableMfa());
         patchState(store, { saving: false });
@@ -210,7 +229,7 @@ export const ProfileStore = signalStore(
     },
 
     async confirmMfaSetup(code: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.confirmMfaSetup(code));
         await this.loadProfile();
@@ -273,7 +292,7 @@ export const ProfileStore = signalStore(
     },
 
     async disableMfa(currentPassword: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null, saveTarget: null });
       try {
         await firstValueFrom(api.disableMfa(currentPassword));
         await this.loadProfile();

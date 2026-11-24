@@ -4,6 +4,7 @@ import { ProfileStore } from './profile.store';
 import { ProfileApiService } from '../data-access/profile-api.service';
 import { EmployeeDocument, MyProfile } from '../models/profile.model';
 import { FileApiService } from '../../../shared/data-access/file-api.service';
+import { HttpErrorResponse } from '@angular/common/http';
 
 const sampleProfile: MyProfile = {
   personalInformation: {
@@ -35,7 +36,7 @@ describe('ProfileStore', () => {
   let fileApiMock: { upload: ReturnType<typeof vi.fn>; download: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    apiMock = { getMyProfile: vi.fn(), linkAvatar: vi.fn(), removeAvatar: vi.fn(), listDocuments: vi.fn(), addDocument: vi.fn(), deleteDocument: vi.fn() };
+    apiMock = { getMyProfile: vi.fn(), linkAvatar: vi.fn(), removeAvatar: vi.fn(), listDocuments: vi.fn(), addDocument: vi.fn(), deleteDocument: vi.fn(), addDependent: vi.fn(), addEmergencyContact: vi.fn() } as typeof apiMock;
     fileApiMock = { upload: vi.fn(), download: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
@@ -174,6 +175,27 @@ describe('ProfileStore', () => {
 
       expect(apiMock.deleteDocument).toHaveBeenCalledWith('a');
       expect(store.documents().map((d) => d.id)).toEqual(['b']);
+    });
+  });
+
+  describe('server errors for the panels (task 20 follow-up)', () => {
+    const badRequest = (errors: Record<string, string[]>) =>
+      throwError(() => new HttpErrorResponse({ status: 400, error: { title: 'Validation Error', errors } }));
+
+    it('keeps a refused save as an ApiError tagged with the panel that saved', async () => {
+      (apiMock as unknown as { addDependent: ReturnType<typeof vi.fn> }).addDependent.mockReturnValue(badRequest({ Name: ['Name is too long.'] }));
+      await store.addDependent({ name: 'x', relationship: 'child', dateOfBirth: '2020-01-01', phone: null } as never);
+      expect(store.saveTarget()).toBe('dependent');
+      expect(store.saveApiError()?.fieldErrors).toEqual({ Name: ['Name is too long.'] });
+    });
+
+    it('clears it when the next save starts and on clearSaveError', async () => {
+      const mocks = apiMock as unknown as { addDependent: ReturnType<typeof vi.fn>; addEmergencyContact: ReturnType<typeof vi.fn> };
+      mocks.addDependent.mockReturnValue(badRequest({ Name: ['Name is too long.'] }));
+      await store.addDependent({ name: 'x', relationship: 'child', dateOfBirth: '2020-01-01', phone: null } as never);
+      store.clearSaveError();
+      expect(store.saveApiError()).toBeNull();
+      expect(store.saveTarget()).toBeNull();
     });
   });
 });
