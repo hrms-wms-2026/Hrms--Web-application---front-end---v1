@@ -122,7 +122,7 @@ src/
 │   ├── utils/
 │   │   ├── date.helpers.ts
 │   │   ├── file.helpers.ts
-│   │   └── validation.helpers.ts
+│   │   └── validators/            # shared form rules, AppValidators, message map (task 24)
 │   ├── data-access/
 │   │   ├── api-client.ts
 │   │   ├── api-params.ts
@@ -1227,20 +1227,13 @@ export const correlationInterceptor: HttpInterceptorFn = (req, next) => {
 ### 6.4 Input Validation & Sanitization
 
 ```typescript
-// shared/utils/validation.helpers.ts
-export const Validators = {
-  isValidEmail: (email: string): boolean =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-
-  sanitizeString: (input: string): string =>
-    input.trim().replace(/[<>]/g, ''),
-
-  isValidNIC: (nic: string): boolean =>
-    /^[0-9]{9}[vVxX]$|^[0-9]{12}$/.test(nic),
-
-  isPositiveNumber: (value: unknown): boolean =>
-    typeof value === 'number' && value > 0 && isFinite(value)
-};
+// A reactive form with the shared rules, limits and messages (shared/utils/validators).
+readonly form = this.fb.group({
+  name: ['', AppValidators.name(DEPARTMENT_LIMITS.nameMax)],          // required (trimmed) + max length
+  code: ['', [AppValidators.requiredText(), AppValidators.pattern(DEPARTMENT_LIMITS.codePattern, 'code')]],
+});
+protected readonly fieldError = fieldError;
+// template: <app-input label="Name" ... [error]="fieldError(form.controls.name, 'Name')" />
 ```
 
 **Form validation (decided 2026-11-23, Improvements task 24).** Use `AppValidators` from `shared/utils/validators` (or the pure rules in `validation-rules.ts` for signal forms). Show errors with `fieldError(control, label)` on `app-input` and `<app-field-error>` elsewhere. Add any new message to `validation-messages.ts`, never as text in a template. Limits come from the module's `utils/<module>-limits.ts` (description limits from `shared/constants/text-limits.ts`), each naming the backend validator it mirrors. A frontend limit may be stricter than the backend's, never looser. The backend keeps its own rules; never remove one because the frontend has it. Server field errors (400 `errors`) are mapped by Improvements task 20.

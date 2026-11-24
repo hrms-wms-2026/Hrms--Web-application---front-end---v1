@@ -45,4 +45,5 @@ export const COMPANY_LIMITS = {
   timezoneMax: 50,
   defaultLanguageMax: 10,
   dateFormatMax: 20,
+  officeAddressMax: 500,
 } as const;

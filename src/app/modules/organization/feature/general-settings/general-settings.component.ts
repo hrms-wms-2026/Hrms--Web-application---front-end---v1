@@ -113,16 +113,16 @@ export class GeneralSettingsComponent {
     email: ['', [AppValidators.email(), AppValidators.maxLength(COMPANY_LIMITS.emailMax)]],
     phoneNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.phoneMax)],
     website: ['', [AppValidators.maxLength(COMPANY_LIMITS.websiteMax), absoluteUrlValidator()]],
-    countryCode: ['', [Validators.required, Validators.maxLength(3)]],
-    currencyCode: ['', [Validators.required, Validators.maxLength(3)]],
-    timezone: ['', [Validators.required, Validators.maxLength(50)]],
+    countryCode: ['', [Validators.required, Validators.maxLength(COMPANY_LIMITS.countryCodeMax)]],
+    currencyCode: ['', [Validators.required, Validators.maxLength(COMPANY_LIMITS.currencyCodeMax)]],
+    timezone: ['', [Validators.required, Validators.maxLength(COMPANY_LIMITS.timezoneMax)]],
     financialYearStartMonth: [1, [Validators.required, Validators.min(1), Validators.max(12)]],
     firstDayOfWeek: [1, [Validators.required, Validators.min(1), Validators.max(7)]],
     standardWorkingDays: this.fb.nonNullable.control<number[]>([], [nonEmptyArrayValidator()]),
     // Phase 1 supports English only - locked, not user-editable (CreateLegalEntityCommandHandler.cs
     // always sets DefaultLanguage = "en-US" for new legal entities).
-    defaultLanguage: [{ value: 'en-US', disabled: true }, [Validators.required, Validators.maxLength(10)]],
-    dateFormat: ['DD/MM/YYYY', [Validators.required, Validators.maxLength(20)]],
+    defaultLanguage: [{ value: 'en-US', disabled: true }, [Validators.required, Validators.maxLength(COMPANY_LIMITS.defaultLanguageMax)]],
+    dateFormat: ['DD/MM/YYYY', [Validators.required, Validators.maxLength(COMPANY_LIMITS.dateFormatMax)]],
     timeFormat: ['24h' as '12h' | '24h', [Validators.required, oneOfValidator(['12h', '24h'])]],
     status: ['active' as 'active' | 'inactive', [Validators.required, oneOfValidator(['active', 'inactive'])]],
     // Work hours — optional pair, validated as a group (both-or-neither, start < end).
@@ -134,7 +134,7 @@ export class GeneralSettingsComponent {
     // Office location for the on-site work-location warning — optional, all-or-nothing
     // (officeLocationValidator). officeLatitude/officeLongitude are set by the map picker, never
     // typed directly. The geofence radius lives on Clock-in Policy (Allowed distance), not here.
-    officeAddress: ['', [Validators.maxLength(500)]],
+    officeAddress: ['', AppValidators.maxLength(COMPANY_LIMITS.officeAddressMax)],
     officeLatitude: this.fb.control<number | null>(null),
     officeLongitude: this.fb.control<number | null>(null)
   }, { validators: [workTimePairValidator(), officeLocationValidator()] });

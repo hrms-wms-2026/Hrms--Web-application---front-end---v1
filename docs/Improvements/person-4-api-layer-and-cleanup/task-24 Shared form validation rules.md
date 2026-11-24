@@ -52,31 +52,35 @@ Done on branch `chore/shared-form-validation`. Plan: `docs/superpowers/plans/nex
 | Leave request reason | max 500 | max 2000 (`SubmitLeaveRequestCommandValidator`) | Kept 500 (stricter, product decision) |
 | Company name / code | 200 / 20 | 200 / 20 (`CreateLegalEntityCommandValidator`) | Same, no change |
 
-### Remaining forms
+### Follow-up (2026-11-24, branch `chore/shared-validation-forms`)
 
-Forms still on hand-written rules. Owner is Person 4 unless noted; the lead can reassign.
+19 more forms moved to the shared validators, messages and per-module limits:
+- **Organization:** role, position, position coverage, create company, general settings.
+- **Auth:** login, forgot password, reset password, accept invitation.
+- **Profile:** personal info, emergency contacts, dependents, payroll (bank details), security.
+- **People and planner:** checklist builder, employee job info, start offboarding, calendar event, meeting.
+
+`ProfileValidators` and `shared/utils/validation.helpers.ts` are deleted, because the shared rules replace them.
+
+More drift was found where the frontend was looser than the backend. All of it is fixed:
+
+| Field | Frontend before | Backend | Now |
+|---|---|---|---|
+| Role name | max 100 | max 50, `^[A-Za-z0-9 _-]+$` (`Create/UpdateRoleCommandValidator`) | 50 + allowed characters |
+| Role description | max 500 | max 255 | 255 |
+| Checklist template name | max 150 | max 100 (`CreateChecklistTemplateCommandValidator`) | 100 |
+| Emergency contact name / relationship / phone / email | no limit, no email check | 100 / 30 / 20 / 255 + email | same as backend |
+| Dependent name / phone | no limit | 100 / 20 | same as backend |
+| Bank details (6 fields) | no limit | 100 / 100 / 100 / 34 / 30 / 20 (`UpdateBankDetailsCommandValidator`) | same as backend |
+| Offboarding notes | no limit | max 4000 | 4000 |
+| Meeting title | no limit | max 500 (`MeetingCreateValidator`) | 500 |
+
+### Remaining forms
 
 | Form | Owner | Note |
 |---|---|---|
-| `core/auth/feature/login` | Person 4 | email |
-| `core/auth/feature/forgot-password` | Person 4 | email |
-| `core/auth/feature/reset-password` | Person 4 | password rules |
-| `core/auth/feature/accept-invitation` | Person 4 | password rules |
-| `modules/calendar/ui/calendar-event-form-modal` | Person 4 | date range, description |
-| `modules/organization/feature/general-settings` (+ `utils/general-settings-validators.ts`) | Person 4 | company name/code messages |
-| `modules/organization/ui/create-company-modal` | Person 4 | company name/code messages |
-| `modules/organization/ui/position-coverage-modal` | Person 4 | |
-| `modules/organization/ui/position-form-modal` | Person 4 | |
-| `modules/organization/ui/role-form-modal` | Person 4 | |
-| `modules/people/feature/checklist-builder` | Person 4 | |
-| `modules/people/ui/employee-job-info` | Person 4 | |
-| `modules/people/ui/start-offboarding-modal` | Person 4 | |
-| `modules/profile/ui/dependents-panel` | Person 4 | |
-| `modules/profile/ui/emergency-contacts-panel` | Person 4 | phone (`profile-validators.ts`) |
-| `modules/profile/ui/payroll-panel` | Person 4 | |
-| `modules/profile/ui/personal-info-form` | Person 4 | email, phone |
-| `modules/profile/ui/security-panel` | Person 4 | password rules |
-| `modules/work/meetings/ui/meeting-form-modal` | Person 4 | date range |
 | `modules/people/feature/add-employee-wizard` | People module owner | Large (1,347 lines + store); move during its refactor |
 | `modules/organization/feature/position-management` | Organization module owner | Large; move during its refactor |
 | `modules/work/ui/task-form-modal` | Work module owner | Large (3,770 lines); move during its split |
+
+Pickers whose required check depends on another field (coverage target, checklist department/position) still check the value in the template. Their text already matches the shared `required` message.
