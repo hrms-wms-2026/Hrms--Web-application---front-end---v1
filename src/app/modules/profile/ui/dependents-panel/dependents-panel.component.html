@@ -67,6 +67,7 @@
       [error]="validationMessage(addForm.controls.phone.errors, 'Phone')"
     />
   </div>
+  <app-field-error [message]="serverFormError() ?? ''" />
   <div class="pf-actions">
     <app-button type="submit" variant="secondary" [disabled]="saving()">Add dependent</app-button>
   </div>

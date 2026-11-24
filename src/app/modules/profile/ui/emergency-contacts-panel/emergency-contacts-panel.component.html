@@ -71,6 +71,7 @@
       [error]="fieldError(addForm.controls.email, 'Email')"
     />
   </div>
+  <app-field-error [message]="serverFormError() ?? ''" />
   <div class="pf-actions">
     <app-button type="submit" variant="secondary" [disabled]="saving()">Add contact</app-button>
   </div>

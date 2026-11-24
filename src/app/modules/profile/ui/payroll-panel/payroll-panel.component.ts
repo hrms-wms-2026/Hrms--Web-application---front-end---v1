@@ -1,15 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal, effect, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { PayrollInfo, UpdateBankDetailsRequest } from '../../models/profile.model';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { AppValidators, applyServerFieldErrors, failedSaveToast, fieldError, validationMessage } from '../../../../shared/utils/validators';
 import { BANK_DETAILS_LIMITS } from '../../utils/profile-limits';
+import { ApiError } from '../../../../core/errors/api-error';
+import { FieldErrorComponent } from '../../../../shared/ui/field-error/field-error.component';
 
 @Component({
   selector: 'app-payroll-panel',
   standalone: true,
-  imports: [ReactiveFormsModule, InputComponent, ButtonComponent],
+  imports: [FieldErrorComponent, ReactiveFormsModule, InputComponent, ButtonComponent],
   templateUrl: './payroll-panel.component.html',
   styleUrls: ['../profile-panel.shared.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -38,6 +40,22 @@ export class PayrollPanelComponent {
     accountType: ['', AppValidators.name(BANK_DETAILS_LIMITS.accountTypeMax)],
     routingNumber: ['', AppValidators.maxLength(BANK_DETAILS_LIMITS.routingNumberMax)]
   });
+
+  /** The profile tab passes this panel's own failed save (task 20). */
+  readonly serverError = input<ApiError | null>(null);
+  /** A message from that save that has no field here, or a refusal without field errors. */
+  protected readonly serverFormError = signal<string | null>(null);
+
+  constructor() {
+    effect(() => {
+      const error = this.serverError();
+      untracked(() =>
+        this.serverFormError.set(
+          error ? (applyServerFieldErrors(this.form, error, ['bankName', 'branchName', 'accountHolderName', 'accountNumber', 'accountType', 'routingNumber']) ?? failedSaveToast(error, 'Could not save.')) : null,
+        ),
+      );
+    });
+  }
 
   startEdit(): void {
     const data = this.payroll();
