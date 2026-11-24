@@ -45,7 +45,7 @@
               [value]="detailsForm.controls.name.value || ''"
               (valueChange)="detailsForm.controls.name.setValue($event)"
               (blurred)="detailsForm.controls.name.markAsTouched()"
-              [error]="detailsForm.controls.name.touched && detailsForm.controls.name.invalid ? 'Position name is required (max 100 characters).' : ''"
+              [error]="fieldError(detailsForm.controls.name, 'Position name')"
             />
             <app-input
               label="Position code (optional)"
@@ -54,7 +54,7 @@
               [value]="detailsForm.controls.code.value || ''"
               (valueChange)="detailsForm.controls.code.setValue($event)"
               (blurred)="detailsForm.controls.code.markAsTouched()"
-              [error]="detailsForm.controls.code.touched && detailsForm.controls.code.invalid ? 'Use up to 5 letters, numbers, hyphens, or underscores.' : ''"
+              [error]="fieldError(detailsForm.controls.code, 'Code')"
             />
             <app-select
               label="Department *"
@@ -62,7 +62,7 @@
               [options]="positionDepartmentOptions"
               [value]="detailsForm.controls.departmentId.value || ''"
               (valueChange)="detailsForm.controls.departmentId.setValue($event)"
-              [error]="detailsForm.controls.departmentId.touched && detailsForm.controls.departmentId.invalid ? 'Department is required.' : ''"
+              [error]="fieldError(detailsForm.controls.departmentId, 'Department')"
             />
             <app-select
               label="Reports to position"
@@ -78,7 +78,7 @@
               [value]="detailsForm.controls.maxOccupancy.value?.toString() || '1'"
               (valueChange)="detailsForm.controls.maxOccupancy.setValue(+$event)"
               (blurred)="detailsForm.controls.maxOccupancy.markAsTouched()"
-              [error]="detailsForm.controls.maxOccupancy.touched && detailsForm.controls.maxOccupancy.invalid ? 'Capacity must be at least 1.' : ''"
+              [error]="fieldError(detailsForm.controls.maxOccupancy, 'Capacity')"
             />
             <app-select
               label="Default system role"

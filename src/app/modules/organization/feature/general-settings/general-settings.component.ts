@@ -36,6 +36,8 @@ import {
   workTimePairValidator
 } from '../../utils/general-settings-validators';
 import { computeWorkDayHours, isOvernightWorkWindow } from '../../utils/work-day-hours';
+import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { COMPANY_LIMITS } from '../../utils/organization-limits';
 
 /**
  * Settings -> General Settings page for the currently selected Legal Entity.
@@ -99,15 +101,18 @@ export class GeneralSettingsComponent {
   readonly logoDialogOpen = signal(false);
   readonly pickedLogo = signal<File | null>(null);
 
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
+
   readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(200)]],
-    companyCode: ['', [Validators.required, Validators.maxLength(20)]],
-    registrationNumber: ['', [Validators.required, Validators.maxLength(50)]],
-    taxRegistrationNumber: ['', [Validators.maxLength(80)]],
-    vatGstNumber: ['', [Validators.maxLength(50)]],
-    email: ['', [Validators.email, Validators.maxLength(254)]],
-    phoneNumber: ['', [Validators.maxLength(20)]],
-    website: ['', [Validators.maxLength(255), absoluteUrlValidator()]],
+    name: ['', AppValidators.name(COMPANY_LIMITS.nameMax)],
+    companyCode: ['', AppValidators.name(COMPANY_LIMITS.codeMax)],
+    registrationNumber: ['', AppValidators.name(COMPANY_LIMITS.registrationNumberMax)],
+    taxRegistrationNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.taxRegistrationNumberMax)],
+    vatGstNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.vatGstNumberMax)],
+    email: ['', [AppValidators.email(), AppValidators.maxLength(COMPANY_LIMITS.emailMax)]],
+    phoneNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.phoneMax)],
+    website: ['', [AppValidators.maxLength(COMPANY_LIMITS.websiteMax), absoluteUrlValidator()]],
     countryCode: ['', [Validators.required, Validators.maxLength(3)]],
     currencyCode: ['', [Validators.required, Validators.maxLength(3)]],
     timezone: ['', [Validators.required, Validators.maxLength(50)]],
