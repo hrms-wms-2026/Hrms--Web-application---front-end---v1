@@ -16,7 +16,13 @@ import { LegalEntityStore } from '../../../organization/state/legal-entity.store
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { AddEmployeeWizardStore } from '../../state/add-employee-wizard.store';
 import { EMPLOYMENT_TYPE_OPTIONS as ALL_EMPLOYMENT_TYPE_OPTIONS, SELECTABLE_EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
-import { WizardStep, WorkModeOption } from '../../models/onboarding-draft.model';
+import {
+  FinalizeOnboardingDraftResponse,
+  SELF_EMPLOYEE_CREATED,
+  SelfPrefill,
+  WizardStep,
+  WorkModeOption
+} from '../../models/onboarding-draft.model';
 import { OnboardingApprovalPreview } from '../../models/access-grant-request.model';
 import { ChecklistTemplateMatchLevel, ChecklistTemplateType, DraftChecklistTask } from '../../models/checklist-template.model';
 import { UnsavedChangesService, DirtyFormHandle } from '../../../../shared/services/unsaved-changes.service';
@@ -102,8 +108,11 @@ export class AddEmployeeWizardComponent implements OnDestroy {
 
   readonly isModal = input<boolean>(true);
   readonly initialDraftId = input<string | null>(null);
+  /** "Add yourself as an employee": prefills the signed-in user's name and email and locks the email,
+   *  so the backend finalizes the draft onto their own login with no invitation. */
+  readonly selfPrefill = input<SelfPrefill | null>(null);
   readonly closed = output<void>();
-  readonly saved = output<{ finalized: boolean; draftId?: string }>();
+  readonly saved = output<{ finalized: boolean; draftId?: string; self?: boolean }>();
 
   private baseline: string | null = null;
 
@@ -602,6 +611,17 @@ export class AddEmployeeWizardComponent implements OnDestroy {
     if (routeDraftId) {
       void this.resumeExistingDraft(routeDraftId);
     }
+
+    // "Add yourself as an employee": fill in the signed-in user's identity and lock the email, which is what
+    // makes the backend finalize onto their own login (no invitation). getRawValue() still sends it.
+    effect(() => {
+      const prefill = this.selfPrefill();
+      if (!prefill) return;
+      untracked(() => {
+        this.form.patchValue({ firstName: prefill.firstName, lastName: prefill.lastName, workEmail: prefill.workEmail });
+        this.form.controls.workEmail.disable();
+      });
+    });
 
     this.form.valueChanges.subscribe((value) => {
       // Mid-resume the store holds the draft and the still-empty form must not overwrite it
@@ -1242,40 +1262,52 @@ export class AddEmployeeWizardComponent implements OnDestroy {
 
     const response = await this.store.finalizeDraft(draftId);
     if (response) {
-      if (response.invitationQueued && !response.positionApprovalPending) {
-        this.notificationService.success('Employee onboarding invitation was queued.');
-        this.saved.emit({ finalized: true, draftId });
-        this.closed.emit();
-        void this.draftsStore.load();
-        await this.router.navigate(['/people/employees']);
-        this.store.reset();
-      } else if (response.positionApprovalPending) {
-        this.notificationService.info('Position approval was requested before the invitation can be sent.');
-        this.saved.emit({ finalized: true, draftId });
-        this.closed.emit();
-        void this.draftsStore.load();
-        await this.router.navigate(['/people/employees']);
-        this.store.reset();
-      } else if (response.status === 'waiting_for_seat' || response.draftReason === 'waiting_for_seat') {
-        this.notificationService.info('No seat is available. The draft was saved for follow-up.');
-        this.saved.emit({ finalized: false, draftId });
-        void this.draftsStore.load();
-      } else if (response.draftReason === 'seat_configuration_required') {
-        this.notificationService.warning('Seat policy is not configured. The draft was saved, but invitation cannot be sent yet.');
-        this.saved.emit({ finalized: false, draftId });
-        void this.draftsStore.load();
-      } else if (response.draftReason === 'position_approval_rejected') {
-        this.notificationService.error('Position approval was rejected.');
-      } else {
-        this.notificationService.success('Employee onboarding draft updated.');
-        this.saved.emit({ finalized: true, draftId });
-        this.closed.emit();
-        void this.draftsStore.load();
-        await this.router.navigate(['/people/employees']);
-        this.store.reset();
-      }
+      await this.applyFinalizeResponse(response, draftId);
     } else {
       this.notificationService.error(this.store.finalizeError() ?? 'Failed to finalize employee.');
+    }
+  }
+
+  /** What the wizard does with a successful finalize answer. Public so specs can drive it directly. */
+  async applyFinalizeResponse(response: FinalizeOnboardingDraftResponse, draftId: string): Promise<void> {
+    if (response.messageKey === SELF_EMPLOYEE_CREATED) {
+      // Your own profile: no invitation, and you stay where you started (the home screen reloads).
+      this.notificationService.success("You're set up as an employee");
+      this.saved.emit({ finalized: true, draftId, self: true });
+      this.closed.emit();
+      void this.draftsStore.load();
+      this.store.reset();
+    } else if (response.invitationQueued && !response.positionApprovalPending) {
+      this.notificationService.success('Employee onboarding invitation was queued.');
+      this.saved.emit({ finalized: true, draftId });
+      this.closed.emit();
+      void this.draftsStore.load();
+      await this.router.navigate(['/people/employees']);
+      this.store.reset();
+    } else if (response.positionApprovalPending) {
+      this.notificationService.info('Position approval was requested before the invitation can be sent.');
+      this.saved.emit({ finalized: true, draftId });
+      this.closed.emit();
+      void this.draftsStore.load();
+      await this.router.navigate(['/people/employees']);
+      this.store.reset();
+    } else if (response.status === 'waiting_for_seat' || response.draftReason === 'waiting_for_seat') {
+      this.notificationService.info('No seat is available. The draft was saved for follow-up.');
+      this.saved.emit({ finalized: false, draftId });
+      void this.draftsStore.load();
+    } else if (response.draftReason === 'seat_configuration_required') {
+      this.notificationService.warning('Seat policy is not configured. The draft was saved, but invitation cannot be sent yet.');
+      this.saved.emit({ finalized: false, draftId });
+      void this.draftsStore.load();
+    } else if (response.draftReason === 'position_approval_rejected') {
+      this.notificationService.error('Position approval was rejected.');
+    } else {
+      this.notificationService.success('Employee onboarding draft updated.');
+      this.saved.emit({ finalized: true, draftId });
+      this.closed.emit();
+      void this.draftsStore.load();
+      await this.router.navigate(['/people/employees']);
+      this.store.reset();
     }
   }
 
