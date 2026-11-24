@@ -6,6 +6,7 @@ import { catchError, retry, throwError, timer } from 'rxjs';
 import { clearSingleHostTenant, isSingleHostMode } from '../auth/utils/single-host-tenant';
 import { AuthStore } from '../auth/state/auth.store';
 import { ErrorHandlerService } from '../services/error-handler.service';
+import { rememberCorrelationId } from '../errors/api-error';
 import { TrayPresenceRequiredEvents } from '../tray-presence/state/tray-presence-required.events';
 
 const RETRY_DELAYS_MS = [250, 500, 1000];
@@ -67,7 +68,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
     }),
     catchError((error: HttpErrorResponse) => {
-            if (isActiveTrayRequired(error)) {
+      // The correlation interceptor runs first, so this is the id the backend logged the request under.
+      rememberCorrelationId(error, req.headers.get('X-Correlation-ID'));
+      if (isActiveTrayRequired(error)) {
         trayPresenceEvents.publish();
         return throwError(() => error);
       }

@@ -6,6 +6,8 @@ import { environment } from '@environments/environment';
 import { SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
 import { AuthStore } from '../auth/state/auth.store';
 import { NotificationService } from '../services/notification.service';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { toApiError } from '../errors/api-error';
 
 describe('errorInterceptor', () => {
   let http: HttpClient;
@@ -32,6 +34,17 @@ describe('errorInterceptor', () => {
   afterEach(() => {
     httpMock.verify();
     vi.useRealTimers();
+  });
+
+  it('remembers the request correlation id for toApiError and still throws the HttpErrorResponse', () => {
+    let caught: unknown = null;
+    http.post('/api/v1/org/things', {}, { headers: new HttpHeaders({ 'X-Correlation-ID': 'req-abc' }) }).subscribe({
+      error: (e: unknown) => (caught = e),
+    });
+    httpMock.expectOne('/api/v1/org/things').flush({ detail: 'x' }, { status: 409, statusText: 'Conflict' });
+
+    expect(caught).toBeInstanceOf(HttpErrorResponse);
+    expect(toApiError(caught).correlationId).toBe('req-abc');
   });
 
   it('retries a 500 three times with backoff before failing', async () => {
