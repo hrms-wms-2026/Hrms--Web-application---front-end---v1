@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, HostListener, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostListener,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TrayPresenceStore } from '../../core/tray-presence/state/tray-presence.store';
 import { TrayActivationGateComponent } from '../../core/tray-presence/feature/tray-activation-gate/tray-activation-gate.component';
@@ -22,14 +29,31 @@ import { UnsavedChangesDialogComponent } from '../../shared/ui/unsaved-changes-d
 import { DraftsBarComponent } from './drafts-bar/drafts-bar.component';
 import { DraftModalHostComponent } from './draft-modal-host/draft-modal-host.component';
 import { AnnouncementBannerComponent } from './announcement-banner/announcement-banner.component';
+import { OwnerSetupGuideComponent } from './owner-setup-guide/owner-setup-guide.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SideNavbarComponent, TopNavbarComponent, SubSidebarComponent, InboxChatSidebarComponent, ToastHostComponent, MobileBottomNavComponent, MobileSectionNavComponent,DraftsBarComponent, DraftModalHostComponent, UnsavedChangesDialogComponent, TrayActivationGateComponent, LockedWorkspacePreviewComponent, AnnouncementBannerComponent],
+  imports: [
+    RouterOutlet,
+    SideNavbarComponent,
+    TopNavbarComponent,
+    SubSidebarComponent,
+    InboxChatSidebarComponent,
+    ToastHostComponent,
+    MobileBottomNavComponent,
+    MobileSectionNavComponent,
+    DraftsBarComponent,
+    DraftModalHostComponent,
+    UnsavedChangesDialogComponent,
+    TrayActivationGateComponent,
+    LockedWorkspacePreviewComponent,
+    AnnouncementBannerComponent,
+    OwnerSetupGuideComponent,
+  ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MainLayoutComponent {
   private readonly authStore = inject(AuthStore);
@@ -60,7 +84,7 @@ export class MainLayoutComponent {
 
   constructor() {
     this.profileStore.loadProfile();
-    void this.plannerAvailability.probe();   // decides whether the Planner nav item shows
+    void this.plannerAvailability.probe(); // decides whether the Planner nav item shows
     if (this.monitoringEnabled) {
       this.trayPresence.start();
     }

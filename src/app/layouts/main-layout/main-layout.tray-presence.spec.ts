@@ -14,7 +14,11 @@ import { FileApiService } from '../../shared/data-access/file-api.service';
 import { MyProfile } from '@modules/profile/models/profile.model';
 
 /** The planner probe is a real HTTP call in the layout; these specs are not about it. */
-const plannerAvailabilityStub = { probe: () => Promise.resolve(), state: () => 'off' as const, markAvailable: () => undefined };
+const plannerAvailabilityStub = {
+  probe: () => Promise.resolve(),
+  state: () => 'off' as const,
+  markAvailable: () => undefined,
+};
 
 @Component({ selector: 'app-side-navbar', standalone: true, template: '' })
 class SideNavbarStubComponent {}
@@ -59,6 +63,9 @@ class LockedWorkspacePreviewStubComponent {}
 @Component({ selector: 'app-announcement-banner', standalone: true, template: '' })
 class AnnouncementBannerStubComponent {}
 
+@Component({ selector: 'app-owner-setup-guide', standalone: true, template: '' })
+class OwnerSetupGuideStubComponent {}
+
 // eslint-disable-next-line @angular-eslint/component-selector -- the stub must match the real <router-outlet> selector
 @Component({ selector: 'router-outlet', standalone: true, template: '' })
 class RouterOutletStubComponent {}
@@ -89,11 +96,11 @@ describe('MainLayoutComponent tray activation gate', () => {
       generationError,
       start: vi.fn(),
       retry: vi.fn(),
-      copyCode: vi.fn()
+      copyCode: vi.fn(),
     };
     const trayApi = {
       getStatus: vi.fn(),
-      generateActivationCode: vi.fn(() => of({ code: 'BCDF2345', expires_in_seconds: 600 }))
+      generateActivationCode: vi.fn(() => of({ code: 'BCDF2345', expires_in_seconds: 600 })),
     };
 
     TestBed.configureTestingModule({
@@ -107,16 +114,23 @@ describe('MainLayoutComponent tray activation gate', () => {
           useValue: {
             email: signal('buddy@example.test'),
             logout: vi.fn(),
-            activeModules: signal(['activity_monitoring'])
-          }
+            activeModules: signal(['activity_monitoring']),
+          },
         },
         {
           provide: NavigationStateService,
-          useValue: { pageSubSidebar: signal(null), pageSubSidebarActions: signal(null), activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+          useValue: {
+            pageSubSidebar: signal(null),
+            pageSubSidebarActions: signal(null),
+            activeChildren: signal([]),
+            activeItem: signal(null),
+            hasVisibleSubSidebar: signal(false),
+            hasSubSidebar: signal(false),
+          },
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     });
     TestBed.overrideComponent(MainLayoutComponent, {
       set: {
@@ -133,9 +147,10 @@ describe('MainLayoutComponent tray activation gate', () => {
           UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
           LockedWorkspacePreviewStubComponent,
-          AnnouncementBannerStubComponent
-        ]
-      }
+          AnnouncementBannerStubComponent,
+          OwnerSetupGuideStubComponent,
+        ],
+      },
     });
     await TestBed.compileComponents();
     fixture = TestBed.createComponent(MainLayoutComponent);
@@ -152,7 +167,7 @@ describe('MainLayoutComponent tray activation gate', () => {
     isBlocking.set(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('#gate-title')?.textContent).toContain(
-      'Connect the CROWNUS tray app'
+      'Connect the CROWNUS tray app',
     );
     expect(fixture.nativeElement.querySelector('app-locked-workspace-preview')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('router-outlet')).toBeNull();
@@ -192,7 +207,7 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
       generationError: signal<string | null>(null),
       start,
       retry: vi.fn(),
-      copyCode: vi.fn()
+      copyCode: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -202,19 +217,30 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
         { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         {
           provide: TrayPresenceApiService,
-          useValue: { getStatus: vi.fn(), generateActivationCode: vi.fn() }
+          useValue: { getStatus: vi.fn(), generateActivationCode: vi.fn() },
         },
         {
           provide: AuthStore,
-          useValue: { email: signal('buddy@example.test'), logout: vi.fn(), activeModules: signal([]) }
+          useValue: {
+            email: signal('buddy@example.test'),
+            logout: vi.fn(),
+            activeModules: signal([]),
+          },
         },
         {
           provide: NavigationStateService,
-          useValue: { pageSubSidebar: signal(null), pageSubSidebarActions: signal(null), activeChildren: signal([]), activeItem: signal(null), hasVisibleSubSidebar: signal(false), hasSubSidebar: signal(false) }
+          useValue: {
+            pageSubSidebar: signal(null),
+            pageSubSidebarActions: signal(null),
+            activeChildren: signal([]),
+            activeItem: signal(null),
+            hasVisibleSubSidebar: signal(false),
+            hasSubSidebar: signal(false),
+          },
         },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     });
     TestBed.overrideComponent(MainLayoutComponent, {
       set: {
@@ -231,9 +257,10 @@ describe('MainLayoutComponent tray activation gate when monitoring module is not
           UnsavedChangesDialogStubComponent,
           TrayActivationGateComponent,
           LockedWorkspacePreviewStubComponent,
-          AnnouncementBannerStubComponent
-        ]
-      }
+          AnnouncementBannerStubComponent,
+          OwnerSetupGuideStubComponent,
+        ],
+      },
     });
     await TestBed.compileComponents();
     const fixture = TestBed.createComponent(MainLayoutComponent);

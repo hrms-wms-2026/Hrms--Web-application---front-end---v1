@@ -2,6 +2,7 @@
 export interface SelfSetupStatusDto {
   readonly has_employee_profile: boolean;
   readonly has_legal_entity: boolean;
+  readonly has_department: boolean;
   readonly has_position: boolean;
   readonly can_add_self: boolean;
   readonly first_name: string;
