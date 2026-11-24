@@ -138,7 +138,7 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
 
           <label class="mf-field">
             <span class="mf-label">Meeting title</span>
-            <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="ui-input" [readOnly]="notesOnly()" />
+            <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="ui-input" [readOnly]="notesOnly()" [attr.maxlength]="titleMax" />
           </label>
           <div class="mf-field">
             @if (cards()) { <span class="mf-label">{{ notesOnly() ? 'Meeting notes' : 'Agenda' }}</span> }
@@ -540,6 +540,8 @@ export class MeetingFormModalComponent implements OnInit {
   readonly recurrenceOptions = computed<readonly SelectOption[]>(() => this.presets
     .filter((p) => !this.compact() || p !== 'custom')
     .map((p) => ({ value: p, label: RECURRENCE_PRESET_LABELS[p] })));
+
+  readonly titleMax = MEETING_LIMITS.titleMax;
 
   canSave(): boolean {
     if (this.form.controls.title.invalid || !this.form.controls.date.value) return false;

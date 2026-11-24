@@ -12,7 +12,7 @@ import {
   readLastTenantSlug
 } from '../../utils/tenant-redirect';
 import { parseSafeReturnPath } from '../../utils/safe-return-path';
-import { AppValidators, fieldError } from '../../../../shared/utils/validators';
+import { fieldError } from '../../../../shared/utils/validators';
 
 interface RememberedAccount {
   displayName: string;
@@ -40,7 +40,7 @@ export class LoginComponent implements OnInit {
   protected readonly fieldError = fieldError;
 
   form = this.fb.nonNullable.group({
-    email: ['', [Validators.required, AppValidators.email()]],
+    email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
 

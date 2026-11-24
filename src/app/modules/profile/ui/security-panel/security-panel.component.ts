@@ -64,7 +64,7 @@ export class SecurityPanelComponent {
       this.mfaCodeForm.markAllAsTouched();
       return;
     }
-    this.confirmMfaSetup.emit(this.mfaCodeForm.getRawValue().code);
+    this.confirmMfaSetup.emit(this.mfaCodeForm.getRawValue().code.trim());
     this.mfaSetupStep.set('idle');
     this.mfaCodeForm.reset();
   }

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { EmergencyContact, UpsertEmergencyContactRequest } from '../../models/profile.model';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -27,7 +27,7 @@ export class EmergencyContactsPanelComponent {
     name: ['', AppValidators.name(EMERGENCY_CONTACT_LIMITS.nameMax)],
     relationship: ['', AppValidators.name(EMERGENCY_CONTACT_LIMITS.relationshipMax)],
     phone: ['', AppValidators.name(EMERGENCY_CONTACT_LIMITS.phoneMax)],
-    email: ['', [AppValidators.email(), AppValidators.maxLength(EMERGENCY_CONTACT_LIMITS.emailMax)]]
+    email: ['', [Validators.email, AppValidators.maxLength(EMERGENCY_CONTACT_LIMITS.emailMax)]]
   });
 
   onSubmitAdd(): void {

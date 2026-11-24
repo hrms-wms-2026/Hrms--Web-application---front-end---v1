@@ -67,7 +67,8 @@
       placeholder="e.g. john@example.com"
       [value]="addForm.controls.email.value"
       (valueChange)="addForm.controls.email.setValue($event)"
-      [error]="validationMessage(addForm.controls.email.errors, 'Email')"
+      (blurred)="addForm.controls.email.markAsTouched()"
+      [error]="fieldError(addForm.controls.email, 'Email')"
     />
   </div>
   <div class="pf-actions">

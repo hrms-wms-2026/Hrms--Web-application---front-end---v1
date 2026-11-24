@@ -94,7 +94,7 @@ export class PersonalInfoFormComponent implements OnChanges {
   }
 
   onSubmit(): void {
-    if (this.form.invalid || !this.isPhoneValid()) {
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
@@ -152,7 +152,4 @@ export class PersonalInfoFormComponent implements OnChanges {
     this.pickedPhoto.set(null);
   }
 
-  isPhoneValid(): boolean {
-    return this.form.controls.phone.valid;
-  }
 }

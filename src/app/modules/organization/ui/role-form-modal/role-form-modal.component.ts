@@ -43,6 +43,7 @@ export interface RoleFormSubmitValue {
 export class RoleFormModalComponent implements OnChanges {
   readonly limits = TEXT_LIMITS;
   protected readonly fieldError = fieldError;
+  protected readonly roleLimits = ROLE_LIMITS;
   private readonly fb = inject(FormBuilder);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 

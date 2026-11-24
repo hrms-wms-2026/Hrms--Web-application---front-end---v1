@@ -110,7 +110,8 @@ export class GeneralSettingsComponent {
     registrationNumber: ['', AppValidators.name(COMPANY_LIMITS.registrationNumberMax)],
     taxRegistrationNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.taxRegistrationNumberMax)],
     vatGstNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.vatGstNumberMax)],
-    email: ['', [AppValidators.email(), AppValidators.maxLength(COMPANY_LIMITS.emailMax)]],
+    // Validators.email like the backend's EmailAddress(), which allows a dotless domain.
+    email: ['', [Validators.email, AppValidators.maxLength(COMPANY_LIMITS.emailMax)]],
     phoneNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.phoneMax)],
     website: ['', [AppValidators.maxLength(COMPANY_LIMITS.websiteMax), absoluteUrlValidator()]],
     countryCode: ['', [Validators.required, Validators.maxLength(COMPANY_LIMITS.countryCodeMax)]],
