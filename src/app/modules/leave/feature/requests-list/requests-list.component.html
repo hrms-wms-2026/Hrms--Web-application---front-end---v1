@@ -19,13 +19,14 @@
     <div class="to-loading"><app-loader /></div>
   } @else if (store.allError()) {
     <app-error-state [message]="store.allError()!" [retryable]="true" (retry)="store.loadAll()" />
-  } @else if (store.all().length === 0) {
+  } @else if (store.all().length === 0 && !hasHeaderFilter()) {
     <div class="to-empty">
       <app-empty-state title="No leave requests found" description="No requests match the current filters." />
     </div>
   } @else {
     <div class="to-table-card">
-      <app-leave-request-all-table [rows]="store.all()" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
+      <app-leave-request-all-table [rows]="store.all()" [columnFilters]="headerFilters()" [filterValues]="headerFilterValues()"
+        (filterChanged)="onHeaderFilterChanged($event)" (rowClicked)="onRowClicked($event)" (cancelRequested)="onCancelRequested($event)" />
     </div>
   }
 </section>

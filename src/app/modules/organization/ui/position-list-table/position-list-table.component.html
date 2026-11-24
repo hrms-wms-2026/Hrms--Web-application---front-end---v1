@@ -1,6 +1,8 @@
 <app-data-table
-  [columns]="columns"
+  [columns]="columns()"
   [rows]="positions"
+  [filterValues]="filterValues()"
+  (filterChanged)="filterChanged.emit($event)"
   [trackBy]="trackById"
   [rowClass]="rowClass"
   [rowTitle]="vacancyTitle"

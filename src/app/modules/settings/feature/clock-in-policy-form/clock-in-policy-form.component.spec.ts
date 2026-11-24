@@ -214,16 +214,17 @@ describe('ClockInPolicyFormComponent', () => {
     fixture.detectChanges();
   }
 
-  it('renders the company-wide settings form with the work mode list and save action', async () => {
+  it('renders the company-wide settings form with the work mode list without a top-bar save button', async () => {
     const fixture = await setup();
     await flushEmptyCompanyWide(fixture);
     const el = fixture.nativeElement as HTMLElement;
     const text = pageText(fixture);
 
     expect(el.querySelector('[data-testid="clock-in-policy-form"]')).toBeTruthy();
+    expect(el.querySelector('[data-testid="save-policy"]')).toBeNull();
     expect(el.querySelector('table')).toBeNull();
     expect(text).toContain('Clock-in Policy');
-    expect(text).toContain('Save changes');
+    expect(text).not.toContain('Save changes');
     expect(text).toContain('Late arrival & early leave deductions');
     expect(text).toContain('Work modes');
     expect(el.querySelector('app-work-mode-list')).toBeTruthy();
@@ -581,5 +582,37 @@ describe('ClockInPolicyFormComponent', () => {
     expect(text).toContain('Late arrival & early leave deductions');
     expect(text).toContain('If late or leaving early by');
     expect(text).toContain('× those minutes from');
+  });
+
+  it('opens the deduction rule popup modal on Add rule click and saves immediately on confirm', async () => {
+    const fixture = await setup({ lateRulesEditable: true });
+    await flushEmptyCompanyWide(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    const component = fixture.componentInstance;
+
+    expect(el.querySelector('[data-testid="late-rule-modal"]')).toBeNull();
+    const addBtn = el.querySelector('[data-testid="add-late-rule"]') as HTMLButtonElement;
+    addBtn.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="late-rule-modal"]')).toBeTruthy();
+    component.patchRuleDraft({
+      lateArrivalMinutes: '15',
+      deductionAmount: '0.5',
+      timeOffTypeId: 'tot-1'
+    });
+    const confirmPromise = component.confirmRuleModal();
+
+    const req = httpMock.expectOne(createUrl);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.lateDeductionRules).toEqual([
+      { lateArrivalMinute: 15, multiplier: 0.5, timeOffTypeId: 'tot-1' }
+    ]);
+    req.flush(detail);
+    await confirmPromise;
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="late-rule-modal"]')).toBeNull();
+    expect(notifications.success).toHaveBeenCalledWith('Changes saved.');
   });
 });

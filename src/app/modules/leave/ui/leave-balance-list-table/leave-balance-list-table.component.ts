@@ -7,9 +7,9 @@ export class LeaveBalanceListTableComponent {
   protected get columns(): readonly DataTableColumn[] {
     return [
       ...(this.showEmployeeColumn ? [{ key: 'employee', label: 'Employee' }] : []),
-      ...(this.showDepartmentColumn ? [{ key: 'department', label: 'Department' }] : []),
-      ...(this.showLegalEntityColumn ? [{ key: 'legalEntity', label: 'Legal Entity' }] : []),
-      { key: 'leaveType', label: 'Leave type' },
+      ...(this.showDepartmentColumn ? [{ key: 'department', label: 'Department', filterValue: (b: LeaveBalanceResponse) => b.departmentName ?? '—' }] : []),
+      ...(this.showLegalEntityColumn ? [{ key: 'legalEntity', label: 'Legal Entity', filterValue: (b: LeaveBalanceResponse) => b.legalEntityName ?? '—' }] : []),
+      { key: 'leaveType', label: 'Leave type', filterValue: (b: LeaveBalanceResponse) => b.leaveTypeName },
       { key: 'entitled', label: 'Entitled hours' },
       { key: 'carried', label: 'Carried forward hours' },
       { key: 'used', label: 'Used hours' },

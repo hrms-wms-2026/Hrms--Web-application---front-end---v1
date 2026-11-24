@@ -9,7 +9,7 @@ interface Row { id: string; name: string; locked?: boolean; }
   imports: [DataTableComponent, DataTableCellDirective, DataTableRowAfterDirective],
   template: `
     <app-data-table
-      [columns]="columns"
+      [columns]="columns()"
       [rows]="rows()"
       [trackBy]="trackBy"
       [rowTestId]="rowTestId"
@@ -25,7 +25,10 @@ interface Row { id: string; name: string; locked?: boolean; }
       [sortDir]="sortDir()"
       [loading]="loading()"
       (rowClicked)="clicked = $event"
-      (sortRequested)="sorted = $event"
+      [filterValues]="filterValues()"
+      (sortChanged)="sorted = $event"
+      (filterChanged)="filtered = $event"
+      (filterOpened)="opened = $event"
       (rowSelectionChanged)="selection = $event"
       (selectAllChanged)="selectAll = $event"
     >
@@ -38,10 +41,11 @@ interface Row { id: string; name: string; locked?: boolean; }
   `
 })
 class HostComponent {
-  columns: DataTableColumn[] = [
+  columns = signal<DataTableColumn[]>([
     { key: 'name', label: 'Name', sortable: true },
+    { key: 'status', label: 'Status', filter: { kind: 'multi', options: [{ value: 'on', label: 'On' }, { value: 'off', label: 'Off' }] } },
     { key: 'action', label: 'Action', interactive: true, hideLabel: true }
-  ];
+  ]);
   rows = signal<Row[]>([{ id: 'a', name: 'Alpha' }, { id: 'b', name: 'Beta', locked: true }]);
   activeId = signal<string | null>(null);
   selectable = signal(false);
@@ -51,13 +55,16 @@ class HostComponent {
   sortBy = signal<string | null>(null);
   sortDir = signal<'asc' | 'desc'>('asc');
   loading = signal(false);
+  filterValues = signal<Record<string, readonly string[]>>({});
   trackBy = (r: Row) => r.id;
   rowTestId = (r: Row) => 'row-' + r.id;
   rowTitle = (r: Row) => r.locked ? 'Locked row' : null;
   selectTestId = (r: Row) => 'select-' + r.id;
   canSelect = (r: Row) => !r.locked;
   clicked: Row | null = null;
-  sorted: string | null = null;
+  sorted: { key: string; dir: 'asc' | 'desc' } | null = null;
+  filtered: { key: string; values: string[] } | null = null;
+  opened: string | null = null;
   selection: { row: Row; selected: boolean } | null = null;
   selectAll: boolean | null = null;
 }
@@ -80,7 +87,7 @@ describe('DataTableComponent', () => {
     expect(el.querySelectorAll('.data-table__row').length).toBe(2);
     expect(q('[data-testid="row-a"] .name')!.textContent).toContain('Alpha');
     expect(el.querySelectorAll('tr.after').length).toBe(2);
-    expect(q('tr.after td')!.getAttribute('colspan')).toBe('2');
+    expect(q('tr.after td')!.getAttribute('colspan')).toBe('3');
   });
 
   it('row click emits the row; interactive cells do not', () => {
@@ -90,12 +97,53 @@ describe('DataTableComponent', () => {
     expect(host.clicked).toEqual(host.rows()[1]);
   });
 
-  it('only sortable headers emit sortRequested; hidden labels stay for screen readers', () => {
+  const openMenu = (th: HTMLElement) => { th.querySelector<HTMLElement>('.dthm__trigger')!.click(); fixture.detectChanges(); };
+
+  it('sortable headers open a menu that emits sortChanged; plain headers have no menu', () => {
     const ths = el.querySelectorAll<HTMLElement>('th');
-    expect(ths[1].querySelector('button')).toBeNull();
-    ths[0].querySelector('button')!.click();
-    expect(host.sorted).toBe('name');
-    expect(ths[1].querySelector('.data-table__sr')!.textContent).toBe('Action');
+    expect(ths[2].querySelector('button')).toBeNull();
+    expect(ths[2].querySelector('.data-table__sr')!.textContent).toBe('Action');
+    openMenu(ths[0]);
+    expect(q('[data-testid="header-filter-clear"]')).toBeNull();
+    q('[data-testid="header-sort-desc"]')!.click();
+    expect(host.sorted).toEqual({ key: 'name', dir: 'desc' });
+  });
+
+  it('filterable headers list the options, emit filterOpened and each toggle', () => {
+    openMenu(el.querySelectorAll<HTMLElement>('th')[1]);
+    expect(host.opened).toBe('status');
+    expect(q('[data-testid="header-sort-asc"]')).toBeNull();
+    q('[data-testid="header-filter-option-off"]')!.click();
+    expect(host.filtered).toEqual({ key: 'status', values: ['off'] });
+  });
+
+  it('shows active filter values as checked and keeps the header when a filter leaves no rows', () => {
+    host.filterValues.set({ status: ['on'] });
+    host.rows.set([]);
+    host.emptyMessage.set('Nothing here');
+    fixture.detectChanges();
+    expect(q('table')).not.toBeNull();
+    expect(q('[data-testid="data-table-empty"]')!.textContent).toContain('Nothing here');
+    openMenu(el.querySelectorAll<HTMLElement>('th')[1]);
+    expect(q('[data-testid="header-filter-option-on"]')!.getAttribute('aria-checked')).toBe('true');
+    q('[data-testid="header-filter-clear"]')!.click();
+    expect(host.filtered).toEqual({ key: 'status', values: [] });
+  });
+
+  it('in-table filters list distinct row values and hide non-matching rows', () => {
+    host.columns.set([{ key: 'name', label: 'Name', filterValue: (r: Row) => (r.locked ? 'Locked' : 'Open') }]);
+    fixture.detectChanges();
+    openMenu(el.querySelectorAll<HTMLElement>('th')[0]);
+    expect(q('[data-testid="header-filter-option-Locked"]')).not.toBeNull();
+    expect(q('[data-testid="header-filter-option-Open"]')).not.toBeNull();
+    q('[data-testid="header-filter-option-Locked"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.data-table__row').length).toBe(1);
+    expect(q('[data-testid="row-b"]')).not.toBeNull();
+    expect(host.filtered).toBeNull();
+    q('[data-testid="header-filter-option-Locked"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.data-table__row').length).toBe(2);
   });
 
   it('highlights the active row', () => {
@@ -118,7 +166,7 @@ describe('DataTableComponent', () => {
     expect(q('[data-testid="select-a"]')).not.toBeNull();
     expect(q('[data-testid="select-b"]')).toBeNull();
     expect((q('[data-testid="data-table-select-all"]') as HTMLInputElement).checked).toBe(true);
-    expect(el.querySelector('tr.after td')!.getAttribute('colspan')).toBe('3');
+    expect(el.querySelector('tr.after td')!.getAttribute('colspan')).toBe('4');
 
     q('[data-testid="select-a"]')!.click();
     expect(host.selection).toEqual({ row: host.rows()[0], selected: false });

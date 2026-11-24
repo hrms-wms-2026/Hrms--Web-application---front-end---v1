@@ -79,32 +79,55 @@ const CARD_HIDDEN_ACTIONS = new Set(['open_target', 'revert', 'escalate']);
     </article>
   `,
   styles: [`
-    :host { display: block; width: 100%; }
+    :host { display: block; width: 100%; min-width: 0; }
     /* No border: a soft tint of what it is - an open exception red, an open attendance alert amber, anything else gray. */
-    .cc { --tone: var(--color-text-secondary); display: flex; flex-direction: column; gap: 10px; width: 100%; padding: 16px 18px; border-radius: 14px;
-      background: color-mix(in srgb, var(--tone) 6%, var(--color-surface)); }
+    .cc { --tone: var(--color-text-secondary); container-type: inline-size; display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0;
+      padding: 16px 18px; border-radius: 14px; background: color-mix(in srgb, var(--tone) 6%, var(--color-surface)); box-sizing: border-box; }
     .cc[data-tone="warning"] { --tone: var(--color-warning, #d97706); }
     .cc[data-tone="danger"] { --tone: var(--color-danger); }
     .cc[data-tone="warning"], .cc[data-tone="danger"] { background: color-mix(in srgb, var(--tone) 8%, var(--color-surface)); }
     .cc--selected { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 45%, transparent); }
     .cc__head { display: flex; min-width: 0; align-items: center; gap: 10px; }
-    .cc__open { display: flex; min-width: 0; flex: 1; align-items: center; gap: 16px; padding: 0; border: 0; background: none; color: var(--color-text-primary);
+    .cc__open { display: flex; min-width: 0; flex: 1 1 0%; align-items: center; gap: 14px; padding: 0; border: 0; background: none; color: var(--color-text-primary);
       font: inherit; text-align: left; cursor: pointer; }
     .cc__open:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-radius: 8px; }
-    app-inbox-type-icon.cc__icon { width: 44px; height: 44px; border-radius: 50%; }
+    app-inbox-type-icon.cc__icon { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 50%; }
     .cc__title { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
-    .cc__name { overflow: hidden; font-size: 15px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .cc__name { overflow: hidden; font-size: 15px; font-weight: 650; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
     .cc__open:hover .cc__name { color: var(--color-accent); }
-    .cc__sub { color: var(--color-text-secondary); font-size: 13px; }
-    .cc__editor { display: block; padding: 12px 14px; border-radius: 10px; background: var(--color-surface); }
-    .cc__actions { display: flex; flex: none; gap: 8px; }
-    .cc__btn { height: 36px; padding: 0 18px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface);
-      color: var(--color-text-primary); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .cc__sub { color: var(--color-text-secondary); font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
+    .cc__editor { display: block; min-width: 0; padding: 12px 14px; border-radius: 10px; background: var(--color-surface); }
+    .cc__actions { display: flex; flex: none; align-items: center; gap: 8px; }
+    .cc__btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 18px; border: 1px solid var(--color-border);
+      border-radius: 8px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 14px; font-weight: 600;
+      white-space: nowrap; cursor: pointer; }
     .cc__btn:hover:not(:disabled) { border-color: var(--color-accent); }
     .cc__btn--primary { min-width: 108px; border-color: var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast, #fff); }
     .cc__btn--danger { border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border)); color: var(--color-danger); }
     .cc__btn:disabled { opacity: .55; cursor: default; }
     .cc__btn:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+
+    @container (max-width: 520px) {
+      .cc { padding: 14px; }
+      .cc__head { flex-wrap: wrap; align-items: flex-start; gap: 10px 8px; }
+      .cc__open { order: 1; align-items: flex-start; gap: 12px; }
+      app-inbox-type-icon.cc__icon { width: 38px; height: 38px; flex: 0 0 38px; }
+      .cc__name { white-space: normal; overflow-wrap: anywhere; }
+      .cc__actions { order: 3; width: 100%; flex: 1 0 100%; flex-wrap: wrap; }
+      .cc__btn { flex: 1 1 0%; min-width: 0; padding: 0 12px; }
+      .cc__btn--primary { min-width: 0; }
+    }
+
+    @media (max-width: 640px) {
+      .cc { padding: 14px; }
+      .cc__head { flex-wrap: wrap; align-items: flex-start; gap: 10px 8px; }
+      .cc__open { order: 1; align-items: flex-start; gap: 12px; }
+      app-inbox-type-icon.cc__icon { width: 38px; height: 38px; flex: 0 0 38px; }
+      .cc__name { white-space: normal; overflow-wrap: anywhere; }
+      .cc__actions { order: 3; width: 100%; flex: 1 0 100%; flex-wrap: wrap; }
+      .cc__btn { flex: 1 1 0%; min-width: 0; padding: 0 12px; }
+      .cc__btn--primary { min-width: 0; }
+    }
   `]
 })
 export class CaseCardComponent {

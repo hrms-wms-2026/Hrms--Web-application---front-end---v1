@@ -11,6 +11,9 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoaderComponent } from '../../../../shared/ui/loader/loader.component';
 import { SelectionModel } from '../../../../shared/utils/selection-model';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
+import { DataTableColumnFilter } from '../../../../shared/ui/data-table/data-table.component';
+import { EmployeeFilterOptionsStore } from '../../data-access/employee-filter-options.store';
+import { EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import { EMPLOYEE_COLUMNS, EmployeeColumnKey, loadEmployeeColumns, saveEmployeeColumns } from '../../models/employee-columns';
 import { BulkEmployeeActionResponse, EmployeeListItemResponse, EmployeeSortKey, SortDirection, toEmployeeBulkSummary } from '../../models/employee.model';
 import { PeopleStore } from '../../state/people.store';
@@ -56,6 +59,7 @@ const TERMINAL_STATUSES = ['resigned', 'terminated'];
     BulkActionBarComponent,
     AddEmployeeWizardComponent
   ],
+  providers: [EmployeeFilterOptionsStore],
   templateUrl: './employee-list.component.html',
   styleUrl: './employee-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -80,6 +84,50 @@ export class EmployeeListComponent {
 
   readonly listState = signal<EmployeeListUrlState>(parseEmployeeListState(this.route.snapshot.queryParamMap));
   readonly visibleColumnKeys = signal<EmployeeColumnKey[]>(loadEmployeeColumns());
+  /** Department / position / manager options, shared by the Filter popover and the header menus. */
+  readonly filterOptions = inject(EmployeeFilterOptionsStore);
+
+  /** Header-menu filters: each table column mirrors one field of the Filter popover (same URL state). */
+  readonly headerFilters = computed<Partial<Record<EmployeeColumnKey, DataTableColumnFilter>>>(() => {
+    const hasCompany = !!this.legalEntityId();
+    const companyHint = hasCompany ? null : 'Select a company to filter by this field.';
+    const listHint = (options: readonly unknown[]): string | null =>
+      companyHint ?? (options.length === 0 && this.filterOptions.loading() ? 'Loading…' : this.filterOptions.error());
+    return {
+      department: { kind: 'multi', options: this.filterOptions.departments(), hint: listHint(this.filterOptions.departments()) },
+      position: { kind: 'multi', options: this.filterOptions.positions(), hint: listHint(this.filterOptions.positions()) },
+      employmentType: { kind: 'multi', options: EMPLOYMENT_TYPE_OPTIONS.map((t) => ({ value: t.value, label: t.label })) },
+      reportingManager: { kind: 'multi', options: this.filterOptions.managers(), hint: listHint(this.filterOptions.managers()) }
+    };
+  });
+
+  readonly headerFilterValues = computed<Record<string, readonly string[]>>(() => {
+    const f = this.listState().filters;
+    return {
+      department: f.departmentIds,
+      position: f.positionIds,
+      employmentType: f.employmentTypes,
+      reportingManager: f.managerIds
+    };
+  });
+
+  /**
+   * True once this page's first employee load has finished. After that, filter / sort / page changes
+   * reload in place - the table stays (slightly faded) instead of being swapped for the loader, so an
+   * open header menu survives and several filter values can be picked in a row.
+   */
+  readonly hasLoadedOnce = signal(false);
+  private sawLoading = false;
+  private readonly trackFirstLoad = effect(() => {
+    const loading = this.store.employeesLoading();
+    untracked(() => {
+      if (loading) this.sawLoading = true;
+      else if (this.sawLoading) this.hasLoadedOnce.set(true);
+    });
+  });
+
+  /** The docked Employee fields panel (opened from the ⊕ in the table header). */
+  readonly columnsPanelOpen = signal(false);
   readonly visibleColumns = computed(() => EMPLOYEE_COLUMNS.filter((c) => this.visibleColumnKeys().includes(c.key)));
 
   readonly selection = new SelectionModel<string>();
@@ -255,6 +303,16 @@ export class EmployeeListComponent {
 
   onSortChanged(event: { sortBy: EmployeeSortKey; sortDir: SortDirection }): void {
     this.navigate({ sortBy: event.sortBy, sortDir: event.sortDir, page: 1 });
+  }
+
+  onHeaderFilterChanged(change: { key: string; values: string[] }): void {
+    const current = this.listState().filters;
+    switch (change.key) {
+      case 'department': this.onFiltersApplied({ ...current, departmentIds: change.values }); break;
+      case 'position': this.onFiltersApplied({ ...current, positionIds: change.values }); break;
+      case 'employmentType': this.onFiltersApplied({ ...current, employmentTypes: change.values }); break;
+      case 'reportingManager': this.onFiltersApplied({ ...current, managerIds: change.values }); break;
+    }
   }
 
   onFiltersApplied(filters: EmployeeListFilters): void {

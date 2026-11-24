@@ -36,7 +36,7 @@
       <div class="to-loading"><app-loader /></div>
     } @else if (store.myRequestsError()) {
       <app-error-state [message]="store.myRequestsError()!" [retryable]="true" (retry)="store.loadMine()" />
-    } @else if (filtered().length === 0) {
+    } @else if (filtered().length === 0 && (store.myRequests().length === 0 || !hasActiveFilter())) {
       <div class="to-empty">
         @if (store.myRequests().length === 0) {
           <app-empty-state title="No leave requests yet" description="Requests you send will appear here." />
@@ -45,7 +45,9 @@
         }
       </div>
     } @else {
-      <app-data-table [columns]="columns" [rows]="pageRows()" [trackBy]="trackById" [rowTestId]="rowTestId" caption="My leave requests">
+      <app-data-table [columns]="tableColumns()" [rows]="pageRows()" [trackBy]="trackById" [rowTestId]="rowTestId" caption="My leave requests"
+        [filterValues]="headerFilterValues()" (filterChanged)="onHeaderFilterChanged($event)"
+        emptyMessage="No matching requests" emptyDescription="No requests match the current filters.">
         <ng-template appDataTableCell="type" let-request>
           <span class="mlr-type">
             <app-leave-type-icon class="mlr-type__icon" [name]="request.leaveTypeName" [code]="request.leaveTypeCode" [color]="color(request)" [icon]="icon(request)" />

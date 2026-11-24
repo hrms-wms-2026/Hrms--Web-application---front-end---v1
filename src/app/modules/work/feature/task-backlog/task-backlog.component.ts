@@ -1,3 +1,4 @@
+import { DataTableColumnFilters } from '../../../../shared/ui/data-table/data-table.component';
 import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { CurrentEmployeeStore } from '../../state/current-employee.store';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -189,6 +190,9 @@ const BULK_POPOVER_POSITIONS: ConnectionPositionPair[] = [
             [currentEmployeeId]="currentEmployee.id()"
             [selectable]="true"
             [selectedIds]="selectedTaskIds()"
+            [columnFilters]="headerFilters()"
+            [filterValues]="filterValues()"
+            (filterChanged)="onFilterFieldChanged($event)"
             (viewed)="onTaskViewed($event)"
             (taskChanged)="reloadTasks()"
             (statusChangeRequested)="onTaskStatusChangeRequested($event)"
@@ -506,6 +510,16 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'status', label: 'Status', icon: 'status', kind: 'multi', options: this.statusFilterOptions() },
     { key: 'priority', label: 'Priority', icon: 'priority', kind: 'multi', options: this.priorityOptions }
   ]);
+  /** Milestone, Assignee, Status and Priority headers offer the same filters as the filter bar (same keys). */
+  protected readonly headerFilters = computed<DataTableColumnFilters>(() => {
+    const byKey = new Map(this.filterFields().map((f) => [f.key, f]));
+    const pick = (key: string) => {
+      const field = byKey.get(key);
+      return field ? { kind: field.kind, options: field.options } : undefined;
+    };
+    return { module: pick('module'), assignee: pick('assignee'), status: pick('status'), priority: pick('priority') };
+  });
+
   protected readonly filterValues = computed<Record<string, string[]>>(() => ({
     module: this.objectiveFilter(),
     category: this.categoryFilter(),

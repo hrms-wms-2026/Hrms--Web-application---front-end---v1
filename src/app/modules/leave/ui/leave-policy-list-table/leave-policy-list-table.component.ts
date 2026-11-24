@@ -8,11 +8,11 @@ import { formatAmount } from '../../utils/leave-amount';
 export class LeavePolicyListTableComponent {
   protected readonly columns: readonly DataTableColumn[] = [
     { key: 'policy', label: 'Policy' },
-    { key: 'leaveType', label: 'Leave type' },
+    { key: 'leaveType', label: 'Leave type', filterValue: (p: LeavePolicyListItem) => p.leaveTypeName },
     { key: 'amount', label: 'Amount' },
     { key: 'assignedTo', label: 'Assigned to', wrap: true },
     { key: 'version', label: 'Version' },
-    { key: 'status', label: 'Status' },
+    { key: 'status', label: 'Status', filterValue: (p: LeavePolicyListItem) => (p.isActive ? 'Active' : 'Inactive') },
     { key: 'actions', label: 'Actions', hideLabel: true, interactive: true, shrink: true, align: 'end' as const }
   ];
   protected readonly trackById = (policy: LeavePolicyListItem): string => policy.id;

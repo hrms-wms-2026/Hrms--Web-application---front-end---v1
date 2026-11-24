@@ -99,6 +99,25 @@ describe('WorkModeListComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="add-work-mode"]')).toBeNull();
   });
 
+  it('opens the Add work mode popup modal when "Add work mode" is clicked and saves on confirm', () => {
+    expect(fixture.nativeElement.querySelector('[data-testid="add-work-mode-modal"]')).toBeNull();
+    const addButton = fixture.nativeElement.querySelector('[data-testid="add-work-mode"]');
+    addButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="add-work-mode-modal"]')).toBeTruthy();
+    fixture.componentInstance.draft.name = 'Contractors';
+    fixture.detectChanges();
+
+    fixture.componentInstance.confirmAdd();
+    fixture.detectChanges();
+
+    expect(storeStub.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Contractors', webEnabled: true })
+    );
+    expect(fixture.nativeElement.querySelector('[data-testid="add-work-mode-modal"]')).toBeNull();
+  });
+
   describe('setLocationBehavior', () => {
     it('turning on selfRegistersLocation turns off allowsDailyLocationChoice', () => {
       const component = fixture.componentInstance;

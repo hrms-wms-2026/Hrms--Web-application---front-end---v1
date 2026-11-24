@@ -38,10 +38,10 @@ import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../
 export class ChecklistTemplatesComponent {
   protected readonly templateColumns = computed<DataTableColumn[]>(() => [
     { key: 'name', label: 'Template Name' },
-    { key: 'type', label: 'Type' },
-    { key: 'applicability', label: 'Applicability' },
+    { key: 'type', label: 'Type', filterValue: (t: ChecklistTemplateListItemResponse) => (t.templateType === 'onboarding' ? 'Onboarding' : 'Offboarding') },
+    { key: 'applicability', label: 'Applicability', filterValue: (t: ChecklistTemplateListItemResponse) => this.getScopeBadgeLabel(t) },
     { key: 'tasks', label: 'Tasks' },
-    { key: 'status', label: 'Status' },
+    { key: 'status', label: 'Status', filterValue: (t: ChecklistTemplateListItemResponse) => (t.isActive ? 'Active' : 'Archived') },
     ...(this.canManage() ? [{ key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' as const }] : [])
   ]);
   protected readonly trackById = (template: { id: string }): string => template.id;

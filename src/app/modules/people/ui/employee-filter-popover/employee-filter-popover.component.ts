@@ -1,10 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
-import { forkJoin } from 'rxjs';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { TaskFilterBarComponent, TaskFilterFieldConfig } from '../../../work/ui/task-filter-bar/task-filter-bar.component';
-import { WorkDropdownOption } from '../../../work/ui/work-dropdown/work-dropdown.component';
-import { DepartmentApiService } from '../../../organization/data-access/department-api.service';
-import { PositionApiService } from '../../../organization/data-access/position-api.service';
-import { PeopleApiService } from '../../data-access/people-api.service';
+import { EmployeeFilterOptionsStore } from '../../data-access/employee-filter-options.store';
 import { EMPLOYMENT_TYPE_OPTIONS } from '../../models/employment-type-options';
 import { EMPTY_EMPLOYEE_FILTERS, EmployeeListFilters } from '../../utils/employee-list-url-state';
 
@@ -34,20 +30,17 @@ import { EMPTY_EMPLOYEE_FILTERS, EmployeeListFilters } from '../../utils/employe
   `]
 })
 export class EmployeeFilterPopoverComponent {
-  private readonly departmentApi = inject(DepartmentApiService);
-  private readonly positionApi = inject(PositionApiService);
-  private readonly peopleApi = inject(PeopleApiService);
+  /** Option lists are shared with the table's header menus (provided by the employee list page). */
+  private readonly options = inject(EmployeeFilterOptionsStore);
 
   readonly value = input.required<EmployeeListFilters>();
   readonly legalEntityId = input<string | null>(null);
   readonly applied = output<EmployeeListFilters>();
 
-  protected readonly departmentOptions = signal<WorkDropdownOption[]>([]);
-  protected readonly positionOptions = signal<WorkDropdownOption[]>([]);
-  protected readonly managerOptions = signal<WorkDropdownOption[]>([]);
-  protected readonly loadError = signal<string | null>(null);
-
-  private loadedForLegalEntityId: string | null = null;
+  protected readonly departmentOptions = this.options.departments;
+  protected readonly positionOptions = this.options.positions;
+  protected readonly managerOptions = this.options.managers;
+  protected readonly loadError = this.options.error;
 
   readonly hint = computed(() =>
     !this.legalEntityId() ? 'Select a company to filter by department, position or manager.' : null
@@ -62,14 +55,14 @@ export class EmployeeFilterPopoverComponent {
           key: 'departmentId',
           label: 'Department',
           icon: 'department',
-          kind: 'single',
+          kind: 'multi',
           options: this.departmentOptions()
         },
         {
           key: 'positionId',
           label: 'Position',
           icon: 'position',
-          kind: 'single',
+          kind: 'multi',
           options: this.positionOptions()
         }
       );
@@ -86,7 +79,7 @@ export class EmployeeFilterPopoverComponent {
         key: 'managerId',
         label: 'Reporting Manager',
         icon: 'people',
-        kind: 'single',
+        kind: 'multi',
         options: this.managerOptions()
       });
     }
@@ -96,33 +89,15 @@ export class EmployeeFilterPopoverComponent {
   readonly filterValues = computed<Record<string, readonly string[]>>(() => {
     const v = this.value();
     const res: Record<string, string[]> = {};
-    if (v.departmentId) res['departmentId'] = [v.departmentId];
-    if (v.positionId) res['positionId'] = [v.positionId];
+    if (v.departmentIds.length > 0) res['departmentId'] = [...v.departmentIds];
+    if (v.positionIds.length > 0) res['positionId'] = [...v.positionIds];
     if (v.employmentTypes && v.employmentTypes.length > 0) res['employmentTypes'] = [...v.employmentTypes];
-    if (v.managerId) res['managerId'] = [v.managerId];
+    if (v.managerIds.length > 0) res['managerId'] = [...v.managerIds];
     return res;
   });
 
   loadOptions(): void {
-    const legalEntityId = this.legalEntityId();
-    if (!legalEntityId || legalEntityId === this.loadedForLegalEntityId) return;
-    this.loadedForLegalEntityId = legalEntityId;
-    this.loadError.set(null);
-    forkJoin({
-      departments: this.departmentApi.listFlat(legalEntityId, { pageSize: 100 }),
-      positions: this.positionApi.listFlat(legalEntityId, { pageSize: 100, includeInactive: false }),
-      managers: this.peopleApi.listEmployees({ legalEntityId, pageSize: 100 })
-    }).subscribe({
-      next: ({ departments, positions, managers }) => {
-        this.departmentOptions.set(departments.items.map((d) => ({ value: d.id, label: d.name })));
-        this.positionOptions.set(positions.items.map((p) => ({ value: p.id, label: p.name })));
-        this.managerOptions.set(managers.items.map((m) => ({ value: m.id, label: m.fullName })));
-      },
-      error: () => {
-        this.loadedForLegalEntityId = null;
-        this.loadError.set('Could not load filter options.');
-      }
-    });
+    this.options.load(this.legalEntityId());
   }
 
   protected onFieldChanged(change: { key: string; values: string[] }): void {
@@ -130,16 +105,16 @@ export class EmployeeFilterPopoverComponent {
     let next: EmployeeListFilters;
     switch (change.key) {
       case 'departmentId':
-        next = { ...current, departmentId: change.values[0] || null };
+        next = { ...current, departmentIds: change.values };
         break;
       case 'positionId':
-        next = { ...current, positionId: change.values[0] || null };
+        next = { ...current, positionIds: change.values };
         break;
       case 'employmentTypes':
         next = { ...current, employmentTypes: change.values };
         break;
       case 'managerId':
-        next = { ...current, managerId: change.values[0] || null };
+        next = { ...current, managerIds: change.values };
         break;
       default:
         return;

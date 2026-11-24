@@ -45,11 +45,13 @@ export class DocumentsPanelComponent {
 
   protected readonly columns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Name' },
-    { key: 'type', label: 'Type' },
+    { key: 'type', label: 'Type', filter: { kind: 'single', options: this.typeOptions.filter((o) => o.value !== 'all') } },
     { key: 'uploaded', label: 'Uploaded on' },
     { key: 'size', label: 'Size' },
     { key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' }
   ];
+  /** The Type header offers the same type filter as the toolbar select. */
+  protected readonly headerFilterValues = computed(() => ({ type: this.typeFilter() === 'all' ? [] : [this.typeFilter()] }));
   protected readonly trackById = (doc: { id: string }): string => doc.id;
   protected readonly rowTestId = (doc: { id: string }): string => 'doc-row-' + doc.id;
   /** Rows waiting on a delete confirmation can't be opened, so only the others get the clickable styling. */
@@ -79,6 +81,11 @@ export class DocumentsPanelComponent {
 
   onSearch(event: Event): void {
     this.search.set((event.target as HTMLInputElement).value);
+  }
+
+  /** From the Type header menu: one type, or none for all types. */
+  onHeaderTypeFilter(values: readonly string[]): void {
+    this.onTypeFilter(values.length > 0 ? values[0] : 'all');
   }
 
   onTypeFilter(value: string): void {

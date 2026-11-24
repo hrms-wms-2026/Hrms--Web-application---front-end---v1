@@ -6,11 +6,12 @@ import { EmployeeColumnPickerComponent } from './employee-column-picker.componen
 @Component({
   standalone: true,
   imports: [EmployeeColumnPickerComponent],
-  template: `<app-employee-column-picker [visible]="visible()" (applied)="applied.push($event)" />`
+  template: `<app-employee-column-picker [visible]="visible()" (applied)="applied.push($event)" (closed)="closes = closes + 1" />`
 })
 class HostComponent {
   visible = signal<readonly EmployeeColumnKey[]>(['employee', 'position']);
   applied: EmployeeColumnKey[][] = [];
+  closes = 0;
 }
 
 async function setup() {
@@ -19,50 +20,51 @@ async function setup() {
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
   const q = <T extends HTMLElement>(id: string) => el.querySelector(`[data-testid="${id}"]`) as T | null;
-  const open = () => { q('columns-trigger')!.click(); fixture.detectChanges(); };
-  return { fixture, q, open, host: fixture.componentInstance };
+  return { fixture, q, host: fixture.componentInstance };
 }
 
 describe('EmployeeColumnPickerComponent', () => {
-  it('opens with the current visibility checked and employee locked', async () => {
-    const { q, open } = await setup();
-    open();
-    expect(q<HTMLInputElement>('column-toggle-position')!.checked).toBe(true);
-    expect(q<HTMLInputElement>('column-toggle-email')!.checked).toBe(false);
-    expect(q<HTMLInputElement>('column-toggle-employee')!.disabled).toBe(true);
+  it('shows the current visibility as switches, with employee locked on', async () => {
+    const { q } = await setup();
+    expect(q('column-toggle-position')!.getAttribute('aria-checked')).toBe('true');
+    expect(q('column-toggle-email')!.getAttribute('aria-checked')).toBe('false');
+    expect(q<HTMLButtonElement>('column-toggle-employee')!.disabled).toBe(true);
+    expect(q('column-toggle-employee')!.getAttribute('aria-checked')).toBe('true');
   });
 
-  it('stages toggles and emits canonical order only on Apply', async () => {
-    const { fixture, q, open, host } = await setup();
-    open();
-    q<HTMLInputElement>('column-toggle-email')!.click();
-    q<HTMLInputElement>('column-toggle-position')!.click();
-    q<HTMLInputElement>('column-toggle-department')!.click();
-    fixture.detectChanges();
-    expect(host.applied).toEqual([]);
-    q('columns-apply')!.click();
-    fixture.detectChanges();
-    expect(host.applied).toEqual([['employee', 'department', 'email']]);
-    expect(q('columns-apply')).toBeNull();
+  it('splits fields into Shown and Hidden with counts', async () => {
+    const { q } = await setup();
+    expect(q('columns-count-shown')!.textContent!.trim()).toBe('2');
+    expect(q('columns-count-hidden')!.textContent!.trim()).toBe('7');
   });
 
-  it('Reset restores the defaults in the draft', async () => {
-    const { fixture, q, open, host } = await setup();
-    open();
+  it('applies each switch straight away, in canonical order', async () => {
+    const { q, host } = await setup();
+    q('column-toggle-email')!.click();
+    expect(host.applied).toEqual([['employee', 'position', 'email']]);
+    q('column-toggle-position')!.click();
+    expect(host.applied[1]).toEqual(['employee']);
+  });
+
+  it('Reset to default emits the default columns', async () => {
+    const { q, host } = await setup();
     q('columns-reset')!.click();
-    fixture.detectChanges();
-    q('columns-apply')!.click();
     expect(host.applied[0]).toEqual(['employee', 'position', 'department', 'employmentType', 'reportingManager']);
   });
 
   it('search filters the list by label', async () => {
-    const { fixture, q, open } = await setup();
-    open();
+    const { fixture, q } = await setup();
     const search = q<HTMLInputElement>('columns-search')!;
     search.value = 'mail';
     search.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     expect(q('column-toggle-email')).not.toBeNull();
     expect(q('column-toggle-position')).toBeNull();
+  });
+
+  it('the close button emits closed', async () => {
+    const { q, host } = await setup();
+    q('columns-close')!.click();
+    expect(host.closes).toBe(1);
   });
 });

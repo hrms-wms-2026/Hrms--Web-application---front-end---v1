@@ -6,7 +6,7 @@ import { AvatarStackComponent } from '../../../../shared/ui/avatar-stack/avatar-
 import { ProgressBarComponent } from '../../../../shared/ui/progress-bar/progress-bar.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent, DataTableColumnFilters, DataTableFilterValues, withColumnFilters } from '../../../../shared/ui/data-table/data-table.component';
 
 type SortField = 'name' | 'targetDate' | 'progress' | 'hours';
 type SortOrder = 'asc' | 'desc';
@@ -24,7 +24,11 @@ type SortOrder = 'asc' | 'desc';
   template: `
     <app-data-table
       data-testid="projects-table"
-      [columns]="columns"
+      [columns]="tableColumns()"
+      [filterValues]="filterValues()"
+      (filterChanged)="filterChanged.emit($event)"
+      emptyMessage="No matching projects"
+      emptyDescription="No projects match the current filters."
       [rows]="sortedProjects()"
       [trackBy]="trackById"
       [rowTestId]="rowTestId"
@@ -34,7 +38,7 @@ type SortOrder = 'asc' | 'desc';
       [sortBy]="sortField()"
       [sortDir]="sortOrder()"
       (rowClicked)="onRowClick($event)"
-      (sortRequested)="toggleSort($any($event))"
+      (sortChanged)="setSort($any($event.key), $event.dir)"
     >
       <ng-template appDataTableCell="name" let-project>
         <div class="flex items-center gap-3">
@@ -226,6 +230,11 @@ export class ProjectTableViewComponent {
 
   projects = input.required<Project[]>();
   categories = input<readonly ProjectCategory[]>([]);
+  /** Header-menu filters keyed by column key - each mirrors a field of the page's filter bar. */
+  columnFilters = input<DataTableColumnFilters>({});
+  filterValues = input<DataTableFilterValues>({});
+  filterChanged = output<{ key: string; values: string[] }>();
+  protected readonly tableColumns = computed(() => withColumnFilters(this.columns, this.columnFilters()));
 
   rowSelected = output<Project>();
   viewRequested = output<Project>();
@@ -287,6 +296,12 @@ export class ProjectTableViewComponent {
       this.sortField.set(field);
       this.sortOrder.set('asc');
     }
+  }
+
+  /** From the header menu: sort this column in this direction. */
+  setSort(field: SortField, dir: 'asc' | 'desc'): void {
+    this.sortField.set(field);
+    this.sortOrder.set(dir);
   }
 
   toggleMenu(projectId: string): void {

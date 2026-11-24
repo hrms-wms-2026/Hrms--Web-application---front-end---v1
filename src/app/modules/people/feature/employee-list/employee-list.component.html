@@ -44,7 +44,6 @@
       </div>
 
       <app-employee-filter-popover [value]="listState().filters" [legalEntityId]="legalEntityId()" (applied)="onFiltersApplied($event)" />
-      <app-employee-column-picker [visible]="visibleColumnKeys()" (applied)="onColumnsApplied($event)" />
     </div>
 
     <!-- Right: Add Button -->
@@ -60,11 +59,14 @@
 </header>
 
 <section class="emp-section">
-  @if (store.employeesLoading()) {
+  @if (store.employeesLoading() && !hasLoadedOnce()) {
     <app-loader label="Loading employees…" />
   } @else if (store.employeesError()) {
     <app-error-state [message]="store.employeesError()!" [retryable]="true" (retry)="loadEmployees()" />
   } @else {
+    <!-- Table on the left; the Employee fields panel docks on the right when the header ⊕ is clicked. -->
+    <div class="emp-body" [class.emp-body--reloading]="store.employeesLoading()" [attr.aria-busy]="store.employeesLoading()">
+    <div class="emp-body__main">
     <app-employee-directory-table
       [employees]="store.employees()"
       [columns]="visibleColumns()"
@@ -76,7 +78,17 @@
       (selectionChanged)="selection.toggle($event.id, $event.selected)"
       (selectAllChanged)="selection.setMany($event.ids, $event.selected)"
       (rowAction)="onRowAction($event)"
-    />
+      [columnFilters]="headerFilters()"
+      [filterValues]="headerFilterValues()"
+      (filterChanged)="onHeaderFilterChanged($event)"
+      (filterOpened)="filterOptions.load(legalEntityId())"
+    >
+      <button tableHeaderEnd type="button" class="emp-fields-trigger" data-testid="columns-trigger"
+        aria-label="Show or hide fields" title="Fields" [attr.aria-expanded]="columnsPanelOpen()"
+        (click)="columnsPanelOpen.set(!columnsPanelOpen())">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></svg>
+      </button>
+    </app-employee-directory-table>
 
     @if (store.employeesTotalCount() > 0) {
       <nav class="emp-pager" aria-label="Employee pages">
@@ -92,6 +104,11 @@
         </div>
       </nav>
     }
+    </div>
+    @if (columnsPanelOpen()) {
+      <app-employee-column-picker [visible]="visibleColumnKeys()" (applied)="onColumnsApplied($event)" (closed)="columnsPanelOpen.set(false)" />
+    }
+    </div>
   }
 </section>
 
