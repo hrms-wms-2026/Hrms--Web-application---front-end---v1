@@ -153,4 +153,20 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
       detail: 'raw_db_not_found'
     });
   });
+
+  describe('message characterization (task 20 must not change these)', () => {
+    it.each([
+      ['problem detail', makeError(409, { title: 'Conflict', detail: 'Code already used.' }), undefined, 'Code already used.'],
+      ['first field error over the generic validation detail', makeError(400, { title: 'Validation Error', detail: 'One or more validation errors occurred.', errors: { Name: ['Name is required.'] } }), undefined, 'Name is required.'],
+      ['legacy message body', makeError(400, { message: 'Leave type is inactive.' }), undefined, 'Leave type is inactive.'],
+      ['plain string body', makeError(422, 'Balance is too low.'), undefined, 'Balance is too low.'],
+      ['5xx with a caller fallback', makeError(503), 'Failed to load.', 'Failed to load.'],
+      ['network with no body', makeError(0), undefined, 'We could not reach the server. Check your connection and try again.'],
+      ['unknown status', makeError(418), undefined, 'Something went wrong. Please try again.'],
+      ['403 without detail', makeError(403), undefined, 'You do not have access to perform this action.'],
+      ['429 without detail', makeError(429), undefined, 'Too many requests. Please wait a moment.'],
+    ])('%s', (_name, err, fallback, expected) => {
+      expect(toSafeErrorMessage(err, fallback)).toBe(expected);
+    });
+  });
 });
