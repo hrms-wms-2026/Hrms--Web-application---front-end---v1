@@ -5,6 +5,8 @@ import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { DEPENDENT_LIMITS } from '../../utils/profile-limits';
 
 @Component({
   selector: 'app-dependents-panel',
@@ -28,11 +30,13 @@ export class DependentsPanelComponent {
   ];
 
   private readonly fb = new FormBuilder().nonNullable;
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
   readonly addForm = this.fb.group({
-    name: ['', Validators.required],
+    name: ['', AppValidators.name(DEPENDENT_LIMITS.nameMax)],
     relationship: ['child' as Dependent['relationship'], Validators.required],
     dateOfBirth: ['', Validators.required],
-    phone: ['']
+    phone: ['', AppValidators.maxLength(DEPENDENT_LIMITS.phoneMax)]
   });
 
   onSubmitAdd(): void {

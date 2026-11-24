@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnChanges, computed, inject, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PersonalInformation, UpdatePersonalInformationRequest } from '../../models/profile.model';
-import { ProfileValidators } from '../../utils/profile-validators';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
@@ -10,6 +9,8 @@ import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { TIMEZONE_OPTIONS } from '../../../organization/utils/general-settings-options';
 import { ChangePhotoDialogComponent, PHOTO_ACCEPT } from '../../../../shared/ui/change-photo-dialog/change-photo-dialog.component';
+import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { PERSONAL_INFO_LIMITS } from '../../utils/profile-limits';
 
 @Component({
   selector: 'app-personal-info-form',
@@ -49,6 +50,8 @@ export class PersonalInfoFormComponent implements OnChanges {
   readonly timezoneOptions = TIMEZONE_OPTIONS;
 
   private readonly fb = new FormBuilder().nonNullable;
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
 
   form = this.buildForm(null);
 
@@ -64,9 +67,9 @@ export class PersonalInfoFormComponent implements OnChanges {
 
   private buildForm(info: PersonalInformation | null) {
     return this.fb.group({
-      firstName: [info?.firstName ?? '', [Validators.required, Validators.maxLength(100)]],
-      lastName: [info?.lastName ?? '', [Validators.required, Validators.maxLength(100)]],
-      phone: [info?.phone ?? ''],
+      firstName: [info?.firstName ?? '', AppValidators.name(PERSONAL_INFO_LIMITS.firstNameMax)],
+      lastName: [info?.lastName ?? '', AppValidators.name(PERSONAL_INFO_LIMITS.lastNameMax)],
+      phone: [info?.phone ?? '', [AppValidators.phone(), AppValidators.maxLength(PERSONAL_INFO_LIMITS.phoneMax)]],
       dateOfBirth: [info?.dateOfBirth ?? ''],
       gender: [info?.gender ?? ''],
       displayTimezone: [this.effectiveDisplayTimezone(info)]
@@ -150,7 +153,6 @@ export class PersonalInfoFormComponent implements OnChanges {
   }
 
   isPhoneValid(): boolean {
-    const phone = this.form.value.phone;
-    return !phone || ProfileValidators.isValidPhone(phone);
+    return this.form.controls.phone.valid;
   }
 }

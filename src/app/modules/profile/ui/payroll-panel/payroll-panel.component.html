@@ -19,40 +19,41 @@
           [value]="form.controls.bankName.value"
           (valueChange)="form.controls.bankName.setValue($event)"
           (blurred)="form.controls.bankName.markAsTouched()"
-          [error]="form.controls.bankName.touched && form.controls.bankName.invalid ? 'Bank name is required.' : ''"
+          [error]="fieldError(form.controls.bankName, 'Bank name')"
         />
         <app-input
           label="Branch *"
           [value]="form.controls.branchName.value"
           (valueChange)="form.controls.branchName.setValue($event)"
           (blurred)="form.controls.branchName.markAsTouched()"
-          [error]="form.controls.branchName.touched && form.controls.branchName.invalid ? 'Branch is required.' : ''"
+          [error]="fieldError(form.controls.branchName, 'Branch')"
         />
         <app-input
           label="Account holder name *"
           [value]="form.controls.accountHolderName.value"
           (valueChange)="form.controls.accountHolderName.setValue($event)"
           (blurred)="form.controls.accountHolderName.markAsTouched()"
-          [error]="form.controls.accountHolderName.touched && form.controls.accountHolderName.invalid ? 'Account holder name is required.' : ''"
+          [error]="fieldError(form.controls.accountHolderName, 'Account holder name')"
         />
         <app-input
           label="Account number *"
           [value]="form.controls.accountNumber.value"
           (valueChange)="form.controls.accountNumber.setValue($event)"
           (blurred)="form.controls.accountNumber.markAsTouched()"
-          [error]="form.controls.accountNumber.touched && form.controls.accountNumber.invalid ? 'Account number is required.' : ''"
+          [error]="fieldError(form.controls.accountNumber, 'Account number')"
         />
         <app-input
           label="Account type *"
           [value]="form.controls.accountType.value"
           (valueChange)="form.controls.accountType.setValue($event)"
           (blurred)="form.controls.accountType.markAsTouched()"
-          [error]="form.controls.accountType.touched && form.controls.accountType.invalid ? 'Account type is required.' : ''"
+          [error]="fieldError(form.controls.accountType, 'Account type')"
         />
         <app-input
           label="Routing number (optional)"
           [value]="form.controls.routingNumber.value"
           (valueChange)="form.controls.routingNumber.setValue($event)"
+          [error]="validationMessage(form.controls.routingNumber.errors, 'Routing number')"
         />
       </div>
       <div class="pf-actions">

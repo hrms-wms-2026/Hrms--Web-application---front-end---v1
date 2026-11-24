@@ -49,4 +49,16 @@ describe('DependentsPanelComponent', () => {
 
     expect(fixture.nativeElement.querySelector('input[type="checkbox"]')).toBeFalsy();
   });
+
+  it('limits the new dependent to the backend sizes: name 100, phone 20', () => {
+    const fixture = TestBed.createComponent(DependentsPanelComponent);
+    fixture.componentRef.setInput('dependents', []);
+    fixture.componentRef.setInput('saving', false);
+    fixture.detectChanges();
+    const form = fixture.componentInstance.addForm;
+    form.controls.name.setValue('a'.repeat(101));
+    form.controls.phone.setValue('1'.repeat(21));
+    expect(form.controls.name.errors).toEqual({ maxlength: { requiredLength: 100, actualLength: 101 } });
+    expect(form.controls.phone.errors).toEqual({ maxlength: { requiredLength: 20, actualLength: 21 } });
+  });
 });

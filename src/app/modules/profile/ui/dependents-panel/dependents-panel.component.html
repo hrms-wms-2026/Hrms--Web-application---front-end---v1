@@ -42,7 +42,7 @@
       [value]="addForm.controls.name.value"
       (valueChange)="addForm.controls.name.setValue($event)"
       (blurred)="addForm.controls.name.markAsTouched()"
-      [error]="addForm.controls.name.touched && addForm.controls.name.invalid ? 'Full name is required.' : ''"
+      [error]="fieldError(addForm.controls.name, 'Full name')"
     />
     <app-select
       label="Relationship"
@@ -56,7 +56,7 @@
       [value]="addForm.controls.dateOfBirth.value || ''"
       (valueChange)="addForm.controls.dateOfBirth.setValue($event)"
       (blurred)="addForm.controls.dateOfBirth.markAsTouched()"
-      [error]="addForm.controls.dateOfBirth.touched && addForm.controls.dateOfBirth.invalid ? 'Date of birth is required.' : ''"
+      [error]="fieldError(addForm.controls.dateOfBirth, 'Date of birth')"
     />
     <app-input
       label="Phone (optional)"
@@ -64,6 +64,7 @@
       placeholder="e.g. +94 77 123 4567"
       [value]="addForm.controls.phone.value"
       (valueChange)="addForm.controls.phone.setValue($event)"
+      [error]="validationMessage(addForm.controls.phone.errors, 'Phone')"
     />
   </div>
   <div class="pf-actions">

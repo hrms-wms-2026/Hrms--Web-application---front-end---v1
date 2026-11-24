@@ -3,6 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { EmergencyContact, UpsertEmergencyContactRequest } from '../../models/profile.model';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { EMERGENCY_CONTACT_LIMITS } from '../../utils/profile-limits';
 
 @Component({
   selector: 'app-emergency-contacts-panel',
@@ -19,11 +21,13 @@ export class EmergencyContactsPanelComponent {
   readonly remove = output<string>();
 
   private readonly fb = new FormBuilder().nonNullable;
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
   readonly addForm = this.fb.group({
-    name: ['', Validators.required],
-    relationship: ['', Validators.required],
-    phone: ['', Validators.required],
-    email: ['']
+    name: ['', AppValidators.name(EMERGENCY_CONTACT_LIMITS.nameMax)],
+    relationship: ['', AppValidators.name(EMERGENCY_CONTACT_LIMITS.relationshipMax)],
+    phone: ['', AppValidators.name(EMERGENCY_CONTACT_LIMITS.phoneMax)],
+    email: ['', [AppValidators.email(), AppValidators.maxLength(EMERGENCY_CONTACT_LIMITS.emailMax)]]
   });
 
   onSubmitAdd(): void {

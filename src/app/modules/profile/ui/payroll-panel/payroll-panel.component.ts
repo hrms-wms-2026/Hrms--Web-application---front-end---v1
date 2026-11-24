@@ -3,6 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PayrollInfo, UpdateBankDetailsRequest } from '../../models/profile.model';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { BANK_DETAILS_LIMITS } from '../../utils/profile-limits';
 
 @Component({
   selector: 'app-payroll-panel',
@@ -26,13 +28,15 @@ export class PayrollPanelComponent {
   });
 
   private readonly fb = new FormBuilder().nonNullable;
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
   readonly form = this.fb.group({
-    bankName: ['', Validators.required],
-    branchName: ['', Validators.required],
-    accountHolderName: ['', Validators.required],
-    accountNumber: ['', Validators.required],
-    accountType: ['', Validators.required],
-    routingNumber: ['']
+    bankName: ['', AppValidators.name(BANK_DETAILS_LIMITS.bankNameMax)],
+    branchName: ['', AppValidators.name(BANK_DETAILS_LIMITS.branchNameMax)],
+    accountHolderName: ['', AppValidators.name(BANK_DETAILS_LIMITS.accountHolderNameMax)],
+    accountNumber: ['', AppValidators.name(BANK_DETAILS_LIMITS.accountNumberMax)],
+    accountType: ['', AppValidators.name(BANK_DETAILS_LIMITS.accountTypeMax)],
+    routingNumber: ['', AppValidators.maxLength(BANK_DETAILS_LIMITS.routingNumberMax)]
   });
 
   startEdit(): void {

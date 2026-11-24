@@ -62,4 +62,22 @@ describe('EmergencyContactsPanelComponent', () => {
 
     expect(fixture.nativeElement.querySelector('input[type="checkbox"]')).toBeFalsy();
   });
+
+  it('limits the new contact to the backend sizes: name 100, relationship 30, phone 20, email 255', () => {
+    const fixture = TestBed.createComponent(EmergencyContactsPanelComponent);
+    fixture.componentRef.setInput('contacts', []);
+    fixture.componentRef.setInput('saving', false);
+    fixture.detectChanges();
+    const form = fixture.componentInstance.addForm;
+    form.controls.name.setValue('a'.repeat(101));
+    form.controls.relationship.setValue('a'.repeat(31));
+    form.controls.phone.setValue('1'.repeat(21));
+    form.controls.email.setValue('not-an-email');
+    expect(form.controls.name.errors).toEqual({ maxlength: { requiredLength: 100, actualLength: 101 } });
+    expect(form.controls.relationship.errors).toEqual({ maxlength: { requiredLength: 30, actualLength: 31 } });
+    expect(form.controls.phone.errors).toEqual({ maxlength: { requiredLength: 20, actualLength: 21 } });
+    expect(form.controls.email.errors).toEqual({ email: true });
+    form.controls.name.setValue('   ');
+    expect(form.controls.name.errors).toEqual({ required: true });
+  });
 });
