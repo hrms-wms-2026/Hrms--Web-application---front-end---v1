@@ -24,6 +24,8 @@ describe('ProjectListComponent', () => {
   beforeEach(async () => {
     storeStub = {
       filteredProjects: () => [project],
+      selectedCategoryIds: () => [],
+      achievedFilter: () => 'all',
       loading: () => false,
       error: () => null,
       loadProjects: vi.fn().mockResolvedValue(undefined),

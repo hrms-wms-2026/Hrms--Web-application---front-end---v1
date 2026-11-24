@@ -6,8 +6,8 @@ import { LeaveEntitlementResponse } from '../../models/leave-entitlement.model';
 export class LeaveEntitlementListTableComponent {
   private static readonly baseColumns: readonly DataTableColumn[] = [
     { key: 'employee', label: 'Employee' },
-    { key: 'leaveType', label: 'Leave type' },
-    { key: 'source', label: 'Source' },
+    { key: 'leaveType', label: 'Leave type', filterValue: (e: LeaveEntitlementResponse) => e.leaveTypeName },
+    { key: 'source', label: 'Source', filterValue: (e: LeaveEntitlementResponse) => (e.source === 'manual' ? 'Manual' : 'Auto') },
     { key: 'total', label: 'Total hours' },
     { key: 'carried', label: 'Carried forward hours' },
     { key: 'used', label: 'Used hours' },

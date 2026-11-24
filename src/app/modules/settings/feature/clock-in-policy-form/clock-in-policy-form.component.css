@@ -200,49 +200,107 @@
 
 .cipf-late-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
-  background: color-mix(in srgb, var(--color-surface-secondary) 35%, var(--color-surface));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .cipf-late-sentence {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.5rem 0.625rem;
+  align-items: center;
+  gap: 0.375rem 0.5rem;
 }
 
 .cipf-late-label {
   display: inline-flex;
   align-items: center;
-  min-height: 2.25rem;
   font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.cipf-late-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--color-text-primary);
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
 }
 
-.cipf-late-field {
-  width: 6.5rem;
-  min-width: 0;
-}
-
-.cipf-late-field--type {
-  width: min(14rem, 100%);
-  flex: 1 1 10rem;
+.cipf-late-pill--type {
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 .cipf-late-row-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
-.cipf-late-row-actions app-button,
-.cipf-late-add app-button {
+.cipf-late-row-actions app-button {
   width: auto;
 }
 
 .cipf-late-add {
   display: flex;
+}
+
+.cipf-rule-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cipf-rule-modal__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.875rem 1rem;
+}
+
+.cipf-rule-modal__wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .cipf-rule-modal__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cipf-rule-modal__preview {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.cipf-rule-modal__preview strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.cipf-rule-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.cipf-rule-modal__actions app-button {
+  width: auto;
 }

@@ -8,6 +8,7 @@
   emptyDescription="Try adjusting your search or filters."
   [rowClickable]="true"
   [rowFocusable]="true"
+  [stickyEndColumn]="true"
   [sortBy]="activeSortColumn()"
   [sortDir]="sortDir()"
   [sortTestId]="sortTestId"
@@ -18,10 +19,15 @@
   [selectTestId]="selectTestId"
   [selectAriaLabel]="selectAriaLabel"
   (rowClicked)="openEmployee($event)"
-  (sortRequested)="onSort($event)"
+  (sortChanged)="onSort($event)"
+  [filterValues]="filterValues()"
+  (filterChanged)="filterChanged.emit($event)"
+  (filterOpened)="filterOpened.emit($event)"
   (rowSelectionChanged)="selectionChanged.emit({ id: $event.row.id, selected: $event.selected })"
   (selectAllChanged)="selectAllChanged.emit({ ids: visibleIds(), selected: $event })"
 >
+  <!-- The caller's column picker (the ⊕ button) sits in the actions column header, ClickUp style. -->
+  <ng-template appDataTableHeader="menu"><ng-content select="[tableHeaderEnd]" /></ng-template>
   <ng-template appDataTableCell="employee" let-employee>
     @let issue = avatarIssue(employee);
     <div class="emp-identity">

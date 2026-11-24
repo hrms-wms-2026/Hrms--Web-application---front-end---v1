@@ -103,8 +103,8 @@ export function summarize(changes: readonly InboxChangeDto[]): CaseSummary | nul
     }
   `,
   styles: [`
-    :host { display: block; }
-    .cs { display: flex; min-width: 240px; flex-direction: column; gap: 2px; }
+    :host { display: block; min-width: 0; }
+    .cs { display: flex; min-width: 0; width: 100%; flex-direction: column; gap: 2px; }
     .cs__head { display: flex; align-items: center; gap: 10px; }
     .cs__headline { color: var(--color-text-primary); font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
     .cs__when { color: var(--color-text-primary); font-size: 13px; }

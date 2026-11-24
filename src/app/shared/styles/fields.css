@@ -22,7 +22,8 @@
     --field-radius: 8px;
     --field-font-size: 0.875rem;
     --field-border-hover: color-mix(in srgb, var(--color-border) 55%, var(--color-text-secondary));
-    --field-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent);
+    --field-border-focus: color-mix(in srgb, var(--color-text-secondary) 35%, transparent);
+    --field-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent); /* still used by a few custom fields */
     --field-error-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 14%, transparent);
   }
 
@@ -30,7 +31,7 @@
   .ui-input {
     width: 100%;
     min-width: 0;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-field-border);
     border-radius: var(--field-radius);
     background: var(--color-field-bg);
     color: var(--color-text-primary);
@@ -81,8 +82,9 @@
 
   .ui-field:focus-within,
   .ui-input:focus {
-    border-color: var(--color-accent);
-    box-shadow: var(--field-focus-shadow);
+    /* Filled fields stay filled while typing: only a soft hairline marks focus, no white flash or dark ring. */
+    border-color: var(--field-border-focus);
+    box-shadow: none;
   }
 
   .ui-field--success,
@@ -111,15 +113,15 @@
   .ui-field:has(> .ui-field__control:disabled),
   .ui-input:disabled,
   .ui-input:disabled:hover {
-    border-color: var(--color-border);
-    background: var(--color-surface-secondary);
+    border-color: var(--color-field-border);
+    background: var(--color-field-bg-disabled);
     color: var(--color-text-secondary);
     box-shadow: none;
     cursor: not-allowed;
   }
 
   .ui-input[readonly] {
-    background: var(--color-surface-secondary);
+    background: var(--color-field-bg-disabled);
     color: var(--color-text-secondary);
   }
 
@@ -137,7 +139,7 @@
     justify-content: center;
     min-width: 2.75rem;
     padding: 0 0.75rem;
-    border-right: 1px solid var(--color-border);
+    border-right: 1px solid color-mix(in srgb, var(--color-text-secondary) 18%, transparent);
     color: var(--color-text-secondary);
     font-weight: 500;
     white-space: nowrap;

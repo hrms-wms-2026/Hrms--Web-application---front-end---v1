@@ -77,16 +77,17 @@ export interface EmployeeListPageResponse {
 
 export interface EmployeeListParams {
   search?: string;
-  departmentId?: string;
+  /** One id, or several (sent as repeated params; the API matches any). */
+  departmentId?: string | readonly string[];
   legalEntityId?: string;
   page?: number;
   pageSize?: number;
   /** Exclude on-leave/suspended/offboarding/terminated/resigned employees - for picker-style
    * callers (e.g. calendar participants) where only someone who could actually attend belongs. */
   activeOnly?: boolean;
-  positionId?: string;
+  positionId?: string | readonly string[];
   employmentType?: readonly string[];
-  managerId?: string;
+  managerId?: string | readonly string[];
   sortBy?: EmployeeSortKey;
   sortDir?: SortDirection;
 }

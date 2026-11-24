@@ -9,6 +9,7 @@ import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-pick
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
+import { DataTableColumnFilters, DataTableFilterValues } from '../../../../shared/ui/data-table/data-table.component';
 import { LeaveApprovalStore } from '../../state/leave-approval.store';
 import { LeaveTypeStore } from '../../state/leave-type.store';
 import { CancelLeaveRequestRequest } from '../../models/leave-request.model';
@@ -45,6 +46,27 @@ export class RequestsListComponent {
   constructor() {
     void this.store.loadAll();
     void this.leaveTypeStore.load();
+  }
+
+  /** The Type and Status column headers offer the same leave-type and status filters as the toolbar. */
+  readonly headerFilters = computed<DataTableColumnFilters>(() => ({
+    type: { kind: 'single', options: this.leaveTypeOptions().filter((o) => o.value !== '') },
+    status: { kind: 'single', options: [
+      { value: 'pending', label: 'Pending' },
+      { value: 'approved', label: 'Approved' },
+      { value: 'rejected', label: 'Rejected' }
+    ] }
+  }));
+  readonly headerFilterValues = computed<DataTableFilterValues>(() => {
+    const f = this.store.allFilter();
+    return { type: f.leaveTypeId ? [f.leaveTypeId] : [], status: f.status ? [f.status] : [] };
+  });
+  /** A header filter that leaves no rows keeps the table (and its header) so it can be cleared there. */
+  readonly hasHeaderFilter = computed(() => Object.values(this.headerFilterValues()).some((v) => !!v?.length));
+
+  onHeaderFilterChanged(change: { key: string; values: string[] }): void {
+    if (change.key === 'type') this.onLeaveTypeFilterChange(change.values[0] ?? '');
+    if (change.key === 'status') this.setStatusFilter(change.values[0]);
   }
 
   setStatusFilter(status: string | undefined): void {

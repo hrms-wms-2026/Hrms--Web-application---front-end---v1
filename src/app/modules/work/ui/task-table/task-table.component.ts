@@ -10,7 +10,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { toEditTaskRequest } from '../../utils/task.mapper';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent, DataTableRowAfterDirective } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent, DataTableRowAfterDirective, DataTableColumnFilters, DataTableFilterValues, withColumnFilters } from '../../../../shared/ui/data-table/data-table.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
 type SortKey = 'title' | 'statusId' | 'dueDate' | 'estimatedHours';
@@ -41,8 +41,10 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
   template: `
     <app-data-table
       minWidth="986px"
-      [columns]="columns"
+      [columns]="tableColumns()"
       [rows]="sortedTasks()"
+      [filterValues]="filterValues()"
+      (filterChanged)="filterChanged.emit($event)"
       [trackBy]="trackTask"
       [rowTestId]="rowTestId"
       [selectable]="selectable()"
@@ -54,7 +56,7 @@ const TABLE_POPOVER_POSITIONS: ConnectionPositionPair[] = [
       (rowClicked)="viewed.emit($event)"
       [sortBy]="sortBy()"
       [sortDir]="sortDirection()"
-      (sortRequested)="onSortRequested($event)"
+      (sortChanged)="onSortChanged($event)"
       (rowSelectionChanged)="selectionChanged.emit({ taskId: $event.row.id, selected: $event.selected })"
       (selectAllChanged)="selectAllChanged.emit({ taskIds: selectableTaskIds(), selected: $event })"
     >
@@ -387,6 +389,12 @@ export class TaskTableComponent {
   // Opt-in: sprint-tab's task tables don't pass this, so they render unchanged with no checkbox column.
   selectable = input(false);
   selectedIds = input<ReadonlySet<string>>(new Set());
+  /** Header-menu filters keyed by column key - each mirrors a field of the page's filter bar. */
+  readonly columnFilters = input<DataTableColumnFilters>({});
+  readonly filterValues = input<DataTableFilterValues>({});
+  filterChanged = output<{ key: string; values: string[] }>();
+  protected readonly tableColumns = computed(() => withColumnFilters(this.columns, this.columnFilters()));
+
   viewed = output<WorkTask>();
   taskChanged = output<void>();
   statusChangeRequested = output<{ taskId: string; newStatusId: string }>();
@@ -513,9 +521,11 @@ export class TaskTableComponent {
     return this.selectableTasks().map((t) => t.id);
   }
 
-  protected onSortRequested(columnKey: string): void {
-    const key = SORT_KEYS[columnKey];
-    if (key) this.toggleSort(key);
+  protected onSortChanged(change: { key: string; dir: 'asc' | 'desc' }): void {
+    const key = SORT_KEYS[change.key];
+    if (!key) return;
+    this.sortBy.set(key);
+    this.sortDirection.set(change.dir);
   }
 
   isAssignee(task: WorkTask): boolean {

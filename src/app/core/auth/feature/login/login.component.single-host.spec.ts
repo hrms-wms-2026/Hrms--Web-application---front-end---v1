@@ -36,7 +36,14 @@ describe('LoginComponent on a single host', () => {
             redirectRequired: () => false,
             continueUrl: () => null,
             loading: () => false,
-            error: () => null
+            error: () => null,
+            // Google sign-in / workspace picker members the login page reads (feat/web-google-login).
+            loadGoogleSsoConfig: vi.fn().mockResolvedValue(undefined),
+            googleClientId: () => null,
+            workspaceSelection: () => null,
+            loginWithGoogle: vi.fn(),
+            selectWorkspace: vi.fn(),
+            clearWorkspaceSelection: vi.fn()
           }
         },
         { provide: AuthApiService, useValue: { meForTenant: vi.fn() } },

@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { DepartmentApiService } from '../../../organization/data-access/department-api.service';
 import { PositionApiService } from '../../../organization/data-access/position-api.service';
+import { EmployeeFilterOptionsStore } from '../../data-access/employee-filter-options.store';
 import { PeopleApiService } from '../../data-access/people-api.service';
 import { EmployeeListFilters, EMPTY_EMPLOYEE_FILTERS } from '../../utils/employee-list-url-state';
 import { EmployeeFilterPopoverComponent } from './employee-filter-popover.component';
@@ -13,7 +14,7 @@ import { EmployeeFilterPopoverComponent } from './employee-filter-popover.compon
   template: `<app-employee-filter-popover [value]="value()" [legalEntityId]="le()" (applied)="applied.push($event)" />`
 })
 class HostComponent {
-  value = signal<EmployeeListFilters>({ ...EMPTY_EMPLOYEE_FILTERS, departmentId: 'd1' });
+  value = signal<EmployeeListFilters>({ ...EMPTY_EMPLOYEE_FILTERS, departmentIds: ['d1'] });
   le = signal<string | null>('le-1');
   applied: EmployeeListFilters[] = [];
 }
@@ -27,7 +28,8 @@ async function setup() {
     providers: [
       { provide: DepartmentApiService, useValue: departments },
       { provide: PositionApiService, useValue: positions },
-      { provide: PeopleApiService, useValue: people }
+      { provide: PeopleApiService, useValue: people },
+      EmployeeFilterOptionsStore
     ]
   }).compileComponents();
   const fixture = TestBed.createComponent(HostComponent);
@@ -71,10 +73,10 @@ describe('EmployeeFilterPopoverComponent', () => {
     fixture.detectChanges();
 
     expect(host.applied).toContainEqual({
-      departmentId: 'd1',
-      positionId: null,
+      departmentIds: ['d1'],
+      positionIds: [],
       employmentTypes: ['contract'],
-      managerId: null
+      managerIds: []
     });
   });
 
@@ -92,10 +94,10 @@ describe('EmployeeFilterPopoverComponent', () => {
     q('filter-remove-departmentId')!.click();
     fixture.detectChanges();
     expect(host.applied).toContainEqual({
-      departmentId: null,
-      positionId: null,
+      departmentIds: [],
+      positionIds: [],
       employmentTypes: [],
-      managerId: null
+      managerIds: []
     });
   });
 

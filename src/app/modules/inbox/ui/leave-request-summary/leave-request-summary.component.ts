@@ -45,10 +45,10 @@ const TIME: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
     </div>
   `,
   styles: [`
-    :host { display: block; }
-    .lrs { display: flex; min-width: 240px; flex-direction: column; gap: 2px; }
+    :host { display: block; min-width: 0; }
+    .lrs { display: flex; min-width: 0; width: 100%; flex-direction: column; gap: 2px; }
     .lrs__type { color: var(--color-text-primary); font-size: 14px; font-weight: 650; }
-    .lrs__when { color: var(--color-text-primary); font-size: 13px; }
+    .lrs__when { color: var(--color-text-primary); font-size: 13px; overflow-wrap: anywhere; }
     .lrs__head { display: flex; align-items: center; gap: 10px; }
     .lrs__hours { margin-left: 4px; color: var(--color-text-secondary); }
     .lrs__reason { margin: 4px 0 0; color: var(--color-text-secondary); font-size: 12px; overflow-wrap: anywhere; }
@@ -57,7 +57,7 @@ const TIME: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
     .lrs__edit svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .lrs__edit:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
     .lrs__form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--color-border); }
-    .lrs__field { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--color-text-secondary); font-size: 12px; }
+    .lrs__field { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; color: var(--color-text-secondary); font-size: 12px; }
 
     .lrs__error { color: var(--color-danger); font-size: 11px; }
   `]

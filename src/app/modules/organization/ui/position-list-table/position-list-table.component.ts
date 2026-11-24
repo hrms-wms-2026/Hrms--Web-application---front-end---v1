@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { ChangeDetectionStrategy, Component, computed, EventEmitter, input, Input, Output, signal } from '@angular/core';
+import { DataTableCellDirective, DataTableColumn, DataTableColumnFilters, DataTableComponent, DataTableFilterValues, withColumnFilters } from '../../../../shared/ui/data-table/data-table.component';
 import { PositionListItemResponse } from '../../models/position.model';
 import { PositionSeatPreviewComponent } from '../position-seat-preview/position-seat-preview.component';
 
@@ -15,12 +15,17 @@ export class PositionListTableComponent {
   @Input({ required: true }) positions: readonly PositionListItemResponse[] = [];
   @Input() set canManage(value: boolean) {
     this._canManage = value;
-    this.columns = value ? [...PositionListTableComponent.baseColumns, PositionListTableComponent.actionsColumn] : PositionListTableComponent.baseColumns;
+    this.canManageColumns.set(value);
   }
   get canManage(): boolean {
     return this._canManage;
   }
   private _canManage = false;
+  private readonly canManageColumns = signal(false);
+  /** Header-menu filters keyed by column key - each mirrors a field of the page's filter bar. */
+  readonly columnFilters = input<DataTableColumnFilters>({});
+  readonly filterValues = input<DataTableFilterValues>({});
+  @Output() filterChanged = new EventEmitter<{ key: string; values: string[] }>();
 
   private static readonly baseColumns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Position name' },
@@ -31,7 +36,9 @@ export class PositionListTableComponent {
   ];
   private static readonly actionsColumn: DataTableColumn = { key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' };
 
-  protected columns: readonly DataTableColumn[] = PositionListTableComponent.baseColumns;
+  protected readonly columns = computed(() => withColumnFilters(
+    this.canManageColumns() ? [...PositionListTableComponent.baseColumns, PositionListTableComponent.actionsColumn] : PositionListTableComponent.baseColumns,
+    this.columnFilters()));
   protected readonly trackById = (pos: PositionListItemResponse): string => pos.id;
   protected readonly isArchived = (pos: PositionListItemResponse): boolean => !pos.isActive;
   protected readonly rowClass = (pos: PositionListItemResponse): string =>

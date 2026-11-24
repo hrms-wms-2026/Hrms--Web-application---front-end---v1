@@ -7,7 +7,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent, DataTableFilterValues, withColumnFilters } from '../../../../shared/ui/data-table/data-table.component';
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { PeopleApiService } from '../../../people/data-access/people-api.service';
@@ -144,8 +144,10 @@ const CONFIRM_COPY: Record<'revoke' | 'suspend' | 'sign-out', { title: string; l
     } @else {
       <app-data-table
         class="block"
-        [columns]="columns()"
+        [columns]="tableColumns()"
         [rows]="visibleUsers()"
+        [filterValues]="headerFilterValues()"
+        (filterChanged)="onFilterChanged({ key: $event.key === 'status' ? 'statuses' : $event.key, values: $event.values })"
         [trackBy]="trackById"
         [loading]="loading()"
         loadingLabel="Loading users…"
@@ -334,6 +336,16 @@ export class UsersComponent {
 
   /** users:read alone is a read-only view; every action needs users:manage. */
   readonly canManage = computed(() => this.permissions.hasPermission('users:manage'));
+
+  /** Table columns, with the Roles and Status headers offering the filter bar's Role and Status filters. */
+  readonly tableColumns = computed(() => {
+    const [statusField, roleField] = this.filterFields();
+    return withColumnFilters(this.columns(), {
+      status: { kind: 'multi', options: statusField.options },
+      roles: { kind: 'multi', options: roleField.options }
+    });
+  });
+  readonly headerFilterValues = computed<DataTableFilterValues>(() => ({ status: this.filters().statuses, roles: this.filters().roles }));
 
   readonly columns = computed<readonly DataTableColumn[]>(() => [
     { key: 'user', label: 'User', width: '30%' },

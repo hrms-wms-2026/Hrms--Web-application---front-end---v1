@@ -301,6 +301,9 @@ export class PositionManagementComponent {
     }
   ]);
 
+  /** The Department column's header menu offers the same Department filter as the filter bar. */
+  readonly headerFilters = computed(() => ({ department: { kind: 'single' as const, options: this.filterFields()[0].options } }));
+
   readonly filterValues = computed<Record<string, string[]>>(() => {
     const deptId = this.positionStore.departmentFilterId();
     return { department: deptId ? [deptId] : [] };

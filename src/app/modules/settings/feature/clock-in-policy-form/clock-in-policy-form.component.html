@@ -1,20 +1,6 @@
 <header class="cipf-page-header">
   <div class="cipf-header-row">
     <app-breadcrumb-header parentLabel="Settings" currentLabel="Clock-in Policy" icon="settings" />
-
-    @if (canSave()) {
-      <div class="cipf-actions">
-        <app-button
-          type="button"
-          data-testid="save-policy"
-          [loading]="policyStore.saving()"
-          [disabled]="!isDirty() || policyStore.saving() || policyStore.loading()"
-          (pressed)="onSubmit()"
-        >
-          Save changes
-        </app-button>
-      </div>
-    }
   </div>
 </header>
 
@@ -40,10 +26,9 @@
     (retry)="onRetryLoad()"
   />
 } @else {
-  <form
+  <div
     class="cipf-form"
     data-testid="clock-in-policy-form"
-    (submit)="$event.preventDefault(); onSubmit()"
   >
     <section class="cipf-card" aria-labelledby="cipf-methods-heading">
       <div class="cipf-section-header">
@@ -55,7 +40,6 @@
       <app-work-mode-list
         [legalEntityId]="selectedLegalEntity()!.id"
         [canEdit]="hasWriteAccess()"
-        (changed)="markDirty()"
       ></app-work-mode-list>
     </section>
 
@@ -88,40 +72,13 @@
             <article class="cipf-late-row" [attr.data-testid]="'late-rule-row-' + i">
               <div class="cipf-late-sentence">
                 <span class="cipf-late-label">If late or leaving early by</span>
-                <div class="cipf-late-field">
-                  <app-input
-                    label=""
-                    type="number"
-                    [disabled]="!hasWriteAccess()"
-                    [value]="rule.lateArrivalMinutes"
-                    (valueChange)="patchLateRule(i, { lateArrivalMinutes: $event })"
-                    [error]="errorFor('lateDeductionRules.' + i + '.lateArrivalMinutes')"
-                  />
-                </div>
+                <span class="cipf-late-pill">{{ rule.lateArrivalMinutes || '—' }}</span>
                 <span class="cipf-late-label">minutes,</span>
                 <span class="cipf-late-label">deduct</span>
-                <div class="cipf-late-field">
-                  <app-input
-                    label=""
-                    type="number"
-                    [disabled]="!hasWriteAccess()"
-                    [value]="rule.deductionAmount"
-                    (valueChange)="patchLateRule(i, { deductionAmount: $event })"
-                    [error]="errorFor('lateDeductionRules.' + i + '.deductionAmount')"
-                  />
-                </div>
+                <span class="cipf-late-pill">{{ rule.deductionAmount || '—' }}</span>
                 <span class="cipf-late-label">× those minutes from</span>
-                <div class="cipf-late-field cipf-late-field--type">
-                  <app-select
-                    label="time off type"
-                    placeholder="Select time off type"
-                    [disabled]="!hasWriteAccess()"
-                    [options]="timeOffTypeOptions()"
-                    [value]="rule.timeOffTypeId"
-                    (valueChange)="patchLateRule(i, { timeOffTypeId: $event })"
-                    [error]="errorFor('lateDeductionRules.' + i + '.timeOffTypeId')"
-                  />
-                </div>
+                <span class="cipf-late-label">time off type</span>
+                <span class="cipf-late-pill cipf-late-pill--type">{{ timeOffTypeLabel(rule.timeOffTypeId) }}</span>
               </div>
               @if (hasWriteAccess()) {
                 <div class="cipf-late-row-actions">
@@ -129,8 +86,19 @@
                     type="button"
                     variant="secondary"
                     size="sm"
+                    [attr.data-testid]="'edit-late-rule-' + i"
+                    [disabled]="policyStore.saving()"
+                    (pressed)="openEditRuleModal(i)"
+                  >
+                    Edit
+                  </app-button>
+                  <app-button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
                     [attr.data-testid]="'remove-late-rule-' + i"
-                    (pressed)="removeLateRule(i)"
+                    [disabled]="policyStore.saving()"
+                    (pressed)="deleteLateRule(i)"
                   >
                     Remove
                   </app-button>
@@ -141,19 +109,94 @@
 
           @if (hasWriteAccess()) {
             <div class="cipf-late-add">
-              <app-button
+              <button
                 type="button"
-                variant="secondary"
-                size="sm"
+                class="w-full flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] bg-[var(--color-surface)] hover:bg-[var(--color-accent-subtle)]/40 border border-dashed border-[var(--color-border)] hover:border-[var(--color-accent)] rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 data-testid="add-late-rule"
-                (pressed)="addLateRule()"
+                [disabled]="policyStore.saving()"
+                (click)="openAddRuleModal()"
               >
-                Add rule
-              </app-button>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add rule</span>
+              </button>
             </div>
           }
         </div>
       }
     </section>
-  </form>
+  </div>
+
+  <app-modal
+    [open]="ruleModalOpen()"
+    [title]="editingRuleIndex() !== null ? 'Edit deduction rule' : 'Add deduction rule'"
+    subtitle="Charge leave for the minutes missed when someone clocks in late or clocks out early."
+    icon="clock"
+    size="lg"
+    (closed)="closeRuleModal()"
+  >
+    <div class="cipf-rule-modal" data-testid="late-rule-modal">
+      <div class="cipf-rule-modal__fields">
+        <app-input
+          label="If late or leaving early by (minutes)"
+          type="number"
+          placeholder="e.g. 15"
+          [disabled]="!hasWriteAccess() || policyStore.saving()"
+          [value]="ruleDraft().lateArrivalMinutes"
+          (valueChange)="patchRuleDraft({ lateArrivalMinutes: $event })"
+          [error]="ruleDraftErrorFor('lateArrivalMinutes')"
+        />
+
+        <app-input
+          label="Deduct multiplier (× those minutes)"
+          type="number"
+          placeholder="e.g. 1"
+          [disabled]="!hasWriteAccess() || policyStore.saving()"
+          [value]="ruleDraft().deductionAmount"
+          (valueChange)="patchRuleDraft({ deductionAmount: $event })"
+          [error]="ruleDraftErrorFor('deductionAmount')"
+        />
+
+        <div class="cipf-rule-modal__wide">
+          <app-select
+            label="time off type"
+            placeholder="Select time off type"
+            [disabled]="!hasWriteAccess() || policyStore.saving()"
+            [options]="timeOffTypeOptions()"
+            [value]="ruleDraft().timeOffTypeId"
+            (valueChange)="patchRuleDraft({ timeOffTypeId: $event })"
+            [error]="ruleDraftErrorFor('timeOffTypeId')"
+          />
+        </div>
+      </div>
+
+      <div class="cipf-rule-modal__preview">
+        If late or leaving early by <strong>{{ ruleDraft().lateArrivalMinutes || '…' }}</strong> minutes, deduct
+        <strong>{{ ruleDraft().deductionAmount || '…' }}</strong> × those minutes from
+        <strong>{{ timeOffTypeLabel(ruleDraft().timeOffTypeId) }}</strong>.
+      </div>
+
+      <div class="cipf-rule-modal__actions">
+        <app-button
+          type="button"
+          variant="secondary"
+          data-testid="cancel-late-rule"
+          [disabled]="policyStore.saving()"
+          (pressed)="closeRuleModal()"
+        >
+          Cancel
+        </app-button>
+        <app-button
+          type="button"
+          data-testid="confirm-late-rule"
+          [loading]="policyStore.saving()"
+          [disabled]="policyStore.saving()"
+          (pressed)="confirmRuleModal()"
+        >
+          {{ editingRuleIndex() !== null ? 'Save rule' : 'Add rule' }}
+        </app-button>
+      </div>
+    </div>
+  </app-modal>
 }

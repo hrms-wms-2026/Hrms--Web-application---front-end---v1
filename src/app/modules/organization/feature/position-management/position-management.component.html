@@ -282,6 +282,9 @@
             [canManage]="hasManageAccess()"
             [departmentNameMap]="departmentNameMap()"
             [positionNameMap]="positionNameMap()"
+            [columnFilters]="headerFilters()"
+            [filterValues]="filterValues()"
+            (filterChanged)="onFilterFieldChanged($event)"
             (viewCoverage)="openCoverageModal($event)"
           />
 

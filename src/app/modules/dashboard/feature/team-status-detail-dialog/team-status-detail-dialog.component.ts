@@ -137,7 +137,7 @@ export class TeamStatusDetailDialogComponent {
   protected readonly columns: DataTableColumn[] = [
     { key: 'rank', label: '#', width: '4%' },
     { key: 'name', label: 'Employee', width: '18%' },
-    { key: 'state', label: 'Status', width: '11%' },
+    { key: 'state', label: 'Status', width: '11%', filterValue: (m: TeamTodayMember) => this.stateLabel(m) },
     { key: 'start', label: 'Start', width: '9%' },
     { key: 'elapsed', label: 'Elapsed', width: '8%' },
     { key: 'remaining', label: 'Remaining', width: '12%' },

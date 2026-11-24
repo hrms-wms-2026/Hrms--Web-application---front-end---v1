@@ -133,9 +133,9 @@ export class OffboardingOverviewComponent implements OnInit {
 
   protected readonly columns: readonly DataTableColumn[] = [
     { key: 'employee', label: 'Employee', width: '30%' },
-    { key: 'position', label: 'Position' },
-    { key: 'department', label: 'Department' },
-    { key: 'status', label: 'Status', width: '9rem' },
+    { key: 'position', label: 'Position', filterValue: (i: OffboardingOverviewItemResponse) => i.positionName || '—' },
+    { key: 'department', label: 'Department', filterValue: (i: OffboardingOverviewItemResponse) => i.departmentName || '—' },
+    { key: 'status', label: 'Status', width: '9rem', filterValue: (i: OffboardingOverviewItemResponse) => this.statusLabel(i.currentOffboardingStatus) },
     { key: 'actions', label: 'Actions', hideLabel: true, interactive: true, align: 'end', width: '8rem' }
   ];
   protected readonly trackByEmployee = (item: OffboardingOverviewItemResponse): string => item.employeeId;

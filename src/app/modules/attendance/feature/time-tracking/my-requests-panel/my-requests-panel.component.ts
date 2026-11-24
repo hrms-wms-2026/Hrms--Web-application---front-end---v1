@@ -21,8 +21,8 @@ type PersonalRequestTab = 'corrections' | 'work-area';
 export class MyRequestsPanelComponent implements OnInit {
   protected readonly correctionColumns: readonly DataTableColumn[] = [
     { key: 'date', label: 'Date' },
-    { key: 'change', label: 'Change' },
-    { key: 'status', label: 'Status' },
+    { key: 'change', label: 'Change', filterValue: (r: AttendanceCorrectionResponse) => correctionTypeLabel(r.correctionType) },
+    { key: 'status', label: 'Status', filterValue: (r: AttendanceCorrectionResponse) => correctionStatusLabel(r.status) },
     { key: 'reason', label: 'Reason', wrap: true },
     { key: 'review', label: 'Review', wrap: true },
     { key: 'actions', label: 'Actions', interactive: true, shrink: true }
@@ -30,9 +30,9 @@ export class MyRequestsPanelComponent implements OnInit {
   protected readonly workAreaColumns: readonly DataTableColumn[] = [
     { key: 'date', label: 'Date' },
     { key: 'change', label: 'Change' },
-    { key: 'status', label: 'Status' },
+    { key: 'status', label: 'Status', filterValue: (r: { status: string | null }) => workAreaChangeStatusLabel(r.status) },
     { key: 'reason', label: 'Reason', wrap: true },
-    { key: 'sentTo', label: 'Sent to' },
+    { key: 'sentTo', label: 'Sent to', filterValue: (r: { receiver?: { displayName?: string | null } | null }) => r.receiver?.displayName || '—' },
     { key: 'requested', label: 'Requested' },
     { key: 'review', label: 'Review', wrap: true },
     { key: 'actions', label: 'Actions', interactive: true, shrink: true }

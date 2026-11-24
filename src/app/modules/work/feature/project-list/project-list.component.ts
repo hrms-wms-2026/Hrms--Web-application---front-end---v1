@@ -1,7 +1,8 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProjectListStore, AchievedFilter } from '../../state/project-list.store';
 import { ProjectCategoryStore } from '../../state/project-category.store';
+import { DataTableColumnFilters, DataTableFilterValues } from '../../../../shared/ui/data-table/data-table.component';
 import { ProjectFilterBarComponent } from '../../ui/project-filter-bar/project-filter-bar.component';
 import { ProjectFormModalComponent } from '../../ui/project-form-modal/project-form-modal.component';
 import { ProjectListRowComponent } from '../../ui/project-list-row/project-list-row.component';
@@ -167,6 +168,30 @@ export class ProjectListComponent implements OnInit {
     this.actionSubmitting.set(false);
     if (success) {
       this.deleteConfirmOpen.set(false);
+    }
+  }
+
+  private readonly projectFilters = viewChild(ProjectFilterBarComponent);
+
+  /** The Category and Status column headers offer the same filters as the filter bar. */
+  readonly headerFilters = computed<DataTableColumnFilters>(() => ({
+    category: { kind: 'multi', options: this.categoryStore.categories().map((c) => ({ value: c.id, label: c.name })) },
+    status: { kind: 'single', options: [{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }] }
+  }));
+  readonly headerFilterValues = computed<DataTableFilterValues>(() => ({
+    category: this.store.selectedCategoryIds(),
+    status: this.store.achievedFilter() === 'all' ? [] : [this.store.achievedFilter()]
+  }));
+  readonly hasHeaderFilter = computed(() => Object.values(this.headerFilterValues()).some((v) => !!v?.length));
+
+  /** Route header changes through the filter bar so its own state (and count) stays in sync. */
+  onHeaderFilterChanged(change: { key: string; values: string[] }): void {
+    const bar = this.projectFilters();
+    if (change.key === 'category') {
+      if (bar) bar.selectCategories(change.values); else this.onCategoryFilterChanged(change.values);
+    } else if (change.key === 'status') {
+      const status = (change.values[0] ?? 'all') as AchievedFilter;
+      if (bar) bar.selectStatus(status); else this.onAchievedFilterChanged(status);
     }
   }
 

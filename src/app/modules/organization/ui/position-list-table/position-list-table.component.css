@@ -24,14 +24,12 @@
 }
 
 :host ::ng-deep .data-table__row.plt-row--vacant td {
-  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-warning) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
 }
 
 :host ::ng-deep .data-table__row.plt-row--vacant:hover td,
 :host ::ng-deep .data-table__row.plt-row--vacant:focus-within td {
-  background: color-mix(in srgb, var(--color-warning) 16%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-warning) 50%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
 }
 
 .plt-action-wrapper {
