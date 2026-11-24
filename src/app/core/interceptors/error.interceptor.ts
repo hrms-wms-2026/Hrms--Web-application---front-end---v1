@@ -13,6 +13,10 @@ const RETRY_DELAYS_MS = [250, 500, 1000];
 /** Set on a request whose caller handles its errors itself (e.g. hides a section): no banner/toast for it. Session
  *  handling (401, CSRF) still applies. */
 export const SILENT_HTTP_ERRORS = new HttpContextToken<boolean>(() => false);
+
+/** The backend's answer when the signed-in account has no employee profile (e.g. a company owner who has not
+ *  added themselves yet). Screens show their own "profile isn't set up" state, so it is never toasted. */
+export const NO_EMPLOYEE_DETAIL = 'No employee record for the current user.';
 const SESSION_EXEMPT_PATH_FRAGMENTS = ['/auth/login', '/auth/me'];
 
 function isSessionExempt(url: string): boolean {
@@ -95,7 +99,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
-      if (!req.context.get(SILENT_HTTP_ERRORS)) errorHandler.handle(error);
+      if (!req.context.get(SILENT_HTTP_ERRORS) && error.error?.detail !== NO_EMPLOYEE_DETAIL) errorHandler.handle(error);
       return throwError(() => error);
     })
   );

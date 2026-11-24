@@ -3,7 +3,7 @@ import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@a
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '@environments/environment';
-import { SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
+import { NO_EMPLOYEE_DETAIL, SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
 import { AuthStore } from '../auth/state/auth.store';
 import { NotificationService } from '../services/notification.service';
 
@@ -121,6 +121,36 @@ describe('errorInterceptor', () => {
     req.flush({}, { status: 403, statusText: 'Forbidden' });
 
     expect(notify.notifications()[0].message).toBe('You do not have access to perform this action.');
+  });
+
+  it('does not show an error for the no-employee-profile 403', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.get('/api/v1/my/progress').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/v1/my/progress')
+      .flush({ detail: NO_EMPLOYEE_DETAIL }, { status: 403, statusText: 'Forbidden' });
+
+    expect(notify.notifications()).toHaveLength(0);
+  });
+
+  it('does not show an error for the no-employee-profile 404', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.get('/api/v1/my/documents').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/v1/my/documents')
+      .flush({ detail: NO_EMPLOYEE_DETAIL }, { status: 404, statusText: 'Not Found' });
+
+    expect(notify.notifications()).toHaveLength(0);
+  });
+
+  it('still shows other 403s', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.get('/api/v1/employees').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/v1/employees')
+      .flush({ detail: 'You cannot do that.' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(notify.notifications()).toHaveLength(1);
   });
 
   it('clears the session and redirects to /auth/login on a CSRF-shaped 403 (stale/expired session)', () => {
