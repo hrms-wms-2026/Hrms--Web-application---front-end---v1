@@ -85,3 +85,4 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | Shared Form Validation Rules (Improvements task 24) | `next/2026-11-23-shared-form-validation.md` | done, in review | 3 forms moved; remaining forms listed in the task file |
 | One Error Handling Standard (Improvements task 20) | `next/2026-11-24-error-handling-standard.md` | done, in review | provisional until backend task 24 lands |
 | Server Field Errors on More Forms (task 20 follow-up) | `next/2026-11-24-server-field-errors-forms.md` | done, in review | position form, profile panels and checklist builder still to do |
+| Server Field Errors on Profile and Checklist Forms (task 20 follow-up 2) | `next/2026-11-24-server-field-errors-profile-checklist.md` | done, in review | position form and people forms left with their owners |
