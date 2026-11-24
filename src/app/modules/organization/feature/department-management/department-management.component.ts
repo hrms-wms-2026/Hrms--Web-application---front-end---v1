@@ -18,6 +18,7 @@ import { DepartmentArchiveModalComponent } from '../../ui/department-archive-mod
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { ViewModeOption, ViewModeToggleComponent } from '../../../../shared/ui/view-mode-toggle/view-mode-toggle.component';
+import { failedSaveToast } from '../../../../shared/utils/validators';
 
 @Component({
   selector: 'app-department-management',
@@ -213,7 +214,8 @@ export class DepartmentManagementComponent {
     if (success) {
       this.closeFormModal();
     } else {
-      this.notificationService.error(this.departmentStore.actionError() ?? 'Failed to save department.');
+      const toast = failedSaveToast(this.departmentStore.actionApiError(), 'Failed to save department.');
+      if (toast) this.notificationService.error(toast);
     }
   }
 

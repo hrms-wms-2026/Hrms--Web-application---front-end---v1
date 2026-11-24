@@ -12,6 +12,7 @@ import { RoleFormModalComponent, RoleFormSubmitValue } from '../../ui/role-form-
 import { RoleArchiveModalComponent } from '../../ui/role-archive-modal/role-archive-modal.component';
 
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
+import { failedSaveToast } from '../../../../shared/utils/validators';
 
 @Component({
   selector: 'app-roles-management',
@@ -130,7 +131,8 @@ export class RolesManagementComponent {
     if (success) {
       this.closeFormModal();
     } else {
-      this.notificationService.error(this.roleStore.actionError() ?? 'Failed to save role.');
+      const toast = failedSaveToast(this.roleStore.actionApiError(), 'Failed to save role.');
+      if (toast) this.notificationService.error(toast);
     }
   }
 

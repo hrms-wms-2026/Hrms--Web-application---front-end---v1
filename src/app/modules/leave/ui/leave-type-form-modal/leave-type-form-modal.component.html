@@ -162,6 +162,7 @@
       </div>
       </div>
 
+      <app-field-error [message]="serverFormError() ?? ''" />
       <footer class="ltfm-footer">
         <app-button type="button" variant="secondary" [disabled]="loading" (click)="cancelled.emit()">Cancel</app-button>
         <app-button type="submit" [loading]="loading" [disabled]="loading">{{ isEdit ? 'Save changes' : 'Create leave type' }}</app-button>

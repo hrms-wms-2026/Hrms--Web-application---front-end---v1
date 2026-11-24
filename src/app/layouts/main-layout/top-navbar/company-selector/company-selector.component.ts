@@ -8,6 +8,7 @@ import { LegalEntityStore } from '../../../../modules/organization/state/legal-e
 import { CreateLegalEntityRequest } from '../../../../modules/organization/models/legal-entity.model';
 import { CreateCompanyModalComponent } from '../../../../modules/organization/ui/create-company-modal/create-company-modal.component';
 import { PopoverComponent } from '../../../../shared/ui/popover/popover.component';
+import { failedSaveToast } from '../../../../shared/utils/validators';
 
 @Component({
   selector: 'app-company-selector',
@@ -94,7 +95,8 @@ export class CompanySelectorComponent {
       this.notificationService.success(`Company '${payload.name}' created successfully.`);
       this.closeCreateModal();
     } else {
-      this.notificationService.error(this.store.createError() ?? 'Failed to create company.');
+      const toast = failedSaveToast(this.store.createApiError(), 'Failed to create company.');
+      if (toast) this.notificationService.error(toast);
     }
   }
 }

@@ -18,8 +18,10 @@ import {
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
-import { AppValidators, fieldError } from '../../../../shared/utils/validators';
+import { AppValidators, applyServerFieldErrors, fieldError } from '../../../../shared/utils/validators';
 import { ROLE_LIMITS } from '../../utils/organization-limits';
+import { ApiError } from '../../../../core/errors/api-error';
+import { FieldErrorComponent } from '../../../../shared/ui/field-error/field-error.component';
 
 export interface RoleFormSubmitValue {
   name: string;
@@ -35,7 +37,7 @@ export interface RoleFormSubmitValue {
   selector: 'app-role-form-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [CharCounterComponent, StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
+  imports: [FieldErrorComponent, CharCounterComponent, StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './role-form-modal.component.html',
   styleUrl: './role-form-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -51,6 +53,14 @@ export class RoleFormModalComponent implements OnChanges {
   @Input() role: RoleSummaryResponse | null = null;
   /** The role's permissions; loads after the popup opens for an existing role. */
   @Input() roleDetail: RoleDetailResponse | null = null;
+  /** A message from a refused save that matches no field, shown inside the modal (task 20). */
+  protected readonly serverFormError = signal<string | null>(null);
+
+  /** The store's ApiError for the last failed save: field messages go next to their fields. */
+  @Input() set serverError(value: ApiError | null) {
+    this.serverFormError.set(value ? applyServerFieldErrors(this.form, value) : null);
+  }
+
   @Input({ required: true }) groupedCatalog: readonly ModulePermissionGroup[] = [];
   /** The role's permissions are still loading. */
   @Input() loading = false;

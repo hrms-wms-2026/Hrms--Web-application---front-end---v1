@@ -127,6 +127,7 @@
       </div>
 
       <!-- Footer Buttons -->
+      <app-field-error [message]="serverFormError() ?? ''" />
       <div class="rfm-footer">
         <app-button type="button" variant="secondary" (click)="cancelled.emit()" [disabled]="saving">
           {{ readOnly ? 'Close' : 'Cancel' }}

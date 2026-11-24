@@ -12,8 +12,9 @@ import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-pick
 import { leaveTypeDefaultIcon } from '../../utils/leave-hub.util';
 import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 import { FieldErrorComponent } from '../../../../shared/ui/field-error/field-error.component';
-import { AppValidators, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { AppValidators, applyServerFieldErrors, fieldError, validationMessage } from '../../../../shared/utils/validators';
 import { LEAVE_TYPE_LIMITS } from '../../utils/leave-limits';
+import { ApiError } from '../../../../core/errors/api-error';
 
 export type LeaveTypeFormValue = CreateLeaveTypeRequest;
 
@@ -40,6 +41,14 @@ export class LeaveTypeFormModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   @Input() leaveType: LeaveTypeResponse | null = null;
   @Input() loading = false;
+  /** A message from a refused save that matches no field, shown inside the modal (task 20). */
+  protected readonly serverFormError = signal<string | null>(null);
+
+  /** The store's ApiError for the last failed save: field messages go next to their fields. */
+  @Input() set serverError(value: ApiError | null) {
+    this.serverFormError.set(value ? applyServerFieldErrors(this.form, value) : null);
+  }
+
   @Output() save = new EventEmitter<LeaveTypeFormValue>();
   @Output() cancelled = new EventEmitter<void>();
 

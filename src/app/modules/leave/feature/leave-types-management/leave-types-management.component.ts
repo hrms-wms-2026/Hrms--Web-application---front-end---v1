@@ -17,6 +17,7 @@ import { LeaveTypeListTableComponent } from '../../ui/leave-type-list-table/leav
 import { LeaveTypeFormModalComponent, LeaveTypeFormValue } from '../../ui/leave-type-form-modal/leave-type-form-modal.component';
 
 import { TimeOffSettingsTabsComponent } from '../../ui/time-off-settings-tabs/time-off-settings-tabs.component';
+import { failedSaveToast } from '../../../../shared/utils/validators';
 @Component({
   selector: 'app-leave-types-management',
   standalone: true,
@@ -82,7 +83,8 @@ export class LeaveTypesManagementComponent {
       this.notificationService.success(`Leave type '${value.name}' ${editing ? 'updated' : 'created'} successfully.`);
       this.closeFormModal();
     } else {
-      this.notificationService.error(this.store.actionError() ?? 'Failed to save leave type.');
+      const toast = failedSaveToast(this.store.actionApiError(), 'Failed to save leave type.');
+      if (toast) this.notificationService.error(toast);
     }
   }
 

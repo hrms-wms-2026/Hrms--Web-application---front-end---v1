@@ -76,6 +76,7 @@
       </div>
 
       <!-- Footer Buttons -->
+      <app-field-error [message]="serverFormError() ?? ''" />
       <div class="dfm-footer">
         <app-button type="button" variant="secondary" (click)="cancelled.emit()" [disabled]="loading">Cancel</app-button>
         <app-button type="submit" [loading]="loading" [disabled]="loading">

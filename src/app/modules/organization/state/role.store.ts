@@ -24,6 +24,8 @@ export interface RoleState {
   readonly saving: boolean;
   readonly loadError: string | null;
   readonly actionError: string | null;
+  /** The last failed create/update as an ApiError, so the form can show field errors (task 20). */
+  readonly actionApiError: ApiError | null;
 }
 
 const initialState: RoleState = {
@@ -35,10 +37,11 @@ const initialState: RoleState = {
   detailLoading: false,
   saving: false,
   loadError: null,
-  actionError: null
+  actionError: null, actionApiError: null
 };
 
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { ApiError, toApiError } from '../../../core/errors/api-error';
 
 function formatModuleTitle(moduleKey: string): string {
   if (!moduleKey) return 'General';
@@ -127,46 +130,49 @@ export const RoleStore = signalStore(
     },
 
     async createRole(payload: CreateRoleRequest): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.createRole(payload));
         patchState(store, { saving: false });
         await this.loadAll();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to create role.') });
+        const apiError = toApiError(err, 'Failed to create role.');
+        patchState(store, { saving: false, actionError: apiError.message, actionApiError: apiError });
         return false;
       }
     },
 
     async updateRole(id: string, payload: UpdateRoleRequest): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.updateRole(id, payload));
         patchState(store, { saving: false });
         await this.loadAll();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to update role details.') });
+        const apiError = toApiError(err, 'Failed to update role details.');
+        patchState(store, { saving: false, actionError: apiError.message, actionApiError: apiError });
         return false;
       }
     },
 
     async assignPermissions(id: string, payload: AssignRolePermissionsRequest): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.assignPermissions(id, payload));
         patchState(store, { saving: false });
         await this.loadAll();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to update role permissions.') });
+        const apiError = toApiError(err, 'Failed to update role permissions.');
+        patchState(store, { saving: false, actionError: apiError.message, actionApiError: apiError });
         return false;
       }
     },
 
     async archiveRole(id: string): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.archiveRole(id));
         patchState(store, { saving: false });

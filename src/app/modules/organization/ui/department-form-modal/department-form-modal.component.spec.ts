@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { DepartmentFormModalComponent } from './department-form-modal.component';
+import { HttpErrorResponse } from '@angular/common/http';
+import { toApiError } from '../../../../core/errors/api-error';
 
 describe('DepartmentFormModalComponent validation', () => {
   function setup() {
@@ -39,5 +41,25 @@ describe('DepartmentFormModalComponent validation', () => {
     expect(text).toContain('Department name is required.');
     expect(text).toContain('Department code may only contain letters, numbers, hyphens and underscores.');
     expect(emitted).not.toHaveBeenCalled();
+  });
+
+  describe('server field errors (task 20 follow-up)', () => {
+    const badRequest = (errors: Record<string, string[]>) =>
+      toApiError(new HttpErrorResponse({ status: 400, error: { title: 'Validation Error', errors } }));
+
+    it('shows the field message of a refused save under its field', () => {
+      const fixture = setup();
+      fixture.componentRef.setInput('serverError', badRequest({ Code: ['Department code is already used in this company.'] }));
+      fixture.detectChanges();
+      expect(fixture.componentInstance.form.controls.code.errors?.['server']).toEqual({ message: 'Department code is already used in this company.' });
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Department code is already used in this company.');
+    });
+
+    it('shows a message with no field inside the modal', () => {
+      const fixture = setup();
+      fixture.componentRef.setInput('serverError', badRequest({ LegalEntityId: ['Legal entity ID is required.'] }));
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Legal entity ID is required.');
+    });
   });
 });

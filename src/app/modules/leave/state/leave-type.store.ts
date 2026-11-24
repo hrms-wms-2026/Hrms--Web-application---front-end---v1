@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { ApiError, toApiError } from '../../../core/errors/api-error';
 import { LeaveTypeApiService } from '../data-access/leave-type-api.service';
 import { CreateLeaveTypeRequest, LeaveTypeResponse, UpdateLeaveTypeRequest } from '../models/leave-type.model';
 
@@ -11,11 +12,13 @@ export interface LeaveTypeState {
   readonly saving: boolean;
   readonly loadError: string | null;
   readonly actionError: string | null;
+  /** The last failed create/update as an ApiError, so the form can show field errors (task 20). */
+  readonly actionApiError: ApiError | null;
   /** True once a load has succeeded, so "no leave types" can be told apart from "not loaded yet". */
   readonly loaded: boolean;
 }
 
-const initialState: LeaveTypeState = { items: [], loading: false, saving: false, loadError: null, actionError: null, loaded: false };
+const initialState: LeaveTypeState = { items: [], loading: false, saving: false, loadError: null, actionError: null, actionApiError: null, loaded: false };
 
 export const LeaveTypeStore = signalStore(
   { providedIn: 'root' },
@@ -31,31 +34,33 @@ export const LeaveTypeStore = signalStore(
       }
     },
     async createLeaveType(payload: CreateLeaveTypeRequest): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.create(payload));
         patchState(store, { saving: false });
         await this.load();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to create leave type.') });
+        const apiError = toApiError(err, 'Failed to create leave type.');
+        patchState(store, { saving: false, actionError: apiError.message, actionApiError: apiError });
         return false;
       }
     },
     async updateLeaveType(leaveTypeId: string, payload: UpdateLeaveTypeRequest): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.update(leaveTypeId, payload));
         patchState(store, { saving: false });
         await this.load();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to update leave type.') });
+        const apiError = toApiError(err, 'Failed to update leave type.');
+        patchState(store, { saving: false, actionError: apiError.message, actionApiError: apiError });
         return false;
       }
     },
     async deactivateLeaveType(leaveTypeId: string, confirmed: boolean): Promise<'success' | 'confirm' | 'error'> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.deactivate(leaveTypeId, confirmed));
         patchState(store, { saving: false });

@@ -27,13 +27,14 @@ const MESSAGES: Record<string, MessageFn | undefined> = {
   server: (_label, d) => String(d['message']),
 };
 
-/** The message for the first error, or '' when there is none. `required` wins, so an empty field shows no length message. */
+/** The message for the first error, or '' when there is none. A `server` message wins, then `required`, so an empty field shows no length message. */
 export function validationMessage(errors: ValidationErrors | null | undefined, label: string): string {
   if (!errors) return '';
   const keys = Object.keys(errors);
   if (keys.length === 0) return '';
   // Otherwise the first key, which is the first validator that failed in the order the control lists them.
-  const key = 'required' in errors ? 'required' : keys[0];
+  // A backend message about this field wins, then required.
+  const key = 'server' in errors ? 'server' : 'required' in errors ? 'required' : keys[0];
   const detail = errors[key] as unknown;
   const message = MESSAGES[key];
   if (!message) return `Check ${label}.`;

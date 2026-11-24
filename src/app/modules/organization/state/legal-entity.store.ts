@@ -16,10 +16,13 @@ export interface LegalEntityState {
   readonly loaded: boolean;
   readonly saving: boolean;
   readonly createError: string | null;
+  /** The last failed create/update as an ApiError, so the form can show field errors (task 20). */
+  readonly createApiError: ApiError | null;
   readonly switchError: string | null;
 }
 
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { ApiError, toApiError } from '../../../core/errors/api-error';
 
 export const LegalEntityStore = signalStore(
   { providedIn: 'root' },
@@ -30,7 +33,7 @@ export const LegalEntityStore = signalStore(
     error: null,
     loaded: false,
     saving: false,
-    createError: null,
+    createError: null, createApiError: null,
     switchError: null
   }),
   withComputed(({ companies, selectedLegalEntityId }) => ({
@@ -119,14 +122,15 @@ export const LegalEntityStore = signalStore(
       if (store.saving()) {
         return false;
       }
-      patchState(store, { saving: true, createError: null });
+      patchState(store, { saving: true, createError: null, createApiError: null });
       try {
         await firstValueFrom(api.createLegalEntity(payload));
         patchState(store, { saving: false });
         await this.loadCompanies();
         return true;
       } catch (err) {
-        patchState(store, { saving: false, createError: toSafeErrorMessage(err, 'Failed to create company.') });
+        const apiError = toApiError(err, 'Failed to create company.');
+        patchState(store, { saving: false, createError: apiError.message, createApiError: apiError });
         return false;
       }
     }

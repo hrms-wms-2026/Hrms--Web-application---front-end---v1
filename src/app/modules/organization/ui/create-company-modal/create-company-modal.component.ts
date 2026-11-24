@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CreateLegalEntityRequest } from '../../models/legal-entity.model';
@@ -7,13 +7,15 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
-import { AppValidators, fieldError } from '../../../../shared/utils/validators';
+import { AppValidators, applyServerFieldErrors, fieldError } from '../../../../shared/utils/validators';
 import { COMPANY_LIMITS } from '../../utils/organization-limits';
+import { ApiError } from '../../../../core/errors/api-error';
+import { FieldErrorComponent } from '../../../../shared/ui/field-error/field-error.component';
 
 @Component({
   selector: 'app-create-company-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent, ModalComponent],
+  imports: [FieldErrorComponent, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-modal [open]="true" title="Add company" (closed)="cancelled.emit()">
@@ -69,6 +71,7 @@ import { COMPANY_LIMITS } from '../../utils/organization-limits';
           (valueChange)="form.controls.parentLegalEntityId.setValue($event)"
         />
 
+        <app-field-error [message]="serverFormError() ?? ''" />
         <div class="mt-2 flex justify-end gap-2">
           <app-button type="button" variant="secondary" [disabled]="saving" (click)="cancelled.emit()">Cancel</app-button>
           <app-button type="submit" [loading]="saving" [disabled]="saving">Create company</app-button>
@@ -82,6 +85,14 @@ export class CreateCompanyModalComponent {
 
   @Input() availableParents: readonly { id: string; name: string }[] = [];
   @Input() saving = false;
+  /** A message from a refused save that matches no field, shown inside the modal (task 20). */
+  protected readonly serverFormError = signal<string | null>(null);
+
+  /** The store's ApiError for the last failed save: field messages go next to their fields. */
+  @Input() set serverError(value: ApiError | null) {
+    this.serverFormError.set(value ? applyServerFieldErrors(this.form, value) : null);
+  }
+
 
   @Output() save = new EventEmitter<CreateLegalEntityRequest>();
   @Output() cancelled = new EventEmitter<void>();

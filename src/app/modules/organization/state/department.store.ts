@@ -28,6 +28,8 @@ export interface DepartmentState {
   readonly archiveChecking: boolean;
   readonly loadError: string | null;
   readonly actionError: string | null;
+  /** The last failed create/update as an ApiError, so the form can show field errors (task 20). */
+  readonly actionApiError: ApiError | null;
   readonly archiveDependency: DepartmentArchiveDependencyResponse | null;
 }
 
@@ -46,11 +48,12 @@ const initialState: DepartmentState = {
   saving: false,
   archiveChecking: false,
   loadError: null,
-  actionError: null,
+  actionError: null, actionApiError: null,
   archiveDependency: null
 };
 
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { ApiError, toApiError } from '../../../core/errors/api-error';
 
 export const DepartmentStore = signalStore(
   { providedIn: 'root' },
@@ -150,27 +153,29 @@ export const DepartmentStore = signalStore(
     },
 
     async createDepartment(legalEntityId: string, payload: CreateDepartmentRequest): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.createDepartment(legalEntityId, payload));
         patchState(store, { saving: false });
         await this.load(legalEntityId);
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to create department.') });
+        const apiError = toApiError(err, 'Failed to create department.');
+        patchState(store, { saving: false, actionError: apiError.message, actionApiError: apiError });
         return false;
       }
     },
 
     async updateDepartment(legalEntityId: string, departmentId: string, payload: UpdateDepartmentRequest): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.updateDepartment(legalEntityId, departmentId, payload));
         patchState(store, { saving: false });
         await this.load(legalEntityId);
         return true;
       } catch (err) {
-        patchState(store, { saving: false, actionError: toSafeErrorMessage(err, 'Failed to update department.') });
+        const apiError = toApiError(err, 'Failed to update department.');
+        patchState(store, { saving: false, actionError: apiError.message, actionApiError: apiError });
         return false;
       }
     },
@@ -188,7 +193,7 @@ export const DepartmentStore = signalStore(
     },
 
     async archiveDepartment(legalEntityId: string, departmentId: string): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.archiveDepartment(legalEntityId, departmentId));
         patchState(store, { saving: false, archiveDependency: null });
@@ -201,7 +206,7 @@ export const DepartmentStore = signalStore(
     },
 
     async restoreDepartment(legalEntityId: string, departmentId: string): Promise<boolean> {
-      patchState(store, { saving: true, actionError: null });
+      patchState(store, { saving: true, actionError: null, actionApiError: null });
       try {
         await firstValueFrom(api.restoreDepartment(legalEntityId, departmentId));
         patchState(store, { saving: false });

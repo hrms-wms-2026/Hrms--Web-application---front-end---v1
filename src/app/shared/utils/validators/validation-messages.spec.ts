@@ -34,6 +34,10 @@ describe('validationMessage', () => {
     expect(validationMessage({ mismatch: true }, 'Confirm password')).toBe('Passwords must match.');
   });
 
+  it('shows a server message before anything else, because the backend said what is wrong with this field', () => {
+    expect(validationMessage({ required: true, server: { message: 'Code already used.' } }, 'Code')).toBe('Code already used.');
+  });
+
   it('shows required first, and a generic message for an unknown key', () => {
     expect(validationMessage({ maxlength: { requiredLength: 1, actualLength: 2 }, required: true }, 'Name')).toBe('Name is required.');
     expect(validationMessage({ somethingNew: true }, 'Name')).toBe('Check Name.');

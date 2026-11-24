@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { LeaveTypeFormModalComponent } from './leave-type-form-modal.component';
+import { HttpErrorResponse } from '@angular/common/http';
+import { toApiError } from '../../../../core/errors/api-error';
 
 describe('LeaveTypeFormModalComponent', () => {
   it('uses the shared messages for name, code and colour', () => {
@@ -98,5 +100,25 @@ describe('LeaveTypeFormModalComponent', () => {
     fixture.componentInstance.form.patchValue({ name: 'Sick', code: 'SL', color: 'red' });
     fixture.componentInstance.onSubmit();
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  describe('server field errors (task 20 follow-up)', () => {
+    const badRequest = (errors: Record<string, string[]>) =>
+      toApiError(new HttpErrorResponse({ status: 400, error: { title: 'Validation Error', errors } }));
+
+    it('shows the field message of a refused save under its field', () => {
+      const fixture = (() => { const f = TestBed.createComponent(LeaveTypeFormModalComponent); f.detectChanges(); return f; })();
+      fixture.componentRef.setInput('serverError', badRequest({ Code: ['Leave type code is already used.'] }));
+      fixture.detectChanges();
+      expect(fixture.componentInstance.form.controls.code.errors?.['server']).toEqual({ message: 'Leave type code is already used.' });
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Leave type code is already used.');
+    });
+
+    it('shows a message with no field inside the modal', () => {
+      const fixture = (() => { const f = TestBed.createComponent(LeaveTypeFormModalComponent); f.detectChanges(); return f; })();
+      fixture.componentRef.setInput('serverError', badRequest({ LegalEntityId: ['Legal entity ID is required.'] }));
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Legal entity ID is required.');
+    });
   });
 });
