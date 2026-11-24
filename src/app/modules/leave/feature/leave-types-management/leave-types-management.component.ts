@@ -63,18 +63,20 @@ export class LeaveTypesManagementComponent {
   }
 
   openCreateModal(): void {
+    this.store.clearSaveError();
     if (!this.hasManageAccess()) { this.notificationService.error("You don't have permission to create leave types."); return; }
     this.editingType.set(null);
     this.formModalOpen.set(true);
   }
 
   openEditModal(type: LeaveTypeResponse): void {
+    this.store.clearSaveError();
     if (!this.hasManageAccess()) { this.notificationService.error("You don't have permission to edit leave types."); return; }
     this.editingType.set(type);
     this.formModalOpen.set(true);
   }
 
-  closeFormModal(): void { this.formModalOpen.set(false); this.editingType.set(null); }
+  closeFormModal(): void { this.store.clearSaveError(); this.formModalOpen.set(false); this.editingType.set(null); }
 
   async onSave(value: LeaveTypeFormValue): Promise<void> {
     const editing = this.editingType();

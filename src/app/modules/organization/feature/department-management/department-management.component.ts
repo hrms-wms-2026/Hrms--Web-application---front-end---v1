@@ -144,6 +144,7 @@ export class DepartmentManagementComponent {
   }
 
   openCreateModal(parentPreset?: DepartmentTreeNodeResponse): void {
+    this.departmentStore.clearSaveError();
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to create departments.");
       return;
@@ -155,6 +156,7 @@ export class DepartmentManagementComponent {
   }
 
   openEditModal(dept: DepartmentListItemResponse | DepartmentTreeNodeResponse): void {
+    this.departmentStore.clearSaveError();
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to edit departments.");
       return;
@@ -177,6 +179,7 @@ export class DepartmentManagementComponent {
   }
 
   closeFormModal(): void {
+    this.departmentStore.clearSaveError();
     this.formModalOpen.set(false);
     this.editingDepartment.set(null);
     this.parentPreset.set(null);

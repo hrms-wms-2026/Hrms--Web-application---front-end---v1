@@ -24,6 +24,11 @@ export const LeaveTypeStore = signalStore(
   { providedIn: 'root' },
   withState<LeaveTypeState>(initialState),
   withMethods((store, api = inject(LeaveTypeApiService)) => ({
+    /** Drops the kept ApiError so a reopened form does not show the last failure again. */
+    clearSaveError(): void {
+      patchState(store, { actionApiError: null });
+    },
+
     async load(): Promise<void> {
       patchState(store, { loading: true, loadError: null });
       try {

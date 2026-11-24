@@ -42,6 +42,14 @@ describe('applyServerFieldErrors', () => {
     expect(validationMessage({ server: { message: 'Already used.' } }, 'Code')).toBe('Already used.');
   });
 
+  it('sends a message for a control the form does not display to the form level', () => {
+    const f = form();
+    const leftover = applyServerFieldErrors(f, badRequest({ Addresses: ['Address is not valid.'], Name: ['Name is taken.'] }), ['name']);
+    expect(leftover).toBe('Address is not valid.');
+    expect(f.controls.addresses.errors).toBeNull();
+    expect(f.controls.name.errors).toEqual({ server: { message: 'Name is taken.' } });
+  });
+
   it('returns the message for a disabled control, which cannot show it', () => {
     const f = new FormGroup({ defaultLanguage: new FormControl({ value: 'en-US', disabled: true }) });
     expect(applyServerFieldErrors(f, badRequest({ DefaultLanguage: ['Default language must be 10 characters or fewer.'] }))).toBe(

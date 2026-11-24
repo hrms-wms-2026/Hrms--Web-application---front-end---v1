@@ -69,6 +69,15 @@ describe('LeaveTypeStore', () => {
     expect(store.actionApiError()?.fieldErrors).toEqual({});
   });
 
+  it('clearSaveError drops the kept ApiError so a reopened form starts clean', async () => {
+    const creating = store.createLeaveType({ name: 'Sick Leave', code: 'SICK', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [] });
+    httpMock.expectOne(`${environment.apiUrl}/leave/types`).flush({ errors: { Code: ['Code already used.'] } }, { status: 400, statusText: 'Bad Request' });
+    await creating;
+    expect(store.actionApiError()).not.toBeNull();
+    store.clearSaveError();
+    expect(store.actionApiError()).toBeNull();
+  });
+
   it('updates a leave type and refreshes the list', async () => {
     const updating = store.updateLeaveType('type-1', { name: 'Annual Leave Updated', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [] });
     httpMock.expectOne(`${environment.apiUrl}/leave/types/type-1`).flush(mockType);

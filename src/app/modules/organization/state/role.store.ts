@@ -83,6 +83,11 @@ export const RoleStore = signalStore(
     })
   })),
   withMethods((store, api = inject(RolesApiService)) => ({
+    /** Drops the kept ApiError so a reopened form does not show the last failure again. */
+    clearSaveError(): void {
+      patchState(store, { actionApiError: null });
+    },
+
     async loadAll(): Promise<void> {
       patchState(store, { loading: true, catalogLoading: true, loadError: null });
       try {

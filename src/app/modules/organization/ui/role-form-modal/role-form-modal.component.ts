@@ -58,7 +58,8 @@ export class RoleFormModalComponent implements OnChanges {
 
   /** The store's ApiError for the last failed save: field messages go next to their fields. */
   @Input() set serverError(value: ApiError | null) {
-    this.serverFormError.set(value ? applyServerFieldErrors(this.form, value) : null);
+    // Only the fields this template shows an error for; any other message is shown above the footer.
+    this.serverFormError.set(value ? applyServerFieldErrors(this.form, value, ['name']) : null);
   }
 
   @Input({ required: true }) groupedCatalog: readonly ModulePermissionGroup[] = [];

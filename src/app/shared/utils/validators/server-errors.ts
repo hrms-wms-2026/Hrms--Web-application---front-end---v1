@@ -11,16 +11,19 @@ function controlNameFor(backendKey: string): string {
  * Shows a 400's field errors next to their fields (Improvements task 20). Each matching control gets a `server`
  * error carrying the backend message, which `fieldError()`/`validationMessage()` show as it is. The control's next
  * validation run (any value change) replaces it. Returns the first message whose key matches no control, so the
- * caller can show it as a form-level message, or null when every message found a field.
+ * caller can show it as a form-level message, or null when every message found a field. Pass `shownFields` (control
+ * names) when the template shows errors for only some controls: a message for any other control goes to the form level
+ * too, so it is never set on a field the user cannot see.
  */
-export function applyServerFieldErrors(form: FormGroup, apiError: ApiError): string | null {
+export function applyServerFieldErrors(form: FormGroup, apiError: ApiError, shownFields?: readonly string[]): string | null {
   let unmatched: string | null = null;
   for (const [key, messages] of Object.entries(apiError.fieldErrors)) {
     const message = messages[0];
     if (!message) continue;
-    const control = form.get(controlNameFor(key));
-    // A disabled control shows no error, so its message goes to the form level instead.
-    if (control?.enabled) {
+    const name = controlNameFor(key);
+    const control = form.get(name);
+    // A disabled or undisplayed control shows no error, so its message goes to the form level instead.
+    if (control?.enabled && (!shownFields || shownFields.includes(name))) {
       control.setErrors({ ...(control.errors ?? {}), server: { message } });
       control.markAsTouched();
     } else {

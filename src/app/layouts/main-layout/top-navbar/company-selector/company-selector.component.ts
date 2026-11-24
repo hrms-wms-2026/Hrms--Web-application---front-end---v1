@@ -81,11 +81,13 @@ export class CompanySelectorComponent {
   }
 
   onAddCompany(): void {
+    this.store.clearSaveError();
     this.close();
     this.showCreateModal.set(true);
   }
 
   closeCreateModal(): void {
+    this.store.clearSaveError();
     this.showCreateModal.set(false);
   }
 

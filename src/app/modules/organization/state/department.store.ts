@@ -90,6 +90,11 @@ export const DepartmentStore = signalStore(
     })
   })),
   withMethods((store, api = inject(DepartmentApiService)) => ({
+    /** Drops the kept ApiError so a reopened form does not show the last failure again. */
+    clearSaveError(): void {
+      patchState(store, { actionApiError: null });
+    },
+
     setViewMode(viewMode: 'tree' | 'list'): void {
       patchState(store, { viewMode });
       const leId = store.legalEntityId();

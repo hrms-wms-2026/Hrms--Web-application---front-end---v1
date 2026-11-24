@@ -77,6 +77,7 @@ export class RolesManagementComponent {
   }
 
   openCreateModal(): void {
+    this.roleStore.clearSaveError();
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to create roles.");
       return;
@@ -87,12 +88,14 @@ export class RolesManagementComponent {
 
   /** Row click / action icon: edit a custom role, or view a system role read-only. */
   async openRoleModal(role: RoleSummaryResponse): Promise<void> {
+    this.roleStore.clearSaveError();
     this.editingRole.set(role);
     this.formModalOpen.set(true);
     await this.roleStore.loadRoleDetail(role.id);
   }
 
   closeFormModal(): void {
+    this.roleStore.clearSaveError();
     this.formModalOpen.set(false);
     this.editingRole.set(null);
   }

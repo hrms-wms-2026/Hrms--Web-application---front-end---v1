@@ -51,6 +51,11 @@ export const LegalEntityStore = signalStore(
     })
   })),
   withMethods((store, api = inject(LegalEntityApiService), authStore = inject(AuthStore)) => ({
+    /** Drops the kept ApiError so a reopened form does not show the last failure again. */
+    clearSaveError(): void {
+      patchState(store, { createApiError: null });
+    },
+
     async loadCompanies(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
