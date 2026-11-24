@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, effect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { toDataURL } from 'qrcode';
-import { ProfileStore } from '../../state/profile.store';
+import { ProfileSaveTarget, ProfileStore } from '../../state/profile.store';
 import { PersonalInfoFormComponent } from '../../ui/personal-info-form/personal-info-form.component';
 import { JobInfoPanelComponent } from '../../ui/job-info-panel/job-info-panel.component';
 import { EmergencyContactsPanelComponent } from '../../ui/emergency-contacts-panel/emergency-contacts-panel.component';
@@ -21,6 +21,8 @@ import {
   UpsertDependentRequest,
   UpsertEmergencyContactRequest
 } from '../../models/profile.model';
+import { ApiError } from '../../../../core/errors/api-error';
+import { failedSaveToast } from '../../../../shared/utils/validators';
 
 @Component({
   selector: 'app-profile-tab',
@@ -66,6 +68,22 @@ export class ProfileTabComponent implements OnInit {
         if (!onDocuments) this.uploadType.set(null);
       });
     });
+    // A panel shown again must not show the last failed save (task 20).
+    effect(() => {
+      this.activeSubTab();
+      untracked(() => this.store.clearSaveError());
+    });
+  }
+
+  /** The last failed save, only for the panel it came from. */
+  serverErrorFor(target: ProfileSaveTarget): ApiError | null {
+    return this.store.saveTarget() === target ? this.store.saveApiError() : null;
+  }
+
+  /** The personal info banner: a failure the form does not show itself and the error handler did not toast. */
+  personalSaveBanner(): string | null {
+    if (this.store.saveTarget() !== 'personal') return null;
+    return failedSaveToast(this.store.saveApiError(), this.store.saveError() ?? 'Failed to save personal information.');
   }
 
   ngOnInit(): void {
