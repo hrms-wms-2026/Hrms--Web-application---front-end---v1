@@ -242,8 +242,24 @@ describe('AcceptInvitationComponent', () => {
       password: 'Password123!',
       confirm_password: 'Password123!',
       acceptances: [{ document_type: 'terms', version: 'v1', decision: 'accepted' }]
-    });
+    }, 'employee_onboarding');
     expect(navigateSpy).toHaveBeenCalledWith(['/dashboard']);
+  });
+
+  it('passes the invitation purpose so a tenant owner invite uses the owner flow', async () => {
+    const acceptSpy = vi.fn().mockResolvedValue(undefined);
+    const { fixture } = setup({ previewInvitation: { ...invitation, purpose: 'general' }, acceptSpy });
+    await settle(fixture);
+
+    fixture.componentInstance.form.setValue({
+      password: 'Password123!',
+      confirmPassword: 'Password123!',
+      legalAccepted: false
+    });
+
+    await fixture.componentInstance.submit();
+
+    expect(acceptSpy).toHaveBeenCalledWith('raw-token', expect.objectContaining({ password: 'Password123!' }), 'general');
   });
 
   it('does not navigate when acceptEmployeeInvitation rejects', async () => {

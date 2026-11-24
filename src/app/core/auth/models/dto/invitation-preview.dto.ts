@@ -12,4 +12,12 @@ export interface InvitationPreviewDto {
   google_sign_in_enabled: boolean;
   allow_google_email_mismatch: boolean;
   allowed_email_domains: string[];
+  /**
+   * "employee_onboarding" invitations are accepted through accept-employee; any other purpose
+   * (a tenant owner invite is "general") through accept-password. Missing on older backends,
+   * which only sent employee invitations to this page.
+   */
+  purpose?: string;
 }
+
+export const EMPLOYEE_ONBOARDING_PURPOSE = 'employee_onboarding';
