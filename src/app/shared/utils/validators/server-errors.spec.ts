@@ -1,7 +1,7 @@
 import { FormControl, FormGroup } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { toApiError } from '../../../core/errors/api-error';
-import { applyServerFieldErrors } from './server-errors';
+import { applyServerFieldErrors, failedSaveToast } from './server-errors';
 import { fieldError, validationMessage } from './validation-messages';
 
 function badRequest(errors: Record<string, string[]>) {
@@ -47,5 +47,29 @@ describe('applyServerFieldErrors', () => {
     expect(applyServerFieldErrors(f, badRequest({ DefaultLanguage: ['Default language must be 10 characters or fewer.'] }))).toBe(
       'Default language must be 10 characters or fewer.',
     );
+  });
+
+  describe('failedSaveToast', () => {
+    const http = (status: number, body?: unknown) => toApiError(new HttpErrorResponse({ status, error: body }), 'Failed to save.');
+
+    it('gives the fallback when there is no error to read', () => {
+      expect(failedSaveToast(null, 'Failed to save.')).toBe('Failed to save.');
+    });
+
+    it('gives null when the form shows the field errors', () => {
+      expect(failedSaveToast(http(400, { errors: { Name: ['Name is required.'] } }), 'Failed to save.')).toBeNull();
+    });
+
+    it('gives the backend message for a refusal with no field errors', () => {
+      expect(failedSaveToast(http(409, { detail: 'Code already used.' }), 'Failed to save.')).toBe('Code already used.');
+    });
+
+    it.each([500, 503, 0, 403, 429, 418])('gives null for %i, which the error handler already toasted', (status) => {
+      expect(failedSaveToast(http(status), 'Failed to save.')).toBeNull();
+    });
+
+    it('gives the message of an error that did not come from HTTP', () => {
+      expect(failedSaveToast(toApiError(new Error('x'), 'Failed to save.'), 'Failed to save.')).toBe(toApiError(new Error('x'), 'Failed to save.').message);
+    });
   });
 });

@@ -29,3 +29,18 @@ export function applyServerFieldErrors(form: FormGroup, apiError: ApiError): str
   }
   return unmatched;
 }
+
+/** Kinds whose toast the error handler already showed (core/services/error-handler.service.ts). */
+const TOASTED_BY_ERROR_HANDLER = new Set<ApiError['kind']>(['server', 'network', 'forbidden', 'rate-limited', 'other']);
+
+/**
+ * The toast a page shows after a save failed, or null when nothing more is needed: the form shows the field errors
+ * itself, or the error handler already toasted the failure (server, network, 403, 429, unknown status). Use it with
+ * the store's ApiError so a failed save gives one message, not two.
+ */
+export function failedSaveToast(apiError: ApiError | null, fallback: string): string | null {
+  if (!apiError) return fallback;
+  if (apiError.status !== null && TOASTED_BY_ERROR_HANDLER.has(apiError.kind)) return null;
+  if (Object.keys(apiError.fieldErrors).length > 0) return null;
+  return apiError.message;
+}
