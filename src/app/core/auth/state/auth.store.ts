@@ -7,6 +7,7 @@ import { LoginRequestDto } from '../models/dto/login-request.dto';
 import { LegalAcceptanceRequestDto } from '../models/dto/legal-acceptance-request.dto';
 import { LegalDocumentDto } from '../models/dto/legal-document.dto';
 import { AcceptEmployeeInvitationRequestDto } from '../models/dto/accept-employee-invitation-request.dto';
+import { EMPLOYEE_ONBOARDING_PURPOSE } from '../models/dto/invitation-preview.dto';
 import { clearSingleHostTenant } from '../utils/single-host-tenant';
 import { toCurrentUserViewModel } from '../utils/auth.mapper';
 import { safeServerDetail } from '../../services/error-handler.service';
@@ -120,10 +121,18 @@ export const AuthStore = signalStore(
      * tenant, so this deliberately does not retarget to the root/system host the way login() and
      * acceptLegalDocuments() do.
      */
-    async acceptEmployeeInvitation(token: string, payload: AcceptEmployeeInvitationRequestDto): Promise<void> {
+    async acceptEmployeeInvitation(
+      token: string,
+      payload: AcceptEmployeeInvitationRequestDto,
+      purpose: string = EMPLOYEE_ONBOARDING_PURPOSE
+    ): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
-        const dto = await firstValueFrom(api.acceptEmployeeInvitation(token, payload));
+        const request =
+          purpose === EMPLOYEE_ONBOARDING_PURPOSE
+            ? api.acceptEmployeeInvitation(token, payload)
+            : api.acceptInvitationPassword(token, payload);
+        const dto = await firstValueFrom(request);
         const view = toCurrentUserViewModel(dto);
         patchState(store, {
           authenticated: view.authenticated,

@@ -169,6 +169,43 @@ describe('AuthStore', () => {
     expect(store.loading()).toBe(false);
   });
 
+  it('acceptEmployeeInvitation posts a non-employee (tenant owner) invitation to accept-password', async () => {
+    const acceptEmployee = vi.fn(() => of(authenticatedDto));
+    const acceptPassword = vi.fn(() => of(authenticatedDto));
+    const store = setup({
+      acceptEmployeeInvitation: acceptEmployee,
+      acceptInvitationPassword: acceptPassword
+    } as unknown as Partial<AuthApiService>);
+
+    await store.acceptEmployeeInvitation(
+      'raw-token',
+      { password: 'Password123!', confirm_password: 'Password123!', acceptances: [] },
+      'general'
+    );
+
+    expect(acceptPassword).toHaveBeenCalledWith('raw-token', expect.objectContaining({ password: 'Password123!' }));
+    expect(acceptEmployee).not.toHaveBeenCalled();
+    expect(store.authenticated()).toBe(true);
+  });
+
+  it('acceptEmployeeInvitation keeps employee onboarding invitations on accept-employee', async () => {
+    const acceptEmployee = vi.fn(() => of(authenticatedDto));
+    const acceptPassword = vi.fn(() => of(authenticatedDto));
+    const store = setup({
+      acceptEmployeeInvitation: acceptEmployee,
+      acceptInvitationPassword: acceptPassword
+    } as unknown as Partial<AuthApiService>);
+
+    await store.acceptEmployeeInvitation(
+      'raw-token',
+      { password: 'x', confirm_password: 'x', acceptances: [] },
+      'employee_onboarding'
+    );
+
+    expect(acceptEmployee).toHaveBeenCalled();
+    expect(acceptPassword).not.toHaveBeenCalled();
+  });
+
   it('acceptEmployeeInvitation sets a friendly error and rethrows on failure', async () => {
     const httpError = { error: { detail: 'This invitation has expired.' } };
     const store = setup({ acceptEmployeeInvitation: () => throwError(() => httpError) } as unknown as Partial<AuthApiService>);
