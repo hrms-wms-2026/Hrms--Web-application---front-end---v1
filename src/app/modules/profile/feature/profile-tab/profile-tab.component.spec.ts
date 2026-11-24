@@ -11,8 +11,7 @@ describe('ProfileTabComponent', () => {
     loading: signal(false),
     saving: signal(false),
     saveError: signal(null),
-    saveApiError: signal<unknown>(null),
-    saveTarget: signal<string | null>(null),
+    saveErrors: signal<Record<string, unknown>>({}),
     clearSaveError: vi.fn(),
     error: signal(null),
     loadProfile: vi.fn()
@@ -91,8 +90,7 @@ describe('ProfileTabComponent', () => {
         payroll: {},
         security: {}
       }),
-      saveApiError: signal<unknown>(toApiError(new HttpErrorResponse({ status: 409, error: { detail: 'This dependent already exists.' } }))),
-      saveTarget: signal<string | null>('dependent'),
+      saveErrors: signal<Record<string, unknown>>({ dependent: toApiError(new HttpErrorResponse({ status: 409, error: { detail: 'This dependent already exists.' } })) }),
     };
     await TestBed.configureTestingModule({
       imports: [ProfileTabComponent],

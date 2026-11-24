@@ -101,4 +101,17 @@ describe('EmergencyContactsPanelComponent', () => {
       expect((fixture.nativeElement as HTMLElement).textContent).toContain('This record was changed by someone else.');
     });
   });
+
+  it('keeps what was typed after Add until the page says the save worked', () => {
+    const fixture = TestBed.createComponent(EmergencyContactsPanelComponent);
+    fixture.componentRef.setInput('contacts', []);
+    fixture.componentRef.setInput('saving', false);
+    fixture.detectChanges();
+    const form = fixture.componentInstance.addForm;
+    form.setValue({ name: 'Ana', relationship: 'Sister', phone: '0771234567', email: '' });
+    fixture.componentInstance.onSubmitAdd();
+    expect(form.controls.name.value).toBe('Ana');
+    fixture.componentInstance.resetAddForm();
+    expect(form.controls.name.value).toBe('');
+  });
 });

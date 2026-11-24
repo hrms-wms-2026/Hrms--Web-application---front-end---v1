@@ -51,10 +51,15 @@ export class DependentsPanelComponent {
       const error = this.serverError();
       untracked(() =>
         this.serverFormError.set(
-          error ? (applyServerFieldErrors(this.addForm, error, ['name', 'dateOfBirth', 'phone']) ?? failedSaveToast(error, 'Could not save.')) : null,
+          error ? (applyServerFieldErrors(this.addForm, error, ['name', 'dateOfBirth', 'phone']) ?? failedSaveToast(error, error.message)) : null,
         ),
       );
     });
+  }
+
+  /** Called by the page once the add was saved; a refused add keeps what the user typed. */
+  resetAddForm(): void {
+    this.addForm.reset({ relationship: 'child' });
   }
 
   onSubmitAdd(): void {
@@ -71,7 +76,6 @@ export class DependentsPanelComponent {
       isEmergencyContact: false,
       phone: value.phone || null
     });
-    this.addForm.reset({ relationship: 'child' });
   }
 
   /** Footer "Save changes": adds a half-typed dependent (relationship alone has a default, so it doesn't count). */

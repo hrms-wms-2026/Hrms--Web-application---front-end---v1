@@ -51,7 +51,7 @@ export class PayrollPanelComponent {
       const error = this.serverError();
       untracked(() =>
         this.serverFormError.set(
-          error ? (applyServerFieldErrors(this.form, error, ['bankName', 'branchName', 'accountHolderName', 'accountNumber', 'accountType', 'routingNumber']) ?? failedSaveToast(error, 'Could not save.')) : null,
+          error ? (applyServerFieldErrors(this.form, error, ['bankName', 'branchName', 'accountHolderName', 'accountNumber', 'accountType', 'routingNumber']) ?? failedSaveToast(error, error.message)) : null,
         ),
       );
     });

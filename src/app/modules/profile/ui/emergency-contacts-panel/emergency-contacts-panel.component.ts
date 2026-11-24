@@ -42,10 +42,15 @@ export class EmergencyContactsPanelComponent {
       const error = this.serverError();
       untracked(() =>
         this.serverFormError.set(
-          error ? (applyServerFieldErrors(this.addForm, error, ['name', 'relationship', 'phone', 'email']) ?? failedSaveToast(error, 'Could not save.')) : null,
+          error ? (applyServerFieldErrors(this.addForm, error, ['name', 'relationship', 'phone', 'email']) ?? failedSaveToast(error, error.message)) : null,
         ),
       );
     });
+  }
+
+  /** Called by the page once the add was saved; a refused add keeps what the user typed. */
+  resetAddForm(): void {
+    this.addForm.reset();
   }
 
   onSubmitAdd(): void {
@@ -62,7 +67,6 @@ export class EmergencyContactsPanelComponent {
       email: value.email || null,
       isPrimary: this.contacts().length === 0
     });
-    this.addForm.reset();
   }
 
   /** Footer "Save changes": adds a half-typed contact. Returns false when the form is filled but invalid. */

@@ -77,13 +77,13 @@ export class ProfileTabComponent implements OnInit {
 
   /** The last failed save, only for the panel it came from. */
   serverErrorFor(target: ProfileSaveTarget): ApiError | null {
-    return this.store.saveTarget() === target ? this.store.saveApiError() : null;
+    return this.store.saveErrors()[target] ?? null;
   }
 
   /** The personal info banner: a failure the form does not show itself and the error handler did not toast. */
   personalSaveBanner(): string | null {
-    if (this.store.saveTarget() !== 'personal') return null;
-    return failedSaveToast(this.store.saveApiError(), this.store.saveError() ?? 'Failed to save personal information.');
+    const error = this.store.saveErrors().personal;
+    return error ? failedSaveToast(error, error.message) : null;
   }
 
   ngOnInit(): void {
@@ -98,16 +98,17 @@ export class ProfileTabComponent implements OnInit {
     this.store.uploadAvatar(file);
   }
 
-  onAddEmergencyContact(payload: UpsertEmergencyContactRequest): void {
-    this.store.addEmergencyContact(payload);
+  async onAddEmergencyContact(payload: UpsertEmergencyContactRequest): Promise<void> {
+    // Clear the typed contact only once the save worked; a refused save keeps it for the user to fix.
+    if (await this.store.addEmergencyContact(payload)) this.contactsPanel()?.resetAddForm();
   }
 
   onRemoveEmergencyContact(id: string): void {
     this.store.removeEmergencyContact(id);
   }
 
-  onAddDependent(payload: UpsertDependentRequest): void {
-    this.store.addDependent(payload);
+  async onAddDependent(payload: UpsertDependentRequest): Promise<void> {
+    if (await this.store.addDependent(payload)) this.dependentsPanel()?.resetAddForm();
   }
 
   /** Footer save on the Emergency tab: adds whatever is typed into either add-form; closes when both are empty. */

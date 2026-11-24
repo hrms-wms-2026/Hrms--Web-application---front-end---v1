@@ -82,4 +82,17 @@ describe('DependentsPanelComponent', () => {
       expect((fixture.nativeElement as HTMLElement).textContent).toContain('This record was changed by someone else.');
     });
   });
+
+  it('keeps what was typed after Add until the page says the save worked', () => {
+    const fixture = TestBed.createComponent(DependentsPanelComponent);
+    fixture.componentRef.setInput('dependents', []);
+    fixture.componentRef.setInput('saving', false);
+    fixture.detectChanges();
+    const form = fixture.componentInstance.addForm;
+    form.patchValue({ name: 'Kid', relationship: 'child', dateOfBirth: '2020-01-01', phone: '' });
+    fixture.componentInstance.onSubmitAdd();
+    expect(form.controls.name.value).toBe('Kid');
+    fixture.componentInstance.resetAddForm();
+    expect(form.controls.name.value).toBe('');
+  });
 });

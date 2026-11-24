@@ -185,8 +185,26 @@ describe('ProfileStore', () => {
     it('keeps a refused save as an ApiError tagged with the panel that saved', async () => {
       (apiMock as unknown as { addDependent: ReturnType<typeof vi.fn> }).addDependent.mockReturnValue(badRequest({ Name: ['Name is too long.'] }));
       await store.addDependent({ name: 'x', relationship: 'child', dateOfBirth: '2020-01-01', phone: null } as never);
-      expect(store.saveTarget()).toBe('dependent');
-      expect(store.saveApiError()?.fieldErrors).toEqual({ Name: ['Name is too long.'] });
+      expect(store.saveErrors().dependent?.fieldErrors).toEqual({ Name: ['Name is too long.'] });
+      expect(store.saveErrors().emergencyContact).toBeUndefined();
+    });
+
+    it('keeps both errors when the emergency footer saves a contact and a dependent and both are refused', async () => {
+      const mocks = apiMock as unknown as { addDependent: ReturnType<typeof vi.fn>; addEmergencyContact: ReturnType<typeof vi.fn> };
+      mocks.addDependent.mockReturnValue(badRequest({ Name: ['Dependent name is too long.'] }));
+      mocks.addEmergencyContact.mockReturnValue(badRequest({ Phone: ['Phone is too long.'] }));
+      await Promise.all([
+        store.addEmergencyContact({ name: 'a', relationship: 'b', phone: '1', email: null, isPrimary: true } as never),
+        store.addDependent({ name: 'x', relationship: 'child', dateOfBirth: '2020-01-01', phone: null } as never),
+      ]);
+      expect(store.saveErrors().emergencyContact?.fieldErrors).toEqual({ Phone: ['Phone is too long.'] });
+      expect(store.saveErrors().dependent?.fieldErrors).toEqual({ Name: ['Dependent name is too long.'] });
+    });
+
+    it('files a failed avatar change under personal, so the personal banner shows it', async () => {
+      fileApiMock.upload.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 400, error: { detail: 'Only JPG or PNG images are allowed.' } })));
+      await store.uploadAvatar(new File(['x'], 'a.gif', { type: 'image/gif' }));
+      expect(store.saveErrors().personal?.message).toBe('Only JPG or PNG images are allowed.');
     });
 
     it('clears it when the next save starts and on clearSaveError', async () => {
@@ -194,8 +212,7 @@ describe('ProfileStore', () => {
       mocks.addDependent.mockReturnValue(badRequest({ Name: ['Name is too long.'] }));
       await store.addDependent({ name: 'x', relationship: 'child', dateOfBirth: '2020-01-01', phone: null } as never);
       store.clearSaveError();
-      expect(store.saveApiError()).toBeNull();
-      expect(store.saveTarget()).toBeNull();
+      expect(store.saveErrors()).toEqual({});
     });
   });
 });
