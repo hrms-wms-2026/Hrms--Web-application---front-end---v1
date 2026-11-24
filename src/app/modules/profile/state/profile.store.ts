@@ -144,14 +144,16 @@ export const ProfileStore = signalStore(
     },
 
     async removeEmergencyContact(id: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'emergencyContact') });
       try {
         await firstValueFrom(api.deleteEmergencyContact(id));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to remove emergency contact.') });
+        // The panel shows why the item is still there (task 20).
+        const apiError = toApiError(err, 'Failed to remove emergency contact.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), emergencyContact: apiError } });
         return false;
       }
     },
@@ -185,14 +187,16 @@ export const ProfileStore = signalStore(
     },
 
     async removeDependent(id: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'dependent') });
       try {
         await firstValueFrom(api.deleteDependent(id));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to remove dependent.') });
+        // The panel shows why the item is still there (task 20).
+        const apiError = toApiError(err, 'Failed to remove dependent.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), dependent: apiError } });
         return false;
       }
     },

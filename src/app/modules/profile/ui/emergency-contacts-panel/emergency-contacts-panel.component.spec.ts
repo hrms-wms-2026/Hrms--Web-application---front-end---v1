@@ -114,4 +114,13 @@ describe('EmergencyContactsPanelComponent', () => {
     fixture.componentInstance.resetAddForm();
     expect(form.controls.name.value).toBe('');
   });
+
+  it('shows why a remove was refused', () => {
+    const fixture = TestBed.createComponent(EmergencyContactsPanelComponent);
+    fixture.componentRef.setInput('contacts', []);
+    fixture.componentRef.setInput('saving', false);
+    fixture.componentRef.setInput('serverError', toApiError(new HttpErrorResponse({ status: 409, error: { detail: 'The primary contact cannot be removed.' } })));
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('The primary contact cannot be removed.');
+  });
 });

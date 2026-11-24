@@ -36,7 +36,7 @@ describe('ProfileStore', () => {
   let fileApiMock: { upload: ReturnType<typeof vi.fn>; download: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    apiMock = { getMyProfile: vi.fn(), linkAvatar: vi.fn(), removeAvatar: vi.fn(), listDocuments: vi.fn(), addDocument: vi.fn(), deleteDocument: vi.fn(), addDependent: vi.fn(), addEmergencyContact: vi.fn() } as typeof apiMock;
+    apiMock = { getMyProfile: vi.fn(), linkAvatar: vi.fn(), removeAvatar: vi.fn(), listDocuments: vi.fn(), addDocument: vi.fn(), deleteDocument: vi.fn(), addDependent: vi.fn(), addEmergencyContact: vi.fn(), deleteEmergencyContact: vi.fn(), deleteDependent: vi.fn() } as typeof apiMock;
     fileApiMock = { upload: vi.fn(), download: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
@@ -205,6 +205,16 @@ describe('ProfileStore', () => {
       fileApiMock.upload.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 400, error: { detail: 'Only JPG or PNG images are allowed.' } })));
       await store.uploadAvatar(new File(['x'], 'a.gif', { type: 'image/gif' }));
       expect(store.saveErrors().personal?.message).toBe('Only JPG or PNG images are allowed.');
+    });
+
+    it('files a refused remove under its panel, so the panel says why it is still there', async () => {
+      const mocks = apiMock as unknown as { deleteEmergencyContact: ReturnType<typeof vi.fn>; deleteDependent: ReturnType<typeof vi.fn> };
+      mocks.deleteEmergencyContact.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { detail: 'The primary contact cannot be removed.' } })));
+      mocks.deleteDependent.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404, error: { detail: 'Dependent was not found.' } })));
+      expect(await store.removeEmergencyContact('c1')).toBe(false);
+      expect(await store.removeDependent('d1')).toBe(false);
+      expect(store.saveErrors().emergencyContact?.message).toBe('The primary contact cannot be removed.');
+      expect(store.saveErrors().dependent?.message).toBe('Dependent was not found.');
     });
 
     it('clears it when the next save starts and on clearSaveError', async () => {
