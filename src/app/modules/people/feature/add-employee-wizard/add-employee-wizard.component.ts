@@ -623,11 +623,13 @@ export class AddEmployeeWizardComponent implements OnDestroy {
       });
     });
 
-    this.form.valueChanges.subscribe((value) => {
+    this.form.valueChanges.subscribe(() => {
       // Mid-resume the store holds the draft and the still-empty form must not overwrite it
       // (e.g. the positionId sync effect emits the whole form); synced once the resume settles.
+      // getRawValue(), not the emitted value: a disabled control (the locked email in self mode) is
+      // left out of `value`, which would blank it in the saved draft.
       if (!this.resumeInFlight()) {
-        this.syncFormToStore(value);
+        this.syncFormToStore(this.form.getRawValue());
       }
     });
     if (!routeDraftId) {

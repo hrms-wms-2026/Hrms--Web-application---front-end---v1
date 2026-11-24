@@ -1869,6 +1869,17 @@ describe('AddEmployeeWizardComponent', () => {
       expect(form.controls.workEmail.disabled).toBe(true);
     });
 
+    it('keeps the locked email in the draft after another field is edited', async () => {
+      await setupWithCompany();
+      fixture.componentRef.setInput('selfPrefill', { firstName: 'Ada', lastName: 'Owner', workEmail: 'ada@acme.test' });
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      fixture.componentInstance.form.controls.lastName.setValue('Owner-Smith');
+
+      expect(fixture.componentInstance.store.formValue().workEmail).toBe('ada@acme.test');
+    });
+
     it('says "You\'re set up as an employee" after a self finalize and does not leave the page', async () => {
       await setupWithCompany();
       const router = TestBed.inject(Router);
