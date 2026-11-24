@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnChanges, computed, inject, input, output, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { PersonalInformation, UpdatePersonalInformationRequest } from '../../models/profile.model';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
 import { InputComponent } from '../../../../shared/ui/input/input.component';

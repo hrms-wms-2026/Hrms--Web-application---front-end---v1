@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { PayrollInfo, UpdateBankDetailsRequest } from '../../models/profile.model';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
