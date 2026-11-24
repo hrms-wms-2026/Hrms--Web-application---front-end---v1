@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthApiService } from '../../data-access/auth-api.service';
 import { safeServerDetail } from '../../../services/error-handler.service';
+import { AppValidators, fieldError } from '../../../../shared/utils/validators';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not reach the server. Please try again.';
 
@@ -24,8 +25,10 @@ export class ForgotPasswordComponent {
   readonly error = signal<string | null>(null);
   readonly submitted = signal(false);
 
+  protected readonly fieldError = fieldError;
+
   form = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]]
+    email: ['', [Validators.required, AppValidators.email()]]
   });
 
   async submit(): Promise<void> {

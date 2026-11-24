@@ -6,6 +6,8 @@ import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthApiService } from '../../data-access/auth-api.service';
 import { safeServerDetail } from '../../../services/error-handler.service';
+import { fieldError } from '../../../../shared/utils/validators';
+import { AUTH_LIMITS } from '../../utils/auth-limits';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not reach the server. Please try again.';
 const INVALID_TOKEN_MESSAGE = 'This password reset link is invalid or has expired. Request a new one.';
@@ -31,8 +33,10 @@ export class ResetPasswordComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly submitted = signal(false);
 
+  protected readonly fieldError = fieldError;
+
   form = this.fb.nonNullable.group({
-    password: ['', [Validators.required, Validators.minLength(8)]],
+    password: ['', [Validators.required, Validators.minLength(AUTH_LIMITS.passwordMin)]],
     confirmPassword: ['', [Validators.required]]
   });
 

@@ -31,7 +31,7 @@ describe('validationMessage', () => {
     );
     expect(validationMessage({ oneOf: true }, 'Time format')).toBe('Choose a Time format from the list.');
     expect(validationMessage({ mfaCode: true }, 'Code')).toBe('Enter the 6-digit code.');
-    expect(validationMessage({ passwordMismatch: true }, 'Confirm password')).toBe('Passwords do not match.');
+    expect(validationMessage({ mismatch: true }, 'Confirm password')).toBe('Passwords must match.');
   });
 
   it('shows required first, and a generic message for an unknown key', () => {

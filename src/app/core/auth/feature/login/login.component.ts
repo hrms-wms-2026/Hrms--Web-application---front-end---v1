@@ -12,6 +12,7 @@ import {
   readLastTenantSlug
 } from '../../utils/tenant-redirect';
 import { parseSafeReturnPath } from '../../utils/safe-return-path';
+import { AppValidators, fieldError } from '../../../../shared/utils/validators';
 
 interface RememberedAccount {
   displayName: string;
@@ -36,8 +37,10 @@ export class LoginComponent implements OnInit {
   readonly checkingRememberedAccount = signal(false);
   readonly rememberedAccount = signal<RememberedAccount | null>(null);
 
+  protected readonly fieldError = fieldError;
+
   form = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', [Validators.required, AppValidators.email()]],
     password: ['', [Validators.required]]
   });
 

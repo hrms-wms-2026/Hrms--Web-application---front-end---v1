@@ -22,7 +22,7 @@ const MESSAGES: Record<string, MessageFn | undefined> = {
   nameChars: (label) => `${label} may only contain letters, numbers, spaces, hyphens and underscores.`,
   oneOf: (label) => `Choose a ${label} from the list.`,
   mfaCode: () => 'Enter the 6-digit code.',
-  passwordMismatch: () => 'Passwords do not match.',
+  mismatch: () => 'Passwords must match.',
 };
 
 /** The message for the first error, or '' when there is none. `required` wins, so an empty field shows no length message. */
