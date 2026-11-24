@@ -1,4 +1,4 @@
-import { Component, signal, viewChild } from '@angular/core';
+import { Component, output, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
@@ -13,6 +13,14 @@ import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-ap
 import { AvailableWidget, BootstrapWidget, DashboardBootstrap } from '../../models/dashboard-layout.model';
 import { DashboardStore } from '../../state/dashboard.store';
 import { DashboardShellComponent } from './dashboard-shell.component';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { DashboardKey } from '../../models/dashboard-layout.model';
+import { NoEmployeeProfilePanelComponent } from '../no-employee-profile-panel/no-employee-profile-panel.component';
+
+@Component({ selector: 'app-no-employee-profile-panel', standalone: true, template: '<p data-testid="no-employee-profile-panel">panel</p>' })
+class PanelStubComponent {
+  readonly profileCreated = output<void>();
+}
 
 function widget(id: string, key: string, layout = { x: 0, y: 0, w: 4, h: 2 }): BootstrapWidget {
   return {
@@ -58,19 +66,29 @@ function avail(key: string, over: Partial<AvailableWidget> = {}): AvailableWidge
   imports: [DashboardShellComponent, PageToolbarComponent],
   template: `
     <app-page-toolbar />
-    <app-dashboard-shell dashboardKey="my-team">
+    <app-dashboard-shell [dashboardKey]="key()">
       <p emptyState data-testid="slot-empty">empty slot</p>
       <p retryState data-testid="slot-retry">retry slot</p>
     </app-dashboard-shell>
   `
 })
 class HostComponent {
+  readonly key = signal<DashboardKey>('my-team');
   readonly shell = viewChild.required(DashboardShellComponent);
 }
 
-function setup(opts: { bootstrap?: DashboardBootstrap; available?: AvailableWidget[]; widthSequence?: number[] } = {}) {
+function setup(
+  opts: {
+    bootstrap?: DashboardBootstrap;
+    available?: AvailableWidget[];
+    widthSequence?: number[];
+    key?: DashboardKey;
+    employeeId?: string | null;
+  } = {}
+) {
+  const auth = { authenticated: signal(true), employeeId: signal<string | null>(opts.employeeId === undefined ? 'emp-1' : opts.employeeId) };
   const api = {
-    listMine: vi.fn(() => of([{ id: 'd1', key: 'my-team', title: 'x', layoutVersion: 3 }])),
+    listMine: vi.fn(() => of([{ id: 'd1', key: opts.key ?? 'my-team', title: 'x', layoutVersion: 3 }])),
     bootstrap: vi.fn(() => of(opts.bootstrap ?? boot())),
     available: vi.fn(() => of(opts.available ?? [avail('beta'), avail('gamma')])),
     widgetData: vi.fn(() => of()),
@@ -92,10 +110,16 @@ function setup(opts: { bootstrap?: DashboardBootstrap; available?: AvailableWidg
       { provide: TimeTrackingStore, useValue: { today: signal(null), actionLoading: signal(false), activeAction: signal(null), loadToday: vi.fn(), startBreak: vi.fn(), endBreak: vi.fn() } },
       { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
       { provide: DashboardLayoutApiService, useValue: api },
+      { provide: AuthStore, useValue: auth },
       { provide: NotificationService, useValue: { warning: vi.fn(), error: vi.fn(), success: vi.fn() } }
     ]
   });
+  TestBed.overrideComponent(DashboardShellComponent, {
+    remove: { imports: [NoEmployeeProfilePanelComponent] },
+    add: { imports: [PanelStubComponent] }
+  });
   const fixture = TestBed.createComponent(HostComponent);
+  fixture.componentInstance.key.set(opts.key ?? 'my-team');
   const toolbar = TestBed.inject(PageToolbarService);
   return { fixture, api, toolbar, el: fixture.nativeElement as HTMLElement };
 }
@@ -500,5 +524,44 @@ describe('DashboardShellComponent', () => {
     // the public method is what hosts call
     ctx.fixture.componentInstance.shell().reload();
     expect(ctx.api.listMine).toHaveBeenCalledTimes(3);
+  });
+
+  describe('account without an employee profile', () => {
+    it('shows the no-profile panel on My Work instead of the grid and loads nothing', async () => {
+      const ctx = setup({ key: 'my-work', employeeId: null, bootstrap: boot() });
+      await ready(ctx.fixture);
+
+      expect(q(ctx.el, 'no-employee-profile-panel')).not.toBeNull();
+      expect(ctx.el.querySelector('app-dashboard-grid')).toBeNull();
+      expect(ctx.api.listMine).not.toHaveBeenCalled();
+    });
+
+    it('keeps the normal grid on My Team even without a profile', async () => {
+      const ctx = setup({ key: 'my-team', employeeId: null });
+      await ready(ctx.fixture);
+
+      expect(q(ctx.el, 'no-employee-profile-panel')).toBeNull();
+      expect(ctx.api.listMine).toHaveBeenCalled();
+    });
+
+    it('keeps the normal grid on My Work for an employee', async () => {
+      const ctx = setup({ key: 'my-work', employeeId: 'emp-1', bootstrap: boot() });
+      await ready(ctx.fixture);
+
+      expect(q(ctx.el, 'no-employee-profile-panel')).toBeNull();
+      expect(ctx.el.querySelector('app-dashboard-grid')).not.toBeNull();
+    });
+
+    it('loads My Work once the profile is created', async () => {
+      const ctx = setup({ key: 'my-work', employeeId: null, bootstrap: boot() });
+      await ready(ctx.fixture);
+      const panel = ctx.fixture.debugElement.query((d) => d.componentInstance instanceof PanelStubComponent)
+        .componentInstance as PanelStubComponent;
+
+      panel.profileCreated.emit();
+      await ready(ctx.fixture);
+
+      expect(ctx.api.listMine).toHaveBeenCalledTimes(1);
+    });
   });
 });
