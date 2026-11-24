@@ -54,7 +54,7 @@ import { TaskApiService } from '../../../work/data-access/task-api.service';
 import { AttachmentPill } from '../../../work/ui/task-attachment-list/task-attachment-list.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
-import { AppValidators, validationMessage } from '../../../../shared/utils/validators';
+import { AppValidators, applyServerFieldErrors, failedSaveToast, validationMessage } from '../../../../shared/utils/validators';
 import { CHECKLIST_LIMITS } from '../../utils/people-limits';
 
 const TASK_PLACEHOLDERS: readonly string[] = [
@@ -563,6 +563,17 @@ export class ChecklistBuilderComponent {
     this.cancel();
   }
 
+  /**
+   * A refused save: the name message goes next to the name field; anything else (a task message, a refusal without
+   * field errors) is one toast. Server and network failures were already toasted by the error handler (task 20).
+   */
+  private reportFailedSave(fallback: string): void {
+    const apiError = this.store.saveApiError();
+    const leftover = apiError ? applyServerFieldErrors(this.form, apiError, ['name']) : null;
+    const toast = leftover ?? failedSaveToast(apiError, this.store.error() || fallback);
+    if (toast) this.notificationService.error(toast);
+  }
+
   async onSubmit(): Promise<void> {
     this.submitAttempted.set(true);
     this.validateTaskAssignees();
@@ -620,7 +631,7 @@ export class ChecklistBuilderComponent {
       if (success) {
         this.notificationService.success('Checklist updated successfully.');
       } else {
-        this.notificationService.error(this.store.error() || 'Failed to update checklist.');
+        this.reportFailedSave('Failed to update checklist.');
       }
     } else {
       const createPayload: CreateChecklistTemplateRequest = {
@@ -635,7 +646,7 @@ export class ChecklistBuilderComponent {
       if (success) {
         this.notificationService.success('Checklist created successfully.');
       } else {
-        this.notificationService.error(this.store.error() || 'Failed to create checklist.');
+        this.reportFailedSave('Failed to create checklist.');
       }
     }
 
