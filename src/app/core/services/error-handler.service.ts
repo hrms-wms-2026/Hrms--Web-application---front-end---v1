@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NotificationService } from './notification.service';
 import { LoggerService } from './logger.service';
+import { NetworkStatusService } from '../network/network-status.service';
+import { toApiError } from '../errors/api-error';
 
 type ErrorBehaviour = 'banner' | 'inline' | 'silent';
 
@@ -232,6 +234,7 @@ const DEFAULT_ACTION: ErrorAction = {
 export class ErrorHandlerService {
   private notify = inject(NotificationService);
   private logger = inject(LoggerService);
+  private network = inject(NetworkStatusService);
 
   toSafeMessage(err: unknown, fallbackMessage?: string): string {
     return toSafeErrorMessage(err, fallbackMessage);
@@ -240,16 +243,29 @@ export class ErrorHandlerService {
   handle(error: HttpErrorResponse): void {
     const key = error.status === 0 ? 0 : error.status;
     const action = ERROR_TAXONOMY[key] ?? DEFAULT_ACTION;
+    const apiError = toApiError(error, action.userMessage);
 
     this.logger.error(`[HTTP ${error.status}]`, {
       url: error.url ?? undefined,
       event: action.telemetryEvent,
+      correlationId: apiError.correlationId ?? undefined,
       detail: typeof error.error === 'object' ? error.error?.detail : error.message
     });
 
-    if (action.behaviour === 'banner') {
-      const safeMsg = toSafeErrorMessage(error, action.userMessage);
-      this.notify.error(safeMsg);
+    if (action.behaviour !== 'banner') return;
+    // The offline banner already explains a failed request; a toast per poll would only add noise.
+    if (apiError.kind === 'network' && !this.network.online()) return;
+    this.notify.error(this.toastText(apiError));
+  }
+
+  private toastText(apiError: ReturnType<typeof toApiError>): string {
+    if (apiError.kind === 'rate-limited' && apiError.retryAfterSeconds !== null) {
+      return `Too many requests. Please wait ${apiError.retryAfterSeconds} seconds and try again.`;
     }
+    // Server errors carry the request's correlation id so support can find it in the backend logs.
+    if (apiError.kind === 'server' && apiError.correlationId) {
+      return `${apiError.message} Reference: ${apiError.correlationId}`;
+    }
+    return apiError.message;
   }
 }

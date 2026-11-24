@@ -3,6 +3,10 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ErrorHandlerService, toSafeErrorMessage } from './error-handler.service';
 import { NotificationService } from './notification.service';
 import { LoggerService } from './logger.service';
+import { HttpHeaders } from '@angular/common/http';
+import { signal } from '@angular/core';
+import { NetworkStatusService } from '../network/network-status.service';
+import { rememberCorrelationId } from '../errors/api-error';
 
 describe('ErrorHandlerService & Safe Error Mapper', () => {
   function makeError(status: number, body?: unknown): HttpErrorResponse {
@@ -167,6 +171,41 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
       ['429 without detail', makeError(429), undefined, 'Too many requests. Please wait a moment.'],
     ])('%s', (_name, err, fallback, expected) => {
       expect(toSafeErrorMessage(err, fallback)).toBe(expected);
+    });
+  });
+
+  describe('toasts built from ApiError (task 20)', () => {
+    const online = signal(true);
+    beforeEach(() => {
+      online.set(true);
+      TestBed.configureTestingModule({ providers: [{ provide: NetworkStatusService, useValue: { online } }] });
+    });
+    const lastToast = () => TestBed.inject(NotificationService).notifications().at(-1)?.message;
+
+    it('adds the correlation id to a server-error toast so support can find the request', () => {
+      const err = makeError(500);
+      rememberCorrelationId(err, 'abc-123');
+      TestBed.inject(ErrorHandlerService).handle(err);
+      expect(lastToast()).toBe('Something went wrong while saving your changes. Reference: abc-123');
+    });
+
+    it('says how long to wait on a 429 when the wait is known, and keeps the old text when it is not', () => {
+      const service = TestBed.inject(ErrorHandlerService);
+      service.handle(new HttpErrorResponse({ status: 429, error: { detail: 'Too many requests. Please try again later.' }, headers: new HttpHeaders({ 'Retry-After': '30' }) }));
+      expect(lastToast()).toBe('Too many requests. Please wait 30 seconds and try again.');
+      service.handle(makeError(429));
+      expect(lastToast()).toBe('Too many requests. Please wait a moment.');
+    });
+
+    it('does not toast a network failure while the browser is offline, because the banner already says so', () => {
+      online.set(false);
+      TestBed.inject(ErrorHandlerService).handle(makeError(0));
+      expect(lastToast()).toBeUndefined();
+    });
+
+    it('still toasts a 403', () => {
+      TestBed.inject(ErrorHandlerService).handle(makeError(403));
+      expect(lastToast()).toBe('You do not have access to perform this action.');
     });
   });
 });
