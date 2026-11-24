@@ -44,7 +44,7 @@
               [value]="form.controls.name.value || ''"
               (valueChange)="form.controls.name.setValue($event)"
               (blurred)="form.controls.name.markAsTouched()"
-              [error]="form.controls.name.touched && form.controls.name.invalid ? 'Role name is required (max 100 chars).' : ''"
+              [error]="fieldError(form.controls.name, 'Role name')"
             />
 
             <div class="rfm-field">

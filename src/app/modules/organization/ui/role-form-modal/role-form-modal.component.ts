@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import {
   ModulePermissionGroup,
   PermissionCatalogItem,
@@ -18,6 +18,8 @@ import {
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
 import { CharCounterComponent } from '../../../../shared/ui/char-counter/char-counter.component';
+import { AppValidators, fieldError } from '../../../../shared/utils/validators';
+import { ROLE_LIMITS } from '../../utils/organization-limits';
 
 export interface RoleFormSubmitValue {
   name: string;
@@ -40,6 +42,7 @@ export interface RoleFormSubmitValue {
 })
 export class RoleFormModalComponent implements OnChanges {
   readonly limits = TEXT_LIMITS;
+  protected readonly fieldError = fieldError;
   private readonly fb = inject(FormBuilder);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -66,8 +69,8 @@ export class RoleFormModalComponent implements OnChanges {
   readonly platformIds = computed<ReadonlySet<string>>(() => new Set(this.platformPermissions().map((p) => p.id)));
 
   readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    description: ['' as string | null, [Validators.maxLength(500)]]
+    name: ['', [AppValidators.name(ROLE_LIMITS.nameMax), AppValidators.pattern(ROLE_LIMITS.namePattern, 'nameChars')]],
+    description: ['' as string | null, AppValidators.maxLength(ROLE_LIMITS.descriptionMax)]
   });
 
   /** One shared data table per module: the module name is the column header. */

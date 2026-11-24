@@ -28,6 +28,7 @@ describe('validation rules', () => {
     expect(pattern(' HR-1 ', code, 'code')).toBeNull();
     expect(pattern('R&D', code, 'code')).toEqual({ code: true });
     expect(pattern('', code, 'code')).toBeNull();
+    expect(pattern('   ', code, 'code')).toBeNull();
   });
 
   it('positiveNumber needs a number above zero and passes empty values', () => {

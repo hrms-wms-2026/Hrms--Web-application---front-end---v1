@@ -186,4 +186,32 @@ describe('RoleFormModalComponent', () => {
       expect(el().textContent).toContain('3 selected');
     });
   });
+
+  describe('validation matches the backend role validators', () => {
+    it('limits the name to 50 characters of letters, numbers, spaces, hyphens and underscores', () => {
+      const name = component.form.controls.name;
+      name.setValue('a'.repeat(51));
+      expect(name.errors).toEqual({ maxlength: { requiredLength: 50, actualLength: 51 } });
+      name.setValue('Ops & Finance');
+      expect(name.errors).toEqual({ nameChars: true });
+      name.setValue('Ops lead-2_b');
+      expect(name.errors).toBeNull();
+      name.setValue('   ');
+      expect(name.errors).toEqual({ required: true });
+    });
+
+    it('limits the description to 255 characters', () => {
+      component.form.controls.description.setValue('a'.repeat(256));
+      expect(component.form.controls.description.errors).toEqual({ maxlength: { requiredLength: 255, actualLength: 256 } });
+    });
+
+    it('shows the shared message for the name', () => {
+      component.form.controls.name.setValue('Ops & Finance');
+      component.form.controls.name.markAsTouched();
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        'Role name may only contain letters, numbers, spaces, hyphens and underscores.',
+      );
+    });
+  });
 });

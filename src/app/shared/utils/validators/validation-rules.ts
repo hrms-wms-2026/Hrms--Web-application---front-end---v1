@@ -36,9 +36,10 @@ export function phone(value: Text): ValidationErrors | null {
   return !present(value) || PHONE.test(value.trim()) ? null : { phone: true };
 }
 
-/** A format rule on the trimmed value, reported under `key` so the message map can name it. */
+/** A format rule on the trimmed value, reported under `key` so the message map can name it. Blank is left to `requiredText`. */
 export function pattern(value: Text, regex: RegExp, key: string): ValidationErrors | null {
-  return !present(value) || regex.test(value.trim()) ? null : { [key]: true };
+  if (!present(value) || value.trim() === '') return null;
+  return regex.test(value.trim()) ? null : { [key]: true };
 }
 
 export function positiveNumber(value: number | null | undefined): ValidationErrors | null {
