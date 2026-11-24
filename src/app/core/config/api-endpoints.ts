@@ -13,6 +13,8 @@ export const API_ENDPOINTS = {
       `/auth/invitations/${encodePathValue(token)}`,
     acceptEmployeeInvitation: (token: string): string =>
       `/auth/invitations/${encodePathValue(token)}/accept-employee`,
+    acceptInvitationPassword: (token: string): string =>
+      `/auth/invitations/${encodePathValue(token)}/accept-password`,
   },
 
   legal: {

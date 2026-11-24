@@ -97,6 +97,17 @@ export class AuthApiService {
   }
 
   /**
+   * Tenant owner (and other non-employee) invitations. Same body and same tenant-host rule as
+   * acceptEmployeeInvitation(); AcceptInvitationPasswordCommandHandler rejects employee invites.
+   */
+  acceptInvitationPassword(token: string, payload: AcceptEmployeeInvitationRequestDto): Observable<AuthResponseDto> {
+    return this.http.post<AuthResponseDto>(
+      `${environment.apiUrl}${API_ENDPOINTS.auth.acceptInvitationPassword(token)}`,
+      payload
+    );
+  }
+
+  /**
    * Confirmed against AuthSessionController: GET /auth/me, [Authorize(TenantPolicy)],
    * backed by GetCurrentSessionQuery. Response shape on success not yet confirmed beyond
    * the 401-when-unauthenticated ProblemDetails body verified against the dev backend.
