@@ -17,6 +17,12 @@ const MESSAGES: Record<string, MessageFn | undefined> = {
   dateOrder: () => 'The end date must be on or after the start date.',
   dateSpan: (_label, d) => `The range must not be longer than ${String(d['maxDays'])} days.`,
   richTextLength: (label) => `${label} is too long. Shorten it or remove some formatting.`,
+  integer: (label) => `${label} must be a whole number.`,
+  absoluteUrl: () => 'Enter a full URL, e.g. https://example.com.',
+  nameChars: (label) => `${label} may only contain letters, numbers, spaces, hyphens and underscores.`,
+  oneOf: (label) => `Choose a ${label} from the list.`,
+  mfaCode: () => 'Enter the 6-digit code.',
+  passwordMismatch: () => 'Passwords do not match.',
 };
 
 /** The message for the first error, or '' when there is none. `required` wins, so an empty field shows no length message. */

@@ -23,6 +23,17 @@ describe('validationMessage', () => {
     );
   });
 
+  it('names the organization and settings rules too', () => {
+    expect(validationMessage({ integer: true }, 'Capacity')).toBe('Capacity must be a whole number.');
+    expect(validationMessage({ absoluteUrl: true }, 'Website')).toBe('Enter a full URL, e.g. https://example.com.');
+    expect(validationMessage({ nameChars: true }, 'Role name')).toBe(
+      'Role name may only contain letters, numbers, spaces, hyphens and underscores.',
+    );
+    expect(validationMessage({ oneOf: true }, 'Time format')).toBe('Choose a Time format from the list.');
+    expect(validationMessage({ mfaCode: true }, 'Code')).toBe('Enter the 6-digit code.');
+    expect(validationMessage({ passwordMismatch: true }, 'Confirm password')).toBe('Passwords do not match.');
+  });
+
   it('shows required first, and a generic message for an unknown key', () => {
     expect(validationMessage({ maxlength: { requiredLength: 1, actualLength: 2 }, required: true }, 'Name')).toBe('Name is required.');
     expect(validationMessage({ somethingNew: true }, 'Name')).toBe('Check Name.');
