@@ -204,6 +204,11 @@ export function faceEvidenceFor(
                       (click)="openNewGroup(selectedCase())">{{ label }}</button>
                   }
                 }
+                @if (narrow()) {
+                  <button type="button" class="inbox__icon-btn inbox__drawer-close" data-testid="inbox-close-details" aria-label="Close details" title="Close details" (click)="toggleDetails()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                  </button>
+                }
               </div>
             }
             @if (selectedCase() && (activeRow()?.type !== 'direct' || detailTab() === 'ticket')) {
@@ -221,10 +226,19 @@ export function faceEvidenceFor(
                 (openTarget)="openTarget($event)"
               >
                 <!-- One block around one element: only then does it land in the card's header slot. -->
-                @if (activeRow()?.type === 'group' && caseGroupAction()) {
-                  <button cardHeaderAction type="button" class="inbox__chip"
-                    [attr.data-testid]="selectedCaseGroup() ? 'inbox-open-case-group' : 'inbox-start-case-group'"
-                    (click)="openNewGroup(selectedCase())">{{ caseGroupAction() }}</button>
+                @if ((activeRow()?.type === 'group' && caseGroupAction()) || narrow()) {
+                  <span cardHeaderAction class="inbox__card-header-actions">
+                    @if (activeRow()?.type === 'group' && caseGroupAction()) {
+                      <button type="button" class="inbox__chip"
+                        [attr.data-testid]="selectedCaseGroup() ? 'inbox-open-case-group' : 'inbox-start-case-group'"
+                        (click)="openNewGroup(selectedCase())">{{ caseGroupAction() }}</button>
+                    }
+                    @if (narrow()) {
+                      <button type="button" class="inbox__icon-btn" data-testid="inbox-close-details" aria-label="Close details" title="Close details" (click)="toggleDetails()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                      </button>
+                    }
+                  </span>
                 }
               </app-inbox-item-card>
             } @else if (activeRow()?.type === 'direct') {
@@ -276,7 +290,8 @@ export function faceEvidenceFor(
     .inbox__icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     /* The tabs and the group button share one row; the row draws the line under both. */
     .inbox__detail-tabs { display: flex; align-items: flex-end; gap: 8px; margin: 8px 12px 0; border-bottom: 1px solid var(--color-border); }
-    .inbox__detail-tabs > .inbox__chip { margin-bottom: 5px; }
+    .inbox__detail-tabs > .inbox__chip, .inbox__detail-tabs > .inbox__drawer-close { margin-bottom: 5px; }
+    .inbox__card-header-actions { display: inline-flex; align-items: center; gap: 8px; }
     .inbox__detail-tablist { flex: 1; min-width: 0; }
     .inbox__detail-tablist ::ng-deep [role='tablist'] { border-bottom: 0; }
     .inbox__detail-empty { margin: 0; padding: 24px 16px; color: var(--color-text-secondary); font-size: 13px; text-align: center; }
@@ -328,8 +343,8 @@ export function faceEvidenceFor(
       .inbox__chat { display: none; }
       .inbox__workspace--open .inbox__chat { display: flex; }
       .inbox__workspace--details .inbox__details { display: none; }
-      .inbox__workspace--drawer .inbox__scrim { position: fixed; inset: 0; z-index: 1000; display: block; background: color-mix(in srgb, var(--color-text-primary) 35%, transparent); }
-      .inbox__workspace--drawer .inbox__details { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1001; display: flex; width: min(420px, 100vw); border-radius: 0; }
+      .inbox__workspace--drawer .inbox__scrim { position: fixed; inset: 0; z-index: 1010; display: block; background: color-mix(in srgb, var(--color-text-primary) 35%, transparent); }
+      .inbox__workspace--drawer .inbox__details { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1011; display: flex; width: min(420px, 100vw); border-radius: 0; }
     }
   `]
 })

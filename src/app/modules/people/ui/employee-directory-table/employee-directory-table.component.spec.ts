@@ -74,11 +74,17 @@ describe('EmployeeDirectoryTableComponent', () => {
     expect(q('employee-row-b')!.textContent).toContain('—');
   });
 
-  it('marks the active sort column and emits toggled direction on the same column, asc on a new one', async () => {
-    const { q, host } = await setup();
+  it('marks the active sort column and emits the direction chosen from the header menu', async () => {
+    const { fixture, q, host } = await setup();
     expect(q('employee-sort-department')!.closest('th')!.getAttribute('aria-sort')).toBe('ascending');
-    q('employee-sort-department')!.click();
-    q('employee-sort-employee')!.click();
+    const choose = (column: string, dir: 'asc' | 'desc') => {
+      q('employee-sort-' + column)!.click();
+      fixture.detectChanges();
+      q('header-sort-' + dir)!.click();
+      fixture.detectChanges();
+    };
+    choose('department', 'desc');
+    choose('employee', 'asc');
     expect(host.sorts).toEqual([{ sortBy: 'department', sortDir: 'desc' }, { sortBy: 'name', sortDir: 'asc' }]);
   });
 

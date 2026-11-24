@@ -17,6 +17,7 @@ import { DepartmentFormModalComponent, DepartmentFormValue, HeadPositionOption }
 import { DepartmentArchiveModalComponent } from '../../ui/department-archive-modal/department-archive-modal.component';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
+import { DataTableColumnFilters, DataTableFilterValues } from '../../../../shared/ui/data-table/data-table.component';
 import { ViewModeOption, ViewModeToggleComponent } from '../../../../shared/ui/view-mode-toggle/view-mode-toggle.component';
 
 @Component({
@@ -107,6 +108,10 @@ export class DepartmentManagementComponent {
       defaultValues: ['active']
     }
   ];
+
+  /** The Status column's header menu offers the same Status filter as the filter bar. */
+  readonly headerFilters: DataTableColumnFilters = { status: { kind: 'single', options: this.filterFields[0].options } };
+  readonly headerFilterValues = computed<DataTableFilterValues>(() => ({ status: this.departmentStore.includeInactive() ? ['all'] : [] }));
 
   readonly filterValues = computed<Record<string, string[]>>(() => ({
     status: [this.departmentStore.includeInactive() ? 'all' : 'active']

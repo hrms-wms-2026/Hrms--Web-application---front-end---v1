@@ -7,7 +7,9 @@ import { AuthResponseDto } from '../models/dto/auth-response.dto';
 
 describe('getSystemApiUrl', () => {
   it('retargets a tenant-subdomain apiUrl to the root hostname, for login() from a tenant host', () => {
-    expect(getSystemApiUrl('https://acme.localhost:7229/api/v1')).toBe('https://localhost:7229/api/v1');
+    expect(getSystemApiUrl('https://acme.localhost:7229/api/v1')).toBe(
+      'https://localhost:7229/api/v1',
+    );
   });
 
   it('retargets a production tenant apiUrl to the root domain', () => {
@@ -22,19 +24,19 @@ describe('getSystemApiUrl', () => {
 describe('getTenantApiUrl', () => {
   it('retargets the root apiUrl to the remembered tenant hostname', () => {
     expect(getTenantApiUrl('https://localhost:7229/api/v1', 'acme')).toBe(
-      'https://acme.localhost:7229/api/v1'
+      'https://acme.localhost:7229/api/v1',
     );
   });
 
   it('replaces an existing tenant label instead of stacking subdomains', () => {
     expect(getTenantApiUrl('https://old.onevo.com/api/v1', 'acme')).toBe(
-      'https://acme.onevo.com/api/v1'
+      'https://acme.onevo.com/api/v1',
     );
   });
 
   it('rejects a malformed cookie value before constructing a URL', () => {
     expect(() => getTenantApiUrl('https://onevo.com/api/v1', 'acme.evil.test')).toThrow(
-      'Invalid tenant slug.'
+      'Invalid tenant slug.',
     );
   });
 });
@@ -54,12 +56,12 @@ describe('AuthApiService', () => {
     pending_legal_documents: null,
     expires_at: null,
     continue_url: null,
-    workspace: { slug: 'acme', display_name: 'Acme' }
+    workspace: { slug: 'acme', display_name: 'Acme' },
   };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     service = TestBed.inject(AuthApiService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -75,8 +77,37 @@ describe('AuthApiService', () => {
     req.flush(sampleResponse);
   });
 
+  it('GETs the public Google SSO config from /auth/google-config', () => {
+    service.getGoogleSsoConfig().subscribe();
+    const req = httpMock.expectOne(`${getSystemApiUrl(environment.apiUrl)}/auth/google-config`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ enabled: false, clientId: null });
+  });
+
+  it('POSTs the Google ID token to /auth/login/google', () => {
+    service.loginWithGoogle('id-token-abc').subscribe();
+    const req = httpMock.expectOne(`${getSystemApiUrl(environment.apiUrl)}/auth/login/google`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ google_id_token: 'id-token-abc' });
+    req.flush(sampleResponse);
+  });
+
+  it('POSTs the challenge and chosen workspace to /auth/login/select-workspace', () => {
+    service.selectWorkspace({ login_challenge: 'challenge-1', workspace: 'beta' }).subscribe();
+    const req = httpMock.expectOne(
+      `${getSystemApiUrl(environment.apiUrl)}/auth/login/select-workspace`,
+    );
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ login_challenge: 'challenge-1', workspace: 'beta' });
+    req.flush(sampleResponse);
+  });
+
   it('POSTs acceptances to /legal/acceptances/complete-login', () => {
-    const payload = { acceptances: [{ document_type: 'privacy_notice', version: '1.0', decision: 'accepted' as const }] };
+    const payload = {
+      acceptances: [
+        { document_type: 'privacy_notice', version: '1.0', decision: 'accepted' as const },
+      ],
+    };
     service.acceptLegalDocuments(payload).subscribe();
     const req = httpMock.expectOne(`${environment.apiUrl}/legal/acceptances/complete-login`);
     expect(req.request.method).toBe('POST');

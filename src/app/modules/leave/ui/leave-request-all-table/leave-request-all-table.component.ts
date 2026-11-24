@@ -1,11 +1,17 @@
 /** Quiet Operations Desk: HR's org-wide read-only ledger of every leave request. */
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, EventEmitter, input, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableCellDirective, DataTableColumn, DataTableColumnFilters, DataTableComponent, DataTableFilterValues, withColumnFilters } from '../../../../shared/ui/data-table/data-table.component';
 import { LeaveRequestAllListItemResponse } from '../../models/leave-approval.model';
 
 @Component({ selector: 'app-leave-request-all-table', standalone: true, imports: [CommonModule, DataTableComponent, DataTableCellDirective], templateUrl: './leave-request-all-table.component.html', styleUrl: './leave-request-all-table.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeaveRequestAllTableComponent {
+  /** Header-menu filters keyed by column key - each mirrors one of the page's filters. */
+  readonly columnFilters = input<DataTableColumnFilters>({});
+  readonly filterValues = input<DataTableFilterValues>({});
+  @Output() filterChanged = new EventEmitter<{ key: string; values: string[] }>();
+  protected readonly tableColumns = computed(() => withColumnFilters(this.columns, this.columnFilters()));
+
   protected readonly columns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Name' },
     { key: 'department', label: 'Department' },

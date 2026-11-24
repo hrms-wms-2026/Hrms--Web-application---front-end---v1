@@ -548,7 +548,7 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
     .msg--justification .msg__bubble { border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 55%, transparent); background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface)); }
     .msg--justification .msg__tag { color: var(--color-warning, #d97706); }
     .msg__files { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-    .msg__file { display: flex; min-width: 220px; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
+    .msg__file { display: flex; min-width: 0; width: 100%; max-width: 280px; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
     .msg__file:hover { border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border)); }
     .msg__file-icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: var(--color-text-secondary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .msg__file-text { display: flex; min-width: 0; flex: 1; flex-direction: column; }
@@ -561,6 +561,18 @@ const REPLY_ICON = 'M5 7h5v5l-2 5H5.5l2-5H5zM14 7h5v5l-2 5h-2.5l2-5H14z';
       .conv__head { display: flex; }
       .conv__back { display: inline-flex; }
       .msg { max-width: 92%; }
+    }
+    @media (max-width: 640px) {
+      .conv__head { padding: 8px 10px; gap: 8px; }
+      .conv__messages { padding: 12px; gap: 10px; }
+      .conv__footer { padding: 8px 12px; }
+      .msg__case-tools { order: 2; align-self: flex-start; }
+      .msg__case-quote { display: none; }
+      .conv__decision { padding: 12px 14px; gap: 12px; align-items: flex-start; }
+      .conv__decision-icon { width: 36px; height: 36px; }
+      .conv__decision-heading { overflow-wrap: anywhere; }
+      .conv__decision-meta { overflow-wrap: anywhere; }
+      .msg--moved { flex-wrap: wrap; justify-content: center; }
     }
   `]
 })

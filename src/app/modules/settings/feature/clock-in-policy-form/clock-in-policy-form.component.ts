@@ -6,6 +6,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { LegalEntityStore } from '../../../organization/state/legal-entity.store';
 import { ClockInPolicyStore } from '../../state/clock-in-policy.store';
@@ -40,6 +41,7 @@ import {
     EmptyStateComponent,
     ErrorStateComponent,
     InputComponent,
+    ModalComponent,
     SelectComponent,
     WorkModeListComponent
   ],
@@ -89,6 +91,12 @@ export class ClockInPolicyFormComponent {
   readonly submitted = signal(false);
   readonly isDirty = signal(false);
 
+  /** Modal state for adding/editing a late deduction rule in a popup. */
+  readonly ruleModalOpen = signal(false);
+  readonly editingRuleIndex = signal<number | null>(null);
+  readonly ruleDraft = signal<LateDeductionRuleFormRow>(createEmptyLateDeductionRule());
+  readonly ruleDraftErrors = signal<Record<string, string>>({});
+
   markDirty(): void {
     this.isDirty.set(true);
   }
@@ -116,6 +124,7 @@ export class ClockInPolicyFormComponent {
     this.fieldErrors.set({});
     this.submitted.set(false);
     this.isDirty.set(false);
+    this.closeRuleModal();
 
     // Both lookups in parallel; the form is filled once the types decided whether rules are editable.
     const types = this.loadTimeOffTypes();
@@ -147,6 +156,117 @@ export class ClockInPolicyFormComponent {
     }
   }
 
+  timeOffTypeLabel(id: string): string {
+    if (!id) {
+      return 'Not selected';
+    }
+    return this.timeOffTypeOptions().find((o) => o.value === id)?.label ?? id;
+  }
+
+  openAddRuleModal(): void {
+    if (!this.hasWriteAccess() || !this.lateRulesEditable()) {
+      return;
+    }
+    this.editingRuleIndex.set(null);
+    this.ruleDraft.set(createEmptyLateDeductionRule());
+    this.ruleDraftErrors.set({});
+    this.ruleModalOpen.set(true);
+  }
+
+  openEditRuleModal(index: number): void {
+    if (!this.hasWriteAccess() || !this.lateRulesEditable()) {
+      return;
+    }
+    const existing = this.form().lateDeductionRules[index];
+    if (!existing) {
+      return;
+    }
+    this.editingRuleIndex.set(index);
+    this.ruleDraft.set({ ...existing });
+    this.ruleDraftErrors.set({});
+    this.ruleModalOpen.set(true);
+  }
+
+  closeRuleModal(): void {
+    this.ruleModalOpen.set(false);
+    this.editingRuleIndex.set(null);
+    this.ruleDraftErrors.set({});
+  }
+
+  patchRuleDraft(partial: Partial<LateDeductionRuleFormRow>): void {
+    this.ruleDraft.update((current) => ({ ...current, ...partial }));
+    const editIdx = this.editingRuleIndex();
+    if (editIdx !== null && editIdx < this.form().lateDeductionRules.length) {
+      this.patchLateRule(editIdx, partial);
+    }
+  }
+
+  ruleDraftErrorFor(field: keyof LateDeductionRuleFormRow): string {
+    return this.ruleDraftErrors()[field] ?? '';
+  }
+
+  async confirmRuleModal(): Promise<void> {
+    if (!this.hasWriteAccess() || !this.lateRulesEditable()) {
+      return;
+    }
+    const currentRules = this.form().lateDeductionRules;
+    const editIdx = this.editingRuleIndex();
+    const draft = this.ruleDraft();
+
+    const targetIdx = editIdx !== null ? editIdx : currentRules.length;
+    const candidateRules =
+      editIdx !== null
+        ? currentRules.map((r, i) => (i === editIdx ? { ...draft } : r))
+        : [...currentRules, { ...draft }];
+
+    const candidateModel: ClockInPolicySettingsFormValue = {
+      ...this.form(),
+      lateDeductionRules: candidateRules
+    };
+
+    const validation = validateClockInPolicyForm(candidateModel, this.lateRulesEditable());
+    const prefix = `lateDeductionRules.${targetIdx}.`;
+    const draftErrors: Record<string, string> = {};
+    if (validation.errors[`${prefix}lateArrivalMinutes`]) {
+      draftErrors['lateArrivalMinutes'] = validation.errors[`${prefix}lateArrivalMinutes`];
+    }
+    if (validation.errors[`${prefix}deductionAmount`]) {
+      draftErrors['deductionAmount'] = validation.errors[`${prefix}deductionAmount`];
+    }
+    if (validation.errors[`${prefix}timeOffTypeId`]) {
+      draftErrors['timeOffTypeId'] = validation.errors[`${prefix}timeOffTypeId`];
+    }
+
+    if (Object.keys(draftErrors).length > 0 || !validation.valid) {
+      this.ruleDraftErrors.set(draftErrors);
+      this.submitted.set(true);
+      this.fieldErrors.set(validation.errors);
+      return;
+    }
+
+    const previousRules = currentRules;
+    this.form.set(candidateModel);
+    this.ruleDraftErrors.set({});
+    const saved = await this.savePolicyNow();
+    if (saved) {
+      this.closeRuleModal();
+    } else {
+      this.form.update((curr) => ({ ...curr, lateDeductionRules: previousRules }));
+    }
+  }
+
+  async deleteLateRule(index: number): Promise<void> {
+    if (!this.hasWriteAccess() || !this.lateRulesEditable()) {
+      return;
+    }
+    const previousRules = this.form().lateDeductionRules;
+    this.removeLateRule(index);
+    const saved = await this.savePolicyNow();
+    if (!saved) {
+      this.form.update((curr) => ({ ...curr, lateDeductionRules: previousRules }));
+    }
+  }
+
   patchForm(partial: Partial<ClockInPolicySettingsFormValue>): void {
     if (!this.hasWriteAccess()) {
       return;
@@ -159,9 +279,15 @@ export class ClockInPolicyFormComponent {
     if (!this.hasWriteAccess() || !this.lateRulesEditable()) {
       return;
     }
+    const emptyRule = createEmptyLateDeductionRule();
+    const newIndex = this.form().lateDeductionRules.length;
     this.patchForm({
-      lateDeductionRules: [...this.form().lateDeductionRules, createEmptyLateDeductionRule()]
+      lateDeductionRules: [...this.form().lateDeductionRules, emptyRule]
     });
+    this.editingRuleIndex.set(newIndex);
+    this.ruleDraft.set({ ...emptyRule });
+    this.ruleDraftErrors.set({});
+    this.ruleModalOpen.set(true);
   }
 
   removeLateRule(index: number): void {
@@ -171,6 +297,9 @@ export class ClockInPolicyFormComponent {
     this.patchForm({
       lateDeductionRules: this.form().lateDeductionRules.filter((_, i) => i !== index)
     });
+    if (this.editingRuleIndex() === index) {
+      this.closeRuleModal();
+    }
   }
 
   patchLateRule(index: number, partial: Partial<LateDeductionRuleFormRow>): void {
@@ -188,8 +317,12 @@ export class ClockInPolicyFormComponent {
   }
 
   async onSubmit(): Promise<void> {
+    await this.savePolicyNow();
+  }
+
+  private async savePolicyNow(): Promise<boolean> {
     if (!this.hasWriteAccess() || this.policyStore.multipleCompanyPolicies()) {
-      return;
+      return false;
     }
 
     this.submitted.set(true);
@@ -197,12 +330,12 @@ export class ClockInPolicyFormComponent {
     const validation = validateClockInPolicyForm(model, this.lateRulesEditable());
     this.fieldErrors.set(validation.errors);
     if (!validation.valid) {
-      return;
+      return false;
     }
 
     const le = this.selectedLegalEntity();
     if (!le) {
-      return;
+      return false;
     }
 
     const saved = await this.policyStore.saveCompanyPolicy(le.id, model, this.lateRulesEditable());
@@ -210,10 +343,12 @@ export class ClockInPolicyFormComponent {
       this.isDirty.set(false);
       this.form.set(formModelFromPolicy(saved, undefined, this.lateRulesEditable()));
       this.notificationService.success('Changes saved.');
+      return true;
     } else {
       this.notificationService.error(
         this.policyStore.saveError() ?? 'Could not save clock-in policy. Try again.'
       );
+      return false;
     }
   }
 

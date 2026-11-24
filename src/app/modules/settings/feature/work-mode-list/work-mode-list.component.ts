@@ -1,5 +1,8 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { InputComponent } from '../../../../shared/ui/input/input.component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal.component';
 import { WorkModeStore } from '../../state/work-mode.store';
 import { UpsertWorkModeRequest } from '../../models/work-mode.model';
 
@@ -25,7 +28,7 @@ function emptyDraft(): UpsertWorkModeRequest {
 @Component({
   selector: 'app-work-mode-list',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ButtonComponent, InputComponent, ModalComponent],
   templateUrl: './work-mode-list.component.html',
   styleUrl: './work-mode-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -39,7 +42,7 @@ export class WorkModeListComponent {
   readonly store = inject(WorkModeStore);
 
   draft: UpsertWorkModeRequest = emptyDraft();
-  addingNew = false;
+  readonly addingNew = signal(false);
 
   constructor() {
     effect(() => this.store.load(this.legalEntityId()));
@@ -47,21 +50,21 @@ export class WorkModeListComponent {
 
   startAdd(): void {
     this.draft = emptyDraft();
-    this.addingNew = true;
-    this.changed.emit();
+    this.addingNew.set(true);
   }
 
   confirmAdd(): void {
-    if (!this.draft.name.trim()) {
+    const trimmedName = this.draft.name.trim();
+    if (!trimmedName) {
       return;
     }
-    this.store.create(this.draft);
-    this.addingNew = false;
+    this.store.create({ ...this.draft, name: trimmedName });
+    this.addingNew.set(false);
     this.changed.emit();
   }
 
   cancelAdd(): void {
-    this.addingNew = false;
+    this.addingNew.set(false);
   }
 
   save(id: string, payload: UpsertWorkModeRequest): void {

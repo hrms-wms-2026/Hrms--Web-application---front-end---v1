@@ -81,12 +81,12 @@ export class BulkOnboardingComponent implements OnInit, OnDestroy {
   ];
   protected readonly draftColumns: readonly DataTableColumn[] = [
     { key: 'row', label: 'Row' },
-    { key: 'status', label: 'Status' },
+    { key: 'status', label: 'Status', filterValue: (r: { status: BulkOnboardingRowStatus }) => this.rowStatusLabel(r.status) },
     { key: 'detail', label: 'Detail', wrap: true }
   ];
   protected readonly outcomeColumns: readonly DataTableColumn[] = [
     { key: 'row', label: 'Row' },
-    { key: 'outcome', label: 'Outcome' },
+    { key: 'outcome', label: 'Outcome', filterValue: (r: { status: BulkOnboardingRowStatus }) => this.rowStatusLabel(r.status) },
     { key: 'detail', label: 'Detail', wrap: true }
   ];
   protected readonly invalidRows = computed(() => (this.store.validationResult()?.rows ?? []).filter((row) => row.status === 'invalid'));

@@ -44,7 +44,7 @@
         <label
           class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition-all select-none cursor-pointer"
           [class.border-[var(--color-accent)]]="mode.biometricEnabled"
-          [class.bg-blue-50\/50]="mode.biometricEnabled"
+          [class.bg-[var(--color-accent-subtle)]/30]="mode.biometricEnabled"
           [class.border-[var(--color-border)]]="!mode.biometricEnabled"
           [class.bg-[var(--color-surface)]]="!mode.biometricEnabled"
           [class.hover:bg-[var(--color-surface-secondary)]]="!mode.biometricEnabled"
@@ -89,7 +89,7 @@
         <label
           class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition-all select-none cursor-pointer"
           [class.border-[var(--color-accent)]]="mode.webEnabled"
-          [class.bg-blue-50\/50]="mode.webEnabled"
+          [class.bg-[var(--color-accent-subtle)]/30]="mode.webEnabled"
           [class.border-[var(--color-border)]]="!mode.webEnabled"
           [class.bg-[var(--color-surface)]]="!mode.webEnabled"
           [class.hover:bg-[var(--color-surface-secondary)]]="!mode.webEnabled"
@@ -134,7 +134,7 @@
         <label
           class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition-all select-none cursor-pointer"
           [class.border-[var(--color-accent)]]="mode.trayEnabled"
-          [class.bg-blue-50\/50]="mode.trayEnabled"
+          [class.bg-[var(--color-accent-subtle)]/30]="mode.trayEnabled"
           [class.border-[var(--color-border)]]="!mode.trayEnabled"
           [class.bg-[var(--color-surface)]]="!mode.trayEnabled"
           [class.hover:bg-[var(--color-surface-secondary)]]="!mode.trayEnabled"
@@ -181,7 +181,7 @@
         <label
           class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition-all select-none cursor-pointer"
           [class.border-[var(--color-accent)]]="mode.photoRequired"
-          [class.bg-blue-50\/50]="mode.photoRequired"
+          [class.bg-[var(--color-accent-subtle)]/30]="mode.photoRequired"
           [class.border-[var(--color-border)]]="!mode.photoRequired"
           [class.bg-[var(--color-surface)]]="!mode.photoRequired"
           [class.hover:bg-[var(--color-surface-secondary)]]="!mode.photoRequired"
@@ -227,7 +227,7 @@
         <label
           class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition-all select-none cursor-pointer"
           [class.border-[var(--color-accent)]]="mode.selfRegistersLocation"
-          [class.bg-blue-50\/50]="mode.selfRegistersLocation"
+          [class.bg-[var(--color-accent-subtle)]/30]="mode.selfRegistersLocation"
           [class.border-[var(--color-border)]]="!mode.selfRegistersLocation"
           [class.bg-[var(--color-surface)]]="!mode.selfRegistersLocation"
           [class.hover:bg-[var(--color-surface-secondary)]]="!mode.selfRegistersLocation"
@@ -274,7 +274,7 @@
         <label
           class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition-all select-none cursor-pointer"
           [class.border-[var(--color-accent)]]="mode.allowsDailyLocationChoice"
-          [class.bg-blue-50\/50]="mode.allowsDailyLocationChoice"
+          [class.bg-[var(--color-accent-subtle)]/30]="mode.allowsDailyLocationChoice"
           [class.border-[var(--color-border)]]="!mode.allowsDailyLocationChoice"
           [class.bg-[var(--color-surface)]]="!mode.allowsDailyLocationChoice"
           [class.hover:bg-[var(--color-surface-secondary)]]="!mode.allowsDailyLocationChoice"
@@ -322,149 +322,6 @@
     </div>
   }
 
-  @if (addingNew) {
-    <div class="rounded-xl border border-dashed border-[var(--color-accent)] bg-[var(--color-accent-subtle)]/30 px-3.5 py-3">
-      <div class="flex items-center justify-between gap-3 mb-2.5 flex-wrap">
-        <div class="flex items-center gap-2 flex-1 min-w-[180px]">
-          <input
-            type="text"
-            class="ui-input ui-input--sm max-w-xs"
-            [(ngModel)]="draft.name"
-            (ngModelChange)="changed.emit()"
-            placeholder="Work mode name (e.g. Contractors)"
-           
-          />
-        </div>
-        <div class="flex items-center gap-1.5">
-          <button
-            type="button"
-            class="px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] rounded transition cursor-pointer"
-            (click)="cancelAdd()"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="px-3 py-1 text-xs font-medium text-[var(--color-text-on-solid)] bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed rounded transition cursor-pointer"
-            [disabled]="!draft.name.trim() || store.saving()"
-            (click)="confirmAdd()"
-          >
-            Add mode
-          </button>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-        <label class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none" [class.border-[var(--color-accent)]]="draft.biometricEnabled" [class.bg-blue-50\/50]="draft.biometricEnabled">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]" [class.bg-[var(--color-accent-subtle)]]="draft.biometricEnabled" [class.text-[var(--color-accent)]]="draft.biometricEnabled">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004.07 9m4.93 11a11.96 11.96 0 01-1.748-4.878" />
-              </svg>
-            </div>
-            <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Biometric</span>
-          </div>
-          <span class="relative inline-flex items-center shrink-0">
-            <input type="checkbox" class="sr-only peer" [(ngModel)]="draft.biometricEnabled" (ngModelChange)="changed.emit()" />
-            <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
-          </span>
-        </label>
-
-        <label class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none" [class.border-[var(--color-accent)]]="draft.webEnabled" [class.bg-blue-50\/50]="draft.webEnabled">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]" [class.bg-[var(--color-accent-subtle)]]="draft.webEnabled" [class.text-[var(--color-accent)]]="draft.webEnabled">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-              </svg>
-            </div>
-            <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Web/app</span>
-          </div>
-          <span class="relative inline-flex items-center shrink-0">
-            <input type="checkbox" class="sr-only peer" [(ngModel)]="draft.webEnabled" (ngModelChange)="changed.emit()" />
-            <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
-          </span>
-        </label>
-
-        <label class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none" [class.border-[var(--color-accent)]]="draft.trayEnabled" [class.bg-blue-50\/50]="draft.trayEnabled">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]" [class.bg-[var(--color-accent-subtle)]]="draft.trayEnabled" [class.text-[var(--color-accent)]]="draft.trayEnabled">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round"></rect>
-                <line x1="8" y1="21" x2="16" y2="21" stroke-linecap="round" stroke-linejoin="round"></line>
-                <line x1="12" y1="17" x2="12" y2="21" stroke-linecap="round" stroke-linejoin="round"></line>
-              </svg>
-            </div>
-            <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Desktop tray</span>
-          </div>
-          <span class="relative inline-flex items-center shrink-0">
-            <input type="checkbox" class="sr-only peer" [(ngModel)]="draft.trayEnabled" (ngModelChange)="changed.emit()" />
-            <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
-          </span>
-        </label>
-
-        <label class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none" [class.border-[var(--color-accent)]]="draft.photoRequired" [class.bg-blue-50\/50]="draft.photoRequired">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]" [class.bg-[var(--color-accent-subtle)]]="draft.photoRequired" [class.text-[var(--color-accent)]]="draft.photoRequired">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <circle cx="12" cy="13" r="4" stroke-linecap="round" stroke-linejoin="round"></circle>
-              </svg>
-            </div>
-            <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Photo required</span>
-          </div>
-          <span class="relative inline-flex items-center shrink-0">
-            <input type="checkbox" class="sr-only peer" [(ngModel)]="draft.photoRequired" (ngModelChange)="changed.emit()" />
-            <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
-          </span>
-        </label>
-
-        <label class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none" [class.border-[var(--color-accent)]]="draft.selfRegistersLocation" [class.bg-blue-50\/50]="draft.selfRegistersLocation" title="First clock-in registers the employee's home location, instead of checking against the office.">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]" [class.bg-[var(--color-accent-subtle)]]="draft.selfRegistersLocation" [class.text-[var(--color-accent)]]="draft.selfRegistersLocation">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <circle cx="12" cy="11" r="3" stroke-linecap="round" stroke-linejoin="round"></circle>
-              </svg>
-            </div>
-            <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Work from home</span>
-          </div>
-          <span class="relative inline-flex items-center shrink-0">
-            <input
-              type="checkbox"
-              class="sr-only peer"
-              [ngModel]="draft.selfRegistersLocation"
-              (ngModelChange)="draft = setLocationBehavior(draft, 'selfRegistersLocation', $event); changed.emit()"
-            />
-            <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
-          </span>
-        </label>
-
-        <label class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none" [class.border-[var(--color-accent)]]="draft.allowsDailyLocationChoice" [class.bg-blue-50\/50]="draft.allowsDailyLocationChoice" title="Employee picks office, home, or other location before clocking in each day.">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]" [class.bg-[var(--color-accent-subtle)]]="draft.allowsDailyLocationChoice" [class.text-[var(--color-accent)]]="draft.allowsDailyLocationChoice">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round"></rect>
-                <line x1="16" y1="2" x2="16" y2="6" stroke-linecap="round" stroke-linejoin="round"></line>
-                <line x1="8" y1="2" x2="8" y2="6" stroke-linecap="round" stroke-linejoin="round"></line>
-                <line x1="3" y1="10" x2="21" y2="10" stroke-linecap="round" stroke-linejoin="round"></line>
-              </svg>
-            </div>
-            <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Flexible daily location</span>
-          </div>
-          <span class="relative inline-flex items-center shrink-0">
-            <input
-              type="checkbox"
-              class="sr-only peer"
-              [ngModel]="draft.allowsDailyLocationChoice"
-              (ngModelChange)="draft = setLocationBehavior(draft, 'allowsDailyLocationChoice', $event); changed.emit()"
-            />
-            <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
-          </span>
-        </label>
-      </div>
-    </div>
-  }
-
   @if (canEdit()) {
     <div class="flex">
       <button
@@ -481,4 +338,210 @@
       </button>
     </div>
   }
+
+  <app-modal
+    [open]="addingNew()"
+    title="Add work mode"
+    subtitle="Configure clock-in channels and verification requirements for this work mode."
+    icon="clock"
+    size="lg"
+    (closed)="cancelAdd()"
+  >
+    <div class="flex flex-col gap-4" data-testid="add-work-mode-modal">
+      <app-input
+        label="Work mode name"
+        [required]="true"
+        placeholder="e.g. Contractors"
+        [value]="draft.name"
+        (valueChange)="draft.name = $event"
+        data-testid="work-mode-name-input"
+      />
+
+      <div class="flex flex-col gap-2">
+        <span class="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+          Channels &amp; verification
+        </span>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <label
+            class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none transition-all"
+            [class.border-[var(--color-accent)]]="draft.biometricEnabled"
+            [class.bg-[var(--color-accent-subtle)]/30]="draft.biometricEnabled"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div
+                class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]"
+                [class.bg-[var(--color-accent-subtle)]]="draft.biometricEnabled"
+                [class.text-[var(--color-accent)]]="draft.biometricEnabled"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004.07 9m4.93 11a11.96 11.96 0 01-1.748-4.878" />
+                </svg>
+              </div>
+              <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Biometric</span>
+            </div>
+            <span class="relative inline-flex items-center shrink-0">
+              <input type="checkbox" class="sr-only peer" [(ngModel)]="draft.biometricEnabled" />
+              <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
+            </span>
+          </label>
+
+          <label
+            class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none transition-all"
+            [class.border-[var(--color-accent)]]="draft.webEnabled"
+            [class.bg-[var(--color-accent-subtle)]/30]="draft.webEnabled"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div
+                class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]"
+                [class.bg-[var(--color-accent-subtle)]]="draft.webEnabled"
+                [class.text-[var(--color-accent)]]="draft.webEnabled"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+              </div>
+              <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Web/app</span>
+            </div>
+            <span class="relative inline-flex items-center shrink-0">
+              <input type="checkbox" class="sr-only peer" [(ngModel)]="draft.webEnabled" />
+              <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
+            </span>
+          </label>
+
+          <label
+            class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none transition-all"
+            [class.border-[var(--color-accent)]]="draft.trayEnabled"
+            [class.bg-[var(--color-accent-subtle)]/30]="draft.trayEnabled"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div
+                class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]"
+                [class.bg-[var(--color-accent-subtle)]]="draft.trayEnabled"
+                [class.text-[var(--color-accent)]]="draft.trayEnabled"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21" stroke-linecap="round" stroke-linejoin="round"></line>
+                  <line x1="12" y1="17" x2="12" y2="21" stroke-linecap="round" stroke-linejoin="round"></line>
+                </svg>
+              </div>
+              <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Desktop tray</span>
+            </div>
+            <span class="relative inline-flex items-center shrink-0">
+              <input type="checkbox" class="sr-only peer" [(ngModel)]="draft.trayEnabled" />
+              <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
+            </span>
+          </label>
+
+          <label
+            class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none transition-all"
+            [class.border-[var(--color-accent)]]="draft.photoRequired"
+            [class.bg-[var(--color-accent-subtle)]/30]="draft.photoRequired"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div
+                class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]"
+                [class.bg-[var(--color-accent-subtle)]]="draft.photoRequired"
+                [class.text-[var(--color-accent)]]="draft.photoRequired"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <circle cx="12" cy="13" r="4" stroke-linecap="round" stroke-linejoin="round"></circle>
+                </svg>
+              </div>
+              <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Photo required</span>
+            </div>
+            <span class="relative inline-flex items-center shrink-0">
+              <input type="checkbox" class="sr-only peer" [(ngModel)]="draft.photoRequired" />
+              <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
+            </span>
+          </label>
+
+          <label
+            class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none transition-all"
+            [class.border-[var(--color-accent)]]="draft.selfRegistersLocation"
+            [class.bg-[var(--color-accent-subtle)]/30]="draft.selfRegistersLocation"
+            title="First clock-in registers the employee's home location, instead of checking against the office."
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div
+                class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]"
+                [class.bg-[var(--color-accent-subtle)]]="draft.selfRegistersLocation"
+                [class.text-[var(--color-accent)]]="draft.selfRegistersLocation"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <circle cx="12" cy="11" r="3" stroke-linecap="round" stroke-linejoin="round"></circle>
+                </svg>
+              </div>
+              <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Work from home</span>
+            </div>
+            <span class="relative inline-flex items-center shrink-0">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                [ngModel]="draft.selfRegistersLocation"
+                (ngModelChange)="draft = setLocationBehavior(draft, 'selfRegistersLocation', $event)"
+              />
+              <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
+            </span>
+          </label>
+
+          <label
+            class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] cursor-pointer select-none transition-all"
+            [class.border-[var(--color-accent)]]="draft.allowsDailyLocationChoice"
+            [class.bg-[var(--color-accent-subtle)]/30]="draft.allowsDailyLocationChoice"
+            title="Employee picks office, home, or other location before clocking in each day."
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div
+                class="w-6 h-6 rounded flex items-center justify-center shrink-0 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]"
+                [class.bg-[var(--color-accent-subtle)]]="draft.allowsDailyLocationChoice"
+                [class.text-[var(--color-accent)]]="draft.allowsDailyLocationChoice"
+              >
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6" stroke-linecap="round" stroke-linejoin="round"></line>
+                  <line x1="8" y1="2" x2="8" y2="6" stroke-linecap="round" stroke-linejoin="round"></line>
+                  <line x1="3" y1="10" x2="21" y2="10" stroke-linecap="round" stroke-linejoin="round"></line>
+                </svg>
+              </div>
+              <span class="text-xs font-medium truncate text-[var(--color-text-primary)]">Flexible daily location</span>
+            </div>
+            <span class="relative inline-flex items-center shrink-0">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                [ngModel]="draft.allowsDailyLocationChoice"
+                (ngModelChange)="draft = setLocationBehavior(draft, 'allowsDailyLocationChoice', $event)"
+              />
+              <span class="w-7 h-4 bg-[var(--color-border)] peer-focus:outline-none peer-checked:after:translate-x-3 peer-checked:after:border-[var(--color-surface)] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--color-surface)] after:border-[var(--color-border-strong)] after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)] rounded-full transition-colors"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="mt-2 flex justify-end gap-2">
+        <app-button
+          type="button"
+          variant="secondary"
+          data-testid="cancel-add-work-mode"
+          [disabled]="store.saving()"
+          (pressed)="cancelAdd()"
+        >
+          Cancel
+        </app-button>
+        <app-button
+          type="button"
+          data-testid="confirm-add-work-mode"
+          [loading]="store.saving()"
+          [disabled]="!draft.name.trim() || store.saving()"
+          (pressed)="confirmAdd()"
+        >
+          Add mode
+        </app-button>
+      </div>
+    </div>
+  </app-modal>
 </div>

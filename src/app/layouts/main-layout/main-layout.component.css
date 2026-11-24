@@ -253,4 +253,10 @@
     height: auto;
     overflow-y: auto;
   }
+
+  .main-content:has(app-inbox-page) .main-content__viewport {
+    padding: 0 0 calc(5rem + var(--bottom-tray-offset, 0px)) 0;
+    height: 100%;
+    overflow: hidden;
+  }
 }

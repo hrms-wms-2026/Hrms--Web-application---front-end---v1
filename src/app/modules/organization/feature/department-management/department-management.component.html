@@ -174,6 +174,9 @@
       <app-department-list-table
         [departments]="departmentStore.flatItems()"
         [canManage]="hasManageAccess()"
+        [columnFilters]="headerFilters"
+        [filterValues]="headerFilterValues()"
+        (filterChanged)="onFilterFieldChanged($event)"
         (editDepartment)="openEditModal($event)"
         (archiveDepartment)="openArchiveModal($event)"
         (restoreDepartment)="onRestoreDepartment($event)"

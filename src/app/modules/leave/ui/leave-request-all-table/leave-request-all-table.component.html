@@ -1,4 +1,4 @@
-<app-data-table [columns]="columns" [rows]="rows" [trackBy]="trackByRequest" [rowTestId]="rowTestId" caption="All leave requests" [rowClickable]="true" (rowClicked)="rowClicked.emit($event.requestId)">
+<app-data-table [columns]="tableColumns()" [rows]="rows" [filterValues]="filterValues()" (filterChanged)="filterChanged.emit($event)" emptyMessage="No leave requests found" emptyDescription="No requests match the current filters." [trackBy]="trackByRequest" [rowTestId]="rowTestId" caption="All leave requests" [rowClickable]="true" (rowClicked)="rowClicked.emit($event.requestId)">
   <ng-template appDataTableCell="name" let-row>
     <div class="lra-person">
       <span class="lra-avatar" aria-hidden="true">{{ initials(row.employeeName) }}</span>

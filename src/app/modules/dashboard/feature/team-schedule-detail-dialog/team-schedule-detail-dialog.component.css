@@ -281,8 +281,30 @@ td.tsd-workload-col {
   padding-bottom: 4px !important;
 }
 .tsd-plan-col {
-  width: 6rem;
+  width: 3rem;
   white-space: nowrap;
+}
+.tsd-plan-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--color-widget-shade-1);
+}
+.tsd-plan-icon:hover,
+.tsd-plan-icon:focus-visible {
+  background: var(--color-surface-secondary);
+}
+.tsd-plan-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .tsd-axis {
   position: relative;

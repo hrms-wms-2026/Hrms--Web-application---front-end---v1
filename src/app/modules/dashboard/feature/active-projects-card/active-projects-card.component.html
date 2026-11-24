@@ -13,6 +13,15 @@
       }
     </h2>
     <div class="flex shrink-0 items-center gap-1">
+      <!-- Refresh sits left of View All, shown only while the card is hovered (or the button has focus) -->
+      <div class="opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+        <app-popout-header-actions
+          [refreshing]="refreshing()"
+          [expanded]="false"
+          [canExpand]="false"
+          (refresh)="refresh()"
+        />
+      </div>
       <a
         routerLink="/work"
         data-testid="active-projects-view-all"
@@ -23,15 +32,6 @@
           <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
         </svg>
       </a>
-      <!-- Refresh in the top-right corner, shown only while the card is hovered (or the button has focus) -->
-      <div class="opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
-        <app-popout-header-actions
-          [refreshing]="refreshing()"
-          [expanded]="false"
-          [canExpand]="false"
-          (refresh)="refresh()"
-        />
-      </div>
     </div>
   </div>
 

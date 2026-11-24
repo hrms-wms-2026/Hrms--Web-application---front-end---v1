@@ -8,7 +8,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { PermissionService } from '../../../../core/auth/state/permission.service';
 import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-header/breadcrumb-header.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableCellDirective, DataTableColumn, DataTableComponent, DataTableFilterValues, withColumnFilters } from '../../../../shared/ui/data-table/data-table.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -105,6 +105,24 @@ export class MyLeaveRequestsComponent {
     { value: '', label: 'All leave types' },
     ...this.leaveTypeStore.items().map((type) => ({ value: type.id, label: type.name }))
   ]);
+  /** The Leave type and Status headers offer the same filters as the toolbar select and status tabs. */
+  readonly tableColumns = computed(() => withColumnFilters(this.columns, {
+    type: { kind: 'single', options: this.leaveTypeOptions().filter((o) => o.value !== '') },
+    status: { kind: 'single', options: this.tabs.filter((t) => t.value !== '').map((t) => ({ value: t.value, label: t.label })) }
+  }));
+  readonly headerFilterValues = computed<DataTableFilterValues>(() => {
+    const f = this.filter();
+    return { type: f.leaveTypeId ? [f.leaveTypeId] : [], status: f.status ? [f.status] : [] };
+  });
+  /** With a filter set, an empty result keeps the table (and its header) so the filter can be cleared there. */
+  readonly hasActiveFilter = computed(() => Object.values(this.headerFilterValues()).some((v) => !!v?.length));
+
+  onHeaderFilterChanged(change: { key: string; values: string[] }): void {
+    const value = change.values[0] ?? '';
+    if (change.key === 'type') this.patchFilter({ leaveTypeId: value });
+    if (change.key === 'status') this.patchFilter({ status: value as RequestStatusTab });
+  }
+
   private readonly colorById = computed(() => new Map(this.leaveTypeStore.items().map((type) => [type.id, type.color])));
   private readonly iconById = computed(() => new Map(this.leaveTypeStore.items().map((type) => [type.id, type.icon ?? null])));
   private readonly workday = computed(() => {

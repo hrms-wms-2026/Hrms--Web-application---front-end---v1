@@ -24,7 +24,7 @@ export class RoleListTableComponent {
   private static readonly baseColumns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Role name' },
     { key: 'description', label: 'Description' },
-    { key: 'type', label: 'Type' },
+    { key: 'type', label: 'Type', filterValue: (r: RoleSummaryResponse) => (r.isSystem ? 'System Role' : 'Custom Role') },
     { key: 'permissions', label: 'Permissions' }
   ];
   private static readonly actionsColumn: DataTableColumn = { key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' };

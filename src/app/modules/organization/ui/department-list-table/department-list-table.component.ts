@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { ChangeDetectionStrategy, Component, computed, EventEmitter, HostListener, input, Input, Output, signal } from '@angular/core';
+import { DataTableCellDirective, DataTableColumn, DataTableColumnFilters, DataTableComponent, DataTableFilterValues, withColumnFilters } from '../../../../shared/ui/data-table/data-table.component';
 import { DepartmentListItemResponse } from '../../models/department.model';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 
@@ -14,8 +14,12 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
 export class DepartmentListTableComponent {
   @Input({ required: true }) departments: readonly DepartmentListItemResponse[] = [];
   @Input() set canManage(value: boolean) {
-    this.columns = value ? [...DepartmentListTableComponent.baseColumns, DepartmentListTableComponent.actionsColumn] : DepartmentListTableComponent.baseColumns;
+    this.canManageColumns.set(value);
   }
+  /** Header-menu filters keyed by column key - each mirrors a field of the page's filter bar. */
+  readonly columnFilters = input<DataTableColumnFilters>({});
+  readonly filterValues = input<DataTableFilterValues>({});
+  @Output() filterChanged = new EventEmitter<{ key: string; values: string[] }>();
 
   private static readonly baseColumns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Department name' },
@@ -27,7 +31,10 @@ export class DepartmentListTableComponent {
   ];
   private static readonly actionsColumn: DataTableColumn = { key: 'actions', label: 'Actions', interactive: true, shrink: true, align: 'end' };
 
-  protected columns: readonly DataTableColumn[] = DepartmentListTableComponent.baseColumns;
+  private readonly canManageColumns = signal(false);
+  protected readonly columns = computed(() => withColumnFilters(
+    this.canManageColumns() ? [...DepartmentListTableComponent.baseColumns, DepartmentListTableComponent.actionsColumn] : DepartmentListTableComponent.baseColumns,
+    this.columnFilters()));
   protected readonly trackById = (dept: DepartmentListItemResponse): string => dept.id;
   protected readonly isArchived = (dept: DepartmentListItemResponse): boolean => !dept.isActive;
 

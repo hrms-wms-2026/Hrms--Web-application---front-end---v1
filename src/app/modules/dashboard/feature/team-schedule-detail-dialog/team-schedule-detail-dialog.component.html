@@ -163,10 +163,9 @@
                         }
                       </div>
                     </th>
-                    <th scope="col" class="tsd-num">Planned</th>
                     <th scope="col" class="tsd-num">Actual</th>
                     <th scope="col" class="tsd-num">Done</th>
-                    <th scope="col" class="tsd-num tsd-plan-col">Plan</th>
+                    <th scope="col" class="tsd-num tsd-plan-col"><span class="sr-only">Plan</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -272,9 +271,6 @@
                           }
                         </div>
                       </td>
-                      <td class="tsd-num">
-                        {{ !data.plannerEnabled || onLeave(m) ? '—' : minutes(planned(m)) }}
-                      </td>
                       <td class="tsd-num" data-testid="tsd-actual">
                         {{ onLeave(m) ? '—' : minutes(actual(m)) }}
                       </td>
@@ -283,18 +279,21 @@
                       </td>
                       <td class="tsd-num tsd-plan-col">
                         <a
-                          class="tsd-link"
+                          class="tsd-plan-icon"
                           data-testid="tsd-open-plan"
                           routerLink="/planner"
                           [queryParams]="planParams(m)"
+                          [attr.aria-label]="'Open plan for ' + m.displayName"
+                          title="Open plan"
                           (click)="close()"
-                          >Open plan ›</a
-                        >
+                          ><svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg
+                        ></a>
                       </td>
                     </tr>
                   } @empty {
                     <tr>
-                      <td class="tsd-muted" colspan="8">No one matches.</td>
+                      <td class="tsd-muted" colspan="7">No one matches.</td>
                     </tr>
                   }
                 </tbody>

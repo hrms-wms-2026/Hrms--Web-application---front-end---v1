@@ -42,6 +42,11 @@ describe('EmployeeListComponent', () => {
 
   const q = <T extends HTMLElement = HTMLElement>(selector: string) => fixture.nativeElement.querySelector(selector) as T | null;
 
+  /** Opening a filterable header menu lazily loads its option lists - answer them with empty lists. */
+  function flushFilterOptions(): void {
+    httpMock.match(() => true).forEach((r) => r.flush({ items: [], totalCount: 0, page: 1, pageSize: 100 }));
+  }
+
   function flushEmployeesAndDrafts(): void {
     httpMock.match(() => true).forEach((req) => {
       if (req.request.url.includes('/employees')) {
@@ -299,8 +304,23 @@ describe('EmployeeListComponent', () => {
     await setup(true);
     await flushEmployees([{}]);
     q('[data-testid="employee-sort-department"]')!.click();
+    fixture.detectChanges();
+    flushFilterOptions();
+    q('[data-testid="header-sort-asc"]')!.click();
     expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
       queryParams: expect.objectContaining({ sortBy: 'department', sortDir: 'asc', page: 1 }), queryParamsHandling: 'merge'
+    }));
+  });
+
+  it('filtering from a table header writes the same URL filter as the Filter popover', async () => {
+    await setup(true);
+    await flushEmployees([{}]);
+    q('[data-testid="employee-sort-employmentType"]')!.click();
+    fixture.detectChanges();
+    flushFilterOptions();
+    q('[data-testid="header-filter-option-contract"]')!.click();
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: expect.objectContaining({ employmentType: 'contract', page: 1 }), queryParamsHandling: 'merge'
     }));
   });
 

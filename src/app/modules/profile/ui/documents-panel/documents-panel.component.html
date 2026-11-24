@@ -84,6 +84,8 @@
       <app-data-table
         [columns]="columns"
         [rows]="filtered()"
+        [filterValues]="headerFilterValues()"
+        (filterChanged)="onHeaderTypeFilter($event.values)"
         [trackBy]="trackById"
         [rowTestId]="rowTestId"
         caption="Uploaded documents"

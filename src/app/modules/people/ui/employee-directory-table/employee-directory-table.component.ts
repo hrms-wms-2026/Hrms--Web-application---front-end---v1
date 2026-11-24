@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, ou
 import { Router } from '@angular/router';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { DropdownMenuComponent, MenuItem } from '../../../../shared/ui/dropdown-menu/dropdown-menu.component';
-import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../shared/ui/data-table/data-table.component';
+import { DataTableCellDirective, DataTableColumn, DataTableColumnFilter, DataTableComponent, DataTableHeaderDirective } from '../../../../shared/ui/data-table/data-table.component';
 import { EmployeeColumnDef } from '../../models/employee-columns';
 import { EmployeeListItemResponse, EmployeeSortKey, SortDirection } from '../../models/employee.model';
 import { EmployeeDirectoryStore } from '../../../work/state/employee-directory.store';
@@ -17,7 +17,7 @@ import {
 @Component({
   selector: 'app-employee-directory-table',
   standalone: true,
-  imports: [AvatarComponent, DropdownMenuComponent, DataTableComponent, DataTableCellDirective],
+  imports: [AvatarComponent, DropdownMenuComponent, DataTableComponent, DataTableCellDirective, DataTableHeaderDirective],
   templateUrl: './employee-directory-table.component.html',
   styleUrl: './employee-directory-table.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -32,11 +32,16 @@ export class EmployeeDirectoryTableComponent {
   readonly sortDir = input<SortDirection>('asc');
   readonly selectedIds = input<ReadonlySet<string>>(new Set());
   readonly rowMenuItems = input<(employee: EmployeeListItemResponse) => MenuItem[]>(() => []);
+  /** Header-menu filters keyed by column key - each mirrors one field of the page's Filter popover. */
+  readonly columnFilters = input<Readonly<Partial<Record<string, DataTableColumnFilter>>>>({});
+  readonly filterValues = input<Readonly<Record<string, readonly string[] | undefined>>>({});
 
   readonly sortChanged = output<{ sortBy: EmployeeSortKey; sortDir: SortDirection }>();
   readonly selectionChanged = output<{ id: string; selected: boolean }>();
   readonly selectAllChanged = output<{ ids: string[]; selected: boolean }>();
   readonly rowAction = output<{ employee: EmployeeListItemResponse; actionId: string }>();
+  readonly filterChanged = output<{ key: string; values: string[] }>();
+  readonly filterOpened = output<string>();
 
   readonly attendanceWarningLabel = attendanceWarningLabel;
   readonly attendanceSeverityClass = attendanceSeverityClass;
@@ -68,6 +73,7 @@ export class EmployeeDirectoryTableComponent {
       key: column.key,
       label: column.label,
       sortable: !!column.sortKey,
+      filter: this.columnFilters()[column.key],
       overflowVisible: column.key === 'employee'
     })),
     { key: 'menu', label: 'Actions', hideLabel: true, interactive: true, shrink: true, align: 'end' as const }
@@ -109,11 +115,10 @@ export class EmployeeDirectoryTableComponent {
     });
   }
 
-  protected onSort(columnKey: string): void {
-    const sortKey = this.columns().find((column) => column.key === columnKey)?.sortKey;
+  protected onSort(change: { key: string; dir: SortDirection }): void {
+    const sortKey = this.columns().find((column) => column.key === change.key)?.sortKey;
     if (!sortKey) return;
-    const sortDir: SortDirection = sortKey === this.sortBy() && this.sortDir() === 'asc' ? 'desc' : 'asc';
-    this.sortChanged.emit({ sortBy: sortKey, sortDir });
+    this.sortChanged.emit({ sortBy: sortKey, sortDir: change.dir });
   }
 
   protected openEmployee(employee: EmployeeListItemResponse): void {
