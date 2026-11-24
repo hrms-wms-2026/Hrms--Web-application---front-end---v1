@@ -57,5 +57,6 @@ Server field errors are shown next to the fields in **general settings** (refere
 - 70 files still call `toSafeErrorMessage`/`safeServerDetail` directly. They work and give the same text. Move them to `toApiError` when their module is next touched.
 - 34 store `error: string | null` fields. Task 02 (Person 2) owns the shared store request state; add `ApiError` there.
 - Forms other than general settings do not yet apply server field errors. Add `saveApiError` + `applyServerFieldErrors` per form.
-- Screens with their own access or not-found state should opt out of the 403 toast with `SILENT_HTTP_ERRORS`.
+- **403 is still a toast by default** (the task asked for an access state, not a toast). Changing it globally would leave screens without an access state silent. Screens with their own access or not-found state opt out with `SILENT_HTTP_ERRORS` and show `shared/ui/error-state`; move screens over one by one.
+- The client error id is logged but only becomes useful once a `LOG_SINK` sends it somewhere (backend task 17).
 - When backend 24 lands: confirm the body shape, switch screens that match on message text to `code`, and drop the `TENANT_MISMATCH_DETAIL` text check if a code replaces it.

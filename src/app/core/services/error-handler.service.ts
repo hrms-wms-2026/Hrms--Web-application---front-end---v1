@@ -260,7 +260,9 @@ export class ErrorHandlerService {
 
   private toastText(apiError: ReturnType<typeof toApiError>): string {
     if (apiError.kind === 'rate-limited' && apiError.retryAfterSeconds !== null) {
-      return `Too many requests. Please wait ${apiError.retryAfterSeconds} seconds and try again.`;
+      const seconds = apiError.retryAfterSeconds;
+      const wait = seconds >= 60 ? `${Math.ceil(seconds / 60)} minute${Math.ceil(seconds / 60) === 1 ? '' : 's'}` : `${seconds} seconds`;
+      return `Too many requests. Please wait ${wait} and try again.`;
     }
     // Server errors carry the request's correlation id so support can find it in the backend logs.
     if (apiError.kind === 'server' && apiError.correlationId) {

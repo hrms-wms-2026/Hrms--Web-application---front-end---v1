@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ErrorHandler, Injectable, inject } from '@angular/core';
 import { LoggerService } from '../services/logger.service';
 
@@ -20,10 +21,13 @@ export class GlobalErrorHandler implements ErrorHandler {
   private readonly logger = inject(LoggerService);
 
   handleError(error: unknown): void {
+    // A failed request that a caller did not catch was already logged and shown by the error interceptor.
+    if (error instanceof HttpErrorResponse) return;
     try {
       const message = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : undefined;
-      this.logger.error('[client] Unhandled error', { message, stack, clientErrorId: clientErrorId() });
+      // The raw error stays in the context so the console keeps its clickable stack and cause.
+      this.logger.error('[client] Unhandled error', { message, stack, clientErrorId: clientErrorId(), error });
     } catch {
       console.error('[client] Unhandled error (reporting failed)', error);
     }

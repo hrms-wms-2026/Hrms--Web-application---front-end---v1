@@ -10,15 +10,17 @@ describe('OfflineBannerComponent', () => {
     const fixture = TestBed.createComponent(OfflineBannerComponent);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('[role="status"]')).toBeNull();
+    const region = () => el.querySelector('[role="status"]');
+    // The live region is always there, empty while online, so its text is announced when it appears.
+    expect(region()).not.toBeNull();
+    expect(region()?.textContent?.trim()).toBe('');
 
     online.set(false);
     fixture.detectChanges();
-    const banner = el.querySelector('[role="status"]');
-    expect(banner?.textContent?.trim()).toBe('You are offline. Changes will not be saved until the connection is back.');
+    expect(region()?.textContent?.trim()).toBe('You are offline. Changes will not be saved until the connection is back.');
 
     online.set(true);
     fixture.detectChanges();
-    expect(el.querySelector('[role="status"]')).toBeNull();
+    expect(region()?.textContent?.trim()).toBe('');
   });
 });

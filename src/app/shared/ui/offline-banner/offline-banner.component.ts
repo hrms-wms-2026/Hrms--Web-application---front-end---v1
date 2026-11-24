@@ -8,15 +8,14 @@ import { NetworkStatusService } from '../../../core/network/network-status.servi
 @Component({
   selector: 'app-offline-banner',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `@if (!network.online()) {
-    <p class="offline-banner" role="status">You are offline. Changes will not be saved until the connection is back.</p>
-  }`,
+  // The live region is always in the page so screen readers announce the text when it appears.
+  template: `<div role="status">
+    @if (!network.online()) {
+      <p class="offline-banner">You are offline. Changes will not be saved until the connection is back.</p>
+    }
+  </div>`,
   styles: `
     .offline-banner {
-      position: fixed;
-      inset-inline: 0;
-      top: 0;
-      z-index: 1000;
       margin: 0;
       padding: 0.375rem 1rem;
       text-align: center;

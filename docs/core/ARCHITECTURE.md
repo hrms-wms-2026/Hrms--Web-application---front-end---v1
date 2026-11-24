@@ -1392,7 +1392,7 @@ export class EmployeeListPageComponent {
 > **Rule:** All four states (loading, error, empty, data) are mandatory for any list or detail page. Missing any one will show blank screens in production.
 
 
-**Field errors from the server (task 20).** When a save fails with a 400, keep the `ApiError` in the store (`saveApiError`) and call `applyServerFieldErrors(form, apiError)`. Each message lands on its control as a `server` error, which `fieldError()` shows as it is; a message with no matching control is returned for a form-level toast. See `modules/organization/feature/general-settings` for the reference use.
+**Field errors from the server (task 20).** When a save fails with a 400, keep the `ApiError` in the store (`saveApiError`) and call `applyServerFieldErrors(form, apiError)`. Each message lands on its control as a `server` error, which `fieldError()` shows as it is; a message with no matching (or a disabled) control is returned for a form-level toast. The `server` error stays until the user edits that control, so a cross-field problem keeps submit blocked until one of its fields changes. See `modules/organization/feature/general-settings` for the reference use.
 
 ### 7.5 Circuit Breaker
 

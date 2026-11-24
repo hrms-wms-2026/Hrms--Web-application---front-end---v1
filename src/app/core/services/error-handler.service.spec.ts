@@ -208,4 +208,9 @@ describe('ErrorHandlerService & Safe Error Mapper', () => {
       expect(lastToast()).toBe('You do not have access to perform this action.');
     });
   });
+
+  it('shows a long rate-limit wait in minutes', () => {
+    TestBed.inject(ErrorHandlerService).handle(new HttpErrorResponse({ status: 429, headers: new HttpHeaders({ 'Retry-After': '900' }) }));
+    expect(TestBed.inject(NotificationService).notifications().at(-1)?.message).toBe('Too many requests. Please wait 15 minutes and try again.');
+  });
 });

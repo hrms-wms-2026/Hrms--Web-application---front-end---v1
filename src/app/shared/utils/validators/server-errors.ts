@@ -19,7 +19,8 @@ export function applyServerFieldErrors(form: FormGroup, apiError: ApiError): str
     const message = messages[0];
     if (!message) continue;
     const control = form.get(controlNameFor(key));
-    if (control) {
+    // A disabled control shows no error, so its message goes to the form level instead.
+    if (control?.enabled) {
       control.setErrors({ ...(control.errors ?? {}), server: { message } });
       control.markAsTouched();
     } else {

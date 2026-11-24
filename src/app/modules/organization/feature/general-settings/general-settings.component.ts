@@ -239,6 +239,8 @@ export class GeneralSettingsComponent {
       } else {
         // Field errors from a 400 go next to their fields; anything left over is the toast.
         const apiError = this.settingsStore.saveApiError();
+        // The error handler already toasted a server or network failure, with its reference.
+        if (apiError && (apiError.kind === 'server' || apiError.kind === 'network')) return;
         const formLevel = apiError ? applyServerFieldErrors(this.form, apiError) : null;
         const hasFieldErrors = !!apiError && Object.keys(apiError.fieldErrors).length > 0;
         this.notificationService.error(formLevel ?? (hasFieldErrors ? 'Please check the highlighted fields.' : this.settingsStore.saveError() ?? 'Failed to save General Settings.'));

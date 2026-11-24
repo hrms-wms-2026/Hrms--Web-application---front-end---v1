@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { LoggerService } from '../services/logger.service';
 import { GlobalErrorHandler } from './global-error-handler';
@@ -38,5 +39,18 @@ describe('GlobalErrorHandler', () => {
     });
     expect(() => handler.handleError(new Error('boom'))).not.toThrow();
     consoleSpy.mockRestore();
+  });
+
+  it('does not report a failed request again, because the error interceptor already did', () => {
+    const error = vi.fn();
+    setup({ error }).handleError(new HttpErrorResponse({ status: 500 }));
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it('keeps the raw error in the report', () => {
+    const error = vi.fn();
+    const boom = new Error('boom');
+    setup({ error }).handleError(boom);
+    expect((error.mock.calls[0] as [string, Record<string, unknown>])[1]['error']).toBe(boom);
   });
 });

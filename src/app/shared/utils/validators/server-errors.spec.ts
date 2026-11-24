@@ -41,4 +41,11 @@ describe('applyServerFieldErrors', () => {
   it('shows the server text as it is', () => {
     expect(validationMessage({ server: { message: 'Already used.' } }, 'Code')).toBe('Already used.');
   });
+
+  it('returns the message for a disabled control, which cannot show it', () => {
+    const f = new FormGroup({ defaultLanguage: new FormControl({ value: 'en-US', disabled: true }) });
+    expect(applyServerFieldErrors(f, badRequest({ DefaultLanguage: ['Default language must be 10 characters or fewer.'] }))).toBe(
+      'Default language must be 10 characters or fewer.',
+    );
+  });
 });
