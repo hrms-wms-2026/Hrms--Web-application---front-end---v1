@@ -61,3 +61,4 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat â€
 ## Added 2026-11-23
 
 - `2026-11-23-shared-form-validation.md` - status: done, in review. Improvements task 24 (Person 4): shared validators, one message map, `<app-field-error>`, per-domain limits that mirror the backend validators, and three forms moved (department, leave type, leave request).
+- `2026-11-24-error-handling-standard.md` - status: done, in review. Improvements task 20 (Person 4): `ApiError`/`toApiError`, correlation id on server-error toasts, 429 wait time, server field errors (general settings), offline banner, global error handler. Built on today's backend bodies; provisional until backend task 24.

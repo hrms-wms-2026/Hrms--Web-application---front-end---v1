@@ -83,3 +83,4 @@ Layout and rules: see `../rules/FILE_CREATION_RULES.md`.
 | WM Project Network View Implementation Plan | `finished/2026-10-19/2026-10-19-wm-project-network-view.md` | finished |  |
 | Attendance Late/Early Deductions Implementation Plan | `finished/2026-10-20/2026-10-20-attendance-late-early-deductions.md` | finished |  |
 | Shared Form Validation Rules (Improvements task 24) | `next/2026-11-23-shared-form-validation.md` | done, in review | 3 forms moved; remaining forms listed in the task file |
+| One Error Handling Standard (Improvements task 20) | `next/2026-11-24-error-handling-standard.md` | done, in review | provisional until backend task 24 lands |

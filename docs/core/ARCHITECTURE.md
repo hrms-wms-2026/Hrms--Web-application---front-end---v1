@@ -1310,69 +1310,28 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style
 
 > This section was added in v2. The v1 error interceptor only handled basic 401/403/500. The full taxonomy, refresh-retry flow, and retry backoff are now required.
 
-### 7.1 Error Taxonomy — HTTP Code → User Action Mapping
+### 7.1 Error Taxonomy — HTTP Code → User Action Mapping (updated 2026-11-24, Improvements task 20)
 
-All HTTP error codes must map to exactly one action. This table is the source of truth for `ErrorHandlerService`.
+Every failed request maps to one action. The code is the source of truth: `core/services/error-handler.service.ts` (toasts), `core/interceptors/error.interceptor.ts` (session handling) and `core/errors/api-error.ts` (`toApiError`).
 
-| HTTP Code | User Message | Behaviour | Telemetry Event |
-|---|---|---|---|
-| `401` | *(session ended)* | No retry (no refresh token) → redirect to login with return path | `auth_session_expired` |
-| `403` | "You don't have access to this." | Banner notification | `auth_forbidden` |
-| `404` | "This record no longer exists." | Inline message | `resource_not_found` |
-| `409` | "This record was just updated by someone else. Please refresh." | Inline message | `data_conflict` |
-| `422` | "Please check the highlighted fields." | Inline (form errors) | `validation_error` |
-| `429` | "Too many requests. Please wait a moment." | Banner notification | `rate_limited` |
-| `500` | "Something went wrong. Please try again." | Banner notification | `server_error` |
-| `503` | "Service temporarily unavailable." | Banner notification | `service_unavailable` |
-| `0` / offline | "You appear to be offline." | Persistent banner | `network_offline` |
+| Status | What the user sees | Who shows it |
+|---|---|---|
+| `400` / `422` with field errors | Each message next to its field (`applyServerFieldErrors`). Otherwise the first message as text | The form |
+| `401` | Nothing: session cleared, sent to login (no refresh token) | Interceptor |
+| `403` CSRF / tenant mismatch | Nothing: session cleared, sent to login | Interceptor |
+| `403` | "You do not have access…" toast. A screen with its own access state uses `SILENT_HTTP_ERRORS` and shows `shared/ui/error-state` instead | Error handler / the screen |
+| `404` | Empty or not-found state | The screen |
+| `409` / `422` | The backend message, which is written for users | The screen |
+| `428` `active_tray_required` | Tray presence prompt | Interceptor |
+| `429` | "Too many requests. Please wait N seconds and try again." when `Retry-After` is readable, else "…wait a moment." | Error handler |
+| `5xx` | One toast ending in `Reference: <correlation id>` | Error handler |
+| `0` (network) | A toast, or nothing while the offline banner shows | Error handler / `app-offline-banner` |
 
-```typescript
-// core/services/error-handler.service.ts
-import { Injectable, inject } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
-import { NotificationService } from './notification.service';
-import { LoggerService } from './logger.service';
-
-interface ErrorAction {
-  userMessage: string;
-  behaviour: 'redirect' | 'banner' | 'inline' | 'silent';
-  telemetryEvent: string;
-}
-
-const ERROR_TAXONOMY: Record<number | string, ErrorAction> = {
-  401:     { userMessage: '',                                                              behaviour: 'silent', telemetryEvent: 'auth_session_expired' },
-  403:     { userMessage: "You don't have access to this.",                               behaviour: 'banner', telemetryEvent: 'auth_forbidden' },
-  404:     { userMessage: 'This record no longer exists.',                                behaviour: 'inline', telemetryEvent: 'resource_not_found' },
-  409:     { userMessage: 'This record was just updated by someone else. Please refresh.', behaviour: 'inline', telemetryEvent: 'data_conflict' },
-  422:     { userMessage: 'Please check the highlighted fields.',                         behaviour: 'inline', telemetryEvent: 'validation_error' },
-  429:     { userMessage: 'Too many requests. Please wait a moment.',                     behaviour: 'banner', telemetryEvent: 'rate_limited' },
-  500:     { userMessage: 'Something went wrong. Please try again.',                      behaviour: 'banner', telemetryEvent: 'server_error' },
-  503:     { userMessage: 'Service temporarily unavailable.',                             behaviour: 'banner', telemetryEvent: 'service_unavailable' },
-  offline: { userMessage: 'You appear to be offline.',                                    behaviour: 'banner', telemetryEvent: 'network_offline' },
-};
-
-@Injectable({ providedIn: 'root' })
-export class ErrorHandlerService {
-  private notify = inject(NotificationService);
-  private logger = inject(LoggerService);
-
-  handle(error: HttpErrorResponse): void {
-    const key = error.status === 0 ? 'offline' : error.status;
-    const action = ERROR_TAXONOMY[key] ?? {
-      userMessage: 'An unexpected error occurred.',
-      behaviour: 'banner',
-      telemetryEvent: 'unknown_error'
-    };
-
-    this.logger.error(`[HTTP ${error.status}]`, { url: error.url, event: action.telemetryEvent });
-
-    if (action.behaviour === 'banner') {
-      this.notify.error(action.userMessage);
-    }
-    // 'inline' and 'silent' behaviours are handled by the component / interceptor respectively
-  }
-}
-```
+Rules:
+- **Read errors through `toApiError(err)`.** It gives `status`, `kind`, `code`, a safe `message` (same text as `toSafeErrorMessage`), `fieldErrors`, `correlationId` and `retryAfterSeconds`. The thrown value stays an `HttpErrorResponse`.
+- **React to `code`, not to message text.** Backend task 24 adds a stable `code` to every error the frontend must react to; until it lands only some errors carry one (for example `active_tray_required`, planner and dashboard-layout codes). The body shape is provisional until then.
+- **The correlation id** is the request's own `X-Correlation-ID`, recorded by the error interceptor, so it is known even when the body lacks it.
+- **Client errors** (thrown in code, unhandled rejections) go to `GlobalErrorHandler`, which logs them through `LoggerService` with a client error id. `LOG_SINK` is where a remote log target plugs in once backend task 17 picks one.
 
 ### 7.2 Retry Logic with Exponential Backoff
 
@@ -1431,6 +1390,9 @@ export class EmployeeListPageComponent {
 ```
 
 > **Rule:** All four states (loading, error, empty, data) are mandatory for any list or detail page. Missing any one will show blank screens in production.
+
+
+**Field errors from the server (task 20).** When a save fails with a 400, keep the `ApiError` in the store (`saveApiError`) and call `applyServerFieldErrors(form, apiError)`. Each message lands on its control as a `server` error, which `fieldError()` shows as it is; a message with no matching control is returned for a form-level toast. See `modules/organization/feature/general-settings` for the reference use.
 
 ### 7.5 Circuit Breaker
 
