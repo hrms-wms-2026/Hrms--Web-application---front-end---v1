@@ -163,6 +163,16 @@ export interface ClockInDefaults {
   readonly locationCapture: boolean;
 }
 
+/** Finalize messageKey when the draft was the signed-in user's own: profile created, seat active, no invitation. */
+export const SELF_EMPLOYEE_CREATED = 'onboarding.finalize.self_employee_created';
+
+/** Identity the Add Employee wizard is prefilled with in "Add yourself as an employee" mode. */
+export interface SelfPrefill {
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly workEmail: string;
+}
+
 export interface FinalizeOnboardingDraftResponse {
   readonly draftId: string;
   readonly employeeId: string | null;

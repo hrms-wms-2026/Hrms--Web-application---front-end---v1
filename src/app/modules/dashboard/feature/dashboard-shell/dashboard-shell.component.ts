@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { breakpointForWidth, injectBreakpoint } from '../../grid/breakpoint';
@@ -8,6 +8,8 @@ import { DashboardStore } from '../../state/dashboard.store';
 import { DashboardGridComponent, GridReorderEvent, GridResizeEvent, PinnedSize } from '../../ui/dashboard-grid/dashboard-grid.component';
 import { DashboardSkeletonComponent } from '../../ui/dashboard-skeleton/dashboard-skeleton.component';
 import { QuickActionsCardComponent } from '../quick-actions-card/quick-actions-card.component';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { NoEmployeeProfilePanelComponent } from '../no-employee-profile-panel/no-employee-profile-panel.component';
 import { WidgetStoreDrawerComponent } from '../widget-store-drawer/widget-store-drawer.component';
 
 /** localStorage key prefixes written by the pre-server-side customize implementation; cleared once. */
@@ -42,13 +44,16 @@ function clearLegacyDashboardStorage(): void {
   selector: 'app-dashboard-shell',
   standalone: true,
   providers: [DashboardStore],
-  imports: [DashboardGridComponent, WidgetStoreDrawerComponent, ConfirmModalComponent, DashboardSkeletonComponent, QuickActionsCardComponent],
+  imports: [DashboardGridComponent, WidgetStoreDrawerComponent, ConfirmModalComponent, DashboardSkeletonComponent, QuickActionsCardComponent, NoEmployeeProfilePanelComponent],
   host: { class: 'block', '[class.dashboard-shell--team]': "dashboardKey() === 'my-team'", '(document:keydown.escape)': 'onEscape($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let boot = store.bootstrap();
     <div class="flex flex-col gap-3" data-testid="dashboard-shell">
-      @if (boot) {
+      @if (noEmployeeProfile()) {
+        <!-- My Work is all about your own work; without an employee profile every widget would fail. -->
+        <app-no-employee-profile-panel (profileCreated)="onProfileCreated()" />
+      } @else if (boot) {
         <app-dashboard-grid
           [widgets]="store.visibleWidgets()"
           [columns]="boot.grid.columns"
@@ -144,6 +149,12 @@ export class DashboardShellComponent {
   readonly dashboardKey = input.required<DashboardKey>();
 
   protected readonly store = inject(DashboardStore);
+  private readonly auth = inject(AuthStore);
+
+  /** Signed in, on My Work, with no employee profile (e.g. a company owner who has not added themselves). */
+  protected readonly noEmployeeProfile = computed(
+    () => this.dashboardKey() === 'my-work' && this.auth.authenticated() && this.auth.employeeId() === null
+  );
   private readonly pageToolbar = inject(PageToolbarService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly breakpoint = injectBreakpoint(this.host);
@@ -163,7 +174,7 @@ export class DashboardShellComponent {
     // render, reading the real width then. Later breakpoint changes are forwarded to the store.
     afterNextRender(() => {
       void this.store.setBreakpoint(breakpointForWidth(this.host.nativeElement.clientWidth));
-      void this.store.load(this.dashboardKey());
+      if (!this.noEmployeeProfile()) void this.store.load(this.dashboardKey());
       this.measured.set(true);
     });
 
@@ -198,6 +209,11 @@ export class DashboardShellComponent {
       this.store.dispose();
       this.pageToolbar.clear();
     });
+  }
+
+  /** The no-profile panel created the user's employee profile: load the normal dashboard now. */
+  protected onProfileCreated(): void {
+    void this.store.load(this.dashboardKey());
   }
 
   /** Loads the dashboard again (hosts call this from their "Try again" button). */
