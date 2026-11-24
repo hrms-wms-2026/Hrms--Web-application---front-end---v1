@@ -38,4 +38,10 @@ In progress: frontend done, waiting for the backend event. Branch `chore/shared-
 - Polls moved to `ClockService.poll()`, so they stop while the tab is hidden and refresh once when it is back: planner leave layer, attendance detail drawer, notification bell.
 - `setInterval(` search in `src/app` (not specs): only `core/clock/clock.service.ts` and the two real animations (`wellbeing-carousel-card`, `landing-feature-tabs`).
 - Notification push: the frontend listens for `notificationsChanged` on `InboxHub` and refreshes the bell straight away (also after a reconnect). Waiting for the backend to send that event. Plan Task 11 then slows the bell's poll to a fallback.
-- Not done yet: the manual browser check (plan Task 10 step 5).
+- Browser check (plan Task 10 step 5) done on 2026-11-24 in Chrome, dapi tenant, home and My Team dashboards, local API:
+  - `ClockService` showed 8 minute readers, no second readers, one minute timer, no second timer and one 60 s poll (the bell). No other `setInterval` started over 10 s, or when moving to My Team with its five team cards.
+  - The today at a glance now label moved from 11:46 to 11:47 on the wall-clock minute.
+  - Hidden for 5 minutes (simulated with `visibilityState` = hidden plus a `visibilitychange` event, because the browser tool could not switch Chrome tabs): both clock timers and the bell poll stopped. No call went to `/notifications/unread-count`, `/leave-requests` or attendance day detail. Only the tray presence status call (`/monitoring/activation/status`, every 5 s while the tray is not connected) kept running, which is the open question in the plan.
+  - Back to visible: one `/notifications/unread-count` and one refresh of each visible card, then the minute timer and bell poll restarted.
+  - No console errors.
+  - Not checked: the bell refreshing on a hub push, because the backend does not send `notificationsChanged` yet.
