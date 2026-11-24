@@ -143,6 +143,16 @@ describe('errorInterceptor', () => {
     expect(notify.notifications()).toHaveLength(0);
   });
 
+  it('does not show an error for the Leave screens wording of the no-employee-profile response', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.get('/api/v1/leave/requests').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/v1/leave/requests')
+      .flush({ detail: 'No employee record is linked to the current user.' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(notify.notifications()).toHaveLength(0);
+  });
+
   it('still shows other 403s', () => {
     const notify = TestBed.inject(NotificationService);
 
