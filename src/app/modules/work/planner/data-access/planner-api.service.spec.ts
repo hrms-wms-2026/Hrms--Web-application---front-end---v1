@@ -82,4 +82,10 @@ describe('PlannerApiService', () => {
     }
     expect(plannerErrorMessage('planner_block_overlap')).toBe('This overlaps another planned block.');
   });
+
+  it('explains a missing employee profile instead of the generic not-found copy', () => {
+    expect(plannerErrorMessage('planner_no_employee_profile'))
+      .toBe('Your account has no employee profile yet. Ask HR to link one.');
+    expect(plannerErrorMessage('planner_no_employee_profile')).not.toBe(plannerErrorMessage('planner_not_found'));
+  });
 });

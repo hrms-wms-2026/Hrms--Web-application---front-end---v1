@@ -9,6 +9,8 @@ const MESSAGES: Record<string, string> = {
   planner_task_not_plannable: 'Only a task assigned to you can be planned.',
   planner_invalid_time: 'A block lasts at least 15 minutes.',
   planner_not_found: 'This plan is not available.',
+  /** The signed-in account has no employee profile in this organization (e.g. an admin-only login). */
+  planner_no_employee_profile: 'Your account has no employee profile yet. Ask HR to link one.',
 };
 
 /** Copy for a planner ProblemDetails `code` (backend PlannerErrorCodes). */
