@@ -11,28 +11,33 @@ import { FileApiService } from '../../shared/data-access/file-api.service';
 import { MyProfile } from '@modules/profile/models/profile.model';
 
 /** The planner probe is a real HTTP call in the layout; these specs are not about it. */
-const plannerAvailabilityStub = { probe: () => Promise.resolve(), state: () => 'off' as const, markAvailable: () => undefined };
+const plannerAvailabilityStub = {
+  probe: () => Promise.resolve(),
+  state: () => 'off' as const,
+  markAvailable: () => undefined,
+};
 
 const authStoreStub = {
   email: () => 'asha@onevo.test',
   authenticated: () => true,
   permissions: () => [] as string[],
-  activeModules: () => [] as string[]
+  activeModules: () => [] as string[],
+  employeeId: () => 'emp-1',
 };
 
 const connectedTrayPresenceStub = {
   start: () => undefined,
   canRenderProtectedContent: () => true,
-  isBlocking: () => false
+  isBlocking: () => false,
 };
 
 const emptyProfileStoreStub = {
   profile: signal<MyProfile | null>(null),
-  loadProfile: vi.fn()
+  loadProfile: vi.fn(),
 };
 
 const fileApiStub = {
-  getFileUrl: (fileId: string) => `https://api.test/files/${fileId}`
+  getFileUrl: (fileId: string) => `https://api.test/files/${fileId}`,
 };
 
 @Component({ standalone: true, template: '' })
@@ -40,8 +45,12 @@ class BlankRouteComponent {}
 
 function authStoreWith(permissions: string[], activeModules: string[]) {
   return {
-    email: () => 'asha@onevo.test', authenticated: () => true, permissions: () => permissions, activeModules: () => activeModules,
-    managesPeople: () => false
+    email: () => 'asha@onevo.test',
+    authenticated: () => true,
+    permissions: () => permissions,
+    activeModules: () => activeModules,
+    managesPeople: () => false,
+    employeeId: () => 'emp-1',
   };
 }
 
@@ -55,8 +64,8 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -79,8 +88,8 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -90,7 +99,9 @@ describe('MainLayoutComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('asha@onevo.test');
 
     // Click profile avatar button to open popover
-    const trigger = fixture.nativeElement.querySelector('.profile-menu-trigger') as HTMLButtonElement;
+    const trigger = fixture.nativeElement.querySelector(
+      '.profile-menu-trigger',
+    ) as HTMLButtonElement;
     expect(trigger).toBeTruthy();
     trigger.click();
     fixture.detectChanges();
@@ -101,7 +112,7 @@ describe('MainLayoutComponent', () => {
 
   it('passes the profile photo URL and name from ProfileStore down to the top navbar profile popover', async () => {
     const profile = {
-      personalInformation: { firstName: 'Asha', lastName: 'Kumar', avatarFileId: 'file-77' }
+      personalInformation: { firstName: 'Asha', lastName: 'Kumar', avatarFileId: 'file-77' },
     } as MyProfile;
 
     await TestBed.configureTestingModule({
@@ -111,15 +122,20 @@ describe('MainLayoutComponent', () => {
         { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
-        { provide: ProfileStore, useValue: { profile: signal<MyProfile | null>(profile), loadProfile: vi.fn() } },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        {
+          provide: ProfileStore,
+          useValue: { profile: signal<MyProfile | null>(profile), loadProfile: vi.fn() },
+        },
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
     fixture.detectChanges();
 
-    const trigger = fixture.nativeElement.querySelector('.profile-menu-trigger') as HTMLButtonElement;
+    const trigger = fixture.nativeElement.querySelector(
+      '.profile-menu-trigger',
+    ) as HTMLButtonElement;
     trigger.click();
     fixture.detectChanges();
 
@@ -140,8 +156,8 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -152,6 +168,25 @@ describe('MainLayoutComponent', () => {
     expect(container.querySelector('app-toast-host')).toBeTruthy();
   });
 
+  it('mounts the owner setup guide on every page', async () => {
+    await TestBed.configureTestingModule({
+      imports: [MainLayoutComponent],
+      providers: [
+        provideRouter([]),
+        { provide: PlannerAvailabilityService, useValue: plannerAvailabilityStub },
+        { provide: AuthStore, useValue: authStoreStub },
+        { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
+        { provide: ProfileStore, useValue: emptyProfileStoreStub },
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(MainLayoutComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-owner-setup-guide')).toBeTruthy();
+  });
+
   it('hides the sub-sidebar when only one Settings page is permitted', async () => {
     await TestBed.configureTestingModule({
       imports: [MainLayoutComponent],
@@ -160,8 +195,8 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreWith(['roles:manage'], []) },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -172,7 +207,7 @@ describe('MainLayoutComponent', () => {
     fixture.detectChanges();
 
     const subLinks = Array.from(fixture.nativeElement.querySelectorAll('app-sub-sidebar a')).map(
-      (el) => (el as HTMLElement).textContent
+      (el) => (el as HTMLElement).textContent,
     );
     expect(subLinks).toEqual([]);
     expect(fixture.nativeElement.querySelector('app-sub-sidebar')).toBeNull();
@@ -186,8 +221,8 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -198,13 +233,13 @@ describe('MainLayoutComponent', () => {
     fixture.detectChanges();
 
     const subLinks = Array.from(fixture.nativeElement.querySelectorAll('app-sub-sidebar a')).map(
-      (el) => (el as HTMLElement).textContent
+      (el) => (el as HTMLElement).textContent,
     );
     expect(subLinks).toEqual(['Departments', 'Positions']);
     // The People section is filtered out entirely (no core_hr), so only the Organization title shows.
-    const titles = Array.from(fixture.nativeElement.querySelectorAll('app-sub-sidebar .sub-sidebar__section-title')).map(
-      (el) => (el as HTMLElement).textContent
-    );
+    const titles = Array.from(
+      fixture.nativeElement.querySelectorAll('app-sub-sidebar .sub-sidebar__section-title'),
+    ).map((el) => (el as HTMLElement).textContent);
     expect(titles).toEqual(['Organization']);
   });
 
@@ -213,11 +248,17 @@ describe('MainLayoutComponent', () => {
       imports: [MainLayoutComponent],
       providers: [
         provideRouter([{ path: '**', component: BlankRouteComponent }]),
-        { provide: AuthStore, useValue: authStoreWith(['org:read', 'employees:write', 'checklists:manage'], ['org_structure', 'core_hr']) },
+        {
+          provide: AuthStore,
+          useValue: authStoreWith(
+            ['org:read', 'employees:write', 'checklists:manage'],
+            ['org_structure', 'core_hr'],
+          ),
+        },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -227,15 +268,19 @@ describe('MainLayoutComponent', () => {
     await router.navigateByUrl('/people/employees');
     fixture.detectChanges();
 
-    const sections = Array.from(fixture.nativeElement.querySelectorAll('app-sub-sidebar .sub-sidebar__section')).map((section) => ({
+    const sections = Array.from(
+      fixture.nativeElement.querySelectorAll('app-sub-sidebar .sub-sidebar__section'),
+    ).map((section) => ({
       title: (section as HTMLElement).querySelector('.sub-sidebar__section-title')?.textContent,
-      links: Array.from((section as HTMLElement).querySelectorAll('a')).map((a) => a.textContent)
+      links: Array.from((section as HTMLElement).querySelectorAll('a')).map((a) => a.textContent),
     }));
     expect(sections).toEqual([
       { title: 'Organization', links: ['Departments', 'Positions'] },
-      { title: 'People', links: ['Employees', 'Checklists', 'Offboarding'] }
+      { title: 'People', links: ['Employees', 'Checklists', 'Offboarding'] },
     ]);
-    expect(fixture.nativeElement.querySelector('app-sub-sidebar .sub-sidebar__heading')?.textContent).toBe('Org');
+    expect(
+      fixture.nativeElement.querySelector('app-sub-sidebar .sub-sidebar__heading')?.textContent,
+    ).toBe('Org');
   });
 
   it('renders no sub-sidebar when the active item has no permitted children', async () => {
@@ -246,8 +291,8 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreStub },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
@@ -265,8 +310,8 @@ describe('MainLayoutComponent', () => {
         { provide: AuthStore, useValue: authStoreWith(['org:read'], ['org_structure']) },
         { provide: TrayPresenceStore, useValue: connectedTrayPresenceStub },
         { provide: ProfileStore, useValue: emptyProfileStoreStub },
-        { provide: FileApiService, useValue: fileApiStub }
-      ]
+        { provide: FileApiService, useValue: fileApiStub },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(MainLayoutComponent);
