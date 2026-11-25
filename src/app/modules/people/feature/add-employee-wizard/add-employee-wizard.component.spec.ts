@@ -1847,6 +1847,60 @@ describe('AddEmployeeWizardComponent', () => {
     expect(closedSpy).toHaveBeenCalled();
     expect(router.navigate).not.toHaveBeenCalled();
   });
+
+  describe('self mode ("Add yourself as an employee")', () => {
+    const selfResponse = {
+      draftId: 'draft-self', employeeId: 'emp-self', status: 'finalized', draftReason: null,
+      invitationQueued: false, positionApprovalPending: false, checklistTasksCreated: false,
+      messageKey: 'onboarding.finalize.self_employee_created'
+    };
+
+    it('prefills names and email from selfPrefill and locks the email', async () => {
+      await setupWithCompany();
+
+      fixture.componentRef.setInput('selfPrefill', { firstName: 'Ada', lastName: 'Owner', workEmail: 'ada@acme.test' });
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const form = fixture.componentInstance.form;
+      expect(form.getRawValue().firstName).toBe('Ada');
+      expect(form.getRawValue().lastName).toBe('Owner');
+      expect(form.getRawValue().workEmail).toBe('ada@acme.test');
+      expect(form.controls.workEmail.disabled).toBe(true);
+    });
+
+    it('keeps the locked email in the draft after another field is edited', async () => {
+      await setupWithCompany();
+      fixture.componentRef.setInput('selfPrefill', { firstName: 'Ada', lastName: 'Owner', workEmail: 'ada@acme.test' });
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      fixture.componentInstance.form.controls.lastName.setValue('Owner-Smith');
+
+      expect(fixture.componentInstance.store.formValue().workEmail).toBe('ada@acme.test');
+    });
+
+    it('says "You\'re set up as an employee" after a self finalize and does not leave the page', async () => {
+      await setupWithCompany();
+      const router = TestBed.inject(Router);
+      const navigate = vi.spyOn(router, 'navigate');
+
+      await fixture.componentInstance.applyFinalizeResponse(selfResponse, 'draft-self');
+
+      expect(notificationService.success).toHaveBeenCalledWith("You're set up as an employee");
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('emits saved with self: true after a self finalize', async () => {
+      await setupWithCompany();
+      const savedSpy = vi.fn();
+      fixture.componentInstance.saved.subscribe(savedSpy);
+
+      await fixture.componentInstance.applyFinalizeResponse(selfResponse, 'draft-self');
+
+      expect(savedSpy).toHaveBeenCalledWith({ finalized: true, draftId: 'draft-self', self: true });
+    });
+  });
 });
 
 function todayDateOnly(): string {

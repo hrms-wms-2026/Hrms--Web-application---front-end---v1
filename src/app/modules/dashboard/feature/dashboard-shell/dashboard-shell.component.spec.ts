@@ -1,4 +1,4 @@
-import { Component, signal, viewChild } from '@angular/core';
+import { Component, output, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
@@ -10,9 +10,25 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { PageToolbarComponent } from '../../../../shared/ui/page-toolbar/page-toolbar.component';
 import { DashboardLayoutApiService } from '../../data-access/dashboard-layout-api.service';
-import { AvailableWidget, BootstrapWidget, DashboardBootstrap } from '../../models/dashboard-layout.model';
+import {
+  AvailableWidget,
+  BootstrapWidget,
+  DashboardBootstrap,
+} from '../../models/dashboard-layout.model';
 import { DashboardStore } from '../../state/dashboard.store';
 import { DashboardShellComponent } from './dashboard-shell.component';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { DashboardKey } from '../../models/dashboard-layout.model';
+import { NoEmployeeProfilePanelComponent } from '../no-employee-profile-panel/no-employee-profile-panel.component';
+
+@Component({
+  selector: 'app-no-employee-profile-panel',
+  standalone: true,
+  template: '<p data-testid="no-employee-profile-panel">panel</p>',
+})
+class PanelStubComponent {
+  readonly profileCreated = output<void>();
+}
 
 function widget(id: string, key: string, layout = { x: 0, y: 0, w: 4, h: 2 }): BootstrapWidget {
   return {
@@ -22,7 +38,7 @@ function widget(id: string, key: string, layout = { x: 0, y: 0, w: 4, h: 2 }): B
     layout,
     size: { minW: 2, minH: 1, maxW: 12, maxH: 6 },
     dataState: { status: 'success', fetchedAt: null, error: null },
-    data: null
+    data: null,
   };
 }
 
@@ -36,7 +52,7 @@ function boot(over: Partial<DashboardBootstrap> = {}): DashboardBootstrap {
     widgets: [widget('w1', 'alpha')],
     hasAllowedGatedWidgets: true,
     capabilitiesUnavailable: false,
-    ...over
+    ...over,
   };
 }
 
@@ -49,7 +65,7 @@ function avail(key: string, over: Partial<AvailableWidget> = {}): AvailableWidge
     defaultW: 4,
     defaultH: 2,
     placed: false,
-    ...over
+    ...over,
   };
 }
 
@@ -58,53 +74,90 @@ function avail(key: string, over: Partial<AvailableWidget> = {}): AvailableWidge
   imports: [DashboardShellComponent, PageToolbarComponent],
   template: `
     <app-page-toolbar />
-    <app-dashboard-shell dashboardKey="my-team">
+    <app-dashboard-shell [dashboardKey]="key()">
       <p emptyState data-testid="slot-empty">empty slot</p>
       <p retryState data-testid="slot-retry">retry slot</p>
     </app-dashboard-shell>
-  `
+  `,
 })
 class HostComponent {
+  readonly key = signal<DashboardKey>('my-team');
   readonly shell = viewChild.required(DashboardShellComponent);
 }
 
-function setup(opts: { bootstrap?: DashboardBootstrap; available?: AvailableWidget[]; widthSequence?: number[] } = {}) {
+function setup(
+  opts: {
+    bootstrap?: DashboardBootstrap;
+    available?: AvailableWidget[];
+    widthSequence?: number[];
+    key?: DashboardKey;
+    employeeId?: string | null;
+  } = {},
+) {
+  const auth = {
+    authenticated: signal(true),
+    employeeId: signal<string | null>(opts.employeeId === undefined ? 'emp-1' : opts.employeeId),
+  };
   const api = {
-    listMine: vi.fn(() => of([{ id: 'd1', key: 'my-team', title: 'x', layoutVersion: 3 }])),
+    listMine: vi.fn(() =>
+      of([{ id: 'd1', key: opts.key ?? 'my-team', title: 'x', layoutVersion: 3 }]),
+    ),
     bootstrap: vi.fn(() => of(opts.bootstrap ?? boot())),
     available: vi.fn(() => of(opts.available ?? [avail('beta'), avail('gamma')])),
     widgetData: vi.fn(() => of()),
     addWidget: vi.fn(),
     removeWidget: vi.fn(),
     saveLayout: vi.fn(() => of({ layoutVersion: 4 })),
-    reset: vi.fn(() => of({ layoutVersion: 4 }))
+    reset: vi.fn(() => of({ layoutVersion: 4 })),
   };
   // First clientWidth read (the provisional one in the constructor) is mobile; later reads are the real, desktop width.
   const widths = [...(opts.widthSequence ?? [0])];
   let reads = 0;
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
     configurable: true,
-    get: () => (reads++ < widths.length ? widths[reads - 1] : 1300)
+    get: () => (reads++ < widths.length ? widths[reads - 1] : 1300),
   });
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
-      { provide: TimeTrackingStore, useValue: { today: signal(null), actionLoading: signal(false), activeAction: signal(null), loadToday: vi.fn(), startBreak: vi.fn(), endBreak: vi.fn() } },
-      { provide: PermissionService, useValue: { hasAnyModule: () => true, hasAnyPermission: () => true } },
+      {
+        provide: TimeTrackingStore,
+        useValue: {
+          today: signal(null),
+          actionLoading: signal(false),
+          activeAction: signal(null),
+          loadToday: vi.fn(),
+          startBreak: vi.fn(),
+          endBreak: vi.fn(),
+        },
+      },
+      {
+        provide: PermissionService,
+        useValue: { hasAnyModule: () => true, hasAnyPermission: () => true },
+      },
       { provide: DashboardLayoutApiService, useValue: api },
-      { provide: NotificationService, useValue: { warning: vi.fn(), error: vi.fn(), success: vi.fn() } }
-    ]
+      { provide: AuthStore, useValue: auth },
+      {
+        provide: NotificationService,
+        useValue: { warning: vi.fn(), error: vi.fn(), success: vi.fn() },
+      },
+    ],
+  });
+  TestBed.overrideComponent(DashboardShellComponent, {
+    remove: { imports: [NoEmployeeProfilePanelComponent] },
+    add: { imports: [PanelStubComponent] },
   });
   const fixture = TestBed.createComponent(HostComponent);
+  fixture.componentInstance.key.set(opts.key ?? 'my-team');
   const toolbar = TestBed.inject(PageToolbarService);
-  return { fixture, api, toolbar, el: fixture.nativeElement as HTMLElement };
+  return { fixture, api, toolbar, auth, el: fixture.nativeElement as HTMLElement };
 }
 
 async function ready(fixture: ReturnType<typeof setup>['fixture']) {
   for (let i = 0; i < 4; i++) {
     fixture.detectChanges();
     await fixture.whenStable();
-    await new Promise(resolve => setTimeout(resolve));
+    await new Promise((resolve) => setTimeout(resolve));
   }
   fixture.detectChanges();
 }
@@ -173,8 +226,14 @@ describe('DashboardShellComponent', () => {
   it('pins_quick_actions_to_the_grid_corner_and_packs_widgets_around_it', async () => {
     const pinned = widget('qa', 'team-quick-actions', { x: 8, y: 0, w: 4, h: 4 });
     const ctx = setup({
-      bootstrap: boot({ widgets: [widget('w1', 'alpha', { x: 0, y: 0, w: 8, h: 2 }), pinned, widget('w2', 'beta', { x: 0, y: 2, w: 4, h: 2 })] }),
-      available: [avail('team-quick-actions'), avail('gamma')]
+      bootstrap: boot({
+        widgets: [
+          widget('w1', 'alpha', { x: 0, y: 0, w: 8, h: 2 }),
+          pinned,
+          widget('w2', 'beta', { x: 0, y: 2, w: 4, h: 2 }),
+        ],
+      }),
+      available: [avail('team-quick-actions'), avail('gamma')],
     });
     await ready(ctx.fixture);
     // The card sits in the grid's pinned top-right corner (3 x 1 until it has measured itself).
@@ -185,12 +244,14 @@ describe('DashboardShellComponent', () => {
     // On the My Team dashboard the card links back to My Work.
     expect(card.querySelector('[data-testid="quick-action-my-work"]')).not.toBeNull();
     const cells = Array.from(ctx.el.querySelectorAll<HTMLElement>('[data-instance-id]'));
-    expect(cells.map(c => c.dataset['instanceId'])).toEqual(['w1', 'w2']);
+    expect(cells.map((c) => c.dataset['instanceId'])).toEqual(['w1', 'w2']);
     // beta moves up beside alpha, just under the pinned corner: never under it, and no hole where the old cell was.
     expect(cells[1].style.gridColumn).toBe('9 / span 4');
     expect(cells[1].style.gridRow).toBe('2 / span 2');
-    const store = ctx.fixture.debugElement.query(By.directive(DashboardShellComponent)).injector.get(DashboardStore);
-    expect(store.available().map(a => a.key)).toEqual(['gamma']);
+    const store = ctx.fixture.debugElement
+      .query(By.directive(DashboardShellComponent))
+      .injector.get(DashboardStore);
+    expect(store.available().map((a) => a.key)).toEqual(['gamma']);
   });
 
   it('customize_button_enters_edit_mode', async () => {
@@ -211,7 +272,12 @@ describe('DashboardShellComponent', () => {
     expect(q(ctx.el, 'dashboard-edit-toolbar')).toBeNull();
     expect(ctx.toolbar.action()?.expanded?.()).toBe(true);
     expect(q(ctx.el, 'page-toolbar-open')).toBeNull();
-    for (const id of ['dashboard-add-widget', 'dashboard-reset', 'page-toolbar-close', 'dashboard-save']) {
+    for (const id of [
+      'dashboard-add-widget',
+      'dashboard-reset',
+      'page-toolbar-close',
+      'dashboard-save',
+    ]) {
       expect(q(ctx.el, id)).not.toBeNull();
     }
     expect(q(ctx.el, 'dashboard-add-widget')?.textContent).toContain('Add');
@@ -236,7 +302,13 @@ describe('DashboardShellComponent', () => {
   });
 
   it('drawer_lists_only_available', async () => {
-    const ctx = setup({ available: [avail('alpha', { placed: true }), avail('beta'), avail('gamma', { defaultW: 6, defaultH: 3 })] });
+    const ctx = setup({
+      available: [
+        avail('alpha', { placed: true }),
+        avail('beta'),
+        avail('gamma', { defaultW: 6, defaultH: 3 }),
+      ],
+    });
     await ready(ctx.fixture);
     await enterEdit(ctx);
     click(ctx.el, 'dashboard-add-widget');
@@ -275,7 +347,9 @@ describe('DashboardShellComponent', () => {
     await enterEdit(ctx);
     click(ctx.el, 'dashboard-add-widget');
     ctx.fixture.detectChanges();
-    expect(q(ctx.el, 'widget-store-empty')?.textContent).toContain('All widgets are on your dashboard');
+    expect(q(ctx.el, 'widget-store-empty')?.textContent).toContain(
+      'All widgets are on your dashboard',
+    );
   });
 
   it('reset_requires_confirmation', async () => {
@@ -316,10 +390,18 @@ describe('DashboardShellComponent', () => {
     const ctx = setup();
     await ready(ctx.fixture);
     await enterEdit(ctx);
-    const store = ctx.fixture.debugElement.query(By.directive(DashboardShellComponent)).injector.get(DashboardStore);
-    const handle = ctx.el.querySelector('[data-instance-id="w1"] [data-drag-handle]') as HTMLElement;
-    handle.dispatchEvent(new MouseEvent('pointerdown', { clientX: 0, clientY: 0, bubbles: true, cancelable: true }));
-    document.dispatchEvent(new MouseEvent('pointermove', { clientX: 303, clientY: 0, bubbles: true, cancelable: true }));
+    const store = ctx.fixture.debugElement
+      .query(By.directive(DashboardShellComponent))
+      .injector.get(DashboardStore);
+    const handle = ctx.el.querySelector(
+      '[data-instance-id="w1"] [data-drag-handle]',
+    ) as HTMLElement;
+    handle.dispatchEvent(
+      new MouseEvent('pointerdown', { clientX: 0, clientY: 0, bubbles: true, cancelable: true }),
+    );
+    document.dispatchEvent(
+      new MouseEvent('pointermove', { clientX: 303, clientY: 0, bubbles: true, cancelable: true }),
+    );
     ctx.fixture.detectChanges();
     expect(q(ctx.el, 'grid-ghost')).not.toBeNull();
 
@@ -329,7 +411,7 @@ describe('DashboardShellComponent', () => {
     expect(q(ctx.el, 'grid-ghost')).toBeNull();
     expect(store.editing()).toBe(true);
     expect(q(ctx.el, 'page-toolbar-close')).not.toBeNull();
-    expect(store.draft().map(w => w.instanceId)).toEqual(['w1']);
+    expect(store.draft().map((w) => w.instanceId)).toEqual(['w1']);
 
     // Once the drag is over, Escape cancels editing as before.
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -360,7 +442,9 @@ describe('DashboardShellComponent', () => {
     await enterEdit(ctx);
     const saveBtn = () => q(ctx.el, 'dashboard-save') as HTMLButtonElement;
     expect(saveBtn().disabled).toBe(false);
-    const store = ctx.fixture.debugElement.query(By.directive(DashboardShellComponent)).injector.get(DashboardStore);
+    const store = ctx.fixture.debugElement
+      .query(By.directive(DashboardShellComponent))
+      .injector.get(DashboardStore);
     store.saving.set(true);
     ctx.fixture.detectChanges();
     expect(saveBtn().disabled).toBe(true);
@@ -373,7 +457,9 @@ describe('DashboardShellComponent', () => {
     const ctx = setup();
     await ready(ctx.fixture);
     await enterEdit(ctx);
-    const store = ctx.fixture.debugElement.query(By.directive(DashboardShellComponent)).injector.get(DashboardStore);
+    const store = ctx.fixture.debugElement
+      .query(By.directive(DashboardShellComponent))
+      .injector.get(DashboardStore);
     store.saving.set(true);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     ctx.fixture.detectChanges();
@@ -386,7 +472,9 @@ describe('DashboardShellComponent', () => {
     await enterEdit(ctx);
     const cell = ctx.el.querySelector('[data-instance-id="w1"]') as HTMLElement;
     cell.focus();
-    cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+    cell.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }),
+    );
     ctx.fixture.detectChanges();
     expect(ctx.el.querySelector('[data-instance-id="w1"]')).toBeNull();
     expect(document.activeElement).toBe(q(ctx.el, 'dashboard-add-widget'));
@@ -404,7 +492,7 @@ describe('DashboardShellComponent', () => {
         observe = vi.fn();
         disconnect = vi.fn();
         unobserve = vi.fn();
-      }
+      },
     );
     try {
       const ctx = setup();
@@ -424,7 +512,7 @@ describe('DashboardShellComponent', () => {
     await enterEdit(ctx);
     ctx.api.bootstrap.mockClear();
     ctx.fixture.destroy();
-    await new Promise(resolve => setTimeout(resolve));
+    await new Promise((resolve) => setTimeout(resolve));
     expect(ctx.api.bootstrap).not.toHaveBeenCalled();
   });
 
@@ -452,14 +540,22 @@ describe('DashboardShellComponent', () => {
   });
 
   it('renders_retry_slot_only_when_capabilities_unavailable', async () => {
-    const ctx = setup({ bootstrap: boot({ hasAllowedGatedWidgets: false, capabilitiesUnavailable: true, widgets: [] }) });
+    const ctx = setup({
+      bootstrap: boot({
+        hasAllowedGatedWidgets: false,
+        capabilitiesUnavailable: true,
+        widgets: [],
+      }),
+    });
     await ready(ctx.fixture);
     expect(q(ctx.el, 'slot-retry')).not.toBeNull();
     expect(q(ctx.el, 'slot-empty')).toBeNull();
   });
 
   it('hides_the_retry_slot_and_ignores_reload_while_editing', async () => {
-    const ctx = setup({ bootstrap: boot({ hasAllowedGatedWidgets: false, capabilitiesUnavailable: true }) });
+    const ctx = setup({
+      bootstrap: boot({ hasAllowedGatedWidgets: false, capabilitiesUnavailable: true }),
+    });
     await ready(ctx.fixture);
     expect(q(ctx.el, 'slot-retry')).not.toBeNull();
     await enterEdit(ctx);
@@ -478,7 +574,9 @@ describe('DashboardShellComponent', () => {
 
   it('shows_the_skeleton_while_the_dashboard_is_loading', async () => {
     const ctx = setup();
-    ctx.api.listMine.mockReturnValue(new (await import('rxjs')).Observable(() => undefined) as never);
+    ctx.api.listMine.mockReturnValue(
+      new (await import('rxjs')).Observable(() => undefined) as never,
+    );
     ctx.fixture.detectChanges();
     await ctx.fixture.whenStable();
     ctx.fixture.detectChanges();
@@ -500,5 +598,42 @@ describe('DashboardShellComponent', () => {
     // the public method is what hosts call
     ctx.fixture.componentInstance.shell().reload();
     expect(ctx.api.listMine).toHaveBeenCalledTimes(3);
+  });
+
+  describe('account without an employee profile', () => {
+    it('shows the no-profile panel on My Work instead of the grid and loads nothing', async () => {
+      const ctx = setup({ key: 'my-work', employeeId: null, bootstrap: boot() });
+      await ready(ctx.fixture);
+
+      expect(q(ctx.el, 'no-employee-profile-panel')).not.toBeNull();
+      expect(ctx.el.querySelector('app-dashboard-grid')).toBeNull();
+      expect(ctx.api.listMine).not.toHaveBeenCalled();
+    });
+
+    it('keeps the normal grid on My Team even without a profile', async () => {
+      const ctx = setup({ key: 'my-team', employeeId: null });
+      await ready(ctx.fixture);
+
+      expect(q(ctx.el, 'no-employee-profile-panel')).toBeNull();
+      expect(ctx.api.listMine).toHaveBeenCalled();
+    });
+
+    it('keeps the normal grid on My Work for an employee', async () => {
+      const ctx = setup({ key: 'my-work', employeeId: 'emp-1', bootstrap: boot() });
+      await ready(ctx.fixture);
+
+      expect(q(ctx.el, 'no-employee-profile-panel')).toBeNull();
+      expect(ctx.el.querySelector('app-dashboard-grid')).not.toBeNull();
+    });
+
+    it('loads My Work once the session has a profile, wherever it was created', async () => {
+      const ctx = setup({ key: 'my-work', employeeId: null, bootstrap: boot() });
+      await ready(ctx.fixture);
+
+      ctx.auth.employeeId.set('emp-1');
+      await ready(ctx.fixture);
+
+      expect(ctx.api.listMine).toHaveBeenCalledTimes(1);
+    });
   });
 });
