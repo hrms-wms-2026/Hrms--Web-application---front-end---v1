@@ -39,12 +39,7 @@
   width: 100%;
 }
 
-.invite-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  width: 100%;
-}.invite-error-text {
+.invite-error-text {
   margin: 0;
   font-size: 0.75rem;
   color: var(--color-danger);

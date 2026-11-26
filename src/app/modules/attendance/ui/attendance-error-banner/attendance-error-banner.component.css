@@ -1,0 +1,36 @@
+:host {
+  display: block;
+}
+
+.time-tracking-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 25%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger-subtle) 55%, var(--color-surface));
+  color: var(--color-danger-text);
+}
+
+.time-tracking-message p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.time-tracking-message app-button {
+  width: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+  .time-tracking-message {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .time-tracking-message app-button {
+    width: 100%;
+  }
+}

@@ -1,13 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { DataTableCellDirective, DataTableColumn, DataTableComponent } from '../../../../../shared/ui/data-table/data-table.component';
+import { AttendanceEmptyStateComponent } from '../../../ui/attendance-empty-state/attendance-empty-state.component';
+import { AttendanceErrorBannerComponent } from '../../../ui/attendance-error-banner/attendance-error-banner.component';
+import { AttendanceListPagerComponent } from '../../../ui/attendance-list-pager/attendance-list-pager.component';
 import { AttendanceHistoryRow } from '../../../models/time-tracking.model';
 import { formatDate, formatDateTime, formatMinutes, statusLabel } from '../../../utils/attendance-formatters';
 
 @Component({
   selector: 'app-attendance-history-list',
   standalone: true,
-  imports: [ButtonComponent, DataTableComponent, DataTableCellDirective],
+  imports: [AttendanceEmptyStateComponent, AttendanceErrorBannerComponent, AttendanceListPagerComponent, DataTableComponent, DataTableCellDirective],
   templateUrl: './attendance-history-list.component.html',
   styleUrl: './attendance-history-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -29,7 +31,7 @@ export class AttendanceHistoryListComponent {
   readonly retryRequested = output<void>();
   readonly rowSelected = output<AttendanceHistoryRow>();
 
-  readonly Math = Math;
+  readonly emptyIconPaths = ['M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z'];
 
   protected readonly columns = computed<DataTableColumn[]>(() => [
     ...(this.showEmployeeColumn() ? [{ key: 'employee', label: 'Employee' }] : []),

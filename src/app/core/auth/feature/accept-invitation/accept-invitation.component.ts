@@ -1,16 +1,15 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FieldIconComponent } from '../../../../shared/ui/field-icon/field-icon.component';
+import { NewPasswordFieldsComponent } from '../../ui/new-password-fields/new-password-fields.component';
+import { AUTH_LIMITS } from '../../utils/auth-limits';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../state/auth.store';
 import { AuthApiService } from '../../data-access/auth-api.service';
-import { EMPLOYEE_ONBOARDING_PURPOSE, InvitationPreviewDto } from '../../models/dto/invitation-preview.dto';
+import { InvitationPreviewDto } from '../../models/dto/invitation-preview.dto';
 import { PublishedLegalDocumentDto } from '../../models/dto/published-legal-document.dto';
 import { safeServerDetail } from '../../../services/error-handler.service';
-import { fieldError } from '../../../../shared/utils/validators';
-import { AUTH_LIMITS } from '../../utils/auth-limits';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not load this invitation. Refresh and try again.';
 
@@ -23,7 +22,7 @@ const STATUS_MESSAGES: Record<string, string> = {
 @Component({
   selector: 'app-accept-invitation',
   standalone: true,
-  imports: [ReactiveFormsModule, FieldIconComponent],
+  imports: [ReactiveFormsModule, NewPasswordFieldsComponent],
   templateUrl: './accept-invitation.component.html',
   styleUrl: './accept-invitation.component.css'
 })
@@ -42,24 +41,11 @@ export class AcceptInvitationComponent implements OnInit {
   legalDocuments = signal<PublishedLegalDocumentDto[]>([]);
   activeDoc = signal<PublishedLegalDocumentDto | null>(null);
 
-  readonly showPassword = signal(false);
-  readonly showConfirmPassword = signal(false);
-
-  protected readonly fieldError = fieldError;
-
   form = this.fb.nonNullable.group({
     password: ['', [Validators.required, Validators.minLength(AUTH_LIMITS.passwordMin)]],
     confirmPassword: ['', [Validators.required]],
     legalAccepted: [false]
   });
-
-  toggleShowPassword(): void {
-    this.showPassword.update((v) => !v);
-  }
-
-  toggleShowConfirmPassword(): void {
-    this.showConfirmPassword.update((v) => !v);
-  }
 
   openDocument(doc: PublishedLegalDocumentDto, event: Event): void {
     event.preventDefault();
@@ -152,11 +138,7 @@ export class AcceptInvitationComponent implements OnInit {
     };
 
     try {
-      await this.store.acceptEmployeeInvitation(
-        this.token,
-        payload,
-        this.invitation()?.purpose ?? EMPLOYEE_ONBOARDING_PURPOSE
-      );
+      await this.store.acceptEmployeeInvitation(this.token, payload);
     } catch {
       return;
     }
