@@ -7,7 +7,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthStore } from '../../state/auth.store';
 import { AuthApiService } from '../../data-access/auth-api.service';
-import { InvitationPreviewDto } from '../../models/dto/invitation-preview.dto';
+import { EMPLOYEE_ONBOARDING_PURPOSE, InvitationPreviewDto } from '../../models/dto/invitation-preview.dto';
 import { PublishedLegalDocumentDto } from '../../models/dto/published-legal-document.dto';
 import { safeServerDetail } from '../../../services/error-handler.service';
 
@@ -138,7 +138,11 @@ export class AcceptInvitationComponent implements OnInit {
     };
 
     try {
-      await this.store.acceptEmployeeInvitation(this.token, payload);
+      await this.store.acceptEmployeeInvitation(
+        this.token,
+        payload,
+        this.invitation()?.purpose ?? EMPLOYEE_ONBOARDING_PURPOSE
+      );
     } catch {
       return;
     }
