@@ -6,6 +6,8 @@ import { environment } from '@environments/environment';
 import { NO_EMPLOYEE_DETAIL, SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
 import { AuthStore } from '../auth/state/auth.store';
 import { NotificationService } from '../services/notification.service';
+import { FailedRequestLogService } from '../services/failed-request-log.service';
+import { correlationInterceptor } from './correlation.interceptor';
 
 describe('errorInterceptor', () => {
   let http: HttpClient;
@@ -18,7 +20,8 @@ describe('errorInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        provideRouter([])
+        // A real route for the redirect target: an unmatched navigation rejects and leaks an unhandled error.
+        provideRouter([{ path: 'auth/login', children: [] }])
       ]
     });
     http = TestBed.inject(HttpClient);
@@ -286,5 +289,123 @@ describe('errorInterceptor', () => {
       expect(navigateSpy).not.toHaveBeenCalled();
       expect(sessionStorage.getItem('crownus.singleHostTenant')).toBe('acme');
     });
+  });
+
+  describe('support reference', () => {
+    const ID = '0f8c2a1b-1234-4cde-9abc-0123456789ab';
+
+    it('puts the body correlationId on the banner and in the failed-request log', () => {
+      const notify = TestBed.inject(NotificationService);
+      const log = TestBed.inject(FailedRequestLogService);
+
+      http.post('/api/v1/leave/requests?draft=1', {}).subscribe({ error: () => {} });
+      httpMock.expectOne('/api/v1/leave/requests?draft=1').flush({ correlationId: ID }, { status: 403, statusText: 'Forbidden' });
+
+      expect(notify.notifications()[0].reference).toBe(ID);
+      expect(log.recent()).toEqual([
+        expect.objectContaining({ correlationId: ID, method: 'POST', path: '/api/v1/leave/requests', status: 403 })
+      ]);
+    });
+
+    it('falls back to the X-Correlation-Id response header', () => {
+      const notify = TestBed.inject(NotificationService);
+
+      http.post('/api/v1/leave/requests', {}).subscribe({ error: () => {} });
+      httpMock
+        .expectOne('/api/v1/leave/requests')
+        .flush({}, { status: 403, statusText: 'Forbidden', headers: { 'x-correlation-id': 'hdr-42' } });
+
+      expect(notify.notifications()[0].reference).toBe('hdr-42');
+    });
+
+    it('falls back to the id the request was sent with: a plain ProblemDetails 400 is still logged', () => {
+      const log = TestBed.inject(FailedRequestLogService);
+
+      http
+        .post('/api/v1/leave/requests', {}, { headers: { 'X-Correlation-ID': 'req-sent-1' } })
+        .subscribe({ error: () => {} });
+      httpMock
+        .expectOne('/api/v1/leave/requests')
+        .flush(
+          { type: 'about:blank', title: 'Bad Request', status: 400, detail: 'End date must be after start date.' },
+          { status: 400, statusText: 'Bad Request' }
+        );
+
+      expect(log.recent()).toEqual([
+        expect.objectContaining({ correlationId: 'req-sent-1', method: 'POST', path: '/api/v1/leave/requests', status: 400 })
+      ]);
+    });
+
+    it('shows the request id on the banner when the error body and response carry none', () => {
+      const notify = TestBed.inject(NotificationService);
+
+      http.post('/api/v1/leave/requests', {}, { headers: { 'X-Correlation-ID': 'req-sent-2' } }).subscribe({ error: () => {} });
+      httpMock
+        .expectOne('/api/v1/leave/requests')
+        .flush({ title: 'Forbidden', status: 403, detail: 'Not allowed.' }, { status: 403, statusText: 'Forbidden' });
+
+      expect(notify.notifications()[0].reference).toBe('req-sent-2');
+    });
+
+    it('prefers the body correlationId over the response and request headers', () => {
+      const notify = TestBed.inject(NotificationService);
+      const log = TestBed.inject(FailedRequestLogService);
+
+      http.post('/api/v1/leave/requests', {}, { headers: { 'X-Correlation-ID': 'req-sent-3' } }).subscribe({ error: () => {} });
+      httpMock
+        .expectOne('/api/v1/leave/requests')
+        .flush({ correlationId: ID }, { status: 403, statusText: 'Forbidden', headers: { 'x-correlation-id': 'hdr-9' } });
+
+      expect(notify.notifications()[0].reference).toBe(ID);
+      expect(log.recent()[0].correlationId).toBe(ID);
+    });
+
+    it('shows no reference when the backend sent none, or a value that is not a plain id', () => {
+      const notify = TestBed.inject(NotificationService);
+      const log = TestBed.inject(FailedRequestLogService);
+
+      http.post('/api/v1/a', {}).subscribe({ error: () => {} });
+      httpMock.expectOne('/api/v1/a').flush({ correlationId: '<script>' }, { status: 403, statusText: 'Forbidden' });
+
+      expect(notify.notifications()[0].reference).toBeUndefined();
+      expect(log.recent()).toEqual([]);
+    });
+
+    it('leaves silent errors untouched: no banner, no log entry', () => {
+      const notify = TestBed.inject(NotificationService);
+      const log = TestBed.inject(FailedRequestLogService);
+
+      http
+        .get('/api/v1/inbox/people/e1/cases', { context: new HttpContext().set(SILENT_HTTP_ERRORS, true) })
+        .subscribe({ error: () => {} });
+      httpMock.expectOne('/api/v1/inbox/people/e1/cases').flush({ correlationId: ID }, { status: 403, statusText: 'Forbidden' });
+
+      expect(notify.notifications()).toHaveLength(0);
+      expect(log.recent()).toEqual([]);
+    });
+  });
+});
+
+describe('errorInterceptor after correlationInterceptor (app order)', () => {
+  it('logs the id correlationInterceptor put on the request', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([correlationInterceptor, errorInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'auth/login', children: [] }])
+      ]
+    });
+    const http = TestBed.inject(HttpClient);
+    const httpMock = TestBed.inject(HttpTestingController);
+    const log = TestBed.inject(FailedRequestLogService);
+
+    http.post('/api/v1/leave/requests', {}).subscribe({ error: () => {} });
+    const req = httpMock.expectOne('/api/v1/leave/requests');
+    const sent = req.request.headers.get('X-Correlation-ID');
+    req.flush({ title: 'Bad Request', status: 400, detail: 'End date must be after start date.' }, { status: 400, statusText: 'Bad Request' });
+
+    expect(sent).toBeTruthy();
+    expect(log.recent()[0].correlationId).toBe(sent);
+    httpMock.verify();
   });
 });

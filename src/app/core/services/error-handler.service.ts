@@ -237,7 +237,8 @@ export class ErrorHandlerService {
     return toSafeErrorMessage(err, fallbackMessage);
   }
 
-  handle(error: HttpErrorResponse): void {
+  /** `reference`: the request's correlation id; shown on the banner so the user can quote it to support. */
+  handle(error: HttpErrorResponse, reference?: string): void {
     const key = error.status === 0 ? 0 : error.status;
     const action = ERROR_TAXONOMY[key] ?? DEFAULT_ACTION;
 
@@ -249,7 +250,7 @@ export class ErrorHandlerService {
 
     if (action.behaviour === 'banner') {
       const safeMsg = toSafeErrorMessage(error, action.userMessage);
-      this.notify.error(safeMsg);
+      this.notify.error(safeMsg, reference);
     }
   }
 }

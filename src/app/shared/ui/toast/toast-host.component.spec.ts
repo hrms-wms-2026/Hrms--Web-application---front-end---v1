@@ -116,4 +116,40 @@ describe('ToastHostComponent', () => {
     const toastItems = fixture.debugElement.queryAll(By.css('.toast-item'));
     expect(toastItems.length).toBe(1);
   });
+
+  describe('support reference', () => {
+    const ID = '0f8c2a1b-1234-4cde-9abc-0123456789ab';
+
+    it('shows the first 8 characters of the reference on an error toast', () => {
+      notificationService.error('Something went wrong.', ID);
+      fixture.detectChanges();
+
+      const ref = fixture.debugElement.query(By.css('.toast-item__reference')).nativeElement as HTMLElement;
+      expect(ref.textContent).toContain('Reference: 0f8c2a1b');
+      expect(ref.querySelector('code')?.textContent).toBe('0f8c2a1b');
+    });
+
+    it('copies the full reference', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      notificationService.error('Something went wrong.', ID);
+      fixture.detectChanges();
+
+      (fixture.debugElement.query(By.css('.toast-item__copy')).nativeElement as HTMLButtonElement).click();
+      await Promise.resolve();
+      fixture.detectChanges();
+
+      expect(writeText).toHaveBeenCalledWith(ID);
+      expect((fixture.debugElement.query(By.css('.toast-item__copy')).nativeElement as HTMLElement).textContent?.trim()).toBe(
+        'Copied'
+      );
+    });
+
+    it('shows no reference line when there is none', () => {
+      notificationService.error('Something went wrong.');
+      fixture.detectChanges();
+
+      expect(fixture.debugElement.query(By.css('.toast-item__reference'))).toBeNull();
+    });
+  });
 });

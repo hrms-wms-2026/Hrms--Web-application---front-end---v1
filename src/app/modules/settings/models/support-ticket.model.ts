@@ -56,6 +56,8 @@ export interface CreateSupportTicketRequest {
   readonly description: string;
   readonly priority: SupportTicketPriority;
   readonly category: string | null;
+  /** Create only (update ignores it): references of failed requests the user picked, max 5. */
+  readonly correlation_ids?: readonly string[];
 }
 
 export const SUPPORT_STATUS_LABELS: Record<SupportTicketStatus, string> = {

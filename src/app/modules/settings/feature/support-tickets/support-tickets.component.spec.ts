@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SupportTicketsComponent } from './support-tickets.component';
 import { SupportTicketsApiService } from '../../data-access/support-tickets-api.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { FailedRequestLogService } from '../../../../core/services/failed-request-log.service';
 import { SupportTicket } from '../../models/support-ticket.model';
 
 function ticket(overrides: Partial<SupportTicket> = {}): SupportTicket {
@@ -128,5 +129,73 @@ describe('SupportTicketsComponent', () => {
     expect(notifications.error).toHaveBeenCalledWith('subject is required.');
     expect(component.showForm()).toBe(true);
     expect(component.saving()).toBe(false);
+  });
+
+  describe('recent errors', () => {
+    const at = new Date('2026-01-15T10:00:00Z');
+
+    async function setupWithErrors() {
+      await setup();
+      const log = TestBed.inject(FailedRequestLogService);
+      log.record({ correlationId: 'ref-older-0001', method: 'GET', url: '/api/v1/payroll?run=1', status: 500, at });
+      log.record({ correlationId: 'ref-newer-0002', method: 'POST', url: '/api/v1/leave/requests', status: 409, at });
+      api.create.mockReturnValue(of(ticket({ id: 'new-1' })));
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      component.openForm();
+      component.subject.set('Leave did not go');
+      component.description.set('It failed');
+      fixture.detectChanges();
+    }
+
+    it('pre-fills the form with the recent failed requests, all ticked', async () => {
+      await setupWithErrors();
+
+      const text = fixture.nativeElement.textContent as string;
+      expect(text).toContain('Recent errors');
+      expect(text).toContain('POST /api/v1/leave/requests');
+      expect(text).toContain('GET /api/v1/payroll');
+      expect(text).not.toContain('run=1');
+      const boxes = fixture.nativeElement.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+      expect(Array.from(boxes).map((b) => b.checked)).toEqual([true, true]);
+    });
+
+    it('sends the ticked references as correlation_ids', async () => {
+      await setupWithErrors();
+
+      component.submit();
+
+      expect(api.create).toHaveBeenCalledWith(
+        expect.objectContaining({ correlation_ids: ['ref-newer-0002', 'ref-older-0001'] })
+      );
+    });
+
+    it('leaves out a reference the user unticked', async () => {
+      await setupWithErrors();
+
+      const first = fixture.nativeElement.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      first.click();
+      fixture.detectChanges();
+      component.submit();
+
+      expect(api.create).toHaveBeenCalledWith(expect.objectContaining({ correlation_ids: ['ref-older-0001'] }));
+    });
+
+    it('sends no correlation_ids when every reference is unticked', async () => {
+      await setupWithErrors();
+
+      component.toggleReference('ref-newer-0002', false);
+      component.toggleReference('ref-older-0001', false);
+      component.submit();
+
+      expect(api.create.mock.calls[0][0]).not.toHaveProperty('correlation_ids');
+    });
+
+    it('hides the section when nothing has failed', async () => {
+      await setup();
+      component.openForm();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).not.toContain('Recent errors');
+    });
   });
 });

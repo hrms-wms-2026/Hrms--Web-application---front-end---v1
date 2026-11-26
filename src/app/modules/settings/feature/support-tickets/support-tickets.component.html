@@ -57,6 +57,33 @@
         />
       </div>
 
+      @if (recentErrors().length > 0) {
+        <fieldset class="flex flex-col gap-2">
+          <legend class="text-sm font-medium text-[var(--color-text-primary)]">Recent errors</legend>
+          <p class="text-xs text-[var(--color-text-secondary)]">
+            Errors you saw in this session. Their references help support find them; untick any that are not about
+            this problem.
+          </p>
+          <ul class="flex flex-col gap-1">
+            @for (item of recentErrors(); track item.correlationId) {
+              <li>
+                <label class="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
+                  <input
+                    type="checkbox"
+                    [checked]="isReferenceSelected(item.correlationId)"
+                    (change)="toggleReference(item.correlationId, $any($event.target).checked)"
+                  />
+                  <span>
+                    {{ item.method }} {{ item.path }} · {{ item.status }} · {{ item.at | date: 'shortTime' }} ·
+                    <code [attr.title]="item.correlationId">{{ item.correlationId.slice(0, 8) }}</code>
+                  </span>
+                </label>
+              </li>
+            }
+          </ul>
+        </fieldset>
+      }
+
       <div class="flex justify-end gap-2">
         <app-button variant="secondary" (pressed)="cancelForm()">Cancel</app-button>
         <app-button type="submit" [loading]="saving()">Send ticket</app-button>

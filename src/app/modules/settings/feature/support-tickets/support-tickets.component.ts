@@ -11,6 +11,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { FailedRequest, FailedRequestLogService } from '../../../../core/services/failed-request-log.service';
 import { SupportTicketsApiService } from '../../data-access/support-tickets-api.service';
 import {
   SUPPORT_PRIORITIES,
@@ -52,6 +53,7 @@ export class SupportTicketsComponent implements OnInit {
   private readonly notifications = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly failedRequests = inject(FailedRequestLogService);
 
   protected readonly statusLabels = SUPPORT_STATUS_LABELS;
   protected readonly priorityLabels = SUPPORT_PRIORITY_LABELS;
@@ -81,6 +83,10 @@ export class SupportTicketsComponent implements OnInit {
   readonly description = signal('');
   readonly priority = signal<SupportTicketPriority>('medium');
   readonly category = signal('');
+  /** Failed requests from this browser session, snapshotted when the form opens. */
+  readonly recentErrors = signal<readonly FailedRequest[]>([]);
+  /** References still ticked; all of them start ticked. */
+  readonly selectedReferences = signal<ReadonlySet<string>>(new Set());
 
   readonly pageCount = computed(() => Math.max(1, Math.ceil(this.total() / PAGE_SIZE)));
   readonly subjectError = computed(() => {
@@ -131,7 +137,23 @@ export class SupportTicketsComponent implements OnInit {
   }
 
   openForm(): void {
+    const recent = this.failedRequests.recent();
+    this.recentErrors.set(recent);
+    this.selectedReferences.set(new Set(recent.map((e) => e.correlationId)));
     this.showForm.set(true);
+  }
+
+  isReferenceSelected(correlationId: string): boolean {
+    return this.selectedReferences().has(correlationId);
+  }
+
+  toggleReference(correlationId: string, checked: boolean): void {
+    this.selectedReferences.update((current) => {
+      const next = new Set(current);
+      if (checked) next.add(correlationId);
+      else next.delete(correlationId);
+      return next;
+    });
   }
 
   cancelForm(): void {
@@ -146,12 +168,17 @@ export class SupportTicketsComponent implements OnInit {
     }
 
     this.saving.set(true);
+    const selected = this.selectedReferences();
+    const correlationIds = this.recentErrors()
+      .map((e) => e.correlationId)
+      .filter((id) => selected.has(id));
     this.api
       .create({
         subject: this.subject().trim(),
         description: this.description().trim(),
         priority: this.priority(),
-        category: this.category().trim() || null
+        category: this.category().trim() || null,
+        ...(correlationIds.length > 0 ? { correlation_ids: correlationIds } : {})
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -175,5 +202,7 @@ export class SupportTicketsComponent implements OnInit {
     this.description.set('');
     this.priority.set('medium');
     this.category.set('');
+    this.recentErrors.set([]);
+    this.selectedReferences.set(new Set());
   }
 }

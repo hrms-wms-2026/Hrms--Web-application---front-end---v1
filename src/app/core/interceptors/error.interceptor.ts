@@ -1,11 +1,12 @@
 import { CSRF_ERROR_TYPE } from '../auth/auth-cookie-names';
-import { HttpContextToken, HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpHeaders, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, retry, throwError, timer } from 'rxjs';
 import { clearSingleHostTenant, isSingleHostMode } from '../auth/utils/single-host-tenant';
 import { AuthStore } from '../auth/state/auth.store';
 import { ErrorHandlerService } from '../services/error-handler.service';
+import { FailedRequestLogService } from '../services/failed-request-log.service';
 import { TrayPresenceRequiredEvents } from '../tray-presence/state/tray-presence-required.events';
 
 const RETRY_DELAYS_MS = [250, 500, 1000];
@@ -57,11 +58,34 @@ function isTenantMismatchError(error: HttpErrorResponse): boolean {
   return isSingleHostMode() && error.status === 403 && error.error?.detail === TENANT_MISMATCH_DETAIL;
 }
 
+const CORRELATION_HEADER = 'X-Correlation-Id';
+/** What a support reference may contain (the backend accepts only these on a ticket). */
+const REFERENCE_PATTERN = /^[A-Za-z0-9-]{1,100}$/;
+
+/** The id the backend logged this request under: the error body's `correlationId`, else the response header
+ *  (header names are case-insensitive), else the id this app sent (`requestHeaders`: correlationInterceptor runs
+ *  before this one, and the backend logs under the id it received). Controller `Problem(...)` bodies carry no
+ *  `correlationId` and CORS may hide the response header, so the request's own id is the usual source for
+ *  400/404/409. Null when none is there or the value is not a plain id. */
+export function correlationIdOf(error: HttpErrorResponse, requestHeaders?: HttpHeaders): string | null {
+  const body: unknown = error.error;
+  const fromBody =
+    body && typeof body === 'object' && typeof (body as { correlationId?: unknown }).correlationId === 'string'
+      ? (body as { correlationId: string }).correlationId.trim()
+      : '';
+  const candidate =
+    fromBody ||
+    (error.headers.get(CORRELATION_HEADER) ?? '').trim() ||
+    (requestHeaders?.get(CORRELATION_HEADER) ?? '').trim();
+  return REFERENCE_PATTERN.test(candidate) ? candidate : null;
+}
+
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const authStore = inject(AuthStore);
   const errorHandler = inject(ErrorHandlerService);
   const trayPresenceEvents = inject(TrayPresenceRequiredEvents);
+  const failedRequests = inject(FailedRequestLogService);
 
   return next(req).pipe(
     retry({
@@ -76,7 +100,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
     }),
     catchError((error: HttpErrorResponse) => {
-            if (isActiveTrayRequired(error)) {
+      if (isActiveTrayRequired(error)) {
         trayPresenceEvents.publish();
         return throwError(() => error);
       }
@@ -104,7 +128,12 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
-      if (!req.context.get(SILENT_HTTP_ERRORS) && !NO_EMPLOYEE_DETAILS.has(error.error?.detail)) errorHandler.handle(error);
+      if (!req.context.get(SILENT_HTTP_ERRORS) && !NO_EMPLOYEE_DETAILS.has(error.error?.detail)) {
+        const reference = correlationIdOf(error, req.headers);
+        // Only failures the user is told about: these are what a support ticket is raised over.
+        if (reference) failedRequests.record({ correlationId: reference, method: req.method, url: req.url, status: error.status });
+        errorHandler.handle(error, reference ?? undefined);
+      }
       return throwError(() => error);
     })
   );
