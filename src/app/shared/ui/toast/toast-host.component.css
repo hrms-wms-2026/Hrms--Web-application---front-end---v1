@@ -108,7 +108,7 @@
   background: var(--color-surface, #ffffff);
   border: 1px solid var(--color-border, #cbd5e1);
   box-shadow: var(--shadow-card);
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-text-secondary);
   cursor: pointer;
   padding: 0;
   opacity: 0;
@@ -134,4 +134,23 @@
 .toast-item__close:focus-visible {
   outline: 2px solid var(--color-focus-ring, #3b82f6);
   outline-offset: 1px;
+}
+
+.toast-item__reference {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.toast-item__copy {
+  padding: 0 0.375rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
 }

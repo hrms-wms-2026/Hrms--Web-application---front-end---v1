@@ -3,7 +3,8 @@ import {
   Component,
   OnDestroy,
   effect,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Notification, NotificationService } from '../../../core/services/notification.service';
@@ -21,6 +22,8 @@ export class ToastHostComponent implements OnDestroy {
   private readonly activeTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
   readonly notifications = this.notificationService.notifications;
+  /** The toast whose reference was just copied, for the "Copied" label. */
+  readonly copiedId = signal<number | null>(null);
 
   constructor() {
     effect(() => {
@@ -58,6 +61,16 @@ export class ToastHostComponent implements OnDestroy {
 
   getAriaLive(kind: Notification['kind']): 'assertive' | 'polite' {
     return kind === 'error' ? 'assertive' : 'polite';
+  }
+
+  /** Copies the full reference (the toast shows only its first 8 characters). */
+  copyReference(id: number, reference: string): void {
+    const clipboard = typeof navigator === 'undefined' ? undefined : navigator.clipboard;
+    if (!clipboard) return;
+    clipboard.writeText(reference).then(
+      () => this.copiedId.set(id),
+      () => this.copiedId.set(null)
+    );
   }
 
   dismiss(id: number): void {

@@ -30,6 +30,19 @@
 
       <div class="toast-item__content">
         <span class="toast-item__message">{{ toast.message }}</span>
+        @if (toast.reference; as reference) {
+          <span class="toast-item__reference">
+            <span>Reference: <code [attr.title]="reference">{{ reference.slice(0, 8) }}</code></span>
+            <button
+              type="button"
+              class="toast-item__copy"
+              [attr.aria-label]="copiedId() === toast.id ? 'Reference copied' : 'Copy reference ' + reference"
+              (click)="copyReference(toast.id, reference)"
+            >
+              {{ copiedId() === toast.id ? 'Copied' : 'Copy' }}
+            </button>
+          </span>
+        }
       </div>
 
       <button
