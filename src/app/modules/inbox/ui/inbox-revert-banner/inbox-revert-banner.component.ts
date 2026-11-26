@@ -1,4 +1,5 @@
-import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
+import { injectNow } from '../../../../core/clock/clock.service';
 
 /** "Undo — available until 10:42" with a live countdown, shown while the 30-minute revert window is open;
  *  hides itself at expiry. `until` is the revert action's Meta "revertableUntil". */
@@ -28,7 +29,7 @@ export class InboxRevertBannerComponent {
   busy = input(false);
   undo = output<void>();
 
-  private readonly now = signal(Date.now());
+  private readonly now = injectNow('second');
   protected readonly remainingMs = computed(() => {
     const end = new Date(this.until()).getTime();
     return isNaN(end) ? 0 : end - this.now();
@@ -39,9 +40,4 @@ export class InboxRevertBannerComponent {
     const total = Math.max(0, Math.ceil(this.remainingMs() / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
   });
-
-  constructor() {
-    const timer = setInterval(() => this.now.set(Date.now()), 1000);
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
-  }
 }

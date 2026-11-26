@@ -1,9 +1,11 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { PermissionService } from '../../../../core/auth/state/permission.service';
+import { InboxRealtimeService } from '../../../../core/realtime/inbox-realtime.service';
 import { NotificationBellComponent } from './notification-bell.component';
 import { NotificationsStore } from '../../../../core/state/notifications.store';
 import { TrayPresenceStore } from '../../../../core/tray-presence/state/tray-presence.store';
@@ -11,6 +13,68 @@ import { TaskApiService } from '../../../../modules/work/data-access/task-api.se
 import { WorkApprovalsApiService } from '../../../../modules/work/data-access/work-approvals-api.service';
 
 describe('NotificationBellComponent', () => {
+  const realtime = {
+    notificationsChanged$: new Subject<Record<string, never>>(),
+    reconnected$: new Subject<void>(),
+    connected: signal(true),
+  };
+
+  function setupBell() {
+    const storeStub = {
+      unreadCount: () => 0,
+      items: () => [],
+      refreshUnreadCount: vi.fn().mockResolvedValue(undefined),
+      loadMine: vi.fn().mockResolvedValue(undefined),
+      markRead: vi.fn().mockResolvedValue(undefined),
+      markAllRead: vi.fn().mockResolvedValue(undefined),
+    };
+    TestBed.configureTestingModule({
+      imports: [NotificationBellComponent],
+      providers: [
+        { provide: NotificationsStore, useValue: storeStub },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
+        { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } },
+        { provide: InboxRealtimeService, useValue: realtime },
+      ],
+    });
+    const fixture = TestBed.createComponent(NotificationBellComponent);
+    fixture.detectChanges();
+    return { fixture, storeStub };
+  }
+
+  it('does not poll the unread count while the tab is hidden, and refreshes once when it is back', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const { storeStub } = setupBell();
+      const calls = () => storeStub.refreshUnreadCount.mock.calls.length;
+      const atStart = calls();
+
+      vi.advanceTimersByTime(60_000);
+      expect(calls()).toBe(atStart + 1);
+
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+      vi.advanceTimersByTime(5 * 60_000);
+      expect(calls()).toBe(atStart + 1);
+
+      Reflect.deleteProperty(document, 'visibilityState');
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(calls()).toBe(atStart + 2);
+    } finally {
+      vi.useRealTimers();
+      Reflect.deleteProperty(document, 'visibilityState');
+    }
+  });
+
+  it('refreshes the unread count as soon as the hub says notifications changed, and after a reconnect', () => {
+    const { storeStub } = setupBell();
+    const before = storeStub.refreshUnreadCount.mock.calls.length;
+    realtime.notificationsChanged$.next({});
+    realtime.reconnected$.next();
+    expect(storeStub.refreshUnreadCount.mock.calls.length).toBe(before + 2);
+  });
+
   it('toggles dropdown and shows unread badge', async () => {
     const storeStub = {
       unreadCount: () => 3,
@@ -25,6 +89,7 @@ describe('NotificationBellComponent', () => {
     TestBed.configureTestingModule({
       imports: [NotificationBellComponent],
       providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate } },
         { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -60,6 +125,7 @@ describe('NotificationBellComponent', () => {
     TestBed.configureTestingModule({
       imports: [NotificationBellComponent],
       providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -92,6 +158,7 @@ describe('NotificationBellComponent', () => {
     TestBed.configureTestingModule({
       imports: [NotificationBellComponent],
       providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -129,6 +196,7 @@ describe('NotificationBellComponent', () => {
     TestBed.configureTestingModule({
       imports: [NotificationBellComponent],
       providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -173,6 +241,7 @@ describe('NotificationBellComponent', () => {
     TestBed.configureTestingModule({
       imports: [NotificationBellComponent],
       providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate } },
         { provide: TaskApiService, useValue: { getNotificationNavigation } },
@@ -225,6 +294,7 @@ describe('NotificationBellComponent', () => {
     TestBed.configureTestingModule({
       imports: [NotificationBellComponent],
       providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
         { provide: NotificationsStore, useValue: storeStub },
         { provide: Router, useValue: { navigate } },
         { provide: TaskApiService, useValue: { getNotificationNavigation } },
@@ -255,6 +325,7 @@ describe('NotificationBellComponent', () => {
     };
     const navigate = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
         { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
@@ -280,6 +351,7 @@ describe('NotificationBellComponent', () => {
     };
     const navigate = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
         { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
@@ -305,6 +377,7 @@ describe('NotificationBellComponent', () => {
     };
     const navigate = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub }, { provide: Router, useValue: { navigate } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
         { provide: AuthStore, useValue: { authenticated: () => true, activeModules: () => [] } }
@@ -333,6 +406,7 @@ describe('NotificationBellComponent', () => {
       markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
     };
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate: vi.fn() } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -362,6 +436,7 @@ describe('NotificationBellComponent', () => {
     const approveWorkApproval = vi.fn().mockReturnValue(of({ id: 'req-7', status: 'approved' }));
     const navigate = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -397,6 +472,7 @@ describe('NotificationBellComponent', () => {
     };
     const rejectWorkApproval = vi.fn().mockReturnValue(of({ id: 'req-8', status: 'rejected' }));
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate: vi.fn() } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -430,6 +506,7 @@ describe('NotificationBellComponent', () => {
     };
     const rejectWorkApproval = vi.fn().mockReturnValue(throwError(() => new Error('409 Conflict')));
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate: vi.fn() } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -470,6 +547,7 @@ describe('NotificationBellComponent', () => {
       }
     });
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate: vi.fn() } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -504,6 +582,7 @@ describe('NotificationBellComponent', () => {
       markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
     };
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate: vi.fn() } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -536,6 +615,7 @@ describe('NotificationBellComponent', () => {
     const acceptObjectiveInvitation = vi.fn().mockReturnValue(of(undefined));
     const navigate = vi.fn().mockResolvedValue(true);
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -574,6 +654,7 @@ describe('NotificationBellComponent', () => {
     };
     const rejectObjectiveInvitation = vi.fn().mockReturnValue(of(undefined));
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate: vi.fn() } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },
@@ -609,6 +690,7 @@ describe('NotificationBellComponent', () => {
       markRead: vi.fn().mockResolvedValue(undefined), markAllRead: vi.fn().mockResolvedValue(undefined)
     };
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
+        { provide: InboxRealtimeService, useValue: realtime },
       { provide: NotificationsStore, useValue: storeStub },
       { provide: Router, useValue: { navigate: vi.fn() } },
       { provide: TaskApiService, useValue: { getNotificationNavigation: vi.fn() } },

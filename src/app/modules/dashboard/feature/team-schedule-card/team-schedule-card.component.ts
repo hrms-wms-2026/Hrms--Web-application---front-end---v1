@@ -79,10 +79,10 @@ import {
   planScheduleLayout,
   resolveScheduleView,
 } from '../../utils/team-schedule-layout.util';
+import { injectNow } from '../../../../core/clock/clock.service';
 import { injectWidgetDataFeed } from '../../widgets/widget-data-feed';
 import { TeamScheduleDetailDialogComponent } from '../team-schedule-detail-dialog/team-schedule-detail-dialog.component';
 
-const CLOCK_TICK_MS = 60_000;
 /** The timeline's fixed columns (member 200, status 104, done 48, three 12px gaps); the track takes the rest. */
 const TIMELINE_NAME_PX = 388;
 /** A block narrower than this shows its colour and tooltip only. */
@@ -140,7 +140,6 @@ export class TeamScheduleCardComponent implements OnInit {
   });
   private readonly destroyRef = inject(DestroyRef);
   private readonly size = injectHostSize();
-  private clockId: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = (): void => this.onVisibilityChange();
   private lastView: ScheduleView | null = null;
   private weekRequested = false;
@@ -149,7 +148,8 @@ export class TeamScheduleCardComponent implements OnInit {
   protected readonly valueFontPx = donutValueFontPx;
   protected readonly sidePx = SCHEDULE_SIDE_PX;
   protected readonly colors = SCHEDULE_COLORS;
-  protected readonly now = signal(new Date());
+  private readonly minute = injectNow('minute');
+  protected readonly now = computed(() => new Date(this.minute()));
   readonly detailOpen = signal(false);
   /** The popup section a summary card asked for (null: the top). */
   readonly detailSection = signal<string | null>(null);
@@ -320,10 +320,8 @@ export class TeamScheduleCardComponent implements OnInit {
   ngOnInit(): void {
     this.feed.start();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    if (document.visibilityState === 'visible') this.startClock();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopClock();
     });
   }
 
@@ -460,23 +458,6 @@ export class TeamScheduleCardComponent implements OnInit {
   }
 
   private onVisibilityChange(): void {
-    if (document.visibilityState === 'visible') {
-      this.feed.reload();
-      this.startClock();
-    } else {
-      this.stopClock();
-    }
-  }
-
-  private startClock(): void {
-    if (this.clockId) return;
-    this.clockId = setInterval(() => this.now.set(new Date()), CLOCK_TICK_MS);
-  }
-
-  private stopClock(): void {
-    if (this.clockId) {
-      clearInterval(this.clockId);
-      this.clockId = null;
-    }
+    if (document.visibilityState === 'visible') this.feed.reload();
   }
 }

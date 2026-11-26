@@ -78,8 +78,9 @@ function response(overrides: Partial<TeamScheduleResponse> = {}): TeamScheduleRe
 describe('TeamScheduleCardComponent', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
-    vi.unstubAllGlobals();
+    // Real timers first: fake timers saved the stubbed requestAnimationFrame and would put it back after the unstub.
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   async function setup(
