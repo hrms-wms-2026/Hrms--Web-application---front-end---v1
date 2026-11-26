@@ -1,5 +1,5 @@
 import { CSRF_ERROR_TYPE } from '../auth/auth-cookie-names';
-import { HttpContextToken, HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpHeaders, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, retry, throwError, timer } from 'rxjs';
@@ -63,14 +63,20 @@ const CORRELATION_HEADER = 'X-Correlation-Id';
 const REFERENCE_PATTERN = /^[A-Za-z0-9-]{1,100}$/;
 
 /** The id the backend logged this request under: the error body's `correlationId`, else the response header
- *  (header names are case-insensitive). Null when neither is there or the value is not a plain id. */
-export function correlationIdOf(error: HttpErrorResponse): string | null {
+ *  (header names are case-insensitive), else the id this app sent (`requestHeaders`: correlationInterceptor runs
+ *  before this one, and the backend logs under the id it received). Controller `Problem(...)` bodies carry no
+ *  `correlationId` and CORS may hide the response header, so the request's own id is the usual source for
+ *  400/404/409. Null when none is there or the value is not a plain id. */
+export function correlationIdOf(error: HttpErrorResponse, requestHeaders?: HttpHeaders): string | null {
   const body: unknown = error.error;
   const fromBody =
     body && typeof body === 'object' && typeof (body as { correlationId?: unknown }).correlationId === 'string'
       ? (body as { correlationId: string }).correlationId.trim()
       : '';
-  const candidate = fromBody || (error.headers.get(CORRELATION_HEADER) ?? '').trim();
+  const candidate =
+    fromBody ||
+    (error.headers.get(CORRELATION_HEADER) ?? '').trim() ||
+    (requestHeaders?.get(CORRELATION_HEADER) ?? '').trim();
   return REFERENCE_PATTERN.test(candidate) ? candidate : null;
 }
 
@@ -123,7 +129,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       if (!req.context.get(SILENT_HTTP_ERRORS) && !NO_EMPLOYEE_DETAILS.has(error.error?.detail)) {
-        const reference = correlationIdOf(error);
+        const reference = correlationIdOf(error, req.headers);
         // Only failures the user is told about: these are what a support ticket is raised over.
         if (reference) failedRequests.record({ correlationId: reference, method: req.method, url: req.url, status: error.status });
         errorHandler.handle(error, reference ?? undefined);
