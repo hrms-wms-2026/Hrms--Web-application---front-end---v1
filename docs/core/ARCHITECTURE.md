@@ -977,8 +977,9 @@ There is **no response envelope**. The backend returns the DTO itself, and lists
 4. **Mapping to view models happens in the store or a mapper file** (`utils/<x>.mapper.ts`), never in the API service. Error translation that turns a known backend error code into a typed error (for example `LeavePolicyConflictError`) may stay in the service as a `catchError`.
 5. **Components never call an API service directly when a store exists for that data.** They read store signals and call store methods.
 6. Every API service has a header comment naming the backend controller and route it targets.
+7. **Request DTOs come from the backend contract** (decided 2026-11-18). `npm run api:types` generates `shared/api-types/backend-api.generated.ts` from the backend Swagger document. A request DTO that equals the backend shape is an alias (`ApiSchema<'...'>`). A stricter hand-written one gets a `MatchesContract` assertion in `models/<module>-api-contract.ts`. Response DTOs stay hand-written until the backend documents response schemas. See `docs/core/API_TYPES.md`.
 
-**Reference module:** Leave (`modules/leave/data-access/`) follows all of these.
+**Reference module:** Leave (`modules/leave/data-access/` and `modules/leave/models/leave-api-contract.ts`) follows all of these.
 
 ```typescript
 // modules/leave/data-access/leave-type-api.service.ts

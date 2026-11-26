@@ -1,3 +1,4 @@
+import type { ApiSchema } from '../../../shared/api-types/api-schema';
 import { LeaveRequestConflictSnapshotResponse } from './leave-request.model';
 
 /** Matches ONEVO.Application.Features.Leave.Approval.DTOs.Responses.* verbatim. */
@@ -87,11 +88,11 @@ export interface LeaveApprovalDecisionResponse {
   currentWarnings: LeaveApprovalWarningResponse[];
 }
 
-/** Matches ONEVO.Api.Contracts.Leave.Approvals.* verbatim. */
-export interface ApproveLeaveRequestRequest {
-  comment: string | null;
-}
+/** Generated from the backend contract (`npm run api:types`). */
+export type ApproveLeaveRequestRequest =
+  ApiSchema<'ONEVO.Api.Contracts.Leave.Approvals.ApproveLeaveRequestRequest'>;
 
+/** Matches ONEVO.Api.Contracts.Leave.Approvals.* verbatim. */
 export interface RejectLeaveRequestRequest {
   reason: string;
 }
@@ -108,7 +109,9 @@ export interface LeaveRequestAllListFilter extends LeaveApprovalListFilter {
 }
 
 /** Helper for rendering `submissionConflictSnapshotJson` - parses it back to Phase 4's shape. */
-export function parseSubmissionConflictSnapshot(json: string | null): LeaveRequestConflictSnapshotResponse | null {
+export function parseSubmissionConflictSnapshot(
+  json: string | null,
+): LeaveRequestConflictSnapshotResponse | null {
   if (!json) return null;
   try {
     return JSON.parse(json) as LeaveRequestConflictSnapshotResponse;
