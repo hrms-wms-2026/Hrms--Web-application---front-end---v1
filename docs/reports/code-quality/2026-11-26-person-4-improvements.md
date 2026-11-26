@@ -146,6 +146,7 @@ Duplicate lines went from 3,713 to 3,073 (−17.2%). Unused files and exports we
 | `core/auth/feature/login/*` | Development added Google sign-in (workspace selector, remembered account) | Kept Development's page; re-applied task 24's change (messages via `fieldError`) |
 | `core/auth/state/auth.store.ts` | Development restructured the store around `applyAuthResponse` for Google sign-in; task 12 had added a `sessionState()` helper on the old structure | Kept Development's version. `applyAuthResponse` already removes the duplicate patches task 12 targeted |
 | `accept-invitation` / `reset-password` | Task 12 moved the password inputs into `app-new-password-fields`; task 24 had changed their messages inline | Kept task 12's shared component and moved task 24's change into it (`errorFor()` uses the shared message map). Its spec now expects "Password is required." for an empty touched field |
+| `accept-invitation.component.ts` | After task 12 branched off, Development added the invitation `purpose` (tenant owner invites, `b41c6e36`) | Rebuilt from Development's file, then applied task 12's shared password fields and task 24's `AUTH_LIMITS`. The first attempt took task 12's older file and dropped `purpose`; the full suite caught it, and it is fixed |
 | `docs/superpowers/plans/SUMMARY.md`, `next/SUMMARY.md` | Each branch added its own rows | Kept every row |
 
 ## 10. How it was checked
