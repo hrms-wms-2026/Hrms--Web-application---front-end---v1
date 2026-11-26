@@ -31,6 +31,8 @@ import { RECURRENCE_PRESET_LABELS, RecurrencePreset, recurrencePresets } from '.
 import { MeetingScopeDialogComponent } from '../meeting-scope-dialog/meeting-scope-dialog.component';
 import { MeetingBulkInvitePanelComponent } from './meeting-bulk-invite-panel.component';
 import { TEXT_LIMITS } from '../../../../../shared/constants/text-limits';
+import { AppValidators } from '../../../../../shared/utils/validators';
+import { MEETING_LIMITS } from '../../utils/meeting-limits';
 
 export interface MeetingPlacementInput { projectId: string | null; objectiveId: string | null; }
 /**
@@ -136,7 +138,7 @@ const SKIPPED_REASONS: Record<string, string> = { inactive: 'no longer active', 
 
           <label class="mf-field">
             <span class="mf-label">Meeting title</span>
-            <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="ui-input" [readOnly]="notesOnly()" />
+            <input data-testid="meeting-title" formControlName="title" placeholder="Meeting title" class="ui-input" [readOnly]="notesOnly()" [attr.maxlength]="titleMax" />
           </label>
           <div class="mf-field">
             @if (cards()) { <span class="mf-label">{{ notesOnly() ? 'Meeting notes' : 'Agenda' }}</span> }
@@ -426,7 +428,7 @@ export class MeetingFormModalComponent implements OnInit {
 
   readonly presets: readonly RecurrencePreset[] = ['none', 'daily', 'weekly', 'biweekly', 'monthly', 'custom'];
   readonly form = this.fb.group({
-    title: ['', Validators.required],
+    title: ['', AppValidators.name(MEETING_LIMITS.titleMax)],
     description: this.fb.control<string | null>(null),
     location: '',
     isPrivate: false,
@@ -539,8 +541,10 @@ export class MeetingFormModalComponent implements OnInit {
     .filter((p) => !this.compact() || p !== 'custom')
     .map((p) => ({ value: p, label: RECURRENCE_PRESET_LABELS[p] })));
 
+  readonly titleMax = MEETING_LIMITS.titleMax;
+
   canSave(): boolean {
-    if (this.form.controls.title.value.trim() === '' || !this.form.controls.date.value) return false;
+    if (this.form.controls.title.invalid || !this.form.controls.date.value) return false;
     if (!this.form.controls.isAllDay.value && this.form.controls.durationMinutes.invalid) return false;
     if (this.mode() === 'create' && this.startInPast()) return false;
     return this.mode() === 'edit' || this.projectId() === null || this.objectiveId() !== null;

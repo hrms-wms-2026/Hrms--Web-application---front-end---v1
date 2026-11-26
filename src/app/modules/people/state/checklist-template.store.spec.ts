@@ -97,6 +97,18 @@ describe('ChecklistTemplateStore', () => {
     expect(spySuccess).toHaveBeenCalledWith('Checklist template created successfully.');
   });
 
+  it('keeps a refused create as an ApiError and leaves the one message to the builder', async () => {
+    const spyError = vi.spyOn(notificationService, 'error');
+    const promise = store.createTemplate({ name: 'x'.repeat(101), templateType: 'onboarding', legalEntityId: 'legal-1', tasks: [] });
+    httpMock
+      .expectOne(`${environment.apiUrl}/people/checklist-templates`)
+      .flush({ errors: { Name: ['The length of Name must be 100 characters or fewer.'] } }, { status: 400, statusText: 'Bad Request' });
+
+    expect(await promise).toBe(false);
+    expect(store.saveApiError()?.fieldErrors).toEqual({ Name: ['The length of Name must be 100 characters or fewer.'] });
+    expect(spyError).not.toHaveBeenCalled();
+  });
+
   it('setFilters with unchanged filters does not call the API again', () => {
     store.setFilters({ legalEntityId: 'legal-1' });
     const initialReq = httpMock.expectOne((r) => r.url === `${environment.apiUrl}/people/checklist-templates`);

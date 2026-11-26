@@ -9,7 +9,7 @@
           [value]="passwordForm.controls.currentPassword.value"
           (valueChange)="passwordForm.controls.currentPassword.setValue($event)"
           (blurred)="passwordForm.controls.currentPassword.markAsTouched()"
-          [error]="passwordForm.controls.currentPassword.touched && passwordForm.controls.currentPassword.invalid ? 'Current password is required.' : ''"
+          [error]="fieldError(passwordForm.controls.currentPassword, 'Current password')"
         />
         <app-input
           label="New password"
@@ -18,7 +18,7 @@
           [value]="passwordForm.controls.newPassword.value"
           (valueChange)="passwordForm.controls.newPassword.setValue($event)"
           (blurred)="passwordForm.controls.newPassword.markAsTouched()"
-          [error]="passwordForm.controls.newPassword.touched && passwordForm.controls.newPassword.invalid ? 'Enter at least 8 characters.' : ''"
+          [error]="fieldError(passwordForm.controls.newPassword, 'New password')"
         />
       </div>
       <div class="pf-actions">
@@ -41,7 +41,7 @@
             [value]="disableMfaForm.controls.currentPassword.value"
             (valueChange)="disableMfaForm.controls.currentPassword.setValue($event)"
             (blurred)="disableMfaForm.controls.currentPassword.markAsTouched()"
-            [error]="disableMfaForm.controls.currentPassword.touched && disableMfaForm.controls.currentPassword.invalid ? 'Current password is required.' : ''"
+            [error]="fieldError(disableMfaForm.controls.currentPassword, 'Current password')"
           />
         </div>
         <div class="pf-actions">
@@ -75,7 +75,7 @@
             [value]="mfaCodeForm.controls.code.value"
             (valueChange)="mfaCodeForm.controls.code.setValue($event)"
             (blurred)="mfaCodeForm.controls.code.markAsTouched()"
-            [error]="mfaCodeForm.controls.code.touched && mfaCodeForm.controls.code.invalid ? 'Enter a valid 6-digit code.' : ''"
+            [error]="fieldError(mfaCodeForm.controls.code, 'Code')"
             [maxlength]="6"
           />
         </div>

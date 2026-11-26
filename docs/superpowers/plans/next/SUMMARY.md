@@ -57,3 +57,10 @@ Pending plans and raw not-yet-brainstormed future-feature context. Stays flat â€
 ## Added 2026-11-06
 
 - `2026-11-06-boardui-angular-conversion/` â€” status: pending. Rebuild the BoardUI look (React design system) in Angular from scratch, mostly on the dashboard. README.md holds the method, Phase 0 foundations and the per-screen change log; `boardui-reference/` holds the BoardUI theming/motion/patterns/catalog notes.
+
+## Added 2026-11-23
+
+- `2026-11-23-shared-form-validation.md` - status: done, in review. Improvements task 24 (Person 4): shared validators, one message map, `<app-field-error>`, per-domain limits that mirror the backend validators, and three forms moved (department, leave type, leave request).
+- `2026-11-24-error-handling-standard.md` - status: done, in review. Improvements task 20 (Person 4): `ApiError`/`toApiError`, correlation id on server-error toasts, 429 wait time, server field errors (general settings), offline banner, global error handler. Built on today's backend bodies; provisional until backend task 24.
+- `2026-11-24-server-field-errors-forms.md` - status: done, in review. Task 20 follow-up: department, role, leave type and create-company modals show a refused save's field errors next to their fields; `failedSaveToast` keeps one toast per failure.
+- `2026-11-24-server-field-errors-profile-checklist.md` - status: done, in review. Task 20 follow-up 2: profile panels and checklist builder show refused saves (field messages in place, one message otherwise); fixes silent profile refusals and the double checklist toast.

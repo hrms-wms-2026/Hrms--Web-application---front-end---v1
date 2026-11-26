@@ -73,7 +73,7 @@
         </span>
         </div>
         @if (form.controls.password.touched && form.controls.password.invalid) {
-          <p class="invite-error-text">Password must be at least 8 characters.</p>
+          <p class="invite-error-text">{{ fieldError(form.controls.password, 'Password') }}</p>
         }
       </div>
 
@@ -112,7 +112,7 @@
         </span>
         </div>
         @if (form.controls.confirmPassword.touched && form.controls.confirmPassword.invalid) {
-          <p class="invite-error-text">Passwords must match.</p>
+          <p class="invite-error-text">{{ fieldError(form.controls.confirmPassword, 'Confirm password') }}</p>
         }
       </div>
 

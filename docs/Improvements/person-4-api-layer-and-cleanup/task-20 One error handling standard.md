@@ -34,3 +34,29 @@
 - The same failure shows the same message on any screen.
 - A server error toast shows a correlation id that can be found in the backend logs.
 - The rules doc is merged.
+
+## Status (2026-11-24)
+
+Done on branch `chore/error-handling-standard`, stacked on task 24 (#179/#182). Plan: `docs/superpowers/plans/next/2026-11-24-error-handling-standard.md`.
+
+**Backend task 24 has not landed.** This work reads the error bodies the backend sends today. The shape is **provisional** until backend 24 lands. `code` is read whenever it is present, so nothing has to change when backend 24 adds it everywhere. After it lands, check `ProblemDetails` and `toApiError` against `docs/api/errors.md`.
+
+1. **One `ApiError` model** (`core/errors/api-error.ts`): status, kind, code, safe message, field errors, correlation id, retry-after. `toApiError(err)` reuses `toSafeErrorMessage`, so existing screens keep their text (pinned by characterization tests). `shared/models/problem-details.model.ts` now describes every body shape the backend sends.
+2. **Rules** are in `docs/core/ARCHITECTURE.md` §7.1 (status → what the user sees) and §7.4 (field errors). No separate file.
+3. **Where the mapping lives:** the error interceptor records each request's `X-Correlation-ID`, and `ErrorHandlerService` builds its toasts from `ApiError`.
+   - Server-error toasts end with `Reference: <correlation id>`.
+   - A 429 says how long to wait when `Retry-After` is readable. That is production, which is same-origin; CORS hides the header in dev.
+   - Task 02's shared request helper (Person 2) has not landed. When it does, it should keep `ApiError` next to the store's `error` string.
+4. **Offline banner:** `app-offline-banner` in the app shell, driven by `NetworkStatusService`. No network toasts while it shows.
+5. **Global handler:** `GlobalErrorHandler` logs unexpected client errors with a client error id through `LoggerService`. `LOG_SINK` is the hook for the log target that backend task 17 will choose. No URL is invented.
+
+Server field errors are shown next to the fields in **general settings** (reference use). The 400 `errors` keys are PascalCase backend property names; the top-level name, first letter lowercased, is the control name.
+
+### Remaining
+
+- 70 files still call `toSafeErrorMessage`/`safeServerDetail` directly. They work and give the same text. Move them to `toApiError` when their module is next touched.
+- 34 store `error: string | null` fields. Task 02 (Person 2) owns the shared store request state; add `ApiError` there.
+- Server field errors: general settings, and since the follow-up (branch `chore/server-field-errors`) the department, role, leave type and create-company modals (`actionApiError` / `createApiError`, `[serverError]`, `failedSaveToast`). Follow-up 2 (branch `chore/server-field-errors-profile`) adds the profile panels (personal info, emergency contacts, dependents, payroll) and the checklist builder, and fixes two bugs found on the way: emergency contact, dependent and payroll refusals (400/404/409/422) showed nothing at all, and a failed checklist save toasted twice (three times for a 5xx). A refused remove of an emergency contact or dependent (404/409) now also shows in its panel (branch `fix/profile-remove-errors`); it used to fail silently. Still to do: the position form (in `position-management`, with its module owner) and the people forms (add-employee wizard and friends, with their owner).
+- **403 is still a toast by default** (the task asked for an access state, not a toast). Changing it globally would leave screens without an access state silent. Screens with their own access or not-found state opt out with `SILENT_HTTP_ERRORS` and show `shared/ui/error-state`; move screens over one by one.
+- The client error id is logged but only becomes useful once a `LOG_SINK` sends it somewhere (backend task 17).
+- When backend 24 lands: confirm the body shape, switch screens that match on message text to `code`, and drop the `TENANT_MISMATCH_DETAIL` text check if a code replaces it.

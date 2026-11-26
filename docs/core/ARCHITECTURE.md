@@ -122,7 +122,7 @@ src/
 │   ├── utils/
 │   │   ├── date.helpers.ts
 │   │   ├── file.helpers.ts
-│   │   └── validation.helpers.ts
+│   │   └── validators/            # shared form rules, AppValidators, message map (task 24)
 │   ├── data-access/
 │   │   ├── api-client.ts
 │   │   ├── api-params.ts
@@ -1228,21 +1228,16 @@ export const correlationInterceptor: HttpInterceptorFn = (req, next) => {
 ### 6.4 Input Validation & Sanitization
 
 ```typescript
-// shared/utils/validation.helpers.ts
-export const Validators = {
-  isValidEmail: (email: string): boolean =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-
-  sanitizeString: (input: string): string =>
-    input.trim().replace(/[<>]/g, ''),
-
-  isValidNIC: (nic: string): boolean =>
-    /^[0-9]{9}[vVxX]$|^[0-9]{12}$/.test(nic),
-
-  isPositiveNumber: (value: unknown): boolean =>
-    typeof value === 'number' && value > 0 && isFinite(value)
-};
+// A reactive form with the shared rules, limits and messages (shared/utils/validators).
+readonly form = this.fb.group({
+  name: ['', AppValidators.name(DEPARTMENT_LIMITS.nameMax)],          // required (trimmed) + max length
+  code: ['', [AppValidators.requiredText(), AppValidators.pattern(DEPARTMENT_LIMITS.codePattern, 'code')]],
+});
+protected readonly fieldError = fieldError;
+// template: <app-input label="Name" ... [error]="fieldError(form.controls.name, 'Name')" />
 ```
+
+**Form validation (decided 2026-11-23, Improvements task 24).** Use `AppValidators` from `shared/utils/validators` (or the pure rules in `validation-rules.ts` for signal forms). Show errors with `fieldError(control, label)` on `app-input` and `<app-field-error>` elsewhere. Add any new message to `validation-messages.ts`, never as text in a template. Limits come from the module's `utils/<module>-limits.ts` (description limits from `shared/constants/text-limits.ts`), each naming the backend validator it mirrors. A frontend limit may be stricter than the backend's, never looser. The backend keeps its own rules; never remove one because the frontend has it. Server field errors (400 `errors`) are mapped by Improvements task 20.
 
 ### 6.5 Route Guards
 
@@ -1318,69 +1313,28 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' https:
 
 > This section was added in v2. The v1 error interceptor only handled basic 401/403/500. The full taxonomy, refresh-retry flow, and retry backoff are now required.
 
-### 7.1 Error Taxonomy — HTTP Code → User Action Mapping
+### 7.1 Error Taxonomy — HTTP Code → User Action Mapping (updated 2026-11-24, Improvements task 20)
 
-All HTTP error codes must map to exactly one action. This table is the source of truth for `ErrorHandlerService`.
+Every failed request maps to one action. The code is the source of truth: `core/services/error-handler.service.ts` (toasts), `core/interceptors/error.interceptor.ts` (session handling) and `core/errors/api-error.ts` (`toApiError`).
 
-| HTTP Code | User Message | Behaviour | Telemetry Event |
-|---|---|---|---|
-| `401` | *(session ended)* | No retry (no refresh token) → redirect to login with return path | `auth_session_expired` |
-| `403` | "You don't have access to this." | Banner notification | `auth_forbidden` |
-| `404` | "This record no longer exists." | Inline message | `resource_not_found` |
-| `409` | "This record was just updated by someone else. Please refresh." | Inline message | `data_conflict` |
-| `422` | "Please check the highlighted fields." | Inline (form errors) | `validation_error` |
-| `429` | "Too many requests. Please wait a moment." | Banner notification | `rate_limited` |
-| `500` | "Something went wrong. Please try again." | Banner notification | `server_error` |
-| `503` | "Service temporarily unavailable." | Banner notification | `service_unavailable` |
-| `0` / offline | "You appear to be offline." | Persistent banner | `network_offline` |
+| Status | What the user sees | Who shows it |
+|---|---|---|
+| `400` / `422` with field errors | Each message next to its field (`applyServerFieldErrors`). Otherwise the first message as text | The form |
+| `401` | Nothing: session cleared, sent to login (no refresh token) | Interceptor |
+| `403` CSRF / tenant mismatch | Nothing: session cleared, sent to login | Interceptor |
+| `403` | "You do not have access…" toast. A screen with its own access state uses `SILENT_HTTP_ERRORS` and shows `shared/ui/error-state` instead | Error handler / the screen |
+| `404` | Empty or not-found state | The screen |
+| `409` / `422` | The backend message, which is written for users | The screen |
+| `428` `active_tray_required` | Tray presence prompt | Interceptor |
+| `429` | "Too many requests. Please wait N seconds and try again." when `Retry-After` is readable, else "…wait a moment." | Error handler |
+| `5xx` | One toast ending in `Reference: <correlation id>` | Error handler |
+| `0` (network) | A toast, or nothing while the offline banner shows | Error handler / `app-offline-banner` |
 
-```typescript
-// core/services/error-handler.service.ts
-import { Injectable, inject } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
-import { NotificationService } from './notification.service';
-import { LoggerService } from './logger.service';
-
-interface ErrorAction {
-  userMessage: string;
-  behaviour: 'redirect' | 'banner' | 'inline' | 'silent';
-  telemetryEvent: string;
-}
-
-const ERROR_TAXONOMY: Record<number | string, ErrorAction> = {
-  401:     { userMessage: '',                                                              behaviour: 'silent', telemetryEvent: 'auth_session_expired' },
-  403:     { userMessage: "You don't have access to this.",                               behaviour: 'banner', telemetryEvent: 'auth_forbidden' },
-  404:     { userMessage: 'This record no longer exists.',                                behaviour: 'inline', telemetryEvent: 'resource_not_found' },
-  409:     { userMessage: 'This record was just updated by someone else. Please refresh.', behaviour: 'inline', telemetryEvent: 'data_conflict' },
-  422:     { userMessage: 'Please check the highlighted fields.',                         behaviour: 'inline', telemetryEvent: 'validation_error' },
-  429:     { userMessage: 'Too many requests. Please wait a moment.',                     behaviour: 'banner', telemetryEvent: 'rate_limited' },
-  500:     { userMessage: 'Something went wrong. Please try again.',                      behaviour: 'banner', telemetryEvent: 'server_error' },
-  503:     { userMessage: 'Service temporarily unavailable.',                             behaviour: 'banner', telemetryEvent: 'service_unavailable' },
-  offline: { userMessage: 'You appear to be offline.',                                    behaviour: 'banner', telemetryEvent: 'network_offline' },
-};
-
-@Injectable({ providedIn: 'root' })
-export class ErrorHandlerService {
-  private notify = inject(NotificationService);
-  private logger = inject(LoggerService);
-
-  handle(error: HttpErrorResponse): void {
-    const key = error.status === 0 ? 'offline' : error.status;
-    const action = ERROR_TAXONOMY[key] ?? {
-      userMessage: 'An unexpected error occurred.',
-      behaviour: 'banner',
-      telemetryEvent: 'unknown_error'
-    };
-
-    this.logger.error(`[HTTP ${error.status}]`, { url: error.url, event: action.telemetryEvent });
-
-    if (action.behaviour === 'banner') {
-      this.notify.error(action.userMessage);
-    }
-    // 'inline' and 'silent' behaviours are handled by the component / interceptor respectively
-  }
-}
-```
+Rules:
+- **Read errors through `toApiError(err)`.** It gives `status`, `kind`, `code`, a safe `message` (same text as `toSafeErrorMessage`), `fieldErrors`, `correlationId` and `retryAfterSeconds`. The thrown value stays an `HttpErrorResponse`.
+- **React to `code`, not to message text.** Backend task 24 adds a stable `code` to every error the frontend must react to; until it lands only some errors carry one (for example `active_tray_required`, planner and dashboard-layout codes). The body shape is provisional until then.
+- **The correlation id** is the request's own `X-Correlation-ID`, recorded by the error interceptor, so it is known even when the body lacks it.
+- **Client errors** (thrown in code, unhandled rejections) go to `GlobalErrorHandler`, which logs them through `LoggerService` with a client error id. `LOG_SINK` is where a remote log target plugs in once backend task 17 picks one.
 
 ### 7.2 Retry Logic with Exponential Backoff
 
@@ -1439,6 +1393,11 @@ export class EmployeeListPageComponent {
 ```
 
 > **Rule:** All four states (loading, error, empty, data) are mandatory for any list or detail page. Missing any one will show blank screens in production.
+
+
+**Field errors from the server (task 20).** When a save fails with a 400, keep the `ApiError` in the store (`saveApiError`) and call `applyServerFieldErrors(form, apiError)`. Each message lands on its control as a `server` error, which `fieldError()` shows as it is; a message with no matching (or a disabled) control is returned for a form-level toast. The `server` error stays until the user edits that control, so a cross-field problem keeps submit blocked until one of its fields changes. See `modules/organization/feature/general-settings` for the reference use.
+
+For a form in a modal (task 20 follow-up), the store keeps `actionApiError` next to `actionError`, the page passes it as `[serverError]` and toasts `failedSaveToast(apiError, fallback)` (null when the form shows the errors or the error handler already toasted), and the modal applies it with `applyServerFieldErrors` and shows any message without a field through `<app-field-error>` above its footer. A `server` message wins over `required` in `validationMessage`. Used by the department, role, leave type and create-company modals. Panels with signal inputs (profile: personal info, emergency contacts, dependents, payroll) take a `serverError` input and apply it in an `effect`; the profile store tags each failure with `saveTarget` so only the panel that saved shows it. A store must not toast a failed save itself when its page does (the checklist builder toasts once).
 
 ### 7.5 Circuit Breaker
 

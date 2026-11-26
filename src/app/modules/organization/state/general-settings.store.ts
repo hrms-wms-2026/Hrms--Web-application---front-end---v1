@@ -13,6 +13,8 @@ export interface GeneralSettingsState {
   readonly removingLogo: boolean;
   readonly loadError: string | null;
   readonly saveError: string | null;
+  /** The last failed save as an ApiError, so the page can put field errors next to their fields. */
+  readonly saveApiError: ApiError | null;
 }
 
 const initialState: GeneralSettingsState = {
@@ -23,10 +25,12 @@ const initialState: GeneralSettingsState = {
   uploadingLogo: false,
   removingLogo: false,
   loadError: null,
-  saveError: null
+  saveError: null,
+  saveApiError: null
 };
 
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { ApiError, toApiError } from '../../../core/errors/api-error';
 
 /**
  * Holds the loaded General Settings detail for one company at a time, kept
@@ -62,7 +66,7 @@ export const GeneralSettingsStore = signalStore(
       legalEntityId: string,
       payload: UpdateLegalEntityGeneralSettingsRequest
     ): Promise<LegalEntityGeneralSettings | null> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveApiError: null });
       try {
         const settings = await firstValueFrom(api.updateGeneralSettings(legalEntityId, payload));
         if (store.legalEntityId() === legalEntityId) {
@@ -70,7 +74,8 @@ export const GeneralSettingsStore = signalStore(
         }
         return settings;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to save General Settings.') });
+        const apiError = toApiError(err, 'Failed to save General Settings.');
+        patchState(store, { saving: false, saveError: apiError.message, saveApiError: apiError });
         return null;
       }
     },

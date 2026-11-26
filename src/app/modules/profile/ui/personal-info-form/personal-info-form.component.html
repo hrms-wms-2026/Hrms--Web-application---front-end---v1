@@ -2,6 +2,9 @@
   @if (saveError()) {
     <div class="pf-error-banner" role="alert">{{ saveError() }}</div>
   }
+  @if (serverFormError(); as message) {
+    <div class="pf-error-banner" role="alert">{{ message }}</div>
+  }
 
   <div class="pif-columns">
     <section class="pf-section pif-photo-section">
@@ -53,21 +56,21 @@
           [value]="form.controls.firstName.value"
           (valueChange)="form.controls.firstName.setValue($event)"
           (blurred)="form.controls.firstName.markAsTouched()"
-          [error]="form.controls.firstName.touched && form.controls.firstName.invalid ? 'First name is required.' : ''"
+          [error]="fieldError(form.controls.firstName, 'First name')"
         />
         <app-input
           label="Last name"
           [value]="form.controls.lastName.value"
           (valueChange)="form.controls.lastName.setValue($event)"
           (blurred)="form.controls.lastName.markAsTouched()"
-          [error]="form.controls.lastName.touched && form.controls.lastName.invalid ? 'Last name is required.' : ''"
+          [error]="fieldError(form.controls.lastName, 'Last name')"
         />
         <app-input
           label="Mobile number"
           type="tel"
           [value]="form.controls.phone.value"
           (valueChange)="form.controls.phone.setValue($event)"
-          [error]="!isPhoneValid() ? 'Please enter a valid phone number.' : ''"
+          [error]="validationMessage(form.controls.phone.errors, 'Phone')"
         />
         <app-date-picker
           label="Date of birth"

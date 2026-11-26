@@ -28,7 +28,7 @@
             [value]="form.controls.name.value || ''"
             (valueChange)="form.controls.name.setValue($event)"
             (blurred)="form.controls.name.markAsTouched()"
-            [error]="form.controls.name.touched && form.controls.name.invalid ? 'Department name is required (max 200 chars).' : ''"
+            [error]="fieldError(form.controls.name, 'Department name')"
           />
 
           <app-input
@@ -36,7 +36,7 @@
             [value]="form.controls.code.value || ''"
             (valueChange)="form.controls.code.setValue($event)"
             (blurred)="form.controls.code.markAsTouched()"
-            [error]="form.controls.code.touched && form.controls.code.invalid ? 'Department code is required (max 20 chars).' : ''"
+            [error]="fieldError(form.controls.code, 'Department code')"
           />
 
           <app-select
@@ -76,6 +76,7 @@
       </div>
 
       <!-- Footer Buttons -->
+      <app-field-error [message]="serverFormError() ?? ''" />
       <div class="dfm-footer">
         <app-button type="button" variant="secondary" (click)="cancelled.emit()" [disabled]="loading">Cancel</app-button>
         <app-button type="submit" [loading]="loading" [disabled]="loading">

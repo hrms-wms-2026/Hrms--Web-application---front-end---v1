@@ -1,7 +1,8 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { toHttpParams } from '../../../shared/data-access/api-params';
 import {
   CreateSupportTicketRequest,
   SupportTicket,
@@ -64,10 +65,8 @@ export class SupportTicketsApiService {
   private readonly baseUrl = `${environment.apiUrl}/support/tickets`;
 
   list(status: SupportTicketStatus | '', page: number, pageSize: number): Observable<SupportTicketPage> {
-    let params = new HttpParams().set('page', page).set('page_size', pageSize);
-    if (status) {
-      params = params.set('status', status);
-    }
+    // An empty status filter is left out of the query string.
+    const params = toHttpParams({ page, page_size: pageSize, status });
     return this.http.get<PageApi>(this.baseUrl, { params }).pipe(
       map((response) => ({
         items: response.items.map(mapTicket),

@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { ApiError, toApiError } from '../../../core/errors/api-error';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ChecklistApiService } from '../data-access/checklist-api.service';
 import {
@@ -20,6 +21,8 @@ export interface ChecklistTemplateState {
   readonly saving: boolean;
   readonly archiving: boolean;
   readonly error: string | null;
+  /** The last failed create/update, so the builder can put field errors next to their fields (task 20). */
+  readonly saveApiError: ApiError | null;
   readonly filters: ChecklistTemplateListParams;
 }
 
@@ -38,6 +41,7 @@ const initialState: ChecklistTemplateState = {
   saving: false,
   archiving: false,
   error: null,
+  saveApiError: null,
   filters: initialFilters
 };
 
@@ -126,7 +130,7 @@ export const ChecklistTemplateStore = signalStore(
         },
 
         async createTemplate(payload: CreateChecklistTemplateRequest): Promise<boolean> {
-          patchState(store, { saving: true, error: null });
+          patchState(store, { saving: true, error: null, saveApiError: null });
           try {
             await firstValueFrom(checklistApi.createChecklistTemplate(payload));
             patchState(store, { saving: false });
@@ -134,15 +138,15 @@ export const ChecklistTemplateStore = signalStore(
             await this.loadTemplates();
             return true;
           } catch (err: unknown) {
-            const message = toSafeErrorMessage(err, 'Failed to create checklist template.');
-            patchState(store, { saving: false, error: message });
-            notificationService.error(message);
+            // No toast here: the builder shows field errors in place and toasts anything else once.
+            const apiError = toApiError(err, 'Failed to create checklist template.');
+            patchState(store, { saving: false, error: apiError.message, saveApiError: apiError });
             return false;
           }
         },
 
         async updateTemplate(id: string, payload: UpdateChecklistTemplateRequest): Promise<boolean> {
-          patchState(store, { saving: true, error: null });
+          patchState(store, { saving: true, error: null, saveApiError: null });
           try {
             await firstValueFrom(checklistApi.updateChecklistTemplate(id, payload));
             patchState(store, { saving: false });
@@ -150,9 +154,9 @@ export const ChecklistTemplateStore = signalStore(
             await this.loadTemplates();
             return true;
           } catch (err: unknown) {
-            const message = toSafeErrorMessage(err, 'Failed to update checklist template.');
-            patchState(store, { saving: false, error: message });
-            notificationService.error(message);
+            // No toast here: the builder shows field errors in place and toasts anything else once.
+            const apiError = toApiError(err, 'Failed to update checklist template.');
+            patchState(store, { saving: false, error: apiError.message, saveApiError: apiError });
             return false;
           }
         },

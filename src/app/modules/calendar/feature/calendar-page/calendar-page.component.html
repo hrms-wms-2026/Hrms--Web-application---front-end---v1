@@ -132,8 +132,8 @@
 </div>
 
 @if (pickerItem(); as item) {
-  <div class="fixed inset-0 z-50 flex items-end justify-center bg-[var(--color-overlay)]/30 p-4 sm:items-center" (click)="pickerItem.set(null)">
-    <div class="w-full max-w-sm" (click)="$event.stopPropagation()">
+  <div role="presentation" class="fixed inset-0 z-50 flex items-end justify-center bg-[var(--color-overlay)]/30 p-4 sm:items-center" (click)="pickerItem.set(null)">
+    <div class="w-full max-w-sm" appStopClickPropagation>
       <app-planner-block-picker [item]="item" [editableDates]="editableDateList()" (submitted)="onPickerSubmitted($event)"
         (cancelled)="pickerItem.set(null)" />
     </div>

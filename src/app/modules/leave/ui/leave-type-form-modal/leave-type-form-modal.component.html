@@ -26,7 +26,7 @@
           [value]="form.controls.name.value || ''"
           (valueChange)="form.controls.name.setValue($event)"
           (blurred)="form.controls.name.markAsTouched()"
-          [error]="form.controls.name.touched && form.controls.name.invalid ? 'Enter a name (up to 100 characters).' : ''"
+          [error]="fieldError(form.controls.name, 'Name')"
         />
         <div class="ltfm-counted">
           <app-input
@@ -38,7 +38,7 @@
             [disabled]="isEdit"
             (valueChange)="form.controls.code.setValue($event)"
             (blurred)="form.controls.code.markAsTouched()"
-            [error]="form.controls.code.touched && form.controls.code.invalid ? 'Enter a code (up to 20 characters).' : ''"
+            [error]="fieldError(form.controls.code, 'Code')"
           />
           <small class="ltfm-lock-note">Locked after creation</small>
         </div>
@@ -123,9 +123,7 @@
               </div>
             </div>
           </div>
-          @if (form.controls.color.invalid) {
-            <p class="ui-field-error ltfm-error">Use a colour like #2563EB.</p>
-          }
+          <app-field-error class="ltfm-error" [message]="validationMessage(form.controls.color.errors, 'Colour')" />
         </div>
       </div>
 
@@ -164,6 +162,7 @@
       </div>
       </div>
 
+      <app-field-error [message]="serverFormError() ?? ''" />
       <footer class="ltfm-footer">
         <app-button type="button" variant="secondary" [disabled]="loading" (click)="cancelled.emit()">Cancel</app-button>
         <app-button type="submit" [loading]="loading" [disabled]="loading">{{ isEdit ? 'Save changes' : 'Create leave type' }}</app-button>

@@ -9,6 +9,8 @@ import { AuthApiService } from '../../data-access/auth-api.service';
 import { EMPLOYEE_ONBOARDING_PURPOSE, InvitationPreviewDto } from '../../models/dto/invitation-preview.dto';
 import { PublishedLegalDocumentDto } from '../../models/dto/published-legal-document.dto';
 import { safeServerDetail } from '../../../services/error-handler.service';
+import { fieldError } from '../../../../shared/utils/validators';
+import { AUTH_LIMITS } from '../../utils/auth-limits';
 
 const NETWORK_FAILURE_MESSAGE = 'We could not load this invitation. Refresh and try again.';
 
@@ -43,8 +45,10 @@ export class AcceptInvitationComponent implements OnInit {
   readonly showPassword = signal(false);
   readonly showConfirmPassword = signal(false);
 
+  protected readonly fieldError = fieldError;
+
   form = this.fb.nonNullable.group({
-    password: ['', [Validators.required, Validators.minLength(8)]],
+    password: ['', [Validators.required, Validators.minLength(AUTH_LIMITS.passwordMin)]],
     confirmPassword: ['', [Validators.required]],
     legalAccepted: [false]
   });
