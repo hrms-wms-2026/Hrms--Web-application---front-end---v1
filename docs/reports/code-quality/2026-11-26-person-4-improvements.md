@@ -74,6 +74,11 @@ Not included: other people's PRs (#197, #181, #172), and Task 04, which was alre
 
 **Note for local runs:** this adds the dev dependency `openapi-typescript`. Run `npm install` once before `npm run api:types`. Build and tests do not need it.
 
+**Checked on 2026-11-26:**
+- `npm run test:scripts` passes (5/5) after a clean `npm ci`.
+- `npm run api:types:check` against the backend's committed `docs/api/openapi/tenant-v1.json` reports drift. That document names its schemas by full .NET name (`ONEVO.Api.Contracts.Leave.Requests.…`), while the committed types came from the running backend's Swagger with short names, so regenerating from it breaks the Leave contract checks.
+- The committed types are left as they were. Regenerate against the running backend (`npm run api:types`, see `docs/core/API_TYPES.md`) and agree with the backend API owner which document is the contract. That belongs with the existing backend gap report, not with this PR.
+
 ## 6. Task 12: remove duplicate and unused code (from #177)
 
 Duplicate lines went from 3,713 to 3,073 (−17.2%). Unused files and exports were removed: `build-info.ts`, `feature-flags.ts`, `landing-dashboard-preview`, `metric-stat`, and others. Shared helpers replaced copies: one auth session patch, shared new-password fields, organization archive modals, attendance formatters, and 6 dashboard cards moved to `injectHostSize()`. The report `task-12-cleanup-report.md` labels every finding and explains the 289-line gap to the −25% target.
