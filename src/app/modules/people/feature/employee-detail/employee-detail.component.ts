@@ -89,7 +89,9 @@ function toDetailTab(value: string | null): DetailTab {
       </header>
 
       <!-- Header: identity, live attendance status, actions -->
-      <div class="rounded-2xl bg-[var(--color-surface)] px-6 pt-6 pb-3" data-testid="employee-profile-header">
+      <!-- One gray panel holds the profile header and the tab row under it -->
+      <div class="mb-6 rounded-2xl bg-[var(--color-surface)]" data-testid="employee-profile-panel">
+      <div class="px-6 pt-6 pb-3" data-testid="employee-profile-header">
         <div class="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
           
           <!-- Identity and live attendance status -->
@@ -221,7 +223,7 @@ function toDetailTab(value: string | null): DetailTab {
       </div>
 
       <!-- Navigation Tabs -->
-      <div class="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[var(--color-border)]">
+      <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-2 pr-4 pb-1.5" data-testid="employee-detail-tabs">
         <nav class="flex gap-2" aria-label="Employee Detail Sections">
           @for (tab of tabs; track tab.id) {
             <button
@@ -241,6 +243,7 @@ function toDetailTab(value: string | null): DetailTab {
         @if (activeTab() === 'overview' || activeTab() === 'work-activity') {
           <app-employee-period-controls class="mb-1.5" />
         }
+      </div>
       </div>
 
       @if (activeTab() === 'overview') {
