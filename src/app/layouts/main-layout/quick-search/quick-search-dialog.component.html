@@ -1,0 +1,76 @@
+<div class="quick-search" animate.leave="ui-popup-leave">
+  <div class="quick-search__backdrop" role="presentation" (click)="quickSearch.close()"></div>
+
+  <div class="quick-search__panel" role="dialog" aria-modal="true" aria-label="Quick search">
+    <div class="quick-search__field">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input
+        #input
+        type="text"
+        class="quick-search__input"
+        [placeholder]="quickSearch.canSearchPeople() ? 'Search pages, actions and people…' : 'Search pages and actions…'"
+        autocomplete="off"
+        spellcheck="false"
+        role="combobox"
+        aria-label="Quick search"
+        aria-expanded="true"
+        aria-autocomplete="list"
+        [attr.aria-controls]="listId"
+        [attr.aria-activedescendant]="activeId()"
+        [value]="query()"
+        (input)="onInput(input.value)"
+        (keydown)="onKeydown($event)"
+      />
+      <kbd>Esc</kbd>
+    </div>
+
+    <div #list class="quick-search__results" [id]="listId" role="listbox" aria-label="Results">
+      @for (section of sections(); track section.title) {
+        <div class="quick-search__section" role="group" [attr.aria-label]="section.title">
+          <span class="quick-search__section-title" aria-hidden="true">{{ section.title }}</span>
+          @for (item of section.items; track item.index) {
+            <button
+              type="button"
+              role="option"
+              tabindex="-1"
+              class="quick-search__option"
+              [id]="optionId(item.index)"
+              [class.quick-search__option--active]="item.index === activeIndex()"
+              [attr.aria-selected]="item.index === activeIndex()"
+              (mousemove)="activeIndex.set(item.index)"
+              (click)="pick(item.command)"
+            >
+              <span class="quick-search__icon" aria-hidden="true">
+                @if (item.command.person; as person) {
+                  <app-avatar size="xs" [avatarUrl]="person.avatarUrl" [userName]="person.name" />
+                } @else if (item.command.group === 'Actions') {
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                } @else if (item.command.icon) {
+                  <app-nav-icon [name]="item.command.icon" />
+                }
+              </span>
+              <span class="quick-search__label">{{ item.command.label }}</span>
+              @if (item.command.hint) {
+                <span class="quick-search__hint">{{ item.command.hint }}</span>
+              }
+              <svg class="quick-search__enter" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 10l-5 5 5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>
+            </button>
+          }
+        </div>
+      } @empty {
+        @if (!peopleLoading()) {
+          <p class="quick-search__empty">Nothing matches "{{ query().trim() }}".</p>
+        }
+      }
+      @if (peopleLoading() && people().length === 0) {
+        <p class="quick-search__loading" role="status">Searching people…</p>
+      }
+    </div>
+
+    <div class="quick-search__footer" aria-hidden="true">
+      <span><kbd>↑</kbd><kbd>↓</kbd> to move</span>
+      <span><kbd>Enter</kbd> to open</span>
+      <span><kbd>Esc</kbd> to close</span>
+    </div>
+  </div>
+</div>

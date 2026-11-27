@@ -3,11 +3,11 @@
 </div>
 
 <div class="top-navbar__center">
-  <div class="top-navbar__search">
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-    <span>Search</span>
-    <kbd>Ctrl K</kbd>
-  </div>
+  <button type="button" class="top-navbar__search" aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K" (click)="quickSearch.open()">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <span>Search…</span>
+    <kbd>{{ shortcutLabel }}</kbd>
+  </button>
 </div>
 
 <div class="top-navbar__right">
