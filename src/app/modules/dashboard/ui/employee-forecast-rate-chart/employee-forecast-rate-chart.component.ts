@@ -32,7 +32,7 @@ export function rateChartPeople(
     .slice(0, limit);
 }
 
-const percent = (rate: number | null): number => (rate === null ? 0 : Math.round(rate * 1000) / 10);
+const percent = (rate: number | null): number => (rate == null ? 0 : Math.round(rate * 1000) / 10);
 
 /** The highest rate the chart plots: a required 853% would flatten every task-rate bar. Taller ones are drawn at the
  * cap; the hover reads the real figure. No badges over the bars: the red required bar already says overload. */
@@ -117,7 +117,7 @@ export class EmployeeForecastRateChartComponent {
           key: 'required',
           value: Math.min(RATE_CHART_CAP_PERCENT, percent(e.requiredRate)),
           color:
-            e.requiredRate !== null && e.requiredRate > limit
+            e.requiredRate != null && e.requiredRate > limit
               ? FORECAST_COLORS.overload
               : FORECAST_COLORS.raise,
         },

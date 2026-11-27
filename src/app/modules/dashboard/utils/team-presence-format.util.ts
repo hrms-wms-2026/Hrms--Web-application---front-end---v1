@@ -119,7 +119,7 @@ export function timeLeft(
   member: TeamTodayMember,
   now: Date,
 ): { text: string; usedPercent: number } | null {
-  if (member.status === 'on_break' && member.breakRemainingMinutes !== null) {
+  if (member.status === 'on_break' && member.breakRemainingMinutes != null) {
     const used = member.stateSince ? minutesSince(member.stateSince, now) : 0;
     const total = used + member.breakRemainingMinutes;
     return {
@@ -143,7 +143,7 @@ export function timeLeft(
 
 /** Minutes left in the current state (break allowance or shift), the figure timeLeft's text shows; null without one. */
 export function minutesLeft(member: TeamTodayMember, now: Date): number | null {
-  if (member.status === 'on_break' && member.breakRemainingMinutes !== null) {
+  if (member.status === 'on_break' && member.breakRemainingMinutes != null) {
     return member.breakRemainingMinutes;
   }
   if (member.status === 'working' && member.shiftEndsAt && member.stateSince) {

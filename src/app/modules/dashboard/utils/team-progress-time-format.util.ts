@@ -18,8 +18,8 @@ export function comparisonText(
   previous: number | null,
   period: LedTimePeriod,
 ): string | null {
-  if (current === null) return null;
-  if (previous === null) return 'New';
+  if (current == null) return null;
+  if (previous == null) return 'New';
   const delta = Math.round((current - previous) * 10) / 10;
   const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '±';
   return `${arrow} ${Math.abs(delta)} pp vs last ${period}`;
@@ -32,7 +32,7 @@ export function hoursText(minutes: number): string {
 
 /** The coverage denominator in words, for the tooltip next to the percentage. */
 export function coverageTooltip(time: LedTimeProgress): string {
-  if (time.coveragePercent === null)
+  if (time.coveragePercent == null)
     return 'No planned task time yet, so there is nothing to cover.';
   return `Worked inside a matching Planner slot as a share of the planned task time so far (${time.coveragePercent}%).`;
 }

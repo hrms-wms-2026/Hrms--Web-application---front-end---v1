@@ -76,7 +76,7 @@ export class WeeklyWorkProgressDetailDialogComponent {
 
   protected readonly delta = computed<WeeklyDelta | null>(() => {
     const points = progressDeltaPoints(this.data());
-    if (points === null) return null;
+    if (points == null) return null;
     return deltaOf(Math.round(points));
   });
 

@@ -255,7 +255,7 @@ export class TeamStatusCardComponent implements OnInit {
   /** "2h 30m left" of the break allowance or the shift; null without a denominator (no guessed figure). */
   protected leftText(member: TeamTodayMember): string | null {
     const left = minutesLeft(member, this.now());
-    return left === null ? null : `${minutesText(left)} left`;
+    return left == null ? null : `${minutesText(left)} left`;
   }
 
   protected todayHours(member: TeamTodayMember): string {

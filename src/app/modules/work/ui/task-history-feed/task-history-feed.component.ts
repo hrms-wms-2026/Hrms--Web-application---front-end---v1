@@ -99,10 +99,10 @@ export class TaskHistoryFeedComponent {
         return 'moved the status';
       case 'clock_session': {
         const cs = entry.clockSession!;
-        const duration = cs.durationMinutes !== null
+        const duration = cs.durationMinutes != null
           ? `${cs.durationMinutes} min`
           : `in progress, ${this.formatElapsedSince(cs.clockInAt)}`;
-        const percent = cs.pushedPercent !== null ? `, pushed to ${cs.pushedPercent}%` : '';
+        const percent = cs.pushedPercent != null ? `, pushed to ${cs.pushedPercent}%` : '';
         return `clocked in at ${this.formatClockTime(cs.clockInAt)} (${duration}${percent})`;
       }
       case 'percentage_change': {

@@ -92,7 +92,7 @@ function buildChartData(raw: ChartSources | null) {
     weeklyGroups,
     hasTasks: tasksAssigned > 0,
     summaryLine:
-      `${attendedDays} days attended` + (punctualityRate === null ? '' : ` (${punctualityRate}% punctuality)`) +
+      `${attendedDays} days attended` + (punctualityRate == null ? '' : ` (${punctualityRate}% punctuality)`) +
       ' · ' +
       (tasksAssigned > 0
         ? `${tasksCompleted} of ${tasksAssigned} tasks completed (${completionRate}% delivery rate)`
@@ -110,7 +110,7 @@ function buildChartData(raw: ChartSources | null) {
     <div class="sr-only">
       <span>Productivity & Attendance Discipline</span>
       @if (data(); as d) {
-        <span data-testid="discipline-score">{{ d.punctualityRate === null ? 'n/a' : d.punctualityRate + '%' }}</span>
+        <span data-testid="discipline-score">{{ d.punctualityRate == null ? 'n/a' : d.punctualityRate + '%' }}</span>
         <span data-testid="productivity-score">{{ d.hasTasks ? d.completionRate + '%' : 'n/a' }}</span>
         <span data-testid="correlation-insight">{{ d.summaryLine }}</span>
       }
@@ -212,13 +212,13 @@ function buildChartData(raw: ChartSources | null) {
                       <div
                         class="w-full rounded-t-sm bg-emerald-500 transition-all duration-300 hover:brightness-110"
                         [style.height.%]="group.disciplinePercent"
-                        [style.minHeight.px]="group.disciplinePercent !== null && group.disciplinePercent > 0 ? 6 : 0"
+                        [style.minHeight.px]="group.disciplinePercent != null && group.disciplinePercent > 0 ? 6 : 0"
                       ></div>
                     </div>
 
                     <!-- Productivity Bar (Blue); no tasks = an empty dashed slot, not a full bar -->
                     <div class="w-6 sm:w-7 flex flex-col items-center justify-end h-full" [title]="group.productivityDetails">
-                      @if (group.productivityPercent !== null) {
+                      @if (group.productivityPercent != null) {
                         <div
                           class="w-full rounded-t-sm bg-blue-600 transition-all duration-300 hover:brightness-110"
                           [style.height.%]="group.productivityPercent"
@@ -312,7 +312,7 @@ export class OverviewProductivityDisciplineChartComponent {
     if (!data) return [];
     // Weeks without tasks have no delivery value, so they are left off the comparison line.
     return data.weeklyGroups.flatMap((group, index) =>
-      group.productivityPercent === null
+      group.productivityPercent == null
         ? []
         : [{ x: index * 25 + 16.5, y: 100 - Math.max(0, Math.min(100, group.productivityPercent)) }]
     );

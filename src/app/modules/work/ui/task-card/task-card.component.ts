@@ -665,7 +665,7 @@ export class TaskCardComponent {
   );
   protected readonly hasOpenSessionOtherEmployee = computed(() => {
     const openBy = this.task().openClockSessionEmployeeId;
-    return openBy !== null && openBy !== this.currentEmployeeId();
+    return openBy != null && openBy !== this.currentEmployeeId();
   });
 
   protected readonly statusName = computed(() =>
@@ -809,7 +809,7 @@ export class TaskCardComponent {
 
   protected hasOpenSessionOtherEmployeeForSubtask(subtask: WorkTask): boolean {
     const openBy = subtask.openClockSessionEmployeeId;
-    return openBy !== null && openBy !== this.currentEmployeeId();
+    return openBy != null && openBy !== this.currentEmployeeId();
   }
 
   protected async onSubtaskClockChanged(): Promise<void> {
@@ -838,7 +838,7 @@ export class TaskCardComponent {
 
     // Single-assignee model, matching the task detail modal: picking someone replaces
     // whoever was previously assigned rather than adding a second assignee.
-    if (current.length === (employeeId ? 1 : 0) && (employeeId === null || current[0] === employeeId)) {
+    if (current.length === (employeeId ? 1 : 0) && (employeeId == null || current[0] === employeeId)) {
       return;
     }
     try {

@@ -118,7 +118,7 @@
             @let p = progress(row);
             <span class="wbld-progress">
               <span class="wbld-bar" aria-hidden="true">
-                @if (p !== null) {
+                @if (p != null) {
                   <span [style.width.%]="p" [style.background]="stateColor(row) ?? 'var(--color-widget-shade-4)'"></span>
                 }
               </span>

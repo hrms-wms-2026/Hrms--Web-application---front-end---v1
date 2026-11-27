@@ -219,7 +219,7 @@
                   >
                     <span
                       class="wt-rank"
-                      [class.wt-rank--top]="row.rank !== null && row.rank <= 3"
+                      [class.wt-rank--top]="row.rank != null && row.rank <= 3"
                       >{{ row.rank ?? '—' }}</span
                     >
                     <app-avatar

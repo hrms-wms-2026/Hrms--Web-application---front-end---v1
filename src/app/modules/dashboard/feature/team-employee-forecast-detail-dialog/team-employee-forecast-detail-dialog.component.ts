@@ -52,7 +52,7 @@ import { injectPopupSectionFocus } from '../../utils/popup-section-focus.util';
 import { employeeForecastExplanation } from '../../utils/team-employee-forecast-format.util';
 
 const csvHours = (h: number): string => h.toFixed(1);
-const csvRate = (r: number | null): string => (r === null ? '' : (r * 100).toFixed(1));
+const csvRate = (r: number | null): string => (r == null ? '' : (r * 100).toFixed(1));
 
 /** The employee table as CSV rows (header first), hours in one decimal, rates as percents. */
 export function employeeForecastCsv(items: readonly EmployeeForecastItem[]): string[][] {
@@ -157,7 +157,7 @@ export class TeamEmployeeForecastDetailDialogComponent {
   protected readonly tiles = computed<KpiTile[]>(() => {
     const t = this.store.data()?.totals;
     if (!t) return [];
-    const short = t.teamRate !== null && t.requiredRate !== null && t.teamRate < t.requiredRate;
+    const short = t.teamRate != null && t.requiredRate != null && t.teamRate < t.requiredRate;
     return [
       {
         label: 'Remaining',

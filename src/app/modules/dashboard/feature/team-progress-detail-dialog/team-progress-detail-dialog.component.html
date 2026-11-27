@@ -71,7 +71,7 @@
                   <div class="tp-stat__label">
                     {{ tile.meta.label }}
                     <span class="tp-stat__pct">{{ tile.percent }}</span>
-                    @if (tile.taskCount !== null) {
+                    @if (tile.taskCount != null) {
                       <span class="tp-stat__count" [attr.data-testid]="'tp-tile-count-' + tile.meta.key">· {{ tile.taskCount }} {{ tile.taskCount === 1 ? 'task' : 'tasks' }}</span>
                     }
                   </div>
@@ -341,10 +341,10 @@
                             <td>{{ timeHours(w.clockedMinutes) }}</td>
                             <td>{{ plannerEnabled() ? timeHours(w.unscheduledMinutes) : '—' }}</td>
                             <td
-                              [class.tp-over]="w.utilizationPercent !== null && w.utilizationPercent > 100"
-                              [attr.title]="w.expectedMinutes === null ? 'No working hours set for their legal entity' : 'Planned of ' + timeHours(w.expectedMinutes) + ' expected'"
+                              [class.tp-over]="w.utilizationPercent != null && w.utilizationPercent > 100"
+                              [attr.title]="w.expectedMinutes == null ? 'No working hours set for their legal entity' : 'Planned of ' + timeHours(w.expectedMinutes) + ' expected'"
                             >
-                              {{ w.utilizationPercent === null ? '—' : w.utilizationPercent + '%' }}
+                              {{ w.utilizationPercent == null ? '—' : w.utilizationPercent + '%' }}
                             </td>
                           } @else {
                             <td class="tp-members-time" [attr.title]="time().status === 'ready' ? 'No planned or worked time in this period' : null">—</td>

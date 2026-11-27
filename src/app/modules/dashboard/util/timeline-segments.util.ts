@@ -170,7 +170,7 @@ export function formatTime(date: Date): string | null {
 }
 
 export function formatMinutes(value: number | null): string {
-  if (value === null || value < 0) {
+  if (value == null || value < 0) {
     return '—';
   }
   const hours = Math.floor(value / 60);

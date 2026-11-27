@@ -284,7 +284,7 @@ export class TeamWorkTaskCardComponent implements OnInit {
 
   /** Bar width for a utilization: capped at 100% of the track. */
   protected barWidth(value: number | null): number {
-    return value === null ? 0 : Math.min(100, Math.max(0, value));
+    return value == null ? 0 : Math.min(100, Math.max(0, value));
   }
 
   shift(step: -1 | 1, event?: Event): void {

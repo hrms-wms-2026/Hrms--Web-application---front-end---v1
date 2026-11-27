@@ -538,7 +538,7 @@ export class TaskTableComponent {
 
   hasOpenSessionOtherEmployee(task: WorkTask): boolean {
     const openBy = task.openClockSessionEmployeeId;
-    return openBy !== null && openBy !== this.currentEmployeeId();
+    return openBy != null && openBy !== this.currentEmployeeId();
   }
 
   protected readonly sortBy = signal<SortKey>('title');

@@ -88,6 +88,6 @@ export class TeamProgressTimeComponent {
   }
 
   protected percentText(value: number | null): string {
-    return value === null ? '—' : `${value}%`;
+    return value == null ? '—' : `${value}%`;
   }
 }

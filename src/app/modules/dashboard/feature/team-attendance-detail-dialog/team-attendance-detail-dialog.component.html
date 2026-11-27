@@ -75,7 +75,7 @@
                   <span class="tad-dept-name">{{ d.name }}</span>
                   <span class="tad-dept-track" aria-hidden="true">
                     <span class="tad-dept-bar" [style.width.%]="d.width" [style.background]="d.color"></span>
-                    @if (data.periodRate !== null) {
+                    @if (data.periodRate != null) {
                       <span class="tad-dept-avg" [style.left.%]="data.periodRate"></span>
                     }
                   </span>
@@ -83,7 +83,7 @@
                 </li>
               }
             </ul>
-            @if (data.periodRate !== null) {
+            @if (data.periodRate != null) {
               <p class="tad-dept-note"><span class="tad-dept-avg-key" aria-hidden="true"></span>Team {{ percentText(data.periodRate) }}</p>
             }
           }
@@ -125,7 +125,7 @@
                   <tr>
                     <th class="tad-sticky tad-sticky--name" scope="row">
                       <span class="tad-person">
-                        <span class="tad-rank" [class.tad-rank--top]="r.rank !== null && r.rank <= 3" data-testid="tad-rank">{{ r.rank ?? '—' }}</span>
+                        <span class="tad-rank" [class.tad-rank--top]="r.rank != null && r.rank <= 3" data-testid="tad-rank">{{ r.rank ?? '—' }}</span>
                         <app-avatar size="xs" [avatarUrl]="avatarUrl(r.avatarFileId)" [userName]="r.name" />
                         <span class="tad-person-text">
                           <span class="tad-name">{{ r.name }}</span>

@@ -149,7 +149,7 @@ export class EmployeeListComponent {
   readonly rangeEnd = computed(() => Math.min(this.listState().page * this.listState().pageSize, this.store.employeesTotalCount()));
 
   readonly positionChangeBlockedReason = computed(() => {
-    const companies = new Set(this.selectedRows().map((r) => r.legalEntityId));
+    const companies = new Set(this.selectedRows().map((r) => r.legalEntityId ?? null));
     if (companies.has(null)) return 'Some selected employees have no company assigned.';
     if (companies.size > 1) return 'Select employees from a single company to change their position together.';
     return null;

@@ -124,7 +124,7 @@ export class WorkModeChangeRendererComponent {
         @if (distance(); as d) {
           <div class="rnd__row" data-testid="location-distance"><span class="rnd__key">Distance</span><span class="rnd__value">{{ d }}</span></div>
         }
-        @if (accuracy() !== null) {
+        @if (accuracy() != null) {
           <div class="rnd__row"><span class="rnd__key">GPS accuracy</span><span class="rnd__value">± {{ accuracy() }} m</span></div>
         }
       </div>
@@ -138,7 +138,7 @@ export class LocationChangeRendererComponent {
   private readonly row = (field: string) => rowOf(this.detail(), field);
 
   private map(lat: number | null, lon: number | null): string | null {
-    return lat === null || lon === null ? null : `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`;
+    return lat == null || lon == null ? null : `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`;
   }
 
   protected readonly requested = computed(() => this.map(pick<number>(this.extra(), 'latitude'), pick<number>(this.extra(), 'longitude')));
@@ -147,7 +147,7 @@ export class LocationChangeRendererComponent {
   protected readonly accuracy = computed(() => pick<number>(this.extra(), 'accuracyMeters'));
   protected readonly distance = computed(() => {
     const m = pick<number>(this.extra(), 'distanceMeters');
-    return m === null ? null : m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
+    return m == null ? null : m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
   });
 }
 

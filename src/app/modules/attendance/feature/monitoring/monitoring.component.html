@@ -425,7 +425,7 @@
                   <span class="val-pill" [attr.data-state]="flagValue(item.activityMonitoring)">Activity: {{ flagValue(item.activityMonitoring) }}</span>
                   <span class="val-pill" [attr.data-state]="flagValue(item.applicationTracking)">Apps: {{ flagValue(item.applicationTracking) }}</span>
                   <span class="val-pill" [attr.data-state]="flagValue(item.screenshotCapture)">Screenshots: {{ flagValue(item.screenshotCapture) }}</span>
-                  @if (item.idleThresholdMinutes !== null) {
+                  @if (item.idleThresholdMinutes != null) {
                     <span class="val-pill val-pill--threshold">Idle: {{ item.idleThresholdMinutes }}m</span>
                   }
                 </div>

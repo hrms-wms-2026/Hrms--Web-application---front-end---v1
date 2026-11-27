@@ -295,7 +295,7 @@ export class TeamScheduleDetailDialogComponent {
       const percent = capacity ? Math.round((loadMinutes(m) * 100) / capacity) : null;
       return {
         member: m,
-        text: percent === null ? minutesText(loadMinutes(m)) : `${percent}% · ${minutesText(loadMinutes(m))}`,
+        text: percent == null ? minutesText(loadMinutes(m)) : `${percent}% · ${minutesText(loadMinutes(m))}`,
         share: loadPercent(m) ?? (loadMinutes(m) * 100) / max,
         over: isOverCapacity(m),
         color: loadColor(m),
@@ -333,7 +333,7 @@ export class TeamScheduleDetailDialogComponent {
   /** Week ranking (2026-11-05): by coverage, highest first, over everyone whatever the filter; no coverage = unranked. */
   protected readonly weekRanks = computed(() => {
     const ranked = (this.weekStore.data()?.members ?? [])
-      .filter((w) => w.coveragePercent !== null)
+      .filter((w) => w.coveragePercent != null)
       .sort((a, b) => (b.coveragePercent ?? 0) - (a.coveragePercent ?? 0) || a.displayName.localeCompare(b.displayName));
     return new Map<string, number | undefined>(ranked.map((w, i) => [w.employeeId, i + 1]));
   });
@@ -398,9 +398,9 @@ export class TeamScheduleDetailDialogComponent {
     const before = week.previous.coveragePercent;
     tiles[2] = {
       label: 'Coverage',
-      value: coverage === null ? '—' : `${coverage}%`,
+      value: coverage == null ? '—' : `${coverage}%`,
       hint:
-        coverage !== null && before !== null
+        coverage != null && before != null
           ? `${arrow(coverage - before)} ${Math.abs(Math.round((coverage - before) * 10) / 10)} pts vs last week`
           : 'of the planned time so far',
       icon: 'check-circle',
@@ -605,10 +605,10 @@ export class TeamScheduleDetailDialogComponent {
       data.plannerEnabled ? String(m.scheduledMinutes) : '',
       data.plannerEnabled ? String(m.outsideSlotMinutes) : '',
       data.plannerEnabled ? String(m.noPlanMinutes) : '',
-      m.itemCompletionPercent === null ? '' : String(m.itemCompletionPercent),
-      m.timeCoveragePercent === null ? '' : String(m.timeCoveragePercent),
-      m.score === null ? '' : String(m.score),
-      m.rank === null ? '' : String(m.rank),
+      m.itemCompletionPercent == null ? '' : String(m.itemCompletionPercent),
+      m.timeCoveragePercent == null ? '' : String(m.timeCoveragePercent),
+      m.score == null ? '' : String(m.score),
+      m.rank == null ? '' : String(m.rank),
       notRankedText(m.notRankedReason),
       m.items.map((i) => `${i.title} (${itemStatusLabel(i)})`).join('; '),
     ]);
@@ -625,7 +625,7 @@ export class TeamScheduleDetailDialogComponent {
       String(m.clockedMinutes),
       week.plannerEnabled ? String(m.scheduledMinutes) : '',
       week.plannerEnabled ? String(m.unscheduledMinutes) : '',
-      m.coveragePercent === null ? '' : String(m.coveragePercent),
+      m.coveragePercent == null ? '' : String(m.coveragePercent),
     ]);
     this.downloadFile(`team-week-${week.weekStart}.csv`, toCsv([header, ...lines]));
   }

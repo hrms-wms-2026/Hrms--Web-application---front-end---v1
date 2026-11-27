@@ -203,7 +203,7 @@
                     <span class="wtd-person">
                       <span
                         class="wtd-rank"
-                        [class.wtd-rank--top]="r.rank !== null && r.rank <= 3"
+                        [class.wtd-rank--top]="r.rank != null && r.rank <= 3"
                         data-testid="wtd-rank"
                         >{{ r.rank ?? '—' }}</span
                       >

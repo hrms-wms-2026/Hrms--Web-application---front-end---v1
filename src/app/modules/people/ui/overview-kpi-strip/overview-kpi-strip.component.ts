@@ -93,7 +93,7 @@ const BASELINE_PALETTES: Record<string, KpiPalette> = {
               <span [class]="'text-sm font-bold ' + tone.value" data-testid="kpi-value">
                 {{ card.value }}{{ card.suffix }}
               </span>
-              @if (card.denominator !== null) {
+              @if (card.denominator != null) {
                 <span class="text-xs font-medium text-[var(--color-text-muted)]">/{{ card.denominator }}</span>
               }
               <app-delta-badge class="ml-auto" [delta]="deltas()[i] ?? null" [against]="against()" />

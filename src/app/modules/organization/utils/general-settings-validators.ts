@@ -65,7 +65,7 @@ export function workTimePairValidator(): ValidatorFn {
       return { workTimePair: 'both_required' };
     }
     const hours = computeWorkDayHours(start, end, group.get('breakDurationMinutes')?.value);
-    if (hours !== null && hours <= 0) {
+    if (hours != null && hours <= 0) {
       return { workTimePair: 'break_covers_shift' };
     }
     return null;

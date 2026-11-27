@@ -66,7 +66,7 @@ export const ConversationStore = signalStore(
     unreadFromId: computed(() => {
       const since = store.openedLastReadAt();
       // The evidence card is not a message anyone sent: it never counts as unread.
-      const first = store.messages().find((m) => m.kind !== 'evidence' && (since === null || m.createdAt > since));
+      const first = store.messages().find((m) => m.kind !== 'evidence' && (since == null || m.createdAt > since));
       return first?.id ?? null;
     }),
     participantIds: computed(() => store.participants().map((p) => p.employeeId))

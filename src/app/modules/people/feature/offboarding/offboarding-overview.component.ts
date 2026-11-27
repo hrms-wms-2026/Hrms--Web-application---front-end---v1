@@ -150,7 +150,7 @@ export class OffboardingOverviewComponent implements OnInit {
 
   /** The list only shows people whose offboarding is still open - not the whole reporting line. */
   readonly inProgress = computed(() =>
-    this.items().filter((i) => i.currentOffboardingStatus !== null && OPEN_STATUSES.has(i.currentOffboardingStatus)));
+    this.items().filter((i) => i.currentOffboardingStatus != null && OPEN_STATUSES.has(i.currentOffboardingStatus)));
   readonly completedCount = computed(() => this.items().filter((i) => i.currentOffboardingStatus === 'completed').length);
 
   /** Only employees in the reporting line without an open offboarding - the picker never offers anyone else. */

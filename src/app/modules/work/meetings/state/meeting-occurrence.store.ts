@@ -81,7 +81,7 @@ export const MeetingOccurrenceStore = signalStore(
         const k = key;
         // Someone added to this occurrence only answers for it (spec 5.3); everyone else answers for the series.
         const me = auth.employeeId();
-        const mine = store.occurrence()?.attendees.find((a) => a.employeeId !== null && a.employeeId === me);
+        const mine = store.occurrence()?.attendees.find((a) => a.employeeId != null && a.employeeId === me);
         const originalStart = mine?.source === 'occurrence' ? k.originalStart : null;
         // Declining keeps access (D18): the drawer reloads and stays open with read access.
         const done = await write(() => firstValueFrom(api.respond(k.seriesId, { status, reason, originalStart })).then(() => true));

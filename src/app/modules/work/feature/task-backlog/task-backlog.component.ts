@@ -595,7 +595,7 @@ export class TaskBacklogComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly parentOptions = computed<WorkDropdownOption[]>(() => {
     const selected = this.selectedTaskIds();
     return this.store.tasks()
-      .filter((task) => task.parentTaskId === null && !selected.has(task.id))
+      .filter((task) => task.parentTaskId == null && !selected.has(task.id))
       .map((task) => ({ value: task.id, label: task.title }));
   });
   // Sprints are project-level: any Draft/Active sprint is a valid target, but only for tasks

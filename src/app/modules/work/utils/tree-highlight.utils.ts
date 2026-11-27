@@ -119,8 +119,8 @@ function dueDay(node: MilestoneTreeNode): number | null {
 
 function inDueBucket(bucket: string, node: MilestoneTreeNode, today: number): boolean {
   const due = dueDay(node);
-  if (bucket === 'none') return due === null;
-  if (due === null) return false;
+  if (bucket === 'none') return due == null;
+  if (due == null) return false;
   switch (bucket) {
     case 'overdue': return due < today && !node.isAchieved && node.progress < 100;
     case 'due7': return due >= today && due <= today + 7;

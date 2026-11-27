@@ -110,7 +110,7 @@ export function computeDelta(
   return {
     text: `${diff > 0 ? '+' : '-'}${format(Math.abs(diff))}`,
     direction: diff > 0 ? 'up' : 'down',
-    tone: improved === null ? 'neutral' : improved ? 'good' : 'bad'
+    tone: improved == null ? 'neutral' : improved ? 'good' : 'bad'
   };
 }
 

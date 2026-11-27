@@ -299,7 +299,7 @@ export const ProjectDetailStore = signalStore(
         const children = [
           ...sprints.map((sprint) => toSprintTreeNode(sprint, parent)),
           ...tasks
-            .filter((task) => task.sprintId === null)
+            .filter((task) => task.sprintId == null)
             .map((task) => toTaskTreeNode(task, parent, statusNames[task.statusId] ?? task.statusId))
         ];
         patchState(store, {

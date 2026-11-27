@@ -221,7 +221,7 @@ export class PlannerFocusPanelComponent {
 
   /** A card's look and its status line, which fits its group (redesign D20). */
   private card(item: PlannerFocusItem): QueueCard {
-    const left = item.remainingMinutes === null ? null : duration(item.remainingMinutes);
+    const left = item.remainingMinutes == null ? null : duration(item.remainingMinutes);
     let detail: string;
     let age: string | null = null;
     switch (item.reason) {

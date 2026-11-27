@@ -72,7 +72,7 @@ export function notRankedText(reason: TeamScheduleNotRankedReason): string {
 
 /** "—" for a missing percentage, never 0%. */
 export function percentText(value: number | null): string {
-  return value === null ? '—' : `${value}%`;
+  return value == null ? '—' : `${value}%`;
 }
 
 /** A person with no planned task: "No plan", never 0%. */
@@ -125,7 +125,7 @@ function loadHours(minutes: number): string {
 export function loadText(member: TeamScheduleMember): string {
   const capacity = capacityMinutes(member);
   const load = isOnLeave(member) ? 0 : loadMinutes(member);
-  return capacity === null ? loadHours(load) : `${loadHours(load)} / ${loadHours(capacity)}`;
+  return capacity == null ? loadHours(load) : `${loadHours(load)} / ${loadHours(capacity)}`;
 }
 
 /** The load bar's fill (0-100), null without a work window. */
@@ -310,7 +310,7 @@ export function toWeekChartDays(week: TeamScheduleWeekResponse, today: string | 
     outside: d.outsideSlotMinutes,
     noPlan: d.noPlanMinutes,
     coveragePercent:
-      week.plannerEnabled && today !== null && d.date < today && d.plannedTaskMinutes > 0
+      week.plannerEnabled && today != null && d.date < today && d.plannedTaskMinutes > 0
         ? Math.min(100, Math.round((d.scheduledMinutes * 1000) / d.plannedTaskMinutes) / 10)
         : null,
   }));

@@ -49,7 +49,7 @@
           <span class="status-card-stat__label">Scheduled</span>
         </div>
         <div class="status-card-stat">
-          <strong class="status-card-stat__value">{{ today.breakRemainingMinutes !== null ? formatMinutes(today.breakRemainingMinutes) : '—' }}</strong>
+          <strong class="status-card-stat__value">{{ today.breakRemainingMinutes != null ? formatMinutes(today.breakRemainingMinutes) : '—' }}</strong>
           <span class="status-card-stat__label">Break remaining</span>
         </div>
       </div>
@@ -73,13 +73,13 @@
         @if (hasBreakOverage()) {
           <span class="status-card-meta__item status-card-meta__item--danger">{{ breakOverageLabel(today.breakOverageMinutes) }}</span>
           <span class="status-card-meta__item status-card-meta__item--muted">
-            @if (today.breakAllowanceMinutes === null) {
+            @if (today.breakAllowanceMinutes == null) {
               {{ formatMinutes(today.breakUsedMinutes) }} used · No allowance configured
             } @else {
               {{ formatMinutes(today.breakAllowanceMinutes) }} allowance · {{ formatMinutes(today.breakUsedMinutes) }} used
             }
           </span>
-        } @else if (today.breakRemainingMinutes !== null) {
+        } @else if (today.breakRemainingMinutes != null) {
           @if (layout() === 'session') {
             <!-- 'summary' layout already shows this exact number as its own stat tile above;
                  repeating it here would just be the duplication this card exists to avoid. -->

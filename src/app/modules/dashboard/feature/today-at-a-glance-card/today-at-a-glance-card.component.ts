@@ -145,7 +145,7 @@ export class TodayAtAGlanceCardComponent implements OnInit {
       return out ? `Finished at ${out}` : null;
     }
     const left = this.minutesLeft();
-    if (left === null) return null;
+    if (left == null) return null;
     if (left === 0) return 'Required time done';
     const from = this.loadedAt()?.getTime() ?? this.now();
     return `Finish at ${formatClock(new Date(from + left * 60_000))}`;

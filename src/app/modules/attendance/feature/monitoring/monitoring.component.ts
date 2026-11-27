@@ -244,7 +244,7 @@ export class MonitoringComponent {
       return;
     }
     const threshold = this.overrideForm().idleThresholdMinutes;
-    if (threshold !== null && (threshold < 1 || threshold > 1440)) {
+    if (threshold != null && (threshold < 1 || threshold > 1440)) {
       this.notifications.error('Activity threshold must be between 1 and 1440 minutes.');
       return;
     }
@@ -274,7 +274,7 @@ export class MonitoringComponent {
   }
 
   flagValue(value: boolean | null): string {
-    return value === null ? 'Inherited' : value ? 'On' : 'Off';
+    return value == null ? 'Inherited' : value ? 'On' : 'Off';
   }
 
   private formFromOverride(item: MonitoringPolicyOverride): MonitoringPolicyOverrideRequest {

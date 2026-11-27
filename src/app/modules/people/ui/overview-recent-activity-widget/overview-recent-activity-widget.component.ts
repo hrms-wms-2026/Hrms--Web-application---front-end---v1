@@ -178,7 +178,8 @@ export class OverviewRecentActivityWidgetComponent {
     const first = this.loader.data();
     if (!first) return null;
     const paging = this.currentPaging();
-    return paging ? paging.cursor : first.nextBefore;
+    // The API leaves out a null cursor, so a missing one also means "no older page".
+    return (paging ? paging.cursor : first.nextBefore) ?? null;
   });
   readonly hasMore = computed(() => this.cursor() !== null);
 
@@ -231,7 +232,7 @@ export class OverviewRecentActivityWidgetComponent {
   loadOlder(): void {
     const first = this.loader.data();
     const before = this.cursor();
-    if (!first || before === null || this.loadingOlder()) return;
+    if (!first || before == null || this.loadingOlder()) return;
 
     const employeeId = this.employeeId();
     this.loadingOlder.set(true);

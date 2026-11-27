@@ -57,7 +57,7 @@ export function compactHoursText(minutes: number): string {
 
 /** Utilization as a percent ("—" without working time); one decimal under 10%, else whole. */
 export function utilizationText(value: number | null): string {
-  if (value === null) return '—';
+  if (value == null) return '—';
   if (value > 0 && value < 0.1) return '<0.1%';
   return `${value < 10 ? Math.round(value * 10) / 10 : Math.round(value)}%`;
 }
@@ -74,7 +74,7 @@ export function teamWorkTaskDelta(
   previous: number | null,
   period: TeamWorkTaskPeriod,
 ): { text: string; down: boolean } | null {
-  if (current === null || previous === null) return null;
+  if (current == null || previous == null) return null;
   const pp = Math.round((current - previous) * 10) / 10;
   if (pp === 0) return { text: `Same as ${PREVIOUS_NAME[period]}`, down: false };
   return {

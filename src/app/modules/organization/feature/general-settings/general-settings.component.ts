@@ -199,7 +199,7 @@ export class GeneralSettingsComponent {
       this.form.controls.workEndTime.value,
       this.form.controls.breakDurationMinutes.value
     );
-    if (hours === null || hours <= 0) return null;
+    if (hours == null || hours <= 0) return null;
     return `${hours.toFixed(1)} working hours / day · this is 1 leave day`;
   }
 

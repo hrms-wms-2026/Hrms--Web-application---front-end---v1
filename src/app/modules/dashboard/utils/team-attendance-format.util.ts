@@ -27,8 +27,8 @@ export const TEAM_ATTENDANCE_LABELS: Record<TeamAttendanceBucket, string> = {
  * The popup's department bars and the summary card use this one order. */
 export function departmentsWorstFirst<T extends { readonly name: string; readonly rate: number | null }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => {
-    if (a.rate === null || b.rate === null) {
-      return a.rate === b.rate ? a.name.localeCompare(b.name) : a.rate === null ? 1 : -1;
+    if (a.rate == null || b.rate == null) {
+      return a.rate === b.rate ? a.name.localeCompare(b.name) : a.rate == null ? 1 : -1;
     }
     return a.rate - b.rate || a.name.localeCompare(b.name);
   });
@@ -43,7 +43,7 @@ export function teamAttendanceRangeLabel(mode: TeamAttendancePeriodMode, start: 
 
 /** "↑ 4 pp vs last week"; null when there is nothing to compare. */
 export function teamAttendanceDelta(deltaPp: number | null, mode: TeamAttendancePeriodMode): { text: string; down: boolean } | null {
-  if (deltaPp === null) return null;
+  if (deltaPp == null) return null;
   const arrow = deltaPp > 0 ? '↑' : deltaPp < 0 ? '↓' : '±';
   return { text: `${arrow} ${Math.abs(deltaPp)} pp vs last ${mode}`, down: deltaPp < 0 };
 }

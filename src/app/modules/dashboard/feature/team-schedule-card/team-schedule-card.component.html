@@ -119,7 +119,7 @@
               } @else {
                 @let fill = plannerEnabled() ? loadFill(m) : clockedShare(m);
                 <span class="tsc-load-track" aria-hidden="true">
-                  @if (fill !== null) {
+                  @if (fill != null) {
                     <span data-testid="tsc-load-bar" [style.width.%]="fill" [style.background]="plannerEnabled() ? loadColor(m) : null"></span>
                   }
                 </span>

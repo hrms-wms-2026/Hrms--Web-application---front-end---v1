@@ -53,7 +53,7 @@
         class="bc-col"
         [class.bc-col--active]="active() === i"
         [class.bc-col--dim]="col.bar.dim"
-        [class.bc-col--pair]="col.pair !== null"
+        [class.bc-col--pair]="col.pair != null"
         [class.bc-col--alert]="!!col.bar.alert"
         [title]="col.bar.tooltip"
         data-testid="bar-chart-col"
@@ -109,7 +109,7 @@
               </div>
             }
           </div>
-          @if (col.marker !== null) {
+          @if (col.marker != null) {
             <span
               class="bc-marker"
               [style.bottom.%]="col.marker"

@@ -236,6 +236,6 @@ export class FaceEvidenceCardComponent {
   }
 
   private score(value: number | null): string {
-    return value === null ? '—' : `${Math.round(value)}%`;
+    return value == null ? '—' : `${Math.round(value)}%`;
   }
 }

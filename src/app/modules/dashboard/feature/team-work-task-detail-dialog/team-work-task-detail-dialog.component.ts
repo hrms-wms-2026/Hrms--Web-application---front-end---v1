@@ -176,7 +176,7 @@ export class TeamWorkTaskDetailDialogComponent {
         value: utilizationText(t.utilization),
         hint: delta?.text ?? 'no earlier figure to compare',
         icon: 'layers',
-        tone: t.utilization !== null && t.utilization < 50 ? 'warning' : 'success',
+        tone: t.utilization != null && t.utilization < 50 ? 'warning' : 'success',
         testId: 'wtd-tile-utilization',
       },
       {
@@ -284,7 +284,7 @@ export class TeamWorkTaskDetailDialogComponent {
   }
 
   protected barWidth(value: number | null): number {
-    return value === null ? 0 : Math.min(100, Math.max(0, value));
+    return value == null ? 0 : Math.min(100, Math.max(0, value));
   }
 
   /** The shown rows (search and sort applied) as CSV, hours in decimals, with spreadsheet-formula escaping. */
@@ -305,7 +305,7 @@ export class TeamWorkTaskDetailDialogComponent {
       'Task share %',
     ];
     const lines = this.rows().map((r) => [
-      r.rank === null ? '' : String(r.rank),
+      r.rank == null ? '' : String(r.rank),
       r.name,
       r.department ?? '',
       h(r.workedMinutes),
@@ -314,7 +314,7 @@ export class TeamWorkTaskDetailDialogComponent {
       h(gapMinutes(r)),
       String(r.completedTasks),
       String(r.unestimatedTasks),
-      r.utilization === null ? '' : String(r.utilization),
+      r.utilization == null ? '' : String(r.utilization),
     ]);
     this.downloadFile(
       `work-vs-task-${data.rangeStart}_${data.rangeEnd}.csv`,

@@ -72,14 +72,14 @@ export function forecastHoursText(hours: number): string {
 
 /** A rate (fraction) as a percent: "42%", "140%" over one, "—" without history or capacity. */
 export function rateText(rate: number | null): string {
-  if (rate === null || !Number.isFinite(rate)) return '—';
+  if (rate == null || !Number.isFinite(rate)) return '—';
   if (rate >= 1) return `${Math.round(rate * 100)}%`;
   return formatPercent(rate * 100, 100);
 }
 
 /** A rate as a bar width, 0..100 (a required rate over 100% fills the track). */
 export function rateBarPercent(rate: number | null): number {
-  if (rate === null || !Number.isFinite(rate)) return 0;
+  if (rate == null || !Number.isFinite(rate)) return 0;
   return Math.min(100, Math.max(0, rate * 100));
 }
 
@@ -103,8 +103,8 @@ export function forecastHeroSub(overtimeHours: number): string {
 
 /** "Needs 58% task rate · now 42%"; without history "No task history in the last 4 weeks". */
 export function forecastHeroCaption(teamRate: number | null, requiredRate: number | null): string {
-  if (teamRate === null) return 'No task history in the last 4 weeks';
-  if (requiredRate === null) return `No working days left · now ${rateText(teamRate)}`;
+  if (teamRate == null) return 'No task history in the last 4 weeks';
+  if (requiredRate == null) return `No working days left · now ${rateText(teamRate)}`;
   return `Needs ${rateText(requiredRate)} task rate · now ${rateText(teamRate)}`;
 }
 
