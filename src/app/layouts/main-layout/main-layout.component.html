@@ -4,7 +4,12 @@
   <!-- Above the navbar and outside the tray gate: announcements carry no tenant data. -->
   <app-announcement-banner class="main-layout__banner" />
   <app-side-navbar class="main-layout__rail" />
-  <app-top-navbar class="main-layout__topbar" [email]="email()" [avatarUrl]="avatarUrl()" [userName]="userName()" />
+  <app-top-navbar
+    class="main-layout__topbar"
+    [email]="email()"
+    [avatarUrl]="avatarUrl()"
+    [userName]="userName()"
+  />
 
   @if (navState.hasVisibleSubSidebar()) {
     @if (navState.customSubSidebar() === 'inbox') {
@@ -45,6 +50,7 @@
 
   <app-mobile-bottom-nav />
   <app-draft-modal-host />
+  <app-owner-setup-guide />
   <app-unsaved-changes-dialog />
 
   @if (quickSearch.isOpen()) {

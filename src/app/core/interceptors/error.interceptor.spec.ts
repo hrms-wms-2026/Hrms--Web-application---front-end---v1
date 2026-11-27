@@ -3,9 +3,11 @@ import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@a
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
 import { environment } from '@environments/environment';
-import { SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
+import { NO_EMPLOYEE_DETAIL, SILENT_HTTP_ERRORS, errorInterceptor } from './error.interceptor';
 import { AuthStore } from '../auth/state/auth.store';
 import { NotificationService } from '../services/notification.service';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { toApiError } from '../errors/api-error';
 
 describe('errorInterceptor', () => {
   let http: HttpClient;
@@ -18,7 +20,9 @@ describe('errorInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        provideRouter([])
+        // The interceptor really navigates to the login page on a 401; give it a route so that navigation
+        // resolves instead of rejecting after the test ends.
+        provideRouter([{ path: 'auth/login', children: [] }])
       ]
     });
     http = TestBed.inject(HttpClient);
@@ -30,6 +34,17 @@ describe('errorInterceptor', () => {
   afterEach(() => {
     httpMock.verify();
     vi.useRealTimers();
+  });
+
+  it('remembers the request correlation id for toApiError and still throws the HttpErrorResponse', () => {
+    let caught: unknown = null;
+    http.post('/api/v1/org/things', {}, { headers: new HttpHeaders({ 'X-Correlation-ID': 'req-abc' }) }).subscribe({
+      error: (e: unknown) => (caught = e),
+    });
+    httpMock.expectOne('/api/v1/org/things').flush({ detail: 'x' }, { status: 409, statusText: 'Conflict' });
+
+    expect(caught).toBeInstanceOf(HttpErrorResponse);
+    expect(toApiError(caught).correlationId).toBe('req-abc');
   });
 
   it('retries a 500 three times with backoff before failing', async () => {
@@ -121,6 +136,46 @@ describe('errorInterceptor', () => {
     req.flush({}, { status: 403, statusText: 'Forbidden' });
 
     expect(notify.notifications()[0].message).toBe('You do not have access to perform this action.');
+  });
+
+  it('does not show an error for the no-employee-profile 403', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.get('/api/v1/my/progress').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/v1/my/progress')
+      .flush({ detail: NO_EMPLOYEE_DETAIL }, { status: 403, statusText: 'Forbidden' });
+
+    expect(notify.notifications()).toHaveLength(0);
+  });
+
+  it('does not show an error for the no-employee-profile 404', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.get('/api/v1/my/documents').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/v1/my/documents')
+      .flush({ detail: NO_EMPLOYEE_DETAIL }, { status: 404, statusText: 'Not Found' });
+
+    expect(notify.notifications()).toHaveLength(0);
+  });
+
+  it('does not show an error for the Leave screens wording of the no-employee-profile response', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.get('/api/v1/leave/requests').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/v1/leave/requests')
+      .flush({ detail: 'No employee record is linked to the current user.' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(notify.notifications()).toHaveLength(0);
+  });
+
+  it('still shows other 403s', () => {
+    const notify = TestBed.inject(NotificationService);
+
+    http.get('/api/v1/employees').subscribe({ error: () => {} });
+    httpMock.expectOne('/api/v1/employees')
+      .flush({ detail: 'You cannot do that.' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(notify.notifications()).toHaveLength(1);
   });
 
   it('clears the session and redirects to /auth/login on a CSRF-shaped 403 (stale/expired session)', () => {

@@ -93,6 +93,7 @@
     [role]="editingRole()"
     [roleDetail]="roleStore.selectedRoleDetail()"
     [groupedCatalog]="roleStore.groupedCatalog()"
+    [serverError]="roleStore.actionApiError()"
     [loading]="!!editingRole() && roleStore.detailLoading()"
     [saving]="roleStore.saving()"
     (save)="onSaveRole($event)"

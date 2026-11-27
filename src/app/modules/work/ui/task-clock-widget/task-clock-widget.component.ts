@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { TaskApiService } from '../../data-access/task-api.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -6,6 +6,7 @@ import { WorkTask } from '../../models/task.model';
 import { toWorkTask } from '../../utils/task.mapper';
 import { safeServerDetail } from '../../../../core/services/error-handler.service';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { injectNow } from '../../../../core/clock/clock.service';
 
 @Component({
   selector: 'app-task-clock-widget',
@@ -189,8 +190,6 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
 export class TaskClockWidgetComponent {
   private readonly taskApi = inject(TaskApiService);
   private readonly notificationService = inject(NotificationService);
-  private readonly destroyRef = inject(DestroyRef);
-  private tickTimer: ReturnType<typeof setInterval> | null = null;
 
   task = input.required<WorkTask>();
   hasOpenSessionMine = input(false);
@@ -205,14 +204,8 @@ export class TaskClockWidgetComponent {
   pushReason = signal('');
   pushError = signal<string | null>(null);
   pushSubmitting = signal(false);
-  private readonly now = signal(Date.now());
-
-  constructor() {
-    this.tickTimer = setInterval(() => this.now.set(Date.now()), 1000);
-    this.destroyRef.onDestroy(() => {
-      if (this.tickTimer !== null) clearInterval(this.tickTimer);
-    });
-  }
+  /** Ticks every second while clocked in shows a live elapsed time. */
+  private readonly now = injectNow('second');
 
   // Total time spent on this task: the persisted total from all past closed sessions, plus the
   // live-running elapsed time of the current session while clocked in. Always visible - frozen

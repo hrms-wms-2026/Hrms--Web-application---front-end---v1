@@ -17,6 +17,7 @@ import { LeaveTypeListTableComponent } from '../../ui/leave-type-list-table/leav
 import { LeaveTypeFormModalComponent, LeaveTypeFormValue } from '../../ui/leave-type-form-modal/leave-type-form-modal.component';
 
 import { TimeOffSettingsTabsComponent } from '../../ui/time-off-settings-tabs/time-off-settings-tabs.component';
+import { failedSaveToast } from '../../../../shared/utils/validators';
 @Component({
   selector: 'app-leave-types-management',
   standalone: true,
@@ -62,18 +63,20 @@ export class LeaveTypesManagementComponent {
   }
 
   openCreateModal(): void {
+    this.store.clearSaveError();
     if (!this.hasManageAccess()) { this.notificationService.error("You don't have permission to create leave types."); return; }
     this.editingType.set(null);
     this.formModalOpen.set(true);
   }
 
   openEditModal(type: LeaveTypeResponse): void {
+    this.store.clearSaveError();
     if (!this.hasManageAccess()) { this.notificationService.error("You don't have permission to edit leave types."); return; }
     this.editingType.set(type);
     this.formModalOpen.set(true);
   }
 
-  closeFormModal(): void { this.formModalOpen.set(false); this.editingType.set(null); }
+  closeFormModal(): void { this.store.clearSaveError(); this.formModalOpen.set(false); this.editingType.set(null); }
 
   async onSave(value: LeaveTypeFormValue): Promise<void> {
     const editing = this.editingType();
@@ -82,7 +85,8 @@ export class LeaveTypesManagementComponent {
       this.notificationService.success(`Leave type '${value.name}' ${editing ? 'updated' : 'created'} successfully.`);
       this.closeFormModal();
     } else {
-      this.notificationService.error(this.store.actionError() ?? 'Failed to save leave type.');
+      const toast = failedSaveToast(this.store.actionApiError(), 'Failed to save leave type.');
+      if (toast) this.notificationService.error(toast);
     }
   }
 

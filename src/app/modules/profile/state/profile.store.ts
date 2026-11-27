@@ -12,7 +12,17 @@ import {
   UpsertEmergencyContactRequest
 } from '../models/profile.model';
 import { toSafeErrorMessage } from '../../../core/services/error-handler.service';
+import { ApiError, toApiError } from '../../../core/errors/api-error';
 import { FileApiService } from '../../../shared/data-access/file-api.service';
+
+/** Which profile panel the last failed save came from, so only that panel shows its server error (task 20). */
+export type ProfileSaveTarget = 'personal' | 'emergencyContact' | 'dependent' | 'payroll';
+
+function withoutKey(errors: Partial<Record<ProfileSaveTarget, ApiError>>, key: ProfileSaveTarget): Partial<Record<ProfileSaveTarget, ApiError>> {
+  const rest = { ...errors };
+  delete rest[key];
+  return rest;
+}
 
 export interface ProfileState {
   readonly profile: MyProfile | null;
@@ -20,6 +30,8 @@ export interface ProfileState {
   readonly saving: boolean;
   readonly error: string | null;
   readonly saveError: string | null;
+  /** The last refused save of each panel, so two panels saving together keep both errors (task 20). */
+  readonly saveErrors: Partial<Record<ProfileSaveTarget, ApiError>>;
   readonly documents: EmployeeDocument[];
   readonly documentsLoading: boolean;
   readonly documentsError: string | null;
@@ -33,6 +45,7 @@ const initialState: ProfileState = {
   saving: false,
   error: null,
   saveError: null,
+  saveErrors: {},
   documents: [],
   documentsLoading: false,
   documentsError: null,
@@ -44,6 +57,11 @@ export const ProfileStore = signalStore(
   { providedIn: 'root' },
   withState<ProfileState>(initialState),
   withMethods((store, api = inject(ProfileApiService), fileApi = inject(FileApiService)) => ({
+    /** Drops the last failed save so a panel shown again starts clean. */
+    clearSaveError(): void {
+      patchState(store, { saveError: null, saveErrors: {} });
+    },
+
     async loadProfile(): Promise<void> {
       patchState(store, { loading: true, error: null });
       try {
@@ -55,20 +73,21 @@ export const ProfileStore = signalStore(
     },
 
     async savePersonalInformation(payload: UpdatePersonalInformationRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'personal') });
       try {
         await firstValueFrom(api.updatePersonalInformation(payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to save personal information.') });
+        const apiError = toApiError(err, 'Failed to save personal information.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), personal: apiError } });
         return false;
       }
     },
 
     async uploadAvatar(file: File): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'personal') });
       try {
         const uploaded = await firstValueFrom(fileApi.upload(file, 'employee_avatar'));
         await firstValueFrom(api.linkAvatar(uploaded.fileId));
@@ -76,111 +95,122 @@ export const ProfileStore = signalStore(
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to upload avatar.') });
+        const apiError = toApiError(err, 'Failed to upload avatar.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), personal: apiError } });
         return false;
       }
     },
 
     async removeAvatar(): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'personal') });
       try {
         await firstValueFrom(api.removeAvatar());
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to remove photo.') });
+        const apiError = toApiError(err, 'Failed to remove photo.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), personal: apiError } });
         return false;
       }
     },
 
     async addEmergencyContact(payload: UpsertEmergencyContactRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'emergencyContact') });
       try {
         await firstValueFrom(api.addEmergencyContact(payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to add emergency contact.') });
+        const apiError = toApiError(err, 'Failed to add emergency contact.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), emergencyContact: apiError } });
         return false;
       }
     },
 
     async updateEmergencyContact(id: string, payload: UpsertEmergencyContactRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'emergencyContact') });
       try {
         await firstValueFrom(api.updateEmergencyContact(id, payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to update emergency contact.') });
+        const apiError = toApiError(err, 'Failed to update emergency contact.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), emergencyContact: apiError } });
         return false;
       }
     },
 
     async removeEmergencyContact(id: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'emergencyContact') });
       try {
         await firstValueFrom(api.deleteEmergencyContact(id));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to remove emergency contact.') });
+        // The panel shows why the item is still there (task 20).
+        const apiError = toApiError(err, 'Failed to remove emergency contact.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), emergencyContact: apiError } });
         return false;
       }
     },
 
     async addDependent(payload: UpsertDependentRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'dependent') });
       try {
         await firstValueFrom(api.addDependent(payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to add dependent.') });
+        const apiError = toApiError(err, 'Failed to add dependent.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), dependent: apiError } });
         return false;
       }
     },
 
     async updateDependent(id: string, payload: UpsertDependentRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'dependent') });
       try {
         await firstValueFrom(api.updateDependent(id, payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to update dependent.') });
+        const apiError = toApiError(err, 'Failed to update dependent.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), dependent: apiError } });
         return false;
       }
     },
 
     async removeDependent(id: string): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'dependent') });
       try {
         await firstValueFrom(api.deleteDependent(id));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to remove dependent.') });
+        // The panel shows why the item is still there (task 20).
+        const apiError = toApiError(err, 'Failed to remove dependent.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), dependent: apiError } });
         return false;
       }
     },
 
     async savePayroll(payload: UpdateBankDetailsRequest): Promise<boolean> {
-      patchState(store, { saving: true, saveError: null });
+      patchState(store, { saving: true, saveError: null, saveErrors: withoutKey(store.saveErrors(), 'payroll') });
       try {
         await firstValueFrom(api.updatePayroll(payload));
         await this.loadProfile();
         patchState(store, { saving: false });
         return true;
       } catch (err) {
-        patchState(store, { saving: false, saveError: toSafeErrorMessage(err, 'Failed to save payroll details.') });
+        const apiError = toApiError(err, 'Failed to save payroll details.');
+        patchState(store, { saving: false, saveError: apiError.message, saveErrors: { ...store.saveErrors(), payroll: apiError } });
         return false;
       }
     },

@@ -6,6 +6,7 @@ import { LeaveRequestApiService } from '../../../leave/data-access/leave-request
 import { formatMinutes } from '../../util/timeline-segments.util';
 import { getTimeOfDayInfo, TimeOfDayInfo } from '../../util/time-of-day.util';
 import { DayBlock, DayBlockType, ShiftAxis, TimeInterval, buildDayBlocks, buildShiftAxis } from '../../util/shift-axis.util';
+import { ClockService, injectNow } from '../../../../core/clock/clock.service';
 
 const CLOCK_FORMAT = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 
@@ -85,7 +86,6 @@ export class TodayAtAGlanceCardComponent implements OnInit {
   private readonly leaveApi = inject(LeaveRequestApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
-  private tickTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
    * The design canvas: at least DESIGN_WIDTH x DESIGN_HEIGHT, stretched to the card's shape so the card is
@@ -95,7 +95,8 @@ export class TodayAtAGlanceCardComponent implements OnInit {
   // Ticks every minute so greeting/timeline/"last updated" labels stay live without a manual
   // page reload - the greeting/timeline calculations below read this instead of calling
   // `new Date()`/`Date.now()` directly so they re-run on each tick.
-  private readonly now = signal(Date.now());
+  private readonly clock = inject(ClockService);
+  private readonly now = injectNow('minute');
 
   protected readonly today = this.store.today;
   protected readonly loading = this.store.todayLoading;
@@ -191,11 +192,6 @@ export class TodayAtAGlanceCardComponent implements OnInit {
       this.destroyRef.onDestroy(() => observer.disconnect());
     });
 
-    this.tickTimer = setInterval(() => this.now.set(Date.now()), 60_000);
-    this.destroyRef.onDestroy(() => {
-      if (this.tickTimer !== null) clearInterval(this.tickTimer);
-    });
-
     // Approved leave touching today (a day either side covers the timezone offset), once per work date.
     effect(() => {
       const workDate = this.today()?.workDate;
@@ -221,7 +217,7 @@ export class TodayAtAGlanceCardComponent implements OnInit {
       await this.store.loadToday();
     } finally {
       this.refreshing.set(false);
-      this.now.set(Date.now());
+      this.clock.refresh();
     }
   }
 

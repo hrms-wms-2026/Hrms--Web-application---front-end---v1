@@ -33,17 +33,10 @@
 @if (selectedRequestTab() === 'corrections') {
   <div id="my-requests-panel-corrections" role="tabpanel" aria-labelledby="my-requests-tab-corrections" tabindex="0">
     @if (store.myCorrectionsLoading()) { <p class="access-note">Loading…</p> }
-    @if (store.myCorrectionsError()) {
-      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myCorrectionsError() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyCorrections()">Try again</app-button></div>
+    @if (store.myCorrectionsError(); as message) {
+      <app-attendance-error-banner [message]="message" (retryRequested)="store.loadMyCorrections()" />
     } @else if (store.myCorrections().length === 0) {
-      <div class="empty-state-box">
-        <div class="empty-state-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
-        <p class="empty-copy">You have not submitted any attendance correction requests.</p>
-      </div>
+      <app-attendance-empty-state [iconPaths]="correctionsEmptyIconPaths" message="You have not submitted any attendance correction requests." />
     } @else {
       <app-data-table class="corrections-table" minWidth="900px" [columns]="correctionColumns" [rows]="store.myCorrections()" [trackBy]="trackById" caption="My attendance corrections">
         <ng-template appDataTableCell="date" let-request>{{ formatDate(request.workDate) }}<span class="table-secondary">Requested</span></ng-template>
@@ -55,34 +48,16 @@
           @if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="correctionActionIsLoading('cancel')" (click)="cancelCorrection(request.id)">Cancel request</button> }
         </ng-template>
       </app-data-table>
-      @if (store.myCorrectionsTotalCount() > store.myCorrectionsPageSize()) {
-        <div class="tt-pagination">
-          <span class="tt-pagination-info">
-            Page {{ store.myCorrectionsPage() }} of {{ Math.ceil(store.myCorrectionsTotalCount() / store.myCorrectionsPageSize()) }}
-          </span>
-          <div class="tt-pagination-buttons">
-            <app-button type="button" variant="secondary" [disabled]="store.myCorrectionsPage() <= 1" (pressed)="goToCorrectionsPage(store.myCorrectionsPage() - 1)">Previous</app-button>
-            <app-button type="button" variant="secondary" [disabled]="store.myCorrectionsPage() * store.myCorrectionsPageSize() >= store.myCorrectionsTotalCount()" (pressed)="goToCorrectionsPage(store.myCorrectionsPage() + 1)">Next</app-button>
-          </div>
-        </div>
-      }
+      <app-attendance-list-pager [page]="store.myCorrectionsPage()" [pageSize]="store.myCorrectionsPageSize()" [totalCount]="store.myCorrectionsTotalCount()" (pageChanged)="goToCorrectionsPage($event)" />
     }
   </div>
 } @else {
   <div id="my-requests-panel-work-area" role="tabpanel" aria-labelledby="my-requests-tab-work-area" tabindex="0">
     @if (store.myWorkAreaRequestsLoading()) { <p class="access-note">Loading…</p> }
-    @if (store.myWorkAreaRequestsError()) {
-      <div class="time-tracking-message time-tracking-message--error" role="alert"><p>{{ store.myWorkAreaRequestsError() }}</p><app-button type="button" variant="secondary" size="sm" (pressed)="store.loadMyWorkAreaRequests()">Try again</app-button></div>
+    @if (store.myWorkAreaRequestsError(); as message) {
+      <app-attendance-error-banner [message]="message" (retryRequested)="store.loadMyWorkAreaRequests()" />
     } @else if (store.myWorkAreaRequests().length === 0) {
-      <div class="empty-state-box">
-        <div class="empty-state-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-          </svg>
-        </div>
-        <p class="empty-copy">You have not submitted any work-area change requests.</p>
-      </div>
+      <app-attendance-empty-state [iconPaths]="workAreaEmptyIconPaths" message="You have not submitted any work-area change requests." />
     } @else {
       <app-data-table minWidth="1080px" [columns]="workAreaColumns" [rows]="store.myWorkAreaRequests()" [trackBy]="trackById" caption="My work-area requests">
         <ng-template appDataTableCell="date" let-request>{{ formatWorkAreaDate(request.date, request.timezone) }}</ng-template>
@@ -94,9 +69,7 @@
         <ng-template appDataTableCell="review" let-request><span class="table-secondary">@if (request.reviewerDisplayName) { {{ request.reviewerDisplayName }} } @if (request.reviewedAt) { · {{ formatDateTime(request.reviewedAt, request.timezone) }} } @if (request.reviewComment) { <span class="table-note">{{ request.reviewComment }}</span> } @if (!request.reviewerDisplayName && !request.reviewedAt && !request.reviewComment) { Not reviewed }</span></ng-template>
         <ng-template appDataTableCell="actions" let-request>@if (request.status === 'pending') { <button type="button" class="table-action table-action--danger" [disabled]="store.workAreaActionLoading()" (click)="requestCancelWorkArea(request.id)">Cancel request</button> }</ng-template>
       </app-data-table>
-      @if (store.myWorkAreaRequestsTotalCount() > store.myWorkAreaRequestsPageSize()) {
-        <div class="tt-pagination"><span class="tt-pagination-info">Page {{ store.myWorkAreaRequestsPage() }} of {{ Math.ceil(store.myWorkAreaRequestsTotalCount() / store.myWorkAreaRequestsPageSize()) }}</span><div class="tt-pagination-buttons"><app-button type="button" variant="secondary" [disabled]="(store.myWorkAreaRequestsPage()) <= 1 || !!store.myWorkAreaRequestsLoading()" (pressed)="goToWorkAreaRequestsPage((store.myWorkAreaRequestsPage()) - 1)">Previous</app-button><app-button type="button" variant="secondary" [disabled]="(store.myWorkAreaRequestsPage()) * store.myWorkAreaRequestsPageSize() >= store.myWorkAreaRequestsTotalCount() || !!store.myWorkAreaRequestsLoading()" (pressed)="goToWorkAreaRequestsPage((store.myWorkAreaRequestsPage()) + 1)">Next</app-button></div></div>
-      }
+      <app-attendance-list-pager [page]="store.myWorkAreaRequestsPage()" [pageSize]="store.myWorkAreaRequestsPageSize()" [totalCount]="store.myWorkAreaRequestsTotalCount()" [busy]="store.myWorkAreaRequestsLoading()" (pageChanged)="goToWorkAreaRequestsPage($event)" />
     }
   </div>
 }

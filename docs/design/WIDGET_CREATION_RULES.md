@@ -44,7 +44,7 @@ All under `src/app/modules/dashboard/`. `<w>` is the widget's kebab name, `<p>` 
 
 - Grid: 96px rows, 12px gap → 2 rows = 204px, 3 = 312, 4 = 420, 5 = 528, 6 = 636. A column is ~97px at 1440px wide, ~140px at 1920px.
 - **Every widget works at 2x2**, and all the way up to 12x8.
-- The card picks its view from **its own rendered size** (ResizeObserver + rAF, like the reference card's `observeSize/applySize`), never from grid w/h. **20px hysteresis.** A 0x0 host renders the standard view first.
+- The card picks its view from **its own rendered size** (`injectHostSize()` from `modules/dashboard/utils/host-size.util.ts`, fed into the card's `applySize(size)` through an `effect` that skips 0x0 and runs `applySize` in `untracked`; see `team-employee-forecast-card`), never from grid w/h. **20px hysteresis.** A 0x0 host renders the standard view first.
 - View ladder: **`mini`** (2 rows, height < ~260px), **`xs`** (narrow but tall, width < ~330px: donut over the figure), **`standard`**.
 - **Grow by adding detail, never by scaling.** A taller card adds sections in priority order: KPI tiles / summary row → trend chart → top-N ranking (min 3 rows, max 10). Each section has a fixed height in `…_SECTION_PX`, and the plan only adds a section when its full height fits.
 - **A card never scrolls.** Every view must fit its size. Measure section heights **in the browser**, never guess them (a guessed 64px tile was really 102px). To verify, check `scrollHeight - clientHeight` of the frame's `overflow-auto` div at every size from 2x2 to 12x8.

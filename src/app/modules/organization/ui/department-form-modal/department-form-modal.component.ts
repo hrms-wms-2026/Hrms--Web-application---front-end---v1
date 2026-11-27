@@ -1,11 +1,15 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { DepartmentListItemResponse, DepartmentTreeNodeResponse } from '../../models/department.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent } from '../../../../shared/ui/select/select.component';
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
+import { AppValidators, applyServerFieldErrors, fieldError } from '../../../../shared/utils/validators';
+import { DEPARTMENT_LIMITS } from '../../utils/organization-limits';
+import { ApiError } from '../../../../core/errors/api-error';
+import { FieldErrorComponent } from '../../../../shared/ui/field-error/field-error.component';
 
 export interface DepartmentFormValue {
   name: string;
@@ -24,7 +28,7 @@ export interface HeadPositionOption {
   selector: 'app-department-form-modal',
   host: { 'animate.leave': 'ui-popup-leave' },
   standalone: true,
-  imports: [StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
+  imports: [FieldErrorComponent, StopClickPropagationDirective, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent],
   templateUrl: './department-form-modal.component.html',
   styleUrl: './department-form-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -38,13 +42,31 @@ export class DepartmentFormModalComponent implements OnInit {
   @Input() availableHeadPositions: readonly HeadPositionOption[] = [];
   @Input({ required: true }) companyName!: string;
   @Input() loading = false;
+  /** A message from a refused save that matches no field, shown inside the modal (task 20). */
+  protected readonly serverFormError = signal<string | null>(null);
+
+  /** The store's ApiError for the last failed save: field messages go next to their fields. */
+  @Input() set serverError(value: ApiError | null) {
+    // Only the fields this template shows an error for; any other message is shown above the footer.
+    this.serverFormError.set(value ? applyServerFieldErrors(this.form, value, ['name', 'code']) : null);
+  }
+
 
   @Output() save = new EventEmitter<DepartmentFormValue>();
   @Output() cancelled = new EventEmitter<void>();
 
+  protected readonly fieldError = fieldError;
+
   readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(200)]],
-    code: ['', [Validators.required, Validators.maxLength(20)]],
+    name: ['', AppValidators.name(DEPARTMENT_LIMITS.nameMax)],
+    code: [
+      '',
+      [
+        AppValidators.requiredText(),
+        AppValidators.maxLength(DEPARTMENT_LIMITS.codeMax),
+        AppValidators.pattern(DEPARTMENT_LIMITS.codePattern, 'code')
+      ]
+    ],
     parentDepartmentId: ['' as string | null],
     headPositionId: ['' as string | null]
   });

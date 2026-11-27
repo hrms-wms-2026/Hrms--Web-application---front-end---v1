@@ -1,0 +1,9 @@
+@if (visible()) {
+  <div class="tt-pagination">
+    <span class="tt-pagination-info">Page {{ page() }} of {{ pageCount() }}</span>
+    <div class="tt-pagination-buttons">
+      <app-button type="button" variant="secondary" [disabled]="atStart()" (pressed)="pageChanged.emit(page() - 1)">Previous</app-button>
+      <app-button type="button" variant="secondary" [disabled]="atEnd()" (pressed)="pageChanged.emit(page() + 1)">Next</app-button>
+    </div>
+  </div>
+}

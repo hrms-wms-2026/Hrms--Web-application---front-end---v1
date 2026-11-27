@@ -4,13 +4,6 @@ export type ExceptionAlertType = 'SustainedLowActivity' | 'AttendanceIrregularit
 /** Notification relatedEntityType the backend stamps on exception alerts. */
 export const EXCEPTION_ALERT_ENTITY_TYPE = 'monitoring_exception';
 
-export const EXCEPTION_ALERT_TYPE_LABELS: Record<ExceptionAlertType, string> = {
-  SustainedLowActivity: 'Sustained low activity',
-  AttendanceIrregularity: 'Attendance irregularity',
-  UnusualActivityPattern: 'Unusual activity pattern',
-  IdentityAnomaly: 'Identity check'
-};
-
 /** GET /api/v1/monitoring/exceptions/{id}/evidence - ExceptionEvidenceDto. */
 export interface ExceptionEvidenceResponse {
   readonly exceptionId: string;

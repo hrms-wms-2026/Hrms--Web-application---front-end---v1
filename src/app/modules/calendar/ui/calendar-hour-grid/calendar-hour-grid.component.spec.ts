@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { CalendarEventResponse } from '../../models/calendar-event.model';
 import { CalendarHourGridComponent } from './calendar-hour-grid.component';
+import { ClockService } from '../../../../core/clock/clock.service';
 
 function makeEvent(id: string, date: string, startHHmm: string, endHHmm: string, isAllDay = false, hasConflict = false): CalendarEventResponse {
   return {
@@ -208,6 +209,7 @@ describe('CalendarHourGridComponent', () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date('2026-09-01T03:00:00Z'));
+      fixture.destroy();
       const tzFixture = TestBed.createComponent(CalendarHourGridComponent);
       tzFixture.componentRef.setInput('days', ['2026-09-01']);
       tzFixture.componentRef.setInput('timezone', 'UTC');
@@ -219,8 +221,8 @@ describe('CalendarHourGridComponent', () => {
 
       expect(lineAt()).toBeCloseTo((3 / 24) * 100, 1);
 
-      vi.setSystemTime(new Date('2026-09-01T09:00:00Z'));
-      vi.advanceTimersByTime(30_000);
+      vi.setSystemTime(new Date('2026-09-01T08:59:00Z'));
+      vi.advanceTimersByTime(60_000);
       tzFixture.detectChanges();
 
       expect(lineAt()).toBeCloseTo((9 / 24) * 100, 1);
@@ -232,6 +234,8 @@ describe('CalendarHourGridComponent', () => {
   describe('current time marker', () => {
     function todayGrid(now: string, timezone = 'UTC', day = '2026-09-01') {
       vi.setSystemTime(new Date(now));
+      fixture.destroy();
+      TestBed.inject(ClockService).refresh();
       const f = TestBed.createComponent(CalendarHourGridComponent);
       f.componentRef.setInput('days', [day]);
       f.componentRef.setInput('timezone', timezone);
@@ -278,8 +282,8 @@ describe('CalendarHourGridComponent', () => {
       vi.useFakeTimers();
       const f = todayGrid('2026-09-01T09:36:00Z');
 
-      vi.setSystemTime(new Date('2026-09-01T09:37:10Z'));
-      vi.advanceTimersByTime(30_000);
+      vi.setSystemTime(new Date('2026-09-01T09:36:10Z'));
+      vi.advanceTimersByTime(60_000);
       f.detectChanges();
 
       expect(label(f)?.textContent?.trim()).toBe('9:37 AM');

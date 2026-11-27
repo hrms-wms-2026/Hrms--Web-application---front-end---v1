@@ -79,13 +79,6 @@ export const TIME_FORMAT_OPTIONS: readonly SelectOption[] = [
   { value: '24h', label: '24 Hour' }
 ];
 
-/** Backend enforces exactly these two values (AllowedStatuses in
- * UpdateLegalEntityGeneralSettingsCommandValidator.cs). */
-export const STATUS_OPTIONS: readonly SelectOption[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' }
-];
-
 /** Curated for UX only - backend only enforces NotEmpty + maxLength(20), no enum.
  * Any of these values (all <= 20 chars) will be accepted by the backend. */
 export const DATE_FORMAT_OPTIONS: readonly SelectOption[] = [

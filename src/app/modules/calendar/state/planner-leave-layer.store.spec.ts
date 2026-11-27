@@ -21,7 +21,7 @@ describe('PlannerLeaveLayerStore', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+    Reflect.deleteProperty(document, 'visibilityState');
   });
 
   it('keeps pending and approved, drops rejected and cancelled', async () => {

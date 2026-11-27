@@ -90,11 +90,6 @@ export function inboxTitle(item: InboxItemDto): string {
   return ACTION_TITLES[item.actionType] ?? 'Request';
 }
 
-/** A short, stable ticket reference built from the item's own id ("#ATT-1A2B3C4D"); not a separate number. */
-export function inboxReference(item: Pick<InboxItemDto, 'source' | 'id'>): string {
-  return `#${item.source.slice(0, 3).toUpperCase()}-${item.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
-}
-
 export function inboxSubtitle(item: InboxItemDto): string {
   if (!isWorkActionType(item)) return item.subtitle ?? '';
   return item.subtitle ? `${item.title} · ${item.subtitle}` : item.title;
@@ -151,12 +146,6 @@ const FIELD_ICONS: Record<string, FilterFieldIcon> = {
 
 /** Direction is the page's segment; category is the page's own Category field below, so neither comes from the server list. */
 const NOT_IN_BAR = new Set(['category', 'direction']);
-
-/** Requests vs alerts: drives the page's tab state (not a server facet), so the list keeps its per-category behaviour. */
-export const CATEGORY_FIELD: FilterFieldConfig = {
-  key: 'category', label: 'Category', icon: 'category', kind: 'single', defaultValues: ['all'],
-  options: [{ value: 'all', label: 'All' }, { value: 'request', label: 'Requests' }, { value: 'alert', label: 'Alerts' }]
-};
 
 export const REQUESTED_ON_FIELD: FilterFieldConfig = {
   key: 'requestedOn', label: 'Requested on', icon: 'calendar', kind: 'single', defaultValues: ['any'],

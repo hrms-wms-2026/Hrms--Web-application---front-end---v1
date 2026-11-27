@@ -13,6 +13,7 @@ import {
   MinuteRange, blockRange, busyIntervals, dropLength, kindMinutes, kindSegments, minuteOfDay, overlapSegments, windowMinutes,
 } from '../../utils/planner-grid.util';
 import { PlannerLeave } from '../../state/planner-leave-layer.store';
+import { injectNow } from '../../../../core/clock/clock.service';
 
 /** A day's load for its header cell (2026-10-27 Planner = Calendar design, section 4.5). */
 export interface PlannerDayLoad {
@@ -185,16 +186,14 @@ export class CalendarHourGridComponent {
   // invalidates a computed(), so without this tick the line freezes at first render - and also
   // never picks up the tenant timezone, which `loadMyTimezone()` resolves a beat after the grid's
   // first paint (leaving the line stuck at the UTC-offset position). Ticking a signal re-derives
-  // it and self-heals that load-order race within one interval. Same pattern as DashboardGreeting.
-  private readonly now = signal(Date.now());
+  // it and self-heals that load-order race within a minute. Same pattern as DashboardGreeting.
+  private readonly now = injectNow('minute');
   private autoScrollTimer: ReturnType<typeof setTimeout> | null = null;
   /** The time zone the "now" line was last centred for. */
   private autoScrolledZone: string | null = null;
 
   constructor() {
-    const tick = setInterval(() => this.now.set(Date.now()), 30_000);
     this.destroyRef.onDestroy(() => {
-      clearInterval(tick);
       if (this.autoScrollTimer !== null) clearTimeout(this.autoScrollTimer);
     });
 

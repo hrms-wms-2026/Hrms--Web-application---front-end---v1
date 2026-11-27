@@ -1,15 +1,19 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, effect, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Dependent, UpsertDependentRequest } from '../../models/profile.model';
 import { InputComponent } from '../../../../shared/ui/input/input.component';
 import { SelectComponent, SelectOption } from '../../../../shared/ui/select/select.component';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { DatePickerComponent } from '../../../../shared/ui/date-picker/date-picker.component';
+import { AppValidators, applyServerFieldErrors, failedSaveToast, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { DEPENDENT_LIMITS } from '../../utils/profile-limits';
+import { ApiError } from '../../../../core/errors/api-error';
+import { FieldErrorComponent } from '../../../../shared/ui/field-error/field-error.component';
 
 @Component({
   selector: 'app-dependents-panel',
   standalone: true,
-  imports: [ReactiveFormsModule, InputComponent, SelectComponent, ButtonComponent, DatePickerComponent],
+  imports: [FieldErrorComponent, ReactiveFormsModule, InputComponent, SelectComponent, ButtonComponent, DatePickerComponent],
   templateUrl: './dependents-panel.component.html',
   styleUrls: ['../profile-panel.shared.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -28,12 +32,35 @@ export class DependentsPanelComponent {
   ];
 
   private readonly fb = new FormBuilder().nonNullable;
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
   readonly addForm = this.fb.group({
-    name: ['', Validators.required],
+    name: ['', AppValidators.name(DEPENDENT_LIMITS.nameMax)],
     relationship: ['child' as Dependent['relationship'], Validators.required],
     dateOfBirth: ['', Validators.required],
-    phone: ['']
+    phone: ['', AppValidators.maxLength(DEPENDENT_LIMITS.phoneMax)]
   });
+
+  /** The profile tab passes this panel's own failed save (task 20). */
+  readonly serverError = input<ApiError | null>(null);
+  /** A message from that save that has no field here, or a refusal without field errors. */
+  protected readonly serverFormError = signal<string | null>(null);
+
+  constructor() {
+    effect(() => {
+      const error = this.serverError();
+      untracked(() =>
+        this.serverFormError.set(
+          error ? (applyServerFieldErrors(this.addForm, error, ['name', 'dateOfBirth', 'phone']) ?? failedSaveToast(error, error.message)) : null,
+        ),
+      );
+    });
+  }
+
+  /** Called by the page once the add was saved; a refused add keeps what the user typed. */
+  resetAddForm(): void {
+    this.addForm.reset({ relationship: 'child' });
+  }
 
   onSubmitAdd(): void {
     if (this.addForm.invalid) {
@@ -49,7 +76,6 @@ export class DependentsPanelComponent {
       isEmergencyContact: false,
       phone: value.phone || null
     });
-    this.addForm.reset({ relationship: 'child' });
   }
 
   /** Footer "Save changes": adds a half-typed dependent (relationship alone has a default, so it doesn't count). */

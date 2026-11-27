@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { ClockService } from '../../../core/clock/clock.service';
 import { LeaveRequestApiService } from '../../leave/data-access/leave-request-api.service';
 
 /** One of the caller's own leave requests, drawn on their Planner. */
@@ -27,8 +28,8 @@ export class PlannerLeaveLayerStore implements OnDestroy {
   private readonly items = signal<readonly PlannerLeave[]>([]);
   readonly leaves = this.items.asReadonly();
   private range: { from: string; to: string } | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
-  private readonly onVisible = () => { if (this.document.visibilityState === 'visible') void this.reload(); };
+  private readonly clock = inject(ClockService);
+  private stopPoll: (() => void) | null = null;
   private readonly onFocus = () => void this.reload();
 
   async load(from: string, to: string): Promise<void> {
@@ -45,17 +46,16 @@ export class PlannerLeaveLayerStore implements OnDestroy {
   }
 
   startAutoRefresh(): void {
-    if (this.timer) return;
-    this.document.addEventListener('visibilitychange', this.onVisible);
+    if (this.stopPoll) return;
     this.document.defaultView?.addEventListener('focus', this.onFocus);
-    this.timer = setInterval(() => { if (this.document.visibilityState === 'visible') void this.reload(); }, REFRESH_MS);
+    // Every minute while visible, and once when the tab is visible again.
+    this.stopPoll = this.clock.poll(() => void this.reload(), REFRESH_MS);
   }
 
   stopAutoRefresh(): void {
-    this.document.removeEventListener('visibilitychange', this.onVisible);
     this.document.defaultView?.removeEventListener('focus', this.onFocus);
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
+    this.stopPoll?.();
+    this.stopPoll = null;
   }
 
   ngOnDestroy(): void {

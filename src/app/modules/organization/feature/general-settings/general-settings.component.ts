@@ -36,6 +36,8 @@ import {
   workTimePairValidator
 } from '../../utils/general-settings-validators';
 import { computeWorkDayHours, isOvernightWorkWindow } from '../../utils/work-day-hours';
+import { AppValidators, applyServerFieldErrors, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { COMPANY_LIMITS } from '../../utils/organization-limits';
 
 /**
  * Settings -> General Settings page for the currently selected Legal Entity.
@@ -99,25 +101,29 @@ export class GeneralSettingsComponent {
   readonly logoDialogOpen = signal(false);
   readonly pickedLogo = signal<File | null>(null);
 
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
+
   readonly form = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(200)]],
-    companyCode: ['', [Validators.required, Validators.maxLength(20)]],
-    registrationNumber: ['', [Validators.required, Validators.maxLength(50)]],
-    taxRegistrationNumber: ['', [Validators.maxLength(80)]],
-    vatGstNumber: ['', [Validators.maxLength(50)]],
-    email: ['', [Validators.email, Validators.maxLength(254)]],
-    phoneNumber: ['', [Validators.maxLength(20)]],
-    website: ['', [Validators.maxLength(255), absoluteUrlValidator()]],
-    countryCode: ['', [Validators.required, Validators.maxLength(3)]],
-    currencyCode: ['', [Validators.required, Validators.maxLength(3)]],
-    timezone: ['', [Validators.required, Validators.maxLength(50)]],
+    name: ['', AppValidators.name(COMPANY_LIMITS.nameMax)],
+    companyCode: ['', AppValidators.name(COMPANY_LIMITS.codeMax)],
+    registrationNumber: ['', AppValidators.name(COMPANY_LIMITS.registrationNumberMax)],
+    taxRegistrationNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.taxRegistrationNumberMax)],
+    vatGstNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.vatGstNumberMax)],
+    // Validators.email like the backend's EmailAddress(), which allows a dotless domain.
+    email: ['', [Validators.email, AppValidators.maxLength(COMPANY_LIMITS.emailMax)]],
+    phoneNumber: ['', AppValidators.maxLength(COMPANY_LIMITS.phoneMax)],
+    website: ['', [AppValidators.maxLength(COMPANY_LIMITS.websiteMax), absoluteUrlValidator()]],
+    countryCode: ['', [Validators.required, Validators.maxLength(COMPANY_LIMITS.countryCodeMax)]],
+    currencyCode: ['', [Validators.required, Validators.maxLength(COMPANY_LIMITS.currencyCodeMax)]],
+    timezone: ['', [Validators.required, Validators.maxLength(COMPANY_LIMITS.timezoneMax)]],
     financialYearStartMonth: [1, [Validators.required, Validators.min(1), Validators.max(12)]],
     firstDayOfWeek: [1, [Validators.required, Validators.min(1), Validators.max(7)]],
     standardWorkingDays: this.fb.nonNullable.control<number[]>([], [nonEmptyArrayValidator()]),
     // Phase 1 supports English only - locked, not user-editable (CreateLegalEntityCommandHandler.cs
     // always sets DefaultLanguage = "en-US" for new legal entities).
-    defaultLanguage: [{ value: 'en-US', disabled: true }, [Validators.required, Validators.maxLength(10)]],
-    dateFormat: ['DD/MM/YYYY', [Validators.required, Validators.maxLength(20)]],
+    defaultLanguage: [{ value: 'en-US', disabled: true }, [Validators.required, Validators.maxLength(COMPANY_LIMITS.defaultLanguageMax)]],
+    dateFormat: ['DD/MM/YYYY', [Validators.required, Validators.maxLength(COMPANY_LIMITS.dateFormatMax)]],
     timeFormat: ['24h' as '12h' | '24h', [Validators.required, oneOfValidator(['12h', '24h'])]],
     status: ['active' as 'active' | 'inactive', [Validators.required, oneOfValidator(['active', 'inactive'])]],
     // Work hours — optional pair, validated as a group (both-or-neither, start < end).
@@ -129,7 +135,7 @@ export class GeneralSettingsComponent {
     // Office location for the on-site work-location warning — optional, all-or-nothing
     // (officeLocationValidator). officeLatitude/officeLongitude are set by the map picker, never
     // typed directly. The geofence radius lives on Clock-in Policy (Allowed distance), not here.
-    officeAddress: ['', [Validators.maxLength(500)]],
+    officeAddress: ['', AppValidators.maxLength(COMPANY_LIMITS.officeAddressMax)],
     officeLatitude: this.fb.control<number | null>(null),
     officeLongitude: this.fb.control<number | null>(null)
   }, { validators: [workTimePairValidator(), officeLocationValidator()] });
@@ -231,7 +237,13 @@ export class GeneralSettingsComponent {
         });
         this.notificationService.success('General Settings saved.');
       } else {
-        this.notificationService.error(this.settingsStore.saveError() ?? 'Failed to save General Settings.');
+        // Field errors from a 400 go next to their fields; anything left over is the toast.
+        const apiError = this.settingsStore.saveApiError();
+        // The error handler already toasted a server or network failure, with its reference.
+        if (apiError && (apiError.kind === 'server' || apiError.kind === 'network')) return;
+        const formLevel = apiError ? applyServerFieldErrors(this.form, apiError) : null;
+        const hasFieldErrors = !!apiError && Object.keys(apiError.fieldErrors).length > 0;
+        this.notificationService.error(formLevel ?? (hasFieldErrors ? 'Please check the highlighted fields.' : this.settingsStore.saveError() ?? 'Failed to save General Settings.'));
         // Failed values stay in the form - no reset here.
       }
     } finally {

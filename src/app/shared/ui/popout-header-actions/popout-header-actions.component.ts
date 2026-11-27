@@ -1,7 +1,6 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, output } from '@angular/core';
 import { StopClickPropagationDirective } from '../../directives/stop-click-propagation.directive';
-
-const TICK_MS = 30_000;
+import { injectNow } from '../../../core/clock/clock.service';
 
 /** The two classes a refresh alternates between to restart the dashboard's load animation (dashboard-motion.css). */
 const REPLAY = ['dash-replay-a', 'dash-replay-b'] as const;
@@ -38,7 +37,7 @@ export function formatRefreshedAgo(at: Date, now: Date): string {
  * Header controls for a card and its popup: when its data last came from the backend (a page reload
  * counts - it is whenever the data was fetched), a refresh button, and expand (on the card, shown on
  * hover) or close (in the open popup). The label
- * re-renders every 30 seconds so "just now" ages on its own.
+ * re-renders every minute so "just now" ages on its own.
  */
 @Component({
   selector: 'app-popout-header-actions',
@@ -134,7 +133,8 @@ export class PopoutHeaderActionsComponent {
   readonly closed = output<void>();
   readonly expand = output<void>();
 
-  private readonly now = signal(new Date());
+  private readonly minute = injectNow('minute');
+  private readonly now = computed(() => new Date(this.minute()));
   readonly ago = computed(() => {
     const at = this.refreshedAt();
     return at ? formatRefreshedAgo(at, this.now()) : '';
@@ -149,9 +149,6 @@ export class PopoutHeaderActionsComponent {
       if (wasRefreshing && !refreshing) replayDashboardMotion(host);
       wasRefreshing = refreshing;
     });
-
-    const timer = setInterval(() => this.now.set(new Date()), TICK_MS);
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
 }
 

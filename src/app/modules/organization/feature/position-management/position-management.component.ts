@@ -652,6 +652,8 @@ export class PositionManagementComponent {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    // The archive modal handles its own Escape; one key press must not also clear page state.
+    if (this.archivingPosition()) return;
     if (this.reportingMovePreview() && !this.reportingMoveSaving()) {
       this.closeReportingMoveReview();
     } else if (this.choosingReportingManager()) {

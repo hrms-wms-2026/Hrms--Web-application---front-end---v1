@@ -19,6 +19,7 @@ import { BreadcrumbHeaderComponent } from '../../../../shared/ui/breadcrumb-head
 import { FilterBarComponent, FilterFieldConfig } from '../../../../shared/ui/filter-bar/filter-bar.component';
 import { DataTableColumnFilters, DataTableFilterValues } from '../../../../shared/ui/data-table/data-table.component';
 import { ViewModeOption, ViewModeToggleComponent } from '../../../../shared/ui/view-mode-toggle/view-mode-toggle.component';
+import { failedSaveToast } from '../../../../shared/utils/validators';
 
 @Component({
   selector: 'app-department-management',
@@ -148,6 +149,7 @@ export class DepartmentManagementComponent {
   }
 
   openCreateModal(parentPreset?: DepartmentTreeNodeResponse): void {
+    this.departmentStore.clearSaveError();
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to create departments.");
       return;
@@ -159,6 +161,7 @@ export class DepartmentManagementComponent {
   }
 
   openEditModal(dept: DepartmentListItemResponse | DepartmentTreeNodeResponse): void {
+    this.departmentStore.clearSaveError();
     if (!this.hasManageAccess()) {
       this.notificationService.error("You don't have permission to edit departments.");
       return;
@@ -181,6 +184,7 @@ export class DepartmentManagementComponent {
   }
 
   closeFormModal(): void {
+    this.departmentStore.clearSaveError();
     this.formModalOpen.set(false);
     this.editingDepartment.set(null);
     this.parentPreset.set(null);
@@ -218,7 +222,8 @@ export class DepartmentManagementComponent {
     if (success) {
       this.closeFormModal();
     } else {
-      this.notificationService.error(this.departmentStore.actionError() ?? 'Failed to save department.');
+      const toast = failedSaveToast(this.departmentStore.actionApiError(), 'Failed to save department.');
+      if (toast) this.notificationService.error(toast);
     }
   }
 

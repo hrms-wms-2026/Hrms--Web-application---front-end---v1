@@ -100,6 +100,28 @@ describe('AttendanceDetailDrawerComponent', () => {
     expect(component.appLabel('crownus.agent.trayapp.exe')).toBe('WorkPulse');
   });
 
+  it('stops refreshing the open day while the tab is hidden and refreshes once when it is back', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const { store } = await setup();
+
+      vi.advanceTimersByTime(15_000);
+      expect(store.refreshDayDetail).toHaveBeenCalledTimes(1);
+
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+      vi.advanceTimersByTime(60_000);
+      expect(store.refreshDayDetail).toHaveBeenCalledTimes(1);
+
+      Reflect.deleteProperty(document, 'visibilityState');
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(store.refreshDayDetail).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+      Reflect.deleteProperty(document, 'visibilityState');
+    }
+  });
+
   it('requests the detail for the given selection on open', async () => {
     const { store } = await setup();
     expect(store.loadDayDetail).toHaveBeenCalledWith('employee-1', '2026-08-27');

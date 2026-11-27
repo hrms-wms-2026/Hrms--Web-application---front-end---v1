@@ -11,9 +11,12 @@ import { StopClickPropagationDirective } from '../../../../shared/directives/sto
 import { IconPickerComponent } from '../../../../shared/ui/icon-picker/icon-picker.component';
 import { leaveTypeDefaultIcon } from '../../utils/leave-hub.util';
 import { TEXT_LIMITS } from '../../../../shared/constants/text-limits';
+import { FieldErrorComponent } from '../../../../shared/ui/field-error/field-error.component';
+import { AppValidators, applyServerFieldErrors, fieldError, validationMessage } from '../../../../shared/utils/validators';
+import { LEAVE_TYPE_LIMITS } from '../../utils/leave-limits';
+import { ApiError } from '../../../../core/errors/api-error';
 
 export type LeaveTypeFormValue = CreateLeaveTypeRequest;
-const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 function hsvToHex(h: number, s: number, v: number): string {
   const f = (n: number) => {
@@ -33,26 +36,37 @@ function hexToHsv(hex: string): [number, number, number] {
   return [Math.round((h * 60 + 360) % 360), max ? d / max : 0, max];
 }
 
-@Component({ selector: 'app-leave-type-form-modal', host: { 'animate.leave': 'ui-popup-leave' }, standalone: true, imports: [StopClickPropagationDirective, IconPickerComponent, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent], templateUrl: './leave-type-form-modal.component.html', styleUrl: './leave-type-form-modal.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-leave-type-form-modal', host: { 'animate.leave': 'ui-popup-leave' }, standalone: true, imports: [StopClickPropagationDirective, IconPickerComponent, FieldErrorComponent, CommonModule, ReactiveFormsModule, ButtonComponent, InputComponent, SelectComponent], templateUrl: './leave-type-form-modal.component.html', styleUrl: './leave-type-form-modal.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class LeaveTypeFormModalComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   @Input() leaveType: LeaveTypeResponse | null = null;
   @Input() loading = false;
+  /** A message from a refused save that matches no field, shown inside the modal (task 20). */
+  protected readonly serverFormError = signal<string | null>(null);
+
+  /** The store's ApiError for the last failed save: field messages go next to their fields. */
+  @Input() set serverError(value: ApiError | null) {
+    // Only the fields this template shows an error for; any other message is shown above the footer.
+    this.serverFormError.set(value ? applyServerFieldErrors(this.form, value, ['name', 'code', 'color']) : null);
+  }
+
   @Output() save = new EventEmitter<LeaveTypeFormValue>();
   @Output() cancelled = new EventEmitter<void>();
 
   readonly colors = LEAVE_TYPE_COLORS;
   readonly descriptionMaxLength = TEXT_LIMITS.leaveTypeDescription;
   readonly genderOptions = [{ value: 'all', label: 'All employees' }, { value: 'male', label: 'Men only' }, { value: 'female', label: 'Women only' }];
+  protected readonly fieldError = fieldError;
+  protected readonly validationMessage = validationMessage;
   readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    code: ['', [Validators.required, Validators.maxLength(20)]],
-    description: ['', Validators.maxLength(500)],
-    color: [LEAVE_TYPE_COLORS[0] as string, [Validators.required, Validators.pattern(HEX_COLOR)]],
+    name: ['', AppValidators.name(LEAVE_TYPE_LIMITS.nameMax)],
+    code: ['', AppValidators.name(LEAVE_TYPE_LIMITS.codeMax)],
+    description: ['', AppValidators.maxLength(TEXT_LIMITS.leaveTypeDescription)],
+    color: [LEAVE_TYPE_COLORS[0] as string, [Validators.required, AppValidators.pattern(LEAVE_TYPE_LIMITS.colorPattern, 'hexColor')]],
     isPaid: [true],
     applicableGender: ['all', Validators.required],
     requiresDocument: [false],
-    documentRequiredAfterHours: [null as number | null, Validators.min(0.5)],
+    documentRequiredAfterHours: [null as number | null, Validators.min(LEAVE_TYPE_LIMITS.documentAfterHoursMin)],
     icon: [null as string | null]
   });
 
@@ -98,7 +112,7 @@ export class LeaveTypeFormModalComponent implements OnInit {
   togglePicker(): void {
     if (this.pickerOpen()) { this.pickerOpen.set(false); return; }
     const value = this.form.controls.color.value ?? '';
-    if (HEX_COLOR.test(value)) {
+    if (LEAVE_TYPE_LIMITS.colorPattern.test(value)) {
       const [h, s, v] = hexToHsv(value);
       this.hue.set(h); this.sat.set(s); this.val.set(v);
     }

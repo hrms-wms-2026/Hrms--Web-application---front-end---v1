@@ -18,9 +18,6 @@ export interface SelectOption {
   disabled?: boolean;
 }
 
-/** Kept for existing callers; any field icon works. */
-export type SelectIcon = FieldIcon;
-
 /** Below the trigger first, flipping above when there isn't room. */
 const MENU_POSITIONS: ConnectionPositionPair[] = [
   { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },

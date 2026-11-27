@@ -104,3 +104,6 @@ export interface ParticipantAddedEvent {
 export interface InboxChangedEvent {
   item: RealtimeItemRef;
 }
+
+/** The signed-in user's notifications changed (new, read or removed): refresh the bell's unread count. */
+export type NotificationsChangedEvent = Record<string, never>;

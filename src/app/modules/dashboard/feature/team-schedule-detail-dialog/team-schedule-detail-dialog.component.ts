@@ -3,7 +3,6 @@ import { RouterLink } from '@angular/router';
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   computed,
   effect,
   inject,
@@ -12,6 +11,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { ClockService, injectNow } from '../../../../core/clock/clock.service';
 import { buildFileUrl } from '../../../../shared/data-access/file-api.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
 import { KpiTile, KpiTilesComponent } from '../../../../shared/ui/kpi-tiles/kpi-tiles.component';
@@ -136,8 +136,6 @@ const FIRST_PAGES: Record<ScheduleList, number> = { table: 1, ranking: 1, week: 
  * as they are everywhere, CSV included. No "Add Schedule": a manager cannot plan for someone else.
  */
 const MAX_AXIS_LABELS = 7;
-/** How often the now line moves. */
-const NOW_TICK_MS = 60_000;
 
 @Component({
   selector: 'app-team-schedule-detail-dialog',
@@ -205,21 +203,11 @@ export class TeamScheduleDetailDialogComponent {
       untracked(() => this.pages.set(FIRST_PAGES));
     });
 
-    // The now line moves once a minute, only while the popup is open.
-    let clock: ReturnType<typeof setInterval> | null = null;
-    const stop = (): void => {
-      if (clock !== null) clearInterval(clock);
-      clock = null;
-    };
+    // The now line is current the moment the popup opens, then moves with the shared minute clock.
+    const clock = inject(ClockService);
     effect(() => {
-      if (!this.open()) {
-        stop();
-        return;
-      }
-      untracked(() => this.now.set(new Date()));
-      if (clock === null) clock = setInterval(() => this.now.set(new Date()), NOW_TICK_MS);
+      if (this.open()) untracked(() => clock.refresh());
     });
-    inject(DestroyRef).onDestroy(stop);
   }
 
   protected goToPage(list: ScheduleList, page: number): void {
@@ -275,8 +263,9 @@ export class TeamScheduleDetailDialogComponent {
   });
   /** At most 7 hour labels: the schedule column is about 320-600px wide, room for 7 "09:00" labels. */
   protected readonly ticks = computed(() => hourTicks(this.span(), MAX_AXIS_LABELS));
-  /** The clock for the now line; ticks every minute while the popup is open. */
-  protected readonly now = signal(new Date());
+  /** The clock for the now line; moves every minute. */
+  private readonly minute = injectNow('minute');
+  protected readonly now = computed(() => new Date(this.minute()));
   /** The now line's position (% of the track) on today's table; null on another day or outside the span. */
   protected readonly nowLeft = computed(() => {
     if (!this.isToday() || !this.store.data()) return null;

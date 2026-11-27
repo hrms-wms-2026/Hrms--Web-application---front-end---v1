@@ -81,10 +81,10 @@
             <div class="gs-field-grid gs-field-grid--3 gs-identity-fields">
               <app-input label="Company name" [value]="form.controls.name.value" (valueChange)="form.controls.name.setValue($event)"
                 (blurred)="form.controls.name.markAsTouched()"
-                [error]="form.controls.name.touched && form.controls.name.invalid ? 'Required (max 200 chars).' : ''" />
+                [error]="fieldError(form.controls.name, 'Company name')" />
               <app-input label="Company code" [value]="form.controls.companyCode.value" (valueChange)="form.controls.companyCode.setValue($event)"
                 (blurred)="form.controls.companyCode.markAsTouched()"
-                [error]="form.controls.companyCode.touched && form.controls.companyCode.invalid ? 'Required (max 20 chars).' : ''" />
+                [error]="fieldError(form.controls.companyCode, 'Company code')" />
               <!-- Status is a two-state toggle: clicking flips Active <-> Inactive. -->
               <div class="gs-status-field">
                 <span class="ui-field-label" id="gs-status-label">Status</span>
@@ -117,19 +117,19 @@
             <div class="gs-field-grid gs-field-grid--3">
               <app-input label="Company registration number" [value]="form.controls.registrationNumber.value" (valueChange)="form.controls.registrationNumber.setValue($event)"
                 (blurred)="form.controls.registrationNumber.markAsTouched()"
-                [error]="form.controls.registrationNumber.touched && form.controls.registrationNumber.invalid ? 'Required (max 50 chars).' : ''" />
+                [error]="fieldError(form.controls.registrationNumber, 'Registration number')" />
               <app-input label="Tax registration number" [value]="form.controls.taxRegistrationNumber.value" (valueChange)="form.controls.taxRegistrationNumber.setValue($event)"
-                [error]="form.controls.taxRegistrationNumber.invalid ? 'Max 80 characters.' : ''" />
+                [error]="validationMessage(form.controls.taxRegistrationNumber.errors, 'Tax registration number')" />
               <app-input label="VAT/GST number (optional)" [value]="form.controls.vatGstNumber.value" (valueChange)="form.controls.vatGstNumber.setValue($event)"
-                [error]="form.controls.vatGstNumber.invalid ? 'Max 50 characters.' : ''" />
+                [error]="validationMessage(form.controls.vatGstNumber.errors, 'VAT/GST number')" />
               <app-input label="Company email" type="email" [value]="form.controls.email.value" (valueChange)="form.controls.email.setValue($event)"
                 (blurred)="form.controls.email.markAsTouched()"
-                [error]="form.controls.email.touched && form.controls.email.invalid ? 'Enter a valid email address.' : ''" />
+                [error]="fieldError(form.controls.email, 'Email')" />
               <app-input label="Phone number" [value]="form.controls.phoneNumber.value" (valueChange)="form.controls.phoneNumber.setValue($event)"
-                [error]="form.controls.phoneNumber.invalid ? 'Max 20 characters.' : ''" />
+                [error]="validationMessage(form.controls.phoneNumber.errors, 'Phone number')" />
               <app-input label="Website (optional)" type="url" [value]="form.controls.website.value" (valueChange)="form.controls.website.setValue($event)"
                 (blurred)="form.controls.website.markAsTouched()"
-                [error]="form.controls.website.touched && form.controls.website.invalid ? 'Enter a full URL, e.g. https://example.com.' : ''" />
+                [error]="fieldError(form.controls.website, 'Website')" />
             </div>
           </div>
         </div>
@@ -145,11 +145,11 @@
               <app-select label="Country" [options]="COUNTRY_CODE_OPTIONS" placeholder="Select a country"
                 [value]="form.controls.countryCode.value"
                 (valueChange)="form.controls.countryCode.setValue($event); form.controls.countryCode.markAsTouched()"
-                [error]="form.controls.countryCode.touched && form.controls.countryCode.invalid ? 'Required.' : ''" />
+                [error]="fieldError(form.controls.countryCode, 'Country')" />
               <app-select label="Currency" [options]="CURRENCY_CODE_OPTIONS" placeholder="Select a currency"
                 [value]="form.controls.currencyCode.value"
                 (valueChange)="form.controls.currencyCode.setValue($event); form.controls.currencyCode.markAsTouched()"
-                [error]="form.controls.currencyCode.touched && form.controls.currencyCode.invalid ? 'Required.' : ''" />
+                [error]="fieldError(form.controls.currencyCode, 'Currency')" />
               <app-select label="Time zone" [options]="TIMEZONE_OPTIONS" placeholder="Select a timezone"
                 [searchable]="true" searchPlaceholder="Search timezones"
                 [value]="form.controls.timezone.value"

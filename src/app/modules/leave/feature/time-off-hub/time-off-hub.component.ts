@@ -3,7 +3,8 @@
  * happened to my requests, who is out, what is coming up" and links to the three screens behind it
  * (All my leave types, Leave Requests, Team Availability). Admin screens live in Settings → Time Off.
  */
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { injectNow } from '../../../../core/clock/clock.service';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
@@ -92,7 +93,8 @@ export class TimeOffHubComponent {
   private readonly authStore = inject(AuthStore);
   private readonly permissions = inject(PermissionService);
 
-  readonly now = signal(new Date());
+  private readonly minute = injectNow('minute');
+  readonly now = computed(() => new Date(this.minute()));
   readonly approvalProgress = approvalProgressLabel;
   readonly wizardOpen = signal(false);
 
@@ -229,10 +231,6 @@ export class TimeOffHubComponent {
   );
 
   constructor() {
-    // Re-check every minute so the greeting, picture and quote move on at "Good afternoon" and the rest.
-    const tick = setInterval(() => this.now.set(new Date()), 60_000);
-    inject(DestroyRef).onDestroy(() => clearInterval(tick));
-
     void this.leaveTypeStore.load();
     if (this.canRequest()) {
       void this.balanceStore.loadMy(this.now().getFullYear());

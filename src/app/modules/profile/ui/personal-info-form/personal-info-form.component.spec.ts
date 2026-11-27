@@ -3,6 +3,8 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { PersonalInfoFormComponent } from './personal-info-form.component';
 import { PersonalInformation } from '../../models/profile.model';
 import { FileApiService } from '../../../../shared/data-access/file-api.service';
+import { HttpErrorResponse } from '@angular/common/http';
+import { toApiError } from '../../../../core/errors/api-error';
 
 const samplePersonalInfo: PersonalInformation = {
   firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', phone: '555-1111',
@@ -162,5 +164,30 @@ describe('PersonalInfoFormComponent', () => {
 
     expect(emitted).toEqual([file]);
     expect(fixture.componentInstance.photoDialogOpen()).toBe(false);
+  });
+
+  describe('server errors (task 20 follow-up)', () => {
+    const refused = (errors: Record<string, string[]>) => toApiError(new HttpErrorResponse({ status: 400, error: { errors } }));
+
+    it('shows a refused field message and keeps it when another input changes', () => {
+      const fixture = TestBed.createComponent(PersonalInfoFormComponent);
+      fixture.componentRef.setInput('personalInformation', samplePersonalInfo);
+      fixture.detectChanges();
+      fixture.componentRef.setInput('serverError', refused({ FirstName: ['First name must be 100 characters or fewer.'] }));
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('First name must be 100 characters or fewer.');
+
+      fixture.componentRef.setInput('saving', false);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.form.controls.firstName.errors?.['server']).toEqual({ message: 'First name must be 100 characters or fewer.' });
+    });
+
+    it('shows a message with no field on this form inside the form', () => {
+      const fixture = TestBed.createComponent(PersonalInfoFormComponent);
+      fixture.componentRef.setInput('personalInformation', samplePersonalInfo);
+      fixture.componentRef.setInput('serverError', refused({ Version: ['A concurrency version token is required.'] }));
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('A concurrency version token is required.');
+    });
   });
 });

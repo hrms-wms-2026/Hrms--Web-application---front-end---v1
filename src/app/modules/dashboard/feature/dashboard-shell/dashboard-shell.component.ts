@@ -1,13 +1,32 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { PageToolbarService } from '../../../../shared/state/page-toolbar.service';
 import { breakpointForWidth, injectBreakpoint } from '../../grid/breakpoint';
 import { DashboardKey } from '../../models/dashboard-layout.model';
 import { DashboardStore } from '../../state/dashboard.store';
-import { DashboardGridComponent, GridReorderEvent, GridResizeEvent, PinnedSize } from '../../ui/dashboard-grid/dashboard-grid.component';
+import {
+  DashboardGridComponent,
+  GridReorderEvent,
+  GridResizeEvent,
+  PinnedSize,
+} from '../../ui/dashboard-grid/dashboard-grid.component';
 import { DashboardSkeletonComponent } from '../../ui/dashboard-skeleton/dashboard-skeleton.component';
 import { QuickActionsCardComponent } from '../quick-actions-card/quick-actions-card.component';
+import { AuthStore } from '../../../../core/auth/state/auth.store';
+import { NoEmployeeProfilePanelComponent } from '../no-employee-profile-panel/no-employee-profile-panel.component';
 import { WidgetStoreDrawerComponent } from '../widget-store-drawer/widget-store-drawer.component';
 
 /** localStorage key prefixes written by the pre-server-side customize implementation; cleared once. */
@@ -42,13 +61,27 @@ function clearLegacyDashboardStorage(): void {
   selector: 'app-dashboard-shell',
   standalone: true,
   providers: [DashboardStore],
-  imports: [DashboardGridComponent, WidgetStoreDrawerComponent, ConfirmModalComponent, DashboardSkeletonComponent, QuickActionsCardComponent],
-  host: { class: 'block', '[class.dashboard-shell--team]': "dashboardKey() === 'my-team'", '(document:keydown.escape)': 'onEscape($event)' },
+  imports: [
+    DashboardGridComponent,
+    WidgetStoreDrawerComponent,
+    ConfirmModalComponent,
+    DashboardSkeletonComponent,
+    QuickActionsCardComponent,
+    NoEmployeeProfilePanelComponent,
+  ],
+  host: {
+    class: 'block',
+    '[class.dashboard-shell--team]': "dashboardKey() === 'my-team'",
+    '(document:keydown.escape)': 'onEscape($event)',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let boot = store.bootstrap();
     <div class="flex flex-col gap-3" data-testid="dashboard-shell">
-      @if (boot) {
+      @if (noEmployeeProfile()) {
+        <!-- My Work is all about your own work; without an employee profile every widget would fail. -->
+        <app-no-employee-profile-panel />
+      } @else if (boot) {
         <app-dashboard-grid
           [widgets]="store.visibleWidgets()"
           [columns]="boot.grid.columns"
@@ -79,10 +112,23 @@ function clearLegacyDashboardStorage(): void {
           <ng-content select="[emptyState]" />
         }
       } @else if (store.error()) {
-        <div class="rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] px-4 py-8 text-center" data-testid="dashboard-error" role="alert">
-          <p class="text-sm font-semibold text-[var(--color-text-primary)]">Couldn't load your dashboard</p>
+        <div
+          class="rounded-2xl border border-[var(--color-border)]/80 bg-[var(--color-surface)] px-4 py-8 text-center"
+          data-testid="dashboard-error"
+          role="alert"
+        >
+          <p class="text-sm font-semibold text-[var(--color-text-primary)]">
+            Couldn't load your dashboard
+          </p>
           <p class="mt-1 text-xs text-[var(--color-text-secondary)]">{{ store.error() }}</p>
-          <button type="button" class="mt-2 text-sm font-semibold text-[var(--color-accent)] hover:underline" data-testid="dashboard-retry" (click)="reload()">Try again</button>
+          <button
+            type="button"
+            class="mt-2 text-sm font-semibold text-[var(--color-accent)] hover:underline"
+            data-testid="dashboard-retry"
+            (click)="reload()"
+          >
+            Try again
+          </button>
         </div>
       } @else {
         <!-- Grey widget cards on the dashboard's grid while the layout loads, not a spinner. -->
@@ -90,7 +136,12 @@ function clearLegacyDashboardStorage(): void {
       }
     </div>
 
-    <app-widget-store-drawer [open]="drawerOpen()" [items]="store.available()" (added)="store.add($event)" (closed)="closeDrawer()" />
+    <app-widget-store-drawer
+      [open]="drawerOpen()"
+      [items]="store.available()"
+      (added)="store.add($event)"
+      (closed)="closeDrawer()"
+    />
 
     <app-confirm-modal
       [open]="confirmingReset()"
@@ -120,7 +171,25 @@ function clearLegacyDashboardStorage(): void {
       background: var(--color-dashboard-team-widget-bg);
     }
     /* The popups' sticky headers paint over the body, so they take the same gray. */
-    :host(.dashboard-shell--team) ::ng-deep app-modal [role='dialog'] :is(.tp-head, .tad-head, .tad-sticky, .efd-head, .efd-sticky, .mfd-head, .mfd-sticky, .tsd-head, .tsd-sticky, .wbld-head, .wtd-head, .wtd-sticky, .wwp-head) {
+    :host(.dashboard-shell--team)
+      ::ng-deep
+      app-modal
+      [role='dialog']
+      :is(
+        .tp-head,
+        .tad-head,
+        .tad-sticky,
+        .efd-head,
+        .efd-sticky,
+        .mfd-head,
+        .mfd-sticky,
+        .tsd-head,
+        .tsd-sticky,
+        .wbld-head,
+        .wtd-head,
+        .wtd-sticky,
+        .wwp-head
+      ) {
       background: var(--color-dashboard-team-widget-bg);
     }
     /* The loading skeleton matches: My Team's gray cards, no outline, darker blocks. */
@@ -138,12 +207,21 @@ function clearLegacyDashboardStorage(): void {
     ::ng-deep main.main-content:has(app-dashboard-shell.dashboard-shell--team) {
       background: var(--color-dashboard-team-page-bg);
     }
-  `
+  `,
 })
 export class DashboardShellComponent {
   readonly dashboardKey = input.required<DashboardKey>();
 
   protected readonly store = inject(DashboardStore);
+  private readonly auth = inject(AuthStore);
+
+  /** Signed in, on My Work, with no employee profile (e.g. a company owner who has not added themselves). */
+  protected readonly noEmployeeProfile = computed(
+    () =>
+      this.dashboardKey() === 'my-work' &&
+      this.auth.authenticated() &&
+      this.auth.employeeId() === null,
+  );
   private readonly pageToolbar = inject(PageToolbarService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly breakpoint = injectBreakpoint(this.host);
@@ -163,8 +241,22 @@ export class DashboardShellComponent {
     // render, reading the real width then. Later breakpoint changes are forwarded to the store.
     afterNextRender(() => {
       void this.store.setBreakpoint(breakpointForWidth(this.host.nativeElement.clientWidth));
-      void this.store.load(this.dashboardKey());
+      if (!this.noEmployeeProfile()) void this.store.load(this.dashboardKey());
       this.measured.set(true);
+    });
+
+    // The profile was created after the first render (the My Work panel or the floating setup guide): the session
+    // now has an employee, so load the normal dashboard that was skipped.
+    let lackedProfile = false;
+    effect(() => {
+      if (this.noEmployeeProfile()) {
+        lackedProfile = true;
+        return;
+      }
+      if (lackedProfile && this.measured()) {
+        lackedProfile = false;
+        untracked(() => void this.store.load(this.dashboardKey()));
+      }
     });
 
     effect(() => {
@@ -188,10 +280,29 @@ export class DashboardShellComponent {
       collapseDisabled: busy,
       onCollapse: () => this.cancel(),
       items: [
-        { id: 'dashboard-add-widget', label: () => 'Add', icon: 'add', disabled: busy, onClick: (e) => this.openDrawer(e) },
-        { id: 'dashboard-reset', label: () => 'Reset', icon: 'reset', disabled: busy, onClick: () => this.confirmingReset.set(true) },
-        { id: 'dashboard-save', label: () => (busy() ? 'Saving…' : 'Save'), icon: 'save', primary: true, disabled: busy, onClick: () => void this.store.save() }
-      ]
+        {
+          id: 'dashboard-add-widget',
+          label: () => 'Add',
+          icon: 'add',
+          disabled: busy,
+          onClick: (e) => this.openDrawer(e),
+        },
+        {
+          id: 'dashboard-reset',
+          label: () => 'Reset',
+          icon: 'reset',
+          disabled: busy,
+          onClick: () => this.confirmingReset.set(true),
+        },
+        {
+          id: 'dashboard-save',
+          label: () => (busy() ? 'Saving…' : 'Save'),
+          icon: 'save',
+          primary: true,
+          disabled: busy,
+          onClick: () => void this.store.save(),
+        },
+      ],
     });
 
     inject(DestroyRef).onDestroy(() => {

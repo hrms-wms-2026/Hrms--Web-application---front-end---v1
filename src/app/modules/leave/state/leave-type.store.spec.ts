@@ -53,6 +53,31 @@ describe('LeaveTypeStore', () => {
     expect(store.saving()).toBe(false);
   });
 
+  it('keeps a refused save as an ApiError for the form, and clears it on the next save', async () => {
+    const payload = { name: 'Sick Leave', code: 'SICK', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all' as const, requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [] };
+    const first = store.createLeaveType(payload);
+    httpMock
+      .expectOne(`${environment.apiUrl}/leave/types`)
+      .flush({ title: 'Validation Error', errors: { Code: ['Leave type code is already used.'] } }, { status: 400, statusText: 'Bad Request' });
+    await first;
+    expect(store.actionApiError()?.fieldErrors).toEqual({ Code: ['Leave type code is already used.'] });
+
+    const second = store.createLeaveType(payload);
+    expect(store.actionApiError()).toBeNull();
+    httpMock.expectOne(`${environment.apiUrl}/leave/types`).flush({ detail: 'Code already exists' }, { status: 409, statusText: 'Conflict' });
+    await second;
+    expect(store.actionApiError()?.fieldErrors).toEqual({});
+  });
+
+  it('clearSaveError drops the kept ApiError so a reopened form starts clean', async () => {
+    const creating = store.createLeaveType({ name: 'Sick Leave', code: 'SICK', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [] });
+    httpMock.expectOne(`${environment.apiUrl}/leave/types`).flush({ errors: { Code: ['Code already used.'] } }, { status: 400, statusText: 'Bad Request' });
+    await creating;
+    expect(store.actionApiError()).not.toBeNull();
+    store.clearSaveError();
+    expect(store.actionApiError()).toBeNull();
+  });
+
   it('updates a leave type and refreshes the list', async () => {
     const updating = store.updateLeaveType('type-1', { name: 'Annual Leave Updated', description: null, color: '#16A34A', isPaid: true, applicableGender: 'all', requiresDocument: false, documentRequiredAfterHours: null, acceptedDocumentTypes: [] });
     httpMock.expectOne(`${environment.apiUrl}/leave/types/type-1`).flush(mockType);

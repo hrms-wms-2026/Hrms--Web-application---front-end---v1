@@ -1,0 +1,2 @@
+# Generated from the backend Swagger document; LF so `npm run api:types:check` is stable on Windows.
+src/app/shared/api-types/*.generated.ts text eol=lf

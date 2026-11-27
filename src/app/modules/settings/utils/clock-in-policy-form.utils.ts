@@ -48,9 +48,6 @@ export interface ClockInPolicySettingsFormValue {
   lateDeductionRules: LateDeductionRuleFormRow[];
 }
 
-/** @deprecated Prefer ClockInPolicySettingsFormValue */
-export type ClockInPolicyFormModel = ClockInPolicySettingsFormValue;
-
 export function createEmptyLateDeductionRule(): LateDeductionRuleFormRow {
   return {
     lateArrivalMinutes: '',

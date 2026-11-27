@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { injectNow } from '../../../../core/clock/clock.service';
 import { AuthStore } from '../../../../core/auth/state/auth.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar.component';
@@ -34,8 +35,6 @@ import { safeServerDetail } from '../../../../core/services/error-handler.servic
 import { StopClickPropagationDirective } from '../../../../shared/directives/stop-click-propagation.directive';
 import { KeyboardClickDirective } from '../../../../shared/directives/keyboard-click.directive';
 
-/** How often the "x min ago" ages tick (no API call). */
-const CLOCK_TICK_MS = 60_000;
 /** Inbox rows on the compact card; "View all" pops out the rest. */
 const CARD_ROW_LIMIT = 4;
 
@@ -79,8 +78,8 @@ export class ActionCenterCardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly directory = inject(EmployeeDirectoryStore);
 
-  private readonly now = signal(new Date());
-  private clockId: ReturnType<typeof setInterval> | null = null;
+  private readonly minute = injectNow('minute');
+  private readonly now = computed(() => new Date(this.minute()));
   private visibilityHandler = (): void => this.onVisibilityChange();
 
   protected readonly showRail = computed(() => actionCenterRailVisible(this.capabilitiesStore.capabilities()));
@@ -289,33 +288,13 @@ export class ActionCenterCardComponent implements OnInit {
       void this.store.load();
       document.addEventListener('visibilitychange', this.visibilityHandler);
     }
-    this.startClock();
     this.destroyRef.onDestroy(() => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
-      this.stopClock();
     });
   }
 
   private onVisibilityChange(): void {
-    if (document.visibilityState === 'visible') {
-      void this.store.load();
-      this.now.set(new Date());
-      this.startClock();
-    } else {
-      this.stopClock();
-    }
-  }
-
-  private startClock(): void {
-    if (this.clockId) return;
-    this.clockId = setInterval(() => this.now.set(new Date()), CLOCK_TICK_MS);
-  }
-
-  private stopClock(): void {
-    if (this.clockId) {
-      clearInterval(this.clockId);
-      this.clockId = null;
-    }
+    if (document.visibilityState === 'visible') void this.store.load();
   }
 
   retry(): void {

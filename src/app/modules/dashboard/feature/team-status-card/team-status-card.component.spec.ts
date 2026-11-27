@@ -63,6 +63,8 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    // A test sets visibilityState to 'hidden'; drop the override so later spec files see the real value.
+    Reflect.deleteProperty(document, 'visibilityState');
   });
 
   async function setup(
@@ -274,12 +276,12 @@ describe('TeamStatusCardComponent (Working / Break / Leave)', () => {
   it('a clock tick changes elapsed times but not the counts or the order', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-29T10:00:00Z'));
-    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true, writable: true });
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true, writable: true });
     const { fixture, el, getTeamToday } = await setup(presenceResponse(TEAM), { width: 900, height: 636 });
     const names = () => all(el, 'wbl-table-row').map((r) => r.querySelector('.wbl-name')!.textContent);
     const before = names();
 
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(60_000);
     fixture.detectChanges();
 
     expect(names()).toEqual(before);
